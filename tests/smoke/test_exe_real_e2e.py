@@ -124,7 +124,16 @@ def test_exe_worker_transcribes_real_video(
         _ready_or_error(proc)
 
         assert proc.stdin is not None
-        proc.stdin.write(json.dumps({"action": "transcribe", "file_path": str(test_video)}) + "\n")
+        # Explicit output_formats -- otherwise the worker falls back to
+        # whatever this machine's REAL config.json has configured (a
+        # real run on a real dev machine can easily have that set to
+        # docx/txt instead of srt/json), and the asserts below would fail
+        # on a perfectly healthy build for a reason unrelated to packaging.
+        proc.stdin.write(json.dumps({
+            "action": "transcribe",
+            "file_path": str(test_video),
+            "output_formats": ["srt", "json"],
+        }) + "\n")
         proc.stdin.flush()
 
         done, err, summary = _drain_until_done(proc)
