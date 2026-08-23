@@ -1593,7 +1593,7 @@ class AdvancedDialog(tk.Toplevel):
         """Launch the hardware autodetect wizard.
 
         The wizard probes CUDA / NPU / DirectML / CPU, persists the
-        winning tier to ``%LOCALAPPDATA%\\WhisperProject\\hardware.json``,
+        winning tier to ``%LOCALAPPDATA%\\WhisperTranscriberSuite\\hardware.json``,
         and ``core.transcriber.detect_device`` reads that file on the
         next model load. The dialog is non-modal so the user can keep
         the Advanced window open while it runs.

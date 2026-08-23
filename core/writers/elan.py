@@ -38,7 +38,7 @@ def write(segments: list[dict], audio_path: str = "") -> str:
     skipped (mirroring the other writers' treatment of blank cues).
     """
     root = ET.Element("ANNOTATION_DOCUMENT", {
-        "AUTHOR": "whisper-project",
+        "AUTHOR": "whisper-transcriber-suite",
         "DATE": "1970-01-01T00:00:00+00:00",
         "FORMAT": "3.0",
         "VERSION": "3.0",

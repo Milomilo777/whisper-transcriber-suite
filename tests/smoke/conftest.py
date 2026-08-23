@@ -19,10 +19,10 @@ DEFAULT_VIDEO = Path(
 )
 DEFAULT_MODEL_PARENT = (
     Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData/Local")))
-    / "WhisperProject" / "Cache" / "models"
+    / "WhisperTranscriberSuite" / "Cache" / "models"
 )
 DEFAULT_MODEL_DIR = DEFAULT_MODEL_PARENT / "models--Systran--faster-whisper-large-v3"
-DEFAULT_EXE = REPO_ROOT / "dist" / "WhisperProject.exe"
+DEFAULT_EXE = REPO_ROOT / "dist" / "WhisperTranscriberSuite.exe"
 
 
 @pytest.fixture(scope="session")

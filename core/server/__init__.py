@@ -1,4 +1,4 @@
-"""Optional local-network / web HTTP job server for the Whisper Project.
+"""Optional local-network / web HTTP job server for Whisper Transcriber Suite.
 
 Public surface:
 
@@ -357,7 +357,7 @@ def run_server(
         return 1
 
     is_lan = host in (HOST_LAN, "::", "")
-    print("Whisper Project server listening on:")
+    print("Whisper Transcriber Suite server listening on:")
     for url in handle.urls():
         print(f"  {url}")
     if is_lan:

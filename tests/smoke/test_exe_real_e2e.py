@@ -1,6 +1,6 @@
 """Real end-to-end test of the COMPILED exe.
 
-Spawns ``WhisperProject.exe --worker``, sends the actual JSON
+Spawns ``WhisperTranscriberSuite.exe --worker``, sends the actual JSON
 ``transcribe`` command, and asserts an SRT + JSON land next to the input.
 This is the only way to catch PyInstaller packaging bugs (missing data
 files, hidden imports). Cf. tests/smoke/README.md for the Session 8

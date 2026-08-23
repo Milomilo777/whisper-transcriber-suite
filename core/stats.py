@@ -150,7 +150,7 @@ def _post(url: str, payload: dict[str, str], timeout: float) -> None:
             method="POST",
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": "WhisperProject",
+                "User-Agent": "WhisperTranscriberSuite",
             },
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:

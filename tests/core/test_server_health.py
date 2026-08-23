@@ -89,7 +89,7 @@ def test_root_serves_html(tmp_path):
             assert resp.status == 200
             assert resp.headers.get("Content-Type", "").startswith("text/html")
             body = resp.read().decode("utf-8")
-            assert "Whisper Project" in body
+            assert "Whisper Transcriber Suite" in body
 
 
 def test_unknown_route_is_404(tmp_path):

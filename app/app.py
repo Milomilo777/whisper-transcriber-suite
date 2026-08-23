@@ -400,7 +400,7 @@ def build_about_sections() -> list[AboutSection]:
             ("Automation", [
                 "Watched folder — auto-enqueue files dropped in",
                 "Windows Explorer right-click "
-                "\"Transcribe with Whisper Project\" (optional install task)",
+                "\"Transcribe with Whisper Transcriber Suite\" (optional install task)",
                 "Per-folder .whisperproject.json overrides",
             ]),
             ("Desktop", [
@@ -474,10 +474,10 @@ def build_about_links() -> list[tuple[str, str]]:
         ("Google Cloud console (service account, billing)",
          "https://console.cloud.google.com"),
         ("Cloud setup guide — Gemini (paste a key)",
-         "https://github.com/Milomilo777/whisper_project_direct_download_v2"
+         "https://github.com/Milomilo777/whisper-transcriber-suite"
          "/blob/master/docs/CLOUD_STT.md"),
         ("Cloud setup guide — Google Cloud Speech-to-Text",
-         "https://github.com/Milomilo777/whisper_project_direct_download_v2"
+         "https://github.com/Milomilo777/whisper-transcriber-suite"
          "/blob/master/docs/CLOUD_STT_GOOGLE.md"),
     ]
 
@@ -621,7 +621,7 @@ class App(tk.Tk):
         super().__init__()
         # Window-title base carries the version so the user can always see
         # which build is running (title bar / taskbar / Alt-Tab).
-        self._base_title = f"Whisper Project v{_APP_VERSION}"
+        self._base_title = f"Whisper Transcriber Suite v{_APP_VERSION}"
         self.title(self._base_title)
         # Make any on-demand-installed optional packages importable so
         # feature-availability checks (e.g. stable-ts alignment) see them.
@@ -1157,7 +1157,7 @@ class App(tk.Tk):
         reference and is intentionally exhaustive.
         """
         dlg = tk.Toplevel(self)
-        dlg.title("About Whisper Project")
+        dlg.title("About Whisper Transcriber Suite")
         dlg.transient(self)
         dlg.geometry("680x620")
         dlg.minsize(560, 480)
@@ -1167,7 +1167,7 @@ class App(tk.Tk):
         from core import __version__ as _app_ver
         ttk.Label(
             header,
-            text=f"Whisper Project — v{_app_ver}",
+            text=f"Whisper Transcriber Suite — v{_app_ver}",
             font=("TkDefaultFont", 13, "bold"),
         ).pack(anchor="w")
         ttk.Label(
@@ -3859,9 +3859,9 @@ class App(tk.Tk):
     def _refresh_window_title(self) -> None:
         """Update the Tk window title so the taskbar / Alt-Tab reflects state.
 
-        Idle: "Whisper Project".
-        One running task: "Whisper Project — 34% transcribing foo.mp4".
-        Multiple running: "Whisper Project — 2 tasks (avg 41%)".
+        Idle: "Whisper Transcriber Suite".
+        One running task: "Whisper Transcriber Suite — 34% transcribing foo.mp4".
+        Multiple running: "Whisper Transcriber Suite — 2 tasks (avg 41%)".
         """
         running = [t for t in self.queue if t.status == "running"]
         running_dl = [
@@ -4013,7 +4013,7 @@ class App(tk.Tk):
                 f"{os.path.basename(task.file_path)}"
             )
             try:
-                self.tray.notify("Whisper Project — transcription done", body)
+                self.tray.notify("Whisper Transcriber Suite — transcription done", body)
             except Exception:  # noqa: BLE001
                 pass
         self.log(

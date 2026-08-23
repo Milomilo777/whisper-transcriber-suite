@@ -1593,7 +1593,7 @@ class GoogleCloudSttBackend(Backend):
                 project=self._project_id, credentials=creds
             )
             bucket = storage_client.bucket(self._bucket)
-            blob_name = f"whisper-project/{int(time.time())}-{os.path.basename(local_path)}"
+            blob_name = f"whisper-transcriber-suite/{int(time.time())}-{os.path.basename(local_path)}"
             blob = bucket.blob(blob_name)
             blob.upload_from_filename(local_path, content_type=CHUNK_MIME)
         except Exception as e:  # noqa: BLE001

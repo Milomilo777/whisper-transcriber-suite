@@ -177,7 +177,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     from core.writers import supported_formats
 
     p = argparse.ArgumentParser(
-        prog="WhisperProject",
+        prog="WhisperTranscriberSuite",
         description=(
             "Offline transcription + downloader. Run without arguments to "
             "launch the desktop app. Add --safe-mode to launch with the "

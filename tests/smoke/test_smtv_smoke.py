@@ -60,7 +60,7 @@ def test_real_cdn_head_ok():
     ep = smtv_mod.fetch_episode(REFERENCE_EPISODE, timeout=30.0)
     cdn_url = smtv_mod.best_url_for_mode(ep, "video-396")
     req = urllib.request.Request(cdn_url, method="HEAD",
-                                 headers={"User-Agent": "WhisperProject"})
+                                 headers={"User-Agent": "WhisperTranscriberSuite"})
     with urllib.request.urlopen(req, timeout=15.0) as resp:
         assert resp.status == 200
         # Cloudflare strips Content-Length sometimes; just confirm the

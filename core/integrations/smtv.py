@@ -77,7 +77,7 @@ _PLAYLIST_ANCHOR_RE = re.compile(
 _PART_RE = re.compile(r"\bPart\s+(\d+)\s+of\s+(\d+)\b", re.I)
 
 _CDN_PREFIX = "https://cf-vdo.suprememastertv.com/vod/video/download-mp4.php?file="
-_DEFAULT_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) WhisperProject"
+_DEFAULT_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) WhisperTranscriberSuite"
 _UNSAFE_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 

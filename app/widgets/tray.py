@@ -123,9 +123,9 @@ class TrayController:
                 self._pystray.MenuItem("Exit", lambda _i, _e: self._post(self._exit_app)),
             )
             self._icon = self._pystray.Icon(
-                "WhisperProject",
+                "WhisperTranscriberSuite",
                 _build_icon_image(active=False),
-                "Whisper Project",
+                "Whisper Transcriber Suite",
                 menu,
             )
 

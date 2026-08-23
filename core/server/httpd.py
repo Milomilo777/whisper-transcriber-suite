@@ -1,4 +1,4 @@
-"""Stdlib-only HTTP job server for the Whisper Project.
+"""Stdlib-only HTTP job server for Whisper Transcriber Suite.
 
 A ``ThreadingHTTPServer`` plus a typed ``BaseHTTPRequestHandler`` that
 exposes a tiny JSON API and one static page so people on a trusted LAN
@@ -522,7 +522,7 @@ class JobHTTPServer(ThreadingHTTPServer):
 class JobRequestHandler(BaseHTTPRequestHandler):
     """Typed request handler dispatching the small JSON API + static page."""
 
-    server_version = "WhisperProjectServer/" + __version__
+    server_version = "WhisperTranscriberSuiteServer/" + __version__
     protocol_version = "HTTP/1.1"
 
     # narrow the loosely-typed server attr for the type checker

@@ -9,12 +9,12 @@ UX:
   +-----------------------------------------------------------+
   |  Choose Model Hub Folder                                   |
   +-----------------------------------------------------------+
-  |  Whisper Project stores its speech-recognition models in   |
-  |  a "model hub" folder. The default is a private per-user   |
-  |  cache folder that is always writable.                     |
+  |  Whisper Transcriber Suite stores its speech-recognition   |
+  |  models in a "model hub" folder. The default is a private  |
+  |  per-user cache folder that is always writable.            |
   |                                                            |
   |  Hub folder:                                               |
-  |  [ %LOCALAPPDATA%\\WhisperProject\\Cache\\models ] [Browse…]|
+  |  [ %LOCALAPPDATA%\\WhisperTranscriberSuite\\Cache\\models ] [Browse…]|
   |                                                            |
   |  ☐ Use a different folder I'll pick                        |
   |                                                            |
@@ -116,7 +116,7 @@ class HubSetupDialog(tk.Toplevel):
 
         ttk.Label(
             body,
-            text="Choose where Whisper Project should store its model files.",
+            text="Choose where Whisper Transcriber Suite should store its model files.",
             font=("TkDefaultFont", 10, "bold"),
         ).pack(anchor="w", pady=(0, 4))
         ttk.Label(

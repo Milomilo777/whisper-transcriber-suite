@@ -204,7 +204,7 @@ def download_ffplay(
         os.close(fd)
         try:
             req = urllib.request.Request(
-                url, headers={"User-Agent": "WhisperProject"}
+                url, headers={"User-Agent": "WhisperTranscriberSuite"}
             )
             with urllib.request.urlopen(req, timeout=60) as resp, open(tmp, "wb") as out:
                 shutil.copyfileobj(resp, out)

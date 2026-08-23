@@ -65,7 +65,7 @@ def test_tiling_tab_enabled_defaults_on_filesystem_error(monkeypatch):
 
 def test_default_hub_folder_is_under_user_cache_not_app_dir(monkeypatch, tmp_path):
     """The default hub must live under user_cache_dir() —
-    %LOCALAPPDATA%\\WhisperProject\\Cache\\models on Windows — NEVER under
+    %LOCALAPPDATA%\\WhisperTranscriberSuite\\Cache\\models on Windows — NEVER under
     the install / app dir. A Program Files default was not writable for
     a standard (non-admin) user, so the first-run model download failed
     with "Access is denied". Regression for R5.
@@ -87,7 +87,7 @@ def test_default_hub_folder_is_under_user_cache_not_app_dir(monkeypatch, tmp_pat
 def test_default_hub_matches_model_cache_fallback():
     """The default hub MUST equal model_folder_for's empty-hub fallback
     (``user_cache_dir() / "models"``) so an existing model already in
-    %LOCALAPPDATA%\\WhisperProject\\Cache\\models is reused, not silently
+    %LOCALAPPDATA%\\WhisperTranscriberSuite\\Cache\\models is reused, not silently
     re-downloaded (~3 GB) into a divergent folder. Regression for the R5
     follow-up (the original fix used a separate 'hub' sub-folder).
     """

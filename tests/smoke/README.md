@@ -14,7 +14,7 @@ PyInstaller bundle.
 
 The Session 8 history is instructive: a colleague reported the app was
 broken, but a Python-source smoke test (`python gui.py` + service calls)
-returned 11/11 pass. Only when we re-spawned `WhisperProject.exe --worker`
+returned 11/11 pass. Only when we re-spawned `WhisperTranscriberSuite.exe --worker`
 and sent a real `transcribe` command did we hit:
 
 > `[ONNXRuntimeError] Load model … silero_vad_v6.onnx failed: File doesn't exist`
@@ -30,7 +30,7 @@ against the exe.
 | File | What it proves |
 |---|---|
 | `test_app_headless.py` | The `App` Tk root + every service can be instantiated and driven without UI clicks. Catches Python-source regressions across services, writers, dialogs, oTranscribe round-trip, theme switching. |
-| `test_exe_real_e2e.py` | `dist/WhisperProject/WhisperProject.exe --worker` actually transcribes a real video. Catches **PyInstaller packaging bugs** (missing data files, hidden imports, DLLs that don't resolve at runtime). |
+| `test_exe_real_e2e.py` | `dist/WhisperTranscriberSuite/WhisperTranscriberSuite.exe --worker` actually transcribes a real video. Catches **PyInstaller packaging bugs** (missing data files, hidden imports, DLLs that don't resolve at runtime). |
 
 ## How to run
 

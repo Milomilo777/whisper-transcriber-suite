@@ -152,7 +152,7 @@ def download_default_model(
             pass
     if log:
         log(f"Downloading LLM model from {url} → {dest} (~1 GB)…")
-    req = urllib.request.Request(url, headers={"User-Agent": "WhisperProject/0.8"})
+    req = urllib.request.Request(url, headers={"User-Agent": "WhisperTranscriberSuite/0.8"})
     started = time.time()
     bytes_done = 0
     cancelled = False

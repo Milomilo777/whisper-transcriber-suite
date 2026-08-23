@@ -26,7 +26,7 @@ Resolution order used by the rest of the codebase (in ``model_manager``
 
 The first-run UI dialog (``app/dialogs/hub_setup``) shows
 :func:`default_hub_folder` as its initial value, which is a writable
-per-user cache directory (``%LOCALAPPDATA%\\WhisperProject\\Cache\\models``
+per-user cache directory (``%LOCALAPPDATA%\\WhisperTranscriberSuite\\Cache\\models``
 on Windows). The user can pick a different folder (e.g. a big external
 drive) and we persist that choice to ``config["hub_folder"]``.
 
@@ -122,7 +122,7 @@ def default_hub_folder() -> Path:
     """The pre-filled value the first-run dialog shows.
 
     Returns ``user_cache_dir() / "models"`` —
-    ``%LOCALAPPDATA%\\WhisperProject\\Cache\\models`` on Windows. This is
+    ``%LOCALAPPDATA%\\WhisperTranscriberSuite\\Cache\\models`` on Windows. This is
     always writable by the current user, so the first-run model
     download cannot fail with "Access is denied" the way an
     ``<app_dir>/hub`` default did under a Program Files install. It is
@@ -131,7 +131,7 @@ def default_hub_folder() -> Path:
     than re-downloaded.
 
     We reuse ``core.config.user_cache_dir`` (the single platformdirs
-    wrapper, ``appname=WhisperProject`` / ``appauthor=False``) so the
+    wrapper, ``appname=WhisperTranscriberSuite`` / ``appauthor=False``) so the
     hub stays consistent with every other cache path in the app.
     """
     from .config import user_cache_dir  # local import avoids a cycle

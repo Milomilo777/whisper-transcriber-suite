@@ -1,4 +1,4 @@
-"""Whisper Project — Tk desktop app.
+"""Whisper Transcriber Suite — Tk desktop app.
 
 Layout:
     app.app                 — the App class (Tk root, wires services)

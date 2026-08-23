@@ -47,7 +47,7 @@ RELEASES_PAGE_URL = (
 
 # A short, honest User-Agent. GitHub's REST API rejects requests with no
 # User-Agent header (HTTP 403), so this is required, not cosmetic.
-_USER_AGENT = "WhisperProject-update-check"
+_USER_AGENT = "WhisperTranscriberSuite-update-check"
 
 # Default network timeout, in seconds, for the single GET. Kept small so
 # the daemon thread never lingers on a dead network.
