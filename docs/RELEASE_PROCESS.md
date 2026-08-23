@@ -12,7 +12,13 @@ rules).
 
 ---
 
-## Same-version rebuild (no version bump)
+## Same-version rebuild (no version bump) — RETIRED, do not use (2026-08-23)
+
+**Retired.** The `--clobber` step below resets the affected asset's
+GitHub download count to zero (it deletes-then-reuploads under the
+hood). See CLAUDE.md "Never `--clobber` an existing release asset" —
+cut a new patch version (Steps 1-10 below) instead, even for a small
+same-day fix. Left below for historical reference only.
 
 Use this — NOT Steps 1-10 below — when source changed but the release
 should stay the SAME version number (a same-day fix/polish pass, not a

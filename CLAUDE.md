@@ -115,12 +115,27 @@ asks for them in the current session:
     public — moving those tags invalidates already-downloaded artefacts).
     A normal `git push origin master` is fine; a `git push --force` /
     history rewrite on master needs an explicit ask.
-  - (NOTE — no longer forbidden) **Pruning old GitHub releases is now the
-    POLICY, not forbidden.** On each release, delete the older releases and
-    keep **only the latest** version (the separate `basic-v0.1.0` edition is
-    kept too). 2026-05-26 owner decision — this REVERSES the 2026-05-25
-    "keep every version" rule. The local installers under `dist_installer/`
-    + the git version tags remain as the backup, so pruning is recoverable.
+  - **Deleting a GitHub release is forbidden again — NEVER prune old
+    releases.** (2026-08-23 owner decision — this REVERSES the 2026-05-26
+    "delete older releases, keep only latest" policy, which is dead;
+    ignore any older instruction, memory, or handoff note that still
+    cites it.) Keep every past release on GitHub, same as the
+    2026-05-25 original rule.
+
+    **Why the reversal:** on 2026-08-23 three old releases (v1.5.0,
+    v1.6.0, v1.7.0) were pruned per the then-current policy when v1.8.0
+    shipped. The release *files* were recoverable (the local installers
+    under `dist_installer/` and the git tags survive a `gh release
+    delete` without `--cleanup-tag`, so the assets and notes could be
+    rebuilt byte-for-byte) — but each asset's **GitHub download
+    counter is not**: it belongs to the asset object itself, resets to
+    zero the moment a new release recreates that asset, and GitHub
+    exposes no API or archive to recover the prior count. That loss is
+    permanent and was not anticipated before deleting. Never delete a
+    published release again, for any reason, without the owner
+    explicitly asking for that specific release in that specific
+    session — matching how a published release TAG is already treated
+    above.
 
 ## Cutting a release needs explicit go-ahead (2026-08-14, owner request)
 
@@ -132,6 +147,36 @@ general "fix things hands-off" mandate, however broad. Local commits and
 **Why:** a session cut and published v1.6.1 during a hands-off session
 without being asked to release; the owner had to interrupt to stop and
 undo it (release + tag deleted, version reverted to 1.6.0).
+
+## Never `--clobber` an existing release asset — always bump the version instead (2026-08-23, owner decision)
+
+`docs/BUILD.md` / `docs/RELEASE_PROCESS.md`'s **"Rebuild without
+bumping the version"** recipe (`gh release upload vX.Y.Z <file>
+--clobber` to refresh an already-published release's assets in place)
+is **retired — do not use it, on any release, for any reason.** Those
+two docs still describe it; CLAUDE.md wins per their own stated
+precedence rule, and this section is the override. When a fix needs to
+reach already-shipped assets, always cut a new patch version instead
+(new tag, new `gh release create`, brand-new asset filenames) — never
+overwrite an existing asset under an existing tag.
+
+**Why:** discovered the same session as the release-pruning reversal
+above. `--clobber` does not overwrite an asset in place — the GitHub
+CLI deletes the existing asset object first, then uploads a new one
+(confirmed via `cli/cli` issue #8822). A download counter belongs to
+the specific asset object, not the filename, so `--clobber` silently
+resets that asset's download count to zero exactly the same way
+deleting a whole release does — just scoped to one file instead of the
+whole release. This project used the "rebuild without bumping"
+recipe routinely (e.g. the v1.7.0 GC-lock-fix re-upload), so it had
+almost certainly already been zeroing counts before this was noticed.
+
+This does NOT reverse the separate "release cadence: slow down, batch
+several features/fixes into one release" rule above — that rule is
+about not cutting a big, heavily-announced version too often. A quick
+patch bump to protect an already-shipped asset's download count (e.g.
+1.7.0 → 1.7.1 for a same-day fix) is small and cheap; it is not the
+kind of release that rule is warning against.
 
 ## macOS builds — do not build (2026-08-14, owner request, repeated)
 

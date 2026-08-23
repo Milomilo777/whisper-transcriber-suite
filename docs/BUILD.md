@@ -171,7 +171,19 @@ uploaded to the GitHub release (see "Rebuild without bumping the
 version" below, and `docs/RELEASE_PROCESS.md` for a full version-bump
 release).
 
-## Rebuild without bumping the version
+## Rebuild without bumping the version — RETIRED, do not use (2026-08-23)
+
+**This whole recipe is retired.** `--clobber` deletes the existing
+asset and uploads a fresh one, which silently resets that asset's
+GitHub download count to zero (confirmed via `cli/cli` issue #8822) —
+discovered after this exact pattern had already been used at least
+once (the v1.7.0 GC-lock-fix re-upload). See CLAUDE.md "Never
+`--clobber` an existing release asset" for the full story and the
+replacement rule: cut a new patch version instead. Left below for
+historical reference only.
+
+<details>
+<summary>Original recipe (do not follow)</summary>
 
 Use this when the source changed (a bug fix, a UI tweak, a new writer,
 …) but the release is meant to stay the SAME version number — i.e. you
@@ -264,6 +276,8 @@ gh release upload vX.Y.Z ^
 `macos-app.yml` is `workflow_dispatch`-only (see the file's own header
 comment) so it never fires by accident on a normal push. The repo is
 public, so this no longer burns paid private-repo macOS minutes.
+
+</details>
 
 ## Sanity check after any build
 
