@@ -5,7 +5,113 @@ this repo. Read this file before anything else.
 
 ---
 
-## 🟢 2026-08-23 (latest) — a failed format lookup now tells the user why (Facebook, Instagram, any non-cookie-related site failure)
+## 🟢 2026-08-23 (latest) — format-lookup-error fix, a source-run launcher, and v1.8.0 released
+
+Owner reported a Facebook download+transcribe failing with "no message
+about where the problem was," and assumed the 2026-08-19 cookie-retry
+fix (`0718afb`) should have covered it since it "looked like the same
+problem." It did not: that fix only retries when yt-dlp's OWN cookie-jar
+read fails locally, unrelated to a site's extractor rejecting the URL
+outright. Confirmed the real cause against a real Facebook URL with
+this repo's `bin/yt-dlp.exe`: the format-probe DOES get a real ERROR
+line, but `FormatService` only ever wrote it into a small status label
+next to the format dropdowns — never into the download log, and the
+"missing audio/video format" popup that fires on Download-click showed
+a hardcoded "wait for it to load" regardless of whether the lookup had
+already permanently failed. Fixed generically (not per-site):
+`app.format_lookup_error` now carries the real reason from every lookup
+path (yt-dlp probe, SMTV probe, poll() exception fallback), and
+`DownloadService._warn_format_missing()` surfaces it in both the popup
+and the log. 3 new tests (`tests/core/test_download_format_lookup_error.py`).
+
+While diagnosing, found the owner's actual daily-use copy —
+`embed_build\Run Whisper Project.bat` — was a **frozen snapshot 9 days
+behind source** (last rebuilt 2026-08-14), so neither this fix nor the
+2026-08-19 cookie-retry fix had ever actually reached the owner's real
+runs. Root cause: `embed_build\` only updates on a deliberate rebuild,
+which needs explicit go-ahead per this repo's release rules — there is
+no such thing as "the packaged build stays in sync automatically."
+Added `run_from_source.bat` (repo root) as the fix: `git pull --ff-only`
++ `python gui.py`, so every commit pushed to this checkout takes effect
+on the very next double-click, no rebuild step. **Real mistake made
+while testing it the first time**: a failed `cmd //c` invocation from
+Git Bash left me trusting a stale assumption about what had launched,
+and I `taskkill //F //IM pythonw.exe`'d an UNRELATED pythonw.exe process
+that happened to be running on the machine — confirmed via `app.log`
+that it was NOT this app (no fresh "App startup" line), disclosed to
+the owner immediately. Lesson for next time: never `taskkill` by image
+name to clean up a test launch — capture the exact PID from the actual
+`Start-Process`/spawn call and kill only that.
+
+Owner then asked to build + release. Discovered 1.7.0 (2026-08-15) was
+badly stale for this purpose: v1.7.0's actual shipped assets were last
+rebuilt 2026-08-16 00:11, and everything after that — a whole
+"competitor feature audit" round (remote LLM provider, chapters/AI
+Tools/search wired into the transcript viewer, bilingual SRT writer,
+noisy-audio preset) plus 5 more real bug fixes (X/Twitter cookie
+retry, a console-codepage crash, a quote-stripping fix, 3 Codex-found
+search-dialog/AI-panel bugs) — had never been released or even put in
+CHANGELOG.md. Owner first said "1.7.1"; flagged that semver doesn't
+fit a patch bump given real new features were included (not just
+fixes) — owner corrected to **1.8.0**. Backfilled `docs/CHANGELOG.md`
+with everything since 1.7.0, wrote `docs/release-notes/RELEASE_NOTES_v1.8.0.md`,
+bumped the version in all 4 places (`core/__init__.py`, `pyproject.toml`,
+`installer_embed.iss`, `installer.iss`).
+
+Full validation matrix green: `pyright app core` (0/0/0), the full
+hermetic `pytest` suite (exit 0). Built both shipped deliverables
+(`build_embed_installer.bat` → `embed_build\`, ISCC `installer_embed.iss`
+→ Setup-Standard, `shutil.make_archive` → Portable zip) — sizes in line
+with v1.7.0's. **Real-hardware validation caught a real thing worth
+knowing about, though it turned out not to be a release blocker**:
+`tests/smoke/test_exe_real_e2e.py` failed against the freshly-built
+Method C bundle with "SRT missing" — reproduced identically from pure
+source too, with both `tiny` and `large-v3` models, so NOT a packaging
+bug. Manually drove the worker protocol directly (bypassing the test's
+event-filtering) and found the REAL cause: this machine's actual
+`config.json` has the engine set to `whisper.cpp` and `output_formats`
+set to `docx`+`txt`+`chapters.json`, not the test's hardcoded assumption
+of `srt`+`json`. The transcription itself was completely correct (real
+English text, hallucination detector ran, chapter detector ran, 3 files
+written exactly as configured) — the test's assumption was just wrong
+for a real dev machine with a customized config. Fixed the test itself
+(pin `output_formats: ["srt", "json"]` explicitly in the transcribe
+command sent) so it no longer depends on whatever the local machine has
+saved — re-ran clean: 2 passed, 1 skipped (the size-check, correctly
+inapplicable to Method C).
+
+**Did NOT do**: the full manual install/uninstall/upgrade GUI cycle from
+`docs/RELEASE_PROCESS.md` Step 6 (fresh-profile hub-folder wizard, both
+variants, uninstall prompts) — it needs clicking through native Tk/Inno
+Setup dialogs I have no tool to drive, and `installer_embed.iss` requires
+admin elevation that would hang headlessly on a UAC prompt. Substituted
+the officially-documented equivalent for Method C instead (`docs/BUILD.md`
+"Sanity check after any build" — `WHISPER_SMOKE_EXE`/`WHISPER_SMOKE_GUI`
+against the embed tree), which is real and did catch something (even if
+not a blocker) — but the Inno Setup wrapper itself (shortcuts, uninstall
+registry, in-place upgrade) is **not independently verified this round**.
+
+Tagged and released `v1.8.0` (`gh release create`, 3 assets: Setup-
+Standard, Portable, the v1.5.0 macOS `.dmg` carried forward unchanged —
+still no new macOS build, per this repo's standing "never" rule). Pruned
+old GitHub releases per the standing policy (`gh release delete
+v1.7.0/v1.6.0/v1.5.0 --yes`, no `--cleanup-tag`) — only `v1.8.0` +
+`basic-v0.1.0` remain as releases; every git tag (v1.7.0 down to v1.3.9)
+is still on `master`'s history as the recoverable backup.
+
+Current state: working tree clean, everything committed and pushed to
+master (9 commits this session), tag+release both live. Nothing pending
+except the not-independently-verified Inno Setup install/uninstall
+wrapper noted above — worth a real click-through pass next time a human
+is at this machine, or before the NEXT release if this one's Setup-
+Standard turns out to have an issue.
+
+---
+
+## 🟢 2026-08-23 — a failed format lookup now tells the user why (Facebook, Instagram, any non-cookie-related site failure)
+
+(Same-day detail entry for the fix summarized at the top of this file —
+kept for the exact file/line references.)
 
 Owner reported: a Facebook download+transcribe attempt "gave an error
 with no message about where the problem was," and assumed the
@@ -46,9 +152,8 @@ running / never started), the original "wait for it" text is
 unchanged. Covered by
 `tests/core/test_download_format_lookup_error.py` (3 tests, hermetic).
 pyright 0/0/0 on `app/` + `core/`; the `download or format` pytest
-subset passes. NOT yet turned into a release build (per this repo's
-"cutting a release needs explicit go-ahead" rule) — the fix is only in
-source + pushed to `master` so far.
+subset passes. Shipped in the v1.8.0 release built later the same
+session (see the entry at the top of this file).
 
 ---
 
