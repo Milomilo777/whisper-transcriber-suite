@@ -19,6 +19,12 @@ jobs:
   unit-tests:
     name: ${{ matrix.os }} · Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
+    # Backstop for a hung test slipping past pytest-timeout below (e.g. a
+    # hang in the install step, or in pytest's own startup/collection
+    # before the per-test timeout plugin is active). Normal runs finish
+    # in a few minutes; 20 replaces GitHub's 360-minute default so a wedge
+    # fails fast instead of burning hours of Actions time.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -44,8 +50,11 @@ jobs:
           # by tests/core/test_model_manager.py to mock the CDN
           # download responses; pyproject.toml lists it under the
           # `dev` extra, install explicitly here so the CI install
-          # step is self-documenting.
-          pip install pytest pytest-cov pyright responses
+          # step is self-documenting. `pytest-timeout` enforces the
+          # per-test --timeout set in pyproject.toml's addopts — a
+          # hung test fails with a thread dump instead of the whole
+          # job riding out GitHub's multi-hour default timeout.
+          pip install pytest pytest-cov pytest-timeout pyright responses
 
       # Ubuntu apt-python3 doesn't ship tkinter by default; the
       # Tk-touching unit tests (after-callback cancellation, the

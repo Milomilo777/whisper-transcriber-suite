@@ -290,7 +290,14 @@ class ServerHandle:
             self._thread.start()
 
     def stop(self, *, timeout: float = 5.0) -> None:
-        """Stop serving, close the socket, stop the worker (idempotent)."""
+        """Stop serving, close the socket, stop the worker (idempotent).
+
+        ``server.shutdown()`` blocks until the ``serve_forever`` loop
+        notices the shutdown request — unbounded in the stdlib, so if that
+        thread died before ever reaching its poll, this would wait forever.
+        Run it on a helper thread with a join timeout so ``stop()`` always
+        returns.
+        """
         with self._lock:
             server = self._server
             manager = self._manager
@@ -299,8 +306,16 @@ class ServerHandle:
             self._manager = None
             self._thread = None
         if server is not None:
+            shutdown_thread = threading.Thread(
+                target=server.shutdown, name="server-shutdown", daemon=True,
+            )
+            shutdown_thread.start()
+            shutdown_thread.join(timeout=timeout)
+            if shutdown_thread.is_alive():
+                logger.warning(
+                    "server: shutdown() did not complete within %.1fs", timeout,
+                )
             try:
-                server.shutdown()
                 server.server_close()
             except Exception:  # noqa: BLE001
                 logger.exception("server: error during shutdown")
