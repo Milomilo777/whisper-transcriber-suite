@@ -81,6 +81,15 @@ Grab the latest build from the **[releases page](https://github.com/Milomilo777/
 | **`WhisperProject-…-Portable.zip`** | ~330 MB | Unzip and run. No installation, no admin rights, happy on a USB stick. |
 | **`WhisperProject-…-macOS-*.dmg`** | ~400 MB | macOS (x64 and arm64 builds are published separately). |
 
+**Downloads by version** (each badge counts only that version's own
+release — older versions stay published and their counts are never
+reset):
+
+[![v1.8.0](https://img.shields.io/github/downloads/Milomilo777/whisper_app/v1.8.0/total?label=v1.8.0&color=207a80)](https://github.com/Milomilo777/whisper_app/releases/tag/v1.8.0)
+[![v1.7.0](https://img.shields.io/github/downloads/Milomilo777/whisper_app/v1.7.0/total?label=v1.7.0&color=8a8a8a)](https://github.com/Milomilo777/whisper_app/releases/tag/v1.7.0)
+[![v1.6.0](https://img.shields.io/github/downloads/Milomilo777/whisper_app/v1.6.0/total?label=v1.6.0&color=8a8a8a)](https://github.com/Milomilo777/whisper_app/releases/tag/v1.6.0)
+[![v1.5.0](https://img.shields.io/github/downloads/Milomilo777/whisper_app/v1.5.0/total?label=v1.5.0&color=8a8a8a)](https://github.com/Milomilo777/whisper_app/releases/tag/v1.5.0)
+
 Everything needed is inside — a bundled Python, `ffmpeg`, `ffprobe` and
 `yt-dlp`. The only thing fetched later is the speech model itself
 (**~1–3 GB, once**, on first launch); after that the app is fully offline.

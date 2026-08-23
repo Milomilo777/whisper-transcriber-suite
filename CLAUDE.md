@@ -178,6 +178,25 @@ patch bump to protect an already-shipped asset's download count (e.g.
 1.7.0 → 1.7.1 for a same-day fix) is small and cheap; it is not the
 kind of release that rule is warning against.
 
+### README: add a per-version download badge on every release, never remove an old one
+
+`README.md`'s "Download" section carries one shields.io badge per
+release, each scoped to its own tag (`.../downloads/Milomilo777/
+whisper_app/vX.Y.Z/total`) — NOT the repo-wide `.../total` badge at the
+top of the file, which sums across every release and does not show a
+per-version breakdown. **Every time a new version is tagged and
+released, add its own new badge to that list — never remove or replace
+an older version's badge.** The point is a permanent, at-a-glance
+per-version history, matching "never delete a release" above; deleting
+a badge here doesn't touch GitHub's real counter, but it would hide the
+history from anyone reading the README.
+
+**Why:** owner asked for this directly after the 2026-08-23
+download-count incident, specifically because the repo-front-page badge
+(the summed `.../total` one) had already dropped from the pruning
+mistake — a per-version badge row makes each release's own count
+visible and durable regardless of what happens to the aggregate.
+
 ## macOS builds — do not build (2026-08-14, owner request, repeated)
 
 Never build or dispatch a macOS artifact for this project — not the
