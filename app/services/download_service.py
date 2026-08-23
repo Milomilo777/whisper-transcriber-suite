@@ -643,18 +643,6 @@ class DownloadService:
         # guard for the same reason).
         if getattr(sys, "frozen", False):
             return
-        yt_dlp_path = self.app.yt_dlp_path()
-        # The Setup-Standard installer (embeddable Python, not frozen) puts
-        # yt-dlp.exe under Program Files by default, which a non-admin
-        # Windows account can't write to -- "yt-dlp --update" would fail
-        # every 24h the same way. Skip whenever the resolved binary's own
-        # directory isn't writable, regardless of why (Program Files,
-        # frozen bundle, read-only mount, ...). A bare "yt-dlp" fallback
-        # name (no bundled binary found; PATH lookup on Linux/Mac) has no
-        # directory to check, so it falls through unchanged.
-        yt_dlp_dir = os.path.dirname(yt_dlp_path)
-        if yt_dlp_dir and not _dir_is_writable(yt_dlp_dir):
-            return
         last = cfg.get("last_yt_dlp_update_check") or ""
         if last:
             try:
@@ -663,6 +651,20 @@ class DownloadService:
                     return
             except ValueError:
                 pass
+        yt_dlp_path = self.app.yt_dlp_path()
+        # The Setup-Standard installer (embeddable Python, not frozen) puts
+        # yt-dlp.exe under Program Files by default, which a non-admin
+        # Windows account can't write to -- "yt-dlp --update" would fail
+        # every 24h the same way. Skip whenever the resolved binary's own
+        # directory isn't writable, regardless of why (Program Files,
+        # frozen bundle, read-only mount, ...). A bare "yt-dlp" fallback
+        # name (no bundled binary found; PATH lookup on Linux/Mac) has no
+        # directory to check, so it falls through unchanged. Checked after
+        # the 24h backoff above so the real probe write in _dir_is_writable
+        # only runs once a day, not on every single download task.
+        yt_dlp_dir = os.path.dirname(yt_dlp_path)
+        if yt_dlp_dir and not _dir_is_writable(yt_dlp_dir):
+            return
         try:
             update_cmd = [yt_dlp_path, "--update"]
             update = subprocess.run(
