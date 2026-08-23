@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Whisper Project — Linux installer.
+# Whisper Transcriber Suite — Linux installer.
 #
 # Installs IN PLACE from a checkout of the repo: creates a virtualenv,
 # installs the Python deps + yt-dlp, fetches a static ffmpeg/ffprobe when
 # the system has none, and drops two launchers + a desktop entry:
 #
-#   whisper-project      → the desktop app  (needs python3-tk + a display)
+#   whisper-transcriber-suite      → the desktop app  (needs python3-tk + a display)
 #   whisper-transcribe   → headless CLI     (works on a server, no display)
 #
 # Re-run any time to update the venv after a `git pull` (idempotent), or
@@ -101,12 +101,12 @@ deactivate
 mkdir -p "$BIN_LOCAL"
 # GUI launcher — activates the venv, puts the venv + repo bin on PATH so
 # yt-dlp / ffmpeg resolve, then runs the app.
-cat > "$BIN_LOCAL/whisper-project" <<EOF
+cat > "$BIN_LOCAL/whisper-transcriber-suite" <<EOF
 #!/usr/bin/env bash
 export PATH="$REPO_ROOT/bin:$VENV/bin:\$PATH"
 exec "$VENV/bin/python" "$REPO_ROOT/gui.py" "\$@"
 EOF
-chmod +x "$BIN_LOCAL/whisper-project"
+chmod +x "$BIN_LOCAL/whisper-transcriber-suite"
 # Headless CLI launcher for servers: whisper-transcribe FILE [--language ..]
 cat > "$BIN_LOCAL/whisper-transcribe" <<EOF
 #!/usr/bin/env bash
@@ -114,16 +114,16 @@ export PATH="$REPO_ROOT/bin:$VENV/bin:\$PATH"
 exec "$VENV/bin/python" "$REPO_ROOT/gui.py" transcribe "\$@"
 EOF
 chmod +x "$BIN_LOCAL/whisper-transcribe"
-say "installed launchers: $BIN_LOCAL/whisper-project and whisper-transcribe"
+say "installed launchers: $BIN_LOCAL/whisper-transcriber-suite and whisper-transcribe"
 
 # ---------------------------------------------------------------- desktop entry
 mkdir -p "$DESKTOP_DIR"
-cat > "$DESKTOP_DIR/whisper-project.desktop" <<EOF
+cat > "$DESKTOP_DIR/whisper-transcriber-suite.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Whisper Project
+Name=Whisper Transcriber Suite
 Comment=Offline transcription + subtitle downloader
-Exec=$BIN_LOCAL/whisper-project
+Exec=$BIN_LOCAL/whisper-transcriber-suite
 Icon=$ICON_SRC
 Terminal=false
 Categories=AudioVideo;Audio;Utility;
@@ -135,6 +135,6 @@ echo
 say "Done. If $BIN_LOCAL isn't on your PATH, add this to ~/.bashrc:"
 echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
 echo
-say "Desktop app : whisper-project"
+say "Desktop app : whisper-transcriber-suite"
 say "Server / CLI: whisper-transcribe /path/to/media.mp4 --formats srt json"
 say "Update later: ./platform/linux/update.sh   (or re-run this installer)"

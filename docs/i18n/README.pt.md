@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="../img/hero.png" alt="Whisper Project" width="100%">
+<img src="../img/hero.png" alt="Whisper Transcriber Suite" width="100%">
 
-# Whisper Project
+# Whisper Transcriber Suite
 
 ### Arraste um ficheiro de áudio ou vídeo. Receba uma **transcrição com marcação de tempo e formatada** — sem que o ficheiro saia do seu computador.
 
@@ -50,9 +50,9 @@ Obtenha a versão mais recente na **[página de releases](https://github.com/Mil
 
 | Ficheiro | Tamanho | Indicado para |
 |---|---|---|
-| **`WhisperProject-…-Setup-Standard.exe`** | ~215 MB | **A maioria das pessoas.** Um instalador normal: atalho no menu Iniciar, atualiza por cima de uma versão anterior, ficheiros visíveis no disco. |
-| **`WhisperProject-…-Portable.zip`** | ~330 MB | Descompactar e executar. Sem instalação, sem permissões de administrador, funciona numa pen USB. |
-| **`WhisperProject-…-macOS-*.dmg`** | ~400 MB | macOS (x64 e arm64 são publicados em separado). |
+| **`WhisperTranscriberSuite-…-Setup-Standard.exe`** | ~215 MB | **A maioria das pessoas.** Um instalador normal: atalho no menu Iniciar, atualiza por cima de uma versão anterior, ficheiros visíveis no disco. |
+| **`WhisperTranscriberSuite-…-Portable.zip`** | ~330 MB | Descompactar e executar. Sem instalação, sem permissões de administrador, funciona numa pen USB. |
+| **`WhisperTranscriberSuite-…-macOS-*.dmg`** | ~400 MB | macOS (x64 e arm64 são publicados em separado). |
 
 Está tudo incluído — um Python integrado, `ffmpeg`, `ffprobe` e `yt-dlp`. A única coisa transferida depois é o próprio modelo de voz (**1–3 GB, uma só vez**, no primeiro arranque); a partir daí a aplicação funciona totalmente offline.
 

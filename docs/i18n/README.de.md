@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="../img/hero.png" alt="Whisper Project" width="100%">
+<img src="../img/hero.png" alt="Whisper Transcriber Suite" width="100%">
 
-# Whisper Project
+# Whisper Transcriber Suite
 
 ### Audio- oder Videodatei hineinziehen. Heraus kommt ein **zeitcodiertes, formatiertes Transkript** — ohne dass die Datei je den Rechner verlässt.
 
@@ -50,9 +50,9 @@ Die aktuelle Version gibt es auf der **[Releases-Seite](https://github.com/Milom
 
 | Datei | Größe | Geeignet für |
 |---|---|---|
-| **`WhisperProject-…-Setup-Standard.exe`** | ~215 MB | **Die meisten Nutzer.** Ein normales Installationsprogramm: Startmenü-Verknüpfung, Upgrade über eine ältere Version hinweg, Dateien sichtbar auf der Festplatte. |
-| **`WhisperProject-…-Portable.zip`** | ~330 MB | Entpacken und starten. Keine Installation, keine Administratorrechte, läuft auch vom USB-Stick. |
-| **`WhisperProject-…-macOS-*.dmg`** | ~400 MB | macOS (x64 und arm64 werden getrennt veröffentlicht). |
+| **`WhisperTranscriberSuite-…-Setup-Standard.exe`** | ~215 MB | **Die meisten Nutzer.** Ein normales Installationsprogramm: Startmenü-Verknüpfung, Upgrade über eine ältere Version hinweg, Dateien sichtbar auf der Festplatte. |
+| **`WhisperTranscriberSuite-…-Portable.zip`** | ~330 MB | Entpacken und starten. Keine Installation, keine Administratorrechte, läuft auch vom USB-Stick. |
+| **`WhisperTranscriberSuite-…-macOS-*.dmg`** | ~400 MB | macOS (x64 und arm64 werden getrennt veröffentlicht). |
 
 Alles Nötige ist enthalten — ein mitgeliefertes Python, `ffmpeg`, `ffprobe` und `yt-dlp`. Nachgeladen wird einzig das Sprachmodell selbst (**ca. 1–3 GB, einmalig** beim ersten Start); danach arbeitet die Anwendung vollständig offline.
 

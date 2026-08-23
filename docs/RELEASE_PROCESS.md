@@ -1,6 +1,6 @@
 # Release process
 
-The exact sequence to ship a new build of Whisper Project. This was
+The exact sequence to ship a new build of Whisper Transcriber Suite. This was
 originally written for a private-distribution workflow; the repo and
 its GitHub releases are now public (`gh release create`/`gh release
 view` against `Milomilo777/whisper-transcriber-suite`) — "Step 8 — Distribute" below
@@ -108,11 +108,11 @@ From the repo root, in order:
 ```cmd
 :: Portable (single-file EXE, ~447 MB at v0.7.1)
 pyinstaller --noconfirm --clean whisper_project_onefile.spec
-::    →  dist\WhisperProject-vX.Y.Z-Portable.exe
+::    →  dist\WhisperTranscriberSuite-vX.Y.Z-Portable.exe
 
 :: One-dir build (input to Setup-Compact)
 pyinstaller --noconfirm --clean whisper_project_onedir.spec
-::    →  dist_onedir\WhisperProject\
+::    →  dist_onedir\WhisperTranscriberSuite\
 
 :: Embed-Python tree (input to Setup-Standard)
 build_embed_installer.bat
@@ -120,11 +120,11 @@ build_embed_installer.bat
 
 :: Setup-Compact installer
 "C:\Users\Owner\AppData\Local\Programs\Inno Setup 6\ISCC.exe" installer.iss
-::    →  dist_installer\WhisperProject-vX.Y.Z-Setup-Compact.exe
+::    →  dist_installer\WhisperTranscriberSuite-vX.Y.Z-Setup-Compact.exe
 
 :: Setup-Standard installer
 "C:\Users\Owner\AppData\Local\Programs\Inno Setup 6\ISCC.exe" installer_embed.iss
-::    →  dist_installer\WhisperProject-vX.Y.Z-Setup-Standard.exe
+::    →  dist_installer\WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe
 ```
 
 Update the version-string portions of `installer.iss` /
@@ -139,9 +139,9 @@ This is the test that catches release blockers. Do not skip.
 For EACH of the three deliverables:
 
 1. **Fresh user profile** — delete (or rename):
-   * `%LOCALAPPDATA%\WhisperProject\`
+   * `%LOCALAPPDATA%\WhisperTranscriberSuite\`
    * The previous version's install directory under
-     `C:\Program Files\WhisperProject\`
+     `C:\Program Files\WhisperTranscriberSuite\`
 2. **Install** — run the EXE / Setup; pick the default folder.
 3. **First-launch** — confirm the hub-folder dialog appears.
    * For one variant: pick the default `<app>/hub`.
@@ -164,10 +164,28 @@ ship the release with a known install / uninstall regression.
    `installer_embed.iss` uses a stable `AppId`, so this upgrades the
    files in place: the user does NOT need to uninstall first. Confirm
    the new version launches, the Start-menu shortcut still works, and
-   `%LOCALAPPDATA%\WhisperProject\config.json` (settings + hub choice)
+   `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json` (settings + hub choice)
    survives. This is the path most existing users take to update; the
    in-app **Help → Check for updates...** notify-only check just points
    them at the download page (`core.updates`, opt-in, never auto-installs).
+
+7. **Migration from the pre-rebrand "Whisper Project" product**
+   (Standard installer only, and only needs a real run once — after
+   that this step can be dropped from the checklist). On a machine
+   with the OLD product still installed (old AppId
+   `{734B46B9-5E70-4C4E-8833-0A7506A64376}`, old data at
+   `%LOCALAPPDATA%\WhisperProject\`), run the new Setup-Standard.
+   Confirm: the old product's uninstaller ran silently (its
+   Add/Remove Programs entry is gone), the new app launches with the
+   old settings/hub choice already in place at
+   `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json`, and the OLD
+   `%LOCALAPPDATA%\WhisperProject\` folder is still there untouched
+   (the migration copies, it never deletes the source). See
+   `installer_embed.iss`'s `MigrateOldAppData` in `[Code]` for the
+   logic; `tests/core/test_inno_uninstall_parser.py` only checks the
+   script text is wired to the right GUIDs/paths, not that xcopy/Exec
+   actually behave correctly at install time — this manual run is the
+   only real proof.
 
 ## Step 7 — Tag + push
 
@@ -221,13 +239,13 @@ line number inside the `.iss`.
 ### "PyInstaller built but the EXE crashes on launch"
 
 * Run the EXE from a terminal so you can see the traceback
-  (`WhisperProject-vX.Y.Z-Portable.exe`).
+  (`WhisperTranscriberSuite-vX.Y.Z-Portable.exe`).
 * Most common cause: a `hiddenimports` entry missing from the
   spec. Add the module name + rebuild.
 
 ### "First-launch hub dialog doesn't appear"
 
-* `%LOCALAPPDATA%\WhisperProject\config.json` may have stale
+* `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json` may have stale
   `hub_folder` value from a previous test. Delete the file and
   retry.
 * Or: use `--safe-mode` to back up + reset config in one step.

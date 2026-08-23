@@ -1,6 +1,6 @@
 # Google Cloud Speech-to-Text (optional) — service account
 
-The Whisper Project is **offline by default**: every default backend runs
+The Whisper Transcriber Suite is **offline by default**: every default backend runs
 on your own machine and nothing is uploaded. This optional backend is one
 of two cloud exceptions. When you select it, your audio is **uploaded to
 Google** for transcription. **Do not use it for content you cannot send to
@@ -65,7 +65,7 @@ After the connection test passes, set the **Backend** dropdown to
 click **Save**.
 
 The path to your JSON file is stored in your per-user `config.json` under
-`%LOCALAPPDATA%\WhisperProject`. The key file itself stays wherever you
+`%LOCALAPPDATA%\WhisperTranscriberSuite`. The key file itself stays wherever you
 saved it; keep it somewhere private.
 
 ## Standard vs. batch mode

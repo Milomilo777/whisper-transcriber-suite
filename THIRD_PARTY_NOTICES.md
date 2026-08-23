@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-Whisper Project's own source code is licensed under the **BSD 3-Clause
+Whisper Transcriber Suite's own source code is licensed under the **BSD 3-Clause
 License** (see [LICENSE](LICENSE)).
 
 The distributed application (the Setup-Standard installer and the Portable

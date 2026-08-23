@@ -8,7 +8,7 @@ body:
       value: |
         Thanks for filing a bug. Please include the asset you used
         (Portable / Setup-Compact / Setup-Standard), the OS version,
-        and the log file from `%LOCALAPPDATA%\WhisperProject\Logs\app.log`
+        and the log file from `%LOCALAPPDATA%\WhisperTranscriberSuite\Logs\app.log`
         if the bug is a crash or a transcription error.
 
   - type: dropdown

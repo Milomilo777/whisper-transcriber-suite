@@ -1,4 +1,4 @@
-# Whisper Project on macOS
+# Whisper Transcriber Suite on macOS
 
 > Status: **groundwork, not yet validated on a real Mac.** The code is
 > cross-platform and the scripts follow current best practice for unsigned
@@ -34,7 +34,7 @@ The installer makes a `.venv`, installs the deps from `requirements.txt`
 (which now includes `screeninfo` for the Video Tiling multi-monitor wall)
 plus `yt-dlp`, gets `ffmpeg`/`ffprobe`/`ffplay` (Homebrew if present, else a
 static build into `bin/`), and creates:
-- `~/Applications/Whisper Project.app` — a real double-clickable app bundle
+- `~/Applications/Whisper Transcriber Suite.app` — a real double-clickable app bundle
   (no lingering Terminal window), built locally so it isn't quarantined;
 - `~/.local/bin/whisper-transcribe` — headless CLI for servers. If your
   shell can't find it, add `~/.local/bin` to PATH in **`~/.zshrc`**

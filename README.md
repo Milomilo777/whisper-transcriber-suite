@@ -1,5 +1,5 @@
 <!--
-    title: Whisper Project — offline audio & video transcription for Windows, macOS and Linux
+    title: Whisper Transcriber Suite — offline audio & video transcription for Windows, macOS and Linux
     description: Desktop app that runs OpenAI Whisper locally via faster-whisper. Transcribe audio and video to SRT, VTT, DOCX and PDF with no cloud, no account and no upload. Speaker diarisation, batch queue, yt-dlp downloads, live microphone transcription and a local-network mode.
     keywords: offline speech to text, local whisper GUI, faster-whisper desktop app, audio to text, video to text, subtitle generator, SRT VTT generator, transcription software, speaker diarization, private on-device transcription, yt-dlp downloader, live microphone transcription
     author: translation-robot
@@ -11,9 +11,9 @@
 
 <div align="center">
 
-<img src="docs/img/hero.png" alt="Whisper Project — transcribe audio and video on your own machine. No cloud, no account, no upload." width="100%">
+<img src="docs/img/hero.png" alt="Whisper Transcriber Suite — transcribe audio and video on your own machine. No cloud, no account, no upload." width="100%">
 
-# Whisper Project
+# Whisper Transcriber Suite
 
 ### Drag in an audio or video file. Get back a **timed, formatted transcript** — without it ever leaving your computer.
 
@@ -77,9 +77,9 @@ Grab the latest build from the **[releases page](https://github.com/Milomilo777/
 
 | Asset | Size | Best for |
 |---|---|---|
-| **`WhisperProject-…-Setup-Standard.exe`** | ~215 MB | **Most people.** A normal installer: Start-menu shortcut, upgrades in place over an older version, files visible on disk. |
-| **`WhisperProject-…-Portable.zip`** | ~330 MB | Unzip and run. No installation, no admin rights, happy on a USB stick. |
-| **`WhisperProject-…-macOS-*.dmg`** | ~400 MB | macOS (x64 and arm64 builds are published separately). |
+| **`WhisperTranscriberSuite-…-Setup-Standard.exe`** | ~215 MB | **Most people.** A normal installer: Start-menu shortcut, upgrades in place over an older version, files visible on disk. |
+| **`WhisperTranscriberSuite-…-Portable.zip`** | ~330 MB | Unzip and run. No installation, no admin rights, happy on a USB stick. |
+| **`WhisperTranscriberSuite-…-macOS-*.dmg`** | ~400 MB | macOS (x64 and arm64 builds are published separately). |
 
 **Downloads by version** (each badge counts only that version's own
 release — older versions stay published and their counts are never
@@ -207,14 +207,14 @@ anything by itself. Turn it off with `update_check_enabled`.
 
 On first launch the app asks where to store the Whisper model files. The
 default is a private per-user cache that is always writable —
-`%LOCALAPPDATA%\WhisperProject\Cache\models` — never the Program Files install
+`%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\models` — never the Program Files install
 directory. Pick anywhere you like instead: an external drive, a network share.
 
-The choice is saved to `%LOCALAPPDATA%\WhisperProject\config.json` under
+The choice is saved to `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json` under
 `hub_folder`, and the dialog never appears again. To start over:
 
 ```cmd
-WhisperProject.exe --safe-mode
+WhisperTranscriberSuite.exe --safe-mode
 ```
 
 That moves the user config aside and re-fires the first-run dialog with the
@@ -227,7 +227,7 @@ defaults.
 
 <br>
 
-User settings live at `%LOCALAPPDATA%\WhisperProject\config.json`.
+User settings live at `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json`.
 
 | Key | What it controls |
 |---|---|

@@ -65,12 +65,12 @@ The current limitations are all design choices or out-of-scope features waiting 
 The model picker is Phase 2b (deferred). Until then:
 
 1. Quit the app
-2. Open `%LOCALAPPDATA%\WhisperProject\config.json` in a text editor
+2. Open `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json` in a text editor
 3. Edit the `model_path` field to point at your preferred model folder (must be a faster-whisper / CTranslate2-format folder; e.g. an extracted `models--Systran--faster-whisper-medium`)
 4. Optionally also edit the `model` object's `url` and `md5` fields so `ensure_model` knows where to refetch it from
 5. Save and restart the app
 
-If the path is unreachable on startup, the new fallback in Phase 0 will substitute `%LOCALAPPDATA%\WhisperProject\Cache\models\<name>` and log a warning — your edit will be honored once a valid folder is at that path.
+If the path is unreachable on startup, the new fallback in Phase 0 will substitute `%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\models\<name>` and log a warning — your edit will be honored once a valid folder is at that path.
 
 ---
 
@@ -82,7 +82,7 @@ If the path is unreachable on startup, the new fallback in Phase 0 will substitu
 
 ## F. If you want to enable `auto_update_yt_dlp` or `auto_transcribe_after_download`
 
-Open `%LOCALAPPDATA%\WhisperProject\config.json` and set:
+Open `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json` and set:
 
 ```json
 {
@@ -97,7 +97,7 @@ Restart. The auto-update checks GitHub at most once per 24 hours and never block
 
 ## G. If something goes wrong
 
-- App won't start: open `%LOCALAPPDATA%\WhisperProject\logs\app.log` — Phase 1.3 set up rotation; the most recent run is at the bottom
+- App won't start: open `%LOCALAPPDATA%\WhisperTranscriberSuite\logs\app.log` — Phase 1.3 set up rotation; the most recent run is at the bottom
 - Config got corrupt: it's been renamed to `config.json.corrupt` next to the live file, defaults restored automatically (Phase 0 C2 fix)
 - PyInstaller build broken: run `build.bat verify` from the repo root to see which file is missing; exit codes documented in `docs/BUILD.md`
 

@@ -1,4 +1,4 @@
-# Whisper Project — durable instructions for any Claude Code session
+# Whisper Transcriber Suite — durable instructions for any Claude Code session
 
 This file is auto-loaded into every Claude Code session opened
 inside this repository. Read it on first turn; follow it for the

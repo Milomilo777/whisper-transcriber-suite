@@ -5,7 +5,156 @@ this repo. Read this file before anything else.
 
 ---
 
-## 🟢 2026-08-23 (latest) — GitHub repo renamed to whisper-transcriber-suite, yt-dlp update permission fix (issue #6)
+## 🟢 2026-08-23 (latest) — Full app rebrand to "Whisper Transcriber Suite" (installer, AppId, data migration)
+
+Follow-up to the GitHub-repo-only rename below: owner confirmed (via
+AskUserQuestion, "کاملِ همه‌جا") the full rebrand, including the
+install path and internal identifiers, accepting that this needs
+migration logic for existing users rather than a docs-only rename.
+Two Explore agents mapped the full blast radius first (installer +
+build scripts; app-facing display strings + persisted-data paths) —
+worth reading their findings back if this needs revisiting; the short
+version is in the plan file this session wrote at
+`C:\Users\Owner\.claude\plans\concurrent-percolating-lightning.md`.
+
+**What changed, in commit order:**
+
+1. `core/config.py`'s `APP_NAME = "WhisperProject"` →
+   `"WhisperTranscriberSuite"` — the one literal that drives every
+   `platformdirs` per-user path (config.json, history.db,
+   hardware.json, model hub/cache, logs) on every platform.
+2. Every app-facing display string (window title, About dialog —
+   which also had stale doc links pointing at a third, even older
+   repo-name variant — tray, CLI `--help` name, the local HTTP
+   server's banner/page, every outbound User-Agent header, the
+   `.ass`/`.eaf` writers' output metadata).
+3. `pyproject.toml`'s distribution name + entry point, and its one
+   consumer (`app/observability.py`'s `importlib.metadata.version()`
+   call) — verified with a real `pip install -e .` + version() call,
+   not just read.
+4. **The installer** (`installer.iss` + `installer_embed.iss`) — the
+   risky one. New `AppId` GUID
+   (`BD640ACA-1EDB-4F9F-890E-C2DC04221871`, was
+   `734B46B9-5E70-4C4E-8833-0A7506A64376`), `DefaultDirName` →
+   `{autopf}\WhisperTranscriberSuite`, the `WhisperProjectTranscribe`
+   shell-extension key renamed, `AppName` made consistent between the
+   two files (was `"SMTV Whisper Project"` vs `"Whisper Project"` —
+   already drifted). New `MigrateOldAppData()` in `[Code]`: detects
+   the OLD AppId's uninstall-registry entry, `xcopy`s (idempotent,
+   copy-only, never deletes the source)
+   `%LOCALAPPDATA%\WhisperProject\` to the new
+   `%LOCALAPPDATA%\WhisperTranscriberSuite\`, then silently runs the
+   old product's own uninstaller — same "no need to uninstall first"
+   experience as a same-product upgrade, just crossing the rename.
+   Extended `tests/core/test_inno_uninstall_parser.py` (6 new tests)
+   to prove the new `[Code]` is wired to the right GUIDs/paths as
+   static text; **both `.iss` files were also compile-checked for
+   real with the ISCC.exe already on this machine** (not just
+   text-verified) — `installer_embed.iss` produced a real
+   `WhisperTranscriberSuite-v1.8.0-Setup-Standard.exe` in 234s,
+   `installer.iss` compiled too after temporarily renaming the stale
+   gitignored `dist_onedir\WhisperProject\` build artifact to match
+   (left renamed — it needs a fresh PyInstaller run before real use
+   regardless of its folder name). Neither `.iss`/`.spec` file itself
+   was renamed, only their internal values — only
+   `whisper_project_onedir.spec` / `whisper_project_onefile.spec`'s
+   `name=` fields changed (the latter's stale `v1.0.3` version literal
+   was deliberately left alone, unrelated pre-existing bug).
+5. Docs batch: ~50 live files (README + 8 i18n siblings + generator
+   template, CLAUDE.md, AGENTS.md, PROJECT_INDEX.md's prose sections
+   too (not just the auto-refreshed structure block), platform
+   READMEs/install scripts, docs/BUILD.md, docs/RELEASE_PROCESS.md —
+   which also got a new Step 6.7 "migration from the pre-rebrand
+   product" manual-test case — THIRD_PARTY_NOTICES.md,
+   architecture.svg, the GitHub issue template, the two macOS CI
+   workflow files, `stats/transcription_stats.php`'s two cosmetic
+   strings). Left alone (deliberately, matching the earlier
+   GitHub-rename rule): every `docs/release-notes/RELEASE_NOTES_v*.md`,
+   `docs/history/*`, `docs/CHANGELOG.md`, this file's older entries,
+   `docs/SESSION_LOG.md` (explicitly append-only), the SMTV
+   integration brief/acceptance docs, and the two dated competitive-gap
+   snapshots — all dated records of what was true at the time, not
+   live references.
+6. Homebrew formula file renamed
+   `platform/macos/homebrew/whisper-project.rb` →
+   `whisper-transcriber-suite.rb` (class name + the
+   `bin/"whisper-project"` CLI wrapper renamed to match); macOS
+   `CFBundleIdentifier`/bundle_identifier
+   (`com.translation-robot.whisperproject`) deliberately left
+   unchanged — same reasoning as the installer AppId being retired
+   rather than reused: changing a bundle identifier orphans
+   Gatekeeper/TCC trust for existing installs, and there's no
+   migration path for it the way there is for `%LOCALAPPDATA%`.
+   `.whisperproject.json` (the per-folder project-override filename,
+   independent of `APP_NAME`) also deliberately NOT renamed — no
+   central place the installer could find and migrate scattered
+   per-folder files from.
+
+**Verified for real, not just statically:** after the owner explicitly
+asked for a real admin-elevated install test, ran one on this machine
+(this session's shell already had Administrator rights). It found —
+and this fixed — **two real bugs the static/compile checks above
+could never have caught**:
+
+1. The migration guard checked `DirExists(NewDataDir)`. A prior direct
+   launch of the built app (to check its window title) had already
+   created an empty new-name folder, which the guard then mistook for
+   "already migrated" — a real user's settings/history would have
+   been silently stranded. Fixed to gate on
+   `FileExists(NewDataDir + '\config.json')` instead.
+2. The migration shelled out to `xcopy` for the whole
+   `%LOCALAPPDATA%\WhisperProject\` tree. Against this machine's real
+   data it looked hung for minutes straight — `Cache\` can hold
+   several GB of downloaded Whisper models, `Logs\` had ~400 small
+   per-run worker debug logs. Replaced with direct `CopyFile` (Inno's
+   current name; `FileCopy` is deprecated) of just the four known
+   settings/history files (`config.json`, `history.db`,
+   `hardware.json`, `search.db`). Neither `Cache\` nor `Logs\` needs
+   copying: `config.json`'s `hub_folder` value is copied as-is, so it
+   still resolves to the OLD, still-on-disk model cache with zero
+   duplication — an emergent property, not something that needed
+   separate code.
+
+After both fixes, a full cycle on this machine passed cleanly: silent
+install → `Log()` confirmed "Migrated settings/history..." → all four
+files landed byte-identical to the originals (diffed `config.json` to
+confirm) → the app launched from the real
+`C:\Program Files\WhisperTranscriberSuite\` install with the correct
+window title AND the migrated settings (no first-run hub picker fired)
+→ silent uninstall cleanly removed Program Files + the registry entry
+→ the old `%LOCALAPPDATA%\WhisperProject\` folder was still fully
+intact throughout (copy-never-move confirmed for real). Also
+`pyright app core` 0/0/0 after every commit, full hermetic suite green
+throughout, both `.iss` files compile with zero warnings.
+
+**Then actually rebuilt + reshipped v1.8.0 under the new name**, per
+an explicit owner instruction mid-session that reverses the
+"NEVER `--clobber`" default for this one case: v1.8.0's three assets
+were confirmed at `download_count: 0` (checked via `gh api` before
+touching anything — the earlier same-day pruning incident had already
+zeroed every release's counter, so there was nothing left to lose)
+and the owner explicitly kept the general "never `--clobber`" rule for
+every other case. See the actual upload/delete commands run — check
+`git log` / `gh release view v1.8.0` for exactly what landed, since
+this note was written before that step ran to completion.
+
+**Still open:**
+- `stats/transcription_stats.php`'s LIVE deployed copy on 4robot.ir
+  (separate from this repo's copy, which is already updated) — ask
+  the owner how/whether to redeploy it; no confirmed deployment
+  access from this session.
+- Owner asked in passing whether "% of users who update" is knowable.
+  It is not, from GitHub download counts alone (they're all freshly
+  zeroed from the pruning incident anyway, and a download count was
+  never a measure of active-version-in-use even before that). Real
+  answer needs new opt-in telemetry — the natural home is extending
+  `core/stats.py`'s existing opt-in reporting to 4robot.ir with an
+  `app_version` field. Explicitly deferred (owner: "not important if
+  it takes tokens") — a real follow-up task if wanted, not started.
+- The `git status --short` output should be checked fresh before
+  continuing any further work here.
+
+## 🟢 2026-08-23 — GitHub repo renamed to whisper-transcriber-suite, yt-dlp update permission fix (issue #6)
 
 Owner picked **Whisper Transcriber Suite** (spaced) as the app's final
 display name and asked for the GitHub repo to match. Renamed

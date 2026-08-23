@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="../img/hero.png" alt="Whisper Project" width="100%">
+<img src="../img/hero.png" alt="Whisper Transcriber Suite" width="100%">
 
-# Whisper Project
+# Whisper Transcriber Suite
 
 ### 오디오나 영상 파일을 끌어다 놓으세요. **시간 정보가 붙은 정돈된 자막·전사본**이 나옵니다 — 파일은 컴퓨터를 벗어나지 않습니다.
 
@@ -50,9 +50,9 @@ OpenAI Whisper 모델을 **로컬에서** 실행하는 데스크톱 앱입니다
 
 | 파일 | 크기 | 추천 대상 |
 |---|---|---|
-| **`WhisperProject-…-Setup-Standard.exe`** | ~215 MB | **대부분의 사용자.** 일반 설치 프로그램: 시작 메뉴 바로 가기, 기존 버전 위에 덮어쓰기 업그레이드, 디스크에서 파일 확인 가능. |
-| **`WhisperProject-…-Portable.zip`** | ~330 MB | 압축을 풀고 실행만 하면 됩니다. 설치 불필요, 관리자 권한 불필요, USB에 넣어 다닐 수 있습니다. |
-| **`WhisperProject-…-macOS-*.dmg`** | ~400 MB | macOS (x64와 arm64는 각각 배포). |
+| **`WhisperTranscriberSuite-…-Setup-Standard.exe`** | ~215 MB | **대부분의 사용자.** 일반 설치 프로그램: 시작 메뉴 바로 가기, 기존 버전 위에 덮어쓰기 업그레이드, 디스크에서 파일 확인 가능. |
+| **`WhisperTranscriberSuite-…-Portable.zip`** | ~330 MB | 압축을 풀고 실행만 하면 됩니다. 설치 불필요, 관리자 권한 불필요, USB에 넣어 다닐 수 있습니다. |
+| **`WhisperTranscriberSuite-…-macOS-*.dmg`** | ~400 MB | macOS (x64와 arm64는 각각 배포). |
 
 필요한 것은 모두 들어 있습니다 —— 내장 Python, `ffmpeg`, `ffprobe`, `yt-dlp`. 나중에 받는 것은 음성 모델뿐입니다(**약 1~3 GB, 첫 실행 시 한 번**). 그 이후로는 완전히 오프라인으로 동작합니다.
 

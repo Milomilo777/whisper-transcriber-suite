@@ -237,7 +237,7 @@ def _activate_safe_mode() -> None:
     """Move the user's config aside + force fresh defaults this run.
 
     Used by ``--safe-mode``. Renames
-    ``%LOCALAPPDATA%\\WhisperProject\\config.json`` to
+    ``%LOCALAPPDATA%\\WhisperTranscriberSuite\\config.json`` to
     ``config.json.safemode_backup-<timestamp>`` so the next launch
     of ``load_config()`` returns ``DEFAULT_CONFIG`` with empty
     ``hub_folder`` — the first-run dialog fires fresh. The user's

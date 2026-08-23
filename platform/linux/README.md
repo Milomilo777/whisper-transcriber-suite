@@ -1,4 +1,4 @@
-# Whisper Project on Linux
+# Whisper Transcriber Suite on Linux
 
 The app is plain Python (Tkinter UI + faster-whisper + yt-dlp + ffmpeg),
 so it runs on Linux from source. These scripts set up a self-contained
@@ -24,7 +24,7 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 The installer:
 - creates `.venv/` and installs `requirements.txt` + `yt-dlp`;
 - fetches a static `ffmpeg`/`ffprobe` into `bin/` when the system has none;
-- installs `whisper-project` (GUI) and `whisper-transcribe` (headless CLI)
+- installs `whisper-transcriber-suite` (GUI) and `whisper-transcribe` (headless CLI)
   plus a desktop entry.
 
 The GUI needs **python3-tk** and a display:
@@ -34,11 +34,11 @@ python3-tkinter` (Fedora) · `sudo pacman -S tk` (Arch).
 ## Desktop use
 
 ```bash
-whisper-project
+whisper-transcriber-suite
 ```
 
 The first transcription downloads the Whisper model (~3 GB, one time) into
-`~/.cache/WhisperProject`. The optional word-alignment / openai-whisper
+`~/.cache/WhisperTranscriberSuite`. The optional word-alignment / openai-whisper
 backends download PyTorch on first use, exactly like on Windows.
 
 ## Headless / server use (no display)
@@ -53,7 +53,7 @@ whisper-transcribe /path/to/media.mp4 --formats srt json --language en
 
 Note: Whisper is CPU-heavy. On a shared web server, `nice`/`cpulimit` it,
 or run a smaller/faster model (set it once via the desktop app's Advanced
-dialog, or edit `~/.config/WhisperProject/config.json`).
+dialog, or edit `~/.config/WhisperTranscriberSuite/config.json`).
 
 ### Optional: a systemd one-shot for a watched job
 

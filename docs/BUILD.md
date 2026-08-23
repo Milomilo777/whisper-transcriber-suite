@@ -21,11 +21,11 @@ build_embed_installer.bat
 
 :: 2. Setup-Standard installer, from embed_build\
 "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer_embed.iss
-:: Output: dist_installer\WhisperProject-vX.Y.Z-Setup-Standard.exe
+:: Output: dist_installer\WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe
 
 :: 3. Portable zip — literally the same embed_build\ tree, zipped whole
-python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperProject-vX.Y.Z-Portable', 'zip', r'embed_build')"
-:: Output: dist_installer\WhisperProject-vX.Y.Z-Portable.zip
+python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscriberSuite-vX.Y.Z-Portable', 'zip', r'embed_build')"
+:: Output: dist_installer\WhisperTranscriberSuite-vX.Y.Z-Portable.zip
 ```
 
 See "Rebuild without bumping the version" below for the full,
@@ -38,12 +38,12 @@ changes.
 ```cmd
 :: Method A — Portable single-file exe (~447 MB; NOT the shipped "Portable" — unpublished)
 pyinstaller --noconfirm --clean whisper_project_onefile.spec
-:: Output: dist\WhisperProject-vX.Y.Z-Portable.exe
+:: Output: dist\WhisperTranscriberSuite-vX.Y.Z-Portable.exe
 
 :: Method B — Compact installer (~326 MB; unshipped, optional)
 pyinstaller --noconfirm --clean --distpath dist_onedir whisper_project_onedir.spec
 "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer.iss
-:: Output: dist_installer\WhisperProject-vX.Y.Z-Setup-Compact.exe
+:: Output: dist_installer\WhisperTranscriberSuite-vX.Y.Z-Setup-Compact.exe
 ```
 
 ## Prerequisites
@@ -72,7 +72,7 @@ unpacks the bundle to `%TEMP%\_MEI<random>\` (~5 s on a typical
 machine) and runs the app from there. `core.paths.resource_base()`
 points to that temp dir at runtime.
 
-Output: `dist\WhisperProject-vX.Y.Z-Portable.exe` (~447 MB; the bundled
+Output: `dist\WhisperTranscriberSuite-vX.Y.Z-Portable.exe` (~447 MB; the bundled
 `stable_whisper` + transitive `torch` pushed the v0.7.0 ~190 MB up by
 the audit-2 polish push).
 
@@ -85,7 +85,7 @@ pyinstaller --noconfirm --clean --distpath dist_onedir whisper_project_onedir.sp
 ```
 
 This drops a fully-extracted PyInstaller bundle under
-`dist_onedir\WhisperProject\` with the exe and its sibling DLLs
+`dist_onedir\WhisperTranscriberSuite\` with the exe and its sibling DLLs
 flat at the top (the spec sets `contents_directory='.'`).
 
 Then wrap it in an Inno Setup installer:
@@ -98,7 +98,7 @@ The installer uses LZMA2 ultra compression, packs the ~478 MB
 onedir tree to ~137 MB, ships per-user / per-machine shortcuts, and
 gives users a real Add/Remove Programs entry.
 
-Output: `dist_installer\WhisperProject-vX.Y.Z-Setup-Compact.exe`
+Output: `dist_installer\WhisperTranscriberSuite-vX.Y.Z-Setup-Compact.exe`
 (~137 MB).
 
 ## Method C — Standard installer with embeddable Python
@@ -147,7 +147,7 @@ Then wrap the tree in an Inno Setup installer:
 "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer_embed.iss
 ```
 
-Output: `dist_installer\WhisperProject-vX.Y.Z-Setup-Standard.exe`
+Output: `dist_installer\WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe`
 (~150-400 MB depending on which optional heavy deps — torch/stable-ts
 — happen to be present; the batch script prunes them from
 `embed_build\`, see its "slim" step).
@@ -162,11 +162,11 @@ same `embed_build\` tree, just zipped whole instead of wrapped by
 Inno Setup:
 
 ```cmd
-python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperProject-vX.Y.Z-Portable', 'zip', r'embed_build')"
+python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscriberSuite-vX.Y.Z-Portable', 'zip', r'embed_build')"
 ```
 
-`WhisperProject-vX.Y.Z-Portable.zip` and
-`WhisperProject-vX.Y.Z-Setup-Standard.exe` are the two files that get
+`WhisperTranscriberSuite-vX.Y.Z-Portable.zip` and
+`WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe` are the two files that get
 uploaded to the GitHub release (see "Rebuild without bumping the
 version" below, and `docs/RELEASE_PROCESS.md` for a full version-bump
 release).
@@ -219,7 +219,7 @@ CI gate to catch a regression.
 ```cmd
 build_embed_installer.bat
 "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer_embed.iss
-python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperProject-vX.Y.Z-Portable', 'zip', r'embed_build')"
+python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscriberSuite-vX.Y.Z-Portable', 'zip', r'embed_build')"
 ```
 
 `build_embed_installer.bat` always does a **full** rebuild (deletes
@@ -240,8 +240,8 @@ import time) is sanity-checked here.
 
 ```cmd
 gh release upload vX.Y.Z ^
-    dist_installer\WhisperProject-vX.Y.Z-Setup-Standard.exe ^
-    dist_installer\WhisperProject-vX.Y.Z-Portable.zip ^
+    dist_installer\WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe ^
+    dist_installer\WhisperTranscriberSuite-vX.Y.Z-Portable.zip ^
     --clobber
 ```
 
@@ -265,11 +265,11 @@ gh run list --workflow=macos-app.yml -L 1
 gh run watch <run-id> --exit-status
 
 gh run download <run-id> --dir some_temp_dir
-:: each matrix leg's artifact folder holds "Whisper Project-<arch>.dmg";
+:: each matrix leg's artifact folder holds "Whisper Transcriber Suite-<arch>.dmg";
 :: copy/rename them to match the release naming convention, then:
 gh release upload vX.Y.Z ^
-    dist_installer\WhisperProject-vX.Y.Z-macOS-arm64.dmg ^
-    dist_installer\WhisperProject-vX.Y.Z-macOS-x86_64.dmg ^
+    dist_installer\WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg ^
+    dist_installer\WhisperTranscriberSuite-vX.Y.Z-macOS-x86_64.dmg ^
     --clobber
 ```
 
@@ -291,11 +291,11 @@ For the compiled artefacts, run the smoke E2E against each:
 
 ```cmd
 :: Method A
-set WHISPER_SMOKE_EXE=dist\WhisperProject-vX.Y.Z-Portable.exe
+set WHISPER_SMOKE_EXE=dist\WhisperTranscriberSuite-vX.Y.Z-Portable.exe
 python -m pytest tests\smoke\test_exe_real_e2e.py
 
 :: Method B (after silent install to C:\Temp\test_B)
-set WHISPER_SMOKE_EXE=C:\Temp\test_B\WhisperProject.exe
+set WHISPER_SMOKE_EXE=C:\Temp\test_B\WhisperTranscriberSuite.exe
 python -m pytest tests\smoke\test_exe_real_e2e.py
 
 :: Method C (after silent install to C:\Temp\test_C)

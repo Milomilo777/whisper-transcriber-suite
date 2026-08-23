@@ -12,7 +12,7 @@ box**), and updates are just `brew upgrade`.
 
 1. Create a public repo named **`homebrew-tap`** under the account, e.g.
    `github.com/translation-robot/homebrew-tap`.
-2. Copy `whisper-project.rb` into `Formula/whisper-project.rb` there.
+2. Copy `whisper-transcriber-suite.rb` into `Formula/whisper-transcriber-suite.rb` there.
 3. At each release, point `url` at the new tag's source tarball and refresh
    the checksum:
    ```bash
@@ -23,12 +23,12 @@ box**), and updates are just `brew upgrade`.
 ## Installing (users)
 
 ```bash
-brew install translation-robot/tap/whisper-project
-whisper-project            # GUI
+brew install translation-robot/tap/whisper-transcriber-suite
+whisper-transcriber-suite            # GUI
 whisper-transcribe in.mp4 --formats srt json   # headless
 ```
 
-`brew upgrade whisper-project` updates it later.
+`brew upgrade whisper-transcriber-suite` updates it later.
 
 ## Notes
 

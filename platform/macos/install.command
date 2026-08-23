@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Whisper Project — macOS installer (double-clickable .command).
+# Whisper Transcriber Suite — macOS installer (double-clickable .command).
 #
 # Same idea as the Linux installer: a self-contained virtualenv next to the
 # repo, deps + yt-dlp, a static ffmpeg when the system has none, and two
-# launchers (a double-clickable "Whisper Project.command" for the GUI and a
+# launchers (a double-clickable "Whisper Transcriber Suite.command" for the GUI and a
 # "whisper-transcribe" CLI for headless use).
 #
 # Gatekeeper: this app is UNSIGNED (no paid Apple Developer cert). The
@@ -141,25 +141,25 @@ deactivate
 # without a Gatekeeper prompt — same security posture as a .command but a
 # proper double-clickable app with a Dock icon and no Terminal window.
 mkdir -p "$APPS_DIR" "$BIN_LOCAL"
-APP="$APPS_DIR/Whisper Project.app"
+APP="$APPS_DIR/Whisper Transcriber Suite.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
-cat > "$APP/Contents/MacOS/whisper-project" <<EOF
+cat > "$APP/Contents/MacOS/whisper-transcriber-suite" <<EOF
 #!/bin/bash
 export PATH="$REPO_ROOT/bin:$VENV/bin:\$PATH"
 exec "$VENV/bin/python" "$REPO_ROOT/gui.py"
 EOF
-chmod +x "$APP/Contents/MacOS/whisper-project"
+chmod +x "$APP/Contents/MacOS/whisper-transcriber-suite"
 cat > "$APP/Contents/Info.plist" <<'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>Whisper Project</string>
-  <key>CFBundleDisplayName</key><string>Whisper Project</string>
+  <key>CFBundleName</key><string>Whisper Transcriber Suite</string>
+  <key>CFBundleDisplayName</key><string>Whisper Transcriber Suite</string>
   <key>CFBundleIdentifier</key><string>com.translation-robot.whisperproject</string>
   <key>CFBundleVersion</key><string>1.3.6</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleExecutable</key><string>whisper-project</string>
+  <key>CFBundleExecutable</key><string>whisper-transcriber-suite</string>
   <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 EOF
@@ -181,7 +181,7 @@ say "installed CLI: $BIN_LOCAL/whisper-transcribe"
 
 echo
 say "Done."
-say "Desktop app : double-click \"Whisper Project\" in ~/Applications"
+say "Desktop app : double-click \"Whisper Transcriber Suite\" in ~/Applications"
 say "              (or: open \"$APP\")"
 say "Server / CLI: whisper-transcribe /path/to/media.mp4 --formats srt json"
 say "              (add ~/.local/bin to PATH in ~/.zshrc if 'whisper-transcribe' isn't found)"

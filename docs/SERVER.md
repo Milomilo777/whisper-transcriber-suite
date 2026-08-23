@@ -124,7 +124,7 @@ request can't redirect your audio to a cloud service.
   **constant-time** comparison so it can't be guessed by timing.
 - **Audio is uploaded to the host.** Uploaded media is written to a
   per-job temp directory under the host's cache folder
-  (`%LOCALAPPDATA%\WhisperProject\Cache\server_jobs\<id>\`) and the outputs
+  (`%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\server_jobs\<id>\`) and the outputs
   are written beside it. Per-job directories are cleaned up as jobs are
   evicted.
 - **Upload size cap.** A single upload is capped (`--max-upload-mb`,
@@ -157,6 +157,6 @@ server_token           ""       optional access password (cleartext; see below)
 ```
 
 `server_token` is stored in cleartext, the same as cookies / API keys —
-`config.json` is per-user under `%LOCALAPPDATA%\WhisperProject` and is not
+`config.json` is per-user under `%LOCALAPPDATA%\WhisperTranscriberSuite` and is not
 encrypted. The CLI's `--lan` / `--token` flags are the command-line
 equivalents of `server_share_lan` / `server_token`.

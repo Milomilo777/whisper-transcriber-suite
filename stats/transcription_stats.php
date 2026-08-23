@@ -1,6 +1,6 @@
 <?php
 /**
- * Whisper Project — transcription usage stats endpoint (P4-4).
+ * Whisper Transcriber Suite — transcription usage stats endpoint (P4-4).
  *
  * A minimal GET/POST recorder. POST `form_submitted=1` (plus the fields
  * below) to insert one usage row; a bare GET shows the SQLite version and a
@@ -214,7 +214,7 @@ try {
 if ($recorded) {
     echo "OK\n";
 } else {
-    echo "Whisper Project transcription stats endpoint.\n";
+    echo "Whisper Transcriber Suite transcription stats endpoint.\n";
     echo "SQLite " . $sqlite_version . "\n";
     echo "POST form_submitted=1 with: file_name, model, language, ";
     echo "audio_duration, transcription_time, word_count, status, ";

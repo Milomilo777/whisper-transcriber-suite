@@ -1,4 +1,4 @@
-# Runtime dependencies for the Whisper Project.
+# Runtime dependencies for the Whisper Transcriber Suite.
 # Tested on Python 3.11+.
 #
 # Optional / per-feature deps live under [project.optional-dependencies]

@@ -1,4 +1,4 @@
-# AGENTS.md — Whisper Project
+# AGENTS.md — Whisper Transcriber Suite
 
 > 📍 **Start at [`PROJECT_INDEX.md`](PROJECT_INDEX.md)** — a generated, tool-neutral map of this repo (overview, architecture, per-subsystem key files & gotchas) for fast, low-token onboarding by any AI agent or human.
 

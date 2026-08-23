@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableDelayedExpansion
 REM build_embed_installer.bat — produce the embed_build\ tree that
-REM installer_embed.iss turns into WhisperProject-vX.Y.Z-Setup-Standard.exe.
+REM installer_embed.iss turns into WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe.
 REM
 REM Why python-build-standalone, not python.org's embeddable zip:
 REM the embeddable distro ships *without* tkinter and the Tcl/Tk
@@ -107,9 +107,9 @@ if not exist "%BUILD%\core\server\static\index.html" (
 )
 
 echo [embed] writing the portable launcher
-> "%BUILD%\Run Whisper Project.bat" echo @echo off
->> "%BUILD%\Run Whisper Project.bat" echo cd /d "%%~dp0"
->> "%BUILD%\Run Whisper Project.bat" echo start "" "python\pythonw.exe" "gui.py"
+> "%BUILD%\Run Whisper Transcriber Suite.bat" echo @echo off
+>> "%BUILD%\Run Whisper Transcriber Suite.bat" echo cd /d "%%~dp0"
+>> "%BUILD%\Run Whisper Transcriber Suite.bat" echo start "" "python\pythonw.exe" "gui.py"
 
 echo [embed] writing sitecustomize.py to teach python where site-packages lives
 > "%BUILD%\python\Lib\sitecustomize.py" echo import sys, os

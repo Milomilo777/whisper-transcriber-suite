@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="../img/hero.png" alt="Whisper Project" width="100%">
+<img src="../img/hero.png" alt="Whisper Transcriber Suite" width="100%">
 
-# Whisper Project
+# Whisper Transcriber Suite
 
 ### 拖入音频或视频文件，得到**带时间轴、已排版的文字稿** —— 文件全程不离开你的电脑。
 
@@ -50,9 +50,9 @@
 
 | 文件 | 大小 | 适合 |
 |---|---|---|
-| **`WhisperProject-…-Setup-Standard.exe`** | ~215 MB | **大多数人。** 常规安装程序：开始菜单快捷方式、可覆盖旧版本升级、文件在磁盘上可见。 |
-| **`WhisperProject-…-Portable.zip`** | ~330 MB | 解压即用。无需安装、无需管理员权限，可放在 U 盘里。 |
-| **`WhisperProject-…-macOS-*.dmg`** | ~400 MB | macOS（x64 与 arm64 分别发布）。 |
+| **`WhisperTranscriberSuite-…-Setup-Standard.exe`** | ~215 MB | **大多数人。** 常规安装程序：开始菜单快捷方式、可覆盖旧版本升级、文件在磁盘上可见。 |
+| **`WhisperTranscriberSuite-…-Portable.zip`** | ~330 MB | 解压即用。无需安装、无需管理员权限，可放在 U 盘里。 |
+| **`WhisperTranscriberSuite-…-macOS-*.dmg`** | ~400 MB | macOS（x64 与 arm64 分别发布）。 |
 
 运行所需的一切都已内置 —— 内置 Python、`ffmpeg`、`ffprobe` 和 `yt-dlp`。唯一需要后续下载的是语音模型本身（**约 1–3 GB，仅首次启动时一次**）；此后应用完全离线运行。
 

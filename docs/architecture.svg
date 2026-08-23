@@ -44,7 +44,7 @@
   <rect width="1500" height="1100" fill="#fafafa"/>
 
   <!-- Title -->
-  <text x="750" y="48" text-anchor="middle" class="title">Whisper Project — System Architecture</text>
+  <text x="750" y="48" text-anchor="middle" class="title">Whisper Transcriber Suite — System Architecture</text>
   <text x="750" y="72" text-anchor="middle" class="subtitle">
     Offline transcription (faster-whisper) + media downloader (yt-dlp) — Tkinter desktop, Windows-first
   </text>
@@ -213,7 +213,7 @@
     <rect x="780" y="460" width="670" height="440" rx="14" class="box box-fs"/>
     <text x="800" y="485" class="layer-label">Filesystem state</text>
 
-    <text x="800" y="510" class="arrow-label">%LOCALAPPDATA%\WhisperProject\  (per-user, via platformdirs)</text>
+    <text x="800" y="510" class="arrow-label">%LOCALAPPDATA%\WhisperTranscriberSuite\  (per-user, via platformdirs)</text>
     <rect x="800" y="520" width="630" height="36" rx="6" class="box box-fs"/>
     <text x="1115" y="542" text-anchor="middle" class="file-label">config.json   theme · model_path · device · vad · output_formats · auto_transcribe</text>
 
@@ -232,7 +232,7 @@
 
     <text x="800" y="788" class="arrow-label">Distribution (PyInstaller --onedir output)</text>
     <rect x="800" y="798" width="630" height="36" rx="6" class="box box-fs"/>
-    <text x="1115" y="820" text-anchor="middle" class="file-label">dist\WhisperProject\   WhisperProject.exe · _internal\ · bin\(ffmpeg,ffprobe,yt-dlp)</text>
+    <text x="1115" y="820" text-anchor="middle" class="file-label">dist\WhisperTranscriberSuite\   WhisperTranscriberSuite.exe · _internal\ · bin\(ffmpeg,ffprobe,yt-dlp)</text>
 
     <text x="800" y="858" class="arrow-label">Quarantined / migration artifacts</text>
     <rect x="800" y="868" width="630" height="22" rx="6" class="box box-fs"/>

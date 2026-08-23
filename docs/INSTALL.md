@@ -1,4 +1,4 @@
-# Installation Guide — Whisper Project
+# Installation Guide — Whisper Transcriber Suite
 
 This guide is for someone who doesn't know Python or programming and just wants to install and use the application.
 
@@ -19,8 +19,8 @@ v1.0.3 ships two independent installers. Pick the one that fits.
 
 | Method | File | Size | What it is |
 |---|---|---|---|
-| **Portable** | [`WhisperProject-v1.0.3-Portable.exe`](https://github.com/Milomilo777/whisper_project_direct_download_v2/releases/download/v1.0.3/WhisperProject-v1.0.3-Portable.exe) | 447 MB | A single file. Double-click and it runs. Nothing is installed; no shortcut, no Start Menu entry. Best for USB sticks or one-off use. |
-| **Standard** | [`WhisperProject-v1.0.3-Setup-Standard.exe`](https://github.com/Milomilo777/whisper_project_direct_download_v2/releases/download/v1.0.3/WhisperProject-v1.0.3-Setup-Standard.exe) | 349 MB | A real installer — Program Files, Start Menu shortcut, Add/Remove Programs entry. Ships a full Python interpreter on disk so the entire source tree is browsable after install. Best for everyday Windows users and anyone who wants transparency for debugging. |
+| **Portable** | [`WhisperTranscriberSuite-v1.0.3-Portable.exe`](https://github.com/Milomilo777/whisper_project_direct_download_v2/releases/download/v1.0.3/WhisperTranscriberSuite-v1.0.3-Portable.exe) | 447 MB | A single file. Double-click and it runs. Nothing is installed; no shortcut, no Start Menu entry. Best for USB sticks or one-off use. |
+| **Standard** | [`WhisperTranscriberSuite-v1.0.3-Setup-Standard.exe`](https://github.com/Milomilo777/whisper_project_direct_download_v2/releases/download/v1.0.3/WhisperTranscriberSuite-v1.0.3-Setup-Standard.exe) | 349 MB | A real installer — Program Files, Start Menu shortcut, Add/Remove Programs entry. Ships a full Python interpreter on disk so the entire source tree is browsable after install. Best for everyday Windows users and anyone who wants transparency for debugging. |
 
 Both transcribe a real video end-to-end on a clean Windows 10/11 x64 machine.
 
@@ -29,7 +29,7 @@ Both transcribe a real video end-to-end on a clean Windows 10/11 x64 machine.
 
 ### If you picked Portable
 
-Move `WhisperProject-v1.0.3-Portable.exe` anywhere convenient
+Move `WhisperTranscriberSuite-v1.0.3-Portable.exe` anywhere convenient
 (`C:\Apps\`, your Desktop, a USB stick). Double-click to launch.
 The first launch unpacks to a temporary folder under `%TEMP%`
 (takes about 5–10 seconds). Subsequent launches feel about the
@@ -40,14 +40,14 @@ same — every launch re-unpacks.
 Double-click the `…-Setup-….exe` file. The installer:
 
 1. Asks for admin rights (Yes).
-2. Confirms an install location (`C:\Program Files\WhisperProject\`
+2. Confirms an install location (`C:\Program Files\WhisperTranscriberSuite\`
    by default — change it if you like).
 3. Optionally creates a desktop icon (checkbox on the wizard).
 4. Installs (~45 seconds).
 
-After install: launch from the Start Menu under **Whisper Project**,
+After install: launch from the Start Menu under **Whisper Transcriber Suite**,
 or from the desktop icon if you ticked the box. Uninstall from
-**Settings → Apps → Whisper Project → Uninstall** or from the
+**Settings → Apps → Whisper Transcriber Suite → Uninstall** or from the
 folder's `unins000.exe`.
 
 ### First launch — common to both methods
@@ -115,7 +115,7 @@ This is free and usually already installed on Windows 10/11.
 
 PyInstaller-built binaries are sometimes flagged as tampered by antivirus engines. Fix:
 1. Open Windows Security → Virus & threat protection → Exclusions
-2. Add the `WhisperProject\` folder as an exclusion
+2. Add the `WhisperTranscriberSuite\` folder as an exclusion
 3. Re-extract the ZIP
 
 ### "Model folder missing" or "Existing model failed to load"
@@ -124,7 +124,7 @@ Re-trigger the model-download dialog from the app. If it still fails, install th
 
 ```powershell
 pip install huggingface_hub
-python -c "from huggingface_hub import snapshot_download; snapshot_download('Systran/faster-whisper-large-v3', local_dir=r'C:\Users\YOUR_USER\AppData\Local\WhisperProject\Cache\models\models--Systran--faster-whisper-large-v3')"
+python -c "from huggingface_hub import snapshot_download; snapshot_download('Systran/faster-whisper-large-v3', local_dir=r'C:\Users\YOUR_USER\AppData\Local\WhisperTranscriberSuite\Cache\models\models--Systran--faster-whisper-large-v3')"
 ```
 
 (Replace `YOUR_USER` with your Windows username.)
@@ -135,7 +135,7 @@ This needs **Python**, installable from https://python.org (tick "Add to PATH" d
 
 - The default model is `large-v3` (large). On CPU with int8 it takes about 2–3× the audio length.
 - If you have an NVIDIA GPU with CUDA: Advanced → device → cuda; compute_type → float16. Speedup is 10×–20×.
-- Or use a smaller model (edit `config.json` at `%LOCALAPPDATA%\WhisperProject\config.json` by hand).
+- Or use a smaller model (edit `config.json` at `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json` by hand).
 
 ### Use an existing Whisper model from elsewhere
 
@@ -144,7 +144,7 @@ keep it on a network share / portable drive, edit the **`model_path`**
 key in:
 
 ```
-%LOCALAPPDATA%\WhisperProject\config.json
+%LOCALAPPDATA%\WhisperTranscriberSuite\config.json
 ```
 
 Set it to the absolute path of the
@@ -159,7 +159,7 @@ All app settings — model path, output formats, hotwords, theme,
 diarization toggle, watched folder, telemetry opt-in — are stored in:
 
 ```
-%LOCALAPPDATA%\WhisperProject\config.json
+%LOCALAPPDATA%\WhisperTranscriberSuite\config.json
 ```
 
 You can edit it by hand while the app is closed. If the file gets
@@ -168,7 +168,7 @@ corrupted (non-UTF8 bytes, malformed JSON), the app moves it aside as
 
 ### The app crashes
 
-Log path: `%LOCALAPPDATA%\WhisperProject\Logs\app.log`
+Log path: `%LOCALAPPDATA%\WhisperTranscriberSuite\Logs\app.log`
 
 Paste that file into a GitHub issue along with a short description of what you were doing.
 
@@ -197,7 +197,7 @@ REM Build
 build.bat clean
 ```
 
-Output: `dist\WhisperProject\WhisperProject.exe`
+Output: `dist\WhisperTranscriberSuite\WhisperTranscriberSuite.exe`
 
 More detail: [docs/BUILD.md](BUILD.md)
 

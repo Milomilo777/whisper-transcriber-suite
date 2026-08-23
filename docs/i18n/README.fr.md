@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="../img/hero.png" alt="Whisper Project" width="100%">
+<img src="../img/hero.png" alt="Whisper Transcriber Suite" width="100%">
 
-# Whisper Project
+# Whisper Transcriber Suite
 
 ### Déposez un fichier audio ou vidéo. Récupérez une **transcription horodatée et mise en forme** — sans que le fichier quitte jamais votre ordinateur.
 
@@ -50,9 +50,9 @@ Récupérez la dernière version sur la **[page des releases](https://github.com
 
 | Fichier | Taille | Recommandé pour |
 |---|---|---|
-| **`WhisperProject-…-Setup-Standard.exe`** | ~215 MB | **La plupart des gens.** Un installateur classique : raccourci dans le menu Démarrer, mise à niveau par-dessus une version antérieure, fichiers visibles sur le disque. |
-| **`WhisperProject-…-Portable.zip`** | ~330 MB | Décompressez et lancez. Aucune installation, aucun droit administrateur, fonctionne depuis une clé USB. |
-| **`WhisperProject-…-macOS-*.dmg`** | ~400 MB | macOS (x64 et arm64 sont publiés séparément). |
+| **`WhisperTranscriberSuite-…-Setup-Standard.exe`** | ~215 MB | **La plupart des gens.** Un installateur classique : raccourci dans le menu Démarrer, mise à niveau par-dessus une version antérieure, fichiers visibles sur le disque. |
+| **`WhisperTranscriberSuite-…-Portable.zip`** | ~330 MB | Décompressez et lancez. Aucune installation, aucun droit administrateur, fonctionne depuis une clé USB. |
+| **`WhisperTranscriberSuite-…-macOS-*.dmg`** | ~400 MB | macOS (x64 et arm64 sont publiés séparément). |
 
 Tout le nécessaire est inclus : un Python embarqué, `ffmpeg`, `ffprobe` et `yt-dlp`. Seul le modèle de reconnaissance vocale est téléchargé ensuite (**1 à 3 Go, une seule fois**, au premier lancement) ; après quoi l'application fonctionne entièrement hors ligne.
 

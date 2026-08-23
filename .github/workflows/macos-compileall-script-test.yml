@@ -48,7 +48,7 @@ jobs:
 
       - name: Verify the .dmg was produced
         run: |
-          DMG="dist/Whisper Project.dmg"
+          DMG="dist/Whisper Transcriber Suite.dmg"
           [ -f "$DMG" ] || { echo "ERROR: $DMG not found" >&2; exit 1; }
           ls -la "$DMG"
           file "$DMG"

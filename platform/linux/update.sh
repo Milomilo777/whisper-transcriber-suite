@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Whisper Project — Linux updater. Pulls the latest source (if this is a
+# Whisper Transcriber Suite — Linux updater. Pulls the latest source (if this is a
 # git checkout) and refreshes the virtualenv. The embeddable-style layout
 # means an update is just new source + upgraded deps — no reinstall.
 set -euo pipefail
@@ -19,7 +19,7 @@ if [ -d "$VENV" ]; then
   python -m pip install --upgrade pip wheel >/dev/null
   python -m pip install --upgrade -r "$REPO_ROOT/requirements.txt" yt-dlp
   deactivate
-  echo "[whisper] dependencies updated. Launch with: whisper-project"
+  echo "[whisper] dependencies updated. Launch with: whisper-transcriber-suite"
 else
   echo "[whisper] no virtualenv found — run platform/linux/install.sh first." >&2
   exit 1

@@ -10,7 +10,7 @@
 # Run (ON A MAC — cannot be built on Windows/Linux):
 #     pyinstaller --noconfirm --clean platform/macos/pyinstaller/whisper_project_mac.spec
 #
-# Output: dist/Whisper Project.app  (then wrap into a .dmg via builddmg.command).
+# Output: dist/Whisper Transcriber Suite.app  (then wrap into a .dmg via builddmg.command).
 #
 # Packaging prerequisites on the Mac (see ../pyinstaller/README.md):
 #   * put the MAC ffmpeg/ffprobe/ffplay (+ yt-dlp) in ./bin — NOT the .exe
@@ -286,7 +286,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='Whisper Project',
+    name='Whisper Transcriber Suite',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -308,7 +308,7 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name='Whisper Project',
+    name='Whisper Transcriber Suite',
 )
 # macOS .app wrapper. Keep CFBundleVersion / CFBundleShortVersionString in
 # lock-step with core.__version__ (bump alongside it on every release) —
@@ -317,13 +317,13 @@ coll = COLLECT(
 # separately and is tracked independently.
 app = BUNDLE(
     coll,
-    name='Whisper Project.app',
+    name='Whisper Transcriber Suite.app',
     icon=_icon,
     bundle_identifier='com.translation-robot.whisperproject',
     version='1.6.0',
     info_plist={
-        'CFBundleName': 'Whisper Project',
-        'CFBundleDisplayName': 'Whisper Project',
+        'CFBundleName': 'Whisper Transcriber Suite',
+        'CFBundleDisplayName': 'Whisper Transcriber Suite',
         'CFBundleIdentifier': 'com.translation-robot.whisperproject',
         'CFBundleVersion': '1.6.0',
         'CFBundleShortVersionString': '1.6.0',

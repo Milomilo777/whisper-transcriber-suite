@@ -3,7 +3,7 @@
 This mirrors the **proven pipeline the maintainer already ships** for
 `github.com/translation-robot/machine-translate-docx` (PyInstaller → `.app`
 → `create-dmg` → `.dmg`). It produces a **self-contained** app: the user
-just opens the `.dmg` and drags *Whisper Project* to Applications — **no
+just opens the `.dmg` and drags *Whisper Transcriber Suite* to Applications — **no
 Python, no Terminal, no venv** on their side. Because that toolchain is
 already trusted on real Macs, this is the highest-confidence Mac deliverable.
 
@@ -26,11 +26,11 @@ python3 -m venv .buildenv && . .buildenv/bin/activate
 pip install -r requirements.txt pyinstaller
 # 3. build the .app
 pyinstaller --noconfirm --clean platform/macos/pyinstaller/whisper_project_mac.spec
-#    -> dist/Whisper Project.app
+#    -> dist/Whisper Transcriber Suite.app
 # 4. wrap into a .dmg
 brew install create-dmg
 bash platform/macos/pyinstaller/builddmg.command
-#    -> dist/Whisper Project.dmg
+#    -> dist/Whisper Transcriber Suite.dmg
 ```
 
 ## Gatekeeper (still unsigned)
@@ -39,9 +39,9 @@ This `.app` is **unsigned/un-notarized** (no paid Apple Developer cert), so
 a user who downloads the `.dmg` via a browser hits the same Gatekeeper
 block as any unsigned app. Two easy outs (see `../README.md` for detail):
 right-click the app → Open (or System Settings → Privacy & Security → "Open
-Anyway"), or `xattr -dr com.apple.quarantine "/Applications/Whisper Project.app"`.
+Anyway"), or `xattr -dr com.apple.quarantine "/Applications/Whisper Transcriber Suite.app"`.
 Optionally ad-hoc sign for a stable code identity (better TCC behavior):
-`codesign --force --deep -s - "dist/Whisper Project.app"`.
+`codesign --force --deep -s - "dist/Whisper Transcriber Suite.app"`.
 
 ## Notes / to verify on a Mac
 

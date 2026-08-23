@@ -84,9 +84,9 @@ Set the stage for sustainable growth: modern look, sane logging, proper packagin
 - **Effort:** S (2 hours)
 - **Why:** Today `config.json` lives next to the executable. That breaks the moment we ship a signed installer that puts the exe in `Program Files\` (read-only). It also forces every user on a shared machine to share settings.
 - **Implementation:**
-  - `config.json` → `%LOCALAPPDATA%\WhisperProject\config.json` (via `platformdirs.user_config_dir`)
+  - `config.json` → `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json` (via `platformdirs.user_config_dir`)
   - First-run migration: if old `config.json` is next to the exe, copy it to the new location and rename old to `.bak`
-  - Model cache → `%LOCALAPPDATA%\WhisperProject\models\` instead of the current `X:\whisper_cache2\...`
+  - Model cache → `%LOCALAPPDATA%\WhisperTranscriberSuite\models\` instead of the current `X:\whisper_cache2\...`
 
 ### 1.3 Proper logging — DONE (Phase 1a)
 
@@ -95,7 +95,7 @@ Set the stage for sustainable growth: modern look, sane logging, proper packagin
 - **Why:** Currently a mix of `print()` and a Tk Text widget. Crash diagnostics are lost when the user closes the app.
 - **Implementation:**
   - `logging.getLogger(__name__)` in every module
-  - `RotatingFileHandler` at `%LOCALAPPDATA%\WhisperProject\logs\app.log`, 5 MB × 3 backups
+  - `RotatingFileHandler` at `%LOCALAPPDATA%\WhisperTranscriberSuite\logs\app.log`, 5 MB × 3 backups
   - Worker subprocess uses a `QueueHandler` that writes to stderr (parent already captures stderr)
   - Stdout protocol stays JSON-only — see AUDIT B7
   - "Open log folder" menu item
@@ -245,7 +245,7 @@ These features take us from "wraps faster-whisper with defaults" to "comparable 
 - **Source:** dsymbol/yt-dlp-gui, Stacher
 - **Effort:** M
 - **Why:** Save a named bundle of settings (model, VAD params, initial_prompt, hotwords, output formats, output folder template) and apply with one click. Critical for the BMD workflow.
-- **Implementation:** `~/.config/whisper-project/presets/<name>.toml`. Preset picker in the main UI. Ship 3-4 starter presets: "Supreme Master TV (Persian)", "Podcast English", "Music video", "Meeting notes".
+- **Implementation:** `~/.config/whisper-transcriber-suite/presets/<name>.toml`. Preset picker in the main UI. Ship 3-4 starter presets: "Supreme Master TV (Persian)", "Podcast English", "Music video", "Meeting notes".
 
 ### 2.11 Subtitle splitting heuristics
 
@@ -295,7 +295,7 @@ Currently the yt-dlp tab is a working download front-end. To compete with yt-dlg
 - **Source:** yt-dlg, Tartube, Open Video Downloader
 - **Effort:** M
 - **Why:** AUDIT D10.
-- **Implementation:** SQLite at `%LOCALAPPDATA%\WhisperProject\history.db` with two tables:
+- **Implementation:** SQLite at `%LOCALAPPDATA%\WhisperTranscriberSuite\history.db` with two tables:
   ```sql
   CREATE TABLE downloads (
     id INTEGER PRIMARY KEY,
@@ -528,7 +528,7 @@ These are the items that take the project beyond "best-in-class for our niche" i
 
 - **Source:** Buzz, Purfview
 - **Effort:** S
-- **Why:** Automation. `whisper-project transcribe in.mp3 --model large-v3 --vad`.
+- **Why:** Automation. `whisper-transcriber-suite transcribe in.mp3 --model large-v3 --vad`.
 - **Implementation:** `click` or `argparse` entry point in `app/cli.py`. Wraps the same `core/` services.
 
 ### 5.6 Packaging: PyInstaller --onedir + installer

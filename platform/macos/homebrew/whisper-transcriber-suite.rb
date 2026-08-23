@@ -1,4 +1,4 @@
-# Homebrew formula for Whisper Project (macOS, and Linuxbrew).
+# Homebrew formula for Whisper Transcriber Suite (macOS, and Linuxbrew).
 #
 # This is a PERSONAL-TAP formula (not homebrew-core): it builds a venv and
 # pip-installs the deps at install time rather than vendoring every Python
@@ -8,13 +8,13 @@
 #
 # Requires the repo (or a release source tarball) to be PUBLIC — a Homebrew
 # tap can't reach a private repo. Publish it to a tap, e.g.
-#   github.com/translation-robot/homebrew-tap  →  Formula/whisper-project.rb
+#   github.com/translation-robot/homebrew-tap  →  Formula/whisper-transcriber-suite.rb
 # then users run:
-#   brew install translation-robot/tap/whisper-project
+#   brew install translation-robot/tap/whisper-transcriber-suite
 #
 # At each release, update `url` to the new tag and refresh `sha256`:
 #   curl -fsSL <url> | shasum -a 256
-class WhisperProject < Formula
+class WhisperTranscriberSuite < Formula
   include Language::Python::Virtualenv
 
   desc "Offline Whisper transcription + yt-dlp/ffmpeg downloader & video tiling"
@@ -40,7 +40,7 @@ class WhisperProject < Formula
 
     # Install the app source under libexec and expose two entry points.
     libexec.install Dir["*"]
-    (bin/"whisper-project").write <<~SH
+    (bin/"whisper-transcriber-suite").write <<~SH
       #!/bin/bash
       exec "#{libexec}/venv/bin/python" "#{libexec}/gui.py" "$@"
     SH
@@ -52,7 +52,7 @@ class WhisperProject < Formula
 
   test do
     # The CLI prints usage and exits cleanly with --help.
-    assert_match "transcribe", shell_output("#{bin}/whisper-project --help")
+    assert_match "transcribe", shell_output("#{bin}/whisper-transcriber-suite --help")
     # ffmpeg brings ffplay, which the Video Tiling tab needs.
     assert_path_exists Formula["ffmpeg"].opt_bin/"ffplay"
   end

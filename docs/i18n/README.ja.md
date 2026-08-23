@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="../img/hero.png" alt="Whisper Project" width="100%">
+<img src="../img/hero.png" alt="Whisper Transcriber Suite" width="100%">
 
-# Whisper Project
+# Whisper Transcriber Suite
 
 ### 音声・動画ファイルをドロップするだけ。**タイムコード付きの整形済み文字起こし**が、ファイルを外に出さずに手に入ります。
 
@@ -50,9 +50,9 @@ OpenAI の Whisper モデルを**ローカルで**動かすデスクトップア
 
 | ファイル | サイズ | 向いている人 |
 |---|---|---|
-| **`WhisperProject-…-Setup-Standard.exe`** | ~215 MB | **ほとんどの方に。** 通常のインストーラー：スタートメニューのショートカット、旧版への上書き更新、ディスク上でファイルが見える形式。 |
-| **`WhisperProject-…-Portable.zip`** | ~330 MB | 展開して実行するだけ。インストール不要、管理者権限不要、USB メモリでも動作します。 |
-| **`WhisperProject-…-macOS-*.dmg`** | ~400 MB | macOS（x64 と arm64 は別々に配布）。 |
+| **`WhisperTranscriberSuite-…-Setup-Standard.exe`** | ~215 MB | **ほとんどの方に。** 通常のインストーラー：スタートメニューのショートカット、旧版への上書き更新、ディスク上でファイルが見える形式。 |
+| **`WhisperTranscriberSuite-…-Portable.zip`** | ~330 MB | 展開して実行するだけ。インストール不要、管理者権限不要、USB メモリでも動作します。 |
+| **`WhisperTranscriberSuite-…-macOS-*.dmg`** | ~400 MB | macOS（x64 と arm64 は別々に配布）。 |
 
 必要なものはすべて同梱されています —— Python 本体、`ffmpeg`、`ffprobe`、`yt-dlp`。あとから取得するのは音声モデルだけです（**約 1〜3 GB、初回起動時に一度だけ**）。それ以降はアプリは完全にオフラインで動作します。
 

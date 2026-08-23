@@ -1,4 +1,4 @@
-# PROJECT INDEX — Whisper Project
+# PROJECT INDEX — Whisper Transcriber Suite
 
 > **Read this first.** Onboarding map for any coding agent (Claude Code, Codex, Cursor, Copilot, …) or human — written so you can understand the repo *without re-scanning it*, saving tokens and time.
 >
@@ -7,14 +7,14 @@
 ## What it is
 A Windows-first (also Linux and macOS) Tkinter desktop app that transcribes audio/video fully offline via faster-whisper plus 4 other pluggable ASR backends, downloads media through yt-dlp/Supreme Master TV, and exports transcripts to 13 subtitle/document formats.
 
-Whisper Project is a drag-and-drop desktop app — a Windows Setup-Standard installer + Portable zip, a Linux source install (platform/linux/install.sh), and a macOS build (PyInstaller .app/.dmg, platform/macos/install.command, or Homebrew) — that transcribes audio/video fully offline using faster-whisper (CTranslate2) by default, with whisper.cpp, NVIDIA Parakeet, and two opt-in cloud backends (Gemini API, Google Cloud Speech-to-Text) selectable in Advanced settings. Each job can add VAD, word-level timestamps, speaker diarization, auto-chapters, and hallucination detection, then writes outputs in up to 13 formats (SRT/VTT/TSV/TXT/LRC/JSON/MD/DOCX/PDF/oTranscribe/ELAN/InqScribe/Express Scribe) — plus a separate "Convert transcript" picker that re-emits any existing transcript into those formats. It also downloads from any yt-dlp-supported site or a Supreme Master TV (SMTV) episode link with optional auto-transcribe, runs a live pausable/resumable Transcription Queue and Download queue, offers an in-app transcript viewer with VLC playback and karaoke word-highlighting, a multi-monitor "Video Tiling" live-stream video wall, and an optional stdlib-only LAN/web HTTP server for browser-based job submission on a trusted network. First launch downloads the ~3 GB Whisper model from a CDN mirror (MD5-verified, resumable); everything afterward is fully offline unless a cloud backend is deliberately chosen.
+Whisper Transcriber Suite is a drag-and-drop desktop app — a Windows Setup-Standard installer + Portable zip, a Linux source install (platform/linux/install.sh), and a macOS build (PyInstaller .app/.dmg, platform/macos/install.command, or Homebrew) — that transcribes audio/video fully offline using faster-whisper (CTranslate2) by default, with whisper.cpp, NVIDIA Parakeet, and two opt-in cloud backends (Gemini API, Google Cloud Speech-to-Text) selectable in Advanced settings. Each job can add VAD, word-level timestamps, speaker diarization, auto-chapters, and hallucination detection, then writes outputs in up to 13 formats (SRT/VTT/TSV/TXT/LRC/JSON/MD/DOCX/PDF/oTranscribe/ELAN/InqScribe/Express Scribe) — plus a separate "Convert transcript" picker that re-emits any existing transcript into those formats. It also downloads from any yt-dlp-supported site or a Supreme Master TV (SMTV) episode link with optional auto-transcribe, runs a live pausable/resumable Transcription Queue and Download queue, offers an in-app transcript viewer with VLC playback and karaoke word-highlighting, a multi-monitor "Video Tiling" live-stream video wall, and an optional stdlib-only LAN/web HTTP server for browser-based job submission on a trusted network. First launch downloads the ~3 GB Whisper model from a CDN mirror (MD5-verified, resumable); everything afterward is fully offline unless a cloud backend is deliberately chosen.
 
 ## Run it
 ```
 Dev/source run: pip install -r requirements.txt && python gui.py  (or pip install -e .[dev] for an editable install with dev extras)
 Headless one-shot transcription: python gui.py transcribe PATH\to\file.mp4 --language en --formats srt json docx [--diarization]
 Optional LAN/web server: python gui.py serve (loopback only, no firewall prompt) or python gui.py serve --lan (binds 0.0.0.0)
-Reset first-run state: python gui.py --safe-mode  (backs up %LOCALAPPDATA%\WhisperProject\config.json and re-fires the hub-folder picker)
+Reset first-run state: python gui.py --safe-mode  (backs up %LOCALAPPDATA%\WhisperTranscriberSuite\config.json and re-fires the hub-folder picker)
 Full local quality gate before committing: run_tests.bat  (pyright app core, must stay 0 errors/0 warnings/0 informations, then python -m pytest tests/ --ignore=tests/smoke -q)
 Build the two shipped Windows deliverables: build_embed_installer.bat (produces embed_build\), then "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer_embed.iss for the Setup-Standard exe, then a shutil.make_archive zip of embed_build\ for the Portable zip — full recipe in docs/BUILD.md
 Linux install: git clone https://github.com/Milomilo777/whisper-transcriber-suite.git && cd whisper-transcriber-suite && bash platform/linux/install.sh
@@ -43,7 +43,7 @@ gui.py is a thin entry point (bare = launch the Tk app via app.run(); --worker =
 | `docs/RELEASE_PROCESS.md` | Ship sequence: version-bump locations, tagging, gh release create/edit, release-pruning policy |
 | `docs/CHANGELOG.md` | Version history (current: 1.5.0, 2026-07-03 — project/repo renamed to whisper_app) |
 | `platform/macos/README.md` | macOS install/build notes (install.command, Homebrew, PyInstaller .app/.dmg) — its 'not yet validated on a real Mac' banner is stale; CI now builds and smoke-tests real .dmg artifacts |
-| `platform/linux/README.md` | Linux install/update/uninstall via install.sh (venv-based, desktop entry, whisper-project/whisper-transcribe launchers) |
+| `platform/linux/README.md` | Linux install/update/uninstall via install.sh (venv-based, desktop entry, whisper-transcriber-suite/whisper-transcribe launchers) |
 
 ## Onboarding tips
 - docs/ARCHITECTURE.md is stale (describes a single monolithic gui.py); trust the real app/ (services/domain/widgets/dialogs) + core/ (backends/writers/integrations/server) package layout described above instead.
@@ -63,7 +63,7 @@ gui.py is a thin entry point (bare = launch the Tk app via app.run(); --worker =
 ## Subsystems
 
 ### app-gui — `app/`
-Tkinter desktop GUI layer of Whisper Project. The App(tk.Tk) root in app/app.py wires together services (transcription worker lifecycle, yt-dlp downloads, format lookup, integrations), Toplevel dialogs (Advanced settings, transcript viewer, hardware wizard, model download/loading, hub setup), and widgets (5 tabs: Transcribe, Transcription Queue, Download Videos, Video Tiling, Web/LAN access) into a single-window offline transcription + video-download app.
+Tkinter desktop GUI layer of Whisper Transcriber Suite. The App(tk.Tk) root in app/app.py wires together services (transcription worker lifecycle, yt-dlp downloads, format lookup, integrations), Toplevel dialogs (Advanced settings, transcript viewer, hardware wizard, model download/loading, hub setup), and widgets (5 tabs: Transcribe, Transcription Queue, Download Videos, Video Tiling, Web/LAN access) into a single-window offline transcription + video-download app.
 
 **Key files**
 - `app/app.py` — The App(tk.Tk) god-object root: owns self.queue/self.download_queue, the 500ms loop() driver, thread-safe cross-thread bridges (post_to_main/_drain_main_calls), drag-and-drop, watched-folder, tray, crash-resume, menu, and window lifecycle (on_exit). ~4650 lines; tab widgets are forward-declared here as type annotations but actually assigned by app/widgets/tabs.py builders.
@@ -269,20 +269,20 @@ pyright app/ core/   (must report 0 errors before every commit; core/ has zero T
 - WHISPER_WORKER_TOKEN (set by the parent at spawn time) is attached to every emitted event as _token so the parent can route events correctly even if the OS recycles a PID between worker spawns; it's optional/empty for older parents, so never assume it's present when parsing worker events.
 
 ### platform — `platform/`
-Non-Windows packaging and distribution for the Whisper Project: a Linux from-source installer/updater/uninstaller, and three independently-maintained macOS delivery paths (source+venv .command installer, a PyInstaller .app/.dmg pipeline, and a staged Homebrew formula). The app itself is plain cross-platform Python (Tkinter + faster-whisper + yt-dlp + ffmpeg); this subsystem only supplies the OS-specific install/build glue, not app logic.
+Non-Windows packaging and distribution for the Whisper Transcriber Suite: a Linux from-source installer/updater/uninstaller, and three independently-maintained macOS delivery paths (source+venv .command installer, a PyInstaller .app/.dmg pipeline, and a staged Homebrew formula). The app itself is plain cross-platform Python (Tkinter + faster-whisper + yt-dlp + ffmpeg); this subsystem only supplies the OS-specific install/build glue, not app logic.
 
 **Key files**
-- `platform/linux/install.sh` — Linux installer: creates .venv next to the repo, pip-installs requirements.txt + yt-dlp, fetches a static ffmpeg/ffprobe (johnvansickle.com) into bin/ if the system lacks one, writes ~/.local/bin/whisper-project (GUI) + whisper-transcribe (headless CLI) launchers, and a .desktop entry. Idempotent.
+- `platform/linux/install.sh` — Linux installer: creates .venv next to the repo, pip-installs requirements.txt + yt-dlp, fetches a static ffmpeg/ffprobe (johnvansickle.com) into bin/ if the system lacks one, writes ~/.local/bin/whisper-transcriber-suite (GUI) + whisper-transcribe (headless CLI) launchers, and a .desktop entry. Idempotent.
 - `platform/linux/update.sh` — Linux updater: git pull --ff-only, then pip --upgrade requirements.txt + yt-dlp inside the existing .venv. Requires install.sh to have run first.
-- `platform/linux/uninstall.sh` — Removes the launchers, .desktop entry, and .venv; deliberately keeps the repo checkout and user data (~/.config/WhisperProject, ~/.cache/WhisperProject).
+- `platform/linux/uninstall.sh` — Removes the launchers, .desktop entry, and .venv; deliberately keeps the repo checkout and user data (~/.config/WhisperTranscriberSuite, ~/.cache/WhisperTranscriberSuite).
 - `platform/linux/README.md` — Linux usage docs: install/desktop/headless-server (systemd one-shot template included), update, uninstall, model-cache location.
-- `platform/macos/install.command` — macOS installer (double-clickable). Rebuilds .venv FROM SCRATCH every run, de-quarantines the repo via xattr, prefers python.org/Homebrew Python over Apple's system python3 (Tk 8.5 trap), symlinks ffmpeg/ffprobe/ffplay into bin/, and builds a real ~/Applications/Whisper Project.app wrapper (own hand-written Info.plist, ad-hoc codesigned) plus a whisper-transcribe CLI. No Python bundled — end user needs Python+Tk installed.
-- `platform/macos/unblock.command` — Gatekeeper helper: strips com.apple.quarantine from the repo and the installed Whisper Project.app.
+- `platform/macos/install.command` — macOS installer (double-clickable). Rebuilds .venv FROM SCRATCH every run, de-quarantines the repo via xattr, prefers python.org/Homebrew Python over Apple's system python3 (Tk 8.5 trap), symlinks ffmpeg/ffprobe/ffplay into bin/, and builds a real ~/Applications/Whisper Transcriber Suite.app wrapper (own hand-written Info.plist, ad-hoc codesigned) plus a whisper-transcribe CLI. No Python bundled — end user needs Python+Tk installed.
+- `platform/macos/unblock.command` — Gatekeeper helper: strips com.apple.quarantine from the repo and the installed Whisper Transcriber Suite.app.
 - `platform/macos/README.md` — macOS usage + Gatekeeper explainer. Explicitly marked beta/unvalidated on a real Mac. Documents the Tk-8.5 blur trap, the two source-level install paths, VLC-at-/Applications/VLC.app requirement, Apple Silicon/Rosetta caveats.
-- `platform/macos/homebrew/whisper-project.rb` — Personal-tap Homebrew formula (not homebrew-core style): virtualenv_create against python@3.12, depends_on ffmpeg + python-tk@3.12, pip-installs requirements.txt + yt-dlp at install time. url pinned to tag v1.3.6; sha256 is still the literal placeholder string.
+- `platform/macos/homebrew/whisper-transcriber-suite.rb` — Personal-tap Homebrew formula (not homebrew-core style): virtualenv_create against python@3.12, depends_on ffmpeg + python-tk@3.12, pip-installs requirements.txt + yt-dlp at install time. url pinned to tag v1.3.6; sha256 is still the literal placeholder string.
 - `platform/macos/homebrew/README.md` — How to publish the tap (separate public homebrew-tap repo) and refresh url/sha256 per release; install instructions for end users once published.
-- `platform/macos/pyinstaller/whisper_project_mac.spec` — PyInstaller spec that freezes gui.py into dist/Whisper Project.app (self-contained, no Python needed by end user). Third copy of the spec pattern alongside the root's whisper_project_onedir.spec/whisper_project_onefile.spec; hiddenimports/datas mirror the Windows onedir spec. Resolves all paths via a SPECPATH-derived _REPO_ROOT. BUNDLE version currently 1.5.0 (in sync with core.__version__). Never built/verified on a real Mac.
-- `platform/macos/pyinstaller/builddmg.command` — Wraps an ALREADY-BUILT dist/Whisper Project.app into dist/Whisper Project.dmg via create-dmg. Errors out if the .app or the create-dmg binary is missing. cd's to repo root first.
+- `platform/macos/pyinstaller/whisper_project_mac.spec` — PyInstaller spec that freezes gui.py into dist/Whisper Transcriber Suite.app (self-contained, no Python needed by end user). Third copy of the spec pattern alongside the root's whisper_project_onedir.spec/whisper_project_onefile.spec; hiddenimports/datas mirror the Windows onedir spec. Resolves all paths via a SPECPATH-derived _REPO_ROOT. BUNDLE version currently 1.5.0 (in sync with core.__version__). Never built/verified on a real Mac.
+- `platform/macos/pyinstaller/builddmg.command` — Wraps an ALREADY-BUILT dist/Whisper Transcriber Suite.app into dist/Whisper Transcriber Suite.dmg via create-dmg. Errors out if the .app or the create-dmg binary is missing. cd's to repo root first.
 - `platform/macos/pyinstaller/compileall-whisper-mac.sh` — One-shot full build: rm -rf dist, run pyinstaller against whisper_project_mac.spec, then wrap into a .dmg (inlines the same create-dmg call as builddmg.command rather than invoking it). Fixed 2026-07-04 for a duplicated pyinstaller invocation and to cd to the repo root first.
 - `platform/macos/pyinstaller/README.md` — Build steps for the .app/.dmg path (icon generation, staging Mac ffmpeg/ffprobe/ffplay/yt-dlp into bin/, pyinstaller + create-dmg commands). Framed as the highest-confidence Mac deliverable since it mirrors the maintainer's proven machine-translate-docx pipeline; still unsigned/un-notarized.
 
@@ -295,7 +295,7 @@ Non-Windows packaging and distribution for the Whisper Project: a Linux from-sou
 - platform/macos/pyinstaller/whisper_project_mac.spec
 - platform/macos/pyinstaller/builddmg.command
 - platform/macos/pyinstaller/compileall-whisper-mac.sh
-- platform/macos/homebrew/whisper-project.rb
+- platform/macos/homebrew/whisper-transcriber-suite.rb
 
 **Commands**
 ```
@@ -309,7 +309,7 @@ bash platform/macos/unblock.command
 pyinstaller --noconfirm --clean platform/macos/pyinstaller/whisper_project_mac.spec
 bash platform/macos/pyinstaller/builddmg.command
 bash platform/macos/pyinstaller/compileall-whisper-mac.sh
-brew install translation-robot/tap/whisper-project
+brew install translation-robot/tap/whisper-transcriber-suite
 ```
 
 **Depends on**
@@ -329,8 +329,8 @@ brew install translation-robot/tap/whisper-project
 - whisper_project_mac.spec is 'the third spec copy': per the root CLAUDE.md, adding a new module/hidden import must be mirrored into whisper_project_onedir.spec AND whisper_project_onefile.spec at the repo root or the unshipped pipelines bit-rot silently.
 - whisper_project_mac.spec resolves every repo-relative path via `_REPO_ROOT = os.path.abspath(os.path.join(SPECPATH, os.pardir, os.pardir, os.pardir))` — a historical bug fix. PyInstaller resolves a bare relative script path (e.g. 'gui.py') against the spec file's OWN directory (platform/macos/pyinstaller/), not the CWD, which previously failed the build with 'gui.py not found'.
 - compileall-whisper-mac.sh and builddmg.command both inline the same create-dmg invocation (window size/icon position/volname) rather than one calling the other — a packaging tweak made in one must be repeated in the other or they'll drift.
-- Version numbers can drift across four places with nothing enforcing sync: core.__version__ (1.5.0, source of truth) / whisper_project_mac.spec BUNDLE+info_plist version (currently 1.5.0, in sync) / install.command's own hardcoded Info.plist CFBundleVersion (still 1.3.6 — tracked independently by design per the spec's own comment) / homebrew/whisper-project.rb url+tag (still v1.3.6, sha256 left as the literal placeholder 'PUT_SHA256_OF_THE_TARBALL_HERE').
-- Docs under platform/macos/ (README.md, homebrew/README.md, whisper-project.rb comments) still say the GitHub repo is currently PRIVATE, which blocks a real Homebrew tap and the curl-based one-liner in linux/install.sh's own comment — the repo has since been made PUBLIC, so the Homebrew tap may now be publishable for real; re-verify and update these docs before trusting the 'private, staged for later' framing.
+- Version numbers can drift across four places with nothing enforcing sync: core.__version__ (1.5.0, source of truth) / whisper_project_mac.spec BUNDLE+info_plist version (currently 1.5.0, in sync) / install.command's own hardcoded Info.plist CFBundleVersion (still 1.3.6 — tracked independently by design per the spec's own comment) / homebrew/whisper-transcriber-suite.rb url+tag (still v1.3.6, sha256 left as the literal placeholder 'PUT_SHA256_OF_THE_TARBALL_HERE').
+- Docs under platform/macos/ (README.md, homebrew/README.md, whisper-transcriber-suite.rb comments) still say the GitHub repo is currently PRIVATE, which blocks a real Homebrew tap and the curl-based one-liner in linux/install.sh's own comment — the repo has since been made PUBLIC, so the Homebrew tap may now be publishable for real; re-verify and update these docs before trusting the 'private, staged for later' framing.
 - Gatekeeper: the app is unsigned (no paid Apple Developer cert). Getting the repo via git clone/curl avoids the com.apple.quarantine flag entirely (why every doc pushes clone-first); a browser-downloaded zip needs unblock.command or System Settings -> Privacy & Security -> 'Open Anyway'. Never suggest `spctl --master-disable`.
 - Apple's bundled system python3 links deprecated Tcl/Tk 8.5, which imports fine but renders a blurry/unstable GUI. install.command checks the actual `tkinter.TkVersion` (not just importability) and warns/prefers python.org or Homebrew Python (Tk 8.6). The headless whisper-transcribe CLI needs no Tk and works with any python3.
 - install.command rebuilds its venv FROM SCRATCH every run (`rm -rf .venv`) so switching interpreters doesn't silently reuse a stale Tk-8.5-linked venv; Linux's install.sh is idempotent/incremental instead. Don't assume the two installers behave the same on re-run.
@@ -347,7 +347,7 @@ tools/ holds standalone maintenance and dev scripts that are not part of the shi
 **Key files**
 - `tools/index_refresh.py` — Zero-token, zero-network deterministic refresher for the AUTO-INDEX:STRUCTURE block in PROJECT_INDEX.md; writes .project_index.json manifest; silent no-op (exit 0) if PROJECT_INDEX.md doesn't exist at the target yet. Run by a Claude Code SessionStart hook and by the project-index skill (with --set-baseline) after semantic sections are rebuilt.
 - `tools/download_diarization_models.bat` — One-time fetcher for bin/diarization/segmentation.onnx (+ .int8.onnx) and embedding.onnx from k2-fsa/sherpa-onnx GitHub releases. Build-time step, like fetching ffmpeg; CI does not run it.
-- `tools/measure_startup.py` — Times cold start of dist/WhisperProject.exe using ctypes Win32 EnumWindows (no third-party deps); detects readiness by window title "Transcription helper", not PID. Manual dev tool, not wired into CI or BUILD.md.
+- `tools/measure_startup.py` — Times cold start of dist/WhisperTranscriberSuite.exe using ctypes Win32 EnumWindows (no third-party deps); detects readiness by window title "Transcription helper", not PID. Manual dev tool, not wired into CI or BUILD.md.
 - `tools/e2e_cancel_pause.py` — Live E2E: spawns the real core.worker subprocess and drives its JSON stdin/stdout protocol through pause -> resume -> cancel, asserting a resumable checkpoint survives cancel. Needs a real video (WHISPER_SMOKE_VIDEO env var, default E:\3029-NWN-Daily-Scroll-2m_0002.mp4) and the real model; SKIPs (exit 0) if absent.
 - `tools/e2e_slim_pastbugs.py` — Live E2E that must run under the slim embed interpreter (embed_build\python\python.exe) against embed_build\gui.py; regression-guards a specific list of previously-shipped bugs (docx output, non-srt formats, hyphenated lang codes, clip ranges, apostrophe filenames) in the v1.3.4+ Setup-Standard/Portable build.
 - `tools/e2e_tiny_macos.py` — Real (unmocked) faster-whisper/CTranslate2 inference E2E using the tiny model plus a short macOS `say`-generated clip; invoked directly by .github/workflows/macos-e2e.yml.
@@ -358,7 +358,7 @@ tools/ holds standalone maintenance and dev scripts that are not part of the shi
 **Entry points**
 - tools/index_refresh.py [target_dir] [--set-baseline]  (also auto-run by a SessionStart hook and the project-index skill)
 - tools/download_diarization_models.bat  (manual, once before any build)
-- tools/measure_startup.py [path/to/WhisperProject.exe]
+- tools/measure_startup.py [path/to/WhisperTranscriberSuite.exe]
 - tools/e2e_cancel_pause.py
 - tools/e2e_slim_pastbugs.py  (must use embed_build\python\python.exe)
 - tools/e2e_tiny_macos.py <clip.wav>  (invoked by .github/workflows/macos-e2e.yml)
@@ -402,10 +402,10 @@ Root-level scripts/specs that turn the app/ + core/ source tree into the two shi
 
 **Key files**
 - `build_embed_installer.bat` — Method C build script: downloads a python-build-standalone CPython 3.11 install_only tarball (has tkinter, unlike python.org's embeddable zip), pip-installs requirements.txt into it, prunes heavy optional deps (torch/whisper/numba/etc, ~700MB saved), copies app/core/bin/gui.py, writes sitecustomize.py + a portable launcher .bat, runs sanity imports. Produces embed_build/, the single source tree for BOTH shipped deliverables.
-- `installer_embed.iss` — Inno Setup script for the SHIPPED Setup-Standard installer. Wraps embed_build/ into dist_installer\WhisperProject-vX.Y.Z-Setup-Standard.exe. Single version knob #define MyAppVersion. Also handles the hub-folder uninstall prompt, shell-extension registry keys, and the optional 'notiling' task (drops a no_tiling.flag marker).
-- `installer.iss` — Inno Setup script for the UNSHIPPED 'Setup-Compact' installer (Method B). Wraps dist_onedir\WhisperProject\ (produced by whisper_project_onedir.spec) into WhisperProject-vX.Y.Z-Setup-Compact.exe. Maintained but not published.
+- `installer_embed.iss` — Inno Setup script for the SHIPPED Setup-Standard installer. Wraps embed_build/ into dist_installer\WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe. Single version knob #define MyAppVersion. Also handles the hub-folder uninstall prompt, shell-extension registry keys, and the optional 'notiling' task (drops a no_tiling.flag marker).
+- `installer.iss` — Inno Setup script for the UNSHIPPED 'Setup-Compact' installer (Method B). Wraps dist_onedir\WhisperTranscriberSuite\ (produced by whisper_project_onedir.spec) into WhisperTranscriberSuite-vX.Y.Z-Setup-Compact.exe. Maintained but not published.
 - `whisper_project_onedir.spec` — UNSHIPPED PyInstaller onedir spec (Method B) — feeds installer.iss. Kept in lock-step with the onefile spec's hidden-imports/datas so it doesn't bit-rot.
-- `whisper_project_onefile.spec` — UNSHIPPED PyInstaller onefile spec (Method A) — single self-extracting exe, was the Portable deliverable before v1.3.2. Its EXE() still hardcodes name='WhisperProject-v1.0.3-Portable', stale vs. the current 1.5.0.
+- `whisper_project_onefile.spec` — UNSHIPPED PyInstaller onefile spec (Method A) — single self-extracting exe, was the Portable deliverable before v1.3.2. Its EXE() still hardcodes name='WhisperTranscriberSuite-v1.0.3-Portable', stale vs. the current 1.5.0.
 - `build.bat` — STALE/likely-broken helper: runs `pyinstaller --noconfirm whisper_project.spec`, a file that does not exist in the repo root (only *_onedir.spec and *_onefile.spec exist). Also references an obsolete dist\config.json copy step from before the Phase-1.2 config migration to %LOCALAPPDATA%.
 - `gui.py` — Actual app entry point (283 lines). argparse CLI with `transcribe` / `serve` subcommands, a pre-argparse `--worker` branch (JSON-stdio worker spawn contract used by every build method), a pre-argparse `--safe-mode` flag, and the default bare launch into app.run() (the Tk GUI).
 - `pyproject.toml` — setuptools metadata, version = "1.5.0" (one of the '4 usual places'), pyright/pytest/coverage config, and optional-dependency extras (dev, crash_reporting, theme_detection, backend_cpp, alignment, nvidia_asr).
@@ -417,16 +417,16 @@ Root-level scripts/specs that turn the app/ + core/ source tree into the two shi
 - gui.py transcribe FILE [--language] [--formats] [--diarization] -> one-shot CLI transcription, exits
 - gui.py serve [--port] [--host] [--lan] [--token] [--max-upload-mb] -> runs core.server's local/LAN HTTP job server
 - gui.py --worker -> JSON-stdio worker subprocess (core.worker.main); handled before argparse, spawn-contract every deliverable relies on, must not be renamed/removed
-- gui.py --safe-mode -> backs up + resets %LOCALAPPDATA%\WhisperProject\config.json before any other mode runs
+- gui.py --safe-mode -> backs up + resets %LOCALAPPDATA%\WhisperTranscriberSuite\config.json before any other mode runs
 
 **Commands**
 ```
 build_embed_installer.bat
 "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer_embed.iss
-python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperProject-vX.Y.Z-Portable', 'zip', r'embed_build')"
+python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscriberSuite-vX.Y.Z-Portable', 'zip', r'embed_build')"
 python -m pyright app core
 python -m pytest tests\ --ignore=tests\smoke
-gh release upload vX.Y.Z dist_installer\WhisperProject-vX.Y.Z-Setup-Standard.exe dist_installer\WhisperProject-vX.Y.Z-Portable.zip --clobber
+gh release upload vX.Y.Z dist_installer\WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe dist_installer\WhisperTranscriberSuite-vX.Y.Z-Portable.zip --clobber
 pyinstaller --noconfirm --clean whisper_project_onefile.spec  (unshipped Method A)
 pyinstaller --noconfirm --clean --distpath dist_onedir whisper_project_onedir.spec  (unshipped Method B, input to installer.iss)
 "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer.iss  (unshipped Method B installer)
@@ -447,7 +447,7 @@ pyinstaller --noconfirm --clean --distpath dist_onedir whisper_project_onedir.sp
 **Gotchas**
 - Only TWO deliverables ship: Setup-Standard (installer_embed.iss over embed_build/) and Portable (a zip of that SAME embed_build/ tree, via shutil.make_archive). Portable stopped being a PyInstaller onefile exe at v1.3.2.
 - whisper_project_onefile.spec (Method A) and whisper_project_onedir.spec + installer.iss (Method B/'Compact') are UNSHIPPED but deliberately kept building. CLAUDE.md requires updating both specs' hidden-imports/datas lists whenever a new app/core module is added, purely so they don't bit-rot, even though nothing consumes their output.
-- whisper_project_onefile.spec's EXE() hardcodes name='WhisperProject-v1.0.3-Portable' — stale vs. the current 1.5.0. Unlike installer_embed.iss's parameterized #define MyAppVersion, this literal isn't part of the version-bump checklist and isn't auto-updated.
+- whisper_project_onefile.spec's EXE() hardcodes name='WhisperTranscriberSuite-v1.0.3-Portable' — stale vs. the current 1.5.0. Unlike installer_embed.iss's parameterized #define MyAppVersion, this literal isn't part of the version-bump checklist and isn't auto-updated.
 - build.bat is stale/likely broken: it invokes `pyinstaller ... whisper_project.spec`, a file that does not exist at repo root (verified — only whisper_project_onedir.spec and whisper_project_onefile.spec are present). Its dist\config.json-copy logic is also obsolete after the Phase-1.2 config migration to %LOCALAPPDATA%.
 - Version must be bumped in the '4 usual places' (per docs/SESSION_HANDOFF_NEXT.md): pyproject.toml (version=), core/__init__.py (__version__=), installer.iss (AppVersion= / OutputBaseFilename=), installer_embed.iss (#define MyAppVersion). configuration.json's own 'latest_version' field is a SEPARATE, informational value for the online-config layer — it is NOT one of the 4 and bumping it alone does nothing for the shipped version.
 - configuration.json (repo root) vs core/config.py's DEFAULT_CONFIG is a duplication trap: configuration.json is only the master copy manually uploaded to config_url (https://smch.ir/whisper/app_config.json); it is never bundled and never read from disk by the running app. DEFAULT_CONFIG in core/config.py has its own near-empty baseline (model_catalog={}). The real effective config is a 3-way merge (core.config.merge_config_sources: local config.json > fetched-and-cached online config > DEFAULT_CONFIG) — editing configuration.json in the repo has zero runtime effect until someone re-uploads it to the URL.
@@ -472,7 +472,7 @@ The pytest-based verification suite (hermetic unit/integration tests plus a real
 - `tests/core/test_config.py` — Config load/save, model_path/download_folder persistence, and the three-layer online/local/hard-coded merge rules; also guards configuration.json's stats_url against drifting from core.config.DEFAULT_CONFIG
 - `tests/integrations/test_smtv.py` — Hermetic, fixture-driven tests for core/integrations/smtv.py (URL recognition, page parsing, transcript extraction); the live-network variant is separated into tests/smoke/test_smtv_smoke.py
 - `tests/integrations/test_otranscribe.py` — Hermetic tests for the oTranscribe (.otr) integration round-trip
-- `tests/smoke/test_exe_real_e2e.py` — Spawns the compiled WhisperProject.exe --worker against a real video; the only test category that catches PyInstaller packaging bugs (missing data files/hidden imports)
+- `tests/smoke/test_exe_real_e2e.py` — Spawns the compiled WhisperTranscriberSuite.exe --worker against a real video; the only test category that catches PyInstaller packaging bugs (missing data files/hidden imports)
 - `tests/fixtures/audio/*.wav` — Tiny committed WAV fixtures (silent_1s.wav, tone_440hz_2s.wav) so decode/VAD/transcribe tests never touch the network
 - `docs/SESSION_HANDOFF_NEXT.md` — Single-source-of-truth handoff log; must be read first each session and updated at session end; newest entries appended at the top
 - `docs/GAPS_AGAINST_PEERS_2026.md` — Feature-by-feature product gap analysis vs. peer desktop apps (MacWhisper, Buzz, Vibe, etc.); re-audited against current code 2026-07-04
@@ -529,14 +529,14 @@ pip install pyright pytest
 <!-- AUTO-INDEX:STRUCTURE:START -->
 ## Structure (auto-refreshed — do not hand-edit this block)
 
-- **Source files tracked:** 460
-- **Structure refreshed:** 2026-08-23T14:12:14
+- **Source files tracked:** 465
+- **Structure refreshed:** 2026-08-23T15:23:24
 - **Semantic sections last built:** 2026-07-04T15:30:21
-- **Drift since semantic build:** +55 added · ~96 changed · -3 removed
+- **Drift since semantic build:** +61 added · ~132 changed · -4 removed
 
 > ⚠️ **STALE** — the source tree changed a lot since the semantic sections were built. Re-run `/project-index` to regenerate purposes / gotchas / subsystem maps.
 >
-> Notable: `.github/workflows/ci.yml`, `.github/workflows/macos-app.yml`, `CLAUDE.md`, `README.md`, `SECURITY.md`, `VOICE_PRO_GAP_FA_EN.txt`, `app/app.py`, `app/dialogs/advanced.py`
+> Notable: `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/workflows/ci.yml`, `.github/workflows/macos-app.yml`, `.github/workflows/macos-compileall-script-test.yml`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `README.md`
 
 | Top-level | Source files |
 |---|---|
@@ -549,9 +549,10 @@ pip install pyright pytest
 | `.github` | 13 |
 | `platform` | 12 |
 | `tools` | 8 |
+| `whisper_transcriber_suite.egg-info` | 5 |
 | `downloads` | 3 |
 | `assets` | 1 |
 
-**By type:** `.py`×291  `.md`×112  `.json`×17  `.yml`×11  `.bat`×6  `.txt`×4  `.spec`×4  `.html`×4  `.sh`×4  `.iss`×2  `.ps1`×2  `.toml`×1  `.js`×1  `.rb`×1
+**By type:** `.py`×291  `.md`×112  `.json`×17  `.yml`×11  `.txt`×9  `.bat`×6  `.spec`×4  `.html`×4  `.sh`×4  `.iss`×2  `.ps1`×2  `.toml`×1  `.js`×1  `.rb`×1
 
 <!-- AUTO-INDEX:STRUCTURE:END -->

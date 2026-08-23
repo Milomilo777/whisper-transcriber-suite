@@ -17,8 +17,8 @@ REM   3  smoke launch failure (exe died within 5 seconds)
 setlocal EnableDelayedExpansion
 
 set REPO=%~dp0
-set DIST=%REPO%dist\WhisperProject
-set EXE=%DIST%\WhisperProject.exe
+set DIST=%REPO%dist\WhisperTranscriberSuite
+set EXE=%DIST%\WhisperTranscriberSuite.exe
 
 if "%1"=="clean" (
     echo [build] Cleaning build\ and dist\ ...
@@ -67,7 +67,7 @@ if defined MISSING (
 )
 
 REM Note: config.json is intentionally NOT copied to dist\.
-REM Phase 1.2 migrated config to %%LOCALAPPDATA%%\WhisperProject\config.json,
+REM Phase 1.2 migrated config to %%LOCALAPPDATA%%\WhisperTranscriberSuite\config.json,
 REM and load_config() now produces it on first launch from DEFAULT_CONFIG.
 REM If you ever need a portable build that keeps config next to the exe,
 REM add a "portable" build mode that copies config.json explicitly.
@@ -81,12 +81,12 @@ goto done
 echo [build] Launching exe for a 5-second smoke check...
 start "" "%EXE%"
 timeout /T 5 /NOBREAK >nul
-tasklist /FI "IMAGENAME eq WhisperProject.exe" | find /I "WhisperProject.exe" >nul
+tasklist /FI "IMAGENAME eq WhisperTranscriberSuite.exe" | find /I "WhisperTranscriberSuite.exe" >nul
 if errorlevel 1 (
     echo [build] Smoke FAILED: process died within 5 seconds.
     exit /b 3
 )
-taskkill /IM WhisperProject.exe /F >nul 2>&1
+taskkill /IM WhisperTranscriberSuite.exe /F >nul 2>&1
 echo [build] Smoke OK.
 
 :done

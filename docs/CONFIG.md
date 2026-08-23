@@ -8,7 +8,7 @@ app config** — the maintainer uploads it to `config_url`
 read by the app directly from the repo — it must be uploaded to `config_url`
 for the online layer to pick it up.
 
-`config.json` lives at `%LOCALAPPDATA%\WhisperProject\config.json` on Windows (`platformdirs.user_config_dir("WhisperProject")` on every platform). On first launch, a legacy `config.json` next to `gui.py` is copied to the new location and the original renamed to `.migrated.bak`. Subsequent launches read only from the platformdirs path.
+`config.json` lives at `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json` on Windows (`platformdirs.user_config_dir("WhisperTranscriberSuite")` on every platform). On first launch, a legacy `config.json` next to `gui.py` is copied to the new location and the original renamed to `.migrated.bak`. Subsequent launches read only from the platformdirs path.
 
 The file is read once at startup and written when the user changes a persisted setting (download folder, subtitle preferences, theme, etc.). Manual edits take effect on next launch.
 
@@ -38,10 +38,10 @@ The merge itself is pure and testable: `core.config.merge_config_sources(hardcod
 
 | Purpose | Path (Windows) | Helper |
 |---|---|---|
-| `config.json` | `%LOCALAPPDATA%\WhisperProject\config.json` | `core.config.config_path()` |
-| Model hub (default `hub_folder`) | `%LOCALAPPDATA%\WhisperProject\Cache\models\` | `core.hub.default_hub_folder()` |
-| Cached models (default `model_path`) | `%LOCALAPPDATA%\WhisperProject\Cache\models\<model-folder>\` | `core.config.user_cache_dir()` |
-| Rotating logs | `%LOCALAPPDATA%\WhisperProject\Logs\app.log` (5 MB × 3) | `core.config.user_log_dir()` |
+| `config.json` | `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json` | `core.config.config_path()` |
+| Model hub (default `hub_folder`) | `%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\models\` | `core.hub.default_hub_folder()` |
+| Cached models (default `model_path`) | `%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\models\<model-folder>\` | `core.config.user_cache_dir()` |
+| Rotating logs | `%LOCALAPPDATA%\WhisperTranscriberSuite\Logs\app.log` (5 MB × 3) | `core.config.user_log_dir()` |
 
 `platformdirs` chooses the equivalent paths on macOS and Linux. The "Help → Open log folder" menu item opens the log directory.
 
@@ -54,8 +54,8 @@ The merge itself is pure and testable: `core.config.merge_config_sources(hardcod
 | `model.url` | string | `https://smch.ir/models/...zip` | ZIP archive of the model |
 | `model.md5` | string | `<url>.md5` | URL of the per-file MD5 manifest |
 | `whisper_model` | string | `"large-v3"` | Slug of the selected model in the merged catalog (built-in `MODEL_REGISTRY` + online `model_catalog`). Set by the **Advanced > Whisper model** combo, which also rewrites `model` + `model_path` so the new model downloads on the next transcription. See the Models section below. |
-| `hub_folder` | string | `""` (first-run dialog) | Parent folder that holds the `models--Vendor--name` model directories. Empty triggers the first-run picker, which pre-fills `%LOCALAPPDATA%\WhisperProject\Cache\models` — a per-user, always-writable location (never the Program Files install dir). |
-| `model_path` | string | (derived from `hub_folder`) | Absolute path where the model is extracted. When empty it is derived at startup from `hub_folder + model.name`; with no hub set it falls back to `%LOCALAPPDATA%\WhisperProject\Cache\models\<name>`. A non-empty value is a per-model override. |
+| `hub_folder` | string | `""` (first-run dialog) | Parent folder that holds the `models--Vendor--name` model directories. Empty triggers the first-run picker, which pre-fills `%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\models` — a per-user, always-writable location (never the Program Files install dir). |
+| `model_path` | string | (derived from `hub_folder`) | Absolute path where the model is extracted. When empty it is derived at startup from `hub_folder + model.name`; with no hub set it falls back to `%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\models\<name>`. A non-empty value is a per-model override. |
 | `device` | string | `"auto"` | `"auto"` / `"cuda"` / `"cpu"`. With `"auto"`, the autodetect only selects CUDA when ctranslate2 reports a GPU **and** the cuDNN/cuBLAS runtime libraries actually load; otherwise it falls back to CPU. At model-load time a CUDA load that still fails self-heals to CPU `int8` instead of crashing the worker — the active tab shows a GPU/CPU badge and (once) a "running on CPU (slower)" warning. |
 | `compute_type` | string | `"int8"` | `faster-whisper` compute type. Common values: `int8`, `int8_float16`, `float16`, `float32`. `int8` is the smallest/fastest on CPU; `float16` is preferred on GPU. |
 | `cpu_warning_shown` | bool | `false` | Set to `true` after the one-time "running on CPU (slower)" warning has been shown, so it never repeats. The warning only appears when a GPU was detected-but-unusable or a CUDA→CPU downgrade happened — never on a genuine CPU-only machine. |
@@ -159,7 +159,7 @@ set to `cloud_stt` (in **Advanced > Backend**). Selecting this backend
 [`CLOUD_STT.md`](CLOUD_STT.md) for the full setup, privacy, and quota
 notes. The API key is stored in **cleartext** in `config.json`,
 consistent with how cookies/paths are already stored (the file is
-per-user under `%LOCALAPPDATA%\WhisperProject` and is not encrypted).
+per-user under `%LOCALAPPDATA%\WhisperTranscriberSuite` and is not encrypted).
 
 | Field | Type | Default | Description |
 |---|---|---|---|
@@ -240,7 +240,7 @@ It binds **loopback (`127.0.0.1`) by default** — no Windows firewall prompt
 | `server_port` | int | `8765` | Default listen port for the server. If the port is busy when started from the tab, a free-port fallback picks another and shows the actual URL. |
 | `server_max_upload_mb` | int | `512` | Caps a single browser upload (MB). The worker's ~1 MB command guard does NOT cover browser uploads, so this is the upload size limit for the web path. |
 | `server_share_lan` | bool | `false` | When `true`, the tab's Start binds `0.0.0.0` (all interfaces — other devices on the network can reach it) instead of `127.0.0.1` (this machine only). Persisted from the **Share on local network** checkbox; this is the path that triggers the Windows firewall prompt. The CLI uses `--lan` instead of this key. |
-| `server_token` | string | `""` | Optional shared-secret password. When non-empty, every request must present it (`X-Auth-Token` header or `?token=` query). Stored in **cleartext** here, consistent with cookies / API keys (the file is per-user under `%LOCALAPPDATA%\WhisperProject` and is not encrypted). |
+| `server_token` | string | `""` | Optional shared-secret password. When non-empty, every request must present it (`X-Auth-Token` header or `?token=` query). Stored in **cleartext** here, consistent with cookies / API keys (the file is per-user under `%LOCALAPPDATA%\WhisperTranscriberSuite` and is not encrypted). |
 
 ### Telemetry stats (P4-4) — opt-in, privacy
 
@@ -316,7 +316,7 @@ When a new field is introduced, `load_config` will populate it with the default 
     "url": "https://smch.ir/models/models--Systran--faster-whisper-large-v3.zip",
     "md5": "https://smch.ir/models/models--Systran--faster-whisper-large-v3.zip.md5"
   },
-  "hub_folder": "C:\\Users\\Owner\\AppData\\Local\\WhisperProject\\Cache\\models",
+  "hub_folder": "C:\\Users\\Owner\\AppData\\Local\\WhisperTranscriberSuite\\Cache\\models",
   "model_path": "",
   "device": "auto",
   "compute_type": "int8",

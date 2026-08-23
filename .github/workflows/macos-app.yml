@@ -97,8 +97,8 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          APP="dist/Whisper Project.app"
-          BIN="$APP/Contents/MacOS/Whisper Project"
+          APP="dist/Whisper Transcriber Suite.app"
+          BIN="$APP/Contents/MacOS/Whisper Transcriber Suite"
           [ -d "$APP" ] && echo "OK .app bundle present"
           [ -f "$APP/Contents/Info.plist" ] && echo "OK Info.plist present"
           [ -x "$BIN" ] && echo "OK launcher present"
@@ -125,8 +125,8 @@ jobs:
       - name: "Method 1 - numpy/faster-whisper import MUST succeed in the frozen .app"
         run: |
           set -e
-          APP="dist/Whisper Project.app"
-          BIN="$APP/Contents/MacOS/Whisper Project"
+          APP="dist/Whisper Transcriber Suite.app"
+          BIN="$APP/Contents/MacOS/Whisper Transcriber Suite"
           echo "--- bundled numpy C-extension check ---"
           # Search the WHOLE bundle: PyInstaller 6.x on macOS lays compiled
           # extensions under Contents/Frameworks (or Resources), NOT directly
@@ -158,8 +158,8 @@ jobs:
           # from uname -m) so a single-arch build can't masquerade as
           # universal. Keep this legacy rename as a no-op fallback in case
           # an older script revision produced the unsuffixed name.
-          if [ -f "dist/Whisper Project.dmg" ]; then
-            mv "dist/Whisper Project.dmg" "dist/Whisper Project-${{ matrix.arch }}.dmg"
+          if [ -f "dist/Whisper Transcriber Suite.dmg" ]; then
+            mv "dist/Whisper Transcriber Suite.dmg" "dist/Whisper Transcriber Suite-${{ matrix.arch }}.dmg"
           fi
           ls -la dist/*.dmg || true
 
@@ -178,7 +178,7 @@ jobs:
         if: ${{ !cancelled() }}
         continue-on-error: true
         run: |
-          brew audit --formula --strict platform/macos/homebrew/whisper-project.rb || true
+          brew audit --formula --strict platform/macos/homebrew/whisper-transcriber-suite.rb || true
           echo "NOTE: a real 'brew install' is blocked until the repo is PUBLIC and a release"
           echo "tarball with a real sha256 is published (the formula's sha256 is a placeholder)."
 

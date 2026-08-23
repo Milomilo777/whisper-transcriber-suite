@@ -12,7 +12,7 @@ pyinstaller --noconfirm --clean platform/macos/pyinstaller/whisper_project_mac.s
 
 rm -rf dist/dmg/
 mkdir dist/dmg
-cp -R "dist/Whisper Project.app" dist/dmg/
+cp -R "dist/Whisper Transcriber Suite.app" dist/dmg/
 
 # Arch-suffix the .dmg name so a single-arch build is never mistaken for
 # a universal one (a real mixup: an x64-only build shipped under a
@@ -22,16 +22,16 @@ case "$ARCH" in
   x86_64) SUFFIX="x64" ;;
   *)      SUFFIX="$ARCH" ;;
 esac
-DMG="dist/Whisper Project-${SUFFIX}.dmg"
-rm -f "$DMG" "dist/Whisper Project.dmg"
+DMG="dist/Whisper Transcriber Suite-${SUFFIX}.dmg"
+rm -f "$DMG" "dist/Whisper Transcriber Suite.dmg"
 
 create-dmg \
-  --volname "Whisper Project" \
+  --volname "Whisper Transcriber Suite" \
   --window-pos 200 120 \
   --window-size 600 320 \
   --icon-size 100 \
-  --icon "Whisper Project.app" 170 130 \
-  --hide-extension "Whisper Project.app" \
+  --icon "Whisper Transcriber Suite.app" 170 130 \
+  --hide-extension "Whisper Transcriber Suite.app" \
   --app-drop-link 430 130 \
   "$DMG" \
   "dist/dmg/"

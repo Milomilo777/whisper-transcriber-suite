@@ -1,11 +1,11 @@
-"""Measure the time from spawning WhisperProject.exe to its main window
+"""Measure the time from spawning WhisperTranscriberSuite.exe to its main window
 becoming visible. Uses the Win32 EnumWindows API via ctypes so it has
 no third-party dependencies.
 
 Usage:
-    python tools/measure_startup.py [path/to/WhisperProject.exe]
+    python tools/measure_startup.py [path/to/WhisperTranscriberSuite.exe]
 
-Default exe path: dist/WhisperProject.exe relative to repo root.
+Default exe path: dist/WhisperTranscriberSuite.exe relative to repo root.
 """
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def measure(exe: Path, timeout_s: float = 1200.0) -> float | None:
         return None
     finally:
         subprocess.run(
-            ["taskkill", "/F", "/IM", "WhisperProject.exe"],
+            ["taskkill", "/F", "/IM", "WhisperTranscriberSuite.exe"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -70,7 +70,7 @@ def measure(exe: Path, timeout_s: float = 1200.0) -> float | None:
 
 def main() -> int:
     exe = Path(sys.argv[1]) if len(sys.argv) > 1 else (
-        Path(__file__).resolve().parent.parent / "dist" / "WhisperProject.exe"
+        Path(__file__).resolve().parent.parent / "dist" / "WhisperTranscriberSuite.exe"
     )
     if not exe.exists():
         print(f"exe not found: {exe}", file=sys.stderr)

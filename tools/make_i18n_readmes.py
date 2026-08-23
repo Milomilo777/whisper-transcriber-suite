@@ -61,9 +61,9 @@ BADGES = f"""[![CI]({REPO}/actions/workflows/ci.yml/badge.svg)]({REPO}/actions/w
 
 TEMPLATE = """<div align="center">
 
-<img src="../img/hero.png" alt="Whisper Project" width="100%">
+<img src="../img/hero.png" alt="Whisper Transcriber Suite" width="100%">
 
-# Whisper Project
+# Whisper Transcriber Suite
 
 ### {tagline}
 
@@ -87,9 +87,9 @@ TEMPLATE = """<div align="center">
 
 | {th_asset} | {th_size} | {th_best} |
 |---|---|---|
-| **`WhisperProject-…-Setup-Standard.exe`** | ~215 MB | {asset_standard} |
-| **`WhisperProject-…-Portable.zip`** | ~330 MB | {asset_portable} |
-| **`WhisperProject-…-macOS-*.dmg`** | ~400 MB | {asset_macos} |
+| **`WhisperTranscriberSuite-…-Setup-Standard.exe`** | ~215 MB | {asset_standard} |
+| **`WhisperTranscriberSuite-…-Portable.zip`** | ~330 MB | {asset_portable} |
+| **`WhisperTranscriberSuite-…-macOS-*.dmg`** | ~400 MB | {asset_macos} |
 
 {download_note}
 

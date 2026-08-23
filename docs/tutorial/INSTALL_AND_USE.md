@@ -1,9 +1,9 @@
-# Whisper Project — Install & Use Guide
+# Whisper Transcriber Suite — Install & Use Guide
 
 A plain-English, step-by-step guide for new users. It doubles as the
 outline for the YouTube tutorial (see `VIDEO_SCRIPT.md` in this folder).
 
-> Whisper Project turns audio/video into text and subtitles — **offline**,
+> Whisper Transcriber Suite turns audio/video into text and subtitles — **offline**,
 > on your own computer. No account, no API key, nothing uploaded.
 
 ---
@@ -13,14 +13,14 @@ outline for the YouTube tutorial (see `VIDEO_SCRIPT.md` in this folder).
 ### Windows (easiest)
 
 1. Open the **Releases** page and download the latest
-   **`WhisperProject-vX.Y.Z-Setup-Standard.exe`**.
+   **`WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe`**.
 2. Run it. If Windows SmartScreen warns ("unknown publisher"), click
    **More info → Run anyway** (the app is unsigned but safe).
-3. Pick the install folder, finish, and launch **Whisper Project** from the
+3. Pick the install folder, finish, and launch **Whisper Transcriber Suite** from the
    Start menu / desktop shortcut.
 
 Prefer no install? Download **`...-Portable.zip`**, extract it anywhere, and
-double-click **`Run Whisper Project.bat`**.
+double-click **`Run Whisper Transcriber Suite.bat`**.
 
 ### macOS
 

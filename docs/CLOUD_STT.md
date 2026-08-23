@@ -1,6 +1,6 @@
 # Cloud Speech-to-Text (optional) — Google Gemini API
 
-The Whisper Project is **offline by default**: every default backend runs
+The Whisper Transcriber Suite is **offline by default**: every default backend runs
 on your own machine and nothing is uploaded. This optional backend is the
 one exception. When you select it, your audio is **uploaded to Google**
 for transcription. It exists for users who want a fast, no-local-model
@@ -34,7 +34,7 @@ a simple pasted key:
 4. Set the **Backend** dropdown to `cloud_stt`, then **Save**.
 
 The key is stored in cleartext in your per-user `config.json` under
-`%LOCALAPPDATA%\WhisperProject` (the same place cookies and folder paths
+`%LOCALAPPDATA%\WhisperTranscriberSuite` (the same place cookies and folder paths
 are already stored). It is not encrypted. Treat that file accordingly.
 
 ## Privacy / offline trade-off (read this)

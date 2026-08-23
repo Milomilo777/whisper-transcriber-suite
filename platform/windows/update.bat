@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================================
-REM  Whisper Project - Windows updater for a SOURCE (git clone) install.
+REM  Whisper Transcriber Suite - Windows updater for a SOURCE (git clone) install.
 REM
 REM  Mirrors platform/linux/update.sh: pull the latest source, then refresh
 REM  the Python dependencies. An update is just new source + upgraded deps.

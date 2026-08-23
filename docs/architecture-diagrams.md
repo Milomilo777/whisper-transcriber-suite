@@ -46,7 +46,7 @@ flowchart TB
         OTR["integrations/otranscribe.py"]
     end
 
-    subgraph FS ["%LOCALAPPDATA%\\WhisperProject\\"]
+    subgraph FS ["%LOCALAPPDATA%\\WhisperTranscriberSuite\\"]
         ConfigJ[("config.json")]
         Logs[("logs/app.log")]
         Models[("Cache/models/...")]
@@ -99,7 +99,7 @@ Legend: pink = user · blue = UI · green = `core/` · orange = transcription wo
 
 The colored detailed view, with every subsystem and every file path labeled:
 
-![Whisper Project — system architecture](architecture.svg)
+![Whisper Transcriber Suite — system architecture](architecture.svg)
 
 If GitHub doesn't inline the SVG above on your client, open [`architecture.svg`](architecture.svg) directly.
 

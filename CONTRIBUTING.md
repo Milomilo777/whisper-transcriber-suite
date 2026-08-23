@@ -1,4 +1,4 @@
-# Contributing to Whisper Project
+# Contributing to Whisper Transcriber Suite
 
 Thanks for considering a contribution. This is a Windows desktop app
 (Python + Tkinter) that transcribes audio/video locally with Whisper

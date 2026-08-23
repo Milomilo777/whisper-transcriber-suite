@@ -1,6 +1,6 @@
 # YouTube tutorial — screencast script
 
-A ready-to-record script for a ~6–8 minute "Install & Use Whisper Project"
+A ready-to-record script for a ~6–8 minute "Install & Use Whisper Transcriber Suite"
 video. Record your screen (OBS / built-in recorder) following the SHOW
 column; read the SAY column as narration. Keep it relaxed — pause while
 things download/process and cut those waits in editing.
@@ -12,7 +12,7 @@ Tip: record at 1080p, hide personal info, and zoom in on small UI bits.
 ## 0. Intro  (~20s)
 
 - **SHOW:** app open on the Transcribe tab; title bar shows the version.
-- **SAY:** "This is Whisper Project — it turns audio and video into text and
+- **SAY:** "This is Whisper Transcriber Suite — it turns audio and video into text and
   subtitles, completely offline on your own PC. No account, no upload. I'll
   show you how to install it and how to use it."
 
@@ -25,7 +25,7 @@ Tip: record at 1080p, hide personal info, and zoom in on small UI bits.
   may warn that the publisher is unknown — that's normal for a free app like
   this; click More info, then Run anyway. Finish the wizard and open it."
 - **TEXT overlay:** "Portable option: download the ZIP, extract, run 'Run
-  Whisper Project.bat'."
+  Whisper Transcriber Suite.bat'."
 
 ## 2. First launch — model download  (~30s)
 

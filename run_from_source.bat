@@ -2,7 +2,7 @@
 REM ===================================================================
 REM  run_from_source.bat  -  always-up-to-date launcher for this repo.
 REM
-REM  Unlike embed_build\Run Whisper Project.bat (a frozen, packaged
+REM  Unlike embed_build\Run Whisper Transcriber Suite.bat (a frozen, packaged
 REM  snapshot that only changes when someone deliberately rebuilds
 REM  it), this launches the app DIRECTLY from this git checkout. Any
 REM  commit landed in this folder (by this Claude session, or a
