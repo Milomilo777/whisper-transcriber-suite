@@ -355,7 +355,7 @@ class _UpdateApp:
         self.download_events = Queue()
         self.entry_file = __file__
 
-    def yt_dlp_path(self):
+    def yt_dlp_path(self) -> str:
         return "yt-dlp"
 
 
@@ -398,3 +398,69 @@ def test_maybe_update_yt_dlp_stamps_timestamp_on_success(monkeypatch):
     DownloadService(app).maybe_update_yt_dlp(task=None)
     assert "last_yt_dlp_update_check" in cfg
     assert saved and "last_yt_dlp_update_check" in saved[0]
+
+
+# --------------------------------------------------------------------------
+# 5. maybe_update_yt_dlp() must skip when yt-dlp's own directory isn't
+#    writable, e.g. a Setup-Standard install under Program Files run from a
+#    non-admin Windows account (issue #6). The old guard only checked
+#    sys.frozen, which the shipped embeddable-Python build never sets, so it
+#    attempted "yt-dlp --update" in a directory it had no permission to
+#    write to, every 24h, forever.
+# --------------------------------------------------------------------------
+
+
+class _PathUpdateApp(_UpdateApp):
+    """_UpdateApp variant whose yt_dlp_path() points at a real directory,
+    so the writability guard has something concrete to check."""
+
+    def __init__(self, cfg, yt_dlp_dir):
+        super().__init__(cfg)
+        self._yt_dlp_path = str(yt_dlp_dir / "yt-dlp.exe")
+
+    def yt_dlp_path(self) -> str:
+        return self._yt_dlp_path
+
+
+def test_maybe_update_yt_dlp_skips_when_directory_not_writable(monkeypatch, tmp_path):
+    """A Program-Files-style install dir the current account can't write to
+    must be skipped outright: no subprocess call, no timestamp stamped.
+
+    Mocks the module's _dir_is_writable() rather than os.access(): on
+    Windows os.access(path, os.W_OK) only consults the legacy read-only
+    attribute, not the NTFS ACL that actually protects a Program Files
+    dir from a non-admin account, so it cannot be used to simulate this
+    case (confirmed empirically -- it returns True even under an explicit
+    icacls /deny ACE). _dir_is_writable() probes with a real write instead.
+    """
+    calls = []
+    monkeypatch.setattr(
+        "app.services.download_service.subprocess.run",
+        lambda *a, **k: calls.append((a, k)),
+    )
+    monkeypatch.setattr(
+        "app.services.download_service._dir_is_writable", lambda _d: False
+    )
+    cfg = {"auto_update_yt_dlp": True}
+    app = _PathUpdateApp(cfg, tmp_path)
+    DownloadService(app).maybe_update_yt_dlp(task=None)
+    assert calls == []
+    assert "last_yt_dlp_update_check" not in cfg
+
+
+def test_maybe_update_yt_dlp_runs_when_directory_writable(monkeypatch, tmp_path):
+    """Sanity check for the other side of the guard: a writable install dir
+    (e.g. Portable, or Setup-Standard under a user-writable location) must
+    still update as before. tmp_path is a real writable directory, so this
+    exercises the real _dir_is_writable() probe end to end (unmocked)."""
+    monkeypatch.setattr(
+        "app.services.download_service.subprocess.run",
+        lambda *_a, **_k: types.SimpleNamespace(stdout="", stderr="", returncode=0),
+    )
+    monkeypatch.setattr(
+        "app.services.download_service.save_config", lambda _c: None
+    )
+    cfg = {"auto_update_yt_dlp": True}
+    app = _PathUpdateApp(cfg, tmp_path)
+    DownloadService(app).maybe_update_yt_dlp(task=None)
+    assert "last_yt_dlp_update_check" in cfg

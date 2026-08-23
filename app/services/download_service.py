@@ -62,6 +62,33 @@ if TYPE_CHECKING:
     from app.domain.tasks import VideoDownloadTask
 
 
+def _dir_is_writable(path: str) -> bool:
+    """Probe write access to ``path`` by actually writing a throwaway file.
+
+    ``os.access(path, os.W_OK)`` is not reliable for this on Windows: the
+    Microsoft CRT ``_waccess`` call it wraps only consults the legacy
+    per-file read-only attribute, not the NTFS ACL that actually protects
+    a Program Files install directory from a non-admin account -- it
+    returns True even where a real write would raise PermissionError
+    (confirmed against an explicit icacls /deny ACE). A real write/remove
+    is the only check that matches what "yt-dlp --update" will actually
+    hit.
+    """
+    probe = os.path.join(path, f".wp_write_probe_{os.getpid()}")
+    try:
+        with open(probe, "w"):
+            pass
+    except OSError:
+        return False
+    else:
+        return True
+    finally:
+        try:
+            os.remove(probe)
+        except OSError:
+            pass
+
+
 def _is_smtv_task(task: "VideoDownloadTask") -> bool:
     info = task.format_info or {}
     for key in ("audio", "video"):
@@ -616,6 +643,18 @@ class DownloadService:
         # guard for the same reason).
         if getattr(sys, "frozen", False):
             return
+        yt_dlp_path = self.app.yt_dlp_path()
+        # The Setup-Standard installer (embeddable Python, not frozen) puts
+        # yt-dlp.exe under Program Files by default, which a non-admin
+        # Windows account can't write to -- "yt-dlp --update" would fail
+        # every 24h the same way. Skip whenever the resolved binary's own
+        # directory isn't writable, regardless of why (Program Files,
+        # frozen bundle, read-only mount, ...). A bare "yt-dlp" fallback
+        # name (no bundled binary found; PATH lookup on Linux/Mac) has no
+        # directory to check, so it falls through unchanged.
+        yt_dlp_dir = os.path.dirname(yt_dlp_path)
+        if yt_dlp_dir and not _dir_is_writable(yt_dlp_dir):
+            return
         last = cfg.get("last_yt_dlp_update_check") or ""
         if last:
             try:
@@ -625,7 +664,7 @@ class DownloadService:
             except ValueError:
                 pass
         try:
-            update_cmd = [self.app.yt_dlp_path(), "--update"]
+            update_cmd = [yt_dlp_path, "--update"]
             update = subprocess.run(
                 update_cmd,
                 cwd=os.path.dirname(os.path.abspath(self.app.entry_file)),
