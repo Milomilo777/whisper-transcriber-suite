@@ -3,7 +3,7 @@
 # Run:
 #     pyinstaller --noconfirm --clean whisper_project.spec
 #
-# Output: dist/WhisperProject.exe — a single self-contained file.
+# Output: dist/WhisperTranscriberSuite.exe — a single self-contained file.
 #
 # At launch the runtime extracts every bundled binary/data file to a
 # temporary directory exposed via sys._MEIPASS. The app reads bin/,
@@ -256,7 +256,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='WhisperProject-v1.0.3-Portable',
+    name='WhisperTranscriberSuite-v1.0.3-Portable',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

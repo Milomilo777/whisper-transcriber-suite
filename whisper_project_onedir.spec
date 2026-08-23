@@ -3,7 +3,7 @@
 # Run:
 #     pyinstaller --noconfirm --clean --distpath dist_onedir whisper_project_onedir.spec
 #
-# Output: dist_onedir/WhisperProject/WhisperProject.exe + sibling files.
+# Output: dist_onedir/WhisperTranscriberSuite/WhisperTranscriberSuite.exe + sibling files.
 #
 # This spec exists alongside whisper_project.spec (onefile) so the
 # installer (Inno Setup) can package the directory layout without the
@@ -241,7 +241,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='WhisperProject',
+    name='WhisperTranscriberSuite',
     console=False,
     icon=None,
     # Flatten the bundle so bin/ and DLLs sit beside the exe rather than
@@ -253,5 +253,5 @@ coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
-    name='WhisperProject',
+    name='WhisperTranscriberSuite',
 )

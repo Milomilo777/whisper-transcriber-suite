@@ -1,60 +1,66 @@
-; installer.iss — Inno Setup script for the WhisperProject Windows
-; installer (Method B of the dual-deliverable plan).
+; installer.iss — Inno Setup script for the WhisperTranscriberSuite
+; Windows installer (Method B of the dual-deliverable plan).
 ;
 ; Build:
 ;   "C:\Users\Owner\AppData\Local\Programs\Inno Setup 6\ISCC.exe" installer.iss
 ;
-; The installer packages the onedir build from dist_onedir\WhisperProject\
-; (produced by whisper_project_onedir.spec) and emits a single
-; WhisperProject-Setup.exe under dist_installer\.
+; The installer packages the onedir build from
+; dist_onedir\WhisperTranscriberSuite\ (produced by
+; whisper_project_onedir.spec) and emits a single
+; WhisperTranscriberSuite-Setup.exe under dist_installer\.
 
 [Setup]
 ; Stable AppId — keeps a single, upgradable Add/Remove Programs entry
 ; across versions (and shared with the Standard installer, same product).
-AppId={{734B46B9-5E70-4C4E-8833-0A7506A64376}
-AppName=SMTV Whisper Project
+; Changed 2026-08-23 for the "Whisper Project" -> "Whisper Transcriber
+; Suite" rebrand (was {734B46B9-5E70-4C4E-8833-0A7506A64376} -- see
+; OldAppId in [Code] below, which drives the one-time data migration
+; from the predecessor product).
+AppId={{BD640ACA-1EDB-4F9F-890E-C2DC04221871}
+AppName=SMTV Whisper Transcriber Suite
 AppVersion=1.8.0
 AppPublisher=translation-robot
 AppPublisherURL=https://github.com/translation-robot
-DefaultDirName={autopf}\WhisperProject
-DefaultGroupName=Whisper Project
-OutputBaseFilename=WhisperProject-v1.8.0-Setup-Compact
+DefaultDirName={autopf}\WhisperTranscriberSuite
+DefaultGroupName=Whisper Transcriber Suite
+OutputBaseFilename=WhisperTranscriberSuite-v1.8.0-Setup-Compact
 OutputDir=dist_installer
 Compression=lzma2/ultra
 SolidCompression=yes
 PrivilegesRequired=admin
 WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64compatible
-UninstallDisplayName=Whisper Project
+UninstallDisplayName=Whisper Transcriber Suite
 UninstallDisplayIcon={app}\assets\whisper.ico
 SetupIconFile=assets\whisper.ico
 
 [Files]
-Source: "dist_onedir\WhisperProject\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist_onedir\WhisperTranscriberSuite\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "assets\whisper.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "assets\whisper.png"; DestDir: "{app}\assets"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Whisper Project"; Filename: "{app}\WhisperProject.exe"; IconFilename: "{app}\assets\whisper.ico"
-Name: "{group}\Uninstall Whisper Project"; Filename: "{uninstallexe}"
-Name: "{commondesktop}\Whisper Project"; Filename: "{app}\WhisperProject.exe"; IconFilename: "{app}\assets\whisper.ico"; Tasks: desktopicon
+Name: "{group}\Whisper Transcriber Suite"; Filename: "{app}\WhisperTranscriberSuite.exe"; IconFilename: "{app}\assets\whisper.ico"
+Name: "{group}\Uninstall Whisper Transcriber Suite"; Filename: "{uninstallexe}"
+Name: "{commondesktop}\Whisper Transcriber Suite"; Filename: "{app}\WhisperTranscriberSuite.exe"; IconFilename: "{app}\assets\whisper.ico"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Shortcuts:"
-Name: "shellext"; Description: "Add 'Transcribe with Whisper Project' to the Windows Explorer right-click menu"; GroupDescription: "Integration:"
+Name: "shellext"; Description: "Add 'Transcribe with Whisper Transcriber Suite' to the Windows Explorer right-click menu"; GroupDescription: "Integration:"
 
 [Registry]
-; Explorer shell extension — adds a 'Transcribe with Whisper Project'
-; verb to every file's right-click menu. Hits the CLI mode added in
-; v0.7.0 (gui.py / WhisperProject.exe transcribe "<path>"). The keys
-; live under HKCR\*\shell so they apply to every file regardless of
-; extension; admin install means we write them once for all users.
-Root: HKCR; Subkey: "*\shell\WhisperProjectTranscribe"; ValueType: string; ValueName: ""; ValueData: "Transcribe with Whisper Project"; Flags: uninsdeletekey; Tasks: shellext
-Root: HKCR; Subkey: "*\shell\WhisperProjectTranscribe"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\WhisperProject.exe,0"; Tasks: shellext
-Root: HKCR; Subkey: "*\shell\WhisperProjectTranscribe\command"; ValueType: string; ValueName: ""; ValueData: """{app}\WhisperProject.exe"" transcribe ""%1"""; Tasks: shellext
+; Explorer shell extension — adds a 'Transcribe with Whisper Transcriber
+; Suite' verb to every file's right-click menu. Hits the CLI mode added
+; in v0.7.0 (gui.py / WhisperTranscriberSuite.exe transcribe "<path>").
+; The keys live under HKCR\*\shell so they apply to every file
+; regardless of extension; admin install means we write them once for
+; all users.
+Root: HKCR; Subkey: "*\shell\WhisperTranscriberSuiteTranscribe"; ValueType: string; ValueName: ""; ValueData: "Transcribe with Whisper Transcriber Suite"; Flags: uninsdeletekey; Tasks: shellext
+Root: HKCR; Subkey: "*\shell\WhisperTranscriberSuiteTranscribe"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\WhisperTranscriberSuite.exe,0"; Tasks: shellext
+Root: HKCR; Subkey: "*\shell\WhisperTranscriberSuiteTranscribe\command"; ValueType: string; ValueName: ""; ValueData: """{app}\WhisperTranscriberSuite.exe"" transcribe ""%1"""; Tasks: shellext
 
 [Run]
-Filename: "{app}\WhisperProject.exe"; Description: "Launch Whisper Project"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\WhisperTranscriberSuite.exe"; Description: "Launch Whisper Transcriber Suite"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 ; PyInstaller drops __pycache__ trees beside the exe on first
@@ -72,15 +78,69 @@ Type: dirifempty; Name: "{app}"
 //  self-contained (Inno has no [Include]).
 // --------------------------------------------------------------------
 
-function GetUninstallString(): String;
+function GetUninstallStringForAppId(AnAppId: String): String;
 var
   UninstPath, UninstString: String;
 begin
-  UninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1';
+  UninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + AnAppId + '_is1';
   UninstString := '';
   if not RegQueryStringValue(HKLM, UninstPath, 'UninstallString', UninstString) then
     RegQueryStringValue(HKLM32, UninstPath, 'UninstallString', UninstString);
   Result := UninstString;
+end;
+
+function GetUninstallString(): String;
+begin
+  Result := GetUninstallStringForAppId('{#SetupSetting("AppId")}');
+end;
+
+// --------------------------------------------------------------------
+//  One-time migration from the predecessor product ("Whisper Project",
+//  AppId OldAppId) — identical logic to installer_embed.iss. See that
+//  file for the full rationale; this script keeps a copy so the two
+//  installers stay self-contained (Inno has no [Include]).
+// --------------------------------------------------------------------
+
+const
+  OldAppId = '{734B46B9-5E70-4C4E-8833-0A7506A64376}';
+
+procedure MigrateOldAppData();
+var
+  OldDataDir, NewDataDir, UninstString: String;
+  DataFiles: TArrayOfString;
+  i: Integer;
+  ResultCode: Integer;
+begin
+  OldDataDir := ExpandConstant('{localappdata}\WhisperProject');
+  NewDataDir := ExpandConstant('{localappdata}\WhisperTranscriberSuite');
+  // Gate on the NEW config.json specifically -- see installer_embed.iss
+  // for the full rationale (a real install test on 2026-08-23 found
+  // that gating on the bare folder's existence let a stray empty
+  // new-name folder from an unrelated earlier run silently skip a
+  // real migration). Copy only the small settings/history files
+  // directly with FileCopy, not the whole tree with xcopy -- Cache\
+  // can hold several GB of models and Logs\ hundreds of small debug
+  // logs, and neither is needed: config.json's hub_folder value still
+  // resolves to the OLD, still-on-disk model cache either way.
+  if DirExists(OldDataDir) and not FileExists(NewDataDir + '\config.json') then begin
+    if not DirExists(NewDataDir) then
+      ForceDirectories(NewDataDir);
+    DataFiles := ['config.json', 'history.db', 'hardware.json', 'search.db'];
+    for i := 0 to GetArrayLength(DataFiles) - 1 do begin
+      if FileExists(OldDataDir + '\' + DataFiles[i]) then begin
+        if not CopyFile(OldDataDir + '\' + DataFiles[i], NewDataDir + '\' + DataFiles[i], False) then
+          Log('Could not migrate ' + DataFiles[i] + ' from ' + OldDataDir);
+      end;
+    end;
+    Log('Migrated settings/history from ' + OldDataDir + ' to ' + NewDataDir);
+  end;
+  UninstString := GetUninstallStringForAppId(OldAppId);
+  if UninstString = '' then
+    Exit;
+  UninstString := RemoveQuotes(UninstString);
+  if not Exec(UninstString, '/SILENT /NORESTART /SUPPRESSMSGBOXES', '',
+              SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Log('Could not run the old product''s uninstaller: ' + UninstString);
 end;
 
 function InitializeSetup(): Boolean;
@@ -90,12 +150,14 @@ var
 begin
   Result := True;
   UninstString := GetUninstallString();
-  if UninstString = '' then
-    Exit;
-  UninstString := RemoveQuotes(UninstString);
-  if not Exec(UninstString, '/SILENT /NORESTART /SUPPRESSMSGBOXES', '',
-              SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-    Log('Could not run the previous version''s uninstaller: ' + UninstString);
+  if UninstString <> '' then begin
+    UninstString := RemoveQuotes(UninstString);
+    if not Exec(UninstString, '/SILENT /NORESTART /SUPPRESSMSGBOXES', '',
+                SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+      Log('Could not run the previous version''s uninstaller: ' + UninstString);
+  end else begin
+    MigrateOldAppData();
+  end;
 end;
 
 // --------------------------------------------------------------------
@@ -109,7 +171,7 @@ end;
 //  user's; we never touch it without a Yes.
 //
 //  The hub_folder value lives in
-//    %LOCALAPPDATA%\WhisperProject\config.json
+//    %LOCALAPPDATA%\WhisperTranscriberSuite\config.json
 //  which we parse with a tiny regex-free string search to avoid
 //  pulling a JSON library into the Pascal Script side.
 // --------------------------------------------------------------------
@@ -122,12 +184,12 @@ var
   Line, Key, Value: string;
 begin
   Result := '';
-  // platformdirs.user_config_dir("WhisperProject", appauthor=False)
+  // platformdirs.user_config_dir("WhisperTranscriberSuite", appauthor=False)
   // on Windows resolves to %LOCALAPPDATA% (not %APPDATA% which is
   // Roaming). Inno's {localappdata} expands to the same path, so
-  // config.json lives at <localappdata>\WhisperProject\config.json
+  // config.json lives at <localappdata>\WhisperTranscriberSuite\config.json
   // — verified empirically at install time.
-  ConfigPath := ExpandConstant('{localappdata}\WhisperProject\config.json');
+  ConfigPath := ExpandConstant('{localappdata}\WhisperTranscriberSuite\config.json');
   if not FileExists(ConfigPath) then
     Exit;
   if not LoadStringsFromFile(ConfigPath, Lines) then

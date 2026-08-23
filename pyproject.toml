@@ -30,7 +30,7 @@ dependencies = [
     "platformdirs>=4.0.0",
     # Session-13 / Session-14 runtime deps that were previously
     # only in requirements.txt — kept here too so `pip install
-    # whisper-project` yields a runnable install.
+    # whisper-transcriber-suite` yields a runnable install.
     "python-docx>=1.0",
     "tkinterdnd2>=0.4.0",
     "sherpa-onnx>=1.10",

@@ -1,7 +1,7 @@
 ; installer_embed.iss — Inno Setup script for Method C
 ; (Standard installer with an embeddable Python interpreter).
 ;
-; Builds: dist_installer\WhisperProject-v0.7.1-Setup-Standard.exe
+; Builds: dist_installer\WhisperTranscriberSuite-v0.7.1-Setup-Standard.exe
 ;
 ; Source tree expected: embed_build\ — produced by
 ; build_embed_installer.bat. The tree contains a self-contained
@@ -17,21 +17,25 @@
 [Setup]
 ; Stable AppId — keeps a single, upgradable Add/Remove Programs entry
 ; across versions (and shared with the Compact installer, same product).
-AppId={{734B46B9-5E70-4C4E-8833-0A7506A64376}
-AppName=Whisper Project
+; Changed 2026-08-23 for the "Whisper Project" -> "Whisper Transcriber
+; Suite" rebrand (was {734B46B9-5E70-4C4E-8833-0A7506A64376} -- see
+; OldAppId in [Code] below, which drives the one-time data migration
+; from the predecessor product).
+AppId={{BD640ACA-1EDB-4F9F-890E-C2DC04221871}
+AppName=Whisper Transcriber Suite
 AppVersion={#MyAppVersion}
 AppPublisher=translation-robot
 AppPublisherURL=https://github.com/translation-robot
-DefaultDirName={autopf}\WhisperProject
-DefaultGroupName=Whisper Project
-OutputBaseFilename=WhisperProject-v{#MyAppVersion}-Setup-Standard
+DefaultDirName={autopf}\WhisperTranscriberSuite
+DefaultGroupName=Whisper Transcriber Suite
+OutputBaseFilename=WhisperTranscriberSuite-v{#MyAppVersion}-Setup-Standard
 OutputDir=dist_installer
 Compression=lzma2/ultra
 SolidCompression=yes
 PrivilegesRequired=admin
 WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64compatible
-UninstallDisplayName=Whisper Project
+UninstallDisplayName=Whisper Transcriber Suite
 UninstallDisplayIcon={app}\assets\whisper.ico
 SetupIconFile=assets\whisper.ico
 
@@ -41,13 +45,13 @@ Source: "assets\whisper.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "assets\whisper.png"; DestDir: "{app}\assets"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Whisper Project {#MyAppVersion}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\gui.py"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\whisper.ico"
-Name: "{group}\Uninstall Whisper Project"; Filename: "{uninstallexe}"
-Name: "{commondesktop}\Whisper Project {#MyAppVersion}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\gui.py"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\whisper.ico"; Tasks: desktopicon
+Name: "{group}\Whisper Transcriber Suite {#MyAppVersion}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\gui.py"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\whisper.ico"
+Name: "{group}\Uninstall Whisper Transcriber Suite"; Filename: "{uninstallexe}"
+Name: "{commondesktop}\Whisper Transcriber Suite {#MyAppVersion}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\gui.py"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\whisper.ico"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Shortcuts:"
-Name: "shellext"; Description: "Add 'Transcribe with Whisper Project' to the Windows Explorer right-click menu"; GroupDescription: "Integration:"
+Name: "shellext"; Description: "Add 'Transcribe with Whisper Transcriber Suite' to the Windows Explorer right-click menu"; GroupDescription: "Integration:"
 ; Video Tiling (video wall) is OFF by default (owner request, 2026-08-15):
 ; it's a niche multi-monitor live-stream grid most users never touch.
 ; Leaving this task unticked drops a no_tiling.flag marker in {app}; the
@@ -60,12 +64,12 @@ Name: "tiling"; Description: "Install the Video Tiling (video wall) feature (adv
 ; layout points at pythonw.exe + gui.py instead of a frozen binary.
 ; pythonw is the windowless launcher so the CLI run from Explorer
 ; doesn't pop a console.
-Root: HKCR; Subkey: "*\shell\WhisperProjectTranscribe"; ValueType: string; ValueName: ""; ValueData: "Transcribe with Whisper Project"; Flags: uninsdeletekey; Tasks: shellext
-Root: HKCR; Subkey: "*\shell\WhisperProjectTranscribe"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\python\pythonw.exe,0"; Tasks: shellext
-Root: HKCR; Subkey: "*\shell\WhisperProjectTranscribe\command"; ValueType: string; ValueName: ""; ValueData: """{app}\python\pythonw.exe"" ""{app}\gui.py"" transcribe ""%1"""; Tasks: shellext
+Root: HKCR; Subkey: "*\shell\WhisperTranscriberSuiteTranscribe"; ValueType: string; ValueName: ""; ValueData: "Transcribe with Whisper Transcriber Suite"; Flags: uninsdeletekey; Tasks: shellext
+Root: HKCR; Subkey: "*\shell\WhisperTranscriberSuiteTranscribe"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\python\pythonw.exe,0"; Tasks: shellext
+Root: HKCR; Subkey: "*\shell\WhisperTranscriberSuiteTranscribe\command"; ValueType: string; ValueName: ""; ValueData: """{app}\python\pythonw.exe"" ""{app}\gui.py"" transcribe ""%1"""; Tasks: shellext
 
 [Run]
-Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\gui.py"""; WorkingDir: "{app}"; Description: "Launch Whisper Project"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\gui.py"""; WorkingDir: "{app}"; Description: "Launch Whisper Transcriber Suite"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 ; Python writes __pycache__ trees at runtime; Inno doesn't track
@@ -97,15 +101,85 @@ Type: dirifempty; Name: "{app}"
 //  one-click "no need to uninstall first" experience intact.
 // --------------------------------------------------------------------
 
-function GetUninstallString(): String;
+function GetUninstallStringForAppId(AnAppId: String): String;
 var
   UninstPath, UninstString: String;
 begin
-  UninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1';
+  UninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + AnAppId + '_is1';
   UninstString := '';
   if not RegQueryStringValue(HKLM, UninstPath, 'UninstallString', UninstString) then
     RegQueryStringValue(HKLM32, UninstPath, 'UninstallString', UninstString);
   Result := UninstString;
+end;
+
+function GetUninstallString(): String;
+begin
+  Result := GetUninstallStringForAppId('{#SetupSetting("AppId")}');
+end;
+
+// --------------------------------------------------------------------
+//  One-time migration from the predecessor product ("Whisper Project",
+//  AppId OldAppId) to this one (the 2026-08-23 rebrand). Copies -- NEVER
+//  moves -- the old per-user data folder to the new APP_NAME location,
+//  then silently removes the old product via its own uninstaller: same
+//  "no need to uninstall first" experience as a same-product upgrade,
+//  just crossing the rename. The old %LOCALAPPDATA%\WhisperProject\
+//  folder is deliberately left behind afterwards -- if the copy step
+//  has a bug, the user's settings/history/model cache are never at
+//  risk, just briefly duplicated. Safe to delete by hand once the new
+//  app is confirmed working. Idempotent: skips the copy if the new
+//  folder already exists (e.g. this ran on a previous attempt).
+// --------------------------------------------------------------------
+
+const
+  OldAppId = '{734B46B9-5E70-4C4E-8833-0A7506A64376}';
+
+procedure MigrateOldAppData();
+var
+  OldDataDir, NewDataDir, UninstString: String;
+  DataFiles: TArrayOfString;
+  i: Integer;
+  ResultCode: Integer;
+begin
+  OldDataDir := ExpandConstant('{localappdata}\WhisperProject');
+  NewDataDir := ExpandConstant('{localappdata}\WhisperTranscriberSuite');
+  // Gate on the NEW config.json specifically, not just the folder's
+  // existence: a bare folder (Cache\/Logs\ with no config.json) can
+  // already exist from an unrelated early code path -- e.g. the
+  // Portable build was run once before this installer -- and gating
+  // on DirExists alone would then skip a real migration and silently
+  // strand the user's actual settings/history in the old folder
+  // (caught by an install test on 2026-08-23: a prior direct launch
+  // had created an empty new-name folder, and the old guard treated
+  // that as "already migrated").
+  if DirExists(OldDataDir) and not FileExists(NewDataDir + '\config.json') then begin
+    if not DirExists(NewDataDir) then
+      ForceDirectories(NewDataDir);
+    // Copy only the small, meaningful settings/history files directly
+    // with FileCopy -- NOT the whole tree. A real install test on
+    // 2026-08-23 found Cache\ can hold several GB of downloaded
+    // Whisper models and Logs\ can hold hundreds of small per-run
+    // worker debug logs; shelling out to xcopy for the full tree took
+    // long enough to look hung. Neither is needed anyway: config.json
+    // is copied as-is, so its hub_folder value (default or custom)
+    // still resolves to the OLD, still-on-disk Cache\models -- the
+    // model cache is transparently reused with zero copying.
+    DataFiles := ['config.json', 'history.db', 'hardware.json', 'search.db'];
+    for i := 0 to GetArrayLength(DataFiles) - 1 do begin
+      if FileExists(OldDataDir + '\' + DataFiles[i]) then begin
+        if not CopyFile(OldDataDir + '\' + DataFiles[i], NewDataDir + '\' + DataFiles[i], False) then
+          Log('Could not migrate ' + DataFiles[i] + ' from ' + OldDataDir);
+      end;
+    end;
+    Log('Migrated settings/history from ' + OldDataDir + ' to ' + NewDataDir);
+  end;
+  UninstString := GetUninstallStringForAppId(OldAppId);
+  if UninstString = '' then
+    Exit;
+  UninstString := RemoveQuotes(UninstString);
+  if not Exec(UninstString, '/SILENT /NORESTART /SUPPRESSMSGBOXES', '',
+              SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Log('Could not run the old product''s uninstaller: ' + UninstString);
 end;
 
 function InitializeSetup(): Boolean;
@@ -114,17 +188,23 @@ var
   ResultCode: Integer;
 begin
   Result := True;
+  // Same-product upgrade (a newer Whisper Transcriber Suite over an
+  // older one) takes priority -- unchanged logic, now scoped to the
+  // new AppId. Only when there's no same-product predecessor do we
+  // check for the pre-rebrand "Whisper Project" product instead.
   UninstString := GetUninstallString();
-  if UninstString = '' then
-    Exit;
-  UninstString := RemoveQuotes(UninstString);
-  // /SUPPRESSMSGBOXES auto-answers any Pascal MsgBox in the OLD
-  // uninstaller too; CurUninstallStepChanged below skips the hub-folder
-  // deletion prompt entirely when UninstallSilent() is true, so a model
-  // hub OUTSIDE the install dir survives this automatic step either way.
-  if not Exec(UninstString, '/SILENT /NORESTART /SUPPRESSMSGBOXES', '',
-              SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-    Log('Could not run the previous version''s uninstaller: ' + UninstString);
+  if UninstString <> '' then begin
+    UninstString := RemoveQuotes(UninstString);
+    // /SUPPRESSMSGBOXES auto-answers any Pascal MsgBox in the OLD
+    // uninstaller too; CurUninstallStepChanged below skips the hub-folder
+    // deletion prompt entirely when UninstallSilent() is true, so a model
+    // hub OUTSIDE the install dir survives this automatic step either way.
+    if not Exec(UninstString, '/SILENT /NORESTART /SUPPRESSMSGBOXES', '',
+                SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+      Log('Could not run the previous version''s uninstaller: ' + UninstString);
+  end else begin
+    MigrateOldAppData();
+  end;
 end;
 
 // --------------------------------------------------------------------
@@ -178,7 +258,7 @@ begin
   Result := '';
   // platformdirs.user_config_dir on Windows resolves to %LOCALAPPDATA%
   // with appauthor=False; see installer.iss for the full rationale.
-  ConfigPath := ExpandConstant('{localappdata}\WhisperProject\config.json');
+  ConfigPath := ExpandConstant('{localappdata}\WhisperTranscriberSuite\config.json');
   if not FileExists(ConfigPath) then
     Exit;
   if not LoadStringsFromFile(ConfigPath, Lines) then
@@ -255,7 +335,7 @@ begin
   // (NOT during the silent upgrade step above, which would otherwise
   // wipe hub_folder/API keys/preferences on every single in-place
   // upgrade — see InitializeSetup).
-  ConfigPath := ExpandConstant('{localappdata}\WhisperProject\config.json');
+  ConfigPath := ExpandConstant('{localappdata}\WhisperTranscriberSuite\config.json');
   if FileExists(ConfigPath) then
     DeleteFile(ConfigPath);
 end;
