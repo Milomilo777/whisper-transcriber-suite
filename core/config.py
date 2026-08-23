@@ -24,7 +24,7 @@ _SAVE_LOCK = threading.Lock()
 
 logger = logging.getLogger(__name__)
 
-APP_NAME = "WhisperProject"
+APP_NAME = "WhisperTranscriberSuite"
 APP_AUTHOR = False  # platformdirs: omit author segment on Windows
 
 
@@ -122,7 +122,7 @@ DEFAULT_CONFIG = {
     # unless the user selects transcribe_backend="cloud_stt". The API
     # key is stored in CLEARTEXT here, consistent with how cookies and
     # paths are already stored — config.json lives per-user under
-    # %LOCALAPPDATA%\WhisperProject and is not encrypted. Using this
+    # %LOCALAPPDATA%\WhisperTranscriberSuite and is not encrypted. Using this
     # backend UPLOADS audio to Google (breaks the offline guarantee).
     # cloud_stt_minutes_used is tracked LOCALLY (the $ free credit is
     # NOT readable from an API key); cloud_stt_free_minutes_cap is just
@@ -249,7 +249,7 @@ DEFAULT_CONFIG = {
     "llm_remote_model": "",
     # Stored in CLEARTEXT here, consistent with cloud_stt_api_key /
     # gcloud_stt_credentials_json / server_token above — config.json is
-    # per-user under %LOCALAPPDATA%\WhisperProject and is not encrypted.
+    # per-user under %LOCALAPPDATA%\WhisperTranscriberSuite and is not encrypted.
     "llm_remote_api_key": "",
     # v0.8 Phase 3 — auto-chapter markers in the JSON sidecar. Pure
     # heuristic by default; if ai_enabled + LLM loaded, chapter titles
@@ -266,7 +266,7 @@ DEFAULT_CONFIG = {
     # ``models--Vendor--name`` subdirectories. Empty by default so
     # ``app.dialogs.hub_setup`` fires its first-run picker. The
     # picker pre-fills ``core.hub.default_hub_folder()`` =
-    # ``%LOCALAPPDATA%\WhisperProject\Cache\models`` (a per-user,
+    # ``%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\models`` (a per-user,
     # always-writable location — NOT under the Program Files install
     # dir, which is not writable for a standard user).
     # ``model_path`` (above) remains as a per-model override for users
@@ -299,7 +299,7 @@ DEFAULT_CONFIG = {
     #   server_token  — optional shared secret. When non-empty, every request
     #     must present it (X-Auth-Token header or ?token= query). Stored in
     #     CLEARTEXT here, consistent with cookies / API keys — config.json is
-    #     per-user under %LOCALAPPDATA%\WhisperProject and is not encrypted.
+    #     per-user under %LOCALAPPDATA%\WhisperTranscriberSuite and is not encrypted.
     "server_port": 8765,
     "server_max_upload_mb": 512,
     "server_share_lan": False,
@@ -715,7 +715,7 @@ def fetch_online_config(
     if url:
         try:
             req = urllib.request.Request(
-                url, headers={"User-Agent": "WhisperProject"}
+                url, headers={"User-Agent": "WhisperTranscriberSuite"}
             )
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 # Reject an oversized body BEFORE buffering it whole: a
