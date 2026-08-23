@@ -2,7 +2,24 @@
 
 All notable changes to this project. Follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.8.0] — 2026-08-23
+
+### Added
+
+- **Remote LLM provider.** Advanced Settings' AI Layer section can now
+  point the summarize/action-items/ask/translate tools at your own
+  OpenAI-compatible endpoint (OpenAI itself, or a self-hosted
+  Ollama/LM Studio/OpenRouter) instead of only the bundled local model.
+- **Chapters + AI Tools tabs in the transcript viewer.** The right panel
+  is now a Media/Chapters/AI Tools notebook: Chapters lists the sidecar
+  chapter file and seeks the player on click; AI Tools exposes
+  summarize/action items/ask, plus a per-segment translate pass that
+  saves a bilingual `.srt` (original + translated line per cue).
+- **Transcript search** — `Help > Search transcripts...` opens a
+  full-text search dialog over your transcripts.
+- **"Apply noisy-audio preset" button** in Advanced Settings — one click
+  sets VAD/denoise/hallucination-detection to values reasonable for
+  non-studio audio, instead of five separate sliders.
 
 ### Fixed
 
@@ -13,6 +30,25 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the download log. Clicking Download now shows that real reason (and
   logs it), instead of a dead-end message that implies the app is still
   loading when it has already given up.
+- **A download could fail even for a fully public video.** With "Cookies
+  from browser" on and the browser still open, yt-dlp's own cookie-jar
+  read failed and broke the download outright — even when the video
+  never needed cookies. It now retries once without cookies before
+  giving up.
+- **CLI log lines could crash mid-run on Windows** when a file name held
+  a character the console's legacy codepage cannot encode (e.g. an
+  emoji pulled from a social-media title) — the console now substitutes
+  the character instead of raising.
+- **Bilingual-subtitle translations could come back wrapped in stray
+  quote marks** (a local-LLM quirk on short segments) — now stripped
+  before the line is written to the `.srt`.
+- **Transcript search dialog:** pressing Escape could leave a background
+  search/reindex touching an already-closed window; a slower, older
+  search could overwrite a newer one's results; the results list itself
+  was invisible due to a Treeview parenting bug. All three fixed.
+- **The AI panel could keep using a stale LLM provider** after Advanced
+  Settings' provider/URL/key/model was changed while the transcript
+  viewer stayed open.
 
 ## [1.7.0] — 2026-08-15
 
