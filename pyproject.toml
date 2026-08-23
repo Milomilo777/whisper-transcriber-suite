@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "whisper-project"
+name = "whisper-transcriber-suite"
 version = "1.8.0"
 description = "Local Whisper desktop app — offline transcription + yt-dlp/SMTV download + oTranscribe round-trip"
 readme = "README.md"
@@ -87,7 +87,7 @@ nvidia_asr = [
 ]
 
 [project.scripts]
-whisper-project = "app:run"
+whisper-transcriber-suite = "app:run"
 
 [project.urls]
 Homepage = "https://github.com/Milomilo777/whisper-transcriber-suite"

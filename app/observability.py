@@ -88,7 +88,7 @@ def _app_version() -> str:
     try:
         # pyproject.toml's [project].version is the canonical source.
         import importlib.metadata as md
-        return md.version("whisper-project")
+        return md.version("whisper-transcriber-suite")
     except Exception:  # noqa: BLE001
         pass
     # Fall back to the bundled version constant — works in the frozen /
