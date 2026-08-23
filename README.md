@@ -17,15 +17,15 @@
 
 ### Drag in an audio or video file. Get back a **timed, formatted transcript** — without it ever leaving your computer.
 
-[![CI](https://github.com/Milomilo777/whisper_app/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper_app/actions/workflows/ci.yml)
-[![release](https://img.shields.io/github/v/release/Milomilo777/whisper_app?label=release&color=207a80)](https://github.com/Milomilo777/whisper_app/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper_app/total?color=207a80)](https://github.com/Milomilo777/whisper_app/releases)
-[![codecov](https://codecov.io/gh/Milomilo777/whisper_app/graph/badge.svg)](https://codecov.io/gh/Milomilo777/whisper_app)
+[![CI](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/Milomilo777/whisper-transcriber-suite?label=release&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
+[![codecov](https://codecov.io/gh/Milomilo777/whisper-transcriber-suite/graph/badge.svg)](https://codecov.io/gh/Milomilo777/whisper-transcriber-suite)
 [![License: BSD-3](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#download)
-[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper_app?style=flat&color=207a80)](https://github.com/Milomilo777/whisper_app/stargazers)
+[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/stargazers)
 
-### [⬇  Download for Windows](https://github.com/Milomilo777/whisper_app/releases/latest)
+### [⬇  Download for Windows](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
 
 **[Download](#download)** · **[Screenshots](#what-it-looks-like)** ·
 **[Features](#features)** · **[How it works](#how-it-works)** ·
@@ -73,7 +73,7 @@ No account. No API key. No subscription. Your files stay on your disk.
 
 ## Download
 
-Grab the latest build from the **[releases page](https://github.com/Milomilo777/whisper_app/releases/latest)**:
+Grab the latest build from the **[releases page](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)**:
 
 | Asset | Size | Best for |
 |---|---|---|
@@ -85,10 +85,10 @@ Grab the latest build from the **[releases page](https://github.com/Milomilo777/
 release — older versions stay published and their counts are never
 reset):
 
-[![v1.8.0](https://img.shields.io/github/downloads/Milomilo777/whisper_app/v1.8.0/total?label=v1.8.0&color=207a80)](https://github.com/Milomilo777/whisper_app/releases/tag/v1.8.0)
-[![v1.7.0](https://img.shields.io/github/downloads/Milomilo777/whisper_app/v1.7.0/total?label=v1.7.0&color=8a8a8a)](https://github.com/Milomilo777/whisper_app/releases/tag/v1.7.0)
-[![v1.6.0](https://img.shields.io/github/downloads/Milomilo777/whisper_app/v1.6.0/total?label=v1.6.0&color=8a8a8a)](https://github.com/Milomilo777/whisper_app/releases/tag/v1.6.0)
-[![v1.5.0](https://img.shields.io/github/downloads/Milomilo777/whisper_app/v1.5.0/total?label=v1.5.0&color=8a8a8a)](https://github.com/Milomilo777/whisper_app/releases/tag/v1.5.0)
+[![v1.8.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.8.0/total?label=v1.8.0&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.8.0)
+[![v1.7.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.7.0/total?label=v1.7.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.7.0)
+[![v1.6.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.6.0/total?label=v1.6.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.6.0)
+[![v1.5.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.5.0/total?label=v1.5.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.5.0)
 
 Everything needed is inside — a bundled Python, `ffmpeg`, `ffprobe` and
 `yt-dlp`. The only thing fetched later is the speech model itself
@@ -286,8 +286,8 @@ the upload cap and the `--token` option: [docs/SERVER.md](docs/SERVER.md).
 ## Build from source
 
 ```cmd
-git clone https://github.com/Milomilo777/whisper_app.git
-cd whisper_app
+git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
 pip install -r requirements.txt
 python gui.py
 ```
@@ -340,10 +340,10 @@ freeze and stability audits are archived under
 ## Contributing
 
 Issues, pull requests and
-[Discussions](https://github.com/Milomilo777/whisper_app/discussions) are all
+[Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions) are all
 welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the dev setup, the quality bar
 and the PR conventions; if you are new here, the
-[`good first issue`](https://github.com/Milomilo777/whisper_app/labels/good%20first%20issue)
+[`good first issue`](https://github.com/Milomilo777/whisper-transcriber-suite/labels/good%20first%20issue)
 label is the place to start.
 
 This project follows the [Contributor Covenant](.github/CODE_OF_CONDUCT.md).

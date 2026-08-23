@@ -18,8 +18,8 @@ class WhisperProject < Formula
   include Language::Python::Virtualenv
 
   desc "Offline Whisper transcription + yt-dlp/ffmpeg downloader & video tiling"
-  homepage "https://github.com/Milomilo777/whisper_app"
-  url "https://github.com/Milomilo777/whisper_app/archive/refs/tags/v1.3.6.tar.gz"
+  homepage "https://github.com/Milomilo777/whisper-transcriber-suite"
+  url "https://github.com/Milomilo777/whisper-transcriber-suite/archive/refs/tags/v1.3.6.tar.gz"
   sha256 "PUT_SHA256_OF_THE_TARBALL_HERE"
   license "BSD-3-Clause"
 

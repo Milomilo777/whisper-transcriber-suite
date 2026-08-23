@@ -9,21 +9,21 @@ generated map of the codebase.
 ## Before you start
 
 - **Questions / ideas / "is this worth doing"** → open a
-  [Discussion](https://github.com/Milomilo777/whisper_app/discussions)
+  [Discussion](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
   first. It's cheaper for everyone than a PR that turns out to be the
   wrong direction.
-- **Bugs** → open an [issue](https://github.com/Milomilo777/whisper_app/issues)
+- **Bugs** → open an [issue](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
   with repro steps. The bug report template asks for the info that's
   actually needed to reproduce it.
 - **New to the repo?** Look for issues labeled
-  [`good first issue`](https://github.com/Milomilo777/whisper_app/labels/good%20first%20issue)
-  or [`help wanted`](https://github.com/Milomilo777/whisper_app/labels/help%20wanted).
+  [`good first issue`](https://github.com/Milomilo777/whisper-transcriber-suite/labels/good%20first%20issue)
+  or [`help wanted`](https://github.com/Milomilo777/whisper-transcriber-suite/labels/help%20wanted).
 
 ## Development setup
 
 ```cmd
-git clone https://github.com/Milomilo777/whisper_app.git
-cd whisper_app
+git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
 pip install -r requirements.txt
 python gui.py
 ```

@@ -6,13 +6,13 @@
 
 ### 拖入音频或视频文件，得到**带时间轴、已排版的文字稿** —— 文件全程不离开你的电脑。
 
-[![CI](https://github.com/Milomilo777/whisper_app/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper_app/actions/workflows/ci.yml)
-[![release](https://img.shields.io/github/v/release/Milomilo777/whisper_app?label=release&color=207a80)](https://github.com/Milomilo777/whisper_app/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper_app/total?color=207a80)](https://github.com/Milomilo777/whisper_app/releases)
+[![CI](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/Milomilo777/whisper-transcriber-suite?label=release&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
 [![License: BSD-3](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](../../LICENSE)
-[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper_app?style=flat&color=207a80)](https://github.com/Milomilo777/whisper_app/stargazers)
+[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/stargazers)
 
-### [⬇  下载 Windows 版](https://github.com/Milomilo777/whisper_app/releases/latest)
+### [⬇  下载 Windows 版](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
 
 <p>
   <a href="../../README.md"><img src="https://flagcdn.com/16x12/us.png" alt="" width="16" height="12"> English</a> ∙
@@ -46,7 +46,7 @@
 
 ## 下载
 
-从 **[发布页](https://github.com/Milomilo777/whisper_app/releases/latest)** 获取最新版本：
+从 **[发布页](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)** 获取最新版本：
 
 | 文件 | 大小 | 适合 |
 |---|---|---|
@@ -98,8 +98,8 @@ Tk 图形界面运行在主进程。每个转写任务运行在长期存活的�
 ## 从源码构建
 
 ```bash
-git clone https://github.com/Milomilo777/whisper_app.git
-cd whisper_app
+git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
 pip install -r requirements.txt
 python gui.py
 ```

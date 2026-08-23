@@ -89,8 +89,8 @@ nvidia_asr = [
 whisper-project = "app:run"
 
 [project.urls]
-Homepage = "https://github.com/Milomilo777/whisper_app"
-Repository = "https://github.com/Milomilo777/whisper_app"
+Homepage = "https://github.com/Milomilo777/whisper-transcriber-suite"
+Repository = "https://github.com/Milomilo777/whisper-transcriber-suite"
 Author = "https://github.com/translation-robot"
 
 [tool.setuptools.packages.find]

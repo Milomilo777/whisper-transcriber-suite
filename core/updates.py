@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 # different GitHub owner / repository. They are the single source of
 # truth for both the API URL and the human-facing releases page.
 GITHUB_OWNER = "Milomilo777"
-GITHUB_REPO = "whisper_app"
+GITHUB_REPO = "whisper-transcriber-suite"
 
 # Human-facing page the UI opens on the user's request. ``/releases/latest``
 # redirects to the newest published release's page.

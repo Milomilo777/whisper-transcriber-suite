@@ -5,7 +5,51 @@ this repo. Read this file before anything else.
 
 ---
 
-## 🟢 2026-08-23 (latest) — format-lookup-error fix, a source-run launcher, and v1.8.0 released
+## 🟢 2026-08-23 (latest) — GitHub repo renamed to whisper-transcriber-suite, yt-dlp update permission fix (issue #6)
+
+Owner picked **Whisper Transcriber Suite** (spaced) as the app's final
+display name and asked for the GitHub repo to match. Renamed
+`Milomilo777/whisper_app` → `Milomilo777/whisper-transcriber-suite`
+via the GitHub API (old URLs still 301-redirect, including `git
+clone`, but that only holds until someone else creates a new repo at
+the old name — not relied on). Refreshed the repo topics to match.
+Then updated every in-repo reference so nothing depends on the
+redirect: all `Milomilo777/whisper_app` URLs (badges, clone
+instructions, Homepage/Repository in `pyproject.toml`, the Homebrew
+formula, the i18n README generator template + its 8 generated
+outputs), the `cd whisper_app` post-clone step in each of those, and
+— the one with real runtime effect — `core/updates.py`'s
+`GITHUB_REPO` constant, which feeds the in-app "update available"
+check's `api.github.com` call; `tests/core/test_updates.py` updated
+to match. Left historical mentions of the old name alone (past
+CHANGELOG entries, this file's older entries below, the SMTV bridge
+research doc) since those are dated records, not live references.
+
+Fixed [issue #6](https://github.com/Milomilo777/whisper-transcriber-suite/issues/6):
+a non-admin Windows account could never get yt-dlp auto-updated.
+`maybe_update_yt_dlp()`'s only guard against updating in place was
+`sys.frozen`, which the shipped Setup-Standard build (embeddable
+Python, not PyInstaller) never sets — so it ran `yt-dlp --update`
+every 24h inside `Program Files`, which a standard account can't
+write to. **First fix attempt was wrong and caught during self-review**:
+guarding with `os.access(dir, os.W_OK)` looked reasonable but is not
+reliable on Windows — confirmed empirically with an explicit `icacls
+/deny` ACE that a real write correctly rejected while `os.access`
+still reported the directory writable (it only consults the legacy
+read-only attribute, not the NTFS ACL). Replaced it with
+`_dir_is_writable()`, which probes with a real throwaway-file write
+instead. Also caught on review: the probe was ordered before the 24h
+backoff check, so it ran on every download instead of at most once a
+day — reordered. Two commits on `master`
+(`f48dbe2`, `3a11788`), both pushed. Issue #6 not yet closed/commented
+on GitHub — needs an explicit go-ahead first.
+
+Local git remote (`origin`) still points at the pre-rename URL
+(`.../whisper_app.git`); pushes keep working via the redirect, but
+`git remote set-url` was deliberately not run — this repo's CLAUDE.md
+forbids editing `.git/config` without an explicit ask in-session.
+
+## 🟢 2026-08-23 — format-lookup-error fix, a source-run launcher, and v1.8.0 released
 
 Owner reported a Facebook download+transcribe failing with "no message
 about where the problem was," and assumed the 2026-08-19 cookie-retry

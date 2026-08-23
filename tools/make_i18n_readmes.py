@@ -21,7 +21,7 @@ import io
 import os
 import sys
 
-REPO = "https://github.com/Milomilo777/whisper_app"
+REPO = "https://github.com/Milomilo777/whisper-transcriber-suite"
 
 # Flag images, not flag emoji: Windows renders regional-indicator pairs
 # as letters ("KR") instead of a flag, which is a large share of readers.
@@ -53,10 +53,10 @@ def switcher(current: str) -> str:
 
 
 BADGES = f"""[![CI]({REPO}/actions/workflows/ci.yml/badge.svg)]({REPO}/actions/workflows/ci.yml)
-[![release](https://img.shields.io/github/v/release/Milomilo777/whisper_app?label=release&color=207a80)]({REPO}/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper_app/total?color=207a80)]({REPO}/releases)
+[![release](https://img.shields.io/github/v/release/Milomilo777/whisper-transcriber-suite?label=release&color=207a80)]({REPO}/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?color=207a80)]({REPO}/releases)
 [![License: BSD-3](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](../../LICENSE)
-[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper_app?style=flat&color=207a80)]({REPO}/stargazers)"""
+[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&color=207a80)]({REPO}/stargazers)"""
 
 
 TEMPLATE = """<div align="center">
@@ -136,7 +136,7 @@ TEMPLATE = """<div align="center">
 
 ```bash
 git clone {repo}.git
-cd whisper_app
+cd whisper-transcriber-suite
 pip install -r requirements.txt
 python gui.py
 ```

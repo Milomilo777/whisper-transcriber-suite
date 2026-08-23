@@ -3,7 +3,7 @@
 The exact sequence to ship a new build of Whisper Project. This was
 originally written for a private-distribution workflow; the repo and
 its GitHub releases are now public (`gh release create`/`gh release
-view` against `Milomilo777/whisper_app`) — "Step 8 — Distribute" below
+view` against `Milomilo777/whisper-transcriber-suite`) — "Step 8 — Distribute" below
 is stale on that point, everything else still applies.
 
 If anything here disagrees with `CLAUDE.md`, CLAUDE.md wins (it's

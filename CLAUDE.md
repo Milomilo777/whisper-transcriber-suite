@@ -182,7 +182,7 @@ kind of release that rule is warning against.
 
 `README.md`'s "Download" section carries one shields.io badge per
 release, each scoped to its own tag (`.../downloads/Milomilo777/
-whisper_app/vX.Y.Z/total`) — NOT the repo-wide `.../total` badge at the
+whisper-transcriber-suite/vX.Y.Z/total`) — NOT the repo-wide `.../total` badge at the
 top of the file, which sums across every release and does not show a
 per-version breakdown. **Every time a new version is tagged and
 released, add its own new badge to that list — never remove or replace

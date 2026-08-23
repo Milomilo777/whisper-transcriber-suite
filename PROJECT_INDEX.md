@@ -17,8 +17,8 @@ Optional LAN/web server: python gui.py serve (loopback only, no firewall prompt)
 Reset first-run state: python gui.py --safe-mode  (backs up %LOCALAPPDATA%\WhisperProject\config.json and re-fires the hub-folder picker)
 Full local quality gate before committing: run_tests.bat  (pyright app core, must stay 0 errors/0 warnings/0 informations, then python -m pytest tests/ --ignore=tests/smoke -q)
 Build the two shipped Windows deliverables: build_embed_installer.bat (produces embed_build\), then "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer_embed.iss for the Setup-Standard exe, then a shutil.make_archive zip of embed_build\ for the Portable zip — full recipe in docs/BUILD.md
-Linux install: git clone https://github.com/Milomilo777/whisper_app.git && cd whisper_app && bash platform/linux/install.sh
-macOS install: git clone https://github.com/Milomilo777/whisper_app.git && cd whisper_app && bash platform/macos/install.command
+Linux install: git clone https://github.com/Milomilo777/whisper-transcriber-suite.git && cd whisper-transcriber-suite && bash platform/linux/install.sh
+macOS install: git clone https://github.com/Milomilo777/whisper-transcriber-suite.git && cd whisper-transcriber-suite && bash platform/macos/install.command
 ```
 
 ## Architecture

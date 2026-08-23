@@ -10,8 +10,8 @@ virtualenv next to the repo and add launchers — updating later is just a
 Clone the repo, then:
 
 ```bash
-git clone https://github.com/Milomilo777/whisper_app.git
-cd whisper_app
+git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
 bash platform/linux/install.sh
 ```
 

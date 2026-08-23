@@ -6,13 +6,13 @@
 
 ### 오디오나 영상 파일을 끌어다 놓으세요. **시간 정보가 붙은 정돈된 자막·전사본**이 나옵니다 — 파일은 컴퓨터를 벗어나지 않습니다.
 
-[![CI](https://github.com/Milomilo777/whisper_app/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper_app/actions/workflows/ci.yml)
-[![release](https://img.shields.io/github/v/release/Milomilo777/whisper_app?label=release&color=207a80)](https://github.com/Milomilo777/whisper_app/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper_app/total?color=207a80)](https://github.com/Milomilo777/whisper_app/releases)
+[![CI](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/Milomilo777/whisper-transcriber-suite?label=release&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
 [![License: BSD-3](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](../../LICENSE)
-[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper_app?style=flat&color=207a80)](https://github.com/Milomilo777/whisper_app/stargazers)
+[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/stargazers)
 
-### [⬇  Windows용 다운로드](https://github.com/Milomilo777/whisper_app/releases/latest)
+### [⬇  Windows용 다운로드](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
 
 <p>
   <a href="../../README.md"><img src="https://flagcdn.com/16x12/us.png" alt="" width="16" height="12"> English</a> ∙
@@ -46,7 +46,7 @@ OpenAI Whisper 모델을 **로컬에서** 실행하는 데스크톱 앱입니다
 
 ## 다운로드
 
-최신 빌드는 **[릴리스 페이지](https://github.com/Milomilo777/whisper_app/releases/latest)** 에서 받으세요:
+최신 빌드는 **[릴리스 페이지](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)** 에서 받으세요:
 
 | 파일 | 크기 | 추천 대상 |
 |---|---|---|
@@ -98,8 +98,8 @@ Tk GUI는 메인 프로세스에서 돌아갑니다. 각 전사 작업은 Whispe
 ## 소스에서 빌드
 
 ```bash
-git clone https://github.com/Milomilo777/whisper_app.git
-cd whisper_app
+git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
 pip install -r requirements.txt
 python gui.py
 ```

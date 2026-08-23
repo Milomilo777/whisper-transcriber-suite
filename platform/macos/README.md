@@ -25,8 +25,8 @@ Get the repo **via Terminal** (this matters — see Gatekeeper note), then run
 the installer:
 
 ```bash
-git clone https://github.com/Milomilo777/whisper_app.git
-cd whisper_app
+git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
 bash platform/macos/install.command
 ```
 

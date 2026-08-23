@@ -6,13 +6,13 @@
 
 ### 音声・動画ファイルをドロップするだけ。**タイムコード付きの整形済み文字起こし**が、ファイルを外に出さずに手に入ります。
 
-[![CI](https://github.com/Milomilo777/whisper_app/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper_app/actions/workflows/ci.yml)
-[![release](https://img.shields.io/github/v/release/Milomilo777/whisper_app?label=release&color=207a80)](https://github.com/Milomilo777/whisper_app/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper_app/total?color=207a80)](https://github.com/Milomilo777/whisper_app/releases)
+[![CI](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/Milomilo777/whisper-transcriber-suite?label=release&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
 [![License: BSD-3](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](../../LICENSE)
-[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper_app?style=flat&color=207a80)](https://github.com/Milomilo777/whisper_app/stargazers)
+[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/stargazers)
 
-### [⬇  Windows 版をダウンロード](https://github.com/Milomilo777/whisper_app/releases/latest)
+### [⬇  Windows 版をダウンロード](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
 
 <p>
   <a href="../../README.md"><img src="https://flagcdn.com/16x12/us.png" alt="" width="16" height="12"> English</a> ∙
@@ -46,7 +46,7 @@ OpenAI の Whisper モデルを**ローカルで**動かすデスクトップア
 
 ## ダウンロード
 
-最新版は **[リリースページ](https://github.com/Milomilo777/whisper_app/releases/latest)** から入手できます:
+最新版は **[リリースページ](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)** から入手できます:
 
 | ファイル | サイズ | 向いている人 |
 |---|---|---|
@@ -98,8 +98,8 @@ Tk の GUI はメインプロセスで動作します。各文字起こしジョ
 ## ソースからビルド
 
 ```bash
-git clone https://github.com/Milomilo777/whisper_app.git
-cd whisper_app
+git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
 pip install -r requirements.txt
 python gui.py
 ```

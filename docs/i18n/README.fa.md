@@ -6,13 +6,13 @@
 
 ### یک فایل صوتی یا ویدیویی را رها کنید. یک **رونوشت زمان‌بندی‌شده و قالب‌بندی‌شده** پس بگیرید — بدون آنکه فایل هرگز از رایانه‌ی شما خارج شود.
 
-[![CI](https://github.com/Milomilo777/whisper_app/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper_app/actions/workflows/ci.yml)
-[![release](https://img.shields.io/github/v/release/Milomilo777/whisper_app?label=release&color=207a80)](https://github.com/Milomilo777/whisper_app/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper_app/total?color=207a80)](https://github.com/Milomilo777/whisper_app/releases)
+[![CI](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/Milomilo777/whisper-transcriber-suite?label=release&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
 [![License: BSD-3](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](../../LICENSE)
-[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper_app?style=flat&color=207a80)](https://github.com/Milomilo777/whisper_app/stargazers)
+[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/stargazers)
 
-### [⬇ دانلود برای ویندوز](https://github.com/Milomilo777/whisper_app/releases/latest)
+### [⬇ دانلود برای ویندوز](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
 
 <p>
   <a href="../../README.md"><img src="https://flagcdn.com/16x12/us.png" alt="" width="16" height="12"> English</a> ∙
@@ -46,7 +46,7 @@
 
 ## دانلود
 
-آخرین نسخه را از **[صفحه‌ی رلیزها](https://github.com/Milomilo777/whisper_app/releases/latest)** بردارید:
+آخرین نسخه را از **[صفحه‌ی رلیزها](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)** بردارید:
 
 | فایل | حجم | مناسب برای |
 |---|---|---|
@@ -98,8 +98,8 @@
 ## ساخت از سورس
 
 ```bash
-git clone https://github.com/Milomilo777/whisper_app.git
-cd whisper_app
+git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
 pip install -r requirements.txt
 python gui.py
 ```

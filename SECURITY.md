@@ -3,12 +3,12 @@
 ## Supported versions
 
 Only the latest release gets fixes. Check yours under **About**, or against
-[the releases page](https://github.com/Milomilo777/whisper_app/releases/latest).
+[the releases page](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest).
 
 ## Reporting a vulnerability
 
 Please use GitHub's private reporting —
-[**Report a vulnerability**](https://github.com/Milomilo777/whisper_app/security/advisories/new)
+[**Report a vulnerability**](https://github.com/Milomilo777/whisper-transcriber-suite/security/advisories/new)
 — rather than a public issue, and give it a few days before disclosing.
 
 Helpful to include: the version, the OS, what an attacker would gain, and the

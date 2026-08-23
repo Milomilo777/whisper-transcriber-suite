@@ -6,13 +6,13 @@
 
 ### Arraste um ficheiro de áudio ou vídeo. Receba uma **transcrição com marcação de tempo e formatada** — sem que o ficheiro saia do seu computador.
 
-[![CI](https://github.com/Milomilo777/whisper_app/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper_app/actions/workflows/ci.yml)
-[![release](https://img.shields.io/github/v/release/Milomilo777/whisper_app?label=release&color=207a80)](https://github.com/Milomilo777/whisper_app/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper_app/total?color=207a80)](https://github.com/Milomilo777/whisper_app/releases)
+[![CI](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/Milomilo777/whisper-transcriber-suite?label=release&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
 [![License: BSD-3](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](../../LICENSE)
-[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper_app?style=flat&color=207a80)](https://github.com/Milomilo777/whisper_app/stargazers)
+[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/stargazers)
 
-### [⬇  Transferir para Windows](https://github.com/Milomilo777/whisper_app/releases/latest)
+### [⬇  Transferir para Windows](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
 
 <p>
   <a href="../../README.md"><img src="https://flagcdn.com/16x12/us.png" alt="" width="16" height="12"> English</a> ∙
@@ -46,7 +46,7 @@ Sem conta. Sem chave de API. Sem subscrição. Os seus ficheiros ficam no seu di
 
 ## Transferência
 
-Obtenha a versão mais recente na **[página de releases](https://github.com/Milomilo777/whisper_app/releases/latest)**:
+Obtenha a versão mais recente na **[página de releases](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)**:
 
 | Ficheiro | Tamanho | Indicado para |
 |---|---|---|
@@ -98,8 +98,8 @@ Todos os backends por omissão correm na sua máquina. Nada é enviado, não exi
 ## Compilar a partir do código
 
 ```bash
-git clone https://github.com/Milomilo777/whisper_app.git
-cd whisper_app
+git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
 pip install -r requirements.txt
 python gui.py
 ```

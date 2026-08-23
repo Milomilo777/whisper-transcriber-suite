@@ -25,7 +25,7 @@ v1.0.3 ships two independent installers. Pick the one that fits.
 Both transcribe a real video end-to-end on a clean Windows 10/11 x64 machine.
 
 🔗 Releases page (both assets):
-**https://github.com/Milomilo777/whisper_app/releases/latest**
+**https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest**
 
 ### If you picked Portable
 
@@ -179,8 +179,8 @@ Paste that file into a GitHub issue along with a short description of what you w
 If you want to build it yourself from source:
 
 ```cmd
-git clone https://github.com/Milomilo777/whisper_app
-cd whisper_app
+git clone https://github.com/Milomilo777/whisper-transcriber-suite
+cd whisper-transcriber-suite
 
 REM Prerequisites
 python -m venv .venv
