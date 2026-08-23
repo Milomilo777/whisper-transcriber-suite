@@ -2,6 +2,18 @@
 
 All notable changes to this project. Follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- **A failed format lookup (Facebook, Instagram, or any other site) now
+  tells you why.** Previously, once yt-dlp's initial probe failed, the
+  Download button just repeated "Wait for formats to load" forever — the
+  real error sat in a small, easy-to-miss status label and never reached
+  the download log. Clicking Download now shows that real reason (and
+  logs it), instead of a dead-end message that implies the app is still
+  loading when it has already given up.
+
 ## [1.7.0] — 2026-08-15
 
 ### Fixed

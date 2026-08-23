@@ -837,6 +837,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app._smtv_series_toggle = _toggle  # type: ignore[attr-defined]
 
     app.format_status_var = tk.StringVar(value="Enter a URL to load available formats")
+    app.format_lookup_error = ""
     ttk.Label(top, textvariable=app.format_status_var).grid(
         row=9, column=1, columnspan=2, sticky="w", padx=(6, 0), pady=(4, 0)
     )

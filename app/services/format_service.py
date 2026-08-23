@@ -40,6 +40,7 @@ class FormatService:
         self.app.video_format_map = {}
         self.app.current_video_title = ""
         self.app.current_video_language = ""
+        self.app.format_lookup_error = ""
         self.app.audio_format_combo["values"] = []
         self.app.video_format_combo["values"] = []
         self.app.audio_format_var.set("")
@@ -217,6 +218,7 @@ class FormatService:
                     )
                     try:
                         app.format_status_var.set("Could not read formats for this URL")
+                        app.format_lookup_error = "Could not read formats for this URL"
                     except Exception:  # noqa: BLE001
                         pass
         finally:
@@ -232,6 +234,7 @@ class FormatService:
 
         if kind == "error":
             app.format_status_var.set(payload)
+            app.format_lookup_error = str(payload)
             return
 
         if kind == "smtv_formats":

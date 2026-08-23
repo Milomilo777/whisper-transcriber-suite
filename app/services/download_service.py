@@ -658,6 +658,34 @@ class DownloadService:
         except Exception as e:  # noqa: BLE001
             self.app.download_events.put(("log", task, f"yt-dlp update skipped: {e}"))
 
+    def _warn_format_missing(self, kind: str) -> None:
+        """Explain why a required audio/video format isn't selected.
+
+        "Wait for formats to load" is only true while the lookup is still
+        running (or hasn't been tried for this URL yet). Once the lookup
+        has already run and failed -- an extractor rejecting the URL
+        (Facebook/Instagram/X often need a logged-in session, or break
+        outright when the site changes its page structure), a network
+        error, a deleted/private video -- that message is a dead end: it
+        tells the user to wait for something that will never finish, and
+        the real reason (format_service already captured it) never
+        reaches the download log the user is watching. Surface it in both
+        places instead.
+        """
+        from tkinter import messagebox
+
+        app = self.app
+        reason = getattr(app, "format_lookup_error", "")
+        if reason:
+            message = (
+                f"This URL's {kind} formats could not be loaded, so it "
+                f"cannot be downloaded yet:\n\n{reason}"
+            )
+            app.log(f"Download blocked -- format lookup failed: {reason}")
+        else:
+            message = f"Wait for formats to load, then select an {kind} format."
+        messagebox.showwarning(f"Missing {kind} format", message, parent=app)
+
     def enqueue_from_form(self) -> None:
         """Read the download tab form, validate, build a task, and enqueue."""
         from tkinter import messagebox
@@ -712,12 +740,10 @@ class DownloadService:
         # no mp3 variant at all, so an empty audio map must NOT block it.
         audio_required = mode == "Audio" or not is_smtv
         if audio_required and (not audio_label or audio_label not in app.audio_format_map):
-            messagebox.showwarning("Missing audio format",
-                                   "Wait for formats to load, then select an audio format.", parent=app)
+            self._warn_format_missing("audio")
             return
         if mode == "Audio and video" and (not video_label or video_label not in app.video_format_map):
-            messagebox.showwarning("Missing video format",
-                                   "Wait for formats to load, then select a video format.", parent=app)
+            self._warn_format_missing("video")
             return
         if not output:
             messagebox.showwarning("Missing output", "Select an output format.", parent=app)

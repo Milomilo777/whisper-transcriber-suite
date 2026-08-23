@@ -577,6 +577,12 @@ class App(tk.Tk):
     device_badge_tip: str
     hotwords_var: tk.StringVar
     format_status_var: tk.StringVar
+    # The real yt-dlp/SMTV failure reason from the most recent format
+    # lookup, or "" when the lookup succeeded (or hasn't run yet). Lets
+    # enqueue_from_form show the user WHY a URL has no formats instead of
+    # a generic "wait for formats to load" that's misleading when the
+    # lookup already failed and never will load. Set in format_service.
+    format_lookup_error: str
     download_tree: "ttk.Treeview"
     download_row_map: dict[str, Any]
     # R2 per-download action bar (assigned in tabs.build_download_tab).

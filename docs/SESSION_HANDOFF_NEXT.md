@@ -5,7 +5,54 @@ this repo. Read this file before anything else.
 
 ---
 
-## 🟢 2026-08-16 (latest) — competitor feature audit: wired 3 unused engines into the UI, added a remote LLM provider + bilingual export + noisy-audio preset
+## 🟢 2026-08-23 (latest) — a failed format lookup now tells the user why (Facebook, Instagram, any non-cookie-related site failure)
+
+Owner reported: a Facebook download+transcribe attempt "gave an error
+with no message about where the problem was," and assumed the
+2026-08-19 cookie-extraction-retry fix (`0718afb`, verified on a real
+public X/Twitter URL) should have covered this too, since it looked
+like "the same problem." It did not — that fix lives entirely inside
+`DownloadService._media_phase` and only retries when yt-dlp's OWN local
+cookie-jar read fails (`_is_cookie_extraction_error`); it has nothing to
+do with a site's extractor rejecting the URL outright, which is what
+actually happens for a lot of Facebook/Instagram content now.
+
+Root cause, confirmed by running the repo's real `bin/yt-dlp.exe`
+against a real (old, likely-deleted) public Facebook URL on this
+machine: `--dump-single-json` exited 1 with a proper `ERROR: [facebook]
+...: Cannot parse data` on stderr. `FormatService.lookup_formats` DOES
+catch that and post it as an `"error"` event — but `_handle_event` only
+ever wrote it into the small `format_status_var` label next to the
+format dropdowns (`app/services/format_service.py:234`). Clicking
+Download after a failed lookup falls into `enqueue_from_form`'s
+"missing audio/video format" guard, which showed a hardcoded "Wait for
+formats to load, then select a format" — misleading once the lookup
+has already failed and will never load — and that guard never wrote
+anything to the visible download log/console the user was actually
+watching. So: a real, correctly-captured error existed, but the only
+place it went was a label most users never read on their way to a
+messagebox that actively suggested waiting.
+
+Fixed generically (not per-site): `format_lookup_error` is now a real
+`App` attribute (`app/app.py`, set/cleared in
+`app/widgets/tabs.py:build_download_tab` and
+`app/services/format_service.py`, covering the yt-dlp-probe error path,
+the SMTV lookup error path, and the poll()-level exception fallback). A
+new `DownloadService._warn_format_missing()` in
+`app/services/download_service.py` reads it: when non-empty, the popup
+shows the real reason AND it's written to `app.log(...)` (the same
+console download-phase errors already use); when empty (lookup still
+running / never started), the original "wait for it" text is
+unchanged. Covered by
+`tests/core/test_download_format_lookup_error.py` (3 tests, hermetic).
+pyright 0/0/0 on `app/` + `core/`; the `download or format` pytest
+subset passes. NOT yet turned into a release build (per this repo's
+"cutting a release needs explicit go-ahead" rule) — the fix is only in
+source + pushed to `master` so far.
+
+---
+
+## 🟢 2026-08-16 — competitor feature audit: wired 3 unused engines into the UI, added a remote LLM provider + bilingual export + noisy-audio preset
 
 Owner sent a list of 19 similar Whisper-transcription GitHub projects
 and asked for a capability scan; the comparison went into a private
