@@ -284,9 +284,17 @@ def main() -> int:
     # the healthy worker mid-download and restart it in a loop.
     HEARTBEAT_INTERVAL_SECONDS = 5.0
 
+    # Stoppable via .wait() rather than a bare time.sleep(): production
+    # never needs this (the daemon thread just dies with the process), but
+    # tests call main() many times in one interpreter, and an un-stoppable
+    # thread would keep ticking for the rest of the whole pytest run,
+    # printing stray "heartbeat" lines into whichever later test happens to
+    # have capsys capturing stdout at the 5 s mark — a real, previously
+    # unfixed source of CI flakiness (see docs/SESSION_HANDOFF_NEXT.md).
+    heartbeat_stop = threading.Event()
+
     def _heartbeat() -> None:
-        while True:
-            time.sleep(HEARTBEAT_INTERVAL_SECONDS)
+        while not heartbeat_stop.wait(HEARTBEAT_INTERVAL_SECONDS):
             try:
                 emit("heartbeat", ts=time.time())
             except Exception:
@@ -298,6 +306,7 @@ def main() -> int:
     if not load_existing_model(log_cb):
         detail = get_model_error() or "Existing model failed to load in worker"
         emit("startup_error", message=detail)
+        heartbeat_stop.set()
         return 1
 
     # R3: tell the parent which device the model actually loaded onto so the
@@ -381,10 +390,12 @@ def main() -> int:
     while True:
         command = cmd_queue.get()
         if command is None:  # stdin closed — parent gone
+            heartbeat_stop.set()
             return 0
 
         action = command.get("action")
         if action == "shutdown":
+            heartbeat_stop.set()
             return 0
 
         # Live tab: transcribe one short chunk and hand the text straight
