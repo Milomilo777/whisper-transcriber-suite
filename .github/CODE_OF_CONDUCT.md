@@ -3,14 +3,6 @@
 This project follows the
 [Contributor Covenant 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
 
-## TL;DR
-
-- Be respectful in issues, pull requests, and discussions.
-- Assume good faith; ask questions before drawing conclusions.
-- No harassment, discrimination, or doxxing.
-- Maintainers reserve the right to remove abusive comments and to
-  block accounts that repeatedly violate the spirit of this code.
-
 ## Acceptable use of the software
 
 This section covers use of the app itself. The Contributor Covenant above
