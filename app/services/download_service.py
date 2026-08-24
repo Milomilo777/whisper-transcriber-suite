@@ -974,6 +974,87 @@ class DownloadService:
 
         self.process_queue()
 
+    def enqueue_caption_only_from_form(self) -> None:
+        """"Use captions instead" shortcut button on the Download tab.
+
+        Fetches only the existing captions for the pasted URL and converts
+        them to the transcript formats chosen in Advanced settings,
+        skipping the media download and the transcription queue entirely.
+        Only ever offered (see App.update_caption_shortcut_state) when the
+        most recent format lookup actually found a caption track in the
+        resolved language, so the "no captions found" branch below should
+        be rare -- it's a defensive re-check, not the primary UX path.
+        """
+        from tkinter import messagebox
+
+        from app.domain.languages import SUBTITLE_LANGUAGES, resolve_caption_kind
+        from app.domain.tasks import VideoDownloadTask
+
+        app = self.app
+        url = app.download_url_var.get().strip()
+        folder = app.download_folder_var.get().strip()
+        if not url:
+            messagebox.showwarning("Missing URL", "Enter a URL first.", parent=app)
+            return
+        if not folder:
+            messagebox.showwarning("Missing folder", "Select a download folder first.", parent=app)
+            return
+        if getattr(app, "_smtv_episode", None) is not None:
+            # The shortcut button is hidden for SMTV URLs; this only
+            # guards a stale click racing a URL change.
+            return
+
+        sub_lang_name = app.subtitle_lang_var.get()
+        lang_code_csv = next(
+            (code for name, code in SUBTITLE_LANGUAGES if name == sub_lang_name), ""
+        )
+        caption_langs = getattr(app, "current_video_caption_langs", None) or {}
+        kind = resolve_caption_kind(
+            caption_langs, lang_code_csv, fallback_lang=app.current_video_language
+        )
+        if not kind:
+            messagebox.showwarning(
+                "No captions found",
+                "No existing captions were found for this video in the "
+                "selected language.",
+                parent=app,
+            )
+            return
+
+        try:
+            os.makedirs(folder, exist_ok=True)
+        except OSError as e:
+            messagebox.showwarning(
+                "Folder unavailable",
+                f"Cannot create or write the download folder:\n{folder}\n\n{e}",
+                parent=app,
+            )
+            return
+        app.app_config["download_folder"] = folder
+        try:
+            save_config(app.app_config)
+        except OSError:
+            logger.exception("Failed to persist download folder preference")
+
+        title = app.current_video_title or url
+        display_lang = (
+            sub_lang_name if sub_lang_name and sub_lang_name != "Automatic"
+            else (app.current_video_language or "auto")
+        )
+        task = VideoDownloadTask(
+            url, folder, f"Captions only ({display_lang})",
+            {"mode": "Captions", "audio": None, "video": None, "output": ""},
+            f"{title} (captions only)",
+            subtitles_enabled=True,
+            subtitle_lang=lang_code_csv,
+            detected_language=app.current_video_language,
+            caption_only=True,
+            caption_kind=kind,
+        )
+        app.download_queue.append(task)
+        app.refresh_download_queue()
+        self.process_queue()
+
     # Driver
     def process_queue(self) -> None:
         app = self.app
@@ -1034,6 +1115,16 @@ class DownloadService:
                 return
             _reap_process(task.process)
             task.process = None
+
+        if getattr(task, "caption_only", False):
+            try:
+                self.maybe_update_yt_dlp(task)
+                self._run_caption_only_task(task)
+            except Exception as e:  # noqa: BLE001
+                app.download_events.put(("error", task, str(e)))
+            finally:
+                _finalize_own_process()
+            return
 
         if _is_smtv_task(task):
             try:
@@ -1400,6 +1491,149 @@ class DownloadService:
             app.download_events.put(("subtitle_status", task, "completed (no files written)"))
             app.download_events.put(("log", task, "--- Subtitle phase: completed without writing files ---"))
 
+    def _run_caption_only_task(self, task: "VideoDownloadTask") -> None:
+        """"Use captions instead" shortcut: fetch only the existing captions
+        and convert them to the transcript formats chosen in Advanced
+        settings ('output_formats'). Never downloads media and never
+        queues a transcription -- that's the whole point of the shortcut.
+
+        Reuses the same yt-dlp ``--skip-download --write-subs
+        --write-auto-subs`` invocation as :meth:`_subtitle_phase`, but
+        (unlike that method, which is a bonus step before a media
+        download) this is the task's entire run, so it posts its own
+        terminal ``done``/``done_full``/``error`` event instead of falling
+        through to a media phase.
+        """
+        app = self.app
+        sub_lang = self.resolve_subtitle_lang(task)
+        if not sub_lang:
+            app.download_events.put(("subtitle_status", task, "no language detected"))
+            app.download_events.put(
+                ("error", task, "Could not resolve a caption language for this video.")
+            )
+            return
+
+        app.download_events.put(("subtitle_status", task, f"fetching captions ({sub_lang})..."))
+        app.download_events.put(("log", task, f"--- Caption-only phase: requesting {sub_lang} ---"))
+        task.process = subprocess.Popen(
+            self.build_subtitle_command(task, sub_lang),
+            cwd=os.path.dirname(os.path.abspath(app.entry_file)),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=_utf8_subprocess_env(),
+            **new_session_kwargs(),
+        )
+        wrote_files: list[str] = []
+        no_subs_warning = False
+        for line in task.process.stdout:  # type: ignore[union-attr]
+            line = line.rstrip()
+            if not line:
+                continue
+            app.download_events.put(("log", task, line))
+            if "Writing video subtitles to:" in line:
+                wrote_files.append(line.split("Writing video subtitles to:", 1)[1].strip())
+            elif (
+                "no subtitles for the requested languages" in line.lower()
+                or "no automatic captions for the requested languages" in line.lower()
+            ):
+                no_subs_warning = True
+        sub_rc = task.process.wait()
+        task.process = None
+
+        if task.cancelled:
+            for partial in wrote_files:
+                try:
+                    if os.path.isfile(partial):
+                        os.unlink(partial)
+                except OSError:
+                    pass
+            app.download_events.put(("subtitle_status", task, "cancelled"))
+            app.download_events.put(("done", task, "cancelled"))
+            return
+
+        if not wrote_files:
+            reason = (
+                "no captions available" if no_subs_warning
+                else f"failed (rc={sub_rc})" if sub_rc
+                else "completed (no files written)"
+            )
+            app.download_events.put(("subtitle_status", task, reason))
+            app.download_events.put(
+                ("error", task, f"Could not fetch captions for this video: {reason}")
+            )
+            return
+
+        caption_path = wrote_files[0]
+        from core import convert as _convert
+
+        try:
+            segments = _convert.parse_to_segments(caption_path)
+        except _convert.ConvertError as e:
+            app.download_events.put(("subtitle_status", task, "conversion failed"))
+            app.download_events.put(
+                ("error", task, f"Captions were downloaded but could not be read: {e}")
+            )
+            return
+
+        # Only auto-generated YouTube captions have the rolling-window
+        # duplicate-text artifact; a manual/creator track must not be
+        # touched (see core.convert.dedupe_rolling_captions).
+        if getattr(task, "caption_kind", "") == "auto":
+            segments = _convert.dedupe_rolling_captions(segments)
+
+        wanted_formats = [f for f in (app.app_config.get("output_formats") or ["srt"]) if f]
+        convertible = set(_convert.CONVERT_TARGETS)
+        written: list[str] = []
+        skipped: list[str] = []
+        for fmt in wanted_formats:
+            fmt_lower = fmt.lower()
+            if fmt_lower not in convertible:
+                # docx / pdf need extra context convert_file doesn't offer
+                # (see its module docstring) -- not available from this
+                # shortcut. Not a failure: every other requested format
+                # still gets produced.
+                skipped.append(fmt_lower)
+                continue
+            try:
+                out_path = _convert.convert_file(caption_path, fmt_lower, segments=segments)
+                written.append(out_path)
+            except (OSError, _convert.ConvertError) as e:
+                app.download_events.put(
+                    ("log", task, f"Caption conversion to {fmt_lower} failed: {e}")
+                )
+
+        if skipped:
+            app.download_events.put((
+                "log", task,
+                "Skipped for the caption-only shortcut (need a full "
+                "transcription run to produce these): " + ", ".join(skipped),
+            ))
+
+        if not written:
+            app.download_events.put(("subtitle_status", task, "conversion failed"))
+            app.download_events.put((
+                "error", task,
+                "Captions were downloaded but none of the selected output "
+                "formats could be produced from them.",
+            ))
+            return
+
+        app.download_events.put((
+            "subtitle_status", task,
+            f"captions converted to {len(written)} format{'s' if len(written) != 1 else ''}",
+        ))
+        app.download_events.put((
+            "log", task,
+            "--- Caption-only phase: wrote "
+            + ", ".join(os.path.basename(w) for w in written) + " ---",
+        ))
+        app.download_events.put(
+            ("done_full", task, {"status": "finished", "saved_path": written[0]})
+        )
+
     def _run_media_process(
         self, task: "VideoDownloadTask", command: list[str]
     ) -> tuple[int, str, str, str | None, bool]:
@@ -1716,7 +1950,11 @@ class DownloadService:
                             app.bell()
                     except Exception:  # noqa: BLE001
                         pass
-            if app.app_config.get("auto_transcribe_after_download") and saved_path:
+            if (
+                app.app_config.get("auto_transcribe_after_download")
+                and saved_path
+                and not getattr(task, "caption_only", False)
+            ):
                 try:
                     app.enqueue_transcription_from_download(
                         saved_path, task.detected_language, source_download=task

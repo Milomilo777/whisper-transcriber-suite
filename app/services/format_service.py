@@ -23,6 +23,36 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Pseudo-language keys yt-dlp's ``subtitles`` / ``automatic_captions`` dicts
+# can carry that are not a real caption track (e.g. a live stream's chat
+# replay) -- excluded so they never look like an available caption language.
+_NON_LANGUAGE_CAPTION_KEYS = frozenset({"live_chat"})
+
+
+def caption_lang_map(payload: dict) -> dict[str, str]:
+    """Map caption language code -> ``"manual"`` or ``"auto"`` from a yt-dlp info dict.
+
+    Reads the ``subtitles`` (creator-provided) and ``automatic_captions``
+    (ASR) keys already present in the JSON the format lookup fetches, so
+    checking "is language X available as a caption" needs no extra network
+    call. A code present in both wins as ``"manual"`` -- matching yt-dlp's
+    own behaviour when both ``--write-subs`` and ``--write-auto-subs`` are
+    requested together for the same language (see the decision log in
+    ``docs/auto-subtitles-feature.md``).
+    """
+    result: dict[str, str] = {}
+    auto_caps = payload.get("automatic_captions")
+    if isinstance(auto_caps, dict):
+        for code in auto_caps:
+            if code not in _NON_LANGUAGE_CAPTION_KEYS:
+                result[code] = "auto"
+    manual_subs = payload.get("subtitles")
+    if isinstance(manual_subs, dict):
+        for code in manual_subs:
+            if code not in _NON_LANGUAGE_CAPTION_KEYS:
+                result[code] = "manual"
+    return result
+
 
 class FormatService:
     def __init__(self, app: "App") -> None:
@@ -40,7 +70,10 @@ class FormatService:
         self.app.video_format_map = {}
         self.app.current_video_title = ""
         self.app.current_video_language = ""
+        self.app.current_video_caption_langs = {}
         self.app.format_lookup_error = ""
+        if hasattr(self.app, "update_caption_shortcut_state"):
+            self.app.update_caption_shortcut_state()
         self.app.audio_format_combo["values"] = []
         self.app.video_format_combo["values"] = []
         self.app.audio_format_var.set("")
@@ -153,6 +186,10 @@ class FormatService:
         app.video_format_map = video_map
         app.current_video_title = episode.title
         app.current_video_language = episode.lang_prefix
+        # SMTV already writes its own transcript alongside every download
+        # (see DownloadService._run_smtv_task) -- the "use captions instead"
+        # shortcut is yt-dlp-specific and must never be offered here.
+        app.current_video_caption_langs = {}
         app._smtv_episode = episode  # type: ignore[attr-defined]
 
         audio_values = list(audio_map.keys())
@@ -179,6 +216,10 @@ class FormatService:
                 toggle(visible=sib_count > 0)
             except Exception:  # noqa: BLE001
                 pass
+        try:
+            app.update_caption_shortcut_state()
+        except Exception:  # noqa: BLE001
+            pass
 
     def _lookup_smtv(self, url: str) -> None:
         """Background SMTV scrape; posts a ``smtv_formats`` event."""
@@ -235,6 +276,9 @@ class FormatService:
         if kind == "error":
             app.format_status_var.set(payload)
             app.format_lookup_error = str(payload)
+            app.current_video_caption_langs = {}
+            if hasattr(app, "update_caption_shortcut_state"):
+                app.update_caption_shortcut_state()
             return
 
         if kind == "smtv_formats":
@@ -256,6 +300,7 @@ class FormatService:
             auto_caps = payload.get("automatic_captions") or {}
             lang = next(iter(auto_caps.keys()), "") if auto_caps else ""
         app.current_video_language = lang
+        app.current_video_caption_langs = caption_lang_map(payload)
 
         for fmt in payload.get("formats", []):
             format_id = str(fmt.get("format_id", ""))
@@ -307,3 +352,4 @@ class FormatService:
             )
         else:
             app.format_status_var.set("No formats found")
+        app.update_caption_shortcut_state()

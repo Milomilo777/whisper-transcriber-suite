@@ -12,7 +12,7 @@ from queue import Queue
 
 import pytest
 
-from app.services.format_service import FormatService
+from app.services.format_service import FormatService, caption_lang_map
 
 
 class _Var:
@@ -71,3 +71,34 @@ def test_poll_does_not_reschedule_when_closing():
     svc = FormatService(app)  # type: ignore[arg-type]
     svc.poll()
     assert app.after_calls == [], "a closing app must not re-arm the poll loop"
+
+
+# --- caption_lang_map ---------------------------------------------------
+
+def test_caption_lang_map_manual_and_auto():
+    payload = {
+        "subtitles": {"en": [{"ext": "vtt"}], "de": [{"ext": "vtt"}]},
+        "automatic_captions": {"en": [{"ext": "vtt"}], "fr": [{"ext": "vtt"}]},
+    }
+    assert caption_lang_map(payload) == {"en": "manual", "de": "manual", "fr": "auto"}
+
+
+def test_caption_lang_map_manual_wins_over_auto_for_same_code():
+    payload = {
+        "subtitles": {"en": [{"ext": "vtt"}]},
+        "automatic_captions": {"en": [{"ext": "vtt"}]},
+    }
+    assert caption_lang_map(payload) == {"en": "manual"}
+
+
+def test_caption_lang_map_excludes_live_chat():
+    payload = {"automatic_captions": {"live_chat": [{"ext": "json"}], "en": [{"ext": "vtt"}]}}
+    assert caption_lang_map(payload) == {"en": "auto"}
+
+
+def test_caption_lang_map_missing_keys():
+    assert caption_lang_map({}) == {}
+
+
+def test_caption_lang_map_non_dict_values_ignored():
+    assert caption_lang_map({"subtitles": None, "automatic_captions": "bogus"}) == {}

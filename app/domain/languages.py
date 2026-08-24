@@ -121,3 +121,31 @@ def subtitle_lang_args(lang: str) -> str:
     """
     codes = [c.strip() for c in (lang or "").split(",") if c.strip()]
     return ",".join(codes)
+
+
+def resolve_caption_kind(
+    caption_langs: dict[str, str], lang_codes_csv: str, fallback_lang: str = "",
+) -> str:
+    """"manual", "auto", or "" for whichever candidate code first matches.
+
+    *caption_langs* maps a caption language code to ``"manual"`` or
+    ``"auto"`` (see ``app.services.format_service.caption_lang_map``).
+    *lang_codes_csv* is a ``SUBTITLE_LANGUAGES``-style comma list (one
+    entry can cover several codes, e.g. ``"zh-Hans,zh-CN"``); an empty
+    string means "Automatic", so *fallback_lang* -- the format lookup's
+    best-effort detected language -- is tried instead. This mirrors how
+    the existing subtitle-download feature resolves "Automatic"
+    (``DownloadService.resolve_subtitle_lang``: ``task.subtitle_lang or
+    task.detected_language``), so the "use captions instead" shortcut
+    always agrees with what the checkbox+combo would have fetched.
+    """
+    if not caption_langs:
+        return ""
+    candidates = [c.strip() for c in (lang_codes_csv or "").split(",") if c.strip()]
+    if not candidates and fallback_lang:
+        candidates = [fallback_lang.strip()]
+    for code in candidates:
+        kind = caption_langs.get(code, "")
+        if kind:
+            return kind
+    return ""

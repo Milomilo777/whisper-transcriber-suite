@@ -90,8 +90,9 @@ Test target: `https://www.youtube.com/watch?v=dQw4w9WgXcQ` (Rick Astley — heav
 - **Subtitle embedding into MP4** (`--embed-subs`) was deliberately not added; would require ffmpeg post-processing path verification and might break the existing one-yt-dlp-pass design. A natural next iteration.
 - **Multi-language download** is not exposed in the UI — the combo is single-select. yt-dlp accepts a comma list, so adding it would mostly be a UI change.
 - **`.srt` vs `.vtt` preference.** Currently the user gets whatever yt-dlp returns (typically `.vtt` for YouTube). If `.srt` is desired, add `--convert-subs srt`.
-- **No cleanup of partial subtitle files on cancel.** yt-dlp tends to write the file fully or not at all, but a 429 mid-download can leave a truncated `.vtt`. Consider deleting the listed `wrote_files` if the phase ends with `task.cancelled=True`.
+- ~~No cleanup of partial subtitle files on cancel.~~ Fixed: `_subtitle_phase` deletes any `wrote_files` when `task.cancelled` is true (this doc was stale on this point).
 - **Progress bar covers media only.** The progress bar in the queue tree reflects the media percentage, not the subtitle phase. Subtitle progress is small enough that this rarely matters, but a phase-aware bar would be more honest.
+- **2026-08-24 — "Use captions instead" shortcut added.** A separate button (not this checkbox) skips the media download and Whisper entirely when a caption track already exists in the target language, converting it straight to the formats chosen in Advanced Settings. See `DownloadService.enqueue_caption_only_from_form` / `_run_caption_only_task`, `app.update_caption_shortcut_state`, and `core.convert.dedupe_rolling_captions` (fixes a real rolling-auto-caption duplicate-text bug that also affects this feature's own `write_subtitle_extra_formats` output for auto-generated captions — not yet applied there, since that's a separate, already-shipped code path; worth revisiting). Full writeup in `docs/SESSION_HANDOFF_NEXT.md`'s 2026-08-24 entry.
 
 ## Architectural notes
 

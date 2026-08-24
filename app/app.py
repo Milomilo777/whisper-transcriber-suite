@@ -558,6 +558,11 @@ class App(tk.Tk):
     subtitle_lang_combo: "ttk.Combobox"
     subtitle_status_var: tk.StringVar
     auto_transcribe_var: tk.BooleanVar
+    # "Use captions instead" shortcut (built in tabs.build_download_tab;
+    # shown/hidden by update_caption_shortcut_state based on what the most
+    # recent format lookup found — see app.services.format_service).
+    caption_shortcut_status_var: tk.StringVar
+    caption_shortcut_button: "ttk.Button"
     smtv_download_all_parts_var: tk.BooleanVar
     # Diarization toggle (Transcribe tab)
     diarization_var: tk.BooleanVar
@@ -695,6 +700,9 @@ class App(tk.Tk):
         self.video_format_map: dict[str, dict[str, Any]] = {}
         self.current_video_title = ""
         self.current_video_language = ""
+        # code -> "manual" / "auto"; set by format_service after each
+        # lookup, read by update_caption_shortcut_state.
+        self.current_video_caption_langs: dict[str, str] = {}
         self.format_lookup_after: str | None = None
 
         # Services
@@ -1928,6 +1936,56 @@ class App(tk.Tk):
             self.subtitle_lang_combo.configure(state="disabled")
             self.subtitle_status_var.set("")
 
+    def update_caption_shortcut_state(self) -> None:
+        """Show/hide the "Use captions instead" shortcut.
+
+        Called after every format lookup (see app.services.format_service)
+        and whenever the subtitle-language combo changes. Independent of
+        the "Download subtitles" checkbox above it -- this is a separate
+        action, not a modifier of the main Download button. SMTV already
+        writes its own transcript alongside every download, so the
+        shortcut never applies while an SMTV episode is loaded.
+        """
+        status_var = getattr(self, "caption_shortcut_status_var", None)
+        button = getattr(self, "caption_shortcut_button", None)
+        if status_var is None or button is None:
+            return
+        if getattr(self, "_smtv_episode", None) is not None:
+            status_var.set("")
+            button.pack_forget()
+            return
+
+        from app.domain.languages import SUBTITLE_LANGUAGES, resolve_caption_kind
+
+        sub_lang_name = self.subtitle_lang_var.get() if hasattr(self, "subtitle_lang_var") else ""
+        lang_code_csv = next(
+            (code for name, code in SUBTITLE_LANGUAGES if name == sub_lang_name), ""
+        )
+        caption_langs = getattr(self, "current_video_caption_langs", None) or {}
+        kind = resolve_caption_kind(
+            caption_langs, lang_code_csv, fallback_lang=self.current_video_language
+        )
+        if not kind:
+            status_var.set("")
+            button.pack_forget()
+            return
+
+        label = sub_lang_name if sub_lang_name and sub_lang_name != "Automatic" else (
+            self.current_video_language or "the detected language"
+        )
+        if kind == "manual":
+            status_var.set(
+                f'Captions (creator-provided) are already available in "{label}" '
+                "-- skip downloading and transcribing?"
+            )
+        else:
+            status_var.set(
+                f'Auto-generated captions are already available in "{label}" -- '
+                "skip downloading and transcribing? (may be less accurate than "
+                "a real transcription)"
+            )
+        button.pack(side="left", padx=(10, 0))
+
     def model_status(self, msg: str) -> None:
         # Display only. Worker readiness is tracked authoritatively via the
         # worker's 'ready' event → TranscriptionService.update_model_state();
@@ -2768,6 +2826,11 @@ class App(tk.Tk):
             # fetched the full video instead of the slice the user picked.
             section_start=task.section_start,
             section_end=task.section_end,
+            # Preserve the caption-only shortcut — without this a retry of
+            # a failed "use captions instead" task would silently fall
+            # back to a full media download.
+            caption_only=task.caption_only,
+            caption_kind=task.caption_kind,
         )
         self.download_queue.append(copy)
         self.refresh_download_queue()

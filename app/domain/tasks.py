@@ -24,6 +24,8 @@ class VideoDownloadTask:
         detected_language: str = "",
         section_start: float | None = None,
         section_end: float | None = None,
+        caption_only: bool = False,
+        caption_kind: str = "",
     ) -> None:
         self.url = url
         self.folder = folder
@@ -62,6 +64,16 @@ class VideoDownloadTask:
         # column.
         self.section_start: float | None = section_start
         self.section_end: float | None = section_end
+        # "Use captions instead" shortcut (see
+        # DownloadService.enqueue_caption_only_from_form): when True, the
+        # worker fetches only the existing captions and converts them to
+        # the configured output formats -- it never downloads media or
+        # queues a transcription. caption_kind ("manual"/"auto") is
+        # captured at enqueue time from the format lookup's already-
+        # fetched caption info and decides whether the rolling-caption
+        # dedup pass runs (see core.convert.dedupe_rolling_captions).
+        self.caption_only: bool = caption_only
+        self.caption_kind: str = caption_kind
         # Full path of the finished download (set by DownloadService._finish)
         # so the Download tab can offer a one-click "Open file".
         self.saved_path: str | None = None

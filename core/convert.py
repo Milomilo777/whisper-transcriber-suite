@@ -67,6 +67,7 @@ __all__ = [
     "CONVERT_TARGETS",
     "output_extension_for",
     "parse_to_segments",
+    "dedupe_rolling_captions",
     "convert_file",
 ]
 
@@ -612,8 +613,57 @@ def _same_file(a: str, b: str) -> bool:
     )
 
 
+def dedupe_rolling_captions(segments: list[dict]) -> list[dict]:
+    """Strip YouTube's rolling-auto-caption overlap from parsed cues.
+
+    YouTube's automatic-caption VTT shows captions as a rolling window: the
+    tail of one cue reappears verbatim as the head of the next (e.g. cue A
+    ends "...to the show today", cue B starts "to the show today we will").
+    Left alone, converting such a file straight to text (or any other
+    format) prints every overlapping word twice. This trims, from each
+    cue's text, the longest run of leading words that exactly matches the
+    previous (already-trimmed) cue's trailing words. A cue whose words are
+    entirely consumed by the overlap is dropped (it added nothing new).
+
+    Comparison is case-insensitive; matching is a contiguous word sequence,
+    not a bag-of-words, so ordinary manually-authored subtitles -- which
+    don't have this rolling-window artifact -- pass through unchanged
+    (a false match would require two consecutive cues to repeat the exact
+    same multi-word phrase across their boundary, which real dialogue
+    essentially never does). Only feed this genuinely auto-generated
+    captions; a manual/creator-provided track should skip it.
+    """
+    cleaned: list[dict] = []
+    prev_words: list[str] = []
+    for seg in segments:
+        words = str(seg.get("text", "")).split()
+        overlap = _prefix_suffix_overlap(prev_words, words)
+        prev_words = words
+        kept = words[overlap:]
+        if not kept:
+            continue
+        new_seg = dict(seg)
+        new_seg["text"] = " ".join(kept)
+        cleaned.append(new_seg)
+    return cleaned
+
+
+def _prefix_suffix_overlap(prev: list[str], cur: list[str]) -> int:
+    """Longest k such that ``prev[-k:] == cur[:k]`` (case-insensitive)."""
+    if not prev or not cur:
+        return 0
+    max_k = min(len(prev), len(cur))
+    prev_lower = [w.lower() for w in prev[-max_k:]]
+    cur_lower = [w.lower() for w in cur[:max_k]]
+    for k in range(max_k, 0, -1):
+        if prev_lower[len(prev_lower) - k:] == cur_lower[:k]:
+            return k
+    return 0
+
+
 def convert_file(
-    in_path: str, out_format: str, out_path: str | None = None
+    in_path: str, out_format: str, out_path: str | None = None,
+    *, segments: list[dict] | None = None,
 ) -> str:
     """Convert *in_path* to *out_format*, writing beside the input by default.
 
@@ -623,6 +673,11 @@ def convert_file(
     input with the new extension; if that would overwrite the input itself
     (e.g. re-emitting an .srt as .srt in place) the path is suffixed with
     ``.converted`` to avoid clobbering the source.
+
+    *segments*, when given, is used as-is instead of re-parsing *in_path* --
+    lets a caller parse once (optionally running it through
+    :func:`dedupe_rolling_captions` first) and reuse the result across
+    several output formats.
 
     Raises :class:`ConvertError` for an unknown target format or a parse
     failure, and lets the writer's own ``OSError`` surface on a write failure.
@@ -634,7 +689,7 @@ def convert_file(
             f"Choose one of: {', '.join(CONVERT_TARGETS)}."
         )
 
-    segments = parse_to_segments(in_path)
+    segments = segments if segments is not None else parse_to_segments(in_path)
 
     target = out_path or _default_out_path(in_path, fmt)
     if _same_file(target, in_path):

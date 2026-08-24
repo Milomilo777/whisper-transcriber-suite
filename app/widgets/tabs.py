@@ -792,6 +792,34 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         "transcribing the audio yourself. Only available when the site "
         "provides them.",
     ).grid(row=6, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
+    app.subtitle_lang_combo.bind(
+        "<<ComboboxSelected>>", lambda _e: app.update_caption_shortcut_state()
+    )
+
+    # "Use captions instead" shortcut — a distinct action from the
+    # "Download subtitles" checkbox above (which fetches subtitles ALONGSIDE
+    # the media). This one skips the media download and transcription
+    # entirely. Hidden by default; App.update_caption_shortcut_state shows
+    # it only once a format lookup finds a caption track in the resolved
+    # language (see app/services/format_service.py::caption_lang_map).
+    caption_shortcut_frame = ttk.Frame(top)
+    caption_shortcut_frame.grid(
+        row=7, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(4, 0)
+    )
+    app.caption_shortcut_status_var = tk.StringVar(value="")
+    ttk.Label(
+        caption_shortcut_frame,
+        textvariable=app.caption_shortcut_status_var,
+        foreground="#2a7", wraplength=460, justify="left",
+    ).pack(side="left")
+    app.caption_shortcut_button = ttk.Button(
+        caption_shortcut_frame,
+        text="Use captions instead",
+        command=app.download_service.enqueue_caption_only_from_form,
+    )
+    # Not packed here — update_caption_shortcut_state packs/unpacks it on
+    # demand so it stays invisible for the common case (no captions, or
+    # not in the requested language).
 
     app.auto_transcribe_var = tk.BooleanVar(
         value=bool(app.app_config.get("auto_transcribe_after_download", False))
@@ -801,13 +829,13 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         text="Transcribe after download",
         variable=app.auto_transcribe_var,
         command=app._save_auto_transcribe_pref,
-    ).grid(row=7, column=1, columnspan=2, sticky="w", padx=(6, 0), pady=(4, 0))
+    ).grid(row=8, column=1, columnspan=2, sticky="w", padx=(6, 0), pady=(4, 0))
     help_icon(
         top,
         "Automatically queues the downloaded file for transcription as "
         "soon as the download finishes, using the settings in the "
         "Transcribe tab.",
-    ).grid(row=7, column=3, sticky="w", padx=(6, 0), pady=(4, 0))
+    ).grid(row=8, column=3, sticky="w", padx=(6, 0), pady=(4, 0))
 
     # SMTV "all parts" toggle. Built always, shown only when an SMTV
     # episode with >=1 sibling parts is detected. format_service sets
@@ -828,7 +856,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
 
     def _toggle(*, visible: bool) -> None:
         if visible:
-            smtv_frame.grid(row=8, column=1, columnspan=2, sticky="w",
+            smtv_frame.grid(row=9, column=1, columnspan=2, sticky="w",
                             padx=(6, 0), pady=(4, 0))
         else:
             smtv_frame.grid_remove()

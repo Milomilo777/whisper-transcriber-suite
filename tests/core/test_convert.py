@@ -227,3 +227,69 @@ def test_content_sniff_no_extension(tmp_path):
     p.write_text(SRT_SAMPLE, encoding="utf-8")
     segs = convert.parse_to_segments(str(p))
     assert len(segs) == 2
+
+
+# --- dedupe_rolling_captions -------------------------------------------------
+
+def test_dedupe_rolling_captions_strips_overlap():
+    # Mirrors YouTube's rolling auto-caption shape: each cue repeats the
+    # previous cue's tail before adding new words.
+    segments = [
+        {"start": 0.0, "end": 4.0, "text": "Hello everyone welcome to the show"},
+        {"start": 3.5, "end": 7.0, "text": "to the show today we will talk"},
+        {"start": 6.5, "end": 10.0, "text": "today we will talk about testing"},
+    ]
+    cleaned = convert.dedupe_rolling_captions(segments)
+    assert [s["text"] for s in cleaned] == [
+        "Hello everyone welcome to the show",
+        "today we will talk",
+        "about testing",
+    ]
+    # Timing is preserved from the original (untrimmed) cue.
+    assert [s["start"] for s in cleaned] == [0.0, 3.5, 6.5]
+
+
+def test_dedupe_rolling_captions_drops_fully_repeated_cue():
+    segments = [
+        {"start": 0.0, "end": 2.0, "text": "one two three"},
+        {"start": 1.5, "end": 2.2, "text": "two three"},
+    ]
+    cleaned = convert.dedupe_rolling_captions(segments)
+    assert [s["text"] for s in cleaned] == ["one two three"]
+
+
+def test_dedupe_rolling_captions_is_case_insensitive():
+    segments = [
+        {"start": 0.0, "end": 2.0, "text": "Hello There"},
+        {"start": 1.5, "end": 3.0, "text": "hello there general kenobi"},
+    ]
+    cleaned = convert.dedupe_rolling_captions(segments)
+    assert [s["text"] for s in cleaned] == ["Hello There", "general kenobi"]
+
+
+def test_dedupe_rolling_captions_noop_on_ordinary_subtitles():
+    # No cross-cue word overlap -- a normal manually-authored subtitle must
+    # pass through completely unchanged.
+    segments = [
+        {"start": 0.0, "end": 2.0, "text": "I think that's right."},
+        {"start": 2.0, "end": 4.0, "text": "Let's move on to the next topic."},
+    ]
+    cleaned = convert.dedupe_rolling_captions(segments)
+    assert cleaned == segments
+
+
+def test_dedupe_rolling_captions_empty_input():
+    assert convert.dedupe_rolling_captions([]) == []
+
+
+# --- convert_file(segments=...) ----------------------------------------------
+
+def test_convert_file_accepts_preparsed_segments(tmp_path):
+    # A caller that already parsed (and possibly de-duplicated) the
+    # segments must be able to skip re-parsing in_path.
+    p = tmp_path / "sample.vtt"
+    p.write_text(VTT_SAMPLE, encoding="utf-8")
+    override = [{"start": 0.0, "end": 1.0, "text": "Overridden text"}]
+    out = convert.convert_file(str(p), "txt", segments=override)
+    assert "Overridden text" in open(out, encoding="utf-8").read()
+    assert "Hello world" not in open(out, encoding="utf-8").read()

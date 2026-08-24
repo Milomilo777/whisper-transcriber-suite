@@ -5,7 +5,100 @@ this repo. Read this file before anything else.
 
 ---
 
-## 🟢 2026-08-23 (latest) — Full app rebrand to "Whisper Transcriber Suite" (installer, AppId, data migration)
+## 🟢 2026-08-24 (latest) — "Use captions instead" shortcut (skip download+transcribe when YouTube already has captions), plus a real rolling-auto-caption dedup fix
+
+Owner's idea (research it first, then "finalize it in the best way,
+don't cut a new build"): when a pasted URL already has captions in the
+target language, offer to fetch just those captions and convert them
+instead of downloading the video and running Whisper. Implemented as a
+separate "Use captions instead" button on the Download Videos tab
+(distinct from the existing "Download subtitles" checkbox, which fetches
+subtitles ALONGSIDE the media) — never forced, always opt-in.
+
+**Real bug found and fixed first, before wiring the feature on top of
+it:** YouTube's auto-generated (ASR) captions are "rolling" — each VTT
+cue repeats the tail of the previous cue. `core/convert.py`'s
+`_parse_cue_format` (used by every subtitle→text conversion in this app,
+including the pre-existing "download subtitles alongside media" feature)
+never deduplicated that, so converting an auto-caption straight to text
+would print most phrases 2-3 times. Verified against this project's own
+bundled `bin/yt-dlp.exe` on a real YouTube video
+(`dQw4w9WgXcQ`): the raw conversion repeated nearly every line; the new
+`core.convert.dedupe_rolling_captions()` (longest-suffix/prefix word-run
+match between consecutive cues, case-insensitive) collapsed 86 raw cues
+to 49 and produced clean text — real chorus repetition elsewhere in the
+song was correctly left alone (only *adjacent* cue overlap is trimmed).
+Manual/creator-provided captions do NOT have this artifact and must
+never be deduped — confirmed real English captions for the same video
+parse cleanly untouched. New unit tests in `tests/core/test_convert.py`
+cover the algorithm directly (including a same-content-different-flag
+control proving manual is skipped); the caption-shortcut's own test file
+proves it end-to-end.
+
+**What changed:**
+- `core/convert.py` — `dedupe_rolling_captions()` (new), and
+  `convert_file()` gained an optional `segments=` override so a caller
+  can parse once (optionally deduped) and emit several formats from the
+  same segment list without re-parsing the file each time.
+- `app/services/format_service.py` — new `caption_lang_map(payload)`
+  reads the yt-dlp info dict's already-fetched `subtitles` (manual) /
+  `automatic_captions` (auto) keys into `app.current_video_caption_langs`
+  (code -> "manual"/"auto"); no extra network call. Cleared for SMTV
+  (which already writes its own transcript on every download) and on
+  lookup error/reset.
+- `app/domain/languages.py` — new `resolve_caption_kind()`, a pure
+  helper matching the SUBTITLE_LANGUAGES combo's selection (or the
+  "Automatic" fallback) against that map — shared by the UI-visibility
+  check and the enqueue path so they can never disagree.
+- `app/app.py` — new `update_caption_shortcut_state()` shows/hides the
+  button + a status line ("Captions (creator-provided)/Auto-generated
+  are already available in X…"); called after every format lookup and
+  on subtitle-language-combo change. `chime`/`_smtv_episode`-style
+  `getattr` guards throughout since this runs from format_service too.
+- `app/domain/tasks.py` — `VideoDownloadTask` gained `caption_only` /
+  `caption_kind` fields; `_rerun_download` in app.py now carries them
+  through a retry (a retried caption-only task would otherwise silently
+  fall back to a full media download — caught before it shipped).
+- `app/services/download_service.py` — `enqueue_caption_only_from_form()`
+  (button handler, mirrors `enqueue_from_form`'s validation shape) and
+  `_run_caption_only_task()` (the worker path: fetch captions only,
+  dedupe iff `caption_kind == "auto"`, convert to every format in
+  Advanced Settings' `output_formats` that `convert_file` supports —
+  `docx`/`pdf` are skipped with a clear log line, not silently dropped,
+  since the generic converter doesn't offer them). `_run_task` branches
+  to it before the SMTV check. `_finish`'s auto-transcribe trigger now
+  also requires `not task.caption_only` — a caption-only "download" is
+  a text file, not a media file; queuing it for Whisper would have been
+  nonsensical.
+- `app/widgets/tabs.py` — the new button+label row sits at grid row 7
+  (between the existing Subtitles row and "Transcribe after download"),
+  which pushed that checkbox and the conditional SMTV row down one each.
+
+**Tests:** `tests/core/test_convert.py` (+8), `tests/core/
+test_subtitle_lang_args.py` (+8, `resolve_caption_kind`),
+`tests/core/test_format_service.py` (+5, `caption_lang_map`),
+`tests/core/test_caption_only_shortcut.py` (new, 14 tests covering the
+enqueue-form validation, the worker path incl. dedup/no-dedup/cancel/
+unsupported-format, and the `_finish` auto-transcribe guard). Full
+hermetic suite green (`pytest tests/ --ignore=tests/smoke`), pyright
+0/0/0 on `app/` + `core/`. Beyond the unit suite: a real live Tk `App()`
+instance was driven end-to-end (button visibility toggling on language
+change, a real enqueue, the SMTV hide-guard) and the real bundled
+yt-dlp fetched real captions for a real video, run through the real
+conversion pipeline — see this session's transcript for the exact
+commands if it needs re-verifying.
+
+**Deliberately not done this session:** no version bump / build / release
+(owner: "بیلت جدید نزن" — don't cut a new build). Not wired: a time-range
+slice for the shortcut (out of scope — it fetches the whole existing
+caption track), and the subtitle-language combo still only unlocks when
+the pre-existing "Download subtitles" checkbox is turned on (a minor
+reused-UI rough edge; the common "Automatic" case needs no combo
+interaction at all so this rarely matters in practice).
+
+---
+
+## 🟢 2026-08-23 — Full app rebrand to "Whisper Transcriber Suite" (installer, AppId, data migration)
 
 Follow-up to the GitHub-repo-only rename below: owner confirmed (via
 AskUserQuestion, "کاملِ همه‌جا") the full rebrand, including the
