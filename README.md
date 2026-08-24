@@ -362,11 +362,10 @@ them and says what to include when redistributing.
 ---
 
 <div align="center">
-<sub>
 
 **Keywords** — offline speech to text · local Whisper GUI · audio to text ·
 video to text · subtitle generator · SRT VTT generator · transcription software ·
 speaker diarization · faster-whisper desktop app · yt-dlp downloader ·
 private on-device transcription · Windows · macOS · Linux
 
-</sub></div>
+</div>
