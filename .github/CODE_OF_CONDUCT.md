@@ -11,6 +11,15 @@ This project follows the
 - Maintainers reserve the right to remove abusive comments and to
   block accounts that repeatedly violate the spirit of this code.
 
+## Acceptable use of the software
+
+This section covers use of the app itself. The Contributor Covenant above
+covers behavior in this repository's issues, pull requests, and discussions.
+
+- Do not use this software for an illegal purpose.
+- Do not process or distribute sexually explicit content with this
+  software, which the maintainer does not endorse.
+
 ## Reporting
 
 Report incidents to the repo owner via a private GitHub message,
