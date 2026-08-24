@@ -30,6 +30,7 @@
 **[Download](#download)** · **[Screenshots](#what-it-looks-like)** ·
 **[Features](#features)** · **[How it works](#how-it-works)** ·
 **[Privacy](#offline-by-default)** · **[Docs](#documentation)** ·
+**[FAQ](#frequently-asked-questions)** ·
 **[Build from source](#build-from-source)**
 
 <!-- Language switcher. Flag images rather than flag emoji on purpose:
@@ -336,6 +337,48 @@ freeze and stability audits are archived under
 
 > **Coding agents:** start at [`PROJECT_INDEX.md`](PROJECT_INDEX.md) — a
 > generated, tool-neutral repo map built for fast, low-token onboarding.
+
+## Frequently asked questions
+
+**Is Whisper Transcriber Suite free?**
+Yes. It's BSD-3-Clause licensed, with no subscription, no per-minute cost and
+no telemetry by default. The Whisper model itself downloads once (~1–3 GB)
+on first launch; after that the app runs fully offline.
+
+**Does it upload my audio or video anywhere?**
+No, not by default. Every default backend — faster-whisper, whisper.cpp,
+NVIDIA Parakeet — runs locally on your machine. Two backends are opt-in only
+(`cloud_stt` via the Gemini API, and `google_cloud_stt`), and both stay off
+until you turn them on yourself in Advanced → Backend.
+
+**What platforms does it run on?**
+Windows, macOS and Linux. Published downloads are a Windows installer, a
+Windows portable ZIP, and a macOS DMG; Linux runs from source
+([docs/BUILD.md](docs/BUILD.md)).
+
+**What transcript formats can it produce?**
+`srt` `vtt` `ass` `tsv` `txt` `json` `lrc` `md` `docx` `pdf`, plus
+oTranscribe, ELAN, InqScribe and Express Scribe.
+
+**Can it label who is speaking?**
+Yes — optional speaker diarisation ("Identify speakers"), with per-word
+timestamps and time-range clipping.
+
+**Can it transcribe a live microphone or system audio?**
+Yes, from the Live tab. See [docs/LIVE.md](docs/LIVE.md).
+
+**Can it download and transcribe online videos, e.g. from YouTube?**
+Yes, any site `yt-dlp` supports, with an optional transcribe-on-finish step.
+
+**How is this different from calling the Whisper API directly?**
+It runs the model locally via faster-whisper by default, so there's no
+per-minute API cost and no audio leaves your machine — unless you explicitly
+opt into one of the two cloud backends above.
+
+**Can several people on the same network use it without installing it on
+every machine?**
+Yes — Web / LAN access mode turns this machine into a transcription page the
+other devices on the network can use. See [docs/SERVER.md](docs/SERVER.md).
 
 ## Contributing
 
