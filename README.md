@@ -370,6 +370,14 @@ Yes, from the Live tab. See [docs/LIVE.md](docs/LIVE.md).
 **Can it download and transcribe online videos, e.g. from YouTube?**
 Yes, any site `yt-dlp` supports, with an optional transcribe-on-finish step.
 
+**Can it summarize a transcript, pull out action items, or answer questions
+about it?**
+Yes, via the optional AI Tools tab in the transcript viewer — summarize,
+action items, ask-a-question, and a per-segment translate pass that writes a
+bilingual `.srt`. It's off by default; turn it on in Advanced → AI Layer,
+using either the bundled local model or your own OpenAI-compatible endpoint
+(OpenAI, Ollama, LM Studio, OpenRouter).
+
 **How is this different from calling the Whisper API directly?**
 It runs the model locally via faster-whisper by default, so there's no
 per-minute API cost and no audio leaves your machine — unless you explicitly
