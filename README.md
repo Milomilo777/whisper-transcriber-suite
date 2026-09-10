@@ -169,12 +169,14 @@ Keyboard: `Ctrl+O` browse · `Ctrl+Enter` transcribe · `Esc` cancel ·
 
 </div>
 
-The Tk GUI runs in the main process. Each transcription job runs in a
-long-lived subprocess worker that keeps the Whisper model in memory and talks
-back over newline-delimited JSON on stdin/stdout; `yt-dlp` gets its own
-subprocess per download. A per-worker UUID token and a 5-second heartbeat keep
-that routing robust against PID recycling and let the GUI detect a wedged
-worker instead of hanging with it.
+Whisper Transcriber Suite keeps the window responsive by running each
+transcription job in its own long-lived worker process, which holds the
+Whisper model in memory and streams progress back over newline-delimited
+JSON on stdin/stdout — so the UI never freezes while a file transcribes. The
+Tk GUI itself runs in the main process; `yt-dlp` gets its own subprocess per
+download. A per-worker UUID token and a 5-second heartbeat keep that routing
+robust against PID recycling and let the GUI detect a wedged worker instead
+of hanging with it.
 
 Deeper: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (prose) ·
 [docs/architecture.svg](docs/architecture.svg) (full diagram) ·
