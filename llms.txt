@@ -1,0 +1,38 @@
+# Whisper Transcriber Suite
+
+> Free, offline desktop app that transcribes audio and video locally via OpenAI Whisper (faster-whisper) for Windows, macOS and Linux — no cloud, no account, no upload.
+
+## Docs
+
+- [README](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/README.md): Project overview, features, download links, FAQ, and the full documentation index for Whisper Transcriber Suite.
+- [Install guide](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md): Step-by-step install for the Windows Setup/Portable builds and the macOS DMG, including SmartScreen guidance.
+- [Architecture](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md): Process model — the Tk GUI, a per-job worker subprocess, the JSON-over-stdio protocol, and the heartbeat that detects a wedged worker.
+- [Configuration reference](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CONFIG.md): Every config.json key, its default, and what it controls.
+- [Local-network / server mode](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SERVER.md): Running `gui.py serve` so other devices on the LAN can transcribe through this machine.
+- [Live transcription](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/LIVE.md): Microphone and system-audio transcription in real time.
+- [Build from source](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/BUILD.md): The build pipelines, which two are actually shipped, and how to build them yourself.
+
+## Optional
+
+- [Adaptive denoise](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/DENOISE.md): The optional pre-process that measures each recording and only cleans it when that helps.
+- [Cloud STT via Gemini](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CLOUD_STT.md): Optional opt-in cloud backend authenticated with a Gemini API key.
+- [Cloud STT via Google Cloud](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CLOUD_STT_GOOGLE.md): Optional opt-in Google Cloud Speech-to-Text backend with a service account.
+- [Changelog](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md): Version history and what shipped recently.
+- [Design decisions](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/DECISIONS.md): Non-obvious design choices and why they were made.
+- [Roadmap](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ROADMAP.md): What is being considered next.
+
+## Key Facts
+
+- Free and open source: BSD-3-Clause license, no subscription, no per-minute cost, no telemetry by default.
+- Runs fully offline after a one-time Whisper model download (about 1-3 GB); no account and no API key required for local transcription.
+- Local transcription backends: faster-whisper (default), whisper.cpp, NVIDIA Parakeet. Two cloud backends (Gemini API, Google Cloud Speech-to-Text) are opt-in only and off by default.
+- Output formats: srt, vtt, ass, tsv, txt, json, lrc, md, docx, pdf, plus oTranscribe, ELAN, InqScribe and Express Scribe.
+- Platforms: Windows (installer and portable ZIP), macOS (DMG), Linux (build from source).
+- Also supports speaker diarisation, live microphone/system-audio transcription, a batch queue, yt-dlp video downloads, and a local-network web server mode.
+- Author: translation-robot.
+
+## Contact
+
+- Repository: https://github.com/Milomilo777/whisper-transcriber-suite
+- Issues and discussions: https://github.com/Milomilo777/whisper-transcriber-suite/discussions
+- Security reports: see SECURITY.md in the repository.
