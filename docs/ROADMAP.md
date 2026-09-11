@@ -556,6 +556,43 @@ These are the items that take the project beyond "best-in-class for our niche" i
 - **Why:** Apple Silicon and AMD GPU users would benefit from whisper.cpp. CTranslate2 is best-in-class for NVIDIA + CPU.
 - **Implementation:** `core/backends/` with `FasterWhisperBackend` and `WhisperCppBackend` implementing a common protocol. Likely defer indefinitely.
 
+### 5.9 Read-aloud / TTS via Pocket TTS (idea, not scoped — needs owner decision)
+
+- **Source:** owner explored `kyutai-labs/pocket-tts` (and the
+  `mallahyari/pocket-tts` fork, which adds a Farsi model/training
+  pipeline) in a separate session on 2026-09-08; cloned and smoke-tested
+  standalone, outside this repo — not wired into this app in any way yet.
+- **Status:** logged only — no design, no branch, no commitment. Revisit
+  when there's an actual decision to build it.
+- **What it is:** a small (100M-param) CPU TTS model, ~200ms first-chunk
+  latency, faster than real-time on CPU. Officially bundled languages:
+  english, french, german, italian, portuguese, spanish. Farsi is NOT a
+  core language — it's a separate community-trained model
+  (`mehdi-hf/pocket-tts-farsi`) added by the fork above, loaded the same
+  way as other community models (`--config hf://...`), not part of
+  upstream Kyutai's model.
+- **Why it could matter here:** this app is STT-only today (no TTS path
+  anywhere in `core/` or `app/`). A "read transcript aloud" or "TTS
+  preview" feature would be new capability, not a fix to anything
+  existing.
+- **Open questions before scoping:**
+  - Which languages would this app actually need TTS for — the same
+    ones faster-whisper/this app's users transcribe in, or just
+    English?
+  - PyTorch/torchaudio version conflicts against the existing optional
+    heavy deps (`transformers`+`torch` used by `nvidia_asr`,
+    `stable-ts`) — would need to go through the same
+    `core/optional_deps.py` on-demand-install pattern, not a hard
+    dependency.
+  - Repo's English-only code/docs/commit-message policy (repo-root
+    `CLAUDE.md`) is unaffected either way — it governs
+    the codebase, not what languages a shipped feature can speak to a
+    user.
+- **Implementation sketch (if greenlit):** a new optional module
+  alongside `core/backends/`, e.g. `core/tts.py`, following the same
+  `is_available()`/lazy-import contract as every other optional
+  feature in `core/`.
+
 ---
 
 ## Phase 6 — CJK polish + pluggable backends (new, Session 6 research)
