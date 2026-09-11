@@ -5,7 +5,100 @@ this repo. Read this file before anything else.
 
 ---
 
-## 🟡 2026-09-11 (latest) — Transcribe-tab model picker + Advanced "model folder" control shipped; the 3rd ask (trim Advanced settings) is NOT started, needs owner input
+## 🟢 2026-09-12 (latest) — Advanced settings trimmed: 4 settings removed, per-engine setup made contextual, Google Cloud STT deliberately KEPT
+
+Finishes the third of the three colleague asks in the 2026-09-11 entry
+below (the first two shipped that day). The instruction this session was
+to evaluate and decide — explicitly including "should Google Cloud STT be
+removed or not" — and to finish hands-off.
+
+**Google Cloud STT: KEPT, not removed.** What the decision weighed: it is
+the only engine here that returns real word timestamps *and* diarization
+*and* a ~75%-cheaper batch mode for long files (the Gemini path's
+timestamps are model-generated); its libraries have been installed
+on-demand rather than bundled since 2026-08-15, so it costs nothing in
+install size; and deleting it would mean ~1.6k lines of backend, ~1.2k
+lines of tests and its docs, plus silently dropping anyone who configured
+it back to faster-whisper. Its real cost was UI weight — the largest
+section in a dialog whose users mostly never touch it — and that cost is
+gone now that the section only exists while the engine is picked. No
+usage data was available to contradict this: `core/stats.py` does record
+the backend name in its `model` field for non-faster-whisper runs, but
+the public viewer at smch.ir/stats/ only serves the translation-robot
+tables, not transcription rows.
+
+**Removed (4 settings).**
+
+- `Cross-file voice fingerprint` — DEAD: nothing in `app/` or `core/` ever
+  read `voiceprint_enabled`, `core/voiceprint.py` is not wired into the
+  pipeline, and there is no enrolment UI at all. The checkbox promised
+  behaviour the app has never had.
+  `docs/history/AUDIT_2026-05-25_boundary_bugs.md` had already recorded
+  "read nowhere" and nobody acted on it.
+- `Transcribe after download` — duplicate of the Download Videos tab's own
+  checkbox (`app/widgets/tabs.py`), which is also what persists the key
+  (`App._save_auto_transcribe_pref`). Save no longer writes it at all, so
+  that tab is now its single owner.
+- `Batch size (CUDA only)` and `Output filename template` — both still
+  live in `config.json` and are now documented as config-only in
+  `docs/CONFIG.md` (which also gained an `alignment` row). Save
+  deliberately leaves both keys untouched; only "Restore transcription
+  defaults" resets batch size, via `_reset_hidden_tuning` applied at Save
+  time, so a value tuned in an older version can't linger invisibly.
+
+**Kept but simplified.** `Word alignment`'s `none`/`stable_ts` combobox is
+now a plain "Refine word timings with stable-ts" checkbox. It was on the
+previous session's cut list, but `docs/GAPS_AGAINST_PEERS_2026.md` and
+`docs/COMPETITIVE_ANALYSIS_2026.md` both list ±50 ms alignment as a
+shipped competitive feature — removing its only UI control would have
+un-shipped it for every GUI user. Both docs now name the checkbox.
+
+**Contextual instead of deleted.** The Gemini / Google Cloud / NVIDIA
+Parakeet setup sections are packed only while that engine is picked in
+this dialog's own Engine combobox (`_sync_engine_sections`), directly
+under "Model & engine"; the same for the "Get whisper.cpp model" button,
+and for the remote-LLM fields under the LLM provider picker
+(`_sync_llm_provider_rows`). The "Jump to" sidebar is rebuilt from
+whatever is visible (`_refresh_nav`). Default view: 11 sections → 8.
+
+**A real bug fixed on the way:** the on-open Google Cloud connection test
+fired whenever a key was configured — even for someone who had since
+switched engines — and that test pip-installs the google-cloud libraries
+on demand. It is now gated on Google Cloud actually being the picked
+engine.
+
+**Also in this pass:** VAD + denoise + Demucs + hallucination flagging +
+the noisy-audio preset merged into one "Silence & noise" section, so the
+preset button finally sits with every value it changes; `_BACKEND_CHOICES`
+is now `core.backends.availability.ENGINE_CHOICES` itself instead of a
+hand-copied duplicate of it; the Gemini section no longer claims a "free
+tier ~60 min/month" (that is Google Cloud STT's tier, not the Gemini
+API's, which is rate-limited); `_build` is now a table of contents over
+one `_build_*_section` method per section.
+
+**Verified:** `pyright app core` clean (0/0/0); the full hermetic suite
+green (`pytest tests/ --ignore=tests/smoke`, exit 0), including 14 new
+cases in `tests/core/test_advanced_simplified.py` — half SimpleNamespace
+fakes for the save/restore paths, half a real withdrawn `tk.Tk()` root
+driving the contextual sections. `tests/core/test_fixpack_Ib.py` was
+deleted: it existed only to guard the batch-size Spinbox's non-numeric
+TclError crash, and that Spinbox no longer exists. Beyond the suite, the
+REAL App was launched and the dialog driven through every engine plus the
+Remote LLM provider, measuring the scrollable body against the canvas
+each time (819–859 px of content against a 1770 px canvas — this dialog
+has NO horizontal scrollbar, so an overflow would silently clip), with
+screenshots reviewed by eye. Nothing was rebuilt or released.
+
+**Still uncommitted / follow-ups:** none from this session; `master` is
+clean and pushed. The old `bundled_gcloud_key_path()` code path (the
+"✓ Using the built-in Google Cloud key" display and the bundled-key branch
+in the Test-connection button) is now dead in practice — the build errors
+out if a key is present — but was left alone as out of scope; removing it
+is a small, separate security-hygiene cleanup if anyone wants it.
+
+---
+
+## 🟢 2026-09-11 — Transcribe-tab model picker + Advanced "model folder" control shipped; the 3rd ask (trim Advanced settings) landed the next day (see the entry above)
 
 A colleague asked for three things in the Advanced/Transcribe UI. Two are
 done, committed, and verified; the third needs the owner to actually pick
@@ -91,6 +184,11 @@ same section — a ~10-30%-slower niche accuracy knob), and
 token-syntax naming customization most users never need). Ask the owner
 directly which of these (or anything else) to actually remove before
 touching this — do not guess and delete.
+
+**→ Resolved 2026-09-12** (see the entry above): batch size and the output
+filename template were removed as UI controls (still config keys), word
+alignment became a checkbox rather than being cut, and the voiceprint
+checkbox plus the duplicated "Transcribe after download" went too.
 
 **Nothing pending on master beyond this**: two commits this session
 (`8841d35` picked up a dangling uncommitted 2026-08-27 yt-dlp-staleness
