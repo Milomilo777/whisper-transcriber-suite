@@ -75,7 +75,7 @@ Tkinter desktop GUI layer of Whisper Transcriber Suite. The App(tk.Tk) root in a
 - `app/services/download_service.py` — DownloadService: builds yt-dlp argv (incl. Supreme Master TV special-case with sibling parts), runs downloads in daemon threads, posts events to app.download_events, handles subtitle burn-in, pause/resume/cancel/re-run.
 - `app/services/format_service.py` — FormatService: runs `yt-dlp --dump-single-json` (or the SMTV page scrape) on a daemon thread to populate the Download tab's audio/video format dropdowns; polls app.format_events.
 - `app/services/integrations_service.py` — oTranscribe .otr <-> .srt round-trip import/export + opening the oTranscribe website.
-- `app/dialogs/advanced.py` — AdvancedDialog: the single settings hub — VAD knobs, word-timestamps, output-format checkboxes, backend picker (faster-whisper/whisper.cpp/Gemini/Google Cloud STT/NVIDIA Parakeet), SponsorBlock categories, hardware-wizard + model-download launchers, watched-folder picker. ~1441 lines.
+- `app/dialogs/advanced.py` — AdvancedDialog: the single settings hub — model + engine pickers (faster-whisper/whisper.cpp/Gemini/Google Cloud STT/NVIDIA Parakeet) plus the model folder, output-format checkboxes, silence/noise handling (VAD, denoise, Demucs, hallucination flagging), prompt/hotwords, AI Layer, watched folder, SponsorBlock categories, hardware-wizard + model-download launchers. Each engine's own setup section — and the remote-LLM fields — is packed only while that engine/provider is picked (`_sync_engine_sections` / `_sync_llm_provider_rows`); one `_build_*_section` method per section. ~2200 lines.
 - `app/dialogs/transcript_viewer.py` — TranscriptViewer: segment list + optional embedded VLC playback, find/replace, speaker rename, filler-word removal, word-confidence colouring, karaoke word highlight; FindReplaceDialog companion class. ~1523 lines.
 - `app/dialogs/model_download.py` — ModelDownloadDialog: modal progress UI driving core.model_manager.ensure_model; on ModelDestinationNotWritable/PermissionError, reopens HubSetupDialog to re-pick a writable folder and retries.
 - `app/dialogs/model_loading.py` — ModelLoadingDialog: simpler modal shown while an already-downloaded model loads into a worker subprocess's RAM (vs. model_download.py which drives the byte download).
@@ -181,7 +181,7 @@ Tk-free transcription engine package: pluggable ASR backends, ~13 output-format 
 - `core/updates.py` — Tk-free GitHub 'update available' check (releases/latest); notify-only, never downloads/installs, silent on any failure including a private repo's 404.
 - `core/backends/base.py` — Backend ABC + LanguageInfo dataclass -- the load()/is_ready()/transcribe_to_segments()/unload()/get_error() contract every engine implements.
 - `core/backends/__init__.py` — get_backend(name) factory dispatching faster_whisper (default) / whisper_cpp / cloud_stt / google_cloud_stt / nvidia_asr; unknown names silently fall back to faster_whisper.
-- `core/backends/availability.py` — ENGINE_CHOICES registry (label <-> transcribe_backend value) shared by the Transcribe-tab picker and Advanced dialog; engine_status()/engine_statuses() cheap-vs-deep readiness probes; default_engine() picks google_cloud_stt when a trusted build ships creds/gcloud_stt.json.
+- `core/backends/availability.py` — ENGINE_CHOICES registry (label <-> transcribe_backend value) shared by the Transcribe-tab picker and Advanced dialog; engine_status()/engine_statuses() cheap-vs-deep readiness probes; default_engine() picks google_cloud_stt only when the USER configured their own service-account JSON — a build-bundled key is deliberately ignored (bundled key revoked 2026-08-04, see SECURITY.md).
 - `core/backends/faster_whisper_be.py` — Default CTranslate2 engine; thin adapter that owns its own model/pipeline state, with the same self-healing CUDA->CPU downgrade as transcriber.py.
 - `core/backends/whisper_cpp.py` — pywhispercpp/ggml quantized engine (ggml-large-v3-q5_0.bin, ~1.1 GB) for weak CPUs; download_default_model() with a truncated-download completeness check.
 - `core/backends/cloud_stt.py` — OPTIONAL Gemini-API cloud STT (paste-an-API-key, uploads audio to Google). Chunks audio to FLAC, uploads via the Files API or inlines small chunks, tracks cloud_stt_minutes_used locally (no dollar-balance API exists).
@@ -529,23 +529,23 @@ pip install pyright pytest
 <!-- AUTO-INDEX:STRUCTURE:START -->
 ## Structure (auto-refreshed — do not hand-edit this block)
 
-- **Source files tracked:** 465
-- **Structure refreshed:** 2026-08-23T22:55:22
+- **Source files tracked:** 468
+- **Structure refreshed:** 2026-09-12T05:44:39
 - **Semantic sections last built:** 2026-07-04T15:30:21
-- **Drift since semantic build:** +61 added · ~132 changed · -4 removed
+- **Drift since semantic build:** +65 added · ~141 changed · -5 removed
 
 > ⚠️ **STALE** — the source tree changed a lot since the semantic sections were built. Re-run `/project-index` to regenerate purposes / gotchas / subsystem maps.
 >
-> Notable: `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/workflows/ci.yml`, `.github/workflows/macos-app.yml`, `.github/workflows/macos-compileall-script-test.yml`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `README.md`
+> Notable: `.github/CODE_OF_CONDUCT.md`, `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/workflows/ci.yml`, `.github/workflows/macos-app.yml`, `.github/workflows/macos-compileall-script-test.yml`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`
 
 | Top-level | Source files |
 |---|---|
-| `tests` | 189 |
+| `tests` | 191 |
 | `docs` | 97 |
 | `core` | 69 |
 | `app` | 29 |
+| `(root)` | 20 |
 | `.claude` | 20 |
-| `(root)` | 19 |
 | `.github` | 13 |
 | `platform` | 12 |
 | `tools` | 8 |
@@ -553,6 +553,6 @@ pip install pyright pytest
 | `downloads` | 3 |
 | `assets` | 1 |
 
-**By type:** `.py`×291  `.md`×112  `.json`×17  `.yml`×11  `.txt`×9  `.bat`×6  `.spec`×4  `.html`×4  `.sh`×4  `.iss`×2  `.ps1`×2  `.toml`×1  `.js`×1  `.rb`×1
+**By type:** `.py`×293  `.md`×112  `.json`×17  `.yml`×11  `.txt`×10  `.bat`×6  `.spec`×4  `.html`×4  `.sh`×4  `.iss`×2  `.ps1`×2  `.toml`×1  `.js`×1  `.rb`×1
 
 <!-- AUTO-INDEX:STRUCTURE:END -->
