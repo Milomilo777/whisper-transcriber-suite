@@ -35,14 +35,13 @@ def _dirty_dialog(sync_calls: list[str]) -> types.SimpleNamespace:
         _vad_min_silence=_V(1500),
         _vad_threshold=_V(0.2),
         _vad_speech_pad=_V(900),
-        _batch_size=_V(4),
         _hallucination_detect=_V(False),
-        _alignment=_V("stable-ts"),
+        _alignment_enabled=_V(True),
         _demucs_enabled=_V(True),
         _denoise_enabled=_V(True),
         _denoise_level=_V("strong"),
         _auto_chapters_enabled=_V(False),
-        _voiceprint_enabled=_V(False),
+        _reset_hidden_tuning=False,
         _sync_vad_controls_state=lambda: sync_calls.append("vad_sync"),
         _sync_denoise_level_state=lambda: sync_calls.append("sync"),
         # Deliberately NOT reset -- persistent choices / user-authored text.
@@ -65,14 +64,14 @@ def test_restore_transcription_defaults_resets_only_the_tuning_knobs() -> None:
     assert dlg._vad_min_silence.get() == 500
     assert dlg._vad_threshold.get() == 0.5
     assert dlg._vad_speech_pad.get() == 400
-    assert dlg._batch_size.get() == 16
     assert dlg._hallucination_detect.get() is True
-    assert dlg._alignment.get() == "none"
+    assert dlg._alignment_enabled.get() is False
     assert dlg._demucs_enabled.get() is False
     assert dlg._denoise_enabled.get() is False
     assert dlg._denoise_level.get() == "auto"
     assert dlg._auto_chapters_enabled.get() is True
-    assert dlg._voiceprint_enabled.get() is True
+    # batch_size has no control any more; its reset is queued for Save.
+    assert dlg._reset_hidden_tuning is True
 
     # Persistent / user-authored fields must be left exactly as they were.
     assert dlg._initial_prompt.get() == "proper nouns: Acme Corp, Jane Doe"
@@ -114,8 +113,7 @@ def test_defaults_match_core_config_default_config() -> None:
     assert DEFAULT_CONFIG["denoise_enabled"] is False
     assert DEFAULT_CONFIG["denoise_level"] == "auto"
     assert DEFAULT_CONFIG["auto_chapters_enabled"] is True
-    assert DEFAULT_CONFIG["voiceprint_enabled"] is True
-    # "alignment" has no DEFAULT_CONFIG entry; AdvancedDialog.__init__ itself
-    # falls back to "none" via cfg.get("alignment") or "none", so that is
-    # the correct reset target even though it isn't in the dict.
+    # "alignment" has no DEFAULT_CONFIG entry; an unchecked word-timing
+    # checkbox saves "none", which is also what core treats a missing key
+    # as, so unchecked is the correct reset target.
     assert "alignment" not in DEFAULT_CONFIG

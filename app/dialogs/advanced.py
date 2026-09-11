@@ -1,7 +1,10 @@
-"""Modal Advanced settings dialog (Phase 2a + 3a).
+"""Modal Advanced settings dialog.
 
-Exposes the VAD knobs, word-timestamps toggle, output-format checkboxes,
-SponsorBlock category checkboxes, and the auto-transcribe-after-download flag.
+Model/engine choice plus per-engine setup, output formats, silence & noise
+handling, prompt/hotwords, the optional AI Layer, and app-wide preferences
+(watched folder, downloads, tray/telemetry). A per-engine setup section, and
+the LLM provider's own fields, only appear while that engine/provider is
+picked, so the default view stays short.
 """
 from __future__ import annotations
 
@@ -11,7 +14,8 @@ import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
-from core.config import NOISY_AUDIO_PRESET, save_config
+from core.backends.availability import ENGINE_CHOICES
+from core.config import DEFAULT_CONFIG, NOISY_AUDIO_PRESET, save_config
 from core.model_manager import (
     DEFAULT_MODEL_SLUG,
     catalog_entry_info,
@@ -91,25 +95,15 @@ _SPONSORBLOCK_CATEGORIES = [
 ]
 
 
-# Backend picker — human-readable labels mapped to the stored config value.
-# Offline engines stay first (faster_whisper is the default); the two cloud
-# options spell out their auth model so a non-technical user can tell them
-# apart (a pasted key vs. a downloaded service-account file).
-_BACKEND_CHOICES: list[tuple[str, str]] = [
-    ("Faster-Whisper — offline, default", "faster_whisper"),
-    ("whisper.cpp — offline, low-end CPUs", "whisper_cpp"),
-    ("Gemini cloud — simple API key", "cloud_stt"),
-    (
-        "Google Cloud Speech-to-Text — service account (60 min/mo free)",
-        "google_cloud_stt",
-    ),
-    (
-        "NVIDIA Parakeet TDT v3 — local, multilingual (transformers)",
-        "nvidia_asr",
-    ),
-]
+# Engine picker — the SAME registry the Transcribe tab's Engine dropdown
+# reads (core.backends.availability), so the two pickers can't drift apart.
+_BACKEND_CHOICES: list[tuple[str, str]] = ENGINE_CHOICES
 _BACKEND_LABEL_TO_VALUE = {label: value for label, value in _BACKEND_CHOICES}
 _BACKEND_VALUE_TO_LABEL = {value: label for label, value in _BACKEND_CHOICES}
+
+# "Jump to" sidebar: a link label -> the small grey caption placed above it,
+# starting a new group of links.
+_NAV_GROUP_CAPTIONS: dict[str, str] = {"Watched folder": "App preferences"}
 
 # LLM provider picker — which implementation "Enable local LLM" turns on.
 _LLM_PROVIDER_CHOICES: list[tuple[str, str]] = [
@@ -174,12 +168,8 @@ class AdvancedDialog(tk.Toplevel):
         self._vad_min_silence = tk.IntVar(value=int(cfg.get("vad_min_silence_ms", 500)))
         self._vad_threshold = tk.DoubleVar(value=float(cfg.get("vad_threshold", 0.5)))
         self._vad_speech_pad = tk.IntVar(value=int(cfg.get("vad_speech_pad_ms", 400)))
-        self._batch_size = tk.IntVar(value=int(cfg.get("batch_size", 16)))
         self._initial_prompt = tk.StringVar(value=str(cfg.get("initial_prompt", "")))
         self._hotwords = tk.StringVar(value=str(cfg.get("hotwords", "")))
-        self._auto_transcribe = tk.BooleanVar(
-            value=bool(cfg.get("auto_transcribe_after_download", False))
-        )
         self._cookies_browser = tk.StringVar(
             value=(cfg.get("cookies_from_browser") or "").strip() or "(off)"
         )
@@ -192,9 +182,6 @@ class AdvancedDialog(tk.Toplevel):
             cat: tk.BooleanVar(value=(cat in existing_sb))
             for cat, _label in _SPONSORBLOCK_CATEGORIES
         }
-        self._filename_template = tk.StringVar(
-            value=str(cfg.get("output_filename_template") or "{base}.{ext}")
-        )
         self._whisper_model = tk.StringVar(
             value=str(cfg.get("whisper_model") or DEFAULT_MODEL_SLUG)
         )
@@ -271,12 +258,14 @@ class AdvancedDialog(tk.Toplevel):
         self._auto_chapters_enabled = tk.BooleanVar(
             value=bool(cfg.get("auto_chapters_enabled", True))
         )
-        self._voiceprint_enabled = tk.BooleanVar(
-            value=bool(cfg.get("voiceprint_enabled", True))
+        # Word-timing refinement: a plain on/off checkbox for what config
+        # stores as alignment="stable_ts" / "none".
+        self._alignment_enabled = tk.BooleanVar(
+            value=str(cfg.get("alignment") or "none") == "stable_ts"
         )
-        self._alignment = tk.StringVar(
-            value=str(cfg.get("alignment") or "none")
-        )
+        # GPU batch size has no control in this dialog any more; "Restore
+        # transcription defaults" sets this so Save still resets it.
+        self._reset_hidden_tuning = False
         self._telemetry_opt_in = tk.BooleanVar(
             value=bool(cfg.get("telemetry_opt_in", False))
         )
@@ -321,13 +310,20 @@ class AdvancedDialog(tk.Toplevel):
         self.minsize(width, height)
 
         # Auto-verify the Google Cloud key on open so the user can see at a
-        # glance that the built-in (or configured) key works — no need to click
-        # "Test connection". Runs on a daemon thread via
-        # _test_gcloud_connection; deferred so the window is mapped first.
+        # glance that the configured key works — no need to click "Test
+        # connection". Only while Google Cloud is the picked engine (its
+        # section is hidden otherwise): the test can trigger a one-time
+        # google-cloud library install, which someone who has switched to
+        # another engine must not pay for just by opening this dialog. Runs
+        # on a daemon thread via _test_gcloud_connection; deferred so the
+        # window is mapped first.
         try:
             from core.backends.availability import has_gcloud_key
 
-            if has_gcloud_key(self.app.app_config):
+            if (
+                self._selected_backend() == "google_cloud_stt"
+                and has_gcloud_key(self.app.app_config)
+            ):
                 self.after(250, self._test_gcloud_connection)
         except Exception:  # noqa: BLE001
             pass
@@ -340,17 +336,18 @@ class AdvancedDialog(tk.Toplevel):
         content_container = ttk.Frame(main)
         content_container.pack(fill="both", expand=True)
 
-        # Quick-nav sidebar — ten stacked sections is a lot to scroll
-        # through hunting for one setting; each entry here jumps the
-        # canvas straight to that section. Populated as each section is
-        # built below (self._nav_targets), wired up once they all exist.
+        # Quick-nav sidebar — each entry jumps the canvas straight to that
+        # section. The links are (re)built by _refresh_nav(), because the
+        # set of visible sections follows the Engine picker (only the
+        # picked engine's own setup section is shown).
         nav = ttk.Frame(content_container, width=132)
         nav.pack(side="left", fill="y", padx=(0, 6))
         nav.pack_propagate(False)
         ttk.Label(
             nav, text="Jump to", font=("TkDefaultFont", 9, "bold"),
         ).pack(anchor="w", pady=(0, 6))
-        self._nav_targets: list[tuple[str, ttk.LabelFrame]] = []
+        self._nav_frame = nav
+        self._nav_links: list[tk.Widget] = []
 
         canvas = tk.Canvas(content_container, highlightthickness=0)
         # Keep a handle so _teardown_mousewheel can drop the global
@@ -365,6 +362,7 @@ class AdvancedDialog(tk.Toplevel):
         )
 
         body = ttk.Frame(canvas, padding=12)
+        self._scroll_body = body
 
         body.bind(
             "<Configure>",
@@ -377,7 +375,7 @@ class AdvancedDialog(tk.Toplevel):
 
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
-        
+
         # macOS Tk reports event.delta as +/-1 per notch; Windows reports
         # +/-120. Linux doesn't generate <MouseWheel> at all (Button-4/5
         # below), so this divisor only needs to vary between win/mac.
@@ -406,76 +404,180 @@ class AdvancedDialog(tk.Toplevel):
         canvas.bind("<Enter>", _bind_mousewheel)
         canvas.bind("<Leave>", _unbind_mousewheel)
 
-        # VAD parameters
-        vad = section_labelframe(
-            body, "Voice Activity Detection (skip silence)",
-            "Voice Activity Detection skips silent stretches so the model "
-            "only processes speech — faster, and avoids hallucinated text "
-            "on silence. Min silence: how long a gap must be to count as "
-            "silence. Threshold: how confident the detector must be that "
-            "audio is speech (lower = more sensitive). Speech pad: extra "
-            "padding kept around each detected speech chunk.",
-        )
-        vad.pack(fill="x", pady=(0, 14))
-        self._nav_targets.append(("Voice Activity Detection", vad))
-        ttk.Checkbutton(
-            vad, text="Enable VAD (skip silent segments)",
-            variable=self._vad_enabled,
-            command=self._sync_vad_controls_state,
-        ).grid(row=0, column=0, columnspan=2, sticky="w", padx=8, pady=(4, 2))
-        help_icon(
-            vad,
-            "On (recommended): silent stretches are detected and skipped "
-            "before the audio reaches the speech model — faster, and it "
-            "stops Whisper from hallucinating text into pure silence.\n\n"
-            "Off: the whole file is sent to the model as-is, silence "
-            "included. The three controls below only matter while this "
-            "is on.",
-        ).grid(row=0, column=3, sticky="w", padx=(0, 8), pady=(4, 2))
-        self._vad_control_rows = [
-            self._slider_row(vad, "Min silence (ms)", self._vad_min_silence, 100, 2000, 50, 1),
-            self._slider_row(vad, "Threshold", self._vad_threshold, 0.1, 0.9, 0.05, 2, is_float=True),
-            self._slider_row(vad, "Speech pad (ms)", self._vad_speech_pad, 0, 1000, 50, 3),
+        # Sections, top to bottom: what runs the transcription (plus that
+        # engine's own setup, when it needs one), what gets written, how
+        # the audio is cleaned up, then app-wide preferences. The three
+        # per-engine setup sections are built up front but only ever packed
+        # by _sync_engine_sections — someone on the default Faster-Whisper
+        # engine never sees the Gemini / Google Cloud / Parakeet setup.
+        engine = self._build_engine_section(body)
+        gemini = self._build_gemini_frame(body)
+        gcloud = self._build_gcloud_frame(body)
+        nvidia = self._build_nvidia_frame(body)
+        outputs = self._build_outputs_section(body)
+        noise = self._build_noise_section(body)
+        prompt = self._build_prompt_section(body)
+        ai = self._build_ai_section(body)
+        watch = self._build_watch_section(body)
+        download = self._build_download_section(body)
+        misc = self._build_misc_section(body)
+
+        self._engine_section = engine
+        self._engine_setup_frames: dict[str, ttk.LabelFrame] = {
+            "cloud_stt": gemini,
+            "google_cloud_stt": gcloud,
+            "nvidia_asr": nvidia,
+        }
+        # "Jump to" links in on-screen order; hidden sections are skipped.
+        self._nav_targets: list[tuple[str, ttk.LabelFrame]] = [
+            ("Model & engine", engine),
+            ("Gemini setup", gemini),
+            ("Google Cloud setup", gcloud),
+            ("Parakeet setup", nvidia),
+            ("Output formats", outputs),
+            ("Silence & noise", noise),
+            ("Prompt & hotwords", prompt),
+            ("AI Layer", ai),
+            ("Watched folder", watch),
+            ("Downloads (yt-dlp)", download),
+            ("App behaviour", misc),
         ]
-        self._sync_vad_controls_state()
+        self._sync_engine_sections()
 
-        # Output formats
-        outputs = section_labelframe(
-            body, "Output formats",
-            "Which transcript file types to write for every transcription "
-            "(SRT/VTT subtitles, plain TXT, JSON with timestamps, etc.). "
-            "You can check more than one — all checked formats are "
-            "written for every job.",
+        buttons = ttk.Frame(main)
+        buttons.pack(fill="x", pady=(8, 0))
+        ttk.Button(buttons, text="Cancel", command=self._on_close).pack(side="right", padx=(8, 0))
+        ttk.Button(buttons, text="Save", command=self._save_and_close).pack(side="right")
+        ttk.Button(
+            buttons, text="Restore transcription defaults",
+            command=self._restore_transcription_defaults,
+        ).pack(side="left")
+        help_icon(
+            buttons,
+            "Resets the Silence & noise settings (VAD, denoise, Demucs, "
+            "hallucination flagging), word-timing refinement and "
+            "auto-chapters back to their defaults — plus GPU batch size, "
+            "which no longer has a control of its own. Nothing is saved "
+            "until you click Save, so Cancel undoes this too. Output "
+            "formats, the hotwords/prompt text, model/engine choice, "
+            "watched folder, and any cloud credentials are left untouched "
+            "— those are deliberate choices, not per-job tuning knobs.",
+        ).pack(side="left", padx=(4, 0))
+
+    def _refresh_nav(self) -> None:
+        """(Re)build the "Jump to" links for the sections currently shown.
+
+        Each link scrolls the canvas so the target section's top edge
+        lines up with the canvas's own top. ``frame.winfo_y()`` is the
+        target's pixel offset relative to its parent (``body``, the
+        scrollable content) — fixed regardless of the current scroll
+        position, unlike a screen-relative coordinate — divided by
+        ``body``'s total height gives the ``yview_moveto`` fraction
+        directly. Needs ``update_idletasks`` first so both heights have
+        settled from layout instead of reading stale/zero values.
+        """
+        nav = self._nav_frame
+        canvas = self._scroll_canvas
+        body = self._scroll_body
+        for widget in self._nav_links:
+            widget.destroy()
+        self._nav_links = []
+
+        def _jump(frame: "ttk.LabelFrame") -> None:
+            self.update_idletasks()
+            total = max(body.winfo_height(), 1)
+            canvas.yview_moveto(max(0.0, min(1.0, frame.winfo_y() / total)))
+
+        for label, frame in self._nav_targets:
+            if frame.winfo_manager() != "pack":
+                continue  # the setup section of an engine that isn't picked
+            caption = _NAV_GROUP_CAPTIONS.get(label)
+            if caption:
+                separator = ttk.Separator(nav, orient="horizontal")
+                separator.pack(fill="x", pady=(8, 4))
+                caption_label = ttk.Label(
+                    nav, text=caption, foreground="#888",
+                    font=("TkDefaultFont", 8),
+                )
+                caption_label.pack(anchor="w", pady=(0, 2))
+                self._nav_links += [separator, caption_label]
+            link = ttk.Label(
+                nav, text=label, foreground="#1a73e8", cursor="hand2",
+                wraplength=122, justify="left",
+            )
+            link.pack(anchor="w", pady=2, fill="x")
+            link.bind("<Button-1>", lambda _e, f=frame: _jump(f))
+            self._nav_links.append(link)
+
+    def _selected_backend(self) -> str:
+        """The engine currently picked in this dialog's Engine combobox
+        (not necessarily saved yet)."""
+        return _BACKEND_LABEL_TO_VALUE.get(
+            self._backend_display.get() or "", "faster_whisper"
         )
-        outputs.pack(fill="x", pady=(0, 14))
-        self._nav_targets.append(("Output formats", outputs))
-        for i, name in enumerate(supported_formats()):
-            # Each checkbox + its hover-help icon share one cell frame so
-            # the 3-per-row grid stays intact (a bare Checkbutton has no
-            # spare column of its own to grid a second widget into).
-            cell = ttk.Frame(outputs)
-            cell.grid(row=i // 3, column=i % 3, sticky="w", padx=8, pady=4)
-            ttk.Checkbutton(
-                cell,
-                text=_FORMAT_LABELS.get(name, name.upper()),
-                variable=self._format_vars[name],
-            ).pack(side="left")
-            help_icon(
-                cell, _FORMAT_HELP.get(name, ""), wraplength=280,
-            ).pack(side="left")
 
-        # Model & engine — split out of the old single "Whisper extras"
-        # grab-bag section (2026-08-14 readability pass): ten unrelated rows
-        # in one section was too much to scan. This half is "what actually
-        # runs the transcription and how it decodes."
+    def _sync_engine_sections(self) -> None:
+        """Show only the setup the engine picked in this dialog needs.
+
+        The Gemini / Google Cloud / NVIDIA Parakeet sections are packed
+        directly under "Model & engine" while their engine is picked and
+        hidden otherwise, and the whisper.cpp model button only shows for
+        whisper.cpp. Hiding is purely visual: every field keeps its value
+        and is saved exactly as before. Never raises — it runs from a Tk
+        callback, where an exception surfaces as a cryptic error dialog.
+        """
+        try:
+            selected = self._selected_backend()
+            for value, frame in self._engine_setup_frames.items():
+                shown = frame.winfo_manager() == "pack"
+                if value == selected and not shown:
+                    frame.pack(fill="x", pady=(0, 14), after=self._engine_section)
+                elif value != selected and shown:
+                    frame.pack_forget()
+            if selected == "whisper_cpp":
+                self._whisper_cpp_btn.grid()
+            else:
+                self._whisper_cpp_btn.grid_remove()
+            self._refresh_nav()
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not sync engine setup sections", exc_info=True)
+
+    def _sync_llm_provider_rows(self) -> None:
+        """Show only the AI Layer rows the picked LLM provider uses: the
+        model download for Local, the endpoint/key/model fields for Remote.
+
+        Purely visual (hidden fields keep their values and still save).
+        Never raises — runs from a Tk callback.
+        """
+        try:
+            remote = _LLM_PROVIDER_LABEL_TO_VALUE.get(
+                self._llm_provider_display.get() or "", "local"
+            ) == "remote"
+            for widget in self._llm_remote_widgets:
+                if remote:
+                    widget.grid()
+                else:
+                    widget.grid_remove()
+            for widget in self._llm_local_widgets:
+                if remote:
+                    widget.grid_remove()
+                else:
+                    widget.grid()
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not sync LLM provider rows", exc_info=True)
+
+    def _build_engine_section(self, body: ttk.Frame) -> ttk.LabelFrame:
+        """"Model & engine": which model and engine run the transcription,
+        where downloaded models live, and the optional word-timing pass."""
         engine = section_labelframe(
             body, "Model & engine",
-            "Which model and backend run the transcription, plus "
-            "lower-level decode tuning: GPU batching, word-timestamp "
-            "refinement, and hallucination flagging.",
+            "Which Whisper model and engine run the transcription, where "
+            "downloaded models are kept, and an optional word-timing "
+            "refinement pass. An engine that needs a key or its own "
+            "download gets a setup section right below this one once "
+            "picked.",
         )
         engine.pack(fill="x", pady=(0, 14))
-        self._nav_targets.append(("Model & engine", engine))
 
         # Model picker (v0.8) — slug → catalog entry. The catalog is the
         # MERGED config catalog (built-in MODEL_REGISTRY + any models the
@@ -543,7 +645,7 @@ class AdvancedDialog(tk.Toplevel):
             "them to reuse it without re-downloading.",
         ).grid(row=1, column=3, sticky="w", padx=(0, 8), pady=4)
 
-        ttk.Label(engine, text="Backend").grid(row=2, column=0, sticky="w", padx=8, pady=4)
+        ttk.Label(engine, text="Engine").grid(row=2, column=0, sticky="w", padx=8, pady=4)
         backend_combo = ttk.Combobox(
             engine,
             textvariable=self._backend_display,
@@ -552,15 +654,21 @@ class AdvancedDialog(tk.Toplevel):
             width=56,
         )
         backend_combo.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
-        ttk.Button(
+        backend_combo.bind(
+            "<<ComboboxSelected>>", lambda _e: self._sync_engine_sections()
+        )
+        # Only shown while whisper.cpp is picked (see _sync_engine_sections).
+        self._whisper_cpp_btn = ttk.Button(
             engine, text="Get whisper.cpp model...",
             command=self._download_whisper_cpp_model,
-        ).grid(row=2, column=2, sticky="w", padx=8, pady=4)
+        )
+        self._whisper_cpp_btn.grid(row=2, column=2, sticky="w", padx=8, pady=4)
         help_icon(
             engine,
-            "Which engine runs the offline model. Faster-Whisper is the "
-            "default; whisper.cpp helps on low-end CPUs; the cloud/NVIDIA "
-            "options need their own setup further down this dialog. Same "
+            "Which engine runs the transcription. Faster-Whisper is the "
+            "default; whisper.cpp helps on low-end CPUs. The two cloud "
+            "engines and NVIDIA Parakeet need a one-time setup, which "
+            "appears right below this section once you pick one. Same "
             "picker as the Engine dropdown on the Transcribe tab.",
         ).grid(row=2, column=3, sticky="w", padx=(0, 8), pady=4)
 
@@ -575,288 +683,44 @@ class AdvancedDialog(tk.Toplevel):
             foreground="#666", wraplength=170, justify="left",
         ).grid(row=3, column=2, sticky="w", padx=8, pady=4)
 
-        ttk.Label(engine, text="Batch size (CUDA only)").grid(row=4, column=0, sticky="w", padx=8, pady=4)
-        ttk.Spinbox(engine, from_=1, to=64, increment=1, textvariable=self._batch_size, width=6).grid(
-            row=4, column=1, sticky="w", padx=8, pady=4
-        )
-        help_icon(
-            engine,
-            "How many audio chunks the GPU processes at once. Higher can "
-            "be faster but uses more VRAM; only affects CUDA runs, CPU "
-            "ignores this.",
-        ).grid(row=4, column=2, sticky="w", padx=8, pady=4)
-
-        ttk.Label(engine, text="Word alignment").grid(row=5, column=0, sticky="w", padx=8, pady=4)
-        ttk.Combobox(
-            engine,
-            textvariable=self._alignment,
-            state="readonly",
-            values=("none", "stable_ts"),
-            width=20,
-        ).grid(row=5, column=1, sticky="w", padx=8, pady=4)
-        ttk.Label(
-            engine,
-            text="stable_ts refines word timestamps via DTW (~10-30% slower).",
-            foreground="#666", wraplength=170, justify="left",
-        ).grid(row=5, column=2, sticky="w", padx=8, pady=4)
-
-        # Hallucination detector toggle (v0.8).
+        # Word-timing refinement — a plain on/off instead of the old
+        # "none"/"stable_ts" dropdown; _save_and_close maps it back.
         ttk.Checkbutton(
             engine,
-            text="Flag likely hallucinations (repetition + BoH heuristics)",
-            variable=self._hallucination_detect,
-        ).grid(row=6, column=0, columnspan=3, sticky="w", padx=8, pady=4)
+            text="Refine word timings with stable-ts (slower)",
+            variable=self._alignment_enabled,
+        ).grid(row=4, column=0, columnspan=3, sticky="w", padx=8, pady=4)
         help_icon(
             engine,
-            "Marks segments that look like Whisper's known failure modes "
-            "on silence/noise: repeated phrases, or text matching common "
-            "'beginning of hallucination' (BoH) patterns. Flags them in "
-            "the output rather than removing them.",
-        ).grid(row=6, column=3, sticky="w", padx=(0, 8), pady=4)
+            "After transcribing, re-aligns every word's start/end time "
+            "against the audio (stable-ts, about ±50 ms) for sharper "
+            "per-word timing, e.g. karaoke highlighting in ASS/VTT "
+            "subtitles. Adds roughly 10-30% to the run time, and needs a "
+            "one-time ~700 MB component that is offered the first time "
+            "you transcribe with this on.",
+        ).grid(row=4, column=3, sticky="w", padx=(0, 8), pady=4)
         engine.columnconfigure(1, weight=1)
+        return engine
 
-        # Prompt & output naming — the other half of the old "Whisper
-        # extras" section: user-authored text inputs and how output files
-        # get named, as opposed to engine/decode behaviour above.
-        prompt_section = section_labelframe(
-            body, "Prompt, hotwords & output naming",
-            "Optional text fed to the model before it starts, words to "
-            "bias recognition toward, and how output files get named.",
-        )
-        prompt_section.pack(fill="x", pady=(0, 14))
-        self._nav_targets.append(("Prompt & output naming", prompt_section))
+    def _build_gemini_frame(self, body: ttk.Frame) -> ttk.LabelFrame:
+        """Build the Gemini ("paste an API key") cloud engine's setup frame.
 
-        ttk.Label(prompt_section, text="Initial prompt").grid(row=0, column=0, sticky="w", padx=8, pady=4)
-        ttk.Entry(prompt_section, textvariable=self._initial_prompt, width=42).grid(
-            row=0, column=1, sticky="ew", padx=8, pady=4
-        )
-        help_icon(
-            prompt_section,
-            "Optional text fed to the model as context before it starts — "
-            "e.g. proper nouns or a punctuation/formatting style to "
-            "nudge it toward. Leave blank for none.",
-        ).grid(row=0, column=2, sticky="w", padx=8, pady=4)
-        ttk.Label(prompt_section, text="Hotwords (comma-separated)").grid(row=1, column=0, sticky="w", padx=8, pady=4)
-        ttk.Entry(prompt_section, textvariable=self._hotwords, width=42).grid(
-            row=1, column=1, sticky="ew", padx=8, pady=4
-        )
-        help_icon(
-            prompt_section,
-            "Words or short phrases (names, jargon, acronyms) the model "
-            "should be biased toward recognizing correctly when it hears "
-            "something close to them.",
-        ).grid(row=1, column=2, sticky="w", padx=8, pady=4)
-
-        ttk.Label(prompt_section, text="Output filename template").grid(row=2, column=0, sticky="w", padx=8, pady=4)
-        ttk.Entry(prompt_section, textvariable=self._filename_template, width=42).grid(
-            row=2, column=1, columnspan=2, sticky="ew", padx=8, pady=4
-        )
-        help_icon(
-            prompt_section,
-            "Pattern used to name each output file. Mix the tokens below "
-            "with literal text; the default {base}.{ext} just keeps the "
-            "source filename with the new extension.",
-        ).grid(row=2, column=3, sticky="w", padx=(0, 8), pady=4)
-        ttk.Label(
-            prompt_section,
-            text="Tokens: {base} {ext} {lang} {date} {speaker_count}",
-            foreground="#666",
-        ).grid(row=3, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
-        prompt_section.columnconfigure(1, weight=1)
-
-        # AI Layer (v0.8 Phase 2 + 3) — opt-in heavy features.
-        ai = section_labelframe(
-            body, "AI Layer (optional)",
-            "Optional local-AI extras layered on top of the transcript: a "
-            "small offline LLM for summaries/chapter titles/Q&A, noise "
-            "cleanup before transcribing, and cross-file speaker "
-            "recognition. All opt-in and run on this machine.",
-        )
-        ai.pack(fill="x", pady=(0, 14))
-        self._nav_targets.append(("AI Layer", ai))
-        ttk.Checkbutton(
-            ai, text="Enable local LLM (download Qwen2.5-1.5B ~1 GB on first use)",
-            variable=self._ai_enabled,
-        ).grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=4)
-        help_icon(
-            ai,
-            "Runs a small language model on this machine — fully offline, "
-            "nothing uploaded. Right now this only improves auto-chapter "
-            "titles below (real sentence-like titles instead of the plain "
-            "heuristic ones); 'Generate auto-chapter markers' must also be "
-            "on. Downloads once (~1 GB), either now via 'Install AI "
-            "model...' or automatically the first time it's needed.",
-        ).grid(row=0, column=3, sticky="w", padx=(0, 8), pady=4)
-        ttk.Button(
-            ai, text="Install AI model…",
-            command=self._install_ai_model,
-        ).grid(row=1, column=0, sticky="w", padx=8, pady=4)
-        ttk.Label(
-            ai, text="Currently powers auto-chapter titles only (see below).",
-            foreground="#666",
-        ).grid(row=1, column=1, columnspan=2, sticky="w", padx=8, pady=4)
-
-        ttk.Label(ai, text="LLM provider").grid(
-            row=2, column=0, sticky="w", padx=8, pady=(10, 4)
-        )
-        ttk.Combobox(
-            ai, textvariable=self._llm_provider_display, state="readonly",
-            values=[label for label, _value in _LLM_PROVIDER_CHOICES], width=40,
-        ).grid(row=2, column=1, columnspan=2, sticky="w", padx=8, pady=(10, 4))
-        help_icon(
-            ai,
-            "Local (default): the downloaded Qwen2.5-1.5B model above — "
-            "fully offline, nothing leaves this machine.\n\n"
-            "Remote: sends the same summarise/action-items/ask/translate "
-            "requests to an OpenAI-compatible '/chat/completions' "
-            "endpoint you configure below instead — the real OpenAI API "
-            "with your own key, or a self-hosted server (Ollama, LM "
-            "Studio, vLLM) or proxy (OpenRouter) if you point the Base "
-            "URL at one. Your transcript text is sent to whatever "
-            "endpoint you configure — only use this with a provider you "
-            "trust.",
-        ).grid(row=2, column=3, sticky="w", padx=(0, 8), pady=(10, 4))
-        ttk.Label(ai, text="Base URL").grid(
-            row=3, column=0, sticky="w", padx=8, pady=4
-        )
-        ttk.Entry(
-            ai, textvariable=self._llm_remote_base_url, width=42,
-        ).grid(row=3, column=1, columnspan=2, sticky="ew", padx=8, pady=4)
-        ttk.Label(ai, text="API key").grid(
-            row=4, column=0, sticky="w", padx=8, pady=4
-        )
-        ttk.Entry(
-            ai, textvariable=self._llm_remote_api_key, show="*", width=42,
-        ).grid(row=4, column=1, columnspan=2, sticky="ew", padx=8, pady=4)
-        ttk.Label(
-            ai, text="For the real OpenAI API, get a key at platform.openai.com. "
-                     "Leave blank for a local server that doesn't need one.",
-            foreground="#666", wraplength=420, justify="left",
-        ).grid(row=5, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
-        ttk.Label(ai, text="Model").grid(
-            row=6, column=0, sticky="w", padx=8, pady=4
-        )
-        ttk.Entry(
-            ai, textvariable=self._llm_remote_model, width=42,
-        ).grid(row=6, column=1, columnspan=2, sticky="ew", padx=8, pady=4)
-        help_icon(
-            ai,
-            "The exact model id your endpoint expects, e.g. gpt-4o-mini "
-            "or gpt-4o for the real OpenAI API, or a locally-loaded "
-            "model's name for Ollama/LM Studio. This app does not pick "
-            "one for you — different accounts/servers have different "
-            "models available.",
-        ).grid(row=6, column=3, sticky="w", padx=(0, 8), pady=4)
-
-        ttk.Checkbutton(
-            ai, text="Pre-process noisy audio with Demucs vocals separation",
-            variable=self._demucs_enabled,
-        ).grid(row=7, column=0, columnspan=3, sticky="w", padx=8, pady=(14, 4))
-        help_icon(
-            ai,
-            "Demucs isolates vocals from background music/noise before "
-            "transcribing. Can improve accuracy on noisy recordings; "
-            "adds processing time.",
-        ).grid(row=7, column=3, sticky="w", padx=(0, 8), pady=(14, 4))
-        ttk.Checkbutton(
-            ai, text="Reduce background noise before transcribing",
-            variable=self._denoise_enabled,
-            command=self._sync_denoise_level_state,
-        ).grid(row=8, column=0, columnspan=2, sticky="w", padx=8, pady=(10, 2))
-        help_icon(
-            ai,
-            "Cleans hiss, hum and rumble out of the audio before the "
-            "speech model hears it, which cuts hallucinated lines on "
-            "noisy recordings.\n\n"
-            "The audio is measured first: recordings that are already "
-            "clean are left completely untouched, because over-cleaning "
-            "makes transcripts worse, not better. The result is checked "
-            "afterwards too — if the filter removed speech instead of "
-            "noise, the original audio is used.\n\n"
-            "Uses the bundled ffmpeg only: no download, no extra "
-            "install, works offline. Costs roughly 20-40 seconds per "
-            "hour of audio.",
-        ).grid(row=8, column=3, sticky="w", padx=(0, 8), pady=(10, 2))
-        self._denoise_level_label = ttk.Label(ai, text="Strength:")
-        self._denoise_level_label.grid(
-            row=9, column=0, sticky="e", padx=(24, 4), pady=(0, 6)
-        )
-        self._denoise_level_combo = ttk.Combobox(
-            ai, textvariable=self._denoise_level, state="readonly", width=12,
-            values=("auto", "light", "medium", "strong"),
-        )
-        self._denoise_level_combo.grid(
-            row=9, column=1, sticky="w", padx=4, pady=(0, 6)
-        )
-        help_icon(
-            ai,
-            "Auto (recommended) measures each recording and picks the "
-            "gentlest setting that helps — including doing nothing at "
-            "all. Pick a fixed strength only to override that "
-            "measurement on material you know well; a fixed strength is "
-            "applied even to clean audio.",
-        ).grid(row=9, column=3, sticky="w", padx=(0, 8), pady=(0, 6))
-        self._sync_denoise_level_state()
-        ttk.Button(
-            ai, text="Apply noisy-audio preset",
-            command=self._apply_noisy_audio_preset,
-        ).grid(row=10, column=0, sticky="w", padx=8, pady=(4, 10))
-        help_icon(
-            ai,
-            "One click for a non-studio recording (street noise, a "
-            "crowded room, a phone call): turns on VAD + denoise "
-            "(fixed 'medium', not 'auto') + hallucination flagging, and "
-            "raises the VAD threshold so background noise is less "
-            "likely to be misread as speech. Does NOT turn on Demucs — "
-            "that's a much heavier download/step, opt into it above "
-            "separately if this preset alone isn't enough.",
-        ).grid(row=10, column=3, sticky="w", padx=(0, 8), pady=(4, 10))
-        ttk.Checkbutton(
-            ai, text="Generate auto-chapter markers (writes <name>.chapters.json)",
-            variable=self._auto_chapters_enabled,
-        ).grid(row=11, column=0, columnspan=3, sticky="w", padx=8, pady=4)
-        help_icon(
-            ai,
-            "Splits the transcript into chapters at natural long pauses "
-            "and writes them to a separate <name>.chapters.json file next "
-            "to the transcript. Titles are a short generic label by "
-            "default, or a real sentence-like title when 'Enable local "
-            "LLM' above is also on. Browse them from the transcript "
-            "viewer's Chapters tab.",
-        ).grid(row=11, column=3, sticky="w", padx=(0, 8), pady=4)
-        ttk.Checkbutton(
-            ai, text="Cross-file voice fingerprint (relabel SPEAKER_NN with enrolled names)",
-            variable=self._voiceprint_enabled,
-        ).grid(row=12, column=0, columnspan=3, sticky="w", padx=8, pady=4)
-        help_icon(
-            ai,
-            "Matches speakers across different files against voice "
-            "profiles you've enrolled, so e.g. 'SPEAKER_00' becomes the "
-            "person's actual name instead of a generic label.",
-        ).grid(row=12, column=3, sticky="w", padx=(0, 8), pady=4)
-        ai.columnconfigure(1, weight=1)
-
-        gc_frame = self._build_gcloud_frame(body)
-        self._nav_targets.append(("Google Cloud STT", gc_frame))
-
-        # Cloud Speech-to-Text (Google) — OPTIONAL, uploads audio.
-        # Placed after the Google Cloud Speech-to-Text section: the Gemini
-        # "paste a key" backend is the older, less-important cloud path.
+        Not packed here — _sync_engine_sections shows it only while this
+        engine is picked.
+        """
         cloud = section_labelframe(
             body, "Cloud Speech-to-Text (Gemini)",
             "Optional — paste a free Gemini API key to transcribe via "
             "Google's cloud instead of this machine. Uploads your audio; "
             "see the privacy warning below before turning it on.",
         )
-        cloud.pack(fill="x", pady=(0, 14))
-        self._nav_targets.append(("Cloud STT (Gemini)", cloud))
         ttk.Label(
             cloud,
             text=(
-                "PRIVACY: selecting the 'cloud_stt' backend UPLOADS your "
-                "audio to Google for transcription. This BREAKS the offline "
-                "guarantee — only use it for content you may send to a cloud "
-                "service. The default engines stay fully offline."
+                "PRIVACY: the Gemini engine UPLOADS your audio to Google for "
+                "transcription. This BREAKS the offline guarantee — only use "
+                "it for content you may send to a cloud service. The default "
+                "engines stay fully offline."
             ),
             foreground="#b00020",
             wraplength=680,
@@ -894,16 +758,16 @@ class AdvancedDialog(tk.Toplevel):
             text="Default: gemini-3.5-flash (a current Gemini audio model).",
             foreground="#666",
         ).grid(row=4, column=2, sticky="w", padx=8, pady=4)
-        _cloud_cfg = self.app.app_config
-        used = float(_cloud_cfg.get("cloud_stt_minutes_used") or 0.0)
-        cap = int(_cloud_cfg.get("cloud_stt_free_minutes_cap") or 60)
+        # No free-minutes figure here: the Gemini API's free tier is
+        # rate-limited, not a monthly minute allowance (that 60 min/month
+        # number is Google Cloud Speech-to-Text's, a different service).
+        used = float(self.app.app_config.get("cloud_stt_minutes_used") or 0.0)
         ttk.Label(
             cloud,
             text=(
-                f"Cloud minutes used: {used:.1f} (free tier ~{cap} min/month, "
-                "tracked LOCALLY). The dollar credit balance is NOT readable "
-                "from an API key — check your usage in Google's billing "
-                "console:"
+                f"Cloud minutes used so far: {used:.1f} (counted on this "
+                "computer). Real usage and any charges are only visible in "
+                "Google's billing console:"
             ),
             wraplength=680,
             justify="left",
@@ -917,8 +781,14 @@ class AdvancedDialog(tk.Toplevel):
         link.grid(row=6, column=0, columnspan=3, sticky="w", padx=8, pady=(0, 4))
         link.bind("<Button-1>", lambda _e: self._open_billing_console())
         cloud.columnconfigure(1, weight=1)
+        return cloud
 
-        # NVIDIA Parakeet / FastConformer — LOCAL, runs offline via transformers.
+    def _build_nvidia_frame(self, body: ttk.Frame) -> ttk.LabelFrame:
+        """Build the NVIDIA Parakeet (local transformers) engine's setup frame.
+
+        Not packed here — _sync_engine_sections shows it only while this
+        engine is picked.
+        """
         nvidia = section_labelframe(
             body, "NVIDIA Parakeet (local, offline)",
             "An alternative offline speech engine (multilingual "
@@ -926,8 +796,6 @@ class AdvancedDialog(tk.Toplevel):
             "no audio ever leaves the device. Downloads transformers + "
             "torch + the model (a few GB) automatically on first use.",
         )
-        nvidia.pack(fill="x", pady=(0, 14))
-        self._nav_targets.append(("NVIDIA Parakeet", nvidia))
         ttk.Label(
             nvidia,
             text=(
@@ -967,8 +835,308 @@ class AdvancedDialog(tk.Toplevel):
             foreground="#666", wraplength=500, justify="left",
         ).grid(row=3, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 8))
         nvidia.columnconfigure(1, weight=1)
+        return nvidia
 
-        # Watched folder
+    def _build_outputs_section(self, body: ttk.Frame) -> ttk.LabelFrame:
+        """"Output formats": which transcript files every job writes."""
+        outputs = section_labelframe(
+            body, "Output formats",
+            "Which transcript file types to write for every transcription "
+            "(SRT/VTT subtitles, plain TXT, JSON with timestamps, etc.). "
+            "You can check more than one — all checked formats are "
+            "written for every job.",
+        )
+        outputs.pack(fill="x", pady=(0, 14))
+        for i, name in enumerate(supported_formats()):
+            # Each checkbox + its hover-help icon share one cell frame so
+            # the 3-per-row grid stays intact (a bare Checkbutton has no
+            # spare column of its own to grid a second widget into).
+            cell = ttk.Frame(outputs)
+            cell.grid(row=i // 3, column=i % 3, sticky="w", padx=8, pady=4)
+            ttk.Checkbutton(
+                cell,
+                text=_FORMAT_LABELS.get(name, name.upper()),
+                variable=self._format_vars[name],
+            ).pack(side="left")
+            help_icon(
+                cell, _FORMAT_HELP.get(name, ""), wraplength=280,
+            ).pack(side="left")
+        return outputs
+
+    def _build_noise_section(self, body: ttk.Frame) -> ttk.LabelFrame:
+        """"Silence & noise": how the audio is prepared before the model
+        hears it, plus hallucination flagging.
+
+        These are exactly the settings "Apply noisy-audio preset" changes,
+        so the preset button now sits in the same section as every value
+        it sets — they used to be spread over the VAD, "Model & engine"
+        and "AI Layer" sections.
+        """
+        noise = section_labelframe(
+            body, "Silence & noise",
+            "How the audio is prepared before the model hears it: skip "
+            "silent stretches (VAD), reduce background noise, or isolate "
+            "vocals from music (Demucs) — plus flagging of lines that look "
+            "hallucinated. 'Apply noisy-audio preset' at the bottom sets "
+            "these for a typical non-studio recording.",
+        )
+        noise.pack(fill="x", pady=(0, 14))
+        ttk.Checkbutton(
+            noise, text="Enable VAD (skip silent segments)",
+            variable=self._vad_enabled,
+            command=self._sync_vad_controls_state,
+        ).grid(row=0, column=0, columnspan=2, sticky="w", padx=8, pady=(4, 2))
+        help_icon(
+            noise,
+            "On (recommended): silent stretches are detected and skipped "
+            "before the audio reaches the speech model — faster, and it "
+            "stops Whisper from hallucinating text into pure silence.\n\n"
+            "Off: the whole file is sent to the model as-is, silence "
+            "included. The three sliders right below only matter while "
+            "this is on.\n\n"
+            "Min silence: how long a gap must be to count as silence. "
+            "Threshold: how confident the detector must be that audio is "
+            "speech (lower = more sensitive). Speech pad: extra padding "
+            "kept around each detected speech chunk.",
+        ).grid(row=0, column=3, sticky="w", padx=(0, 8), pady=(4, 2))
+        self._vad_control_rows = [
+            self._slider_row(noise, "Min silence (ms)", self._vad_min_silence, 100, 2000, 50, 1),
+            self._slider_row(noise, "Threshold", self._vad_threshold, 0.1, 0.9, 0.05, 2, is_float=True),
+            self._slider_row(noise, "Speech pad (ms)", self._vad_speech_pad, 0, 1000, 50, 3),
+        ]
+        self._sync_vad_controls_state()
+
+        ttk.Checkbutton(
+            noise, text="Reduce background noise before transcribing",
+            variable=self._denoise_enabled,
+            command=self._sync_denoise_level_state,
+        ).grid(row=4, column=0, columnspan=2, sticky="w", padx=8, pady=(10, 2))
+        help_icon(
+            noise,
+            "Cleans hiss, hum and rumble out of the audio before the "
+            "speech model hears it, which cuts hallucinated lines on "
+            "noisy recordings.\n\n"
+            "The audio is measured first: recordings that are already "
+            "clean are left completely untouched, because over-cleaning "
+            "makes transcripts worse, not better. The result is checked "
+            "afterwards too — if the filter removed speech instead of "
+            "noise, the original audio is used.\n\n"
+            "Uses the bundled ffmpeg only: no download, no extra "
+            "install, works offline. Costs roughly 20-40 seconds per "
+            "hour of audio.",
+        ).grid(row=4, column=3, sticky="w", padx=(0, 8), pady=(10, 2))
+        self._denoise_level_label = ttk.Label(noise, text="Strength:")
+        self._denoise_level_label.grid(
+            row=5, column=0, sticky="e", padx=(24, 4), pady=(0, 6)
+        )
+        self._denoise_level_combo = ttk.Combobox(
+            noise, textvariable=self._denoise_level, state="readonly", width=12,
+            values=("auto", "light", "medium", "strong"),
+        )
+        self._denoise_level_combo.grid(
+            row=5, column=1, sticky="w", padx=4, pady=(0, 6)
+        )
+        help_icon(
+            noise,
+            "Auto (recommended) measures each recording and picks the "
+            "gentlest setting that helps — including doing nothing at "
+            "all. Pick a fixed strength only to override that "
+            "measurement on material you know well; a fixed strength is "
+            "applied even to clean audio.",
+        ).grid(row=5, column=3, sticky="w", padx=(0, 8), pady=(0, 6))
+        self._sync_denoise_level_state()
+
+        ttk.Checkbutton(
+            noise, text="Pre-process noisy audio with Demucs vocals separation",
+            variable=self._demucs_enabled,
+        ).grid(row=6, column=0, columnspan=3, sticky="w", padx=8, pady=4)
+        help_icon(
+            noise,
+            "Demucs isolates vocals from background music/noise before "
+            "transcribing. Can improve accuracy on noisy recordings; "
+            "adds processing time.",
+        ).grid(row=6, column=3, sticky="w", padx=(0, 8), pady=4)
+
+        # Hallucination detector toggle (v0.8).
+        ttk.Checkbutton(
+            noise,
+            text="Flag likely hallucinations (repetition + BoH heuristics)",
+            variable=self._hallucination_detect,
+        ).grid(row=7, column=0, columnspan=3, sticky="w", padx=8, pady=4)
+        help_icon(
+            noise,
+            "Marks segments that look like Whisper's known failure modes "
+            "on silence/noise: repeated phrases, or text matching common "
+            "'beginning of hallucination' (BoH) patterns. Flags them in "
+            "the output rather than removing them.",
+        ).grid(row=7, column=3, sticky="w", padx=(0, 8), pady=4)
+
+        ttk.Button(
+            noise, text="Apply noisy-audio preset",
+            command=self._apply_noisy_audio_preset,
+        ).grid(row=8, column=0, sticky="w", padx=8, pady=(8, 10))
+        help_icon(
+            noise,
+            "One click for a non-studio recording (street noise, a "
+            "crowded room, a phone call): turns on VAD + denoise "
+            "(fixed 'medium', not 'auto') + hallucination flagging, and "
+            "raises the VAD threshold so background noise is less "
+            "likely to be misread as speech. Does NOT turn on Demucs — "
+            "that's a much heavier download/step, opt into it above "
+            "separately if this preset alone isn't enough.",
+        ).grid(row=8, column=3, sticky="w", padx=(0, 8), pady=(8, 10))
+        return noise
+
+    def _build_prompt_section(self, body: ttk.Frame) -> ttk.LabelFrame:
+        """"Prompt & hotwords": user-authored text that steers recognition."""
+        prompt_section = section_labelframe(
+            body, "Prompt & hotwords",
+            "Optional text fed to the model before it starts, and words "
+            "to bias recognition toward.",
+        )
+        prompt_section.pack(fill="x", pady=(0, 14))
+
+        ttk.Label(prompt_section, text="Initial prompt").grid(row=0, column=0, sticky="w", padx=8, pady=4)
+        ttk.Entry(prompt_section, textvariable=self._initial_prompt, width=42).grid(
+            row=0, column=1, sticky="ew", padx=8, pady=4
+        )
+        help_icon(
+            prompt_section,
+            "Optional text fed to the model as context before it starts — "
+            "e.g. proper nouns or a punctuation/formatting style to "
+            "nudge it toward. Leave blank for none.",
+        ).grid(row=0, column=2, sticky="w", padx=8, pady=4)
+        ttk.Label(prompt_section, text="Hotwords (comma-separated)").grid(row=1, column=0, sticky="w", padx=8, pady=4)
+        ttk.Entry(prompt_section, textvariable=self._hotwords, width=42).grid(
+            row=1, column=1, sticky="ew", padx=8, pady=4
+        )
+        help_icon(
+            prompt_section,
+            "Words or short phrases (names, jargon, acronyms) the model "
+            "should be biased toward recognizing correctly when it hears "
+            "something close to them.",
+        ).grid(row=1, column=2, sticky="w", padx=8, pady=4)
+        prompt_section.columnconfigure(1, weight=1)
+        return prompt_section
+
+    def _build_ai_section(self, body: ttk.Frame) -> ttk.LabelFrame:
+        """"AI Layer": the optional LLM behind the transcript viewer's AI
+        Tools tab and the auto-chapter titles."""
+        ai = section_labelframe(
+            body, "AI Layer (optional)",
+            "Optional AI extras on top of the transcript: the transcript "
+            "viewer's AI Tools (summaries, action items, Q&A, translation) "
+            "and sentence-like auto-chapter titles — run by a small model "
+            "on this machine (Local) or by your own API (Remote).",
+        )
+        ai.pack(fill="x", pady=(0, 14))
+        ttk.Checkbutton(
+            ai, text="Enable AI tools (summaries, Q&A, translation, chapter titles)",
+            variable=self._ai_enabled,
+        ).grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=4)
+        help_icon(
+            ai,
+            "Master switch for the transcript viewer's AI Tools tab "
+            "(summarize, action items, ask, translate) and for "
+            "sentence-like auto-chapter titles (without it, chapters get "
+            "plain generic titles). 'LLM provider' below picks where the "
+            "model runs.",
+        ).grid(row=0, column=3, sticky="w", padx=(0, 8), pady=4)
+
+        ttk.Label(ai, text="LLM provider").grid(
+            row=1, column=0, sticky="w", padx=8, pady=4
+        )
+        provider_combo = ttk.Combobox(
+            ai, textvariable=self._llm_provider_display, state="readonly",
+            values=[label for label, _value in _LLM_PROVIDER_CHOICES], width=40,
+        )
+        provider_combo.grid(row=1, column=1, columnspan=2, sticky="w", padx=8, pady=4)
+        provider_combo.bind(
+            "<<ComboboxSelected>>", lambda _e: self._sync_llm_provider_rows()
+        )
+        help_icon(
+            ai,
+            "Local (default): a small offline model (Qwen2.5-1.5B) on "
+            "this machine — nothing leaves it. Install it once with "
+            "'Install AI model…'.\n\n"
+            "Remote: sends the same summarise/action-items/ask/translate "
+            "requests to an OpenAI-compatible '/chat/completions' "
+            "endpoint you configure instead — the real OpenAI API "
+            "with your own key, or a self-hosted server (Ollama, LM "
+            "Studio, vLLM) or proxy (OpenRouter) if you point the Base "
+            "URL at one. Your transcript text is sent to whatever "
+            "endpoint you configure — only use this with a provider you "
+            "trust.",
+        ).grid(row=1, column=3, sticky="w", padx=(0, 8), pady=4)
+
+        # Local provider only (see _sync_llm_provider_rows).
+        install_btn = ttk.Button(
+            ai, text="Install AI model…",
+            command=self._install_ai_model,
+        )
+        install_btn.grid(row=2, column=0, sticky="w", padx=8, pady=4)
+        install_note = ttk.Label(
+            ai,
+            text="Downloads the offline model once (~1 GB); Local needs it before it works.",
+            foreground="#666",
+        )
+        install_note.grid(row=2, column=1, columnspan=2, sticky="w", padx=8, pady=4)
+        self._llm_local_widgets: list[tk.Widget] = [install_btn, install_note]
+
+        # Remote provider only.
+        url_label = ttk.Label(ai, text="Base URL")
+        url_label.grid(row=3, column=0, sticky="w", padx=8, pady=4)
+        url_entry = ttk.Entry(ai, textvariable=self._llm_remote_base_url, width=42)
+        url_entry.grid(row=3, column=1, columnspan=2, sticky="ew", padx=8, pady=4)
+        key_label = ttk.Label(ai, text="API key")
+        key_label.grid(row=4, column=0, sticky="w", padx=8, pady=4)
+        key_entry = ttk.Entry(
+            ai, textvariable=self._llm_remote_api_key, show="*", width=42,
+        )
+        key_entry.grid(row=4, column=1, columnspan=2, sticky="ew", padx=8, pady=4)
+        key_hint = ttk.Label(
+            ai, text="For the real OpenAI API, get a key at platform.openai.com. "
+                     "Leave blank for a local server that doesn't need one.",
+            foreground="#666", wraplength=420, justify="left",
+        )
+        key_hint.grid(row=5, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
+        model_label = ttk.Label(ai, text="Model")
+        model_label.grid(row=6, column=0, sticky="w", padx=8, pady=4)
+        model_entry = ttk.Entry(ai, textvariable=self._llm_remote_model, width=42)
+        model_entry.grid(row=6, column=1, columnspan=2, sticky="ew", padx=8, pady=4)
+        model_help = help_icon(
+            ai,
+            "The exact model id your endpoint expects, e.g. gpt-4o-mini "
+            "or gpt-4o for the real OpenAI API, or a locally-loaded "
+            "model's name for Ollama/LM Studio. This app does not pick "
+            "one for you — different accounts/servers have different "
+            "models available.",
+        )
+        model_help.grid(row=6, column=3, sticky="w", padx=(0, 8), pady=4)
+        self._llm_remote_widgets: list[tk.Widget] = [
+            url_label, url_entry, key_label, key_entry, key_hint,
+            model_label, model_entry, model_help,
+        ]
+
+        ttk.Checkbutton(
+            ai, text="Generate auto-chapter markers (writes <name>.chapters.json)",
+            variable=self._auto_chapters_enabled,
+        ).grid(row=7, column=0, columnspan=3, sticky="w", padx=8, pady=(10, 4))
+        help_icon(
+            ai,
+            "Splits the transcript into chapters at natural long pauses "
+            "and writes them to a separate <name>.chapters.json file next "
+            "to the transcript. Titles are a short generic label by "
+            "default, or a real sentence-like title when 'Enable AI "
+            "tools' above is also on. Browse them from the transcript "
+            "viewer's Chapters tab.",
+        ).grid(row=7, column=3, sticky="w", padx=(0, 8), pady=(10, 4))
+        ai.columnconfigure(1, weight=1)
+        self._sync_llm_provider_rows()
+        return ai
+
+    def _build_watch_section(self, body: ttk.Frame) -> ttk.LabelFrame:
+        """"Watched folder": auto-queue new files dropped into a folder."""
         watch = section_labelframe(
             body, "Watched folder",
             "Automatically queues any new audio/video file dropped into "
@@ -976,7 +1144,6 @@ class AdvancedDialog(tk.Toplevel):
             "settings — no need to open the app and browse for it.",
         )
         watch.pack(fill="x", pady=(0, 14))
-        self._nav_targets.append(("Watched folder", watch))
         ttk.Checkbutton(
             watch, text="Auto-transcribe new files dropped here",
             variable=self._watched_folder_enabled,
@@ -990,8 +1157,51 @@ class AdvancedDialog(tk.Toplevel):
             command=self._browse_watched_folder,
         ).grid(row=1, column=2, sticky="w", padx=8, pady=4)
         watch.columnconfigure(1, weight=1)
+        return watch
 
-        # Tray + telemetry
+    def _build_download_section(self, body: ttk.Frame) -> ttk.LabelFrame:
+        """"Downloads (yt-dlp)": SponsorBlock cuts + browser cookies.
+
+        "Transcribe after download" is deliberately not repeated here —
+        the Download Videos tab has its own checkbox for it, right next to
+        the download it applies to.
+        """
+        download = section_labelframe(
+            body, "Downloads (yt-dlp)",
+            "Options for video downloads (Download Videos tab): which "
+            "SponsorBlock segments get cut, and browser cookies for "
+            "login-walled sites.",
+        )
+        download.pack(fill="x", pady=(0, 14))
+        ttk.Label(download, text="SponsorBlock — remove these segments:").grid(
+            row=0, column=0, columnspan=2, sticky="w", padx=8, pady=(4, 4)
+        )
+        help_icon(
+            download,
+            "SponsorBlock is a community-maintained database of "
+            "skippable segments (ads, intros, self-promo, etc.) for the "
+            "exact video. Checked categories are cut from the downloaded "
+            "file automatically when the site has data for it.",
+        ).grid(row=0, column=2, sticky="w", padx=8, pady=(4, 4))
+        for i, (cat, label) in enumerate(_SPONSORBLOCK_CATEGORIES):
+            ttk.Checkbutton(download, text=label, variable=self._sb_vars[cat]).grid(
+                row=1 + i // 3, column=i % 3, sticky="w", padx=8, pady=2
+            )
+        ttk.Label(
+            download,
+            text=("Cookies from browser (for login-walled sites — Facebook /"
+                  " Instagram / TikTok stories, some YouTube Shorts):"),
+        ).grid(row=4, column=0, columnspan=3, sticky="w", padx=8, pady=(8, 2))
+        ttk.Combobox(
+            download, textvariable=self._cookies_browser, state="readonly",
+            width=14,
+            values=["(off)", "chrome", "edge", "firefox", "brave",
+                    "chromium", "opera", "vivaldi"],
+        ).grid(row=5, column=0, sticky="w", padx=8, pady=(0, 4))
+        return download
+
+    def _build_misc_section(self, body: ttk.Frame) -> ttk.LabelFrame:
+        """"App behaviour": system tray + anonymous usage statistics."""
         misc = section_labelframe(
             body, "App behaviour",
             "General app behaviour: whether closing the window minimises "
@@ -999,7 +1209,6 @@ class AdvancedDialog(tk.Toplevel):
             "usage statistics (no audio or transcript content) are sent.",
         )
         misc.pack(fill="x", pady=(0, 14))
-        self._nav_targets.append(("App behaviour", misc))
         tray_row = ttk.Frame(misc)
         tray_row.pack(anchor="w", fill="x")
         tray_check = ttk.Checkbutton(
@@ -1024,146 +1233,34 @@ class AdvancedDialog(tk.Toplevel):
             misc, text="Send anonymous usage statistics (on by default — uncheck to opt out)",
             variable=self._telemetry_opt_in,
         ).pack(anchor="w", padx=8, pady=4)
-
-        # SponsorBlock + auto-transcribe (Phase 3a)
-        download = section_labelframe(
-            body, "Downloads (yt-dlp)",
-            "Options for video downloads (Download Videos tab): whether a "
-            "download is auto-queued for transcription, which SponsorBlock "
-            "segments get cut, and browser cookies for login-walled sites.",
-        )
-        download.pack(fill="x", pady=(0, 14))
-        self._nav_targets.append(("Downloads (yt-dlp)", download))
-        ttk.Checkbutton(
-            download,
-            text="Transcribe after download",
-            variable=self._auto_transcribe,
-        ).grid(row=0, column=0, columnspan=2, sticky="w", padx=8, pady=4)
-        help_icon(
-            download,
-            "When on, a finished download is automatically added to the "
-            "Transcription Queue too, using your current Transcribe tab "
-            "settings (language, output formats, etc.) — no extra click "
-            "needed after the download completes.",
-        ).grid(row=0, column=2, sticky="w", padx=8, pady=4)
-        ttk.Label(download, text="SponsorBlock — remove these segments:").grid(
-            row=1, column=0, columnspan=2, sticky="w", padx=8, pady=(8, 4)
-        )
-        help_icon(
-            download,
-            "SponsorBlock is a community-maintained database of "
-            "skippable segments (ads, intros, self-promo, etc.) for the "
-            "exact video. Checked categories are cut from the downloaded "
-            "file automatically when the site has data for it.",
-        ).grid(row=1, column=2, sticky="w", padx=8, pady=(8, 4))
-        for i, (cat, label) in enumerate(_SPONSORBLOCK_CATEGORIES):
-            ttk.Checkbutton(download, text=label, variable=self._sb_vars[cat]).grid(
-                row=2 + i // 3, column=i % 3, sticky="w", padx=8, pady=2
-            )
-        ttk.Label(
-            download,
-            text=("Cookies from browser (for login-walled sites — Facebook /"
-                  " Instagram / TikTok stories, some YouTube Shorts):"),
-        ).grid(row=6, column=0, columnspan=3, sticky="w", padx=8, pady=(8, 2))
-        ttk.Combobox(
-            download, textvariable=self._cookies_browser, state="readonly",
-            width=14,
-            values=["(off)", "chrome", "edge", "firefox", "brave",
-                    "chromium", "opera", "vivaldi"],
-        ).grid(row=7, column=0, sticky="w", padx=8, pady=(0, 4))
-
-        self._populate_nav_sidebar(nav, canvas, body)
-
-        buttons = ttk.Frame(main)
-        buttons.pack(fill="x", pady=(8, 0))
-        ttk.Button(buttons, text="Cancel", command=self._on_close).pack(side="right", padx=(8, 0))
-        ttk.Button(buttons, text="Save", command=self._save_and_close).pack(side="right")
-        ttk.Button(
-            buttons, text="Restore transcription defaults",
-            command=self._restore_transcription_defaults,
-        ).pack(side="left")
-        help_icon(
-            buttons,
-            "Resets the VAD, hallucination-detection, alignment, batch "
-            "size, denoise, Demucs, auto-chapters and voiceprint options "
-            "above back to their defaults. Nothing is saved until you "
-            "click Save, so Cancel undoes this too. Output formats, the "
-            "hotwords/prompt text, model/backend choice, watched folder, "
-            "and any cloud credentials are left untouched — those are "
-            "deliberate choices, not per-job tuning knobs.",
-        ).pack(side="left", padx=(4, 0))
-
-    def _populate_nav_sidebar(
-        self, nav: "ttk.Frame", canvas: "tk.Canvas", body: "ttk.Frame",
-    ) -> None:
-        """Wire up the "Jump to" links once every section frame exists.
-
-        Each link scrolls the canvas so the target section's top edge
-        lines up with the canvas's own top. ``frame.winfo_y()`` is the
-        target's pixel offset relative to its parent (``body``, the
-        scrollable content) — fixed regardless of the current scroll
-        position, unlike a screen-relative coordinate — divided by
-        ``body``'s total height gives the ``yview_moveto`` fraction
-        directly. Needs ``update_idletasks`` first so both heights have
-        settled from layout instead of reading stale/zero values.
-        """
-        def _jump(frame: "ttk.LabelFrame") -> None:
-            self.update_idletasks()
-            total = max(body.winfo_height(), 1)
-            canvas.yview_moveto(max(0.0, min(1.0, frame.winfo_y() / total)))
-
-        # Small category captions so a user scanning the sidebar can tell
-        # at a glance which sections are everyday transcription settings
-        # vs. opt-in alternate backends vs. app-wide preferences, instead
-        # of one undifferentiated list of 11 (2026-08-14 readability pass).
-        # Keyed by the label that STARTS each new group.
-        _group_before = {
-            "Google Cloud STT": "Alternate engines",
-            "Watched folder": "App preferences",
-        }
-        for label, frame in self._nav_targets:
-            caption = _group_before.get(label)
-            if caption:
-                ttk.Separator(nav, orient="horizontal").pack(
-                    fill="x", pady=(8, 4)
-                )
-                ttk.Label(
-                    nav, text=caption, foreground="#888",
-                    font=("TkDefaultFont", 8),
-                ).pack(anchor="w", pady=(0, 2))
-            link = ttk.Label(
-                nav, text=label, foreground="#1a73e8", cursor="hand2",
-                wraplength=122, justify="left",
-            )
-            link.pack(anchor="w", pady=2, fill="x")
-            link.bind("<Button-1>", lambda _e, f=frame: _jump(f))
+        return misc
 
     def _build_gcloud_frame(self, body) -> ttk.LabelFrame:
         """Build the Google Cloud Speech-to-Text (service-account) frame.
 
-        Kept separate from the Gemini "paste a key" frame above because the
-        two cloud paths authenticate differently (an API key vs. a
-        downloaded service-account JSON file) and a non-technical user must
-        not confuse them.
+        Kept separate from the Gemini "paste a key" frame because the two
+        cloud paths authenticate differently (an API key vs. a downloaded
+        service-account JSON file) and a non-technical user must not
+        confuse them. Not packed here — _sync_engine_sections shows it
+        only while this engine is picked.
         """
         gc = section_labelframe(
             body, "Google Cloud Speech-to-Text (service account)",
             "Optional — the full Google Cloud Speech-to-Text service, "
             "signed in with a downloaded service-account JSON file (not "
-            "the simple API key the Gemini option below uses). New "
+            "the simple API key the separate Gemini engine uses). New "
             "accounts get 60 free minutes/month plus a $300/90-day "
             "credit. Uploads your audio to Google — not offline.",
         )
-        gc.pack(fill="x", pady=(0, 14))
 
         ttk.Label(
             gc,
             text=(
                 "This is the FULL Google Cloud Speech-to-Text service. It "
                 "signs in with a service-account JSON file you download from "
-                "the Google Cloud console (NOT the simple API key used by the "
-                "Gemini option above). New Google Cloud customers get 60 free "
-                "minutes every month plus a $300 / 90-day credit."
+                "the Google Cloud console (NOT the simple API key the "
+                "separate Gemini engine uses). New Google Cloud customers get "
+                "60 free minutes every month plus a $300 / 90-day credit."
             ),
             wraplength=680,
             justify="left",
@@ -1493,15 +1590,17 @@ class AdvancedDialog(tk.Toplevel):
         self._vad_threshold.set(0.5)
         self._vad_speech_pad.set(400)
         self._sync_vad_controls_state()
-        self._batch_size.set(16)
         self._hallucination_detect.set(True)
-        self._alignment.set("none")
+        self._alignment_enabled.set(False)
         self._demucs_enabled.set(False)
         self._denoise_enabled.set(False)
         self._denoise_level.set("auto")
         self._auto_chapters_enabled.set(True)
-        self._voiceprint_enabled.set(True)
         self._sync_denoise_level_state()
+        # GPU batch size has no control here any more; queue its reset so a
+        # value tuned in an older version can't linger invisibly. Applied by
+        # _save_and_close, like everything else above.
+        self._reset_hidden_tuning = True
 
     def _save_and_close(self) -> None:
         cfg = self.app.app_config
@@ -1510,27 +1609,18 @@ class AdvancedDialog(tk.Toplevel):
         cfg["vad_threshold"] = round(float(self._vad_threshold.get()), 2)
         cfg["vad_speech_pad_ms"] = int(self._vad_speech_pad.get())
         cfg["output_formats"] = [name for name, v in self._format_vars.items() if v.get()] or ["srt"]
-        # The Batch-size Spinbox is free-text (no readonly/validatecommand),
-        # so the user can clear it or type a stray character. tk.IntVar.get()
-        # then raises TclError. Read it defensively so Save never crashes and
-        # none of the user's other edits are lost — fall back to the prior
-        # saved value (then the default).
-        try:
-            bs = int(self._batch_size.get())
-        except (tk.TclError, ValueError):
-            try:
-                bs = int(cfg.get("batch_size", 16))
-            except (TypeError, ValueError):
-                bs = 16
-        cfg["batch_size"] = max(1, bs)
+        # Settings with no control in this dialog are left exactly as they
+        # are: batch_size (GPU tuning; only "Restore transcription defaults"
+        # resets it), output_filename_template (config.json only), and
+        # auto_transcribe_after_download (the Download Videos tab's own
+        # checkbox saves it). Writing stale copies here would clobber them.
+        if self._reset_hidden_tuning:
+            cfg["batch_size"] = DEFAULT_CONFIG["batch_size"]
         cfg["initial_prompt"] = self._initial_prompt.get().strip()
         cfg["hotwords"] = self._hotwords.get().strip()
-        cfg["auto_transcribe_after_download"] = bool(self._auto_transcribe.get())
         cfg["sponsorblock_categories"] = [c for c, v in self._sb_vars.items() if v.get()]
         _cb = self._cookies_browser.get().strip()
         cfg["cookies_from_browser"] = "" if _cb in ("", "(off)") else _cb
-        tpl = (self._filename_template.get() or "").strip() or "{base}.{ext}"
-        cfg["output_filename_template"] = tpl
         _old_backend = str(cfg.get("transcribe_backend") or "")
         cfg["transcribe_backend"] = _BACKEND_LABEL_TO_VALUE.get(
             self._backend_display.get() or "", "faster_whisper"
@@ -1549,7 +1639,7 @@ class AdvancedDialog(tk.Toplevel):
         cfg["gcloud_stt_diarization"] = bool(self._gcloud_diarization.get())
         # NVIDIA Parakeet / FastConformer (local transformers) settings.
         cfg["nvidia_asr_model_id"] = self._nvidia_model_id.get().strip()
-        cfg["alignment"] = self._alignment.get() or "none"
+        cfg["alignment"] = "stable_ts" if self._alignment_enabled.get() else "none"
         cfg["hallucination_detect_enabled"] = bool(self._hallucination_detect.get())
         cfg["demucs_enabled"] = bool(self._demucs_enabled.get())
         cfg["denoise_enabled"] = bool(self._denoise_enabled.get())
@@ -1562,7 +1652,6 @@ class AdvancedDialog(tk.Toplevel):
         cfg["llm_remote_api_key"] = self._llm_remote_api_key.get().strip()
         cfg["llm_remote_model"] = self._llm_remote_model.get().strip()
         cfg["auto_chapters_enabled"] = bool(self._auto_chapters_enabled.get())
-        cfg["voiceprint_enabled"] = bool(self._voiceprint_enabled.get())
         # Model picker — convert the displayed label back to the
         # registry slug and rewrite cfg["model"] + cfg["model_path"]
         # when the user picked something different. Setting
@@ -1648,9 +1737,6 @@ class AdvancedDialog(tk.Toplevel):
                 _refresh_model()
             except Exception:  # noqa: BLE001
                 pass
-        # Sync the on-tab checkboxes to the saved values.
-        if hasattr(self.app, "auto_transcribe_var"):
-            self.app.auto_transcribe_var.set(cfg["auto_transcribe_after_download"])
         # Restart the folder watcher when its settings changed.
         if watched_changed:
             restart = getattr(self.app, "_restart_watched_folder", None)

@@ -2,6 +2,29 @@
 
 All notable changes to this project. Follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Pick the Whisper model straight from the Transcribe tab** — a "Model:"
+  row under the existing "Engine:" row, with a "✓ Downloaded" hint. No need
+  to open Advanced settings just to change model size.
+- **See and change the model folder** in Advanced settings' "Model & engine"
+  section (view the path, "Change…", "Open folder").
+
+### Changed
+
+- **Advanced settings is shorter.** An engine's setup section (Gemini,
+  Google Cloud, NVIDIA Parakeet) now appears only while that engine is
+  picked, and the remote-LLM fields only while the Remote provider is
+  picked. VAD, denoise, Demucs, hallucination flagging and the noisy-audio
+  preset moved into one "Silence & noise" section.
+- **Removed four settings that weren't pulling their weight**: the
+  cross-file voice fingerprint checkbox (nothing in the app ever read it),
+  "Transcribe after download" (the Download Videos tab has its own), "Batch
+  size (CUDA only)" and "Output filename template" (both still settable in
+  `config.json`). "Word alignment" is now a plain checkbox.
+
 ## [1.8.0] — 2026-08-23
 
 ### Added
