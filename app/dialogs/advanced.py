@@ -9,7 +9,7 @@ import logging
 import sys
 import tkinter as tk
 from tkinter import ttk
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from core.config import NOISY_AUDIO_PRESET, save_config
 from core.model_manager import (
@@ -17,6 +17,7 @@ from core.model_manager import (
     catalog_entry_info,
     catalog_models,
     catalog_resolve_entry,
+    model_downloaded,
 )
 from core.writers import supported_formats
 
@@ -197,6 +198,7 @@ class AdvancedDialog(tk.Toplevel):
         self._whisper_model = tk.StringVar(
             value=str(cfg.get("whisper_model") or DEFAULT_MODEL_SLUG)
         )
+        self._hub_folder_display = tk.StringVar(value=self._resolved_hub_folder())
         # Cloud Speech-to-Text (Google Gemini API) — opt-in, uploads audio.
         self._cloud_api_key = tk.StringVar(
             value=str(cfg.get("cloud_stt_api_key") or "")
@@ -498,13 +500,14 @@ class AdvancedDialog(tk.Toplevel):
             self._whisper_model.get(), labeled[0][1]
         )
         self._model_display = tk.StringVar(value=current_label)
-        ttk.Combobox(
+        self._model_combo = ttk.Combobox(
             engine,
             textvariable=self._model_display,
             state="readonly",
             values=[lbl for _slug, lbl in labeled],
             width=56,
-        ).grid(row=0, column=1, sticky="ew", padx=8, pady=4)
+        )
+        self._model_combo.grid(row=0, column=1, sticky="ew", padx=8, pady=4)
         ttk.Button(
             engine, text="?", width=3, command=self._show_model_info,
         ).grid(row=0, column=2, sticky="w", padx=(0, 8), pady=4)
@@ -512,7 +515,35 @@ class AdvancedDialog(tk.Toplevel):
             engine, text="Download now", command=self._download_selected_model,
         ).grid(row=0, column=3, sticky="w", padx=(0, 8), pady=4)
 
-        ttk.Label(engine, text="Backend").grid(row=1, column=0, sticky="w", padx=8, pady=4)
+        # Model folder (v0.9) — where the picker above actually downloads
+        # to / reads from. Reuses HubSetupDialog (first-run's own picker)
+        # so "change it later" and "pick it at first launch" share one
+        # implementation instead of two folder-writability code paths.
+        ttk.Label(engine, text="Model folder").grid(
+            row=1, column=0, sticky="w", padx=8, pady=4
+        )
+        folder_row = ttk.Frame(engine)
+        folder_row.grid(row=1, column=1, columnspan=2, sticky="ew", padx=8, pady=4)
+        ttk.Entry(
+            folder_row, textvariable=self._hub_folder_display, state="readonly",
+        ).pack(side="left", fill="x", expand=True)
+        ttk.Button(
+            folder_row, text="Change...", command=self._change_model_folder,
+        ).pack(side="left", padx=(6, 0))
+        ttk.Button(
+            folder_row, text="Open folder", command=self._open_model_folder,
+        ).pack(side="left", padx=(6, 0))
+        help_icon(
+            engine,
+            "Where downloaded model files are stored (faster-whisper, "
+            "whisper.cpp, NVIDIA Parakeet). Change it to send future "
+            "downloads to a different drive -- for example one with more "
+            "free space. Changing this does NOT move models you've "
+            "already downloaded; point it at a folder that already has "
+            "them to reuse it without re-downloading.",
+        ).grid(row=1, column=3, sticky="w", padx=(0, 8), pady=4)
+
+        ttk.Label(engine, text="Backend").grid(row=2, column=0, sticky="w", padx=8, pady=4)
         backend_combo = ttk.Combobox(
             engine,
             textvariable=self._backend_display,
@@ -520,68 +551,68 @@ class AdvancedDialog(tk.Toplevel):
             values=[label for label, _value in _BACKEND_CHOICES],
             width=56,
         )
-        backend_combo.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
+        backend_combo.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
         ttk.Button(
             engine, text="Get whisper.cpp model...",
             command=self._download_whisper_cpp_model,
-        ).grid(row=1, column=2, sticky="w", padx=8, pady=4)
+        ).grid(row=2, column=2, sticky="w", padx=8, pady=4)
         help_icon(
             engine,
             "Which engine runs the offline model. Faster-Whisper is the "
             "default; whisper.cpp helps on low-end CPUs; the cloud/NVIDIA "
             "options need their own setup further down this dialog. Same "
             "picker as the Engine dropdown on the Transcribe tab.",
-        ).grid(row=1, column=3, sticky="w", padx=(0, 8), pady=4)
+        ).grid(row=2, column=3, sticky="w", padx=(0, 8), pady=4)
 
-        ttk.Label(engine, text="Hardware").grid(row=2, column=0, sticky="w", padx=8, pady=4)
+        ttk.Label(engine, text="Hardware").grid(row=3, column=0, sticky="w", padx=8, pady=4)
         ttk.Button(
             engine, text="Re-detect hardware…",
             command=self._open_hardware_wizard,
-        ).grid(row=2, column=1, sticky="w", padx=8, pady=4)
+        ).grid(row=3, column=1, sticky="w", padx=8, pady=4)
         ttk.Label(
             engine,
             text="Probes CUDA / NPU / DirectML and picks the fastest tier.",
             foreground="#666", wraplength=170, justify="left",
-        ).grid(row=2, column=2, sticky="w", padx=8, pady=4)
+        ).grid(row=3, column=2, sticky="w", padx=8, pady=4)
 
-        ttk.Label(engine, text="Batch size (CUDA only)").grid(row=3, column=0, sticky="w", padx=8, pady=4)
+        ttk.Label(engine, text="Batch size (CUDA only)").grid(row=4, column=0, sticky="w", padx=8, pady=4)
         ttk.Spinbox(engine, from_=1, to=64, increment=1, textvariable=self._batch_size, width=6).grid(
-            row=3, column=1, sticky="w", padx=8, pady=4
+            row=4, column=1, sticky="w", padx=8, pady=4
         )
         help_icon(
             engine,
             "How many audio chunks the GPU processes at once. Higher can "
             "be faster but uses more VRAM; only affects CUDA runs, CPU "
             "ignores this.",
-        ).grid(row=3, column=2, sticky="w", padx=8, pady=4)
+        ).grid(row=4, column=2, sticky="w", padx=8, pady=4)
 
-        ttk.Label(engine, text="Word alignment").grid(row=4, column=0, sticky="w", padx=8, pady=4)
+        ttk.Label(engine, text="Word alignment").grid(row=5, column=0, sticky="w", padx=8, pady=4)
         ttk.Combobox(
             engine,
             textvariable=self._alignment,
             state="readonly",
             values=("none", "stable_ts"),
             width=20,
-        ).grid(row=4, column=1, sticky="w", padx=8, pady=4)
+        ).grid(row=5, column=1, sticky="w", padx=8, pady=4)
         ttk.Label(
             engine,
             text="stable_ts refines word timestamps via DTW (~10-30% slower).",
             foreground="#666", wraplength=170, justify="left",
-        ).grid(row=4, column=2, sticky="w", padx=8, pady=4)
+        ).grid(row=5, column=2, sticky="w", padx=8, pady=4)
 
         # Hallucination detector toggle (v0.8).
         ttk.Checkbutton(
             engine,
             text="Flag likely hallucinations (repetition + BoH heuristics)",
             variable=self._hallucination_detect,
-        ).grid(row=5, column=0, columnspan=3, sticky="w", padx=8, pady=4)
+        ).grid(row=6, column=0, columnspan=3, sticky="w", padx=8, pady=4)
         help_icon(
             engine,
             "Marks segments that look like Whisper's known failure modes "
             "on silence/noise: repeated phrases, or text matching common "
             "'beginning of hallucination' (BoH) patterns. Flags them in "
             "the output rather than removing them.",
-        ).grid(row=5, column=3, sticky="w", padx=(0, 8), pady=4)
+        ).grid(row=6, column=3, sticky="w", padx=(0, 8), pady=4)
         engine.columnconfigure(1, weight=1)
 
         # Prompt & output naming — the other half of the old "Whisper
@@ -1329,20 +1360,83 @@ class AdvancedDialog(tk.Toplevel):
 
     def _model_downloaded(self, slug: str) -> bool:
         """True when the model's weights are already on disk under the
-        configured hub folder, so the dropdown can mark it downloaded."""
-        entry = catalog_resolve_entry(self.app.app_config, slug)
-        if not entry:
-            return False
-        try:
-            from core import hub as _hub
-            cfg = self.app.app_config
-            hub_folder = (cfg.get("hub_folder") or "").strip() or str(
-                _hub.default_hub_folder()
-            )
-            folder = _hub.model_folder_for(hub_folder, entry["name"])
-            return (folder / "model.bin").exists()
-        except Exception:  # noqa: BLE001
-            return False
+        configured hub folder, so the dropdown can mark it downloaded.
+
+        Delegates to core.model_manager.model_downloaded (shared with the
+        Transcribe tab's quick model picker) -- kept as a thin instance
+        method so existing tests can still monkeypatch it per-instance.
+        """
+        return model_downloaded(self.app.app_config, slug)
+
+    def _resolved_hub_folder(self) -> str:
+        """The model folder actually in effect right now: the configured
+        ``hub_folder``, or the default per-user cache location when unset."""
+        from core import hub as _hub
+
+        return (self.app.app_config.get("hub_folder") or "").strip() or str(
+            _hub.default_hub_folder()
+        )
+
+    def _refresh_model_picker_labels(self) -> None:
+        """Rebuild the Whisper-model combobox's values/status after the
+        model folder changes -- a different folder may already contain a
+        model that showed "needs download" a moment ago, or vice versa."""
+        combo = getattr(self, "_model_combo", None)
+        if combo is None:
+            return
+        current_slug = self._model_label_to_slug.get(
+            self._model_display.get() or "", DEFAULT_MODEL_SLUG
+        )
+        labeled = [
+            (slug, f"{base}   "
+                   f"[{'OK - downloaded' if self._model_downloaded(slug) else 'needs download'}]")
+            for slug, base in catalog_models(self.app.app_config)
+        ]
+        self._model_slug_to_label = {slug: lbl for slug, lbl in labeled}
+        self._model_label_to_slug = {lbl: slug for slug, lbl in labeled}
+        combo["values"] = [lbl for _slug, lbl in labeled]
+        self._model_display.set(
+            self._model_slug_to_label.get(current_slug, labeled[0][1] if labeled else "")
+        )
+
+    def _change_model_folder(self) -> None:
+        """Open the model-folder picker -- the same dialog first-run setup
+        uses, pre-filled with the folder currently in effect.
+
+        HubSetupDialog persists immediately on OK (writes hub_folder +
+        model_path and saves to disk itself), independent of this dialog's
+        own Save/Cancel -- matching every other on-demand action button
+        here (Download now, Get whisper.cpp model, Install AI model, ...).
+        "Skip for now" must NOT be treated as a change: HubSetupDialog's
+        own _on_cancel still calls on_done (with the default path, so a
+        first-run caller always gets something to proceed with), so the
+        dialog's own ``saved`` flag -- not merely "on_done fired" -- is
+        what tells a real pick apart from a dismiss.
+        """
+        from app.dialogs.hub_setup import HubSetupDialog
+
+        holder: dict[str, Any] = {}
+
+        def _on_done(path: str) -> None:
+            dlg = holder.get("dlg")
+            if dlg is not None and not getattr(dlg, "saved", False):
+                return  # "Skip for now" -- nothing was actually changed
+            self._hub_folder_display.set(path)
+            self._refresh_model_picker_labels()
+            refresh = getattr(self.app, "_refresh_model_selector", None)
+            if callable(refresh):
+                try:
+                    refresh()
+                except Exception:  # noqa: BLE001
+                    pass
+
+        holder["dlg"] = HubSetupDialog(self, self.app.app_config, on_done=_on_done)
+
+    def _open_model_folder(self) -> None:
+        """Reveal the current model folder in the OS file manager."""
+        from app.widgets.platform import open_folder
+
+        open_folder(self._hub_folder_display.get().strip(), parent=self)
 
     def _download_selected_model(self) -> None:
         """Download / install the model chosen in the picker, on demand —
@@ -1540,11 +1634,18 @@ class AdvancedDialog(tk.Toplevel):
                     "the current worker keeps running its active job and "
                     "will pick up the new engine once it's free."
                 )
-        # Refresh the Transcribe-tab engine picker to match the saved backend.
+        # Refresh the Transcribe-tab engine + model pickers to match what was
+        # just saved (backend, model, and/or model folder may have changed).
         _refresh = getattr(self.app, "_refresh_engine_selector", None)
         if callable(_refresh):
             try:
                 _refresh()
+            except Exception:  # noqa: BLE001
+                pass
+        _refresh_model = getattr(self.app, "_refresh_model_selector", None)
+        if callable(_refresh_model):
+            try:
+                _refresh_model()
             except Exception:  # noqa: BLE001
                 pass
         # Sync the on-tab checkboxes to the saved values.

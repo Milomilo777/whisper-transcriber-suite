@@ -574,6 +574,11 @@ class App(tk.Tk):
     transcribe_engine_var: tk.StringVar
     engine_status_var: tk.StringVar
     engine_status_label: "ttk.Label"
+    # Model picker row on the Transcribe tab (built in tabs.py).
+    transcribe_model_var: tk.StringVar
+    _transcribe_model_label_to_slug: "dict[str, str]"
+    model_status_var: tk.StringVar
+    model_status_label: "ttk.Label"
     # R3: GPU/CPU device badge. The text var is set in update_model_state();
     # the two Labels (Transcribe-tab header + Queue-tab status line) are built
     # in tabs.py and registered here so apply_device_badge can recolour them.
@@ -1653,13 +1658,14 @@ class App(tk.Tk):
     def open_advanced_dialog(self) -> None:
         dlg = AdvancedDialog(self)
         # Block (nested event loop) until the modal dialog closes, then re-sync
-        # the Transcribe-tab engine picker in case the backend was changed in
-        # Advanced settings.
+        # the Transcribe-tab engine + model pickers in case the backend,
+        # model, or model folder was changed in Advanced settings.
         try:
             self.wait_window(dlg)
         except Exception:  # noqa: BLE001
             pass
         self._refresh_engine_selector()
+        self._refresh_model_selector()
 
     def _confirm_backend_switch(self, parent: "tk.Misc | None" = None) -> bool:
         """True if it's safe to stop_all() workers for an engine switch.
@@ -1870,6 +1876,99 @@ class App(tk.Tk):
         except Exception:  # noqa: BLE001
             pass
         self._refresh_engine_status()
+
+    def _on_model_selected(self) -> None:
+        """Persist the Transcribe-tab Whisper-model pick and restart the
+        worker so the new model takes effect on the next transcription.
+
+        Mirrors _on_engine_selected: the live worker snapshots the model at
+        spawn, so rewriting cfg alone would leave the OLD model loaded until
+        the process happened to restart. Same rewrite AdvancedDialog's model
+        picker does in _save_and_close (cfg["whisper_model"] + cfg["model"]
+        + cfg["model_path"]), just triggered from this tab's combobox
+        instead of a Save button.
+        """
+        from core.model_manager import (
+            DEFAULT_MODEL_SLUG,
+            catalog_resolve_entry,
+        )
+
+        mvar = getattr(self, "transcribe_model_var", None)
+        label_to_slug = getattr(self, "_transcribe_model_label_to_slug", None)
+        if mvar is None or not label_to_slug:
+            return
+        new_slug = label_to_slug.get(mvar.get() or "", DEFAULT_MODEL_SLUG)
+        old_slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG)
+        if new_slug == old_slug:
+            return
+        entry = catalog_resolve_entry(self.app_config, new_slug)
+        if entry is None:
+            self.log(f"Unknown model slug {new_slug!r}; keeping current model.")
+            return
+        self.app_config["whisper_model"] = new_slug
+        self.app_config["model"] = entry
+        self.app_config["model_path"] = ""
+        try:
+            save_config(self.app_config)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Failed to save model selection")
+            self.log(f"Could not save model selection: {e}")
+        try:
+            self.transcription_service.stop_all()
+        except Exception as e:  # noqa: BLE001
+            self.log(f"Could not restart the transcription worker: {e}")
+        self.log(
+            f"Whisper model changed to {new_slug}. It will be used on the "
+            "next transcription."
+        )
+        self._refresh_model_status()
+
+    def _refresh_model_status(self) -> None:
+        """Update the Transcribe-tab model-downloaded status line.
+
+        A plain on-disk existence check (core.model_manager.model_downloaded)
+        -- cheap and import-free, unlike _refresh_engine_status's deep probe,
+        so this runs synchronously on the main thread with no background
+        thread needed.
+        """
+        var = getattr(self, "model_status_var", None)
+        if var is None:
+            return
+        try:
+            from core.model_manager import DEFAULT_MODEL_SLUG, model_downloaded
+
+            slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG)
+            if model_downloaded(self.app_config, slug):
+                var.set("✓ Downloaded")
+            else:
+                var.set("Downloads automatically on first use")
+        except Exception:  # noqa: BLE001
+            try:
+                var.set("")
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _refresh_model_selector(self) -> None:
+        """Re-sync the Transcribe-tab model picker to the saved slug (e.g.
+        after the Advanced dialog changed the model or the model folder),
+        then refresh its status line."""
+        mvar = getattr(self, "transcribe_model_var", None)
+        if mvar is None:
+            return
+        try:
+            from core.model_manager import DEFAULT_MODEL_SLUG, catalog_models
+
+            slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG)
+            labeled = catalog_models(self.app_config)
+            label_to_slug = {lbl: s for s, lbl in labeled}
+            slug_to_label = {s: lbl for s, lbl in labeled}
+            self._transcribe_model_label_to_slug = label_to_slug
+            label = slug_to_label.get(slug)
+            if label and label != mvar.get():
+                mvar.set(label)
+        except Exception:  # noqa: BLE001
+            pass
+        self._refresh_model_status()
 
     # Generic helpers ---------------------------------------------------------
     def yt_dlp_path(self) -> str:

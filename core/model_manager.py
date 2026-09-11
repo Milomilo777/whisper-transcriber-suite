@@ -452,6 +452,31 @@ def catalog_entry_info(config: dict[str, Any] | None, slug: str) -> dict[str, An
         "approx_size_gb": entry.get("approx_size_gb") or 0.0,
     }
 
+
+def model_downloaded(config: dict[str, Any] | None, slug: str) -> bool:
+    """True when ``slug``'s weights already exist on disk under the
+    configured hub folder.
+
+    Shared by the Advanced dialog's model picker and the Transcribe tab's
+    quick model picker so "already downloaded" status can never drift
+    between the two -- moved here (from a previously
+    ``AdvancedDialog``-private method) specifically so a second UI surface
+    could reuse it without duplicating the hub-folder lookup.
+    """
+    entry = catalog_resolve_entry(config, slug)
+    if not entry:
+        return False
+    try:
+        from core.hub import default_hub_folder, model_folder_for
+
+        cfg = config or {}
+        hub_folder = (cfg.get("hub_folder") or "").strip() or str(
+            default_hub_folder()
+        )
+        return (model_folder_for(hub_folder, entry["name"]) / "model.bin").exists()
+    except Exception:  # noqa: BLE001
+        return False
+
 def md5_file(path: str | Path, cancel_event: threading.Event | None = None) -> str:
     h=hashlib.md5()
     with open(path,'rb') as f:

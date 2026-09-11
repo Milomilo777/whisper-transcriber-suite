@@ -5,7 +5,104 @@ this repo. Read this file before anything else.
 
 ---
 
-## 🟢 2026-08-27 (latest) — bundled yt-dlp was stale (5+ months), self-updated; new CLAUDE.md rule to catch this earlier next time
+## 🟡 2026-09-11 (latest) — Transcribe-tab model picker + Advanced "model folder" control shipped; the 3rd ask (trim Advanced settings) is NOT started, needs owner input
+
+A colleague asked for three things in the Advanced/Transcribe UI. Two are
+done, committed, and verified; the third needs the owner to actually pick
+which settings to cut before any deleting happens.
+
+**1. Done — Whisper model is now selectable directly on the Transcribe tab.**
+Previously only the Engine picker was promoted out of Advanced; the model
+size (tiny/base/.../large-v3/turbo/...) still required opening Advanced
+settings. `app/widgets/tabs.py:build_transcribe_tab` now builds a second
+"Model:" combobox row directly under the existing "Engine:" row (same
+`engine_frame` grid cell, two packed sub-rows — no other row renumbering
+needed). Selecting a model calls the new `App._on_model_selected`
+(`app/app.py`), which mirrors the existing `_on_engine_selected` exactly:
+rewrites `cfg["whisper_model"]`/`cfg["model"]`/`cfg["model_path"]`, saves,
+and `stop_all()`s the worker so the new model loads on the next
+transcription. `App._refresh_model_status` shows "✓ Downloaded" or
+"Downloads automatically on first use" next to the picker (a cheap
+filesystem check, no heavy import — safe to run synchronously, unlike the
+engine status probe). `App._refresh_model_selector` re-syncs the tab after
+Advanced settings changes the model (or the model folder) elsewhere —
+wired into both `open_advanced_dialog()` and `AdvancedDialog._save_and_close`,
+the same double-refresh pattern the engine picker already used.
+
+**2. Done — Advanced settings can now view AND change the model folder.**
+`core/hub.py`'s `hub_folder` concept existed and was settable at first
+launch via `HubSetupDialog`, but had no way to see or change it again
+afterward short of `--safe-mode`. `AdvancedDialog`'s "Model & engine"
+section (`app/dialogs/advanced.py`) gained a new "Model folder" row
+(row 1, pushing Backend/Hardware/Batch size/Word alignment/Hallucination
+down one row each — all local grid rows inside that one LabelFrame, safe
+to renumber) with a read-only path display, "Change..." (reopens
+`HubSetupDialog`, the SAME first-run dialog, pre-filled with the current
+folder), and "Open folder" (`app/widgets/platform.open_folder`). **Real
+bug caught before shipping**: `HubSetupDialog._on_cancel` ("Skip for now")
+calls its `on_done` callback too (with the DEFAULT path, so a first-run
+caller always has something to proceed with) — naively wiring "Change..."
+straight to `on_done` would have made the Advanced dialog's path display
+silently jump to the default folder on a Skip, even though nothing was
+actually saved. Fixed by checking the dialog's own `.saved` flag (a
+mutable `holder` cell capturing the `HubSetupDialog` instance) before
+updating the display — see `AdvancedDialog._change_model_folder`.
+`core.model_manager.model_downloaded(config, slug)` is a new shared
+helper (moved out of a previously `AdvancedDialog`-private method) so the
+Advanced picker's "[OK - downloaded]"/"[needs download]" suffixes and the
+Transcribe tab's status line can never drift onto two different answers.
+
+**Verified, not just written:** `pyright app core` clean (0/0/0);
+`pytest tests/ --ignore=tests/smoke -q` full suite green, including 13 new
+tests in `tests/core/test_model_selector.py` (mirrors
+`tests/core/test_engine_selector.py`'s bare-`App.__new__(App)` style —
+hit the same documented `tk.Misc.__getattr__` infinite-recursion gotcha
+or via a truly-unset var on a bare App and fixed it the same documented
+way: set the var to `None` explicitly rather than leaving it absent).
+Beyond the hermetic suite: a real (not mocked) Tk geometry check was
+written and run (`build_transcribe_tab` and `AdvancedDialog` both
+constructed against a real `tk.Tk()` root) confirming neither the
+Transcribe tab (749px content in a 960px window) nor the Advanced
+dialog's scrollable body (1019px content against a 1770px-wide canvas on
+this machine's screen) overflow — this dialog's canvas has NO horizontal
+scrollbar, so an overflow there would silently clip content with no way
+to reach it. Real hardware/model-download testing (per this repo's own
+"new capabilities need real-hardware testing" rule) was **not** done —
+neither change touches the actual transcription/download path, only
+config plumbing already exercised by the model-change / engine-change
+tests above; flag this if it turns out to matter.
+
+**3. NOT started — "remove settings that aren't really helpful, make Advanced
+cleaner and simpler."** `AdvancedDialog` currently has 11 sections (VAD,
+Output formats, Model & engine, Prompt/hotwords/naming, AI Layer, Google
+Cloud STT, Cloud STT/Gemini, NVIDIA Parakeet, Watched folder, App
+behaviour, Downloads/yt-dlp) — genuinely a lot to scroll through. Did NOT
+unilaterally delete anything: the alternate-engine sections (Google Cloud
+STT, Gemini, NVIDIA Parakeet, AI Layer) were all deliberately built and
+real-hardware-verified in recent sessions (see the 2026-08-16 entry below)
+and are real features, not clutter — cutting those needs the owner's
+explicit say-so, not a guess from reading the code. Candidates identified
+but NOT removed, pending the owner picking which (if any) to actually cut:
+`Batch size (CUDA only)` (Spinbox in "Model & engine" — GPU-only tuning
+most users never touch; the hardware wizard already auto-picks
+device/compute type), `Word alignment` (the `stable_ts` dropdown in the
+same section — a ~10-30%-slower niche accuracy knob), and
+`Output filename template` (in "Prompt, hotwords & output naming" — a
+token-syntax naming customization most users never need). Ask the owner
+directly which of these (or anything else) to actually remove before
+touching this — do not guess and delete.
+
+**Nothing pending on master beyond this**: two commits this session
+(`8841d35` picked up a dangling uncommitted 2026-08-27 yt-dlp-staleness
+doc entry from a prior session; the model-picker/model-folder work is
+its own separate commit), both pushed. `docs/ROADMAP.md`, `PROJECT_INDEX.md`,
+and `.project_index.json` had pre-existing uncommitted changes at the
+start of this session, unrelated to any of the above — left untouched,
+not reviewed this session.
+
+---
+
+## 🟢 2026-08-27 — bundled yt-dlp was stale (5+ months), self-updated; new CLAUDE.md rule to catch this earlier next time
 
 Found while working in a separate, unrelated session (StaxRip project) that
 plain system `yt-dlp` had gone stale enough (`2026.03.17`, 90+ days old per

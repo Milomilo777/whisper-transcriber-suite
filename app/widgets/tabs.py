@@ -292,18 +292,27 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         side="left", fill="x", expand=True, padx=(8, 0)
     )
 
-    # ── Row 2: engine picker — let the user choose the transcription engine
-    #     (offline faster-whisper, Google Cloud STT, …) right here, without
-    #     digging through the crowded Advanced dialog. A short status line
-    #     shows whether the chosen engine is ready (cloud key loaded / model
-    #     present). Cloud STT is the default when a build ships a key. ───────
+    # ── Row 2: engine + model pickers — let the user choose the
+    #     transcription engine AND (for Faster-Whisper) which model size
+    #     right here, without digging through the crowded Advanced dialog.
+    #     Two stacked lines in one gridded frame (same split-line trick as
+    #     quick_opts below) so neither line's help icons overflow the app's
+    #     default 960px width. Short status lines show whether the chosen
+    #     engine is ready / model already downloaded. Cloud STT is the
+    #     default when a build ships a key. ───────────────────────────────
     from core.backends import availability as _eng
+    from core.model_manager import DEFAULT_MODEL_SLUG, catalog_models
 
-    engine_row = ttk.Frame(parent)
-    engine_row.grid(
+    engine_frame = ttk.Frame(parent)
+    engine_frame.grid(
         row=2, column=0, columnspan=3, sticky="ew",
         padx=15, pady=(0, 8),
     )
+    engine_row = ttk.Frame(engine_frame)
+    engine_row.pack(fill="x")
+    model_row = ttk.Frame(engine_frame)
+    model_row.pack(fill="x", pady=(6, 0))
+
     ttk.Label(engine_row, text="Engine:").pack(side="left")
     _engine_labels = [label for label, _value in _eng.ENGINE_CHOICES]
     app.transcribe_engine_var = tk.StringVar(
@@ -335,6 +344,47 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     app.engine_status_label.pack(side="left")
     # Cheap readiness probe for the initial selection (no heavy import).
     app._refresh_engine_status()
+
+    # Model picker — which Whisper model size the Faster-Whisper engine
+    # above loads (tiny/base/.../large-v3/turbo/...). Same catalog + slug
+    # as Advanced settings' "Whisper model" picker; either one can change
+    # it and both stay in sync (see App._refresh_model_selector).
+    ttk.Label(model_row, text="Model:").pack(side="left")
+    _model_labeled = catalog_models(app.app_config)
+    app._transcribe_model_label_to_slug = {slug_lbl[1]: slug_lbl[0] for slug_lbl in _model_labeled}
+    _model_slug_to_label = {slug: lbl for slug, lbl in _model_labeled}
+    _current_model_slug = str(
+        app.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG
+    )
+    app.transcribe_model_var = tk.StringVar(
+        value=_model_slug_to_label.get(
+            _current_model_slug, _model_labeled[0][1] if _model_labeled else ""
+        )
+    )
+    model_combo = ttk.Combobox(
+        model_row,
+        textvariable=app.transcribe_model_var,
+        values=[lbl for _slug, lbl in _model_labeled],
+        state="readonly",
+        width=44,
+    )
+    model_combo.pack(side="left", padx=(6, 8))
+    help_icon(
+        model_row,
+        "Which Whisper model size the Faster-Whisper engine loads — bigger "
+        "models are more accurate but slower and use more RAM/VRAM. Not "
+        "used by the cloud engines or NVIDIA Parakeet, which have their "
+        "own model. Same picker as 'Whisper model' in Advanced settings.",
+    ).pack(side="left", padx=(0, 8))
+    model_combo.bind("<<ComboboxSelected>>", lambda _e: app._on_model_selected())
+    app.model_status_var = tk.StringVar(value="")
+    app.model_status_label = ttk.Label(
+        model_row, textvariable=app.model_status_var, foreground="#888",
+    )
+    app.model_status_label.pack(side="left")
+    # Cheap on-disk existence check only (no heavy import) — safe to run
+    # synchronously, unlike _refresh_engine_status's background probe.
+    app._refresh_model_status()
 
     # ── Row 3: quick options, split across two lines so a full row of
     #     help icons doesn't overflow the app's default 960px width
