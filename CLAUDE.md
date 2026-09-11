@@ -72,6 +72,35 @@ features, a real file for a new format/backend, etc.), in addition to
 the existing pyright + pytest gate — the automated gate does not
 substitute for this.
 
+## yt-dlp version staleness — tell the owner and offer to update (2026-08-27)
+
+If any yt-dlp-based download in this app fails or stalls — especially
+`HTTP Error 403: Forbidden` partway through, or extraction warnings
+about a missing JS runtime / signature deciphering — check
+`bin\yt-dlp.exe --version` before assuming a code bug in `core/tiling.py`,
+`core/server/__init__.py`, or the SMTV path. Tell the owner directly if
+the version looks stale and offer to self-update it, rather than
+retrying blindly or chasing the failure as an app bug.
+
+**Why:** on 2026-08-27, this repo's bundled `bin\yt-dlp.exe` was found
+pinned at `2026.03.17` (over 5 months old) — the exact version that, in
+a separate session that same day, caused a real `403 Forbidden`
+mid-download failure against a plain YouTube URL. Running the
+binary's own self-update immediately fixed it. `config.py`'s
+`auto_update_yt_dlp` defaults to `False`, so this repo does not
+proactively refresh the bundled binary — it can silently go stale for
+months until a download fails and someone has to diagnose why.
+
+**How to apply:**
+- Self-update the bundled binary in place with `bin\yt-dlp.exe -U`
+  (yt-dlp's own release-channel self-updater; this only works on a
+  binary fetched via that channel, not one repackaged by a build
+  script under a different name).
+- `bin/yt-dlp.exe` is listed in `.gitignore`, so updating it locally
+  never shows up as a repo change and needs no commit.
+- This is a diagnosis step to run *before* other yt-dlp troubleshooting,
+  not after — the version check is cheap.
+
 ## Release assets must track every bug fix (2026-07-04, owner request)
 
 Any bug fix that touches shipped code is not actually "done" until the

@@ -5,7 +5,30 @@ this repo. Read this file before anything else.
 
 ---
 
-## 🟢 2026-08-24 (latest) — "Use captions instead" shortcut (skip download+transcribe when YouTube already has captions), plus a real rolling-auto-caption dedup fix
+## 🟢 2026-08-27 (latest) — bundled yt-dlp was stale (5+ months), self-updated; new CLAUDE.md rule to catch this earlier next time
+
+Found while working in a separate, unrelated session (StaxRip project) that
+plain system `yt-dlp` had gone stale enough (`2026.03.17`, 90+ days old per
+yt-dlp's own warning) to cause a real `HTTP Error 403: Forbidden` mid-download
+against a plain YouTube URL — fixed there by `pip install -U yt-dlp`. Checked
+this repo's own bundled `bin\yt-dlp.exe` as a precaution and found it pinned
+at the exact same stale `2026.03.17` version, carrying the identical risk.
+Self-updated it in place with `bin\yt-dlp.exe -U` → `2026.08.19`. `bin/yt-dlp.exe`
+is gitignored, so this needed no commit.
+
+Added a new CLAUDE.md section ("yt-dlp version staleness — tell the owner and
+offer to update") documenting this so a future session diagnoses a yt-dlp
+403/stall by checking the bundled binary's version FIRST, before assuming an
+app bug in `core/tiling.py` / `core/server/__init__.py` / the SMTV path.
+
+**Still open:** `config.py`'s `auto_update_yt_dlp` still defaults to `False`,
+so the bundled binary can still silently go stale again over time — whether
+to change that default (or just rely on the new CLAUDE.md diagnosis rule) was
+not decided this session; ask the owner if it recurs.
+
+---
+
+## 🟢 2026-08-24 — "Use captions instead" shortcut (skip download+transcribe when YouTube already has captions), plus a real rolling-auto-caption dedup fix
 
 Owner's idea (research it first, then "finalize it in the best way,
 don't cut a new build"): when a pasted URL already has captions in the
