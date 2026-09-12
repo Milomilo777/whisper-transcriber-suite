@@ -11,6 +11,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   to open Advanced settings just to change model size.
 - **See and change the model folder** in Advanced settings' "Model & engine"
   section (view the path, "Change…", "Open folder").
+- **Clone Your Voice / Text to Voice** — a new, independent tab, off by
+  default and opt-in at install time: record or load 1-3 short reference
+  clips, type text, and generate that text spoken in the cloned voice via
+  OmniVoice (Apache-2.0), running locally. Downloads its ~2GB speech model
+  on first use; fully offline after that.
 
 ### Changed
 

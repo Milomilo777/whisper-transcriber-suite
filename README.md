@@ -157,6 +157,7 @@ for the phones and PCs on your network.
 | **Video wall** | Tile one live stream as an N×N grid across one or many monitors. |
 | **Local network mode** | A stdlib-only web server so other devices can transcribe through this machine — optional password, off until you start it. |
 | **Post-processing** | Automatic chapters and hallucination detection, both toggleable. |
+| **Clone Your Voice** | Optional, off by default (opt in at install time) — record a short sample and generate new speech in that voice via OmniVoice, Apache-2.0, running locally. Downloads ~2GB the first time you use it. |
 
 Keyboard: `Ctrl+O` browse · `Ctrl+Enter` transcribe · `Esc` cancel ·
 `Ctrl+Q` exit.
@@ -379,6 +380,15 @@ action items, ask-a-question, and a per-segment translate pass that writes a
 bilingual `.srt`. It's off by default; turn it on in Advanced → AI Layer,
 using either the bundled local model or your own OpenAI-compatible endpoint
 (OpenAI, Ollama, LM Studio, OpenRouter).
+
+**Can it clone a voice and make it say new text?**
+Yes, via the optional Clone Your Voice / Text to Voice tab — record or load
+1-3 short reference clips, type text, and it generates that text spoken in
+the cloned voice using OmniVoice (Apache-2.0), entirely on your machine. It's
+off by default; opt in to it as an installer task when you install or
+upgrade. Downloads its ~2GB speech model on first use (needs internet for
+that one-time download only), and requires you to confirm you own or have
+permission to clone the reference voice before the first generation.
 
 **How is this different from calling the Whisper API directly?**
 It runs the model locally via faster-whisper by default, so there's no

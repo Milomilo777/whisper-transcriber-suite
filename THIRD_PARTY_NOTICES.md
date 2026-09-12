@@ -37,6 +37,20 @@ Each ships its full license text in its `site-packages` folder.
   **python-vlc** — see each package's bundled LICENSE (MIT / BSD / Apache /
   LGPL variants).
 
+## On-demand optional packages (not bundled)
+
+Some features install their packages from PyPI on first use instead of
+shipping in the base installer, keeping the default install small. Each
+installs only if you opt into that specific feature.
+
+- **OmniVoice** (k2-fsa) — Apache-2.0, on both code and pretrained weights.
+  Powers the optional Clone Your Voice / Text to Voice tab; installs
+  together with `torch` (BSD-3-Clause) and `soundfile` (BSD-3-Clause) on
+  first generation. Version is unpinned in `core/optional_deps.py` (always
+  the latest PyPI release at install time). Its ~2GB model weights
+  (`k2-fsa/OmniVoice` on Hugging Face) are fetched separately by the
+  package itself, also on first use.
+
 ## Models
 
 - The **Whisper** speech-to-text model weights (e.g.

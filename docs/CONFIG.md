@@ -232,6 +232,24 @@ one time), mirroring the on-demand openai-whisper backend.
 | `nvidia_asr_dtype` | string | `"auto"` | `"auto"` (float16 on CUDA, float32 on CPU), or force `"float32"` / `"float16"`. |
 | `nvidia_asr_chunk_seconds` | int | `30` | Audio window length (seconds) per inference; also the segment granularity when the model returns text-only. The file is sliced into back-to-back windows whose timestamps are offset and stitched into one timeline. |
 
+### Clone Your Voice / Text to Voice (optional, installer opt-in)
+
+A fully independent, **off-by-default** feature: record or load 1-3 short
+reference clips of a voice and generate arbitrary typed text spoken back in
+that voice, via **OmniVoice** (k2-fsa, Apache-2.0), running entirely on this
+machine. Unlike the cloud backends above, no audio or text is ever uploaded.
+
+Shown only when the "Clone Your Voice / Text to Voice" task was ticked at
+install time (`core.hub.voice_clone_tab_enabled` — see the `installer_embed.iss`
+`voiceclone` task). The OmniVoice package + `torch` + `soundfile` (~2GB) and
+the model weights (~2GB, fetched separately by OmniVoice itself on first
+model load) are **not bundled** — both install/download on first use and
+need an internet connection for that one-time step only.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `voice_clone.consent_accepted` | bool | `false` | Set to `true` after the user accepts the one-time consent dialog (own-voice-or-permission confirmation + ethics note) shown before the very first generation. Once accepted, the dialog does not reappear. |
+
 ### Web / LAN access (optional local HTTP job server)
 
 Backs both the `gui.py serve` CLI and the one-click **Web / LAN access**
