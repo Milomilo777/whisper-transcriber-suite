@@ -22,10 +22,6 @@ from core._proc import kill_process_tree, new_session_kwargs
 
 logger = logging.getLogger(__name__)
 
-#: Loading OmniVoice the first time in a fresh worker is minutes, not
-#: seconds (measured ~5 min on a representative CPU) -- generous so a
-#: slow machine's first load is never mistaken for a hang.
-MODEL_READY_TIMEOUT_S = 900.0
 #: A single generation call measured ~50-57x real-time on CPU in
 #: pre-implementation testing; a few sentences can genuinely take the
 #: better part of an hour. Generous on purpose -- the UI shows its own
@@ -122,6 +118,7 @@ class VoiceCloneWorker:
         reference_paths: list[str],
         output_path: str,
         *,
+        consent_accepted: bool,
         device: str = "cpu",
         on_model_loading: Optional[Callable[[], None]] = None,
     ) -> dict[str, Any]:
@@ -132,7 +129,7 @@ class VoiceCloneWorker:
         GENERATE_TIMEOUT_S). Raises on worker death or timeout.
         """
         proc = self._process
-        if proc is None or proc.poll() is not None:
+        if proc is None or proc.poll() is not None or self._dead.is_set():
             raise VoiceCloneWorkerError("The voice-clone worker is not running.")
         req_id = uuid.uuid4().hex
         done = threading.Event()
@@ -148,6 +145,7 @@ class VoiceCloneWorker:
             "text": text,
             "reference_paths": reference_paths,
             "output_path": output_path,
+            "consent_accepted": consent_accepted,
             "device": device,
         }
         try:

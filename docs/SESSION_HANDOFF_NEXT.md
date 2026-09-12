@@ -5,6 +5,71 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-13 — "Clone Your Voice / Text to Voice" adversarially reviewed and hardened (post-Phase-3)
+
+Follows directly from the Phase 1-3 entries below (feature already shipped to master,
+off by default, unreleased). This session ran a full review→fix→verify cycle on the
+already-merged feature, not new functionality.
+
+**Adversarial review:** one Claude subagent (sonnet, single pass) reviewed all 5 feature
+files plus their integration points line-by-line. 0 P0, 3 P1, 8 P2 found — no crash or
+security issues; every failure path already reached the user correctly. Full report:
+`docs/history/VOICE_CLONE_ADVERSARIAL_REVIEW_2026-09-13.md`.
+
+**Fixes applied** (3 P1s + 5 of 8 P2s; scope decisions and full detail in
+`docs/history/VOICE_CLONE_CODEX_FIX_SUMMARY_2026-09-13.md`, including Claude's verification
+pass against the real source):
+- **P1-1:** a reference sample that fails *hard* validation (missing/unreadable/zero-duration
+  file — reachable via a real mic dropout, since `Recorder.stop()` synthesizes an empty
+  placeholder WAV on capture failure) was still being added to the sample list. `ReferenceIssue`
+  now carries a `blocking` flag; `_add_sample` refuses the blocking kind.
+- **P1-2:** there was no way to cancel the ~2GB on-demand install or an in-flight generation
+  short of killing the whole app. Added a Cancel button (`app.vc_cancel_btn`) wired to a
+  `cancel_event` (threaded into `ensure_installed`) and to `VoiceCloneWorker.stop()` for an
+  in-flight generation, mirroring the Live tab's Stop button and `_offer_optional_install`'s
+  existing cancel-event pattern.
+- **P1-3:** the Portable ZIP build had no way to ever opt out — `no_voice_clone.flag` was only
+  ever written by the Setup-Standard installer's Pascal script, never into the `embed_build\`
+  tree the Portable ZIP just zips as-is. `build_embed_installer.bat` now writes that marker
+  unconditionally, so Portable inherits the same off-by-default posture. (The identical,
+  pre-existing gap for `no_tiling.flag` was deliberately left untouched — different feature,
+  out of scope here.)
+- **P2-1, P2-2, P2-4, P2-5, P2-6:** a temp-file leak in `_concat_references`, a dead unused
+  timeout constant, consent enforcement pushed down into `core.voice_clone.generate()` itself
+  (defense in depth — every layer of the stack now requires an explicit `consent_accepted`,
+  not just the one current UI caller), a dead `_dead` flag now actually checked, and the
+  recording countdown's `after()` chain now cancelled on teardown.
+- **Deliberately NOT done** (see the review for why): P2-3 (broader test-coverage buildout for
+  the service/widget layers — tracked separately, bigger than a "fix"), P2-7 and P2-8 (both
+  flagged by the review itself as low-priority, pre-existing patterns shared across the whole
+  app, not specific to this feature). The pre-existing `no_tiling.flag` gap noted under P1-3
+  is also still open — same class of bug, different feature.
+
+**How this was produced:** the fixes were written by Codex (`gpt-5.4-mini`,
+`model_reasoning_effort=high`) in an isolated scratch copy (never given direct repo access,
+per this project's external-model isolation discipline), then verified line-by-line against
+the real current source before anything was applied — this caught one real discrepancy
+(Codex's own summary claimed the P2-5 fix was made; the diff showed it wasn't, so it was
+added by hand) and one line-ending hygiene issue (`build_embed_installer.bat` came back with
+mixed CRLF/LF; the two-line fix was applied by hand instead of copying the file wholesale).
+
+**Verification:**
+- `pyright app/ core/ gui.py` → 0 errors/warnings/informations.
+- `pytest tests/ --ignore=tests/smoke` → full hermetic suite green, including one new
+  regression test for the P1-1 blocking/advisory classification.
+- Real launch smoke test: `python gui.py` from source ran cleanly for several seconds with
+  the tab built (on by default in a dev checkout) — no repeat of the Phase 3 grid/geometry-
+  manager collision class of bug for the new Cancel button.
+- **Not done:** no live click-through of the actual Cancel button against a real install or a
+  real in-flight generation (both multi-minute-plus on this machine) — verified by static
+  tracing of the event/thread wiring, not by an actual live cancel. Worth doing for real
+  before this feature ships in a release.
+
+No version bump, no release cut — same as Phase 1-3, this stays local-and-pushed-to-master
+only until the owner explicitly says to release.
+
+---
+
 ## 🟢 2026-09-12 — "Clone Your Voice / Text to Voice" Phase 3 done: installer wiring, docs, real-installer toggle check
 
 Follows the approved plan (`C:\Users\Owner\.claude\plans\temporal-puzzling-lerdorf.md`,

@@ -103,6 +103,7 @@ def ensure_installed(
 class ReferenceIssue:
     path: str
     message: str
+    blocking: bool = False
 
 
 def validate_reference_sample(path: str) -> "ReferenceIssue | None":
@@ -114,13 +115,13 @@ def validate_reference_sample(path: str) -> "ReferenceIssue | None":
     samples' problems at once instead of crashing on the first bad one.
     """
     if not path or not os.path.isfile(path):
-        return ReferenceIssue(path, "File not found.")
+        return ReferenceIssue(path, "File not found.", blocking=True)
     try:
         duration = get_duration(path)
     except Exception as e:  # noqa: BLE001
-        return ReferenceIssue(path, f"Could not read this audio file: {e}")
+        return ReferenceIssue(path, f"Could not read this audio file: {e}", blocking=True)
     if duration <= 0:
-        return ReferenceIssue(path, "Could not determine the clip's length.")
+        return ReferenceIssue(path, "Could not determine the clip's length.", blocking=True)
     if duration < MIN_REFERENCE_SECONDS:
         return ReferenceIssue(
             path,
@@ -179,6 +180,8 @@ def generate(
     text: str,
     reference_paths: "list[str]",
     output_path: str,
+    *,
+    consent_accepted: bool,
 ) -> GenerateResult:
     """Run one zero-shot cloning generation against an already-loaded
     *model* (see :func:`load_model`). Blocking; call off the Tk thread
@@ -193,6 +196,8 @@ def generate(
     worker wraps this call and turns exceptions into an ``error`` event
     rather than crashing silently.
     """
+    if not consent_accepted:
+        raise ValueError("Consent not accepted; refusing to generate.")
     if not text or not text.strip():
         raise ValueError("No text to speak.")
     if len(text) > MAX_TEXT_CHARS:
@@ -206,8 +211,10 @@ def generate(
     import soundfile as sf  # type: ignore[import-not-found] # noqa: PLC0415
 
     ref_path = reference_paths[0]
+    cleanup_ref_path: str | None = None
     if len(reference_paths) > 1:
         ref_path = _concat_references(reference_paths)
+        cleanup_ref_path = ref_path
 
     # ref_text="" opts out of OmniVoice's own auto-transcription of the
     # reference clip (an internal, separate transformers-based Whisper
@@ -219,18 +226,25 @@ def generate(
     # 17GB machine (see docs/SESSION_HANDOFF_NEXT.md, 2026-09-12 entry)
     # at some cost to cloning quality; revisit if that trade proves wrong
     # in practice.
-    t0 = time.time()
-    audio = model.generate(text=text, ref_audio=ref_path, ref_text="")  # type: ignore[attr-defined]
-    elapsed = time.time() - t0
+    try:
+        t0 = time.time()
+        audio = model.generate(text=text, ref_audio=ref_path, ref_text="")  # type: ignore[attr-defined]
+        elapsed = time.time() - t0
 
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    sf.write(output_path, audio[0], 24000)
-    audio_seconds = len(audio[0]) / 24000
-    logger.info(
-        "voice_clone generate: %.2fs audio in %.1fs (RTF=%.2f)",
-        audio_seconds, elapsed, elapsed / max(audio_seconds, 0.01),
-    )
-    return GenerateResult(output_path=output_path, audio_seconds=audio_seconds, elapsed_seconds=elapsed)
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        sf.write(output_path, audio[0], 24000)
+        audio_seconds = len(audio[0]) / 24000
+        logger.info(
+            "voice_clone generate: %.2fs audio in %.1fs (RTF=%.2f)",
+            audio_seconds, elapsed, elapsed / max(audio_seconds, 0.01),
+        )
+        return GenerateResult(output_path=output_path, audio_seconds=audio_seconds, elapsed_seconds=elapsed)
+    finally:
+        if cleanup_ref_path is not None:
+            try:
+                os.remove(cleanup_ref_path)
+            except OSError:
+                pass
 
 
 def _concat_references(paths: "list[str]") -> str:

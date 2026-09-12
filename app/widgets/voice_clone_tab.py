@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import Any
@@ -68,6 +69,8 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_worker = None
     app.vc_last_output = None
     app.vc_recorder = None
+    app.vc_cancel_event = None
+    app.vc_recording_after_id = None
     app.vc_status_var = tk.StringVar(value="Idle.")
 
     parent.columnconfigure(0, weight=1)
@@ -133,6 +136,10 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
         ctl, text="Generate", command=lambda: _generate(app),
     )
     app.vc_generate_btn.pack(side="left")
+    app.vc_cancel_btn = ttk.Button(
+        ctl, text="Cancel", command=lambda: _cancel_generate(app), state="disabled",
+    )
+    app.vc_cancel_btn.pack(side="left", padx=(8, 0))
     app.vc_play_btn = ttk.Button(
         ctl, text="Play result", command=lambda: _play(app), state="disabled",
     )
@@ -176,7 +183,10 @@ def _add_sample(app: Any, path: str) -> None:
         return
     issue = validate_reference_sample(path)
     if issue is not None:
-        show_error(app, "This clip may not work well", issue.message)
+        title = "Could not use this clip" if issue.blocking else "This clip may not work well"
+        show_error(app, title, issue.message)
+        if issue.blocking:
+            return
         # Still added -- the user may know better than the heuristic
         # (e.g. a clip a hair under/over the recommended range).
     app.vc_samples.append(path)
@@ -218,9 +228,12 @@ def _record_sample(app: Any) -> None:
 def _tick_recording(app: Any, seconds_left: int) -> None:
     app.vc_status_var.set(f"Recording... {seconds_left}s")
     if seconds_left <= 0:
+        app.vc_recording_after_id = None
         _finish_recording(app)
         return
-    app.after(1000, lambda: _tick_recording(app, seconds_left - 1))
+    app.vc_recording_after_id = app.after(
+        1000, lambda: _tick_recording(app, seconds_left - 1)
+    )
 
 
 def _finish_recording(app: Any) -> None:
@@ -296,6 +309,9 @@ def _generate(app: Any) -> None:
     from core import voice_clone
 
     app.vc_generate_btn.configure(state="disabled")
+    app.vc_cancel_btn.configure(state="normal")
+    cancel_event = threading.Event()
+    app.vc_cancel_event = cancel_event
     app.vc_status_var.set("Preparing...")
 
     def worker() -> None:
@@ -307,11 +323,16 @@ def _generate(app: Any) -> None:
                         "~2GB -- needs internet, can take a while)..."
                     )
                 )
-                ok = voice_clone.ensure_installed(log_cb=app.log_threadsafe)
+                ok = voice_clone.ensure_installed(
+                    log_cb=app.log_threadsafe, cancel_event=cancel_event
+                )
                 if not ok:
-                    app.post_to_main(lambda: _generate_failed(
-                        app, "Could not download the speech model software."
-                    ))
+                    if cancel_event.is_set():
+                        app.post_to_main(lambda: _generate_cancelled(app))
+                    else:
+                        app.post_to_main(lambda: _generate_failed(
+                            app, "Could not download the speech model software."
+                        ))
                     return
 
             device = voice_clone.default_device()
@@ -341,12 +362,16 @@ def _generate(app: Any) -> None:
 
             result = app.vc_worker.generate(
                 text, list(app.vc_samples), output_path,
-                device=device, on_model_loading=_on_model_loading,
+                consent_accepted=True, device=device, on_model_loading=_on_model_loading,
             )
             app.post_to_main(lambda: _generate_done(app, result))
         except Exception as e:  # noqa: BLE001
-            logger.exception("Voice-clone generation failed")
-            app.post_to_main(lambda: _generate_failed(app, str(e)))
+            if cancel_event.is_set():
+                logger.info("Voice-clone generation cancelled")
+                app.post_to_main(lambda: _generate_cancelled(app))
+            else:
+                logger.exception("Voice-clone generation failed")
+                app.post_to_main(lambda: _generate_failed(app, str(e)))
 
     from core._threads import safe_thread
     safe_thread(worker, name="voice-clone-generate")
@@ -361,6 +386,8 @@ def _estimate_minutes(text: str) -> int:
 
 def _generate_done(app: Any, result: dict[str, Any]) -> None:
     app.vc_generate_btn.configure(state="normal")
+    app.vc_cancel_btn.configure(state="disabled")
+    app.vc_cancel_event = None
     app.vc_last_output = result.get("output_path") or None
     if app.vc_last_output:
         app.vc_play_btn.configure(state="normal")
@@ -372,6 +399,8 @@ def _generate_done(app: Any, result: dict[str, Any]) -> None:
 
 def _generate_failed(app: Any, message: str) -> None:
     app.vc_generate_btn.configure(state="normal")
+    app.vc_cancel_btn.configure(state="disabled")
+    app.vc_cancel_event = None
     app.vc_status_var.set("Failed.")
     show_error(
         app, "Generation failed", message,
@@ -380,6 +409,31 @@ def _generate_failed(app: Any, message: str) -> None:
             "internet connection, then click Generate again to retry."
         ),
     )
+
+
+def _generate_cancelled(app: Any) -> None:
+    app.vc_generate_btn.configure(state="normal")
+    app.vc_cancel_btn.configure(state="disabled")
+    app.vc_cancel_event = None
+    app.vc_status_var.set("Cancelled.")
+
+
+def _cancel_generate(app: Any) -> None:
+    cancel_event = getattr(app, "vc_cancel_event", None)
+    if cancel_event is not None:
+        cancel_event.set()
+    app.vc_cancel_btn.configure(state="disabled")
+    worker = getattr(app, "vc_worker", None)
+    if worker is None or not worker.is_running():
+        return
+
+    def worker_stop() -> None:
+        try:
+            worker.stop()
+        except Exception:  # noqa: BLE001
+            logger.exception("Voice-clone generation stop failed")
+
+    threading.Thread(target=worker_stop, name="voice-clone-stop", daemon=True).start()
 
 
 def _play(app: Any) -> None:
@@ -416,6 +470,13 @@ def _save(app: Any) -> None:
 def stop_voice_clone_worker(app: Any) -> None:
     """Tear the worker down on app exit or tab teardown. Safe when
     nothing is running. Mirrors ``live_tab.stop_live_session``."""
+    after_id = getattr(app, "vc_recording_after_id", None)
+    if after_id is not None:
+        try:
+            app.after_cancel(after_id)
+        except Exception:  # noqa: BLE001
+            pass
+        app.vc_recording_after_id = None
     worker = getattr(app, "vc_worker", None)
     if worker is not None:
         try:

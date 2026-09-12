@@ -111,6 +111,9 @@ echo [embed] writing the portable launcher
 >> "%BUILD%\Run Whisper Transcriber Suite.bat" echo cd /d "%%~dp0"
 >> "%BUILD%\Run Whisper Transcriber Suite.bat" echo start "" "python\pythonw.exe" "gui.py"
 
+echo [embed] writing no_voice_clone.flag (Portable ships this feature OFF by default; the Setup-Standard installer removes this marker if the user opts in via the "voiceclone" task)
+type nul > "%BUILD%\no_voice_clone.flag"
+
 echo [embed] writing sitecustomize.py to teach python where site-packages lives
 > "%BUILD%\python\Lib\sitecustomize.py" echo import sys, os
 >> "%BUILD%\python\Lib\sitecustomize.py" echo _here = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

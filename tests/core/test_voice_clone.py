@@ -24,6 +24,19 @@ def test_validate_reference_sample_missing_file():
     assert "not found" in issue.message.lower()
 
 
+def test_validate_reference_sample_blocking_classification(monkeypatch, tmp_path):
+    issue = voice_clone.validate_reference_sample("/nowhere/at/all.wav")
+    assert issue is not None
+    assert issue.blocking is True
+
+    clip = tmp_path / "short.wav"
+    clip.write_bytes(b"\x00")
+    monkeypatch.setattr(voice_clone, "get_duration", lambda p: 1.0)
+    issue = voice_clone.validate_reference_sample(str(clip))
+    assert issue is not None
+    assert issue.blocking is False
+
+
 def test_validate_reference_sample_empty_path():
     issue = voice_clone.validate_reference_sample("")
     assert issue is not None
@@ -72,18 +85,18 @@ def test_validate_reference_sample_unreadable_reports_issue_not_raise(monkeypatc
 
 def test_generate_raises_on_empty_text():
     with pytest.raises(ValueError, match="No text"):
-        voice_clone.generate(object(), "   ", ["/x.wav"], "/out.wav")
+        voice_clone.generate(object(), "   ", ["/x.wav"], "/out.wav", consent_accepted=True)
 
 
 def test_generate_raises_on_text_too_long():
     long_text = "a" * (voice_clone.MAX_TEXT_CHARS + 1)
     with pytest.raises(ValueError, match="characters"):
-        voice_clone.generate(object(), long_text, ["/x.wav"], "/out.wav")
+        voice_clone.generate(object(), long_text, ["/x.wav"], "/out.wav", consent_accepted=True)
 
 
 def test_generate_raises_on_no_reference_paths():
     with pytest.raises(ValueError, match="reference"):
-        voice_clone.generate(object(), "hello", [], "/out.wav")
+        voice_clone.generate(object(), "hello", [], "/out.wav", consent_accepted=True)
 
 
 # ---------- default_device ------------------------------------------------

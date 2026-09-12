@@ -136,6 +136,7 @@ def main() -> int:
         text = command.get("text") or ""
         reference_paths = command.get("reference_paths") or []
         output_path = command.get("output_path") or ""
+        consent_accepted = bool(command.get("consent_accepted"))
         device = command.get("device") or "cpu"
 
         emit("started", id=req_id)
@@ -147,7 +148,10 @@ def main() -> int:
                 emit("model_ready")
             else:
                 model = voice_clone.load_model(device)
-            result = voice_clone.generate(model, text, reference_paths, output_path)
+            result = voice_clone.generate(
+                model, text, reference_paths, output_path,
+                consent_accepted=consent_accepted,
+            )
             emit(
                 "done", id=req_id, output_path=result.output_path,
                 audio_seconds=result.audio_seconds,
