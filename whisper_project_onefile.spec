@@ -153,12 +153,14 @@ a = Analysis(
         'app.services.integrations_service',
         'app.services.live_service',
         'app.services.transcription_service',
+        'app.services.voice_clone_service',
         'app.widgets.console',
         'app.widgets.hardware_wizard',
         'app.widgets.platform',
         'app.widgets.live_tab',
         'app.widgets.tabs',
         'app.widgets.tray',
+        'app.widgets.voice_clone_tab',
         'core',
         'core.alignment',
         'core.backends',
@@ -178,6 +180,8 @@ a = Analysis(
         'core.separator',
         'core.tiling',
         'core.voiceprint',
+        'core.voice_clone',
+        'core.voice_clone_worker',
         # Opt-in backends — explicit submodule names so a user
         # who flips the config gets a working backend rather than
         # a silent ImportError. The collect_all calls above pick
