@@ -1248,9 +1248,13 @@ class AdvancedDialog(tk.Toplevel):
             body, "Google Cloud Speech-to-Text (service account)",
             "Optional — the full Google Cloud Speech-to-Text service, "
             "signed in with a downloaded service-account JSON file (not "
-            "the simple API key the separate Gemini engine uses). New "
-            "accounts get 60 free minutes/month plus a $300/90-day "
-            "credit. Uploads your audio to Google — not offline.",
+            "the simple API key the separate Gemini engine uses). The "
+            "only engine in this app that natively combines real "
+            "word-level timestamps, speaker diarization, AND a cheap "
+            "Batch mode for long files (~$0.004/minute, usually ready "
+            "within 24 hours). New accounts get 60 free minutes/month "
+            "plus a $300/90-day credit. Uploads your audio to Google — "
+            "not offline.",
         )
 
         ttk.Label(
@@ -1260,7 +1264,12 @@ class AdvancedDialog(tk.Toplevel):
                 "signs in with a service-account JSON file you download from "
                 "the Google Cloud console (NOT the simple API key the "
                 "separate Gemini engine uses). New Google Cloud customers get "
-                "60 free minutes every month plus a $300 / 90-day credit."
+                "60 free minutes every month plus a $300 / 90-day credit.\n\n"
+                "It is the only engine here that combines all three: real "
+                "word-level timestamps, speaker diarization, and a cheap "
+                "Batch mode for long files — Batch costs about "
+                "$0.004/minute (~75% less than Standard's ~$0.016/minute) "
+                "and is usually ready within 24 hours."
             ),
             wraplength=680,
             justify="left",

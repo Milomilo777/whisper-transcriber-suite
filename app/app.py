@@ -268,14 +268,19 @@ def build_about_sections() -> list[AboutSection]:
                 "60 minutes a month.",
                 "Google Cloud Speech-to-Text (service account): a "
                 "purpose-built transcription service with real word "
-                "timestamps and speaker labels. New accounts get 60 free "
-                "minutes a month plus a $300 / 90-day credit.",
+                "timestamps and speaker labels — the only engine here "
+                "that combines all three: real word-level timestamps, "
+                "speaker diarization, and a cheap Batch mode for long "
+                "files. New accounts get 60 free minutes a month plus a "
+                "$300 / 90-day credit.",
                 "It needs a service-account JSON file — set it under "
                 "Advanced › Backend, where a \"How do I get this file?\" "
                 "button walks you through it step by step.",
-                "Batch mode (Cloud Speech-to-Text): about 75% cheaper but "
-                "slower (up to ~24 hours) and needs a Cloud Storage bucket. "
-                "Good for large jobs you are not waiting on.",
+                "Batch mode (Cloud Speech-to-Text): about 75% cheaper "
+                "(~$0.004/minute vs ~$0.016/minute standard) but slower — "
+                "usually ready within 24 hours — and needs a Cloud "
+                "Storage bucket. Good for large jobs you are not waiting "
+                "on.",
             ]),
             ("Hardware", [
                 "Autodetect at first launch (CUDA / NPU / DirectML / CPU)",

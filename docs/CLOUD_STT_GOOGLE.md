@@ -24,13 +24,20 @@ option — see the table below.
 | Setup effort | Lower (copy one key) | Higher (a few console steps, once) |
 | Free tier | Gemini API free quota | **60 minutes / month**, ongoing |
 | New-customer credit | — | **$300 over 90 days** |
+| Word-level timestamps | No (line-level only) | **Yes, always on** |
 | Speaker labels | No | Yes (diarization) |
 | Cheaper bulk mode | No | Yes (batch mode, ~75% cheaper) |
 | Setup guide | [docs/CLOUD_STT.md](CLOUD_STT.md) | this page |
 
+**Google Cloud Speech-to-Text is the only engine in this app that combines
+all three at once: real word-level timestamps, speaker diarization, and a
+cheap Batch mode for long files** — Batch costs about **$0.004/minute**
+(~75% less than Standard's ~$0.016/minute) and is usually ready within
+**24 hours**. See "Standard vs. batch mode" below for details.
+
 If you just want the quickest setup, use the Gemini option. If you want the
-ongoing 60 free minutes a month, speaker labels, or the cheaper batch mode,
-use this one.
+ongoing 60 free minutes a month, real word-level timestamps, speaker labels,
+or the cheaper batch mode, use this one.
 
 ## How do I get the service-account JSON file?
 
