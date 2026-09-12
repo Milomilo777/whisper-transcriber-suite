@@ -31,6 +31,7 @@ from app.widgets.console import apply_console_theme, build_console, insert_log_l
 from app.widgets.error_dialog import show_error
 from app.widgets.platform import open_folder as _open_folder_helper
 from app.widgets.live_tab import build_live_tab, stop_live_session
+from app.widgets.voice_clone_tab import build_voice_clone_tab, stop_voice_clone_worker
 from app.widgets.tabs import (
     build_download_tab,
     build_queue_tab,
@@ -43,7 +44,7 @@ from core import __version__ as _APP_VERSION
 from core._proc import kill_process_tree
 from core.config import load_config, save_config
 from core.history import HistoryDB
-from core.hub import tiling_tab_enabled
+from core.hub import tiling_tab_enabled, voice_clone_tab_enabled
 from core.logging_setup import get_ui_logger, open_log_folder, setup_logging
 from core.paths import bin_dir as _resource_bin_dir
 from core.paths import bundled_binary as _bundled_binary
@@ -1535,6 +1536,13 @@ class App(tk.Tk):
             stop_live_session(self)
         except Exception:  # noqa: BLE001
             pass
+        # Same reasoning as the Live tab: its own worker subprocess (a
+        # separate, independent one -- see core.voice_clone_worker) plus
+        # any in-progress mic recording must not outlive the window.
+        try:
+            stop_voice_clone_worker(self)
+        except Exception:  # noqa: BLE001
+            pass
         # Stop the in-process web / LAN server so its socket + worker
         # thread don't linger after the window closes.
         self._shutdown_server_on_exit()
@@ -1588,6 +1596,7 @@ class App(tk.Tk):
         self.t4 = ttk.Frame(self.nb)
         self.t5 = ttk.Frame(self.nb)
         self.t6 = ttk.Frame(self.nb)
+        self.t7 = ttk.Frame(self.nb)
         self.nb.add(self.t1, text="Transcribe")
         self.nb.add(self.t2, text="Transcription Queue")
         self.nb.add(self.t6, text="Live")
@@ -1603,6 +1612,17 @@ class App(tk.Tk):
         if self._tiling_tab_visible:
             self.nb.add(self.t4, text="Video Tiling")
         self.nb.add(self.t5, text="Web / LAN access")
+        # Clone Your Voice / Text to Voice: same opt-in-at-install shape as
+        # Video Tiling above (no_voice_clone.flag / voice_clone_tab_enabled),
+        # but an entirely independent marker and worker -- the two features
+        # are unrelated and toggled separately. Nothing needs constructing
+        # in __init__ the way self.tiling is: the worker subprocess is
+        # spawned lazily on first Generate, not up front, so skipping the
+        # tab here leaves nothing to tear down (stop_voice_clone_worker is
+        # a no-op when app.vc_worker was never set).
+        self._voice_clone_tab_visible = voice_clone_tab_enabled()
+        if self._voice_clone_tab_visible:
+            self.nb.add(self.t7, text="Clone Your Voice")
         build_transcribe_tab(self, self.t1)
         build_queue_tab(self, self.t2)
         build_live_tab(self, self.t6)
@@ -1610,6 +1630,8 @@ class App(tk.Tk):
         if self._tiling_tab_visible:
             build_tiling_tab(self, self.t4)
         build_server_tab(self, self.t5)
+        if self._voice_clone_tab_visible:
+            build_voice_clone_tab(self, self.t7)
 
     def _save_auto_transcribe_pref(self) -> None:
         self.app_config["auto_transcribe_after_download"] = bool(self.auto_transcribe_var.get())

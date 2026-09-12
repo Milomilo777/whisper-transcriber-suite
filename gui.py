@@ -1,14 +1,18 @@
-"""Entry point. Four modes:
+"""Entry point. Five modes:
 
-  python gui.py                  → launch the Tk app (default)
-  python gui.py --worker         → spawn the JSON-stdio worker
-  python gui.py transcribe FILE  → CLI transcription
-  python gui.py serve            → run the local-network HTTP job server
-  python gui.py --help           → usage
+  python gui.py                     → launch the Tk app (default)
+  python gui.py --worker            → spawn the JSON-stdio transcription worker
+  python gui.py --voice-clone-worker → spawn the Clone Your Voice worker
+  python gui.py transcribe FILE     → CLI transcription
+  python gui.py serve               → run the local-network HTTP job server
+  python gui.py --help              → usage
 
-The worker mode is invoked by the App spawning its own exe; do
-NOT remove or rename the ``--worker`` shape — it's the
-spawn-contract every method of the deliverables uses.
+The worker modes are invoked by the App spawning its own exe; do
+NOT remove or rename the ``--worker`` / ``--voice-clone-worker`` shapes
+— they're the spawn-contract every method of the deliverables uses.
+The two are separate, independent worker scripts (see
+``core.voice_clone_worker``'s docstring for why voice cloning isn't a
+new action on the transcription worker's protocol).
 """
 import argparse
 import sys
@@ -273,6 +277,9 @@ def main() -> int:
     if "--worker" in sys.argv:
         from core.worker import main as _worker_main
         return _worker_main()
+    if "--voice-clone-worker" in sys.argv:
+        from core.voice_clone_worker import main as _voice_clone_worker_main
+        return _voice_clone_worker_main()
 
     _ensure_safe_stdio_encoding()
 

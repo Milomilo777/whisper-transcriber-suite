@@ -60,6 +60,43 @@ def test_tiling_tab_enabled_defaults_on_filesystem_error(monkeypatch):
     assert hub.tiling_tab_enabled() is True
 
 
+# ---------- voice_clone_tab_enabled --------------------------------------------
+
+
+def test_voice_clone_tab_enabled_when_no_marker(monkeypatch, tmp_path):
+    """No no_voice_clone.flag in the app dir -> the tab is enabled (the
+    dev / opted-in case)."""
+    monkeypatch.setattr(hub, "resolve_app_dir", lambda: tmp_path)
+    assert (tmp_path / hub.NO_VOICE_CLONE_MARKER).exists() is False
+    assert hub.voice_clone_tab_enabled() is True
+
+
+def test_voice_clone_tab_disabled_when_marker_present(monkeypatch, tmp_path):
+    """A no_voice_clone.flag marker in the app dir (installer opt-out) ->
+    the tab is disabled / hidden."""
+    (tmp_path / hub.NO_VOICE_CLONE_MARKER).write_text("", encoding="utf-8")
+    monkeypatch.setattr(hub, "resolve_app_dir", lambda: tmp_path)
+    assert hub.voice_clone_tab_enabled() is False
+
+
+def test_voice_clone_tab_enabled_defaults_on_filesystem_error(monkeypatch):
+    """A filesystem error while probing the marker must never block
+    startup -- it defaults to enabled (the feature stays on)."""
+    def _boom() -> Path:
+        raise OSError("simulated FS failure")
+
+    monkeypatch.setattr(hub, "resolve_app_dir", _boom)
+    assert hub.voice_clone_tab_enabled() is True
+
+
+def test_voice_clone_marker_independent_of_tiling_marker(monkeypatch, tmp_path):
+    """The two opt-in features must not affect each other."""
+    (tmp_path / hub.NO_TILING_MARKER).write_text("", encoding="utf-8")
+    monkeypatch.setattr(hub, "resolve_app_dir", lambda: tmp_path)
+    assert hub.tiling_tab_enabled() is False
+    assert hub.voice_clone_tab_enabled() is True
+
+
 # ---------- default_hub_folder -------------------------------------------------
 
 

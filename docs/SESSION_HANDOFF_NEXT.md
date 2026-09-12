@@ -5,7 +5,300 @@ this repo. Read this file before anything else.
 
 ---
 
-## 🟢 2026-09-12 (latest) — Advanced settings trimmed: 4 settings removed, per-engine setup made contextual, Google Cloud STT deliberately KEPT
+## 🟢 2026-09-12 (latest) — "Clone Your Voice / Text to Voice" Phase 2 done: real end-to-end pass, source-only, off by default
+
+Follows directly from the Phase 1 entry below (same day, same feature).
+Phase 2 built the real feature — a new, independent, opt-in tab — and
+validated it with a REAL microphone recording feeding a REAL worker
+subprocess through a REAL generation call, per this repo's own
+CLAUDE.md rule that new capabilities need real-hardware testing before
+being called done.
+
+**New files:**
+- `core/voice_clone.py` — Tk-free domain logic: `validate_reference_sample`,
+  `default_device`, `load_model`/`generate` (OmniVoice calls), `session_work_dir`.
+- `core/voice_clone_worker.py` — dedicated worker subprocess (its own
+  script, NOT a new action on `core/worker.py` — see its docstring for
+  why the Live tab's `transcribe_live` precedent doesn't apply here).
+  Lazy model load on first `generate` command, not at spawn.
+- `app/services/voice_clone_service.py` — `VoiceCloneWorker`, the
+  parent-side client, mirrors `live_service.LiveTranscriber`'s shape.
+- `app/widgets/voice_clone_tab.py` — the tab: record/load up to 3
+  reference clips, type text, Generate, play/save the result. One-time
+  consent dialog (own-voice-or-permission + ethics note) before the
+  first generation ever runs, gated on `config["voice_clone"]["consent_accepted"]`.
+- `tests/core/test_voice_clone.py` — validation/error-path unit tests
+  (mocked, matching `test_alignment.py`'s approach for another
+  on-demand-dependency module).
+
+**Modified:**
+- `core/hub.py` — `NO_VOICE_CLONE_MARKER` / `voice_clone_tab_enabled()`,
+  exact mirror of `tiling_tab_enabled()`. `tests/core/test_hub.py` gained
+  the matching 4 tests.
+- `core/optional_deps.py` — new `"voice_clone"` feature:
+  `("omnivoice", ["omnivoice", "torch", "soundfile"])`.
+- `core/config.py` — `DEFAULT_CONFIG["voice_clone"] = {"consent_accepted": False}`.
+- `app/app.py` — `self.t7` tab, added only when `voice_clone_tab_enabled()`;
+  `stop_voice_clone_worker(self)` added to the exit-cleanup sequence
+  (right after `stop_live_session`, same reasoning: an independent
+  worker subprocess must not outlive the window).
+- `gui.py` — new `--voice-clone-worker` CLI branch (parallel to
+  `--worker`), for when this ships frozen; docstring updated.
+
+**A real bug found and fixed via the real-hardware test, not by
+inspection:** the first two real end-to-end attempts were OOM-killed by
+Windows on this 17.1GB machine, both times right after OmniVoice's own
+model finished loading and generation began. Output showed why: leaving
+`ref_text` unset makes OmniVoice auto-transcribe the reference clip with
+its OWN internal transformers-based Whisper model — a SECOND heavy model
+loaded alongside OmniVoice itself, on top of everything else already
+running in a long session (browser, several Claude Code processes).
+Fix: `core.voice_clone.generate` now passes `ref_text=""` explicitly,
+opting out of that internal transcription entirely — this repo's own
+faster-whisper models were deliberately NOT reused for this (it would
+mean loading a second heavy model in the SAME process, working against
+the memory problem, not solving it). Third attempt, with the fix,
+passed clean on the first try — no second model, no OOM. Trade-off
+worth remembering: skipping `ref_text` may cost some cloning quality
+versus letting OmniVoice see a real transcript of the reference clip;
+revisit if that proves to matter in practice once someone actually
+judges output quality by ear.
+
+**Real end-to-end result (this session, this machine, CPU, no GPU
+present):** real 6-second mic recording -> real `core.voice_clone_worker`
+subprocess -> real OmniVoice generation of "Hi there." -> real 1.48s
+output WAV. Generation itself took 166s (RTF ~112x for this very short
+phrase -- worse than Phase 1's ~50-57x measured on a longer sentence;
+short utterances pay relatively more fixed per-call overhead, so RTF
+looks worse the shorter the text). `pyright app/ core/ gui.py` stayed
+at 0/0/0 throughout; full hermetic suite (`pytest tests/ --ignore=tests/smoke`)
+green.
+
+**What "real end-to-end" did NOT cover:** the Tk widgets themselves were
+never clicked (no GUI-automation tool available for this desktop app) --
+only the code paths that can actually fail (mic capture, subprocess
+spawn/IPC, on-demand install, model load, generation, file I/O) were
+exercised for real, matching how `tests/smoke/test_exe_real_e2e.py`
+already validates the transcription worker without a GUI. The recorded
+reference clip also has no guaranteed real speech in it (an unattended
+background script recorded whatever the microphone picked up during an
+automated run) -- fine for proving the pipeline runs, not a stand-in for
+judging cloning quality. **Still needed, and only the owner can do it:**
+actually open the app, click through the real tab, record a real
+sentence on purpose, and listen to the result.
+
+**Leftover scratch artifacts (not committed, safe to ignore or delete):**
+`scratch_experiments/voice_clone_spike/` -- Phase 1's OmniVoice/Chatterbox
+spike scripts and output clips, plus Phase 2's `real_hardware_e2e.py` and
+its recordings. Kept for now in case a future session wants to rerun
+something quickly without rebuilding it from scratch.
+
+**Next: Phase 3** (own session per the approved plan) -- installer
+`[Tasks]` entry + Pascal-script marker (mirroring Video Tiling's exactly),
+on-demand-download UX polish, README/CONFIG/CHANGELOG/THIRD_PARTY_NOTICES
+updates, a final post-installer-integration real-hardware pass. See the
+plan file for the full checklist: `C:\Users\Owner\.claude\plans\
+temporal-puzzling-lerdorf.md`.
+
+---
+
+## 🟡 2026-09-12 — New feature underway: "Clone Your Voice / Text to Voice" — Phase 1 (engine research spike) in progress
+
+Owner-requested new, fully independent, opt-in feature: record a few
+voice samples, then speak arbitrary text back in that cloned voice.
+UI/UX shape to be modeled on `voice-pro` (github.com/abus-aikorea/
+voice-pro); the underlying engine is a separate technical choice (see
+below). Planned as 3 phases across up to 3 sessions. **This entry exists
+so a fresh session can resume from disk if this one is cut off
+mid-work — nothing below depends on this chat surviving.**
+
+**Full approved plan:** `C:\Users\Owner\.claude\plans\
+temporal-puzzling-lerdorf.md` (outside this repo — read it if
+available; this entry summarizes everything load-bearing from it in
+case it isn't).
+
+**Why this is being built despite this repo's own prior "do not build
+this" call:** `docs/GAPS_VS_VOICE_PRO_2026.md` item 4 (2026-08-07)
+recommended against voice cloning for three reasons — heavy torch/GPU
+weight vs. this app's slim/offline identity, legal/ethical sensitivity,
+and a license mismatch (`voice-pro` is LGPL/GPL-3.0 vs. this repo's
+BSD-3-Clause). This plan addresses all three: fully optional/off-by-
+default with on-demand download (no base-install weight), a mandatory
+consent step before first use (ethical-use safeguard), and only the
+*UI/UX shape* is taken from `voice-pro` — no code copied, and the
+speech engine is chosen independently on its own license, not because
+`voice-pro` uses it.
+
+**Decisions locked in this session (in order; later ones amend earlier
+ones — read to the end):**
+
+- Ships in the public installer for every user, opt-in, **off by
+  default**.
+- Both CPU and GPU supported; CPU is slower, app warns about this.
+- Pluggable backend architecture — mirrors the `TranscriptionBackend`
+  ABC pattern already sketched in `docs/ROADMAP.md` §6.1
+  (`pick_backend()`), so a `VoiceCloneBackend` protocol lets more
+  engines be added later without a rewrite.
+- **Only Apache-2.0/MIT-on-*weights* engines are shipped by default.**
+  `voice-pro`'s flagship engine, F5-TTS, was explicitly considered and
+  excluded: its code is MIT but its released pretrained checkpoints are
+  **CC-BY-NC** (inherited from the Emilia training set), which rules out
+  unambiguous commercial use. The owner has personally heard/tested good
+  Farsi output from it, which is worth remembering if the license
+  picture ever changes, but it is not in the default candidate set.
+- **Majority-language (e.g. English) quality is the primary selection
+  criterion, not Farsi.** This reverses an earlier answer in the same
+  session where Farsi was a hard gate — the owner revised this after
+  noting Farsi speakers are an estimated ~1% of this app's public
+  install base. Farsi is now a secondary "nice to have," tested and
+  recorded, but not blocking.
+- Primary Phase-1 candidate: **OmniVoice** (`k2-fsa/OmniVoice` on
+  Hugging Face / PyPI package `omnivoice`) — same org as `sherpa-onnx`,
+  already a dependency here via `core/diarization.py`. Verified directly
+  against primary sources this session: Apache-2.0 license (checked the
+  actual LICENSE file, not a summary), ~0.6B params / ~2GB download,
+  600+ languages with Persian confirmed present in the official list
+  (`docs/languages.md`: `455 | Persian | fa | fas | 366.07`), CPU works
+  but slower than real-time, GPU up to ~40x real-time. Ships its own
+  ethics disclaimer (bans unauthorized cloning/impersonation/fraud) —
+  consistent with, not a conflict with, the consent gate this feature
+  needs anyway.
+- Fallback candidate if OmniVoice's general quality disappoints:
+  **Chatterbox** (Resemble AI, MIT) — not yet tested this session.
+- `core/voiceprint.py` (speaker *recognition*) is unrelated dead code
+  (see the 2026-09-12 entry below, same day) — do not reuse or confuse
+  with this feature.
+
+**Existing patterns this plan reuses (do not reinvent — see the plan
+file for exact line numbers):**
+- Conditional optional tab set at install time: `core/hub.py`
+  (`NO_TILING_MARKER` / `tiling_tab_enabled()`), `app/app.py`
+  `_build_tabs()`, `installer_embed.iss` (`[Tasks]` unchecked entry +
+  `CurStepChanged` marker-file logic), `tests/core/test_hub.py`. The new
+  feature adds a second, parallel marker/flag pair — same mechanism,
+  not shared code, so the two toggles stay independent.
+- On-demand heavy dependency: `core/optional_deps.py` (`is_available`,
+  `install`, `activate`, `packages_for`) — already used for `stable-ts`/
+  `nvidia_asr`; the new feature registers as another `feature` key here.
+- Background job with progress/cancel: `core/worker.py` (`emit()`,
+  `_apply_control()`).
+
+**Status as of this entry — Phase 1 (research spike), in progress:**
+
+Nothing under `core/` or `app/` has been touched. All work so far is a
+throwaway spike, intentionally kept outside the shipped app:
+
+- `scratch_experiments/voice_clone_spike/spike.py` — loads OmniVoice on
+  CPU, generates one English sentence and one Farsi sentence from a
+  single reference clip, using the pip package's own
+  `OmniVoice.from_pretrained(...)` / `model.generate(text=, ref_audio=)`
+  API.
+- `scratch_experiments/voice_clone_spike/ref.wav` — an 8-second mono
+  reference clip extracted from this repo's own existing test fixture
+  `tests/fixtures/smtv_clip/AD-The-Most-Powerful-Daily-Prayer-max.mp3`
+  (English speech), used only for this internal technical smoke test —
+  NOT a real user voice sample. A real personal-use test still needs an
+  actual voice sample from the owner later.
+- An isolated venv was created (NOT checked in, lives under this
+  session's OS temp dir, so it may be gone in a fresh session — trivial
+  to recreate):
+  ```
+  <some-python-3.11>  -m venv .venv
+  .venv/Scripts/python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+  .venv/Scripts/python.exe -m pip install soundfile omnivoice
+  .venv/Scripts/python.exe scratch_experiments/voice_clone_spike/spike.py
+  ```
+  (Python 3.11 was deliberately chosen over the system's default 3.14 —
+  far more likely to have prebuilt wheels for ML packages.)
+**OmniVoice results (this session, on this dev machine — 8 logical
+CPUs, torch using 4 threads, no GPU present):**
+
+- Generation succeeded for both cases. Output files (kept, not just in
+  the OS temp scratch dir):
+  `scratch_experiments/voice_clone_spike/out_english.wav`,
+  `out_farsi.wav`. Model load itself took ~287s the first time
+  (one-time cost, cached after).
+- **Intelligibility, verified objectively** by transcribing the output
+  back through this app's own stack (`faster_whisper`, model `small`,
+  CPU): English came back nearly word-for-word identical to the input
+  text, high confidence. Farsi came back recognizable and correctly
+  identified as Persian by language-ID (p=0.99), but with several words
+  audibly distorted (`کوتاه`→`کتا`, `بررسی`→`برسی`, `کیفیت`→`کهفیت`,
+  `شبیه‌سازی`→`شویه سازی`, `فارسی`→`فرسی`) — comprehensible but clearly
+  imperfect, consistent with Farsi being a modest-resource language in a
+  600-language model. Under the owner's revised priority (majority-
+  language quality first, Farsi a bonus, not a gate), this Farsi result
+  is an acceptable bonus-tier outcome on its own.
+- **Speed is the real problem, independent of language:** generating
+  ~13 seconds of audio took **752s (English) / 674s (Farsi) — RTF ≈
+  50-57x slower than real-time on CPU.** This is far worse than the
+  "slower than real-time" framing found during pre-implementation
+  research suggested (that framing likely came from benchmarks on
+  stronger hardware, e.g. Apple Silicon with Metal). torch was already
+  using 4 of 8 threads (not artificially capped to 1), so this looks
+  like a genuine, representative number for typical consumer CPU
+  hardware, not a misconfiguration on this machine. At this rate, even
+  a short paragraph would take the better part of an hour to generate
+  on CPU — this does not meet the "CPU as a first-class path" bar this
+  app holds itself to elsewhere, regardless of output quality.
+
+**Because of the speed finding, Chatterbox (Resemble AI, MIT) is now
+being tested too, same venv, as of this entry** — specifically
+`chatterbox-tts` on PyPI, "Multilingual V3" (23 languages, does **not**
+include Persian — so choosing Chatterbox means dropping the Farsi bonus
+entirely) and/or the "Turbo" 350M low-latency variant, which may fare
+better on CPU speed. Chatterbox also ships **built-in output
+watermarking** — worth keeping for the ethics/misuse-safeguard part of
+this feature regardless of which engine wins on speed/quality.
+
+**Chatterbox result: failed to even load — OOM-killed on CPU.** Weights
+downloaded fine (~4.7 min), but the process was killed by the OS for
+memory exhaustion while loading, before generation could start. This
+machine has 17.1GB RAM total / 7.5GB free at the time (56% already used
+by normal background load — browser, editor, etc.), which is a
+realistic "normal user multitasking" condition, not an artificial
+constraint. Chatterbox Multilingual pulls in `diffusers` internally
+(a diffusion-based component beyond the headline 500M param count),
+which likely explains the heavier footprint than OmniVoice. Did not
+retry with a smaller variant (e.g. the 350M "Turbo") or explicit
+lower-precision loading — judged not worth chasing further in Phase 1
+given OmniVoice already produced a *working* result; noted here as a
+possible future retry if it matters later.
+
+**Phase 1 conclusion: OmniVoice selected.** It is the only candidate
+that actually completed generation on this representative consumer
+machine. Verdict against the plan's own criteria:
+
+- License: Apache-2.0 on weights — clean. ✅
+- Majority-language (English) quality: excellent (near-exact
+  self-transcription match). ✅
+- Farsi (bonus): comprehensible but imperfect — acceptable as a bonus,
+  not blocking. ✅ (per the owner's revised priority)
+- **CPU speed: the real open problem.** ~50-57x slower than real-time
+  is technically "supported" but not comfortably usable — this softens
+  the plan's original "CPU + GPU, CPU just slower" framing into
+  something closer to "CPU works but needs an honest, explicit time
+  estimate before every generation, GPU is where this feature is
+  actually pleasant to use." Not a blocker per the owner's own
+  decisions so far, but Phase 2's UI must show a real time estimate
+  up front (e.g. "~12 minutes on your hardware") rather than a vague
+  slowness warning, so a CPU-only user isn't left wondering if the app
+  hung. A future optimization path exists (int8/quantized inference,
+  already this app's own convention for CPU-side Whisper via
+  `compute_type='int8'`) but is out of scope for Phases 1-3 as planned.
+
+**Still needed before Phase 2 UI work is meaningful:** the owner
+actually listening to `scratch_experiments/voice_clone_spike/
+out_english.wav` and `out_farsi.wav` for the subjective call (the
+checks above are objective — self-transcription, timing — not a
+substitute for hearing it), and eventually a reference sample of the
+owner's own voice for a real personal-cloning test (the current ref.wav
+is a project test-fixture voice, used only to validate the pipeline
+mechanically).
+
+---
+
+## 🟢 2026-09-12 — Advanced settings trimmed: 4 settings removed, per-engine setup made contextual, Google Cloud STT deliberately KEPT
 
 Finishes the third of the three colleague asks in the 2026-09-11 entry
 below (the first two shipped that day). The instruction this session was

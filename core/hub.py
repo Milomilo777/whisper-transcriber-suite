@@ -118,6 +118,40 @@ def tiling_tab_enabled() -> bool:
         return True
 
 
+
+# Marker file the Standard installer drops into the {app} directory
+# unless the user ticks "Install the Clone Your Voice / Text to Voice
+# feature" at install time (opt-in, off by default). Its mere presence
+# disables the in-app Clone Your Voice tab; it is never written by the
+# app itself. In a source / dev checkout the repo root won't contain
+# it, so the tab stays on for developers. Independent of
+# NO_TILING_MARKER above — the two features are unrelated and toggled
+# separately.
+NO_VOICE_CLONE_MARKER = "no_voice_clone.flag"
+
+
+def voice_clone_tab_enabled() -> bool:
+    """Whether the Clone Your Voice tab should be shown.
+
+    Returns ``True`` unless a ``no_voice_clone.flag`` marker file sits in
+    the install ``{app}`` directory (see :func:`resolve_app_dir`). The
+    installer creates that marker unless the user opts in to the
+    "Clone Your Voice" task at install time. The feature itself stays
+    fully optional even when the tab is shown: it downloads its speech
+    model on demand (see ``core.optional_deps``, feature "voice_clone")
+    the first time it is actually used, not at install or tab-build time.
+
+    Any filesystem error is swallowed and treated as "enabled" so a quirky
+    path / permission problem can never block app startup — the feature
+    simply stays on, which is the safe default (mirrors
+    :func:`tiling_tab_enabled`).
+    """
+    try:
+        return not (resolve_app_dir() / NO_VOICE_CLONE_MARKER).exists()
+    except OSError:
+        return True
+
+
 def default_hub_folder() -> Path:
     """The pre-filled value the first-run dialog shows.
 
