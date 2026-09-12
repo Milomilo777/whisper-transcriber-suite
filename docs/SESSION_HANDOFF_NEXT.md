@@ -5,6 +5,129 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-12 — "Clone Your Voice / Text to Voice" Phase 3 done: installer wiring, docs, real-installer toggle check
+
+Follows the approved plan (`C:\Users\Owner\.claude\plans\temporal-puzzling-lerdorf.md`,
+Phase 3 section) directly from the Phase 2 entry below. This closes out the
+3-phase plan: the feature is now installer-integrated, documented, and
+verified against a freshly built real Standard installer, still off by
+default and still unreleased (no version bump, per the plan's own stop
+condition and this repo's "cutting a release needs explicit go-ahead" rule).
+
+**Installer wiring (`installer_embed.iss`):** mirrors the Video Tiling
+pattern exactly, as a second, fully independent toggle:
+- New `[Tasks]` entry `voiceclone` (`Flags: unchecked`, off by default).
+- New `NoVoiceCloneMarker` constant + a second, parallel block inside the
+  existing `CurStepChanged` proc (Inno only allows one proc per event name,
+  so the two toggles share the proc but not the logic — each marker gets
+  its own independent if/else, matching the plan's "parallel structure, not
+  shared code" instruction).
+- `[UninstallDelete]` entry for `no_voice_clone.flag`, and an explicit
+  delete in `CurUninstallStepChanged` alongside the existing Tiling one.
+- `installer.iss` (the unshipped Compact pipeline) was NOT touched —
+  it never had the Tiling toggle either, so there was nothing to mirror
+  there; only the embed installer ships.
+
+**Spec-file bookkeeping (`whisper_project_onefile.spec` /
+`whisper_project_onedir.spec`):** added `core.voice_clone`,
+`core.voice_clone_worker`, `app.services.voice_clone_service`,
+`app.widgets.voice_clone_tab` to both hiddenimports lists, next to where
+`core.tiling` / `core.voiceprint` already sit — pure bookkeeping for the
+unshipped PyInstaller pipelines per this repo's "adding a module updates
+both specs" convention; has zero effect on the actual shipped Standard/
+Portable installers, which run the embed tree's plain `.py` sources
+through a real interpreter, not a PyInstaller freeze.
+
+**On-demand download UX polish (`app/widgets/voice_clone_tab.py`):**
+- New persistent, always-visible label in the Generate section (not just
+  the one-time consent dialog) stating the engine, the ~2GB one-time
+  download, that it needs internet, and a rough time range — mirrors the
+  phrasing convention already used for NVIDIA Parakeet / stable-ts in
+  `app/dialogs/advanced.py`.
+- Consent dialog text now also gives a time-range estimate, not just size.
+- Status-bar strings during `ensure_installed()` and model loading now
+  both explicitly say "needs internet" and give a time range instead of
+  a flat "several minutes".
+- All failure paths now route through `_generate_failed`, which appends
+  one shared retry hint ("check your connection, click Generate again")
+  via `show_error`'s `detail=` param, instead of the pip-install failure
+  message duplicating its own retry text inline.
+- Found and fixed a real layout bug introduced while adding the new
+  label: the status label and the button row ended up on the same grid
+  row (both row 1) — would have rendered overlapping widgets. Caught
+  before any test run, by re-reading the diff.
+
+**Docs (`README.md`, `docs/CONFIG.md`, `docs/CHANGELOG.md`,
+`THIRD_PARTY_NOTICES.md`):** Features table row + a new FAQ entry in
+the README; a full `### Clone Your Voice / Text to Voice (optional,
+installer opt-in)` section in CONFIG.md documenting
+`voice_clone.consent_accepted` (mirroring the NVIDIA Parakeet section's
+shape); one terse `[Unreleased]` bullet in CHANGELOG.md (Phase 1/2
+sessions deliberately deferred this to Phase 3, once the full feature
+was installer-integrated); a new "On-demand optional packages (not
+bundled)" section in THIRD_PARTY_NOTICES.md for OmniVoice (Apache-2.0)
++ torch/soundfile, explicitly noting the package version is unpinned in
+`core/optional_deps.py` (no fabricated version number).
+
+**Verification:**
+- `pyright app/ core/ gui.py` → 0 errors/warnings/informations.
+- `pytest tests/ --ignore=tests/smoke` → full hermetic suite green.
+- Real build: `build_embed_installer.bat` → fresh `embed_build\` (confirmed
+  the new voice-clone modules are actually in the tree) → ISCC
+  `installer_embed.iss` (238s) → `dist_installer\WhisperTranscriberSuite-
+  v1.8.0-Setup-Standard.exe` (same version, not a release — local artifact
+  only, per the plan's "do not bump the version" stop condition).
+- **Real silent-install toggle check, both directions**, against that
+  freshly built exe (`/VERYSILENT /SUPPRESSMSGBOXES /DIR=... /LOG=...`,
+  this machine already running elevated so no UAC prompt): default
+  (task unticked) → `no_voice_clone.flag` present,
+  `core.hub.voice_clone_tab_enabled()` → `False` via the INSTALLED
+  python.exe; `/TASKS=voiceclone` → marker absent,
+  `voice_clone_tab_enabled()` → `True`, `tiling_tab_enabled()` still
+  `False` (confirms the two toggles are genuinely independent, not just
+  in code review). All 4 new modules also import cleanly under the
+  embed tree's actual Python 3.11 interpreter. Both test installs and
+  the registry entry were fully removed afterward — nothing left behind.
+- Gotcha hit and worked around: the first silent-install attempt used a
+  deeply nested scratch path and hit Windows' MAX_PATH ceiling on an
+  `onnxruntime` `__pycache__` file, which Inno correctly rolled back
+  (not a product bug — a real end-user install path is much shorter).
+  Also: `Start-Process -Wait` returned before the real (admin-relaunched)
+  install actually finished — switched to PowerShell's direct call
+  operator (`&`) plus a wait buffer, which tracks the real process.
+- **Not done: a second full real-mic-recording + `generate()` pass
+  against the frozen installed build.** Attempted it (isolated
+  `LOCALAPPDATA` env var, meant to force a fresh cp311-native on-demand
+  install instead of reusing this dev machine's existing cache) but the
+  override had no effect — `platformdirs.user_cache_dir()` on Windows
+  resolves via the OS profile API, not the `LOCALAPPDATA` env var, so it
+  still hit the SAME shared cache Phase 2 already populated under this
+  machine's system Python 3.14. Loading that cp314-built `torch` under
+  the embed tree's cp311 interpreter failed exactly as expected (PyTorch's
+  own "_C extension not loaded" error). This is a **test-environment
+  artifact specific to this one dev machine running two different Python
+  versions against the same shared pylibs cache** — a real end user only
+  ever has the one bundled cp311 interpreter their installer shipped, so
+  this cross-version collision cannot occur for them. Fixing it properly
+  would mean moving the shared cache's real `torch`/`omnivoice` aside,
+  reinstalling under cp311, testing, then restoring the original cp314
+  copies — judged not worth the risk to the machine's real, persistent,
+  cross-session dependency cache for what Phase 2 already proved (the
+  generate() pipeline itself works end-to-end from source). The narrower,
+  lower-risk checks that WERE run for real (installer toggle + all-new-
+  modules import cleanly under the real embed cp311 interpreter) cover
+  everything Phase 3 actually changed; nothing in Phase 3 touched the
+  generate()/model-load code path itself.
+
+**State at end of Phase 3:** feature complete per the plan — independent
+opt-in tab, on-demand dependency, installer toggle, docs, polished UX.
+Still off by default, still unreleased. `embed_build\` and
+`dist_installer\WhisperTranscriberSuite-v1.8.0-Setup-Standard.exe` were
+refreshed locally with these changes (gitignored, not committed) in case
+the owner wants to inspect or hand out that exact build.
+
+---
+
 ## 🟢 2026-09-12 (latest) — "Clone Your Voice / Text to Voice" Phase 2 done: real end-to-end pass, source-only, off by default
 
 Follows directly from the Phase 1 entry below (same day, same feature).
