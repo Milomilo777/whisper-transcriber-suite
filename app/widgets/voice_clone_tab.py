@@ -46,8 +46,19 @@ _CONSENT_TEXT = (
     "without their consent, or to create misleading audio of real "
     "people.\n\n"
     "The speech model downloads to this computer the first time you "
-    "continue (about 2GB, one-time).\n\n"
+    "continue (about 2GB total, one-time). This needs an internet "
+    "connection and can take anywhere from a few minutes to over an "
+    "hour depending on your connection speed -- after that, generation "
+    "runs fully offline.\n\n"
     "Continue?"
+)
+
+_DOWNLOAD_NOTE = (
+    "Engine: OmniVoice (Apache-2.0, k2-fsa), runs locally. The first "
+    "generation downloads about 2GB of software and model files -- this "
+    "needs an internet connection and can take from a few minutes to "
+    "over an hour depending on your connection. After that one-time "
+    "download, generation runs fully offline."
 )
 
 
@@ -112,8 +123,12 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     out.grid(row=2, column=0, sticky="nsew", padx=15, pady=(0, 6))
     out.columnconfigure(0, weight=1)
 
+    ttk.Label(
+        out, text=_DOWNLOAD_NOTE, foreground="#666", wraplength=640, justify="left",
+    ).grid(row=0, column=0, sticky="w", padx=8, pady=(8, 4))
+
     ctl = ttk.Frame(out)
-    ctl.grid(row=0, column=0, sticky="w", padx=8, pady=8)
+    ctl.grid(row=1, column=0, sticky="w", padx=8, pady=8)
     app.vc_generate_btn = ttk.Button(
         ctl, text="Generate", command=lambda: _generate(app),
     )
@@ -128,7 +143,7 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_save_btn.pack(side="left", padx=(8, 0))
 
     ttk.Label(out, textvariable=app.vc_status_var, foreground="#666").grid(
-        row=1, column=0, sticky="w", padx=8, pady=(0, 8)
+        row=2, column=0, sticky="w", padx=8, pady=(0, 8)
     )
 
     ttk.Label(
@@ -288,14 +303,14 @@ def _generate(app: Any) -> None:
             if not voice_clone.is_available():
                 app.post_to_main(
                     lambda: app.vc_status_var.set(
-                        "Downloading the speech model (one-time, ~2GB)..."
+                        "Downloading the speech model software (one-time, "
+                        "~2GB -- needs internet, can take a while)..."
                     )
                 )
                 ok = voice_clone.ensure_installed(log_cb=app.log_threadsafe)
                 if not ok:
                     app.post_to_main(lambda: _generate_failed(
-                        app, "Could not download the speech model. "
-                        "Check your internet connection and try again."
+                        app, "Could not download the speech model software."
                     ))
                     return
 
@@ -317,8 +332,10 @@ def _generate(app: Any) -> None:
             def _on_model_loading() -> None:
                 app.post_to_main(
                     lambda: app.vc_status_var.set(
-                        "Loading the speech model (first time this session, "
-                        "several minutes)..."
+                        "Loading the speech model (first time this session; "
+                        "this may also download ~2GB of model weights -- "
+                        "needs internet; a few minutes to over an hour on "
+                        "a slow connection)..."
                     )
                 )
 
@@ -356,7 +373,13 @@ def _generate_done(app: Any, result: dict[str, Any]) -> None:
 def _generate_failed(app: Any, message: str) -> None:
     app.vc_generate_btn.configure(state="normal")
     app.vc_status_var.set("Failed.")
-    show_error(app, "Generation failed", message)
+    show_error(
+        app, "Generation failed", message,
+        detail=(
+            "If this looks like a network or download problem, check your "
+            "internet connection, then click Generate again to retry."
+        ),
+    )
 
 
 def _play(app: Any) -> None:
