@@ -30,9 +30,6 @@ jobs:
           - runner: macos-15-intel  # Intel — runs on Monterey via deployment target
             arch: x86_64
     env:
-      # secrets.* is not allowed in a step-level `if`, so surface it as a
-      # job env var (this IS allowed) and gate the key-write step on env.
-      GCLOUD_STT_KEY: ${{ secrets.GCLOUD_STT_KEY }}
       # Target Monterey (12.0) as the minimum runtime so wheels built here
       # (numpy, ctranslate2, etc.) and PyInstaller's bundled extensions don't
       # require a newer macOS than the user's machine provides. Applies to
@@ -41,19 +38,6 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: "12.0"
     steps:
       - uses: actions/checkout@v4
-
-      # Bundle the Google Cloud service-account key ONLY when the secret is
-      # configured. The key is never committed (gitignored), so a normal
-      # public-repo run has no secret and builds WITHOUT the key (safe — the
-      # artifact is public). For the trusted final release build the
-      # GCLOUD_STT_KEY secret is set, and this step writes creds/gcloud_stt.json
-      # so the mac spec bundles it into the .app/.dmg.
-      - name: Bundle Google Cloud key from secret (only when set)
-        if: ${{ env.GCLOUD_STT_KEY != '' }}
-        run: |
-          mkdir -p creds
-          printf '%s' "$GCLOUD_STT_KEY" > creds/gcloud_stt.json
-          echo "wrote creds/gcloud_stt.json ($(wc -c < creds/gcloud_stt.json) bytes)"
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
