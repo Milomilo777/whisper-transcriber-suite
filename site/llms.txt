@@ -1,19 +1,32 @@
 # Whisper Transcriber Suite
 
-> Free, offline desktop app that transcribes audio and video using OpenAI's Whisper model, entirely on the user's own computer — no cloud, no account, no per-minute cost. BSD-3-Clause licensed, for Windows, macOS and Linux.
+> Free, offline desktop app (BSD-3-Clause) that transcribes audio/video with OpenAI's Whisper — no account, no cloud upload, no per-minute cost. Windows, macOS, Linux.
 
-Whisper Transcriber Suite runs faster-whisper (CTranslate2), whisper.cpp or NVIDIA Parakeet locally to turn audio and video into SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and PDF (plus oTranscribe, ELAN, InqScribe and Express Scribe). It includes live microphone/system-audio transcription, offline speaker diarisation with per-word timestamps, yt-dlp-powered downloads from any site it supports, adaptive denoise, a batch queue with pause/resume/re-run, and a local-network mode that turns the machine into a transcription page for other devices. Two cloud backends (a Gemini-API option and Google Cloud Speech-to-Text) exist but are opt-in only and off by default. Written by translation-robot; no personal data is collected.
+Whisper Transcriber Suite runs faster-whisper, whisper.cpp or NVIDIA Parakeet locally to turn audio and video into SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and PDF (plus oTranscribe, ELAN, InqScribe and Express Scribe). It adds live microphone/system-audio transcription, offline speaker diarisation with per-word timestamps, yt-dlp-powered downloads from any site it supports, adaptive denoise, a pause/resume/re-run batch queue, and a local-network mode that turns the machine into a transcription page for other devices on the LAN. Two cloud backends (a Gemini API option and Google Cloud Speech-to-Text) exist purely as opt-in extras, off by default — every default path keeps recordings on the user's own machine. Actively maintained; CI runs the full test suite on every push. Written by translation-robot; no telemetry, no personal data collected.
 
-## Docs
-- [GitHub repository](https://github.com/Milomilo777/whisper-transcriber-suite): source code, issues, releases, discussions
-- [Full README](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/README.md): complete feature list, FAQ, configuration keys
-- [Install guide](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md)
-- [Architecture](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md)
-- [Changelog](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md)
+Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscription, no per-minute fee; only the ~1-3GB Whisper model itself downloads once, on first launch. Does it upload recordings anywhere? No, not by default — the two cloud backends above are opt-in and stay off until enabled. What platforms does it run on? Windows, macOS and Linux, with published Windows and macOS installers and a from-source build for Linux. How is this different from calling the Whisper API directly? No per-minute cost and nothing leaves the machine, because transcription runs locally by default instead of through a paid cloud API.
 
 ## Download
-- [Latest release — Windows installer, Windows portable, macOS DMG](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
-- Linux: build from source, see the README's "Build from source" section
+- [Latest release](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest): v1.8.0 — free Windows installer, Windows portable ZIP and macOS DMG, no account or sign-up required; Linux builds from source.
+- [All releases](https://github.com/Milomilo777/whisper-transcriber-suite/releases): full version history, every past release kept published with its own changelog.
 
-## License
-BSD-3-Clause for the project's own source. Bundled binaries (ffmpeg, ffprobe, yt-dlp) and the Whisper model keep their own upstream licenses — see THIRD_PARTY_NOTICES.md in the repository.
+## Docs
+- [GitHub repository](https://github.com/Milomilo777/whisper-transcriber-suite): source code, issue tracker, discussions.
+- [Full README](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/README.md): complete feature table, FAQ, screenshots, keyboard shortcuts.
+- [Install guide](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md): setup and troubleshooting for Windows, macOS and Linux.
+- [Architecture](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md): process model — long-lived worker processes, JSON-over-stdio protocol.
+- [Local-network / server mode](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SERVER.md): turns the machine into a transcription page other devices on the LAN can use.
+- [Changelog](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md): what shipped in each version.
+
+## Key facts
+- Free and open source: no subscription, no per-minute cost, no telemetry by default.
+- License: BSD-3-Clause for the project's own source; bundled ffmpeg, ffprobe, yt-dlp and the Whisper model keep their own upstream licenses (see THIRD_PARTY_NOTICES.md in the repository).
+- Offline by default: faster-whisper, whisper.cpp and NVIDIA Parakeet all transcribe locally; cloud backends are opt-in only.
+- Cross-platform: Windows and macOS installers published; Linux builds from source.
+- Latest version v1.8.0, released 2026-08-23; repository created 2026-05-11 and actively maintained.
+- Author: translation-robot.
+
+## Contact
+- Website: https://whisper-transcriber-suite.online
+- GitHub: https://github.com/Milomilo777/whisper-transcriber-suite
+- Issues / support: https://github.com/Milomilo777/whisper-transcriber-suite/issues
