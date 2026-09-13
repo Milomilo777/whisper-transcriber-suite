@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Whisper Transcriber Suite"
+abstract: "Free, offline desktop app that transcribes audio and video using OpenAI's Whisper model (via faster-whisper, whisper.cpp or NVIDIA Parakeet) entirely on the user's own machine."
+authors:
+  - name: "translation-robot"
+type: software
+url: "https://whisper-transcriber-suite.online/"
+repository-code: "https://github.com/Milomilo777/whisper-transcriber-suite"
+license: BSD-3-Clause
+keywords:
+  - speech-to-text
+  - whisper
+  - transcription
+  - offline
+  - subtitle-generator

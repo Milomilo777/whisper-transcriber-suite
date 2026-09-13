@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Whisper Transcriber Suite — Free, Offline Audio &amp; Video Transcription</title>
+<meta name="description" content="Desktop app that runs OpenAI Whisper locally via faster-whisper. Transcribe audio and video to SRT, VTT, DOCX and PDF with no cloud, no account and no upload. Speaker diarisation, batch queue, yt-dlp downloads, live microphone transcription, BSD-3-Clause, free for Windows, macOS and Linux.">
+<meta name="keywords" content="offline speech to text, local whisper GUI, faster-whisper desktop app, audio to text, video to text, subtitle generator, SRT VTT generator, transcription software, speaker diarization, private on-device transcription, yt-dlp downloader, live microphone transcription">
+<meta name="author" content="translation-robot">
+<link rel="canonical" href="https://whisper-transcriber-suite.online/">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Whisper Transcriber Suite — Free, Offline Audio & Video Transcription">
+<meta property="og:description" content="Runs OpenAI Whisper locally. No cloud, no account, no upload. 14 output formats, live transcription, speaker labels, YouTube downloads. Free, BSD-3-Clause, for Windows, macOS and Linux.">
+<meta property="og:url" content="https://whisper-transcriber-suite.online/">
+<meta property="og:image" content="https://whisper-transcriber-suite.online/assets/social-preview.png">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Whisper Transcriber Suite — Free, Offline Audio & Video Transcription">
+<meta name="twitter:description" content="Runs OpenAI Whisper locally. No cloud, no account, no upload. 14 output formats, live transcription, speaker labels, YouTube downloads.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.online/assets/social-preview.png">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%230b0e0e%22/><path d=%22M30 66V34a6 6 0 0 1 12 0v14a8 8 0 0 0 16 0V34a6 6 0 0 1 12 0v32%22 fill=%22none%22 stroke=%22%23207a80%22 stroke-width=%228%22 stroke-linecap=%22round%22/></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Whisper Transcriber Suite",
+  "alternateName": "WhisperTranscriberSuite",
+  "url": "https://whisper-transcriber-suite.online/",
+  "description": "Desktop app that runs OpenAI's Whisper model locally via faster-whisper, whisper.cpp or NVIDIA Parakeet. Transcribes audio and video to SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and PDF with no cloud, no account and no upload.",
+  "operatingSystem": "Windows, macOS, Linux",
+  "applicationCategory": "MultimediaApplication",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
+  "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
+  "codeRepository": "https://github.com/Milomilo777/whisper-transcriber-suite",
+  "author": { "@type": "Person", "name": "translation-robot", "url": "https://github.com/translation-robot" },
+  "sameAs": ["https://github.com/Milomilo777/whisper-transcriber-suite"]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Whisper Transcriber Suite",
+  "url": "https://whisper-transcriber-suite.online/",
+  "sameAs": ["https://github.com/Milomilo777/whisper-transcriber-suite"]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type":"Question","name":"Is Whisper Transcriber Suite free?","acceptedAnswer":{"@type":"Answer","text":"Yes. It's BSD-3-Clause licensed, with no subscription, no per-minute cost and no telemetry by default. The Whisper model itself downloads once (about 1-3 GB) on first launch; after that the app runs fully offline."}},
+    {"@type":"Question","name":"Does it upload my audio or video anywhere?","acceptedAnswer":{"@type":"Answer","text":"No, not by default. Every default backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — runs locally on your machine. Two backends are opt-in only (cloud_stt via the Gemini API, and google_cloud_stt), and both stay off until you turn them on yourself in Advanced to Backend."}},
+    {"@type":"Question","name":"What platforms does it run on?","acceptedAnswer":{"@type":"Answer","text":"Windows, macOS and Linux. Published downloads are a Windows installer, a Windows portable ZIP, and a macOS DMG; Linux runs from source."}},
+    {"@type":"Question","name":"What transcript formats can it produce?","acceptedAnswer":{"@type":"Answer","text":"SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and PDF, plus oTranscribe, ELAN, InqScribe and Express Scribe."}},
+    {"@type":"Question","name":"Can it label who is speaking?","acceptedAnswer":{"@type":"Answer","text":"Yes, optional speaker diarisation (Identify speakers), with per-word timestamps and time-range clipping."}},
+    {"@type":"Question","name":"Can it transcribe a live microphone or system audio?","acceptedAnswer":{"@type":"Answer","text":"Yes, from the Live tab: a microphone or the system audio, transcribed as it happens."}},
+    {"@type":"Question","name":"Can it download and transcribe online videos, e.g. from YouTube?","acceptedAnswer":{"@type":"Answer","text":"Yes, any site yt-dlp supports, with an optional transcribe-on-finish step."}},
+    {"@type":"Question","name":"Can it summarize a transcript, pull out action items, or answer questions about it?","acceptedAnswer":{"@type":"Answer","text":"Yes, via the optional AI Tools tab in the transcript viewer: summarize, action items, ask-a-question, and a per-segment translate pass that writes a bilingual SRT. It is off by default."}},
+    {"@type":"Question","name":"Can it clone a voice and make it say new text?","acceptedAnswer":{"@type":"Answer","text":"Yes, via the optional Clone Your Voice tab, using OmniVoice (Apache-2.0) entirely on your machine. Off by default; opt in at install time."}},
+    {"@type":"Question","name":"How is this different from calling the Whisper API directly?","acceptedAnswer":{"@type":"Answer","text":"It runs the model locally via faster-whisper by default, so there is no per-minute API cost and no audio leaves your machine, unless you explicitly opt into one of the two cloud backends."}},
+    {"@type":"Question","name":"Can several people on the same network use it without installing it on every machine?","acceptedAnswer":{"@type":"Answer","text":"Yes, Web/LAN access mode turns this machine into a transcription page the other devices on the network can use."}}
+  ]
+}
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      Whisper Transcriber Suite
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="#features">Features</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="#download">Download</a>
+      <a href="#faq">FAQ</a>
+      <a href="#support">Support</a>
+    </nav>
+    <div class="header-cta">
+      <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+      <a class="btn btn-primary" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener">Download</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero" id="top">
+    <div class="hero-mesh" aria-hidden="true"></div>
+    <div class="wrap hero-row">
+      <div class="hero-copy">
+        <p class="eyebrow">Free &middot; Offline &middot; BSD-3-Clause</p>
+        <h1>Drag in audio or video.<br>Get a timed transcript back.</h1>
+        <p class="lede">Whisper Transcriber Suite runs OpenAI's Whisper model entirely on your own machine — via faster-whisper, whisper.cpp or NVIDIA Parakeet. No cloud, no account, no per-minute cost, and your recording never leaves your computer.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener">Download for Windows</a>
+          <a class="btn btn-ghost btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite#build-from-source" rel="noopener">Build from source</a>
+        </div>
+        <p class="hero-platforms">Windows &middot; macOS &middot; Linux</p>
+      </div>
+      <div class="hero-visual">
+        <div class="tilt-frame">
+          <img src="assets/screenshot-transcribe.png" alt="Whisper Transcriber Suite's Transcribe tab: a drop target, engine and language pickers, speaker-label and word-timestamp options" width="1200" height="750" loading="eager">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="trust-bar" aria-label="Trust signals">
+    <div class="wrap trust-row">
+      <span><strong>BSD-3-Clause</strong> license</span>
+      <span class="dot" aria-hidden="true">&middot;</span>
+      <span>No account, no API key, no subscription</span>
+      <span class="dot" aria-hidden="true">&middot;</span>
+      <span>Offline by default</span>
+      <span class="dot" aria-hidden="true">&middot;</span>
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite/stargazers" rel="noopener">
+        <img src="https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&amp;color=207a80&amp;label=stars&amp;labelColor=141918" alt="GitHub stars" width="104" height="20" loading="lazy">
+      </a>
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">
+        <img src="https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?color=207a80&amp;label=downloads&amp;labelColor=141918" alt="GitHub downloads" width="128" height="20" loading="lazy">
+      </a>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="wrap">
+      <h2>Everything you'd want from a transcription tool — running on your machine</h2>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <p class="feature-chip">faster-whisper &middot; whisper.cpp &middot; Parakeet</p>
+          <h3>Local, private transcription</h3>
+          <p>Whisper <code>large-v3</code> by default, plus <code>large-v3-turbo</code> and <code>distil-large-v3.5</code>. Pick the backend that fits your hardware.</p>
+        </article>
+        <article class="feature-card">
+          <p class="feature-chip"><code>srt</code> <code>vtt</code> <code>ass</code> <code>docx</code> <code>pdf</code> +9 more</p>
+          <h3>14 output formats</h3>
+          <p>Written right next to your input file — plus oTranscribe, ELAN, InqScribe and Express Scribe for professional transcript workflows.</p>
+        </article>
+        <article class="feature-card">
+          <p class="feature-chip">Mic &middot; system audio</p>
+          <h3>Live transcription</h3>
+          <p>Transcribes a microphone — or whatever this machine is playing — as it happens. Cuts are made at natural pauses so words are never split.</p>
+        </article>
+        <article class="feature-card">
+          <p class="feature-chip">Per-word timestamps</p>
+          <h3>Speaker diarisation</h3>
+          <p>Optional "Identify speakers" pass, plus per-word timestamps and time-range clipping for editing precise segments.</p>
+        </article>
+        <article class="feature-card">
+          <p class="feature-chip">Pause &middot; resume &middot; re-run</p>
+          <h3>Batch queue</h3>
+          <p>Live status for every pending and running job, with full control over each row always one click away.</p>
+        </article>
+        <article class="feature-card">
+          <p class="feature-chip">yt-dlp powered</p>
+          <h3>Video &amp; audio downloads</h3>
+          <p>Anything <code>yt-dlp</code> handles, with optional transcribe-on-finish. Downloads resume rather than restart.</p>
+        </article>
+        <article class="feature-card">
+          <p class="feature-chip">Measures before it filters</p>
+          <h3>Adaptive denoise</h3>
+          <p>Measures each recording first and only cleans it when that helps — checks its own output and reverts if it removed speech.</p>
+        </article>
+      </div>
+      <p class="feature-more">Plus speaker post-processing, a local-network mode, and an optional offline voice-cloning tab — full list in the <a href="https://github.com/Milomilo777/whisper-transcriber-suite#features" rel="noopener">README</a>.</p>
+    </div>
+  </section>
+
+  <section class="section section-alt" id="screenshots">
+    <div class="wrap">
+      <h2>What it looks like</h2>
+      <p class="section-lede">Drop a file, pick your options, press Transcribe. That's the whole workflow — four more tabs cover queueing, downloads, video tiling and LAN sharing.</p>
+      <div class="shot-grid">
+        <figure>
+          <img src="assets/screenshot-queue.png" alt="Transcription Queue tab: batch jobs with live progress, pause, resume, cancel, re-run or remove any row" loading="lazy" width="1200" height="750">
+          <figcaption>Transcription Queue</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/screenshot-download.png" alt="Download Videos tab: pick a format, clip a time range, pull subtitles, optionally transcribe as soon as the download finishes" loading="lazy" width="1200" height="750">
+          <figcaption>Download Videos</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/screenshot-web.png" alt="Web/LAN access tab: one button turns this machine into a transcription page for other devices on the network" loading="lazy" width="1200" height="750">
+          <figcaption>Web / LAN access</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/screenshot-tiling.png" alt="Video Tiling tab: play one live stream as a full-screen grid, optionally across several monitors" loading="lazy" width="1200" height="750">
+          <figcaption>Video Tiling</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how-it-works">
+    <div class="wrap how-row">
+      <div>
+        <h2>How it works</h2>
+        <p>The Tk interface runs in the main process. Every transcription job runs in its own long-lived worker subprocess that holds the Whisper model in memory and streams progress back over newline-delimited JSON — so the window never freezes while a file transcribes. A per-worker token and a heartbeat keep this routing robust and let the app detect a stuck worker instead of hanging with it.</p>
+        <a class="text-link" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Read the full architecture &rarr;</a>
+      </div>
+      <img src="assets/how-it-works.png" alt="Diagram: drop a file, the Tk GUI queues it, a worker subprocess holds the model in memory and runs faster-whisper, and the transcript lands in your folder" loading="lazy" width="1200" height="750">
+    </div>
+  </section>
+
+  <section class="section section-alt" id="download">
+    <div class="wrap">
+      <h2>Download</h2>
+      <p class="section-lede">Everything needed is bundled — a private Python runtime, ffmpeg, ffprobe and yt-dlp. Only the speech model itself downloads later (about 1-3&nbsp;GB, once); after that the app is fully offline.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Asset</th><th>Size</th><th>Best for</th></tr></thead>
+          <tbody>
+            <tr><td><code>Setup-Standard.exe</code></td><td>~215&nbsp;MB</td><td>Most people — normal installer, Start-menu shortcut, upgrades in place.</td></tr>
+            <tr><td><code>Portable.zip</code></td><td>~330&nbsp;MB</td><td>Unzip and run. No install, no admin rights, happy on a USB stick.</td></tr>
+            <tr><td><code>macOS-*.dmg</code></td><td>~400&nbsp;MB</td><td>macOS, x64 and arm64 builds published separately.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener">Get the latest release</a>
+    </div>
+  </section>
+
+  <section class="section" id="faq">
+    <div class="wrap">
+      <h2>Frequently asked questions</h2>
+      <div class="faq-list">
+        <details><summary>Is Whisper Transcriber Suite free?</summary><p>Yes. It's BSD-3-Clause licensed, with no subscription, no per-minute cost and no telemetry by default. The Whisper model itself downloads once (about 1-3 GB) on first launch; after that the app runs fully offline.</p></details>
+        <details><summary>Does it upload my audio or video anywhere?</summary><p>No, not by default. Every default backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — runs locally on your machine. Two backends are opt-in only (a cloud Gemini-API backend, and Google Cloud Speech-to-Text), and both stay off until you enable them yourself in Advanced &rarr; Backend.</p></details>
+        <details><summary>What platforms does it run on?</summary><p>Windows, macOS and Linux. Published downloads are a Windows installer, a Windows portable ZIP, and a macOS DMG; Linux runs from source.</p></details>
+        <details><summary>What transcript formats can it produce?</summary><p><code>srt</code> <code>vtt</code> <code>ass</code> <code>tsv</code> <code>txt</code> <code>json</code> <code>lrc</code> <code>md</code> <code>docx</code> <code>pdf</code>, plus oTranscribe, ELAN, InqScribe and Express Scribe.</p></details>
+        <details><summary>Can it label who is speaking?</summary><p>Yes — optional speaker diarisation ("Identify speakers"), with per-word timestamps and time-range clipping.</p></details>
+        <details><summary>Can it transcribe a live microphone or system audio?</summary><p>Yes, from the Live tab — a microphone or the system audio, transcribed as it happens.</p></details>
+        <details><summary>Can it download and transcribe online videos, e.g. from YouTube?</summary><p>Yes, any site yt-dlp supports, with an optional transcribe-on-finish step.</p></details>
+        <details><summary>Can it summarize a transcript, pull out action items, or answer questions about it?</summary><p>Yes, via the optional AI Tools tab in the transcript viewer — summarize, action items, ask-a-question, and a per-segment translate pass that writes a bilingual <code>.srt</code>. It's off by default.</p></details>
+        <details><summary>Can it clone a voice and make it say new text?</summary><p>Yes, via the optional Clone Your Voice tab, using OmniVoice (Apache-2.0) entirely on your machine. Off by default; opt in at install time, and you must confirm you have permission to clone the reference voice.</p></details>
+        <details><summary>How is this different from calling the Whisper API directly?</summary><p>It runs the model locally via faster-whisper by default, so there's no per-minute API cost and no audio leaves your machine — unless you explicitly opt into one of the two cloud backends.</p></details>
+        <details><summary>Can several people on the same network use it without installing it on every machine?</summary><p>Yes — Web/LAN access mode turns this machine into a transcription page the other devices on the network can use.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt" id="support">
+    <div class="wrap support-row">
+      <div>
+        <h2>Support the project</h2>
+        <p>Whisper Transcriber Suite is free and BSD-3-Clause licensed, maintained in the open. If it saved you time, a star on GitHub helps others find it — and a coffee is always appreciated.</p>
+        <div class="hero-actions">
+          <!-- TODO: replace with https://www.buymeacoffee.com/<your-username> once registered -->
+          <a class="btn btn-coffee btn-lg" href="https://www.buymeacoffee.com/" rel="noopener">&#9749; Buy me a coffee</a>
+          <a class="btn btn-ghost btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/stargazers" rel="noopener">&#9733; Star on GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div>
+      <p class="brand"><span class="brand-mark" aria-hidden="true"></span> Whisper Transcriber Suite</p>
+      <p class="muted">Written by <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Source licensed under BSD-3-Clause.</p>
+    </div>
+    <nav aria-label="Footer">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a>
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Install guide</a>
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Changelog</a>
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">License</a>
+    </nav>
+  </div>
+  <div class="wrap">
+    <p class="muted small">Also readable in <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fa.md" rel="noopener">فارسی</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-CN.md" rel="noopener">简体中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ja.md" rel="noopener">日本語</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ko.md" rel="noopener">한국어</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.de.md" rel="noopener">Deutsch</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.es.md" rel="noopener">Español</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fr.md" rel="noopener">Français</a> and <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt.md" rel="noopener">Português</a>.</p>
+  </div>
+</footer>
+
+</body>
+</html>

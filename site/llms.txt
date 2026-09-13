@@ -1,0 +1,19 @@
+# Whisper Transcriber Suite
+
+> Free, offline desktop app that transcribes audio and video using OpenAI's Whisper model, entirely on the user's own computer — no cloud, no account, no per-minute cost. BSD-3-Clause licensed, for Windows, macOS and Linux.
+
+Whisper Transcriber Suite runs faster-whisper (CTranslate2), whisper.cpp or NVIDIA Parakeet locally to turn audio and video into SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and PDF (plus oTranscribe, ELAN, InqScribe and Express Scribe). It includes live microphone/system-audio transcription, offline speaker diarisation with per-word timestamps, yt-dlp-powered downloads from any site it supports, adaptive denoise, a batch queue with pause/resume/re-run, and a local-network mode that turns the machine into a transcription page for other devices. Two cloud backends (a Gemini-API option and Google Cloud Speech-to-Text) exist but are opt-in only and off by default. Written by translation-robot; no personal data is collected.
+
+## Docs
+- [GitHub repository](https://github.com/Milomilo777/whisper-transcriber-suite): source code, issues, releases, discussions
+- [Full README](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/README.md): complete feature list, FAQ, configuration keys
+- [Install guide](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md)
+- [Architecture](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md)
+- [Changelog](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md)
+
+## Download
+- [Latest release — Windows installer, Windows portable, macOS DMG](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
+- Linux: build from source, see the README's "Build from source" section
+
+## License
+BSD-3-Clause for the project's own source. Bundled binaries (ffmpeg, ffprobe, yt-dlp) and the Whisper model keep their own upstream licenses — see THIRD_PARTY_NOTICES.md in the repository.
