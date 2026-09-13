@@ -9,6 +9,7 @@ Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscri
 ## Download
 - [Latest release](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest): v1.8.0 — free Windows installer, Windows portable ZIP and macOS DMG, no account or sign-up required; Linux builds from source.
 - [All releases](https://github.com/Milomilo777/whisper-transcriber-suite/releases): full version history, every past release kept published with its own changelog.
+- [Support the project — Buy Me a Coffee](https://buymeacoffee.com/mehraz1358): funds continued cross-platform development and testing.
 
 ## Docs
 - [GitHub repository](https://github.com/Milomilo777/whisper-transcriber-suite): source code, issue tracker, discussions.
