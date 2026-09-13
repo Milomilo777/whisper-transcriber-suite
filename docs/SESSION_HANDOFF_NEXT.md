@@ -5,6 +5,37 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-13 — Landing-page 3D redesign published
+
+`site/` (whisper-transcriber-suite.online, built by Cloudflare Pages straight from this repo,
+no build step) got a full redesign: a WebGL hero built from the real app icon (three.js r186,
+self-hosted, no third-party requests), new bento/tour/download/FAQ/support sections, self-hosted
+Sora/Geist/Geist Mono fonts. Content, SEO/GEO contracts, anchors, `llms.txt`/`robots.txt`/
+`sitemap.xml` and the real logo/brand teal were preserved from the old page.
+
+- Design-critique score (skill: web-design-engineer, landing-page weighting) went from 4.5/10 on
+  the old page to ~8.2/10 on this one — self-scored, not rounded up.
+- Two real bugs were found and fixed before publish: (1) the hero's SRT-style cue cards only
+  spawned on an amplitude-threshold crossing, leaving multi-second gaps with no card visible —
+  added a cadence fallback; (2) on narrow/short viewports (mobile portrait, and any aspect near
+  1:1) the cue cards clipped past the right edge and crowded the header — the camera framing's
+  `frame.scale` didn't shrink as fast as the visible frustum width does at those aspects, fixed
+  with a `frame.cueScale` factor in `site/js/hero3d.js`.
+- Known remaining polish items: a small card/header crowding at in-between aspect ratios
+  (~620-990px wide, not one of the 4 standard test viewports); true sub-420px below-hero sections
+  were reviewed via CSS source, not pixel-verified (headless Chrome's virtual-time budget did not
+  reliably fire the scroll-reveal `IntersectionObserver`s — confirmed a real nav-link click in a
+  real tab reveals instantly, so this is a testing-tool limitation, not a product bug).
+- **The pre-redesign `site/` is preserved**, not just in git history: tag `archive/site-pre-3d-redesign`
+  points at the last commit before this one, and a zip of that tree is at
+  `backups/site-pre-3d-redesign-2026-09-13.zip` (gitignored, local only — rollback:
+  `git checkout archive/site-pre-3d-redesign -- site` or unzip the backup over `site/`).
+- Full design decisions, WIP inventory and the original task list (now historical):
+  `docs/history/SITE_3D_REDESIGN_2026-09-13.md` (moved there from `docs/NEXT_SESSION_HANDS_FREE.md`
+  after publish).
+
+---
+
 ## 🟢 2026-09-13 — "Clone Your Voice / Text to Voice" adversarially reviewed and hardened (post-Phase-3)
 
 Follows directly from the Phase 1-3 entries below (feature already shipped to master,

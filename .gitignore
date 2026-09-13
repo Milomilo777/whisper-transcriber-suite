@@ -87,6 +87,10 @@ embed_build/
 # Bundled service-account key for trusted-distribution builds — NEVER commit it.
 # It lives only inside a build tree (embed_build/creds/), never in the repo.
 creds/
+
+# Local rollback snapshots (e.g. pre-redesign site/ backups). Never pushed; the
+# matching archive/* git tag is the durable copy.
+/backups/
 gcloud_stt.json
 
 # Test artifacts

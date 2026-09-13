@@ -58,6 +58,20 @@ installs only if you opt into that specific feature.
   license (Whisper is MIT from OpenAI). The model is downloaded at first
   run, not bundled in the installer.
 
+## Website (`site/`)
+
+The landing page bundles these third-party files under `site/assets/` so the
+page makes no third-party network requests:
+
+| Component | License | Notes |
+|---|---|---|
+| **three.js** r186 (`assets/vendor/three/`) | MIT | WebGL hero scene. Full text in `assets/vendor/three/LICENSE`. |
+| **Sora** (`assets/fonts/sora-*.woff2`) | SIL Open Font License 1.1 | Display typeface. |
+| **Geist** (`assets/fonts/geist-*.woff2`) | SIL Open Font License 1.1 | Body typeface. |
+| **Geist Mono** (`assets/fonts/geist-mono-*.woff2`) | SIL Open Font License 1.1 | Chips / timestamps. |
+
+Full OFL text for all three font families is in `assets/fonts/OFL.txt`.
+
 ## In short
 
 - **Our code:** BSD-3-Clause (permissive — attribution only).
