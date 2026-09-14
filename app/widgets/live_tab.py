@@ -305,7 +305,16 @@ def _start(app: Any) -> None:
                     transcriber.stop()
                 except Exception:  # noqa: BLE001
                     pass
-            app.post_to_main(lambda: _start_failed(app, e))
+            # Capture now, not `e` itself: Python deletes the `except ...
+            # as e` name when this block exits (PEP 3110), which happens
+            # before post_to_main's queued lambda ever runs on the Tk
+            # thread -- a lambda closing over `e` directly raised
+            # NameError there instead of calling _start_failed, leaving
+            # the tab stuck showing "Loading the speech model..." with no
+            # error and _set_running never reset to False (same bug class
+            # fixed in app/widgets/voice_clone_tab.py, 2026-09-14).
+            failure = e
+            app.post_to_main(lambda: _start_failed(app, failure))
             return
         app.post_to_main(lambda: _started(app, transcriber, session))
 
