@@ -5,6 +5,86 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-14 — "Clone Your Voice / Text to Voice" second-opinion adversarial review (Kimi Code) — 7 more real bugs found + fixed
+
+Follows the 2026-09-13 review+fix round below (Claude subagent + Codex). Owner asked for an
+independent second/third opinion from external models on this still-unreleased feature: Kimi
+Code (`moonshot-ai/kimi-k3`) and Antigravity (`claude-opus-4-6-thinking`), each given the same
+isolated package (the 5 feature files + read-only supporting context, no full-repo access) and
+asked to adversarially hunt for bugs, run concurrently per the owner's explicit one-time
+permission for parallel external-model calls (this project's default is strictly sequential).
+
+**Antigravity failed to produce output.** It read every file and reasoned through the whole
+review in its own stdout, then hit an internal "artifact directory" confusion trying to write
+`findings.md` inside the `--add-dir` directory it was given, said it would fall back to
+`run_command`, and exited 0 having written nothing — a new silent-failure shape, logged in
+`C:\Users\Owner\.claude\EXTERNAL_MODELS.md` (Antigravity section + incident log). Not retried:
+its quota can jump to a multi-day block on a session's second real call.
+
+**Kimi Code delivered a strong, mostly-accurate report** — 7 findings, every one verified for
+real against the actual current source (not the isolated copy) before anything was applied. It
+also raised and correctly *dismissed* two candidate issues itself after empirically testing one
+via its own shell access (ffmpeg's `concat` filter does auto-resample mismatched inputs, contrary
+to what the reviewer initially suspected). Two findings are real P1s the 2026-09-13 review missed
+entirely:
+
+- **P1 — every generation failure silently wedged the tab, with no error dialog ever shown.**
+  `voice_clone_tab.py`'s `worker()` had `except Exception as e: ... app.post_to_main(lambda:
+  _generate_failed(app, str(e)))`. Python deletes the `except ... as e` name when the block exits
+  (PEP 3110) — which happens before `post_to_main`'s queued lambda ever runs on the Tk thread, so
+  the lambda raised `NameError` instead of calling `_generate_failed`. This fired on EVERY
+  generation failure (worker death, model-load failure, over-length text, the 1-hour timeout) —
+  the single most-hit path in the whole feature, and it was completely broken. Fixed by capturing
+  `message = str(e)` into a plain local before building the lambda.
+- **P1 — the round-1 Cancel fix has a gap: it's a no-op between install-done and worker-spawn.**
+  `_cancel_generate` returns early whenever `app.vc_worker` is still `None`, but `worker()` never
+  re-checked `cancel_event` after `ensure_installed()` succeeded and before calling `.generate()`
+  — a window that includes `default_device()`'s first-time (multi-second) `import torch`. A
+  Cancel click landing in that window set the event, disabled the Cancel button, and the
+  up-to-1-hour generation ran anyway with no remaining way to stop it short of closing the whole
+  app. Fixed with two explicit `cancel_event.is_set()` checks inside `worker()`.
+
+5 more P2s, also verified and fixed:
+- `_concat_references`'s own temp WAV leaked on every *failure* path (ffmpeg non-zero exit, or
+  its 60s subprocess timeout) — the round-1 P2-1 fix only ever cleaned up the *success* path, and
+  Codex's own fix summary from that round had already flagged this exact residual gap in writing
+  without it being turned into a tracked fix. Closed with a try/except around the ffmpeg call
+  inside `_concat_references` itself.
+- The tab never enforced `MAX_TEXT_CHARS` client-side, so pasting over-limit text only failed
+  *after* the full ~2GB install + multi-minute model load. Fixed with a length check in
+  `_generate`, before the consent dialog even shows.
+- `validate_reference_sample` (ffprobe, up to a 60s timeout) ran synchronously on the Tk thread
+  from both `_load_sample` and `_finish_recording` — a file picked from a stalled network mount
+  froze the entire app for up to 60s. Fixed by splitting sample-adding into
+  `_validate_and_add_sample` (cheap sample-limit pre-check, then validates off-thread) and
+  `_finish_adding_sample` (re-checks the limit and applies the result back on the Tk thread —
+  this re-check also closes a narrow over-the-limit race between a Record in progress and a Load
+  dialog started concurrently).
+- `stop_voice_clone_worker` never signalled `vc_cancel_event`, so closing the app mid-install
+  orphaned the pip subprocess (and its staging dir) instead of giving it a chance to abort.
+- Session scratch dirs (recorded samples + generated output under `session_work_dir()`) were
+  never cleaned up anywhere, ever. Added `core.voice_clone.sweep_old_session_dirs()` (7-day age
+  cutoff, best-effort, never raises), called once via `app.after(2000, ...)` on tab build —
+  mirrors the app's own aged-out-partials sweep for the transcription queue.
+
+**Verification:**
+- `pyright app/ core/ gui.py tests/` → 0 errors, 0 warnings, 0 informations.
+- `pytest tests/ --ignore=tests/smoke` → full hermetic suite green (exit code 0). 4 new
+  regression tests added (2 for the scratch-dir sweep, 2 for `_concat_references`'s failure-path
+  cleanup). The closure bug and the cancel-race gap live in Tk-thread-dependent code with no
+  existing test harness for that layer — same pre-existing, deliberately-deferred P2-3
+  test-coverage gap noted in the 2026-09-13 review; not addressed here either.
+- Real launch smoke test: `python gui.py` from source ran ~6s clean (killed after), no traceback,
+  `Logs/app.log` shows a normal startup (drag-and-drop enabled, tray icon installed) — the new
+  2-second-delayed scratch-dir sweep fired during this window with nothing logged, as expected
+  from a quiet, empty-cache best-effort sweep.
+
+**Not done, same as 2026-09-13:** no live click-through of Cancel against a real in-flight
+install or generation, and no fresh real-mic-recording end-to-end pass against this exact code —
+both still need the owner's hands-on time on real multi-minute operations.
+
+---
+
 ## 🟢 2026-09-13 — Landing-page 3D redesign published
 
 `site/` (whisper-transcriber-suite.online, built by Cloudflare Pages straight from this repo,

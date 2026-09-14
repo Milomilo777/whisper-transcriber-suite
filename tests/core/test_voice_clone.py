@@ -7,7 +7,10 @@ test_alignment.py for a similarly-optional dependency.
 """
 from __future__ import annotations
 
+import os
+import subprocess
 import sys
+import time
 import types
 
 import pytest
@@ -149,3 +152,78 @@ def test_session_work_dir_is_under_user_cache(monkeypatch, tmp_path):
     out = voice_clone.session_work_dir()
     assert str(tmp_path) in out
     assert "voice_clone" in out
+
+
+# ---------- sweep_old_session_dirs -----------------------------------------
+
+
+def test_sweep_old_session_dirs_removes_only_aged_out_dirs(monkeypatch, tmp_path):
+    from core import config as _cfg
+    monkeypatch.setattr(_cfg, "user_cache_dir", lambda: tmp_path)
+
+    root = tmp_path / "voice_clone"
+    old_dir = root / "20200101-000000"
+    fresh_dir = root / "20990101-000000"
+    old_dir.mkdir(parents=True)
+    fresh_dir.mkdir(parents=True)
+    (old_dir / "sample_1.wav").write_bytes(b"\x00")
+    (fresh_dir / "sample_1.wav").write_bytes(b"\x00")
+
+    old_time = time.time() - 30 * 86400
+    os.utime(old_dir, (old_time, old_time))
+
+    voice_clone.sweep_old_session_dirs(max_age_days=7.0)
+
+    assert not old_dir.exists()
+    assert fresh_dir.exists()
+
+
+def test_sweep_old_session_dirs_missing_root_is_a_noop(monkeypatch, tmp_path):
+    from core import config as _cfg
+    monkeypatch.setattr(_cfg, "user_cache_dir", lambda: tmp_path)
+    # No "voice_clone" dir exists under tmp_path at all -- must not raise.
+    voice_clone.sweep_old_session_dirs()
+
+
+# ---------- _concat_references cleans up its own temp file on failure -----
+
+
+def test_concat_references_removes_temp_file_on_ffmpeg_failure(monkeypatch, tmp_path):
+    seen: dict = {}
+
+    def _fake_run(cmd, **kwargs):
+        seen["out_path"] = cmd[-1]
+        return types.SimpleNamespace(returncode=1, stderr="boom")
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+
+    ref1 = tmp_path / "a.wav"
+    ref2 = tmp_path / "b.wav"
+    ref1.write_bytes(b"\x00")
+    ref2.write_bytes(b"\x00")
+
+    with pytest.raises(RuntimeError, match="Could not combine"):
+        voice_clone._concat_references([str(ref1), str(ref2)])
+
+    assert seen.get("out_path"), "fake subprocess.run was never called"
+    assert not os.path.isfile(seen["out_path"]), "leaked temp WAV on ffmpeg failure"
+
+
+def test_concat_references_keeps_temp_file_on_success(monkeypatch, tmp_path):
+    def _fake_run(cmd, **kwargs):
+        with open(cmd[-1], "wb") as f:
+            f.write(b"\x00")
+        return types.SimpleNamespace(returncode=0, stderr="")
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+
+    ref1 = tmp_path / "a.wav"
+    ref2 = tmp_path / "b.wav"
+    ref1.write_bytes(b"\x00")
+    ref2.write_bytes(b"\x00")
+
+    out_path = voice_clone._concat_references([str(ref1), str(ref2)])
+    try:
+        assert os.path.isfile(out_path)
+    finally:
+        os.remove(out_path)

@@ -30,6 +30,14 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   size (CUDA only)" and "Output filename template" (both still settable in
   `config.json`). "Word alignment" is now a plain checkbox.
 
+### Fixed
+
+- **Clone Your Voice / Text to Voice hardened further** (still off by
+  default, unreleased). A follow-up adversarial review found and fixed two
+  real bugs — every generation failure was silently freezing the tab with
+  no error shown, and Cancel could be silently ignored right after the
+  one-time setup finishes — plus several smaller leak/UI-freeze issues.
+
 ## [1.8.0] — 2026-08-23
 
 ### Added

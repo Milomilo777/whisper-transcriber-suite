@@ -63,6 +63,11 @@ _DOWNLOAD_NOTE = (
 )
 
 
+def _sweep_scratch_dirs() -> None:
+    from core.voice_clone import sweep_old_session_dirs
+    sweep_old_session_dirs()
+
+
 def build_voice_clone_tab(app: Any, parent: Any) -> None:
     """Construct the Clone Your Voice tab onto ``parent`` and wire it to ``app``."""
     app.vc_samples = []
@@ -72,6 +77,13 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_cancel_event = None
     app.vc_recording_after_id = None
     app.vc_status_var = tk.StringVar(value="Idle.")
+
+    # Best-effort sweep of aged-out scratch dirs (past reference
+    # recordings + generated output under session_work_dir()) from
+    # earlier sessions -- mirrors the app's own aged-out-partials sweep
+    # for the transcription queue. Delayed so it never competes with
+    # this tab's own first paint.
+    app.after(2000, _sweep_scratch_dirs)
 
     parent.columnconfigure(0, weight=1)
     parent.rowconfigure(2, weight=1)
@@ -171,7 +183,15 @@ def _refresh_samples_listbox(app: Any) -> None:
         app.vc_samples_listbox.insert("end", os.path.basename(path))
 
 
-def _add_sample(app: Any, path: str) -> None:
+def _validate_and_add_sample(app: Any, path: str) -> None:
+    """Validate *path* off the Tk thread, then apply the result on it.
+
+    ``validate_reference_sample`` shells out to ffprobe with up to a 60s
+    timeout (see ``get_duration``'s own comment) -- a file picked from a
+    stalled network mount would otherwise freeze the whole UI for that
+    long. The cheap sample-count check still runs synchronously here so
+    an over-limit click doesn't even spawn a thread.
+    """
     from core.voice_clone import MAX_REFERENCE_SAMPLES, validate_reference_sample
 
     if len(app.vc_samples) >= MAX_REFERENCE_SAMPLES:
@@ -181,7 +201,30 @@ def _add_sample(app: Any, path: str) -> None:
             "Remove one before adding another.",
         )
         return
-    issue = validate_reference_sample(path)
+
+    def worker() -> None:
+        issue = validate_reference_sample(path)
+        app.post_to_main(lambda: _finish_adding_sample(app, path, issue))
+
+    from core._threads import safe_thread
+    safe_thread(worker, name="voice-clone-validate-sample")
+
+
+def _finish_adding_sample(app: Any, path: str, issue: "Any") -> None:
+    from core.voice_clone import MAX_REFERENCE_SAMPLES
+
+    # Re-check the limit here (not just in _validate_and_add_sample): two
+    # validations can be in flight at once (e.g. a Record in progress and
+    # a Load dialog started while it runs), and this is the only point
+    # where the actual append happens -- always on the Tk thread, so this
+    # check-then-append is race-free even if both validations land here.
+    if len(app.vc_samples) >= MAX_REFERENCE_SAMPLES:
+        show_error(
+            app, "Sample limit reached",
+            f"You can use up to {MAX_REFERENCE_SAMPLES} reference clips. "
+            "Remove one before adding another.",
+        )
+        return
     if issue is not None:
         title = "Could not use this clip" if issue.blocking else "This clip may not work well"
         show_error(app, title, issue.message)
@@ -248,7 +291,7 @@ def _finish_recording(app: Any) -> None:
         show_error(app, "Recording failed", str(e))
         app.vc_status_var.set("Idle.")
         return
-    _add_sample(app, path)
+    _validate_and_add_sample(app, path)
 
 
 def _load_sample(app: Any) -> None:
@@ -258,7 +301,7 @@ def _load_sample(app: Any) -> None:
     )
     if not path:
         return
-    _add_sample(app, path)
+    _validate_and_add_sample(app, path)
 
 
 def _remove_sample(app: Any) -> None:
@@ -303,10 +346,18 @@ def _generate(app: Any) -> None:
     if not text:
         show_error(app, "No text", "Type the text you want spoken.")
         return
-    if not _consent_accepted(app):
-        return
 
     from core import voice_clone
+
+    if len(text) > voice_clone.MAX_TEXT_CHARS:
+        show_error(
+            app, "Text too long",
+            f"Text is {len(text)} characters; the limit for one "
+            f"generation is {voice_clone.MAX_TEXT_CHARS}.",
+        )
+        return
+    if not _consent_accepted(app):
+        return
 
     app.vc_generate_btn.configure(state="disabled")
     app.vc_cancel_btn.configure(state="normal")
@@ -335,6 +386,18 @@ def _generate(app: Any) -> None:
                         ))
                     return
 
+            # The Cancel button only stops an in-flight install or an
+            # already-running worker (see _cancel_generate) -- nothing
+            # re-checks cancel_event between here and the actual generate()
+            # call below, so a Cancel click landing in this gap (e.g.
+            # during the first-time `import torch` that default_device()
+            # below can trigger, which takes several seconds) would
+            # otherwise be silently ignored and the generation would run
+            # to completion anyway. Check explicitly.
+            if cancel_event.is_set():
+                app.post_to_main(lambda: _generate_cancelled(app))
+                return
+
             device = voice_clone.default_device()
             est = "a few minutes" if device == "cuda" else \
                 f"roughly {_estimate_minutes(text)} minutes on this CPU"
@@ -346,6 +409,10 @@ def _generate(app: Any) -> None:
                 from app.services.voice_clone_service import VoiceCloneWorker
                 app.vc_worker = VoiceCloneWorker(app.entry_file, log=app.log_threadsafe)
                 app.vc_worker.start()
+
+            if cancel_event.is_set():
+                app.post_to_main(lambda: _generate_cancelled(app))
+                return
 
             out_dir = voice_clone.session_work_dir()
             output_path = os.path.join(out_dir, "output.wav")
@@ -371,7 +438,15 @@ def _generate(app: Any) -> None:
                 app.post_to_main(lambda: _generate_cancelled(app))
             else:
                 logger.exception("Voice-clone generation failed")
-                app.post_to_main(lambda: _generate_failed(app, str(e)))
+                # Capture the message now, not `e` itself: Python deletes
+                # the `except ... as e` name when this block exits (PEP
+                # 3110), which happens before post_to_main's queued lambda
+                # ever runs on the Tk thread -- a lambda closing over `e`
+                # directly raises NameError there instead of calling
+                # _generate_failed, silently wedging the tab on every
+                # failure (Generate stays disabled, no error dialog shown).
+                message = str(e)
+                app.post_to_main(lambda: _generate_failed(app, message))
 
     from core._threads import safe_thread
     safe_thread(worker, name="voice-clone-generate")
@@ -477,6 +552,15 @@ def stop_voice_clone_worker(app: Any) -> None:
         except Exception:  # noqa: BLE001
             pass
         app.vc_recording_after_id = None
+    # An in-flight on-demand install (~2GB) is cooperatively cancellable
+    # via this event (see core.optional_deps.install), but it runs as a
+    # plain subprocess inside the generate worker THREAD above, not the
+    # VoiceCloneWorker subprocess below -- signal it here too so closing
+    # mid-install has a chance to abort the pip subprocess and clean up
+    # its staging dir, instead of leaving it running unobserved.
+    cancel_event = getattr(app, "vc_cancel_event", None)
+    if cancel_event is not None:
+        cancel_event.set()
     worker = getattr(app, "vc_worker", None)
     if worker is not None:
         try:

@@ -60,6 +60,38 @@ def session_work_dir() -> str:
     return str(base)
 
 
+#: Session scratch dirs (see session_work_dir above) older than this are
+#: swept on tab build -- mirrors the app's own aged-out partials sweep
+#: for the transcription queue. Generous on purpose: a bound on
+#: unattended growth, not a "your last take is gone" trap for someone
+#: who steps away and comes back the next day.
+SCRATCH_MAX_AGE_DAYS = 7.0
+
+
+def sweep_old_session_dirs(max_age_days: float = SCRATCH_MAX_AGE_DAYS) -> None:
+    """Remove voice_clone scratch dirs (see :func:`session_work_dir`)
+    older than *max_age_days*. Best-effort; never raises -- nothing else
+    in this feature ever cleans these up, so every recorded reference
+    clip and generated output would otherwise accumulate forever.
+    """
+    import shutil
+
+    from .config import user_cache_dir
+
+    root = user_cache_dir() / "voice_clone"
+    try:
+        entries = list(root.iterdir())
+    except OSError:
+        return
+    cutoff = time.time() - max_age_days * 86400
+    for entry in entries:
+        try:
+            if entry.is_dir() and entry.stat().st_mtime < cutoff:
+                shutil.rmtree(entry, ignore_errors=True)
+        except OSError:
+            continue
+
+
 def default_device() -> str:
     """Best-effort "cuda" when a usable NVIDIA GPU is visible to torch,
     else "cpu". Independent of ``core.hardware``'s CUDA probes -- those
@@ -267,7 +299,18 @@ def _concat_references(paths: "list[str]") -> str:
     cmd += ["-filter_complex", f"concat=n={n}:v=0:a=1", out_path]
     kwargs: dict = {"capture_output": True, "text": True, "timeout": 60}
     kwargs.update(_proc.new_session_kwargs())
-    result = subprocess.run(cmd, **kwargs)
-    if result.returncode != 0 or not os.path.isfile(out_path):
-        raise RuntimeError(f"Could not combine reference clips: {result.stderr}")
+    try:
+        result = subprocess.run(cmd, **kwargs)
+        if result.returncode != 0 or not os.path.isfile(out_path):
+            raise RuntimeError(f"Could not combine reference clips: {result.stderr}")
+    except Exception:
+        # mkstemp already created out_path on disk before ffmpeg ever ran;
+        # generate()'s own cleanup only knows about a path this function
+        # RETURNS, so a failure here (non-zero ffmpeg exit, or the 60s
+        # subprocess timeout above) would otherwise leak that temp file.
+        try:
+            os.remove(out_path)
+        except OSError:
+            pass
+        raise
     return out_path
