@@ -83,6 +83,24 @@ entirely:
 install or generation, and no fresh real-mic-recording end-to-end pass against this exact code —
 both still need the owner's hands-on time on real multi-minute operations.
 
+**Same-session addenda:**
+- **Grepped the rest of the codebase for the same except-as-e-closed-over-by-a-deferred-lambda
+  pattern** after fixing it in voice_clone_tab.py, since it's a codebase-wide idiom
+  (`app.post_to_main`). Found one more real instance: `app/widgets/live_tab.py`'s live-session
+  start-failure path had the identical bug (`app.post_to_main(lambda: _start_failed(app, e))`) —
+  a SHIPPED, on-by-default feature, so this one is a real production bug, not just an unreleased
+  one. Fixed the same way (capture into a plain local first). `app/app.py` already had this right
+  in one spot via the `lambda e=e: ...` default-argument trick — worth using that as the standard
+  idiom anywhere new code needs to close over an exception variable in a deferred callback.
+- **Owner hit the 10s reference-clip cap live** while testing this feature and asked why the app
+  doesn't just trim instead of warning, and why the cap is 10s at all. Added
+  `core.voice_clone.trim_reference_sample()` (ffmpeg `-t`, same failure-cleanup shape as
+  `_concat_references`) + `ReferenceIssue.too_long`; an over-length clip now gets trimmed to the
+  first `MAX_REFERENCE_SECONDS` automatically instead of just warned-about-but-used-untrimmed.
+  The 10s cap itself was left as-is — per this module's own comments, OmniVoice truncates a
+  longer reference internally anyway, so raising the cap doesn't buy any quality, only makes the
+  cut less predictable than doing it explicitly.
+
 ---
 
 ## 🟢 2026-09-13 — Landing-page 3D redesign published

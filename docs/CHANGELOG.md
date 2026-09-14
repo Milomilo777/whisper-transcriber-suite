@@ -37,6 +37,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   real bugs — every generation failure was silently freezing the tab with
   no error shown, and Cancel could be silently ignored right after the
   one-time setup finishes — plus several smaller leak/UI-freeze issues.
+  A reference clip longer than 10s is now trimmed automatically instead
+  of only being warned about and used untrimmed.
+- **The Live tab could get stuck on "Loading the speech model…" forever**
+  if starting a live session failed for any reason — no error dialog, no
+  way to tell it had actually failed. The error-handling callback itself
+  was silently crashing before it could show anything.
 
 ## [1.8.0] — 2026-08-23
 
