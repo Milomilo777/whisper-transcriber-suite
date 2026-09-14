@@ -52,6 +52,7 @@ def test_validate_reference_sample_too_short(monkeypatch, tmp_path):
     issue = voice_clone.validate_reference_sample(str(clip))
     assert issue is not None
     assert "short" in issue.message.lower()
+    assert issue.too_long is False  # nothing to auto-fix for "too short"
 
 
 def test_validate_reference_sample_too_long(monkeypatch, tmp_path):
@@ -61,6 +62,7 @@ def test_validate_reference_sample_too_long(monkeypatch, tmp_path):
     issue = voice_clone.validate_reference_sample(str(clip))
     assert issue is not None
     assert "long" in issue.message.lower()
+    assert issue.too_long is True  # signals the caller can auto-trim
 
 
 def test_validate_reference_sample_good_length(monkeypatch, tmp_path):
@@ -227,3 +229,42 @@ def test_concat_references_keeps_temp_file_on_success(monkeypatch, tmp_path):
         assert os.path.isfile(out_path)
     finally:
         os.remove(out_path)
+
+
+# ---------- trim_reference_sample ------------------------------------------
+
+
+def test_trim_reference_sample_writes_to_output_path(monkeypatch, tmp_path):
+    def _fake_run(cmd, **kwargs):
+        with open(cmd[-1], "wb") as f:
+            f.write(b"\x00trimmed")
+        return types.SimpleNamespace(returncode=0, stderr="")
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+
+    src = tmp_path / "long.wav"
+    src.write_bytes(b"\x00" * 100)
+    dest = tmp_path / "out" / "trimmed.wav"
+
+    voice_clone.trim_reference_sample(str(src), str(dest), max_seconds=10.0)
+
+    assert dest.is_file()
+    assert dest.read_bytes() == b"\x00trimmed"
+
+
+def test_trim_reference_sample_raises_and_cleans_up_on_ffmpeg_failure(monkeypatch, tmp_path):
+    def _fake_run(cmd, **kwargs):
+        return types.SimpleNamespace(returncode=1, stderr="boom")
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+
+    src = tmp_path / "long.wav"
+    src.write_bytes(b"\x00")
+    dest = tmp_path / "trimmed.wav"
+
+    with pytest.raises(RuntimeError, match="Could not trim"):
+        voice_clone.trim_reference_sample(str(src), str(dest))
+
+    assert not dest.exists()
+    # No stray "<dest>*"-prefixed staging file left behind in tmp_path either.
+    assert list(tmp_path.iterdir()) == [src]

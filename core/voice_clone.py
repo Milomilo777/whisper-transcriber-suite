@@ -136,6 +136,10 @@ class ReferenceIssue:
     path: str
     message: str
     blocking: bool = False
+    #: True only for the "too long" case -- the one issue this module
+    #: knows how to fix automatically (see :func:`trim_reference_sample`).
+    #: "Too short" has no such fix (nothing to invent), so it stays False.
+    too_long: bool = False
 
 
 def validate_reference_sample(path: str) -> "ReferenceIssue | None":
@@ -166,8 +170,51 @@ def validate_reference_sample(path: str) -> "ReferenceIssue | None":
             f"Too long ({duration:.1f}s) -- clips over "
             f"{MAX_REFERENCE_SECONDS:.0f}s are truncated by the model "
             "anyway; trim it for a more predictable result.",
+            too_long=True,
         )
     return None
+
+
+def trim_reference_sample(
+    path: str, output_path: str, max_seconds: float = MAX_REFERENCE_SECONDS,
+) -> None:
+    """Cut *path* down to its first *max_seconds* seconds via the bundled
+    ffmpeg, writing the result to *output_path*.
+
+    Used instead of relying on OmniVoice's own undocumented internal
+    truncation for an over-length reference clip: this makes the cut
+    explicit and predictable (always the START of the clip) rather than
+    leaving it up to whatever the model does internally with the excess
+    audio. Raises ``RuntimeError`` on ffmpeg failure; never leaves a
+    partial ``output_path`` behind on failure.
+    """
+    import subprocess
+    import tempfile
+
+    from . import _proc
+    from .paths import bundled_binary
+
+    ffmpeg = bundled_binary("ffmpeg")
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_out = tempfile.mkstemp(
+        suffix=os.path.splitext(output_path)[1] or ".wav",
+        dir=os.path.dirname(output_path) or None,
+    )
+    os.close(fd)
+    cmd = [ffmpeg, "-y", "-v", "error", "-i", path, "-t", str(max_seconds), "-c", "copy", tmp_out]
+    kwargs: dict = {"capture_output": True, "text": True, "timeout": 60}
+    kwargs.update(_proc.new_session_kwargs())
+    try:
+        result = subprocess.run(cmd, **kwargs)
+        if result.returncode != 0 or not os.path.isfile(tmp_out):
+            raise RuntimeError(f"Could not trim reference clip: {result.stderr}")
+        os.replace(tmp_out, output_path)
+    except Exception:
+        try:
+            os.remove(tmp_out)
+        except OSError:
+            pass
+        raise
 
 
 @dataclass

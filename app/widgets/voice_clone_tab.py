@@ -204,7 +204,24 @@ def _validate_and_add_sample(app: Any, path: str) -> None:
 
     def worker() -> None:
         issue = validate_reference_sample(path)
-        app.post_to_main(lambda: _finish_adding_sample(app, path, issue))
+        use_path = path
+        if issue is not None and issue.too_long:
+            from core.voice_clone import session_work_dir, trim_reference_sample
+
+            trimmed_path = os.path.join(
+                session_work_dir(), "trimmed_" + os.path.basename(path)
+            )
+            try:
+                trim_reference_sample(path, trimmed_path)
+                use_path = trimmed_path
+                issue = None  # trimmed clip is within range -- nothing left to warn about
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "Voice-clone reference trim failed; using the untrimmed clip"
+                )
+                # Fall through with the original clip + its "too long"
+                # warning, same as before this auto-trim existed.
+        app.post_to_main(lambda: _finish_adding_sample(app, use_path, issue))
 
     from core._threads import safe_thread
     safe_thread(worker, name="voice-clone-validate-sample")
