@@ -647,6 +647,29 @@ bookkeeping only (it committed something, nothing crashed/got lost). **Owner: th
 one is entirely unreviewed by Claude, by your own request — go straight to that
 branch yourself when you're ready.**
 
+`opencode/model-loading-review` DONE, no caveat, fully self-completed, commit
+`bb061a7`, pyright re-confirmed. 2 real bugs, both empirically verified on this real
+machine (not just reasoned about): a close-race where a worker's `ready` event queued
+via `post_to_main` could arrive AFTER the user already clicked Cancel, non-
+deterministically overwriting `success=False` back to `True` on the already-destroyed
+dialog depending on which handler happened to run first; and multi-monitor centring
+that clamped every coordinate to non-negative, so a parent window on a monitor to the
+left of/above the primary (or minimised — Windows reports root coords `-32000`) had
+its loading dialog yanked onto the primary display instead. **Cross-file finding,
+correctly left unfixed here (out of this task's file scope) but worth acting on
+separately: `app/dialogs/model_download.py` and `app/dialogs/statistics.py` have the
+exact same `max(x, 0)` clamping bug** — both were technically already covered by
+`opencode/app-dialogs-review` earlier today, which didn't happen to catch this
+specific issue. Also flagged: `app/widgets/error_dialog.py`'s own code comment about
+Tk's negative-coordinate geometry convention is factually backwards versus measured
+real behavior on this machine.
+
+**All planned tasks for this stretch are now done.** 18 `opencode/*` local branches
+exist, all local-only (no push), none merged to master. Full list: `git branch` in
+the main repo. Everything is documented above, newest entries at the bottom of this
+section. Awaiting the owner's own review pass (explicitly deferred to "later, in
+bulk" per an earlier instruction this session) before anything merges.
+
 *(Paused-state note below kept for history — no longer the current state.)*
 
 **PAUSED after the 3rd OOM kill today — deliberate, not automatic.** Free memory
