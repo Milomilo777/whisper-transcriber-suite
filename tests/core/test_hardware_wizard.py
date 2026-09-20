@@ -8,6 +8,7 @@ exercise the dialog construction in a single smoke test.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import types
 from pathlib import Path
@@ -341,3 +342,73 @@ def test_cuda_dll_probe_true_when_libs_load(monkeypatch):
 
     monkeypatch.setattr(ctypes, "CDLL", _loads)
     assert hw._cuda_runtime_dlls_loadable() is True
+
+
+# ---------- benchmark clip temp-file cleanup -----------------------------------
+
+
+def test_make_silent_clip_removes_temp_file_when_ffmpeg_fails(monkeypatch, tmp_path):
+    """The benchmark's mkstemp'd WAV must not survive a failed ffmpeg run.
+
+    ``_make_silent_clip`` creates the output file first, then runs ffmpeg.
+    When ffmpeg could not run (missing bundled binary, bad args), the old
+    code left the empty temp file behind on every benchmark attempt.
+    """
+    import subprocess as _sp
+
+    from app.widgets import hardware_wizard as hwz
+
+    target = tmp_path / "hw_bench_leftover.wav"
+    fd = os.open(str(target), os.O_RDWR | os.O_CREAT)
+    monkeypatch.setattr(
+        hwz.tempfile, "mkstemp",
+        lambda prefix="", suffix="": (fd, str(target)),
+    )
+    monkeypatch.setattr(hwz, "bundled_binary", lambda _name: "ffmpeg")
+
+    def _boom(*args, **kwargs):
+        raise _sp.CalledProcessError(1, "ffmpeg")
+
+    monkeypatch.setattr(hwz.subprocess, "run", _boom)
+
+    wiz = hwz.HardwareWizard.__new__(hwz.HardwareWizard)
+    with pytest.raises(_sp.CalledProcessError):
+        wiz._make_silent_clip(5)
+    assert not target.exists()
+
+
+# ---------- modal grab hand-back ------------------------------------------------
+
+
+def test_close_restores_the_masters_modal_grab(monkeypatch, tmp_path):
+    """Opening the wizard from a modal dialog (Advanced settings) replaces
+    that dialog's Tk grab; closing the wizard must give it back."""
+    tk = pytest.importorskip("tkinter")
+    monkeypatch.setattr(hw, "user_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(hw, "_probe_cuda", lambda: [])
+    monkeypatch.setattr(hw, "_probe_qnn_npu", lambda: [])
+    monkeypatch.setattr(hw, "_probe_openvino", lambda: [])
+    monkeypatch.setattr(hw, "_probe_directml", lambda: [])
+
+    from app.widgets.hardware_wizard import HardwareWizard
+
+    root = tk.Tk()
+    root.withdraw()
+    master = tk.Toplevel(root)
+    master.withdraw()
+    try:
+        master.grab_set()
+        assert root.grab_current() is master
+
+        wiz = HardwareWizard(master)
+        wiz.withdraw()
+        assert root.grab_current() is wiz
+
+        probe = wiz._probe_thread
+        if probe is not None:
+            probe.join(timeout=10.0)
+        wiz._on_close()
+
+        assert root.grab_current() is master
+    finally:
+        root.destroy()
