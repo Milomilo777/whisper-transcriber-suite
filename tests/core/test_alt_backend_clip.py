@@ -110,6 +110,29 @@ def test_alt_backend_no_clip_transcribes_whole_file(monkeypatch, tmp_path):
     assert backend.seen_path == str(tmp_path / "movie.mp4")
 
 
+def test_alt_backend_clip_start_beyond_eof_raises(monkeypatch, tmp_path):
+    """A start at/after the media length must fail loudly instead of
+    slicing an empty WAV and writing empty output files. Mirrors the
+    faster-whisper path's own guard."""
+    backend = _FakeAltBackend()
+
+    monkeypatch.setattr(
+        transcriber, "_get_alt_backend", lambda name, status_cb=None: backend
+    )
+    monkeypatch.setattr(transcriber, "get_duration", lambda p: 60.0)
+    monkeypatch.setattr(
+        transcriber, "_slice_audio_from",
+        lambda *a, **k: pytest.fail("must not slice past the media end"),
+    )
+
+    task = TranscriptionTask(str(tmp_path / "movie.mp4"))
+    task.clip_start = 120.0
+    task.clip_end = 180.0
+
+    with pytest.raises(RuntimeError, match="beyond the media length"):
+        transcriber._transcribe_via_alt_backend("whisper_cpp", task, None, None, None)
+
+
 def test_offset_segments_shifts_in_place():
     segs = [
         {"start": 0.0, "end": 1.0, "text": "a",

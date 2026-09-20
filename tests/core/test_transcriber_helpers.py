@@ -7,6 +7,7 @@ This file exercises only the side-effect-free pieces.
 from __future__ import annotations
 
 import logging
+import subprocess
 import sys
 
 import pytest
@@ -442,3 +443,56 @@ def test_write_outputs_template_creates_subdirectories(transcriber, tmp_path, mo
     assert len(written) == 1
     assert os.path.isfile(written[0])
     assert "transcripts" in written[0]
+
+
+# -------------------------------------------------- slice temp-file hygiene --
+
+
+def test_slice_audio_removes_partial_on_ffmpeg_failure(transcriber, tmp_path, monkeypatch):
+    """ffmpeg opens its output before it knows the input decodes; a
+    failed slice that exits non-zero must not leave a partial
+    ``.slice.wav`` behind (callers only clean up the success path)."""
+    out_dir = tmp_path / "partials"
+
+    def fake_run(cmd, **kwargs):  # noqa: ARG001
+        with open(cmd[-1], "wb") as f:
+            f.write(b"partial-header")
+        return subprocess.CompletedProcess(cmd, 1, b"", b"decoder blew up")
+
+    monkeypatch.setattr(transcriber.subprocess, "run", fake_run)
+    with pytest.raises(RuntimeError, match="ffmpeg slice failed"):
+        transcriber._slice_audio_from("source.mp4", 10.0, out_dir, end_seconds=20.0)
+    assert list(out_dir.glob("*.slice.wav")) == []
+
+
+def test_slice_audio_removes_partial_on_timeout(transcriber, tmp_path, monkeypatch):
+    """subprocess.run kills a timed-out ffmpeg, but the file ffmpeg had
+    already opened survives the kill — clean it up on the raise path."""
+    out_dir = tmp_path / "partials"
+
+    def fake_run(cmd, timeout=None, **kwargs):  # noqa: ARG001
+        with open(cmd[-1], "wb") as f:
+            f.write(b"partial-header")
+        raise subprocess.TimeoutExpired(cmd, timeout or 0)
+
+    monkeypatch.setattr(transcriber.subprocess, "run", fake_run)
+    with pytest.raises(RuntimeError, match="timed out slicing"):
+        transcriber._slice_audio_from("source.mp4", 10.0, out_dir)
+    assert list(out_dir.glob("*.slice.wav")) == []
+
+
+def test_slice_audio_keeps_the_slice_on_success(transcriber, tmp_path, monkeypatch):
+    """Control: a successful slice is returned and left on disk for the
+    caller to transcribe (and for the caller's finally to delete)."""
+    out_dir = tmp_path / "partials"
+
+    def fake_run(cmd, **kwargs):  # noqa: ARG001
+        with open(cmd[-1], "wb") as f:
+            f.write(b"RIFF")
+        return subprocess.CompletedProcess(cmd, 0, b"", b"")
+
+    monkeypatch.setattr(transcriber.subprocess, "run", fake_run)
+    out = transcriber._slice_audio_from("source.mp4", 0.0, out_dir, end_seconds=5.0)
+    import os
+    assert os.path.isfile(out)
+    assert out.endswith(".slice.wav")

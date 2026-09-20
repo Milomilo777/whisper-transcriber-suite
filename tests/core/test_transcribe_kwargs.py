@@ -37,6 +37,13 @@ def test_plain_code_passes_through():
     assert _build_transcribe_kwargs(_task("fa")).get("language") == "fa"
 
 
+def test_picker_hebrew_code_reaches_whisper_as_he():
+    # The Transcribe tab maps the "Hebrew" picker entry to "iw" (the UI's
+    # yt-dlp-aligned table); faster-whisper only accepts "he", so the
+    # kwargs builder must translate rather than silently auto-detect.
+    assert _build_transcribe_kwargs(_task("iw")).get("language") == "he"
+
+
 def test_language_omitted_when_unset_or_auto():
     # None / "Auto" / unknown all mean auto-detect: no language kwarg at all.
     assert "language" not in _build_transcribe_kwargs(_task(None))
