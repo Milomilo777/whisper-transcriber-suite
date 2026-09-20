@@ -5,6 +5,66 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟡 2026-09-20 — GitHub issue #7 fixed+replied; large OpenCode-driven multi-phase
+## initiative starting (feature-parity from a prior comparative artifact, then a
+## broader module-by-module pass) — IN PROGRESS, this entry will be extended
+
+Owner directive this session: act as chief architect, hands-off, using OpenCode CLI
+(newly set up — see `C:\Users\Owner\.claude\EXTERNAL_MODELS.md` "OpenCode CLI" section
+for install/auth/model-id details) with `DeepSeek V4.1 Flash` at high reasoning effort
+for the bulk work, self-critique+fix each OpenCode pass before a Sonnet sub-agent
+verifies. Per-project exception granted (does NOT apply to other repos without asking
+again): no sensitivity about OpenCode/China-hosted-model access to this repo (it's
+public already), and OpenCode calls may run in parallel when useful (Claude's own
+Sonnet-subagent concurrency stays capped at 1 per the global absolute rule). Recorded
+in Claude project memory: `feedback_opencode_access_policy_this_repo.md`.
+
+**Done — step "first task" (GitHub issue triage):**
+- Found the real repo is `whisper_project_direct_download_v2\` (this outer
+  `whisper_app\` folder is NOT the git checkout — `.git` lives one level down; a
+  `whisper_repo_backup_pre_rewrite.bundle` sits at the outer level too, unexplained,
+  left untouched).
+- One open issue, #7: RTX 5060/Blackwell (`sm_120`) not detected, falls back to CPU.
+  Root cause traced for real (read `core/hardware.py`, `core/backends/faster_whisper_be.py`,
+  `core/transcriber.py`, cross-checked the ACTUAL CTranslate2 changelog via WebFetch, not
+  just a search-engine summary — an initial WebSearch claimed "4.8.2 adds Blackwell
+  support", the real changelog only confirms "4.6.2 disables INT8 for sm120", nothing
+  about full support landing later, so that specific claim was correctly dropped rather
+  than shipped): the CUDA→CPU self-healing fallback in both `core/transcriber.py` and
+  `core/backends/faster_whisper_be.py` always blamed missing cuDNN/cuBLAS runtime
+  libraries regardless of the real exception, sending this user's (and future similar
+  users') troubleshooting toward the wrong cause. Fixed with a new, shared,
+  well-tested `classify_cuda_load_failure()`/`cuda_load_failure_reason()` pair in
+  `core/hardware.py` (already the canonical shared module for this kind of logic —
+  avoids re-introducing the exact two-copies-drift pattern the v0.8 audit A7 note
+  warns about) that distinguishes "GPU architecture too new for the installed
+  CTranslate2 build" from the original runtime-libraries case. Purely a
+  diagnostics/messaging fix — deliberately did NOT bump the `ctranslate2` floor in
+  requirements.txt, since I have no verified evidence a version bump actually fixes
+  sm_120 support (the search-engine claim that inspired that idea turned out wrong on
+  primary-source check) — told the reporter to try `pip install --upgrade ctranslate2`
+  themselves since they have the real hardware to confirm, rather than claiming it in
+  the fix. pyright app+core: 0/0/0. Full hermetic suite: green.
+  Commits: `e9f59b6` (unrelated pending CLAUDE.md amendment that was sitting uncommitted
+  from a prior session, pushed first to keep it out of this fix's commit),
+  `1efda1e` (the actual fix). Replied on the issue:
+  https://github.com/Milomilo777/whisper-transcriber-suite/issues/7#issuecomment-5746947574
+  — left OPEN (honest about not being able to confirm full GPU-accel works without the
+  reporter's hardware), asked them to report back.
+
+**Next (this session, still to do — see further down this same entry as it grows):**
+1. Read the previously-published comparative-research artifact the owner linked
+   (`https://claude.ai/code/artifact/16692e33-0090-4f69-81ce-dde2b32da0b5`) — a
+   feature comparison against a similar project from ~a week prior.
+2. Drive OpenCode (`opencode-go/deepseek-v4.1-flash`, high reasoning) to implement
+   the real gaps it identifies, full repo access to tracked files (never gitignored/
+   local-secret files), forced self-critique+fix pass, then a Sonnet sub-agent
+   verification pass before anything is treated as done.
+3. Broader "module by module" OpenCode debug pass — open-ended, explicitly NOT the
+   full-50-100-section unscoped sweep the 2026-09-17 research (different repo,
+   machine-translate-docx-main, but the conclusion was stated as general) recommended
+   against; keep it scoped and verified per module.
+
 ## 🟢 2026-09-14 — "Clone Your Voice / Text to Voice" second-opinion adversarial review (Kimi Code) — 7 more real bugs found + fixed
 
 Follows the 2026-09-13 review+fix round below (Claude subagent + Codex). Owner asked for an
