@@ -133,6 +133,20 @@ def test_enrol_rejects_non_finite_vector(tmp_path):
         conn.close()
 
 
+def test_enrol_rejects_non_numeric_vector_with_value_error(tmp_path):
+    """Non-numeric elements must raise ValueError like every other bad
+    vector, not leak a TypeError out of the finiteness gate."""
+    conn = _conn(tmp_path)
+    try:
+        with pytest.raises(ValueError):
+            vp.enrol_with_vector("Alice", ["x", 0.0], conn=conn)  # type: ignore[list-item]
+        with pytest.raises(ValueError):
+            vp.enrol_with_vector("Bob", [None, 0.0], conn=conn)  # type: ignore[list-item]
+        assert vp.list_voices(conn=conn) == []
+    finally:
+        conn.close()
+
+
 def test_delete_voice_removes_row(tmp_path):
     conn = _conn(tmp_path)
     try:

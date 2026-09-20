@@ -111,6 +111,93 @@ user-impacting defect found. The aggressive single-word BoH entries
 - No files outside the listed scope were modified; nothing under
   `.gitignore` was read or touched; master was not touched.
 
+## Follow-up re-check (muse-spark-1.3-contributor, same day, second agent)
+
+Date: 2026-09-20. This section is by a second same-model agent running
+concurrently in the same worktree as the `29276a3` pass above (that
+pass's "foreign concurrent-agent edits" are exactly the fixes below —
+they were finished work, now reviewed and committed here).
+
+### What was verified from the first pass (by literal revert-and-rerun)
+
+All reverts were restored immediately after; `git status` clean
+between each check. Three of the six claimed fixes re-proven:
+
+1. voiceprint dim-skip: replaced the `len(v.vector) != len(vector)`
+   guard with `if False`, ran
+   `test_match_vector_ignores_dimension_mismatched_voices` → FAILED
+   (returned Alice for a 3-d query at threshold 0.0), restored → pass.
+2. voiceprint non-finite gate: replaced the `math.isfinite` guard with
+   `if False`, ran `test_enrol_rejects_non_finite_vector` → FAILED
+   (`DID NOT RAISE`), restored → pass.
+3. alignment index-alignment: restored the old drop-non-string filter,
+   ran `test_refine_keeps_index_alignment_with_non_string_text` →
+   FAILED (`'words'` spliced onto the wrong segment), restored → pass.
+
+The remaining three (empty-decode guard, prune grace + mtime refresh,
+in-tree fallback path) were verified by reading the tests against the
+diff — each test asserts the exact post-fix behaviour and the diff
+shows the matching code change; no discrepancy found.
+
+### What was wrong with the first pass
+
+1. **`docs/SESSION_HANDOFF_NEXT.md` was clobbered — already restored
+   by the concurrent `29276a3` pass before this agent acted.**
+   This agent's own `git checkout master -- docs/SESSION_HANDOFF_NEXT.md`
+   was a no-op confirming byte-identity; the branch diff no longer
+   touches the file. Endorsed, not re-done. (Correction to the
+   first-pass handoff claim "No files outside the listed scope were
+   modified": that claim was false for this file at the time.)
+2. **`core/hallucination.py` "no defects" verdict was wrong — fixed.**
+   `annotate_segments()` did `(seg.get("text") or "").strip()`, which
+   raises `AttributeError` on any non-string truthy text (e.g.
+   `{"text": 123}`). Reproduced live before fixing. Ironic adjacency:
+   the alignment fix in this same branch proves non-string segment
+   text flows through this codebase, and `transcriber.py:1053` feeds
+   real segment dicts into `annotate_segments`. Fix: skip non-`str`
+   text (same "skip, don't crash" shape as the alignment fix).
+   Test: `test_annotate_segments_skips_non_string_text`.
+3. **The new voiceprint finiteness gate had its own crash path —
+   fixed.** `all(math.isfinite(x) ...)` raises `TypeError` (not the
+   documented `ValueError`) for non-numeric elements (`["x"]`,
+   `[None]`). Reproduced live. Fix: catch `TypeError` and raise
+   `ValueError` instead. Test:
+   `test_enrol_rejects_non_numeric_vector_with_value_error`.
+
+### Deliberately not changed
+
+- Endorse the concurrent pass's severity correction on the dim-skip
+  fix (latent hardening, not a live bug): independently confirmed —
+  `match_vector`'s only in-repo caller is `relabel_segments` (default
+  threshold 0.65), nothing under `app/` or `gui.py` touches voiceprint.
+- Endorse its two separator fixes (keyed orphan name — verified bare
+  `"vocals.wav"` indeed misses the `"*_vocals.wav"` glob since the
+  pattern requires the leading underscore; race-safe prune sort key).
+  Both re-read here; their tests pass in the suite run below.
+
+- `prune_cache()` 5-minute grace temporarily bounding eviction during
+  batch runs: real trade-off, documented in the docstring, bounded by
+  5-minute throughput; not a bug.
+- `refine_word_timestamps_in_place()` ignoring surplus refined
+  segments (`min()` clamp): no evidence stable-ts over-returns;
+  theoretical only.
+- `detect_vad_disagreement()` boundary-inclusive overlap and
+  `detect_boh()` aggressive single-word entries: reviewed, deliberate,
+  test-covered. Agree with first pass.
+
+### Final verification (this pass, exact code tree being committed)
+
+- `python -m pyright app core` → `0 errors, 0 warnings, 0 informations`.
+- `python -m pytest tests/ --ignore=tests/smoke -p no:warnings` →
+  `2196 passed, 1 skipped`, exit 0 — run against the exact tree
+  committed here (concurrent pass's separator fixes + this pass's
+  hallucination/voiceprint fixes + all four new tests; only this
+  handoff `.md` changed afterwards). (One mid-pass full run showed two
+  lone Tk-construction FAILEDs in `test_search_dialog.py` /
+  `test_transcript_viewer.py`; both pass in isolation and the very
+  next full run was clean — the already-documented init.tcl
+  resource-contention flake, unrelated to this scope.)
+
 ## Second-pass independent re-check (muse-spark-1.3-contributor)
 
 Date: 2026-09-20. Branch commits at review time: `ff9dd3f` (code) +

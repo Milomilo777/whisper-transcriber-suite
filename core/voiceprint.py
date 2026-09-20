@@ -165,7 +165,11 @@ def enrol_with_vector(
     # A NaN/Inf embedding (pyannote on a corrupt or truncated clip)
     # would be stored as a permanently unmatchable row -- the user
     # would think the enrolment succeeded. Reject at the DB gate.
-    if not all(math.isfinite(x) for x in vector):
+    try:
+        finite = all(math.isfinite(x) for x in vector)
+    except TypeError:
+        raise ValueError("Vector must contain only finite values")
+    if not finite:
         raise ValueError("Vector must contain only finite values")
     import time
     owns = conn is None

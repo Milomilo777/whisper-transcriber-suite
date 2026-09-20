@@ -171,7 +171,13 @@ def annotate_segments(
     for seg in segments:
         if seg.get("suspect"):
             continue
-        text = (seg.get("text") or "").strip()
+        raw_text = seg.get("text")
+        if not isinstance(raw_text, str):
+            # Non-string text (None, a number from a malformed
+            # backend payload) carries no words to judge -- skip it
+            # rather than crashing on .strip() below.
+            continue
+        text = raw_text.strip()
         if not text:
             continue
         reason: str | None = None
