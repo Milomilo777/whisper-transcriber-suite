@@ -179,6 +179,15 @@ def test_load_project_overrides_keeps_valid_values(tmp_path):
     }
 
 
+def test_load_project_overrides_survives_deeply_nested_file(tmp_path):
+    """A pathologically nested project file raises RecursionError from the
+    JSON scanner — must be ignored like any malformed file, never raised."""
+    (tmp_path / PROJECT_FILE_NAME).write_text(
+        "[" * 100000 + "]" * 100000, encoding="utf-8",
+    )
+    assert load_project_overrides(str(tmp_path)) == {}
+
+
 @pytest.mark.skipif(
     os.name != "nt",
     reason="This test monkeypatches os.name='nt'; on POSIX that makes pathlib build a "

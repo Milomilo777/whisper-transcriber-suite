@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import http.client
 import json
 import logging
 import math
@@ -769,10 +770,21 @@ def fetch_online_config(
                     logger.warning("Could not cache online config: %s", e)
                 return data
             logger.warning("Online config at %s is not a JSON object", url)
-        except (urllib.error.URLError, OSError, ValueError) as e:
+        except (
+            urllib.error.URLError,
+            OSError,
+            ValueError,
+            http.client.HTTPException,
+            RecursionError,
+        ) as e:
             # URLError covers offline / timeout / HTTP errors; ValueError
             # covers a JSON parse failure (and UnicodeDecodeError, a
-            # ValueError). Fall through to the cache.
+            # ValueError). http.client.HTTPException (BadStatusLine,
+            # IncompleteRead, ...) is NOT an OSError/URLError subclass, but
+            # urlopen lets it escape on garbage/truncated responses (broken
+            # proxy, captive portal) — it must fall through to the cache
+            # too, not crash launch. RecursionError covers a hostile
+            # deeply-nested body under the size cap. Fall through to cache.
             logger.info(
                 "Online config fetch failed (%s); using cache if available", e
             )
@@ -784,7 +796,9 @@ def fetch_online_config(
         )
         if isinstance(cached, dict):
             return cached
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):
+        # RecursionError: a hostile deeply-nested cache file under the
+        # size cap — treated as corrupt, same as any other bad JSON.
         pass
     return {}
 
@@ -809,12 +823,15 @@ def _read_local_config() -> dict[str, Any]:
     except FileNotFoundError:
         logger.warning("config.json not found at %s; using defaults", path)
         return {}
-    except (json.JSONDecodeError, UnicodeDecodeError, OSError, ValueError) as e:
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError, ValueError,
+            RecursionError) as e:
         # UnicodeDecodeError is a ValueError that escapes the OSError
         # branch (e.g. cp1252 bytes saved by an external editor); the
         # original try/except missed it and crashed launch. ValueError
         # also catches any other JSON parser-internal raises (including the
-        # non-finite-literal rejection above).
+        # non-finite-literal rejection above). RecursionError covers a
+        # pathologically nested file (legal JSON, absurd depth) that the
+        # C scanner refuses — also degraded to defaults, not a crash.
         logger.error("Failed to read config.json (%s); using defaults", e)
         try:
             os.replace(path, path + ".corrupt")
@@ -1170,7 +1187,9 @@ def load_project_overrides(start: str | Path) -> dict[str, Any]:
     try:
         with open(f, "r", encoding="utf-8") as fp:
             data = json.load(fp)
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError):
+        # RecursionError: a pathologically nested project file (legal JSON,
+        # absurd depth) — ignored like any other malformed file, never raised.
         logger.warning("Could not read project overrides at %s", f)
         return {}
     if not isinstance(data, dict):

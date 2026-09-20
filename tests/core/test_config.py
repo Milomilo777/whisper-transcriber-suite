@@ -710,6 +710,58 @@ def test_load_config_merges_online_allowlisted_key(isolated_dirs, monkeypatch):
     cfg.refresh_online_config()  # leave the memo clean for other tests
 
 
+def test_fetch_online_survives_garbage_http_response(tmp_path, monkeypatch):
+    """A broken proxy / captive portal answering with a garbage status line
+    makes urlopen raise http.client.HTTPException (NOT a URLError/OSError),
+    which used to escape fetch_online_config's "never raises" contract and
+    crash launch out of load_config. Must fall back to the cache instead."""
+    import http.client
+
+    cached = {"stats_url": "https://cached/stats"}
+    cache = tmp_path / "cache.json"
+    cache.write_text(json.dumps(cached), encoding="utf-8")
+
+    def _garbage(req, timeout=0):  # noqa: ARG001
+        raise http.client.BadStatusLine("oops")
+
+    monkeypatch.setattr(cfg.urllib.request, "urlopen", _garbage)
+    assert cfg.fetch_online_config("https://host/app.json", cache_path=cache) == cached
+
+
+def test_fetch_online_survives_truncated_response(tmp_path, monkeypatch):
+    """resp.read() raising IncompleteRead (also an HTTPException, not an
+    OSError) must degrade to {} rather than propagate out of load_config."""
+    import http.client
+
+    class _Truncated:
+        headers = {}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self, *args):
+            raise http.client.IncompleteRead("partial", 1)
+
+    monkeypatch.setattr(
+        cfg.urllib.request, "urlopen", lambda req, timeout=0: _Truncated()  # noqa: ARG001
+    )
+    cache = tmp_path / "missing.json"
+    assert cfg.fetch_online_config("https://host/app.json", cache_path=cache) == {}
+
+
+def test_load_config_survives_deeply_nested_file(isolated_dirs, monkeypatch):
+    """A pathologically nested config.json (legal JSON, absurd depth) makes
+    the C scanner raise RecursionError, which used to escape the "never
+    raises" loader and crash launch. Must degrade to defaults."""
+    monkeypatch.setattr(cfg, "_legacy_config_path", lambda: str(isolated_dirs / "no_legacy.json"))
+    Path(cfg.config_path()).write_text("[" * 100000 + "]" * 100000, encoding="utf-8")
+    config = cfg.load_config(fetch_online=False)
+    assert config["parallel_workers"] == cfg.DEFAULT_CONFIG["parallel_workers"]
+
+
 def test_repo_configuration_json_agrees_with_default_stats_url():
     """configuration.json is the master copy published to config_url as the
     online app_config. A stats_url that disagrees with DEFAULT_CONFIG here

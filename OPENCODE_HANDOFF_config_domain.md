@@ -209,3 +209,92 @@ the `nan` assert); with the fix restored, it **passes**.
 - `python -m pyright app core` → `0 errors, 0 warnings, 0 informations`
 - `python -m pytest tests/ --ignore=tests/smoke -q` → exit 0, all green
 - New regression test fails pre-fix / passes post-fix (stash round-trip above).
+
+---
+
+## Second-pass independent re-check, round 2 (muse-spark-1.3-contributor) — 2026-09-20
+
+(This branch already contains one prior second-pass commit `c418715` by the
+same model family; this is a further independent re-check on top of it,
+following the same task template.)
+
+### What was verified from the earlier passes, and how
+
+Re-read the full branch diff (`git diff master..HEAD`) and proved the top
+claims live with `python` (not `python3` — that binary lacks the project
+deps in this worktree):
+
+1. **Null project override dropped**: `_validate_overrides(
+   {"diarization_num_speakers": None})` → key absent. Pre-fix code kept it
+   (`if value is None or isinstance(...)`, confirmed via
+   `git show master:core/config.py`).
+2. **Infinity/overflow contained**: `inf` dropped for a numeric key; huge
+   `int` no longer raises at load (finite-huge-int still passes validation
+   by design — no range checks anywhere, product decision, noted before).
+3. **`math.isfinite(10**400)` raises `OverflowError`**: confirmed live —
+   the old `load_config` probe crashed on it, the fixed guard only probes
+   `float`.
+4. **Subtitle escaping**: `subtitle_lang_args(".*") == "\\.\\*"`,
+   `"en(" → "en\\("`, `"zh-Hans,pt-BR"` byte-identical.
+5. **NaN timecode (prior second-pass)**: `_parse_timecode("nan") is None`,
+   `("inf") is None`; task built from it labels `None`.
+
+**Nothing from either earlier pass was found wrong.** No claim papered over.
+
+### New bugs found and fixed
+
+Both are the same systematic gap the first pass was already hunting —
+documented-"never raises" JSON/network loaders with uncaught exception
+types — in sites the first two passes missed:
+
+1. **`fetch_online_config()` let `http.client.HTTPException` escape
+   ("never raises" broken, launch crash).** Its `except` caught
+   `(URLError, OSError, ValueError)`, but `BadStatusLine` /
+   `IncompleteRead` inherit `Exception` directly (verified: not a subclass
+   of any of the three). Reproduced live: mocked `urlopen` raising
+   `BadStatusLine` → `fetch_online_config` **raised** instead of falling
+   back to cache. Concrete scenario: broken proxy / captive portal /
+   truncated response on the launch path → `load_config` propagates (it
+   calls the fetch unguarded) → startup crash. Fix (`core/config.py`):
+   added `http.client.HTTPException` (+ `import http.client`) to the
+   except tuple so it falls through to cache/`{}` like every other fetch
+   failure.
+2. **`RecursionError` escaped all three JSON loaders.** A deeply-nested
+   body (100k-deep `[`…`]`, ~200 KB — under the 2 MB online cap, or a
+   hand-crafted local/project file) makes the C scanner raise
+   `RecursionError`, which is not a `ValueError`. Reproduced live for
+   `_read_local_config` and `load_project_overrides` (both **raised**);
+   the online fetch/cache paths had the same hole by inspection. Fix:
+   added `RecursionError` to the except tuples in `fetch_online_config`
+   (fetch + cache-read), `_read_local_config`, and
+   `load_project_overrides` — each degrades to defaults/cache/`{}`.
+
+Regression tests (all proven to **fail** pre-fix via
+`git stash push -- core/config.py` round-trip, **pass** post-fix):
+- `tests/core/test_config.py::test_fetch_online_survives_garbage_http_response`
+- `tests/core/test_config.py::test_fetch_online_survives_truncated_response`
+- `tests/core/test_config.py::test_load_config_survives_deeply_nested_file`
+- `tests/core/test_project_overrides.py::test_load_project_overrides_survives_deeply_nested_file`
+
+### Checked and deliberately left alone
+
+- `app/domain/tasks.py` / `app/__init__.py`: agree with both prior passes —
+  clean, no change.
+- `_fmt_timecode(nan)` / `int(inf)` on directly-constructed
+  `VideoDownloadTask(section_start=float("nan"))` would still raise, but no
+  UI/service path can construct one (both bounds come from the now-guarded
+  `_parse_timecode`); hardening it would be dead code. Left alone.
+- `user_cache_dir()` called outside `try` in `_anonymised_id`: `platformdirs`
+  path-builders don't raise in practice (no env-dependent failure
+  demonstrated). Theoretical only; left alone.
+- Full-suite flakes (`test_server_health`, `test_search_dialog`,
+  `test_hub_setup_dialog` each failed once across runs, always pass solo
+  and on the pristine stashed tree): environmental timing flakes in
+  GUI/server tests, unrelated to this change (config load paths only).
+
+### Final verification (this pass)
+
+- `python -m pyright app core` → `0 errors, 0 warnings, 0 informations`
+- `python -m pytest tests/ --ignore=tests/smoke -q` → green (final run: all
+  dots, no FAILED/ERROR; earlier runs each tripped one unrelated solo-green
+  timing flake, re-verified solo + on pristine HEAD).
