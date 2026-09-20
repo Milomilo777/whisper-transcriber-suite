@@ -698,6 +698,12 @@ class TilingController:
             kill_process_tree(ytdlp, force=True)
             for p in ffplay:
                 kill_process_tree(p, force=True)
+            # Reap what we just killed, exactly like _terminate does. Without
+            # this, a launch failure that repeats across reconnect attempts
+            # (the engine loops on it) would pile up POSIX zombies — the same
+            # leak the _reap helper was added to close on the normal path.
+            reap: list[Optional[subprocess.Popen]] = [ytdlp, *ffplay]
+            self._reap(reap)
             for c in consumers:
                 try:
                     c["q"].put_nowait(None)
@@ -731,6 +737,11 @@ class TilingController:
             kill_process_tree(ytdlp, force=True)
             for p in ffplay:
                 kill_process_tree(p, force=True)
+            # Reap the killed children (see the launch-failure path above):
+            # a Stop/restart that raced this launch must not leave un-waited
+            # processes behind.
+            reap: list[Optional[subprocess.Popen]] = [ytdlp, *ffplay]
+            self._reap(reap)
 
     def _drain_stderr(self, stream: Any, tail: Any) -> None:
         """Keep the last lines of a subprocess's stderr for diagnosis."""

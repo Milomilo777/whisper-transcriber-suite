@@ -51,18 +51,35 @@ class RecorderUnavailable(RuntimeError):
 # ---------------------------------------------------------------- availability
 
 
+def _import_failure(module_name: str) -> Optional[BaseException]:
+    """Return the exception raised by importing ``module_name``, else None.
+
+    Catches more than ImportError on purpose: a present-but-broken native
+    backend raises OSError at import time — most notably sounddevice's
+    documented "PortAudio library not found" (common on Linux without
+    libportaudio2) and DLL-load failures for pyaudiowpatch on Windows.
+    Both mean "this machine cannot record via that backend", so they must
+    degrade to the same unavailable state as a missing package rather than
+    escape into a UI callback as an unhandled exception.
+    """
+    try:
+        __import__(module_name)
+    except Exception as e:  # noqa: BLE001
+        return e
+    return None
+
+
 def mic_available() -> bool:
     """True iff sounddevice imports cleanly."""
-    try:
-        import sounddevice  # type: ignore[import-not-found] # noqa: F401
-    except ImportError:
-        return False
-    return True
+    return _import_failure("sounddevice") is None
 
 
 def mic_availability_reason() -> str:
     if mic_available():
         return ""
+    err = _import_failure("sounddevice")
+    if err is not None and not isinstance(err, ImportError):
+        return f"sounddevice could not be loaded: {err}"
     return (
         "sounddevice not installed — `pip install sounddevice` to "
         "enable microphone recording."
@@ -73,11 +90,7 @@ def loopback_available() -> bool:
     """True iff pyaudiowpatch imports cleanly (Windows-only WASAPI loopback)."""
     if os.name != "nt":
         return False
-    try:
-        import pyaudiowpatch  # type: ignore[import-not-found] # noqa: F401
-    except ImportError:
-        return False
-    return True
+    return _import_failure("pyaudiowpatch") is None
 
 
 def loopback_availability_reason() -> str:
@@ -85,6 +98,9 @@ def loopback_availability_reason() -> str:
         return "System-audio capture requires Windows (WASAPI loopback)."
     if loopback_available():
         return ""
+    err = _import_failure("pyaudiowpatch")
+    if err is not None and not isinstance(err, ImportError):
+        return f"pyaudiowpatch could not be loaded: {err}"
     return (
         "pyaudiowpatch not installed — `pip install PyAudioWPatch` to "
         "enable system-audio (loopback) recording."

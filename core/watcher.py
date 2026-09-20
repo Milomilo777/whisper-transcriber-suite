@@ -33,6 +33,24 @@ def is_media_file(path: str) -> bool:
     return os.path.splitext(path)[1].lower() in _MEDIA_EXTENSIONS
 
 
+def _is_inside(folder: str, path: bytes | str) -> bool:
+    """True when ``path`` resolves to a location inside ``folder``.
+
+    Used to filter ``on_moved`` events: some watchdog backends also report
+    a move OUT of the watched folder (source inside, destination outside),
+    and enqueueing a file that just left the folder would be wrong.
+    """
+    if isinstance(path, bytes):
+        path = path.decode("utf-8", "replace")
+    if not path:
+        return False
+    try:
+        rel = os.path.relpath(os.path.abspath(path), os.path.abspath(folder))
+    except (OSError, ValueError):  # e.g. different drive on Windows
+        return False
+    return rel != os.pardir and not rel.startswith(os.pardir + os.sep)
+
+
 def is_available() -> bool:
     try:
         import watchdog  # type: ignore[import-untyped] # noqa: F401
@@ -85,15 +103,13 @@ class FolderWatcher:
         cb = self.on_new_file
         err_cb = self.on_error
         media_exts = _MEDIA_EXTENSIONS
+        folder = self.folder
 
         class _Handler(FileSystemEventHandler):
-            def on_created(self, event):  # noqa: N805
-                if event.is_directory:
-                    return
-                path = event.src_path
+            def _dispatch(self, path: bytes | str) -> None:
                 if isinstance(path, bytes):
                     path = path.decode("utf-8", "replace")
-                if os.path.splitext(path)[1].lower() not in media_exts:
+                if not path or os.path.splitext(path)[1].lower() not in media_exts:
                     return
                 try:
                     cb(path)
@@ -109,6 +125,24 @@ class FolderWatcher:
                                 "Watcher on_error hook itself raised "
                                 "(path=%s)", path,
                             )
+
+            def on_created(self, event):  # noqa: N805
+                if event.is_directory:
+                    return
+                self._dispatch(event.src_path)
+
+            def on_moved(self, event):  # noqa: N805
+                # A file dragged into the folder — or a downloader's
+                # ".part" -> final-name rename — arrives as a MOVED event,
+                # not a create (Windows FILE_ACTION_RENAMED_NEW_NAME;
+                # Linux IN_MOVED_TO). Handling only on_created meant the
+                # headline "drop a media file here" flow silently did
+                # nothing for a same-volume move (Explorer's default drag).
+                if event.is_directory:
+                    return
+                dest = getattr(event, "dest_path", "")
+                if _is_inside(folder, dest):
+                    self._dispatch(dest)
 
         with self._lock:
             self.stop()
