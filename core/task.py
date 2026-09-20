@@ -25,6 +25,14 @@ class TranscriptionTask:
         self.language: str | None = None
         # Phase 3a — primary key in core.history.HistoryDB.transcriptions
         self.history_id: int = 0
+        # Correlation id for the JSON worker protocol (add-only field).
+        # The parent stamps the same value on the ``transcribe`` command and
+        # on every later cancel/pause/resume for this task, so the worker can
+        # attribute a control to exactly one task instead of guessing "the
+        # current one". Empty = no id (legacy behaviour). See
+        # app.services.transcription_service.task_correlation_id and the
+        # design notes in core/worker.py.
+        self.task_id: str = ""
         # Resume-from-cancellation: when True the worker dispatches
         # ``resume_transcription`` instead of ``transcribe`` so the
         # partial checkpoint on disk is reused. Falls back to a fresh

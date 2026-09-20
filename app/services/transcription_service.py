@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 import threading
+import uuid
 from queue import Empty
 from typing import TYPE_CHECKING, Any
 
@@ -25,6 +26,47 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+
+def task_correlation_id(t: Any) -> str:
+    """Return the worker-protocol correlation id for a transcription task.
+
+    The id rides BOTH the ``transcribe`` command and every later
+    cancel/pause/resume for that task, so the worker applies a control to
+    exactly the task it belongs to — never to whichever task happens to be
+    in flight (the bug where a control written ahead of its transcribe was
+    silently swallowed).
+
+    Reuses the task's own existing identity first:
+
+    - an already-assigned ``task_id`` is returned unchanged, so the
+      transcribe-command builder and the control-command builder always
+      agree even though they may run on different threads;
+    - otherwise the history-DB row id (``history_id``, assigned before
+      dispatch) becomes ``"h<id>"``;
+    - with no history row (``history_id`` is 0/absent — e.g. the history DB
+      is unavailable), a per-task ``"u<uuid4>"`` fallback is generated,
+      because ``"h0"`` would not be unique across tasks.
+
+    Never raises. The cache relies on the task being a mutable object (every
+    real transcription task is); if assignment somehow fails, callers that
+    build both commands for one task on the same thread still agree, and the
+    only effect elsewhere is an extra unmatched-control ack from the worker,
+    never a misapplied control.
+    """
+    existing = str(getattr(t, "task_id", "") or "")
+    if existing:
+        return existing
+    try:
+        history_id = int(getattr(t, "history_id", 0) or 0)
+    except (TypeError, ValueError):
+        history_id = 0
+    cid = f"h{history_id}" if history_id > 0 else f"u{uuid.uuid4().hex}"
+    try:
+        t.task_id = cid
+    except Exception:  # noqa: BLE001 - frozen/tuple-like task objects
+        pass
+    return cid
 
 
 def transcribe_command(t: Any) -> dict[str, Any]:
@@ -50,6 +92,10 @@ def transcribe_command(t: Any) -> dict[str, Any]:
         # at spawn time, so the user's saved docx/pdf/etc. selection must be
         # sent per task or it's silently ignored (the docx-never-written bug).
         "output_formats": getattr(t, "output_formats", None),
+        # Correlation id (add-only protocol field): the worker echoes it on
+        # the task's events and matches later cancel/pause/resume commands
+        # against it. Optional for old workers — they ignore the extra key.
+        "task_id": task_correlation_id(t),
     }
 
 
@@ -711,6 +757,37 @@ class TranscriptionService:
                     self.finish_task(worker, keep_status=True)
                 else:
                     app.log(event.get("message", "Worker error"))
+            elif event_type == "control_applied":
+                # An id-bearing control was honoured. Delayed means the worker
+                # parked it briefly because it arrived before its transcribe
+                # was registered — the exact race this increment fixes; a
+                # debug line is all the parent needs.
+                if event.get("delayed"):
+                    logger.debug(
+                        "worker %s applied %s for task %s after parking it",
+                        worker.get("id"),
+                        event.get("action"),
+                        event.get("task_id"),
+                    )
+            elif event_type == "control_unmatched":
+                # The worker never saw a transcribe with this task's id, so
+                # the control could not be honoured. Do not swallow that: log
+                # it for the user. UI state is not rewritten here — a failed
+                # dispatch is already reported by the dispatch-error path /
+                # worker_exit / the liveness watchdog.
+                reason = event.get("reason", "unknown")
+                logger.warning(
+                    "worker %s could not apply %s for task %s (%s)",
+                    worker.get("id"),
+                    event.get("action"),
+                    event.get("task_id"),
+                    reason,
+                )
+                app.log(
+                    f"Worker did not apply {event.get('action', 'control')} "
+                    f"for task {event.get('task_id', '?')} ({reason}); no "
+                    "matching in-flight task was found."
+                )
             elif event_type == "worker_exit":
                 worker["ready"] = False
                 worker["process"] = None
@@ -919,14 +996,24 @@ class TranscriptionService:
         """Send cancel/pause/resume to the worker running ``task``.
 
         Returns True if a worker was found and the command dispatched.
-        The worker's reader thread applies it to the in-flight task;
-        the transcriber honours it at the next segment boundary (cancel
-        also flushes a resumable checkpoint). Returns False when the task
-        isn't on a worker yet (still ``waiting``) — nothing to signal.
+        The worker's reader thread applies it to the task whose correlation
+        id matches (a control can never be applied to a different task),
+        parking it until that task registers if the control overtook the
+        transcribe on the pipe; a control with no matching task is reported
+        back as ``control_unmatched`` instead of silently vanishing.
+        The transcriber honours the flag at the next segment boundary
+        (cancel also flushes a resumable checkpoint). Returns False when the
+        task isn't on a worker yet (still ``waiting``) — nothing to signal.
         """
         for worker in self.app.workers:
             if worker.get("task") is task:
-                self._send_command_async(worker, {"action": action})
+                # Same id the transcribe command carried (task_correlation_id
+                # caches it on the task), so the worker pairs the two even if
+                # this line wins the stdin-lock race.
+                self._send_command_async(
+                    worker,
+                    {"action": action, "task_id": task_correlation_id(task)},
+                )
                 return True
         return False
 

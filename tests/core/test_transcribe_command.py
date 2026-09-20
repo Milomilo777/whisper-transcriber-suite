@@ -61,5 +61,23 @@ def test_command_has_exactly_the_expected_keys():
     cmd = transcribe_command(_task())
     assert set(cmd) == {
         "action", "file_path", "language", "resume", "clip_start", "clip_end",
-        "output_formats",
+        "output_formats", "task_id",
     }
+
+
+def test_command_carries_a_stable_task_id_from_history():
+    """The correlation id is the existing history row id when available, and
+    is cached so the transcribe command and a later control command agree."""
+    t = _task(history_id=12)
+    first = transcribe_command(t)
+    second = transcribe_command(t)
+    assert first["task_id"] == "h12"
+    assert second["task_id"] == "h12"
+
+
+def test_command_task_id_falls_back_to_uuid_without_a_history_row():
+    t = _task()  # no history_id attr at all
+    cmd = transcribe_command(t)
+    assert cmd["task_id"].startswith("u")
+    # Same id on a rebuild (cached on the task), not a fresh uuid each call.
+    assert transcribe_command(t)["task_id"] == cmd["task_id"]
