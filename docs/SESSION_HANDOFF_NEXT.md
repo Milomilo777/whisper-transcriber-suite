@@ -626,6 +626,22 @@ the ~2000-line heart of the whole pipeline, never had its own dedicated pass tod
 same high-care treatment as `core/worker.py` (explicit invariant list from
 PROJECT_INDEX's gotchas as hard constraints, not suggestions).
 
+`opencode/transcriber-core-review` DONE, no caveat, fully self-completed, commit
+`2b4cf5e`, pyright re-confirmed by me — every invariant explicitly audited against
+the final diff at the end of its own handoff. **4 real bugs on the busiest file in
+the repo**: a clip pre-slice left a partial temp WAV on disk on every ffmpeg
+failure/timeout (accumulates in `partials/` until the startup sweep ages it out); the
+non-default ASR backends (whisper.cpp/cloud/Parakeet) had no guard for a clip starting
+at/after end-of-file, so they silently "succeeded" with empty output instead of
+raising like the default engine does; **picking "Hebrew" or "Javanese" in the
+language picker silently fell back to auto-detect** (`iw`/`jv`, the picker's own yt-dlp
+-derived codes, aren't Whisper's `he`/`jw` — `_normalize_language` returned `None` and
+the explicit choice was dropped); the auto-chapters sidecar file didn't share
+`_write_outputs`' collision-index, so re-transcribing a file could silently mix a new
+run's transcript with a stale previous run's chapter data. Correlation-id design
+retry still running, making real progress (writing tests, checking existing
+time-mocking conventions) — status-only, not reviewing per the standing instruction.
+
 *(Paused-state note below kept for history — no longer the current state.)*
 
 **PAUSED after the 3rd OOM kill today — deliberate, not automatic.** Free memory
