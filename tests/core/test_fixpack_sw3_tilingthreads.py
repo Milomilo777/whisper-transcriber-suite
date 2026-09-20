@@ -45,9 +45,15 @@ class _FakeProc:
         self.stdin = _FakeStdin() if with_stdin else None
         self.stdout = None
         self.stderr = None
+        self.waited = False
 
     def poll(self):
         return None
+
+    def wait(self, timeout=None):
+        # Records that the controller reaped this killed child.
+        self.waited = True
+        return 0
 
 
 class _LaunchFailure(RuntimeError):
@@ -89,15 +95,19 @@ def test_start_launch_failure_does_not_leak_consumer_threads(
     # Popen sequence: [0] yt-dlp, [1] first monitor's ffplay (OK, real consumer
     # thread starts on it), [2] second monitor's ffplay -> RAISES mid-setup.
     spawned = {"n": 0}
+    spawned_procs: list[_FakeProc] = []
 
     def fake_popen(*_a, **_k):
         i = spawned["n"]
         spawned["n"] += 1
         if i == 0:
-            return _FakeProc(with_stdin=False)   # yt-dlp
-        if i == 1:
-            return _FakeProc(with_stdin=True)    # first ffplay -> consumer
-        raise _LaunchFailure("later monitor's player failed to launch")
+            proc = _FakeProc(with_stdin=False)   # yt-dlp
+        elif i == 1:
+            proc = _FakeProc(with_stdin=True)    # first ffplay -> consumer
+        else:
+            raise _LaunchFailure("later monitor's player failed to launch")
+        spawned_procs.append(proc)
+        return proc
 
     monkeypatch.setattr(tiling.subprocess, "Popen", fake_popen)
 
@@ -142,3 +152,48 @@ def test_start_launch_failure_does_not_leak_consumer_threads(
         "launch failure mid-setup leaked consumer thread(s): "
         + repr([t.name for t in new_threads])
     )
+
+    # Both already-spawned children were killed by the except handler and
+    # must also be reaped (wait()-ed), or a flapping outage that keeps
+    # failing here accumulates POSIX zombies.
+    assert [p.waited for p in spawned_procs] == [True, True]
+
+
+def test_start_superseded_launch_reaps_killed_children(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A launch that a later Stop/new-run supersedes tears its fresh pipeline
+    down (the not-published path) and must reap those children too."""
+    _patch_common(monkeypatch)
+
+    ctl = tiling.TilingController()
+    monkeypatch.setattr(ctl, "_terminate", lambda join=True: None)
+    monkeypatch.setattr(ctl, "_drain_stderr", lambda *_a, **_k: None)
+    ctl._play_flag = True
+    ctl._generation = 3
+    ctl._multi_monitor = False
+
+    mon = {"index": 0, "x": 0, "y": 0, "width": 1920, "height": 1080,
+           "primary": True}
+    monkeypatch.setattr(ctl, "_targets", lambda: ([mon], False))
+
+    # Active at the top of _start (so it launches); superseded by the time
+    # it publishes (so the not-published teardown runs).
+    states = iter([True, False])
+    monkeypatch.setattr(ctl, "_is_active", lambda _gen: next(states))
+
+    procs: list[_FakeProc] = []
+
+    def fake_popen(*_a, **_k):
+        proc = _FakeProc(with_stdin=(len(procs) == 1))
+        procs.append(proc)
+        return proc
+
+    monkeypatch.setattr(tiling.subprocess, "Popen", fake_popen)
+
+    ctl._start(my_gen=3)
+
+    assert len(procs) == 2  # yt-dlp + the single fullscreen ffplay
+    assert all(p.waited for p in procs)
+    assert ctl._ytdlp is None
+    assert ctl._ffplay == []
