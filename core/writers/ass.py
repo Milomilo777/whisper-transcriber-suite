@@ -77,7 +77,13 @@ def fmt_ass_time(seconds: float) -> str:
     """
     if seconds is None or not isinstance(seconds, (int, float)):
         seconds = 0.0
-    seconds = float(seconds)
+    try:
+        seconds = float(seconds)
+    except (TypeError, ValueError, OverflowError):
+        # An integer too large for a float (a hand-edited JSON can carry
+        # one) raises OverflowError here — clamp like NaN/Inf, mirroring
+        # fmt_srt_time / fmt_lrc_time.
+        seconds = 0.0
     if not math.isfinite(seconds) or seconds < 0:
         seconds = 0.0
     total_cs = int(round(seconds * 100))

@@ -144,3 +144,88 @@ keeps `end >= start`. No documented invariant is contradicted: the binary
 `write()`-raises contract, the collision-index semantics, and the
 NaN/Inf-clamping design are all preserved — and the clamping helpers are now
 actually reachable (the bare `float()` used to raise before they ran).
+
+## Second-pass independent re-check (muse-spark-1.3-contributor)
+
+Date: 2026-09-20. Branch commits at review time: `d33d267` (tests),
+`94300bd` (fixes), `dea318b` (this handoff file).
+
+### What was verified from the first pass, and how
+
+- **Claim 1 (malformed timestamps abort whole file): proven by revert.**
+  Overwrote `core/writers/srt.py` with its `master` version
+  (`git show master:core/writers/srt.py`), leaving all new tests in
+  place: `test_text_writer_survives_malformed_timestamps[srt]` fails
+  with the exact claimed mechanism (`KeyError: 'start'` from the old
+  `float(seg['start'])`). Restored via `git checkout HEAD --`, test
+  green again, worktree clean (`git status --short` empty).
+- **Claim 2 (non-string `text`): verified by code path + passing tests.**
+  Old `normalize_text` called `text.split()` (`AttributeError` on `42`)
+  and old `convert._parse_json` did `(value or "").strip()` — same
+  crash. New `test_text_writer_survives_non_string_text` (all 12 text
+  formats) plus docx/pdf/smtv variants pass on this branch.
+- **Claim 3 (unusable `words`): verified with one correction (below).**
+  Non-list `words` handling (VTT/ASS) and `json_writer` non-dict
+  filtering pass. But the handoff prose over-claims slightly: it says
+  "non-dict entries are skipped" as a blanket statement, while VTT's
+  `_karaoke_payload` had no such guard — see finding F1.
+
+### New bugs found and fixed (all reproduced before fixing)
+
+- **F1. VTT crashed on non-dict word entries — first-pass fix was
+  incomplete.** `vtt._karaoke_payload` did `w.get("start")` with no
+  `isinstance(w, dict)` guard, so
+  `{"words": ["bad", 5]}` raised `AttributeError` and aborted the whole
+  `.vtt` (ASS already had the guard; `json_writer` and
+  `convert._parse_json` filter too). Repro before fix:
+  `vtt.write([{..., "words": ["bad", 5]}])` → `AttributeError: 'str'
+  object has no attribute 'get'`. Fix: skip non-dict entries, mirroring
+  ASS (`core/writers/vtt.py`).
+- **F2. VTT word timestamps still had the `OverflowError` hole.**
+  The word-level coercion caught only `(TypeError, ValueError)`, so a
+  huge-integer word `start` (`10**400`) raised `OverflowError` and
+  aborted the file — the exact bug class the first pass eliminated at
+  segment level. Repro before fix confirmed `OverflowError: int too
+  large to convert to float`. Fix: route through `coerce_seconds`
+  (handles None/non-numeric/Overflow/non-finite with segment-start
+  fallback), replacing the nested try/except.
+- **F3. `fmt_ass_time` still raised on huge integers.** Its bare
+  `seconds = float(seconds)` was missed while every sibling formatter
+  (`fmt_srt_time`, `fmt_lrc_time`, elan/inqscribe/express_scribe,
+  smtv, tsv, json `_safe_float`) was hardened. Repro:
+  `fmt_ass_time(10**400)` → `OverflowError`. Public formatter, same
+  hand-edited-JSON threat model. Fix: try/except
+  `(TypeError, ValueError, OverflowError)` → `0.0`, mirroring siblings.
+- New tests in `tests/core/test_writers_malformed_input.py`:
+  `test_vtt_karaoke_skips_non_dict_word_entries`,
+  `test_vtt_karaoke_falls_back_when_all_words_non_dict`,
+  `test_vtt_karaoke_clamps_huge_int_word_start`,
+  `test_ass_formatter_clamps_huge_int`. Each fails on the pre-fix code
+  per the repros above and passes after.
+
+### Reviewed and deliberately not changed
+
+- **Non-dict *segments* (`srt.write([None])` etc. raise
+  `AttributeError`).** Every in-repo producer filters these before they
+  reach a writer: `convert._parse_json` skips non-dict entries, the
+  transcript viewer filters at load (`transcript_viewer.py`, segments
+  comprehension keeping only dicts), and the transcriber pipeline only
+  emits dicts. The writer type contract is `list[dict]`; hardening all
+  13 writers would be scope creep with no reachable crash path.
+- `tsv`/`json` missing-`end` default, `write()`-raises binary contract,
+  `.otr` blank-segment skip, PDF CJK coverage — agree with the first
+  pass's "deliberately not changed" list, no new evidence against it.
+- `smtv _fmt_smtv_time` resetting non-`int`/`float` input (e.g. numeric
+  strings) to `0.0` instead of parsing: pre-existing behavior, callers
+  now pass `coerce_seconds` output (finite floats), not reachable with
+  strings in-repo. Left alone.
+
+### Final verification (this pass)
+
+- `pyright app core` → **0 errors, 0 warnings, 0 informations**.
+- `python -m pytest tests/ --ignore=tests/smoke -q` → **green**
+  (exit 0; targeted files
+  `test_writers_malformed_input.py`/`test_otranscribe.py`/`test_convert.py`
+  also green in isolation). No valid-input output changes: new fixes
+  only fire on inputs that previously raised (non-dict words, huge-int
+  word times, huge-int `fmt_ass_time` arg).

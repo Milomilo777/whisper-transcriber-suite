@@ -173,6 +173,51 @@ def test_coerce_seconds_accepts_strings_and_rejects_junk():
     assert coerce_seconds(10 ** 400) == 0.0
 
 
+def test_vtt_karaoke_skips_non_dict_word_entries():
+    # Sibling of test_json_writer_skips_non_dict_words: a non-dict entry
+    # inside "words" used to AttributeError on w.get() and abort the file.
+    seg = {
+        "start": 0.0,
+        "end": 2.0,
+        "text": "hello world",
+        "words": ["bad", 5, None, {"start": 0.0, "end": 1.0, "word": "hi"}],
+    }
+    body = vtt.write([seg])
+    assert "hi" in body
+
+
+def test_vtt_karaoke_falls_back_when_all_words_non_dict():
+    seg = {
+        "start": 0.0,
+        "end": 1.0,
+        "text": "fallback text",
+        "words": ["bad", 5, None],
+    }
+    assert "fallback text" in vtt.write([seg])
+
+
+def test_vtt_karaoke_clamps_huge_int_word_start():
+    # Word-level float() caught TypeError/ValueError but not OverflowError,
+    # so a huge integer word timestamp aborted the whole file.
+    seg = {
+        "start": 1.0,
+        "end": 2.0,
+        "text": "hi",
+        "words": [{"start": 10 ** 400, "end": 2.0, "word": "hi"}],
+    }
+    assert "hi" in vtt.write([seg])
+
+
+def test_ass_formatter_clamps_huge_int():
+    # fmt_ass_time's bare float() raised OverflowError on integers too
+    # large for a float; every sibling formatter already clamped these.
+    from core.writers.ass import fmt_ass_time
+
+    assert fmt_ass_time(10 ** 400) == "0:00:00.00"
+    assert fmt_ass_time(float("inf")) == "0:00:00.00"
+    assert fmt_ass_time(float("nan")) == "0:00:00.00"
+
+
 def test_time_formatters_clamp_non_finite_and_huge_int():
     huge = 10 ** 400
     assert fmt_srt_time(float("inf")) == "00:00:00,000"

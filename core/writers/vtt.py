@@ -24,6 +24,11 @@ def _karaoke_payload(seg: dict) -> str:
         return escape_cue_separator(normalize_text(seg.get("text", "")))
     parts: list[str] = []
     for w in words:
+        # A non-dict word entry (bare string / number from hand-edited or
+        # externally produced JSON) has no .get — skip it, mirroring ASS's
+        # karaoke payload and json_writer, instead of aborting the file.
+        if not isinstance(w, dict):
+            continue
         # w.get("start", default) only returns the default when the key
         # is ABSENT; an explicit start=None (hand-edited / externally
         # produced JSON re-fed for re-export) would make float(None)
@@ -34,13 +39,7 @@ def _karaoke_payload(seg: dict) -> str:
         ts_val = w.get("start")
         if ts_val is None:
             ts_val = seg.get("start", 0.0)
-        try:
-            ts_seconds = float(ts_val)
-        except (TypeError, ValueError):
-            try:
-                ts_seconds = float(seg.get("start", 0.0))
-            except (TypeError, ValueError):
-                ts_seconds = 0.0
+        ts_seconds = coerce_seconds(ts_val, coerce_seconds(seg.get("start")))
         ts = fmt_vtt_time(ts_seconds)
         # The word text can be a non-string (e.g. a number) in a
         # hand-edited / externally produced JSON re-fed for re-export.
