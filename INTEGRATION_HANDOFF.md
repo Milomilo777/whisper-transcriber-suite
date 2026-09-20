@@ -406,3 +406,45 @@ Verified the merge of `opencode/misc-features-review` into
 - **Test coverage of merged behavior**: 39 targeted tests across the 4 merge-specific test files — all pass. Tests exercise: moved-in media dispatch (including bytes dest), moved-out ignored, non-media/dirs ignored, `on_created` still works, `on_error` hook fires for moved events, atomic output (no clobber on failure, temp cleanup), AAC retry (container rejection, caller-codec skip, retry failure), broken-backend probe (OSError escapes), reap on launch-failure and not-published paths.
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/model-hub-review (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/model-hub-review`): no conflicts,
+no reconciliation needed. Merge commit 0c751f4 on top of 9c61b27
+(second parent 94c2589).
+
+Files brought in by the review branch (09fc000 + 149da5b + 94c2589):
+- `core/history.py`: new `_is_transient_lock_error()` (SQLITE_BUSY /
+  SQLITE_LOCKED name + "database is locked" message fallback) so a
+  lock held by another connection skips this open's `integrity_check`
+  with a warning instead of renaming a healthy `history.db` to
+  `.corrupt` and wiping history.
+- `core/hub.py`: new `is_safe_model_folder_name()` (single-component
+  check: no separators/NUL, no `.`/`..`, platform-parser name round-trip
+  for Windows drive/ADS forms) and `model_folder_for()` now rejects
+  unsafe names with ValueError (callers already guard on ValueError).
+- `core/model_manager.py`: `_merged_catalog()` drops online-catalog
+  entries with unsafe `name`, coerces hostile display fields (`label` /
+  `info` to str, `approx_size_gb` to float); `ensure_model()` requires
+  `model.bin` for no-manifest installs (no more partial-folder
+  false-positive), treats md5-manifest fetch failure as best-effort
+  offline use, resumes interrupted zip downloads via Range (bounded by
+  MAX_DOWNLOAD_ATTEMPTS), clears stale `last_mismatches` after a
+  successful verify retry, and reports post-download cancellation as
+  DownloadCancelled (both mirror and HF-fallback paths).
+- `tests/core/test_history_db.py` (extended, +107): lock-vs-corruption
+  coverage. `tests/core/test_hub.py` (extended, +77): traversal-name
+  rejection. `tests/core/test_model_manager.py` (extended, +403):
+  catalog hardening, partial-install, resume, verify-retry, cancel
+  coverage.
+- `OPENCODE_HANDOFF_model_hub.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git diff HEAD^1 HEAD`: intent matches the
+review-branch log; no conflict markers, no dropped lines.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2316 passed, 14 skipped,
+  0 failures.
+
+Result: clean. No source changes needed.
