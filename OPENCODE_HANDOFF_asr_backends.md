@@ -113,3 +113,72 @@ Tests: `test_deps_available_requires_all_three`, `test_load_installs_when_torch_
   tests with `ImportError: cannot import name 'font' from 'tkinter'` — an import-order
   artifact of that test's tkinter stubs, reproduced on the unmodified tree via
   `git stash`. The full-suite ordering is green.
+
+## Second-pass independent re-check (muse-spark-1.3-contributor) — 2026-09-20
+
+Independent verification of the first pass, then a fresh adversarial review of
+the same files plus surrounding logic. No code changes resulted; handoff-only
+update.
+
+### Verified from the first pass (proved, not trusted)
+
+1. Past-EOF detection (`cloud_stt.flac_slice_has_audio` + both call sites):
+   drove `CloudSttBackend.transcribe_to_segments` with a stubbed encoder
+   emitting a realistic 8,286-byte past-EOF container. Old byte-only logic
+   (`size < 4096`, probe forced to "has audio") sent the full bounded plan —
+   120 chunks. New probe logic sent exactly 1 chunk and stopped. The new
+   regression tests
+   (`test_unknown_duration_stops_on_past_eof_slice_above_byte_threshold`,
+   `test_run_standard_unknown_duration_stops_on_past_eof_slice`) pass.
+   (Caveat found while proving it: a repro script run from /tmp imported an
+   installed `core` from an unrelated project instead of this worktree —
+   always run with the worktree first on `sys.path`; pytest runs were
+   unaffected.)
+2. `_json_body`: only one `json.loads` on a network body remains in
+   `core/backends/` (the new helper itself); all three Gemini call sites
+   route through it and the non-JSON / truncated-body / non-object tests pass.
+3. whisper.cpp download: confirmed on `master` that `urlopen(url)` had no
+   timeout and no failure cleanup; the new `timeout=60` + `.part` unlink +
+   both new tests pass.
+4. nvidia_asr dep probe: confirmed the old `_transformers_available` checked
+   only `transformers`; the new `_deps_available` (all three modules +
+   `activate()` first + `force=` on half-present) and its three tests pass.
+   `optional_deps.install(force=...)` signature confirmed real.
+
+### Pre-existing failures re-confirmed as unrelated
+
+- `tests/core/test_nvidia_asr.py`'s two `app.dialogs.advanced` tests fail
+  standalone AND in subsets with `ImportError: cannot import name 'font'
+  from 'tkinter'`: that stub test is byte-identical on `master` and the
+  imported app files are untouched by this branch — import-order artifact,
+  not this diff.
+- Full-suite flake: one run showed 2 failures in
+  `test_after_callback_cancellation.py` / `test_search_dialog.py`
+  (timing-sensitive GUI tests, files untouched by this branch); both pass in
+  isolation and the next full runs were green.
+
+### Fresh adversarial review — no new real bugs
+
+Re-read `cloud_stt.py` (loop, `_json_body`, probe, Files-API paths),
+`google_cloud_stt.py` `_run_standard` + `plan_chunks`,
+`nvidia_asr.py` load + transcribe loop + `_decode_window`,
+`whisper_cpp.py` download/load/transcribe, and the `advanced.py` callers.
+Checked: `bundled_binary` never raises (PATH fallback → `FileNotFoundError`
+→ caught → conservative True, as documented); the byte-check/`or`
+short-circuit skips the probe for tiny slices and `idx > 0` exempts short
+single-window files; `_wait_for_active`'s `meta.get("state")` is safe
+(`_json_body` guarantees a dict); download exceptions surface via the
+dialog's `except` to the log, no crash path. Two observations deliberately
+left unchanged (not real bugs): a hand-placed small `dest` file would trip
+`shutil.move` on Windows, and a stale corrupt model passes `load()`'s
+`exists()` gate with a cryptic ggml error — both pre-existing, contrived,
+out of scope.
+
+### Final results
+
+- `pyright app core` = 0 errors / 0 warnings / 0 informations.
+- `python -m pytest tests/ --ignore=tests/smoke` = 2199 passed, 1 skipped
+  (RC=0; matches the first pass's count exactly).
+
+Clean second pass: first-pass fixes are real and proven, nothing further
+wrong found after a genuine attempt. No source changes made.
