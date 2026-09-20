@@ -213,12 +213,77 @@ greying) ran and it completed with a real, working result.
 confirming nothing is corrupted before deciding whether to bank the partial work):**
 every touched/new file in all three worktrees parses cleanly (`ast.parse`, no syntax
 errors — the kill did not land mid-write on any file), and `pyright app core` reports
-0/0/0 clean in EACH of the three worktrees independently. Full test-suite runs were
-in progress (sequentially, one worktree at a time, to not repeat the OOM) as this note
-was written — check further down / the commit log for whether each worktree's partial
-work ended up committed to its own branch (same never-touch-master rule as everything
-else today) or left as-is for the next session to finish, depending on what the test
-run actually showed.
+0/0/0 clean in EACH of the three worktrees independently.
+
+**Outcome of the salvage, per worktree:**
+- `opencode/server-hardening` — full test suite re-run green, committed as-is (`50f66cc`).
+- `opencode/writers-review` — see the two separate incidents below, resolved; final
+  commit `94300bd`.
+- `opencode/search-chapters-infra-review` — turned out to have made **no real
+  progress at all** before being killed (its own log showed it was still reading the
+  onboarding docs when the OOM reaper hit — confirmed via `git diff HEAD --stat`
+  being empty and no stash entry for it). Needs a full fresh (re)launch, not a
+  recovery. Sequential only this time (see the OOM lesson above) — launch it alone,
+  wait for it to finish, before anything else runs in parallel again.
+
+---
+
+## 🔴 SECOND INCIDENT, same recovery pass — pre-existing (NOT today's) git identity
+## misconfiguration discovered and fixed; a stashed commit initially went missing
+
+**1. Git identity/hooks misconfiguration — pre-existing, dates back at least to
+2026-09-14, NOT caused by today's session or by OpenCode.** While investigating commit
+`d33d267` (see incident 2 below), the LOCAL repo config (`whisper_project_direct_download_v2/.git/config`,
+shared by the main checkout and every worktree) was found to have:
+```
+user.name = translation-robot
+user.email = 105587847+translation-robot@users.noreply.github.com
+core.hookspath = C:\Users\Owner\Desktop\whisper_project_claude\whisper_project_direct_download_v2\.git\hooks
+```
+"translation-robot" is the machine-translate-docx project's bot identity — unrelated to
+this repo. `git log` confirms this has been the LOCAL author identity for commits on
+this repo since at least 2026-09-14 (`7822d59`, `af50836`, `fb1917e` all show it too) —
+this is old, not something introduced today. The `core.hookspath` pointed at a
+directory (`whisper_project_claude\...`) that does not exist on this machine at all —
+likely a stale reference from before this repo lived at its current
+`whisper_app\whisper_project_direct_download_v2` path; harmless (hooks silently never
+ran from a path that never existed) but wrong.
+
+**Fixed** (local config only, this session): `user.name`/`user.email` reset to the
+correct `Milomilo777 <117558067+Milomilo777@users.noreply.github.com>` (matches the
+global config and `gh auth status`); `core.hookspath` unset. Every commit made in this
+session BEFORE this fix (everything through `d33d267`) is authored as translation-robot
+on the public GitHub repo — **deliberately NOT rewritten** (history rewrites need an
+explicit owner ask per this repo's own CLAUDE.md, and this is a cosmetic authorship
+field, not a content problem). Owner's call whether that's worth fixing later (would
+need a rebase + force-push on every affected branch, including already-public
+`master` commits going back to at least 2026-09-14 — a bigger, riskier operation than
+it might first sound like).
+
+**2. `opencode/writers-review`'s real fixes were briefly lost, then recovered.** The
+first commit on this branch (`d33d267`) turned out to contain ONLY the new test file
+(190 lines) — the actual 19-file fix diff (320 more lines) was missing, even though it
+had been staged and verified moments earlier. Root cause: the agent had run its own
+`git stash` (labelled "full-prefix-probe", likely while probing something filename/
+prefix-related) before being killed by the OOM reaper, so its real changes were sitting
+in the stash, not the working tree, when the commit happened. **Recovered** via
+`git stash apply <exact-sha>` (never bare `git stash pop` — the stash stack is shared
+across every worktree + the main checkout, per the standing worktree warning), verified
+the recovered diff matched the originally-observed 20-file/510-line change exactly,
+then the stash entry was dropped. The recovered stash ALSO contained out-of-scope edits
+to `core/_proc.py`/`core/logging_setup.py`/`core/search.py` (the agent wandered outside
+its assigned writers/convert/otranscribe scope) — those three were deliberately
+reverted back to clean HEAD and excluded, since they're `search-chapters-infra`'s scope
+and will be covered properly there instead of half-covered here. Final, correct commit:
+`94300bd`.
+
+**Lesson for future sessions:** `git diff --cached --stat` immediately before a commit
+is necessary but NOT sufficient when an autonomous agent might be concurrently running
+its own git commands in the same worktree (stash/pop, its own commits) — a stash
+created and never popped is invisible to a staged-diff check. After a commit, sanity-
+check that `git show --stat HEAD` actually contains what was expected, and check
+`git stash list` (both for the specific worktree and system-wide) before concluding
+"nothing else needs to move."
 
 Each task's own prompt told it to commit AND push its branch itself once its gates +
 self-critique are genuinely clean — so `git branch -r` / `gh pr list` (no PRs opened,
