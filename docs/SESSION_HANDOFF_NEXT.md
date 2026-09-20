@@ -179,15 +179,15 @@ safeguards were kept because they cost nothing against the owner's actual constr
    only. The live app / next release is unaffected by any of this until someone
    deliberately reviews and merges a branch later.
 
-**Currently running in parallel (started ~2026-09-20, same session, check timestamps in
-each log for how stale this list is):**
+**Status (updated as tasks complete — check `git worktree list` + `git branch -r` in the
+main repo for the live ground truth if this table is stale):**
 
-| Task | Bash task id | Location | Branch | Log (session-scratchpad, gone after this
-Claude session/machine ends) |
+| Task | Bash task id | Location | Branch | Status |
 |---|---|---|---|---|
-| Auto-grey incompatible hardware combos | `bt73j12pu` | main tree (`whisper_project_direct_download_v2\`, NOT a worktree — started before this policy change) | none yet — was going to be reviewed+committed manually, that step is now ALSO skipped per the policy above; when it finishes, just commit it to its own branch like the others, do not merge to master | `opencode_run_hw_greying.log` |
-| HTTPS + webhooks (SSRF-guarded) + OpenAI-compatible `/v1/audio/transcriptions` route on `core/server/` | `b860jzfed` | `C:\Users\Owner\Desktop\whisper_app\wt-server-hardening\` (worktree) | `opencode/server-hardening` | `opencode_run_server_hardening.log` |
-| Adversarial review + fix pass on `core/writers/`, `core/convert.py`, `core/integrations/otranscribe.py` only | `bfj8ym81z` | `C:\Users\Owner\Desktop\whisper_app\wt-writers-review\` (worktree) | `opencode/writers-review` | `opencode_run_writers_review.log` |
+| Auto-grey incompatible hardware combos | `bt73j12pu` | was main tree, now `opencode/hardware-greying` | `opencode/hardware-greying` | **DONE, committed+pushed (`7081070`).** Real caveat: the agent's OWN adversarial self-critique + handoff-summary step got cut off by an OpenCode sandbox permission prompt (it tried reading a scratch file outside its `--dir` while re-verifying its own test run) — implementation + pyright (re-confirmed locally, 0/0/0) + full test suite (real captured green output) are solid, but nobody's actually looked at the diff yet, including the agent's own promised second look. **Prioritize this one first when a real review happens.** |
+| HTTPS + webhooks (SSRF-guarded) + OpenAI-compatible `/v1/audio/transcriptions` route on `core/server/` | `b860jzfed` | `C:\Users\Owner\Desktop\whisper_app\wt-server-hardening\` (worktree) | `opencode/server-hardening` | still running as of this note |
+| Adversarial review + fix pass on `core/writers/`, `core/convert.py`, `core/integrations/otranscribe.py` only | `bfj8ym81z` | `C:\Users\Owner\Desktop\whisper_app\wt-writers-review\` (worktree) | `opencode/writers-review` | still running as of this note |
+| Adversarial review + fix pass on `core/search.py`, `core/chapters.py`, `core/_errors.py`, `core/_proc.py`, `core/_threads.py`, `core/paths.py`, `core/logging_setup.py` | `befdou9df` | `C:\Users\Owner\Desktop\whisper_app\wt-search-chapters-infra\` (worktree) | `opencode/search-chapters-infra-review` | just launched; its prompt was explicitly amended to tell it to stay inside its own `--dir` during self-critique, to avoid the exact sandbox-permission cutoff the hardware-greying task hit |
 
 Each task's own prompt told it to commit AND push its branch itself once its gates +
 self-critique are genuinely clean — so `git branch -r` / `gh pr list` (no PRs opened,
