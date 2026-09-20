@@ -119,6 +119,20 @@ def test_enrol_rejects_empty_vector(tmp_path):
         conn.close()
 
 
+def test_enrol_rejects_non_finite_vector(tmp_path):
+    """A NaN/Inf embedding is permanently unmatchable -- persisting it
+    would silently tell the user the enrolment succeeded."""
+    conn = _conn(tmp_path)
+    try:
+        with pytest.raises(ValueError):
+            vp.enrol_with_vector("Alice", [1.0, float("nan")], conn=conn)
+        with pytest.raises(ValueError):
+            vp.enrol_with_vector("Bob", [float("inf"), 0.0], conn=conn)
+        assert vp.list_voices(conn=conn) == []
+    finally:
+        conn.close()
+
+
 def test_delete_voice_removes_row(tmp_path):
     conn = _conn(tmp_path)
     try:
@@ -159,6 +173,26 @@ def test_match_vector_with_no_enrolled_voices_returns_none(tmp_path):
     conn = _conn(tmp_path)
     try:
         assert vp.match_vector([1.0, 0.0], conn=conn) is None
+    finally:
+        conn.close()
+
+
+def test_match_vector_ignores_dimension_mismatched_voices(tmp_path):
+    """Vectors from a different embedding model must never match.
+
+    cosine() returns 0.0 for a dimension mismatch, so at a threshold
+    of 0.0 the old code returned the mismatched voice as a "match" --
+    the exact wrong-name failure this module exists to avoid."""
+    conn = _conn(tmp_path)
+    try:
+        vp.enrol_with_vector("Alice", [1.0, 0.0], conn=conn)  # 2-d row
+        # 3-d query against a 2-d-only DB: no match, not Alice.
+        assert vp.match_vector([1.0, 0.0, 0.0], conn=conn, threshold=0.0) is None
+        # Same-dimension matching still works at the same threshold.
+        vp.enrol_with_vector("Bob", [1.0, 0.0, 0.0], conn=conn)
+        m = vp.match_vector([1.0, 0.0, 0.0], conn=conn, threshold=0.0)
+        assert m is not None
+        assert m.name == "Bob"
     finally:
         conn.close()
 

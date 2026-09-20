@@ -31,6 +31,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import Callable
 
@@ -103,6 +104,12 @@ def _cached_vocals_path(audio_path: str, model: str) -> Path:
 # ``demucs_cache_mb`` config key (0 disables eviction).
 _DEFAULT_CACHE_BUDGET_MB = 2048
 
+# A stem written / used this recently may be mid-read by another
+# concurrent worker process (the app can run several transcription
+# workers at once), so it is never evicted even when the budget is
+# exceeded. Cache hits refresh mtime, making this a use-based grace.
+_CACHE_IN_USE_GRACE_S = 300
+
 
 def _cache_budget_mb() -> int:
     try:
@@ -116,8 +123,10 @@ def prune_cache(budget_mb: int | None = None, *, keep: str | None = None) -> int
     """Evict oldest ``*_vocals.wav`` until the cache is under the byte budget.
 
     Returns the number of files removed. ``keep`` is a path that must
-    never be evicted (the stem we just wrote). A budget <= 0 disables
-    eviction. Never raises — a sweep failure must not break separation.
+    never be evicted (the stem we just wrote). Stems written or used
+    within the last ``_CACHE_IN_USE_GRACE_S`` seconds are kept too --
+    another worker may be mid-read. A budget <= 0 disables eviction.
+    Never raises — a sweep failure must not break separation.
     """
     budget = _cache_budget_mb() if budget_mb is None else max(0, budget_mb)
     if budget <= 0:
@@ -133,15 +142,18 @@ def prune_cache(budget_mb: int | None = None, *, keep: str | None = None) -> int
         return 0
     budget_bytes = budget * 1024 * 1024
     keep_norm = os.path.normcase(os.path.abspath(keep)) if keep else None
+    now = time.time()
     total = 0
     removed = 0
     for p in files:
         try:
-            size = p.stat().st_size
+            st = p.stat()
         except OSError:
             continue
+        size = st.st_size
         is_keeper = bool(keep_norm) and os.path.normcase(os.path.abspath(str(p))) == keep_norm
-        if total + size <= budget_bytes or is_keeper:
+        in_use = (now - st.st_mtime) < _CACHE_IN_USE_GRACE_S
+        if total + size <= budget_bytes or is_keeper or in_use:
             total += size
             continue
         try:
@@ -187,7 +199,20 @@ def separate_vocals(
         return audio_path
 
     cached = _cached_vocals_path(audio_path, model)
-    if cached.exists() and cached.stat().st_size > 1024:
+    hit = False
+    try:
+        hit = cached.exists() and cached.stat().st_size > 1024
+    except OSError:
+        # A concurrent prune removed the stem between exists() and
+        # stat() -- treat as a miss and regenerate it.
+        hit = False
+    if hit:
+        # Count the hit as use: refresh mtime so LRU eviction and
+        # the in-use grace period treat this stem as active.
+        try:
+            os.utime(cached, None)
+        except OSError:
+            pass
         if log:
             log(f"Demucs cache hit → {cached}")
         return str(cached)
@@ -227,15 +252,18 @@ def separate_vocals(
             except OSError as e:
                 if log:
                     log(f"Could not cache vocals stem: {e}")
-                # Caller needs the stem on disk; the rmtree below
-                # would yank it, so return early *before* finally:
-                # by returning, finally still runs — but we want the
-                # stem to survive. Move it out of out_dir first.
+                # Caller needs the stem on disk, but finally: sweeps
+                # out_dir -- move a copy out of the tree first. If
+                # even that fails, hand back the untouched input
+                # (module contract) rather than a path inside the
+                # tree the finally: below is about to delete.
                 survivor = cache_dir() / Path(found).name
                 try:
                     shutil.copyfile(str(found), str(survivor))
                 except OSError:
-                    survivor = found  # last resort: hand back in-tree path
+                    if log:
+                        log("Could not keep vocals stem; using original audio.")
+                    return audio_path
                 return str(survivor)
         if log:
             log(f"Demucs vocals → {cached}")

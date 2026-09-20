@@ -135,6 +135,14 @@ def _prepare_audio_16k_mono(audio_path: str) -> tuple[Any, int]:
             f"ffmpeg binary not available: {e}"
         ) from e
     samples = np.frombuffer(result.stdout, dtype=np.float32)
+    if samples.size == 0:
+        # A valid container with no audio frames (or a header-only
+        # WAV) decodes to nothing with ffmpeg exit code 0. sherpa's
+        # native process() cannot take an empty array and raises /
+        # crashes outside Python; surface the documented exception.
+        raise DiarizationUnavailable(
+            "decoded audio is empty — no samples for diarization"
+        )
     return samples, 16000
 
 
