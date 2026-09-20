@@ -126,3 +126,44 @@ Verified the merge of `opencode/app-widgets-review` into
 - **Test coverage of merged behavior**: New tests (`test_console_widget.py`, `test_error_dialog.py`, `test_tooltip_widget.py`) plus extensions (`test_hardware_wizard.py`, `test_tray.py`) cover all four fixes. The `_libs_available` retry path and the error-dialog `root-grab` path are both exercised. No coverage gaps found.
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/asr-backends-review (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/asr-backends-review`): no conflicts,
+no reconciliation needed. Merge commit 71bf36e on top of 2267360.
+
+Files brought in by the review branch (5c257ec + a5f4ed0):
+- `core/backends/cloud_stt.py`: real past-EOF detection via new
+  `flac_slice_has_audio` ffprobe duration probe (byte-size check kept only as
+  fast first cut; ~8 KiB past-EOF FLAC container defeated the old check),
+  new `_json_body` helper converting truncated reads / non-JSON 200 bodies
+  into clear RuntimeErrors, all three JSON response sites routed through it.
+- `core/backends/google_cloud_stt.py`: unknown-duration STANDARD path now uses
+  shared `flac_slice_has_audio` (imported from cloud_stt) alongside the
+  byte-size first cut.
+- `core/backends/nvidia_asr.py`: `_transformers_available` replaced by
+  `_deps_available` probing transformers + torch + librosa via `find_spec`
+  (with `optional_deps.activate()` first, never importing heavy modules);
+  load path forces reinstall when partially installed.
+- `core/backends/whisper_cpp.py`: `download_default_model` adds
+  `timeout=60` to `urlopen` and unlinks the `.part` file on any
+  network/HTTP failure before re-raising (handles closed after `with` so
+  Windows unlink succeeds).
+- `tests/core/test_backends.py`, `test_cloud_stt.py` (new),
+  `test_google_cloud_stt.py`, `test_nvidia_asr.py`, `test_fixpack_C.py`:
+  coverage for the new EOF probe, `_json_body` error paths, dep-probe and
+  download-cleanup behavior.
+- `OPENCODE_HANDOFF_asr_backends.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git show HEAD` / `git diff 2267360..HEAD`:
+intent matches the review-branch log; no conflict markers, no dropped lines.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations
+  (101 files analyzed).
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2219 passed, 14 skipped,
+  0 failures on the final run. One earlier full-suite run showed a single
+  transient failure in `tests/core/test_search_dialog.py::
+  test_open_selected_with_no_selection_is_a_noop` (`_tkinter.TclError`:
+  missing tk.tcl); it passes in isolation and on rerun and is unrelated to
+  this backends-only merge.
