@@ -351,3 +351,41 @@ Verified the merge of `opencode/llm-infra-review` into
 - **Test coverage of merged behavior**: 79 targeted tests across the 5 merge-specific test files — all pass. Tests exercise: context-fitting with oversized transcripts (including CJK 1-token/char), short transcripts untouched, `ask` preserves question, no-tokenizer fallback, `_parse_json_list` trailing prose, `_truncate_middle` head/tail preservation, gc-guard serialization across threads, gc-guard exception safety (body raises, log_cb raises, callback=None), liveness-tick periodic emission, stop-on-body-exit, stop-on-body-raise, stop-on-log-raise, `.tmp` scratch reaping, non-UTF-8 partial survival.
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/misc-features-review (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/misc-features-review`): no conflicts,
+no reconciliation needed. Merge commit 468c060 on top of fb5114b.
+
+Files brought in by the review branch (812b974 + 7f81dcd):
+- `core/watcher.py`: new `_is_inside()` helper (bytes/str tolerant, drive-safe
+  relpath check) + `on_moved` handler so files dragged/renamed into the folder
+  (Explorer same-volume move, downloader `.part` -> final rename) are picked up;
+  `on_created` refactored through shared `_dispatch`.
+- `core/burn_subs.py`: atomic output via same-directory temp file + `os.replace`
+  (no more truncated/corrupt final on mid-run failure, no clobber of existing
+  file); audio stream-copy first with one-shot AAC retry when ffmpeg stderr
+  shows a container/codec-incompatibility hint; caller-supplied `-c:a` in
+  `extra_args` is respected (no override).
+- `core/recorder.py`: new `_import_failure()` probe catching all exceptions
+  (not just ImportError) so broken native backends (missing PortAudio, DLL-load
+  failures) degrade to unavailable with a specific reason string instead of
+  escaping into UI callbacks.
+- `core/tiling.py`: launch-failure and stop/restart paths now `_reap()` the
+  killed yt-dlp/ffplay children, closing the POSIX zombie pile-up on repeated
+  reconnect attempts / races.
+- `tests/core/test_burn_subs.py` (extended, +120): atomic-output + AAC-fallback
+  coverage. `tests/core/test_watcher.py` (extended, +162): moved-file handling.
+  `tests/core/test_recorder.py` (extended, +37): broken-backend probe.
+  `tests/core/test_fixpack_sw3_tilingthreads.py` (extended, +63): reap paths.
+- `OPENCODE_HANDOFF_misc_features.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git diff HEAD^1 HEAD`: intent matches the
+review-branch log; no conflict markers, no dropped lines.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2290 passed, 14 skipped,
+  0 failures.
+
+Result: clean. No source changes needed.
