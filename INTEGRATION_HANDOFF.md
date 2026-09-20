@@ -300,3 +300,38 @@ Verified the merge of `opencode/entrypoint-webpage-review` into
 - **Test coverage of merged behavior**: 16 targeted tests across the two new files — all pass. Tests exercise: port arg accept/reject (0, 65535, 70000, -1, 65536, non-numeric), explicit flag forwarding, config fallback, --lan host override, 5 parametrized invalid config port cases (including `None`), progress width `Number()` coercion, error message escaping, all known untrusted field escaping sentinel patterns.
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/llm-infra-review (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/llm-infra-review`): no conflicts,
+no reconciliation needed. Merge commit 7028a8b on top of 515b50a.
+
+Files brought in by the review branch (44cce1c + af34ebd + a2001d0 + b3b3e6f + 029f4e0):
+- `core/llm.py`: fit local AI calls to the model's context window
+  (token-counter with model-tokenizer preference + conservative
+  chars-per-token fallback, middle-truncation with marker, shrink-to-tokens
+  via binary search, fit-messages-to-context clamping prompt + answer to
+  `n_ctx`; action-items doc updated to best-effort parse).
+- `core/_checkpoint.py`: `load_checkpoint` catches `ValueError` (not just
+  `json.JSONDecodeError`) so non-UTF-8 partials fall back to full
+  re-transcribe; `sweep_partials` also reaps stale `*.json.tmp` write
+  scratch left by killed workers.
+- `core/task.py`: corrected `clip_timestamps` comment (6 chars).
+- `core/transcriber.py`: liveness-tick / gc-guard exception-safety
+  adjustments covered by new tests.
+- `tests/core/test_llm.py` (extended, +158): context-fitting coverage.
+- `tests/core/test_checkpoint_sweep.py`, `test_fixpack_proc_ckpt.py`
+  (extended): non-UTF-8 partial survival + `.tmp` scratch reaping.
+- `tests/core/test_gc_import_guard.py` (new), `test_liveness_tick.py`
+  (new): gc-guard and liveness-tick exception safety.
+- `OPENCODE_HANDOFF_llm_infra.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git show HEAD`: intent matches the
+review-branch log; no conflict markers, no dropped lines.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2278 passed, 14 skipped,
+  0 failures (63s, exit 0).
+
+Result: clean. No source changes needed.
