@@ -396,6 +396,24 @@ finishes, minimizing idle gap per the owner's explicit ask: `wt-app-services-rev
 `download_service.py`, `format_service.py`, `integrations_service.py` (explicitly NOT
 `app/app.py`/`app/widgets/tabs.py`/`app/dialogs/advanced.py` — already touched today).
 
+**`opencode/app-services-review` DONE (with a caveat) — commit `588f4cd`.** New
+OpenCode failure mode hit (not OOM — logged in `EXTERNAL_MODELS.md`): it constructed a
+malformed doubled-path on a follow-up edit, got correctly sandbox-rejected, and
+stopped instead of retrying. Real work from before that point was salvaged
+(syntax/pyright/full-suite all re-confirmed by me), no self-critique or handoff file
+happened. Two genuine concurrency bugs fixed: a wedged-worker restart path could spawn
+an orphan worker with no event routing able to reach it (holding the ~3GB model in RAM
+forever) when the worker had already been un-registered by `finish_task()`; a
+worker-exit event could be misrouted onto a just-restarted worker because the token
+was read at exit time instead of snapshotted at reader-thread start. Plus a
+download-service fix: `_run_media_process` used the shared `task.process` throughout
+instead of its own captured handle, so a pause+resume reassigning `task.process`
+mid-drain could make the final `wait()` block on/misreport the wrong subprocess. All
+three flagged as needing real review given how concurrency-sensitive they are.
+`opencode/app-dialogs-review` (`bpxq6bc5j`) launched immediately after, covering
+`app/dialogs/transcript_viewer.py`, `model_download.py`, `model_loading.py`,
+`hub_setup.py`, `statistics.py`.
+
 *(Paused-state note below kept for history — no longer the current state.)*
 
 **PAUSED after the 3rd OOM kill today — deliberate, not automatic.** Free memory
