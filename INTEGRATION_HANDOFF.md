@@ -448,3 +448,19 @@ Verification:
   0 failures.
 
 Result: clean. No source changes needed.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/model-hub-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2316 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). Matches the prior commit's claim exactly.
+- **Merge diff**: 3 source files changed (`history.py`, `hub.py`, `model_manager.py`) + 3 extended test files + 1 new doc. No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `history.py` — `_is_transient_lock_error` correctly identifies `SQLITE_BUSY`/`SQLITE_LOCKED` by error name and message fallback; `_check_integrity_or_recover` now skips integrity check on lock instead of rotating a healthy DB. No silent corruption classification.
+  - `hub.py` — `is_safe_model_folder_name` rejects separators, `.`/`..`, NUL, and platform-specific unsafe forms; `model_folder_for` raises `ValueError` for unsafe names (callers already handle). No path traversal possible.
+  - `model_manager.py` — `_merged_catalog` drops entries with unsafe `name`, coerces hostile display fields (`label`/`info` to str, `approx_size_gb` to float); `ensure_model` requires `model.bin` for no-manifest installs, treats manifest fetch failure as best-effort offline use, resumes interrupted downloads via Range (bounded by MAX_DOWNLOAD_ATTEMPTS), clears stale `last_mismatches` after successful verify retry, and raises `DownloadCancelled` on post-download cancellation (both mirror and HF-fallback paths). All logic correct.
+- **Test coverage of merged behavior**: 20+ targeted tests across the 3 merge-specific test files — all pass. Tests exercise: lock vs corruption detection, traversal name rejection, catalog hardening, partial-install detection, resume after transient error, verify retry, cancellation handling, and hostile display field coercion.
+
+Result: clean. No source changes needed.
