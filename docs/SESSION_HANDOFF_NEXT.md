@@ -472,8 +472,20 @@ checkpoint crashed resume instead of falling back like the docs promise; checkpo
 write-scratch (`*.json.tmp`) was never swept, unlike the `.wav`/`.json` partials next
 to it.
 
-`opencode/app-widgets-review` retry running now (`balni2x04`) with the refined
-never-touch-third-party-source, local-only-commit prompt.
+`opencode/app-widgets-review` retry (`balni2x04`) reported "killed" again but (like
+the model-hub case earlier) is confirmed still genuinely alive and working — do not
+assume it's dead just because of that status; check `Get-Process` before touching its
+worktree.
+
+**Owner explicitly asked for 2 MORE parallel DeepSeek sessions on top of whatever's
+running** ("می‌توانی ۲ تا سشن موازی دیگر... باز کنی"). Launched both immediately:
+`opencode/worker-protocol-review` (`brht4koni` — the careful, constrained `core/worker.py`
+review) and `opencode/config-domain-review` (`b7o0h0tim` — `core/config.py` +
+`app/domain/` + `app/observability.py` + `app/__init__.py`). Combined with the still-
+alive app-widgets process, that is **3 concurrent OpenCode processes right now** — the
+same shape that caused the very first OOM kill of the day. Proceeding anyway per the
+owner's direct, informed instruction; all local-only (no push), all in separate
+worktrees (no file-collision risk even if one or more gets killed).
 
 `core/worker.py` deliberately NOT yet queued — the frozen JSON-stdio protocol every
 deliverable depends on, deserves its own careful, narrowly-worded prompt rather than
