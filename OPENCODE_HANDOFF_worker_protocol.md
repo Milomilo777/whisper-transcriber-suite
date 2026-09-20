@@ -160,3 +160,61 @@ real `sys.stdin` has both); documented as best-effort. Left unchanged.
   pop`): 8 failing cases across the 3 files, all green with the fix.
 - Not run: `tests/smoke/` and `tools/e2e_cancel_pause.py` (need the real
   ~3 GB model / test video / network). No third-party source read.
+
+---
+
+## Second-pass independent re-check (muse-spark-1.3-contributor) — 2026-09-20
+
+### First-pass verification (prove-it discipline)
+
+Checked out `master`'s `core/worker.py` over the fixed tree (new tests kept)
+and ran all 8 new first-pass cases: **all 8 FAILED pre-fix** (5 in
+`test_fixpack_worker.py` incl. both at-cap params, plus the done-boundary,
+logging-survival and startup_error-raise cases), then restored the fix and
+confirmed green. The handoff's "8 failing cases" claim reproduces exactly —
+no wrong, incomplete or cosmetic fix found. The done-boundary fix's logic was
+also traced by hand (raise inside `transcribe` still skips `done` via the
+outer `except`, so no double-report on failure).
+
+Adversarial hypotheses investigated and DISMISSED with evidence:
+- Piggybacked-record loss in the readline drain path (oversize tail + next
+  command in one `readline(max+1)`): disproved — dumped real `readline(11)`
+  chunks, `readline` stops at the first newline, so the remainder can never
+  contain a second record. The chunked `read()` path re-processes `rest`
+  after a drain anyway.
+- Stale `_current_task` if `emit("started")` raises: only a broken stdout,
+  process exiting regardless — no production effect, same class as the
+  already-documented item C.
+
+### New real bug found and fixed
+
+**Iterate-only fallback kept the old `len()` cap check.** `read_capped_lines`
+has three paths; the first pass converted the `readline` and `read()` paths
+to `_record_length()` (framing newline excluded) but left the documented
+"best-effort" iterate-only fallback on `len(raw) > max_chars`. Proved live:
+an exactly-at-cap record (`"x"*10 + "\n"`, cap 10) yields `(line, False)` on
+both main paths but `(line, True)` on the fallback. Same bug class as
+first-pass fix 2, same fix: one-line change to `_record_length()`, plus
+`test_read_capped_lines_iterate_only_accepts_record_exactly_at_cap` (with a
+`_IterOnlyStream` helper), verified to FAIL pre-fix and pass post-fix.
+Reachable only for streams with neither `readline` nor `read` (never real
+`sys.stdin`), but the "max accepted record is exactly the cap" contract now
+holds uniformly.
+
+### Out-of-scope change reverted
+
+The first-pass commit silently rewrote `docs/SESSION_HANDOFF_NEXT.md`
+(~240 lines of session history replaced, never mentioned in its handoff or
+commit message). Branch scope is `core/worker.py` + its tests; restored the
+file to `master` verbatim in this pass.
+
+### Final verification
+
+- `python -m pyright app core` → 0 errors, 0 warnings, 0 informations.
+- Worker-scope files (fixpack/control/protocol): 42 passed.
+- Full suite (`tests/`, minus `tests/smoke/`): 0 FAILED/ERROR lines across
+  repeated runs. Two GUI-test flakes seen once each across runs
+  (`test_viewer_confidence_tags_applied` FAILED once, then passed in
+  isolation and in full-file runs; `test_hub_setup_dialog` ERROR once, then
+  clean) — neither imports `core/worker`, both order-dependent, unrelated to
+  this branch.

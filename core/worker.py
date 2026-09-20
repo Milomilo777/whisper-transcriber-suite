@@ -217,7 +217,7 @@ def read_capped_lines(stream: Any, max_chars: int) -> Iterator[tuple[str, bool]]
     read_attr = getattr(stream, "read", None)
     if not callable(read_attr):
         for raw in stream:
-            yield raw, len(raw) > max_chars
+            yield raw, _record_length(raw) > max_chars
         return
     read = cast("Callable[[int], str]", read_attr)
     buf = ""

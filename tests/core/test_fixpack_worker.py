@@ -96,6 +96,17 @@ class _ReadOnlyStream:
         return self._buf.read(n)
 
 
+class _IterOnlyStream:
+    """A pure-iterator stream (no readline, no read), forcing
+    read_capped_lines' iterate-only fallback."""
+
+    def __init__(self, lines: list[str]) -> None:
+        self._lines = lines
+
+    def __iter__(self):
+        return iter(self._lines)
+
+
 def test_read_capped_lines_reports_each_oversized_record_once():
     """One oversized record must produce exactly ONE oversize yield.
 
@@ -127,6 +138,17 @@ def test_read_capped_lines_accepts_record_exactly_at_cap(chunked):
     line = "x" * cap + "\n"
     stream = _ReadOnlyStream(line) if chunked else io.StringIO(line)
     assert list(worker.read_capped_lines(stream, cap)) == [(line, False)]
+
+
+def test_read_capped_lines_iterate_only_accepts_record_exactly_at_cap():
+    """Same at-cap contract on the iterate-only fallback path: it kept the
+    old len() check (newline counted), so an at-cap record was wrongly
+    flagged oversized there while both other paths accepted it."""
+    cap = 10
+    line = "x" * cap + "\n"
+    assert list(worker.read_capped_lines(_IterOnlyStream([line]), cap)) == [
+        (line, False)
+    ]
 
 
 # --------------------------------------------------------------------------
