@@ -615,6 +615,17 @@ touch the `--worker` contract. Two more unescaped `innerHTML` sinks fixed in
 `core/server/static/index.html` (same class as the 2026-07-18 fixpack, two sinks it
 missed). `model_loading.py` (also in scope) was never reached.
 
+Owner confirmed the 3 unrelated processes are their own approved work on a different
+project — no action needed there, was correct to leave alone. Owner asked to keep
+giving the model more tasks. `opencode/worker-correlation-id-design`'s first attempt
+made zero progress (no commit, no uncommitted changes, no stash — a real total loss,
+not salvageable) — relaunched fresh (`byc6z8cxa`), same hands-off-review rule applies.
+Also launched `opencode/transcriber-core-review` (`b5jzqioa9`) — `core/transcriber.py`,
+the ~2000-line heart of the whole pipeline, never had its own dedicated pass today
+(only touched incidentally by the #7 fix and a doc-only comment elsewhere) — given the
+same high-care treatment as `core/worker.py` (explicit invariant list from
+PROJECT_INDEX's gotchas as hard constraints, not suggestions).
+
 *(Paused-state note below kept for history — no longer the current state.)*
 
 **PAUSED after the 3rd OOM kill today — deliberate, not automatic.** Free memory
