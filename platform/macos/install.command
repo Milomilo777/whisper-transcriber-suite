@@ -86,7 +86,9 @@ link_ffmpeg_into_bin() {
   local f p
   for f in ffmpeg ffprobe ffplay; do
     p="$(command -v "$f" 2>/dev/null || true)"
-    [ -n "$p" ] && ln -sf "$p" "$REPO_ROOT/bin/$f"
+    if [ -n "$p" ]; then
+      ln -sf "$p" "$REPO_ROOT/bin/$f"
+    fi
   done
 }
 mkdir -p "$REPO_ROOT/bin"
@@ -133,6 +135,7 @@ else
   fi
   [ "$ffplay_ok" = 1 ] && say "installed static ffplay into bin/ (Video Tiling)" || \
     warn "ffplay fetch failed — Video Tiling will offer a 'Download ffplay' button."
+  rm -rf "$TMP"
 fi
 deactivate
 

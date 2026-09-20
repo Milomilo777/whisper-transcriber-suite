@@ -8,12 +8,12 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 VENV="$REPO_ROOT/.venv"
 cd "$REPO_ROOT"
 
-if [ -d .git ]; then
+if [ -e .git ]; then
   echo "[whisper] updating source (git pull)…"
   git pull --ff-only || echo "[whisper] git pull skipped/failed — update the source manually if needed."
 fi
 
-if [ -d "$VENV" ]; then
+if [ -x "$VENV/bin/python" ]; then
   # shellcheck disable=SC1091
   . "$VENV/bin/activate"
   python -m pip install --upgrade pip wheel >/dev/null

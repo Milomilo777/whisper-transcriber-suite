@@ -123,7 +123,7 @@ cat > "$DESKTOP_DIR/whisper-transcriber-suite.desktop" <<EOF
 Type=Application
 Name=Whisper Transcriber Suite
 Comment=Offline transcription + subtitle downloader
-Exec=$BIN_LOCAL/whisper-transcriber-suite
+Exec="$BIN_LOCAL/whisper-transcriber-suite"
 Icon=$ICON_SRC
 Terminal=false
 Categories=AudioVideo;Audio;Utility;
