@@ -74,6 +74,11 @@ from .._gc_import_guard import gc_disabled_import
 from .._liveness_tick import liveness_tick
 from ..config import load_config
 from .base import Backend, LanguageInfo
+# Shared pure seam from the Gemini backend (same cross-import convention as
+# nvidia_asr's use of plan_chunks/offset_segments): ffmpeg writes a full FLAC
+# container for a past-EOF slice, so the unknown-duration STANDARD path needs
+# an ffprobe duration probe, not a byte-size check, to detect end of file.
+from .cloud_stt import flac_slice_has_audio
 
 logger = logging.getLogger(__name__)
 
@@ -107,10 +112,12 @@ DEFAULT_CHUNK_SECONDS = 55.0
 CHUNK_MIME = "audio/flac"
 CHUNK_EXT = ".flac"
 
-#: A FLAC slice that starts past the real end of file decodes to ~no audio,
-#: leaving only the container header (well under this). Used by the
-#: unknown-duration STANDARD path to detect EOF and stop early. 1 s of 16 kHz
-#: mono FLAC is several KB, so this never trips on a real (non-empty) chunk.
+#: A cheap lower bound for "obviously no audio in this slice". NOTE: this is
+#: NOT the reliable past-EOF test — ffmpeg writes a complete FLAC container
+#: (streaminfo + VORBIS_COMMENT + padding, measured ~8 KiB) even for a slice
+#: that starts past the end of the file, which is well ABOVE this value. The
+#: byte check remains as a fast first cut; ``flac_slice_has_audio`` (imported
+#: from cloud_stt) is what actually detects EOF.
 _EMPTY_FLAC_BYTES = 4096
 
 #: Approximate published Google Cloud Speech-to-Text v2 prices (USD per
@@ -1311,11 +1318,20 @@ class GoogleCloudSttBackend(Backend):
             try:
                 with open(flac_path, "rb") as fp:
                     content = fp.read()
-                # Unknown-length path: once a slice starting past EOF comes
-                # back essentially empty (just a FLAC header, no audio), we
-                # have reached the end of the file — stop instead of firing
-                # the rest of the bounded chunk plan at Google for nothing.
-                if duration_unknown and idx > 0 and len(content) < _EMPTY_FLAC_BYTES:
+                # Unknown-length path: stop once a slice starting past EOF
+                # comes back with no audio, instead of firing the rest of the
+                # bounded chunk plan at Google for nothing. The byte-size test
+                # is only a cheap first cut (a past-EOF slice is still a full
+                # ~8 KiB FLAC container); flac_slice_has_audio is the reliable
+                # ffprobe-based signal.
+                if (
+                    duration_unknown
+                    and idx > 0
+                    and (
+                        len(content) < _EMPTY_FLAC_BYTES
+                        or not flac_slice_has_audio(flac_path)
+                    )
+                ):
                     if log_cb:
                         log_cb(
                             "Google Cloud STT: reached end of file "

@@ -216,7 +216,7 @@ def test_load_reports_friendly_error_on_tokenizers_version_clash(monkeypatch):
     transformers' own dependency_versions_check. load() must route that
     through friendly_load_error(), not a raw f-string of the exception."""
     b = na.NvidiaAsrBackend(config={})
-    monkeypatch.setattr(na, "_transformers_available", lambda: True)
+    monkeypatch.setattr(na, "_deps_available", lambda: True)
 
     def _boom():
         raise ImportError(
@@ -227,6 +227,79 @@ def test_load_reports_friendly_error_on_tokenizers_version_clash(monkeypatch):
     monkeypatch.setattr(na, "_import_torch_and_transformers", _boom)
     assert b.load() is False
     assert "dependency clash" in (b.get_error() or "").lower()
+
+
+# ---------------------------------------------------------------- dep probe
+
+
+def test_deps_available_requires_all_three(monkeypatch):
+    """transformers alone is not enough — torch (optional for transformers)
+    and librosa (Parakeet's mel front-end) are needed too."""
+    import importlib.util
+
+    present = {"transformers", "torch", "librosa"}
+    monkeypatch.setattr(
+        importlib.util, "find_spec",
+        lambda name: object() if name in present else None,
+    )
+    assert na._deps_available() is True
+    present.discard("torch")
+    assert na._deps_available() is False
+    present.discard("librosa")
+    assert na._deps_available() is False
+
+
+def test_load_installs_when_torch_missing(monkeypatch):
+    """A half-present environment (transformers there, torch missing) must
+    still run the on-demand install — and must FORCE it, because
+    optional_deps.install()'s own probe would otherwise short-circuit on
+    transformers and install nothing."""
+    b = na.NvidiaAsrBackend(config={})
+    state = {"deps": False, "install": 0, "force": None}
+
+    monkeypatch.setattr(na, "_deps_available", lambda: state["deps"])
+
+    import core.optional_deps as od
+
+    monkeypatch.setattr(od, "is_available", lambda feature: True)
+
+    def fake_install(feature, log_cb=None, cancel_event=None, timeout=None, force=False):
+        assert feature == "nvidia_asr"
+        state["install"] += 1
+        state["force"] = force
+        state["deps"] = True  # pretend pip succeeded
+        return True
+
+    monkeypatch.setattr(od, "install", fake_install)
+
+    def _boom():
+        raise ImportError("sentinel-stop")
+
+    monkeypatch.setattr(na, "_import_torch_and_transformers", _boom)
+
+    assert b.load() is False
+    assert state["install"] == 1
+    assert state["force"] is True  # half-present -> forced repair
+    assert "sentinel-stop" in (b.get_error() or "")
+
+
+def test_load_skips_install_when_all_deps_present(monkeypatch):
+    """When all three dependencies are importable, no pip install runs."""
+    b = na.NvidiaAsrBackend(config={})
+    monkeypatch.setattr(na, "_deps_available", lambda: True)
+
+    import core.optional_deps as od
+
+    calls: list[int] = []
+    monkeypatch.setattr(od, "install", lambda *a, **k: calls.append(1))
+
+    def _boom():
+        raise ImportError("sentinel-stop")
+
+    monkeypatch.setattr(na, "_import_torch_and_transformers", _boom)
+    assert b.load() is False
+    assert calls == []
+    assert "sentinel-stop" in (b.get_error() or "")
 
 
 # ---------------------------------------------------------------- factory
