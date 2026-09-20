@@ -109,3 +109,74 @@ Tests: `test_output_indexing.py::test_chapter_sidecar_shares_the_output_index`,
 6. Language normalization is still applied at every call site and now only
    ever returns a member of `_WHISPER_LANGS`.
 7. CUDA self-heal fallback logic untouched.
+
+---
+
+## Second-pass independent re-check (muse-spark-1.3-contributor) — 2026-09-20
+
+No code changes. Re-verified the first pass; it holds up. One base-hygiene note
+below, no action needed.
+
+### What was verified from the first pass, and how
+
+Revert-prove (not just read): saved the branch's `core/transcriber.py` aside,
+restored `master`'s copy (`git show master:core/transcriber.py`), ran the six
+touched test files — **14 failures on old code**, all in the new regression
+tests (7 legacy-alias params, multi-value scan, sidecar-share-index,
+orphan-sidecar-bumps-index, alt-backend EOF guard, 2 slice-partial-cleanup,
+picker-Hebrew-kwarg). Restored the branch copy: **95/95 pass**. The tests pin
+real behavior deltas, not prose.
+
+Claim-by-claim spot checks against the live tree:
+
+- **Slice partial cleanup**: all three in-function failure paths
+  (`TimeoutExpired`, `FileNotFoundError`/`OSError`, non-zero exit) now call
+  `_remove_quietly`; the only other throw sites (`mkdir`, `source_key`) run
+  before any file exists. All three callers (main `try/finally`, alt-backend
+  `try/finally`, resume `try/finally`) already clean the success path, and the
+  resume path gets the failure-path fix for free.
+- **Alt-backend EOF guard**: condition mirrors the main path exactly
+  (`duration and start >= float(duration)`, same message), placed before any
+  temp file exists while `duration` is still the source's (line 1784 runs
+  before the remap at 1807). The pre-slice `RuntimeError` is not wrapped in
+  the backend-specific message — the clear error reaches the user.
+- **Language aliases**: every alias target (`he id yi jw no zh`) is a member
+  of `_WHISPER_LANGS`; `app/domain/languages.py` confirmed to ship `iw`
+  (Hebrew, line 43) and `jv` (Javanese, line 53), so the "silently dropped
+  explicit choice" scenario was real. Multi-value scan order and the
+  don't-promote-region-subtags guard reviewed — correct (per-value split on
+  `,` first, only the leading `-` component is ever a candidate).
+- **Sidecar shared index**: `transcript_viewer._chapters_path` does
+  `splitext(opened_json)[0] + ".chapters.json"`, so opening `clip (1).json`
+  looks for exactly the new `clip (1).chapters.json` name — fix and consumer
+  agree. `core/server/jobs.py` filters by `splitext` extension (`.json`),
+  unaffected by the rename; its scan-fallback mtime quirk (newest `.json`
+  wins, sidecar written last) is pre-existing and identical before/after.
+  Old 2-arg `_write_chapter_sidecar` monkeypatches in existing tests remain
+  signature-compatible.
+
+### Anything wrong with the first pass
+
+Nothing. No inflated claims, no incomplete fixes, no cosmetic padding found.
+Two nit-level observations, both deliberately-not-changed (same judgement as
+the first pass): the `xx-BR`-style region tests pass on old code too (they
+pin the implementation strategy, not a regression), and the `docs/SESSION_
+HANDOFF_NEXT.md` diff in `git diff master..HEAD` is stale-base drift (branch
+forked at `5084ceb`; `master` moved on) — the branch's own commit touches
+only `core/transcriber.py` + `tests/` + its handoff file.
+
+### New bugs found in the adversarial pass
+
+None after a real attempt. Surrounding logic audited: guard placement,
+`_indexed_path` vs `_indexed_sidecar_path` naming, sidecar atomicity
+(pid-tid `.part` + `os.replace`, failure returns `None`, never aborts the
+transcript), parallel-worker last-wins parity with transcripts, with/without-
+chapters re-run sequences (no corruption, at worst a stale unused sidecar),
+`duration`-unknown guard skip (same on both paths — consistent).
+
+### Final verification (this pass, on this worktree)
+
+- `python -m pyright app core` → **0 errors, 0 warnings, 0 informations**
+- `python -m pytest tests/ --ignore=tests/smoke` → **2208 passed, 1 skipped**
+  (exit 0; only warning noise is a pre-existing Pillow deprecation in
+  `test_tray.py`).
