@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -204,6 +205,82 @@ def test_model_folder_for_empty_model_name_raises(tmp_path):
         hub.model_folder_for(tmp_path, "")
     with pytest.raises(ValueError):
         hub.model_folder_for(tmp_path, "   ")
+
+
+# ---------- path-traversal guard on model names --------------------------------
+#
+# ``model.name`` reaches model_folder_for from the online-augmentable model
+# catalog too. Before the guard, a catalog entry named ``../../Documents``
+# composed a model_path OUTSIDE the hub; the model download flow then did
+# ``shutil.rmtree(model_path)`` before extracting, so a compromised / MITM'd
+# online catalog could delete an arbitrary directory. The zip-slip guard
+# only protects archive members, never this destination path.
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "../../Documents",
+        "..\\..\\Documents",
+        "models--Systran--../../../Users/Owner/Documents",
+        "models--Systran--..\\..\\evil",
+        "sub/dir",
+        "/etc/passwd",
+        "C:/Windows/Temp/evil",
+        "..",
+        ".",
+        "bad\x00name",
+    ],
+)
+def test_model_folder_for_rejects_traversal_names(tmp_path, name):
+    with pytest.raises(ValueError):
+        hub.model_folder_for(tmp_path, name)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="drive-relative forms are Windows-only")
+def test_model_folder_for_rejects_windows_drive_relative_name(tmp_path):
+    """``C:evil`` is a drive-relative path on Windows (and an ADS form like
+    ``a:b``), which ``Path(...).name`` sees as a different name — rejected
+    there. On POSIX the colon is an ordinary filename character and the
+    check is platform-native, so this cannot be asserted portably."""
+    with pytest.raises(ValueError):
+        hub.model_folder_for(tmp_path, "C:evil")
+
+
+def test_model_folder_for_traversal_would_have_escaped_hub(tmp_path):
+    """Pins the severity: the rejected name is one that resolves OUTSIDE the
+    hub (so a ValueError is the correct response, not a harmless no-op)."""
+    hub_dir = tmp_path / "hub"
+    hostile = "models--Systran--../../../outside"
+    naive = hub_dir / hostile
+    assert naive.resolve() != hub_dir.resolve()
+    with pytest.raises(ValueError):
+        hub.model_folder_for(hub_dir, hostile)
+
+
+def test_model_folder_for_accepts_plain_folder_names(tmp_path):
+    """The guard is structural only — ordinary slugs (including spaces /
+    unicode, which a custom catalog entry may use) keep working."""
+    assert hub.model_folder_for(tmp_path, "faster-whisper-large-v3") == (
+        tmp_path / "models--Systran--faster-whisper-large-v3"
+    )
+    assert hub.model_folder_for(tmp_path, "my custom model") == (
+        tmp_path / "models--Systran--my custom model"
+    )
+    assert hub.model_folder_for(tmp_path, "models--Custom--my-model") == (
+        tmp_path / "models--Custom--my-model"
+    )
+
+
+def test_is_safe_model_folder_name_directly():
+    assert hub.is_safe_model_folder_name("faster-whisper-large-v3") is True
+    assert hub.is_safe_model_folder_name("models--Custom--x") is True
+    assert hub.is_safe_model_folder_name(None) is False
+    assert hub.is_safe_model_folder_name(123) is False
+    assert hub.is_safe_model_folder_name("") is False
+    assert hub.is_safe_model_folder_name("   ") is False
+    assert hub.is_safe_model_folder_name("a/b") is False
+    assert hub.is_safe_model_folder_name("a\\b") is False
 
 
 # ---------- is_path_inside ----------------------------------------------------
