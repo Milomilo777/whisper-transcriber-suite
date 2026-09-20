@@ -389,3 +389,20 @@ Verification:
   0 failures.
 
 Result: clean. No source changes needed.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/misc-features-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2290 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). Matches the prior commit's claim exactly.
+- **Merge diff**: 4 source files changed (`watcher.py`, `burn_subs.py`, `recorder.py`, `tiling.py`) + 4 extended test files + 1 doc. No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `watcher.py` — `_is_inside`: bytes decode, empty-path, cross-drive `(OSError, ValueError)` guards all present; `on_created` needs no inside check (non-recursive schedule); no-attr `dest_path` defaults to ignored string. `on_moved` correctly dispatches `event.dest_path` only when `_is_inside(folder, dest)` returns True.
+  - `burn_subs.py` — Atomic output: `mkstemp` in same directory as `out_path` guarantees `os.replace` is atomic; `finally` unlink covers all failure paths. AAC retry: `_container_rejected_audio` matches only the two known container/codec-incompatibility phrases; `_extra_args_set_audio_codec` respects caller-supplied `-c:a`; retry loop terminal logic (`codec == codecs[-1]` raise, no retry on generic errors/timeout, caller-codec skip) all correct.
+  - `recorder.py` — `_import_failure`: `except Exception` (not `BaseException`, so no `KeyboardInterrupt` swallow); double-import cost is `sys.modules`-cached; non-ImportError failures now return False and `availability_reason()` reports the real cause.
+  - `tiling.py` — `_reap` calls on both launch-failure and not-published paths mirror `_terminate`; `_reap` is best-effort `wait(timeout=2)` that never raises; no-op/harmless on Windows.
+- **Test coverage of merged behavior**: 39 targeted tests across the 4 merge-specific test files — all pass. Tests exercise: moved-in media dispatch (including bytes dest), moved-out ignored, non-media/dirs ignored, `on_created` still works, `on_error` hook fires for moved events, atomic output (no clobber on failure, temp cleanup), AAC retry (container rejection, caller-codec skip, retry failure), broken-backend probe (OSError escapes), reap on launch-failure and not-published paths.
+
+Result: clean. No source changes needed.
