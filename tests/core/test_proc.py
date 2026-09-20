@@ -84,3 +84,26 @@ def test_kill_tree_posix_uses_killpg(monkeypatch):
     monkeypatch.setattr(_proc.os, "killpg", lambda pgid, sig: seen.update(pgid=pgid, sig=sig))
     _proc.kill_process_tree(_FakeProc(pid=555), force=True)
     assert seen["pgid"] == 555
+
+
+def test_kill_tree_refuses_to_signal_its_own_process_group(monkeypatch):
+    """Safety net: if a PID resolves into THIS process's own group (a call
+    site that forgot new_session_kwargs(), or an OS-recycled PID), killpg
+    would signal the app itself along with the tree. The helper must
+    refuse and fall back to signalling just the parent."""
+    monkeypatch.setattr(_proc.os, "name", "posix", raising=False)
+    monkeypatch.setattr(_proc.os, "getpgid", lambda pid: 4242, raising=False)
+    monkeypatch.setattr(_proc.signal, "SIGKILL", 9, raising=False)
+
+    group_signals: list = []
+    monkeypatch.setattr(
+        _proc.os, "killpg",
+        lambda pgid, sig: group_signals.append((pgid, sig)),
+        raising=False,
+    )
+
+    p = _FakeProc(pid=4242)
+    _proc.kill_process_tree(p, force=True)
+
+    assert group_signals == [], "must never killpg the app's own group"
+    assert p.killed is True, "parent-only fallback should still run"
