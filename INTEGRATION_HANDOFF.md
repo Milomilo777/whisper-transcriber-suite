@@ -247,3 +247,38 @@ Verified the merge of `opencode/config-domain-review` into
 - **Test coverage of merged behavior**: 177 targeted tests across all six changed source files and six new/extended test files — all pass. Tests exercise: huge integer in config.json, uncreatable config dir, garbage/truncated HTTP responses, deeply nested JSON files, null project overrides, Infinity/NaN in project overrides, regex metacharacter escaping in subtitle codes, SDK init failure, unwritable cache dir, non-finite timecodes. Pre-fix code would fail these tests (confirmed by the handoff doc's stash-round-trip evidence).
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/entrypoint-webpage-review (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/entrypoint-webpage-review`): no conflicts,
+no reconciliation needed. Merge commit 9c8be84 on top of e691614.
+
+Files brought in by the review branch (3dc7cf5 range):
+- `gui.py`: new `_port_number()` argparse type for `serve --port`
+  (rejects out-of-range/non-integer up front, was `type=int`), plus
+  config-file `server_port` validation in `_cli_serve` (coerce in
+  try/except TypeError/ValueError, range-check 0-65535, clean stderr
+  + exit 1 instead of uncaught OverflowError/ValueError traceback).
+- `core/server/static/index.html`: `start()` catch now wraps `e.message`
+  in `escapeHtml()` before `setSubmitStatus()` innerHTML; `renderSubmit()`
+  progress bar now `(Number(j.progress) || 0)` in the style-width sink.
+- `tests/core/test_gui_serve_args.py`: new — explicit-flag forwarding,
+  config fallback, --lan host, bad --port rejection, 5 parametrized
+  invalid-config-port cases.
+- `tests/core/test_web_page_escaping.py`: new — static sink guards pinning
+  escapeHtml/Number patterns.
+- `OPENCODE_HANDOFF_entrypoint_webpage.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git diff HEAD^1 HEAD`: intent matches the
+review-branch log (4fa0138 + second-pass config-port fix + addendum 3dc7cf5);
+no conflict markers, no dropped lines.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2256 passed, 14 skipped,
+  0 failures on the final clean run. First full run showed a single failure
+  in unrelated `tests/core/test_search_dialog.py::test_open_selected_with_no_selection_is_a_noop`;
+  passes in isolation and the full file (8 tests) passes, and the full-suite
+  re-run is green — transient Tk/state flake unrelated to this merge (merge
+  touches only serve-port handling + LAN page + new tests).
+- Targeted merge-area tests (16 tests across the two new files): all pass.
