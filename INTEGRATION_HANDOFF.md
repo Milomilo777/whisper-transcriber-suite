@@ -335,3 +335,19 @@ Verification:
   0 failures (63s, exit 0).
 
 Result: clean. No source changes needed.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/llm-infra-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2278 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). Matches the prior commit's claim exactly.
+- **Merge diff**: 4 source files changed (`llm.py`, `_checkpoint.py`, `task.py`, `transcriber.py`) + 4 new test files + 1 extended test file + 1 doc. No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `llm.py` — `_token_counter`: prefers model's `tokenize` (correct for CJK), falls back to `_CHARS_PER_TOKEN=3` ratio. Exception-safe — never raises. `_truncate_middle`: preserves head (transcript) and tail (question) for `ask` prompts; handles edge cases `keep_chars <= len(marker)` and `keep_chars >= len(text)`. `_shrink_to_tokens`: binary search on text length converges correctly; `allowed_tokens <= 0` returns `""`. `_fit_messages_to_context`: `budget = max(128, n_ctx - 64)` guarantees minimum 128-token budget; answer capped to `budget // 2` first so long transcripts still get room; `output_tokens` and `prompt_budget` both `max(1, ...)` — no zero-token edge. `_parse_json_list`: `raw_decode` from first `[` correctly ignores trailing prose that `rfind("]")` would have included. `_fit_messages_to_context` is only called in `LLMRunner._chat`, not `RemoteLLMRunner._chat` (correct — remote models manage their own context).
+  - `_checkpoint.py` — `load_checkpoint`: `ValueError` covers both `UnicodeDecodeError` (non-UTF-8 partial) and `json.JSONDecodeError` (both are `ValueError` subclasses). `sweep_partials`: `.json.tmp` files cleaned with `slice_cutoff` (10 min) — correct since they're only visible during an atomic write.
+  - `task.py` / `transcriber.py`: documentation-only comment corrections — `clip_timestamps` historically misnamed; now correctly documents ffmpeg pre-slice + timeline shift. No behavioral change.
+- **Test coverage of merged behavior**: 79 targeted tests across the 5 merge-specific test files — all pass. Tests exercise: context-fitting with oversized transcripts (including CJK 1-token/char), short transcripts untouched, `ask` preserves question, no-tokenizer fallback, `_parse_json_list` trailing prose, `_truncate_middle` head/tail preservation, gc-guard serialization across threads, gc-guard exception safety (body raises, log_cb raises, callback=None), liveness-tick periodic emission, stop-on-body-exit, stop-on-body-raise, stop-on-log-raise, `.tmp` scratch reaping, non-UTF-8 partial survival.
+
+Result: clean. No source changes needed.
