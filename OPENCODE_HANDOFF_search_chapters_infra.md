@@ -103,3 +103,60 @@ Gates: `python -m pyright app core` -> `0 errors, 0 warnings, 0 informations`;
   metadata in `indexed_files` — a schema/design change, out of scope here.
 - `_open_db` still assumes the sqlite build has FTS5 (documented as "always available");
   no fallback engine added.
+
+---
+
+## Independent verification pass (second review instance, same scope)
+
+A second, independently-launched pass over this same scope (a retry
+instance started while the first was still finishing) re-derived every
+change above from scratch. No additional code change was needed: every
+finding reproduced, and nothing new survived adversarial review.
+
+**Proof each fix addresses a real bug.** Restored the pre-fix file blobs
+(`git checkout 670f558 -- core/search.py core/_proc.py
+core/logging_setup.py`), ran the regression tests added above, then
+restored HEAD and confirmed the tree clean:
+
+- 8 of the 9 new tests fail on the pre-fix code:
+  `test_index_file_io_error_keeps_existing_index`,
+  `test_search_multiword_query_matches_non_adjacent_words`,
+  `test_search_fts_score_varies_with_match_quality`,
+  `test_search_falls_back_to_fts_when_semantic_embedder_fails`,
+  `test_index_with_embedder_backfills_after_fts_only_index`,
+  `test_reindex_all_history_isolates_one_bad_file`,
+  `test_kill_tree_refuses_to_signal_its_own_process_group`,
+  `test_prune_removes_only_stale_worker_logs`.
+  The ninth (`test_prune_keeps_old_worker_logs_inside_the_keep_window`) is
+  the over-pruning control and passes before and after by design.
+- All pass on the committed code.
+
+Also confirmed directly against a real sqlite build (not just via the
+tests): FTS5 `bm25()` returns negative ranks, so the old
+`max(0.0, rank)` truly pinned every hit to 1.0; and for non-adjacent
+words, `MATCH '"cat dog"'` (old whole-query phrase quoting) returns zero
+rows while `MATCH '"cat" "dog"'` (new per-token implicit AND) finds them.
+
+**Re-read for further issues — nothing else fixed:**
+- `core/chapters.py` — re-ran empty input, single-segment, zero-duration,
+  missing-`end`, all-empty-text and out-of-range-boundary inputs: one
+  chapter for any non-empty input, `[]` for empty, titles never blank.
+  Clean (matches both earlier audits).
+- `core/_errors.py` / `core/_threads.py` — still no call sites in `app/`
+  or `core/` (additive helpers), retry loop bounded by `attempts`,
+  `retry_on` honoured, every failure logged, exhaustion re-raises. Clean.
+- `core/paths.py` — source/onefile/onedir resolution and the bare-name
+  PATH fallback behave as documented in this worktree. Clean.
+
+**One residual note, deliberately not changed:** `index_file(...,
+embedder=...)` backfills embeddings for FTS-only files, but a transcript
+whose segments all have empty text can never gain embeddings and so is
+re-walked on every semantic reindex. No shipped caller passes an
+`embedder` (`app/dialogs/search_dialog.py` calls `reindex_all_history()`
+keyword-only), so there is no user-visible cost today; recording model
+or "embedding complete" metadata in `indexed_files` would be the schema
+change that makes it exact.
+
+Gates re-run on the committed tree by this pass: `pyright app core` ->
+`0 errors, 0 warnings, 0 informations`; `python -m pytest tests/
+--ignore=tests/smoke -q` -> exit 0 (fully green).
