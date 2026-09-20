@@ -477,6 +477,32 @@ the model-hub case earlier) is confirmed still genuinely alive and working — d
 assume it's dead just because of that status; check `Get-Process` before touching its
 worktree.
 
+`opencode/config-domain-review` DONE, no caveat, fully self-completed, commit
+`fd34c64`, pyright re-confirmed. **7 real defects, several are startup-crash bugs**:
+`null` in a `.whisperproject.json` crashed every transcription in that folder
+(reached raw `int()`/`float()` coercions); `Infinity`/a huge integer in `config.json`
+crashed the WHOLE APP at launch (`math.isfinite()` on a giant int raises
+`OverflowError`, not a survivable check); an uncreatable config dir (blocked path,
+read-only profile) also crashed launch instead of falling back to defaults like every
+other unreadable-config path already does; a malformed Sentry DSN could abort startup
+before the window even exists; a blocked telemetry-cache dir could do the same. Also:
+subtitle language codes reached yt-dlp's `--sub-langs` unescaped, which yt-dlp treats
+as **regex** — a recurrence of a bug class this repo already shipped a fix for once
+(`docs/auto-subtitles-feature.md`'s `.*` → "7 files instead of 1" incident) via a
+different code path. Correctly left alone: the already-flagged telemetry default
+mismatch, and a separate real-but-deliberate `config_url` persistence tension (flagged
+as a product decision, not touched).
+
+`opencode/app-widgets-review` retry DONE, no caveat — the "killed" status was wrong
+again, it finished and self-committed correctly (commit `f5ef1b8`, correct author, did
+NOT push — the local-only prompt update worked). 4 real bugs across
+`hardware_wizard.py`/`tray.py`/`console.py`/`error_dialog.py`, all with tests. Full
+detail in `OPENCODE_HANDOFF_app_widgets.md` on that branch.
+
+`opencode/platform-scripts-review` (`b9aw4memb`) launched to keep pace — static-only
+review of the Linux/macOS install scripts, explicitly forbidden from executing/
+building anything (respects the standing macOS-builds-never rule even unsupervised).
+
 **Owner explicitly asked for 2 MORE parallel DeepSeek sessions on top of whatever's
 running** ("می‌توانی ۲ تا سشن موازی دیگر... باز کنی"). Launched both immediately:
 `opencode/worker-protocol-review` (`brht4koni` — the careful, constrained `core/worker.py`
