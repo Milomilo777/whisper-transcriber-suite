@@ -209,14 +209,24 @@ class HubSetupDialog(tk.Toplevel):
         user picking a non-writable location) BEFORE the model download
         fails 3 GB in.
         """
+        probe: Optional[str] = None
         try:
             os.makedirs(path, exist_ok=True)
             fd, probe = tempfile.mkstemp(prefix=".whisper-write-test-", dir=path)
             os.close(fd)
             os.unlink(probe)
+            probe = None
             return True
         except OSError as e:
             logger.warning("Hub folder %r is not writable: %s", path, e)
+            if probe is not None:
+                # Either the close or the unlink above failed after
+                # mkstemp succeeded — best-effort remove the probe so a
+                # failed check doesn't litter the user's hub folder.
+                try:
+                    os.unlink(probe)
+                except OSError:
+                    pass
             messagebox.showwarning(
                 "Folder not writable",
                 (

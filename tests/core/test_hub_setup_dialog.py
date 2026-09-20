@@ -217,6 +217,54 @@ def test_on_done_callback_swallows_exceptions(tk_root, tmp_path, monkeypatch):
     assert not dlg.winfo_exists()
 
 
+# ---------- writability probe cleanup -----------------------------------------
+
+
+def test_probe_writable_leaves_no_temp_file_when_unlink_fails_once(
+    tk_root, tmp_path, monkeypatch
+):
+    """A transient unlink failure (e.g. an AV scanner holding the file)
+    must not leave the probe file behind in the user's hub folder — the
+    probe is retried once during error cleanup. Pre-fix, the failed
+    unlink was swallowed and the stray '.whisper-write-test-*' file
+    stayed in the folder."""
+    import app.dialogs.hub_setup as hs
+
+    monkeypatch.setattr(hub, "default_hub_folder", lambda: tmp_path / hub.HUB_SUBFOLDER_NAME)
+    monkeypatch.setattr(hs.messagebox, "showwarning", lambda *a, **kw: None)
+
+    dlg = HubSetupDialog(tk_root, {}, save=lambda _c: None)
+    target = tmp_path / "probe_target"
+
+    real_unlink = hs.os.unlink
+    calls = {"n": 0}
+
+    def _flaky_unlink(path, *args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise OSError("transient lock")
+        return real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(hs.os, "unlink", _flaky_unlink)
+
+    assert dlg._probe_writable(str(target)) is False
+    assert list(target.iterdir()) == []
+
+
+def test_probe_writable_returns_true_and_cleans_up_on_success(
+    tk_root, tmp_path, monkeypatch
+):
+    """Happy path unchanged: the probe file is created, deleted, and the
+    folder is left empty."""
+    monkeypatch.setattr(hub, "default_hub_folder", lambda: tmp_path / hub.HUB_SUBFOLDER_NAME)
+
+    dlg = HubSetupDialog(tk_root, {}, save=lambda _c: None)
+    target = tmp_path / "probe_ok"
+
+    assert dlg._probe_writable(str(target)) is True
+    assert list(target.iterdir()) == []
+
+
 # ---------- save_callback failure tolerance -----------------------------------
 
 

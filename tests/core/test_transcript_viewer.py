@@ -510,6 +510,79 @@ def test_parse_hms_ms_rejects_garbage():
     assert _parse_hms_ms("-5") is None
     assert _parse_hms_ms("1:2:3:4") is None
     assert _parse_hms_ms("-1:00:00") is None
+    # Non-finite floats parse as valid Python floats but are not usable
+    # timestamps — int(inf) crashes _fmt_hms later, so reject at the door.
+    assert _parse_hms_ms("inf") is None
+    assert _parse_hms_ms("Infinity") is None
+    assert _parse_hms_ms("1e400") is None
+    assert _parse_hms_ms("nan") is None
+    assert _parse_hms_ms("1:00:inf") is None
+
+
+def test_edit_timestamp_rejects_infinite_value(tmp_path):
+    """Typing "inf" / "1e400" into the timestamp editor must be refused
+    with the inline error, leaving the segment untouched — storing inf
+    used to crash the list rebuild (OverflowError in _fmt_hms)."""
+    from app.dialogs.transcript_viewer import TranscriptViewer, EditTimestampDialog
+
+    segs = [{"start": 1.0, "end": 2.0, "text": "a"}]
+    p = tmp_path / "ets_inf.json"
+    p.write_text(json.dumps(segs), encoding="utf-8")
+
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        viewer = TranscriptViewer(root, str(p))
+        viewer.withdraw()
+        try:
+            dlg = EditTimestampDialog(viewer, 0)
+            dlg.start_var.set("inf")
+            dlg.end_var.set("00:00:03.000")
+            dlg._save()
+            assert viewer.segments[0]["start"] == 1.0
+            assert viewer._dirty is False
+            assert "valid time" in dlg.error_var.get()
+        finally:
+            from app.dialogs import transcript_viewer as tv_mod
+            tv_mod.messagebox.askyesno = lambda *a, **kw: True  # type: ignore[attr-defined]
+            viewer._on_close()
+    finally:
+        root.destroy()
+
+
+def test_viewer_loads_non_finite_timestamps_without_crashing(tmp_path):
+    """A transcript JSON containing the bare ``NaN`` / ``Infinity``
+    literals (Python's json writes and parses those by default) must
+    load as a normal viewer with the bad timestamps shown as 00:00:00,
+    not crash construction with ValueError/OverflowError."""
+    from app.dialogs.transcript_viewer import TranscriptViewer
+
+    p = tmp_path / "nonfinite.json"
+    p.write_text(
+        json.dumps(
+            [
+                {"start": float("nan"), "end": 1.0, "text": "nan start"},
+                {"start": 0.0, "end": float("inf"), "text": "inf end"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        viewer = TranscriptViewer(root, str(p))
+        viewer.withdraw()
+        try:
+            children = viewer.tree.get_children()
+            assert len(children) == 2
+            assert viewer.tree.item(children[0], "values")[0] == "00:00:00"
+            assert viewer.tree.item(children[1], "values")[0] == "00:00:00"
+            assert viewer.tree.item(children[0], "values")[2] == "nan start"
+        finally:
+            viewer._on_close()
+    finally:
+        root.destroy()
 
 
 def test_segment_has_timing_issue_flags_overlap_and_short_duration():
@@ -965,6 +1038,106 @@ def test_bilingual_button_disabled_while_ai_busy(sample_json):
             assert "disabled" in viewer._ai_bilingual_btn.state()
             viewer._set_ai_buttons_busy(False)
             assert "disabled" not in viewer._ai_summarise_btn.state()
+        finally:
+            viewer._on_close()
+    finally:
+        root.destroy()
+
+
+# ---------- playback degradation (missing media / VLC init failure) ----------
+
+
+def _assert_transport_disabled(viewer):
+    assert "disabled" in viewer.play_btn.state()
+    assert "disabled" in viewer.seek_scale.state()
+    for b in viewer._skip_btns:
+        assert "disabled" in b.state()
+
+
+def test_viewer_disables_transport_when_no_media_found(sample_json, monkeypatch):
+    """VLC available but no media file next to the JSON: the embedded
+    player is never built, so Play and the transport bar must be greyed
+    out instead of silently doing nothing."""
+    from app.dialogs import transcript_viewer as tv_mod
+    from app.dialogs.transcript_viewer import TranscriptViewer
+
+    monkeypatch.setattr(tv_mod, "_try_load_vlc", lambda: (object(), ""))
+
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        viewer = TranscriptViewer(root, sample_json)
+        viewer.withdraw()
+        try:
+            assert viewer.media_path is None
+            _assert_transport_disabled(viewer)
+        finally:
+            viewer._on_close()
+    finally:
+        root.destroy()
+
+
+def test_viewer_disables_transport_when_vlc_init_fails(tmp_path, monkeypatch):
+    """python-vlc imports fine but Instance() blows up: the viewer must
+    fall back to the system-player path with the whole transport bar
+    disabled, not leave dead controls enabled."""
+    from app.dialogs import transcript_viewer as tv_mod
+    from app.dialogs.transcript_viewer import TranscriptViewer
+
+    class _BoomVLC:
+        def Instance(self, *_a, **_kw):
+            raise RuntimeError("vlc instance boom")
+
+    media = tmp_path / "clip.mp4"
+    media.write_bytes(b"")
+    p = tmp_path / "clip.json"
+    p.write_text(json.dumps(SAMPLE_SEGMENTS), encoding="utf-8")
+    monkeypatch.setattr(tv_mod, "_try_load_vlc", lambda: (_BoomVLC(), ""))
+
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        viewer = TranscriptViewer(root, str(p))
+        viewer.withdraw()
+        try:
+            assert viewer.media_path is not None
+            assert viewer.vlc_player is None
+            _assert_transport_disabled(viewer)
+        finally:
+            viewer._on_close()
+    finally:
+        root.destroy()
+
+
+# ---------- right-click menu lifecycle ----------------------------------------
+
+
+def test_right_click_menu_destroyed_after_popup(sample_json, monkeypatch):
+    """Each right-click builds a fresh Menu child of the viewer; it must
+    be destroyed once dismissed, or every click leaks another dead Tk
+    widget for the rest of the session."""
+    import types
+
+    from app.dialogs import transcript_viewer as tv_mod
+    from app.dialogs.transcript_viewer import TranscriptViewer
+
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        viewer = TranscriptViewer(root, sample_json)
+        viewer.withdraw()
+        try:
+            monkeypatch.setattr(tv_mod.tk.Menu, "tk_popup", lambda self, x, y: None)
+            monkeypatch.setattr(viewer.tree, "identify_row", lambda _y: "0")
+            for _ in range(3):
+                viewer._on_segment_right_click(
+                    types.SimpleNamespace(y=10, x_root=0, y_root=0)
+                )
+            leftover = [
+                child for child in viewer.winfo_children()
+                if isinstance(child, tk.Menu)
+            ]
+            assert leftover == []
         finally:
             viewer._on_close()
     finally:

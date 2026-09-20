@@ -46,3 +46,71 @@ def test_segment_min_probability_still_handles_real_dicts():
     # A dict word with a non-numeric probability is coerced/skipped by the
     # existing (TypeError, ValueError) guard, not the new isinstance one.
     assert _segment_min_probability({"words": [{"probability": "abc"}]}) is None
+
+
+class _StubLabel:
+    """Minimal stand-in for the ttk.Label the karaoke path configures."""
+
+    def __init__(self) -> None:
+        self.text = ""
+
+    def configure(self, *, text: str = "") -> None:
+        self.text = text
+
+
+def _make_karaoke_viewer(segments):
+    """Build a TranscriptViewer instance WITHOUT running __init__ (no Tk
+    root / no VLC), wired with just the attributes ``_update_karaoke``
+    reads. Same pure-seam pattern as test_fixpack_sw4_karaoke.py."""
+    from app.dialogs.transcript_viewer import TranscriptViewer
+
+    v = TranscriptViewer.__new__(TranscriptViewer)
+    v.segments = segments  # type: ignore[attr-defined]
+    v._active_segment_idx = None  # type: ignore[attr-defined]
+    v._active_word_idx = None  # type: ignore[attr-defined]
+    v._words_lbl = _StubLabel()  # type: ignore[attr-defined]
+
+    def _set_active_segment(idx):
+        v._active_segment_idx = idx  # type: ignore[attr-defined]
+        v._active_word_idx = None  # type: ignore[attr-defined]
+
+    v._set_active_segment = _set_active_segment  # type: ignore[attr-defined]
+    return v
+
+
+def test_update_karaoke_skips_non_dict_words():
+    """A segment whose ``words`` is a list of non-dicts must not raise
+    during a 250-ms playhead tick. Pre-fix ``w.get("start")`` on an int
+    raised AttributeError; the caller swallows it, but live word
+    highlighting for that segment silently never worked."""
+    from app.dialogs.transcript_viewer import TranscriptViewer
+
+    segments = [{"start": 0.0, "end": 2.0, "text": "hello there", "words": [1, 2]}]
+    viewer = _make_karaoke_viewer(segments)
+
+    TranscriptViewer._update_karaoke(viewer, 1.0)  # must not raise
+
+    assert viewer._active_segment_idx == 0  # type: ignore[attr-defined]
+    assert viewer._active_word_idx is None  # type: ignore[attr-defined]
+
+
+def test_update_karaoke_mixed_words_skips_junk_and_highlights_real_word():
+    """Non-dict entries mixed with a real word dict are skipped; the real
+    word still drives the karaoke highlight."""
+    from app.dialogs.transcript_viewer import TranscriptViewer
+
+    segments = [
+        {
+            "start": 0.0, "end": 4.0, "text": "hi",
+            "words": [
+                1,
+                {"word": "hi", "start": 0.0, "end": 4.0, "probability": 0.9},
+                "junk",
+            ],
+        },
+    ]
+    viewer = _make_karaoke_viewer(segments)
+
+    TranscriptViewer._update_karaoke(viewer, 1.0)
+
+    assert viewer._words_lbl.text == "[hi]"  # type: ignore[attr-defined]

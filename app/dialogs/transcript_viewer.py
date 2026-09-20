@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import re
 import subprocess
@@ -166,11 +167,22 @@ def _seg_float(seg: dict[str, Any], key: str, default: float = 0.0) -> float:
     friendly "pick the .json" guard in :meth:`_load_segments`. Coercing
     to ``default`` (0.0) keeps the row visible with a sane timestamp
     instead of taking down the whole window.
+
+    ``NaN`` / ``Infinity`` are also rejected: ``float("nan")`` and
+    ``float("inf")`` parse cleanly, so they used to pass straight
+    through and then blow up one step later in :func:`_fmt_hms`
+    (``int(nan)`` → ``ValueError``, ``int(inf)`` → ``OverflowError``)
+    — the exact construction crash this helper exists to prevent.
+    Python's ``json`` parses the bare ``NaN`` / ``Infinity`` literals
+    some tools emit, so this is real input, not just a hand-edit.
     """
     try:
-        return float(seg.get(key, default))
+        value = float(seg.get(key, default))
     except (TypeError, ValueError):
         return default
+    if not math.isfinite(value):
+        return default
+    return value
 
 
 def _fmt_hms_ms(seconds: float) -> str:
@@ -190,8 +202,11 @@ def _fmt_hms_ms(seconds: float) -> str:
 def _parse_hms_ms(text: str) -> float | None:
     """Parse ``HH:MM:SS.mmm``, ``MM:SS.mmm``, or bare seconds into a
     float second count. Returns ``None`` on anything unparseable (a
-    typo, empty field, negative value) so the caller can show a
-    friendly inline error instead of crashing on a hand-typed value."""
+    typo, empty field, negative or non-finite value) so the caller can
+    show a friendly inline error instead of crashing on a hand-typed
+    value. ``float("inf")`` / ``float("1e400")`` parse successfully but
+    are rejected here — stored as a segment timestamp they would later
+    crash :func:`_fmt_hms` (``int(inf)`` → ``OverflowError``)."""
     text = (text or "").strip()
     if not text:
         return None
@@ -200,7 +215,9 @@ def _parse_hms_ms(text: str) -> float | None:
             value = float(text)
         except ValueError:
             return None
-        return value if value >= 0 else None
+        if not math.isfinite(value) or value < 0:
+            return None
+        return value
     raw_parts = text.split(":")
     if len(raw_parts) not in (2, 3):
         return None
@@ -215,7 +232,10 @@ def _parse_hms_ms(text: str) -> float | None:
         m, s = parts
     else:
         h, m, s = parts
-    return h * 3600 + m * 60 + s
+    total = h * 3600 + m * 60 + s
+    if not math.isfinite(total):
+        return None
+    return total
 
 
 def _segment_has_timing_issue(segments: list[dict[str, Any]], idx: int) -> bool:
@@ -567,9 +587,10 @@ class TranscriptViewer(tk.Toplevel):
                    command=self._remove_fillers).pack(side="left", padx=(0, 4))
         help_icon(
             topbar,
-            "Deletes standalone filler words (um, uh, like, you know, ...) "
-            "from every segment's text. Only removes whole filler words, "
-            "not real content — review with Ctrl+Z / re-open if unsure.",
+            "Deletes standalone filler words (um, uh, er, …) from every "
+            "segment's text. Only whole filler words are removed, never "
+            "real content — review the segment list before saving if "
+            "unsure (there is no undo).",
         ).pack(side="left", padx=(0, 4))
         ttk.Button(topbar, text="Save changes  (Ctrl+S)",
                    command=self._save_changes).pack(side="left", padx=(0, 4))
@@ -739,9 +760,13 @@ class TranscriptViewer(tk.Toplevel):
                 justify="left",
             )
             note.pack(anchor="w", pady=(8, 0))
+        if self.vlc_mod is None or not self.media_path:
+            # No embedded player, or no media file was found next to the
+            # JSON → the transport bar can't control anything, so grey it
+            # out instead of presenting controls that silently do nothing.
+            # "Open in system player" stays enabled (it has its own
+            # "no media found" message).
             self.play_btn.state(["disabled"])
-            # No embedded player → the transport bar can't control
-            # anything, so grey it out. "Open in system player" stays.
             self._set_transport_enabled(False)
 
     def _set_transport_enabled(self, enabled: bool) -> None:
@@ -1426,6 +1451,10 @@ class TranscriptViewer(tk.Toplevel):
             # UI afterward). grab_release() is a safe no-op if there is
             # nothing left to release.
             menu.grab_release()
+            # A fresh Menu is built per right-click; Tk keeps every child
+            # widget alive until destroyed, so without this each right-click
+            # leaked one more dead Menu for the viewer's lifetime.
+            menu.destroy()
 
     def _open_json_folder(self) -> None:
         folder = os.path.dirname(self.json_path) or "."
@@ -1583,8 +1612,10 @@ class TranscriptViewer(tk.Toplevel):
             self.after(0, self._bind_vlc_window)
         except Exception as e:  # noqa: BLE001
             logger.warning("VLC init failed: %s", e)
-            self.vlc_player = None
-            self.play_btn.state(["disabled"])
+            # Same degraded state as a failed HWND bind: no player, and
+            # the play/transport controls greyed out so they don't sit
+            # enabled while silently doing nothing.
+            self._disable_embedded_playback()
 
     def _bind_vlc_window(self) -> None:
         """Bind libvlc to the video canvas — only once it is realized.
@@ -1937,9 +1968,14 @@ class TranscriptViewer(tk.Toplevel):
         if not words:
             self._words_lbl.configure(text=(seg.get("text") or "").strip())
             return
-        # Find the active word inside the segment.
+        # Find the active word inside the segment. Non-dict entries are
+        # skipped for the same reason as in _segment_min_probability: a
+        # hand-edited words list (e.g. ``[1, 2]``) must not raise here —
+        # a failure aborts the whole highlight update for that tick.
         active_w_idx: int | None = None
         for w_idx, w in enumerate(words):
+            if not isinstance(w, dict):
+                continue
             try:
                 ws = float(w.get("start", 0.0))
                 we = float(w.get("end", ws))
@@ -1954,6 +1990,8 @@ class TranscriptViewer(tk.Toplevel):
         # Build the karaoke string. Active word wrapped in […].
         parts: list[str] = []
         for w_idx, w in enumerate(words):
+            if not isinstance(w, dict):
+                continue
             token = str(w.get("word", "") or "").strip()
             if not token:
                 continue

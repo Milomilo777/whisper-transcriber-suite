@@ -110,6 +110,18 @@ class ModelDownloadDialog(tk.Toplevel):
         self.success = False
         self.error = None
         self.not_writable_dir = None
+        # A retry can be triggered right after the user hit Cancel (the
+        # cancel raced the not-writable error out of ensure_model). Without
+        # clearing the event, the retry worker sees a stale cancellation,
+        # raises DownloadCancelled immediately, and the dialog closes having
+        # silently done nothing.
+        self.cancel_event.clear()
+        try:
+            # Re-enable the button a previous Cancel disabled, or the user
+            # cannot cancel the retry either.
+            self.cancel_btn.configure(state="normal")
+        except tk.TclError:
+            pass
         from core._threads import safe_thread
         safe_thread(self._worker, name="model-download-dialog")
 

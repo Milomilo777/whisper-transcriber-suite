@@ -38,6 +38,18 @@ def test_seg_float_coerces_non_numeric_and_none_to_default():
     assert _seg_float({"start": 7}, "start") == 7.0
 
 
+def test_seg_float_rejects_non_finite_values():
+    """``float("nan")`` / ``float("inf")`` parse successfully, so they
+    used to pass through — then ``_fmt_hms`` raised ValueError
+    (``int(nan)``) / OverflowError (``int(inf)``) during construction.
+    They must coerce to the default like any other junk value."""
+    from app.dialogs.transcript_viewer import _seg_float
+
+    for bad in (float("nan"), float("inf"), float("-inf"), "nan", "inf", "-inf", "1e400"):
+        assert _seg_float({"start": bad}, "start") == 0.0, bad
+        assert _seg_float({"start": bad}, "start", 9.0) == 9.0, bad
+
+
 class _StubTree:
     """Minimal stand-in for the ttk.Treeview the init path touches."""
 
@@ -106,6 +118,31 @@ def test_populate_listbox_survives_non_numeric_timestamps():
     # The text/speaker columns are untouched by the timestamp coercion.
     assert rows[0]["values"][2] == "european decimal"
     assert rows[0]["values"][1] == "A"
+
+
+def test_populate_listbox_survives_non_finite_timestamps():
+    """A segment whose start is NaN / end is Infinity (bare literals
+    Python's ``json`` accepts) must render as 00:00:00 instead of
+    raising ValueError / OverflowError out of the synchronous init
+    path. Pre-fix this raised during construction."""
+    from app.dialogs.transcript_viewer import TranscriptViewer
+
+    segments = [
+        {"start": float("nan"), "end": 1.0, "text": "nan start"},
+        {"start": 0.0, "end": float("inf"), "text": "inf end"},
+        {"start": 2.0, "end": 3.0, "text": "legit"},
+    ]
+    viewer = _make_viewer(segments)
+
+    TranscriptViewer._populate_listbox(viewer)
+
+    rows = viewer.tree.rows  # type: ignore[attr-defined]
+    assert len(rows) == 3
+    assert rows[0]["values"][0] == "00:00:00"
+    assert rows[1]["values"][0] == "00:00:00"
+    assert rows[2]["values"][0] == "00:00:02"
+    assert rows[0]["values"][2] == "nan start"
+    assert rows[1]["values"][2] == "inf end"
 
 
 if __name__ == "__main__":  # pragma: no cover
