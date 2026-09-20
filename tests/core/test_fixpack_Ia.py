@@ -351,7 +351,7 @@ def test_run_task_finally_skips_process_owned_by_a_newer_run(monkeypatch):
     # attach the fresh live process.
     svc.maybe_update_yt_dlp = lambda _t: None  # type: ignore[attr-defined]
 
-    def _media_phase(_t):
+    def _media_phase(_t, run_generation=None):
         # The new run (resume) bumped the generation past ours and owns proc.
         task._run_generation = 999  # type: ignore[attr-defined]
         task.process = new_proc
@@ -383,7 +383,7 @@ def test_run_task_finally_reaps_its_own_process(monkeypatch):
     )
     svc.maybe_update_yt_dlp = lambda _t: None  # type: ignore[attr-defined]
 
-    def _media_phase(_t):
+    def _media_phase(_t, run_generation=None):
         task.process = own_proc  # our own run owns it; no newer generation
 
     svc._media_phase = _media_phase  # type: ignore[attr-defined]

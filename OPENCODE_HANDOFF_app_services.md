@@ -89,3 +89,91 @@ made by this pass.
   0 failed (this sandbox's tcl is broken so the summary line doesn't print,
   but exit code 0 + zero FAILED/ERROR markers confirm clean; smoke excluded
   per instructions — needs hardware/network).
+
+---
+
+## Second-pass independent re-check, corrective addendum (muse-spark-1.3-contributor) — 2026-09-20, supersedes the "clean" section above
+
+The section above (committed as 7761776 while this re-check was running)
+concludes "genuinely clean second pass, no code changes" and specifically
+claims the pause→resume race needs "no code change; logic holds". That
+verdict is wrong, and I proved it by execution, not reading. This addendum
+corrects the record; the code changes below are the evidence.
+
+### First-pass (588f4cd) verification — agrees with the section above
+
+I independently re-proved all three fix families with revert-test-restore:
+
+1. `spawn_token` snapshot: old-token exit correctly dropped by
+   `worker_for_event`, new-token exit would misroute onto the live worker.
+2. Watchdog orphan guard: reverted the `if w not in app.workers: continue`
+   gate → poll restarted a retired temp worker (1 orphan restart, bug
+   reproduced); restored → 0 restarts. Fix is real.
+3. Download `proc` aliasing + `if task.process is proc` guard, and the
+   `_run_task` pre-media paused early-return: reverted the pre-media guard →
+   a paused task still entered the subtitle phase (bug reproduced);
+   restored → zero phase calls. Fix is real.
+
+Nothing wrong found with the first pass itself.
+
+### New bugs found (missed by both the first pass and the section above)
+
+Root cause, common to all three: the new pause guards test the `paused`
+FLAG, but pause→fast-resume clears the flag and bumps `_run_generation`
+while the old run is still blocked — so the flag alone can no longer
+identify the old run as stale. Concrete failure scenarios, each reproduced
+before fixing:
+
+1. **Stale run launches a duplicate download (wide window).** Old run
+   blocked in `maybe_update_yt_dlp` (up to 60 s network stall) or the
+   subtitle drain; user pauses then resumes; new run starts; old run emerges,
+   sees `paused == False`, and walks into subtitle + media phases. Repro:
+   mock `maybe_update_yt_dlp` to bump the generation (what a concurrent
+   resume-run does) → OLD `_run_task` calls `['subtitle', 'media']`
+   (duplicate concurrent yt-dlp processes on the same task/`.part`).
+2. **Stale run skips nothing after subtitles (same class).** Generation
+   bumped during `_subtitle_phase` → old code still calls `_media_phase`.
+3. **Stale caption-only run posts a clobbering error.** Old run blocked in
+   caption-fetch `wait()`; resume wins the race; killed proc wrote nothing →
+   old code falls into `not wrote_files` → posts `("error", …)`, which flips
+   the fresh run's row to error and releases its download slot. Repro with
+   mocked Popen (rc=1, resume side-effect in `wait()`): OLD posts
+   `['subtitle_status', 'log', 'subtitle_status', 'error']`.
+
+### Fixes applied (`app/services/download_service.py`)
+
+- `_run_task`: new `_superseded()` closure (generation mismatch vs `my_gen`);
+  pre-media and post-subtitle early-returns now bail on
+  `_superseded() or paused`, and the caption/main `except` error posts are
+  suppressed for superseded runs. `_finalize_own_process` (untouched) already
+  used the same predicate for reaping.
+- `_run_caption_only_task(task, run_generation=None)` and
+  `_media_phase(task, run_generation=None)`: optional generation param
+  (default `None` = old behavior, so existing direct callers are unaffected);
+  a superseded run returns silently instead of posting terminal
+  error/paused/done events. The `_media_phase` guard sits BEFORE the cookie
+  retry so a stale run can't spawn a second yt-dlp that would clobber
+  `task.process`.
+- `tests/core/test_fixpack_Ia.py`: two `_media_phase` mock signatures updated
+  for the new optional kwarg (my change initially broke
+  `test_run_task_finally_skips_process_owned_by_a_newer_run` with TypeError —
+  caught by the suite, fixed, full suite green since).
+
+### Verification of the new fixes
+
+- F1a/F1b/F2 repros pass on fixed code (stale run: zero phases / media
+  skipped / no error posted) and fail on old logic (duplicate phases /
+  error posted) — same revert discipline as step 2.
+- `pyright app/ core/`: 0 errors / 0 warnings / 0 informations.
+- `pytest tests/ --ignore=tests/smoke`: **2186 passed, 1 skipped, 0 failed**
+  (two consecutive full runs; smoke excluded per instructions).
+- One note: `test_search_dialog.py::test_open_selected_with_no_selection_is_a_noop`
+  failed once in an early partial run but passes solo and in both full runs —
+  order-dependent flake in unrelated UI code, not caused by this diff.
+- Two stray untracked files with control-char names
+  (`C…UsersOwnerAppDataLocalTempopencodepytest_out[2].txt`) pre-date this
+  pass (likely test-output redirects); left untouched, not staged.
+
+Bottom line: the "clean, no further changes" verdict in the section above
+does not hold. The first pass was good but incomplete; the resume-race
+holes above are now closed with execution-backed proof.

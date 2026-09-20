@@ -1116,12 +1116,23 @@ class DownloadService:
             _reap_process(task.process)
             task.process = None
 
+        def _superseded() -> bool:
+            # A pause+resume re-uses the SAME task object and spawns a NEW
+            # _run_task that bumps _run_generation. If that happened while
+            # THIS run was blocked (yt-dlp update check, subtitle drain),
+            # the paused flag alone can't identify this run as stale —
+            # resume already cleared it — but the generation can. A stale
+            # run must stay silent and launch nothing, or it would start
+            # a duplicate download concurrently with the fresh run.
+            return getattr(task, "_run_generation", my_gen) != my_gen
+
         if getattr(task, "caption_only", False):
             try:
                 self.maybe_update_yt_dlp(task)
-                self._run_caption_only_task(task)
+                self._run_caption_only_task(task, run_generation=my_gen)
             except Exception as e:  # noqa: BLE001
-                app.download_events.put(("error", task, str(e)))
+                if not _superseded():
+                    app.download_events.put(("error", task, str(e)))
             finally:
                 _finalize_own_process()
             return
@@ -1144,8 +1155,11 @@ class DownloadService:
             # continuing here would fetch subtitles / start a full media
             # download for a task the user explicitly paused — possibly
             # concurrently with the next waiting download process_queue()
-            # just started in that freed slot.
-            if getattr(task, "paused", False):
+            # just started in that freed slot. The generation check covers
+            # the resume race: pause then fast resume clears the flag while
+            # this run was still blocked, and only a newer run's bump
+            # proves this one stale.
+            if _superseded() or getattr(task, "paused", False):
                 return
 
             if task.subtitles_enabled and not task.cancelled:
@@ -1153,12 +1167,13 @@ class DownloadService:
                 # Re-check after the subtitle phase: a pause during it only
                 # kills the subtitle process, and without this the media
                 # download would still run.
-                if task.cancelled or getattr(task, "paused", False):
+                if _superseded() or task.cancelled or getattr(task, "paused", False):
                     return
 
-            self._media_phase(task)
+            self._media_phase(task, run_generation=my_gen)
         except Exception as e:  # noqa: BLE001
-            app.download_events.put(("error", task, str(e)))
+            if not _superseded():
+                app.download_events.put(("error", task, str(e)))
         finally:
             _finalize_own_process()
 
@@ -1509,7 +1524,7 @@ class DownloadService:
             app.download_events.put(("subtitle_status", task, "completed (no files written)"))
             app.download_events.put(("log", task, "--- Subtitle phase: completed without writing files ---"))
 
-    def _run_caption_only_task(self, task: "VideoDownloadTask") -> None:
+    def _run_caption_only_task(self, task: "VideoDownloadTask", run_generation: int | None = None) -> None:
         """"Use captions instead" shortcut: fetch only the existing captions
         and convert them to the transcript formats chosen in Advanced
         settings ('output_formats'). Never downloads media and never
@@ -1563,6 +1578,16 @@ class DownloadService:
         # Only clear the slot if it is still ours (mirrors _subtitle_phase).
         if task.process is proc:
             task.process = None
+        if (
+            run_generation is not None
+            and getattr(task, "_run_generation", run_generation) != run_generation
+        ):
+            # Pause+fast-resume while this run was blocked in the caption
+            # fetch: a newer run owns the task now and will do all terminal
+            # reporting. Posting "error" here (the killed process wrote
+            # nothing) would flip the fresh run's row to error and release
+            # its download slot out from under it.
+            return
 
         if task.cancelled:
             for partial in wrote_files:
@@ -1727,7 +1752,7 @@ class DownloadService:
         return_code = proc.wait()
         return return_code, last_error_line, last_line, saved_path, saved_is_final
 
-    def _media_phase(self, task: "VideoDownloadTask") -> None:
+    def _media_phase(self, task: "VideoDownloadTask", run_generation: int | None = None) -> None:
         app = self.app
         cookies_configured = bool(
             _cookies_from_browser_args(app.app_config.get("cookies_from_browser", ""))
@@ -1736,6 +1761,15 @@ class DownloadService:
         return_code, last_error_line, last_line, saved_path, _ = (
             self._run_media_process(task, self.build_download_command(task))
         )
+
+        if run_generation is not None and getattr(task, "_run_generation", run_generation) != run_generation:
+            # Pause+fast-resume while this run was draining the killed
+            # media process: a newer run owns the task now, so stay
+            # completely silent — no cookie retry (a second yt-dlp that
+            # would clobber task.process), no "error" post (it would flip
+            # the fresh run's row to error and release its slot). A stale
+            # "paused" done event is likewise already guarded in _finish.
+            return
 
         # A cookie-jar read failure (browser still open, locked profile,
         # unsupported keyring, ...) is a LOCAL problem, not the site
