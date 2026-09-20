@@ -21,13 +21,17 @@ LOG_BACKUP_COUNT = 3
 
 UI_LOGGER_NAME = "whisper.ui"
 
-# worker_log_filename() gives every worker process its own file; nothing
-# else ever removes them, so the log dir would grow one file per worker
-# (plus rotations) forever. _prune_worker_logs() keeps the newest few and
-# drops the stale rest.
+# worker_log_filename() gives every worker process its own file, and
+# core/voice_clone_worker.py names its own voiceclone-worker-<pid>.log;
+# nothing else ever removes them, so the log dir would grow one file per
+# worker (plus rotations) forever. _prune_worker_logs() keeps the newest
+# few and drops the stale rest. The globs below must match exactly the
+# two known producer names — a bare "*worker-*.log*" also catches
+# unrelated user files that merely contain "worker-" (e.g. a dropped-in
+# "reworker-output.log") and would delete them.
 WORKER_LOG_KEEP = 10
 WORKER_LOG_MAX_AGE_DAYS = 14
-_WORKER_LOG_GLOB = "*worker-*.log*"
+_WORKER_LOG_GLOBS = ("worker-*.log*", "voiceclone-worker-*.log*")
 
 _configured = False
 
@@ -42,11 +46,12 @@ def _prune_worker_logs(log_dir: Path) -> None:
     file that is locked by another process is simply skipped.
     """
     try:
-        candidates = sorted(
-            (p for p in log_dir.glob(_WORKER_LOG_GLOB) if p.is_file()),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )
+        found: dict[Path, float] = {}
+        for glob in _WORKER_LOG_GLOBS:
+            for p in log_dir.glob(glob):
+                if p.is_file() and p not in found:
+                    found[p] = p.stat().st_mtime
+        candidates = sorted(found, key=lambda p: found[p], reverse=True)
     except OSError:
         return
     cutoff = time.time() - WORKER_LOG_MAX_AGE_DAYS * 24 * 60 * 60

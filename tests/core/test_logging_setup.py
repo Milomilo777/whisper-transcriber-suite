@@ -58,6 +58,24 @@ def test_prune_removes_only_stale_worker_logs(tmp_path, monkeypatch):
     assert unrelated.exists(), "non-worker files must never be pruned"
 
 
+def test_prune_ignores_unrelated_file_containing_worker(tmp_path, monkeypatch):
+    """Only the two known producer names (worker-<pid>.log,
+    voiceclone-worker-<pid>.log) are ever prune candidates. An unrelated
+    file that merely contains "worker-" must survive even when stale and
+    past the keep window — the old "*worker-*.log*" glob deleted it."""
+    keep = getattr(ls, "WORKER_LOG_KEEP", 10)
+    recent = [_touch(tmp_path / f"worker-{i}.log", 1.0) for i in range(keep)]
+    caught_out = _touch(tmp_path / "reworker-output.log", 30.0)
+
+    _run_setup_logging(tmp_path, monkeypatch)
+
+    for path in recent:
+        assert path.exists(), f"recent worker log was pruned: {path.name}"
+    assert caught_out.exists(), (
+        "unrelated file containing 'worker-' must never be pruned"
+    )
+
+
 def test_prune_keeps_old_worker_logs_inside_the_keep_window(tmp_path, monkeypatch):
     """Even a very old worker log is kept while it is one of the newest
     WORKER_LOG_KEEP files, so a long-lived process's live log can't be

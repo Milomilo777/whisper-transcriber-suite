@@ -160,3 +160,67 @@ change that makes it exact.
 Gates re-run on the committed tree by this pass: `pyright app core` ->
 `0 errors, 0 warnings, 0 informations`; `python -m pytest tests/
 --ignore=tests/smoke -q` -> exit 0 (fully green).
+
+---
+
+## Second-pass independent re-check (muse-spark-1.3-contributor)
+
+**Step 2 — verified 3 first-pass fixes by revert-and-fail (each reverted
+surgically on a scratch copy, relevant test shown to fail, file restored,
+test shown to pass again; tree confirmed clean via `git status` after):**
+
+- Score fix (`max(0.0, rank)` -> logistic): reverted the one score line,
+  `test_search_fts_score_varies_with_match_quality` FAILED; restored,
+  passed. Also proved directly against real sqlite: the two `bm25()` ranks
+  are `-1.44e-06` / `-7.65e-07`, so the old map pinned both to exactly
+  `1.0` while the new map gives distinct ordered scores.
+- Multi-word AND (whole-query phrase quoting -> per-token implicit AND):
+  reverted `_fts_match_query` to phrase quoting,
+  `test_search_multiword_query_matches_non_adjacent_words` FAILED;
+  restored, passed. Direct sqlite proof: `MATCH '"cat dog"'` returns 0
+  rows, `MATCH '"cat" "dog"'` finds the segment.
+- I/O-error guard (`OSError -> []` -> `OSError -> None` + skip delete):
+  reverted just the `return None` to `return []`,
+  `test_index_file_io_error_keeps_existing_index` FAILED at the
+  "must not delete existing index rows" assertion; restored, passed.
+
+The remaining first-pass claims (semantic-fallback wrap, embedding
+backfill, reindex isolation, killpg self-group guard, worker-log pruning)
+were verified by reading the diff plus the passing regression tests, not
+by individual reverts — the three reverts above cover the highest-risk
+semantic changes.
+
+**Step 3 — fresh adversarial review, one real bug found and fixed:**
+
+- `_prune_worker_logs` glob `*worker-*.log*` deleted unrelated user files
+  that merely contain "worker-". Concrete repro (run pre-fix): drop a
+  30-day-old `reworker-output.log` into the log dir alongside 10 recent
+  worker logs -> `_prune_worker_logs` deleted it (`survives: False`).
+  Only two producers ever write worker logs — `worker-<pid>.log`
+  (`worker_log_filename()`, used by `core/worker.py`) and
+  `voiceclone-worker-<pid>.log` (`core/voice_clone_worker.py:84`) — and
+  the existing test explicitly requires both to be pruned, so the glob
+  was replaced with exactly those two patterns
+  (`_WORKER_LOG_GLOBS = ("worker-*.log*", "voiceclone-worker-*.log*")`).
+  Post-fix the same repro keeps `reworker-output.log` while still pruning
+  stale `worker-900.log`, `worker-900.log.1` and
+  `voiceclone-worker-901.log`. Regression test added:
+  `test_prune_ignores_unrelated_file_containing_worker`.
+- Checked and found clean (no change): `heuristic_title` /
+  `detect_chapter_boundaries` edge inputs, `_errors` retry bounds,
+  `_threads` BaseException propagation, `paths` resolution order,
+  `_proc` guard (falls through to parent-only signal correctly),
+  `_fts_match_query` against 35 adversarial queries (`"`, `*`, `OR`,
+  `NEAR(`, `-`, parens/brackets, quotes-only, 5000-char token,
+  unicode arrows — zero `OperationalError`s), `reindex_all_history`
+  atomicity (mid-loop embedder failure rolls back via `with conn:`,
+  then per-file guard logs and continues), `_prune_worker_logs`
+  TOCTOU (stat-inside-`try` already converts a concurrent delete into a
+  skip). Residuals from the first pass (no model identity on embeddings;
+  empty-text transcripts re-walked on semantic passes — no shipped caller
+  passes an `embedder`, confirmed by grep) stay documented, not fixed.
+
+**Gates on final tree:** `python -m pyright app core` ->
+`0 errors, 0 warnings, 0 informations`;
+`python -m pytest tests/ --ignore=tests/smoke` ->
+`2196 passed, 1 skipped` (skip pre-existing).
