@@ -28,6 +28,37 @@ import tkinter as tk
 from tkinter import ttk
 
 
+def _compute_position(master: "tk.Misc", width: int, height: int) -> tuple[int, int]:
+    """Return the top-left ``(x, y)`` for centring a ``width`` x ``height``
+    dialog over ``master``.
+
+    Falls back to centring on the primary screen when the master is not
+    viewable: Windows reports a minimised window's root coordinates as
+    -32000, so the parent-based maths would place the dialog far
+    off-screen.
+
+    Negative parent coordinates are kept as-is. A parent living on a
+    monitor left of / above the primary has negative root coordinates
+    and must not be yanked onto the primary display; the clamp to
+    non-negative only applies when the parent itself is on the primary
+    display, whose bounds winfo_screenwidth/height describe.
+    """
+    if not master.winfo_viewable():
+        return (
+            (master.winfo_screenwidth() - width) // 2,
+            (master.winfo_screenheight() - height) // 2,
+        )
+    x = master.winfo_rootx() + (master.winfo_width() - width) // 2
+    y = master.winfo_rooty() + (master.winfo_height() - height) // 2
+    if (
+        0 <= master.winfo_rootx() < master.winfo_screenwidth()
+        and 0 <= master.winfo_rooty() < master.winfo_screenheight()
+    ):
+        x = max(x, 0)
+        y = max(y, 0)
+    return x, y
+
+
 class ModelLoadingDialog(tk.Toplevel):
     """Modal "Loading Whisper model…" dialog with an indeterminate bar.
 
@@ -48,6 +79,13 @@ class ModelLoadingDialog(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.cancel)
 
         self.success: bool = False
+        # Set by whichever close path (cancel / mark_success_and_close)
+        # runs first. The App closes this dialog from the worker-event
+        # poll loop via a deferred post_to_main callback, which can
+        # arrive after the user already clicked Cancel; without this
+        # guard that late callback flipped success back to True after
+        # the caller had already read False and torn the worker down.
+        self._closed: bool = False
 
         body = ttk.Frame(self, padding=18)
         body.grid(row=0, column=0, sticky="nsew")
@@ -85,9 +123,13 @@ class ModelLoadingDialog(tk.Toplevel):
         # returns the real laid-out width rather than 1.
         self.update_idletasks()
         try:
-            x = master.winfo_rootx() + (master.winfo_width() - self.winfo_width()) // 2
-            y = master.winfo_rooty() + (master.winfo_height() - self.winfo_height()) // 2
-            self.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+            x, y = _compute_position(master, self.winfo_width(), self.winfo_height())
+            # "+-500" (not "-500") is Tk's accepted form for an absolute
+            # negative position; "-500" alone means 500 px from the right
+            # screen edge (verified on Windows/Tk 8.6). A parent on a
+            # monitor left of the primary legitimately yields negative
+            # coordinates, so this form must be preserved.
+            self.geometry(f"+{x}+{y}")
         except tk.TclError:
             pass
 
@@ -104,7 +146,14 @@ class ModelLoadingDialog(tk.Toplevel):
         We do NOT kill the worker from here — the caller owns the
         worker lifecycle and reads :attr:`success` after
         ``wait_window`` returns to decide what to do.
+
+        Idempotent, and never runs after :meth:`mark_success_and_close`
+        (or vice versa): whichever path closed the dialog first owns
+        the final :attr:`success` value.
         """
+        if self._closed:
+            return
+        self._closed = True
         self.success = False
         try:
             self.pb.stop()
@@ -124,7 +173,15 @@ class ModelLoadingDialog(tk.Toplevel):
         worker emits its ``ready`` event. Sets :attr:`success`
         ``True`` then closes the dialog so ``wait_window`` returns
         in the caller.
+
+        No-op if the user already closed the dialog (Cancel or the
+        window's X button) — a deferred ``post_to_main`` call can land
+        after that, and flipping :attr:`success` then would contradict
+        the False the caller has already read.
         """
+        if self._closed:
+            return
+        self._closed = True
         self.success = True
         try:
             self.pb.stop()
