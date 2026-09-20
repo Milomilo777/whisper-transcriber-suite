@@ -8,6 +8,8 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING
 
+from app.widgets.error_dialog import show_error
+
 if TYPE_CHECKING:
     from app.app import App
 
@@ -16,7 +18,19 @@ def show_statistics(app: "App") -> None:
     if not app.history:
         messagebox.showinfo("Statistics", "history.db is unavailable.", parent=app)
         return
-    s = app.history.stats()
+    try:
+        s = app.history.stats()
+    except Exception as e:  # noqa: BLE001
+        # A locked / unreadable history.db (I/O error, another process
+        # holding the file) would otherwise raise inside the menu callback,
+        # which Tk reports only to stderr — the user sees the menu item do
+        # nothing at all. Surface it like every other history failure.
+        show_error(
+            app, "Statistics",
+            "Could not read the transcription history.",
+            detail=str(e),
+        )
+        return
 
     top = tk.Toplevel(app)
     top.title("Statistics")
