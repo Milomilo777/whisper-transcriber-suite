@@ -805,6 +805,65 @@ def _safe_filename(name: str) -> str:
     return cleaned
 
 
+def _parse_legacy_ipv4(host: str) -> ipaddress.IPv4Address | None:
+    """Parse ``inet_aton``-style legacy numeric IPv4 forms.
+
+    :mod:`ipaddress` only accepts the dotted-decimal form, but the stacks
+    that actually fetch a URL (libc resolvers, yt-dlp, ffmpeg, browsers)
+    historically also accept a single decimal/hex integer
+    (``2130706433`` == ``127.0.0.1``), octal parts (``0177.0.0.1``), hex
+    parts (``0x7f.0.0.1``), and short forms (``127.1``). Without this, such
+    a literal sails past the :func:`ipaddress` check below and — on a host
+    whose own ``getaddrinfo`` also rejects the form — falls through the
+    fail-open DNS path as "allowed", even though the fetch layer may still
+    interpret it as loopback. Returns the address, or ``None`` when ``host``
+    is not a numeric form at all (ordinary DNS names always land here).
+    """
+    if not host or len(host) > 64:
+        return None
+    if host.startswith(".") or host.endswith(".") or ".." in host:
+        return None
+    parts = host.split(".")
+    if len(parts) > 4:
+        return None
+    nums: list[int] = []
+    for part in parts:
+        if not part or len(part) > 18:
+            return None
+        try:
+            if part[:2].lower() == "0x":
+                digits = part[2:]
+                if not digits or any(
+                    c not in "0123456789abcdefABCDEF" for c in digits
+                ):
+                    return None
+                nums.append(int(digits, 16))
+            elif len(part) > 1 and part.startswith("0"):
+                # Leading-zero means octal to inet_aton — and "08"/"09" are
+                # simply invalid there (not decimal 8/9).
+                if any(c not in "01234567" for c in part):
+                    return None
+                nums.append(int(part, 8))
+            elif part.isascii() and part.isdigit():
+                nums.append(int(part, 10))
+            else:
+                return None
+        except ValueError:
+            return None
+    # inet_aton range rules: every part but the last must fit in one byte;
+    # the last part fills all remaining bytes (e.g. "127.1" -> 127.0.0.1).
+    width = (1,) * (len(nums) - 1) + (5 - len(nums),)
+    value = 0
+    for num, size in zip(nums, width):
+        if num >= 1 << (8 * size):
+            return None
+        value = (value << (8 * size)) | num
+    try:
+        return ipaddress.IPv4Address(value)
+    except ValueError:
+        return None
+
+
 def is_safe_url(url: str) -> bool:
     """True iff ``url`` is an http(s) URL with a host that is not an obvious
     internal / cloud-metadata target.
@@ -853,12 +912,19 @@ def is_safe_url(url: str) -> bool:
             or ip.is_multicast or ip.is_reserved
         )
 
-    # A literal-IP host: decide directly, no DNS.
+    # A literal-IP host: decide directly, no DNS. Besides strict
+    # dotted-decimal, also catch legacy inet_aton numeric forms (a fetch
+    # stack may treat "2130706433" as 127.0.0.1 even where getaddrinfo
+    # does not — see _parse_legacy_ipv4).
     literal = host.strip("[]")
     try:
         ip = ipaddress.ip_address(literal)
     except ValueError:
         ip = None
+    if ip is None:
+        legacy = _parse_legacy_ipv4(literal)
+        if legacy is not None:
+            return not _addr_blocked(legacy)
     if ip is not None:
         return not _addr_blocked(ip)
 
