@@ -1364,11 +1364,14 @@ def transcribe_chunk_to_text(
 
 
 def _clip_timestamps_arg(task: TranscriptionTask) -> str | None:
-    """faster-whisper ``clip_timestamps`` value for a Transcribe-tab time
-    slice, or None for the whole file.
+    """Clip marker for a Transcribe-tab time slice, or None for the whole file.
 
     Returns "start,end" (process only that span) or "start" (from start to
-    the end of the file). A zero/blank bound means "unset" on that side, so
+    the end of the file). Despite the historical name, the value is NOT
+    passed to faster-whisper as ``clip_timestamps`` (that decodes the whole
+    file and hung on multi-hour input) — it only marks a clipped task so
+    the run pre-slices the span with ffmpeg (see ``_clip_slice_path``
+    below). A zero/blank bound means "unset" on that side, so
     leaving both = the whole file (None).
     """
     start = getattr(task, "clip_start", None)
@@ -1480,9 +1483,11 @@ def transcribe(
 
         transcribe_kwargs = _build_transcribe_kwargs(task)
         # Optional time-slice (Transcribe-tab time range): process only
-        # [clip_start, clip_end] via clip_timestamps. The batched pipeline
-        # doesn't accept clip_timestamps, so a clipped task uses the plain
-        # model (still fast for a short slice).
+        # [clip_start, clip_end]. The string below is just a clip-present
+        # marker (the actual span is pre-sliced with ffmpeg further down,
+        # never passed as clip_timestamps). The batched pipeline can't be
+        # used for a clipped task, so it falls back to the plain model
+        # (still fast for a short slice).
         clip = _clip_timestamps_arg(task)
         use_batched = PIPELINE is not None and clip is None
         runner: Any = PIPELINE if use_batched else MODEL

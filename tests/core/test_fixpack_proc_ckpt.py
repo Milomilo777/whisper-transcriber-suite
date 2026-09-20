@@ -233,3 +233,24 @@ def test_zero_byte_source_not_validated_after_stat_failure(tmp_path, monkeypatch
         "a stat-failure (size=0) checkpoint must NOT validate a 0-byte source"
     )
     assert "size" in reason.lower()
+
+
+# --------------------------------------------------------------------------
+# 4. a non-UTF-8 checkpoint file reads as "corrupt" (None), never raises
+# --------------------------------------------------------------------------
+
+
+def test_load_checkpoint_returns_none_on_non_utf8_corruption(tmp_path, monkeypatch):
+    """``load_checkpoint`` documents "None if missing/corrupt". A file
+    whose bytes are not valid UTF-8 raises ``UnicodeDecodeError`` inside
+    ``json.load`` — a ``ValueError``, not a ``JSONDecodeError`` — which
+    used to escape into ``resume_transcription`` and fail the task
+    instead of silently falling back to a full re-transcribe."""
+    monkeypatch.setattr(_checkpoint, "user_data_dir", lambda: tmp_path)
+
+    src = tmp_path / "media.mp4"
+    src.write_bytes(b"x" * 16)
+    cp_path = _checkpoint.checkpoint_path(str(src))
+    cp_path.write_bytes(b'\xff\xfe{"schema_version": 1}')  # invalid UTF-8
+
+    assert _checkpoint.load_checkpoint(str(src)) is None

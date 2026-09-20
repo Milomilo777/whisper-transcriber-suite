@@ -39,8 +39,10 @@ class TranscriptionTask:
         self.source_download: Any = None
         # Optional transcription time-slice (Transcribe-tab time range).
         # Wall-clock seconds into the source; both None = the whole file.
-        # Fed to faster-whisper as clip_timestamps so only this span is
-        # processed; segment timestamps stay on the original timeline.
+        # The span is pre-sliced to a temp WAV via ffmpeg and the results
+        # are shifted back onto the original timeline — deliberately NOT
+        # passed to faster-whisper as clip_timestamps, which decodes the
+        # whole file and hung on multi-hour input (see core/transcriber.py).
         self.clip_start: float | None = None
         self.clip_end: float | None = None
         # Output formats for THIS task (srt/json/docx/pdf/...). Set at

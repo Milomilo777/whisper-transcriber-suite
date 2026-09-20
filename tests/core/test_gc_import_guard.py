@@ -14,6 +14,8 @@ from __future__ import annotations
 import gc
 import threading
 
+import pytest
+
 from core._gc_import_guard import gc_disabled_import
 
 
@@ -29,6 +31,54 @@ def test_gc_disabled_import_restores_prior_state():
             assert gc.isenabled() is was_enabled
         finally:
             gc.enable()
+
+
+def test_gc_disabled_import_restores_state_when_the_body_raises():
+    """Exception safety: a heavy import that blows up must still leave
+    process-wide GC exactly as it found it."""
+    gc.enable()
+    with pytest.raises(RuntimeError, match="boom"):
+        with gc_disabled_import():
+            assert gc.isenabled() is False
+            raise RuntimeError("boom")
+    assert gc.isenabled() is True
+
+
+def test_gc_disabled_import_keeps_gc_off_if_it_was_off_when_the_body_raises():
+    gc.disable()
+    try:
+        with pytest.raises(RuntimeError, match="boom"):
+            with gc_disabled_import():
+                raise RuntimeError("boom")
+        assert gc.isenabled() is False
+    finally:
+        gc.enable()
+
+
+def test_gc_disabled_import_releases_the_guard_when_the_body_raises():
+    """The lock must be released on the exception path, or the very next
+    guarded import anywhere in the process deadlocks forever.
+
+    The re-entry runs on a thread with a join timeout so a regression
+    fails the test instead of hanging the whole suite.
+    """
+    gc.enable()
+    with pytest.raises(RuntimeError, match="boom"):
+        with gc_disabled_import():
+            raise RuntimeError("boom")
+
+    entered = threading.Event()
+
+    def second() -> None:
+        with gc_disabled_import():
+            entered.set()
+
+    t = threading.Thread(target=second, daemon=True)
+    t.start()
+    t.join(timeout=2.0)
+    assert entered.is_set(), "guard lock was not released after the body raised"
+    assert not t.is_alive()
+    assert gc.isenabled() is True
 
 
 def test_gc_disabled_import_serializes_across_two_different_callers():

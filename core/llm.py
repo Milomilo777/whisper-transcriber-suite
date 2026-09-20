@@ -5,7 +5,8 @@ The AI Layer (v0.8 Phase 2) provides post-processing of a finished
 transcript, from either provider:
 
   * **Summarise**  — bullet-point digest of the conversation.
-  * **Action items** — extracted as a JSON list (GBNF-constrained).
+  * **Action items** — extracted as a JSON list (best-effort parse of
+    the model's response).
   * **Ask question** — single-turn Q&A scoped to the transcript.
   * **Translate**  — language-pair translation through the LLM, so
     we don't need a separate NLLB model.
@@ -280,6 +281,123 @@ def _strip_wrapped_quotes(text: str) -> str:
     return t
 
 
+# ---------------------------------------------------------------- context fitting
+#
+# The local model is loaded with a fixed ``n_ctx`` (4096 by default) and
+# llama-cpp-python raises ``ValueError`` *before decoding* once the
+# rendered prompt reaches that many tokens. The transcript viewer feeds
+# whole transcripts to ``summarise`` / ``action_items`` / ``ask`` /
+# ``translate``, so anything longer than a few thousand words used to
+# fail with a raw "Requested tokens ... exceed context window" error
+# instead of a result. Fit the request to the window instead: trim an
+# oversized prompt and never let prompt + answer exceed ``n_ctx``.
+
+#: Slice of ``n_ctx`` charged to the chat template + special tokens.
+_CONTEXT_OVERHEAD_TOKENS = 64
+#: How many tokens each message costs the chat template itself.
+_PER_MESSAGE_OVERHEAD_TOKENS = 4
+#: Fallback chars-per-token ratio when the loaded model exposes no
+#: usable ``tokenize``. English runs ~4 chars/token; 3 keeps the
+#: estimate on the safe side for other scripts.
+_CHARS_PER_TOKEN = 3
+#: Inserted where an over-long prompt was cut apart.
+_TRUNCATION_MARKER = " […truncated to fit the model's context window…] "
+
+
+def _token_counter(llama: Any) -> Callable[[str], int]:
+    """Return an exact token counter for a loaded model, else an estimate.
+
+    Prefers the model's own tokenizer — correct for CJK and other
+    scripts where a chars-per-token estimate is badly wrong — and falls
+    back to a conservative character ratio if the loaded object does
+    not expose a usable ``tokenize``. Never raises.
+    """
+    tokenize = getattr(llama, "tokenize", None)
+    if callable(tokenize):
+        def _count(text: str) -> int:
+            try:
+                tokens: Any = tokenize(text.encode("utf-8"), add_bos=False)
+                return len(tokens)
+            except Exception:  # noqa: BLE001 — counting must never break a call
+                return max(1, len(text) // _CHARS_PER_TOKEN)
+        return _count
+    return lambda text: max(1, len(text) // _CHARS_PER_TOKEN)
+
+
+def _truncate_middle(text: str, keep_chars: int) -> str:
+    """Keep ``keep_chars`` characters from the head and tail of ``text``.
+
+    The middle-ellipsis shape is deliberate: an ``ask`` prompt ends with
+    the user's question and the transcript starts the text, so cutting
+    only the middle preserves both.
+    """
+    if keep_chars >= len(text):
+        return text
+    if keep_chars <= len(_TRUNCATION_MARKER):
+        return text[:keep_chars]
+    remaining = keep_chars - len(_TRUNCATION_MARKER)
+    head = remaining // 2
+    return text[:head] + _TRUNCATION_MARKER + text[len(text) - (remaining - head):]
+
+
+def _shrink_to_tokens(
+    text: str, allowed_tokens: int, count_tokens: Callable[[str], int]
+) -> str:
+    """Trim ``text`` (head + tail) until ``count_tokens`` says it fits."""
+    if allowed_tokens <= 0:
+        return ""
+    if count_tokens(text) <= allowed_tokens:
+        return text
+    low, high = 0, len(text)
+    while low < high:
+        mid = (low + high + 1) // 2
+        if count_tokens(_truncate_middle(text, mid)) <= allowed_tokens:
+            low = mid
+        else:
+            high = mid - 1
+    return _truncate_middle(text, low)
+
+
+def _fit_messages_to_context(
+    messages: list[dict[str, str]],
+    max_tokens: int,
+    n_ctx: int,
+    count_tokens: Callable[[str], int],
+) -> tuple[list[dict[str, str]], int]:
+    """Clamp one chat request so prompt + answer fit inside ``n_ctx``.
+
+    Only the longest message (the transcript) is shrunk, and any room
+    freed by that shrink is handed to the answer. Returns a new message
+    list plus the output-token cap to pass to the model.
+    """
+    n_ctx = max(1, int(n_ctx))
+    budget = max(128, n_ctx - _CONTEXT_OVERHEAD_TOKENS)
+    contents = [str(m.get("content") or "") for m in messages]
+    overhead = _PER_MESSAGE_OVERHEAD_TOKENS * len(messages)
+    counts = [count_tokens(c) for c in contents]
+    # Cap the answer to half the window first, so a long transcript still
+    # gets the other half instead of the request failing outright.
+    output_tokens = max(1, min(int(max_tokens), max(1, budget // 2)))
+    prompt_budget = max(1, budget - output_tokens)
+    total = sum(counts)
+    if total + overhead > prompt_budget:
+        longest = max(range(len(contents)), key=lambda i: counts[i])
+        allowed = prompt_budget - overhead - (total - counts[longest])
+        before = counts[longest]
+        contents[longest] = _shrink_to_tokens(
+            contents[longest], max(1, allowed), count_tokens
+        )
+        counts[longest] = count_tokens(contents[longest])
+        logger.warning(
+            "Prompt exceeds the model's %d-token context window; "
+            "truncated the transcript from %d to %d tokens.",
+            n_ctx, before, counts[longest],
+        )
+    output_tokens = max(1, min(int(max_tokens), budget - overhead - sum(counts)))
+    fitted = [dict(m, content=c) for m, c in zip(messages, contents)]
+    return fitted, output_tokens
+
+
 class LLMRunner:
     """Wraps a single llama_cpp.Llama instance.
 
@@ -333,6 +451,9 @@ class LLMRunner:
         with self._lock:
             self.load()
             assert self._llama is not None
+            messages, max_tokens = _fit_messages_to_context(
+                messages, max_tokens, self.cfg.n_ctx, _token_counter(self._llama)
+            )
             out = self._llama.create_chat_completion(
                 messages=messages,
                 max_tokens=max_tokens,
@@ -384,7 +505,11 @@ def _parse_json_list(raw: str) -> list[str]:
     """Best-effort JSON-array parse of an LLM response.
 
     Strips common chat-style wrappers (markdown fences, leading
-    explanatory text) before parsing. Returns ``[]`` on any error.
+    explanatory text) before parsing, and decodes only the first JSON
+    value that starts at the array bracket — a chatty model that appends
+    a sentence AFTER a perfectly good array (``["a"] Let me know…``)
+    used to make the whole response unparseable, silently turning real
+    action items into "none detected". Returns ``[]`` on any error.
     """
     if not raw:
         return []
@@ -398,16 +523,13 @@ def _parse_json_list(raw: str) -> list[str]:
         if lines and lines[-1].strip().startswith("```"):
             lines = lines[:-1]
         text = "\n".join(lines).strip()
-    # Trim leading non-JSON prose by finding the first '[' that
-    # opens the array.
-    if not text.startswith("["):
-        start = text.find("[")
-        end = text.rfind("]")
-        if start == -1 or end == -1 or end <= start:
-            return []
-        text = text[start:end + 1]
+    # Find the first '[' that opens the array; leading prose and any
+    # trailing prose after the array's closing bracket are both ignored.
+    start = text.find("[")
+    if start == -1:
+        return []
     try:
-        data = json.loads(text)
+        data, _end = json.JSONDecoder().raw_decode(text, start)
     except json.JSONDecodeError:
         return []
     if not isinstance(data, list):
