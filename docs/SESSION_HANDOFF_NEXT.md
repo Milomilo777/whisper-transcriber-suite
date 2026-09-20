@@ -148,6 +148,71 @@ in the whisper_app project's memory folder): no sensitivity about OpenCode/China
 model access for THIS repo specifically (public already), parallel OpenCode calls
 explicitly permitted for this initiative.
 
+---
+
+## ⚠️ POLICY CHANGE, TIME-BOXED — owner instruction, same 2026-09-20 session, do NOT
+## treat as permanent without the owner restating it
+
+Owner's reasoning (verbatim intent): the DeepSeek V4.1 Flash 4x usage-limit promotion on
+the Go plan ends TODAY (see EXTERNAL_MODELS.md), and Claude Code's own session has a
+separate 5-hour usage cap — a Sonnet sub-agent review after every single DeepSeek item
+would burn the 5h Claude cap long before the DeepSeek throughput is actually used up.
+Owner is also away from the keyboard for the next 5 hours and explicitly does NOT want
+Claude spending its own budget on per-item verification today. Explicit instruction:
+skip Sonnet-subagent verification per item for the rest of today; push DeepSeek as hard
+and as broad ("plow the repo module by module") as the remaining 4x window allows.
+
+**How this was actually implemented (my judgment call on mechanism, not something the
+owner dictated in these exact terms — this is what "best method, hands-free" produced):**
+this does NOT mean unreviewed AI output goes straight into what the app ships. Three
+safeguards were kept because they cost nothing against the owner's actual constraints
+(no Claude-session tokens, no slowdown of DeepSeek throughput):
+
+1. **git worktrees, one per parallel OpenCode task, each its own branch** — prevents two
+   concurrent DeepSeek processes from corrupting each other by writing the same files at
+   once (a real risk of literal parallel execution against one shared working tree).
+2. **Every task still must pass pyright app/core (0/0/0) + the full hermetic pytest
+   suite + its own required adversarial self-critique pass, ALL run by the OpenCode
+   process itself** — free (uses the OpenCode/DeepSeek quota, not Claude's), objective,
+   catches outright breakage. This is a floor, not real correctness verification.
+3. **Nothing lands on `master`.** Every task commits + pushes its OWN feature branch
+   only. The live app / next release is unaffected by any of this until someone
+   deliberately reviews and merges a branch later.
+
+**Currently running in parallel (started ~2026-09-20, same session, check timestamps in
+each log for how stale this list is):**
+
+| Task | Bash task id | Location | Branch | Log (session-scratchpad, gone after this
+Claude session/machine ends) |
+|---|---|---|---|---|
+| Auto-grey incompatible hardware combos | `bt73j12pu` | main tree (`whisper_project_direct_download_v2\`, NOT a worktree — started before this policy change) | none yet — was going to be reviewed+committed manually, that step is now ALSO skipped per the policy above; when it finishes, just commit it to its own branch like the others, do not merge to master | `opencode_run_hw_greying.log` |
+| HTTPS + webhooks (SSRF-guarded) + OpenAI-compatible `/v1/audio/transcriptions` route on `core/server/` | `b860jzfed` | `C:\Users\Owner\Desktop\whisper_app\wt-server-hardening\` (worktree) | `opencode/server-hardening` | `opencode_run_server_hardening.log` |
+| Adversarial review + fix pass on `core/writers/`, `core/convert.py`, `core/integrations/otranscribe.py` only | `bfj8ym81z` | `C:\Users\Owner\Desktop\whisper_app\wt-writers-review\` (worktree) | `opencode/writers-review` | `opencode_run_writers_review.log` |
+
+Each task's own prompt told it to commit AND push its branch itself once its gates +
+self-critique are genuinely clean — so `git branch -r` / `gh pr list` (no PRs opened,
+check branches directly) on the main repo should show what actually landed, independent
+of whether this Claude session is still alive to report it.
+
+**For whoever picks this up next (could be later today, could be next session):**
+- `cd` into the main repo, `git fetch`, `git branch -r` — see which of the branches
+  above (and maybe more, if this list is stale — check `git worktree list` in the main
+  repo too) actually got pushed.
+- **Do NOT merge any of these branches to master without an actual review pass first**
+  — that review was deliberately deferred today, not eliminated. Pyright/tests passing
+  is not the same as a human or Sonnet-subagent actually having looked at the diff,
+  especially for `opencode/server-hardening` (touches SSRF-guard logic — genuinely
+  security-sensitive) and for anything the hardware-greying task or a from-scratch
+  module-review task produced without ever having its own adversarial pass double-
+  checked by anyone but itself.
+- If more of today's 4x DeepSeek window is still live and nobody has picked new work,
+  reasonable next module-review candidates (non-overlapping with the three above):
+  `core/diarization.py` + `core/voiceprint.py`, or `core/backends/` (the 5 ASR engine
+  adapters), or the dictation-hotkey feature (bigger, deliberately deferred earlier
+  today — now maybe in scope if throughput allows). Same worktree-per-task pattern.
+- Once a branch is actually reviewed and looks good: normal merge to master, then it
+  can go through the usual commit/push/changelog process like any other change.
+
 ## 🟢 2026-09-14 — "Clone Your Voice / Text to Voice" second-opinion adversarial review (Kimi Code) — 7 more real bugs found + fixed
 
 Follows the 2026-09-13 review+fix round below (Claude subagent + Codex). Owner asked for an
