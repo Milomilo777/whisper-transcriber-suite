@@ -508,3 +508,34 @@ Verified the merge of `opencode/model-loading-review` into
 - **Test coverage of merged behavior**: 9 targeted tests (all pass) — pure `_compute_position` cases (primary parent, on-screen clamp, negative-coordinate parent, minimised fallback), close-path ordering (late-ready after Cancel, Cancel after ready, repeated closes), and geometry integration (negative-coordinate parent, minimised parent). The new tests confirm the fix: pre-fix `_compute_position` would return `(0, 150)` for the negative-coordinate parent test; pre-fix close ordering would set `success = True` after `cancel(); mark_success_and_close()`.
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/platform-scripts-review (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/platform-scripts-review`): no conflicts,
+no reconciliation needed. Merge commit 3170354 on top of 1874254
+(second parent 2eb66e8).
+
+Files brought in by the review branch (5fe27cc + 2eb66e8):
+- `platform/linux/install.sh`: `trap 'rm -rf "$TMP"' EXIT` for static-ffmpeg
+  temp dir; `else warn ... unexpected static ffmpeg archive layout` so a
+  layout change no longer fails silently; quoted desktop `Exec="..."` so
+  paths with spaces launch.
+- `platform/linux/uninstall.sh`: early guard requiring `gui.py` at repo root
+  (fails fast with clear error when run from wrong checkout).
+- `platform/linux/update.sh`: `[ -e .git ]` instead of `[ -d .git ]` so
+  worktree checkouts (gitfile) still pull; `[ -x "$VENV/bin/python" ]`
+  instead of `[ -d "$VENV" ]` so a broken venv dir is recreated/repaired.
+- `platform/macos/install.command`: braced `if [ -n "$p" ]; then ln ...; fi`
+  in `link_ffmpeg_into_bin` (shellcheck style, same no-op behaviour when
+  absent); `trap 'rm -rf "$TMP"' EXIT` plus explicit `rm -rf "$TMP"` on the
+  success path so abort no longer leaks the temp dir.
+- `OPENCODE_HANDOFF_platform_scripts.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git diff HEAD^1 HEAD`: intent matches the
+review-branch log (TMP-leak + silent-no-op second pass on top of 6-bug
+close-out); no conflict markers, no dropped lines.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2325 passed, 14 skipped,
+  0 failures.
