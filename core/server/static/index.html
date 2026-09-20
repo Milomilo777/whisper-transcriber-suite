@@ -400,7 +400,9 @@
         pollSubmit(res.d.job_id);
       })
       .catch(function (e) {
-        setSubmitStatus('<p class="err">' + e.message + "</p>");
+        // Server-provided error JSON, same untrusted class as the
+        // loadResult() catch below — escape before it hits innerHTML.
+        setSubmitStatus('<p class="err">' + escapeHtml(e.message) + "</p>");
         startBtn.disabled = false;
       });
   }
@@ -426,7 +428,7 @@
 
   function renderSubmit(jobId, j) {
     var html = "<p>Status: <b>" + j.status + "</b>" + (j.paused ? " (paused)" : "") + "</p>";
-    html += '<div class="bar"><span style="width:' + (j.progress || 0) + '%"></span></div>';
+    html += '<div class="bar"><span style="width:' + (Number(j.progress) || 0) + '%"></span></div>';
     // j.error routinely embeds the submitted URL / filename — untrusted.
     if (j.status === "error") { html += '<p class="err">' + escapeHtml(j.error || "failed") + "</p>"; }
     if (j.status === "finished" || j.status === "error" || j.status === "cancelled") {
