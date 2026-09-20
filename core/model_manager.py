@@ -408,6 +408,18 @@ def _merged_catalog(config: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
         base.setdefault("label", slug)
         base.setdefault("approx_size_gb", 0.0)
         base.setdefault("info", "")
+        # Display fields also arrive from the (untrusted) online entry, so
+        # coerce wrong types back to safe defaults: a truthy non-numeric
+        # ``approx_size_gb`` (e.g. ``"huge"``) would otherwise crash the
+        # Advanced dialog's info popup at ``f"{size_gb:g}"`` with
+        # ``ValueError: Unknown format code 'g'``.
+        if not isinstance(base.get("label"), str):
+            base["label"] = slug
+        if not isinstance(base.get("info"), str):
+            base["info"] = ""
+        _gb = base.get("approx_size_gb")
+        if isinstance(_gb, bool) or not isinstance(_gb, (int, float)):
+            base["approx_size_gb"] = 0.0
         merged[slug] = base
     return merged
 

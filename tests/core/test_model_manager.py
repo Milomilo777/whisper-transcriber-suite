@@ -930,3 +930,39 @@ def test_merged_catalog_ignores_unsafe_model_names():
     assert safe["name"] == "faster-whisper-safe-model"
 
 
+
+
+def test_merged_catalog_coerces_hostile_display_field_types():
+    """A compromised/MITM'd online catalog entry with wrong-typed display
+    fields must not crash the Advanced dialog's info popup: ``_show_model_info``
+    formats the size with ``f"{size_gb:g}"``, so a truthy non-numeric
+    ``approx_size_gb`` (e.g. ``"huge"``) raises ``ValueError: Unknown format
+    code 'g'``. The merge coerces hostile display values to safe defaults
+    while keeping the entry's real fields intact.
+    """
+    cfg = {
+        "model_catalog": {
+            "odd": {
+                "name": "faster-whisper-odd-model",
+                "url": "https://mirror.test/odd.zip",
+                "md5": "",
+                "hf_repo": "Systran/faster-whisper-odd-model",
+                "label": {"not": "a string"},
+                "info": ["not", "a string"],
+                "approx_size_gb": "huge",
+            },
+        }
+    }
+    info = mm.catalog_entry_info(cfg, "odd")
+    assert info is not None
+    assert info["label"] == "odd"
+    assert info["info"] == ""
+    assert info["approx_size_gb"] == 0.0
+    # The :g: formatting the info popup does must now work.
+    body = f"Approx. download size: ~{info['approx_size_gb']:g} GB"
+    assert "0 GB" in body
+    # Real fields survive the coercion.
+    resolved = mm.catalog_resolve_entry(cfg, "odd")
+    assert resolved is not None
+    assert resolved["name"] == "faster-whisper-odd-model"
+    assert resolved["hf_repo"] == "Systran/faster-whisper-odd-model"
