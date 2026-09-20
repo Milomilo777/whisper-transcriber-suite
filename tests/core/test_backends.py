@@ -180,6 +180,61 @@ def test_whisper_cpp_cancel_short_circuits(backends_module):
     assert len(segs) < 5
 
 
+def test_whisper_cpp_download_passes_socket_timeout(monkeypatch, tmp_path):
+    """A stalled connection must fail instead of hanging forever — urlopen
+    needs an explicit timeout (mirrors core/llm.py's download). A failed
+    download must also not leave the .part file behind."""
+    from core.backends import whisper_cpp as wc
+
+    dest = tmp_path / wc.DEFAULT_MODEL_NAME
+    seen: dict[str, float | None] = {}
+
+    def fake_urlopen(url, timeout=None):  # noqa: ANN001
+        seen["timeout"] = timeout
+        raise wc.urllib.error.URLError("network down")
+
+    monkeypatch.setattr(wc.urllib.request, "urlopen", fake_urlopen)
+    with pytest.raises(wc.urllib.error.URLError):
+        wc.download_default_model(dest=dest)
+    assert seen["timeout"] is not None and seen["timeout"] > 0
+    assert not dest.with_suffix(dest.suffix + ".part").exists()
+    assert not dest.exists()
+
+
+def test_whisper_cpp_download_cleans_part_on_mid_stream_failure(monkeypatch, tmp_path):
+    """A connection reset partway through must remove the (up to ~1.1 GB)
+    partial download instead of leaving it on disk."""
+    from core.backends import whisper_cpp as wc
+
+    class _FailingStream:
+        def __init__(self) -> None:
+            self._first = True
+
+        def __enter__(self) -> "_FailingStream":
+            return self
+
+        def __exit__(self, *exc: object) -> bool:
+            return False
+
+        def getheader(self, name: str):  # noqa: ANN001
+            return None
+
+        def read(self, n: int = -1) -> bytes:
+            if self._first:
+                self._first = False
+                return b"x" * 4096
+            raise OSError("connection reset by peer")
+
+    dest = tmp_path / wc.DEFAULT_MODEL_NAME
+    monkeypatch.setattr(
+        wc.urllib.request, "urlopen", lambda url, timeout=None: _FailingStream()
+    )
+    with pytest.raises(OSError):
+        wc.download_default_model(dest=dest)
+    assert not dest.with_suffix(dest.suffix + ".part").exists()
+    assert not dest.exists()
+
+
 # ------------------------------------------------------- availability hardening
 #
 # Regression coverage for the 2026-08-15 crash (see

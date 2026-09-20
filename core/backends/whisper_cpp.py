@@ -97,23 +97,36 @@ def download_default_model(
     if log:
         log(f"Downloading {url} → {dest}")
 
-    with urllib.request.urlopen(url) as resp:  # noqa: S310 — known URL
-        total = int(resp.getheader("Content-Length") or 0)
-        downloaded = 0
-        last_pct = -1
-        with open(part, "wb") as fp:
-            while True:
-                chunk = resp.read(chunk_size)
-                if not chunk:
-                    break
-                fp.write(chunk)
-                downloaded += len(chunk)
-                if total and log:
-                    pct = int((downloaded / total) * 100)
-                    if pct != last_pct and pct % 5 == 0:
-                        log(f"  {pct}% ({downloaded // (1 << 20)} / "
-                            f"{total // (1 << 20)} MB)")
-                        last_pct = pct
+    try:
+        # timeout= on urlopen bounds each blocking socket operation, so a
+        # stalled connection fails instead of hanging the download thread
+        # forever (mirrors core/llm.py's download).
+        with urllib.request.urlopen(url, timeout=60) as resp:  # noqa: S310 — known URL
+            total = int(resp.getheader("Content-Length") or 0)
+            downloaded = 0
+            last_pct = -1
+            with open(part, "wb") as fp:
+                while True:
+                    chunk = resp.read(chunk_size)
+                    if not chunk:
+                        break
+                    fp.write(chunk)
+                    downloaded += len(chunk)
+                    if total and log:
+                        pct = int((downloaded / total) * 100)
+                        if pct != last_pct and pct % 5 == 0:
+                            log(f"  {pct}% ({downloaded // (1 << 20)} / "
+                                f"{total // (1 << 20)} MB)")
+                            last_pct = pct
+    except Exception:
+        # Network drop / timeout / HTTP error: never leave the ~1.1 GB
+        # partial file behind. The file handles are closed by the `with`
+        # blocks before this runs (Windows refuses to unlink open handles).
+        try:
+            part.unlink()
+        except OSError:
+            pass
+        raise
     # Completeness check: a server that closes the stream cleanly after
     # sending fewer bytes than Content-Length would otherwise promote a
     # truncated .part to the final model — which then fails to load deep
