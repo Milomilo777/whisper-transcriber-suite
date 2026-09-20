@@ -70,3 +70,42 @@ Verified the merge of `opencode/app-services-review` into
 - **Test coverage of merged behavior**: 3 new tests (`test_run_task_superseded_skips_media_and_subtitle`, `test_run_task_superseded_after_subtitle_skips_media`, `test_superseded_caption_only_run_suppresses_error`) exercise the `_superseded()` generation-guard early-returns that were previously untested. Pre-fix code would fail these tests (old code enters phases and posts errors for superseded runs).
 
 Result: clean. No source changes needed; test coverage gap closed.
+
+## Merge: opencode/app-widgets-review (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/app-widgets-review`): no conflicts,
+no reconciliation needed. Merge commit fe76765 on top of ebbc000.
+
+Files brought in by the review branch (f5ef1b8 + f19de59 + 1632f0b + cfb871e):
+- `app/widgets/console.py`: context-menu refactor — per-console single `Menu`
+  (fixes per-right-click Tk widget leak), extracted `_copy_selection` /
+  `_copy_all` / `_clear` / `_popup_console_menu` helpers; `_clear` restores the
+  previous Text state so the log is not left permanently editable.
+- `app/widgets/error_dialog.py`: dialog now restores the previous Tk grab
+  holder on close, so an underlying modal dialog (e.g. Advanced settings)
+  stays modal instead of going modeless.
+- `app/widgets/hardware_wizard.py`: benchmark `_make_silent_clip` removes its
+  mkstemp'd temp WAV when the ffmpeg run fails; wizard close hands the modal
+  grab back to its master.
+- `app/widgets/tray.py`: failed `start()` clears the icon and reports
+  unsupported (prevents withdraw-with-no-tray stranded window); a later
+  `start()` retries and reports supported again on success.
+- `tests/core/test_console_widget.py` (new): one-menu-per-console,
+  popup-reuses-menu, clear-restores-disabled/enabled, error-keyword tagging.
+- `tests/core/test_error_dialog.py` (new): message + details toggle,
+  grab restored to modal host / root-parent modal host, no grab clobber
+  when parent had none.
+- `tests/core/test_tooltip_widget.py` (new): widget-destroyed-while-showing
+  leaves no dangling Toplevel; bottom-right tooltip flipped on-screen.
+- `tests/core/test_hardware_wizard.py` (extended): temp-file cleanup on
+  ffmpeg failure; close restores master's modal grab.
+- `tests/core/test_tray.py` (extended): failed start reports unsupported;
+  successful retry after failure reports supported.
+- `OPENCODE_HANDOFF_app_widgets.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git diff HEAD^1 HEAD`: intent matches the
+review-branch log; no conflict markers, no dropped lines.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2206 passed, 14 skipped, 0 failures.
