@@ -226,3 +226,24 @@ Verification:
   `test_error_dialog.py::test_close_restores_the_parents_modal_grab`); both
   pass in isolation and on rerun and are unrelated to this config-domain merge.
 - Targeted merge-area tests (177 tests across the six files above): all pass.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/config-domain-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2240 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). One transient tkinter failure (`test_search_dialog.py::test_finish_search_reports_error`) on the first full run — passes in isolation and on rerun; same class of tkinter state leak documented in prior commits, unrelated to this config-domain merge.
+- **Merge diff**: 4 source files changed (`config.py`, `languages.py`, `observability.py`, `download_service.py`), 6 new test files + 1 extended test file, 1 handoff doc. No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `config.py` — `migrate_config_location`: `OSError` catch + `return new_path` means `load_config` degrades to defaults instead of crashing. Correct: every other unreadable-config path already does this.
+  - `config.py` — `fetch_online_config`: `http.client.HTTPException` + `RecursionError` added to the except tuple for both the fetch path and the cache-read path. `HTTPException` (e.g. `BadStatusLine`, `IncompleteRead`) is not a subclass of `URLError`/`OSError` — confirmed by inspection and the test's `BadStatusLine("oops")` mock. `RecursionError` from the C JSON scanner on deeply-nested bodies is also not a `ValueError`. Both correctly fall through to cache/`{}`.
+  - `config.py` — `_read_local_config` + `load_project_overrides`: `RecursionError` added to except tuples. Same reasoning as above.
+  - `config.py` — `load_config` finite guard: changed from `isinstance(merged[k], (int, float))` to `isinstance(merged[k], float)`. Correct: `int` is always finite, and `math.isfinite(10**400)` raises `OverflowError` which would crash launch before the type check ever runs. The test `test_load_config_survives_huge_integer` proves the fix.
+  - `config.py` — `_validate_overrides`: None/non-finite values dropped before the type-coercion branch; `OverflowError` added to the coercion `except` tuple. The guard correctly intercepts `None` (which would reach `int(None)` → `TypeError` in `_apply_runtime_overrides`) and `inf`/`NaN` (which would reach `int(inf)` → `OverflowError` or compare false to every bound).
+  - `languages.py` — `_SUB_LANG_REGEX_METACHARS` regex escapes `.^$*+?{}\[\]\\|()` only; hyphen left unescaped (literal outside character class). `re.sub(r"\\\1", c)` for each code is correct. No bypass path feeds raw metadata to yt-dlp — `build_subtitle_command` at `download_service.py:304` is the single `--sub-langs` emission site.
+  - `observability.py` — `_anonymised_id`: `OSError` catch on `cache.mkdir()` returns `""`. Correct: the file-write path below already catches `OSError`; the mkdir was the unguarded gap. `init_sentry`: `Exception` catch around `sentry_sdk.init()` logs and returns `False`. Correct: malformed DSN raises `BadDsn` (a plain `Exception` subclass), not any of the previously caught types.
+  - `download_service.py` — `_parse_timecode`: `math.isfinite(total)` check after all parsing branches. `float("nan")` parses successfully but compares false to every bound, so without this it slips past both range checks. The `import math` is present. Test coverage for `nan`, `NaN`, `1:nan`, `inf`, `1e400`.
+- **Test coverage of merged behavior**: 177 targeted tests across all six changed source files and six new/extended test files — all pass. Tests exercise: huge integer in config.json, uncreatable config dir, garbage/truncated HTTP responses, deeply nested JSON files, null project overrides, Infinity/NaN in project overrides, regex metacharacter escaping in subtitle codes, SDK init failure, unwritable cache dir, non-finite timecodes. Pre-fix code would fail these tests (confirmed by the handoff doc's stash-round-trip evidence).
+
+Result: clean. No source changes needed.
