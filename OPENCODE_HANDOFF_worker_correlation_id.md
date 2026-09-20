@@ -289,3 +289,95 @@ No surviving findings after Layer 3.
   parent command builders and the real `core.worker.main()`.
 - Not run: `tests/smoke/` and `tools/e2e_cancel_pause.py` (need the real ~3 GB
   model / test video). No third-party source read.
+
+---
+
+## 9. Second-pass independent re-check (muse-spark-1.3-contributor) — 2026-09-20
+
+Independent re-check of the `da2d06d` diff against `master`. No code changed;
+no new tests added. This is a genuinely clean second pass.
+
+### 9.1 What was verified from the first pass, and how
+
+1. **Park-and-apply closes bug A/B (control line precedes transcribe line).**
+   Reproduced the legacy behaviour directly: with no task registered, a
+   legacy apply-to-current is a silent no-op (`paused` stays `False` after
+   the late registration). With the fix, `_route_control("pause", "h1")`
+   with nothing current parks, and `_register_task` applies it
+   (`paused is True`, parked list `["pause"]`). Then neutered
+   `_register_task`'s flag-application at runtime and re-drove the exact
+   bad ordering through the real `main()` — the task arrived unpaused,
+   i.e. the E2E regression test genuinely guards the fix, not a tautology.
+2. **A control for another task is never misapplied.** With an `h1` task
+   current, `_route_control("cancel", "h2")` leaves `h1.cancelled is False`
+   and parks under `"h2"`. (Legacy semantics would have set the flag on
+   `h1` — the wrong task.)
+3. **Parent id agreement + ack paths.** Ran the three touched test files:
+   `test_worker_correlation_id.py` + `test_transcription_correlation.py` +
+   `test_transcribe_command.py` → 31 passed. The expiry, capacity-eviction,
+   no-double-ack, and id-less-legacy tests all exercise what their names
+   claim (read each test body; no mock-teardown trickery — the autouse
+   fixture clears park state and the current task around every test).
+
+### 9.2 Apparent discrepancy investigated and cleared (not a finding)
+
+`git diff master..HEAD --stat` shows `docs/SESSION_HANDOFF_NEXT.md` with
+163 deletions, seeming to contradict this file's §7.1 claim that the doc is
+untouched. Checked: `git log master..HEAD -- docs/SESSION_HANDOFF_NEXT.md`
+is EMPTY and the merge-base is `706cdff` — the branch never touched the
+file. The deletions are an artifact of `master` having advanced past the
+base (new session entries); the diff renders master's newer content as
+"deleted" on this side. The §7.1 claim is accurate relative to its base.
+
+### 9.3 Fresh adversarial review — scope and outcome
+
+Re-read `core/worker.py` §§120–340 (park table, route, register, expiry,
+clear) plus the `main()` reader/registration loop and the parent's
+`dispatch_waiting` → `transcribe_command` → `send_control` → `poll()`
+chain, hunting for races, crash paths, leaks, and silently-wrong output.
+Checked and dismissed with reasons:
+
+- **UUID-fallback divergence between dispatch and control threads?** No:
+  both `task_correlation_id()` calls happen synchronously on the Tk caller
+  thread (`dispatch_waiting` line 894; `send_control` line ~1013) BEFORE
+  the daemon writer threads start — the writers only carry pre-built
+  strings. `worker["task"] = t` (line 874) also precedes the transcribe
+  build on the same thread, so the cache is always warm for controls.
+  Single-threaded derivation ⇒ no `uAAA`/`uBBB` split.
+- **Exactly-once ack across expiry/register/eviction?** Yes: all three
+  mutations hold `_state_lock`; expiry collects-then-emits after release,
+  eviction acks after release, registration pops before the timer can
+  observe the entry. A fired-but-blocked timer finds its entry already
+  gone in all interleavings. The no-double-ack test pins this.
+- **Lock order / emit-under-lock?** No emit happens while holding
+  `_state_lock` in any new path (evicted/capacity, immediate, delayed,
+  timeout all emit after release). `_register_task` returns the parked
+  list; `main()` emits after the lock is out. Timer `start()` under lock
+  is safe (callback blocks on the same lock).
+- **Timer/thread leaks?** Bounded: one daemon timer per parked control,
+  max 64 entries; cancelled on register/evict/clear; shutdown and EOF
+  both clear the table.
+- **Stale parked control applied to a retried dispatch (cached `task_id`
+  survives a new `history_id`)?** Same logical task object ⇒ same user
+  intent; carrying the pause/cancel over to the retry is correct, not a
+  misapplication. Uniqueness among *outstanding* tasks still holds.
+- **Unknown action parked then acked as applied?** Unreachable over the
+  wire — the reader only routes `cancel`/`pause`/`resume` to
+  `_route_control`. Direct-call-only hardening was deliberately NOT made
+  (cosmetic, per the no-padding rule).
+- **New `task_id` on `started`/`done`/`error` vs old parents / event
+  routing?** `worker_for_event` routes purely on `_token`/`_pid`+`_worker_id`;
+  extra keys are ignored by old parents' if/elif chains. Live path
+  (`transcribe_live`) untouched and unaffected, as §6.6 claims.
+- **`control_unmatched` user message accuracy?** Neutral wording ("no
+  matching in-flight task was found") covers both never-started and
+  already-finished — the §5.2 fix held up.
+
+Nothing further wrong after a real attempt — stated plainly per the brief.
+
+### 9.4 Final verification (this pass)
+
+- `python -m pyright app core` → **0 errors, 0 warnings, 0 informations**.
+- `python -m pytest tests/ --ignore=tests/smoke -q` → **exit 0, fully
+  green (2213 collected)**. No flakes this run.
+- Not run: `tests/smoke/` (needs real hardware/network).
