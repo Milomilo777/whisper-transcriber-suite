@@ -196,6 +196,38 @@ def normalise_hub_path(raw: str | Path) -> str:
     return str(Path(str(raw).strip()).expanduser().resolve())
 
 
+def is_safe_model_folder_name(name: object) -> bool:
+    """True when ``name`` is usable as a single model-folder component.
+
+    ``model_name`` values reach :func:`model_folder_for` from the local
+    config AND from the online-augmentable model catalog
+    (``config["model_catalog"]``, see ``core.model_manager``). A name is
+    only ever a folder slug (``faster-whisper-large-v3``,
+    ``models--Systran--x``, ...), so anything that could steer the
+    composed path outside the hub — separators, ``.``/``..`` components,
+    a drive-relative form on Windows like ``C:evil``, NUL — is rejected.
+    Without this, a compromised / MITM'd online catalog entry could set
+    ``name`` to e.g. ``../../Documents`` and make the model download flow
+    delete/overwrite that folder (the zip-slip guard only protects the
+    archive's *members*, not the destination path).
+
+    Spaces and other plain characters stay valid: only path structure is
+    checked, never content.
+    """
+    if not isinstance(name, str):
+        return False
+    stripped = name.strip()
+    if not stripped or stripped in (".", ".."):
+        return False
+    if "/" in stripped or "\\" in stripped or "\x00" in stripped:
+        return False
+    # On Windows, ``Path("C:evil").name`` is "evil" and ``Path("a:b")``
+    # is a drive-relative / alternate-data-stream form; on POSIX those
+    # are ordinary file names, so compare with the running platform's
+    # own parser (same one used to compose the path below).
+    return Path(stripped).name == stripped
+
+
 def model_folder_for(
     hub_folder: str | Path | None,
     model_name: str,
@@ -208,6 +240,11 @@ def model_folder_for(
     ``models--``, it's used verbatim; otherwise we prepend
     ``models--Systran--`` to keep parity with the original cache
     convention.
+
+    Raises ``ValueError`` for a non-string / empty name, and also for a
+    name that is not a single safe folder component (see
+    :func:`is_safe_model_folder_name`) — callers guard against
+    ``ValueError`` and fall back to a clean default.
     """
     if not hub_folder:
         from .config import user_cache_dir
@@ -216,15 +253,16 @@ def model_folder_for(
         hub = Path(str(hub_folder))
     # ``model_name`` is typed ``str``, but a None / non-string can still
     # reach here from a hand-edited or externally-produced config (e.g.
-    # ``{"model": {"name": null}}`` on macOS). ``None.strip()`` would raise
-    # an uncaught AttributeError and crash launch; callers only guard
-    # against ValueError. Coerce the bad-input case into the same clean
-    # ValueError the empty-string check already raises.
-    if not isinstance(model_name, str):
-        raise ValueError("model_name must be a non-empty string")
+    # ``{"model": {"name": null}}`` on macOS), and the online model
+    # catalog can supply an arbitrary string. ``None.strip()`` would
+    # raise an uncaught AttributeError and crash launch; a traversal
+    # name (``../../x``) would resolve outside the hub. Coerce both bad
+    # cases into the same clean ValueError the callers already handle.
+    if not is_safe_model_folder_name(model_name):
+        raise ValueError(
+            "model_name must be a non-empty, single-folder name"
+        )
     name = model_name.strip()
-    if not name:
-        raise ValueError("model_name must be non-empty")
     if not name.startswith("models--"):
         name = f"models--Systran--{name}"
     return hub / name

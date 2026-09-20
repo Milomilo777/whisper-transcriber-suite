@@ -381,12 +381,19 @@ def _merged_catalog(config: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
     extra = (config or {}).get("model_catalog")
     if not isinstance(extra, dict):
         return merged
+    from core.hub import is_safe_model_folder_name
+
     for slug, entry in extra.items():
         if not isinstance(slug, str) or not isinstance(entry, dict):
             continue
-        # ``name`` is always required; ``url``/``md5`` must be strings (may
-        # be empty) and ``hf_repo`` (if present) must be a string.
-        if not (isinstance(entry.get("name"), str) and entry.get("name")):
+        # ``name`` is always required AND must be a safe single folder
+        # component: it becomes the model directory under the hub, so a
+        # separator / ``..`` name from a compromised or MITM'd online
+        # catalog must never be merged in (it would otherwise be handed
+        # to ``hub.model_folder_for`` and resolve outside the hub).
+        # ``url``/``md5`` must be strings (may be empty) and ``hf_repo``
+        # (if present) must be a string.
+        if not is_safe_model_folder_name(entry.get("name")):
             continue
         if not all(isinstance(entry.get(k, ""), str) for k in ("url", "md5", "hf_repo")):
             continue
@@ -868,7 +875,17 @@ def ensure_model(
     # on-disk check covers "already installed" since there's no manifest to
     # verify against.
     if not zip_url:
-        if model_path.exists() and any(model_path.iterdir()):
+        # There is no manifest to verify against, but a download that was
+        # killed mid-transfer can leave the folder holding only SOME of
+        # the files: huggingface_hub stores completed files straight in
+        # ``model_path`` and parks in-progress blobs under its own
+        # ``.cache`` next to them. The old ``any(iterdir())`` check
+        # treated such a partial folder as a finished install, so the
+        # next model load failed on the missing ``model.bin`` with no
+        # in-app way to recover. CT2 repos always carry a top-level
+        # ``model.bin`` (and ``model_downloaded()`` already keys off
+        # exactly that file), so require it and re-download otherwise.
+        if (model_path / "model.bin").exists():
             if status_cb: status_cb("Model already installed")
             _notify(progress_cb, phase="installed", status="Model already installed", percent=100)
             return str(model_path)
@@ -879,6 +896,13 @@ def ensure_model(
             status_cb, progress_cb, cancel_event,
             hf_repo=hf_repo,
         ):
+            if cancel_event and cancel_event.is_set():
+                # huggingface_hub's own download cannot be interrupted,
+                # so a cancellation is only observable here, after it has
+                # returned. Report a clean cancellation rather than a
+                # scary "download failed" error for a download that may
+                # have completed.
+                raise DownloadCancelled("Model download cancelled")
             ref = _hf_model_ref(model.get("name", ""), zip_url, hf_repo) or "unknown"
             raise RuntimeError(
                 f"Model download failed: the HuggingFace fallback ({ref}) "
@@ -900,7 +924,22 @@ def ensure_model(
 
     if model_path.exists():
         if status_cb: status_cb("Model already installed. Verifying MD5...")
-        mismatches=_verify_extracted_files(cache_dir, md5_url, status_cb, progress_cb, cancel_event)
+        try:
+            mismatches=_verify_extracted_files(cache_dir, md5_url, status_cb, progress_cb, cancel_event)
+        except requests.RequestException as e:
+            # The .md5 manifest could not be fetched (offline, mirror
+            # down, 404, ...). The model bytes are already on disk, and
+            # refusing to use them here would break the app's documented
+            # "fully offline after the first download" behaviour on
+            # every relaunch without a network. Treat verification as
+            # best-effort in that case; a genuinely corrupt model still
+            # fails loudly when the backend tries to load it.
+            if status_cb:
+                status_cb(f"Could not verify the installed model ({e}); using it as-is.")
+            _remove_path(zip_path)
+            _notify(progress_cb, phase="installed", status="Model already installed", percent=100)
+            return str(model_path)
+
         if not mismatches:
             _remove_path(zip_path)
             if status_cb: status_cb("Model already installed")
@@ -919,7 +958,41 @@ def ensure_model(
                 raise DownloadCancelled("Model download cancelled")
 
             if status_cb: status_cb("Downloading model...")
-            _download_zip(zip_url, zip_path, progress_cb, cancel_event)
+            try:
+                _download_zip(zip_url, zip_path, progress_cb, cancel_event)
+            except requests.RequestException as e:
+                # A transient network error (connection reset, read
+                # timeout, chunked-encoding break) used to abandon the
+                # mirror at once: the partial archive was then deleted
+                # and the whole model restarted from zero against
+                # HuggingFace. When bytes are already on disk the retry
+                # below resumes with an HTTP Range request — cheap, and
+                # it keeps mirror-only networks (where huggingface.co is
+                # blocked) working through a blip. With NOTHING
+                # downloaded there is nothing to resume, so fall through
+                # to the HuggingFace fallback immediately, as before.
+                # Bounded by MAX_DOWNLOAD_ATTEMPTS, shared with the MD5
+                # mismatch retries below.
+                partial = zip_path.exists() and zip_path.stat().st_size > 0
+                if (not partial or attempt >= MAX_DOWNLOAD_ATTEMPTS
+                        or (cancel_event and cancel_event.is_set())):
+                    raise
+                if status_cb:
+                    status_cb(
+                        f"Download interrupted ({e}). "
+                        f"Resuming (attempt {attempt + 1}/{MAX_DOWNLOAD_ATTEMPTS})..."
+                    )
+                _notify(
+                    progress_cb,
+                    phase="download",
+                    status=(
+                        "Download interrupted. Resuming "
+                        f"({attempt + 1}/{MAX_DOWNLOAD_ATTEMPTS})..."
+                    ),
+                    percent=0,
+                    detail=str(e),
+                )
+                continue
 
             if cancel_event and cancel_event.is_set():
                 raise DownloadCancelled("Model download cancelled")
@@ -949,6 +1022,12 @@ def ensure_model(
             if status_cb: status_cb("Verifying extracted model files...")
             mismatches=_verify_extracted_files(cache_dir, md5_url, status_cb, progress_cb, cancel_event)
             if not mismatches:
+                # Clear any earlier attempt's mismatches, or a SUCCESSFUL
+                # retry would still trip the terminal "still mismatched"
+                # raise below and fall through to an unnecessary (and
+                # possibly failing) HuggingFace re-download of a model
+                # that is already extracted and verified on disk.
+                last_mismatches = []
                 _remove_path(zip_path)
                 break
 
@@ -1005,6 +1084,12 @@ def ensure_model(
             status_cb, progress_cb, cancel_event,
             hf_repo=hf_repo,
         ):
+            if cancel_event and cancel_event.is_set():
+                # See the no-mirror branch above: hf_hub downloads are not
+                # interruptible, so a cancellation surfaces here only after
+                # the call returns. Report it as a cancellation, not as a
+                # failure of both sources.
+                raise DownloadCancelled("Model download cancelled") from mirror_error
             raise RuntimeError(
                 "Model download failed: both the smch.ir mirror "
                 f"({mirror_error}) and the HuggingFace fallback "

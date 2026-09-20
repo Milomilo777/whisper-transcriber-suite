@@ -6,6 +6,7 @@ import time
 
 import pytest
 
+from core import history
 from core.history import HistoryDB
 
 
@@ -181,3 +182,109 @@ def test_context_manager_closes_connection(tmp_path):
     db2 = HistoryDB(tmp_path / "h.db")
     assert db2.list_downloads()[0]["url"] == "https://x"
     db2.close()
+
+
+# --- locked DB is not corruption (concurrent-access regression) -------------
+
+
+def test_is_transient_lock_error_recognises_real_sqlite_busy(tmp_path):
+    """A genuine second-connection lock classifies as transient.
+
+    The PRAGMA below raises ``sqlite3.OperationalError: database is
+    locked`` because a rollback-journal DB is held EXCLUSIVE by another
+    connection — exactly what the recover-aside path must NOT treat as
+    corruption.
+    """
+    path = tmp_path / "locked.db"
+    holder = sqlite3.connect(str(path))
+    holder.execute("CREATE TABLE t(x)")
+    holder.commit()
+    holder.execute("BEGIN EXCLUSIVE")
+    holder.execute("INSERT INTO t VALUES (1)")
+
+    other = sqlite3.connect(str(path), timeout=0.05)
+    try:
+        with pytest.raises(sqlite3.OperationalError) as excinfo:
+            other.execute("PRAGMA integrity_check")
+    finally:
+        other.close()
+        holder.rollback()
+        holder.close()
+
+    assert history._is_transient_lock_error(excinfo.value) is True
+
+
+def test_is_transient_lock_error_rejects_corruption():
+    """Genuine corruption signals stay classified as corruption."""
+    assert history._is_transient_lock_error(
+        sqlite3.DatabaseError("file is not a database")
+    ) is False
+    assert history._is_transient_lock_error(
+        sqlite3.OperationalError("database disk image is malformed")
+    ) is False
+
+
+def test_locked_integrity_check_does_not_rotate_db(tmp_path, monkeypatch):
+    """A LOCKED integrity_check must not rename a healthy DB to .corrupt.
+
+    Regression: ``_check_integrity_or_recover`` treated every
+    ``sqlite3.Error`` from the PRAGMA as corruption, so a transient lock
+    from a second process renamed the user's history.db aside and
+    recreated an empty one — total history loss. The lock is simulated
+    with a proxy connection raising SQLITE_BUSY on the PRAGMA only, so
+    the test is deterministic (the real-error classification is covered
+    above); pre-fix the DB is rotated and the rows below are gone.
+    """
+    path = tmp_path / "history.db"
+    seed = HistoryDB(path)
+    rid = seed.insert_transcription("/tmp/keep.wav", language="en")
+    seed.finish_transcription(rid, "finished", language="en")
+    seed.close()
+
+    real_connect = sqlite3.connect
+    state = {"wrapped": False}
+
+    class _LockedIntegrityConn:
+        """Delegates everything to the real connection, but the first
+        integrity_check raises SQLITE_BUSY as if another process held a
+        lock for longer than the busy timeout."""
+
+        def __init__(self, conn):
+            object.__setattr__(self, "_conn", conn)
+
+        def execute(self, sql, *args, **kwargs):
+            if "integrity_check" in sql:
+                err = sqlite3.OperationalError("database is locked")
+                err.sqlite_errorname = "SQLITE_BUSY"
+                raise err
+            return self._conn.execute(sql, *args, **kwargs)
+
+        def __enter__(self):
+            self._conn.__enter__()
+            return self
+
+        def __exit__(self, *exc):
+            return self._conn.__exit__(*exc)
+
+        def __getattr__(self, name):
+            return getattr(self._conn, name)
+
+        def __setattr__(self, name, value):
+            setattr(self._conn, name, value)
+
+    def fake_connect(*args, **kwargs):
+        conn = real_connect(*args, **kwargs)
+        if not state["wrapped"]:
+            state["wrapped"] = True
+            return _LockedIntegrityConn(conn)
+        return conn
+
+    monkeypatch.setattr(sqlite3, "connect", fake_connect)
+
+    db = HistoryDB(path)  # must not rotate the DB aside
+    try:
+        assert state["wrapped"] is True
+        assert not (tmp_path / "history.db.corrupt").exists()
+        assert db.list_transcriptions()[0]["file_path"] == "/tmp/keep.wav"
+    finally:
+        db.close()

@@ -13,6 +13,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
+import requests
 import responses
 
 from core import model_manager as mm
@@ -563,3 +564,369 @@ def test_ensure_model_no_mirror_already_installed_skips_download(tmp_path, monke
     result = mm.ensure_model(config, progress_cb=progress_payloads.append)
     assert Path(result) == model_path
     assert any(p.get("phase") == "installed" for p in progress_payloads)
+
+
+# ---------- Offline / interrupted-transfer edge cases ------------------------
+
+
+@responses.activate
+def test_ensure_model_offline_uses_installed_model(tmp_path, monkeypatch):
+    """An installed model whose .md5 manifest is unreachable must still be
+    usable. Regression: the already-installed check called
+    _verify_extracted_files BEFORE ensure_model's try/except, so a
+    requests.ConnectionError (offline / mirror down / manifest 404) escaped
+    as a hard failure — the first transcribe of every relaunch without a
+    network failed even though the ~3 GB model was already on disk, breaking
+    the app's "fully offline after the first download" promise.
+    """
+    model_name = "fakemodel"
+    model_dir_name = f"models--Systran--{model_name}"
+    cache_dir = tmp_path / "cache"
+    model_dir = cache_dir / model_dir_name
+    model_dir.mkdir(parents=True)
+    (model_dir / "a.bin").write_bytes(b"installed-bytes")
+
+    md5_url = "https://fake.test/model.md5"
+    # The manifest endpoint cannot be reached at all.
+    responses.add(
+        responses.GET, md5_url,
+        body=requests.ConnectionError("simulated offline"),
+    )
+
+    config = {
+        "model": {
+            "name": model_name,
+            "url": "https://fake.test/model.zip",
+            "md5": md5_url,
+        },
+        "model_path": str(model_dir),
+    }
+
+    def _no_download(*a, **k):
+        raise AssertionError("must not re-download an installed model")
+
+    monkeypatch.setattr(mm, "_download_via_huggingface", _no_download)
+
+    statuses: list[str] = []
+    progress_payloads: list[dict] = []
+    result = mm.ensure_model(
+        config,
+        status_cb=statuses.append,
+        progress_cb=progress_payloads.append,
+    )
+
+    assert Path(result) == model_dir
+    assert (model_dir / "a.bin").read_bytes() == b"installed-bytes"
+    assert any("Could not verify" in s for s in statuses)
+    assert any(p.get("phase") == "installed" for p in progress_payloads)
+
+
+def test_ensure_model_no_mirror_partial_install_is_not_installed(tmp_path, monkeypatch):
+    """A killed HuggingFace-only download can leave the model folder holding
+    only some files (config.json but no model.bin — completed files land in
+    model_path, in-progress blobs sit under its .cache). The old
+    ``any(iterdir())`` check reported such a folder as an installed model,
+    so every later load failed on the missing model.bin with no in-app way
+    to recover. Require the CTranslate2 weights and re-download otherwise.
+    """
+    entry = mm.MODEL_REGISTRY["deepdml-large-v3-turbo"]
+    cache_dir = tmp_path / "cache"
+    model_path = cache_dir / f"models--Systran--{entry['name']}"
+    model_path.mkdir(parents=True)
+    (model_path / "config.json").write_bytes(b"{}")  # partial download
+
+    config = {
+        "model": {
+            "name": entry["name"], "url": entry["url"],
+            "md5": entry["md5"], "hf_repo": entry["hf_repo"],
+        },
+        "model_path": str(model_path),
+    }
+
+    calls: list[str] = []
+
+    def _fake_hf_download(name, src_zip_url, target_model_path,
+                          status_cb=None, progress_cb=None,
+                          cancel_event=None, hf_repo=None):
+        calls.append(hf_repo or "")
+        target = Path(target_model_path)
+        # The stale partial files must have been cleared before re-download.
+        assert not (target / "config.json").exists()
+        target.mkdir(parents=True)
+        (target / "model.bin").write_bytes(b"fresh-weights")
+        return True
+
+    monkeypatch.setattr(mm, "_download_via_huggingface", _fake_hf_download)
+
+    result = mm.ensure_model(config)
+    assert Path(result) == model_path
+    assert (model_path / "model.bin").read_bytes() == b"fresh-weights"
+    assert calls == [entry["hf_repo"]]
+
+
+@responses.activate
+def test_ensure_model_resumes_after_transient_download_error(tmp_path, monkeypatch):
+    """A connection drop mid-download must resume the mirror download, not
+    discard the partial archive and restart from zero on HuggingFace. The
+    partial file on disk is what makes the retry an HTTP Range resume.
+    """
+    model_name = "fakemodel"
+    model_dir_name = f"models--Systran--{model_name}"
+    file_a = b"resumed-bytes"
+    zip_bytes = _build_model_zip(model_dir_name, {"a.bin": file_a})
+    md5_text = f"{hashlib.md5(file_a).hexdigest()} {model_dir_name}/a.bin"
+
+    zip_url = "https://fake.test/model.zip"
+    md5_url = "https://fake.test/model.md5"
+    responses.add(responses.GET, md5_url, body=md5_text, status=200)
+
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    zip_path = cache_dir / "model.zip"
+    zip_path.write_bytes(b"partial-bytes-from-the-dropped-transfer")
+
+    config = {
+        "model": {"name": model_name, "url": zip_url, "md5": md5_url},
+        "model_path": str(cache_dir / model_dir_name),
+    }
+
+    calls: list[int] = []
+
+    def _fake_download(src_url, target_path, progress_cb=None, cancel_event=None):
+        calls.append(1)
+        if len(calls) == 1:
+            raise requests.ConnectionError("connection reset by peer")
+        Path(target_path).write_bytes(zip_bytes)
+        return Path(target_path)
+
+    monkeypatch.setattr(mm, "_download_zip", _fake_download)
+
+    def _no_hf(*a, **k):
+        raise AssertionError(
+            "a transient mirror error with a partial archive must retry "
+            "the mirror instead of jumping to HuggingFace"
+        )
+
+    monkeypatch.setattr(mm, "_download_via_huggingface", _no_hf)
+
+    result = mm.ensure_model(config)
+    assert len(calls) == 2
+    assert Path(result) == cache_dir / model_dir_name
+    assert (cache_dir / model_dir_name / "a.bin").read_bytes() == file_a
+
+
+def test_ensure_model_no_partial_falls_back_immediately(tmp_path, monkeypatch):
+    """With NOTHING downloaded there is no resume state, so a mirror
+    connection error must still fall through to the HuggingFace fallback
+    immediately (no pointless retries of a dead mirror)."""
+    model_name = "faster-whisper-medium"
+    model_dir_name = f"models--Systran--{model_name}"
+    zip_url = f"https://smch.ir/models/{model_dir_name}.zip"
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    model_path = cache_dir / model_dir_name
+
+    config = {
+        "model": {
+            "name": model_name,
+            "url": zip_url,
+            "md5": f"{zip_url}.md5",
+        },
+        "model_path": str(model_path),
+    }
+
+    download_calls: list[int] = []
+
+    def _boom_download(src_url, target_path, progress_cb=None, cancel_event=None):
+        download_calls.append(1)
+        raise requests.ConnectionError("connection refused")
+
+    hf_calls: list[str] = []
+
+    def _fake_hf_download(name, src_zip_url, target_model_path,
+                          status_cb=None, progress_cb=None,
+                          cancel_event=None, hf_repo=None):
+        hf_calls.append(hf_repo or "")
+        Path(target_model_path).mkdir(parents=True)
+        (Path(target_model_path) / "model.bin").write_bytes(b"hf-bytes")
+        return True
+
+    monkeypatch.setattr(mm, "_download_zip", _boom_download)
+    monkeypatch.setattr(mm, "_download_via_huggingface", _fake_hf_download)
+
+    result = mm.ensure_model(config)
+    assert len(download_calls) == 1  # no retry without a partial archive
+    assert len(hf_calls) == 1
+    assert Path(result) == model_path
+
+
+def test_ensure_model_no_mirror_cancel_during_hf_is_cancelled(tmp_path, monkeypatch):
+    """Cancelling during a HuggingFace-only download must surface as
+    DownloadCancelled, not as a "download failed" RuntimeError. hf_hub's
+    download is not interruptible, so the cancellation is only observed
+    after it returns; reporting it as a failure showed a scary error
+    dialog for a download that may in fact have completed.
+    """
+    entry = mm.MODEL_REGISTRY["deepdml-large-v3-turbo"]
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    model_path = cache_dir / f"models--Systran--{entry['name']}"
+
+    config = {
+        "model": {
+            "name": entry["name"], "url": entry["url"],
+            "md5": entry["md5"], "hf_repo": entry["hf_repo"],
+        },
+        "model_path": str(model_path),
+    }
+
+    cancel = threading.Event()
+
+    def _fake_hf_download(name, src_zip_url, target_model_path,
+                          status_cb=None, progress_cb=None,
+                          cancel_event=None, hf_repo=None):
+        cancel.set()  # user pressed Cancel while hf_hub was downloading
+        return False
+
+    monkeypatch.setattr(mm, "_download_via_huggingface", _fake_hf_download)
+
+    with pytest.raises(mm.DownloadCancelled):
+        mm.ensure_model(config, cancel_event=cancel)
+
+
+@responses.activate
+def test_ensure_model_mirror_cancel_during_hf_fallback_is_cancelled(tmp_path, monkeypatch):
+    """Same as above on the mirror path: mirror fails (404), the user
+    cancels during the HuggingFace fallback — DownloadCancelled, not the
+    "both sources failed" RuntimeError."""
+    model_name = "faster-whisper-medium"
+    model_dir_name = f"models--Systran--{model_name}"
+    zip_url = f"https://smch.ir/models/{model_dir_name}.zip"
+    responses.add(responses.GET, zip_url, status=404)
+
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    config = {
+        "model": {
+            "name": model_name,
+            "url": zip_url,
+            "md5": f"{zip_url}.md5",
+        },
+        "model_path": str(cache_dir / model_dir_name),
+    }
+
+    cancel = threading.Event()
+
+    def _fake_hf_download(name, src_zip_url, target_model_path,
+                          status_cb=None, progress_cb=None,
+                          cancel_event=None, hf_repo=None):
+        cancel.set()
+        return False
+
+    monkeypatch.setattr(mm, "_download_via_huggingface", _fake_hf_download)
+
+    with pytest.raises(mm.DownloadCancelled):
+        mm.ensure_model(config, cancel_event=cancel)
+
+
+# ---------- Catalog name safety ----------------------------------------------
+
+
+def test_ensure_model_successful_retry_after_mismatch_is_kept(tmp_path, monkeypatch):
+    """A mirror retry that succeeds after one MD5 mismatch must be accepted.
+
+    Regression: ``last_mismatches`` was never cleared on a successful
+    attempt, so the loop's terminal ``if last_mismatches:`` raised for a
+    model that was already extracted AND verified on disk. The outer
+    handler then deleted the good model and re-downloaded it from
+    HuggingFace (or failed outright where huggingface.co is blocked).
+    """
+    model_name = "fakemodel"
+    model_dir_name = f"models--Systran--{model_name}"
+    file_a = b"eventually-good"
+    zip_bytes = _build_model_zip(model_dir_name, {"a.bin": file_a})
+    zip_url = "https://fake.test/model.zip"
+    md5_url = "https://fake.test/model.md5"
+
+    with responses.RequestsMock() as rsps:
+        rsps.add(responses.GET, zip_url, body=zip_bytes, status=200,
+                 headers={"content-length": str(len(zip_bytes))})
+        # First extraction verifies against a WRONG digest, the retry's
+        # against the correct one.
+        rsps.add(responses.GET, md5_url,
+                 body=f"{hashlib.md5(b'WRONG').hexdigest()} {model_dir_name}/a.bin",
+                 status=200)
+        rsps.add(responses.GET, md5_url,
+                 body=f"{hashlib.md5(file_a).hexdigest()} {model_dir_name}/a.bin",
+                 status=200)
+
+        cache_dir = tmp_path / "cache"
+        cache_dir.mkdir()
+        model_path = cache_dir / model_dir_name
+        config = {
+            "model": {"name": model_name, "url": zip_url, "md5": md5_url},
+            "model_path": str(model_path),
+        }
+
+        hf_calls: list[int] = []
+
+        def _fake_hf(*a, **k):
+            hf_calls.append(1)
+            return True
+
+        monkeypatch.setattr(mm, "_download_via_huggingface", _fake_hf)
+
+        progress_payloads: list[dict] = []
+        result = mm.ensure_model(config, progress_cb=progress_payloads.append)
+
+    assert Path(result) == model_path
+    assert (model_path / "a.bin").read_bytes() == file_a
+    assert hf_calls == []  # the verified retry is the final answer
+    assert any(p.get("phase") == "ready" for p in progress_payloads)
+
+
+def test_merged_catalog_ignores_unsafe_model_names():
+    """An online/local catalog entry whose ``name`` escapes the hub must be
+    ignored entirely (a built-in slug keeps its built-in entry), not merged
+    into the effective catalog. ``model.name`` becomes the model directory
+    under the hub via ``hub.model_folder_for``; a traversal name there is a
+    path-escape (the download flow rmtree's that path before extracting).
+    """
+    cfg = {
+        "model_catalog": {
+            "evil-new": {
+                "label": "Totally Legit",
+                "name": "../../Documents",
+                "url": "https://attacker.test/x.zip",
+                "md5": "https://attacker.test/x.zip.md5",
+            },
+            "large-v3": {
+                "label": "Hijacked",
+                "name": "models--Systran--../../../../Users/Owner/Documents",
+                "url": "https://attacker.test/x.zip",
+                "md5": "",
+                "hf_repo": "attacker/x",
+            },
+            "safe-new": {
+                "label": "Safe",
+                "name": "faster-whisper-safe-model",
+                "url": "",
+                "md5": "",
+                "hf_repo": "Systran/faster-whisper-safe-model",
+            },
+        }
+    }
+
+    slugs = dict(mm.catalog_models(cfg))
+    assert "evil-new" not in slugs
+    # The built-in large-v3 entry survives the hijack attempt untouched.
+    resolved = mm.catalog_resolve_entry(cfg, "large-v3")
+    assert resolved is not None
+    assert resolved["name"] == "faster-whisper-large-v3"
+    assert mm.catalog_entry_info(cfg, "large-v3")["label"] != "Hijacked"
+    # A safe online entry still merges normally.
+    safe = mm.catalog_resolve_entry(cfg, "safe-new")
+    assert safe is not None
+    assert safe["name"] == "faster-whisper-safe-model"
+
+
