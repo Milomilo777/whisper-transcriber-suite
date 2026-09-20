@@ -426,6 +426,22 @@ pre-staged (worktree `wt-llm-infra-review` + prompt ready) to fire next with no 
 Newer prompts now explicitly tell the agent to skip an out-of-bounds file access and
 keep going rather than stopping the whole task — response to the pattern above.
 
+`opencode/misc-features-review` DONE, no caveat — fully self-completed, commit
+`812b974`, pyright re-confirmed by me. 5 real bugs: **the watched-folder feature
+silently ignored files moved/dragged in** (watchdog reports a same-volume Explorer
+drag as a MOVE event, not CREATE — `on_created`-only handling meant the headline
+"drop a file in the watched folder" flow did nothing); `burn_subs.burn()` wrote
+straight to the user's chosen output path non-atomically (a mid-burn failure could
+destroy an existing file of that name) — now atomic via temp-file + `os.replace()`;
+`burn()` also hard-failed on containers that reject the source audio codec (e.g. Opus
+in `.mp4`) despite the module claiming to re-encode — now retries once with AAC;
+recorder availability probes let a native-library `OSError` (not just `ImportError`)
+escape as an unhandled Tk callback crash instead of a graceful "can't record" state;
+tiling's launch-failure and superseded-launch teardown paths didn't reap killed
+children (zombie accumulation on a persistently-failing launch, macOS/Linux).
+`app-widgets-review` retry (refined prompt: explicit "never read third-party library
+source" instruction) queued next; `llm-infra-review` (`blhqlcgty`) already fired.
+
 `core/worker.py` deliberately NOT yet queued — the frozen JSON-stdio protocol every
 deliverable depends on, deserves its own careful, narrowly-worded prompt rather than
 being folded into a general batch. Do that one deliberately, not on autopilot.
