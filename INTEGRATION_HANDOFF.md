@@ -109,3 +109,20 @@ review-branch log; no conflict markers, no dropped lines.
 Verification:
 - Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
 - Hermetic suite (`tests/` minus `tests/smoke/`): 2206 passed, 14 skipped, 0 failures.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/app-widgets-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2206 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). Matches the prior commit's claim exactly.
+- **Merge diff**: 4 source files + 4 new test files + 2 extended test files + 1 doc. No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `console.py`: `_attach_context_menu` builds ONE `tk.Menu` child of the Text widget; the popup handler only posts it via `_popup_console_menu`, which returns `"break"` to suppress the app-wide Text menu. `grab_release()` is guarded with `TclError` in a finally block. Helper functions (`_copy_selection`, `_copy_all`, `_clear`) are standalone and each saves/restores widget state correctly.
+  - `error_dialog.py`: `previous_grab` captured via `parent.grab_current()` before `grab_set()`, filtered to `(tk.Tk, tk.Toplevel)` only (menus excluded). `_close` destroys the dialog first, then conditionally re-grabs `previous_grab` only if `winfo_exists()` and no newer grab is held — correct LIFO restore. The `root.grab_current()` path correctly walks up to find the real modal host even when `parent` is the App root.
+  - `hardware_wizard.py`: `_master_had_grab` snapshot in `__init__` before `grab_set()`; `_on_close` hands the grab back with the same guard (`winfo_exists` + `grab_current is None`). `_make_silent_clip` wraps `subprocess.run` and unlinks the mkstemp'd file on any exception before re-raising — covers ffmpeg-missing, bad args, and timeout.
+  - `tray.py`: `_libs_available()` checks platform + deps only (flag-independent); `start()` gates on it and clears `_start_failed` on success; `is_supported()` returns `False` when `_start_failed` is set. A transient boot-time failure stays retryable; a successful retry is reportable. Partial-failure paths (Icon construction vs `safe_thread`) both leave `_icon=None` + flag set.
+- **Test coverage of merged behavior**: New tests (`test_console_widget.py`, `test_error_dialog.py`, `test_tooltip_widget.py`) plus extensions (`test_hardware_wizard.py`, `test_tray.py`) cover all four fixes. The `_libs_available` retry path and the error-dialog `root-grab` path are both exercised. No coverage gaps found.
+
+Result: clean. No source changes needed.
