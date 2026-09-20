@@ -464,3 +464,31 @@ Verified the merge of `opencode/model-hub-review` into
 - **Test coverage of merged behavior**: 20+ targeted tests across the 3 merge-specific test files — all pass. Tests exercise: lock vs corruption detection, traversal name rejection, catalog hardening, partial-install detection, resume after transient error, verify retry, cancellation handling, and hostile display field coercion.
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/model-loading-review (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/model-loading-review`): no conflicts,
+no reconciliation needed. Merge commit 1cc84a8 on top of 1a83484
+(second parent e39878b).
+
+Files brought in by the review branch (bb061a7 + e39878b):
+- `app/dialogs/model_loading.py`: new `_compute_position()` helper
+  (screen-centre fallback when master is not viewable, e.g. minimised
+  window reporting -32000 on Windows; clamps to non-negative only when
+  the parent itself is on the primary display so monitors left/above
+  keep their negative coordinates) plus `f"+{x}+{y}"` geometry form for
+  absolute negative positions; new `_closed` flag making `cancel()` and
+  `mark_success_and_close()` idempotent so a deferred `post_to_main`
+  success callback arriving after a user Cancel cannot flip `success`
+  back to True.
+- `tests/core/test_model_loading_dialog.py` (new): coverage for the
+  close-race guard and the multi-monitor centring maths.
+- `OPENCODE_HANDOFF_model_loading.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git diff HEAD^1 HEAD`: intent matches the
+review-branch log; no conflict markers, no dropped lines.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2325 passed, 14 skipped,
+  0 failures.
