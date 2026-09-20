@@ -587,6 +587,34 @@ writing its final handoff (`OPENCODE_HANDOFF_worker_correlation_id.md`) and
 committing (local only, no push). **When this completes: just confirm it committed
 and note the branch name for the owner's own later review — do not evaluate it.**
 
+---
+
+## Discovered mid-session: this machine is running ANOTHER, unrelated Claude/OpenCode
+## session concurrently, on a different project
+
+`Get-Process` showed 5 live `opencode.exe` processes at once — only 2 belonged to
+this session. The other 3 had command lines referencing `BRIEF.md`, `DESIGN.md`,
+`web/v2/index.html`, `src/engines/deepl_webapi.py`, `--auto` — the
+machine-translate-docx-main project, never touched by this conversation. Confirmed
+independently: `C:\Users\Owner\.claude\EXTERNAL_MODELS.md` (the global, shared,
+cross-project external-AI notes file) changed on disk mid-session from an edit this
+session did not make. **All of today's OOM kills and the one exit-127 failure
+(`opencode/entrypoint-webpage-review`, right below) were competing for memory against
+this entire SEPARATE workload this whole time, not just against each other.** Left
+those 3 processes alone — not this session's to touch. Left `EXTERNAL_MODELS.md`'s
+external change alone too, per its own file-changed notice.
+
+`opencode/entrypoint-webpage-review` DONE (caveat) — failed with a generic exit 127
+(not OOM, not a sandbox rejection) right after a successful `node --check` on the
+extracted page script, very likely a resource-exhaustion side effect of the 5-process
+pile-up above. Real work salvaged and committed (local only): `gui.py`'s `serve
+--port 70000` (or negative) reached `socket.bind()` as a raw int and raised
+`OverflowError` (not `OSError`), crashing the CLI with a traceback instead of a usage
+error — new `_port_number()` argparse type validates the range up front, does not
+touch the `--worker` contract. Two more unescaped `innerHTML` sinks fixed in
+`core/server/static/index.html` (same class as the 2026-07-18 fixpack, two sinks it
+missed). `model_loading.py` (also in scope) was never reached.
+
 *(Paused-state note below kept for history — no longer the current state.)*
 
 **PAUSED after the 3rd OOM kill today — deliberate, not automatic.** Free memory
