@@ -14,7 +14,14 @@ import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
-from core.backends.availability import ENGINE_CHOICES
+from core.backends.availability import (
+    ENGINE_CHOICES,
+    EngineStatus,
+    engine_options,
+    engine_status,
+    engine_value_for_label,
+    format_engine_status,
+)
 from core.config import DEFAULT_CONFIG, NOISY_AUDIO_PRESET, save_config
 from core.model_manager import (
     DEFAULT_MODEL_SLUG,
@@ -25,7 +32,7 @@ from core.model_manager import (
 )
 from core.writers import supported_formats
 
-from app.widgets.tooltip import help_icon, section_labelframe
+from app.widgets.tooltip import bind_tooltip, help_icon, section_labelframe
 
 logger = logging.getLogger(__name__)
 
@@ -221,6 +228,11 @@ class AdvancedDialog(tk.Toplevel):
                 _BACKEND_CHOICES[0][0],
             )
         )
+        # Deep (import-based) EngineStatus results, filled by probes this
+        # dialog fires as the user tries engines, so the combobox markers
+        # and the warning row reflect real readiness, not just the cheap
+        # credential check.
+        self._engine_deep_statuses: dict[str, EngineStatus] = {}
         self._hallucination_detect = tk.BooleanVar(
             value=bool(cfg.get("hallucination_detect_enabled", True))
         )
@@ -511,10 +523,14 @@ class AdvancedDialog(tk.Toplevel):
 
     def _selected_backend(self) -> str:
         """The engine currently picked in this dialog's Engine combobox
-        (not necessarily saved yet)."""
-        return _BACKEND_LABEL_TO_VALUE.get(
-            self._backend_display.get() or "", "faster_whisper"
-        )
+        (not necessarily saved yet).
+
+        The combobox label may carry the ``⚠ unavailable`` marker, so the
+        parse goes through the shared label helper instead of the plain
+        label→value map (which only knows unmarked labels).
+        """
+        value = engine_value_for_label(self._backend_display.get())
+        return value or "faster_whisper"
 
     def _sync_engine_sections(self) -> None:
         """Show only the setup the engine picked in this dialog needs.
@@ -523,8 +539,11 @@ class AdvancedDialog(tk.Toplevel):
         directly under "Model & engine" while their engine is picked and
         hidden otherwise, and the whisper.cpp model button only shows for
         whisper.cpp. Hiding is purely visual: every field keeps its value
-        and is saved exactly as before. Never raises — it runs from a Tk
-        callback, where an exception surfaces as a cryptic error dialog.
+        and is saved exactly as before. Also refreshes the availability
+        markers / warning row for the new pick, greys the Whisper-model
+        picker out when the engine can't use it, and starts a deep probe so
+        the warning is based on a real check. Never raises — it runs from a
+        Tk callback, where an exception surfaces as a cryptic error dialog.
         """
         try:
             selected = self._selected_backend()
@@ -538,9 +557,145 @@ class AdvancedDialog(tk.Toplevel):
                 self._whisper_cpp_btn.grid()
             else:
                 self._whisper_cpp_btn.grid_remove()
+            self._refresh_engine_combo_values()
+            self._refresh_engine_warning()
+            self._sync_model_picker_engine_state()
+            self._probe_selected_engine()
             self._refresh_nav()
         except Exception:  # noqa: BLE001
             logger.debug("Could not sync engine setup sections", exc_info=True)
+
+    def _refresh_engine_combo_values(self) -> None:
+        """Re-render engine labels (cheap + any cached deep results), keeping
+        the current pick selected by value."""
+        combo = getattr(self, "_engine_combo", None)
+        if combo is None:
+            return
+        try:
+            options = engine_options(
+                self.app.app_config,
+                deep=False,
+                statuses=self._engine_deep_statuses,
+            )
+            combo.configure(values=[o.display_label for o in options])
+            combo.configure(
+                state="readonly" if any(o.ready for o in options) else "disabled"
+            )
+            current = self._selected_backend()
+            for opt in options:
+                if (
+                    opt.value == current
+                    and self._backend_display.get() != opt.display_label
+                ):
+                    self._backend_display.set(opt.display_label)
+                    break
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not refresh engine combo values", exc_info=True)
+
+    def _engine_status_for_selected(self) -> EngineStatus:
+        """Cached deep status of the current pick, else its cheap status."""
+        value = self._selected_backend()
+        cached = self._engine_deep_statuses.get(value)
+        if cached is not None:
+            return cached
+        return engine_status(value, self.app.app_config, deep=False)
+
+    def _refresh_engine_warning(self) -> None:
+        """Show/hide the reason row under the Engine picker.
+
+        The reason text matches the Transcribe tab's status line exactly;
+        this dialog additionally shows the per-engine setup section right
+        below, so it doesn't need the "go to Advanced settings" pointer.
+        """
+        try:
+            self._set_engine_warning(self._engine_status_for_selected())
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not refresh engine warning", exc_info=True)
+
+    def _set_engine_warning(self, st: EngineStatus) -> None:
+        label = getattr(self, "_engine_warning", None)
+        var = getattr(self, "_engine_warning_var", None)
+        if label is None or var is None:
+            return
+        text = "" if st.ready else format_engine_status(st, action_hint="")
+        try:
+            var.set(text)
+            if text:
+                label.grid()
+            else:
+                label.grid_remove()
+        except tk.TclError:
+            pass
+
+    def _probe_selected_engine(self) -> None:
+        """Deep-probe the picked engine on a daemon thread, via the App.
+
+        The cheap status above paints immediately; the deep probe refines
+        the warning + combobox marker once installs/credentials are really
+        checked. Silently skipped when the hosting object has no probe
+        helper (bare test doubles) — never a hard dependency.
+        """
+        probe = getattr(self.app, "probe_engine_status", None)
+        if not callable(probe):
+            return
+        value = self._selected_backend()
+        try:
+            probe(value, lambda st: self._apply_engine_probe(value, st))
+        except Exception:  # noqa: BLE001
+            logger.debug("Engine probe dispatch failed", exc_info=True)
+
+    def _apply_engine_probe(self, value: str, st: EngineStatus) -> None:
+        """Tk-main-thread sink for a finished deep probe (stale-race safe)."""
+        try:
+            if not self.winfo_exists():
+                return
+        except Exception:  # noqa: BLE001
+            return
+        if self._selected_backend() != value:
+            return
+        self._engine_deep_statuses[value] = st
+        self._refresh_engine_combo_values()
+        self._set_engine_warning(st)
+
+    def _sync_model_picker_engine_state(self) -> None:
+        """Grey out the Whisper-model picker unless Faster-Whisper is picked.
+
+        The model catalog only drives Faster-Whisper; whisper.cpp, NVIDIA
+        Parakeet and the cloud engines each use their own model, so leaving
+        the picker live would let the user "change" something the next
+        transcription silently ignores. The hover reason explains it.
+        """
+        combo = getattr(self, "_model_combo", None)
+        if combo is None:
+            return
+        try:
+            combo.configure(
+                state=(
+                    "readonly"
+                    if self._selected_backend() == "faster_whisper"
+                    else "disabled"
+                )
+            )
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not sync model picker state", exc_info=True)
+
+    def _model_picker_disabled_reason(self) -> str:
+        """Hover text while the model picker is greyed out; "" when active."""
+        combo = getattr(self, "_model_combo", None)
+        if combo is None:
+            return ""
+        try:
+            if str(combo.cget("state")) != "disabled":
+                return ""
+        except Exception:  # noqa: BLE001
+            return ""
+        value = self._selected_backend()
+        engine_label = _BACKEND_VALUE_TO_LABEL.get(value, value)
+        return (
+            f"The {engine_label} engine uses its own model. This picker only "
+            "applies to the Faster-Whisper engine, so a change here would "
+            "have no effect."
+        )
 
     def _sync_llm_provider_rows(self) -> None:
         """Show only the AI Layer rows the picked LLM provider uses: the
@@ -610,6 +765,9 @@ class AdvancedDialog(tk.Toplevel):
             width=56,
         )
         self._model_combo.grid(row=0, column=1, sticky="ew", padx=8, pady=4)
+        # Hover reason while the picker is greyed out under a non-Faster-
+        # Whisper engine (see _sync_model_picker_engine_state).
+        bind_tooltip(self._model_combo, self._model_picker_disabled_reason)
         ttk.Button(
             engine, text="?", width=3, command=self._show_model_info,
         ).grid(row=0, column=2, sticky="w", padx=(0, 8), pady=4)
@@ -650,10 +808,14 @@ class AdvancedDialog(tk.Toplevel):
             engine,
             textvariable=self._backend_display,
             state="readonly",
-            values=[label for label, _value in _BACKEND_CHOICES],
+            values=[
+                opt.display_label
+                for opt in engine_options(self.app.app_config, deep=False)
+            ],
             width=56,
         )
         backend_combo.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
+        self._engine_combo = backend_combo
         backend_combo.bind(
             "<<ComboboxSelected>>", lambda _e: self._sync_engine_sections()
         )
@@ -668,20 +830,38 @@ class AdvancedDialog(tk.Toplevel):
             "Which engine runs the transcription. Faster-Whisper is the "
             "default; whisper.cpp helps on low-end CPUs. The two cloud "
             "engines and NVIDIA Parakeet need a one-time setup, which "
-            "appears right below this section once you pick one. Same "
-            "picker as the Engine dropdown on the Transcribe tab.",
+            "appears right below this section once you pick one. An engine "
+            "that cannot run until you set it up is marked "
+            "'⚠ unavailable' here. Same picker as the Engine dropdown on "
+            "the Transcribe tab.",
         ).grid(row=2, column=3, sticky="w", padx=(0, 8), pady=4)
 
-        ttk.Label(engine, text="Hardware").grid(row=3, column=0, sticky="w", padx=8, pady=4)
+        # Availability warning for the picked engine — mirrors the Transcribe
+        # tab's status line, phrased for this dialog ("below" = the engine's
+        # own setup section). Hidden while the pick is fully ready.
+        self._engine_warning_var = tk.StringVar(value="")
+        self._engine_warning = ttk.Label(
+            engine,
+            textvariable=self._engine_warning_var,
+            foreground="#b06a00",
+            wraplength=560,
+            justify="left",
+        )
+        self._engine_warning.grid(
+            row=3, column=0, columnspan=4, sticky="w", padx=8, pady=(0, 4)
+        )
+        self._engine_warning.grid_remove()
+
+        ttk.Label(engine, text="Hardware").grid(row=4, column=0, sticky="w", padx=8, pady=4)
         ttk.Button(
             engine, text="Re-detect hardware…",
             command=self._open_hardware_wizard,
-        ).grid(row=3, column=1, sticky="w", padx=8, pady=4)
+        ).grid(row=4, column=1, sticky="w", padx=8, pady=4)
         ttk.Label(
             engine,
             text="Probes CUDA / NPU / DirectML and picks the fastest tier.",
             foreground="#666", wraplength=170, justify="left",
-        ).grid(row=3, column=2, sticky="w", padx=8, pady=4)
+        ).grid(row=4, column=2, sticky="w", padx=8, pady=4)
 
         # Word-timing refinement — a plain on/off instead of the old
         # "none"/"stable_ts" dropdown; _save_and_close maps it back.
@@ -689,7 +869,7 @@ class AdvancedDialog(tk.Toplevel):
             engine,
             text="Refine word timings with stable-ts (slower)",
             variable=self._alignment_enabled,
-        ).grid(row=4, column=0, columnspan=3, sticky="w", padx=8, pady=4)
+        ).grid(row=5, column=0, columnspan=3, sticky="w", padx=8, pady=4)
         help_icon(
             engine,
             "After transcribing, re-aligns every word's start/end time "
@@ -698,7 +878,7 @@ class AdvancedDialog(tk.Toplevel):
             "subtitles. Adds roughly 10-30% to the run time, and needs a "
             "one-time ~700 MB component that is offered the first time "
             "you transcribe with this on.",
-        ).grid(row=4, column=3, sticky="w", padx=(0, 8), pady=4)
+        ).grid(row=5, column=3, sticky="w", padx=(0, 8), pady=4)
         engine.columnconfigure(1, weight=1)
         return engine
 
@@ -1631,8 +1811,8 @@ class AdvancedDialog(tk.Toplevel):
         _cb = self._cookies_browser.get().strip()
         cfg["cookies_from_browser"] = "" if _cb in ("", "(off)") else _cb
         _old_backend = str(cfg.get("transcribe_backend") or "")
-        cfg["transcribe_backend"] = _BACKEND_LABEL_TO_VALUE.get(
-            self._backend_display.get() or "", "faster_whisper"
+        cfg["transcribe_backend"] = (
+            engine_value_for_label(self._backend_display.get()) or "faster_whisper"
         )
         _backend_changed = cfg["transcribe_backend"] != _old_backend
         cfg["cloud_stt_api_key"] = self._cloud_api_key.get().strip()
