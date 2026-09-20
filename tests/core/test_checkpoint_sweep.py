@@ -40,6 +40,27 @@ def test_sweep_partials_removes_old_json_and_orphan_slices(monkeypatch, tmp_path
     assert removed == 2
 
 
+def test_sweep_partials_removes_stale_checkpoint_tmp(monkeypatch, tmp_path):
+    """A worker killed mid-checkpoint-write leaves ``<key>.json.tmp``
+    behind; nothing else ever reclaims it (only ``*.json`` and
+    ``*.slice.wav`` were swept), so it lived in partials/ forever."""
+    monkeypatch.setattr(cp, "partials_dir", lambda: tmp_path)
+    now = time.time()
+
+    old_tmp = tmp_path / "aaa.json.tmp"
+    old_tmp.write_text('{"partial":', encoding="utf-8")
+    os.utime(old_tmp, (now - 3600, now - 3600))  # 1 hour old
+
+    fresh_tmp = tmp_path / "bbb.json.tmp"
+    fresh_tmp.write_text('{"partial":', encoding="utf-8")  # ~now
+
+    removed = cp.sweep_partials()
+
+    assert not old_tmp.exists(), "stale checkpoint write scratch is reaped"
+    assert fresh_tmp.exists(), "a fresh scratch file (live writer) is kept"
+    assert removed == 1
+
+
 def test_sweep_partials_never_raises_on_missing_dir(monkeypatch, tmp_path):
     missing = tmp_path / "does-not-exist"
     monkeypatch.setattr(cp, "partials_dir", lambda: missing)
