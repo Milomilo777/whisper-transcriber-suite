@@ -282,3 +282,21 @@ Verification:
   re-run is green — transient Tk/state flake unrelated to this merge (merge
   touches only serve-port handling + LAN page + new tests).
 - Targeted merge-area tests (16 tests across the two new files): all pass.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/entrypoint-webpage-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2256 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). Matches the prior commit's claim exactly.
+- **Merge diff**: 2 source files changed (`gui.py`, `core/server/static/index.html`), 2 new test files, 1 doc. No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `gui.py` — `_port_number()`: argparse `type=` function converts value to `int`, catches `ValueError` for non-numeric strings, and range-checks 0–65535. Correct: plain `int` let `--port 70000` / `--port -1` through to `socket.bind`, which raises `OverflowError` — not `OSError` — so `run_server`'s bind-failure handler missed it and the CLI died with a raw traceback.
+  - `gui.py` — `_cli_serve()` config fallback: `int(cfg.get("server_port", 8765))` wrapped in `try/except (TypeError, ValueError)` with clean stderr + exit 1; range-check 0–65535 follows. Correct: hand-editable JSON config was never validated, and both non-numeric values and out-of-range ints produced raw tracebacks.
+  - `core/server/static/index.html` — `start()` catch: `escapeHtml(e.message)` wrapping before `setSubmitStatus()` innerHTML. Correct: server error JSON is untrusted; the prior 2026-07-18 hardening (099b759) missed this catch.
+  - `core/server/static/index.html` — `renderSubmit()` progress bar: `(Number(j.progress) || 0)` instead of `(j.progress || 0)`. Correct: `Number()` coerces non-numeric strings to `NaN` which falls through to `|| 0`; without it a string progress value would produce `NaN` in the CSS width. All three progress bars (submit/jobs/recent) now use `Number(j.progress) || 0`.
+  - No unescaped `+ e.message` patterns remain — verified by grep.
+- **Test coverage of merged behavior**: 16 targeted tests across the two new files — all pass. Tests exercise: port arg accept/reject (0, 65535, 70000, -1, 65536, non-numeric), explicit flag forwarding, config fallback, --lan host override, 5 parametrized invalid config port cases (including `None`), progress width `Number()` coercion, error message escaping, all known untrusted field escaping sentinel patterns.
+
+Result: clean. No source changes needed.
