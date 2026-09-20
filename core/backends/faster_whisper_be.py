@@ -125,11 +125,10 @@ class FasterWhisperBackend(Backend):
         except Exception as e:
             if req_device != "cuda":
                 raise
+            from ..hardware import cuda_load_failure_reason
             logger.warning(
-                "CUDA model load failed (%s); downgrading to cpu/int8. This "
-                "usually means the cuDNN/cuBLAS runtime libraries are missing "
-                "or broken, NOT that the model is corrupt.",
-                e,
+                "CUDA model load failed (%s); downgrading to cpu/int8. %s",
+                e, cuda_load_failure_reason(str(e)),
             )
             if status_cb:
                 status_cb(f"GPU unavailable ({e}); falling back to CPU (slower).")

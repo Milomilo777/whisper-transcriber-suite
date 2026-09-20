@@ -31,7 +31,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import threading
 import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -142,6 +141,76 @@ def _cuda_runtime_dlls_loadable() -> bool:
         # The daemon thread is abandoned; treat CUDA as unusable.
         return False
     return bool(result.get("ok", False))
+
+
+def classify_cuda_load_failure(exc_text: str) -> str:
+    """Classify a failed CUDA ``WhisperModel`` construction from its exception
+    text, so the self-healing fallback (see ``core.transcriber`` and
+    ``core.backends.faster_whisper_be``) can log/report an accurate reason
+    instead of always blaming missing cuDNN/cuBLAS runtime libraries.
+
+    Returns one of:
+
+      * ``"arch_unsupported"`` — the GPU's compute capability is newer than
+        the installed CTranslate2 build's compiled/JIT kernel support (e.g. a
+        very recently launched NVIDIA architecture ahead of upstream kernel
+        support — reported for RTX 50-series/Blackwell ``sm_120`` in GitHub
+        issue #7). The probe in this module (``_cuda_runtime_dlls_loadable``,
+        ``get_supported_compute_types``) cannot catch this case up front: it
+        only proves the runtime libraries load and that CTranslate2
+        generically reports a compute type as supported, not that THIS
+        GPU's specific architecture has a matching kernel — the failure only
+        surfaces at actual model-construction time.
+      * ``"runtime_libs"`` — the original, still most common, assumption:
+        missing/broken cuDNN or cuBLAS runtime libraries.
+      * ``"unknown"`` — matches neither known pattern; caller should fall
+        back to the generic runtime-libraries message (unchanged behaviour).
+
+    Heuristic and best-effort only — a misclassification only changes which
+    explanatory sentence is logged/shown; the fallback-to-CPU behaviour
+    itself is identical in every case.
+    """
+    text = exc_text.lower()
+    arch_markers = (
+        "no kernel image",
+        "invalid device function",
+        "cuda capability",
+        "is not compatible with the current",
+        "compute capability",
+    )
+    if any(m in text for m in arch_markers):
+        return "arch_unsupported"
+    lib_markers = (
+        "cudnn", "cublas", "dll", "shared object", "cannot open",
+        "unable to load", "is not found", "no such file",
+    )
+    if any(m in text for m in lib_markers):
+        return "runtime_libs"
+    return "unknown"
+
+
+_ARCH_UNSUPPORTED_REASON = (
+    "This usually means your GPU's compute capability is newer than what "
+    "the installed CTranslate2 build has kernels for yet (a known gap right "
+    "after a new NVIDIA GPU generation launches) -- NOT that the cuDNN/"
+    "cuBLAS runtime is missing or the model is corrupt. Try `pip install "
+    "--upgrade ctranslate2` inside this app's Python environment; if that "
+    "doesn't help, GPU support for this card isn't available upstream yet."
+)
+_RUNTIME_LIBS_REASON = (
+    "This usually means the cuDNN/cuBLAS runtime libraries are missing or "
+    "broken, NOT that the model is corrupt."
+)
+
+
+def cuda_load_failure_reason(exc_text: str) -> str:
+    """Human-readable explanation sentence for a failed CUDA load, picked via
+    :func:`classify_cuda_load_failure`. Shared by both self-healing call
+    sites so their log/status messages can't drift apart again."""
+    kind = classify_cuda_load_failure(exc_text)
+    if kind == "arch_unsupported":
+        return _ARCH_UNSUPPORTED_REASON
+    return _RUNTIME_LIBS_REASON
 
 
 def cuda_load_ok() -> bool:

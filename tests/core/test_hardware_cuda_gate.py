@@ -147,6 +147,53 @@ def test_probe_tiers_restores_gc_state():
             gc.enable()
 
 
+# ---------- classify_cuda_load_failure / cuda_load_failure_reason -------------
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "CUDA error: no kernel image is available for execution on the device",
+        "RuntimeError: invalid device function",
+        "NVIDIA GeForce RTX 5060 Laptop GPU with CUDA capability sm_120 is not "
+        "compatible with the current PyTorch installation",
+        "the current build supports compute capability sm_50 through sm_90",
+    ],
+)
+def test_classify_cuda_load_failure_detects_arch_unsupported(text):
+    assert hw.classify_cuda_load_failure(text) == "arch_unsupported"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Library cudnn_ops_infer64_8.dll is not found",
+        "Unable to load libcudnn_ops.so.9",
+        "could not load library cublas64_12.dll",
+        "libcublas.so.12: cannot open shared object file: No such file or directory",
+    ],
+)
+def test_classify_cuda_load_failure_detects_runtime_libs(text):
+    assert hw.classify_cuda_load_failure(text) == "runtime_libs"
+
+
+def test_classify_cuda_load_failure_unknown_for_unrelated_text():
+    assert hw.classify_cuda_load_failure("out of memory") == "unknown"
+
+
+def test_cuda_load_failure_reason_mentions_upgrade_for_arch_unsupported():
+    reason = hw.cuda_load_failure_reason(
+        "CUDA capability sm_120 is not compatible with the current build"
+    )
+    assert "ctranslate2" in reason.lower()
+    assert "or the model is corrupt" in reason.lower()
+
+
+def test_cuda_load_failure_reason_is_generic_runtime_libs_message_by_default():
+    reason = hw.cuda_load_failure_reason("some other unrelated failure")
+    assert "cudnn/cublas" in reason.lower()
+
+
 def test_probe_tiers_serializes_concurrent_calls():
     """A concurrent caller must block on the shared lock, not race
     through — same contract as the other hardened availability probes."""

@@ -283,11 +283,10 @@ def _load_whisper_model_self_healing(
         if req_device != "cuda":
             raise
         cpu_device, cpu_compute = _CPU_FALLBACK
+        from .hardware import cuda_load_failure_reason
         logger.warning(
-            "CUDA model load failed (%s); downgrading to %s/%s. This usually "
-            "means the cuDNN/cuBLAS runtime libraries are missing or broken, "
-            "NOT that the model is corrupt.",
-            e, cpu_device, cpu_compute,
+            "CUDA model load failed (%s); downgrading to %s/%s. %s",
+            e, cpu_device, cpu_compute, cuda_load_failure_reason(str(e)),
         )
         if status_cb:
             status_cb(

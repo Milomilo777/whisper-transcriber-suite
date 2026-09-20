@@ -32,6 +32,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Clearer reason when Hardware Autodetect falls back to CPU on a CUDA
+  GPU.** The self-healing CUDA→CPU downgrade used to always blame missing
+  cuDNN/cuBLAS runtime libraries. It now recognizes the separate case where
+  the GPU's compute capability is simply newer than the installed
+  CTranslate2 build supports yet (reported for an RTX 5060/Blackwell
+  `sm_120` laptop GPU, #7) and says so instead of pointing at the wrong
+  cause.
 - **Clone Your Voice / Text to Voice hardened further** (still off by
   default, unreleased). A follow-up adversarial review found and fixed two
   real bugs — every generation failure was silently freezing the tab with
