@@ -127,3 +127,85 @@ and the command-level
   (`docs/auto-subtitles-feature.md`, including the exact `en.*` → 7-files incident)
   rather than by running yt-dlp. No third-party library source was read.
 - `tests/smoke/` was intentionally not run (needs the real ~3 GB model / test video).
+
+---
+
+## Second-pass independent re-check (muse-spark-1.3-contributor) — 2026-09-20
+
+### What was verified from the first pass, and how
+
+Re-read the full branch diff (`git diff master..HEAD`) rather than trusting the
+prose, then proved the three most significant claims by executing the old vs new
+behaviour (no worktree mutation — old logic exercised directly, plus a
+stash round-trip for the new test in step 3):
+
+1. **Null project override → `TypeError`**: confirmed `int(None)` raises
+   `TypeError`, the pre-fix validator's `if value is None or isinstance(...)`
+   branch kept the `None`, and the fixed `_validate_overrides` drops
+   `{"diarization_num_speakers": None}` (key absent from output).
+2. **Huge int crashes the old `math.isfinite` guard**: confirmed
+   `math.isfinite(10**400)` raises `OverflowError: int too large to convert to
+   float`, and the fixed `load_config` guard only probes `float` (a huge `int`
+   never reaches `isfinite`). The pre-existing regression test
+   `test_load_config_survives_huge_integer` passes.
+3. **Subtitle regex escaping**: pre-fix code was a bare `",".join(codes)` (raw
+   passthrough, confirmed in `git show master:app/domain/languages.py`);
+   post-fix `subtitle_lang_args(".*") == "\\.\\*"`,
+   `("en(") == "en\\("`, while real codes pass through byte-identical
+   (`"zh-Hans,pt-BR"`, `"en"`). Also confirmed `build_subtitle_command` in
+   `app/services/download_service.py:304` is the single `--sub-langs` emission
+   site — no bypass path feeds raw metadata to yt-dlp.
+
+Remaining first-pass fixes (uncreatable config dir, `init_sentry` BadDsn guard,
+`_anonymised_id` cache-dir guard, Infinity/overflow in `_validate_overrides`)
+were verified by code inspection plus their regression suites — all green
+(see final results below). **Nothing in the first pass was found wrong**;
+no claim was papered over.
+
+Minor doc nit (not a code issue, left untouched): the handoff header says "6
+real defects" but the body lists 7 numbered items.
+
+### New bug found and fixed
+
+**`_parse_timecode("nan")` returned `nan`, crashing the Download queue.**
+`float("nan")` parses successfully yet compares false to *every* bound, so it
+slipped past both the negativity and 24h-cap range checks. The `nan` then
+reached `int(nan)` in `_time_range_badge()` (called unguarded from
+`enqueue_from_form`, `download_service.py:908`) and in `_fmt_timecode()` via
+`_download_sections_arg()` — raising `ValueError: cannot convert float NaN to
+integer` out of the Tk button callback when a user typed `nan`/`NaN`/`1:nan`
+in a Start/End time field. Reproduced live before the fix
+(`_parse_timecode('nan') -> nan`, `VideoDownloadTask(...).time_range_label()`
+→ `ValueError`).
+
+Fix (`app/services/download_service.py`): reject non-finite totals in
+`_parse_timecode` (`if not math.isfinite(total): return None`, + `import
+math`), so `nan` is treated like any other garbled input. `inf`/`1e400`
+already failed the cap check and are now rejected explicitly too.
+Regression test: `tests/core/test_download_command.py::
+test_parse_timecode_rejects_nonfinite`. Proved the discipline properly: with
+only the source fix stashed away, the new test **fails** (`AssertionError` at
+the `nan` assert); with the fix restored, it **passes**.
+
+### Checked and deliberately left alone
+
+- `app/domain/tasks.py` / `app/__init__.py`: re-read; agree with first pass —
+  `time_range_label()` inputs are parser-validated at the only UI construction
+  site, clean.
+- Huge-but-in-type integers (e.g. `parallel_workers: 10**400`) still pass
+  validation in both `load_config` and `_validate_overrides` — but so does
+  `10**9`, i.e. there is no range validation anywhere by design; clamping is a
+  product decision, not a demonstrable crash at the load layer (the load-time
+  `OverflowError` itself was already fixed in pass one).
+- `bool` key receiving `inf` in `load_config` (`bool(inf) == True`): unreachable
+  in practice — local, online, and cache parse paths all use the
+  `parse_constant=_reject_nonfinite` hook; only a hand-constructed in-memory
+  dict could do it. Noted, not touched.
+- Empty `--sub-langs ""` emission when lang is blank: pre-existing behaviour,
+  no concrete failure demonstrated, out of scope.
+
+### Final verification (this pass)
+
+- `python -m pyright app core` → `0 errors, 0 warnings, 0 informations`
+- `python -m pytest tests/ --ignore=tests/smoke -q` → exit 0, all green
+- New regression test fails pre-fix / passes post-fix (stash round-trip above).

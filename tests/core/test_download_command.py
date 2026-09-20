@@ -416,6 +416,17 @@ def test_parse_timecode_rejects_negative_and_overflow():
     assert _parse_timecode("90000") is None
 
 
+def test_parse_timecode_rejects_nonfinite():
+    # float("nan") parses successfully yet compares false to every bound,
+    # so it used to slip through and crash int(nan) in the queue badge /
+    # --download-sections builder. "inf" fails the 24h cap either way.
+    assert _parse_timecode("nan") is None
+    assert _parse_timecode("NaN") is None
+    assert _parse_timecode("1:nan") is None
+    assert _parse_timecode("inf") is None
+    assert _parse_timecode("1e400") is None
+
+
 def test_parse_timecode_rejects_minute_or_second_overflow_when_colon_form():
     # When the user gave MM:SS, a sub-position of 60 is a typo.
     assert _parse_timecode("5:99") is None
