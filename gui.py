@@ -166,7 +166,30 @@ def _cli_serve(args: argparse.Namespace) -> int:
     host = args.host
     if args.lan:
         host = "0.0.0.0"
-    port = args.port if args.port is not None else int(cfg.get("server_port", 8765))
+    if args.port is not None:
+        # Already range-checked up front by _port_number().
+        port = args.port
+    else:
+        # Config file is hand-editable JSON, so unlike --port this value was
+        # never validated: 70000 / -1 reached socket.bind() and raised
+        # OverflowError (not OSError), and a non-numeric value died in int()
+        # — both as raw tracebacks instead of a clean error.
+        try:
+            port = int(cfg.get("server_port", 8765))
+        except (TypeError, ValueError):
+            print(
+                f"[cli] invalid server_port in config: "
+                f"{cfg.get('server_port')!r} (expected a port 0-65535)",
+                file=sys.stderr, flush=True,
+            )
+            return 1
+        if not 0 <= port <= 65535:
+            print(
+                f"[cli] invalid server_port in config: {port} "
+                f"(expected a port 0-65535)",
+                file=sys.stderr, flush=True,
+            )
+            return 1
     max_upload_mb = (
         args.max_upload_mb if args.max_upload_mb is not None
         else int(cfg.get("server_max_upload_mb", 512))

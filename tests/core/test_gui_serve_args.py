@@ -87,3 +87,32 @@ def test_cli_serve_lan_binds_all_interfaces(monkeypatch):
     )
     assert gui._cli_serve(args) == 0
     assert captured["host"] == "0.0.0.0"
+
+
+@pytest.mark.parametrize("bad_port", [70000, -1, 65536, "not-a-port", None])
+def test_cli_serve_rejects_invalid_config_port(monkeypatch, bad_port, capsys):
+    """A hand-edited config ``server_port`` must fail clean, not traceback.
+
+    ``--port`` is validated by ``_port_number``, but the config fallback used
+    to flow verbatim into ``socket.bind``: out-of-range ints raised
+    ``OverflowError`` (which ``run_server``'s ``except OSError`` misses) and
+    non-numeric values died in ``int()`` — both raw tracebacks.
+    """
+    called = []
+
+    def fake_run_server(**kwargs):
+        called.append(kwargs)
+        return 0
+
+    import core.server as server_mod
+
+    monkeypatch.setattr(server_mod, "run_server", fake_run_server)
+    monkeypatch.setattr(
+        "core.config.load_config",
+        lambda: {"server_port": bad_port, "server_max_upload_mb": 512},
+    )
+
+    args = gui._build_argparser().parse_args(["serve"])
+    assert gui._cli_serve(args) == 1
+    assert called == [], "run_server must not be reached with a bad port"
+    assert "server_port" in capsys.readouterr().err
