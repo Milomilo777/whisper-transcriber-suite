@@ -639,8 +639,13 @@ language picker silently fell back to auto-detect** (`iw`/`jv`, the picker's own
 the explicit choice was dropped); the auto-chapters sidecar file didn't share
 `_write_outputs`' collision-index, so re-transcribing a file could silently mix a new
 run's transcript with a stale previous run's chapter data. Correlation-id design
-retry still running, making real progress (writing tests, checking existing
-time-mocking conventions) — status-only, not reviewing per the standing instruction.
+retry: DONE, committed (`da2d06d` on `opencode/worker-correlation-id-design`, local
+only), handoff file present (`OPENCODE_HANDOFF_worker_correlation_id.md`), clean
+working tree, no stash. Per the owner's explicit instruction, this session did NOT
+read the diff, did NOT run pyright/tests itself, and is NOT evaluating the design —
+bookkeeping only (it committed something, nothing crashed/got lost). **Owner: this
+one is entirely unreviewed by Claude, by your own request — go straight to that
+branch yourself when you're ready.**
 
 *(Paused-state note below kept for history — no longer the current state.)*
 
