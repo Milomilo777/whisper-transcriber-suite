@@ -45,6 +45,28 @@ Files brought in by the review branch (7e79551 range):
 Sanity-checked combined diff via `git show HEAD` / `git diff HEAD~1 HEAD`:
 intent matches the review-branch log (588f4cd + 7761776 + 7e79551).
 
-Verification:
+Verification (first pass):
 - Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
-- Hermetic suite (`tests/` minus `tests/smoke/`): 2188 passed, 14 skipped, 0 failures.
+- Hermetric suite (`tests/` minus `tests/smoke/`): 2188 passed, 14 skipped, 0 failures.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/app-services-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2191 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). Added 3 targeted tests for the `_superseded()` generation-guard coverage gap (see below).
+- **Merge diff**: 4 files changed (2 source, 1 test, 1 doc). No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `_superseded()` closure (`download_service.py:1119`): `getattr(task, "_run_generation", my_gen) != my_gen` correctly detects stale runs via generation bump. Default `my_gen` when the attribute is absent means old callers without the field are never falsely superseded — safe.
+  - Pre-media early-return (line 1162): `_superseded() or paused` — if a pause+resume bumped the generation while this run was blocked in `maybe_update_yt_dlp`, the stale run exits before entering subtitle or media phases, preventing a duplicate concurrent download.
+  - Post-subtitle early-return (line 1170): same guard — catches the case where a pause landed mid-subtitle-fetch.
+  - Caption-only error suppression (lines 1134, 1581-1590): `_superseded()` suppresses both the exception handler's error post and the `wrote_files`-empty error post, preventing a stale run from flipping the fresh run's row to "error" and releasing its download slot.
+  - `_run_caption_only_task` paused-row guard (lines 1603-1610): posts `("subtitle_status", task, "paused")` instead of falling through to the error branch — preserves the Resume action on the UI row.
+  - `_media_phase` generation guard (line 1765): returns silently for superseded runs, preventing a second yt-dlp cookie-retry that would clobber `task.process`.
+  - `proc`-local stdout/wait in `_subtitle_phase`, `_run_caption_only_task`, `_run_media_process`: each method uses a local `proc` variable for iteration and `.wait()`, then checks `if task.process is proc` before clearing — identity guard prevents nulling a newer run's live process.
+  - `spawn_token` snapshot (`transcription_service.py:443`): captures `worker["token"]` at spawn time so the synthetic `worker_exit` event routes to the correct (dead) worker via `worker_for_event`, not onto the freshly-restarted worker.
+  - Liveness watchdog reorder (`transcription_service.py:738-760`): `finish_task` (retires temp worker) runs before `restart_worker`, with `if w not in app.workers: continue` guard — prevents spawning an orphaned RAM-resident worker.
+- **Test coverage of merged behavior**: 3 new tests (`test_run_task_superseded_skips_media_and_subtitle`, `test_run_task_superseded_after_subtitle_skips_media`, `test_superseded_caption_only_run_suppresses_error`) exercise the `_superseded()` generation-guard early-returns that were previously untested. Pre-fix code would fail these tests (old code enters phases and posts errors for superseded runs).
+
+Result: clean. No source changes needed; test coverage gap closed.
