@@ -432,6 +432,15 @@ class TranscriptionService:
         # period covers initial model load.
         import time as _time
         worker["last_event_at"] = _time.time()
+        # Capture the token THIS process was spawned with. restart_worker()
+        # rewrites worker["token"] in place while this reader thread may
+        # still be draining the old process's pipe; reading
+        # worker.get("token") at exit time would stamp the dead process's
+        # synthetic worker_exit with the NEW token, routing it onto the
+        # freshly-restarted worker (clearing its live process handle /
+        # its task). The token is a spawn-time constant, so snapshot it
+        # like the process object itself.
+        spawn_token = worker["token"]
 
         def reader() -> None:
             for line in process.stdout:  # type: ignore[union-attr]
@@ -453,7 +462,7 @@ class TranscriptionService:
             app.worker_events.put(
                 {"event": "worker_exit", "return_code": return_code,
                  "_pid": process.pid, "_worker_id": worker["id"],
-                 "_token": worker.get("token", "")}
+                 "_token": spawn_token}
             )
 
         from core._threads import safe_thread
@@ -729,6 +738,18 @@ class TranscriptionService:
         for w in list(self.active_workers()):
             last = float(w.get("last_event_at") or 0.0)
             if last and now - last > self.LIVENESS_TIMEOUT_S:
+                if w["task"]:
+                    w["task"].status = "error"
+                    self.finish_task(w, keep_status=True)
+                # finish_task() retires (and un-registers) a temporary
+                # worker when no waiting task is left. restart_worker()
+                # assumes the dict is still tracked by the app: restarting
+                # a removed worker spawns a replacement no worker_events
+                # event can ever route to, so it loads the model into RAM
+                # as an invisible orphan until app exit. Only restart a
+                # worker that is still on the books.
+                if w not in app.workers:
+                    continue
                 logger.warning(
                     "Worker %s missed heartbeats for %.1fs; restarting",
                     w.get("id", "?"), now - last,
@@ -736,9 +757,6 @@ class TranscriptionService:
                 app.log(
                     f"Worker {w.get('id', '?')} appears wedged; restarting."
                 )
-                if w["task"]:
-                    w["task"].status = "error"
-                    self.finish_task(w, keep_status=True)
                 self.restart_worker(w)
 
         if self.active_workers():
