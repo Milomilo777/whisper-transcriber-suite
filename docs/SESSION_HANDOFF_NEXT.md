@@ -5,9 +5,45 @@ this repo. Read this file before anything else.
 
 ---
 
-## 🟡 2026-09-20 — GitHub issue #7 fixed+replied; large OpenCode-driven multi-phase
-## initiative starting (feature-parity from a prior comparative artifact, then a
-## broader module-by-module pass) — IN PROGRESS, this entry will be extended
+## 🟢 2026-09-20 — GitHub issue #7 fixed+replied; a full-repo OpenCode/DeepSeek
+## adversarial-review sweep — SESSION ENDED, everything below is DONE and documented
+
+**TL;DR for whoever reads this next:**
+- Issue #7 (RTX 5060/Blackwell not detected) fixed, replied to, closed the loop — see
+  below. CodeQL scanning added. Both pushed to `master` already.
+- OpenCode CLI (DeepSeek V4.1 Flash) set up and run across **18 separate scoped
+  adversarial-review passes** covering essentially the entire `core/`+`app/` tree
+  (full per-task list and findings are the rest of this entry, in the order they
+  happened). Real bug count across all of them is in the dozens, several genuinely
+  high-impact (an app-launch crash on a malformed config value, a broken headline
+  "watched folder" feature, a local-LLM feature that hard-failed on any transcript
+  over ~20 minutes, a Pause/Cancel race that could silently do nothing, a Hebrew/
+  Javanese language-picker selection silently downgrading to auto-detect, and more).
+- **Every one of those 18 branches is LOCAL ONLY as of an explicit owner policy
+  change mid-session — none are pushed to `origin`, none are merged to `master`.**
+  Run `git branch` in the main checkout to list them all (`opencode/...` prefix).
+  **Nothing in them has been reviewed by Claude either**, by the owner's own explicit
+  instruction partway through (see the policy-change note below) — these are 100%
+  raw model output, parked for the owner's own review, at whatever pace they choose.
+  Pyright + the full test suite were run and reported green for every one of them
+  (either by the OpenCode task itself, or re-confirmed independently after the fact
+  when a task got interrupted) — that is a real, meaningful signal, but it is NOT the
+  same thing as a human or a second model actually reading the diffs.
+- A real, separate, concurrent Claude/OpenCode session was also active on the
+  machine-translate-docx-main project for part of this — confirmed legitimate/
+  owner-approved, unrelated to this repo, explains some of the resource contention
+  noted below.
+- Two items need the OWNER's own decision, not a further automated pass — flagged
+  in their own sections below, search for "FLAG FOR THE OWNER": a telemetry default
+  that contradicts the README (opt-out in practice, opt-in on paper), and a
+  worker-protocol design gap now already addressed by a dedicated (also unreviewed)
+  design task, `opencode/worker-correlation-id-design`.
+- **Next session's very first move should be deciding how to work through those 18
+  branches** (probably: read each `OPENCODE_HANDOFF_*.md` on its own branch first —
+  they're thorough — before the raw diff), not starting new automated work on top of
+  an already-large unreviewed pile.
+
+---
 
 Owner directive this session: act as chief architect, hands-off, using OpenCode CLI
 (newly set up — see `C:\Users\Owner\.claude\EXTERNAL_MODELS.md` "OpenCode CLI" section
@@ -317,10 +353,398 @@ of whether this Claude session is still alive to report it.
   module-review task produced without ever having its own adversarial pass double-
   checked by anyone but itself.
 - If more of today's 4x DeepSeek window is still live and nobody has picked new work,
-  reasonable next module-review candidates (non-overlapping with the three above):
-  `core/diarization.py` + `core/voiceprint.py`, or `core/backends/` (the 5 ASR engine
-  adapters), or the dictation-hotkey feature (bigger, deliberately deferred earlier
-  today — now maybe in scope if throughput allows). Same worktree-per-task pattern.
+  reasonable next module-review candidates (non-overlapping with the ones already
+  running/done): `core/backends/` (the 5 ASR engine adapters — note
+  `faster_whisper_be.py` was already touched by the #7 fix earlier today, re-read it
+  first rather than assuming it's untouched), `core/model_manager.py` + `core/hub.py`,
+  or the dictation-hotkey feature (bigger, deliberately deferred earlier today — now
+  maybe in scope if throughput allows). Same worktree-per-task pattern, ONE AT A TIME.
+
+| Adversarial review + fix pass on `core/diarization.py`, `core/voiceprint.py`, `core/alignment.py`, `core/hallucination.py`, `core/separator.py` | `bixe42icn` | `C:\Users\Owner\Desktop\whisper_app\wt-speaker-signal-review\` (worktree) | `opencode/speaker-signal-review` | **DONE, second OOM kill of the day (this time solo, not parallel — see note below) but got unusually far first: implementation + its own self-critique pass (fixed a real diff-hygiene nit) + pyright + its own scoped tests all passed before being killed, only the final full-suite run and handoff file were missing.** I ran the full suite myself: green (one lone `test_search_dialog.py` failure, same already-documented Tk-init.tcl flake as before, confirmed passing alone). Committed `ff9dd3f`. Real fixes: `voiceprint.py` rejects NaN/Inf embeddings at enrolment and skips dimension-mismatched candidates during matching (both flagged highest-priority for real review — a wrong-speaker-match bug is worse than a crash for this feature specifically) + edge-case hardening in `alignment.py`/`diarization.py`/`separator.py`. |
+| Adversarial review + fix pass on `core/backends/base.py`, `whisper_cpp.py`, `cloud_stt.py`, `google_cloud_stt.py`, `nvidia_asr.py` (explicitly NOT `availability.py` or `faster_whisper_be.py` — already touched by other work today) | `bnszuno5c` | `C:\Users\Owner\Desktop\whisper_app\wt-asr-backends-review\` (worktree) | `opencode/asr-backends-review` | **DONE, best outcome of the day — completed fully on its own, no OOM interruption, self-committed (`5c257ec`), re-confirmed by me (pyright 0/0/0).** 4 real bugs, all with strong evidence: (1) cloud STT's unknown-duration chunk loop never actually detected end-of-file — measured real ffmpeg output to prove a past-EOF FLAC slice is ~8286 bytes, well above the byte-only threshold that was supposed to catch it, meaning a failed duration probe could burn up to ~1200 empty Google API requests; (2) malformed Gemini HTTP bodies surfaced raw tracebacks instead of a clean error; (3) whisper.cpp's model download had no socket timeout and leaked partial files on failure (now matches core/llm.py's existing pattern); (4) nvidia_asr's dependency probe missed a torch-or-librosa-missing-but-transformers-present environment, skipping the on-demand installer. Also flagged (out of scope, untouched) a stale docstring in `core/backends/__init__.py` still describing nvidia_asr as a cloud API when it's been local/offline since commit `b733ad1`, and correctly identified a separate pre-existing test-isolation quirk in `test_nvidia_asr.py` as unrelated to this diff (verified via `git stash` against the unmodified tree). Verification claim: 2199 passed, 1 skipped. |
+
+| Adversarial review + fix pass on `core/model_manager.py`, `core/hub.py`, `core/history.py`, `core/stats.py`, `core/updates.py` | `bv3ii4h5m` (relaunched as `bq7zpul7o`) | `C:\Users\Owner\Desktop\whisper_app\wt-model-hub-review\` (worktree) | `opencode/model-hub-review` | **DONE — but see the important operational finding right below this table first.** 5 real bugs + 2 hardening fixes, commits `09fc000`/`149da5b`, pyright re-confirmed by me (0/0/0). Also surfaced a real, out-of-scope, owner-relevant finding: **telemetry defaults to ON and the opt-out checkbox doesn't persist**, contradicting the README/docs — see its own callout below, not just in the handoff file. |
+
+---
+
+## ⚠️ IMPORTANT OPERATIONAL FINDING: a "killed" task can survive and keep running
+
+`bv3ii4h5m` (model-hub-review, first attempt) was reported "killed" by the OOM reaper
+and appeared to have made zero progress when checked immediately after — so it was
+relaunched (`bq7zpul7o`) into the SAME worktree, same as the earlier search-chapters-
+infra recovery pattern. This time, **the "killed" process was actually still alive**
+(a `node.exe` + `opencode.exe` pair, confirmed via `Get-Process`, still responding,
+still accumulating real CPU time hours later) and kept working independently,
+**concurrently with the relaunched instance, in the same directory.** The relaunched
+instance itself noticed this (found two of its intended fixes already present before
+it got to them) and handled it gracefully — reconciled instead of duplicating,
+documented it plainly in its own handoff file. No corruption resulted this time, but
+it easily could have (two processes writing files / running git commands in the same
+directory at once).
+
+**Lesson: after any "killed" notification, before reusing that same worktree for a
+retry, check for a still-alive process first** (`Get-Process | Where-Object
+{ $_.ProcessName -match 'node|opencode' }`, cross-check against how long it's been
+running and its accumulated CPU time — near-zero CPU over a long wall-clock span means
+genuinely stuck/orphaned; real, growing CPU time means it's actually still working).
+Safer options when reusing the same worktree isn't confirmed-safe: use a FRESH
+worktree for the retry instead of the same directory, or confirm via `Get-Process`
+that nothing is still attached to it first.
+
+Also found via this same process-check: two long-orphaned processes from the very
+FIRST task of the day (hardware-greying, `bt73j12pu`, "killed" hours earlier) were
+STILL running — `node.exe` PID 12592 (13.5s CPU accumulated) and `opencode.exe` PID
+10820 (90.3s CPU accumulated) — both essentially idle/stuck, not doing real work.
+Terminated both (`Stop-Process -Force`) to reclaim memory and stop the confusion; that
+task's own real work was already fully recovered and committed hours ago via the
+stash-recovery process documented earlier in this file, so nothing was lost. Memory
+only recovered marginally after (5.0GB → 5.8GB free) — these two were not the primary
+cause of today's repeated OOM kills, just unrelated debris worth cleaning up anyway.
+
+---
+
+## 🔴 FLAG FOR THE OWNER — NOT FIXED, NEEDS A DECISION: telemetry is opt-out in
+## practice, opt-in in every public claim
+
+Found by the model-hub-review task (out of its assigned file scope, correctly left
+unfixed and flagged instead): `core/config.py`'s `DEFAULT_CONFIG["telemetry_opt_in"]`
+is `True` (set in commit `4618139`, "enable anonymous usage stats by default"), so a
+**fresh install sends the anonymous usage payload (file basename, model, language,
+duration, hostname + hardware facts) without the user ever opting in.** Worse:
+`telemetry_opt_in` is listed in `_NON_PERSISTED_KEYS`, so unchecking "Send anonymous
+usage statistics" in Advanced settings **does not persist** — the setting silently
+reverts to ON on the next launch, even though the checkbox's own label says "uncheck
+to opt out." Meanwhile README, `docs/CONFIG.md`, and the `core/stats.py` /
+`app/observability.py` docstrings all state the opposite (opt-in / off by default).
+
+This is a real, user-facing privacy/trust mismatch on a public repo, not a code
+correctness bug — exactly the kind of thing that needs the owner's own call, not an
+autonomous fix under today's skip-review policy. The fix itself is small (flip the
+`DEFAULT_CONFIG` default to `False`, remove `telemetry_opt_in` from
+`_NON_PERSISTED_KEYS` so the checkbox sticks) but changes real behavior for every
+future install, which is a product/policy decision, not a bug-fix judgment call.
+
+**RESUMED — owner explicitly asked to continue ("give more tasks after these finish" /
+"keep it busy the whole time").** Relaunched `wt-model-hub-review` as `bq7zpul7o`. Next
+worktree pre-created and its prompt pre-written so it can fire the instant this one
+finishes, minimizing idle gap per the owner's explicit ask: `wt-app-services-review`
+(`opencode/app-services-review`) covering `app/services/transcription_service.py`,
+`download_service.py`, `format_service.py`, `integrations_service.py` (explicitly NOT
+`app/app.py`/`app/widgets/tabs.py`/`app/dialogs/advanced.py` — already touched today).
+
+**`opencode/app-services-review` DONE (with a caveat) — commit `588f4cd`.** New
+OpenCode failure mode hit (not OOM — logged in `EXTERNAL_MODELS.md`): it constructed a
+malformed doubled-path on a follow-up edit, got correctly sandbox-rejected, and
+stopped instead of retrying. Real work from before that point was salvaged
+(syntax/pyright/full-suite all re-confirmed by me), no self-critique or handoff file
+happened. Two genuine concurrency bugs fixed: a wedged-worker restart path could spawn
+an orphan worker with no event routing able to reach it (holding the ~3GB model in RAM
+forever) when the worker had already been un-registered by `finish_task()`; a
+worker-exit event could be misrouted onto a just-restarted worker because the token
+was read at exit time instead of snapshotted at reader-thread start. Plus a
+download-service fix: `_run_media_process` used the shared `task.process` throughout
+instead of its own captured handle, so a pause+resume reassigning `task.process`
+mid-drain could make the final `wait()` block on/misreport the wrong subprocess. All
+three flagged as needing real review given how concurrency-sensitive they are.
+`opencode/app-dialogs-review` DONE (caveat, same stop-on-rejected-access pattern as
+app-services — commit `e6bc6ae`): NaN/Infinity-timestamp crash guards in
+`transcript_viewer.py` (`_seg_float`/`_parse_hms_ms`), smaller fixes in
+`hub_setup.py`/`model_download.py`/`statistics.py`. `model_loading.py` never reached.
+
+Owner instruction this stretch: decisions/review happen LATER, in one batch — just
+keep finding and saving, "keep it busy," use judgment on what to queue next. Continuing
+the module sweep without pausing for status checks each time. Fired in sequence after
+this: `opencode/app-widgets-review` (`bdl0yoyfv` — hardware_wizard/tray/console/
+platform/tooltip/error_dialog), `opencode/misc-features-review` (`bryvp0lw2` —
+watcher/recorder/monitors/tiling/burn_subs), with `opencode/llm-infra-review`
+(`core/llm.py`+`_checkpoint.py`+`_gc_import_guard.py`+`_liveness_tick.py`+`task.py`)
+pre-staged (worktree `wt-llm-infra-review` + prompt ready) to fire next with no gap.
+Newer prompts now explicitly tell the agent to skip an out-of-bounds file access and
+keep going rather than stopping the whole task — response to the pattern above.
+
+`opencode/misc-features-review` DONE, no caveat — fully self-completed, commit
+`812b974`, pyright re-confirmed by me. 5 real bugs: **the watched-folder feature
+silently ignored files moved/dragged in** (watchdog reports a same-volume Explorer
+drag as a MOVE event, not CREATE — `on_created`-only handling meant the headline
+"drop a file in the watched folder" flow did nothing); `burn_subs.burn()` wrote
+straight to the user's chosen output path non-atomically (a mid-burn failure could
+destroy an existing file of that name) — now atomic via temp-file + `os.replace()`;
+`burn()` also hard-failed on containers that reject the source audio codec (e.g. Opus
+in `.mp4`) despite the module claiming to re-encode — now retries once with AAC;
+recorder availability probes let a native-library `OSError` (not just `ImportError`)
+escape as an unhandled Tk callback crash instead of a graceful "can't record" state;
+tiling's launch-failure and superseded-launch teardown paths didn't reap killed
+children (zombie accumulation on a persistently-failing launch, macOS/Linux).
+`app-widgets-review` retry (refined prompt: explicit "never read third-party library
+source" instruction) queued next; `llm-infra-review` (`blhqlcgty`) already fired.
+
+**POLICY CHANGE — owner instruction: keep everything LOCAL, do not push to origin
+until reviewed.** All 10 `opencode/*` branches pushed earlier today were deleted from
+`origin` (GitHub) — **the local branches themselves are untouched, nothing was lost**,
+this only removed their public visibility on the (public) GitHub repo before anyone
+has actually reviewed them. `git branch` in the main repo still lists every one of
+them with their real commits. New task prompts now say "commit locally only, do NOT
+`git push`" instead of pushing each branch. This does NOT apply to this handoff doc
+itself (`docs/SESSION_HANDOFF_NEXT.md` on `master`) — that keeps pushing normally, it's
+the owner's own working notes, not unreviewed AI code. **Before any of today's
+branches are pushed back to origin, re-push explicitly (`git push -u origin
+opencode/<name>`) — don't assume a branch is already on the remote just because this
+file mentions a push in an earlier task's log entry above; those entries predate this
+policy change.**
+
+`opencode/llm-infra-review` DONE, no caveat, fully self-completed (3 commits,
+`b3b3e6f` tip; pushed before the local-only policy landed, so its remote copy was
+deleted afterward to stay consistent — local branch untouched). Best single writeup of
+the day: **local LLM (summarize/action-items/ask/translate) hard-failed on any
+transcript over roughly 20 minutes** — the whole prompt was fed to `llama-cpp-python`
+uncapped against its `n_ctx=4096` window with no fitting, so every AI-panel button
+raised a raw `ValueError` on a normal-length recording. Fixed with tokenizer-based
+context fitting (shrinks only the transcript, preserves head+tail, gives freed room
+back to the answer) — a real, principled fix with an explicitly-acknowledged
+trade-off (long transcripts summarised from start+end, middle elided; a chunked
+map-reduce summarizer would be the real follow-up). Also: action-items JSON silently
+dropped whenever the model appended trailing prose after the array; a non-UTF-8
+checkpoint crashed resume instead of falling back like the docs promise; checkpoint
+write-scratch (`*.json.tmp`) was never swept, unlike the `.wav`/`.json` partials next
+to it.
+
+`opencode/app-widgets-review` retry (`balni2x04`) reported "killed" again but (like
+the model-hub case earlier) is confirmed still genuinely alive and working — do not
+assume it's dead just because of that status; check `Get-Process` before touching its
+worktree.
+
+`opencode/config-domain-review` DONE, no caveat, fully self-completed, commit
+`fd34c64`, pyright re-confirmed. **7 real defects, several are startup-crash bugs**:
+`null` in a `.whisperproject.json` crashed every transcription in that folder
+(reached raw `int()`/`float()` coercions); `Infinity`/a huge integer in `config.json`
+crashed the WHOLE APP at launch (`math.isfinite()` on a giant int raises
+`OverflowError`, not a survivable check); an uncreatable config dir (blocked path,
+read-only profile) also crashed launch instead of falling back to defaults like every
+other unreadable-config path already does; a malformed Sentry DSN could abort startup
+before the window even exists; a blocked telemetry-cache dir could do the same. Also:
+subtitle language codes reached yt-dlp's `--sub-langs` unescaped, which yt-dlp treats
+as **regex** — a recurrence of a bug class this repo already shipped a fix for once
+(`docs/auto-subtitles-feature.md`'s `.*` → "7 files instead of 1" incident) via a
+different code path. Correctly left alone: the already-flagged telemetry default
+mismatch, and a separate real-but-deliberate `config_url` persistence tension (flagged
+as a product decision, not touched).
+
+`opencode/app-widgets-review` retry DONE, no caveat — the "killed" status was wrong
+again, it finished and self-committed correctly (commit `f5ef1b8`, correct author, did
+NOT push — the local-only prompt update worked). 4 real bugs across
+`hardware_wizard.py`/`tray.py`/`console.py`/`error_dialog.py`, all with tests. Full
+detail in `OPENCODE_HANDOFF_app_widgets.md` on that branch.
+
+`opencode/platform-scripts-review` (`b9aw4memb`) launched to keep pace — static-only
+review of the Linux/macOS install scripts, explicitly forbidden from executing/
+building anything (respects the standing macOS-builds-never rule even unsupervised).
+
+**Owner explicitly asked for 2 MORE parallel DeepSeek sessions on top of whatever's
+running** ("می‌توانی ۲ تا سشن موازی دیگر... باز کنی"). Launched both immediately:
+`opencode/worker-protocol-review` (`brht4koni` — the careful, constrained `core/worker.py`
+review) and `opencode/config-domain-review` (`b7o0h0tim` — `core/config.py` +
+`app/domain/` + `app/observability.py` + `app/__init__.py`). Combined with the still-
+alive app-widgets process, that is **3 concurrent OpenCode processes right now** — the
+same shape that caused the very first OOM kill of the day. Proceeding anyway per the
+owner's direct, informed instruction; all local-only (no push), all in separate
+worktrees (no file-collision risk even if one or more gets killed).
+
+`opencode/worker-protocol-review` DONE — the careful, constrained pass on the
+highest-blast-radius file in the repo. **Every constraint held** (verified by me
+directly, not just trusted): no JSON field renamed/removed/retyped, `--worker`
+contract untouched, single-writer stdout discipline preserved. 5 real bugs fixed, each
+with pre-fix-fails/post-fix-passes proof (`git stash` on just this file, 8 failing
+cases confirmed): an oversized stdin command emitted the error event TWICE; a command
+exactly at the 1 MiB cap was wrongly rejected (off-by-the-newline); a `cancel`/`pause`/
+`resume` meant for the NEXT task could land in the window between the current task's
+`done` event and its slot being cleared, get silently swallowed, and leave the UI
+showing "paused" while the file transcribed anyway; a raise (not just a `False`
+return) from the model-load call skipped `startup_error` and arrived as an
+unexplained crash; a failing `setup_logging` (locked/AV-blocked log dir) killed the
+worker before it ever reached `ready`. pyright re-confirmed 0/0/0 by me. Commit
+(local only): on `opencode/worker-protocol-review`.
+
+🔴 **FLAG FOR THE OWNER — found, deliberately NOT fixed, needs a design decision:**
+the SAME task found that `app/services/transcription_service.py` writes a `transcribe`
+command and a following `pause`/`resume`/`cancel` from two different daemon threads
+through the same stdin pipe, serialised only by a lock — if the control-sending thread
+wins the race, the worker can receive the control BEFORE the transcribe command it was
+meant for, see no in-flight task, and silently drop it (a documented no-op) while the
+UI already shows Cancelled/Paused. A real fix needs a task-correlation id added to
+both commands (allowed by the frozen protocol, since it's an ADD-only field) plus
+parent-side pairing logic — genuinely out of scope for an unsupervised single-file
+pass, and a worker-side-only heuristic fix was correctly judged likely to make it
+worse (could apply a stale control to the wrong task). Full detail:
+`OPENCODE_HANDOFF_worker_protocol.md` on that branch, sections "A" and "B".
+
+`opencode/entrypoint-webpage-review` (`b88gx3q6y`) launched next: `gui.py`'s
+`--worker` spawn-contract surroundings, `app/dialogs/model_loading.py`, and a
+re-verification that `core/server/static/index.html`'s existing `escapeHtml()`
+XSS-prevention discipline is still fully applied to every sink (not assumed).
+
+`opencode/platform-scripts-review` DONE, no caveat, fully self-completed (`bash -n`
+re-confirmed clean by me on all 5 files) — commit `5fe27cc`. Static-only review
+(explicitly never executed/built anything, respecting the standing macOS-never rule).
+**6 real bugs**, standout: `platform/macos/install.command`'s `set -e` could silently
+abort the ENTIRE installer — no `.app`, no CLI launcher, nothing — whenever `ffplay`
+happens to be missing from a minimal static ffmpeg build, a case the script's own
+comment already anticipates as realistic; verified in an isolated harness (old code
+returns 1 and dies, fixed version returns 0). Also: a leaked ~100MB temp dir on every
+static-ffmpeg run; the Linux updater's `[ -d .git ]` check silently no-ops in a git
+WORKTREE (`.git` is a file there, not a directory — this repo actively uses worktrees
+today); a dangling venv symlink produced a cryptic crash instead of the intended
+"run install.sh first" message; an unguarded `rm -rf` in the uninstaller with no
+sanity check unlike install.sh's own guard; an unquoted `Exec=` path in the generated
+Linux `.desktop` entry that breaks if `$HOME` contains a space.
+
+---
+
+## Owner-directed follow-up: task-correlation-id DESIGN task launched, hands-off by
+## explicit instruction — do NOT review, do NOT check pyright/tests, do NOT read the
+## diff. Basic salvage-only bookkeeping (is it committed, is the process a zombie) is
+## still fine; judging the design/content is explicitly not this session's job here.
+
+Owner's own words (paraphrased): give the flagged worker-protocol race condition (the
+control-command-before-its-transcribe-command ordering bug, sections A/B of
+`OPENCODE_HANDOFF_worker_protocol.md` on `opencode/worker-protocol-review`) to the same
+model in a fresh parallel session, max reasoning, to actually DESIGN and implement the
+fix (a task-correlation-id added to the frozen protocol as an ADD-ONLY field) — and
+force it through SEVERAL layers of its own adversarial self-critique instead of a
+single pass. Explicitly: Claude does not review this one.
+
+Launched: `opencode/worker-correlation-id-design` (`btkqvvbxf`), worktree
+`wt-worker-correlation-id-design`, fresh off master (does not include the other
+worker-protocol-review fixes — separate branch, told to fetch that branch's handoff
+file itself via `git show` for context). Prompt required: read the original bug
+report itself, design the id scheme, implement it, then 3 explicit self-critique
+layers (each a full adversarial re-read hunting for new problems, not confirming the
+previous fix), each layer's findings documented even when nothing new survived, before
+writing its final handoff (`OPENCODE_HANDOFF_worker_correlation_id.md`) and
+committing (local only, no push). **When this completes: just confirm it committed
+and note the branch name for the owner's own later review — do not evaluate it.**
+
+---
+
+## Discovered mid-session: this machine is running ANOTHER, unrelated Claude/OpenCode
+## session concurrently, on a different project
+
+`Get-Process` showed 5 live `opencode.exe` processes at once — only 2 belonged to
+this session. The other 3 had command lines referencing `BRIEF.md`, `DESIGN.md`,
+`web/v2/index.html`, `src/engines/deepl_webapi.py`, `--auto` — the
+machine-translate-docx-main project, never touched by this conversation. Confirmed
+independently: `C:\Users\Owner\.claude\EXTERNAL_MODELS.md` (the global, shared,
+cross-project external-AI notes file) changed on disk mid-session from an edit this
+session did not make. **All of today's OOM kills and the one exit-127 failure
+(`opencode/entrypoint-webpage-review`, right below) were competing for memory against
+this entire SEPARATE workload this whole time, not just against each other.** Left
+those 3 processes alone — not this session's to touch. Left `EXTERNAL_MODELS.md`'s
+external change alone too, per its own file-changed notice.
+
+`opencode/entrypoint-webpage-review` DONE (caveat) — failed with a generic exit 127
+(not OOM, not a sandbox rejection) right after a successful `node --check` on the
+extracted page script, very likely a resource-exhaustion side effect of the 5-process
+pile-up above. Real work salvaged and committed (local only): `gui.py`'s `serve
+--port 70000` (or negative) reached `socket.bind()` as a raw int and raised
+`OverflowError` (not `OSError`), crashing the CLI with a traceback instead of a usage
+error — new `_port_number()` argparse type validates the range up front, does not
+touch the `--worker` contract. Two more unescaped `innerHTML` sinks fixed in
+`core/server/static/index.html` (same class as the 2026-07-18 fixpack, two sinks it
+missed). `model_loading.py` (also in scope) was never reached.
+
+Owner confirmed the 3 unrelated processes are their own approved work on a different
+project — no action needed there, was correct to leave alone. Owner asked to keep
+giving the model more tasks. `opencode/worker-correlation-id-design`'s first attempt
+made zero progress (no commit, no uncommitted changes, no stash — a real total loss,
+not salvageable) — relaunched fresh (`byc6z8cxa`), same hands-off-review rule applies.
+Also launched `opencode/transcriber-core-review` (`b5jzqioa9`) — `core/transcriber.py`,
+the ~2000-line heart of the whole pipeline, never had its own dedicated pass today
+(only touched incidentally by the #7 fix and a doc-only comment elsewhere) — given the
+same high-care treatment as `core/worker.py` (explicit invariant list from
+PROJECT_INDEX's gotchas as hard constraints, not suggestions).
+
+`opencode/transcriber-core-review` DONE, no caveat, fully self-completed, commit
+`2b4cf5e`, pyright re-confirmed by me — every invariant explicitly audited against
+the final diff at the end of its own handoff. **4 real bugs on the busiest file in
+the repo**: a clip pre-slice left a partial temp WAV on disk on every ffmpeg
+failure/timeout (accumulates in `partials/` until the startup sweep ages it out); the
+non-default ASR backends (whisper.cpp/cloud/Parakeet) had no guard for a clip starting
+at/after end-of-file, so they silently "succeeded" with empty output instead of
+raising like the default engine does; **picking "Hebrew" or "Javanese" in the
+language picker silently fell back to auto-detect** (`iw`/`jv`, the picker's own yt-dlp
+-derived codes, aren't Whisper's `he`/`jw` — `_normalize_language` returned `None` and
+the explicit choice was dropped); the auto-chapters sidecar file didn't share
+`_write_outputs`' collision-index, so re-transcribing a file could silently mix a new
+run's transcript with a stale previous run's chapter data. Correlation-id design
+retry: DONE, committed (`da2d06d` on `opencode/worker-correlation-id-design`, local
+only), handoff file present (`OPENCODE_HANDOFF_worker_correlation_id.md`), clean
+working tree, no stash. Per the owner's explicit instruction, this session did NOT
+read the diff, did NOT run pyright/tests itself, and is NOT evaluating the design —
+bookkeeping only (it committed something, nothing crashed/got lost). **Owner: this
+one is entirely unreviewed by Claude, by your own request — go straight to that
+branch yourself when you're ready.**
+
+`opencode/model-loading-review` DONE, no caveat, fully self-completed, commit
+`bb061a7`, pyright re-confirmed. 2 real bugs, both empirically verified on this real
+machine (not just reasoned about): a close-race where a worker's `ready` event queued
+via `post_to_main` could arrive AFTER the user already clicked Cancel, non-
+deterministically overwriting `success=False` back to `True` on the already-destroyed
+dialog depending on which handler happened to run first; and multi-monitor centring
+that clamped every coordinate to non-negative, so a parent window on a monitor to the
+left of/above the primary (or minimised — Windows reports root coords `-32000`) had
+its loading dialog yanked onto the primary display instead. **Cross-file finding,
+correctly left unfixed here (out of this task's file scope) but worth acting on
+separately: `app/dialogs/model_download.py` and `app/dialogs/statistics.py` have the
+exact same `max(x, 0)` clamping bug** — both were technically already covered by
+`opencode/app-dialogs-review` earlier today, which didn't happen to catch this
+specific issue. Also flagged: `app/widgets/error_dialog.py`'s own code comment about
+Tk's negative-coordinate geometry convention is factually backwards versus measured
+real behavior on this machine.
+
+**All planned tasks for this stretch are now done.** 18 `opencode/*` local branches
+exist, all local-only (no push), none merged to master. Full list: `git branch` in
+the main repo. Everything is documented above, newest entries at the bottom of this
+section. Awaiting the owner's own review pass (explicitly deferred to "later, in
+bulk" per an earlier instruction this session) before anything merges.
+
+*(Paused-state note below kept for history — no longer the current state.)*
+
+**PAUSED after the 3rd OOM kill today — deliberate, not automatic.** Free memory
+right after this kill: 5.0GB/15.9GB, about the same as after the first two kills (no
+clear worsening trend, no lingering zombie processes found either time this was
+checked) — so this isn't obviously "things are getting worse," it looks more like a
+persistent, marginal baseline on this machine for this kind of workload (a Node-based
+OpenCode agent process + its own spawned `pytest`/`pyright` children is just heavy
+relative to ~16GB total). Two of the three kills today still happened to land on
+tasks that were already well underway and mostly recovered fine (see the log above);
+this third one is the first that was a TOTAL loss (killed during initial exploration,
+nothing written yet).
+
+Claude Code's own background-process supervisor gives an explicit instruction on every
+one of these kills: do not restart automatically, report it, and wait to be asked.
+That instruction has now fired 3 times in one session — continuing to relaunch a 4th,
+5th, 6th attempt without a real change in approach stops looking like "being
+resourceful" and starts looking like not listening to a safety mechanism that exists
+for a reason. Decision: **hold off on launching any new `opencode run` background task
+for the rest of this session unless the owner explicitly asks to resume**, rather than
+mechanically retrying again. This does not undo anything already banked today (6
+branches, all documented above, most either fully done or usefully salvaged) — it just
+stops adding new attempts against a machine that has now said "no" three times.
+
+If the owner wants to resume this specific line of work later: the natural next
+target was still `core/model_manager.py`/`core/hub.py`/`core/history.py`/
+`core/stats.py`/`core/updates.py` (the worktree `wt-model-hub-review` already exists,
+clean, ready to reuse) — plus the dictation-hotkey feature and
+`app/dialogs/`/`app/widgets/` UI-layer modules, never touched today at all.
+
+**OOM note:** a SECOND kill happened today even running fully sequentially (one task
+at a time, nothing parallel) — so "don't run OpenCode tasks concurrently" alone does
+not guarantee safety on this machine; free memory hovers around 5-6GB/16GB even at
+rest between tasks. Not treating this as a reason to stop for the day (both kills so
+far still yielded fully salvageable, real, working output thanks to the worktree
+isolation + careful post-hoc verification pattern established above) — just don't be
+surprised by a third one, and keep following the same salvage checklist (git status,
+git stash list, pyright, full test re-run, check for a handoff file) before trusting
+or committing anything from an interrupted task.
 - Once a branch is actually reviewed and looks good: normal merge to master, then it
   can go through the usual commit/push/changelog process like any other change.
 

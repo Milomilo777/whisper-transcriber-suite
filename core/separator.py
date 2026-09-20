@@ -136,8 +136,15 @@ def prune_cache(budget_mb: int | None = None, *, keep: str | None = None) -> int
         files = [p for p in d.glob("*_vocals.wav") if p.is_file()]
     except OSError:
         return 0
+    def _mtime_or_zero(p: Path) -> float:
+        # A concurrent worker may delete a stem mid-sort; a single
+        # vanishing file must not abort the whole sweep.
+        try:
+            return p.stat().st_mtime
+        except OSError:
+            return 0.0
     try:
-        files.sort(key=lambda p: p.stat().st_mtime, reverse=True)  # newest first
+        files.sort(key=_mtime_or_zero, reverse=True)  # newest first
     except OSError:
         return 0
     budget_bytes = budget * 1024 * 1024
@@ -257,7 +264,11 @@ def separate_vocals(
                 # even that fails, hand back the untouched input
                 # (module contract) rather than a path inside the
                 # tree the finally: below is about to delete.
-                survivor = cache_dir() / Path(found).name
+                # Keyed per-source orphan name (not bare "vocals.wav"):
+                # unique across concurrent sources, and matches the
+                # "*_vocals.wav" prune glob so it is evicted normally
+                # instead of leaking in the cache dir forever.
+                survivor = cache_dir() / f"{_cache_key(audio_path, model)}_orphan_vocals.wav"
                 try:
                     shutil.copyfile(str(found), str(survivor))
                 except OSError:

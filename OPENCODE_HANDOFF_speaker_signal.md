@@ -110,3 +110,112 @@ user-impacting defect found. The aggressive single-word BoH entries
   checked the same way).
 - No files outside the listed scope were modified; nothing under
   `.gitignore` was read or touched; master was not touched.
+
+## Second-pass independent re-check (muse-spark-1.3-contributor)
+
+Date: 2026-09-20. Branch commits at review time: `ff9dd3f` (code) +
+`c87a809` (this handoff file).
+
+### Verified from the first pass (by running, not by reading)
+
+1. **voiceprint dim-mismatch skip — real, proved end-to-end.** Called the
+   real `cosine()` with mismatched dims (returns `0.0`, as claimed) and
+   ran the old selection logic (no skip) against a real DB row: old code
+   returns `EnrolledVoice(name='Alice', vector=[1.0, 0.0])` for a 3-d
+   query at `threshold=0.0`; current code returns `None`. Honest
+   severity correction: no production caller can hit this today —
+   `match_vector`'s only in-repo caller is `relabel_segments` (default
+   0.65), nothing under `app/` uses voiceprint at all, and at the
+   default threshold the old code already rejected the 0.0 score. It is
+   latent hardening for a future threshold/config change, not a live
+   wrong-name bug. Fix itself is correct and harmless; kept.
+2. **voiceprint NaN/Inf gate — real, logic confirmed.** Old checks
+   (`name.strip()`, `not vector`) provably do not reject
+   `[1.0, float('nan')]`; new `math.isfinite` gate does, and
+   `test_enrol_rejects_non_finite_vector` passes. Kept.
+3. **alignment index-shift fix — real, confirmed from both sides.** Old
+   filter provably yields 1 payload segment for a 2-segment input with
+   `text=None` (splice-by-index shifts by one); new builder keeps 1:1
+   with `""` coercion, and
+   `test_refine_keeps_index_alignment_with_non_string_text` passes.
+   Kept.
+4. **diarization empty-decode + separator cache/fallback fixes — accepted
+   on code reading + green tests** (`test_prepare_audio_raises_on_empty_decode`,
+   `test_prune_cache_keeps_recently_written_stem`,
+   `test_separate_vocals_cache_hit_refreshes_mtime`,
+   `test_separate_vocals_falls_back_to_input_when_stem_cannot_be_cached`
+   all pass). The old fallback's in-tree return followed by unconditional
+   `shutil.rmtree(out_dir)` is self-evidently a dangling path from the
+   diff; no deeper repro needed.
+5. **hallucination no-change — agreed.** Re-read `detect_boh` /
+   `detect_repetition` / `detect_vad_disagreement` / `annotate_segments`.
+   Single-word BoH entries are covered by tests (deliberate). One
+   marginal note, not acted on: `detect_vad_disagreement` treats
+   boundary-touching (`e == vs`) as overlap, so a silence segment exactly
+   abutting a speech interval escapes the VAD signal — too weak a
+   scenario (BoH/repetition usually catch real cases) to change without
+   evidence.
+
+### Collateral damage found and fixed
+
+- **`docs/SESSION_HANDOFF_NEXT.md` was gutted on this branch**
+  (5509-line master file replaced with a 7-line stub — the worktree's
+  supervising-session context, never part of this review's scope).
+  Restored byte-identical from `master` via
+  `git checkout master -- docs/SESSION_HANDOFF_NEXT.md`. This branch's
+  diff no longer touches it.
+
+### New bugs found and fixed (same scope, second pass)
+
+1. **separator survivor filename collided across sources and leaked
+   forever.** The first pass's last-resort path wrote the rescued stem
+   to `cache_dir() / "vocals.wav"`. Proven via `fnmatch`: bare
+   `"vocals.wav"` does NOT match the `"*_vocals.wav"` prune glob, so the
+   file was never evicted; and two sources failing at once shared one
+   path (second overwrites first — caller A holds caller B's audio).
+   Fix: keyed orphan name
+   `f"{_cache_key(audio_path, model)}_orphan_vocals.wav"` — per-source
+   unique, matches the prune glob. New test
+   `test_separate_vocals_orphan_survivor_is_keyed_and_prunable` (both
+   survivors exist after `finally:` rmtree, names differ, both globbed).
+2. **prune_cache sort abort on concurrent delete.** `files.sort(key=lambda
+   p: p.stat().st_mtime)` — one stem vanishing mid-sort raises `OSError`
+   out of the key, caught by the surrounding `except OSError: return 0`,
+   so a single racing worker disabled the entire sweep. Fix: safe key
+   returning `0.0` on `OSError` (vanished file sorts oldest, skipped
+   later by the per-file `stat()` guard). No new test — race window too
+   narrow to deterministically trigger; fix is a 5-line pure hardening
+   with no behaviour change in the non-race case.
+
+### Final verification (this pass, after its own edits)
+
+- `python -m pyright app core` → `0 errors, 0 warnings, 0 informations`.
+- `python -m pytest tests/ --ignore=tests/smoke --tb=no -p no:warnings` →
+  green, exit 0, no failures (final run after re-apply: `2196 passed,
+  1 skipped` — the single skip is the POSIX-only `test_proc.py:80`
+  killpg path; an intermediate run showed `2195 passed, 2 skipped`
+  with one extra conditional skip flipping between runs, zero failures
+  in all runs). The worktree at test time also contained the foreign
+  agent's two extra tests (both passing); they are not part of this
+  commit.
+
+### Concurrent-writer collision (important for next session)
+
+Mid-pass, this worktree was concurrently modified by another live
+opencode process (multiple `opencode` PIDs active; the known
+"killed-task-survives" pattern from `docs/SESSION_HANDOFF_NEXT.md`):
+at ~22:33 it rewrote `core/separator.py` + `tests/core/test_separator.py`
+(wiping this pass's just-applied fixes), and at ~22:35 it edited
+`core/hallucination.py` (non-string-text guard in `annotate_segments`),
+`core/voiceprint.py` (`TypeError`→`ValueError` in the finite gate), plus
+matching tests, and dropped a stray
+`C:UsersOwnerAppDataLocalTempopencodepytest_full.txt` in the repo root.
+This pass re-applied its own separator fixes + test afterwards and
+verified them again, but **deliberately did NOT stage or commit the
+foreign files** — they are another agent's unreviewed, possibly
+half-finished work. The commit for this pass contains only:
+`core/separator.py`, `tests/core/test_separator.py`,
+`OPENCODE_HANDOFF_speaker_signal.md`, and the
+`docs/SESSION_HANDOFF_NEXT.md` restore. Next session: check whether that
+other process finished and whether its hallucination/voiceprint edits
+are worth reviewing on their own merits.

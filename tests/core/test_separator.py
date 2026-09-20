@@ -116,6 +116,47 @@ def test_separate_vocals_falls_back_to_input_when_stem_cannot_be_cached(tmp_path
     assert out == str(src)
 
 
+def test_separate_vocals_orphan_survivor_is_keyed_and_prunable(tmp_path, monkeypatch):
+    """When the stem can be rescued out of the temp tree but not into
+    the hashed cache slot, the survivor must be per-source (no
+    cross-source collision) and match the '*_vocals.wav' prune glob
+    (no permanent leak) -- the old bare 'vocals.wav' name did neither."""
+    src = tmp_path / "audio.wav"
+    src.write_bytes(b"\x00" * 4096)
+    other = tmp_path / "other.wav"
+    other.write_bytes(b"\x01" * 4096)
+    monkeypatch.setattr(sep, "is_available", lambda: True)
+    monkeypatch.setattr(sep, "cache_dir", lambda: tmp_path / "cache")
+
+    def _fake_run(audio_path, out_dir, *, model, log=None):
+        stem_dir = Path(out_dir) / model / Path(audio_path).stem
+        stem_dir.mkdir(parents=True, exist_ok=True)
+        (stem_dir / "vocals.wav").write_bytes(b"v" * 8192)
+
+    monkeypatch.setattr(sep, "_run_demucs_cli", _fake_run)
+    monkeypatch.setattr(
+        sep.os, "replace",
+        lambda *_a, **_kw: (_ for _ in ()).throw(OSError("locked")),
+    )
+    real_copyfile = sep.shutil.copyfile
+
+    def _flaky_copyfile(s, d, **_kw):
+        if Path(d).name.endswith("_orphan_vocals.wav"):
+            return real_copyfile(s, d)
+        raise OSError("locked cache slot")
+
+    monkeypatch.setattr(sep.shutil, "copyfile", _flaky_copyfile)
+
+    out_a = sep.separate_vocals(str(src), enabled=True)
+    out_b = sep.separate_vocals(str(other), enabled=True)
+    assert out_a != out_b
+    assert Path(out_a).name.endswith("_orphan_vocals.wav")
+    assert Path(out_b).name.endswith("_orphan_vocals.wav")
+    assert Path(out_a).is_file() and Path(out_b).is_file()
+    prunable = {p.name for p in (tmp_path / "cache").glob("*_vocals.wav")}
+    assert Path(out_a).name in prunable and Path(out_b).name in prunable
+
+
 def test_separate_vocals_falls_back_to_input_on_demucs_error(tmp_path, monkeypatch):
     src = tmp_path / "audio.wav"
     src.write_bytes(b"\x00" * 4096)
