@@ -241,6 +241,13 @@ SESSION_HANDOFF_NEXT.md, `platform/macos/README.md`) as unverified.
 **How to apply:** if macOS status needs mentioning, point at the last
 human-supplied `.dmg` and stop — do not offer or dispatch a new build.
 
+**Amendment (2026-09-15, owner clarification):** the rule above targets building/dispatching a
+macOS artifact WITHOUT a real macOS system to actually verify the result on — blind CI dispatch
+(`gh workflow run macos-app.yml`) or the local pipeline run on a whim with no way to check the
+output actually works. It does NOT block building/testing inside a genuine macOS environment
+(including a supervised macOS VM) where the result can be verified for real instead of trusted on
+faith. That is a different situation this rule was never meant to cover.
+
 ## Style & scope
 
   - English-only repository. The branch is being prepared for a
