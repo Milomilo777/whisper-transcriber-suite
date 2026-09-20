@@ -187,7 +187,38 @@ main repo for the live ground truth if this table is stale):**
 | Auto-grey incompatible hardware combos | `bt73j12pu` | was main tree, now `opencode/hardware-greying` | `opencode/hardware-greying` | **DONE, committed+pushed (`7081070`).** Real caveat: the agent's OWN adversarial self-critique + handoff-summary step got cut off by an OpenCode sandbox permission prompt (it tried reading a scratch file outside its `--dir` while re-verifying its own test run) — implementation + pyright (re-confirmed locally, 0/0/0) + full test suite (real captured green output) are solid, but nobody's actually looked at the diff yet, including the agent's own promised second look. **Prioritize this one first when a real review happens.** |
 | HTTPS + webhooks (SSRF-guarded) + OpenAI-compatible `/v1/audio/transcriptions` route on `core/server/` | `b860jzfed` | `C:\Users\Owner\Desktop\whisper_app\wt-server-hardening\` (worktree) | `opencode/server-hardening` | still running as of this note |
 | Adversarial review + fix pass on `core/writers/`, `core/convert.py`, `core/integrations/otranscribe.py` only | `bfj8ym81z` | `C:\Users\Owner\Desktop\whisper_app\wt-writers-review\` (worktree) | `opencode/writers-review` | still running as of this note |
-| Adversarial review + fix pass on `core/search.py`, `core/chapters.py`, `core/_errors.py`, `core/_proc.py`, `core/_threads.py`, `core/paths.py`, `core/logging_setup.py` | `befdou9df` | `C:\Users\Owner\Desktop\whisper_app\wt-search-chapters-infra\` (worktree) | `opencode/search-chapters-infra-review` | just launched; its prompt was explicitly amended to tell it to stay inside its own `--dir` during self-critique, to avoid the exact sandbox-permission cutoff the hardware-greying task hit |
+| Adversarial review + fix pass on `core/search.py`, `core/chapters.py`, `core/_errors.py`, `core/_proc.py`, `core/_threads.py`, `core/paths.py`, `core/logging_setup.py` | `befdou9df` | `C:\Users\Owner\Desktop\whisper_app\wt-search-chapters-infra\` (worktree) | `opencode/search-chapters-infra-review` | killed, see incident below — only got through `core/_proc.py`, `core/logging_setup.py`, `core/search.py` before being cut off; `chapters.py`/`_errors.py`/`_threads.py`/`paths.py` untouched |
+
+---
+
+## 🔴 INCIDENT, same day — all 3 parallel OpenCode tasks killed by an OOM safety reaper
+
+Running 3 concurrent `opencode run` processes (each itself spawning `pytest`/`pyright`,
+which are memory-hungry on this ~16GB machine) exhausted system memory. Claude Code's own
+background-process supervisor killed all 3 (`b860jzfed`/server-hardening,
+`bfj8ym81z`/writers-review, `befdou9df`/search-chapters-infra) simultaneously with an
+explicit system note: **do not auto-restart a killed task, and do not assume more memory
+is free just because the kill happened** — only restart when asked. Free memory right
+after: ~3.8GB / 15.9GB total.
+
+**Lesson for the rest of today (and any future session on this machine): do NOT run
+multiple `opencode run` processes concurrently again, regardless of the owner's standing
+permission to do so.** That permission was about policy/authorization, not about this
+machine's physical capacity — it demonstrably cannot sustain 3-way parallel OpenCode
+execution alongside their own pytest/pyright children. **Sequential only (one `opencode
+run` at a time) from here on**, which is also exactly how the very first task (hardware-
+greying) ran and it completed with a real, working result.
+
+**Salvage check on all 3 killed worktrees (done after the fact, NOT a "review" — just
+confirming nothing is corrupted before deciding whether to bank the partial work):**
+every touched/new file in all three worktrees parses cleanly (`ast.parse`, no syntax
+errors — the kill did not land mid-write on any file), and `pyright app core` reports
+0/0/0 clean in EACH of the three worktrees independently. Full test-suite runs were
+in progress (sequentially, one worktree at a time, to not repeat the OOM) as this note
+was written — check further down / the commit log for whether each worktree's partial
+work ended up committed to its own branch (same never-touch-master rule as everything
+else today) or left as-is for the next session to finish, depending on what the test
+run actually showed.
 
 Each task's own prompt told it to commit AND push its branch itself once its gates +
 self-critique are genuinely clean — so `git branch -r` / `gh pr list` (no PRs opened,
