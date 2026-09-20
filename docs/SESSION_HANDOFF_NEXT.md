@@ -442,6 +442,20 @@ children (zombie accumulation on a persistently-failing launch, macOS/Linux).
 `app-widgets-review` retry (refined prompt: explicit "never read third-party library
 source" instruction) queued next; `llm-infra-review` (`blhqlcgty`) already fired.
 
+**POLICY CHANGE — owner instruction: keep everything LOCAL, do not push to origin
+until reviewed.** All 10 `opencode/*` branches pushed earlier today were deleted from
+`origin` (GitHub) — **the local branches themselves are untouched, nothing was lost**,
+this only removed their public visibility on the (public) GitHub repo before anyone
+has actually reviewed them. `git branch` in the main repo still lists every one of
+them with their real commits. New task prompts now say "commit locally only, do NOT
+`git push`" instead of pushing each branch. This does NOT apply to this handoff doc
+itself (`docs/SESSION_HANDOFF_NEXT.md` on `master`) — that keeps pushing normally, it's
+the owner's own working notes, not unreviewed AI code. **Before any of today's
+branches are pushed back to origin, re-push explicitly (`git push -u origin
+opencode/<name>`) — don't assume a branch is already on the remote just because this
+file mentions a push in an earlier task's log entry above; those entries predate this
+policy change.**
+
 `core/worker.py` deliberately NOT yet queued — the frozen JSON-stdio protocol every
 deliverable depends on, deserves its own careful, narrowly-worded prompt rather than
 being folded into a general batch. Do that one deliberately, not on autopilot.
