@@ -177,6 +177,24 @@ def _cli_serve(args: argparse.Namespace) -> int:
     )
 
 
+def _port_number(value: str) -> int:
+    """argparse ``type=`` for ``serve --port``: a bindable TCP port.
+
+    Plain ``int`` lets ``--port 70000`` / ``--port -1`` through to
+    ``socket.bind``, which raises ``OverflowError`` — not an ``OSError``,
+    so ``run_server``'s bind-failure handler misses it and the CLI dies
+    with a raw traceback instead of a usage error. 0 stays valid (bind
+    an ephemeral port).
+    """
+    try:
+        port = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"not an integer: {value!r}") from None
+    if not 0 <= port <= 65535:
+        raise argparse.ArgumentTypeError(f"port must be 0-65535, got {port}")
+    return port
+
+
 def _build_argparser() -> argparse.ArgumentParser:
     from core.writers import supported_formats
 
@@ -211,7 +229,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Run the local-network / web HTTP job server (no UI)",
     )
     sv.add_argument(
-        "--port", "-p", type=int, default=None,
+        "--port", "-p", type=_port_number, default=None,
         help="TCP port to listen on (default: config server_port or 8765)",
     )
     sv.add_argument(
