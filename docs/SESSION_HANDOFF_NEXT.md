@@ -410,9 +410,25 @@ download-service fix: `_run_media_process` used the shared `task.process` throug
 instead of its own captured handle, so a pause+resume reassigning `task.process`
 mid-drain could make the final `wait()` block on/misreport the wrong subprocess. All
 three flagged as needing real review given how concurrency-sensitive they are.
-`opencode/app-dialogs-review` (`bpxq6bc5j`) launched immediately after, covering
-`app/dialogs/transcript_viewer.py`, `model_download.py`, `model_loading.py`,
-`hub_setup.py`, `statistics.py`.
+`opencode/app-dialogs-review` DONE (caveat, same stop-on-rejected-access pattern as
+app-services — commit `e6bc6ae`): NaN/Infinity-timestamp crash guards in
+`transcript_viewer.py` (`_seg_float`/`_parse_hms_ms`), smaller fixes in
+`hub_setup.py`/`model_download.py`/`statistics.py`. `model_loading.py` never reached.
+
+Owner instruction this stretch: decisions/review happen LATER, in one batch — just
+keep finding and saving, "keep it busy," use judgment on what to queue next. Continuing
+the module sweep without pausing for status checks each time. Fired in sequence after
+this: `opencode/app-widgets-review` (`bdl0yoyfv` — hardware_wizard/tray/console/
+platform/tooltip/error_dialog), `opencode/misc-features-review` (`bryvp0lw2` —
+watcher/recorder/monitors/tiling/burn_subs), with `opencode/llm-infra-review`
+(`core/llm.py`+`_checkpoint.py`+`_gc_import_guard.py`+`_liveness_tick.py`+`task.py`)
+pre-staged (worktree `wt-llm-infra-review` + prompt ready) to fire next with no gap.
+Newer prompts now explicitly tell the agent to skip an out-of-bounds file access and
+keep going rather than stopping the whole task — response to the pattern above.
+
+`core/worker.py` deliberately NOT yet queued — the frozen JSON-stdio protocol every
+deliverable depends on, deserves its own careful, narrowly-worded prompt rather than
+being folded into a general batch. Do that one deliberately, not on autopilot.
 
 *(Paused-state note below kept for history — no longer the current state.)*
 
