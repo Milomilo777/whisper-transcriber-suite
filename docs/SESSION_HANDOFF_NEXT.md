@@ -513,9 +513,38 @@ same shape that caused the very first OOM kill of the day. Proceeding anyway per
 owner's direct, informed instruction; all local-only (no push), all in separate
 worktrees (no file-collision risk even if one or more gets killed).
 
-`core/worker.py` deliberately NOT yet queued — the frozen JSON-stdio protocol every
-deliverable depends on, deserves its own careful, narrowly-worded prompt rather than
-being folded into a general batch. Do that one deliberately, not on autopilot.
+`opencode/worker-protocol-review` DONE — the careful, constrained pass on the
+highest-blast-radius file in the repo. **Every constraint held** (verified by me
+directly, not just trusted): no JSON field renamed/removed/retyped, `--worker`
+contract untouched, single-writer stdout discipline preserved. 5 real bugs fixed, each
+with pre-fix-fails/post-fix-passes proof (`git stash` on just this file, 8 failing
+cases confirmed): an oversized stdin command emitted the error event TWICE; a command
+exactly at the 1 MiB cap was wrongly rejected (off-by-the-newline); a `cancel`/`pause`/
+`resume` meant for the NEXT task could land in the window between the current task's
+`done` event and its slot being cleared, get silently swallowed, and leave the UI
+showing "paused" while the file transcribed anyway; a raise (not just a `False`
+return) from the model-load call skipped `startup_error` and arrived as an
+unexplained crash; a failing `setup_logging` (locked/AV-blocked log dir) killed the
+worker before it ever reached `ready`. pyright re-confirmed 0/0/0 by me. Commit
+(local only): on `opencode/worker-protocol-review`.
+
+🔴 **FLAG FOR THE OWNER — found, deliberately NOT fixed, needs a design decision:**
+the SAME task found that `app/services/transcription_service.py` writes a `transcribe`
+command and a following `pause`/`resume`/`cancel` from two different daemon threads
+through the same stdin pipe, serialised only by a lock — if the control-sending thread
+wins the race, the worker can receive the control BEFORE the transcribe command it was
+meant for, see no in-flight task, and silently drop it (a documented no-op) while the
+UI already shows Cancelled/Paused. A real fix needs a task-correlation id added to
+both commands (allowed by the frozen protocol, since it's an ADD-only field) plus
+parent-side pairing logic — genuinely out of scope for an unsupervised single-file
+pass, and a worker-side-only heuristic fix was correctly judged likely to make it
+worse (could apply a stale control to the wrong task). Full detail:
+`OPENCODE_HANDOFF_worker_protocol.md` on that branch, sections "A" and "B".
+
+`opencode/entrypoint-webpage-review` (`b88gx3q6y`) launched next: `gui.py`'s
+`--worker` spawn-contract surroundings, `app/dialogs/model_loading.py`, and a
+re-verification that `core/server/static/index.html`'s existing `escapeHtml()`
+XSS-prevention discipline is still fully applied to every sink (not assumed).
 
 *(Paused-state note below kept for history — no longer the current state.)*
 
