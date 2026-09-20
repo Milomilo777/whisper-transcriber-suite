@@ -381,3 +381,78 @@ Nothing further wrong after a real attempt — stated plainly per the brief.
 - `python -m pytest tests/ --ignore=tests/smoke -q` → **exit 0, fully
   green (2213 collected)**. No flakes this run.
 - Not run: `tests/smoke/` (needs real hardware/network).
+
+---
+
+## 10. Second-pass independent re-check, re-run (muse-spark-1.3-contributor) — 2026-09-20
+
+The re-check task was re-issued after §9 was already committed
+(`844db5c`), so this is a second independent run over the same diff
+(`da2d06d` + the §9 handoff-only commit). Re-verified from scratch rather
+than trusting §9. No code changed; no new tests added. Genuinely clean.
+
+### 10.1 What was verified from the first pass, and how
+
+1. **Park-and-apply closes bug A/B.** Drove it directly:
+   `_route_control("pause", "h1")` with nothing current parks, and
+   `_register_task` on a `task_id="h1"` task applies it (`paused is
+   True`, one parked entry returned). Legacy behaviour reproduced
+   alongside: id-less `_apply_control("pause")` with no task returns
+   `False` and a late-registered task stays unpaused — the preserved
+   silent no-op.
+2. **Revert-proof (the fix is load-bearing, not tautological).**
+   Neutered `_register_task`'s flag application at runtime and re-drove
+   the bad ordering: the task arrived unpaused, i.e. without the fix the
+   control is lost. Restored, it applies. The E2E regression test
+   therefore guards the real fix.
+3. **No cross-task misapplication.** With an `h1` task current,
+   `_route_control("cancel", "h2")` leaves `h1.cancelled is False` and
+   parks under `"h2"`.
+4. **Touched test files:** `test_worker_correlation_id.py` +
+   `test_transcription_correlation.py` + `test_transcribe_command.py` →
+   31 passed.
+
+### 10.2 Discrepancy re-checked and cleared (not a finding)
+
+Re-confirmed §9.2: `git log master..HEAD --
+docs/SESSION_HANDOFF_NEXT.md` is empty and the merge-base is still
+`706cdff` — the branch never touched the file; the stat deletions are
+master having advanced past the base. §7.1's claim holds.
+
+### 10.3 Fresh adversarial review — scope and outcome
+
+Re-read `core/worker.py` park/route/register/expiry/clear plus the
+`main()` reader loop and the parent's `dispatch_waiting` (line 894) →
+`transcribe_command` → `send_control` (line ~1013) → `poll()` chain.
+New angles probed beyond §9.3, all dismissed with reasons:
+
+- **UUID-split between dispatch and control threads?** No: both
+  `task_correlation_id()` calls run on the Tk caller thread before the
+  daemon writers start (writers carry pre-built strings). Even a
+  hypothetical race would fail safe (unmatched ack, never
+  misapplication).
+- **Expiry leaks timers?** No: an expired entry's own timer is the one
+  that fired; surviving entries keep exactly one daemon timer each,
+  bounded by the 64-entry cap, all cancelled on register/evict/clear.
+- **Parked controls survive task finish?** Yes — `_set_current_task(None)`
+  in the `finally` does not touch the park table, so a control for a
+  queued task B landing while task A runs still reaches B. Required,
+  correct.
+- **Pause-then-resume parked in order?** Yes: per-id lists preserve
+  arrival order, applied in order at registration (net unpaused).
+  Capacity eviction drops the oldest, keeping the user's latest action.
+- **`send_control` unwired path mints no id?** Correct:
+  `task_correlation_id` is only called after the worker match, so a
+  `False` return generates nothing.
+- **Unknown-action parked control false-acking `control_applied`?**
+  Unreachable over the wire (reader routes only cancel/pause/resume);
+  direct-call-only hardening deliberately not added (no padding).
+
+Nothing further wrong after a real attempt — stated plainly.
+
+### 10.4 Final verification (this run)
+
+- `python -m pyright app core` → **0 errors, 0 warnings, 0 informations**.
+- `python -m pytest tests/ --ignore=tests/smoke -q` → **exit 0, fully
+  green (2213 collected)**. No flakes this run.
+- Not run: `tests/smoke/` (needs real hardware/network).
