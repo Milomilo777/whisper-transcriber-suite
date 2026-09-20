@@ -287,6 +287,53 @@ def test_load_non_object_json_falls_back(isolated_dirs, monkeypatch):
     assert config["theme"] == cfg.DEFAULT_CONFIG["theme"]
 
 
+def test_load_config_survives_huge_integer(isolated_dirs, monkeypatch):
+    """A huge (but valid-JSON) integer must not crash ``load_config``.
+
+    Regression: the non-finite guard called ``math.isfinite()`` on any
+    int/float value, and a 400-digit integer literal — legal JSON, produced
+    by a hand edit or an external tool — raises
+    ``OverflowError: int too large to convert to float`` from inside
+    ``math.isfinite``. ``load_config`` is called unguarded from
+    ``App.__init__`` and the worker, so that was a startup crash. An int is
+    always finite; only floats need the probe.
+    """
+    monkeypatch.setattr(
+        cfg, "_legacy_config_path", lambda: str(isolated_dirs / "no_legacy.json")
+    )
+    Path(cfg.config_path()).write_text(
+        '{"parallel_workers": ' + "9" * 400 + "}", encoding="utf-8"
+    )
+    config = cfg.load_config(fetch_online=False)
+    assert isinstance(config["parallel_workers"], int)
+    assert config["theme"] == cfg.DEFAULT_CONFIG["theme"]
+
+
+def test_load_config_survives_uncreatable_config_dir(tmp_path, monkeypatch):
+    """A config dir that cannot be created must not crash launch.
+
+    Regression: ``migrate_config_location`` called ``mkdir(parents=True)``
+    unguarded, so a path blocked by a file (or a read-only profile / ACL
+    failure) raised OSError out of ``load_config`` before any fallback —
+    which every startup path (App.__init__, the worker) calls unguarded.
+    The app must instead come up on the defaults, like every other
+    unreadable-config case.
+    """
+    blocker = tmp_path / "blocked"
+    blocker.write_text("I am a file, not a directory", encoding="utf-8")
+    config_dir = blocker / "nested"
+    monkeypatch.setattr(cfg, "user_config_dir", lambda: config_dir)
+    monkeypatch.setattr(cfg, "config_path", lambda: str(config_dir / "config.json"))
+    monkeypatch.setattr(
+        cfg, "_legacy_config_path", lambda: str(tmp_path / "no_legacy.json")
+    )
+
+    assert cfg.migrate_config_location() == str(config_dir / "config.json")
+    config = cfg.load_config(fetch_online=False)
+    assert config["theme"] == cfg.DEFAULT_CONFIG["theme"]
+    assert config["parallel_workers"] == cfg.DEFAULT_CONFIG["parallel_workers"]
+
+
 def test_user_overrides_merge_with_defaults(isolated_dirs, monkeypatch):
     monkeypatch.setattr(cfg, "_legacy_config_path", lambda: str(isolated_dirs / "no_legacy.json"))
     Path(cfg.config_path()).write_text(json.dumps({"theme": "dark", "model": {"name": "tiny"}}), encoding="utf-8")
@@ -661,6 +708,58 @@ def test_load_config_merges_online_allowlisted_key(isolated_dirs, monkeypatch):
     assert config["stats_url"] == "https://online/stats"  # from online
     assert config["hub_folder"] == "D:/local/hub"          # local wins; online ignored
     cfg.refresh_online_config()  # leave the memo clean for other tests
+
+
+def test_fetch_online_survives_garbage_http_response(tmp_path, monkeypatch):
+    """A broken proxy / captive portal answering with a garbage status line
+    makes urlopen raise http.client.HTTPException (NOT a URLError/OSError),
+    which used to escape fetch_online_config's "never raises" contract and
+    crash launch out of load_config. Must fall back to the cache instead."""
+    import http.client
+
+    cached = {"stats_url": "https://cached/stats"}
+    cache = tmp_path / "cache.json"
+    cache.write_text(json.dumps(cached), encoding="utf-8")
+
+    def _garbage(req, timeout=0):  # noqa: ARG001
+        raise http.client.BadStatusLine("oops")
+
+    monkeypatch.setattr(cfg.urllib.request, "urlopen", _garbage)
+    assert cfg.fetch_online_config("https://host/app.json", cache_path=cache) == cached
+
+
+def test_fetch_online_survives_truncated_response(tmp_path, monkeypatch):
+    """resp.read() raising IncompleteRead (also an HTTPException, not an
+    OSError) must degrade to {} rather than propagate out of load_config."""
+    import http.client
+
+    class _Truncated:
+        headers = {}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self, *args):
+            raise http.client.IncompleteRead("partial", 1)
+
+    monkeypatch.setattr(
+        cfg.urllib.request, "urlopen", lambda req, timeout=0: _Truncated()  # noqa: ARG001
+    )
+    cache = tmp_path / "missing.json"
+    assert cfg.fetch_online_config("https://host/app.json", cache_path=cache) == {}
+
+
+def test_load_config_survives_deeply_nested_file(isolated_dirs, monkeypatch):
+    """A pathologically nested config.json (legal JSON, absurd depth) makes
+    the C scanner raise RecursionError, which used to escape the "never
+    raises" loader and crash launch. Must degrade to defaults."""
+    monkeypatch.setattr(cfg, "_legacy_config_path", lambda: str(isolated_dirs / "no_legacy.json"))
+    Path(cfg.config_path()).write_text("[" * 100000 + "]" * 100000, encoding="utf-8")
+    config = cfg.load_config(fetch_online=False)
+    assert config["parallel_workers"] == cfg.DEFAULT_CONFIG["parallel_workers"]
 
 
 def test_repo_configuration_json_agrees_with_default_stats_url():

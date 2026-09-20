@@ -109,6 +109,85 @@ def test_load_project_overrides_silent_on_bad_encoding(tmp_path):
     assert load_project_overrides(str(tmp_path)) == {}
 
 
+def test_load_project_overrides_drops_null_for_known_key(tmp_path):
+    """A JSON null is never a valid value for a known key.
+
+    It used to pass ``_validate_overrides`` untouched, so ``None`` reached the
+    runtime coercions in ``core.transcriber._apply_runtime_overrides``
+    (``int(config["diarization_num_speakers"])``), raising TypeError and
+    failing the transcription for every file under that folder.
+    """
+    (tmp_path / PROJECT_FILE_NAME).write_text(
+        json.dumps({
+            "diarization_num_speakers": None,
+            "diarization_cluster_threshold": None,
+            "diarization_enabled": None,
+            "output_formats": None,
+        }),
+        encoding="utf-8",
+    )
+    assert load_project_overrides(str(tmp_path)) == {}
+
+
+def test_load_project_overrides_never_raises_on_infinity(tmp_path):
+    """``Infinity`` for an int-typed key used to raise OverflowError out of
+    this "never raises" loader (``int(float('inf'))``). It must be dropped."""
+    (tmp_path / PROJECT_FILE_NAME).write_text(
+        '{"parallel_workers": Infinity}', encoding="utf-8",
+    )
+    assert load_project_overrides(str(tmp_path)) == {}
+
+
+def test_load_project_overrides_never_raises_on_numeric_overflow(tmp_path):
+    """A finite-but-huge JSON integer (``1e400`` parses to inf; a long digit
+    string stays an int) must not crash the numeric coercion either."""
+    (tmp_path / PROJECT_FILE_NAME).write_text(
+        '{"vad_threshold": ' + "9" * 400 + "}", encoding="utf-8",
+    )
+    assert load_project_overrides(str(tmp_path)) == {}
+
+
+def test_load_project_overrides_drops_nan_for_numeric_key(tmp_path):
+    (tmp_path / PROJECT_FILE_NAME).write_text(
+        '{"vad_threshold": NaN}', encoding="utf-8",
+    )
+    assert load_project_overrides(str(tmp_path)) == {}
+
+
+def test_load_project_overrides_keeps_valid_values(tmp_path):
+    """The valid-value path must be untouched by the null/non-finite guard."""
+    (tmp_path / PROJECT_FILE_NAME).write_text(
+        json.dumps({
+            "diarization_num_speakers": 3,
+            "diarization_cluster_threshold": 0.7,
+            "diarization_enabled": True,
+            "parallel_workers": 4,
+            "vad_threshold": 0.25,
+            "output_formats": ["srt"],
+            "hotwords": "Anthropic",
+        }),
+        encoding="utf-8",
+    )
+    assert load_project_overrides(str(tmp_path)) == {
+        "diarization_num_speakers": 3,
+        "diarization_cluster_threshold": 0.7,
+        "diarization_enabled": True,
+        "parallel_workers": 4,
+        "vad_threshold": 0.25,
+        "output_formats": ["srt"],
+        "hotwords": "Anthropic",
+    }
+
+
+def test_load_project_overrides_survives_deeply_nested_file(tmp_path):
+    """A pathologically nested project file raises RecursionError from the
+    JSON scanner — must be ignored like any malformed file, never raised."""
+    (tmp_path / PROJECT_FILE_NAME).write_text(
+        "[" * 100000 + "]" * 100000, encoding="utf-8",
+    )
+    assert load_project_overrides(str(tmp_path)) == {}
+
+
 @pytest.mark.skipif(
     os.name != "nt",
     reason="This test monkeypatches os.name='nt'; on POSIX that makes pathlib build a "

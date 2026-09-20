@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import re
 import subprocess
@@ -172,6 +173,13 @@ def _parse_timecode(raw: str | None) -> float | None:
         total = m * 60 + sec
     else:
         total = nums[0]
+    if not math.isfinite(total):
+        # float("nan") parses fine yet compares false to every bound, so
+        # without this it slipped past both range checks: int(nan) then
+        # raised ValueError out of the enqueue badge / --download-sections
+        # builder when a user typed "nan" in a Start/End field. (An "inf"
+        # input already fails the cap check; rejected here too.)
+        return None
     if total < 0 or total > _MAX_TIMECODE_SECONDS:
         return None
     return total
