@@ -5,9 +5,45 @@ this repo. Read this file before anything else.
 
 ---
 
-## 🟡 2026-09-20 — GitHub issue #7 fixed+replied; large OpenCode-driven multi-phase
-## initiative starting (feature-parity from a prior comparative artifact, then a
-## broader module-by-module pass) — IN PROGRESS, this entry will be extended
+## 🟢 2026-09-20 — GitHub issue #7 fixed+replied; a full-repo OpenCode/DeepSeek
+## adversarial-review sweep — SESSION ENDED, everything below is DONE and documented
+
+**TL;DR for whoever reads this next:**
+- Issue #7 (RTX 5060/Blackwell not detected) fixed, replied to, closed the loop — see
+  below. CodeQL scanning added. Both pushed to `master` already.
+- OpenCode CLI (DeepSeek V4.1 Flash) set up and run across **18 separate scoped
+  adversarial-review passes** covering essentially the entire `core/`+`app/` tree
+  (full per-task list and findings are the rest of this entry, in the order they
+  happened). Real bug count across all of them is in the dozens, several genuinely
+  high-impact (an app-launch crash on a malformed config value, a broken headline
+  "watched folder" feature, a local-LLM feature that hard-failed on any transcript
+  over ~20 minutes, a Pause/Cancel race that could silently do nothing, a Hebrew/
+  Javanese language-picker selection silently downgrading to auto-detect, and more).
+- **Every one of those 18 branches is LOCAL ONLY as of an explicit owner policy
+  change mid-session — none are pushed to `origin`, none are merged to `master`.**
+  Run `git branch` in the main checkout to list them all (`opencode/...` prefix).
+  **Nothing in them has been reviewed by Claude either**, by the owner's own explicit
+  instruction partway through (see the policy-change note below) — these are 100%
+  raw model output, parked for the owner's own review, at whatever pace they choose.
+  Pyright + the full test suite were run and reported green for every one of them
+  (either by the OpenCode task itself, or re-confirmed independently after the fact
+  when a task got interrupted) — that is a real, meaningful signal, but it is NOT the
+  same thing as a human or a second model actually reading the diffs.
+- A real, separate, concurrent Claude/OpenCode session was also active on the
+  machine-translate-docx-main project for part of this — confirmed legitimate/
+  owner-approved, unrelated to this repo, explains some of the resource contention
+  noted below.
+- Two items need the OWNER's own decision, not a further automated pass — flagged
+  in their own sections below, search for "FLAG FOR THE OWNER": a telemetry default
+  that contradicts the README (opt-out in practice, opt-in on paper), and a
+  worker-protocol design gap now already addressed by a dedicated (also unreviewed)
+  design task, `opencode/worker-correlation-id-design`.
+- **Next session's very first move should be deciding how to work through those 18
+  branches** (probably: read each `OPENCODE_HANDOFF_*.md` on its own branch first —
+  they're thorough — before the raw diff), not starting new automated work on top of
+  an already-large unreviewed pile.
+
+---
 
 Owner directive this session: act as chief architect, hands-off, using OpenCode CLI
 (newly set up — see `C:\Users\Owner\.claude\EXTERNAL_MODELS.md` "OpenCode CLI" section
