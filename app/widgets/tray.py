@@ -105,24 +105,33 @@ class TrayController:
         # the window with no tray icon to bring it back.
         self._start_failed = False
 
+    def _libs_available(self) -> bool:
+        # Platform + dependency support, IGNORING a previous failed start.
+        # start() uses this (not is_supported()) so a transient failure
+        # (notification area not ready at boot) stays retryable; a
+        # successful retry clears _start_failed and reports supported again.
+        if sys.platform == "darwin":
+            return False
+        return self._pystray is not None and self._pil is not None
+
     def is_supported(self) -> bool:
         # macOS: pystray's AppKit backend must run its event loop on the
         # MAIN thread, but Tk already owns it. Running the tray off-thread
         # (as start() does) silently no-ops there — worse, it would let
         # minimise-to-tray hide the window with no tray to restore it. So
         # the tray is disabled on macOS; the app lives in the Dock instead.
-        if sys.platform == "darwin":
-            return False
         if getattr(self, "_start_failed", False):
             # Platform/libs support the tray, but bringing THIS icon up
             # failed; a dead controller must not count as usable.
             return False
-        return self._pystray is not None and self._pil is not None
+        return self._libs_available()
 
     # -- icon lifecycle --------------------------------------------------
 
     def start(self) -> None:
-        if not self.is_supported() or self._icon is not None:
+        if self._icon is not None:
+            return
+        if not self._libs_available():
             return
         try:
             menu = self._pystray.Menu(
@@ -159,6 +168,7 @@ class TrayController:
 
             from core._threads import safe_thread
             self._thread = safe_thread(_runner, name="tray-loop")
+            self._start_failed = False
         except Exception as e:  # noqa: BLE001
             logger.warning("Could not start tray icon: %s", e)
             self._icon = None

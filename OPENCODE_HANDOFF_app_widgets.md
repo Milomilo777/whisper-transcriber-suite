@@ -110,3 +110,68 @@ Test: `tests/core/test_hardware_wizard.py::test_make_silent_clip_removes_temp_fi
   docs/index (a plain `state="disabled"` blocks mouse selection, which was a
   real user complaint for the Live transcript). Making it read-only while
   still selectable is a behaviour change; not done unilaterally.
+
+## Second-pass independent re-check (muse-spark-1.3-contributor)
+
+### What was verified from the first pass and how
+
+Backed up the four fixed `app/widgets/*.py` files, restored the `master`
+versions (`git show master:<path>`), and ran the branch's new regression
+tests against the old code. All four failed on old code and pass on the
+fixed code (34/34 in the four widget test files after restore):
+
+- `test_popup_reuses_the_same_menu` — old `console.py` has no
+  `_popup_console_menu` and builds a Menu per click (fails).
+- `test_close_restores_the_parents_modal_grab` — old `error_dialog.py`
+  never hands the grab back (fails).
+- `test_failed_start_reports_the_tray_as_unsupported` — old `tray.py`
+  keeps reporting supported after a failed `start()` (fails).
+- `test_make_silent_clip_removes_temp_file_when_ffmpeg_fails` — old
+  `hardware_wizard.py` leaves the mkstemp'd WAV behind (fails).
+
+No first-pass claim was found wrong, incomplete, or cosmetic. The
+"verified clean" statements were spot-checked: tooltip `_hide`/`_show`
+paths are exception-guarded, `platform.open_folder()` routes both failure
+modes to a dialog, and no background thread calls `show_error()`.
+
+### New bug found and fixed (with evidence)
+
+Tray `_start_failed` flag made `start()` unretryable and success
+unreportable (`app/widgets/tray.py`). `start()` gated on
+`is_supported()`, which returns False once the flag is set — so a
+transient boot-time failure (notification area not ready) could never be
+retried, and even a hypothetical successful retry would still report
+unsupported because nothing ever cleared the flag.
+
+Fix: new `_libs_available()` (platform + deps only, ignores the flag);
+`start()` gates on it and clears `_start_failed` on success, while
+`is_supported()` keeps reporting a failed start as unsupported.
+
+Evidence: added
+`tests/core/test_tray.py::test_successful_retry_after_a_failed_start_reports_supported`
+(fail-once then succeed Icon). It fails on the pre-fix code
+(`assert 1 == 2` — second `start()` no-ops, retry never attempted) and
+passes with the fix. The original
+`test_failed_start_reports_the_tray_as_unsupported` still passes.
+
+### Further observations, deliberately not changed
+
+- `app/app.py::_install_text_context_menu` builds one `tk.Menu` per
+  right-click — the same leak class as the console fix — and
+  `transcript_viewer.py` builds one per row-click (there the rebuild is
+  load-bearing: labels embed the row's speaker/idx). Both live outside
+  this branch's touched files (`app.py`/dialogs were read-only scope in
+  the first pass), and the app-wide handler needs a per-widget cache
+  design, so reported here, not fixed unilaterally.
+- `console._popup_console_menu` lets a `tk_popup` `TclError` propagate
+  after the guarded `grab_release()` — Tk just prints a traceback, the
+  app continues. Noise, not a crash path; left alone.
+- `_install_tray` logs "Tray icon installed" even when `start()` failed
+  (the controller is kept but reports unsupported, so `on_exit` correctly
+  exits instead of stranding). Log wording only; left alone.
+
+### Final gates
+
+- `python -m pyright app core` → 0 errors / 0 warnings / 0 informations.
+- `python -m pytest tests/ --ignore=tests/smoke -q` → green, no
+  failures (2 pre-existing skips). No `tk.tcl` flake this run.

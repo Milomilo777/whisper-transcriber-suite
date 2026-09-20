@@ -75,3 +75,54 @@ def test_failed_start_reports_the_tray_as_unsupported(monkeypatch):
     c.start()  # ...but the icon cannot be brought up
     assert c._icon is None
     assert c.is_supported() is False
+
+
+def test_successful_retry_after_a_failed_start_reports_supported(monkeypatch):
+    """A transient start failure must stay retryable.
+
+    start() gates on platform/libs support (not the failure flag), so a
+    second start() after the notification area appears actually retries;
+    success clears the flag and the controller reports supported again.
+    """
+    from app.widgets import tray as tray_mod
+
+    attempts: list[str] = []
+
+    class _FakeMenu:
+        SEPARATOR = object()
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class _FlakyIcon:
+        def __init__(self, *args, **kwargs):
+            attempts.append("try")
+            if len(attempts) == 1:
+                raise RuntimeError("notification area not ready")
+
+    fake_pystray = types.SimpleNamespace(
+        Menu=_FakeMenu,
+        MenuItem=lambda *a, **k: None,
+        Icon=_FlakyIcon,
+    )
+    monkeypatch.setattr(tray_mod, "_try_load_pystray", lambda: (fake_pystray, object()))
+
+    import threading as _threading
+
+    def _fake_safe_thread(fn, name=None):
+        # Don't run the icon loop; just hand back a dead thread handle.
+        t = _threading.Thread(target=lambda: None, daemon=True)
+        return t
+
+    monkeypatch.setattr("core._threads.safe_thread", _fake_safe_thread)
+
+    fake_app = types.SimpleNamespace(post_to_main=lambda fn: None)
+    c = tray_mod.TrayController(fake_app)  # type: ignore[arg-type]
+
+    c.start()
+    assert c.is_supported() is False  # first attempt failed
+
+    c.start()  # retry once the backend is ready
+    assert len(attempts) == 2
+    assert c._icon is not None
+    assert c.is_supported() is True
