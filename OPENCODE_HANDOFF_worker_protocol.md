@@ -218,3 +218,65 @@ file to `master` verbatim in this pass.
   isolation and in full-file runs; `test_hub_setup_dialog` ERROR once, then
   clean) — neither imports `core/worker`, both order-dependent, unrelated to
   this branch.
+
+---
+
+## Third-pass independent re-check (muse-spark-1.3-contributor) — 2026-09-20
+
+Branch already held two commits on top of `master` when this pass started:
+first-pass fixes (`2843f4a`) plus a second-pass fix (`7dab672`, iterate-only
+at-cap uniformity). This pass re-verified everything from scratch and ran a
+fresh adversarial review. Outcome: genuinely clean — no further code changes,
+no wrong/incomplete/cosmetic fix found in either earlier pass.
+
+### Verification of earlier claims (prove-it discipline)
+
+- Restored `master`'s `core/worker.py` over the fixed tree (new tests kept)
+  and ran all 9 new regression cases: **all 9 FAILED pre-fix** (double-report
+  readline + chunked, at-cap readline/chunked/iterate-only, end-to-end single
+  error, done-boundary, logging-survival, startup_error-on-raise), then
+  restored the fix and confirmed all 9 pass. Both earlier "fails pre-fix"
+  claims reproduce exactly.
+- Cross-path uniformity probe (throwaway, not committed): 7 edge inputs
+  (consecutive oversize records, oversize-then-at-cap, at-cap vs over-by-one,
+  blank lines around oversize, unterminated oversize/at-cap at EOF, empty
+  stream) across all three `read_capped_lines` paths (readline / `read()` /
+  iterate-only). Oversize FLAG sequences agree on every path: exactly one
+  report per bad record, at-cap accepted, over-by-one rejected. The only
+  divergence is the truncated prefix *content* yielded with `oversize=True`
+  (readline yields cap+1 chars, others the full record) — intentional OOM
+  bound, caller discards it, no behavioral effect.
+- Chunked `read()` probe with `_READ_CHUNK_CHARS=7` over a mixed
+  oversize/ok/at-cap/over-by-one stream: flags `[True, False, False, True]`,
+  contract holds with records split across many bounded reads.
+- Failure-path probe (throwaway): `transcribe` raising mid-task yields
+  `started → error`, exactly one `error`, no `done`, slot cleared — confirms
+  the done-boundary fix's hand-trace (raise skips `emit("done")` via
+  exception propagation, outer `except` reports once).
+- `core/task.py` confirms fresh tasks start with `paused/cancelled = False`,
+  validating the stray-control no-op reasoning behind fix 3.
+
+### Adversarial hypotheses investigated and DISMISSED with evidence
+
+- Stale `_current_task` if `emit("started")` raises: `emit` only raises on a
+  broken stdout (JSON path has a repr fallback), i.e. the parent is gone and
+  the process is exiting — no production effect. Same class as documented C.
+- `UnicodeDecodeError` from `readline` escaping `_stdin_reader` silently via
+  the bare `finally`: parent always writes valid UTF-8 JSON; no concrete
+  trigger exists, and any "fix" (break vs continue) risks an error-loop or a
+  behavior change for a non-scenario. Theoretical, left alone.
+- `clip_start=0.0` falsy in `if task.clip_start or task.clip_end`: a
+  zero-start clip is whole-file-equivalent, so keeping resume is harmless.
+  No concrete wrong behavior; left alone.
+- Oversize message saying "bytes" while the cap is characters, heartbeat not
+  stopped on escaping exceptions, parent-side ordering races A/B: all already
+  documented in this handoff as deliberate non-fixes; re-read and agreed, no
+  change.
+
+### Final verification
+
+- `python -m pyright app core` → 0 errors, 0 warnings, 0 informations.
+- Full hermetic suite (`tests/`, minus `tests/smoke/`): **2195 passed,
+  1 skipped, exit 0**. No flakes observed in this pass.
+- Working tree otherwise clean: no code changes in this pass, handoff-only
+  commit.
