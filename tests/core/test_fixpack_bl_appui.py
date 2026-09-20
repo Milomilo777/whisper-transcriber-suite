@@ -139,9 +139,12 @@ def _make_fake_core_server(recorder):
         def __init__(self):
             self.port = 0
 
-        def start(self, host, port, token, *, max_upload_mb=512):  # noqa: ARG002
+        def start(self, host, port, token, *, max_upload_mb=512,  # noqa: ARG002
+                  https=False, webhook_url=""):
             recorder["host"] = host
             recorder["port"] = port
+            recorder["https"] = https
+            recorder["webhook_url"] = webhook_url
             # Mimic auto_port: an in-range port binds verbatim.
             self.port = port
 
@@ -162,6 +165,8 @@ def _server_app(App, typed_port):
     a.server_port_var = _Var(typed_port)
     a.server_share_lan_var = _Var(False)
     a.server_token_var = _Var("")
+    a.server_https_enabled_var = _Var(False)
+    a.server_webhook_url_var = _Var("")
     a.server_toggle_btn = _Btn()
     a.server_status_var = _Var("")
     a.server_url_var = _Var("")

@@ -311,6 +311,19 @@ DEFAULT_CONFIG = {
     "server_max_upload_mb": 512,
     "server_share_lan": False,
     "server_token": "",
+    #   server_https_enabled — when True the server wraps its socket in TLS
+    #     using a self-signed certificate generated once under
+    #     user_data_dir()/server/ (see core.server.tls). OFF by default,
+    #     matching --lan: HTTPS is an explicit opt-in. The CLI equivalent is
+    #     --https.
+    #   server_webhook_url — optional URL to POST a small JSON completion
+    #     payload to when a job finishes (success or failure). Empty = off.
+    #     The POST is fire-and-forget on a daemon thread and is refused by
+    #     the same SSRF guard (core.server.jobs.is_safe_url) the inbound URL
+    #     path uses, so it can never target loopback / link-local /
+    #     cloud-metadata addresses. The CLI equivalent is --webhook.
+    "server_https_enabled": False,
+    "server_webhook_url": "",
     # Window / privacy toggles set on the Advanced dialog's General tab and
     # read at runtime. Defaulted here (both OFF) so reads are always a plain
     # bool and they get the same merge + type-coercion protection as every

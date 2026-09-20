@@ -22,6 +22,18 @@ Routes
   POST /api/jobs/<id>/cancel      -> flag the job for cancellation
   POST /api/jobs/<id>/pause       -> pause the running/queued job
   POST /api/jobs/<id>/resume      -> resume a paused job
+  GET  /v1/models                 -> OpenAI-compatible model list
+  POST /v1/audio/transcriptions   -> OpenAI-compatible transcription
+                                     (multipart upload, synchronous response)
+
+The ``/v1/...`` routes mirror OpenAI's real audio API closely enough that
+Open-WebUI / LM Studio and the ``openai`` SDKs can point at this server as a
+drop-in STT backend: multipart ``file`` + ``model``, optional ``language`` /
+``response_format`` (json / text / srt / verbose_json / vtt), and the same
+``{"text": ...}`` / verbose-JSON response shapes and ``{"error": {...}}``
+error envelope. The existing optional token also accepts an OpenAI-style
+``Authorization: Bearer <token>`` header. The request blocks until its job
+finishes (the manager still runs one transcription at a time).
 
 Per-job advanced options (vad / diarization / word-timestamps / demucs /
 hallucination / chapters) are validated by the pure ``normalize_options``
@@ -47,14 +59,23 @@ import json
 import logging
 import math
 import os
+import ssl
+import time
 import urllib.parse
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, NamedTuple
 
 from core import __version__
-from core.server.jobs import JobManager, QueueFull
-from core.writers import supported_formats
+from core.server.jobs import (
+    STATUS_CANCELLED,
+    STATUS_ERROR,
+    STATUS_FINISHED,
+    Job,
+    JobManager,
+    QueueFull,
+)
+from core.writers import get_writer, supported_formats
 
 
 def content_disposition_attachment(filename: str) -> str:
@@ -102,6 +123,18 @@ _MULTIPART_TAIL_WINDOW = 64 * 1024
 # upload path).
 _MAX_JSON_BODY_BYTES = 1024 * 1024
 
+# OpenAI-compatible route: the response formats this server can render.
+# ``diarized_json`` is deliberately absent (the engine's diarization output is
+# not wired to that shape); an unknown value gets a 400, matching the real
+# API's own validation.
+OPENAI_RESPONSE_FORMATS: tuple[str, ...] = (
+    "json", "text", "srt", "verbose_json", "vtt",
+)
+
+# The synchronous OpenAI route polls its job for a terminal state at this
+# cadence while the HTTP handler thread waits.
+_OPENAI_POLL_INTERVAL_S = 0.1
+
 
 # --- pure parsing helpers (unit-testable, no socket needed) ------------------
 
@@ -147,6 +180,12 @@ def parse_route(method: str, raw_path: str) -> Route:
             and parts[3] in ("result", "cancel", "pause", "resume",
                              "outputs")):
         return Route(m, parts[3], parts[2], query)
+    # OpenAI-compatible surface (see the module docstring). The real API
+    # lives under /v1, so tools configured with a .../v1 base URL hit these.
+    if parts == ["v1", "models"]:
+        return Route(m, "openai_models", "", query)
+    if parts == ["v1", "audio", "transcriptions"]:
+        return Route(m, "openai_transcriptions", "", query)
     return Route(m, "unknown", "", query)
 
 
@@ -245,6 +284,34 @@ class _UploadParts(NamedTuple):
     there is no file part). ``fields`` holds the small plain text parts.
     """
 
+    filename: str
+    file_start: int
+    file_end: int
+    fields: dict[str, str]
+
+
+class _UploadError(Exception):
+    """A multipart receive failure, carrying the HTTP status to reply with.
+
+    Raised by :meth:`JobRequestHandler._receive_upload` so its two callers
+    (the JSON job API and the OpenAI-compatible route) can each render the
+    failure in their own error envelope.
+    """
+
+    def __init__(self, status: int, message: str) -> None:
+        super().__init__(message)
+        self.status = status
+        self.message = message
+
+
+class _StreamedUpload(NamedTuple):
+    """A multipart body streamed to a temp file, with its file part located.
+
+    ``tmp_path`` is owned by the caller, which must delete it. The file part
+    body lives at ``[file_start, file_end)`` inside that temp file.
+    """
+
+    tmp_path: str
     filename: str
     file_start: int
     file_end: int
@@ -500,6 +567,115 @@ def parse_clip(raw_start: Any, raw_end: Any) -> tuple[float | None, float | None
     return start, end
 
 
+# --- OpenAI-compatible response helpers (pure, unit-testable) ----------------
+
+def openai_error_payload(
+    message: str,
+    *,
+    err_type: str = "invalid_request_error",
+    param: str | None = None,
+    code: str | None = None,
+) -> dict[str, Any]:
+    """The ``{"error": {message, type, param, code}}`` envelope OpenAI
+    clients (and the official SDKs) parse on a failed request."""
+    return {
+        "error": {
+            "message": message,
+            "type": err_type,
+            "param": param,
+            "code": code,
+        },
+    }
+
+
+def openai_full_text(segments: list[dict[str, Any]]) -> str:
+    """The concatenated transcript text the ``json`` / ``text`` responses use."""
+    parts = [str(seg.get("text") or "").strip() for seg in segments]
+    return " ".join(p for p in parts if p).strip()
+
+
+def openai_verbose_segments(
+    segments: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Map our segment dicts onto OpenAI's ``TranscriptionSegment`` shape.
+
+    Every field the SDK type declares is present. Our engine does not expose
+    per-segment logprobs / token ids, so those fields carry neutral values
+    (0.0 / empty list) rather than being omitted — a client that types the
+    response with the official SDK requires the keys to exist.
+    """
+    out: list[dict[str, Any]] = []
+    for index, seg in enumerate(segments):
+        start = _coerce_float(seg.get("start"))
+        end = _coerce_float(seg.get("end"))
+        start = start if start is not None else 0.0
+        end = end if end is not None else start
+        out.append({
+            "id": index,
+            # whisper's own seek unit is a 10 ms frame; centiseconds keeps
+            # the field in the same spirit for consumers that display it.
+            "seek": int(round(start * 100)),
+            "start": start,
+            "end": end,
+            "text": str(seg.get("text") or ""),
+            "tokens": [],
+            "temperature": 0.0,
+            "avg_logprob": 0.0,
+            "compression_ratio": 0.0,
+            "no_speech_prob": 0.0,
+        })
+    return out
+
+
+def openai_verbose_words(
+    segments: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Flatten per-segment ``words`` onto OpenAI's ``TranscriptionWord`` shape."""
+    words: list[dict[str, Any]] = []
+    for seg in segments:
+        for word in seg.get("words") or []:
+            if not isinstance(word, dict):
+                continue
+            start = _coerce_float(word.get("start"))
+            end = _coerce_float(word.get("end"))
+            start = start if start is not None else 0.0
+            end = end if end is not None else start
+            words.append({
+                "word": str(word.get("word") or ""),
+                "start": start,
+                "end": end,
+            })
+    return words
+
+
+def build_openai_verbose_json(
+    segments: list[dict[str, Any]], *, language: str = "",
+) -> dict[str, Any]:
+    """Build the ``verbose_json`` response from our segment list.
+
+    ``language`` is the engine's detected ISO code (e.g. ``en``); the real
+    API returns an English name (e.g. ``english``), but the field is free
+    text and a code is the honest value this server actually knows.
+    """
+    duration = 0.0
+    for seg in segments:
+        end = _coerce_float(seg.get("end"))
+        if end is not None and end > duration:
+            duration = end
+    payload: dict[str, Any] = {
+        "task": "transcribe",
+        "language": language,
+        "duration": duration,
+        "text": openai_full_text(segments),
+        "segments": openai_verbose_segments(segments),
+        "usage": {"type": "duration", "seconds": int(round(duration))},
+    }
+    words = openai_verbose_words(segments)
+    if words:
+        payload["words"] = words
+    return payload
+
+
 # --- the HTTP server ---------------------------------------------------------
 
 class JobHTTPServer(ThreadingHTTPServer):
@@ -510,13 +686,18 @@ class JobHTTPServer(ThreadingHTTPServer):
 
     def __init__(self, server_address: tuple[str, int],
                  manager: JobManager, *, token: str = "",
-                 max_upload_mb: int = 512) -> None:
+                 max_upload_mb: int = 512,
+                 ssl_context: ssl.SSLContext | None = None) -> None:
         self.manager = manager
         self.token = token
         self.max_upload_bytes = (
             min(max(1, max_upload_mb), _ABSOLUTE_MAX_UPLOAD_MB) * 1024 * 1024
         )
         super().__init__(server_address, JobRequestHandler)
+        if ssl_context is not None:
+            # Wrap the listening socket before serve_forever runs, so every
+            # accepted connection is TLS from the first byte.
+            self.socket = ssl_context.wrap_socket(self.socket, server_side=True)
 
 
 class JobRequestHandler(BaseHTTPRequestHandler):
@@ -540,10 +721,22 @@ class JobRequestHandler(BaseHTTPRequestHandler):
     def _route(self) -> Route:
         return parse_route(self.command, self.path)
 
+    def _bearer_token(self) -> str | None:
+        """The OpenAI-style ``Authorization: Bearer <token>`` value, if any.
+
+        Tools that treat this server as a drop-in OpenAI STT backend put
+        their API key in this header; accepting it (as an alternative to
+        ``X-Auth-Token``) is what lets them authenticate at all.
+        """
+        auth = self.headers.get("Authorization", "")
+        if auth.lower().startswith("bearer "):
+            return auth[len("bearer "):].strip()
+        return None
+
     def _authed(self, route: Route) -> bool:
         return token_ok(
             self._srv.token,
-            self.headers.get("X-Auth-Token"),
+            self.headers.get("X-Auth-Token") or self._bearer_token(),
             route.query.get("token"),
         )
 
@@ -558,20 +751,54 @@ class JobRequestHandler(BaseHTTPRequestHandler):
     def _send_error_json(self, status: int, message: str) -> None:
         self._send_json(status, {"error": message})
 
-    def _send_error_json_close(self, status: int, message: str) -> None:
-        """Send an error and close the connection.
+    def _send_json_close(self, status: int, payload: dict[str, Any]) -> None:
+        """Send a JSON body and close the connection.
 
         Used when we reject a request WITHOUT consuming its body (the
         oversized-upload path). Under HTTP/1.1 keep-alive an unread body
         desyncs the connection, so the next read would mangle the client's
         bytes — close instead of trying to keep the socket alive.
         """
-        body = json.dumps({"error": message}).encode("utf-8")
+        body = json.dumps(payload).encode("utf-8")
         self.close_connection = True
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Connection", "close")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_error_json_close(self, status: int, message: str) -> None:
+        self._send_json_close(status, {"error": message})
+
+    def _send_openai_error(
+        self,
+        status: int,
+        message: str,
+        *,
+        err_type: str = "invalid_request_error",
+        param: str | None = None,
+        code: str | None = None,
+    ) -> None:
+        self._send_json(status, openai_error_payload(
+            message, err_type=err_type, param=param, code=code))
+
+    def _send_openai_error_close(
+        self,
+        status: int,
+        message: str,
+        *,
+        err_type: str = "invalid_request_error",
+        param: str | None = None,
+        code: str | None = None,
+    ) -> None:
+        self._send_json_close(status, openai_error_payload(
+            message, err_type=err_type, param=param, code=code))
+
+    def _send_body(self, status: int, body: bytes, content_type: str) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
@@ -595,6 +822,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, {"formats": supported_formats()})
         elif route.name == "options":
             self._send_json(HTTPStatus.OK, self._options_payload())
+        elif route.name == "openai_models":
+            self._send_json(HTTPStatus.OK, self._openai_models_payload())
         elif route.name == "jobs":
             # GET /api/jobs -> the live job list.
             self._send_json(HTTPStatus.OK,
@@ -690,10 +919,18 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             # keep-alive an unread request body desyncs the connection —
             # the next request would read this body's leftover bytes. We
             # send Connection: close as a belt-and-braces guard too.
-            self._reject_post_early(HTTPStatus.UNAUTHORIZED, "auth required")
+            if route.name == "openai_transcriptions":
+                self._reject_openai_post_early(
+                    HTTPStatus.UNAUTHORIZED, "Incorrect API key provided.",
+                    code="invalid_api_key")
+            else:
+                self._reject_post_early(
+                    HTTPStatus.UNAUTHORIZED, "auth required")
             return
         if route.name == "jobs":
             self._create_job()
+        elif route.name == "openai_transcriptions":
+            self._openai_transcribe()
         elif route.name == "cancel":
             self._drain_declared_body()
             ok = self._srv.manager.cancel(route.job_id)
@@ -755,6 +992,26 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 return
             self._drain_body(length)
         self._send_error_json_close(status, message)
+
+    def _reject_openai_post_early(
+        self,
+        status: int,
+        message: str,
+        *,
+        err_type: str = "invalid_request_error",
+        param: str | None = None,
+        code: str | None = None,
+    ) -> None:
+        """OpenAI-envelope twin of :meth:`_reject_post_early`."""
+        length = self._declared_length()
+        if length:
+            if length > self._srv.max_upload_bytes:
+                self._send_openai_error_close(
+                    status, message, err_type=err_type, param=param, code=code)
+                return
+            self._drain_body(length)
+        self._send_openai_error_close(
+            status, message, err_type=err_type, param=param, code=code)
 
     def _read_body(self) -> bytes | None:
         """Read the request body, enforcing the max-upload cap.
@@ -845,31 +1102,30 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                                           getter("clip_end"))
         return options, clip_start, clip_end
 
-    def _create_upload_job(self, boundary: str) -> None:
-        """Stream a multipart upload to disk (never fully buffered in RAM).
+    def _receive_upload(self, boundary: str) -> _StreamedUpload:
+        """Stream a multipart body to a temp file and locate its file part.
 
-        Reads the raw body to a per-job temp file in 64 KB chunks, enforcing
-        the upload cap against Content-Length, then locates the single ``file``
-        part's byte RANGE (from a bounded leading + trailing window — never the
-        whole body) and copies just that range from the temp file straight to
-        the per-job media path in fixed-size chunks. The payload is therefore
-        never materialised in RAM (the old whole-body ``read()`` +
-        ``extract_upload`` copy buffered it ~twice). ``extract_upload`` itself
-        is retained only as the PURE unit-test seam.
+        Reads the raw body in 64 KB chunks, enforcing the upload cap against
+        Content-Length, then locates the single ``file`` part's byte RANGE
+        (from a bounded leading + trailing window — never the whole body).
+        The payload is therefore never materialised in RAM (the old
+        whole-body ``read()`` + ``extract_upload`` copy buffered it ~twice);
+        ``extract_upload`` itself is retained only as the PURE unit-test seam.
+
+        Raises :class:`_UploadError` (already drained/cleaned up) on any
+        failure; on success the caller owns ``tmp_path`` and must delete it.
         """
         import tempfile
 
         length = self._declared_length()
         if length > self._srv.max_upload_bytes:
             self._drain_body(length)
-            self._send_error_json_close(
+            raise _UploadError(
                 HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
                 f"upload exceeds "
                 f"{self._srv.max_upload_bytes // (1024 * 1024)} MB cap",
             )
-            return
 
-        manager = self._srv.manager
         fd, tmp_path = tempfile.mkstemp(prefix="upload-", suffix=".part")
         written = 0
         try:
@@ -885,32 +1141,51 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                     remaining -= len(buf)
             # Hard cap guard even when Content-Length lied about the size.
             if written > self._srv.max_upload_bytes:
-                self._send_error_json_close(
+                raise _UploadError(
                     HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "upload too large")
-                return
-            parsed = self._extract_upload_from_file(
-                tmp_path, written, boundary)
+            filename, file_start, file_end, fields = (
+                self._extract_upload_from_file(tmp_path, written, boundary))
         except OSError as e:
             try:
                 os.unlink(tmp_path)
             except OSError:
                 pass
-            self._send_error_json(HTTPStatus.BAD_REQUEST,
-                                  f"could not read upload: {e}")
-            return
+            raise _UploadError(
+                HTTPStatus.BAD_REQUEST, f"could not read upload: {e}") from e
+        except _UploadError:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+        return _StreamedUpload(
+            tmp_path, filename, file_start, file_end, fields)
 
+    def _create_upload_job(self, boundary: str) -> None:
+        """Create a job from a streamed multipart upload.
+
+        The payload is streamed disk-to-disk (see :meth:`_receive_upload`)
+        and only the file part's byte range is copied into the per-job dir.
+        """
         try:
-            filename, file_start, file_end, fields = parsed
-            if not filename or file_start < 0 or file_end <= file_start:
+            upload = self._receive_upload(boundary)
+        except _UploadError as e:
+            self._send_error_json_close(e.status, e.message)
+            return
+        manager = self._srv.manager
+        try:
+            if (not upload.filename or upload.file_start < 0
+                    or upload.file_end <= upload.file_start):
                 self._send_error_json(
                     HTTPStatus.BAD_REQUEST, "no file part in upload")
                 return
-            formats = normalize_formats(fields.get("formats"))
-            language = normalize_language(fields.get("language", ""))
-            options, clip_start, clip_end = self._options_from(fields.get)
+            formats = normalize_formats(upload.fields.get("formats"))
+            language = normalize_language(upload.fields.get("language", ""))
+            options, clip_start, clip_end = self._options_from(
+                upload.fields.get)
             try:
                 job_id, media_path = manager.submit_upload_stream(
-                    filename, formats, language, options=options,
+                    upload.filename, formats, language, options=options,
                     clip_start=clip_start, clip_end=clip_end)
             except QueueFull as e:
                 self._send_error_json(HTTPStatus.SERVICE_UNAVAILABLE, str(e))
@@ -922,7 +1197,9 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 # Copy just the file part's byte range from the temp file to
                 # its final per-job location, in fixed-size chunks — the
                 # payload never sits whole in RAM.
-                self._copy_range(tmp_path, media_path, file_start, file_end)
+                self._copy_range(
+                    upload.tmp_path, media_path,
+                    upload.file_start, upload.file_end)
             except OSError as e:
                 manager.discard(job_id)
                 self._send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -932,7 +1209,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.ACCEPTED, {"job_id": job_id})
         finally:
             try:
-                os.unlink(tmp_path)
+                os.unlink(upload.tmp_path)
             except OSError:
                 pass
 
@@ -1064,3 +1341,193 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             self._send_error_json(HTTPStatus.SERVICE_UNAVAILABLE, str(e))
             return
         self._send_json(HTTPStatus.ACCEPTED, {"job_id": job_id})
+
+    # --- OpenAI-compatible surface -------------------------------------------
+
+    def _openai_models_payload(self) -> dict[str, Any]:
+        """A one-entry model list so OpenAI clients can validate the backend.
+
+        ``whisper-1`` is the real API's STT model id. The server ignores the
+        requested model (the engine/model is a server-level setting) but
+        clients insist on selecting one from this list.
+        """
+        return {
+            "object": "list",
+            "data": [{
+                "id": "whisper-1",
+                "object": "model",
+                "created": 0,
+                "owned_by": "whisper-transcriber-suite",
+            }],
+        }
+
+    def _openai_transcribe(self) -> None:
+        """POST /v1/audio/transcriptions — synchronous, OpenAI-shaped.
+
+        Streams the multipart upload into the normal job queue, then waits
+        for the single worker to finish and renders the transcript in the
+        requested ``response_format``. Blocking here is deliberate: the
+        OpenAI contract is request/response, and the manager still runs one
+        transcription at a time. ThreadingHTTPServer serves other clients
+        meanwhile.
+        """
+        boundary = parse_multipart_filename(
+            self.headers.get("Content-Type", ""))
+        if not boundary:
+            self._reject_openai_post_early(
+                HTTPStatus.BAD_REQUEST,
+                "Expected multipart/form-data with a 'file' field.",
+                param="file")
+            return
+        try:
+            upload = self._receive_upload(boundary)
+        except _UploadError as e:
+            self._send_openai_error_close(e.status, e.message)
+            return
+        try:
+            self._openai_handle_upload(upload)
+        finally:
+            try:
+                os.unlink(upload.tmp_path)
+            except OSError:
+                pass
+
+    def _openai_handle_upload(self, upload: _StreamedUpload) -> None:
+        """Validate the OpenAI fields, run the job, and send the response."""
+        if (not upload.filename or upload.file_start < 0
+                or upload.file_end <= upload.file_start):
+            self._send_openai_error(
+                HTTPStatus.BAD_REQUEST,
+                "Invalid file: no file part in the upload.", param="file")
+            return
+        fields = upload.fields
+        model = str(fields.get("model") or "").strip()
+        if not model:
+            # Matches the real API, which rejects a missing model.
+            self._send_openai_error(
+                HTTPStatus.BAD_REQUEST,
+                "You must provide a model parameter.", param="model")
+            return
+        response_format = str(
+            fields.get("response_format") or "json").strip().lower()
+        if response_format not in OPENAI_RESPONSE_FORMATS:
+            self._send_openai_error(
+                HTTPStatus.BAD_REQUEST,
+                f"Invalid response_format '{response_format}'. Supported "
+                "formats: " + ", ".join(OPENAI_RESPONSE_FORMATS) + ".",
+                param="response_format")
+            return
+        # ``prompt`` / ``temperature`` / ``timestamp_granularities[]`` are
+        # accepted but ignored — the engine's own settings decide those.
+        language = normalize_language(fields.get("language", ""))
+        manager = self._srv.manager
+        try:
+            job_id, media_path = manager.submit_upload_stream(
+                upload.filename, ["json"], language)
+        except QueueFull as e:
+            self._send_openai_error(
+                HTTPStatus.SERVICE_UNAVAILABLE, str(e),
+                err_type="server_error")
+            return
+        except ValueError as e:
+            self._send_openai_error(
+                HTTPStatus.BAD_REQUEST, str(e), param="file")
+            return
+        try:
+            self._copy_range(upload.tmp_path, media_path,
+                             upload.file_start, upload.file_end)
+        except OSError as e:
+            manager.discard(job_id)
+            self._send_openai_error(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                f"could not save upload: {e}", err_type="server_error")
+            return
+        manager.enqueue_upload(job_id)
+        job = manager.get(job_id)
+        if job is None:  # pragma: no cover - just registered
+            self._send_openai_error(
+                HTTPStatus.INTERNAL_SERVER_ERROR, "job disappeared",
+                err_type="server_error")
+            return
+        job = self._wait_for_job(job)
+        if job is None:
+            self._send_openai_error(
+                HTTPStatus.SERVICE_UNAVAILABLE, "server is shutting down",
+                err_type="server_error")
+            return
+        if job.status == STATUS_CANCELLED:
+            self._send_openai_error(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                "transcription was cancelled", err_type="server_error")
+            return
+        if job.status == STATUS_ERROR:
+            self._send_openai_error(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                job.error or "transcription failed", err_type="server_error")
+            return
+        self._openai_send_result(job, response_format)
+
+    def _wait_for_job(self, job: Job) -> Job | None:
+        """Block until ``job`` is terminal, or the server stops.
+
+        Returns the job, or ``None`` when the manager was stopped first
+        (in-process GUI stop / CLI shutdown) so the caller can answer 503
+        instead of hanging forever. The Job object reference is kept rather
+        than re-looking it up, so terminal-job eviction can't race us.
+        """
+        manager = self._srv.manager
+        while True:
+            if job.status in (STATUS_FINISHED, STATUS_ERROR, STATUS_CANCELLED):
+                return job
+            if manager.stopped:
+                return None
+            time.sleep(_OPENAI_POLL_INTERVAL_S)
+
+    def _openai_send_result(self, job: Job, response_format: str) -> None:
+        """Read the job's JSON sidecar and render the requested format."""
+        path = self._srv.manager.output_path(job.job_id, "json")
+        if not path or not os.path.isfile(path):
+            self._send_openai_error(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                "transcription produced no JSON output",
+                err_type="server_error")
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                segments = json.load(f)
+        except (OSError, ValueError) as e:
+            self._send_openai_error(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                f"could not read the transcript: {e}",
+                err_type="server_error")
+            return
+        if not isinstance(segments, list):
+            self._send_openai_error(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                "transcript output has an unexpected shape",
+                err_type="server_error")
+            return
+        language = job.detected_language or job.language
+        if response_format == "text":
+            body = openai_full_text(segments).encode("utf-8")
+            self._send_body(HTTPStatus.OK, body, "text/plain; charset=utf-8")
+            return
+        if response_format in ("srt", "vtt"):
+            try:
+                text = get_writer(response_format)(segments, "")
+            except (KeyError, TypeError, ValueError) as e:
+                self._send_openai_error(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    f"could not render the transcript: {e}",
+                    err_type="server_error")
+                return
+            self._send_body(
+                HTTPStatus.OK, text.encode("utf-8"),
+                "text/plain; charset=utf-8")
+            return
+        if response_format == "verbose_json":
+            self._send_json(HTTPStatus.OK, build_openai_verbose_json(
+                segments, language=language))
+            return
+        self._send_json(
+            HTTPStatus.OK, {"text": openai_full_text(segments)})

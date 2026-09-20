@@ -543,6 +543,8 @@ class App(tk.Tk):
     server_port_var: tk.IntVar
     server_share_lan_var: tk.BooleanVar
     server_token_var: tk.StringVar
+    server_https_enabled_var: tk.BooleanVar
+    server_webhook_url_var: tk.StringVar
     server_status_var: tk.StringVar
     server_url_var: tk.StringVar
     server_toggle_btn: "ttk.Button"
@@ -3683,6 +3685,10 @@ class App(tk.Tk):
         self.app_config["server_port"] = port
         self.app_config["server_share_lan"] = bool(self.server_share_lan_var.get())
         self.app_config["server_token"] = self.server_token_var.get().strip()
+        self.app_config["server_https_enabled"] = bool(
+            self.server_https_enabled_var.get())
+        self.app_config["server_webhook_url"] = (
+            self.server_webhook_url_var.get().strip())
         try:
             save_config(self.app_config)
         except Exception as e:  # noqa: BLE001
@@ -3724,6 +3730,8 @@ class App(tk.Tk):
         port = port if 1 <= port <= 65535 else 8765
         share_lan = bool(self.server_share_lan_var.get())
         token = self.server_token_var.get().strip()
+        https = bool(self.server_https_enabled_var.get())
+        webhook_url = self.server_webhook_url_var.get().strip()
         max_upload_mb = int(self.app_config.get("server_max_upload_mb", 512))
 
         self._server_busy = True
@@ -3746,7 +3754,8 @@ class App(tk.Tk):
                 # auto_port: if the chosen port is busy the handle falls
                 # back to a free one rather than failing — we report what
                 # it actually bound.
-                handle.start(host, port, token, max_upload_mb=max_upload_mb)
+                handle.start(host, port, token, max_upload_mb=max_upload_mb,
+                             https=https, webhook_url=webhook_url)
                 urls = handle.urls()
                 bound_port = handle.port
                 self.post_to_main(
