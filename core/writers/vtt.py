@@ -7,6 +7,7 @@ by browsers when shown via ``<track>``.
 from __future__ import annotations
 
 from .base import (
+    coerce_seconds,
     escape_cue_separator,
     fmt_vtt_time,
     normalize_text,
@@ -15,8 +16,11 @@ from .base import (
 
 
 def _karaoke_payload(seg: dict) -> str:
-    words = seg.get("words") or []
-    if not words:
+    # A hand-edited / externally produced segment can carry a non-list in
+    # "words" (e.g. a string or number); iterating it raised TypeError and
+    # aborted the whole file. Only a non-empty list is usable.
+    words = seg.get("words")
+    if not isinstance(words, list) or not words:
         return escape_cue_separator(normalize_text(seg.get("text", "")))
     parts: list[str] = []
     for w in words:
@@ -52,13 +56,23 @@ def _karaoke_payload(seg: dict) -> str:
         if parts:
             parts.append(" ")
         parts.append(f"<{ts}><c>{token}</c>")
+    if not parts:
+        # Every word was unusable (non-dict entry / blank token). Fall back
+        # to the segment text, matching ASS's writer, so the cue is not
+        # silently emptied.
+        return escape_cue_separator(normalize_text(seg.get("text", "")))
     return "".join(parts).strip()
 
 
 def write(segments: list[dict], audio_path: str = "") -> str:
     out: list[str] = ["WEBVTT", ""]
     for seg in segments:
-        out.append(f"{fmt_vtt_time(float(seg['start']))} --> {fmt_vtt_time(float(seg['end']))}")
+        # coerce_seconds: a malformed segment timestamp (None / non-numeric
+        # / NaN / Inf) must clamp rather than abort the whole file; a
+        # missing "end" falls back to the start.
+        start = coerce_seconds(seg.get("start"))
+        end = coerce_seconds(seg.get("end"), start)
+        out.append(f"{fmt_vtt_time(start)} --> {fmt_vtt_time(end)}")
         payload = _karaoke_payload(seg)
         out.append(speaker_prefix(seg) + payload)
         out.append("")

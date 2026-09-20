@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import os
 
-from .base import fmt_srt_time, normalize_text
+from .base import coerce_seconds, fmt_srt_time, normalize_text
 
 
 def _fmt_md_time(seconds: float) -> str:
@@ -48,7 +48,7 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         text = normalize_text(seg.get("text", ""))
         if not text:
             continue
-        ts = _fmt_md_time(float(seg.get("start", 0.0)))
+        ts = _fmt_md_time(coerce_seconds(seg.get("start")))
         # Defensive str-cast: a hand-edited JSON could carry a
         # numeric speaker label which (seg.get("speaker") or "")
         # used to .strip() on, raising AttributeError on int.

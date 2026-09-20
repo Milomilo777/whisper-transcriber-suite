@@ -8,6 +8,7 @@ viewers like VLC render it cleanly.
 from __future__ import annotations
 
 from .base import (
+    coerce_seconds,
     escape_cue_separator,
     fmt_srt_time,
     normalize_text,
@@ -23,8 +24,14 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         # downstream parsers.
         text = escape_cue_separator(normalize_text(seg.get("text", "")))
         text = speaker_prefix(seg) + text
+        # coerce_seconds: a hand-edited / externally produced segment can
+        # carry None / a non-numeric string / a non-finite time; the cue
+        # must survive with a clamped timestamp rather than aborting the
+        # whole file. Missing "end" falls back to the start.
+        start = coerce_seconds(seg.get("start"))
+        end = coerce_seconds(seg.get("end"), start)
         out.append(f"{i}")
-        out.append(f"{fmt_srt_time(float(seg['start']))} --> {fmt_srt_time(float(seg['end']))}")
+        out.append(f"{fmt_srt_time(start)} --> {fmt_srt_time(end)}")
         out.append(text)
         out.append("")
     return "\n".join(out)

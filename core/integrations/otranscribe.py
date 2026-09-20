@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import html
 import json
+import math
 import re
 from html.parser import HTMLParser
 from pathlib import Path
@@ -36,13 +37,29 @@ __all__ = [
 NBSP = " "
 
 
+def _safe_seconds(value: object, default: float = 0.0) -> float:
+    """Coerce a possibly-malformed timestamp to a finite float.
+
+    A hand-edited ``.json`` / ``.otr`` can carry ``None``, a non-numeric
+    string (``"abc"``), an integer too large for a float, or a non-finite
+    value (NaN / Infinity). A bare ``float()`` / ``int()`` on those raised
+    and aborted the whole export; clamp to *default* instead, mirroring
+    ``core.writers.base.coerce_seconds``.
+    """
+    try:
+        out = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError):
+        return default
+    return out if math.isfinite(out) else default
+
+
 def fmt_otr_time(seconds: float) -> str:
     """oTranscribe display format. < 1 hour: 'M:SS'. >= 1 hour: 'H:MM:SS'.
 
     No zero-padding on the leading hour or minute, two-digit minutes/seconds
     elsewhere. Matches src/js/app/timestamps.js in the oTranscribe repo.
     """
-    s = int(seconds) if seconds is not None else 0
+    s = int(_safe_seconds(seconds))
     if s < 0:
         s = 0
     h = s // 3600
@@ -54,7 +71,7 @@ def fmt_otr_time(seconds: float) -> str:
 
 
 def _fmt_srt_time(seconds: float) -> str:
-    total_ms = int(round((seconds or 0.0) * 1000))
+    total_ms = int(round(_safe_seconds(seconds) * 1000))
     if total_ms < 0:
         total_ms = 0
     h = total_ms // 3_600_000
@@ -113,9 +130,15 @@ def _segments_to_otr_string(
     """Build the .otr JSON string from a sequence of (start, end, body)."""
     paragraphs = []
     for start, _end, body in segments:
-        ts = f"{float(start):.3f}"
-        display = fmt_otr_time(float(start))
-        body_html = html.escape(body or "")
+        # Coerce both fields: segments_to_otr feeds this raw writer-shaped
+        # dicts, which a hand-edited JSON can leave malformed.
+        secs = _safe_seconds(start)
+        body_text = ("" if body is None else str(body)).strip()
+        if not body_text:
+            continue
+        ts = f"{secs:.3f}"
+        display = fmt_otr_time(secs)
+        body_html = html.escape(body_text)
         paragraphs.append(
             f'<p><span class="timestamp" contenteditable="false" '
             f'data-timestamp="{ts}">{display}</span>{NBSP}{body_html}</p>'
@@ -125,7 +148,7 @@ def _segments_to_otr_string(
         "text": text_html,
         "media": Path(media_filename).name if media_filename else "",
         "media-source": "",
-        "media-time": float(media_time or 0.0),
+        "media-time": _safe_seconds(media_time),
     }
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
@@ -158,9 +181,10 @@ def whisper_json_to_otr(json_path: str, media_filename: str = "") -> str:
     for entry in data:
         if not isinstance(entry, dict):
             continue
-        start = float(entry.get("start", 0.0))
-        end = float(entry.get("end", start))
-        body = (entry.get("text") or "").strip()
+        start = _safe_seconds(entry.get("start", 0.0))
+        end = _safe_seconds(entry.get("end"), start)
+        raw_text = entry.get("text")
+        body = ("" if raw_text is None else str(raw_text)).strip()
         if body:
             segments.append((start, end, body))
     return _segments_to_otr_string(segments, media_filename)
@@ -178,8 +202,9 @@ def segments_to_otr(segments, media_filename: str = "") -> str:
     ``end`` has no separate representation in the .otr format itself.
     """
     triples = (
-        (seg["start"], seg.get("end", seg["start"]), seg.get("text", ""))
+        (seg.get("start", 0.0), seg.get("end"), seg.get("text", ""))
         for seg in segments
+        if isinstance(seg, dict)
     )
     return _segments_to_otr_string(triples, media_filename)
 
@@ -208,10 +233,10 @@ class _OtrParser(HTMLParser):
             if attrs_dict.get("class") == "timestamp":
                 self._flush()
                 ts_raw = attrs_dict.get("data-timestamp") or "0"
-                try:
-                    self._current_start = float(ts_raw)
-                except (TypeError, ValueError):
-                    self._current_start = 0.0
+                # _safe_seconds also rejects NaN/Infinity, which float()
+                # happily parsed out of a corrupt data-timestamp and then
+                # crashed the SRT formatter on.
+                self._current_start = _safe_seconds(ts_raw)
                 self._in_timestamp = True
         # Any other tag inside body keeps adding text via handle_data.
 
@@ -246,7 +271,9 @@ def otr_to_srt(otr_path: str) -> str:
     if not isinstance(payload, dict):
         raise ValueError(f"{otr_path} is not a JSON object")
     text_html = payload.get("text") or ""
-    media_time = float(payload.get("media-time") or 0.0)
+    # A hand-edited / corrupt media-time ("abc", null, Infinity) must not
+    # abort the import; it only seeds the last cue's end.
+    media_time = _safe_seconds(payload.get("media-time"))
 
     parser = _OtrParser()
     parser.feed(text_html)

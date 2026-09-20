@@ -17,7 +17,7 @@ import io
 import os
 from typing import Any
 
-from .base import fmt_srt_time, normalize_text
+from .base import coerce_seconds, fmt_srt_time, normalize_text
 
 
 def _fmt_pdf_time(seconds: float) -> str:
@@ -76,7 +76,7 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
     story.append(Paragraph(xml_escape(title), title_style))
     nonempty = [s for s in segments if normalize_text(s.get("text", ""))]
     if nonempty:
-        last_end = float(nonempty[-1].get("end", 0.0))
+        last_end = coerce_seconds(nonempty[-1].get("end"))
         story.append(
             Paragraph(
                 f"{len(nonempty)} segment(s) &middot; "
@@ -87,7 +87,7 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
         story.append(Spacer(1, 6))
 
     for seg in nonempty:
-        ts = _fmt_pdf_time(float(seg.get("start", 0.0)))
+        ts = _fmt_pdf_time(coerce_seconds(seg.get("start")))
         # Defensive str-cast: a hand-edited JSON could put a number
         # here, and (None or "").strip() worked but `123.strip()` did
         # not — used to crash with AttributeError on int.
