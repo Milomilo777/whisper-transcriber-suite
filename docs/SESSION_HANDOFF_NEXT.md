@@ -52,18 +52,101 @@ in Claude project memory: `feedback_opencode_access_policy_this_repo.md`.
   — left OPEN (honest about not being able to confirm full GPU-accel works without the
   reporter's hardware), asked them to report back.
 
-**Next (this session, still to do — see further down this same entry as it grows):**
-1. Read the previously-published comparative-research artifact the owner linked
-   (`https://claude.ai/code/artifact/16692e33-0090-4f69-81ce-dde2b32da0b5`) — a
-   feature comparison against a similar project from ~a week prior.
-2. Drive OpenCode (`opencode-go/deepseek-v4.1-flash`, high reasoning) to implement
-   the real gaps it identifies, full repo access to tracked files (never gitignored/
-   local-secret files), forced self-critique+fix pass, then a Sonnet sub-agent
-   verification pass before anything is treated as done.
-3. Broader "module by module" OpenCode debug pass — open-ended, explicitly NOT the
-   full-50-100-section unscoped sweep the 2026-09-17 research (different repo,
-   machine-translate-docx-main, but the conclusion was stated as general) recommended
-   against; keep it scoped and verified per module.
+**Comparative-research artifact — read, distilled into a scoped plan (done):**
+`https://claude.ai/code/artifact/16692e33-0090-4f69-81ce-dde2b32da0b5` compares this
+repo against `homelab-00/TranscriptionSuite`. Real, concrete gap list (their doc's own
+priority order):
+- HIGH: GPG-sign releases (verification guide too), CodeQL, system-wide dictation
+  hotkey (paste-at-cursor, builds on the existing Live tab engine).
+- MEDIUM: OpenAI-compatible API routes on the existing `core/server/` HTTP server,
+  HTTPS on that same server (self-signed cert minimum; Tailscale is a bigger stretch),
+  outgoing webhooks on transcript-finish (their version has SSRF protection — copy
+  that detail).
+- LOW / bigger bets, explicitly deferred by the artifact itself: AMD/Intel GPU via
+  whisper.cpp+Vulkan, a persistent searchable voice notebook (calendar + FTS + AI
+  chat over notes — "the single biggest investment on this list").
+- Small mini-list items: legacy-CUDA (GTX 10-series) support, **auto-grey
+  incompatible model/hardware combos with a shown reason** (this is what the
+  in-progress OpenCode run below is implementing), separate clear-cache/
+  clear-models/clear-runtime controls (still not started).
+- The artifact's OWN methodology note: it never read the competitor's actual source,
+  only public docs/README/CI — treat every item above as a validated IDEA, not an
+  implementation spec; real design work is still needed per item.
+- Things we're already ahead on (voiceprint cross-file speaker ID, token-free
+  diarization, no-Docker single installer, 14 output formats, free local voice
+  cloning, video-wall tiling, self-checking denoise) — informational only, nothing to
+  build, just don't regress them while adding the above.
+
+**Scoping decisions made this session, still valid:**
+- **GPG-signing excluded from the OpenCode/coding batch entirely.** Generating and
+  safekeeping a signing key is a human/security decision, not something to automate
+  hands-off. Needs the owner's own action whenever they're ready; not blocked on
+  anything else here.
+- CodeQL: done directly (see below), didn't need OpenCode for a 30-line templated
+  workflow file.
+- Dictation hotkey / AMD-Intel Vulkan / persistent notebook: deliberately NOT in the
+  first OpenCode batch — bigger, need more design thought or real off-machine
+  hardware to verify (Vulkan needs an AMD/Intel GPU this dev machine doesn't have).
+  Revisit after the smaller items below are done.
+- Remaining first-batch candidates not yet started: OpenAI-compatible API routes,
+  HTTPS on the LAN server, outgoing webhooks (SSRF-guarded), clear-cache/models/
+  runtime controls split. Each should be its OWN scoped OpenCode call (one well-
+  composed prompt per feature, per `EXTERNAL_MODELS.md`'s "one call beats several"
+  rule) — the owner has explicitly permitted running OpenCode calls in parallel for
+  this repo (Sonnet sub-agents stay capped at 1 concurrent, unaffected).
+
+**IN PROGRESS, NOT DONE — READ THIS BEFORE TOUCHING ANYTHING BELOW:**
+A real `opencode run` (model `opencode-go/deepseek-v4.1-flash`, `--variant max`,
+`--dir` pointed at THIS repo's real working tree, not an isolated copy — the owner
+explicitly authorized full tracked-file access for this repo) is implementing the
+"auto-grey incompatible model/hardware combo" item, launched as a **backgrounded
+Bash process from the Claude session**, task id `bt73j12pu`. Log file (outside the
+repo, session-scratchpad, will NOT survive past this Claude session/machine restart):
+```
+...claude\C--Users-Owner-Desktop-whisper-app\becd0d5b-d3a6-45cd-b996-7720310e70e2\scratchpad\opencode_run_hw_greying.log
+```
+Prompt file (same folder): `opencode_prompt_hw_greying.txt`. **The owner is about to
+restart the machine/session before this finishes.** A background process started
+this way almost certainly does NOT survive that — it will very likely be killed
+mid-write, not gracefully stopped. As of the last check before this note, it had
+already modified (uncommitted, working tree only — nothing committed, nothing
+pushed):
+```
+app/app.py
+app/dialogs/advanced.py
+app/widgets/tabs.py
+core/backends/availability.py
+```
+and was still actively mid-diff (had NOT yet reached its own required self-review
+pass or written `OPENCODE_HANDOFF_hardware_greying.md`, per the prompt's step 6-7).
+
+**Next session, first thing, before anything else on this repo:**
+1. `git status` / `git diff` in `whisper_project_direct_download_v2\` — see exactly
+   what state those 4 files are actually in (could be anywhere from "untouched" to
+   "a clean finished diff with self-review done" to "a syntactically broken
+   mid-write" depending on exactly when the process died).
+2. Check whether `OPENCODE_HANDOFF_hardware_greying.md` exists at the repo root —
+   if yes, the run likely completed its full process (implementation + tests +
+   pyright + its own adversarial self-critique pass) and that file has its own
+   summary of what it did and why. If NO, the run was killed before finishing its
+   own required self-critique step — **do not trust or build on partial output in
+   that case; the safest default is `git restore` those 4 files back to a clean
+   HEAD and re-launch the same prompt fresh** rather than trying to complete
+   someone else's half-written diff.
+3. Either way, DO NOT commit anything from this feature yet. Required before commit,
+   exactly as originally instructed by the owner: (a) confirm DeepSeek's own
+   adversarial self-critique pass genuinely happened (not skipped), (b) read the
+   real diff yourself, (c) get an independent confirmation via a Sonnet sub-agent
+   (medium reasoning effort, per the owner's standing instruction) before treating
+   this as done, (d) pyright app/core must be 0/0/0 and the hermetic suite green —
+   re-run both yourself, don't trust the log's claim that they passed.
+4. After that feature is actually committed+pushed, move to the next scoped item
+   from the candidate list above.
+
+Per-project policy recorded in Claude memory (`feedback_opencode_access_policy_this_repo.md`
+in the whisper_app project's memory folder): no sensitivity about OpenCode/China-hosted-
+model access for THIS repo specifically (public already), parallel OpenCode calls
+explicitly permitted for this initiative.
 
 ## 🟢 2026-09-14 — "Clone Your Voice / Text to Voice" second-opinion adversarial review (Kimi Code) — 7 more real bugs found + fixed
 
