@@ -546,6 +546,47 @@ worse (could apply a stale control to the wrong task). Full detail:
 re-verification that `core/server/static/index.html`'s existing `escapeHtml()`
 XSS-prevention discipline is still fully applied to every sink (not assumed).
 
+`opencode/platform-scripts-review` DONE, no caveat, fully self-completed (`bash -n`
+re-confirmed clean by me on all 5 files) — commit `5fe27cc`. Static-only review
+(explicitly never executed/built anything, respecting the standing macOS-never rule).
+**6 real bugs**, standout: `platform/macos/install.command`'s `set -e` could silently
+abort the ENTIRE installer — no `.app`, no CLI launcher, nothing — whenever `ffplay`
+happens to be missing from a minimal static ffmpeg build, a case the script's own
+comment already anticipates as realistic; verified in an isolated harness (old code
+returns 1 and dies, fixed version returns 0). Also: a leaked ~100MB temp dir on every
+static-ffmpeg run; the Linux updater's `[ -d .git ]` check silently no-ops in a git
+WORKTREE (`.git` is a file there, not a directory — this repo actively uses worktrees
+today); a dangling venv symlink produced a cryptic crash instead of the intended
+"run install.sh first" message; an unguarded `rm -rf` in the uninstaller with no
+sanity check unlike install.sh's own guard; an unquoted `Exec=` path in the generated
+Linux `.desktop` entry that breaks if `$HOME` contains a space.
+
+---
+
+## Owner-directed follow-up: task-correlation-id DESIGN task launched, hands-off by
+## explicit instruction — do NOT review, do NOT check pyright/tests, do NOT read the
+## diff. Basic salvage-only bookkeeping (is it committed, is the process a zombie) is
+## still fine; judging the design/content is explicitly not this session's job here.
+
+Owner's own words (paraphrased): give the flagged worker-protocol race condition (the
+control-command-before-its-transcribe-command ordering bug, sections A/B of
+`OPENCODE_HANDOFF_worker_protocol.md` on `opencode/worker-protocol-review`) to the same
+model in a fresh parallel session, max reasoning, to actually DESIGN and implement the
+fix (a task-correlation-id added to the frozen protocol as an ADD-ONLY field) — and
+force it through SEVERAL layers of its own adversarial self-critique instead of a
+single pass. Explicitly: Claude does not review this one.
+
+Launched: `opencode/worker-correlation-id-design` (`btkqvvbxf`), worktree
+`wt-worker-correlation-id-design`, fresh off master (does not include the other
+worker-protocol-review fixes — separate branch, told to fetch that branch's handoff
+file itself via `git show` for context). Prompt required: read the original bug
+report itself, design the id scheme, implement it, then 3 explicit self-critique
+layers (each a full adversarial re-read hunting for new problems, not confirming the
+previous fix), each layer's findings documented even when nothing new survived, before
+writing its final handoff (`OPENCODE_HANDOFF_worker_correlation_id.md`) and
+committing (local only, no push). **When this completes: just confirm it committed
+and note the branch name for the owner's own later review — do not evaluate it.**
+
 *(Paused-state note below kept for history — no longer the current state.)*
 
 **PAUSED after the 3rd OOM kill today — deliberate, not automatic.** Free memory
