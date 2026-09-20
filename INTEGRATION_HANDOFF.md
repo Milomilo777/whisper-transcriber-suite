@@ -492,3 +492,19 @@ Verification:
 - Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
 - Hermetic suite (`tests/` minus `tests/smoke/`): 2325 passed, 14 skipped,
   0 failures.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/model-loading-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2325 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). Matches the prior commit's claim exactly.
+- **Merge diff**: 1 source file changed (`model_loading.py`) + 1 new test file + 1 doc. No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `_compute_position()`: correctly falls back to screen-centring when `master.winfo_viewable()` returns False (minimised window); when viewable, computes relative to parent and only clamps to non-negative when the parent's root coordinates are within the primary display bounds (`0 <= rootx < screenwidth` and `0 <= rooty < screenheight`). Parents on secondary monitors (negative or ≥ screenwidth coordinates) keep their absolute positions, preserving Tk's `"+-N"` geometry form for negative x/y.
+  - `_closed` flag: set to True in whichever close path (`cancel()` or `mark_success_and_close()`) runs first; both methods early-return when `_closed` is already True, making them idempotent. This prevents a deferred `post_to_main(mark_success_and_close)` callback from flipping `success` back to True after a user Cancel has already set it to False and destroyed the dialog.
+  - Caller contract: `_release_pending_load` in `transcription_service.py:118-119` posts either `mark_success_and_close` (on success) or `cancel` (on failure) via `post_to_main`, which is a deferred main-thread queue. The `ensure_worker_ready` method reads `dialog.success` after `wait_window` returns (line 346). The `_closed` guard correctly ensures the first close owns the final `success` value, matching the caller's expectation.
+- **Test coverage of merged behavior**: 9 targeted tests (all pass) — pure `_compute_position` cases (primary parent, on-screen clamp, negative-coordinate parent, minimised fallback), close-path ordering (late-ready after Cancel, Cancel after ready, repeated closes), and geometry integration (negative-coordinate parent, minimised parent). The new tests confirm the fix: pre-fix `_compute_position` would return `(0, 150)` for the negative-coordinate parent test; pre-fix close ordering would set `success = True` after `cancel(); mark_success_and_close()`.
+
+Result: clean. No source changes needed.
