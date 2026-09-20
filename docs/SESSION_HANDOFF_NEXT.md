@@ -324,7 +324,18 @@ of whether this Claude session is still alive to report it.
   or the dictation-hotkey feature (bigger, deliberately deferred earlier today — now
   maybe in scope if throughput allows). Same worktree-per-task pattern, ONE AT A TIME.
 
-| Adversarial review + fix pass on `core/diarization.py`, `core/voiceprint.py`, `core/alignment.py`, `core/hallucination.py`, `core/separator.py` | `bixe42icn` | `C:\Users\Owner\Desktop\whisper_app\wt-speaker-signal-review\` (worktree) | `opencode/speaker-signal-review` | running, launched alone. Prompt explicitly flags `voiceprint.py` as higher-blast-radius (misattributing a real enrolled speaker's identity is worse than a crash) and asks for inline revert-and-reconfirm verification on that file specifically, not deferred to a final pass that could get cut off. |
+| Adversarial review + fix pass on `core/diarization.py`, `core/voiceprint.py`, `core/alignment.py`, `core/hallucination.py`, `core/separator.py` | `bixe42icn` | `C:\Users\Owner\Desktop\whisper_app\wt-speaker-signal-review\` (worktree) | `opencode/speaker-signal-review` | **DONE, second OOM kill of the day (this time solo, not parallel — see note below) but got unusually far first: implementation + its own self-critique pass (fixed a real diff-hygiene nit) + pyright + its own scoped tests all passed before being killed, only the final full-suite run and handoff file were missing.** I ran the full suite myself: green (one lone `test_search_dialog.py` failure, same already-documented Tk-init.tcl flake as before, confirmed passing alone). Committed `ff9dd3f`. Real fixes: `voiceprint.py` rejects NaN/Inf embeddings at enrolment and skips dimension-mismatched candidates during matching (both flagged highest-priority for real review — a wrong-speaker-match bug is worse than a crash for this feature specifically) + edge-case hardening in `alignment.py`/`diarization.py`/`separator.py`. |
+| Adversarial review + fix pass on `core/backends/base.py`, `whisper_cpp.py`, `cloud_stt.py`, `google_cloud_stt.py`, `nvidia_asr.py` (explicitly NOT `availability.py` or `faster_whisper_be.py` — already touched by other work today) | `bnszuno5c` | `C:\Users\Owner\Desktop\whisper_app\wt-asr-backends-review\` (worktree) | `opencode/asr-backends-review` | running, launched alone |
+
+**OOM note:** a SECOND kill happened today even running fully sequentially (one task
+at a time, nothing parallel) — so "don't run OpenCode tasks concurrently" alone does
+not guarantee safety on this machine; free memory hovers around 5-6GB/16GB even at
+rest between tasks. Not treating this as a reason to stop for the day (both kills so
+far still yielded fully salvageable, real, working output thanks to the worktree
+isolation + careful post-hoc verification pattern established above) — just don't be
+surprised by a third one, and keep following the same salvage checklist (git status,
+git stash list, pyright, full test re-run, check for a handoff file) before trusting
+or committing anything from an interrupted task.
 - Once a branch is actually reviewed and looks good: normal merge to master, then it
   can go through the usual commit/push/changelog process like any other change.
 
