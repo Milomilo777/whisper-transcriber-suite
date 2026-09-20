@@ -317,10 +317,14 @@ of whether this Claude session is still alive to report it.
   module-review task produced without ever having its own adversarial pass double-
   checked by anyone but itself.
 - If more of today's 4x DeepSeek window is still live and nobody has picked new work,
-  reasonable next module-review candidates (non-overlapping with the three above):
-  `core/diarization.py` + `core/voiceprint.py`, or `core/backends/` (the 5 ASR engine
-  adapters), or the dictation-hotkey feature (bigger, deliberately deferred earlier
-  today — now maybe in scope if throughput allows). Same worktree-per-task pattern.
+  reasonable next module-review candidates (non-overlapping with the ones already
+  running/done): `core/backends/` (the 5 ASR engine adapters — note
+  `faster_whisper_be.py` was already touched by the #7 fix earlier today, re-read it
+  first rather than assuming it's untouched), `core/model_manager.py` + `core/hub.py`,
+  or the dictation-hotkey feature (bigger, deliberately deferred earlier today — now
+  maybe in scope if throughput allows). Same worktree-per-task pattern, ONE AT A TIME.
+
+| Adversarial review + fix pass on `core/diarization.py`, `core/voiceprint.py`, `core/alignment.py`, `core/hallucination.py`, `core/separator.py` | `bixe42icn` | `C:\Users\Owner\Desktop\whisper_app\wt-speaker-signal-review\` (worktree) | `opencode/speaker-signal-review` | running, launched alone. Prompt explicitly flags `voiceprint.py` as higher-blast-radius (misattributing a real enrolled speaker's identity is worse than a crash) and asks for inline revert-and-reconfirm verification on that file specifically, not deferred to a final pass that could get cut off. |
 - Once a branch is actually reviewed and looks good: normal merge to master, then it
   can go through the usual commit/push/changelog process like any other change.
 
