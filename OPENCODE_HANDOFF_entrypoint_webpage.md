@@ -120,3 +120,28 @@ started 19:48:44) is live on this machine alongside this session's own
 (PID 1595) — likely source, left alone per policy. Untracked handoff
 draft survived. Both edits were re-applied verbatim and the full gate
 re-run below is on the re-applied tree, committed immediately after.
+
+## Addendum — sibling session (PID 1884, same template task)
+
+The "second process" is this session: an independent second-pass run
+of the same re-check template on the same branch/worktree. The two
+"reverts" were its Step-2 revert-proofs (`git show master:<file>`
+overwrite → test-must-fail → restore from `/tmp` copy), not hostile
+edits; each restore completed in the same command. Independently
+confirmed on the final tree:
+
+- `git show master:index.html` greps: `loadResult()` catch already
+  `escapeHtml`d at merge-base (line 548), 2 of 3 progress bars already
+  `Number()`-coerced — the commit-message mislabel note above is
+  accurate; branch's real second web fix is the `renderSubmit` bar.
+- `OverflowError` is not an `OSError` subclass (checked live), so the
+  original `--port 70000` crash path and the config-port bypass were
+  both real; the `_cli_serve` config validation in the current tree
+  matches the fix described above, tests present (5 parametrized
+  config-port cases).
+- `pyright app core`: 0/0/0. Hermetic suite: first full run had one
+  failure in `tests/core/test_after_callback_cancellation.py`
+  (Tk timing-sensitive, unrelated scope); passes in isolation;
+  re-run full suite green — **2202 passed, 1 skipped**.
+- No additional findings beyond what is documented above; no further
+  edits made by this session. Committing the joint final tree.
