@@ -68,6 +68,13 @@ def kill_process_tree(
     ``force=False`` requests a graceful tree terminate (taskkill without
     ``/F`` / ``SIGTERM``); ``force=True`` is the hard kill (``/F`` /
     ``SIGKILL``). Safe to call on a ``None`` or already-exited process.
+
+    On POSIX the child must have been spawned with
+    ``new_session_kwargs()`` (``start_new_session=True``) so it leads its
+    own process group. If the PID instead resolves into THIS process's
+    group, the group is deliberately not signalled — only the parent is —
+    so a caller that skipped the spawn helper can never make the app kill
+    itself (see the guard below).
     """
     if process is None:
         return
@@ -123,27 +130,48 @@ def kill_process_tree(
         sig = sigkill if force else signal.SIGTERM
         try:
             pgid = os.getpgid(pid)
-            os.killpg(pgid, sig)
-            if force or sigkill == signal.SIGTERM:
-                # Hard kill already sent, or this platform has no distinct
-                # SIGKILL — nothing left to escalate to.
-                return
-            # Graceful pass sent SIGTERM. A wedged child (stuck ffmpeg /
-            # demucs) can ignore it and survive, holding the source/output
-            # handle open. Mirror the Windows graceful->/F escalation: give
-            # the group up to ``timeout`` to exit, then SIGKILL the group.
-            if _wait_for_exit(process, timeout):
-                return
-            logger.debug(
-                "graceful SIGTERM for pid %s did not exit within %.1fs; "
-                "escalating to SIGKILL",
-                pid, timeout,
-            )
-            os.killpg(pgid, sigkill)
-            return
+            own_pgid = os.getpgid(0)
         except Exception:  # noqa: BLE001
-            logger.debug("killpg failed for pid %s; signalling parent",
+            logger.debug("could not resolve process group for pid %s",
                          pid, exc_info=True)
+        else:
+            if pgid == own_pgid:
+                # Safety net: every real call site spawns its child with
+                # new_session_kwargs() so the tree leads its OWN group. If a
+                # future call site forgets that (or the OS recycled the pid
+                # onto a process in our group between poll() and here),
+                # killpg would signal THIS process's group and take the app
+                # down along with the tree. Refuse and fall through to the
+                # parent-only signal.
+                logger.debug(
+                    "pid %s resolves to this process's own group (%s); "
+                    "refusing to killpg our own group",
+                    pid, own_pgid,
+                )
+            else:
+                try:
+                    os.killpg(pgid, sig)
+                    if force or sigkill == signal.SIGTERM:
+                        # Hard kill already sent, or this platform has no
+                        # distinct SIGKILL — nothing left to escalate to.
+                        return
+                    # Graceful pass sent SIGTERM. A wedged child (stuck
+                    # ffmpeg / demucs) can ignore it and survive, holding
+                    # the source/output handle open. Mirror the Windows
+                    # graceful->/F escalation: give the group up to
+                    # ``timeout`` to exit, then SIGKILL the group.
+                    if _wait_for_exit(process, timeout):
+                        return
+                    logger.debug(
+                        "graceful SIGTERM for pid %s did not exit within "
+                        "%.1fs; escalating to SIGKILL",
+                        pid, timeout,
+                    )
+                    os.killpg(pgid, sigkill)
+                    return
+                except Exception:  # noqa: BLE001
+                    logger.debug("killpg failed for pid %s; signalling parent",
+                                 pid, exc_info=True)
 
     # Last resort: signal just the parent (better than nothing).
     try:

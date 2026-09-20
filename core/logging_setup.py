@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import logging.handlers
 import sys
+import time
 from pathlib import Path
 
 from .config import user_log_dir
@@ -20,7 +21,41 @@ LOG_BACKUP_COUNT = 3
 
 UI_LOGGER_NAME = "whisper.ui"
 
+# worker_log_filename() gives every worker process its own file; nothing
+# else ever removes them, so the log dir would grow one file per worker
+# (plus rotations) forever. _prune_worker_logs() keeps the newest few and
+# drops the stale rest.
+WORKER_LOG_KEEP = 10
+WORKER_LOG_MAX_AGE_DAYS = 14
+_WORKER_LOG_GLOB = "*worker-*.log*"
+
 _configured = False
+
+
+def _prune_worker_logs(log_dir: Path) -> None:
+    """Best-effort cleanup of stale per-process worker logs.
+
+    Deletes files older than ``WORKER_LOG_MAX_AGE_DAYS``, always keeping
+    the ``WORKER_LOG_KEEP`` most recent worker-named files so a long-lived
+    process's own log is never unlinked out from under its open handler.
+    ``app.log`` and unrelated files are never touched. Never raises: a
+    file that is locked by another process is simply skipped.
+    """
+    try:
+        candidates = sorted(
+            (p for p in log_dir.glob(_WORKER_LOG_GLOB) if p.is_file()),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+    except OSError:
+        return
+    cutoff = time.time() - WORKER_LOG_MAX_AGE_DAYS * 24 * 60 * 60
+    for path in candidates[WORKER_LOG_KEEP:]:
+        try:
+            if path.stat().st_mtime < cutoff:
+                path.unlink()
+        except OSError:
+            continue
 
 
 def _quiet_third_parties():
@@ -40,11 +75,15 @@ def setup_logging(level: str = "INFO", stream=None, filename: str | None = None)
     silently fails and the file grows past the 5 MB x 3 cap. The worker
     therefore passes a per-process name (``worker-<pid>.log``) so each
     process rotates its own file independently.
+
+    Also calls :func:`_prune_worker_logs` so the per-process files don't
+    accumulate forever.
     """
     global _configured
 
     log_dir = user_log_dir()
     log_dir.mkdir(parents=True, exist_ok=True)
+    _prune_worker_logs(log_dir)
     log_file = log_dir / (filename or LOG_FILENAME)
 
     root = logging.getLogger()
