@@ -285,6 +285,21 @@ check that `git show --stat HEAD` actually contains what was expected, and check
 `git stash list` (both for the specific worktree and system-wide) before concluding
 "nothing else needs to move."
 
+**3. Separate, minor finding: the FULL hermetic test suite is intermittently flaky on
+this machine, unrelated to any of today's changes.** Two consecutive full re-runs of
+`opencode/writers-review`'s final state each failed exactly ONE test, but a DIFFERENT
+one each time (`test_hub_setup_dialog.py::test_dialog_ok_writes_hub_folder_and_invokes_save`,
+then `test_hardware_wizard.py::test_hardware_wizard_constructs_without_crashing`) — both
+with the identical error (`_tkinter.TclError: Can't find a usable init.tcl`). Confirmed
+NOT a real breakage: the init.tcl file exists and is readable, a standalone
+`tkinter.Tk()` works fine, and both "failing" tests pass 100% reliably when run alone
+or together in isolation (not as part of the full ~700-test run). Looks like a
+resource-contention flake specific to constructing many real Tk root windows across one
+large pytest session on this machine (possibly worse right after the OOM incident
+above, not confirmed either way). Not blocking, not caused by any of today's work —
+just don't be alarmed by a lone, unrelated Tk-construction test failure in a future
+full-suite run; re-run just that test alone before assuming a real regression.
+
 Each task's own prompt told it to commit AND push its branch itself once its gates +
 self-critique are genuinely clean — so `git branch -r` / `gh pr list` (no PRs opened,
 check branches directly) on the main repo should show what actually landed, independent
