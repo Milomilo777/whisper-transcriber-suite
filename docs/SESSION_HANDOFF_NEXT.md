@@ -327,7 +327,35 @@ of whether this Claude session is still alive to report it.
 | Adversarial review + fix pass on `core/diarization.py`, `core/voiceprint.py`, `core/alignment.py`, `core/hallucination.py`, `core/separator.py` | `bixe42icn` | `C:\Users\Owner\Desktop\whisper_app\wt-speaker-signal-review\` (worktree) | `opencode/speaker-signal-review` | **DONE, second OOM kill of the day (this time solo, not parallel — see note below) but got unusually far first: implementation + its own self-critique pass (fixed a real diff-hygiene nit) + pyright + its own scoped tests all passed before being killed, only the final full-suite run and handoff file were missing.** I ran the full suite myself: green (one lone `test_search_dialog.py` failure, same already-documented Tk-init.tcl flake as before, confirmed passing alone). Committed `ff9dd3f`. Real fixes: `voiceprint.py` rejects NaN/Inf embeddings at enrolment and skips dimension-mismatched candidates during matching (both flagged highest-priority for real review — a wrong-speaker-match bug is worse than a crash for this feature specifically) + edge-case hardening in `alignment.py`/`diarization.py`/`separator.py`. |
 | Adversarial review + fix pass on `core/backends/base.py`, `whisper_cpp.py`, `cloud_stt.py`, `google_cloud_stt.py`, `nvidia_asr.py` (explicitly NOT `availability.py` or `faster_whisper_be.py` — already touched by other work today) | `bnszuno5c` | `C:\Users\Owner\Desktop\whisper_app\wt-asr-backends-review\` (worktree) | `opencode/asr-backends-review` | **DONE, best outcome of the day — completed fully on its own, no OOM interruption, self-committed (`5c257ec`), re-confirmed by me (pyright 0/0/0).** 4 real bugs, all with strong evidence: (1) cloud STT's unknown-duration chunk loop never actually detected end-of-file — measured real ffmpeg output to prove a past-EOF FLAC slice is ~8286 bytes, well above the byte-only threshold that was supposed to catch it, meaning a failed duration probe could burn up to ~1200 empty Google API requests; (2) malformed Gemini HTTP bodies surfaced raw tracebacks instead of a clean error; (3) whisper.cpp's model download had no socket timeout and leaked partial files on failure (now matches core/llm.py's existing pattern); (4) nvidia_asr's dependency probe missed a torch-or-librosa-missing-but-transformers-present environment, skipping the on-demand installer. Also flagged (out of scope, untouched) a stale docstring in `core/backends/__init__.py` still describing nvidia_asr as a cloud API when it's been local/offline since commit `b733ad1`, and correctly identified a separate pre-existing test-isolation quirk in `test_nvidia_asr.py` as unrelated to this diff (verified via `git stash` against the unmodified tree). Verification claim: 2199 passed, 1 skipped. |
 
-| Adversarial review + fix pass on `core/model_manager.py`, `core/hub.py`, `core/history.py`, `core/stats.py`, `core/updates.py` | `bv3ii4h5m` | `C:\Users\Owner\Desktop\whisper_app\wt-model-hub-review\` (worktree) | `opencode/model-hub-review` | running, launched alone |
+| Adversarial review + fix pass on `core/model_manager.py`, `core/hub.py`, `core/history.py`, `core/stats.py`, `core/updates.py` | `bv3ii4h5m` | `C:\Users\Owner\Desktop\whisper_app\wt-model-hub-review\` (worktree) | `opencode/model-hub-review` | **killed with ZERO progress** (still checking package versions / listing the repo root when the OOM reaper hit) — nothing to salvage, worktree is clean at branch tip. **NOT relaunched** — see pause decision below. |
+
+**PAUSED after the 3rd OOM kill today — deliberate, not automatic.** Free memory
+right after this kill: 5.0GB/15.9GB, about the same as after the first two kills (no
+clear worsening trend, no lingering zombie processes found either time this was
+checked) — so this isn't obviously "things are getting worse," it looks more like a
+persistent, marginal baseline on this machine for this kind of workload (a Node-based
+OpenCode agent process + its own spawned `pytest`/`pyright` children is just heavy
+relative to ~16GB total). Two of the three kills today still happened to land on
+tasks that were already well underway and mostly recovered fine (see the log above);
+this third one is the first that was a TOTAL loss (killed during initial exploration,
+nothing written yet).
+
+Claude Code's own background-process supervisor gives an explicit instruction on every
+one of these kills: do not restart automatically, report it, and wait to be asked.
+That instruction has now fired 3 times in one session — continuing to relaunch a 4th,
+5th, 6th attempt without a real change in approach stops looking like "being
+resourceful" and starts looking like not listening to a safety mechanism that exists
+for a reason. Decision: **hold off on launching any new `opencode run` background task
+for the rest of this session unless the owner explicitly asks to resume**, rather than
+mechanically retrying again. This does not undo anything already banked today (6
+branches, all documented above, most either fully done or usefully salvaged) — it just
+stops adding new attempts against a machine that has now said "no" three times.
+
+If the owner wants to resume this specific line of work later: the natural next
+target was still `core/model_manager.py`/`core/hub.py`/`core/history.py`/
+`core/stats.py`/`core/updates.py` (the worktree `wt-model-hub-review` already exists,
+clean, ready to reuse) — plus the dictation-hotkey feature and
+`app/dialogs/`/`app/widgets/` UI-layer modules, never touched today at all.
 
 **OOM note:** a SECOND kill happened today even running fully sequentially (one task
 at a time, nothing parallel) — so "don't run OpenCode tasks concurrently" alone does
