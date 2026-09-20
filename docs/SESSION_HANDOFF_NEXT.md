@@ -456,6 +456,25 @@ opencode/<name>`) — don't assume a branch is already on the remote just becaus
 file mentions a push in an earlier task's log entry above; those entries predate this
 policy change.**
 
+`opencode/llm-infra-review` DONE, no caveat, fully self-completed (3 commits,
+`b3b3e6f` tip; pushed before the local-only policy landed, so its remote copy was
+deleted afterward to stay consistent — local branch untouched). Best single writeup of
+the day: **local LLM (summarize/action-items/ask/translate) hard-failed on any
+transcript over roughly 20 minutes** — the whole prompt was fed to `llama-cpp-python`
+uncapped against its `n_ctx=4096` window with no fitting, so every AI-panel button
+raised a raw `ValueError` on a normal-length recording. Fixed with tokenizer-based
+context fitting (shrinks only the transcript, preserves head+tail, gives freed room
+back to the answer) — a real, principled fix with an explicitly-acknowledged
+trade-off (long transcripts summarised from start+end, middle elided; a chunked
+map-reduce summarizer would be the real follow-up). Also: action-items JSON silently
+dropped whenever the model appended trailing prose after the array; a non-UTF-8
+checkpoint crashed resume instead of falling back like the docs promise; checkpoint
+write-scratch (`*.json.tmp`) was never swept, unlike the `.wav`/`.json` partials next
+to it.
+
+`opencode/app-widgets-review` retry running now (`balni2x04`) with the refined
+never-touch-third-party-source, local-only-commit prompt.
+
 `core/worker.py` deliberately NOT yet queued — the frozen JSON-stdio protocol every
 deliverable depends on, deserves its own careful, narrowly-worded prompt rather than
 being folded into a general batch. Do that one deliberately, not on autopilot.
