@@ -327,7 +327,66 @@ of whether this Claude session is still alive to report it.
 | Adversarial review + fix pass on `core/diarization.py`, `core/voiceprint.py`, `core/alignment.py`, `core/hallucination.py`, `core/separator.py` | `bixe42icn` | `C:\Users\Owner\Desktop\whisper_app\wt-speaker-signal-review\` (worktree) | `opencode/speaker-signal-review` | **DONE, second OOM kill of the day (this time solo, not parallel — see note below) but got unusually far first: implementation + its own self-critique pass (fixed a real diff-hygiene nit) + pyright + its own scoped tests all passed before being killed, only the final full-suite run and handoff file were missing.** I ran the full suite myself: green (one lone `test_search_dialog.py` failure, same already-documented Tk-init.tcl flake as before, confirmed passing alone). Committed `ff9dd3f`. Real fixes: `voiceprint.py` rejects NaN/Inf embeddings at enrolment and skips dimension-mismatched candidates during matching (both flagged highest-priority for real review — a wrong-speaker-match bug is worse than a crash for this feature specifically) + edge-case hardening in `alignment.py`/`diarization.py`/`separator.py`. |
 | Adversarial review + fix pass on `core/backends/base.py`, `whisper_cpp.py`, `cloud_stt.py`, `google_cloud_stt.py`, `nvidia_asr.py` (explicitly NOT `availability.py` or `faster_whisper_be.py` — already touched by other work today) | `bnszuno5c` | `C:\Users\Owner\Desktop\whisper_app\wt-asr-backends-review\` (worktree) | `opencode/asr-backends-review` | **DONE, best outcome of the day — completed fully on its own, no OOM interruption, self-committed (`5c257ec`), re-confirmed by me (pyright 0/0/0).** 4 real bugs, all with strong evidence: (1) cloud STT's unknown-duration chunk loop never actually detected end-of-file — measured real ffmpeg output to prove a past-EOF FLAC slice is ~8286 bytes, well above the byte-only threshold that was supposed to catch it, meaning a failed duration probe could burn up to ~1200 empty Google API requests; (2) malformed Gemini HTTP bodies surfaced raw tracebacks instead of a clean error; (3) whisper.cpp's model download had no socket timeout and leaked partial files on failure (now matches core/llm.py's existing pattern); (4) nvidia_asr's dependency probe missed a torch-or-librosa-missing-but-transformers-present environment, skipping the on-demand installer. Also flagged (out of scope, untouched) a stale docstring in `core/backends/__init__.py` still describing nvidia_asr as a cloud API when it's been local/offline since commit `b733ad1`, and correctly identified a separate pre-existing test-isolation quirk in `test_nvidia_asr.py` as unrelated to this diff (verified via `git stash` against the unmodified tree). Verification claim: 2199 passed, 1 skipped. |
 
-| Adversarial review + fix pass on `core/model_manager.py`, `core/hub.py`, `core/history.py`, `core/stats.py`, `core/updates.py` | `bv3ii4h5m` | `C:\Users\Owner\Desktop\whisper_app\wt-model-hub-review\` (worktree) | `opencode/model-hub-review` | **killed with ZERO progress** (still checking package versions / listing the repo root when the OOM reaper hit) — nothing to salvage, worktree is clean at branch tip. **NOT relaunched** — see pause decision below. |
+| Adversarial review + fix pass on `core/model_manager.py`, `core/hub.py`, `core/history.py`, `core/stats.py`, `core/updates.py` | `bv3ii4h5m` (relaunched as `bq7zpul7o`) | `C:\Users\Owner\Desktop\whisper_app\wt-model-hub-review\` (worktree) | `opencode/model-hub-review` | **DONE — but see the important operational finding right below this table first.** 5 real bugs + 2 hardening fixes, commits `09fc000`/`149da5b`, pyright re-confirmed by me (0/0/0). Also surfaced a real, out-of-scope, owner-relevant finding: **telemetry defaults to ON and the opt-out checkbox doesn't persist**, contradicting the README/docs — see its own callout below, not just in the handoff file. |
+
+---
+
+## ⚠️ IMPORTANT OPERATIONAL FINDING: a "killed" task can survive and keep running
+
+`bv3ii4h5m` (model-hub-review, first attempt) was reported "killed" by the OOM reaper
+and appeared to have made zero progress when checked immediately after — so it was
+relaunched (`bq7zpul7o`) into the SAME worktree, same as the earlier search-chapters-
+infra recovery pattern. This time, **the "killed" process was actually still alive**
+(a `node.exe` + `opencode.exe` pair, confirmed via `Get-Process`, still responding,
+still accumulating real CPU time hours later) and kept working independently,
+**concurrently with the relaunched instance, in the same directory.** The relaunched
+instance itself noticed this (found two of its intended fixes already present before
+it got to them) and handled it gracefully — reconciled instead of duplicating,
+documented it plainly in its own handoff file. No corruption resulted this time, but
+it easily could have (two processes writing files / running git commands in the same
+directory at once).
+
+**Lesson: after any "killed" notification, before reusing that same worktree for a
+retry, check for a still-alive process first** (`Get-Process | Where-Object
+{ $_.ProcessName -match 'node|opencode' }`, cross-check against how long it's been
+running and its accumulated CPU time — near-zero CPU over a long wall-clock span means
+genuinely stuck/orphaned; real, growing CPU time means it's actually still working).
+Safer options when reusing the same worktree isn't confirmed-safe: use a FRESH
+worktree for the retry instead of the same directory, or confirm via `Get-Process`
+that nothing is still attached to it first.
+
+Also found via this same process-check: two long-orphaned processes from the very
+FIRST task of the day (hardware-greying, `bt73j12pu`, "killed" hours earlier) were
+STILL running — `node.exe` PID 12592 (13.5s CPU accumulated) and `opencode.exe` PID
+10820 (90.3s CPU accumulated) — both essentially idle/stuck, not doing real work.
+Terminated both (`Stop-Process -Force`) to reclaim memory and stop the confusion; that
+task's own real work was already fully recovered and committed hours ago via the
+stash-recovery process documented earlier in this file, so nothing was lost. Memory
+only recovered marginally after (5.0GB → 5.8GB free) — these two were not the primary
+cause of today's repeated OOM kills, just unrelated debris worth cleaning up anyway.
+
+---
+
+## 🔴 FLAG FOR THE OWNER — NOT FIXED, NEEDS A DECISION: telemetry is opt-out in
+## practice, opt-in in every public claim
+
+Found by the model-hub-review task (out of its assigned file scope, correctly left
+unfixed and flagged instead): `core/config.py`'s `DEFAULT_CONFIG["telemetry_opt_in"]`
+is `True` (set in commit `4618139`, "enable anonymous usage stats by default"), so a
+**fresh install sends the anonymous usage payload (file basename, model, language,
+duration, hostname + hardware facts) without the user ever opting in.** Worse:
+`telemetry_opt_in` is listed in `_NON_PERSISTED_KEYS`, so unchecking "Send anonymous
+usage statistics" in Advanced settings **does not persist** — the setting silently
+reverts to ON on the next launch, even though the checkbox's own label says "uncheck
+to opt out." Meanwhile README, `docs/CONFIG.md`, and the `core/stats.py` /
+`app/observability.py` docstrings all state the opposite (opt-in / off by default).
+
+This is a real, user-facing privacy/trust mismatch on a public repo, not a code
+correctness bug — exactly the kind of thing that needs the owner's own call, not an
+autonomous fix under today's skip-review policy. The fix itself is small (flip the
+`DEFAULT_CONFIG` default to `False`, remove `telemetry_opt_in` from
+`_NON_PERSISTED_KEYS` so the checkbox sticks) but changes real behavior for every
+future install, which is a product/policy decision, not a bug-fix judgment call.
 
 **RESUMED — owner explicitly asked to continue ("give more tasks after these finish" /
 "keep it busy the whole time").** Relaunched `wt-model-hub-review` as `bq7zpul7o`. Next
