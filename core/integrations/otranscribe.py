@@ -271,6 +271,12 @@ def otr_to_srt(otr_path: str) -> str:
     if not isinstance(payload, dict):
         raise ValueError(f"{otr_path} is not a JSON object")
     text_html = payload.get("text") or ""
+    if not isinstance(text_html, str):
+        # A hand-edited / corrupt .otr can carry a non-string here (a
+        # number, list, ...); parser.feed() would raise TypeError and
+        # abort the whole import. There are no cues to extract, so treat
+        # it as empty.
+        text_html = ""
     # A hand-edited / corrupt media-time ("abc", null, Infinity) must not
     # abort the import; it only seeds the last cue's end.
     media_time = _safe_seconds(payload.get("media-time"))

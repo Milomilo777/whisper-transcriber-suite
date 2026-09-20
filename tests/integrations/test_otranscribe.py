@@ -271,3 +271,16 @@ def test_otr_to_srt_tolerates_corrupt_media_time_and_timestamp(tmp_path):
     srt = otr_to_srt(str(p))  # must not raise
     assert "hi" in srt
     assert "00:00:00,000 --> 00:00:05,000" in srt
+
+
+def test_otr_to_srt_tolerates_non_string_text(tmp_path):
+    # A hand-edited / corrupt .otr can carry a non-string "text" (a
+    # number, list, ...); HTMLParser.feed() raised TypeError on it and
+    # aborted the whole import. There are no cues to extract, so the
+    # import yields empty output instead of raising.
+    for bad_text in (42, ["<p>hi</p>"], {"html": "hi"}, True):
+        p = tmp_path / "bad_text.otr"
+        p.write_text(
+            json.dumps({"text": bad_text, "media-time": 0}), encoding="utf-8"
+        )
+        assert otr_to_srt(str(p)) == ""  # must not raise

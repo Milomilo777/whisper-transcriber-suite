@@ -229,3 +229,73 @@ Date: 2026-09-20. Branch commits at review time: `d33d267` (tests),
   also green in isolation). No valid-input output changes: new fixes
   only fire on inputs that previously raised (non-dict words, huge-int
   word times, huge-int `fmt_ass_time` arg).
+
+## Second-pass independent re-check (muse-spark-1.3-contributor) — follow-up pass
+
+Date: 2026-09-20 (later run, same day). Branch commits at review time:
+`d33d267` (tests), `94300bd` (fixes), `dea318b` (handoff),
+`cdbe24f` (prior second-pass fixes + prior second-pass section above).
+This section records an additional independent pass done on top, per the
+re-check task template.
+
+### What was verified from the earlier passes, and how
+
+- **First-pass claim 1 (malformed timestamps abort whole file): holds.**
+  `master:core/writers/srt.py` uses bare `float(seg['start'])` /
+  `float(seg['end'])` (confirmed in diff); branch routes through
+  `coerce_seconds`. Current
+  `test_text_writer_survives_malformed_timestamps[srt]` passes on branch.
+- **Prior second-pass F1–F3 (VTT non-dict words, VTT huge-int word
+  times, `fmt_ass_time` huge-int): proven by revert.** Overwrote
+  `core/writers/vtt.py` with its `master` version, leaving all tests in
+  place: `test_vtt_karaoke_skips_non_dict_word_entries`,
+  `test_vtt_karaoke_falls_back_when_all_words_non_dict`, and
+  `test_vtt_karaoke_clamps_huge_int_word_start` all fail
+  (`AttributeError` on `w.get`, `OverflowError: int too large to
+  convert to float`). Restored, tests green again. For F3, `master`'s
+  `fmt_ass_time` has the bare `seconds = float(seconds)` line
+  (confirmed via `git show`), and bare `float(10**400)` raises
+  `OverflowError` — the exact claimed mechanism; new
+  `test_ass_formatter_clamps_huge_int` passes on branch. Worktree was
+  clean after each restore.
+
+### New bug found and fixed (reproduced before fixing)
+
+- **F4. `otr_to_srt` crashed on a non-string `text` payload — same
+  corrupt-input class the earlier passes hardened everywhere else.**
+  A hand-edited / corrupt `.otr` with e.g. `{"text": 42,
+  "media-time": 0}` reached `parser.feed(42)`, raising `TypeError:
+  can only concatenate str (not "int") to str` (full traceback
+  confirmed) and aborting the whole import. Reproduced for `42`,
+  `["<p>hi</p>"]`, `{"html": "hi"}`, `True` — all raised `TypeError`.
+  Fix: coerce a non-`str` payload to `""` in `otr_to_srt`
+  (`core/integrations/otranscribe.py`) — no cues to extract, so the
+  import yields empty output instead of a traceback.
+- New test `test_otr_to_srt_tolerates_non_string_text` in
+  `tests/integrations/test_otranscribe.py` (all four shapes, asserts
+  `""` output). Proven: fails on the pre-fix hunk (`TypeError` at
+  `html/parser.py feed`), passes after. Fix fires only on inputs that
+  previously raised.
+
+### Reviewed and deliberately not changed
+
+- **`convert._parse_json` passes NaN/Infinity through to intermediate
+  segments** (`float("nan")` doesn't raise, so no fallback fires).
+  Not fixed on purpose: every emit path clamps via `coerce_seconds` /
+  `_safe_float` (verified: NaN/Inf segments render as `00:00:00,000`
+  in SRT), so there is no crash and no user-visible wrong output —
+  fixing it would be theory, not a concrete failure.
+- **`json_writer` keeps a non-string word value as-is** (`"word":
+  w.get("word", "")` can emit a JSON number for malformed input). No
+  crash (`json.dumps` handles it) and re-import coerces via `str()`;
+  normalising it here would change output shape with no failure behind
+  it. Left alone.
+- Non-dict *segments*, `write()`-raises binary contract, `.otr`
+  blank-segment skip, PDF CJK coverage, `tsv`/`json` missing-`end`
+  default — agree with both earlier passes, no new evidence against.
+
+### Final verification (this pass)
+
+- `pyright app core` → **0 errors, 0 warnings, 0 informations**.
+- `python -m pytest tests/ --ignore=tests/smoke` → **2237 passed,
+  1 skipped, exit 0** (full hermetic suite, ~111s).
