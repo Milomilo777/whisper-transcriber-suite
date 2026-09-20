@@ -79,6 +79,7 @@ else
   if [ -n "$FF_ARCH" ]; then
     say "no system ffmpeg — fetching a static build ($FF_ARCH) into bin/…"
     TMP="$(mktemp -d)"
+    trap 'rm -rf "$TMP"' EXIT
     URL="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-${FF_ARCH}-static.tar.xz"
     if curl -fsSL "$URL" -o "$TMP/ffmpeg.tar.xz" && tar -xf "$TMP/ffmpeg.tar.xz" -C "$TMP"; then
       D="$(find "$TMP" -maxdepth 1 -type d -name 'ffmpeg-*-static' | head -n1)"
@@ -86,6 +87,8 @@ else
         cp "$D/ffmpeg" "$D/ffprobe" "$REPO_ROOT/bin/"
         chmod +x "$REPO_ROOT/bin/ffmpeg" "$REPO_ROOT/bin/ffprobe"
         say "installed ffmpeg + ffprobe into $REPO_ROOT/bin"
+      else
+        warn "unexpected static ffmpeg archive layout — install it with your package manager (e.g. 'sudo apt install ffmpeg')."
       fi
     else
       warn "static ffmpeg download failed — install it with your package manager (e.g. 'sudo apt install ffmpeg')."

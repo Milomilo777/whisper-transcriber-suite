@@ -108,6 +108,7 @@ else
   fi
   say "no ffmpeg + no Homebrew — fetching a static build into bin/…"
   TMP="$(mktemp -d)"
+  trap 'rm -rf "$TMP"' EXIT
   ok=1
   curl -fsSL "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip" -o "$TMP/ffmpeg.zip" || ok=0
   curl -fsSL "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip" -o "$TMP/ffprobe.zip" || ok=0

@@ -125,3 +125,64 @@ quotes would become part of the path.
 - Fixes 2-6: static reasoning; no runnable end-to-end test is possible on
   this Windows dev machine and running one was explicitly out of scope.
 - No `.py` files touched, so pyright/pytest were not run.
+
+## Second-pass independent re-check (muse-spark-1.3-contributor) — 2026-09-20
+
+### What was verified from the first pass, and how
+
+Re-read all five scripts in full plus the real `git diff master..HEAD` (the handoff
+prose matches the diff exactly). Independently proved the three most significant
+claimed fixes by execution, all on this machine:
+
+- Fix 1 (`set -e` abort in `link_ffmpeg_into_bin`): extracted old vs new loop into
+  harness scripts, ran under `set -euo pipefail` with stub `ffmpeg`/`ffprobe` and no
+  `ffplay`. Old version exits 1 before the next line (installer dead, no launchers);
+  fixed version prints through and exits 0. Claim holds.
+- Fix 3 (worktree `.git`): `[ -d .git ]` skips the pull when `.git` is a file,
+  `[ -e .git ]` pulls. Claim holds.
+- Fix 4 (dangling venv): `[ -d "$VENV" ]` accepts a venv whose `bin/python` is
+  broken, `[ -x "$VENV/bin/python" ]` rejects it while still accepting a healthy
+  venv. Claim holds (dangling-symlink creation itself is restricted on this Windows
+  checkout, so the Linux `-x`-follows-symlink semantics were verified by
+  reconstructed present/broken cases rather than a literal dangling link).
+- Fixes 2 (mac `rm -rf "$TMP"`), 5 (uninstall `gui.py` guard), 6 (quoted `Exec=`):
+  confirmed correct by reading the diff; fix 6's `Icon=`-left-unquoted reasoning is
+  right per the Desktop Entry spec. No execution proof possible here, same as the
+  first pass. Nothing wrong found in any of the six fixes.
+
+### New bugs found and fixed (with evidence)
+
+1. `platform/linux/install.sh` — static-ffmpeg branch silently installs nothing
+   when the upstream tarball layout changes. If `curl`+`tar` succeed but no
+   `ffmpeg-*-static` directory exists, the inner `[ -n "$D" ]` is false, the outer
+   branch is true, and the script prints nothing at all — then installs launchers
+   and reports success with no ffmpeg and no warning. Proven with a harness running
+   the branch's exact shape with stubbed `curl`/`tar` producing a renamed top-level
+   dir: zero output, exit 0. Fix: `else warn "unexpected static ffmpeg archive
+   layout — …"` mirroring the existing download-failure message. Post-fix harness
+   prints the warning.
+2. `platform/linux/install.sh` + `platform/macos/install.command` — `$TMP` leaks
+   on abort paths. Both scripts' explicit `rm -rf "$TMP"` is skipped when `set -e`
+   aborts first (Linux: `cp`/`chmod` are unguarded, e.g. disk-full; macOS: any
+   interrupt during the curl/unzip sequence), leaving a hundreds-of-MB temp dir.
+   Fix: `trap 'rm -rf "$TMP"' EXIT` immediately after each `mktemp -d`, keeping the
+   existing explicit removals (double removal is harmless). Proven with a harness
+   that aborts after creating the temp dir: directory is gone afterwards.
+
+### Considered and deliberately not changed
+
+- Uninstaller leaving `$REPO_ROOT/bin/` static binaries behind: documented behavior
+  ("leaves the repo checkout"), not a silent failure. Out of scope.
+- `unblock.command` having no `gui.py` guard: worst case it strips quarantine flags
+  from a wrong tree — read-only-ish, low risk, no data loss. Not worth the churn.
+- First pass's "considered" list re-checked: agree on all six, no additions.
+
+### Final verification
+
+- `bash -n` on all five scripts: clean.
+- pyright on `app/` + `core/`: 0 errors / 0 warnings / 0 informations.
+- `pytest tests/ --ignore=tests/smoke`: 2185 passed, 1 skipped, 1 failed in
+  `tests/core/test_search_dialog.py::test_open_selected_with_no_selection_is_a_noop`;
+  that test passes in isolation and no `.py` file differs from `master` on this
+  branch, so the failure is a pre-existing order-dependent flake unrelated to this
+  diff (shell scripts only).
