@@ -98,6 +98,12 @@ class TrayController:
         # must un-strand a window that was minimised-to-tray; on a clean
         # stop the app is exiting anyway, so we leave the window alone.
         self._stopping = False
+        # Set when start() could not build/spawn the icon. The App keeps
+        # this controller (``self.tray``) after a failed start, and
+        # minimise-to-tray only checks ``is_supported()`` -- so without
+        # this flag a failed icon would still let the X button withdraw
+        # the window with no tray icon to bring it back.
+        self._start_failed = False
 
     def is_supported(self) -> bool:
         # macOS: pystray's AppKit backend must run its event loop on the
@@ -106,6 +112,10 @@ class TrayController:
         # minimise-to-tray hide the window with no tray to restore it. So
         # the tray is disabled on macOS; the app lives in the Dock instead.
         if sys.platform == "darwin":
+            return False
+        if getattr(self, "_start_failed", False):
+            # Platform/libs support the tray, but bringing THIS icon up
+            # failed; a dead controller must not count as usable.
             return False
         return self._pystray is not None and self._pil is not None
 
@@ -152,6 +162,7 @@ class TrayController:
         except Exception as e:  # noqa: BLE001
             logger.warning("Could not start tray icon: %s", e)
             self._icon = None
+            self._start_failed = True
 
     def _on_runner_exit(self) -> None:
         """Runs on the Tk main thread when the tray runner thread exits.

@@ -1,0 +1,112 @@
+# OpenCode handoff — app/widgets review (2026-09-20)
+
+Branch: `opencode/app-widgets-review` (local only, not pushed).
+
+Scope reviewed in full: `app/widgets/hardware_wizard.py`, `app/widgets/tray.py`,
+`app/widgets/console.py`, `app/widgets/platform.py`, `app/widgets/tooltip.py`,
+`app/widgets/error_dialog.py`. `app/app.py`, `app/widgets/tabs.py` and
+`app/dialogs/advanced.py` were read for context only (their diffs were left
+untouched, per instructions).
+
+Gate: `pyright app core` → 0 errors / 0 warnings / 0 informations.
+`python -m pytest tests/ --ignore=tests/smoke -q` → green (exit 0).
+
+Baseline note: the first full-suite run hit the already-documented intermittent
+`_tkinter.TclError: Can't find a usable tk.tcl` flake in
+`tests/core/test_search_dialog.py`; it passed in isolation, and the two later
+full-suite runs were clean. Not a regression from this work.
+
+## Real bugs fixed
+
+### 1. Console right-click leaked one `tk.Menu` widget per click
+`app/widgets/console.py` built a fresh `tk.Menu` inside the popup handler on
+every right-click. Tk only destroys such a child when its parent is destroyed,
+so the orphaned menus accumulated for the lifetime of the app (verified: child
+count of the Text grows by exactly one per popup).
+
+Fix: `_attach_context_menu()` now builds ONE menu per console; the popup
+handler only posts it. `menu.grab_release()` is also guarded against
+`TclError` (previously the bare `finally:` could raise a Tcl error out of the
+callback if the popup failed).
+
+Test: `tests/core/test_console_widget.py::test_popup_reuses_the_same_menu`
+(posts five times, asserts one menu instance and no new children) plus
+`test_build_console_creates_exactly_one_menu`.
+
+### 2. Nested error dialogs silently removed a modal parent's grab
+Tk keeps a single grab per display and does not stack grabs: `show_error()`'s
+`grab_set()` replaced the grab of whatever dialog was open, and destroying the
+error dialog did not hand it back. Confirmed on a live Tk: after dismissing an
+error shown from a grabbing host, `root.grab_current()` was `None` — so
+Advanced settings (opened via `wait_window`, modal) became non-modal, letting
+the user open a second copy of it (both then write config on close). The same
+applied to the hardware wizard opened from Advanced.
+
+Fix: `app/widgets/error_dialog.show_error()` now records the current grab
+holder (not necessarily `parent`: background paths pass the App root while a
+dialog is open) and re-grabs it on close if it still exists and nothing newer
+holds the grab. Menus/other non-window grabbers are excluded. `HardwareWizard`
+records whether its master held the grab and returns it in `_on_close()`.
+
+Tests: `tests/core/test_error_dialog.py` (parent-is-grab-holder, root-as-parent
+while a dialog is modal, and the no-grab no-op case) and
+`tests/core/test_hardware_wizard.py::test_close_restores_the_masters_modal_grab`.
+
+### 3. Tray icon start failure left minimise-to-tray armed with no icon
+If `TrayController.start()` failed while building/spawning the icon (Pillow or
+pystray construction error), it logged and left `_icon = None` — but
+`app/_install_tray()` still stores the controller, and `on_exit()`'s
+minimise-to-tray check only tests `is_supported()`. Result: closing the window
+could withdraw it with no tray icon to restore it (the exact stranding the
+runner-crash path already guards against, which never fires because the runner
+was never started).
+
+Fix: `start()` sets `_start_failed`, and `is_supported()` now reports a failed
+start as unsupported, so the X button exits instead of hiding the window.
+
+Test: `tests/core/test_tray.py::test_failed_start_reports_the_tray_as_unsupported`.
+
+### 4. Hardware-wizard benchmark leaked its temp WAV when ffmpeg failed
+`_make_silent_clip()` creates the output with `tempfile.mkstemp` and then runs
+ffmpeg. If ffmpeg could not run (missing bundled binary, bad args), the
+function raised before `_benchmark_worker`'s cleanup `finally` could see the
+path, leaving the file behind on every attempt.
+
+Fix: the ffmpeg call is wrapped; a failure unlinks the temp file before
+re-raising.
+
+Test: `tests/core/test_hardware_wizard.py::test_make_silent_clip_removes_temp_file_when_ffmpeg_fails`.
+
+## Verified clean (no code change)
+
+- `console.py` Clear/Copy state handling: correct. It saves the state, flips to
+  `normal`, acts, and restores — regression-guarded by
+  `test_clear_restores_a_disabled_state` / `test_clear_leaves_an_enabled_widget_enabled`
+  (note: the App never actually disables the log today; the comments that
+  claimed it did were corrected in passing).
+- `tooltip.py` edge cases: popup positioning near the bottom-right edge flips
+  and clamps correctly (faked 320x240 screen in a test), and destroying a
+  widget while its tooltip is showing takes the Toplevel with it.
+  Regression tests: `tests/core/test_tooltip_widget.py`.
+- `error_dialog.show_error()` off-thread use: no current call site calls it
+  from a background thread (checked every call site in `app/`); the
+  fire-and-return contract holds.
+- `platform.open_folder()`: missing-folder and OSError paths both route to a
+  user-facing dialog as documented; nothing to fix.
+
+## Found but deliberately not changed (needs an owner decision)
+
+- The hardware-wizard benchmark uses the **in-process** `core.transcriber.MODEL`
+  global. The desktop app now runs transcription in worker subprocesses, so
+  that global is only populated when the in-process Web/LAN server is running
+  (it preloads the model). "Run 5 s benchmark" therefore usually answers
+  "Model not loaded — load the Whisper model first by starting (and
+  cancelling) one transcription", which no longer loads it in-process. Making
+  the benchmark work would mean either loading the ~3 GB model into the GUI
+  process (exactly what the v1.0.3 "no eager load" decision removed) or
+  spawning a dedicated benchmark worker; both are product decisions, so only
+  reported here.
+- `console`'s Text widget is editable despite its "read-only" framing in
+  docs/index (a plain `state="disabled"` blocks mouse selection, which was a
+  real user complaint for the Live transcript). Making it read-only while
+  still selectable is a behaviour change; not done unilaterally.

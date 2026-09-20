@@ -38,3 +38,40 @@ def test_build_icon_image_idle_and_active():
     assert active.size == (64, 64)
     # The two images shouldn't be identical (different pixels).
     assert list(idle.getdata()) != list(active.getdata())
+
+
+def test_failed_start_reports_the_tray_as_unsupported(monkeypatch):
+    """If building/starting the icon raises, the controller must stop
+    claiming support.
+
+    The App keeps this controller after a failed start(), and its
+    minimise-to-tray check only looks at ``is_supported()``. Returning
+    True there let the X button withdraw the window with no tray icon to
+    restore it — an invisible, stranded process.
+    """
+    from app.widgets import tray as tray_mod
+
+    class _FakeMenu:
+        SEPARATOR = object()
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class _FailingIcon:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError("no notification area")
+
+    fake_pystray = types.SimpleNamespace(
+        Menu=_FakeMenu,
+        MenuItem=lambda *a, **k: None,
+        Icon=_FailingIcon,
+    )
+    monkeypatch.setattr(tray_mod, "_try_load_pystray", lambda: (fake_pystray, object()))
+
+    fake_app = types.SimpleNamespace(post_to_main=lambda fn: None)
+    c = tray_mod.TrayController(fake_app)  # type: ignore[arg-type]
+
+    assert c.is_supported() is True  # platform + libs are present...
+    c.start()  # ...but the icon cannot be brought up
+    assert c._icon is None
+    assert c.is_supported() is False
