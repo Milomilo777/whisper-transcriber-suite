@@ -111,6 +111,86 @@ Test: `tests/core/test_hardware_wizard.py::test_make_silent_clip_removes_temp_fi
   real user complaint for the Live transcript). Making it read-only while
   still selectable is a behaviour change; not done unilaterally.
 
+---
+
+## Second-pass independent re-check (muse-spark-1.3-contributor) — 2026-09-20
+
+Note on method: this worktree arrived with all four `app/widgets/` fixes
+reverted as uncommitted working-tree edits on top of the branch commit, while
+the new regression tests were still in place — i.e. old source + new tests.
+That is exactly the revert-to-prove setup step 2 asks for, so the failing run
+below was captured before restoring the fixes with
+`git checkout HEAD -- app/widgets/...`.
+
+### What was verified from the first pass, and how
+
+All four claimed fixes were proved real by fail-then-pass, not by reading:
+
+- Reverted source + new tests: 7 failures, one per claim —
+  `test_popup_reuses_the_same_menu`,
+  `test_build_console_creates_exactly_one_menu`,
+  `test_failed_start_reports_the_tray_as_unsupported`,
+  `test_make_silent_clip_removes_temp_file_when_ffmpeg_fails`,
+  `test_close_restores_the_masters_modal_grab` (wizard),
+  `test_close_restores_the_parents_modal_grab` and
+  `test_close_restores_a_modal_dialog_when_parent_is_the_root`
+  (error dialog). The error-dialog failure was the exact predicted
+  mechanism (`grab_current()` is `None` after dismiss instead of the host).
+- Restored fixes: the same files pass — 36/36 across
+  `test_console_widget`, `test_tray`, `test_hardware_wizard`,
+  `test_error_dialog`, `test_tooltip_widget`.
+- The tray claim was additionally confirmed by reading the surrounding
+  logic the diff alone doesn't show: `App._install_tray` stores the
+  controller after `start()` with no post-start health check, and
+  `App.on_exit`'s minimise-to-tray branch only checks `tray.is_supported()`
+  — so without `_start_failed`, a failed start really does strand the
+  window. No retry path exists in the app, so the flag making
+  `is_supported()` sticky-False changes no other behaviour.
+- The grab-restore chain was traced end to end: Advanced (`grab_set` at
+  `advanced.py:162`) → `_open_hardware_wizard` (fire-and-forget, no
+  `wait_window`) → wizard steals grab → `_on_close` hands it back; and
+  `_save_and_close`'s `show_error(self, ...)` nests correctly because the
+  dialog captures the wizard as `previous_grab` via `grab_current()`
+  (not via `parent`). Out-of-order and triple-nested closes were traced
+  through the restore-only-when-`None` + `winfo_exists` + `isinstance`
+  guards — all resolve correctly (LIFO restores, premature outer close
+  never steals from an inner dialog, destroyed holders are skipped).
+
+Nothing in the first pass was found wrong, incomplete, or cosmetic: no
+corrections to its code were needed.
+
+### Fresh adversarial review (same files + immediate surroundings)
+
+Re-read the fixed `console.py`, `error_dialog.py`, `tray.py`,
+`hardware_wizard.py` plus `tooltip.py`, `platform.py`, and the
+`app.py`/`advanced.py` call sites (`_install_tray`, `on_exit`,
+`log`/`log_threadsafe`, `_open_hardware_wizard`). Candidates examined
+and deliberately NOT changed (no concrete, reproducible failure found):
+
+- `_copy_selection` / `_clear` leaving the log in `normal` state if
+  `event_generate` / `delete` raised mid-try: probed live Tk on this box —
+  `<<Copy>>` with no selection, `tk_popup` on a withdrawn root, and bare
+  `grab_release()` with no grab all complete without raising, so no
+  real-world trigger exists here; restructuring to `finally` would be
+  unprovable hardening, not a bug fix.
+- `tk_popup` raising before `"break"` is returned (both menus opening):
+  no reproducible trigger found (menu grabs input while posted, so a
+  second popup can't interleave); skipped per the concrete-scenario rule.
+- Unbounded console-log growth (`insert_log_line` never trims): a real
+  long-session cost, but capping drops user history and changes Copy-all
+  semantics — a product decision in the same class as the two items the
+  first pass already deferred, so reported here, not imposed.
+- `advanced.py:1788` docstring still calls the wizard "non-modal" while
+  it `grab_set()`s: stale comment, cosmetic — left alone.
+
+### Final verification
+
+- `pyright app core` → 0 errors / 0 warnings / 0 informations.
+- `python -m pytest tests/ --ignore=tests/smoke` → 2201 passed,
+  1 skipped, 0 failed (no tk.tcl flake this run).
+- No source changes made in this pass; only this handoff section was
+  appended. Genuinely clean second pass.
+
 ## Second-pass independent re-check (muse-spark-1.3-contributor)
 
 ### What was verified from the first pass and how
