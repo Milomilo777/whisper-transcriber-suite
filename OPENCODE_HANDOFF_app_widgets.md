@@ -255,3 +255,39 @@ passes with the fix. The original
 - `python -m pyright app core` → 0 errors / 0 warnings / 0 informations.
 - `python -m pytest tests/ --ignore=tests/smoke -q` → green, no
   failures (2 pre-existing skips). No `tk.tcl` flake this run.
+
+---
+
+## Reconciliation addendum (muse-spark-1.3-contributor) — 2026-09-20
+
+A second same-model second-pass run committed `f19de59` (tray retry fix
++ `test_successful_retry_after_a_failed_start_reports_supported` + its
+own handoff section above) into this same worktree mid-session. Reviewed
+it adversarially rather than reverting it:
+
+- The retry fix is correct: `start()` now gates on `_libs_available()`
+  (platform + deps, flag-independent) and clears `_start_failed` on
+  success, while `is_supported()` still reports a failed start as
+  unsupported — the first-pass stranding protection is preserved, and a
+  transient boot-time failure stays retryable. Partial-failure paths
+  check out (Icon-construction failure vs `safe_thread` failure both
+  leave `_icon=None` + flag set). Pre-fix behaviour (second `start()`
+  no-ops via the early return, so the retry test's `attempts` stays at 1)
+  confirms the test would fail without the fix by code reading.
+- Its "reported, not fixed" observations were independently confirmed:
+  `app.py:4761` (`_install_text_context_menu`) really does build one
+  `tk.Menu` per right-click (same leak class as the console fix), and
+  fixing it needs a per-widget cache design in `app.py` — which this
+  branch's scope leaves untouched — so deferral is endorsed, not
+  overridden. Same for the load-bearing per-row rebuild in
+  `transcript_viewer.py:1405`.
+- Final gates on the merged HEAD (`pyright app core` clean;
+  `tests/core/test_tray.py` 5/5): full hermetic suite came back
+  2199 passed + 1 failed + 2 skipped, then on re-run fully green, then
+  green-with-a-different-single-failure
+  (`test_viewer_invalid_json_shows_empty_list`, a file this branch never
+  touches — passes in isolation in ~6 s). I.e. the suite has a
+  pre-existing single-test Tk-isolation flake that moves between runs,
+  same family as the `tk.tcl` flake the first pass documented; no run
+  showed a failure in any file this branch touched. No further source
+  changes made here; this addendum only.
