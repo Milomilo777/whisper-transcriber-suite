@@ -167,3 +167,22 @@ Verification:
   test_open_selected_with_no_selection_is_a_noop` (`_tkinter.TclError`:
   missing tk.tcl); it passes in isolation and on rerun and is unrelated to
   this backends-only merge.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/asr-backends-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2218 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). One transient tkinter failure (`test_hardware_wizard_constructs_without_crashing`, `_tkinter.TclError: invalid command name "tcl_findLibrary"`) passes in isolation — same class of tkinter state leak as the prior commit's transient; unrelated to this backends-only merge.
+- **Merge diff**: 4 source files changed, 4 new test files + 2 extended test files, 1 doc, 1 handoff doc. No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `cloud_stt.py` — `flac_slice_has_audio`: ffprobe-based EOF detection returns `False` only on a positive "N/A" duration (confirmed empty container); returns `True` on any probe failure (conservative — never truncates a real chunk). The byte-size `_EMPTY_FLAC_BYTES` fast-first-cut is correctly retained alongside it. The combined `getsize < threshold or not flac_slice_has_audio(...)` condition is correct and short-circuits properly.
+  - `cloud_stt.py` — `_json_body`: reads + decodes response body, converts `IncompleteRead` and non-JSON/HTML proxy responses into clear `RuntimeError`s. All three JSON response sites (`_upload_file`, `_wait_for_active`, `_post_json`) are routed through it. The removed `isinstance(meta, dict)` guard in `_wait_for_active` is safe because `_json_body` already guarantees a `dict` return or raises.
+  - `cloud_stt.py` — `_upload_file`: the delete-on-failure path now correctly calls `_delete_file(str(file_name))` before re-raising, closing the gap where a failed `_wait_for_active` left audio on Google.
+  - `google_cloud_stt.py` — imports `flac_slice_has_audio` from `cloud_stt` and applies it in `_run_standard`'s unknown-duration EOF check alongside the byte-size fast cut. Correct and consistent with the Gemini backend.
+  - `nvidia_asr.py` — `_deps_available` replaces `_transformers_available`; probes all three required modules (`transformers`, `torch`, `librosa`) via `find_spec` (never imports heavy modules). The `optional_deps.activate()` call ensures on-demand installs from prior sessions are visible. The `force=partially_installed` pattern matches `google_cloud_stt.load()`.
+  - `whisper_cpp.py` — `download_default_model`: adds `timeout=60` to `urlopen` and wraps the download in `try/except` that unlinks the `.part` file on any network/HTTP failure before re-raising. The `with` blocks close file handles before the `unlink` call, so Windows unlink succeeds.
+- **Test coverage of merged behavior**: New tests (`test_cloud_stt.py`: flac probe true/false/conservative, EOF past-byte-threshold, JSON body errors; `test_backends.py`: download timeout + mid-stream cleanup; `test_google_cloud_stt.py`: STANDARD EOF stop + `RecognizeRequest` fake; `test_nvidia_asr.py`: deps probe all-three, forced install, skipped install) plus the `test_fixpack_C.py` monkeypatch addition all exercise the merged fixes with realistic edge cases (8 KiB past-EOF container, truncated reads, partial installs). Pre-fix code would fail these tests (old byte-size-only check misses the 8 KiB container; old `_transformers_available` skips half-present environments).
+
+Result: clean. No source changes needed.
