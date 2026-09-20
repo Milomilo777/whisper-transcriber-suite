@@ -144,3 +144,70 @@ and asserts the same for its two children.
   zombie leak the fixpack closed.
 - Watcher `stop()`'s 2 s observer-join timeout and the app-level finished-file
   re-enqueue dedup question are pre-existing documented trade-offs / owner calls.
+
+## Second-pass independent re-check (muse-spark-1.3-contributor) — 2026-09-20
+
+Re-read the handoff above, then the real diff (`git diff master..HEAD`),
+then re-verified each claimed fix by reverting the single `core/` file to
+its `master` version and re-running that subsystem's new tests.
+
+### What was verified and how (all revert-proven)
+
+- Watcher `on_moved`: `master` has 0 `on_moved` refs. With `core/watcher.py`
+  reverted, 4 tests fail (`dispatches_moved_in_media`, `moved_out_is_ignored`,
+  `moved_non_media_and_dirs_ignored`, `moved_callback_error_hits_on_error`
+  — `AttributeError: on_moved`); restored, all pass. Claim holds.
+- Burn AAC retry: reverted, `test_burn_retries_with_aac...` fails with the
+  exact real-world error (`Could not find tag for codec opus ... not
+  currently supported in container`) and `test_burn_video_path...` fails on
+  the `cmd[-1] != out` temp-sibling assertion; restored, all pass.
+- Recorder OSError probe: reverted, both new tests fail with the raw
+  `OSError: DLL load failed` escaping; restored, both pass. Claim holds.
+- Tiling reap on both teardown paths: reverted, `test_start_launch_failure...`
+  and `test_start_superseded_launch_reaps_killed_children` fail; restored,
+  pass. Claim holds.
+
+One honesty note on test strength (not a code defect): with `subprocess.run`
+mocked, `test_burn_failure_does_not_clobber_existing_output` passes even on
+the OLD code, because the mock never truncates `out_path` the way real
+`ffmpeg -y` does. The atomicity is still proven — structurally, by
+`test_burn_video_path...`'s `cmd[-1] != out` + same-dir + ext assertions
+(which fail on old) plus correct `mkstemp(same dir)` → `os.replace` →
+`finally unlink` code — but the clobber test alone is not a discriminating
+regression test. Left as-is (it still guards the finally-cleanup); just
+noted so nobody over-claims for it.
+
+### Fresh adversarial pass — no further real bugs
+
+Re-examined the same files plus immediate surroundings; checked and cleared:
+
+- `burn()`: retry loop terminal logic (`codec == codecs[-1]` raise, no retry
+  on generic errors/timeout, caller-codec skip), `os.replace` after success,
+  `finally` unlink swallowing only `OSError`, `_extra_args_set_audio_codec`
+  prefix matching (worst case it conservatively skips a retry), empty-suffix
+  edge (same inference behaviour as before — not a regression).
+- `watcher._is_inside`: `bytes` decode, empty-path, cross-drive
+  `(OSError, ValueError)` guards all present; `on_created` needs no inside
+  check (non-recursive schedule); no-attr `dest_path` defaults to ignored.
+- `recorder._import_failure`: `except Exception` (not `BaseException`, so no
+  `KeyboardInterrupt` swallow); double-import cost is `sys.modules`-cached.
+- `tiling`: `_retire` (kill without wait) is transient-only — the retired proc
+  stays in `_consumers` and is reaped at the next `_terminate`/relaunch, so no
+  pileup. The `not published` path's missing sentinel/join vs the
+  launch-failure path is correct, not an omission: the running fan-out
+  thread's `finally` delivers the `None` sentinels and all threads involved
+  are daemons that exit on their own (the `except` path needs the manual
+  sentinel precisely because its fan-out may never have started).
+- `monitors.py` (full read): `_from_screeninfo`/`_from_win32`/fallback chain,
+  thread-scoped DPI context with restore, `(x, y, name)` total sort, empty
+  guards, geometry helpers — all hold. One theoretical `KeyError`
+  (`select_monitors` single-mode with gapped non-sequential indices) is
+  unreachable via `list_monitors()` output; not changed.
+
+No code changes from this pass — the first pass was sound.
+
+### Final verification (this pass, final tree)
+
+- `python -m pyright app core` → 0 errors / 0 warnings / 0 informations.
+- `python -m pytest tests/ --ignore=tests/smoke -q` → exit 0, 2199 collected,
+  fully green (no flakes this run).
