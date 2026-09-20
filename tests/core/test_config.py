@@ -287,6 +287,53 @@ def test_load_non_object_json_falls_back(isolated_dirs, monkeypatch):
     assert config["theme"] == cfg.DEFAULT_CONFIG["theme"]
 
 
+def test_load_config_survives_huge_integer(isolated_dirs, monkeypatch):
+    """A huge (but valid-JSON) integer must not crash ``load_config``.
+
+    Regression: the non-finite guard called ``math.isfinite()`` on any
+    int/float value, and a 400-digit integer literal — legal JSON, produced
+    by a hand edit or an external tool — raises
+    ``OverflowError: int too large to convert to float`` from inside
+    ``math.isfinite``. ``load_config`` is called unguarded from
+    ``App.__init__`` and the worker, so that was a startup crash. An int is
+    always finite; only floats need the probe.
+    """
+    monkeypatch.setattr(
+        cfg, "_legacy_config_path", lambda: str(isolated_dirs / "no_legacy.json")
+    )
+    Path(cfg.config_path()).write_text(
+        '{"parallel_workers": ' + "9" * 400 + "}", encoding="utf-8"
+    )
+    config = cfg.load_config(fetch_online=False)
+    assert isinstance(config["parallel_workers"], int)
+    assert config["theme"] == cfg.DEFAULT_CONFIG["theme"]
+
+
+def test_load_config_survives_uncreatable_config_dir(tmp_path, monkeypatch):
+    """A config dir that cannot be created must not crash launch.
+
+    Regression: ``migrate_config_location`` called ``mkdir(parents=True)``
+    unguarded, so a path blocked by a file (or a read-only profile / ACL
+    failure) raised OSError out of ``load_config`` before any fallback —
+    which every startup path (App.__init__, the worker) calls unguarded.
+    The app must instead come up on the defaults, like every other
+    unreadable-config case.
+    """
+    blocker = tmp_path / "blocked"
+    blocker.write_text("I am a file, not a directory", encoding="utf-8")
+    config_dir = blocker / "nested"
+    monkeypatch.setattr(cfg, "user_config_dir", lambda: config_dir)
+    monkeypatch.setattr(cfg, "config_path", lambda: str(config_dir / "config.json"))
+    monkeypatch.setattr(
+        cfg, "_legacy_config_path", lambda: str(tmp_path / "no_legacy.json")
+    )
+
+    assert cfg.migrate_config_location() == str(config_dir / "config.json")
+    config = cfg.load_config(fetch_online=False)
+    assert config["theme"] == cfg.DEFAULT_CONFIG["theme"]
+    assert config["parallel_workers"] == cfg.DEFAULT_CONFIG["parallel_workers"]
+
+
 def test_user_overrides_merge_with_defaults(isolated_dirs, monkeypatch):
     monkeypatch.setattr(cfg, "_legacy_config_path", lambda: str(isolated_dirs / "no_legacy.json"))
     Path(cfg.config_path()).write_text(json.dumps({"theme": "dark", "model": {"name": "tiny"}}), encoding="utf-8")

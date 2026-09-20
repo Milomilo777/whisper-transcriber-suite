@@ -500,7 +500,19 @@ def migrate_config_location() -> str:
     """
     new_path = config_path()
     legacy = _legacy_config_path()
-    user_config_dir().mkdir(parents=True, exist_ok=True)
+    try:
+        user_config_dir().mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        # A read-only profile / ACL that blocks the config dir (or a stray
+        # FILE occupying that path) must not crash launch: load_config()
+        # then degrades to the defaults + online + project layers, exactly
+        # like every other unreadable-config path. Saving settings will
+        # still surface its own error at save time.
+        logger.warning(
+            "Could not create config dir %s (%s); using defaults",
+            user_config_dir(), e,
+        )
+        return new_path
 
     if not os.path.exists(legacy):
         return new_path
@@ -878,14 +890,16 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
         # (e.g. a float-typed vad_threshold left as float('inf')). Such a
         # value passes the isinstance check below but poisons everything
         # downstream — int(inf) raises OverflowError, nan compares false to
-        # all bounds. ``bool`` is an int subclass but is always finite, so
-        # exclude it. _read_local_config already rejects these at parse time;
-        # this guards values arriving via the online layer or in-memory.
+        # all bounds. Only ``float`` is probed: an int is always finite, and
+        # math.isfinite() on a huge JSON integer (a 400-digit literal is
+        # legal JSON) raises OverflowError itself, crashing launch before the
+        # type check ever runs. _read_local_config already rejects the JSON
+        # literals at parse time; this guards values arriving via the online
+        # layer or in-memory.
         if (
             isinstance(default, (int, float))
             and not isinstance(default, bool)
-            and isinstance(merged[k], (int, float))
-            and not isinstance(merged[k], bool)
+            and isinstance(merged[k], float)
             and not math.isfinite(merged[k])
         ):
             logger.warning(
@@ -1178,7 +1192,10 @@ def _validate_overrides(
     Bool defaults still accept ints (Python bool is int), and
     numeric defaults still accept floats / ints interchangeably —
     same coercion rules as ``load_config`` to keep behaviour
-    consistent.
+    consistent. A null or a non-finite number (``Infinity`` / ``NaN``,
+    including a ``1e400``-style overflow) is never a valid value for a
+    known key and is dropped rather than handed to the runtime
+    coercions as ``None`` / ``inf``.
     """
     cleaned: dict[str, Any] = {}
     for key, value in overrides.items():
@@ -1186,7 +1203,26 @@ def _validate_overrides(
             cleaned[key] = value
             continue
         default = DEFAULT_CONFIG[key]
-        if value is None or isinstance(value, type(default)):
+        # No known key has a None default, so a null is never a legitimate
+        # value: passing it through let ``None`` reach the runtime coercion
+        # block in ``core.transcriber._apply_runtime_overrides``
+        # (``int(config["diarization_num_speakers"])``), which raises
+        # TypeError and aborts the transcription for every file in that
+        # folder. Non-finite numbers are just as poisonous — ``1e400`` /
+        # ``Infinity`` parse to inf and ``int(inf)`` raises OverflowError
+        # straight out of this "never raises" loader, while a NaN threshold
+        # compares false to every bound. Drop both like any other wrong
+        # type.
+        if value is None or (
+            isinstance(value, float) and not math.isfinite(value)
+        ):
+            logger.warning(
+                "Project override at %s has an unusable value for %r: %r; "
+                "dropping.",
+                source, key, value,
+            )
+            continue
+        if isinstance(value, type(default)):
             cleaned[key] = value
             continue
         if isinstance(default, bool) and isinstance(value, int):
@@ -1196,7 +1232,10 @@ def _validate_overrides(
             try:
                 cleaned[key] = type(default)(value)
                 continue
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
+                # OverflowError: a float default receiving a huge (but
+                # finite) JSON integer, e.g. float(10**400); the finite
+                # check above only inspects actual floats.
                 pass
         logger.warning(
             "Project override at %s has wrong type for %r: %s "

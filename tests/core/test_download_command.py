@@ -61,6 +61,17 @@ def test_build_subtitle_command_normalizes_lang_list():
     assert cmd[cmd.index("--sub-langs") + 1] == "en,ja"
 
 
+def test_build_subtitle_command_escapes_regex_metachars():
+    """A detected-language code from video metadata must reach yt-dlp as a
+    literal, not as a regex: --sub-langs ".*" used to fetch every translated
+    caption track (see docs/auto-subtitles-feature.md)."""
+    task = _task()
+    cmd = build_subtitle_command(task, ".*", yt_dlp_path="ytdlp.exe", bin_path="C:/bin")
+    value = cmd[cmd.index("--sub-langs") + 1]
+    assert value != ".*"
+    assert value == r"\.\*"
+
+
 def test_build_download_command_audio_only_uses_x_flag():
     task = _task(mode="Audio", output="mp3", audio_kind="best_audio")
     cmd = build_download_command(task, yt_dlp_path="ytdlp", bin_path="bin")

@@ -33,6 +33,34 @@ def test_drops_empty_segments():
     assert subtitle_lang_args(",,,") == ""
 
 
+# --- regex escaping ----------------------------------------------------------
+# yt-dlp treats every --sub-langs entry as a regex (its own docs example is
+# "en.*,ja"), and the app's codes come from either the fixed table or from
+# video metadata via app.services.format_service. An unescaped metacharacter
+# turns a code into a pattern: ".*" would match every caption track, "en("
+# is an invalid pattern. Only metacharacters are escaped so real codes
+# (zh-Hans, pt-BR) pass through byte-identical.
+
+def test_wildcard_code_is_escaped_not_a_pattern():
+    out = subtitle_lang_args(".*")
+    assert out != ".*"
+    assert out == r"\.\*"
+
+
+def test_invalid_regex_code_is_escaped():
+    assert subtitle_lang_args("en(") == r"en\("
+
+
+def test_metachars_escaped_but_real_codes_unchanged():
+    assert subtitle_lang_args("en.*,en") == r"en\.\*,en"
+
+
+def test_hyphenated_codes_are_not_escaped():
+    # Hyphen is a literal outside a character class; escaping it would be
+    # output churn for every real BCP-47 code.
+    assert subtitle_lang_args("zh-Hans,pt-BR") == "zh-Hans,pt-BR"
+
+
 def test_table_first_entry_is_automatic_with_empty_code():
     assert SUBTITLE_LANGUAGES[0] == ("Automatic", "")
 

@@ -58,14 +58,23 @@ def _anonymised_id() -> str:
     Built from a random UUID4 written to ``user_cache_dir() /
     telemetry_id`` on first use. Hashed via SHA-256 so the stored
     value alone identifies an install but cannot be linked back to a
-    machine without the file on disk.
+    machine without the file on disk. Returns ``""`` when the cache
+    directory or the file cannot be written — the caller must never
+    fail because telemetry could not be persisted.
     """
     try:
         from core.config import user_cache_dir  # type: ignore[import-not-found]
     except Exception:  # noqa: BLE001
         return ""
     cache = user_cache_dir()
-    cache.mkdir(parents=True, exist_ok=True)
+    try:
+        cache.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        # A blocked / read-only cache path must not escape: this is called
+        # while building the launch-ping payload on the Tk main thread, so
+        # an uncaught OSError here would abort startup. Fall back to no id.
+        logger.info("Could not create telemetry cache dir (%s); skipping id", e)
+        return ""
     p: Path = cache / "telemetry_id"
     if p.exists():
         try:
@@ -101,7 +110,12 @@ def _app_version() -> str:
 
 
 def init_sentry() -> bool:
-    """Initialise Sentry SDK if opted-in and SENTRY_DSN is set."""
+    """Initialise Sentry SDK if opted-in and SENTRY_DSN is set.
+
+    Returns True only when the SDK was actually initialised. Every
+    failure — no opt-in, no DSN, missing package, or an SDK error such
+    as a malformed DSN — returns False and is logged, never raised.
+    """
     if not _telemetry_opted_in():
         return False
     dsn = os.environ.get("SENTRY_DSN", "").strip()
@@ -112,7 +126,15 @@ def init_sentry() -> bool:
     except ImportError:
         logger.info("SENTRY_DSN set but sentry-sdk is not installed; skipping")
         return False
-    sentry_sdk.init(dsn=dsn, traces_sample_rate=0.0, send_default_pii=False)
+    try:
+        sentry_sdk.init(dsn=dsn, traces_sample_rate=0.0, send_default_pii=False)
+    except Exception as e:  # noqa: BLE001
+        # A malformed DSN (or any other SDK init failure) must not take
+        # down launch: this is called unguarded from App.__init__, and the
+        # module's contract is "opt-in crash reporting", not "crash the app
+        # in order to report crashes". Stay off and log it.
+        logger.warning("Sentry init failed (ignored): %s", e)
+        return False
     logger.info("Sentry crash reporting enabled")
     return True
 
