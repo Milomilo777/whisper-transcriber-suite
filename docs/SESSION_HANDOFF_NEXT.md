@@ -329,6 +329,16 @@ of whether this Claude session is still alive to report it.
 
 | Adversarial review + fix pass on `core/model_manager.py`, `core/hub.py`, `core/history.py`, `core/stats.py`, `core/updates.py` | `bv3ii4h5m` | `C:\Users\Owner\Desktop\whisper_app\wt-model-hub-review\` (worktree) | `opencode/model-hub-review` | **killed with ZERO progress** (still checking package versions / listing the repo root when the OOM reaper hit) — nothing to salvage, worktree is clean at branch tip. **NOT relaunched** — see pause decision below. |
 
+**RESUMED — owner explicitly asked to continue ("give more tasks after these finish" /
+"keep it busy the whole time").** Relaunched `wt-model-hub-review` as `bq7zpul7o`. Next
+worktree pre-created and its prompt pre-written so it can fire the instant this one
+finishes, minimizing idle gap per the owner's explicit ask: `wt-app-services-review`
+(`opencode/app-services-review`) covering `app/services/transcription_service.py`,
+`download_service.py`, `format_service.py`, `integrations_service.py` (explicitly NOT
+`app/app.py`/`app/widgets/tabs.py`/`app/dialogs/advanced.py` — already touched today).
+
+*(Paused-state note below kept for history — no longer the current state.)*
+
 **PAUSED after the 3rd OOM kill today — deliberate, not automatic.** Free memory
 right after this kill: 5.0GB/15.9GB, about the same as after the first two kills (no
 clear worsening trend, no lingering zombie processes found either time this was
