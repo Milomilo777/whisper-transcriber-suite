@@ -22,3 +22,29 @@ Verified the merge of `opencode/app-dialogs-review` into `integration/opencode-m
 - **Test coverage of merged behavior**: New tests (`test_fixpack_sw2_viewer.py`, `test_fixpack_sw3_viewerwords.py`, `test_model_download_retry.py`, `test_hub_setup_dialog.py`, `test_statistics_dialog.py`, plus additions in `test_transcript_viewer.py`) exercise every merged fix with bare-instance stubs and real Tk construction. Pre-fix code would fail these tests.
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/app-services-review (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/app-services-review`): no conflicts,
+no reconciliation needed. Merge commit 53996cf on top of 41a2bfc.
+
+Files brought in by the review branch (7e79551 range):
+- `app/services/download_service.py`: pause+resume stale-generation guards
+  (`_superseded()` via `_run_generation`), pre-media-phase and post-subtitle
+  pause/cancel re-checks, `proc`-local stdout/wait with `if task.process is proc`
+  ownership guard, `run_generation` params on `_media_phase` /
+  `_run_caption_only_task`, paused-row handling in caption-only path.
+- `app/services/transcription_service.py`: `spawn_token` snapshot for
+  `worker_exit` routing; liveness-timeout path now marks task error +
+  `finish_task` first and only `restart_worker` if still tracked in
+  `app.workers` (avoids orphan RAM-resident workers).
+- `tests/core/test_fixpack_Ia.py`: updated `_media_phase` mocks to accept
+  `run_generation` kwarg (2 tests).
+- `OPENCODE_HANDOFF_app_services.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git show HEAD` / `git diff HEAD~1 HEAD`:
+intent matches the review-branch log (588f4cd + 7761776 + 7e79551).
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2188 passed, 14 skipped, 0 failures.
