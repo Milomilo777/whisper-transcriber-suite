@@ -186,3 +186,43 @@ Verified the merge of `opencode/asr-backends-review` into
 - **Test coverage of merged behavior**: New tests (`test_cloud_stt.py`: flac probe true/false/conservative, EOF past-byte-threshold, JSON body errors; `test_backends.py`: download timeout + mid-stream cleanup; `test_google_cloud_stt.py`: STANDARD EOF stop + `RecognizeRequest` fake; `test_nvidia_asr.py`: deps probe all-three, forced install, skipped install) plus the `test_fixpack_C.py` monkeypatch addition all exercise the merged fixes with realistic edge cases (8 KiB past-EOF container, truncated reads, partial installs). Pre-fix code would fail these tests (old byte-size-only check misses the 8 KiB container; old `_transformers_available` skips half-present environments).
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/config-domain-review (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/config-domain-review`): no conflicts,
+no reconciliation needed. Merge commit ba401a3 on top of 3e6b932.
+
+Files brought in by the review branch (fd34c64 + c418715 + aa23bcf):
+- `core/config.py`: never-raises hardening — `migrate_config_location`
+  degrades to defaults when the config dir cannot be created; `fetch_online_config`
+  also catches `http.client.HTTPException` + `RecursionError` (falls through to
+  cache) and treats a hostile cache file as corrupt; `_read_local_config` and
+  `load_project_overrides` catch `RecursionError`; `load_config` finite-check
+  probes only `float` (avoids `math.isfinite` OverflowError on huge JSON ints);
+  `_validate_overrides` drops `None` / non-finite values for known keys and
+  catches `OverflowError` on coercion.
+- `app/domain/languages.py`: `subtitle_lang_args` escapes yt-dlp `--sub-langs`
+  regex metacharacters so codes match literally (hyphen left unescaped).
+- `app/observability.py`: `_anonymised_id` returns `""` when the cache dir
+  cannot be created; `init_sentry` catches SDK init errors (e.g. malformed DSN)
+  and returns False instead of crashing launch.
+- `app/services/download_service.py`: `_parse_timecode` rejects NaN/inf via
+  `math.isfinite`.
+- `tests/core/test_config.py`, `test_download_command.py`,
+  `test_observability.py`, `test_project_overrides.py`,
+  `test_project_overrides_leak.py`, `test_subtitle_lang_args.py`: coverage for
+  the above.
+- `OPENCODE_HANDOFF_config_domain.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git diff HEAD^1 HEAD`: intent matches the
+review-branch log; no conflict markers, no dropped lines.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2240 passed, 14 skipped,
+  0 failures on the final run. Two earlier full-suite runs each showed a
+  single transient Tk failure in an unrelated dialog test
+  (`test_search_dialog.py::test_finish_search_reports_error`, then
+  `test_error_dialog.py::test_close_restores_the_parents_modal_grab`); both
+  pass in isolation and on rerun and are unrelated to this config-domain merge.
+- Targeted merge-area tests (177 tests across the six files above): all pass.
