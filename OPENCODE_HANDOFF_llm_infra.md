@@ -128,3 +128,86 @@ future change doesn't re-introduce that hang. No behaviour change.
 
 Nothing in scope was skipped. No path/tool rejection occurred and no
 gitignored or credential-like file was read or modified.
+
+---
+
+## Second-pass independent re-check (muse-spark-1.3-contributor) — 2026-09-20
+
+### What was verified from the first pass, and how
+
+All four claimed fixes were reproduced as real bugs on `master` code and
+confirmed fixed on this branch — not by trusting the prose, but by running
+the branch's own new tests against the pre-fix code:
+
+1. **Context fit** (`core/llm.py`): checked out `master` copies of
+   `core/llm.py` + `core/_checkpoint.py` over the worktree, ran the new
+   tests, confirmed
+   `test_long_transcript_summarise_is_fitted_to_the_context_window`,
+   `test_long_prompt_fits_even_when_every_char_is_a_token`,
+   `test_parse_json_list_ignores_trailing_prose_after_array`,
+   `test_parse_json_list_takes_only_the_first_array`,
+   `test_load_checkpoint_returns_none_on_non_utf8_corruption`, and
+   `test_sweep_partials_removes_stale_checkpoint_tmp` **all fail on
+   `master` code**, then restored the branch files (`git status` clean)
+   and confirmed they pass. So every claimed fix addresses a genuine,
+   test-demonstrated defect.
+2. **llama-cpp API usage**: confirmed against the installed
+   llama_cpp 0.3.34 that `Llama.tokenize` has signature
+   `(bytes, add_bos=True, special=False)` — the branch's
+   `tokenize(text.encode("utf-8"), add_bos=False)` call is valid — and
+   that the `>= n_ctx raises ValueError` window semantics match the
+   branch's test fake.
+3. **Tmp-suffix match**: `write_checkpoint` stages at
+   `path.with_suffix(path.suffix + ".tmp")` = `<key>.json.tmp`, exactly
+   what the new `sweep_partials` branch reaps; verified end-to-end (stale
+   `.json.tmp` reaped, fresh one survives the 10-min cutoff).
+4. **`task.py` comment fix**: confirmed against `core/transcriber.py`
+   that the clip span is pre-sliced via ffmpeg and results shifted back
+   — `clip_timestamps` is never passed to faster-whisper. The old comment
+   was indeed wrong.
+
+### Anything wrong with the first pass
+
+One collateral-damage issue, fixed in this pass:
+
+- **`docs/SESSION_HANDOFF_NEXT.md` was silently rewritten** (304 lines
+  of the owner's live session notes deleted, framing changed from
+  "DONE" to "IN PROGRESS"). The handoff file never mentions touching
+  this doc; it is out of scope for this branch and the deletion was
+  clearly unintended. Restored byte-identical to `master`
+  (`git checkout master -- docs/SESSION_HANDOFF_NEXT.md`).
+
+No claimed fix turned out to be wrong, cosmetic, or incomplete in a way
+that matters in practice. One theoretical gap was examined and
+deliberately left alone: `_fit_messages_to_context` uses
+`budget = max(128, n_ctx - 64)`, which exceeds `n_ctx` for `n_ctx < 192`
+— but `n_ctx` is a fixed 4096 default, not user-configurable
+(`core/llm.py:206`, no UI path sets it), so the unreachable corner does
+not justify touching working code. Residual risk if the fit ever
+undercounts the real chat-template overhead is graceful anyway: every AI
+caller (`TranscriptViewer._run_ai_task`, bilingual path) catches all
+exceptions into a friendly result-box message, never a crash.
+
+### New bugs found and fixed (with evidence)
+
+- **Stale `clip_timestamps` comment in `core/transcriber.py` — the exact
+  doc-bug class the first pass fixed in `task.py`, but missed at its
+  source.** `transcriber.py:1482-1485` said the time range is processed
+  "via clip_timestamps", directly contradicting the NOTE 8 lines below
+  it (1491-1493) and the actual pre-slice implementation. The
+  `_clip_timestamps_arg` docstring ("faster-whisper `clip_timestamps`
+  value") said the same. Failure scenario: a future reader trusts the
+  stale comment and "simplifies" the pre-slice away by passing the value
+  as `clip_timestamps` — re-introducing the multi-hour-input hang the
+  NOTE documents. Fixed both comments to describe the marker + pre-slice
+  reality (doc-only, zero behaviour change; verified the `clip` string
+  is only ever used as a clip-present gate, never forwarded to
+  `transcribe`). No new test: comment-only change, covered by the
+  existing clip-slice tests still passing.
+
+### Final gates (this pass, after all changes)
+
+- `python -m pyright app core` — **0 errors, 0 warnings, 0 informations**.
+- Full hermetic suite `python -m pytest tests --ignore=tests/smoke` —
+  **2209 tests, 0 failures, 0 errors, 1 skipped** (junit counts; the
+  single skip is pre-existing).
