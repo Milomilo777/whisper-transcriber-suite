@@ -539,3 +539,21 @@ Verification:
 - Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
 - Hermetic suite (`tests/` minus `tests/smoke/`): 2325 passed, 14 skipped,
   0 failures.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/platform-scripts-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: full run exits 0 (all pass, 14 skipped, `tests/` minus `tests/smoke/`). One transient TclError on `test_find_replace_rejects_whitespace_only_needle` in the `-x` run — same class of tkinter init flake documented in prior merge commits; passes on full-suite rerun and is unrelated to this shell-script-only merge.
+- **Merge diff**: merge commit 3170354 is a no-op merge for the working tree — only `INTEGRATION_HANDOFF.md` was updated in the commit itself, because the branch's script changes were already present in the tree. Verified via `git diff 1874254..2eb66e8` that the branch brought in the expected changes.
+- **Adversarial review of changes**:
+  - `platform/linux/install.sh` — `trap 'rm -rf "$TMP"' EXIT` ensures the static-ffmpeg temp dir is cleaned on abort; the `else warn ... unexpected static ffmpeg archive layout` branch catches layout changes that previously failed silently; desktop `Exec="..."` is properly quoted for paths with spaces. All present and correct.
+  - `platform/linux/uninstall.sh` — early guard `[ ! -f "$REPO_ROOT/gui.py" ]` fails fast with a clear error when run from the wrong checkout. Present and correct.
+  - `platform/linux/update.sh` — `[ -e .git ]` instead of `[ -d .git ]` so git worktree checkouts (gitfile) still pull; `[ -x "$VENV/bin/python" ]` instead of `[ -d "$VENV" ]` so a broken venv dir is recreated/repaired. Both present and correct.
+  - `platform/macos/install.command` — braced `if [ -n "$p" ]; then ln -sf "$p" ...; fi` in `link_ffmpeg_into_bin` (shellcheck style); `trap 'rm -rf "$TMP"' EXIT` plus explicit `rm -rf "$TMP"` on the success path. Both present and correct.
+  - No conflict markers, no dropped lines, no duplicated logic across any of the 4 script files.
+- **Test coverage**: platform scripts are shell scripts (no Python test coverage), but all existing Python tests pass. The merge is documentation/shell-script only — no Python source or test files were modified.
+
+Result: clean. No source changes needed.
