@@ -58,7 +58,44 @@ def test_cli_serve_forwards_explicit_flags(monkeypatch):
         "port": 8765,
         "token": "secret",
         "max_upload_mb": 64,
+        "https": False,
+        "webhook_url": "",
     }
+
+
+def test_cli_serve_forwards_https_and_webhook_flags(monkeypatch):
+    captured = _install_fake_run_server(monkeypatch)
+    monkeypatch.setattr(
+        "core.config.load_config",
+        lambda: {"server_port": 8765, "server_max_upload_mb": 512},
+    )
+
+    args = gui._build_argparser().parse_args([
+        "serve",
+        "--https",
+        "--webhook", "https://example.com/hook",
+    ])
+    assert gui._cli_serve(args) == 0
+    assert captured["https"] is True
+    assert captured["webhook_url"] == "https://example.com/hook"
+
+
+def test_cli_serve_falls_back_to_https_webhook_config(monkeypatch):
+    captured = _install_fake_run_server(monkeypatch)
+    monkeypatch.setattr(
+        "core.config.load_config",
+        lambda: {
+            "server_port": 8765,
+            "server_max_upload_mb": 512,
+            "server_https_enabled": True,
+            "server_webhook_url": "https://example.com/cfg-hook",
+        },
+    )
+
+    args = gui._build_argparser().parse_args(["serve"])
+    assert gui._cli_serve(args) == 0
+    assert captured["https"] is True
+    assert captured["webhook_url"] == "https://example.com/cfg-hook"
 
 
 def test_cli_serve_falls_back_to_config_values(monkeypatch):

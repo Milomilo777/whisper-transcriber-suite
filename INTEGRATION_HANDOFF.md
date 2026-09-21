@@ -616,3 +616,55 @@ Verified the merge of `opencode/search-chapters-infra-review` into
 - **Test coverage of merged behavior**: All 2335 tests pass. The 3 merge-specific test files exercise every change with realistic edge cases (file locked by AV, corrupt JSON, operator literals in FTS5, own-group PID match). Pre-fix code would fail these tests (old `_read_segments` deleted existing rows on OSError; old `_fts_match_query` used whole-query quoting; old BM25 score was always 1.0).
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/server-hardening (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/server-hardening`): no conflicts,
+no reconciliation needed. Merge commit 9126863 on top of db854ee
+(second parent ee97fd0).
+
+Files brought in by the review branch (50f66cc + ee97fd0):
+- `core/server/httpd.py`: HTTPS/TLS serving, SSRF-guarded outgoing
+  webhooks, OpenAI-compatible transcription route.
+- `core/server/tls.py` (new): self-signed cert generation under the
+  app user-data folder.
+- `core/server/jobs.py`: webhook dispatch + hardened `is_safe_url`
+  against legacy numeric IPv4 SSRF bypass (second-pass re-check).
+- `core/server/__init__.py`: `run_server(https=..., webhook_url=...)`
+  plumbing.
+- `core/config.py`: `server_https_enabled` / `server_webhook_url` keys.
+- `app/app.py`, `app/widgets/tabs.py`, `gui.py`: `--https` / `--webhook`
+  CLI flags, config fallback, UI toggles; `_cli_serve` forwards
+  `https` + `webhook_url` to `run_server`.
+- `tests/core/test_server_openai.py`, `test_server_tls.py`,
+  `test_server_webhooks.py` (new): coverage for the above.
+- `tests/core/test_fixpack_D.py`, `test_fixpack_bl_appui.py`: extended
+  for numeric-IP SSRF cases and server start signature.
+- `whisper_project_onedir.spec`, `whisper_project_onefile.spec`:
+  packaging for new module.
+- `OPENCODE_HANDOFF_server_hardening.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git show HEAD`: intent matches the
+review-branch log; no conflict markers, no dropped lines.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2378 passed,
+  14 skipped, 0 failures (2392 collected) on the final clean run.
+  Two earlier full-suite runs each showed a single transient Tk
+  environment failure in an unrelated dialog test
+  (`test_transcript_viewer.py::test_viewer_search_filters_the_tree`
+  with `Can't find a usable init.tcl`, then
+  `test_search_dialog.py::test_dialog_builds_and_starts_indexing`
+  with `invalid command name "tcl_findLibrary"`); both pass on rerun
+  and are unrelated to this server-only merge.
+
+Post-merge integration fix (no conflict, but combined logic needed it):
+- `tests/core/test_gui_serve_args.py::test_cli_serve_forwards_explicit_flags`
+  asserted exact `captured ==` with 4 keys; the hardening branch added
+  `https` + `webhook_url` forwarding, so it failed with 2 extra items.
+  Preserved BOTH sides: updated the expected dict to include
+  `"https": False, "webhook_url": ""`, and added 2 new tests
+  (`test_cli_serve_forwards_https_and_webhook_flags`,
+  `test_cli_serve_falls_back_to_https_webhook_config`) covering
+  flag + config fallback forwarding neither side had on its own.
