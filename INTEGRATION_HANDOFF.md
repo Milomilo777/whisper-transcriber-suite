@@ -809,3 +809,51 @@ Verified the merge of `opencode/transcriber-core-review` into
 - **Test coverage of merged behavior**: 6 new test files (`test_normalize_language.py`, `test_output_indexing.py`, `test_transcriber_helpers.py`, `test_transcribe_kwargs.py`, `test_alt_backend_clip.py`, `test_fixpack_timerange_slice.py`) cover alias/multi-value language normalization, shared-index chapter sidecar, orphan-sidecar bump, alt-backend EOF guard, slice-partial cleanup, and picker-Hebrew kwarg. All pass.
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/worker-correlation-id-design (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/worker-correlation-id-design`): no
+conflicts, no reconciliation needed. Merge commit 9ba4cc9 on top of a442d32.
+
+Files brought in by the review branch (4781855 range):
+- `app/services/transcription_service.py`: new `task_correlation_id()` helper
+  (`task_id` reuse, else `h<history_id>`, else `u<uuid4>` fallback cached on
+  the task) wired into `transcribe_command()` (`task_id` add-only field) and
+  `send_control()`; event loop now handles `control_applied` (debug) and
+  `control_unmatched` (warning + `app.log`) instead of silently swallowing
+  mismatched controls.
+- `core/task.py`: new `TranscriptionTask.task_id: str = ""` correlation field
+  (empty = legacy behaviour).
+- `core/worker.py`: id-aware control routing — `_normalise_task_id`,
+  `_route_control` (id-less keeps legacy apply-to-current; id-bearing applies
+  immediately on id match, else parks bounded), `_register_task` applies
+  parked controls under the same lock that publishes the task,
+  `_expire_parked_controls` acks parked controls as `control_unmatched` after
+  `CONTROL_PARK_TIMEOUT_S` (10s), `_clear_parked_controls` on shutdown/EOF;
+  `started`/`done`/`error` events echo `task_id`; new
+  `control_applied`/`control_unmatched` events.
+- `tests/app/test_transcription_correlation.py` (new, 191 lines) and
+  `tests/core/test_worker_correlation_id.py` (new, 372 lines):
+  correlation-id agreement, control parking/delayed-apply, timeout ack,
+  capacity eviction, id-less legacy semantics.
+- `tests/core/test_transcribe_command.py`: updated for the add-only `task_id`
+  field.
+- `OPENCODE_HANDOFF_worker_correlation_id.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git diff HEAD^1 HEAD`: intent matches the
+review-branch log; no conflict markers, no dropped lines.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2436 passed, 14 skipped,
+  0 failures on the final clean run (`--tb=no --disable-warnings`). Two
+  earlier `-q` full-suite runs each showed a single transient Tk-environment
+  failure in an unrelated viewer test (`test_viewer_dict_root_explains_wrong_file`,
+  then `test_viewer_confidence_tags_applied`; `TclError: tcl_findLibrary` /
+  `tk.tcl` init noise) plus one `test_hub_setup_dialog` Tk error on the first
+  attempt; each passes in isolation and the rerun is fully green — same class
+  of tkinter state flake documented in prior merges, unrelated to this
+  worker-protocol-only merge (merge touches no viewer/dialog code).
+- Targeted merge tests
+  (`test_worker_correlation_id.py` + `test_transcription_correlation.py` +
+  `test_transcribe_command.py`): all pass.
