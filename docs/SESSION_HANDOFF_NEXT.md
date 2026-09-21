@@ -5,6 +5,79 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟡 2026-09-21 — the 18-branch merge phase is LIVE and unattended, driven by
+## an OS-level Windows Scheduled Task, NOT a Claude Code session — read this
+## before concluding the pipeline is "stalled"
+
+**Why this note exists:** a fresh Claude session on this repo checked the
+18-branch `opencode/*` merge progress, found no active Claude session, no
+`CronCreate` job, and no running `opencode` process, and reasonably (but
+wrongly) concluded the automation had stalled after branch 12. It hadn't —
+the actual driver is completely outside Claude Code's own lifecycle. This
+entry exists so the next reader doesn't repeat that investigation.
+
+**Where things stand:** the 18 `opencode/*` review branches from the
+2026-09-20 sweep (see that entry below) are being merged **one at a time
+into a dedicated integration branch**, not directly into `master`:
+
+```
+integration/opencode-merge-2026-09-21   (worktree: wt-integration-merge)
+```
+
+This deliberately deviates from an earlier stated plan to merge straight to
+`master` — merging into an intermediate branch first, reviewing later, is
+the safer choice and was confirmed correct by the owner on 2026-09-21.
+`master` itself is untouched by any of this until a human/Claude review pass
+merges the finished integration branch in.
+
+**The actual mechanism — a genuine OS-level 24/7 driver:**
+
+- Windows Scheduled Task `WhisperIntegrationMerge`, firing every 20 minutes
+  (`Register-ScheduledTask` / `-RepetitionInterval (New-TimeSpan -Minutes 20)`),
+  fully independent of any Claude Code session — it keeps running with zero
+  Claude sessions open. Check its live state any time with:
+  ```
+  Get-ScheduledTaskInfo -TaskName WhisperIntegrationMerge
+  ```
+- Each firing runs:
+  ```
+  python C:\Users\Owner\Desktop\whisper_app\integration_automation\run_step.py
+  ```
+  which does **at most one unit of work** (one branch merge OR one critique
+  pass) against a resumable `state.json`, then exits. A `run.lock` file plus
+  `-MultipleInstances IgnoreNew` on the task prevent two firings overlapping.
+- Every model call runs inside a real OS-level sandbox: a restricted Windows
+  account `WhisperOcSandbox` with Modify-only access to the integration
+  worktree + the shared `.git` store, nothing else on the machine (built
+  after a real incident where `opencode`'s `--dir` flag alone did not stop
+  its shell tool from reading arbitrary absolute paths elsewhere on disk).
+- Merge model: `opencode-go/muse-spark-1.3-contributor --variant max`.
+  Critique/double-check model: `opencode-go/mimo-v2.5 --variant max`.
+- Everything lives in
+  `C:\Users\Owner\Desktop\whisper_app\integration_automation\`:
+  `run_step.py` (orchestrator), `state.json` (live progress — check this
+  first for exact branch-by-branch status), `merge_template.md` /
+  `critique_template.md` (per-step prompts), `log.txt` (full timestamped
+  history of every step).
+
+**Progress as of this note:** 12 of 18 branches merged + double-checked
+(`app-dialogs`, `app-services`, `app-widgets`, `asr-backends`,
+`config-domain`, `entrypoint-webpage`, `llm-infra`, `misc-features`,
+`model-hub`, `model-loading`, `platform-scripts`, `search-chapters-infra`).
+Remaining, in the order the task will reach them:
+`server-hardening`, `speaker-signal-review`, `transcriber-core-review`,
+`worker-correlation-id-design`, `worker-protocol-review`, `writers-review`.
+Re-check `state.json` / `log.txt` for the current true count — this file is
+not updated live by the task itself.
+
+**Before reviewing or merging `integration/opencode-merge-2026-09-21` into
+`master`:** disable the task first so it can't touch the worktree mid-review:
+```
+Unregister-ScheduledTask -TaskName WhisperIntegrationMerge
+```
+
+---
+
 ## 🟢 2026-09-20 — GitHub issue #7 fixed+replied; a full-repo OpenCode/DeepSeek
 ## adversarial-review sweep — SESSION ENDED, everything below is DONE and documented
 
