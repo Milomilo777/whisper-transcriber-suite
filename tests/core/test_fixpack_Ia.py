@@ -351,7 +351,7 @@ def test_run_task_finally_skips_process_owned_by_a_newer_run(monkeypatch):
     # attach the fresh live process.
     svc.maybe_update_yt_dlp = lambda _t: None  # type: ignore[attr-defined]
 
-    def _media_phase(_t):
+    def _media_phase(_t, run_generation=None):
         # The new run (resume) bumped the generation past ours and owns proc.
         task._run_generation = 999  # type: ignore[attr-defined]
         task.process = new_proc
@@ -383,15 +383,134 @@ def test_run_task_finally_reaps_its_own_process(monkeypatch):
     )
     svc.maybe_update_yt_dlp = lambda _t: None  # type: ignore[attr-defined]
 
-    def _media_phase(_t):
+    def _media_phase(_t, run_generation=None):
         task.process = own_proc  # our own run owns it; no newer generation
 
     svc._media_phase = _media_phase  # type: ignore[attr-defined]
 
     DownloadService._run_task(svc, task)
-    assert task.process is None  # our own process was reaped + nulled
+    assert task.process is None  # our own process was reapped + nulled
 
 
+# ---------------------------------------------------------------------------
+# Finding 4b — superseded _run_task must not enter media/subtitle phases
+# ---------------------------------------------------------------------------
+
+
+def test_run_task_superseded_skips_media_and_subtitle(monkeypatch):
+    """If a pause+resume bumps _run_generation while _run_task is blocked
+    in maybe_update_yt_dlp, the old run must return without entering the
+    subtitle or media phases — doing so would start a duplicate download
+    concurrently with the fresh run."""
+    phases_entered: list[str] = []
+    events: list[tuple] = []
+    monkeypatch.setattr("app.services.download_service.kill_process_tree",
+                        lambda *a, **k: None)
+
+    app = _run_task_app()
+    app.download_events = types.SimpleNamespace(put=lambda e: events.append(e))
+    svc = _run_task_svc(app)
+
+    task = VideoDownloadTask(
+        url="u", folder="f", format_label="x",
+        format_info={"mode": "Audio and video",
+                     "audio": {"kind": "best_audio"},
+                     "video": {"kind": "best_video"}},
+        subtitles_enabled=True,
+    )
+
+    def _bump_generation(_t):
+        # Simulate a pause+resume: the fresh run bumps the generation.
+        task._run_generation = 999  # type: ignore[attr-defined]
+
+    svc.maybe_update_yt_dlp = _bump_generation  # type: ignore[attr-defined]
+
+    def _subtitle_phase(_t):
+        phases_entered.append("subtitle")
+
+    def _media_phase(_t, run_generation=None):
+        phases_entered.append("media")
+
+    svc._subtitle_phase = _subtitle_phase  # type: ignore[attr-defined]
+    svc._media_phase = _media_phase  # type: ignore[attr-defined]
+
+    DownloadService._run_task(svc, task)
+
+    # Neither phase was entered — the superseded run returned early.
+    assert phases_entered == []
+    # No error event posted (suppressed for superseded runs).
+    assert not any(e[0] == "error" for e in events)
+
+
+def test_run_task_superseded_after_subtitle_skips_media(monkeypatch):
+    """If _run_generation is bumped during _subtitle_phase, the old run
+    must not enter _media_phase afterward."""
+    phases_entered: list[str] = []
+    monkeypatch.setattr("app.services.download_service.kill_process_tree",
+                        lambda *a, **k: None)
+
+    app = _run_task_app()
+    svc = _run_task_svc(app)
+
+    task = VideoDownloadTask(
+        url="u", folder="f", format_label="x",
+        format_info={"mode": "Audio and video",
+                     "audio": {"kind": "best_audio"},
+                     "video": {"kind": "best_video"}},
+        subtitles_enabled=True,
+    )
+    svc.maybe_update_yt_dlp = lambda _t: None  # type: ignore[attr-defined]
+
+    def _subtitle_phase(_t):
+        # Simulate pause+resume during subtitle fetch.
+        task._run_generation = 999  # type: ignore[attr-defined]
+
+    def _media_phase(_t, run_generation=None):
+        phases_entered.append("media")
+
+    svc._subtitle_phase = _subtitle_phase  # type: ignore[attr-defined]
+    svc._media_phase = _media_phase  # type: ignore[attr-defined]
+
+    DownloadService._run_task(svc, task)
+
+    assert phases_entered == []
+
+
+def test_superseded_caption_only_run_suppresses_error(monkeypatch):
+    """A caption-only run that gets superseded during the caption fetch
+    must not post an error event — doing so would flip the fresh run's
+    row to error and release its download slot."""
+    events: list[tuple] = []
+    monkeypatch.setattr("app.services.download_service.kill_process_tree",
+                        lambda *a, **k: None)
+
+    app = _run_task_app()
+    app.download_events = types.SimpleNamespace(put=lambda e: events.append(e))
+    svc = _run_task_svc(app)
+
+    task = VideoDownloadTask(
+        url="u", folder="f", format_label="x",
+        format_info={"mode": "Audio and video",
+                     "audio": {"kind": "best_audio"},
+                     "video": {"kind": "best_video"}},
+        caption_only=True,
+    )
+    svc.maybe_update_yt_dlp = lambda _t: None  # type: ignore[attr-defined]
+
+    def _caption_phase(_t, run_generation=None):
+        # Simulate pause+resume during the caption fetch.
+        task._run_generation = 999  # type: ignore[attr-defined]
+
+    svc._run_caption_only_task = _caption_phase  # type: ignore[attr-defined]
+
+    DownloadService._run_task(svc, task)
+
+    # No error event — suppressed because the run is superseded.
+    assert not any(e[0] == "error" for e in events)
+
+
+# ---------------------------------------------------------------------------
+# Finding 5 — TOCTOU on task.process in pause/cancel: snapshot, no AttributeError
 # ---------------------------------------------------------------------------
 # Finding 5 — TOCTOU on task.process in pause/cancel: snapshot, no AttributeError
 # ---------------------------------------------------------------------------

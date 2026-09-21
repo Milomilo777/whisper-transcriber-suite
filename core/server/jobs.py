@@ -38,10 +38,12 @@ import socket
 import threading
 import time
 import urllib.parse
+import urllib.request
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
+from core import __version__
 from core.config import PROJECT_FILE_NAME, user_cache_dir
 
 logger = logging.getLogger(__name__)
@@ -82,6 +84,11 @@ class TranscribeFn(Protocol):
 # saved media path. Injected so tests don't hit the network.
 DownloadFn = Callable[[str, str], str]
 
+# A callable that delivers one outgoing webhook payload. Injected so tests
+# can capture deliveries without a network round-trip; the default is
+# :func:`post_webhook`, which applies the SSRF gate.
+WebhookFn = Callable[[str, dict[str, Any]], None]
+
 
 @dataclass
 class Job:
@@ -96,6 +103,10 @@ class Job:
     status: str = STATUS_QUEUED
     progress: int = 0
     error: str = ""
+    # Language the engine detected (falls back to the requested language).
+    # Surfaced in the OpenAI-compatible verbose_json response and in the
+    # outgoing webhook payload.
+    detected_language: str = ""
     # The media file to transcribe (set once an upload lands or a URL is
     # downloaded). Outputs are written beside it.
     media_path: str = ""
@@ -219,12 +230,18 @@ class JobManager:
         max_queued: int = 50,
         record_history: bool = True,
         jobs_root: str | None = None,
+        webhook_url: str = "",
+        webhook_sender: WebhookFn | None = None,
     ) -> None:
         self._transcribe = transcribe_fn
         self._download = download_fn
         self._max_jobs = max_jobs
         self._max_queued = max_queued
         self._record_history = record_history
+        # Outgoing completion webhook (empty = disabled). ``webhook_sender``
+        # is a test seam; the default ``post_webhook`` applies the SSRF gate.
+        self._webhook_url = (webhook_url or "").strip()
+        self._webhook_sender = webhook_sender or post_webhook
         self._jobs_root = (
             jobs_root if jobs_root is not None
             else str(user_cache_dir() / "server_jobs")
@@ -237,6 +254,16 @@ class JobManager:
         self._worker: threading.Thread | None = None
 
     # --- lifecycle -----------------------------------------------------------
+
+    @property
+    def stopped(self) -> bool:
+        """True once :meth:`stop` has been signalled.
+
+        Polled by long-lived HTTP handlers (the OpenAI-compatible route
+        waits for its job) so they don't hang on a server that is shutting
+        down with the job still queued.
+        """
+        return self._stop.is_set()
 
     def start(self) -> None:
         """Start the background worker thread (idempotent)."""
@@ -537,10 +564,13 @@ class JobManager:
                 job.outputs = self._collect_outputs(job, task)
                 job.progress = 100
                 self._set_status(job, STATUS_FINISHED)
+            job.detected_language = (
+                getattr(task, "detected_language", "") or job.language)
             self._finish_history(
                 history_db, history_id, job, time.time() - started,
-                getattr(task, "detected_language", "") or job.language,
+                job.detected_language,
             )
+            self._fire_webhook(job)
         except Exception as e:  # noqa: BLE001
             logger.exception("job %s failed", job.job_id)
             job.error = str(e)
@@ -549,6 +579,7 @@ class JobManager:
                 history_db, history_id, job, time.time() - started,
                 job.language, error=str(e),
             )
+            self._fire_webhook(job)
 
     def _write_override_file(self, job: Job) -> None:
         """Drop the job's validated options into ``work_dir/.whisperproject.json``.
@@ -655,6 +686,34 @@ class JobManager:
         if status in _TERMINAL:
             job.finished_at = time.time()
 
+    # --- outgoing webhook ----------------------------------------------------
+
+    def _fire_webhook(self, job: Job) -> None:
+        """POST a completion payload on a daemon thread (fire-and-forget).
+
+        Only ``finished`` / ``error`` fire — a cancelled job is neither a
+        success nor a failure. The send runs on its own daemon thread so a
+        slow or hanging endpoint can never stall the single job worker or
+        keep the process alive at exit. ``post_webhook`` applies the SSRF
+        gate; any transport failure is logged and swallowed.
+        """
+        if not self._webhook_url:
+            return
+        if job.status not in (STATUS_FINISHED, STATUS_ERROR):
+            return
+        payload = webhook_payload(job)
+        url = self._webhook_url
+        sender = self._webhook_sender
+
+        def _run() -> None:
+            try:
+                sender(url, payload)
+            except Exception:  # noqa: BLE001 - never affect job processing
+                logger.exception("server: webhook POST to %s failed", url)
+
+        threading.Thread(
+            target=_run, name="server-webhook", daemon=True).start()
+
     # --- history (optional, never fatal) -------------------------------------
 
     def _open_history(self, job: Job) -> tuple[Any, int | None]:
@@ -746,6 +805,65 @@ def _safe_filename(name: str) -> str:
     return cleaned
 
 
+def _parse_legacy_ipv4(host: str) -> ipaddress.IPv4Address | None:
+    """Parse ``inet_aton``-style legacy numeric IPv4 forms.
+
+    :mod:`ipaddress` only accepts the dotted-decimal form, but the stacks
+    that actually fetch a URL (libc resolvers, yt-dlp, ffmpeg, browsers)
+    historically also accept a single decimal/hex integer
+    (``2130706433`` == ``127.0.0.1``), octal parts (``0177.0.0.1``), hex
+    parts (``0x7f.0.0.1``), and short forms (``127.1``). Without this, such
+    a literal sails past the :func:`ipaddress` check below and — on a host
+    whose own ``getaddrinfo`` also rejects the form — falls through the
+    fail-open DNS path as "allowed", even though the fetch layer may still
+    interpret it as loopback. Returns the address, or ``None`` when ``host``
+    is not a numeric form at all (ordinary DNS names always land here).
+    """
+    if not host or len(host) > 64:
+        return None
+    if host.startswith(".") or host.endswith(".") or ".." in host:
+        return None
+    parts = host.split(".")
+    if len(parts) > 4:
+        return None
+    nums: list[int] = []
+    for part in parts:
+        if not part or len(part) > 18:
+            return None
+        try:
+            if part[:2].lower() == "0x":
+                digits = part[2:]
+                if not digits or any(
+                    c not in "0123456789abcdefABCDEF" for c in digits
+                ):
+                    return None
+                nums.append(int(digits, 16))
+            elif len(part) > 1 and part.startswith("0"):
+                # Leading-zero means octal to inet_aton — and "08"/"09" are
+                # simply invalid there (not decimal 8/9).
+                if any(c not in "01234567" for c in part):
+                    return None
+                nums.append(int(part, 8))
+            elif part.isascii() and part.isdigit():
+                nums.append(int(part, 10))
+            else:
+                return None
+        except ValueError:
+            return None
+    # inet_aton range rules: every part but the last must fit in one byte;
+    # the last part fills all remaining bytes (e.g. "127.1" -> 127.0.0.1).
+    width = (1,) * (len(nums) - 1) + (5 - len(nums),)
+    value = 0
+    for num, size in zip(nums, width):
+        if num >= 1 << (8 * size):
+            return None
+        value = (value << (8 * size)) | num
+    try:
+        return ipaddress.IPv4Address(value)
+    except ValueError:
+        return None
+
+
 def is_safe_url(url: str) -> bool:
     """True iff ``url`` is an http(s) URL with a host that is not an obvious
     internal / cloud-metadata target.
@@ -794,12 +912,19 @@ def is_safe_url(url: str) -> bool:
             or ip.is_multicast or ip.is_reserved
         )
 
-    # A literal-IP host: decide directly, no DNS.
+    # A literal-IP host: decide directly, no DNS. Besides strict
+    # dotted-decimal, also catch legacy inet_aton numeric forms (a fetch
+    # stack may treat "2130706433" as 127.0.0.1 even where getaddrinfo
+    # does not — see _parse_legacy_ipv4).
     literal = host.strip("[]")
     try:
         ip = ipaddress.ip_address(literal)
     except ValueError:
         ip = None
+    if ip is None:
+        legacy = _parse_legacy_ipv4(literal)
+        if legacy is not None:
+            return not _addr_blocked(legacy)
     if ip is not None:
         return not _addr_blocked(ip)
 
@@ -828,3 +953,86 @@ def _rmtree_quiet(path: str) -> None:
         shutil.rmtree(path, ignore_errors=True)
     except OSError:
         pass
+
+
+# --- outgoing webhooks -------------------------------------------------------
+
+_WEBHOOK_TIMEOUT_S = 10.0
+_WEBHOOK_MAX_RESPONSE_BYTES = 64 * 1024
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Refuse to follow redirects for webhook POSTs.
+
+    The SSRF gate validates the configured URL, not wherever a 30x points
+    next, so following a redirect could bounce a public URL into a loopback /
+    metadata address. Returning ``None`` makes urllib treat the redirect as
+    an unhandled error instead of fetching the new location.
+    """
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> None:
+        return None
+
+
+def webhook_payload(job: Job) -> dict[str, Any]:
+    """The JSON body POSTed when a job finishes (success or failure).
+
+    Pure: no I/O, so it is unit-testable. Outputs are reported by basename
+    only — the webhook consumer does not need (and should not receive) the
+    host's internal file paths.
+    """
+    return {
+        "event": ("job.finished" if job.status == STATUS_FINISHED
+                  else "job.error"),
+        "job_id": job.job_id,
+        "status": job.status,
+        "source": job.source,
+        "language": job.detected_language or job.language,
+        "formats": list(job.formats),
+        "outputs": [{"fmt": fmt, "name": os.path.basename(p)}
+                    for fmt, p in job.outputs],
+        "error": job.error,
+        "created_at": job.created_at,
+        "finished_at": job.finished_at,
+    }
+
+
+def post_webhook(
+    url: str,
+    payload: dict[str, Any],
+    *,
+    timeout: float = _WEBHOOK_TIMEOUT_S,
+) -> None:
+    """POST ``payload`` as JSON to ``url``, gated by the SSRF guard.
+
+    Reuses :func:`is_safe_url` — the same loopback / link-local /
+    cloud-metadata / reserved-address refusal the inbound URL-job path
+    applies — so a webhook cannot be pointed at the host's own loopback
+    services or the cloud instance-metadata endpoint. Redirects are not
+    followed (see :class:`_NoRedirectHandler`). An unsafe URL is logged and
+    skipped; transport errors propagate to the caller, which in production
+    is the fire-and-forget sender that logs and drops them.
+    """
+    if not is_safe_url(url):
+        logger.warning("server: refusing webhook POST to unsafe URL %s", url)
+        return
+    body = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        url, data=body, method="POST",
+        headers={
+            "Content-Type": "application/json; charset=utf-8",
+            "User-Agent": f"WhisperTranscriberSuite/{__version__}",
+        },
+    )
+    opener = urllib.request.build_opener(_NoRedirectHandler)
+    with opener.open(request, timeout=timeout) as response:
+        # Bounded read so a hostile endpoint can't stream forever.
+        response.read(_WEBHOOK_MAX_RESPONSE_BYTES)

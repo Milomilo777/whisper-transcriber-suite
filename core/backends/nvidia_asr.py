@@ -282,7 +282,7 @@ class NvidiaAsrBackend(Backend):
 
         # Ensure transformers/torch/librosa are importable; install on demand
         # (mirrors the openai-whisper / google_cloud_stt on-demand pattern).
-        if not _transformers_available():
+        if not _deps_available():
             if status_cb:
                 status_cb(
                     "Installing local NVIDIA ASR engine (transformers + torch + "
@@ -291,7 +291,17 @@ class NvidiaAsrBackend(Backend):
             try:
                 from .. import optional_deps
 
-                optional_deps.install("nvidia_asr", status_cb, cancel_event)
+                # optional_deps.install()'s own short-circuit probes only
+                # ``transformers``, so a half-present environment (transformers
+                # there, torch / librosa missing) must force the (re)install —
+                # otherwise install() returns True having done nothing and the
+                # next re-check fails. Same present-but-incomplete pattern as
+                # google_cloud_stt.load().
+                partially_installed = optional_deps.is_available("nvidia_asr")
+                optional_deps.install(
+                    "nvidia_asr", status_cb, cancel_event,
+                    force=partially_installed,
+                )
             except Exception as e:  # noqa: BLE001
                 self._error = (
                     "Could not install the local NVIDIA ASR dependencies "
@@ -300,7 +310,7 @@ class NvidiaAsrBackend(Backend):
                 if status_cb:
                     status_cb(self._error)
                 return False
-            if not _transformers_available():
+            if not _deps_available():
                 self._error = (
                     "The local NVIDIA ASR dependencies did not import after "
                     "installation. Install manually: pip install transformers "
@@ -499,12 +509,35 @@ class NvidiaAsrBackend(Backend):
 # ---------------------------------------------------------------- helpers
 
 
-def _transformers_available() -> bool:
-    """True iff the transformers package can be imported. Never raises."""
+#: The imports this backend needs at runtime, all of which come as one
+#: on-demand install (``optional_deps`` feature ``nvidia_asr``).
+_REQUIRED_MODULES = ("transformers", "torch", "librosa")
+
+
+def _deps_available() -> bool:
+    """True iff transformers + torch + librosa can all be imported.
+
+    A ``transformers`` install does NOT guarantee torch (transformers treats
+    torch as an optional backend) or librosa (needed by the Parakeet mel
+    front-end). Probing only ``transformers`` would skip the on-demand
+    install and then die with a cryptic "No module named 'torch'" at load
+    time — this way that half-present case routes into the installer. Uses
+    ``find_spec`` only (never imports the heavy modules) and is not cached,
+    so a fresh on-demand install is picked up immediately. Activates the
+    on-demand extras dir first (mirrors ``optional_deps.is_available``) so an
+    install from an earlier session is seen as present, not force-reinstalled.
+    Never raises.
+    """
     try:
+        from .. import optional_deps
+
+        optional_deps.activate()
         import importlib.util
 
-        return importlib.util.find_spec("transformers") is not None
+        return all(
+            importlib.util.find_spec(name) is not None
+            for name in _REQUIRED_MODULES
+        )
     except Exception:  # noqa: BLE001
         return False
 

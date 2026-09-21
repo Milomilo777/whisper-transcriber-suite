@@ -260,6 +260,22 @@ def test_parse_json_list_rejects_non_array():
     assert llm._parse_json_list('{"key": "value"}') == []
 
 
+def test_parse_json_list_ignores_trailing_prose_after_array():
+    """A chatty model appending a sentence AFTER a valid array used to make
+    the whole response unparseable, silently reporting "no action items"."""
+    raw = '["call Alice", "email Bob"]\n\nLet me know if you need more.'
+    assert llm._parse_json_list(raw) == ["call Alice", "email Bob"]
+
+
+def test_parse_json_list_handles_fence_with_trailing_prose():
+    raw = '```json\n["x", "y"]\n```\nDone!'
+    assert llm._parse_json_list(raw) == ["x", "y"]
+
+
+def test_parse_json_list_takes_only_the_first_array():
+    assert llm._parse_json_list('["a"] and also ["b"]') == ["a"]
+
+
 # ---------- wrapped-quote stripping (2026-08-16 real-hardware finding) ------
 # The local Qwen2.5-1.5B model sometimes wraps a short per-segment
 # translation in quote marks despite the prompt saying not to -- observed
@@ -566,3 +582,145 @@ def test_translate_segments_cancel_event_short_circuits_remaining():
     segs = [{"text": "first"}, {"text": "second"}, {"text": "third"}]
     out = llm.translate_segments(runner, segs, cancel_event=cancel)
     assert out == ["[English] first", "", ""]
+
+
+# ---------- local context-window fitting -------------------------------------
+#
+# The local runner is loaded with a fixed ``n_ctx`` (4096 by default) and
+# llama-cpp-python raises BEFORE decoding once the prompt reaches that many
+# tokens (llama_cpp 0.3.34: ``if len(prompt_tokens) >= self._n_ctx: raise
+# ValueError(...)``). The transcript viewer feeds whole transcripts to
+# summarise/action-items/ask/translate, so an un-fitted long prompt used to
+# fail with a raw "Requested tokens ... exceed context window" error.
+
+
+class _ContextAwareLlama:
+    """Fake Llama that enforces a real context window on every call."""
+
+    def __init__(self, *, n_ctx: int = 4096, chars_per_token: int = 4) -> None:
+        self.n_ctx = n_ctx
+        self._chars_per_token = chars_per_token
+        self.calls: list[tuple[str, int]] = []
+
+    def tokenize(self, data: bytes, add_bos: bool = False, special: bool = False):
+        return list(range(1 + len(data) // self._chars_per_token))
+
+    def create_chat_completion(self, *, messages, max_tokens, temperature=0.3):
+        content = str(messages[-1]["content"])
+        prompt_tokens = len(self.tokenize(content.encode("utf-8")))
+        if prompt_tokens >= self.n_ctx:
+            raise ValueError(
+                f"Requested tokens ({prompt_tokens}) exceed context window "
+                f"of {self.n_ctx}"
+            )
+        self.calls.append((content, max_tokens))
+        return {"choices": [{"message": {"content": "summary ok"}}]}
+
+
+class _NoTokenizeLlama:
+    """Fake Llama without a ``tokenize`` method — exercises the char fallback."""
+
+    def __init__(self, *, n_ctx: int = 4096) -> None:
+        self.n_ctx = n_ctx
+        self.calls: list[tuple[str, int]] = []
+
+    def create_chat_completion(self, *, messages, max_tokens, temperature=0.3):
+        content = str(messages[-1]["content"])
+        if len(content) // 4 >= self.n_ctx:
+            raise ValueError("Requested tokens exceed context window")
+        self.calls.append((content, max_tokens))
+        return {"choices": [{"message": {"content": "ok"}}]}
+
+
+def _runner_with_fake_llama(monkeypatch, tmp_path, fake):
+    monkeypatch.setattr(llm, "runtime_available", lambda: True)
+    fake_module = types.ModuleType("llama_cpp")
+    fake_module.Llama = lambda **_kw: fake  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "llama_cpp", fake_module)
+    model_file = tmp_path / "m.gguf"
+    model_file.write_bytes(b"\0" * 100)
+    return llm.LLMRunner(llm.LLMConfig(model_path=str(model_file), n_ctx=fake.n_ctx))
+
+
+def test_long_transcript_summarise_is_fitted_to_the_context_window(
+    monkeypatch, tmp_path
+):
+    fake = _ContextAwareLlama()
+    runner = _runner_with_fake_llama(monkeypatch, tmp_path, fake)
+    assert runner.summarise("word " * 6000) == "summary ok"
+    content, _max_tokens = fake.calls[-1]
+    assert "truncated" in content
+    assert len(content) < 30000
+
+
+def test_long_prompt_fits_even_when_every_char_is_a_token(monkeypatch, tmp_path):
+    """CJK-style tokenization (1 token/char) must also fit — the char-ratio
+    estimate alone would still overflow the window."""
+    fake = _ContextAwareLlama(chars_per_token=1)
+    runner = _runner_with_fake_llama(monkeypatch, tmp_path, fake)
+    assert runner.summarise("字" * 8000) == "summary ok"
+    content, _max_tokens = fake.calls[-1]
+    assert "truncated" in content
+    assert len(content) < 8000
+
+
+def test_short_transcript_is_not_truncated(monkeypatch, tmp_path):
+    fake = _ContextAwareLlama()
+    runner = _runner_with_fake_llama(monkeypatch, tmp_path, fake)
+    text = "a short transcript about widgets"
+    runner.summarise(text)
+    content, max_tokens = fake.calls[-1]
+    assert text in content
+    assert "truncated" not in content
+    assert max_tokens == 600
+
+
+def test_ask_keeps_the_question_when_the_transcript_is_truncated(
+    monkeypatch, tmp_path
+):
+    fake = _ContextAwareLlama()
+    runner = _runner_with_fake_llama(monkeypatch, tmp_path, fake)
+    runner.ask("word " * 6000, "What is the widget count?")
+    content, _max_tokens = fake.calls[-1]
+    assert "truncated" in content
+    assert "What is the widget count?" in content
+
+
+def test_long_translate_fits_and_keeps_answer_room(monkeypatch, tmp_path):
+    fake = _ContextAwareLlama()
+    runner = _runner_with_fake_llama(monkeypatch, tmp_path, fake)
+    runner.translate("word " * 4000, target_language="French")
+    content, max_tokens = fake.calls[-1]
+    assert "truncated" in content
+    assert max_tokens >= 1
+
+
+def test_fitting_falls_back_when_the_model_has_no_tokenizer(monkeypatch, tmp_path):
+    fake = _NoTokenizeLlama()
+    runner = _runner_with_fake_llama(monkeypatch, tmp_path, fake)
+    assert runner.summarise("x" * 30000) == "ok"
+    content, _max_tokens = fake.calls[-1]
+    assert "truncated" in content
+    assert len(content) < 30000
+
+
+def test_fit_messages_to_context_leaves_a_short_prompt_untouched():
+    messages = [{"role": "user", "content": "hello"}]
+    fitted, max_tokens = llm._fit_messages_to_context(
+        messages, 100, 4096, lambda text: max(1, len(text) // 4)
+    )
+    assert fitted == messages
+    assert max_tokens == 100
+
+
+def test_truncate_middle_keeps_head_and_tail():
+    text = "HEAD-" + "x" * 100 + "-TAIL"
+    out = llm._truncate_middle(text, 60)
+    assert len(out) <= 60
+    assert out.startswith("HEAD-")
+    assert out.endswith("-TAIL")
+    assert "truncated" in out
+
+
+def test_truncate_middle_is_a_noop_when_it_fits():
+    assert llm._truncate_middle("short", 99) == "short"

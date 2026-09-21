@@ -71,50 +71,67 @@ def insert_log_line(txt: tk.Text, msg: str) -> None:
     txt.see("end")
 
 
+def _copy_selection(txt: tk.Text) -> None:
+    # <<Copy>> is unreliable on a disabled Text widget on some platforms;
+    # flip to normal for the copy, then restore whatever state it had.
+    try:
+        state = str(txt.cget("state"))
+        txt.configure(state="normal")
+        txt.event_generate("<<Copy>>")
+        txt.configure(state=state)  # type: ignore[arg-type]
+    except tk.TclError:
+        pass
+
+
+def _copy_all(txt: tk.Text) -> None:
+    try:
+        data = txt.get("1.0", "end-1c")
+        if data:
+            txt.clipboard_clear()
+            txt.clipboard_append(data)
+    except tk.TclError:
+        pass
+
+
+def _clear(txt: tk.Text) -> None:
+    # Flip to normal to clear, then restore the PREVIOUS state. Skipping
+    # the restore (or restoring the wrong value) leaves the log
+    # permanently editable -- the documented past bug this guards.
+    try:
+        state = str(txt.cget("state"))
+        txt.configure(state="normal")
+        txt.delete("1.0", "end")
+        txt.configure(state=state)  # type: ignore[arg-type]
+    except tk.TclError:
+        pass
+
+
+def _popup_console_menu(menu: tk.Menu, event: tk.Event) -> str:
+    """Post *menu* at the event's pointer position. Returns "break" so the
+    app-wide Text menu does not also open."""
+    try:
+        menu.tk_popup(event.x_root, event.y_root)
+    finally:
+        try:
+            menu.grab_release()
+        except tk.TclError:
+            pass
+    return "break"
+
+
 def _attach_context_menu(txt: tk.Text) -> None:
-    def _copy_selection() -> None:
-        # Same as _clear below: <<Copy>> is unreliable on a disabled Text
-        # widget on some platforms, and the log sits in state="disabled"
-        # between writes -- flip to normal for the copy, then restore.
-        try:
-            state = str(txt.cget("state"))
-            txt.configure(state="normal")
-            txt.event_generate("<<Copy>>")
-            txt.configure(state=state)  # type: ignore[arg-type]
-        except tk.TclError:
-            pass
-
-    def _copy_all() -> None:
-        try:
-            data = txt.get("1.0", "end-1c")
-            if data:
-                txt.clipboard_clear()
-                txt.clipboard_append(data)
-        except tk.TclError:
-            pass
-
-    def _clear() -> None:
-        # The log is toggled state="disabled" between writes; flip to
-        # normal to clear, then restore whatever state it was in.
-        try:
-            state = str(txt.cget("state"))
-            txt.configure(state="normal")
-            txt.delete("1.0", "end")
-            txt.configure(state=state)  # type: ignore[arg-type]
-        except tk.TclError:
-            pass
+    # ONE Menu per console for the widget's lifetime. Building a fresh
+    # Menu inside the click handler leaked a Tk widget per right-click:
+    # Tk only destroys it with its parent, so a long session slowly
+    # accumulated orphaned menu widgets under the log.
+    menu = tk.Menu(txt, tearoff=0)
+    menu.add_command(label="Copy", command=lambda: _copy_selection(txt))
+    menu.add_command(label="Copy all", command=lambda: _copy_all(txt))
+    menu.add_separator()
+    menu.add_command(label="Clear", command=lambda: _clear(txt))
 
     def _popup(event: tk.Event) -> str:
-        menu = tk.Menu(txt, tearoff=0)
-        menu.add_command(label="Copy", command=_copy_selection)
-        menu.add_command(label="Copy all", command=_copy_all)
-        menu.add_separator()
-        menu.add_command(label="Clear", command=_clear)
-        try:
-            menu.tk_popup(event.x_root, event.y_root)
-        finally:
-            menu.grab_release()
-        return "break"
+        return _popup_console_menu(menu, event)
 
     txt.bind("<Button-3>", _popup)
     if sys.platform == "darwin":

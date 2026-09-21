@@ -114,10 +114,12 @@ CHUNK_EXT = ".flac"
 #: realistic input. (Mirrors google_cloud_stt.MAX_UNKNOWN_DURATION_CHUNKS.)
 MAX_UNKNOWN_DURATION_CHUNKS = 120
 
-#: A FLAC slice that starts past the real end of file decodes to ~no audio,
-#: leaving only the container header (well under this). Used by the
-#: unknown-duration path to detect EOF and stop early. 1 s of 16 kHz mono FLAC
-#: is several KB, so this never trips on a real (non-empty) chunk.
+#: A cheap lower bound for "obviously no audio in this slice". NOTE: this is
+#: NOT the reliable past-EOF test — ffmpeg writes a complete FLAC container
+#: (streaminfo + VORBIS_COMMENT + padding, measured ~8 KiB) even for a slice
+#: that starts past the end of the file, which is well ABOVE this value. The
+#: byte check remains as a fast first cut; ``flac_slice_has_audio`` (an
+#: ffprobe duration probe) is what actually detects EOF.
 _EMPTY_FLAC_BYTES = 4096
 
 #: The transcription instruction. Asks for strict verbatim output with
@@ -633,13 +635,19 @@ class CloudSttBackend(Backend):
             )
             try:
                 # Unknown-length path: once a slice starting past EOF comes
-                # back essentially empty (just a FLAC header, no audio), we
-                # have reached the end of the file — stop instead of firing
-                # the rest of the bounded chunk plan at Google for nothing.
+                # back with no audio, we have reached the end of the file —
+                # stop instead of firing the rest of the bounded chunk plan
+                # at Google for nothing. The byte-size test is only a cheap
+                # first cut: ffmpeg still writes a complete FLAC container
+                # (~8 KiB) for a past-EOF slice, so the reliable signal is
+                # the ffprobe check in flac_slice_has_audio.
                 if (
                     duration_unknown
                     and idx > 0
-                    and os.path.getsize(flac_path) < _EMPTY_FLAC_BYTES
+                    and (
+                        os.path.getsize(flac_path) < _EMPTY_FLAC_BYTES
+                        or not flac_slice_has_audio(flac_path)
+                    )
                 ):
                     if log_cb:
                         log_cb(
@@ -764,7 +772,7 @@ class CloudSttBackend(Backend):
         )
         try:
             with urllib.request.urlopen(up_req, timeout=300) as resp:  # noqa: S310
-                meta = json.loads(resp.read().decode("utf-8"))
+                meta = _json_body(resp)
         except urllib.error.HTTPError as e:
             raise RuntimeError(classify_http_error(e.code, _read_err_body(e))) from e
         except urllib.error.URLError as e:
@@ -805,14 +813,14 @@ class CloudSttBackend(Backend):
             )
             try:
                 with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
-                    meta = json.loads(resp.read().decode("utf-8"))
+                    meta = _json_body(resp)
             except urllib.error.HTTPError as e:
                 raise RuntimeError(classify_http_error(e.code, _read_err_body(e))) from e
             except urllib.error.URLError as e:
                 raise RuntimeError(
                     f"Could not check uploaded-file status: {getattr(e, 'reason', e)}"
                 ) from e
-            state = meta.get("state") if isinstance(meta, dict) else None
+            state = meta.get("state")
             if state == "ACTIVE":
                 return
             if state == "FAILED":
@@ -862,7 +870,7 @@ class CloudSttBackend(Backend):
         )
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
-                return json.loads(resp.read().decode("utf-8"))
+                return _json_body(resp)
         except urllib.error.HTTPError as e:
             raise RuntimeError(classify_http_error(e.code, _read_err_body(e))) from e
         except urllib.error.URLError as e:
@@ -880,6 +888,91 @@ def _read_err_body(e: urllib.error.HTTPError) -> str:
         return e.read().decode("utf-8", "replace")
     except Exception:  # noqa: BLE001
         return ""
+
+
+def _json_body(resp: Any) -> dict[str, Any]:
+    """Read + decode a JSON response body into a dict.
+
+    Converts a truncated read (``IncompleteRead``) or a non-JSON 200 body
+    (typically a captive portal / corporate proxy answering with HTML) into
+    a clear RuntimeError instead of a raw
+    ``http.client.IncompleteRead`` / ``json.JSONDecodeError`` traceback —
+    every other failure on these requests is already classified into a
+    user-facing message.
+    """
+    import http.client
+
+    try:
+        raw = resp.read()
+    except http.client.HTTPException as e:
+        raise RuntimeError(
+            "Google closed the connection before sending a complete "
+            "response. Check your network or proxy and try again."
+        ) from e
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as e:
+        raise RuntimeError(
+            "Google returned a response that was not valid JSON (often a "
+            "captive portal or proxy intercepting the connection). Check "
+            "your network or proxy and try again."
+        ) from e
+    if not isinstance(data, dict):
+        raise RuntimeError("Google returned an unexpected JSON response.")
+    return data
+
+
+def flac_slice_has_audio(path: str) -> bool:
+    """True when an encoded chunk FLAC actually contains audio.
+
+    Used by the unknown-duration path in this module (and in
+    ``google_cloud_stt``) to detect a slice that starts past the end of the
+    source file. A byte-size check alone cannot: ffmpeg still writes a
+    complete FLAC container (streaminfo + VORBIS_COMMENT + padding —
+    measured ~8 KiB for this module's encode command) with zero audio
+    frames. ffprobe reports ``N/A`` duration for such a container, which is
+    the signal used here.
+
+    Conservative by design: returns True whenever the probe cannot be
+    trusted (ffprobe missing / failed / unparseable output that is not the
+    ``N/A`` empty-container marker), so an unknown-length run is only ever
+    stopped early on a POSITIVE empty result — a probe failure must never
+    truncate a multi-chunk transcript.
+    """
+    from ..paths import bundled_binary
+
+    kwargs: dict[str, Any] = {
+        "capture_output": True,
+        "text": True,
+        "encoding": "utf-8",
+        "errors": "replace",
+        # A wedged ffprobe on a pathological file must not hang the loop
+        # forever (mirrors core.transcriber.get_duration).
+        "timeout": 30,
+    }
+    if os.name == "nt":
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    try:
+        proc = subprocess.run(
+            [bundled_binary("ffprobe"), "-v", "error",
+             "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", path],
+            **kwargs,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return True
+    raw = (proc.stdout or "").strip()
+    if proc.returncode != 0 or not raw:
+        return True
+    if raw.upper().startswith("N/A"):
+        # "N/A" — a valid container with no audio frames (past EOF).
+        return False
+    try:
+        return float(raw) > 0.0
+    except ValueError:
+        # Some other unexpected non-numeric output: treat as "has audio"
+        # rather than risk truncating a real chunk's transcript.
+        return True
 
 
 def _encode_chunk_flac(

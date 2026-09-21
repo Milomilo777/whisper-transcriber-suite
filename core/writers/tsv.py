@@ -19,7 +19,9 @@ def _ms(value: object) -> int:
     """
     try:
         f = float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # OverflowError: an integer too large for a float (a hand-edited
+        # JSON can carry one) raises here exactly like NaN/Inf do.
         return 0
     if not math.isfinite(f) or f < 0:
         return 0

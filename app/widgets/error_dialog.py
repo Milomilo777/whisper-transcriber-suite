@@ -18,7 +18,40 @@ def show_error(
     top.title(title)
     top.transient(parent)
     top.resizable(False, False)
-    top.protocol("WM_DELETE_WINDOW", top.destroy)
+
+    # Tk keeps a single grab per display and does not stack them: the
+    # grab_set() below silently replaces whoever holds it. Destroying this
+    # dialog does NOT hand the grab back, so an error shown while a modal
+    # dialog is open (Advanced settings, the hardware wizard, ...) would
+    # leave that dialog non-modal once dismissed. Remember the current
+    # grab holder -- which is NOT always ``parent`` (background paths pass
+    # the App root even while a dialog is up) -- and restore it on close.
+    previous_grab: tk.Misc | None = None
+    try:
+        previous_grab = parent.grab_current()
+    except tk.TclError:
+        previous_grab = None
+    if not isinstance(previous_grab, (tk.Tk, tk.Toplevel)):
+        # Only a window can meaningfully be modal; a popup menu's internal
+        # grab (or anything else) must not be re-grabbed later.
+        previous_grab = None
+
+    def _close() -> None:
+        try:
+            top.destroy()
+        except tk.TclError:
+            pass
+        if previous_grab is not None:
+            # Destroying the dialog above released its grab. Take the old
+            # one back only when nothing newer holds it -- never steal a
+            # grab from a dialog opened on top of this one.
+            try:
+                if previous_grab.winfo_exists() and previous_grab.grab_current() is None:
+                    previous_grab.grab_set()
+            except tk.TclError:
+                pass
+
+    top.protocol("WM_DELETE_WINDOW", _close)
 
     body = ttk.Frame(top, padding=16)
     body.pack(fill="both", expand=True)
@@ -84,13 +117,13 @@ def show_error(
             side="left", padx=(8, 0)
         )
 
-    ok_btn = ttk.Button(body, text="OK", command=top.destroy)
+    ok_btn = ttk.Button(body, text="OK", command=_close)
     ok_btn.pack(anchor="e", pady=(14, 0))
 
     # Same keyboard contract as a native messagebox: Enter/Esc dismiss,
     # and focus starts on OK so a plain Enter works immediately.
-    top.bind("<Return>", lambda _e: top.destroy())
-    top.bind("<Escape>", lambda _e: top.destroy())
+    top.bind("<Return>", lambda _e: _close())
+    top.bind("<Escape>", lambda _e: _close())
 
     top.update_idletasks()
     try:

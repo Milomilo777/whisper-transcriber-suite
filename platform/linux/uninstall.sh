@@ -5,6 +5,10 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+if [ ! -f "$REPO_ROOT/gui.py" ]; then
+  echo "error: gui.py not found at $REPO_ROOT — run this script from inside the repo checkout." >&2
+  exit 1
+fi
 
 rm -f "$HOME/.local/bin/whisper-transcriber-suite" "$HOME/.local/bin/whisper-transcribe"
 rm -f "$HOME/.local/share/applications/whisper-transcriber-suite.desktop"

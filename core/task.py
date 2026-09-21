@@ -25,6 +25,14 @@ class TranscriptionTask:
         self.language: str | None = None
         # Phase 3a — primary key in core.history.HistoryDB.transcriptions
         self.history_id: int = 0
+        # Correlation id for the JSON worker protocol (add-only field).
+        # The parent stamps the same value on the ``transcribe`` command and
+        # on every later cancel/pause/resume for this task, so the worker can
+        # attribute a control to exactly one task instead of guessing "the
+        # current one". Empty = no id (legacy behaviour). See
+        # app.services.transcription_service.task_correlation_id and the
+        # design notes in core/worker.py.
+        self.task_id: str = ""
         # Resume-from-cancellation: when True the worker dispatches
         # ``resume_transcription`` instead of ``transcribe`` so the
         # partial checkpoint on disk is reused. Falls back to a fresh
@@ -39,8 +47,10 @@ class TranscriptionTask:
         self.source_download: Any = None
         # Optional transcription time-slice (Transcribe-tab time range).
         # Wall-clock seconds into the source; both None = the whole file.
-        # Fed to faster-whisper as clip_timestamps so only this span is
-        # processed; segment timestamps stay on the original timeline.
+        # The span is pre-sliced to a temp WAV via ffmpeg and the results
+        # are shifted back onto the original timeline — deliberately NOT
+        # passed to faster-whisper as clip_timestamps, which decodes the
+        # whole file and hung on multi-hour input (see core/transcriber.py).
         self.clip_start: float | None = None
         self.clip_end: float | None = None
         # Output formats for THIS task (srt/json/docx/pdf/...). Set at

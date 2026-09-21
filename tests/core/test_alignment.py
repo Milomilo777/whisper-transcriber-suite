@@ -115,6 +115,60 @@ def test_refine_splices_words_back(alignment_module, monkeypatch, tmp_path):
     assert words[1]["start"] == 0.5
 
 
+def test_refine_keeps_index_alignment_with_non_string_text(alignment_module, monkeypatch, tmp_path):
+    """A segment with missing text must stay in the WhisperResult
+    payload. The splice-back is index-based, so the old filter that
+    dropped non-string-text segments shifted every later segment's
+    words onto the wrong segment."""
+    monkeypatch.setattr(alignment_module, "is_available", lambda: True)
+
+    class _FakeWord:
+        def __init__(self, start, end, word):
+            self.start, self.end, self.word, self.probability = start, end, word, 0.9
+
+    class _FakeSeg:
+        def __init__(self, words):
+            self.words = words
+
+    class _FakeResult:
+        def __init__(self, payload=None, segments=None, language=None):
+            if payload is not None:
+                self._payload = payload
+                self.language = payload.get("language", "en")
+                self.segments = []
+            else:
+                self.segments = segments or []
+                self.language = language or "en"
+
+    class _FakeModel:
+        def align(self, _audio, coarse_result, **_kw):
+            # Mimic stable-ts: one refined segment per payload segment,
+            # with no words for an empty-text segment.
+            out = []
+            for raw in coarse_result._payload["segments"]:
+                if raw["text"].strip():
+                    out.append(_FakeSeg([_FakeWord(raw["start"], raw["end"], "hello")]))
+                else:
+                    out.append(_FakeSeg([]))
+            return _FakeResult(segments=out)
+
+    fake_sw = types.ModuleType("stable_whisper")
+    fake_sw.WhisperResult = _FakeResult  # type: ignore[attr-defined]
+    fake_sw.load_model = lambda _name: _FakeModel()  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "stable_whisper", fake_sw)
+
+    audio = tmp_path / "a.wav"
+    audio.write_bytes(b"x")
+    segs = [
+        {"start": 0.0, "end": 1.0, "text": None},
+        {"start": 1.0, "end": 2.0, "text": "hello"},
+    ]
+    ok = alignment_module.refine_word_timestamps_in_place(str(audio), segs)
+    assert ok is True
+    assert "words" not in segs[0]
+    assert segs[1]["words"][0]["word"] == "hello"
+
+
 def test_refine_handles_align_returning_none(alignment_module, monkeypatch, tmp_path):
     """stable-ts returns None when alignment fails internally; the
     wrapper must not AttributeError on .segments."""

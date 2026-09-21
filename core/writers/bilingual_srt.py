@@ -12,7 +12,13 @@ pass, from the transcript viewer's AI panel
 """
 from __future__ import annotations
 
-from .base import escape_cue_separator, fmt_srt_time, normalize_text, speaker_prefix
+from .base import (
+    coerce_seconds,
+    escape_cue_separator,
+    fmt_srt_time,
+    normalize_text,
+    speaker_prefix,
+)
 
 
 def write(
@@ -37,8 +43,13 @@ def write(
     for i, (seg, translated) in enumerate(zip(segments, translations), 1):
         original = escape_cue_separator(normalize_text(seg.get("text", "")))
         prefix = speaker_prefix(seg)
+        # The viewer loads hand-edited JSON verbatim and passes it here;
+        # a malformed timestamp must clamp rather than abort the export
+        # (a missing "end" falls back to the start).
+        start = coerce_seconds(seg.get("start"))
+        end = coerce_seconds(seg.get("end"), start)
         out.append(f"{i}")
-        out.append(f"{fmt_srt_time(float(seg['start']))} --> {fmt_srt_time(float(seg['end']))}")
+        out.append(f"{fmt_srt_time(start)} --> {fmt_srt_time(end)}")
         out.append(prefix + original)
         translated_line = escape_cue_separator(normalize_text(translated or ""))
         if translated_line:

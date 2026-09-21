@@ -189,3 +189,35 @@ def test_scope_no_project_file_is_noop(transcriber, tmp_path, monkeypatch):
         # leaking in from a stray project file).
         assert transcriber.config["hotwords"] == "kept"
     assert transcriber.config["hotwords"] == before["hotwords"]
+
+
+def test_scope_null_override_does_not_break_runtime_coercions(
+    transcriber, tmp_path, monkeypatch,
+):
+    """A ``null`` in a project file must not reach the int()/float()
+    coercions at the tail of ``_apply_runtime_overrides``.
+
+    Regression: ``_validate_overrides`` let ``None`` through for known keys,
+    so a folder whose ``.whisperproject.json`` had
+    ``{"diarization_num_speakers": null}`` raised TypeError inside the scope
+    — every transcription under that folder failed until the file was fixed
+    by hand."""
+    _write_project_file(
+        tmp_path,
+        {"diarization_num_speakers": None, "diarization_cluster_threshold": None},
+    )
+    monkeypatch.setattr(transcriber, "load_config", lambda **kw: {})
+    monkeypatch.setattr(
+        transcriber, "config",
+        {
+            "diarization_enabled": False,
+            "diarization_num_speakers": -1,
+            "diarization_cluster_threshold": 0.5,
+            "alignment": "none",
+        },
+    )
+    task = _StubTask(str(tmp_path / "show.mp4"))
+
+    with transcriber._runtime_overrides_scope(task):
+        assert transcriber.config["diarization_num_speakers"] == -1
+        assert transcriber.config["diarization_cluster_threshold"] == 0.5

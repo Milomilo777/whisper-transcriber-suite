@@ -1,6 +1,8 @@
 """Language tables shared across the UI and download services."""
 from __future__ import annotations
 
+import re
+
 # Display name → comma-separated yt-dlp subtitle language codes.
 # Order: Automatic, English, then alphabetical by display name. Multi-variant
 # entries collapse the codes YouTube actually uses (e.g. zh-Hans + zh-CN).
@@ -113,14 +115,30 @@ SUBTITLE_LANGUAGES: list[tuple[str, str]] = [
 ]
 
 
+# yt-dlp interprets every ``--sub-langs`` entry as a regular expression (its
+# own docs example is ``--sub-langs "en.*,ja"``), which is why this app used
+# to ship ``en.*`` and download seven translated caption files instead of one
+# (see docs/auto-subtitles-feature.md). The table above only ever wants an
+# EXACT code, so any regex metacharacter is escaped before the value reaches
+# yt-dlp. This matters because the code can come from video metadata:
+# ``app.services.format_service`` copies yt-dlp's ``language`` field straight
+# out of the site's JSON, so a crafted/odd value like ``.*`` would match every
+# caption track while a malformed one like ``en(`` is not a valid pattern at
+# all. Hyphen is deliberately NOT escaped — it is a literal outside a
+# character class, and every real code (``zh-Hans``, ``pt-BR``) must pass
+# through unchanged.
+_SUB_LANG_REGEX_METACHARS = re.compile(r"([.^$*+?{}\[\]\\|()])")
+
+
 def subtitle_lang_args(lang: str) -> str:
     """Convert a comma-separated lang spec to the form yt-dlp's ``--sub-langs`` accepts.
 
-    Trims whitespace and drops empty entries. Returns the empty string if
-    nothing is left.
+    Trims whitespace, drops empty entries, and escapes regex metacharacters
+    so yt-dlp matches each code literally instead of treating it as a
+    pattern. Returns the empty string if nothing is left.
     """
     codes = [c.strip() for c in (lang or "").split(",") if c.strip()]
-    return ",".join(codes)
+    return ",".join(_SUB_LANG_REGEX_METACHARS.sub(r"\\\1", c) for c in codes)
 
 
 def resolve_caption_kind(

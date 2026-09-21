@@ -293,3 +293,45 @@ def test_convert_file_accepts_preparsed_segments(tmp_path):
     out = convert.convert_file(str(p), "txt", segments=override)
     assert "Overridden text" in open(out, encoding="utf-8").read()
     assert "Hello world" not in open(out, encoding="utf-8").read()
+
+
+# --- hand-edited JSON malformed fields ---------------------------------------
+
+
+def test_parse_json_coerces_non_string_text(tmp_path):
+    # (value or "").strip() used to raise AttributeError (not ConvertError)
+    # on a numeric text field, crashing the whole conversion.
+    p = tmp_path / "numeric_text.json"
+    p.write_text('[{"start": 0.0, "end": 1.0, "text": 42}]', encoding="utf-8")
+    segs = convert.parse_to_segments(str(p))
+    assert segs[0]["text"] == "42"
+
+
+def test_parse_json_tolerates_huge_integer_timestamps(tmp_path):
+    # float(10**400) raises OverflowError, which the old handler did not
+    # catch.
+    p = tmp_path / "huge.json"
+    p.write_text(
+        '[{"start": %d, "end": 1.0, "text": "hi"}]' % (10 ** 400),
+        encoding="utf-8",
+    )
+    segs = convert.parse_to_segments(str(p))
+    assert segs[0]["start"] == 0.0
+    assert segs[0]["end"] == 1.0
+
+
+def test_convert_file_survives_hand_edited_json(tmp_path):
+    payload = [
+        {"start": None, "end": None, "text": "null times"},
+        {"start": "abc", "end": "xyz", "text": "garbage times"},
+        {"start": 0.5, "end": 1.0, "text": 42},
+        {"start": 1.0, "end": 2.0, "text": "kept"},
+    ]
+    src = tmp_path / "hand.json"
+    src.write_text(json.dumps(payload), encoding="utf-8")
+    out = convert.convert_file(str(src), "srt")
+    body = open(out, encoding="utf-8").read()
+    assert "kept" in body
+    assert "42" in body
+    # Every segment made it into the output (nothing was skipped).
+    assert len(convert.parse_to_segments(out)) == len(payload)

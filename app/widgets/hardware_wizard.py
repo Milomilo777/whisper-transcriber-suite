@@ -61,6 +61,15 @@ class HardwareWizard(tk.Toplevel):
         self.app = app
         self.title("Hardware autodetect")
         self.transient(master)
+        # Tk keeps a single grab per display and does not stack them, so
+        # our grab_set() silently replaces the master's (Advanced settings
+        # launches this wizard and owns the grab at that point). Destroying
+        # this window does not hand the grab back, which would leave the
+        # master non-modal; remember it so _on_close can restore it.
+        try:
+            self._master_had_grab = master.grab_current() is master
+        except tk.TclError:
+            self._master_had_grab = False
         self.grab_set()
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -447,7 +456,17 @@ class HardwareWizard(tk.Toplevel):
         }
         if os.name == "nt":
             kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-        subprocess.run(cmd, check=True, **kwargs)  # type: ignore[arg-type]
+        try:
+            subprocess.run(cmd, check=True, **kwargs)  # type: ignore[arg-type]
+        except Exception:
+            # mkstemp already created the output file; a failed ffmpeg run
+            # (bundled binary missing, bad args) would otherwise leave it
+            # behind on every benchmark attempt.
+            try:
+                os.unlink(out_path)
+            except OSError:
+                pass
+            raise
         return out_path
 
     # ---------- save / close -------------------------------------------
@@ -479,6 +498,14 @@ class HardwareWizard(tk.Toplevel):
             self.grab_release()
         except tk.TclError:
             pass
+        # Hand the master's modal grab back (see __init__), but only when
+        # nothing newer holds it -- never steal a grab from another dialog.
+        if self._master_had_grab:
+            try:
+                if self.master.winfo_exists() and self.master.grab_current() is None:
+                    self.master.grab_set()
+            except tk.TclError:
+                pass
         self.destroy()
 
 

@@ -58,6 +58,29 @@ def default_db_path() -> Path:
     return user_data_dir() / "history.db"
 
 
+def _is_transient_lock_error(exc: sqlite3.Error) -> bool:
+    """True when ``exc`` is lock contention, NOT on-disk corruption.
+
+    ``SQLITE_BUSY`` / ``SQLITE_LOCKED`` only mean another connection (the
+    GUI plus a second app instance, or a worker) currently holds the DB;
+    the file itself can be perfectly healthy. Treating a lock as
+    corruption would rename a good ``history.db`` to ``.corrupt`` and
+    recreate it empty — silently losing the user's entire history
+    because two processes overlapped for a moment. The error *name* is
+    authoritative (``sqlite3`` attaches it on 3.11+); the message check
+    is a fallback for manually-constructed errors.
+    """
+    name = str(getattr(exc, "sqlite_errorname", "") or "")
+    if name.startswith(("SQLITE_BUSY", "SQLITE_LOCKED")):
+        return True
+    message = str(exc).lower()
+    return (
+        "database is locked" in message
+        or "database table is locked" in message
+        or "database schema is locked" in message
+    )
+
+
 class HistoryDB:
     def __init__(self, path: str | Path | None = None) -> None:
         self.path: Path = Path(path) if path else default_db_path()
@@ -134,10 +157,21 @@ class HistoryDB:
         returning a non-``ok`` row — that is ALSO corruption and must trigger
         the same recover-aside, otherwise __init__ would fall through to
         ``executescript(SCHEMA)`` and crash on the malformed file at launch.
+
+        A LOCK error is deliberately NOT corruption (see
+        :func:`_is_transient_lock_error`): another connection merely holding
+        the DB must never cost the user their history.
         """
         try:
             row = self._conn.execute("PRAGMA integrity_check").fetchone()
         except sqlite3.Error as e:
+            if _is_transient_lock_error(e):
+                logger.warning(
+                    "history.db is locked by another connection (%s); "
+                    "skipping this open's integrity_check instead of "
+                    "treating a healthy DB as corrupt.", e,
+                )
+                return
             logger.error(
                 "history.db integrity_check raised (%s); treating as "
                 "corruption and recovering.", e,

@@ -234,6 +234,164 @@ def test_should_inline_threshold():
     assert cs._should_inline(cs.INLINE_LIMIT_BYTES + 1) is False
 
 
+# ---------------------------------------------------------------- flac probe
+
+
+class _FakeResp:
+    """Minimal context-manager stand-in for an http.client response."""
+
+    def __init__(self, body: bytes = b"", headers: dict | None = None):
+        self._body = body
+        self.headers = headers or {}
+
+    def __enter__(self) -> "_FakeResp":
+        return self
+
+    def __exit__(self, *exc: object) -> bool:
+        return False
+
+    def read(self, n: int = -1) -> bytes:
+        return self._body
+
+
+def _probe_result(monkeypatch, *, returncode=0, stdout="", raises=None):
+    def fake_run(cmd, **kwargs):  # noqa: ANN001
+        if raises is not None:
+            raise raises
+        import types as _t
+        return _t.SimpleNamespace(returncode=returncode, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(cs.subprocess, "run", fake_run)
+
+
+def test_flac_slice_has_audio_true_for_real_duration(monkeypatch):
+    _probe_result(monkeypatch, stdout="55.000000\n")
+    assert cs.flac_slice_has_audio("/x.flac") is True
+
+
+def test_flac_slice_has_audio_false_for_na_empty_container(monkeypatch):
+    """A past-EOF FLAC is a valid container with NO audio frames; ffprobe
+    reports its duration as "N/A" (measured on a real ffmpeg-produced slice).
+    """
+    _probe_result(monkeypatch, stdout="N/A\n")
+    assert cs.flac_slice_has_audio("/x.flac") is False
+
+
+def test_flac_slice_has_audio_conservative_on_probe_failure(monkeypatch):
+    """ffprobe failing (exit != 0, missing binary, timeout, or unexpected
+    non-numeric output) must NOT be read as 'empty' — that would silently
+    truncate a multi-chunk transcript."""
+    _probe_result(monkeypatch, returncode=1, stdout="")
+    assert cs.flac_slice_has_audio("/x.flac") is True
+
+    _probe_result(monkeypatch, stdout="")
+    assert cs.flac_slice_has_audio("/x.flac") is True
+
+    _probe_result(monkeypatch, stdout="weird\n")
+    assert cs.flac_slice_has_audio("/x.flac") is True
+
+    _probe_result(monkeypatch, raises=FileNotFoundError("no ffprobe"))
+    assert cs.flac_slice_has_audio("/x.flac") is True
+
+
+def test_unknown_duration_stops_on_past_eof_slice_above_byte_threshold(
+    monkeypatch, tmp_path
+):
+    """Regression: a past-EOF FLAC is a full ~8 KiB container (measured),
+    ABOVE _EMPTY_FLAC_BYTES, so the byte-size test alone never fired and the
+    bounded chunk plan was fired at Google in its entirety (up to 120 empty
+    requests for Gemini). The duration probe must stop the run instead.
+    """
+    backend = cs.CloudSttBackend(
+        config={"cloud_stt_api_key": "fake", "cloud_stt_model": "m"}
+    )
+    backend.load()
+    backend._chunk_seconds = 480.0
+    monkeypatch.setattr(
+        "core.transcriber.get_duration", lambda _p: 0.0, raising=True
+    )
+
+    # Chunk 0 is real audio; chunk 1 is a REALISTIC past-EOF slice: a valid
+    # ~8.3 KiB FLAC container with zero audio frames (> _EMPTY_FLAC_BYTES).
+    sizes = [200_000, 8_286, 8_286]
+    made: list[str] = []
+
+    def fake_encode(audio_path, start, end):
+        idx = len(made)
+        p = tmp_path / f"chunk{idx}.flac"
+        p.write_bytes(b"\x00" * sizes[idx])
+        made.append(str(p))
+        return str(p)
+
+    monkeypatch.setattr(cs, "_encode_chunk_flac", fake_encode)
+    monkeypatch.setattr(
+        cs, "flac_slice_has_audio", lambda path: not path.endswith("chunk1.flac")
+    )
+
+    calls = {"n": 0}
+
+    def fake_one_chunk(self, flac_path, prompt):
+        calls["n"] += 1
+        return "[00:00:00.000 --> 00:00:01.000] hi"
+
+    monkeypatch.setattr(cs.CloudSttBackend, "_transcribe_one_chunk", fake_one_chunk)
+
+    segs, _info = backend.transcribe_to_segments("/no/such.ts", duration=0.0)
+
+    assert calls["n"] == 1  # only the real chunk was sent to Google
+    assert len(segs) == 1
+    assert segs[0]["start"] == 0.0
+
+
+# ---------------------------------------------------------------- malformed
+
+
+def test_post_json_non_json_body_raises_clear_error(monkeypatch):
+    """A 200 with a non-JSON body (captive portal / proxy HTML) must surface
+    a clear RuntimeError, not a raw json.JSONDecodeError."""
+    monkeypatch.setattr(
+        cs.urllib.request, "urlopen",
+        lambda req, timeout=None: _FakeResp(b"<html>proxy login</html>"),
+    )
+    backend = cs.CloudSttBackend(config={"cloud_stt_api_key": "k"})
+    backend.load()
+    with pytest.raises(RuntimeError) as e:
+        backend._post_json("https://x", {}, 10)
+    assert "not valid JSON" in str(e.value)
+
+
+def test_post_json_truncated_body_raises_clear_error(monkeypatch):
+    """A connection closed mid-body (IncompleteRead) must surface a clear
+    RuntimeError, not the raw http.client exception."""
+    import http.client
+
+    class _BrokenResp(_FakeResp):
+        def read(self, n: int = -1) -> bytes:
+            raise http.client.IncompleteRead(b"partial", 100)
+
+    monkeypatch.setattr(
+        cs.urllib.request, "urlopen",
+        lambda req, timeout=None: _BrokenResp(),
+    )
+    backend = cs.CloudSttBackend(config={"cloud_stt_api_key": "k"})
+    backend.load()
+    with pytest.raises(RuntimeError) as e:
+        backend._post_json("https://x", {}, 10)
+    assert "complete response" in str(e.value)
+
+
+def test_wait_for_active_non_json_body_raises_clear_error(monkeypatch):
+    monkeypatch.setattr(
+        cs.urllib.request, "urlopen",
+        lambda req, timeout=None: _FakeResp(b"nope"),
+    )
+    backend = cs.CloudSttBackend(config={"cloud_stt_api_key": "k"})
+    backend.load()
+    with pytest.raises(RuntimeError) as e:
+        backend._wait_for_active("files/abc")
+    assert "not valid JSON" in str(e.value)
+
+
 # ---------------------------------------------------------------- errors
 
 

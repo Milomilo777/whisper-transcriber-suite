@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import math
 
-from .base import normalize_text
+from .base import coerce_seconds, normalize_text
 
 #: Playback resolution the default style is designed against. Players
 #: scale relative to this, so stating it keeps the subtitle the same
@@ -77,7 +77,13 @@ def fmt_ass_time(seconds: float) -> str:
     """
     if seconds is None or not isinstance(seconds, (int, float)):
         seconds = 0.0
-    seconds = float(seconds)
+    try:
+        seconds = float(seconds)
+    except (TypeError, ValueError, OverflowError):
+        # An integer too large for a float (a hand-edited JSON can carry
+        # one) raises OverflowError here — clamp like NaN/Inf, mirroring
+        # fmt_srt_time / fmt_lrc_time.
+        seconds = 0.0
     if not math.isfinite(seconds) or seconds < 0:
         seconds = 0.0
     total_cs = int(round(seconds * 100))
@@ -124,14 +130,14 @@ def _karaoke_payload(seg: dict) -> str:
     between two words (a pause) is folded onto the front of the next word
     so the highlight does not run ahead of the voice.
     """
-    words = seg.get("words") or []
-    if not words:
+    # A hand-edited / externally produced segment can carry a non-list in
+    # "words" (e.g. a string or number); iterating it raised TypeError and
+    # aborted the whole file. Only a non-empty list is usable.
+    words = seg.get("words")
+    if not isinstance(words, list) or not words:
         return escape_ass_text(normalize_text(seg.get("text", "")))
 
-    try:
-        seg_start = float(seg.get("start", 0.0))
-    except (TypeError, ValueError):
-        seg_start = 0.0
+    seg_start = coerce_seconds(seg.get("start"))
 
     parts: list[str] = []
     cursor = seg_start
@@ -166,7 +172,7 @@ def _karaoke_payload(seg: dict) -> str:
 def _coerce(value: object, fallback: float) -> float:
     try:
         out = float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return fallback
     return out if math.isfinite(out) else fallback
 
@@ -177,14 +183,8 @@ def write(segments: list[dict], audio_path: str = "") -> str:
     for seg in segments or []:
         if not isinstance(seg, dict):
             continue
-        try:
-            start = float(seg.get("start", 0.0))
-        except (TypeError, ValueError):
-            start = 0.0
-        try:
-            end = float(seg.get("end", start))
-        except (TypeError, ValueError):
-            end = start
+        start = coerce_seconds(seg.get("start"))
+        end = coerce_seconds(seg.get("end"), start)
         if end < start:
             end = start
         payload = _karaoke_payload(seg)

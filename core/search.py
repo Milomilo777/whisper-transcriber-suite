@@ -26,7 +26,6 @@ import json
 import logging
 import math
 import os
-import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -128,11 +127,21 @@ def _open_db(path: Path | None = None) -> sqlite3.Connection:
 # ---------------------------------------------------------------- indexing
 
 
-def _read_segments(json_path: str) -> list[dict[str, Any]]:
+def _read_segments(json_path: str) -> list[dict[str, Any]] | None:
+    """Read the segment list out of a transcript JSON.
+
+    Returns ``None`` when the file could not be READ at all (a transient
+    I/O failure — locked by another process, AV scanner, network hiccup).
+    ``index_file`` treats that as "skip this pass": it must not delete the
+    already-indexed rows, unlike a readable file that simply holds no
+    usable segments (``[]``).
+    """
     try:
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+    except OSError:
+        return None
+    except (json.JSONDecodeError, UnicodeDecodeError):
         return []
     if not isinstance(data, list):
         return []
@@ -166,6 +175,13 @@ def _mark_file_indexed(conn: sqlite3.Connection, json_path: str) -> None:
     )
 
 
+def _file_has_embeddings(conn: sqlite3.Connection, json_path: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM embeddings WHERE json_path=? LIMIT 1", (json_path,)
+    ).fetchone()
+    return row is not None
+
+
 def index_file(
     json_path: str,
     *,
@@ -176,14 +192,25 @@ def index_file(
 
     Idempotent: re-running on the same unchanged file is a no-op
     (size + mtime cache check). When ``embedder`` is provided, also
-    writes per-segment vectors into the ``embeddings`` table.
+    writes per-segment vectors into the ``embeddings`` table; a file
+    that was previously indexed without the semantic layer (dependency
+    installed later) is rebuilt so those vectors get created.
     """
     owns_conn = conn is None
     conn = conn or _open_db()
     try:
-        if not _file_needs_reindex(conn, json_path):
+        needs_reindex = _file_needs_reindex(conn, json_path)
+        if not needs_reindex and embedder is not None:
+            needs_reindex = not _file_has_embeddings(conn, json_path)
+        if not needs_reindex:
             return 0
         segments = _read_segments(json_path)
+        if segments is None:
+            # Transient read failure: keep whatever is already indexed and
+            # leave the file unmarked so the next pass retries it.
+            logger.debug("Transcript read failed, keeping existing index: %s",
+                         json_path)
+            return 0
         with conn:
             conn.execute(
                 "DELETE FROM segments_fts WHERE json_path=?", (json_path,)
@@ -236,7 +263,16 @@ def reindex_all_history(
                         paths = []
                 for p in paths or []:
                     if isinstance(p, str) and p.lower().endswith(".json") and os.path.isfile(p):
-                        total += index_file(p, conn=db_conn, embedder=embedder)
+                        try:
+                            total += index_file(p, conn=db_conn, embedder=embedder)
+                        except Exception as e:  # noqa: BLE001
+                            # One unreadable/malformed transcript must not
+                            # abort the whole walk and leave every later
+                            # file unindexed.
+                            logger.warning(
+                                "Search index skipped %s: %s: %s",
+                                p, type(e).__name__, e,
+                            )
     finally:
         db_conn.close()
     return total
@@ -265,7 +301,18 @@ def search(
     conn = conn or _open_db()
     try:
         if embedder is not None:
-            hits = _semantic_query(conn, query, embedder, limit)
+            try:
+                hits = _semantic_query(conn, query, embedder, limit)
+            except Exception as e:  # noqa: BLE001
+                # The module contract is a transparent fallback: a semantic
+                # failure (model weights missing/corrupt, encode() error)
+                # must not hide the keyword index that does work.
+                logger.warning(
+                    "Semantic search failed (%s: %s); falling back to "
+                    "keyword search",
+                    type(e).__name__, e,
+                )
+                hits = []
             if hits:
                 return hits
         return _fts_query(conn, query, limit)
@@ -274,15 +321,30 @@ def search(
             conn.close()
 
 
+def _fts_match_query(query: str) -> str:
+    """Build an FTS5 MATCH expression for a raw user query.
+
+    Every whitespace-separated token is quoted, so FTS5 operators the user
+    may have typed (``:``, ``*``, ``OR``, ``NEAR`` ...) are treated as
+    literal text instead of changing the query or raising
+    ``sqlite3.OperationalError``. Joining quoted tokens with a space is
+    FTS5's implicit AND: typing "cat dog" finds segments containing BOTH
+    words, not only the exact phrase "cat dog".
+    """
+    return " ".join(
+        '"' + token.replace('"', '""') + '"' for token in query.split()
+    )
+
+
 def _fts_query(conn: sqlite3.Connection, query: str, limit: int) -> list[SearchHit]:
-    # FTS5's MATCH grammar wants its own syntax; sanitise common punctuation
-    # by quoting the whole query so user-typed `:` etc. don't crash sqlite.
-    safe = re.sub(r'"', '""', query)
+    match = _fts_match_query(query)
+    if not match:
+        return []
     cur = conn.execute(
         "SELECT json_path, segment_index, text, start_seconds, end_seconds, "
         "bm25(segments_fts) AS rank FROM segments_fts "
         "WHERE segments_fts MATCH ? ORDER BY rank LIMIT ?",
-        (f'"{safe}"', limit),
+        (match, limit),
     )
     rows = cur.fetchall()
     out: list[SearchHit] = []
@@ -291,8 +353,11 @@ def _fts_query(conn: sqlite3.Connection, query: str, limit: int) -> list[SearchH
             json_path=str(r["json_path"]),
             segment_index=int(r["segment_index"]),
             text=str(r["text"]),
-            # bm25 returns smaller-is-better; convert to 0..1 for UI.
-            score=1.0 / (1.0 + max(0.0, float(r["rank"]))),
+            # bm25 is smaller-is-better and (in FTS5) NEGATIVE, so the old
+            # ``max(0.0, rank)`` clamped every hit to exactly 1.0. The
+            # logistic map is strictly decreasing for either sign and stays
+            # inside (0, 1); the clamp only guards math.exp overflow.
+            score=1.0 / (1.0 + math.exp(min(float(r["rank"]), 500.0))),
             start_seconds=float(r["start_seconds"]),
             end_seconds=float(r["end_seconds"]),
         ))

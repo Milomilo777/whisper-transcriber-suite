@@ -33,6 +33,43 @@ def test_loopback_available_false_when_pyaudio_missing(monkeypatch):
     assert rec.loopback_available() is False
 
 
+def test_mic_available_false_when_portaudio_fails_to_load(monkeypatch):
+    """sounddevice can raise a non-ImportError at import time — its
+    documented "PortAudio library not found" OSError (a missing/broken
+    native lib, common on Linux without libportaudio2). That must degrade to
+    False instead of escaping into a UI callback.
+    """
+    import builtins
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "sounddevice":
+            raise OSError("PortAudio library not found")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    assert rec.mic_available() is False
+    reason = rec.mic_availability_reason()
+    assert "sounddevice" in reason
+    assert "PortAudio" in reason
+
+
+def test_loopback_available_false_when_pyaudio_fails_to_load(monkeypatch):
+    """Same native-load guard for pyaudiowpatch (e.g. a DLL-load OSError)."""
+    import builtins
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "pyaudiowpatch":
+            raise OSError("DLL load failed while importing _portaudio")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(os, "name", "nt")
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    assert rec.loopback_available() is False
+    assert "could not be loaded" in rec.loopback_availability_reason()
+
+
 # ---------- device enumeration -------------------------------------------------
 
 

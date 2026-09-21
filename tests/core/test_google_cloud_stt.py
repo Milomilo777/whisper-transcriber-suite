@@ -127,6 +127,61 @@ def test_plan_chunks_unknown_duration_whole_file_when_disabled():
     assert g.plan_chunks(0.0, 55.0, chunk_when_unknown=False) == [(0.0, 0.0)]
 
 
+def test_run_standard_unknown_duration_stops_on_past_eof_slice(
+    monkeypatch, tmp_path
+):
+    """Regression: a past-EOF FLAC slice is a full ~8 KiB container (measured
+    with this module's own encode command), ABOVE _EMPTY_FLAC_BYTES, so the
+    byte-size test alone never fired and the bounded chunk plan (1200 windows)
+    was fired at Google in its entirety. The shared ffprobe probe
+    (flac_slice_has_audio) must stop the run after the last real chunk.
+    """
+    backend = g.GoogleCloudSttBackend(config={})
+    backend._project_id = "p1"
+    backend._chunk_seconds = 55.0
+    monkeypatch.setattr(
+        "core.transcriber.get_duration", lambda _p: 0.0, raising=True
+    )
+
+    # Chunk 0 is real audio; chunk 1 is a REALISTIC past-EOF slice.
+    sizes = [200_000, 8_286, 8_286]
+    made: list[str] = []
+
+    def fake_encode(audio_path, start, end):
+        idx = len(made)
+        p = tmp_path / f"g{idx}.flac"
+        p.write_bytes(b"\x00" * sizes[idx])
+        made.append(str(p))
+        return str(p)
+
+    monkeypatch.setattr(g, "_encode_chunk_flac", fake_encode)
+    monkeypatch.setattr(
+        g, "flac_slice_has_audio", lambda path: not path.endswith("g1.flac")
+    )
+
+    calls = {"n": 0}
+
+    def fake_recognize(request=None, timeout=None):
+        calls["n"] += 1
+        return types.SimpleNamespace(results=[])
+
+    monkeypatch.setattr(
+        backend, "_build_client",
+        lambda: types.SimpleNamespace(recognize=fake_recognize),
+    )
+    monkeypatch.setattr(backend, "_cloud_speech_types", lambda: _FakeCloudSpeech)
+
+    segs = backend._run_standard(
+        "/no/such.ts", "auto", False, 0.0, None, None, None, None
+    )
+
+    assert calls["n"] == 1  # only the real chunk was sent to Google
+    assert segs == []
+    # Only the one window actually sent is billed.
+    assert backend._last_billable_seconds == pytest.approx(55.0)
+    assert backend._last_was_cancelled is False
+
+
 # ---------------------------------------------------------------- offset
 
 
@@ -278,6 +333,10 @@ class _FakeCloudSpeech:
     class RecognitionConfig:
         def __init__(self, **kw):
             self.__dict__.update(kw)
+            self.kw = kw
+
+    class RecognizeRequest:
+        def __init__(self, **kw):
             self.kw = kw
 
 

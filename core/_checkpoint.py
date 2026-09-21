@@ -175,14 +175,21 @@ def write_checkpoint(
 
 
 def load_checkpoint(source_path: str) -> dict[str, Any] | None:
-    """Return the on-disk checkpoint dict, or None if missing/corrupt."""
+    """Return the on-disk checkpoint dict, or None if missing/corrupt.
+
+    Catches ``ValueError`` (not just ``json.JSONDecodeError``) because a
+    checkpoint file that is not valid UTF-8 raises ``UnicodeDecodeError``
+    from the read itself — still "corrupt", and the resume path's
+    contract is a silent fallback to a full re-transcribe, never an
+    exception out of the worker.
+    """
     path = checkpoint_path(source_path)
     if not path.exists():
         return None
     try:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
-    except (OSError, json.JSONDecodeError) as e:
+    except (OSError, ValueError) as e:
         logger.warning("Corrupt checkpoint at %s: %s", path, e)
         return None
     if not isinstance(data, dict):
@@ -213,10 +220,14 @@ def sweep_partials(
 
     Removes (a) any ``*.slice.wav`` older than ``slice_max_age_minutes`` —
     a resume slice is disposable and a live resume holds a fresh one, so an
-    older one is always an orphan from a killed worker; and (b) checkpoint
-    ``*.json`` older than ``max_age_days`` — a cancelled-but-never-resumed
-    or crashed-then-declined partial that would otherwise live (and hold its
-    full captured-segments list, potentially MBs) on disk forever.
+    older one is always an orphan from a killed worker; (b) checkpoint
+    ``*.json.tmp`` write scratch older than the same short window — a
+    worker killed mid-write leaves one behind, and it would otherwise never
+    be reclaimed (only ``*.json``/``*.slice.wav`` were swept before); and
+    (c) checkpoint ``*.json`` older than ``max_age_days`` — a
+    cancelled-but-never-resumed or crashed-then-declined partial that would
+    otherwise live (and hold its full captured-segments list, potentially
+    MBs) on disk forever.
 
     Intended to run once at startup. Never raises — a sweep failure must
     never block launch. ``max_age_days`` is generous so a partial the user
@@ -236,7 +247,14 @@ def sweep_partials(
     for p in entries:
         try:
             name = p.name
-            if name.endswith(".slice.wav"):
+            if name.endswith(".json.tmp"):
+                # Scratch from an interrupted checkpoint write. Only ever
+                # visible for the duration of one json.dump + os.replace,
+                # so anything this old is a dead worker's leftover.
+                if p.stat().st_mtime < slice_cutoff:
+                    p.unlink()
+                    removed += 1
+            elif name.endswith(".slice.wav"):
                 if p.stat().st_mtime < slice_cutoff:
                     p.unlink()
                     removed += 1

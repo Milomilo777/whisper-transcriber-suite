@@ -24,7 +24,7 @@ import io
 import os
 from typing import Any
 
-from .base import fmt_srt_time, normalize_text, sanitize_for_xml
+from .base import coerce_seconds, fmt_srt_time, normalize_text, sanitize_for_xml
 
 
 def _fmt_doc_time(seconds: float) -> str:
@@ -56,7 +56,7 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
 
     nonempty = [s for s in segments if normalize_text(s.get("text", ""))]
     if nonempty:
-        last_end = float(nonempty[-1].get("end", 0.0))
+        last_end = coerce_seconds(nonempty[-1].get("end"))
         duration = _fmt_doc_time(last_end)
         document.add_paragraph(
             f"{len(nonempty)} segment(s) · {duration} total",
@@ -64,7 +64,7 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
         )
 
     for seg in nonempty:
-        ts = _fmt_doc_time(float(seg.get("start", 0.0)))
+        ts = _fmt_doc_time(coerce_seconds(seg.get("start")))
         # Coerce speaker to str (a hand-edited JSON could put a
         # number here) and run it through sanitize_for_xml so a
         # control character in the label doesn't crash python-docx

@@ -162,6 +162,15 @@ def enrol_with_vector(
         raise ValueError("Voice name must be non-empty")
     if not vector:
         raise ValueError("Vector must be non-empty")
+    # A NaN/Inf embedding (pyannote on a corrupt or truncated clip)
+    # would be stored as a permanently unmatchable row -- the user
+    # would think the enrolment succeeded. Reject at the DB gate.
+    try:
+        finite = all(math.isfinite(x) for x in vector)
+    except TypeError:
+        raise ValueError("Vector must contain only finite values")
+    if not finite:
+        raise ValueError("Vector must contain only finite values")
     import time
     owns = conn is None
     conn = conn or _open_db()
@@ -237,6 +246,17 @@ def match_vector(
     best: EnrolledVoice | None = None
     best_score = -1.0
     for v in candidates:
+        if len(v.vector) != len(vector):
+            # Voices enrolled under a different embedding model (e.g.
+            # a 512-d pyannote/embedding row vs a 256-d upgrade) are
+            # not comparable. cosine() reports 0.0 for a dimension
+            # mismatch, which at threshold <= 0 would "match" the
+            # wrong person -- skip them rather than score them.
+            logger.debug(
+                "Skipping voice %r: embedding dim %d != query dim %d",
+                v.name, len(v.vector), len(vector),
+            )
+            continue
         score = cosine(vector, v.vector)
         if score > best_score:
             best_score = score

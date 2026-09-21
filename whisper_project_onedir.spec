@@ -206,6 +206,7 @@ a = Analysis(
         'core.server',
         'core.server.httpd',
         'core.server.jobs',
+        'core.server.tls',
         'core.writers',
         'core.writers.base',
         'core.writers.ass',

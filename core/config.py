@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import http.client
 import json
 import logging
 import math
@@ -311,6 +312,19 @@ DEFAULT_CONFIG = {
     "server_max_upload_mb": 512,
     "server_share_lan": False,
     "server_token": "",
+    #   server_https_enabled — when True the server wraps its socket in TLS
+    #     using a self-signed certificate generated once under
+    #     user_data_dir()/server/ (see core.server.tls). OFF by default,
+    #     matching --lan: HTTPS is an explicit opt-in. The CLI equivalent is
+    #     --https.
+    #   server_webhook_url — optional URL to POST a small JSON completion
+    #     payload to when a job finishes (success or failure). Empty = off.
+    #     The POST is fire-and-forget on a daemon thread and is refused by
+    #     the same SSRF guard (core.server.jobs.is_safe_url) the inbound URL
+    #     path uses, so it can never target loopback / link-local /
+    #     cloud-metadata addresses. The CLI equivalent is --webhook.
+    "server_https_enabled": False,
+    "server_webhook_url": "",
     # Window / privacy toggles set on the Advanced dialog's General tab and
     # read at runtime. Defaulted here (both OFF) so reads are always a plain
     # bool and they get the same merge + type-coercion protection as every
@@ -500,7 +514,19 @@ def migrate_config_location() -> str:
     """
     new_path = config_path()
     legacy = _legacy_config_path()
-    user_config_dir().mkdir(parents=True, exist_ok=True)
+    try:
+        user_config_dir().mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        # A read-only profile / ACL that blocks the config dir (or a stray
+        # FILE occupying that path) must not crash launch: load_config()
+        # then degrades to the defaults + online + project layers, exactly
+        # like every other unreadable-config path. Saving settings will
+        # still surface its own error at save time.
+        logger.warning(
+            "Could not create config dir %s (%s); using defaults",
+            user_config_dir(), e,
+        )
+        return new_path
 
     if not os.path.exists(legacy):
         return new_path
@@ -757,10 +783,21 @@ def fetch_online_config(
                     logger.warning("Could not cache online config: %s", e)
                 return data
             logger.warning("Online config at %s is not a JSON object", url)
-        except (urllib.error.URLError, OSError, ValueError) as e:
+        except (
+            urllib.error.URLError,
+            OSError,
+            ValueError,
+            http.client.HTTPException,
+            RecursionError,
+        ) as e:
             # URLError covers offline / timeout / HTTP errors; ValueError
             # covers a JSON parse failure (and UnicodeDecodeError, a
-            # ValueError). Fall through to the cache.
+            # ValueError). http.client.HTTPException (BadStatusLine,
+            # IncompleteRead, ...) is NOT an OSError/URLError subclass, but
+            # urlopen lets it escape on garbage/truncated responses (broken
+            # proxy, captive portal) — it must fall through to the cache
+            # too, not crash launch. RecursionError covers a hostile
+            # deeply-nested body under the size cap. Fall through to cache.
             logger.info(
                 "Online config fetch failed (%s); using cache if available", e
             )
@@ -772,7 +809,9 @@ def fetch_online_config(
         )
         if isinstance(cached, dict):
             return cached
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):
+        # RecursionError: a hostile deeply-nested cache file under the
+        # size cap — treated as corrupt, same as any other bad JSON.
         pass
     return {}
 
@@ -797,12 +836,15 @@ def _read_local_config() -> dict[str, Any]:
     except FileNotFoundError:
         logger.warning("config.json not found at %s; using defaults", path)
         return {}
-    except (json.JSONDecodeError, UnicodeDecodeError, OSError, ValueError) as e:
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError, ValueError,
+            RecursionError) as e:
         # UnicodeDecodeError is a ValueError that escapes the OSError
         # branch (e.g. cp1252 bytes saved by an external editor); the
         # original try/except missed it and crashed launch. ValueError
         # also catches any other JSON parser-internal raises (including the
-        # non-finite-literal rejection above).
+        # non-finite-literal rejection above). RecursionError covers a
+        # pathologically nested file (legal JSON, absurd depth) that the
+        # C scanner refuses — also degraded to defaults, not a crash.
         logger.error("Failed to read config.json (%s); using defaults", e)
         try:
             os.replace(path, path + ".corrupt")
@@ -878,14 +920,16 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
         # (e.g. a float-typed vad_threshold left as float('inf')). Such a
         # value passes the isinstance check below but poisons everything
         # downstream — int(inf) raises OverflowError, nan compares false to
-        # all bounds. ``bool`` is an int subclass but is always finite, so
-        # exclude it. _read_local_config already rejects these at parse time;
-        # this guards values arriving via the online layer or in-memory.
+        # all bounds. Only ``float`` is probed: an int is always finite, and
+        # math.isfinite() on a huge JSON integer (a 400-digit literal is
+        # legal JSON) raises OverflowError itself, crashing launch before the
+        # type check ever runs. _read_local_config already rejects the JSON
+        # literals at parse time; this guards values arriving via the online
+        # layer or in-memory.
         if (
             isinstance(default, (int, float))
             and not isinstance(default, bool)
-            and isinstance(merged[k], (int, float))
-            and not isinstance(merged[k], bool)
+            and isinstance(merged[k], float)
             and not math.isfinite(merged[k])
         ):
             logger.warning(
@@ -1156,7 +1200,9 @@ def load_project_overrides(start: str | Path) -> dict[str, Any]:
     try:
         with open(f, "r", encoding="utf-8") as fp:
             data = json.load(fp)
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError):
+        # RecursionError: a pathologically nested project file (legal JSON,
+        # absurd depth) — ignored like any other malformed file, never raised.
         logger.warning("Could not read project overrides at %s", f)
         return {}
     if not isinstance(data, dict):
@@ -1178,7 +1224,10 @@ def _validate_overrides(
     Bool defaults still accept ints (Python bool is int), and
     numeric defaults still accept floats / ints interchangeably —
     same coercion rules as ``load_config`` to keep behaviour
-    consistent.
+    consistent. A null or a non-finite number (``Infinity`` / ``NaN``,
+    including a ``1e400``-style overflow) is never a valid value for a
+    known key and is dropped rather than handed to the runtime
+    coercions as ``None`` / ``inf``.
     """
     cleaned: dict[str, Any] = {}
     for key, value in overrides.items():
@@ -1186,7 +1235,26 @@ def _validate_overrides(
             cleaned[key] = value
             continue
         default = DEFAULT_CONFIG[key]
-        if value is None or isinstance(value, type(default)):
+        # No known key has a None default, so a null is never a legitimate
+        # value: passing it through let ``None`` reach the runtime coercion
+        # block in ``core.transcriber._apply_runtime_overrides``
+        # (``int(config["diarization_num_speakers"])``), which raises
+        # TypeError and aborts the transcription for every file in that
+        # folder. Non-finite numbers are just as poisonous — ``1e400`` /
+        # ``Infinity`` parse to inf and ``int(inf)`` raises OverflowError
+        # straight out of this "never raises" loader, while a NaN threshold
+        # compares false to every bound. Drop both like any other wrong
+        # type.
+        if value is None or (
+            isinstance(value, float) and not math.isfinite(value)
+        ):
+            logger.warning(
+                "Project override at %s has an unusable value for %r: %r; "
+                "dropping.",
+                source, key, value,
+            )
+            continue
+        if isinstance(value, type(default)):
             cleaned[key] = value
             continue
         if isinstance(default, bool) and isinstance(value, int):
@@ -1196,7 +1264,10 @@ def _validate_overrides(
             try:
                 cleaned[key] = type(default)(value)
                 continue
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
+                # OverflowError: a float default receiving a huge (but
+                # finite) JSON integer, e.g. float(10**400); the finite
+                # check above only inspects actual floats.
                 pass
         logger.warning(
             "Project override at %s has wrong type for %r: %s "

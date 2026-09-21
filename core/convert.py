@@ -168,13 +168,18 @@ def _parse_json(text: str, path: str) -> list[dict]:
             continue
         try:
             start = float(entry.get("start", 0.0))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
+            # OverflowError: an integer too large for a float.
             start = 0.0
         try:
             end = float(entry.get("end", start))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             end = start
-        body = (entry.get("text") or "").strip()
+        # A hand-edited JSON can put a non-string (e.g. a number) in
+        # "text"; ``(value or "").strip()`` raised AttributeError (not a
+        # ConvertError) and crashed the whole conversion.
+        raw_text = entry.get("text")
+        body = ("" if raw_text is None else str(raw_text)).strip()
         if not body:
             continue
         seg: dict[str, Any] = {"start": start, "end": end, "text": body}
@@ -246,7 +251,7 @@ def _parse_tsv(text: str, path: str) -> list[dict]:
         try:
             start = float(start_raw) / 1000.0
             end = float(end_raw) / 1000.0
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             # Header row or malformed line — skip silently.
             continue
         if body:
@@ -306,7 +311,7 @@ def _parse_eaf(text: str, path: str) -> list[dict]:
             continue
         try:
             slots[slot_id] = float(value) / 1000.0
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             continue
 
     segments: list[dict] = []

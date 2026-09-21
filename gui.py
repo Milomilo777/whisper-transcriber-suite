@@ -166,15 +166,62 @@ def _cli_serve(args: argparse.Namespace) -> int:
     host = args.host
     if args.lan:
         host = "0.0.0.0"
-    port = args.port if args.port is not None else int(cfg.get("server_port", 8765))
+    if args.port is not None:
+        # Already range-checked up front by _port_number().
+        port = args.port
+    else:
+        # Config file is hand-editable JSON, so unlike --port this value was
+        # never validated: 70000 / -1 reached socket.bind() and raised
+        # OverflowError (not OSError), and a non-numeric value died in int()
+        # — both as raw tracebacks instead of a clean error.
+        try:
+            port = int(cfg.get("server_port", 8765))
+        except (TypeError, ValueError):
+            print(
+                f"[cli] invalid server_port in config: "
+                f"{cfg.get('server_port')!r} (expected a port 0-65535)",
+                file=sys.stderr, flush=True,
+            )
+            return 1
+        if not 0 <= port <= 65535:
+            print(
+                f"[cli] invalid server_port in config: {port} "
+                f"(expected a port 0-65535)",
+                file=sys.stderr, flush=True,
+            )
+            return 1
     max_upload_mb = (
         args.max_upload_mb if args.max_upload_mb is not None
         else int(cfg.get("server_max_upload_mb", 512))
     )
+    https = bool(args.https) or bool(cfg.get("server_https_enabled", False))
+    webhook_url = (
+        args.webhook if args.webhook is not None
+        else str(cfg.get("server_webhook_url", ""))
+    )
     return run_server(
         host=host, port=port, token=args.token or "",
         max_upload_mb=max_upload_mb,
+        https=https, webhook_url=webhook_url,
     )
+
+
+def _port_number(value: str) -> int:
+    """argparse ``type=`` for ``serve --port``: a bindable TCP port.
+
+    Plain ``int`` lets ``--port 70000`` / ``--port -1`` through to
+    ``socket.bind``, which raises ``OverflowError`` — not an ``OSError``,
+    so ``run_server``'s bind-failure handler misses it and the CLI dies
+    with a raw traceback instead of a usage error. 0 stays valid (bind
+    an ephemeral port).
+    """
+    try:
+        port = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"not an integer: {value!r}") from None
+    if not 0 <= port <= 65535:
+        raise argparse.ArgumentTypeError(f"port must be 0-65535, got {port}")
+    return port
 
 
 def _build_argparser() -> argparse.ArgumentParser:
@@ -211,7 +258,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Run the local-network / web HTTP job server (no UI)",
     )
     sv.add_argument(
-        "--port", "-p", type=int, default=None,
+        "--port", "-p", type=_port_number, default=None,
         help="TCP port to listen on (default: config server_port or 8765)",
     )
     sv.add_argument(
@@ -233,6 +280,19 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--max-upload-mb", type=int, default=None, dest="max_upload_mb",
         help="reject uploads larger than this many MB "
              "(default: config server_max_upload_mb or 512)",
+    )
+    sv.add_argument(
+        "--https", action="store_true",
+        help="serve over TLS with a self-signed certificate generated once "
+             "under the app's user-data folder (default: config "
+             "server_https_enabled, off)",
+    )
+    sv.add_argument(
+        "--webhook", default=None,
+        help="POST a small JSON payload to this URL when a job finishes "
+             "(success or failure); default: config server_webhook_url "
+             "(empty = off). Loopback / link-local / cloud-metadata targets "
+             "are refused",
     )
     return p
 
