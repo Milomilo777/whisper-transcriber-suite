@@ -194,9 +194,15 @@ def _cli_serve(args: argparse.Namespace) -> int:
         args.max_upload_mb if args.max_upload_mb is not None
         else int(cfg.get("server_max_upload_mb", 512))
     )
+    https = bool(args.https) or bool(cfg.get("server_https_enabled", False))
+    webhook_url = (
+        args.webhook if args.webhook is not None
+        else str(cfg.get("server_webhook_url", ""))
+    )
     return run_server(
         host=host, port=port, token=args.token or "",
         max_upload_mb=max_upload_mb,
+        https=https, webhook_url=webhook_url,
     )
 
 
@@ -274,6 +280,19 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--max-upload-mb", type=int, default=None, dest="max_upload_mb",
         help="reject uploads larger than this many MB "
              "(default: config server_max_upload_mb or 512)",
+    )
+    sv.add_argument(
+        "--https", action="store_true",
+        help="serve over TLS with a self-signed certificate generated once "
+             "under the app's user-data folder (default: config "
+             "server_https_enabled, off)",
+    )
+    sv.add_argument(
+        "--webhook", default=None,
+        help="POST a small JSON payload to this URL when a job finishes "
+             "(success or failure); default: config server_webhook_url "
+             "(empty = off). Loopback / link-local / cloud-metadata targets "
+             "are refused",
     )
     return p
 

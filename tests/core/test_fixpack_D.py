@@ -140,6 +140,37 @@ def test_is_safe_url_scheme_and_host_gate_unchanged(monkeypatch):
     assert is_safe_url("https://") is False  # no host
 
 
+def test_is_safe_url_blocks_legacy_numeric_loopback(monkeypatch):
+    # inet_aton-style numeric forms of 127.0.0.1. The resolver is stubbed to
+    # FAIL (like Windows getaddrinfo does for these forms) to prove the
+    # refusal is static and does not depend on the fail-open DNS path.
+    def boom(host, *a, **k):
+        raise OSError("getaddrinfo failed")
+
+    monkeypatch.setattr(jobs_mod.socket, "getaddrinfo", boom)
+    for url in (
+        "http://2130706433/",
+        "http://0x7f000001/",
+        "http://0x7f.0.0.1/",
+        "http://0177.0.0.1/",
+        "http://127.1/",
+        "http://0x7f.1/",
+    ):
+        assert is_safe_url(url) is False, url
+
+
+def test_is_safe_url_numeric_private_matches_dotted_form(monkeypatch):
+    # A numeric encoding of an RFC-1918 address follows the dotted form's
+    # verdict (allowed) — the fix must not over-block the LAN normal case.
+    def boom(host, *a, **k):
+        raise OSError("getaddrinfo failed")
+
+    monkeypatch.setattr(jobs_mod.socket, "getaddrinfo", boom)
+    assert is_safe_url("http://3232235521/") is True  # == 192.168.0.1
+    assert is_safe_url("http://0xC0A80101/") is True  # == 192.168.1.1
+    assert is_safe_url("http://1.2.3.256/") is True  # not numeric at all
+
+
 def test_submit_url_rejects_loopback(tmp_path):
     mgr = JobManager(
         lambda *a, **k: None,

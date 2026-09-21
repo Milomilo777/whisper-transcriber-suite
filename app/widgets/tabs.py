@@ -1310,15 +1310,57 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
         wraplength=560, justify="left", foreground="#888",
     ).pack(anchor="w", padx=(0, 0), pady=(4, 0))
 
+    # HTTPS (self-signed certificate).
+    app.server_https_enabled_var = tk.BooleanVar(
+        value=bool(cfg.get("server_https_enabled", False))
+    )
+    ttk.Checkbutton(
+        opts, text="Use HTTPS (self-signed certificate)",
+        variable=app.server_https_enabled_var,
+        command=app._save_server_prefs,
+    ).pack(anchor="w", pady=(8, 0))
+    ttk.Label(
+        opts,
+        text=(
+            "Off by default. When on, the address starts with https:// and "
+            "the browser will warn that the certificate is not trusted the "
+            "first time — that is expected; accept it once."
+        ),
+        wraplength=560, justify="left", foreground="#888",
+    ).pack(anchor="w", padx=(22, 0), pady=(0, 8))
+
+    # Completion webhook.
+    hook_row = ttk.Frame(opts)
+    hook_row.pack(fill="x")
+    ttk.Label(hook_row, text="Webhook URL (optional):").pack(side="left")
+    app.server_webhook_url_var = tk.StringVar(
+        value=str(cfg.get("server_webhook_url", ""))
+    )
+    hook_entry = ttk.Entry(
+        hook_row, textvariable=app.server_webhook_url_var, width=32,
+    )
+    hook_entry.pack(side="left", padx=(8, 0))
+    hook_entry.bind("<FocusOut>", lambda _e: app._save_server_prefs())
+    ttk.Label(
+        opts,
+        text=(
+            "Leave blank for none. When set, the server POSTs a small JSON "
+            "summary to this URL each time a job finishes (or fails). "
+            "Loopback and private cloud-metadata addresses are refused."
+        ),
+        wraplength=560, justify="left", foreground="#888",
+    ).pack(anchor="w", padx=(0, 0), pady=(4, 0))
+
     # --- safety note ---------------------------------------------------------
     ttk.Label(
         frame,
         text=(
             "Use this only on a network you trust (your home or office "
-            "Wi-Fi). It has no accounts and is not encrypted — anyone who "
-            "can reach the address (and knows the password, if you set one) "
-            "can use it. The first time you turn it on it may need to "
-            "download the speech model; jobs will wait for that."
+            "Wi-Fi). It has no accounts, and unless you turn on HTTPS above "
+            "it is not encrypted — anyone who can reach the address (and "
+            "knows the password, if you set one) can use it. The first time "
+            "you turn it on it may need to download the speech model; jobs "
+            "will wait for that."
         ),
         wraplength=620, justify="left", foreground="#b5651a",
     ).pack(anchor="w", pady=(10, 0))

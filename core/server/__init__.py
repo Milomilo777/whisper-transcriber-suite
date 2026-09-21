@@ -122,19 +122,21 @@ def _ensure_model_loaded() -> None:
                        "jobs will report the error until it is", err)
 
 
-def reachable_urls(host: str, port: int) -> list[str]:
+def reachable_urls(host: str, port: int, https: bool = False) -> list[str]:
     """Human-facing URLs to print on startup.
 
     For a loopback bind, just the loopback URL. For an all-interfaces bind
     (``0.0.0.0``), the loopback URL plus this machine's best-guess LAN IP so
-    the operator can hand the address to people on the network.
+    the operator can hand the address to people on the network. ``https``
+    switches the scheme for the opt-in TLS mode.
     """
+    scheme = "https" if https else "http"
     if host not in ("0.0.0.0", "::", ""):
-        return [f"http://{host}:{port}/"]
-    urls = [f"http://127.0.0.1:{port}/"]
+        return [f"{scheme}://{host}:{port}/"]
+    urls = [f"{scheme}://127.0.0.1:{port}/"]
     lan_ip = _primary_lan_ip()
     if lan_ip:
-        urls.append(f"http://{lan_ip}:{port}/")
+        urls.append(f"{scheme}://{lan_ip}:{port}/")
     return urls
 
 
@@ -238,6 +240,8 @@ class ServerHandle:
         self.host = ""
         self.port = 0
         self.token = ""
+        self.https = False
+        self.webhook_url = ""
 
     def is_running(self) -> bool:
         with self._lock:
@@ -252,12 +256,18 @@ class ServerHandle:
         *,
         max_upload_mb: int = 512,
         auto_port: bool = True,
+        https: bool = False,
+        webhook_url: str = "",
     ) -> None:
         """Bind + start serving on a daemon thread (idempotent).
 
         Raises :class:`OSError` if the socket can't be bound (and
         ``auto_port`` didn't already fall back to a free port). The GUI
-        catches that and shows a plain message.
+        catches that and shows a plain message. ``https`` wraps the socket
+        in TLS with a self-signed certificate generated under
+        ``user_data_dir()`` on first use; a certificate that can't be
+        produced raises :class:`RuntimeError` rather than silently serving
+        plaintext.
         """
         with self._lock:
             if self._server is not None and self._thread is not None \
@@ -265,14 +275,22 @@ class ServerHandle:
                 return  # already running — idempotent double-start guard
             if auto_port:
                 port = find_available_port(port, host)
+            ssl_context = None
+            if https:
+                from core.server.tls import build_server_ssl_context
+                ssl_context = build_server_ssl_context()
             if self._load_model:
                 _ensure_model_loaded()
-            manager = JobManager(self._transcribe_fn, download_fn=self._download_fn)
+            manager = JobManager(
+                self._transcribe_fn, download_fn=self._download_fn,
+                webhook_url=webhook_url,
+            )
             manager.start()
             try:
                 server = JobHTTPServer(
                     (host, port), manager,
                     token=token, max_upload_mb=max_upload_mb,
+                    ssl_context=ssl_context,
                 )
             except OSError:
                 manager.stop()
@@ -283,6 +301,8 @@ class ServerHandle:
             # Reflect the port actually bound (matters for the port-0 case).
             self.port = int(server.server_address[1])
             self.token = token
+            self.https = https
+            self.webhook_url = (webhook_url or "").strip()
             self._thread = threading.Thread(
                 target=server.serve_forever,
                 name="server-http", daemon=True,
@@ -328,7 +348,7 @@ class ServerHandle:
         """Reachable URLs for the current bind (empty when not running)."""
         if not self.is_running():
             return []
-        return reachable_urls(self.host, self.port)
+        return reachable_urls(self.host, self.port, self.https)
 
 
 def run_server(
@@ -338,6 +358,8 @@ def run_server(
     *,
     max_upload_mb: int = 512,
     load_model: bool = True,
+    https: bool = False,
+    webhook_url: str = "",
 ) -> int:
     """Run the HTTP job server forever (blocking). Returns an exit code.
 
@@ -351,9 +373,15 @@ def run_server(
         # The CLI honours an explicit --port verbatim (auto_port off) so a
         # scripted caller binds exactly what it asked for, or sees the error.
         handle.start(host, port, token,
-                     max_upload_mb=max_upload_mb, auto_port=False)
+                     max_upload_mb=max_upload_mb, auto_port=False,
+                     https=https, webhook_url=webhook_url)
     except OSError as e:
         logger.error("server: could not bind %s:%s — %s", host, port, e)
+        return 1
+    except RuntimeError as e:
+        # HTTPS was explicitly requested but no certificate could be made;
+        # fail loudly rather than silently serving plaintext.
+        logger.error("server: HTTPS setup failed — %s", e)
         return 1
 
     is_lan = host in (HOST_LAN, "::", "")
@@ -366,7 +394,13 @@ def run_server(
     else:
         print("Loopback only (this machine). Use --lan to share on the network.")
     if token:
-        print("Auth token required (X-Auth-Token header or ?token=).")
+        print("Auth token required (X-Auth-Token header, ?token=, or an "
+              "OpenAI-style Authorization: Bearer).")
+    if https:
+        print("HTTPS on (self-signed certificate — accept the browser "
+              "warning once).")
+    if webhook_url:
+        print(f"Completion webhooks POST to {webhook_url}")
     print("Press Ctrl+C to stop.")
 
     try:
