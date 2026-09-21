@@ -52,6 +52,38 @@ def test_main_emits_ready_then_handles_shutdown(monkeypatch, capsys):
     assert events[0]["event"] == "ready"
 
 
+def test_main_survives_logging_setup_failure(monkeypatch, capsys):
+    """A locked / unwritable log directory must not kill the worker before
+    it emits a single protocol event: logging is best-effort, stdout is the
+    contract."""
+    def boom(*args, **kwargs):
+        raise PermissionError("log dir locked by antivirus")
+
+    monkeypatch.setattr(worker, "setup_logging", boom)
+    monkeypatch.setattr(worker, "load_existing_model", lambda cb: True)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({"action": "shutdown"}) + "\n"))
+    assert worker.main() == 0
+    events = [json.loads(l) for l in capsys.readouterr().out.strip().splitlines() if l.strip()]
+    assert events and events[0]["event"] == "ready"
+
+
+def test_main_emits_startup_error_when_model_load_raises(monkeypatch, capsys):
+    """A raise from load_existing_model must surface as startup_error, not
+    as a bare crash the parent can only observe as a silent worker_exit."""
+    def boom(cb):
+        raise RuntimeError("model dir vanished")
+
+    monkeypatch.setattr(worker, "load_existing_model", boom)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(""))
+    rc = worker.main()
+    assert rc == 1
+    events = [json.loads(l) for l in capsys.readouterr().out.strip().splitlines() if l.strip()]
+    errs = [e for e in events if e["event"] == "startup_error"]
+    assert len(errs) == 1
+    assert "model dir vanished" in errs[0]["message"]
+    assert not any(e["event"] == "ready" for e in events)
+
+
 def test_ready_event_carries_effective_device_fields(monkeypatch, capsys):
     """R3: the ready event additively reports the effective device."""
     from core import transcriber as _t

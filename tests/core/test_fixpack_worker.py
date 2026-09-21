@@ -86,6 +86,71 @@ def test_read_capped_lines_empty_stream():
     assert list(worker.read_capped_lines(io.StringIO(""), 10)) == []
 
 
+class _ReadOnlyStream:
+    """A read(n)-only stream, forcing read_capped_lines' chunked fallback."""
+
+    def __init__(self, data: str) -> None:
+        self._buf = io.StringIO(data)
+
+    def read(self, n: int = -1) -> str:
+        return self._buf.read(n)
+
+
+class _IterOnlyStream:
+    """A pure-iterator stream (no readline, no read), forcing
+    read_capped_lines' iterate-only fallback."""
+
+    def __init__(self, lines: list[str]) -> None:
+        self._lines = lines
+
+    def __iter__(self):
+        return iter(self._lines)
+
+
+def test_read_capped_lines_reports_each_oversized_record_once():
+    """One oversized record must produce exactly ONE oversize yield.
+
+    The drained tail used to be yielded again as ("", True), so the stdin
+    reader emitted "command exceeds max length" twice for a single bad
+    command.
+    """
+    out = list(worker.read_capped_lines(io.StringIO("x" * 50 + "\n" + "ok\n"), 10))
+    assert [t for t, o in out if o] == ["x" * 11]
+    assert ("ok\n", False) in out
+
+
+def test_read_capped_lines_reports_each_oversized_record_once_chunked(monkeypatch):
+    """Same one-report contract on the read() fallback path, with the
+    oversized record split across several bounded reads."""
+    monkeypatch.setattr(worker, "_READ_CHUNK_CHARS", 8)
+    stream = _ReadOnlyStream("x" * 50 + "\n" + "ok\n")
+    out = list(worker.read_capped_lines(stream, 10))
+    over = [t for t, o in out if o]
+    assert len(over) == 1
+    assert ("ok\n", False) in out
+
+
+@pytest.mark.parametrize("chunked", [False, True])
+def test_read_capped_lines_accepts_record_exactly_at_cap(chunked):
+    """A record of exactly the cap (plus its framing newline) is NOT
+    oversized — the newline is framing, not payload."""
+    cap = 10
+    line = "x" * cap + "\n"
+    stream = _ReadOnlyStream(line) if chunked else io.StringIO(line)
+    assert list(worker.read_capped_lines(stream, cap)) == [(line, False)]
+
+
+def test_read_capped_lines_iterate_only_accepts_record_exactly_at_cap():
+    """Same at-cap contract on the iterate-only fallback path: it kept the
+    old len() check (newline counted), so an at-cap record was wrongly
+    flagged oversized there while both other paths accepted it."""
+    cap = 10
+    line = "x" * cap + "\n"
+    assert list(worker.read_capped_lines(_IterOnlyStream([line]), cap)) == [
+        (line, False)
+    ]
+
+
 # --------------------------------------------------------------------------
 # main() OOM guard — oversize command never starts a task (end-to-end)
 # --------------------------------------------------------------------------
@@ -123,6 +188,24 @@ def test_main_rejects_oversize_command_without_buffering(monkeypatch, capsys):
     assert not any(e["event"] == "started" for e in events)
     # Reads were chunk-bounded — the 8 MB line was never read in one gulp.
     assert stream.max_read <= worker._READ_CHUNK_CHARS
+
+
+def test_main_oversize_command_reports_exactly_one_error(monkeypatch, capsys):
+    """One over-cap stdin command yields exactly ONE error event.
+
+    The drained tail of the oversized record used to be yielded as a second
+    oversize record, so the parent got a duplicate "exceeds max length"
+    error for a single bad command.
+    """
+    monkeypatch.setattr(worker, "load_existing_model", lambda cb: True)
+    huge = "x" * ((1 << 20) + 1) + "\n"
+    inputs = huge + json.dumps({"action": "shutdown"}) + "\n"
+    monkeypatch.setattr(sys, "stdin", io.StringIO(inputs))
+    assert worker.main() == 0
+    events = [json.loads(l) for l in capsys.readouterr().out.strip().splitlines() if l.strip()]
+    errs = [e for e in events if e["event"] == "error"]
+    assert len(errs) == 1
+    assert "exceeds max length" in errs[0]["message"]
 
 
 def test_main_normal_command_still_works_after_reader_change(monkeypatch, capsys):

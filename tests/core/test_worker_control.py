@@ -9,6 +9,7 @@ without a real Whisper model.
 """
 from __future__ import annotations
 
+import io
 import json
 import threading
 import types
@@ -118,3 +119,44 @@ def test_control_command_cancels_running_transcribe(monkeypatch, capsys):
     events = [json.loads(l) for l in capsys.readouterr().out.strip().splitlines() if l.strip()]
     kinds = [e["event"] for e in events]
     assert "started" in kinds and "done" in kinds
+
+
+def test_done_is_emitted_after_the_in_flight_task_is_cleared(monkeypatch, capsys):
+    """A control command racing the end of a task must not land on the
+    finished task (and be swallowed) while it is actually meant for the
+    next queued task.
+
+    The parent only learns the task ended from the "done" event, so the
+    worker must clear the in-flight slot BEFORE emitting it.
+    """
+    monkeypatch.setattr(worker, "load_existing_model", lambda cb: True)
+
+    seen: dict[str, object] = {}
+
+    def fake_transcribe(task, progress_cb, log_cb, language_cb=None):
+        seen["task"] = task
+
+    real_emit = worker.emit
+
+    def spy_emit(event, **payload):
+        if event == "done":
+            seen["current_at_done"] = worker._current_task
+            # Simulate a cancel racing in while "done" is on the wire.
+            worker._apply_control("cancel")
+            task = seen["task"]
+            seen["cancel_flipped"] = bool(getattr(task, "cancelled", False))
+        real_emit(event, **payload)
+
+    monkeypatch.setattr(worker, "transcribe", fake_transcribe)
+    monkeypatch.setattr(worker, "emit", spy_emit)
+
+    inputs = (
+        json.dumps({"action": "transcribe", "file_path": "/tmp/x.wav"}) + "\n"
+        + json.dumps({"action": "shutdown"}) + "\n"
+    )
+    monkeypatch.setattr(worker.sys, "stdin", io.StringIO(inputs))
+
+    assert worker.main() == 0
+
+    assert seen["current_at_done"] is None
+    assert seen["cancel_flipped"] is False

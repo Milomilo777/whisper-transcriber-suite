@@ -378,6 +378,17 @@ def emit(event: str, **payload: Any) -> None:
 _READ_CHUNK_CHARS = 65536
 
 
+def _record_length(text: str) -> int:
+    """Payload length of a record, excluding its framing newline.
+
+    The terminating newline is framing, not payload: a record of exactly
+    *max_chars* data plus its newline is AT the cap, not past it. Without
+    this, a command whose JSON was exactly the 1 MB cap (plus the newline
+    that always terminates it) was wrongly rejected as oversized.
+    """
+    return len(text) - 1 if text.endswith("\n") else len(text)
+
+
 def read_capped_lines(stream: Any, max_chars: int) -> Iterator[tuple[str, bool]]:
     """Yield ``(line, oversize)`` per newline-delimited record from *stream*.
 
@@ -386,8 +397,11 @@ def read_capped_lines(stream: Any, max_chars: int) -> Iterator[tuple[str, bool]]
     in bounded chunks and enforces *max_chars* WHILE reading. Once a record
     exceeds the cap, accumulation stops immediately; the rest of that record
     (up to the next newline) is drained and discarded in bounded chunks, then
-    the truncated text is yielded with ``oversize=True`` so the caller can
-    reject it without ever holding the full oversized payload in memory.
+    the truncated text is yielded ONCE with ``oversize=True`` so the caller
+    can reject it without ever holding the full oversized payload in memory.
+    The drained tail is never yielded separately — one oversized record must
+    produce exactly one rejection, not a second empty one the caller would
+    report again as its own dropped command.
 
     *line* keeps the trailing newline when present (matching file-iteration
     semantics) so existing ``.strip()`` handling is unchanged.
@@ -411,18 +425,18 @@ def read_capped_lines(stream: Any, max_chars: int) -> Iterator[tuple[str, bool]]
         while True:
             raw = readline(max_chars + 1)
             if not raw:
-                # EOF. If we were discarding an oversized unterminated record,
-                # surface it once so the caller can reject it loudly.
-                if dropping:
-                    yield "", True
+                # EOF. An oversized record was already reported when its
+                # prefix crossed the cap, so nothing more is yielded here.
                 return
             if dropping:
-                # Discarding the rest of an oversized record until newline.
-                if raw.endswith("\n") or "\n" in raw:
-                    yield "", True
+                # Draining an already-reported oversized record's tail until
+                # its newline. This tail is not a record of its own, so it is
+                # never yielded: reporting it again produced a duplicate
+                # "exceeds max length" error for a single bad command.
+                if "\n" in raw:
                     dropping = False
                 continue
-            if len(raw) > max_chars:
+            if _record_length(raw) > max_chars:
                 yield raw, True
                 dropping = not raw.endswith("\n")
                 continue
@@ -432,7 +446,7 @@ def read_capped_lines(stream: Any, max_chars: int) -> Iterator[tuple[str, bool]]
     read_attr = getattr(stream, "read", None)
     if not callable(read_attr):
         for raw in stream:
-            yield raw, len(raw) > max_chars
+            yield raw, _record_length(raw) > max_chars
         return
     read = cast("Callable[[int], str]", read_attr)
     buf = ""
@@ -440,10 +454,9 @@ def read_capped_lines(stream: Any, max_chars: int) -> Iterator[tuple[str, bool]]
     while True:
         chunk = read(_READ_CHUNK_CHARS)
         if not chunk:  # EOF
-            if dropping:
-                # Oversized record that never terminated before EOF.
-                yield "", True
-            elif buf:
+            if buf:
+                # Unterminated trailing record still within the cap. An
+                # oversized one was already reported, so nothing to add.
                 yield buf, False
             return
         while chunk:
@@ -453,14 +466,14 @@ def read_capped_lines(stream: Any, max_chars: int) -> Iterator[tuple[str, bool]]
             else:
                 segment, rest = chunk[: nl + 1], chunk[nl + 1 :]
             if dropping:
-                # Discarding the remainder of an oversized record.
+                # Drain the remainder of an already-reported oversized record
+                # without yielding it again (see the readline path).
                 if nl != -1:
-                    yield "", True
                     dropping = False
                 chunk = rest
                 continue
             buf += segment
-            if len(buf) > max_chars:
+            if _record_length(buf) > max_chars:
                 # Cap exceeded. If this segment completed the record (had a
                 # newline) the whole record is over the limit; flag it and
                 # move on. Otherwise stop buffering and drain the unterminated
@@ -482,10 +495,19 @@ def main() -> int:
     # the GUI's app.log: a RotatingFileHandler shared across processes
     # cannot roll over on Windows (renaming a file another process holds
     # open raises PermissionError), silently defeating the 5 MB x 3 cap.
-    setup_logging(
-        load_config(fetch_online=False).get("log_level", "INFO"),
-        filename=worker_log_filename(),
-    )
+    try:
+        setup_logging(
+            load_config(fetch_online=False).get("log_level", "INFO"),
+            filename=worker_log_filename(),
+        )
+    except Exception:  # noqa: BLE001
+        # Logging is best-effort: the protocol lives on stdout, and an
+        # unwritable / AV-locked log directory must not kill the worker
+        # before it has emitted a single event (the parent can only show
+        # "model load was cancelled" for a bare worker_exit). Logging
+        # falls back to its last-resort stderr handler, which the parent
+        # already tolerates as a non-JSON log line.
+        pass
     # Make on-demand-installed optional packages (stable-ts → torch)
     # importable; alignment runs in THIS worker process.
     try:
@@ -532,7 +554,20 @@ def main() -> int:
     threading.Thread(target=_heartbeat, name="worker-heartbeat",
                      daemon=True).start()
 
-    if not load_existing_model(log_cb):
+    try:
+        model_loaded = load_existing_model(log_cb)
+    except Exception as e:  # noqa: BLE001
+        # A raise here (e.g. a bad model-path type slipping past the
+        # config coercion, or a status_cb/emit failure) must still be
+        # reported through the frozen protocol. The parent can only
+        # release its loading modal / surface the real reason on
+        # startup_error; a bare crash arrives as worker_exit and reads
+        # as "model load was cancelled" with no explanation.
+        logger.exception("load_existing_model raised; emitting startup_error")
+        emit("startup_error", message=f"Model load failed ({type(e).__name__}): {e}")
+        heartbeat_stop.set()
+        return 1
+    if not model_loaded:
         detail = get_model_error() or "Existing model failed to load in worker"
         emit("startup_error", message=detail)
         heartbeat_stop.set()
@@ -727,22 +762,28 @@ def main() -> int:
                     )
                 if not did_resume:
                     transcribe(task, progress_cb, log_cb, language_cb=language_cb)
-                emit(
-                    "done",
-                    file_path=file_path,
-                    task_id=task_id,
-                    outputs=getattr(task, "output_paths", None) or [],
-                    # Added fields (protocol is add-only): transcript stats
-                    # computed from the in-memory segments, so the parent
-                    # never needs a machine-readable output file to know
-                    # the word count (txt/docx/pdf-only runs recorded 0).
-                    word_count=int(getattr(task, "word_count", 0) or 0),
-                    audio_duration=float(
-                        getattr(task, "audio_duration", 0.0) or 0.0
-                    ),
-                )
             finally:
+                # Clear the in-flight slot BEFORE the done event goes out.
+                # The parent only learns this task ended when it sees
+                # "done", so it cannot dispatch the next task until after
+                # this point — a cancel/pause/resume meant for that next
+                # task can no longer arrive while this finished task is
+                # still the current one and get swallowed by it.
                 _set_current_task(None)
+            emit(
+                "done",
+                file_path=file_path,
+                task_id=task_id,
+                outputs=getattr(task, "output_paths", None) or [],
+                # Added fields (protocol is add-only): transcript stats
+                # computed from the in-memory segments, so the parent
+                # never needs a machine-readable output file to know
+                # the word count (txt/docx/pdf-only runs recorded 0).
+                word_count=int(getattr(task, "word_count", 0) or 0),
+                audio_duration=float(
+                    getattr(task, "audio_duration", 0.0) or 0.0
+                ),
+            )
         except Exception as e:  # noqa: BLE001
             emit("error", message=str(e), file_path=file_path, task_id=task_id)
 

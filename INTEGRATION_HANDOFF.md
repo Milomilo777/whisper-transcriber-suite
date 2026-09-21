@@ -878,3 +878,56 @@ Verified the merge of `opencode/worker-correlation-id-design` into
 - **Test coverage of merged behavior**: 2 new test files (`test_worker_correlation_id.py` at 372 lines, `test_transcription_correlation.py` at 191 lines) + updated `test_transcribe_command.py` cover correlation-id agreement, control parking/delayed-apply, timeout ack, capacity eviction, id-less legacy semantics, and the exact bad ordering from the original bug report. All pass.
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/worker-protocol-review (2026-09-21)
+
+Conflicted merge (`git merge --no-ff opencode/worker-protocol-review`):
+one content conflict in `core/worker.py`, resolved by preserving both sides'
+effects. No other files conflicted.
+
+Files brought in by the review branch (45d2bf7 + 7dab672 + 2843f4a):
+- `core/worker.py`: `_record_length()` framing fix (newline excluded from
+  cap so an at-cap record is accepted on all three `read_capped_lines`
+  paths); single-report oversize contract (drained tail never yielded
+  again, no duplicate "exceeds max length" error); best-effort
+  `setup_logging` guard; `load_existing_model` raise surfaced as
+  `startup_error`; done-boundary fix (`_set_current_task(None)` in
+  `finally` BEFORE `done` is emitted so a next-task control racing the
+  end of a task is not swallowed by the finished task).
+- `tests/core/test_fixpack_worker.py` (extended): one-report oversize
+  tests, at-cap acceptance on all paths, single-error end-to-end test.
+- `tests/core/test_worker_control.py` (extended):
+  `test_done_is_emitted_after_the_in_flight_task_is_cleared`.
+- `tests/core/test_worker_protocol.py` (extended): logging-failure
+  survival + model-load-raise `startup_error` tests.
+- `OPENCODE_HANDOFF_worker_protocol.md`: new review handoff doc.
+
+Reconciliation (file by file):
+- `core/worker.py` — only conflicted hunk was the `done` emission at
+  end-of-task. HEAD (integration, via worker-correlation-id-design)
+  emitted `done` WITH `task_id` but INSIDE the `try`, before the
+  `finally: _set_current_task(None)` cleared the slot. The branch
+  moved the emit AFTER the `finally` (clear-before-emit) but had no
+  `task_id` (older base). Reconciled result keeps BOTH: `try:
+  transcribe(...)` / `finally: _set_current_task(None)` (branch
+  ordering + comment preserved) followed by `emit("done", ...,
+  task_id=task_id, ...)` (HEAD correlation field preserved).
+  `started`/`error` already carried `task_id` via clean auto-merge;
+  `_register_task`/parked-control plumbing untouched. All other
+  branch hunks (`_record_length`, single-report drains, logging
+  best-effort, model-load `startup_error`) auto-merged cleanly.
+- `tests/core/test_fixpack_worker.py`,
+  `tests/core/test_worker_control.py`,
+  `tests/core/test_worker_protocol.py`,
+  `OPENCODE_HANDOFF_worker_protocol.md` — auto-merged, taken as-is.
+  Branch tests assert event kinds / error counts, not exact `done`
+  payloads, so they remain compatible with the `task_id`-bearing `done`.
+
+Sanity-checked combined diff via `git diff --cached` + `git show HEAD`
+read-through: intent matches both sides; no conflict markers remain
+(`git diff --check` clean).
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2445 passed, 14 skipped,
+  0 failures.
