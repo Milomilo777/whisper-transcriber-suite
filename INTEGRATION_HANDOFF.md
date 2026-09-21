@@ -731,3 +731,22 @@ Verification:
 - Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
 - Hermetic suite (`tests/` minus `tests/smoke/`): 2388 passed,
   14 skipped, 0 failures.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/speaker-signal-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2387 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). One transient TclError on `test_find_replace_rejects_whitespace_only_needle` (same tkinter environment issue documented in prior merge commits; passes on rerun) — unrelated to this speaker-signal-only merge.
+- **Merge diff**: 5 source files changed (`alignment.py`, `diarization.py`, `hallucination.py`, `separator.py`, `voiceprint.py`) + 5 test files (2 extended, 3 new) + 1 doc. No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `alignment.py` — `_build_whisper_result`: non-string `text` coerced to `""` instead of dropping the entry. Correct: the old `if isinstance(text, str)` filter dropped entries, shifting every later segment's words onto the wrong segment during index-based splice-back. The `isinstance` guard at line 77 is correct.
+  - `diarization.py` — `_prepare_audio_16k_mono`: empty-decode guard (line 138: `samples.size == 0`) raises `DiarizationUnavailable` before reaching sherpa native code. The `FileNotFoundError`/`OSError` catch (line 129) was already present from earlier hardening; the merge added the empty-array guard. Both correct.
+  - `hallucination.py` — `annotate_segments`: `isinstance(raw_text, str)` guard (line 175) skips non-string text (None, number) instead of crashing on `.strip()` at line 180. Correct: the guard is before the `.strip()` call.
+  - `separator.py` — `_CACHE_IN_USE_GRACE_S = 300` (line 111): stems used within 5 min are never evicted; cache hits refresh mtime via `os.utime` (line 220). `prune_cache` sorts by `_mtime_or_zero` with `OSError` guard (line 142); `in_use` check (line 162) uses `now - st.st_mtime < _CACHE_IN_USE_GRACE_S`. `_orphan_vocals.wav` survivor name (line 271) is keyed per-source and matches `*_vocals.wav` prune glob. `os.replace` fallback chain (lines 254-278) handles cross-drive copies and falls back to orphan survivor or input. All correct.
+  - `voiceprint.py` — `enrol_with_vector`: `math.isfinite(x)` check (line 169) rejects NaN/Inf/non-numeric with `ValueError`; `TypeError` from non-iterable elements caught separately. `match_vector`: dimension-mismatched rows skipped (line 249) instead of scoring 0.0 (which at threshold <= 0 would false-match). Both correct.
+  - No silent drops: every change adds a guard or fix without removing existing logic. No reverted behavior from prior merges.
+- **Test coverage of merged behavior**: 92 targeted tests across 5 merge-specific test files (`test_alignment.py`, `test_diarization.py`, `test_hallucination.py`, `test_separator.py`, `test_voiceprint.py`) — all pass. Tests exercise: non-string text coercion, empty-decode guard, non-string text skip, cache grace/prune/orphan survivor, NaN/Inf rejection, dimension-mismatch skip. Pre-fix code would fail these tests (old `_build_whisper_result` dropped non-string entries; old `_prepare_audio_16k_mono` passed empty arrays to sherpa; old `annotate_segments` crashed on `.strip()` of None; old `match_vector` scored dimension-mismatched rows 0.0).
+
+Result: clean. No source changes needed.
