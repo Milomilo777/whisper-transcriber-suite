@@ -695,3 +695,39 @@ Verified the merge of `opencode/server-hardening` into
 - **Test coverage of merged behavior**: 3 new test files (`test_server_openai.py`: route parsing, pure helpers, HTTP round-trips for all response formats, auth, error cases; `test_server_tls.py`: cert generation/reuse, SSL context, real TLS round-trip, HTTPS failure handling; `test_server_webhooks.py`: payload shape, SSRF refusal, fire-and-forget delivery, redirect refusal, JobManager integration, slow-webhook non-blocking) + 2 extended test files (`test_fixpack_D.py`: legacy numeric IP SSRF, `test_fixpack_bl_appui.py`: server start signature). All exercise every merged change with realistic edge cases.
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/speaker-signal-review (2026-09-21)
+
+Clean merge, no conflicts. `git merge --no-ff opencode/speaker-signal-review`
+succeeded via ort strategy; 11 files changed, 650 insertions, 23 deletions.
+
+Branch contents (from `git log HEAD^2`):
+- `ff9dd3f` Harden diarization, voiceprint, alignment, separator edge cases
+- `c87a809` + `29276a3` + `704c182` review handoff and two follow-up re-checks
+  (orphan survivor name, prune sort guard, non-string-text / TypeError gates)
+
+What was merged (sanity-checked via `git diff c87c42f..HEAD`):
+- `core/alignment.py`: `_build_whisper_result` no longer drops non-string-text
+  segments; coerces to `""` so index-based splice-back stays aligned.
+- `core/diarization.py`: `_prepare_audio_16k_mono` raises
+  `DiarizationUnavailable` on empty ffmpeg decode instead of reaching
+  sherpa native code with an empty array.
+- `core/hallucination.py`: `annotate_segments` skips non-string `text`
+  (None / number) instead of crashing on `.strip()`.
+- `core/separator.py`: Demucs cache gets in-use grace period
+  (`_CACHE_IN_USE_GRACE_S = 300`), mtime refresh on hit, OSError-safe
+  prune sort + cache-hit stat, per-source `_orphan_vocals.wav` survivor
+  name matching the prune glob, and input fallback when the stem cannot
+  be cached at all.
+- `core/voiceprint.py`: `enrol_with_vector` rejects NaN/Inf/non-numeric
+  vectors with `ValueError`; `match_vector` skips dimension-mismatched
+  rows instead of scoring them 0.0 (which could false-match at threshold 0).
+- Tests: new coverage in `test_alignment.py`, `test_diarization.py`,
+  `test_hallucination.py`, `test_separator.py` (4 new), `test_voiceprint.py`
+  (3 new), plus `OPENCODE_HANDOFF_speaker_signal.md` review handoff doc.
+- No reconciliation needed: no conflicting hunks, no test adjustments.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2388 passed,
+  14 skipped, 0 failures.
