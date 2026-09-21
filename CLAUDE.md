@@ -275,6 +275,35 @@ faith. That is a different situation this rule was never meant to cover.
     every commit. The v1.0.3 baseline is 0 errors / 0 warnings /
     0 informations — protect it.
 
+## Borrowed conventions (2026-09-21, cherry-picked from homelab-00/TranscriptionSuite)
+
+Two rules from a similar-purpose transcription app that fit this repo.
+Everything else from their `CLAUDE.md` was deliberately skipped — see
+`OPENCODE_HANDOFF_conventions_signing.md` for the per-item reasons.
+
+### Credit external code sources
+
+When code is copied from, ported from, or substantially inspired by
+another project's code, add an attribution comment at the
+implementation site:
+
+`# Adapted from <ProjectName> (<URL>) — <brief description of what was borrowed>`
+
+Applies to open-source projects, Stack Overflow answers, blog posts,
+and academic papers. Do not credit general programming patterns or
+standard-library usage — only when the specific logic or structure
+came from an identifiable external source.
+
+### Persist completed work before reporting success
+
+Transcription results are irreplaceable — a completed transcription
+must reach durable storage (output files, history DB, resume
+checkpoint) BEFORE the UI/worker reports success. Never let a
+delivery failure (worker crash, dropped queue event, UI-thread error)
+silently discard completed work. When in doubt, save first, report
+second. New transcription code paths must keep the existing order:
+write outputs + history entry first, then emit done/success.
+
 ## Handoff file
 
 `docs/SESSION_HANDOFF_NEXT.md` is the source of truth for what's

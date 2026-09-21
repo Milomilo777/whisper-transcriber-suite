@@ -116,6 +116,9 @@ htmlcov/
 New Text Document.txt
 NOTES.local.md
 TODO.local.md
+# AI-session-only tips cherry-picked from another repo (kept in the
+# worktree for review, never committed).
+docs/CLAUDE_LOCAL_NOTES.md
 # Bilingual (Persian + English) working copy of docs/GAPS_VS_VOICE_PRO_2026.md —
 # the repo itself is English-only, so this owner-facing copy stays untracked.
 VOICE_PRO_GAP_FA_EN.txt
