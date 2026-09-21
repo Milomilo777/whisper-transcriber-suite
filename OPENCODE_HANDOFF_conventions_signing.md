@@ -151,3 +151,33 @@ Trusted Signing owned and verified by a human. Neither is started here.
 - `git status --short --branch` run before commit to confirm scope;
   scratch subfolder deleted first; single local commit on
   `opencode/conventions-and-signing`; no push; `master` untouched.
+
+### Double-checked (mimo-v2.5):
+
+- **Curation judgment**: Both adopted rules verified as good fits.
+  - *Credit external code sources*: Gap confirmed — zero `Adapted from`
+    comments exist in `app/`/`core/` (grep clean). Rule fits because
+    repo already ports ideas across projects, keeps
+    `THIRD_PARTY_NOTICES.md`/`CITATION.cff`, is English-only for
+    handover.
+  - *Persist completed work before reporting success*: Invariant
+    transfers correctly from their SQLite+WebSocket model to ours
+    (output-files + history-DB + worker-JSON). Existing machinery
+    (`core/history.py`, `core/_checkpoint.py`, frozen worker protocol)
+    already enforces this pattern — rule documents it, not rewrites.
+  - Placement defensible: committed items are durable maintainer rules
+    (belong in `CLAUDE.md`); local-only items are AI-session tips
+    (gitignored `docs/CLAUDE_LOCAL_NOTES.md`).
+- **Skipped items**: All justifications sound — every skip cites a
+  concrete conflict (stack mismatch, workflow mismatch, or zero gap).
+- **Code-signing**: Do-nothing call correct. TranscriptionSuite's GPG
+  sidecars + ad-hoc macOS seal provide artifact integrity only, not
+  platform trust (no CA-backed identity, no SmartScreen/Gatekeeper
+  effect). Adopting it here would add key management + verification
+  workflow for zero real trust benefit. CLAUDE.md's existing code-signing
+  restriction (owner-ask-only) remains the right gate.
+- **Verification gate**: No `.py` file touched — pyright + hermetic-pytest
+  gate deliberately not re-run per the task brief's trigger rule. No
+  new failure surface was introduced.
+
+Result: clean. No source changes needed.
