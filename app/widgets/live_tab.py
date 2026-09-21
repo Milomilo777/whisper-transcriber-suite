@@ -85,7 +85,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
     app.live_status_var = tk.StringVar(value="Idle.")
 
     parent.columnconfigure(0, weight=1)
-    parent.rowconfigure(2, weight=1)
+    parent.rowconfigure(3, weight=1)
 
     # ── Source ────────────────────────────────────────────────────────
     src = section_labelframe(
@@ -153,13 +153,30 @@ def build_live_tab(app: Any, parent: Any) -> None:
         side="left", padx=(16, 0)
     )
 
+    # ── Level meter ───────────────────────────────────────────────────
+    # Independent Tk implementation inspired by TranscriptionSuite's
+    # AudioVisualizer (see app/widgets/audio_visualizer.py for the
+    # license note and the visible differences). Fed by the recorder's
+    # capture thread via LiveSession.on_meter; drawing stays on Tk.
+    from app.widgets.audio_visualizer import AudioVisualizer
+
+    lvl = section_labelframe(
+        parent, "Input level",
+        "Live audio level while listening. Bars move with the sound "
+        "coming in; when nothing moves, nothing is being captured.",
+    )
+    lvl.grid(row=2, column=0, sticky="ew", padx=15, pady=(0, 6))
+    lvl.columnconfigure(0, weight=1)
+    app.live_visualizer = AudioVisualizer(lvl, height=110)
+    app.live_visualizer.frame.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
+
     # ── Transcript ────────────────────────────────────────────────────
     out = section_labelframe(
         parent, "Live transcript",
         "Text appears a few seconds behind the speech: the app waits for a "
         "natural pause before transcribing, so words are not cut in half.",
     )
-    out.grid(row=2, column=0, sticky="nsew", padx=15, pady=(0, 6))
+    out.grid(row=3, column=0, sticky="nsew", padx=15, pady=(0, 6))
     out.columnconfigure(0, weight=1)
     out.rowconfigure(0, weight=1)
 
@@ -171,7 +188,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
     app.live_text.configure(yscrollcommand=bar.set)
 
     actions = ttk.Frame(parent)
-    actions.grid(row=3, column=0, sticky="ew", padx=15, pady=(0, 15))
+    actions.grid(row=4, column=0, sticky="ew", padx=15, pady=(0, 15))
     ttk.Button(actions, text="Save transcript…",
                command=lambda: _save(app)).pack(side="left")
     ttk.Button(actions, text="Copy all",
@@ -278,6 +295,16 @@ def _start(app: Any) -> None:
     language = _selected_language_code(app)
     device_index = _selected_device_index(app) if mode == "mic" else None
     work_dir = _live.session_work_dir()
+    viz = getattr(app, "live_visualizer", None)
+
+    def _meter(pcm: bytes, rate: int) -> None:
+        # Runs on the recorder's capture thread: push_frames is
+        # thread-safe (stores under a lock; drawing stays on Tk).
+        try:
+            if viz is not None and pcm:
+                viz.push_frames(pcm, rate)
+        except Exception:  # noqa: BLE001
+            logger.debug("Live meter push failed", exc_info=True)
 
     def worker() -> None:
         # Spawning a worker and loading a ~3 GB model takes tens of
@@ -296,6 +323,7 @@ def _start(app: Any) -> None:
                 mode=mode,
                 device_index=device_index,
                 language=language,
+                on_meter=_meter,
             )
             session.start()
         except Exception as e:  # noqa: BLE001
@@ -329,6 +357,12 @@ def _started(app: Any, transcriber: Any, session: Any) -> None:
     app.live_session = session
     app.live_status_var.set("Listening…")
     app.log("Live transcription started.")
+    try:
+        viz = getattr(app, "live_visualizer", None)
+        if viz is not None:
+            viz.set_active(True)
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not activate visualizer", exc_info=True)
     _schedule_poll(app)
 
 
@@ -337,6 +371,12 @@ def _start_failed(app: Any, error: Exception) -> None:
     app.live_transcriber = None
     _set_running(app, False)
     app.live_status_var.set("Idle.")
+    try:
+        viz = getattr(app, "live_visualizer", None)
+        if viz is not None:
+            viz.set_active(False)
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not deactivate visualizer", exc_info=True)
     show_error(
         app, "Could not start listening",
         "The live session could not be started.", detail=str(error),
@@ -377,6 +417,12 @@ def _stopped(app: Any) -> None:
     _set_running(app, False)
     app.live_status_var.set("Stopped.")
     app.log("Live transcription stopped.")
+    try:
+        viz = getattr(app, "live_visualizer", None)
+        if viz is not None:
+            viz.set_active(False)
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not deactivate visualizer", exc_info=True)
 
 
 def stop_live_session(app: Any) -> None:
@@ -395,6 +441,12 @@ def stop_live_session(app: Any) -> None:
             logger.exception("Live worker teardown failed")
     app.live_session = None
     app.live_transcriber = None
+    try:
+        viz = getattr(app, "live_visualizer", None)
+        if viz is not None:
+            viz.set_active(False)
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not deactivate visualizer", exc_info=True)
 
 
 # --------------------------------------------------------------- polling

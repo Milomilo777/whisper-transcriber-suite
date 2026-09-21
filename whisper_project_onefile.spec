@@ -158,6 +158,7 @@ a = Analysis(
         'app.widgets.hardware_wizard',
         'app.widgets.platform',
         'app.widgets.live_tab',
+        'app.widgets.audio_visualizer',
         'app.widgets.tabs',
         'app.widgets.tray',
         'app.widgets.voice_clone_tab',
