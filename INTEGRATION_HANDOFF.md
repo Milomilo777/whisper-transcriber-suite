@@ -950,3 +950,48 @@ Verified the merge of `opencode/worker-protocol-review` into
 - **Test coverage of merged behavior**: 73 targeted tests across 6 test files — all pass. Branch tests assert event kinds/error counts, not exact `done` payloads, so they remain compatible with the `task_id`-bearing `done` after the reconciliation.
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/writers-review (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/writers-review`): no conflicts,
+no reconciliation needed. Merge commit 435d4b6 on top of b8902a9
+(second parent d226433).
+
+Files brought in by the review branch (d33d267 + 94300bd + dea318b +
+cdbe24f + d226433):
+- `core/writers/base.py`: `fmt_srt_time` / `fmt_lrc_time` coerce via
+  `float()` in try/except (TypeError/ValueError/OverflowError) so huge-int
+  timestamps clamp to 0 instead of raising; new `coerce_seconds()` helper
+  (default-on-garbage, finite-only) mirroring the viewer `_seg_float`;
+  `normalize_text()` coerces non-string `text` via `str()` (None -> "").
+- `core/writers/*.py` (13 writers: ass, bilingual_srt, docx, elan,
+  express_scribe, inqscribe, json, lrc, md, pdf, smtv_docx, srt, tsv, vtt):
+  segment `start`/`end` reads routed through `coerce_seconds`, text reads
+  through hardened `normalize_text`, word-list handling guards non-dict
+  words and huge-int word times.
+- `core/convert.py`: `otr_to_srt` tolerates non-string text payload.
+- `core/integrations/otranscribe.py`: malformed-segment hardening for the
+  oTranscribe round-trip.
+- `tests/core/test_writers_malformed_input.py` (new, 235 lines),
+  `tests/core/test_convert.py` (+42), `tests/integrations/test_otranscribe.py`
+  (+87): coverage for malformed segment input.
+- `OPENCODE_HANDOFF_writers_review.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git diff HEAD^1 HEAD`: intent matches the
+review-branch log; no conflict markers, no dropped lines (`git diff --check`
+clean).
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2496 passed, 14 skipped,
+  0 failures on the final clean run. Two earlier full-suite runs each showed
+  a single transient Tk-environment issue in an unrelated test
+  (`test_ai_status_shows_off_when_ai_disabled`, then
+  `test_console_widget.py::test_build_console_creates_exactly_one_menu`
+  with `TclError: Can't find a usable tk.tcl`); each passes in isolation
+  and the rerun is fully green — same class of tkinter state flake
+  documented in prior merges, unrelated to this writers-only merge.
+- Targeted merge-area tests (`test_convert.py` + `test_writers_malformed_input.py`
+  + `test_otranscribe.py`, 96 tests): all pass.
+
+Result: clean. No source changes needed.
