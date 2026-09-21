@@ -63,6 +63,22 @@ _WHISPER_LANGS = frozenset({
 })
 
 
+# Codes some sources/UI tables still emit that Whisper only accepts under
+# their modern / alternate spelling. The app's own language picker table
+# (app/domain/languages.py) ships "iw" for Hebrew and "jv" for Javanese;
+# yt-dlp subtitle metadata can carry "in"/"ji"/"nb"/"cmn". Without this map
+# those hints were dropped to auto-detect, silently ignoring an explicit
+# user choice (and for a downloaded file, its own language metadata).
+_LANG_ALIASES: dict[str, str] = {
+    "iw": "he",   # deprecated ISO 639-1 Hebrew
+    "in": "id",   # deprecated ISO 639-1 Indonesian
+    "ji": "yi",   # deprecated ISO 639-1 Yiddish
+    "jv": "jw",   # ISO 639-1 Javanese; Whisper uses the older "jw"
+    "nb": "no",   # Norwegian Bokmål -> Whisper's "no"
+    "cmn": "zh",  # Mandarin -> Whisper's "zh"
+}
+
+
 def _normalize_language(code: str | None) -> str | None:
     """Coerce a UI/download language hint into a Whisper-accepted code.
 
@@ -73,13 +89,24 @@ def _normalize_language(code: str | None) -> str | None:
     """
     if not code:
         return None
-    # Take the first segment, splitting on any of , - _ space — so BCP-47
-    # region tags ("en-US"), script tags ("zh-Hans"), and multi-value
-    # yt-dlp codes ("zh-Hans,zh-CN", "pt,pt-BR,pt-PT", "he,iw") all reduce
-    # to their base language.
-    normalized = code.strip().lower().replace(",", "-").replace("_", "-").replace(" ", "-")
-    base = normalized.split("-", 1)[0]
-    return base if base in _WHISPER_LANGS else None
+    # Comma/space separated values (a yt-dlp multi-value code like
+    # "zh-Hans,zh-CN" or "pt,pt-BR,pt-PT") are in the source's own
+    # preference order; each value is one BCP-47 tag whose ONLY language
+    # subtag is its first "-" component ("en" of "en-US", "zh" of
+    # "zh-Hans"). Later components are regions/scripts — treating them as
+    # languages would turn a rejected "xx-BR" into Breton. Return the
+    # first tag Whisper accepts, aliases included; an unrecognised leading
+    # tag (a legacy "iw,he" pair, an experimental "xx,en") must not
+    # shadow a valid later alternative.
+    normalized = code.strip().lower().replace("_", "-").replace(" ", ",")
+    for value in normalized.split(","):
+        language = value.split("-", 1)[0]
+        if not language:
+            continue
+        candidate = _LANG_ALIASES.get(language, language)
+        if candidate in _WHISPER_LANGS:
+            return candidate
+    return None
 
 
 logger = logging.getLogger(__name__)
@@ -769,6 +796,7 @@ def _write_outputs(
     *,
     lang: str = "",
     speaker_count: int = 0,
+    chapters: list[dict[str, Any]] | None = None,
 ) -> list[str]:
     """Write each requested format atomically.
 
@@ -778,6 +806,14 @@ def _write_outputs(
     previous (intact) version of the file or nothing, never a half-
     written SRT that some downstream tool will reject. The .part file
     is cleaned up on the raise path.
+
+    When *chapters* is non-empty the auto-chapter sidecar is written as
+    part of the same set and shares the outputs' one collision index
+    (``name (1).chapters.json`` next to ``name (1).srt``). The
+    transcript viewer derives the sidecar path from the JSON it opened,
+    so without the shared index a re-run's chapters were invisible from
+    the newly indexed transcript (and its sidecar overwrote the previous
+    run's file at the un-indexed name).
 
     Text formats go through ``open(..., "w", encoding="utf-8")``;
     binary formats (``docx``) go through ``open(..., "wb")`` with
@@ -835,9 +871,15 @@ def _write_outputs(
     # even though no smtv_docx file had ever been written for this
     # source before. The team relies on the exact fixed name to find it.
     indexed_planned = [(f, p) for f, p in planned if f != "smtv_docx"]
+    # A chapter sidecar belongs to the same numbered set as the transcript
+    # outputs, so it takes part in the collision probe too: a re-run must
+    # not leave its chapters at the previous run's name while the
+    # transcripts move to " (1)".
+    want_sidecar = bool(chapters)
     index = 0
-    while index < 10000 and any(
-        os.path.exists(_indexed_path(p, index)) for _, p in indexed_planned
+    while index < 10000 and (
+        any(os.path.exists(_indexed_path(p, index)) for _, p in indexed_planned)
+        or (want_sidecar and os.path.exists(_indexed_sidecar_path(base, index)))
     ):
         index += 1
 
@@ -911,6 +953,15 @@ def _write_outputs(
             "All output writers failed; last error: "
             + (write_errors[-1] if write_errors else "unknown")
         )
+    # Auto-chapter sidecar: same set, same index. A sidecar failure is
+    # non-fatal (chapters are an optional extra, never worth failing the
+    # transcript over) — _write_chapter_sidecar returns None on error.
+    if want_sidecar:
+        sidecar_path = _write_chapter_sidecar(
+            _indexed_sidecar_path(base, index), chapters or []
+        )
+        if sidecar_path:
+            written.append(sidecar_path)
     return written
 
 
@@ -1121,12 +1172,30 @@ def _maybe_get_llm_runner() -> Any | None:
         return None
 
 
-def _write_chapter_sidecar(base: str, chapters: list[dict[str, Any]]) -> str | None:
-    """Write ``<base>.chapters.json`` atomically. Returns the path or None."""
+def _indexed_sidecar_path(base: str, index: int) -> str:
+    """Path for a ``<base>.chapters.json`` sidecar at the shared index.
+
+    Built by appending ``" (N)"`` to the base — NOT by feeding the full
+    ``<base>.chapters.json`` name through :func:`_indexed_path`, which
+    splits on the last dot and would produce ``.chapters (1).json``
+    instead of ``(1).chapters.json``. ``index <= 0`` is the first,
+    unsuffixed write.
+    """
+    suffix = f" ({index})" if index > 0 else ""
+    return f"{base}{suffix}.chapters.json"
+
+
+def _write_chapter_sidecar(path: str, chapters: list[dict[str, Any]]) -> str | None:
+    """Write the auto-chapter sidecar atomically. Returns *path* or None.
+
+    *path* is the full target (``<base>.chapters.json`` or the shared
+    index's ``<base> (N).chapters.json`` — see
+    :func:`_indexed_sidecar_path`) so the sidecar can travel with the
+    transcript outputs' collision index.
+    """
     if not chapters:
         return None
     import json as _json
-    path = base + ".chapters.json"
     part = f"{path}.{os.getpid()}-{threading.get_ident()}.part"
     try:
         with open(part, "w", encoding="utf-8", newline="\n") as f:
@@ -1663,11 +1732,8 @@ def transcribe(
             getattr(task, "output_formats", None),
             lang=detected_lang,
             speaker_count=speaker_count,
+            chapters=getattr(task, "_chapters_for_writer", None) or [],
         )
-        chapters_attr = getattr(task, "_chapters_for_writer", None) or []
-        chapter_path = _write_chapter_sidecar(base, chapters_attr)
-        if chapter_path:
-            written.append(chapter_path)
         # Hand the real written paths to the UI (history + Last-result
         # card) so it never has to re-derive names from config — that
         # missed docx/pdf and the de-duped "name (1).srt" form.
@@ -1715,6 +1781,17 @@ def _transcribe_via_alt_backend(
     _clip_end_v = getattr(task, "clip_end", None)
     clip_end_s = float(_clip_end_v) if _clip_end_v else 0.0
     is_clipped = clip_start_s > 0.0 or clip_end_s > 0.0
+    # Same guard as the faster-whisper path: a start at/after the media
+    # duration would slice an empty temp WAV, and the backend would then
+    # "succeed" with zero segments and write empty output files. Fail
+    # loudly instead (duration is still the SOURCE's — it is remapped to
+    # the slice just below).
+    if is_clipped and duration and clip_start_s >= float(duration):
+        raise RuntimeError(
+            f"Time range start ({clip_start_s:.0f}s) is at or beyond "
+            f"the media length ({float(duration):.0f}s) — nothing to "
+            "transcribe. Pick an earlier start."
+        )
     transcribe_path = task.file_path
     slice_to_clean: str | None = None
     if is_clipped:
@@ -1831,11 +1908,8 @@ def _transcribe_via_alt_backend(
         getattr(task, "output_formats", None),
         lang=detected_lang,
         speaker_count=speaker_count,
+        chapters=getattr(task, "_chapters_for_writer", None) or [],
     )
-    chapters_attr = getattr(task, "_chapters_for_writer", None) or []
-    chapter_path = _write_chapter_sidecar(base, chapters_attr)
-    if chapter_path:
-        written.append(chapter_path)
     task.output_paths = list(written)
     _record_transcript_stats(task, segments_data)
     log(
@@ -1930,6 +2004,14 @@ def _maybe_denoise(
     return out, (out if transient else "")
 
 
+def _remove_quietly(path: str) -> None:
+    """Best-effort unlink; never raises (temp-file hygiene only)."""
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
+
+
 def _slice_audio_from(
     source_path: str,
     start_seconds: float,
@@ -1952,7 +2034,10 @@ def _slice_audio_from(
 
     Returns the path to the slice on disk. Raises ``RuntimeError`` on
     ffmpeg failure (the caller treats that as "fall back to full
-    re-run").
+    re-run"). ffmpeg opens the output with ``-y`` before it knows the
+    input is decodable, so every failure path removes the partial
+    ``.slice.wav`` it may have created — the callers only clean up the
+    path on success, and a leaked partial accumulates in ``partials/``.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     sha = _checkpoint.source_key(source_path)
@@ -1985,12 +2070,17 @@ def _slice_audio_from(
     try:
         result = subprocess.run(cmd, timeout=600, **kwargs)
     except subprocess.TimeoutExpired as e:
+        # subprocess.run kills the process, but ffmpeg's already-open
+        # output file survives the kill on disk.
+        _remove_quietly(str(slice_path))
         raise RuntimeError(
             f"ffmpeg timed out slicing {source_path} from {start_seconds}s"
         ) from e
     except (FileNotFoundError, OSError) as e:
+        _remove_quietly(str(slice_path))
         raise RuntimeError(f"ffmpeg binary not available: {e}") from e
     if result.returncode != 0:
+        _remove_quietly(str(slice_path))
         err = (result.stderr or b"").decode("utf-8", "replace").strip()[:400]
         raise RuntimeError(
             f"ffmpeg slice failed (exit={result.returncode}): {err or 'no output'}"
@@ -2224,11 +2314,8 @@ def resume_transcription(
             getattr(task, "output_formats", None),
             lang=detected_lang,
             speaker_count=speaker_count,
+            chapters=getattr(task, "_chapters_for_writer", None) or [],
         )
-        chapters_attr = getattr(task, "_chapters_for_writer", None) or []
-        chapter_path = _write_chapter_sidecar(base, chapters_attr)
-        if chapter_path:
-            written.append(chapter_path)
         task.output_paths = list(written)
         _record_transcript_stats(task, final_segments)
         log(

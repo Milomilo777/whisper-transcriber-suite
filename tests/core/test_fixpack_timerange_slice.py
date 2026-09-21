@@ -131,6 +131,26 @@ def test_timerange_preslices_offsets_and_cleans_up(transcriber, monkeypatch, tmp
     assert not slice_path.exists()
 
 
+def test_timerange_start_beyond_eof_raises(transcriber, monkeypatch, tmp_path):
+    """A clip start at/after the media length must fail loudly rather
+    than slice nothing and write an empty transcript."""
+    t = transcriber
+    from core.task import TranscriptionTask
+
+    audio = tmp_path / "src.wav"; audio.write_bytes(b"\0" * 16)
+    _stub_engine(t, monkeypatch, tmp_path / "slice.wav", [])
+    monkeypatch.setattr(
+        t, "_slice_audio_from",
+        lambda *a, **k: pytest.fail("must not slice at/after EOF"),
+    )
+
+    task = TranscriptionTask(str(audio))
+    task.clip_start = 5000.0
+    task.clip_end = 5010.0
+    with pytest.raises(RuntimeError, match="beyond the media length"):
+        t.transcribe(task, lambda p: None, lambda m: None, language_cb=None)
+
+
 def test_no_timerange_uses_whole_file_unchanged(transcriber, monkeypatch, tmp_path):
     t = transcriber
     from core.task import TranscriptionTask
