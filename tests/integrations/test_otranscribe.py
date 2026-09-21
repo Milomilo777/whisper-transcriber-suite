@@ -197,3 +197,90 @@ def test_media_field_basename_only():
     assert payload["media"] == "audio.mp3"
     out_unix = srt_to_otr(str(FIXTURES / "sample.srt"), "/var/data/file.wav")
     assert json.loads(out_unix)["media"] == "file.wav"
+
+
+# --- malformed / hand-edited input -------------------------------------------
+
+
+def test_fmt_otr_time_clamps_malformed_inputs():
+    # int() on NaN raised ValueError and on Infinity OverflowError; a
+    # non-numeric string raised ValueError too.
+    assert fmt_otr_time(float("nan")) == "0:00"
+    assert fmt_otr_time(float("inf")) == "0:00"
+    assert fmt_otr_time("abc") == "0:00"
+    assert fmt_otr_time(None) == "0:00"  # type: ignore[arg-type]
+    assert fmt_otr_time(10 ** 400) == "0:00"
+
+
+def test_whisper_json_to_otr_tolerates_malformed_segments(tmp_path):
+    # A hand-edited JSON used to abort the export on the first segment
+    # whose start was null / non-numeric / non-finite, or whose text was
+    # not a string.
+    payload = [
+        {"start": None, "end": None, "text": "null times"},
+        {"start": "abc", "end": "xyz", "text": "garbage times"},
+        {"start": "Infinity", "end": 1.0, "text": 42},
+        {"start": 1.0, "end": 2.0, "text": "kept"},
+    ]
+    p = tmp_path / "hand.json"
+    p.write_text(json.dumps(payload), encoding="utf-8")
+    out = json.loads(whisper_json_to_otr(str(p), "audio.wav"))
+    assert out["text"].count('<span class="timestamp"') == len(payload)
+    assert "kept" in out["text"]
+
+
+def test_segments_to_otr_tolerates_missing_and_malformed_fields():
+    out = segments_to_otr(
+        [
+            {"text": "no start key"},
+            {"start": "abc", "end": 1.0, "text": "garbage start"},
+            {"start": 0.0, "end": 1.0, "text": 42},
+            {"start": 1.0, "end": 2.0, "text": "kept"},
+        ],
+        "audio.wav",
+    )
+    payload = json.loads(out)
+    assert payload["text"].count('<span class="timestamp"') == 4
+    assert "kept" in payload["text"]
+
+
+def test_segments_to_otr_skips_non_dict_and_blank_segments():
+    out = segments_to_otr(
+        [
+            "not a dict",  # type: ignore[list-item]
+            {"start": 0.0, "end": 1.0, "text": "   "},
+            {"start": 1.0, "end": 2.0, "text": "kept"},
+        ],
+        "a.wav",
+    )
+    payload = json.loads(out)
+    assert payload["text"].count('<span class="timestamp"') == 1
+    assert "kept" in payload["text"]
+
+
+def test_otr_to_srt_tolerates_corrupt_media_time_and_timestamp(tmp_path):
+    payload = {
+        "text": (
+            '<p><span class="timestamp" contenteditable="false" '
+            'data-timestamp="nan">0:00</span> hi</p>'
+        ),
+        "media-time": "abc",
+    }
+    p = tmp_path / "corrupt.otr"
+    p.write_text(json.dumps(payload), encoding="utf-8")
+    srt = otr_to_srt(str(p))  # must not raise
+    assert "hi" in srt
+    assert "00:00:00,000 --> 00:00:05,000" in srt
+
+
+def test_otr_to_srt_tolerates_non_string_text(tmp_path):
+    # A hand-edited / corrupt .otr can carry a non-string "text" (a
+    # number, list, ...); HTMLParser.feed() raised TypeError on it and
+    # aborted the whole import. There are no cues to extract, so the
+    # import yields empty output instead of raising.
+    for bad_text in (42, ["<p>hi</p>"], {"html": "hi"}, True):
+        p = tmp_path / "bad_text.otr"
+        p.write_text(
+            json.dumps({"text": bad_text, "media-time": 0}), encoding="utf-8"
+        )
+        assert otr_to_srt(str(p)) == ""  # must not raise

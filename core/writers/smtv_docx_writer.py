@@ -48,7 +48,7 @@ import math
 import os
 from typing import Any
 
-from .base import normalize_text, sanitize_for_xml, speaker_prefix
+from .base import coerce_seconds, normalize_text, sanitize_for_xml, speaker_prefix
 
 # Placeholder strings exactly as they appear (consolidated) in the
 # template's paragraph text. Replacement is run-aware so styling on the
@@ -199,7 +199,11 @@ def _fmt_smtv_time(seconds: float) -> str:
     """
     if seconds is None or not isinstance(seconds, (int, float)):
         seconds = 0.0
-    seconds = float(seconds)
+    try:
+        seconds = float(seconds)
+    except (TypeError, ValueError, OverflowError):
+        # An integer too large for a float raises OverflowError here.
+        seconds = 0.0
     if not math.isfinite(seconds) or seconds < 0:
         seconds = 0.0
     # Round to tenths first so 59.96 doesn't render as 60.0 in the
@@ -384,7 +388,7 @@ def write_bytes(
         cells = row.cells
 
         row_number = str(idx + 1)
-        time_code = _fmt_smtv_time(float(seg.get("start", 0.0) or 0.0))
+        time_code = _fmt_smtv_time(coerce_seconds(seg.get("start")))
         prefix = speaker_prefix(seg)
         body = sanitize_for_xml(prefix + normalize_text(str(seg.get("text") or "")))
 

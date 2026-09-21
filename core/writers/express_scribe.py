@@ -8,16 +8,20 @@ sub-second-accurate segments is ambiguous).
 """
 from __future__ import annotations
 
-from .base import normalize_text, speaker_prefix
+import math
+
+from .base import coerce_seconds, normalize_text, speaker_prefix
 
 
 def fmt_express_scribe_time(seconds: float) -> str:
     """``[hh:mm:ss]`` — whole seconds, clamped to a non-negative finite value."""
     try:
         f = float(seconds)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         f = 0.0
-    if f != f or f < 0:  # NaN check + negative clamp
+    # math.isfinite covers both NaN and Inf; Inf used to reach
+    # ``int(round(inf))`` and raise OverflowError, aborting the file.
+    if not math.isfinite(f) or f < 0:
         f = 0.0
     total = int(round(f))
     hours, rem = divmod(total, 3600)
@@ -29,5 +33,5 @@ def write(segments: list[dict], audio_path: str = "") -> str:
     lines: list[str] = []
     for seg in segments:
         text = speaker_prefix(seg) + normalize_text(seg.get("text", ""))
-        lines.append(f"{fmt_express_scribe_time(float(seg.get('start', 0.0)))} {text}")
+        lines.append(f"{fmt_express_scribe_time(coerce_seconds(seg.get('start')))} {text}")
     return "\n".join(lines) + "\n"

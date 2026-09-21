@@ -8,10 +8,16 @@ def fmt_srt_time(seconds: float) -> str:
     """SRT-style ``HH:MM:SS,ms`` (comma decimal mark)."""
     if seconds is None or not isinstance(seconds, (int, float)):
         seconds = 0.0
+    try:
+        seconds = float(seconds)
+    except (TypeError, ValueError, OverflowError):
+        # An integer too large for a float (a hand-edited JSON can carry
+        # one) raises OverflowError from float(); clamp like NaN/Inf.
+        seconds = 0.0
     # NaN / Inf are valid floats but produce garbage in timestamps;
     # clamp to 0 so a buggy backend doesn't poison every downstream
     # parser.
-    if not math.isfinite(float(seconds)) or seconds < 0:
+    if not math.isfinite(seconds) or seconds < 0:
         seconds = 0.0
     total_ms = int(round(seconds * 1000))
     hours, rem = divmod(total_ms, 3_600_000)
@@ -29,7 +35,11 @@ def fmt_lrc_time(seconds: float) -> str:
     """LRC ``[mm:ss.xx]`` lyric timestamp."""
     if seconds is None or not isinstance(seconds, (int, float)):
         seconds = 0.0
-    if not math.isfinite(float(seconds)) or seconds < 0:
+    try:
+        seconds = float(seconds)
+    except (TypeError, ValueError, OverflowError):
+        seconds = 0.0
+    if not math.isfinite(seconds) or seconds < 0:
         seconds = 0.0
     # Quantise to integer centiseconds *before* splitting into
     # minutes/seconds — mirroring fmt_srt_time. Rounding the float
@@ -44,9 +54,35 @@ def fmt_lrc_time(seconds: float) -> str:
     return f"[{minutes:02d}:{sec:02d}.{cs:02d}]"
 
 
-def normalize_text(text: str) -> str:
-    """Trim and collapse internal whitespace runs to a single space."""
-    return " ".join((text or "").split())
+def normalize_text(text: object) -> str:
+    """Trim and collapse internal whitespace runs to a single space.
+
+    Non-string values are coerced with ``str()`` first (``None``/missing
+    becomes ""): a hand-edited JSON can put a number in ``text``, and the
+    bare ``.split()`` this used to call raised AttributeError on it,
+    aborting the whole write for that format.
+    """
+    return " ".join(("" if text is None else str(text)).split())
+
+
+def coerce_seconds(value: object, default: float = 0.0) -> float:
+    """Best-effort second count from a possibly-malformed segment field.
+
+    Transcript JSON is user-supplied (or hand-edited), so a segment's
+    ``start`` / ``end`` may carry ``None``, a non-numeric string
+    (``"abc"``), an integer too large for a float (``10**400``), or a
+    non-finite float (NaN / Infinity). A bare ``float(...)`` at the
+    segment read raised on all of those and dropped that format's whole
+    output file, even though every timestamp formatter already clamps
+    such values once they arrive as floats. Coerce to *default* instead,
+    mirroring the transcript viewer's ``_seg_float``, so one malformed
+    segment never takes the rest of the transcript down with it.
+    """
+    try:
+        out = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError):
+        return default
+    return out if math.isfinite(out) else default
 
 
 # Control characters that are invalid in XML 1.0 (used by DOCX) plus

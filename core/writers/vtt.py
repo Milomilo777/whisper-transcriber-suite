@@ -7,6 +7,7 @@ by browsers when shown via ``<track>``.
 from __future__ import annotations
 
 from .base import (
+    coerce_seconds,
     escape_cue_separator,
     fmt_vtt_time,
     normalize_text,
@@ -15,11 +16,19 @@ from .base import (
 
 
 def _karaoke_payload(seg: dict) -> str:
-    words = seg.get("words") or []
-    if not words:
+    # A hand-edited / externally produced segment can carry a non-list in
+    # "words" (e.g. a string or number); iterating it raised TypeError and
+    # aborted the whole file. Only a non-empty list is usable.
+    words = seg.get("words")
+    if not isinstance(words, list) or not words:
         return escape_cue_separator(normalize_text(seg.get("text", "")))
     parts: list[str] = []
     for w in words:
+        # A non-dict word entry (bare string / number from hand-edited or
+        # externally produced JSON) has no .get — skip it, mirroring ASS's
+        # karaoke payload and json_writer, instead of aborting the file.
+        if not isinstance(w, dict):
+            continue
         # w.get("start", default) only returns the default when the key
         # is ABSENT; an explicit start=None (hand-edited / externally
         # produced JSON re-fed for re-export) would make float(None)
@@ -30,13 +39,7 @@ def _karaoke_payload(seg: dict) -> str:
         ts_val = w.get("start")
         if ts_val is None:
             ts_val = seg.get("start", 0.0)
-        try:
-            ts_seconds = float(ts_val)
-        except (TypeError, ValueError):
-            try:
-                ts_seconds = float(seg.get("start", 0.0))
-            except (TypeError, ValueError):
-                ts_seconds = 0.0
+        ts_seconds = coerce_seconds(ts_val, coerce_seconds(seg.get("start")))
         ts = fmt_vtt_time(ts_seconds)
         # The word text can be a non-string (e.g. a number) in a
         # hand-edited / externally produced JSON re-fed for re-export.
@@ -52,13 +55,23 @@ def _karaoke_payload(seg: dict) -> str:
         if parts:
             parts.append(" ")
         parts.append(f"<{ts}><c>{token}</c>")
+    if not parts:
+        # Every word was unusable (non-dict entry / blank token). Fall back
+        # to the segment text, matching ASS's writer, so the cue is not
+        # silently emptied.
+        return escape_cue_separator(normalize_text(seg.get("text", "")))
     return "".join(parts).strip()
 
 
 def write(segments: list[dict], audio_path: str = "") -> str:
     out: list[str] = ["WEBVTT", ""]
     for seg in segments:
-        out.append(f"{fmt_vtt_time(float(seg['start']))} --> {fmt_vtt_time(float(seg['end']))}")
+        # coerce_seconds: a malformed segment timestamp (None / non-numeric
+        # / NaN / Inf) must clamp rather than abort the whole file; a
+        # missing "end" falls back to the start.
+        start = coerce_seconds(seg.get("start"))
+        end = coerce_seconds(seg.get("end"), start)
+        out.append(f"{fmt_vtt_time(start)} --> {fmt_vtt_time(end)}")
         payload = _karaoke_payload(seg)
         out.append(speaker_prefix(seg) + payload)
         out.append("")

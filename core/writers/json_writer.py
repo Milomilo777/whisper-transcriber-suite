@@ -22,7 +22,9 @@ def _safe_float(value: object, default: float = 0.0) -> float:
     """
     try:
         f = float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # OverflowError: an integer too large for a float (a hand-edited
+        # JSON can carry one) raises here exactly like NaN/Inf do.
         return default
     if not math.isfinite(f):
         return default
@@ -32,10 +34,14 @@ def _safe_float(value: object, default: float = 0.0) -> float:
 def write(segments: list[dict], audio_path: str = "") -> str:
     out: list[dict] = []
     for seg in segments:
+        # A hand-edited / externally produced JSON can put a non-string
+        # (e.g. a number) in "text"; ``(value or "").strip()`` raised
+        # AttributeError on it and dropped the whole sidecar.
+        raw_text = seg.get("text")
         item: dict = {
             "start": _safe_float(seg.get("start", 0.0)),
             "end": _safe_float(seg.get("end", 0.0)),
-            "text": (seg.get("text") or "").strip(),
+            "text": ("" if raw_text is None else str(raw_text)).strip(),
         }
         speaker = seg.get("speaker")
         if speaker not in (None, ""):
@@ -51,8 +57,11 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         if reason not in (None, ""):
             item["suspect_reason"] = str(reason)
         words = seg.get("words")
-        if words:
-            item["words"] = [
+        if isinstance(words, list):
+            # Carry through only dict word entries, mirroring convert's
+            # _parse_json: a non-dict element or a non-list "words" value
+            # from a hand-edited JSON raised and aborted the whole write.
+            coerced_words = [
                 {
                     "start": _safe_float(w.get("start", item["start"]),
                                          item["start"]),
@@ -62,7 +71,10 @@ def write(segments: list[dict], audio_path: str = "") -> str:
                     "probability": _safe_float(w.get("probability", 0.0)),
                 }
                 for w in words
+                if isinstance(w, dict)
             ]
+            if coerced_words:
+                item["words"] = coerced_words
         out.append(item)
     # allow_nan=False — every consumer of this JSON expects strict
     # output; we've already _safe_float-ed every numeric field above

@@ -11,9 +11,10 @@ Stdlib only (``xml.etree.ElementTree``).
 """
 from __future__ import annotations
 
+import math
 from xml.etree import ElementTree as ET
 
-from .base import normalize_text, sanitize_for_xml, speaker_prefix
+from .base import coerce_seconds, normalize_text, sanitize_for_xml, speaker_prefix
 
 TIER_ID = "default"
 LINGUISTIC_TYPE_REF = "default-lt"
@@ -23,9 +24,11 @@ def _ms(seconds: object) -> int:
     """Coerce a segment timestamp to a non-negative millisecond int."""
     try:
         f = float(seconds)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 0
-    if f != f or f < 0:  # NaN check + negative clamp
+    # math.isfinite covers both NaN and Inf; Inf used to reach
+    # ``int(round(inf * 1000))`` and raise OverflowError, aborting the file.
+    if not math.isfinite(f) or f < 0:
         return 0
     return int(round(f * 1000))
 
@@ -69,8 +72,8 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         text = sanitize_for_xml(speaker_prefix(seg) + normalize_text(seg.get("text", "")))
         if not text:
             continue
-        start_ms = _ms(seg.get("start", 0.0))
-        end_ms = _ms(seg.get("end", start_ms))
+        start_ms = _ms(coerce_seconds(seg.get("start")))
+        end_ms = _ms(coerce_seconds(seg.get("end"), start_ms))
         if end_ms < start_ms:
             end_ms = start_ms
 
