@@ -995,3 +995,23 @@ Verification:
   + `test_otranscribe.py`, 96 tests): all pass.
 
 Result: clean. No source changes needed.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/writers-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2496 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). Matches the prior commit's claim exactly.
+- **Merge diff**: merge commit 435d4b6 is a no-op merge for the working tree (only `INTEGRATION_HANDOFF.md` updated); branch changes already present. Verified via `git diff b8902a9..d226433`: 13 writer files hardened, `core/writers/base.py` gained `coerce_seconds` + `normalize_text` rewrite, `core/convert.py` + `core/integrations/otranscribe.py` hardened, 3 new/extended test files, 1 new doc. No conflict markers (`git diff --check` clean), no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `base.py` — `coerce_seconds`: catches `TypeError`/`ValueError`/`OverflowError` on `float()`, falls back to `default`; `math.isfinite` check prevents NaN/Inf downstream. Correct: mirrors the viewer's `_seg_float`. `normalize_text`: `None` → `""` via ternary before `.split()` — correct (old code called `.split()` on `None` → `AttributeError`).
+  - `fmt_srt_time` / `fmt_lrc_time`: `float()` in try/except with `OverflowError` catches huge integers; removed redundant `float()` call after coercion — no double-conversion risk. Correct.
+  - `fmt_ass_time` / `_fmt_smtv_time` / `_coerce` (ass.py): same `OverflowError` pattern applied consistently. `_karaoke_payload`: `isinstance(words, list)` guard + `coerce_seconds` for `seg_start` — correct.
+  - All 13 writers (`ass`, `bilingual_srt`, `docx`, `elan`, `express_scribe`, `inqscribe`, `json`, `lrc`, `md`, `pdf`, `smtv_docx`, `srt`, `tsv`, `vtt`): `start`/`end` reads routed through `coerce_seconds`, text through `normalize_text`, word-list handling guards non-dict words and huge-int word times. Patterns are consistent across all files — no writer left unguarded.
+  - `vtt.py` `_karaoke_payload`: fallback to segment text when all words are unusable — matches ASS writer behavior. Correct.
+  - `json_writer.py`: `isinstance(words, list)` + `isinstance(w, dict)` filters; non-dict words silently dropped. `raw_text` ternary handles `None` and non-string. Correct.
+  - `convert.py` / `otranscribe.py`: non-string text tolerance via same `str()` coercion pattern. Correct.
+- **Test coverage of merged behavior**: 96 targeted tests across 3 merge-specific test files — all pass. Tests exercise: malformed timestamps (None, garbage, NaN, Inf, huge int), non-string text, non-dict words, non-list words, karaoke fallback, time formatter clamping, oTranscribe round-trip with corrupt segments. Pre-fix code would fail these tests.
+
+Result: clean. No source changes needed.
