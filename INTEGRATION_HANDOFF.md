@@ -750,3 +750,43 @@ Verified the merge of `opencode/speaker-signal-review` into
 - **Test coverage of merged behavior**: 92 targeted tests across 5 merge-specific test files (`test_alignment.py`, `test_diarization.py`, `test_hallucination.py`, `test_separator.py`, `test_voiceprint.py`) — all pass. Tests exercise: non-string text coercion, empty-decode guard, non-string text skip, cache grace/prune/orphan survivor, NaN/Inf rejection, dimension-mismatch skip. Pre-fix code would fail these tests (old `_build_whisper_result` dropped non-string entries; old `_prepare_audio_16k_mono` passed empty arrays to sherpa; old `annotate_segments` crashed on `.strip()` of None; old `match_vector` scored dimension-mismatched rows 0.0).
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/transcriber-core-review (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/transcriber-core-review`): no conflicts,
+no reconciliation needed. Merge commit 97c8792 on top of 27f1538
+(second parent 0ae2111).
+
+Files brought in by the review branch (2b4cf5e + 0ae2111):
+- `core/transcriber.py`: `_LANG_ALIASES` map (iw->he, in->id, ji->yi, jv->jw,
+  nb->no, cmn->zh) + multi-value `_normalize_language` scan that only ever
+  returns a member of `_WHISPER_LANGS`; `_write_outputs` takes `chapters=` and
+  writes the auto-chapter sidecar at the shared collision index via new
+  `_indexed_sidecar_path` (included in the collision probe, non-fatal on
+  failure); `_write_chapter_sidecar` takes the full target path; alt-backend
+  clip-start-at/after-EOF guard mirroring the faster-whisper path;
+  `_remove_quietly` + partial `.slice.wav` cleanup on all three
+  `_slice_audio_from` failure paths (timeout, spawn failure, non-zero exit);
+  all three call sites (transcribe, alt-backend, resume) pass chapters through
+  `_write_outputs` instead of writing the sidecar separately.
+- `tests/core/test_alt_backend_clip.py`, `test_fixpack_timerange_slice.py`,
+  `test_normalize_language.py`, `test_output_indexing.py`,
+  `test_transcribe_kwargs.py`, `test_transcriber_helpers.py`: coverage for the
+  above (alias/multi-value/region-subtag language cases, sidecar shared index +
+  orphan-sidecar bump, alt-backend and main-path EOF guards, slice-partial
+  cleanup, picker-Hebrew kwarg).
+- `OPENCODE_HANDOFF_transcriber_core.md`: new review handoff doc (incl.
+  second-pass revert-prove: 14 failures on old code, 95/95 pass on new).
+
+Sanity-checked combined diff via `git diff HEAD^1 HEAD`: intent matches the
+review-branch log; no conflict markers, no dropped lines.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2410 passed, 14 skipped,
+  0 failures on the final clean run. One earlier full-suite run showed a single
+  transient Tk environment failure in unrelated
+  `tests/core/test_transcript_viewer.py::test_viewer_disables_transport_when_vlc_init_fails`
+  (`TclError: couldn't read file .../ttk/combobox.tcl`); it passes in isolation
+  and the full-suite rerun is green — same class of tkinter state flake
+  documented in prior merge commits, unrelated to this transcriber-only merge.
