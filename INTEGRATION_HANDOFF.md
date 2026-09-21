@@ -668,3 +668,30 @@ Post-merge integration fix (no conflict, but combined logic needed it):
   (`test_cli_serve_forwards_https_and_webhook_flags`,
   `test_cli_serve_falls_back_to_https_webhook_config`) covering
   flag + config fallback forwarding neither side had on its own.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/server-hardening` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2378 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). Matches the prior commit's claim exactly.
+- **Merge diff**: 5 source files changed (`httpd.py`, `tls.py` new, `jobs.py`, `__init__.py`, `config.py`), 3 files with UI/CLI plumbing (`app.py`, `tabs.py`, `gui.py`), 3 new test files + 2 extended test files + 2 packaging specs + 1 doc. No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `httpd.py` — `_receive_upload` refactored from `_create_upload_job`: now raises `_UploadError` instead of sending error JSON + returning, allowing both the existing job API and the new OpenAI route to share the upload path. Error cleanup (unlink tmp) and error propagation both correct. `_create_upload_job` catches `_UploadError` and sends JSON error; `_openai_transcribe` catches it and sends OpenAI envelope error.
+  - `httpd.py` — OpenAI-compatible route: `parse_route` correctly maps `/v1/models` and `/v1/audio/transcriptions`. `_openai_transcribe` streams upload, copies file range, submits to queue, then blocks via `_wait_for_job` polling `job.status` with `time.sleep(0.1)` — correct for the synchronous OpenAI contract. `_wait_for_job` checks `manager.stopped` to avoid hanging on shutdown. `_openai_send_result` reads the JSON sidecar and renders json/text/srt/vtt/verbose_json via `get_writer` for srt/vtt (reuses existing code). All error paths use `openai_error_payload` envelope.
+  - `httpd.py` — `_bearer_token()` extracts `Authorization: Bearer <token>` for OpenAI SDK compatibility. `_authed` combines `X-Auth-Token` and bearer (OR). Correct.
+  - `httpd.py` — `JobHTTPServer.__init__` wraps `self.socket` with `ssl_context.wrap_socket(server_side=True)` before `serve_forever` — all accepted connections are TLS from first byte. `ssl_context` parameter is optional (default None = no TLS).
+  - `tls.py` — Full DER/ASN.1 encoder for self-signed P-256 ECDSA certificate. `_parse_legacy_ipv4` is in `jobs.py`, not `tls.py` — correct separation. `ensure_certificate` checks existing pair loads via `ssl.SSLContext.load_cert_chain` before reusing; regenerates on any `OSError`/`SSLError`/`ValueError`. `_pair_loads` validates both files exist AND OpenSSL accepts them. `build_server_ssl_context` sets `minimum_version = TLSv1_2`.
+  - `jobs.py` — `is_safe_url` now calls `_parse_legacy_ipv4(literal)` when `ipaddress.ip_address()` fails, catching `inet_aton`-style numeric forms (decimal, octal, hex) that bypass `ipaddress` but a fetch stack may still interpret as loopback. The `_addr_blocked` check applies to the resolved address. Correct: `2130706433` → `127.0.0.1` → blocked.
+  - `jobs.py` — `_fire_webhook`: only fires on `STATUS_FINISHED` / `STATUS_ERROR` (not `STATUS_CANCELLED`); runs `sender(url, payload)` on a daemon thread so a slow endpoint never blocks the job worker or keeps the process alive. `post_webhook` applies `is_safe_url` gate and uses `_NoRedirectHandler` to prevent SSRF via 30x bounce. Bounded read (`_WEBHOOK_MAX_RESPONSE_BYTES`) prevents a hostile endpoint from streaming forever.
+  - `jobs.py` — `Job.detected_language` field populated after transcription completes; used in webhook payload and OpenAI verbose_json response. `JobManager.stopped` property exposes `_stop.is_set()` for the OpenAI polling loop.
+  - `__init__.py` — `ServerHandle.start` gains `https` and `webhook_url` params; HTTPS creates `ssl_context` via `build_server_ssl_context()`, `webhook_url` passed to `JobManager`. `reachable_urls` switches scheme to `https://` when `https=True`. `run_server` catches `RuntimeError` from HTTPS setup failure.
+  - `config.py` — `server_https_enabled` (bool, default False) and `server_webhook_url` (str, default "") added to `DEFAULT_CONFIG` with clear comments.
+  - `gui.py` — `_cli_serve` forwards `https` (from `--https` flag or config) and `webhook_url` (from `--webhook` flag or config) to `run_server`. `_build_argparser` adds `--https` (store_true) and `--webhook` (optional string).
+  - `app/app.py` — `_toggle_server` reads `https`/`webhook_url` from Tk vars and passes to `handle.start`. `_save_server_prefs` persists both to config.
+  - `app/widgets/tabs.py` — HTTPS checkbox + webhook URL entry added to server tab. Safety note updated to mention HTTPS opt-in.
+  - `test_gui_serve_args.py` — Updated `test_cli_serve_forwards_explicit_flags` to expect `"https": False, "webhook_url": ""` in the captured dict. Two new tests cover explicit `--https`/`--webhook` flags and config fallback. Correct: both sides' logic preserved.
+- **Test coverage of merged behavior**: 3 new test files (`test_server_openai.py`: route parsing, pure helpers, HTTP round-trips for all response formats, auth, error cases; `test_server_tls.py`: cert generation/reuse, SSL context, real TLS round-trip, HTTPS failure handling; `test_server_webhooks.py`: payload shape, SSRF refusal, fire-and-forget delivery, redirect refusal, JobManager integration, slow-webhook non-blocking) + 2 extended test files (`test_fixpack_D.py`: legacy numeric IP SSRF, `test_fixpack_bl_appui.py`: server start signature). All exercise every merged change with realistic edge cases.
+
+Result: clean. No source changes needed.
