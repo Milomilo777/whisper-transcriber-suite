@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -69,6 +70,93 @@ def test_separate_vocals_cache_hit_skips_demucs(tmp_path, monkeypatch):
     assert out == str(cached)
 
 
+def test_separate_vocals_cache_hit_refreshes_mtime(tmp_path, monkeypatch):
+    """A cache hit counts as use: the stem's mtime is refreshed so
+    LRU eviction / the in-use grace period see it as active."""
+    src = tmp_path / "audio.wav"
+    src.write_bytes(b"\x00" * 4096)
+    monkeypatch.setattr(sep, "is_available", lambda: True)
+    monkeypatch.setattr(sep, "cache_dir", lambda: tmp_path / "cache")
+    cached = sep._cached_vocals_path(str(src), sep.DEFAULT_MODEL)
+    cached.parent.mkdir(parents=True, exist_ok=True)
+    cached.write_bytes(b"v" * 4096)
+    stale = time.time() - 10 * 86400
+    os.utime(cached, (stale, stale))
+
+    out = sep.separate_vocals(str(src), enabled=True)
+    assert out == str(cached)
+    assert cached.stat().st_mtime > stale + 86400
+
+
+def test_separate_vocals_falls_back_to_input_when_stem_cannot_be_cached(tmp_path, monkeypatch):
+    """If demucs's vocals stem can neither be moved nor copied into
+    the cache, return the original input -- not a path inside the
+    temp tree that finally: is about to delete."""
+    src = tmp_path / "audio.wav"
+    src.write_bytes(b"\x00" * 4096)
+    monkeypatch.setattr(sep, "is_available", lambda: True)
+    monkeypatch.setattr(sep, "cache_dir", lambda: tmp_path / "cache")
+
+    def _fake_run(audio_path, out_dir, *, model, log=None):
+        stem_dir = Path(out_dir) / model / Path(audio_path).stem
+        stem_dir.mkdir(parents=True, exist_ok=True)
+        (stem_dir / "vocals.wav").write_bytes(b"v" * 8192)
+
+    def _locked_replace(*_a, **_kw):
+        raise OSError("locked")
+
+    def _no_space_copyfile(*_a, **_kw):
+        raise OSError("no space left on device")
+
+    monkeypatch.setattr(sep, "_run_demucs_cli", _fake_run)
+    monkeypatch.setattr(sep.os, "replace", _locked_replace)
+    monkeypatch.setattr(sep.shutil, "copyfile", _no_space_copyfile)
+
+    out = sep.separate_vocals(str(src), enabled=True)
+    assert out == str(src)
+
+
+def test_separate_vocals_orphan_survivor_is_keyed_and_prunable(tmp_path, monkeypatch):
+    """When the stem can be rescued out of the temp tree but not into
+    the hashed cache slot, the survivor must be per-source (no
+    cross-source collision) and match the '*_vocals.wav' prune glob
+    (no permanent leak) -- the old bare 'vocals.wav' name did neither."""
+    src = tmp_path / "audio.wav"
+    src.write_bytes(b"\x00" * 4096)
+    other = tmp_path / "other.wav"
+    other.write_bytes(b"\x01" * 4096)
+    monkeypatch.setattr(sep, "is_available", lambda: True)
+    monkeypatch.setattr(sep, "cache_dir", lambda: tmp_path / "cache")
+
+    def _fake_run(audio_path, out_dir, *, model, log=None):
+        stem_dir = Path(out_dir) / model / Path(audio_path).stem
+        stem_dir.mkdir(parents=True, exist_ok=True)
+        (stem_dir / "vocals.wav").write_bytes(b"v" * 8192)
+
+    monkeypatch.setattr(sep, "_run_demucs_cli", _fake_run)
+    monkeypatch.setattr(
+        sep.os, "replace",
+        lambda *_a, **_kw: (_ for _ in ()).throw(OSError("locked")),
+    )
+    real_copyfile = sep.shutil.copyfile
+
+    def _flaky_copyfile(s, d, **_kw):
+        if Path(d).name.endswith("_orphan_vocals.wav"):
+            return real_copyfile(s, d)
+        raise OSError("locked cache slot")
+
+    monkeypatch.setattr(sep.shutil, "copyfile", _flaky_copyfile)
+
+    out_a = sep.separate_vocals(str(src), enabled=True)
+    out_b = sep.separate_vocals(str(other), enabled=True)
+    assert out_a != out_b
+    assert Path(out_a).name.endswith("_orphan_vocals.wav")
+    assert Path(out_b).name.endswith("_orphan_vocals.wav")
+    assert Path(out_a).is_file() and Path(out_b).is_file()
+    prunable = {p.name for p in (tmp_path / "cache").glob("*_vocals.wav")}
+    assert Path(out_a).name in prunable and Path(out_b).name in prunable
+
+
 def test_separate_vocals_falls_back_to_input_on_demucs_error(tmp_path, monkeypatch):
     src = tmp_path / "audio.wav"
     src.write_bytes(b"\x00" * 4096)
@@ -131,6 +219,23 @@ def test_prune_cache_disabled_when_budget_zero(tmp_path, monkeypatch):
     _make_stem(cache, "a", 1024 * 1024, 1000.0)
     assert sep.prune_cache(budget_mb=0) == 0
     assert (cache / "a_vocals.wav").exists()
+
+
+def test_prune_cache_keeps_recently_written_stem(tmp_path, monkeypatch):
+    """A fresh stem may be mid-read by another concurrent worker, so
+    the in-use grace period must protect it even over budget -- the
+    old code evicted it before the reader could open it."""
+    cache = tmp_path / "demucs"
+    monkeypatch.setattr(sep, "cache_dir", lambda: cache)
+    mb = 1024 * 1024
+    now = time.time()
+    fresh = _make_stem(cache, "fresh", 2 * mb, now)
+    old = _make_stem(cache, "old", 2 * mb, now - 3600)
+
+    removed = sep.prune_cache(budget_mb=1)
+    assert fresh.exists()
+    assert not old.exists()
+    assert removed == 1
 
 
 def test_clear_cache_removes_dir(tmp_path, monkeypatch):

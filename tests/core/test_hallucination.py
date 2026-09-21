@@ -153,5 +153,18 @@ def test_annotate_segments_skips_empty_text():
     assert segs[0].get("suspect") is None
 
 
+def test_annotate_segments_skips_non_string_text():
+    """Segments with non-string text (None, a number from a malformed
+    backend payload) must be skipped, not crash on .strip()."""
+    segs = [
+        {"start": 0.0, "end": 1.0, "text": None},
+        {"start": 1.0, "end": 2.0, "text": 123},
+        {"start": 2.0, "end": 3.0},
+    ]
+    n = h.annotate_segments(segs)
+    assert n == 0
+    assert all(s.get("suspect") is None for s in segs)
+
+
 def test_normalize_collapses_whitespace_and_case():
     assert h._normalize("  HELLO   WORLD  ") == "hello world"

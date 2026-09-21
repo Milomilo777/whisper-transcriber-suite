@@ -143,3 +143,23 @@ def test_diarize_raises_on_missing_models(tmp_path, monkeypatch):
     monkeypatch.setattr(diar_mod, "availability_reason", lambda: "sherpa-onnx Python package not installed")
     with pytest.raises(DiarizationUnavailable):
         diar_mod.diarize(str(tmp_path / "missing.wav"))
+
+
+def test_prepare_audio_raises_on_empty_decode(tmp_path, monkeypatch):
+    """A valid container with zero audio frames decodes to an empty
+    sample array; that must raise DiarizationUnavailable, not reach
+    sherpa-onnx's native process() with nothing to chew on."""
+    import subprocess as _sp
+
+    import core.diarization as diar_mod
+
+    monkeypatch.setattr(diar_mod, "bundled_binary", lambda _name: "ffmpeg")
+    monkeypatch.setattr(
+        diar_mod.subprocess,
+        "run",
+        lambda *a, **kw: _sp.CompletedProcess(
+            args=[], returncode=0, stdout=b"", stderr=b""
+        ),
+    )
+    with pytest.raises(DiarizationUnavailable):
+        diar_mod._prepare_audio_16k_mono(str(tmp_path / "empty.wav"))

@@ -61,17 +61,23 @@ def _build_whisper_result(stable_whisper_mod: Any, segments_data: list[dict[str,
     stable-ts internally wants ``WhisperResult(dict)`` where the
     dict carries ``segments`` + ``language``. We build the minimal
     shape and let stable-ts fill word data on align.
+
+    One payload entry per input segment, never fewer: the caller
+    splices refined words back by index, so dropping a segment (the
+    old ``if isinstance(text, str)`` filter) shifted every later
+    segment's words onto the wrong segment. Non-string text is
+    coerced to ``""`` instead of dropping the entry.
     """
+    payload_segments = []
+    for s in segments_data:
+        text = s.get("text", "")
+        payload_segments.append({
+            "start": float(s.get("start", 0.0)),
+            "end": float(s.get("end", 0.0)),
+            "text": text if isinstance(text, str) else "",
+        })
     payload = {
-        "segments": [
-            {
-                "start": float(s.get("start", 0.0)),
-                "end": float(s.get("end", 0.0)),
-                "text": str(s.get("text", "")),
-            }
-            for s in segments_data
-            if isinstance(s.get("text", ""), str)
-        ],
+        "segments": payload_segments,
         "language": (language or "en"),
     }
     return stable_whisper_mod.WhisperResult(payload)
