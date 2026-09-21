@@ -931,3 +931,22 @@ Verification:
 - Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
 - Hermetic suite (`tests/` minus `tests/smoke/`): 2445 passed, 14 skipped,
   0 failures.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/worker-protocol-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2445 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). Matches the prior commit's claim exactly.
+- **Merge diff**: 1 source file changed (`worker.py`), 3 test files extended, 1 new doc, 1 doc update. No conflict markers remaining (`git diff --check` clean).
+- **Adversarial review of changes**:
+  - **Conflict resolution (`done` emission, `worker.py:757-786`)**: Reconciled correctly — `finally: _set_current_task(None)` (branch's clear-before-done ordering) runs first, then `emit("done", ..., task_id=task_id, ...)` (HEAD's correlation field) fires after. This preserves BOTH fixes: the branch's race-condition fix (slot cleared before parent learns task ended) AND the integration's add-only `task_id` field on all events. Verified: `test_done_is_emitted_after_the_in_flight_task_is_cleared` asserts `_current_task is None` at done-time and `cancelled is False` after a racing cancel — both pass.
+  - `_record_length()` (line 381): framing newline excluded from cap measurement. Correct: readline returns `max_chars+1` bytes including the newline; without this, an exactly-at-cap record was wrongly rejected.
+  - Single-report oversize contract: all three `read_capped_lines` paths (readline, chunked `read`, iterate-only) now use `_record_length()` and discard drained tails without yielding. One oversized record → one oversize yield. Verified by `test_read_capped_lines_reports_each_oversized_record_once` + `_chunked` + `test_main_oversize_command_reports_exactly_one_error`.
+  - Best-effort `setup_logging` guard (line 498-510): `except Exception: pass` allows worker to reach `ready` when log dir is locked/AV-blocked. Correct: protocol lives on stdout, parent tolerates stderr log lines.
+  - `load_existing_model` raise surfaced as `startup_error` (lines 557-569): try/except wraps the call, emits `startup_error` with exception type + message, sets heartbeat stop, returns 1. Correct: parent can now release its loading modal with a real reason.
+  - Integration branch's `task_id` correlation preserved on `started` (line 752), `error` (line 788), and `done` (line 776) events. `_register_task`/parked-control plumbing untouched.
+- **Test coverage of merged behavior**: 73 targeted tests across 6 test files — all pass. Branch tests assert event kinds/error counts, not exact `done` payloads, so they remain compatible with the `task_id`-bearing `done` after the reconciliation.
+
+Result: clean. No source changes needed.
