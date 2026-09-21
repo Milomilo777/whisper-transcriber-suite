@@ -557,3 +557,45 @@ Verified the merge of `opencode/platform-scripts-review` into
 - **Test coverage**: platform scripts are shell scripts (no Python test coverage), but all existing Python tests pass. The merge is documentation/shell-script only — no Python source or test files were modified.
 
 Result: clean. No source changes needed.
+
+## Merge: opencode/search-chapters-infra-review (2026-09-21)
+
+Clean merge (`git merge --no-ff opencode/search-chapters-infra-review`): no conflicts,
+no reconciliation needed. Merge commit e25b057 on top of 40738d6
+(second parent 6a5915e).
+
+Files brought in by the review branch (cb7e07a + d4adf4e + 9340a74 + 6a5915e):
+- `core/_proc.py`: `kill_process_tree` POSIX safety guard — resolves own
+  pgid via `os.getpgid(0)` and refuses to `killpg` when the child's pgid
+  equals this process's group (falls through to parent-only signal), so a
+  caller that skipped `new_session_kwargs()` can never make the app kill
+  itself. Docstring updated accordingly.
+- `core/logging_setup.py`: `_prune_worker_logs()` + `WORKER_LOG_KEEP = 10` /
+  `WORKER_LOG_MAX_AGE_DAYS = 14` / `_WORKER_LOG_GLOBS` restricted to the two
+  known producers (`worker-*.log*`, `voiceclone-worker-*.log*`); called from
+  `setup_logging()` so per-process worker logs don't accumulate forever.
+  Never raises; keeps newest 10, only unlinks files older than cutoff.
+- `core/search.py`: `_read_segments` returns `None` on `OSError` (transient
+  read failure keeps existing index, unmarked for retry) vs `[]` on
+  corrupt JSON; `index_file` rebuilds when embeddings missing (dependency
+  installed later); `reindex_all_history` per-file try/except so one bad
+  transcript can't abort the walk; `search` falls back to FTS on semantic
+  failure; `_fts_match_query` quotes every token (implicit AND, operator
+  literals can't crash sqlite); BM25 score mapped via logistic
+  `1/(1+exp(min(rank,500)))` instead of `1/(1+max(0,rank))` which clamped
+  every negative FTS5 rank to exactly 1.0. Drops unused `re` import.
+- `tests/core/test_search.py`: new/extended coverage for the above
+  (multi-word AND, operator literals, score ordering, transient-read keep,
+  embeddings backfill, per-file skip, semantic-fallback).
+- `tests/core/test_proc.py`: additions covering the own-group refusal guard.
+- `tests/core/test_logging_setup.py`: new file covering prune keep-count /
+  age cutoff / glob scoping.
+- `OPENCODE_HANDOFF_search_chapters_infra.md`: new review handoff doc.
+
+Sanity-checked combined diff via `git show HEAD` / `git diff HEAD~1 HEAD`:
+intent matches the review-branch log; no conflict markers, no dropped lines.
+
+Verification:
+- Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
+- Hermetic suite (`tests/` minus `tests/smoke/`): 2335 passed, 14 skipped,
+  0 failures.
