@@ -115,6 +115,26 @@ def test_save_leaves_settings_without_a_control_untouched(monkeypatch) -> None:
     assert cfg["voiceprint_enabled"] is False
 
 
+def test_save_maps_a_marked_unavailable_engine_label_back_to_its_value(
+    monkeypatch,
+) -> None:
+    """The engine combobox labels carry a "⚠ unavailable" marker while that
+    engine is blocked; Save must still write the real backend value."""
+    from app.dialogs import advanced as adv
+    from core.backends.availability import UNAVAILABLE_MARK, VALUE_TO_LABEL
+
+    monkeypatch.setattr(adv, "save_config", lambda _cfg: None)
+    cfg = _base_cfg()
+    dlg = _fake_dialog(
+        _fake_app(cfg),
+        _backend_display=_V(VALUE_TO_LABEL["cloud_stt"] + UNAVAILABLE_MARK),
+    )
+
+    adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
+
+    assert cfg["transcribe_backend"] == "cloud_stt"
+
+
 def test_restore_defaults_then_save_resets_hidden_batch_size(monkeypatch) -> None:
     from app.dialogs import advanced as adv
     from core.config import DEFAULT_CONFIG
@@ -250,6 +270,38 @@ def test_whisper_cpp_button_only_for_whisper_cpp(make_dialog) -> None:
 
     assert dlg._whisper_cpp_btn.winfo_manager() == "grid"
     assert _shown_setup(dlg) == set()
+
+
+def test_model_picker_greys_out_for_non_faster_whisper_engines(make_dialog) -> None:
+    """The Whisper-model catalog only drives Faster-Whisper; under any other
+    engine the picker is disabled and explains why on hover."""
+    from app.dialogs.advanced import _BACKEND_VALUE_TO_LABEL
+
+    dlg = make_dialog(transcribe_backend="faster_whisper")
+    assert str(dlg._model_combo.cget("state")) == "readonly"
+
+    dlg._backend_display.set(_BACKEND_VALUE_TO_LABEL["cloud_stt"])
+    dlg._sync_engine_sections()
+
+    assert str(dlg._model_combo.cget("state")) == "disabled"
+    assert "uses its own model" in dlg._model_picker_disabled_reason()
+
+
+def test_engine_warning_row_shows_blocking_reason(make_dialog) -> None:
+    """A blocked engine's reason renders under the Engine picker (no API key
+    configured for Gemini here); switching to a ready engine hides the row."""
+    from app.dialogs.advanced import _BACKEND_VALUE_TO_LABEL
+
+    dlg = make_dialog(transcribe_backend="cloud_stt")
+
+    assert dlg._engine_warning.winfo_manager() == "grid"
+    assert "API key" in dlg._engine_warning_var.get()
+
+    dlg._backend_display.set(_BACKEND_VALUE_TO_LABEL["faster_whisper"])
+    dlg._sync_engine_sections()
+
+    assert dlg._engine_warning.winfo_manager() == ""
+    assert dlg._engine_warning_var.get() == ""
 
 
 def test_llm_provider_rows_follow_the_picked_provider(make_dialog) -> None:

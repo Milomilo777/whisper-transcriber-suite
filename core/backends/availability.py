@@ -106,14 +106,22 @@ def default_engine(cfg: Mapping[str, Any] | None = None) -> str:
 class EngineStatus:
     """Whether one engine can transcribe right now.
 
-    ``ready``  — usable immediately with the current config/install.
-    ``detail`` — short human note: the blocking reason when not ready, or an
-                 informational hint (e.g. a pending download) when ready.
+    ``ready``   — usable immediately with the current config/install.
+    ``detail``  — short human note: the blocking reason when not ready, or an
+                  informational hint (e.g. a pending download) when ready.
+    ``blocked`` — when not ready, True iff the engine stays unusable until
+                  the USER does something (paste an API key, install a
+                  package with no on-demand installer). False means the gap
+                  resolves automatically on first use (model download,
+                  on-demand pip install), so it is a setup wait, not a dead
+                  end. The pickers mark only blocked engines as unavailable;
+                  both classes still show their reason inline.
     """
 
     value: str
     ready: bool
     detail: str = ""
+    blocked: bool = False
 
 
 def _faster_whisper_model_present(cfg: Mapping[str, Any]) -> bool:
@@ -160,7 +168,10 @@ def _faster_whisper_status_deep(cfg: Mapping[str, Any]) -> EngineStatus:
         import faster_whisper  # noqa: F401
     except Exception as e:  # noqa: BLE001
         return EngineStatus(
-            "faster_whisper", False, f"faster-whisper not installed ({e})"
+            "faster_whisper",
+            False,
+            f"faster-whisper not installed ({e})",
+            blocked=True,
         )
     if not _faster_whisper_model_present(cfg):
         return EngineStatus("faster_whisper", False, "Model not downloaded yet")
@@ -173,16 +184,21 @@ def _whisper_cpp_status(cfg: Mapping[str, Any]) -> EngineStatus:
 
         if whisper_cpp.is_available():
             return EngineStatus("whisper_cpp", True, "")
-        return EngineStatus("whisper_cpp", False, whisper_cpp.availability_reason())
+        return EngineStatus(
+            "whisper_cpp", False, whisper_cpp.availability_reason(), blocked=True
+        )
     except Exception as e:  # noqa: BLE001
-        return EngineStatus("whisper_cpp", False, str(e) or "unavailable")
+        return EngineStatus("whisper_cpp", False, str(e) or "unavailable", blocked=True)
 
 
 def _cloud_stt_status(cfg: Mapping[str, Any]) -> EngineStatus:
     if str(cfg.get("cloud_stt_api_key") or "").strip():
         return EngineStatus("cloud_stt", True, "")
     return EngineStatus(
-        "cloud_stt", False, "paste a Gemini API key in Advanced settings"
+        "cloud_stt",
+        False,
+        "paste a Gemini API key in Advanced settings",
+        blocked=True,
     )
 
 
@@ -228,7 +244,12 @@ def _nvidia_asr_status(cfg: Mapping[str, Any]) -> EngineStatus:
     except Exception as e:  # noqa: BLE001
         from .nvidia_asr import friendly_load_error
 
-        return EngineStatus("nvidia_asr", False, friendly_load_error(e))
+        # find_spec said the package is present, so the on-demand installer
+        # short-circuits and would skip it — a broken install needs the user
+        # (or a repair reinstall), not just a retry.
+        return EngineStatus(
+            "nvidia_asr", False, friendly_load_error(e), blocked=True
+        )
     return EngineStatus("nvidia_asr", True, "")
 
 
@@ -251,6 +272,7 @@ def _google_cloud_stt_status(cfg: Mapping[str, Any]) -> EngineStatus:
             "google_cloud_stt",
             False,
             "add a service-account JSON in Advanced settings",
+            blocked=True,
         )
     return EngineStatus("google_cloud_stt", True, "")
 
@@ -280,7 +302,10 @@ def engine_status(value: Any, cfg: Mapping[str, Any], *, deep: bool = True) -> E
             if has_gcloud_key(cfg):
                 return EngineStatus(engine, True, "")
             return EngineStatus(
-                engine, False, "add a service-account JSON in Advanced settings"
+                engine,
+                False,
+                "add a service-account JSON in Advanced settings",
+                blocked=True,
             )
         if engine == "cloud_stt":
             return _cloud_stt_status(cfg)
@@ -294,3 +319,111 @@ def engine_status(value: Any, cfg: Mapping[str, Any], *, deep: bool = True) -> E
 def engine_statuses(cfg: Mapping[str, Any]) -> dict[str, EngineStatus]:
     """Deep status of every engine, keyed by backend value (for tests/audits)."""
     return {value: _PROBES[value](cfg) for _label, value in ENGINE_CHOICES}
+
+
+# ------------------------------------------------------- picker presentation
+#
+# Shared by the Transcribe tab's Engine dropdown and the Advanced dialog's
+# Engine combobox so the two render readiness identically and can never drift
+# (the same reason ENGINE_CHOICES lives here). A ``ttk.Combobox`` cannot grey
+# out one entry while leaving the others live, so an entry that cannot run
+# until the user acts is marked in its label text instead, and every caller
+# maps the (possibly marked) label back to the engine value through
+# :func:`engine_value_for_label`.
+
+#: Suffix a picker entry gets while that engine is blocked. Chosen over a
+#: leading marker so labels still alphabetise/read naturally.
+UNAVAILABLE_MARK = "  ⚠ unavailable"
+
+
+@dataclass(frozen=True)
+class EngineOption:
+    """One engine as the pickers need it: stable label + live readiness."""
+
+    value: str
+    label: str
+    ready: bool
+    blocked: bool
+    reason: str
+
+    @property
+    def display_label(self) -> str:
+        """The combobox label — plain, or marked while blocked."""
+        return f"{self.label}{UNAVAILABLE_MARK}" if self.blocked else self.label
+
+
+def engine_options(
+    cfg: Mapping[str, Any],
+    *,
+    deep: bool = False,
+    statuses: Mapping[str, EngineStatus] | None = None,
+) -> list[EngineOption]:
+    """Every engine + readiness, in ENGINE_CHOICES display order.
+
+    ``deep=False`` (the default) runs only the cheap probes, so it is safe
+    to call on the Tk main thread. ``statuses`` lets a caller overlay
+    already-computed results (e.g. cached deep probes) instead of paying for
+    them again.
+    """
+    override = statuses or {}
+    options: list[EngineOption] = []
+    for label, value in ENGINE_CHOICES:
+        st = override.get(value) or engine_status(value, cfg, deep=deep)
+        options.append(
+            EngineOption(
+                value=value,
+                label=label,
+                ready=st.ready,
+                blocked=st.blocked,
+                reason="" if st.ready else (st.detail or "unavailable"),
+            )
+        )
+    return options
+
+
+def engine_value_for_label(label: Any) -> str | None:
+    """Map a picker label — plain OR :data:`UNAVAILABLE_MARK`-suffixed — to
+    its engine value.
+
+    Returns ``None`` for anything unknown so callers can fall back
+    explicitly (e.g. to ``FALLBACK_ENGINE``) instead of silently guessing.
+    """
+    text = str(label or "").strip()
+    if text.endswith(UNAVAILABLE_MARK):
+        text = text[: -len(UNAVAILABLE_MARK)].rstrip()
+    return LABEL_TO_VALUE.get(text)
+
+
+def format_engine_status(
+    st: EngineStatus, *, action_hint: str = "(set up in Advanced settings…)"
+) -> str:
+    """One-line human status text for an :class:`EngineStatus`.
+
+    Shared by the Transcribe tab's status label and the Advanced dialog's
+    warning row so the two surfaces word the same state the same way. Only
+    a *blocked* engine gets the "go set it up" pointer; an engine that
+    resolves itself on first use (model download, on-demand install) says
+    what is pending without sending the user on a chase.
+    """
+    if st.ready:
+        return "✓ Ready" + (f" — {st.detail}" if st.detail else "")
+    if st.blocked:
+        hint = f"  {action_hint}" if action_hint else ""
+        return f"⚠ {st.detail or 'unavailable'}{hint}"
+    return f"⚠ {st.detail or 'not ready yet'}"
+
+
+def engine_status_summary(
+    cfg: Mapping[str, Any],
+    *,
+    deep: bool = False,
+    statuses: Mapping[str, EngineStatus] | None = None,
+) -> str:
+    """Multi-line hover text: what each engine's readiness is right now."""
+    lines = ["Engine readiness on this machine:"]
+    for opt in engine_options(cfg, deep=deep, statuses=statuses):
+        if opt.ready:
+            lines.append(f"• {opt.label}: ready")
+        else:
+            lines.append(f"• {opt.label}: {opt.reason}")
+    return "\n".join(lines)

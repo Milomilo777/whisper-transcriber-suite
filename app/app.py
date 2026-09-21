@@ -71,6 +71,19 @@ def _iids_for_tasks(
     return [iid for iid, t in row_map.items() if id(t) in wanted]
 
 
+def _inst_attr(obj: Any, name: str, default: Any = None) -> Any:
+    """Read an attribute from the instance dict only.
+
+    ``getattr(obj, name, default)`` is unsafe on a bare ``App.__new__(App)``
+    test double: ``tkinter.Misc.__getattr__`` proxies any missing attribute
+    to ``self.tk``, which is itself missing, so the lookup recurses forever
+    (see the same gotcha documented in tests/core/test_model_selector.py).
+    Reading ``__dict__`` cannot recurse and answers the useful question:
+    "was this attribute actually assigned yet?".
+    """
+    return obj.__dict__.get(name, default)
+
+
 def _resolve_theme(name: str) -> str:
     if name == "system":
         try:
@@ -580,10 +593,17 @@ class App(tk.Tk):
     compute_type_var: tk.StringVar
     # Engine picker row on the Transcribe tab (built in tabs.py).
     transcribe_engine_var: tk.StringVar
+    transcribe_engine_combo: "ttk.Combobox"
     engine_status_var: tk.StringVar
     engine_status_label: "ttk.Label"
+    # Deep (import-based) EngineStatus results cached by value so the picker
+    # markers can reflect them without re-probing every engine on the UI
+    # thread; cleared whenever the Advanced dialog closes (credentials /
+    # installs may have changed while it was open).
+    _engine_deep_statuses: "dict[str, Any]"
     # Model picker row on the Transcribe tab (built in tabs.py).
     transcribe_model_var: tk.StringVar
+    transcribe_model_combo: "ttk.Combobox"
     _transcribe_model_label_to_slug: "dict[str, str]"
     model_status_var: tk.StringVar
     model_status_label: "ttk.Label"
@@ -640,6 +660,10 @@ class App(tk.Tk):
         # Window-title base carries the version so the user can always see
         # which build is running (title bar / taskbar / Alt-Tab).
         self._base_title = f"Whisper Transcriber Suite v{_APP_VERSION}"
+        # Cached deep EngineStatus results, keyed by backend value. The
+        # pickers overlay these onto their cheap statuses so an engine's
+        # "unavailable" marker appears as soon as it has really been probed.
+        self._engine_deep_statuses = {}
         self.title(self._base_title)
         # Make any on-demand-installed optional packages importable so
         # feature-availability checks (e.g. stable-ts alignment) see them.
@@ -1736,14 +1760,15 @@ class App(tk.Tk):
         """
         from core.backends import availability as _eng
 
-        evar = getattr(self, "transcribe_engine_var", None)
+        evar = _inst_attr(self, "transcribe_engine_var")
         if evar is None:
             return
-        value = _eng.LABEL_TO_VALUE.get(evar.get() or "", _eng.FALLBACK_ENGINE)
+        value = _eng.engine_value_for_label(evar.get()) or _eng.FALLBACK_ENGINE
         old = str(self.app_config.get("transcribe_backend") or "")
         if value != old:
             if not self._confirm_backend_switch():
                 evar.set(_eng.VALUE_TO_LABEL.get(old, evar.get()))
+                self._refresh_engine_picker_labels()
                 return
             self.app_config["transcribe_backend"] = value
             try:
@@ -1760,6 +1785,7 @@ class App(tk.Tk):
                 "It will be used on the next transcription."
             )
         self._refresh_engine_status()
+        self._sync_model_picker_for_engine()
 
     def _refresh_engine_status(self) -> None:
         """Update the Transcribe-tab engine readiness line for the current pick.
@@ -1767,9 +1793,8 @@ class App(tk.Tk):
         Paints an immediate cheap/neutral line synchronously (so startup and
         selection never block), then kicks off the REAL readiness probe
         (``deep=True`` — genuinely checks installs, model presence, keys) on
-        a short-lived background thread and marshals the result back onto
-        the Tk main thread via ``self.after``. This keeps the UI responsive
-        even when a heavy native-lib import is slow.
+        a short-lived background thread via :meth:`probe_engine_status`. This
+        keeps the UI responsive even when a heavy native-lib import is slow.
         """
         var = getattr(self, "engine_status_var", None)
         if var is None:
@@ -1777,9 +1802,9 @@ class App(tk.Tk):
         try:
             from core.backends import availability as _eng
 
-            evar = getattr(self, "transcribe_engine_var", None)
+            evar = _inst_attr(self, "transcribe_engine_var")
             label = evar.get() if evar is not None else ""
-            value = _eng.LABEL_TO_VALUE.get(label) or self.app_config.get(
+            value = _eng.engine_value_for_label(label) or self.app_config.get(
                 "transcribe_backend"
             )
             value = _eng.normalise_engine(value)
@@ -1795,61 +1820,130 @@ class App(tk.Tk):
                     pass
 
             # 2) Real probe on a daemon thread — never blocks the UI thread.
-            cfg_snapshot = dict(self.app_config)
-
-            def _probe() -> None:
-                # GC disabled for this ENTIRE probe thread, not just the
-                # engine_status() call — a real crash was confirmed
-                # (2026-08-15, Python 3.14) three times, each narrower fix
-                # disproven by the next instrumented full-suite rerun:
-                # (1) GC firing mid-import inside engine_status() faulted a
-                # C-extension class-registration step; (2) narrowing the
-                # gc.disable() window to just that call "fixed" it once,
-                # then a later rerun faulted one line later in a plain
-                # EngineStatus(...) dataclass construction; (3) widening the
-                # window to the whole engine_status() try/finally "fixed" it
-                # again, then ANOTHER rerun faulted right after gc.enable()
-                # returned, inside the post_to_main() call below. gc.disable
-                # ()/gc.enable() are PROCESS-GLOBAL, not thread-local — every
-                # other thread's allocations pile up ungarbage-collected
-                # while this one holds GC off, so re-enabling it here was
-                # itself triggering an immediate, larger-than-usual
-                # collection at the exact moment this thread kept running.
-                # Holding GC off for the probe's ENTIRE body (including
-                # post_to_main) removes that re-enable-triggers-a-collision
-                # window too. See core/backends/google_cloud_stt.py's
-                # matching comment and ADR 0008 in docs/DECISIONS.md for the
-                # full three-round story — treat this as a mitigation that
-                # has repeatedly needed widening, not a proven-complete fix.
-                was_gc_enabled = gc.isenabled()
-                gc.disable()
-                try:
-                    try:
-                        st = _eng.engine_status(value, cfg_snapshot, deep=True)
-                    except Exception as e:  # noqa: BLE001
-                        st = _eng.EngineStatus(value, False, str(e) or "probe failed")
-                    # post_to_main, NOT self.after: this runs on a daemon
-                    # thread, and off-thread after() raises on Python 3.14.
-                    self.post_to_main(
-                        lambda: self._apply_engine_status(value, st)
-                    )
-                finally:
-                    if was_gc_enabled:
-                        gc.enable()
-
-            threading.Thread(target=_probe, daemon=True).start()
+            self.probe_engine_status(
+                value, lambda st: self._apply_engine_status(value, st)
+            )
         except Exception:  # noqa: BLE001
             try:
                 var.set("")
             except Exception:  # noqa: BLE001
                 pass
 
+    def probe_engine_status(
+        self, value: str, on_result: Callable[[Any], None]
+    ) -> None:
+        """Deep-probe one engine on a daemon thread; ``on_result`` runs on Tk.
+
+        Shared by the Transcribe-tab status line and the Advanced dialog's
+        warning row so the GC-off thread discipline below exists in exactly
+        one place. ``on_result`` is always dispatched through
+        :meth:`post_to_main` — never called on the probe thread.
+        """
+        from core.backends import availability as _eng
+
+        cfg_snapshot = dict(self.app_config)
+
+        def _probe() -> None:
+            # GC disabled for this ENTIRE probe thread, not just the
+            # engine_status() call — a real crash was confirmed
+            # (2026-08-15, Python 3.14) three times, each narrower fix
+            # disproven by the next instrumented full-suite rerun:
+            # (1) GC firing mid-import inside engine_status() faulted a
+            # C-extension class-registration step; (2) narrowing the
+            # gc.disable() window to just that call "fixed" it once,
+            # then a later rerun faulted one line later in a plain
+            # EngineStatus(...) dataclass construction; (3) widening the
+            # window to the whole engine_status() try/finally "fixed" it
+            # again, then ANOTHER rerun faulted right after gc.enable()
+            # returned, inside the post_to_main() call below. gc.disable
+            # ()/gc.enable() are PROCESS-GLOBAL, not thread-local — every
+            # other thread's allocations pile up ungarbage-collected
+            # while this one holds GC off, so re-enabling it here was
+            # itself triggering an immediate, larger-than-usual
+            # collection at the exact moment this thread kept running.
+            # Holding GC off for the probe's ENTIRE body (including
+            # post_to_main) removes that re-enable-triggers-a-collision
+            # window too. See core/backends/google_cloud_stt.py's
+            # matching comment and ADR 0008 in docs/DECISIONS.md for the
+            # full three-round story — treat this as a mitigation that
+            # has repeatedly needed widening, not a proven-complete fix.
+            was_gc_enabled = gc.isenabled()
+            gc.disable()
+            try:
+                try:
+                    st = _eng.engine_status(value, cfg_snapshot, deep=True)
+                except Exception as e:  # noqa: BLE001
+                    st = _eng.EngineStatus(value, False, str(e) or "probe failed")
+                # post_to_main, NOT self.after: this runs on a daemon
+                # thread, and off-thread after() raises on Python 3.14.
+                self.post_to_main(lambda: on_result(st))
+            finally:
+                if was_gc_enabled:
+                    gc.enable()
+
+        threading.Thread(target=_probe, daemon=True).start()
+
+    def _engine_picker_options(self) -> "list[Any]":
+        """Readiness-aware engine picker options, cached deep results applied.
+
+        Cheap probes only (never imports a heavy backend on the UI thread);
+        any engine that has been deep-probed before contributes its cached
+        result so its "unavailable" marker can't flip back.
+        """
+        from core.backends import availability as _eng
+
+        return _eng.engine_options(
+            self.app_config,
+            deep=False,
+            statuses=_inst_attr(self, "_engine_deep_statuses"),
+        )
+
+    def _refresh_engine_picker_labels(self) -> None:
+        """Re-render the engine combobox labels with availability markers.
+
+        Keeps the current pick selected by VALUE (never by label text) while
+        the labels round-trip through the display/parse helpers, so a label
+        gaining or losing its marker can't change which engine is selected.
+        Disables the whole control only when no engine has a usable path —
+        the documented fallback for a picker whose entries can't be greyed
+        individually.
+        """
+        combo = _inst_attr(self, "transcribe_engine_combo")
+        if combo is None:
+            return
+        try:
+            from core.backends import availability as _eng
+
+            options = self._engine_picker_options()
+            combo.configure(values=[o.display_label for o in options])
+            combo.configure(
+                state="readonly" if any(o.ready for o in options) else "disabled"
+            )
+            evar = _inst_attr(self, "transcribe_engine_var")
+            if evar is None:
+                return
+            current_value = _eng.engine_value_for_label(evar.get())
+            if current_value is None:
+                current_value = _eng.normalise_engine(
+                    self.app_config.get("transcribe_backend")
+                )
+            for opt in options:
+                if opt.value == current_value:
+                    if evar.get() != opt.display_label:
+                        evar.set(opt.display_label)
+                    break
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not refresh engine picker labels", exc_info=True)
+
     def _apply_engine_status(self, probed_value: str, st: Any) -> None:
         """Apply a background-probed ``EngineStatus`` to the status label.
 
-        Runs on the Tk main thread (scheduled via ``self.after``). Drops the
-        result if the user switched engines mid-probe (stale-race guard) or
-        if the widgets were destroyed in the meantime (shutdown guard).
+        Runs on the Tk main thread (posted via :meth:`post_to_main`). Drops
+        the result if the user switched engines mid-probe (stale-race guard)
+        or if the widgets were destroyed in the meantime (shutdown guard).
+        Also caches the verdict and refreshes the picker markers, so an
+        engine that turns out to be blocked is marked before the user can
+        commit to it.
         """
         try:
             from core.backends import availability as _eng
@@ -1865,22 +1959,25 @@ class App(tk.Tk):
                 except Exception:  # noqa: BLE001
                     return
 
-            evar = getattr(self, "transcribe_engine_var", None)
+            evar = _inst_attr(self, "transcribe_engine_var")
             current_label = evar.get() if evar is not None else ""
             current_value = _eng.normalise_engine(
-                _eng.LABEL_TO_VALUE.get(current_label)
+                _eng.engine_value_for_label(current_label)
                 or self.app_config.get("transcribe_backend")
             )
             if current_value != probed_value:
                 return  # stale — the user picked a different engine meanwhile
 
+            cache = _inst_attr(self, "_engine_deep_statuses")
+            if cache is not None:
+                cache[probed_value] = st
+            self._refresh_engine_picker_labels()
+
             if st.ready:
-                text = "✓ Ready" + (f" — {st.detail}" if st.detail else "")
                 color = "#3a8f3a"
             else:
-                text = f"⚠ {st.detail}  (set up in Advanced settings…)"
                 color = "#b06a00"
-            var.set(text)
+            var.set(_eng.format_engine_status(st))
             if lbl is not None:
                 try:
                     lbl.configure(foreground=color)
@@ -1892,19 +1989,28 @@ class App(tk.Tk):
     def _refresh_engine_selector(self) -> None:
         """Re-sync the Transcribe-tab engine picker to the saved backend (e.g.
         after the Advanced dialog changed it), then refresh the status line."""
-        evar = getattr(self, "transcribe_engine_var", None)
+        evar = _inst_attr(self, "transcribe_engine_var")
         if evar is None:
             return
+        # The Advanced dialog may have changed credentials or installed a
+        # backend, so cached deep verdicts are no longer trustworthy.
+        cache = _inst_attr(self, "_engine_deep_statuses")
+        if cache is not None:
+            cache.clear()
         try:
             from core.backends import availability as _eng
 
             value = _eng.normalise_engine(self.app_config.get("transcribe_backend"))
-            label = _eng.VALUE_TO_LABEL.get(value)
+            options = self._engine_picker_options()
+            label = next(
+                (o.display_label for o in options if o.value == value), None
+            )
             if label and label != evar.get():
                 evar.set(label)
         except Exception:  # noqa: BLE001
             pass
         self._refresh_engine_status()
+        self._sync_model_picker_for_engine()
 
     def _on_model_selected(self) -> None:
         """Persist the Transcribe-tab Whisper-model pick and restart the
@@ -1952,18 +2058,82 @@ class App(tk.Tk):
         )
         self._refresh_model_status()
 
+    def _sync_model_picker_for_engine(self) -> None:
+        """Grey out the Whisper-model picker when the picked engine can't use it.
+
+        The model catalog only drives the Faster-Whisper engine; whisper.cpp,
+        NVIDIA Parakeet and the two cloud engines each use their own model.
+        Leaving this picker live under those engines invited the user to
+        "change" a model the next transcription would silently ignore — the
+        unusable-combination class this feature greys out.
+        """
+        combo = _inst_attr(self, "transcribe_model_combo")
+        if combo is None:
+            return
+        try:
+            active = self._engine_uses_whisper_model()
+            combo.configure(state="readonly" if active else "disabled")
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not sync the model picker state", exc_info=True)
+        self._refresh_model_status()
+
+    def _engine_uses_whisper_model(self) -> bool:
+        """True while the picked engine actually uses the Whisper-model
+        catalog (Faster-Whisper only)."""
+        from core.backends import availability as _eng
+
+        evar = _inst_attr(self, "transcribe_engine_var")
+        label = evar.get() if evar is not None else ""
+        value = _eng.engine_value_for_label(label)
+        if value is None:
+            value = _eng.normalise_engine(self.app_config.get("transcribe_backend"))
+        return value == "faster_whisper"
+
+    def _model_picker_disabled_reason(self) -> str:
+        """Hover text while the model picker is greyed out; "" when active.
+
+        Wired through ``bind_tooltip`` as a callable so it always describes
+        the engine that is picked *now*.
+        """
+        combo = _inst_attr(self, "transcribe_model_combo")
+        if combo is None:
+            return ""
+        try:
+            if str(combo.cget("state")) != "disabled":
+                return ""
+        except Exception:  # noqa: BLE001
+            return ""
+        from core.backends import availability as _eng
+
+        evar = _inst_attr(self, "transcribe_engine_var")
+        label = evar.get() if evar is not None else ""
+        value = _eng.engine_value_for_label(label)
+        if value is None:
+            value = _eng.normalise_engine(self.app_config.get("transcribe_backend"))
+        engine_label = _eng.VALUE_TO_LABEL.get(value, value)
+        return (
+            f"The {engine_label} engine uses its own model. This picker only "
+            "applies to the Faster-Whisper engine, so a change here would "
+            "have no effect."
+        )
+
     def _refresh_model_status(self) -> None:
         """Update the Transcribe-tab model-downloaded status line.
 
         A plain on-disk existence check (core.model_manager.model_downloaded)
         -- cheap and import-free, unlike _refresh_engine_status's deep probe,
         so this runs synchronously on the main thread with no background
-        thread needed.
+        thread needed. While the picker is disabled (non-Faster-Whisper
+        engine), says so instead of pretending the model still matters.
         """
-        var = getattr(self, "model_status_var", None)
+        var = _inst_attr(self, "model_status_var")
         if var is None:
             return
         try:
+            if not self._engine_uses_whisper_model():
+                var.set("Only used by Faster-Whisper")
+                return
+
             from core.model_manager import DEFAULT_MODEL_SLUG, model_downloaded
 
             slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG)
@@ -1997,7 +2167,7 @@ class App(tk.Tk):
                 mvar.set(label)
         except Exception:  # noqa: BLE001
             pass
-        self._refresh_model_status()
+        self._sync_model_picker_for_engine()
 
     # Generic helpers ---------------------------------------------------------
     def yt_dlp_path(self) -> str:

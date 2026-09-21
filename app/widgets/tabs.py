@@ -13,7 +13,7 @@ from tkinter import ttk
 from typing import TYPE_CHECKING
 
 from app.domain.languages import SUBTITLE_LANGUAGES
-from app.widgets.tooltip import help_icon, section_labelframe
+from app.widgets.tooltip import bind_tooltip, help_icon, section_labelframe
 
 if TYPE_CHECKING:
     from app.app import App
@@ -298,8 +298,11 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     #     Two stacked lines in one gridded frame (same split-line trick as
     #     quick_opts below) so neither line's help icons overflow the app's
     #     default 960px width. Short status lines show whether the chosen
-    #     engine is ready / model already downloaded. Cloud STT is the
-    #     default when a build ships a key. ───────────────────────────────
+    #     engine is ready / model already downloaded, and an engine that
+    #     can't run until the user sets it up (missing key, missing package)
+    #     is marked "⚠ unavailable" in the dropdown itself — ttk.Combobox
+    #     can't grey one entry, so the marker + the status line + the hover
+    #     help below carry the reason instead. ────────────────────────────
     from core.backends import availability as _eng
     from core.model_manager import DEFAULT_MODEL_SLUG, catalog_models
 
@@ -314,27 +317,47 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     model_row.pack(fill="x", pady=(6, 0))
 
     ttk.Label(engine_row, text="Engine:").pack(side="left")
-    _engine_labels = [label for label, _value in _eng.ENGINE_CHOICES]
-    app.transcribe_engine_var = tk.StringVar(
-        value=_eng.VALUE_TO_LABEL.get(
-            _eng.normalise_engine(app.app_config.get("transcribe_backend")),
-            _engine_labels[0],
-        )
+    # Cheap readiness only (no heavy backend imports on the UI thread); a
+    # deep probe of the current pick refines this shortly after startup.
+    _engine_options = _eng.engine_options(app.app_config, deep=False)
+    _current_engine_value = _eng.normalise_engine(
+        app.app_config.get("transcribe_backend")
     )
+    _current_engine_label = next(
+        (
+            opt.display_label
+            for opt in _engine_options
+            if opt.value == _current_engine_value
+        ),
+        _engine_options[0].display_label,
+    )
+    app.transcribe_engine_var = tk.StringVar(value=_current_engine_label)
     engine_combo = ttk.Combobox(
         engine_row,
         textvariable=app.transcribe_engine_var,
-        values=_engine_labels,
+        values=[opt.display_label for opt in _engine_options],
         state="readonly",
         width=44,
     )
     engine_combo.pack(side="left", padx=(6, 8))
+    app.transcribe_engine_combo = engine_combo
+    if not any(opt.ready for opt in _engine_options):
+        # No engine has any usable path — the documented fallback for a
+        # combobox whose entries can't be disabled individually.
+        engine_combo.configure(state="disabled")
     help_icon(
         engine_row,
-        "Which transcription engine to use. Offline engines (Faster-Whisper, "
-        "whisper.cpp, NVIDIA Parakeet) run entirely on this machine; the two "
-        "cloud engines upload your audio to Google. Set up keys/models for "
-        "each in Advanced settings.",
+        lambda: (
+            "Which transcription engine to use. Offline engines "
+            "(Faster-Whisper, whisper.cpp, NVIDIA Parakeet) run entirely on "
+            "this machine; the two cloud engines upload your audio to "
+            "Google. Set up keys/models for each in Advanced settings.\n\n"
+            + _eng.engine_status_summary(
+                app.app_config,
+                deep=False,
+                statuses=getattr(app, "_engine_deep_statuses", None),
+            )
+        ),
     ).pack(side="left", padx=(0, 8))
     engine_combo.bind("<<ComboboxSelected>>", lambda _e: app._on_engine_selected())
     app.engine_status_var = tk.StringVar(value="")
@@ -369,6 +392,10 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         width=44,
     )
     model_combo.pack(side="left", padx=(6, 8))
+    app.transcribe_model_combo = model_combo
+    # A disabled combobox still fires Enter/Leave, so this hover text is the
+    # reason the picker is greyed out whenever the engine doesn't use it.
+    bind_tooltip(model_combo, app._model_picker_disabled_reason)
     help_icon(
         model_row,
         "Which Whisper model size the Faster-Whisper engine loads — bigger "
@@ -385,6 +412,9 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # Cheap on-disk existence check only (no heavy import) — safe to run
     # synchronously, unlike _refresh_engine_status's background probe.
     app._refresh_model_status()
+    # Grey the picker out entirely while a non-Faster-Whisper engine is
+    # picked (those engines use their own model).
+    app._sync_model_picker_for_engine()
 
     # ── Row 3: quick options, split across two lines so a full row of
     #     help icons doesn't overflow the app's default 960px width
