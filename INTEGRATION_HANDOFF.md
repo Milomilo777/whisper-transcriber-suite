@@ -789,4 +789,23 @@ Verification:
   `tests/core/test_transcript_viewer.py::test_viewer_disables_transport_when_vlc_init_fails`
   (`TclError: couldn't read file .../ttk/combobox.tcl`); it passes in isolation
   and the full-suite rerun is green — same class of tkinter state flake
-  documented in prior merge commits, unrelated to this transcriber-only merge.
+   documented in prior merge commits, unrelated to this transcriber-only merge.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/transcriber-core-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2410 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). No transient failures on this run.
+- **Merge diff**: 1 source file changed (`transcriber.py`) + 6 new test files + 1 new doc. No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `_LANG_ALIASES` + `_normalize_language`: multi-value comma/space scan with alias lookup replaces the old single-value split-on-dash approach. Correct: legacy codes (`iw`, `jv`, `in`, `ji`, `nb`, `cmn`) are now mapped before the `_WHISPER_LANGS` membership check; unrecognised leading tags don't shadow valid later alternatives.
+  - `_write_outputs` + `_indexed_sidecar_path` + `_write_chapter_sidecar`: chapters sidecar now shares the collision index with transcript outputs. Correct: `_indexed_sidecar_path` builds `<base> (N).chapters.json` (not `.chapters (N).json`); orphan sidecars bump the index; sidecar failure is non-fatal.
+  - All three call sites (`transcribe`, `_transcribe_via_alt_backend`, `resume_transcription`) pass `chapters=` through `_write_outputs` instead of writing the sidecar separately. Correct.
+  - Alt-backend EOF guard: `clip_start_s >= duration` raises before ffmpeg is called. Correct: mirrors the faster-whisper path.
+  - `_remove_quietly` + `.slice.wav` cleanup on timeout/spawn-failure/non-zero-exit paths in `_slice_audio_from`. Correct: all three failure paths now clean up partial output.
+  - Integration branch's comment improvements to `_clip_timestamps_arg` preserved intact (doc-only, no logic overlap).
+- **Test coverage of merged behavior**: 6 new test files (`test_normalize_language.py`, `test_output_indexing.py`, `test_transcriber_helpers.py`, `test_transcribe_kwargs.py`, `test_alt_backend_clip.py`, `test_fixpack_timerange_slice.py`) cover alias/multi-value language normalization, shared-index chapter sidecar, orphan-sidecar bump, alt-backend EOF guard, slice-partial cleanup, and picker-Hebrew kwarg. All pass.
+
+Result: clean. No source changes needed.
