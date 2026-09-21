@@ -857,3 +857,24 @@ Verification:
 - Targeted merge tests
   (`test_worker_correlation_id.py` + `test_transcription_correlation.py` +
   `test_transcribe_command.py`): all pass.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/worker-correlation-id-design` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2436 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). No transient failures on this run.
+- **Merge diff**: 4 source files changed (`transcription_service.py`, `worker.py`, `task.py`, `test_transcribe_command.py`) + 2 new test files + 1 new doc. No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `task_correlation_id()`: caches id on the task; reuses existing `task_id`, else `h<history_id>`, else `u<uuid4>` fallback. Correct: frozen/tuple-like tasks get a uuid without raising.
+  - `transcribe_command()` and `send_control()`: both stamp the same correlation id on the command. Correct: add-only protocol field; old workers ignore it.
+  - Worker `_route_control`: id-bearing controls match immediately on current task or park; id-less controls keep legacy apply-to-current semantics. Correct: `_apply_control` still exists for id-less path.
+  - `_register_task`: applies parked controls under `_state_lock` before `transcribe()` runs. Correct: no reordering possible between parking and registration.
+  - `_expire_parked_controls`: acks as `control_unmatched` after `CONTROL_PARK_TIMEOUT_S`. Correct: timer-based, removes from both `_parked_controls` dict and `_parked_order` deque.
+  - `_clear_parked_controls`: called on shutdown/EOF. Correct: cancels all timers, clears both structures.
+  - Parent event loop handles `control_applied` (debug) and `control_unmatched` (warning + `app.log`). Correct: no silent swallowing.
+  - `started`/`done`/`error` events echo `task_id`. Correct: add-only, old parents ignore.
+- **Test coverage of merged behavior**: 2 new test files (`test_worker_correlation_id.py` at 372 lines, `test_transcription_correlation.py` at 191 lines) + updated `test_transcribe_command.py` cover correlation-id agreement, control parking/delayed-apply, timeout ack, capacity eviction, id-less legacy semantics, and the exact bad ordering from the original bug report. All pass.
+
+Result: clean. No source changes needed.
