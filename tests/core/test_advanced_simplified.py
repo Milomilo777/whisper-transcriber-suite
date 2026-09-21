@@ -304,6 +304,34 @@ def test_engine_warning_row_shows_blocking_reason(make_dialog) -> None:
     assert dlg._engine_warning_var.get() == ""
 
 
+def test_engine_warning_reflects_live_unsaved_credential_edit(make_dialog) -> None:
+    """Typing a credential into the dialog updates the warning row and the
+    combobox marker immediately, without Save.
+
+    Regression test: the warning row and combobox marker used to read the
+    last-SAVED app config, not this dialog's own live (not-yet-saved)
+    field, so a key the user just typed -- and that the adjacent "Test key"
+    button would already report as working -- still showed "unavailable"
+    until Save.
+    """
+    from app.dialogs.advanced import _BACKEND_VALUE_TO_LABEL
+
+    dlg = make_dialog(transcribe_backend="cloud_stt")
+
+    assert dlg._engine_warning.winfo_manager() == "grid"
+    assert "API key" in dlg._engine_warning_var.get()
+    assert dlg._backend_display.get() != _BACKEND_VALUE_TO_LABEL["cloud_stt"]
+
+    dlg._cloud_api_key.set("fake-test-key-not-saved-yet")
+
+    assert dlg._engine_warning.winfo_manager() == ""
+    assert dlg._engine_warning_var.get() == ""
+    assert dlg._backend_display.get() == _BACKEND_VALUE_TO_LABEL["cloud_stt"]
+    # Only this dialog's live field changed -- the saved config is
+    # untouched until Save, exactly as before.
+    assert dlg.app.app_config.get("cloud_stt_api_key", "") == ""
+
+
 def test_llm_provider_rows_follow_the_picked_provider(make_dialog) -> None:
     from app.dialogs.advanced import _LLM_PROVIDER_VALUE_TO_LABEL
 

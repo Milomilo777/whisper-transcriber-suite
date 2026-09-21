@@ -10,7 +10,7 @@ import time
 import tkinter as tk
 from queue import Empty, Full, Queue
 from tkinter import filedialog, messagebox, ttk
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 import sv_ttk
 
@@ -1830,7 +1830,11 @@ class App(tk.Tk):
                 pass
 
     def probe_engine_status(
-        self, value: str, on_result: Callable[[Any], None]
+        self,
+        value: str,
+        on_result: Callable[[Any], None],
+        *,
+        cfg: Mapping[str, Any] | None = None,
     ) -> None:
         """Deep-probe one engine on a daemon thread; ``on_result`` runs on Tk.
 
@@ -1838,10 +1842,17 @@ class App(tk.Tk):
         warning row so the GC-off thread discipline below exists in exactly
         one place. ``on_result`` is always dispatched through
         :meth:`post_to_main` — never called on the probe thread.
+
+        ``cfg`` overrides the snapshot the probe reads (the Advanced dialog
+        passes its own live, not-yet-saved field values here so a credential
+        typed but not Saved is reflected immediately instead of showing this
+        app's last-saved config). Defaults to ``self.app_config`` — the
+        Transcribe tab has no separate live-edit layer, so it never needs to
+        pass this.
         """
         from core.backends import availability as _eng
 
-        cfg_snapshot = dict(self.app_config)
+        cfg_snapshot = dict(cfg) if cfg is not None else dict(self.app_config)
 
         def _probe() -> None:
             # GC disabled for this ENTIRE probe thread, not just the

@@ -105,6 +105,10 @@ _SPONSORBLOCK_CATEGORIES = [
 # Engine picker — the SAME registry the Transcribe tab's Engine dropdown
 # reads (core.backends.availability), so the two pickers can't drift apart.
 _BACKEND_CHOICES: list[tuple[str, str]] = ENGINE_CHOICES
+# Still read externally (tests/core/test_nvidia_asr.py) even though this
+# module's own parse sites all migrated to engine_value_for_label, which
+# additionally strips the "⚠ unavailable" marker those plain labels don't
+# carry -- keep both.
 _BACKEND_LABEL_TO_VALUE = {label: value for label, value in _BACKEND_CHOICES}
 _BACKEND_VALUE_TO_LABEL = {value: label for label, value in _BACKEND_CHOICES}
 
@@ -233,6 +237,10 @@ class AdvancedDialog(tk.Toplevel):
         # and the warning row reflect real readiness, not just the cheap
         # credential check.
         self._engine_deep_statuses: dict[str, EngineStatus] = {}
+        # A credential typed here but not yet Saved must still be reflected
+        # live -- see _effective_config() and _on_credential_field_changed().
+        self._cloud_api_key.trace_add("write", self._on_credential_field_changed)
+        self._gcloud_credentials.trace_add("write", self._on_credential_field_changed)
         self._hallucination_detect = tk.BooleanVar(
             value=bool(cfg.get("hallucination_detect_enabled", True))
         )
@@ -565,6 +573,36 @@ class AdvancedDialog(tk.Toplevel):
         except Exception:  # noqa: BLE001
             logger.debug("Could not sync engine setup sections", exc_info=True)
 
+    def _effective_config(self) -> dict[str, Any]:
+        """The app config overlaid with this dialog's own live, unsaved
+        field edits.
+
+        The readiness checks below must see a credential the user just
+        typed, before Save — otherwise they show a stale "unavailable"
+        verdict that contradicts the "Test key" button on the same screen,
+        which already reads these fields live.
+        """
+        cfg = dict(self.app.app_config)
+        cfg["cloud_stt_api_key"] = self._cloud_api_key.get().strip()
+        cfg["gcloud_stt_credentials_json"] = self._gcloud_credentials.get().strip()
+        return cfg
+
+    def _on_credential_field_changed(self, *_args: object) -> None:
+        """Live trace on the Gemini / Google-Cloud credential fields.
+
+        A cached deep verdict for these two engines was computed before this
+        keystroke, so it no longer reflects reality — drop it and re-render
+        from the fields as they stand right now (cheap, synchronous; the
+        next dialog interaction re-triggers a fresh deep probe if needed).
+        """
+        try:
+            self._engine_deep_statuses.pop("cloud_stt", None)
+            self._engine_deep_statuses.pop("google_cloud_stt", None)
+            self._refresh_engine_combo_values()
+            self._refresh_engine_warning()
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not react to a credential field edit", exc_info=True)
+
     def _refresh_engine_combo_values(self) -> None:
         """Re-render engine labels (cheap + any cached deep results), keeping
         the current pick selected by value."""
@@ -573,7 +611,7 @@ class AdvancedDialog(tk.Toplevel):
             return
         try:
             options = engine_options(
-                self.app.app_config,
+                self._effective_config(),
                 deep=False,
                 statuses=self._engine_deep_statuses,
             )
@@ -598,7 +636,7 @@ class AdvancedDialog(tk.Toplevel):
         cached = self._engine_deep_statuses.get(value)
         if cached is not None:
             return cached
-        return engine_status(value, self.app.app_config, deep=False)
+        return engine_status(value, self._effective_config(), deep=False)
 
     def _refresh_engine_warning(self) -> None:
         """Show/hide the reason row under the Engine picker.
@@ -640,7 +678,11 @@ class AdvancedDialog(tk.Toplevel):
             return
         value = self._selected_backend()
         try:
-            probe(value, lambda st: self._apply_engine_probe(value, st))
+            probe(
+                value,
+                lambda st: self._apply_engine_probe(value, st),
+                cfg=self._effective_config(),
+            )
         except Exception:  # noqa: BLE001
             logger.debug("Engine probe dispatch failed", exc_info=True)
 
