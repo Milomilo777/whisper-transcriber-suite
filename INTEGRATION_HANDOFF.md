@@ -599,3 +599,20 @@ Verification:
 - Pyright on `app/` and `core/`: 0 errors, 0 warnings, 0 informations.
 - Hermetic suite (`tests/` minus `tests/smoke/`): 2335 passed, 14 skipped,
   0 failures.
+
+### Double-checked (mimo-v2.5):
+
+Verified the merge of `opencode/search-chapters-infra-review` into
+`integration/opencode-merge-2026-09-21`:
+
+- **Pyright**: 0 errors, 0 warnings, 0 informations on `app/` and `core/`.
+- **Test suite**: 2335 passed, 14 skipped, 0 failures (`tests/` minus `tests/smoke/`). Matches the prior commit's claim exactly.
+- **Merge diff**: 3 source files changed (`_proc.py`, `logging_setup.py`, `search.py`) + 2 new test files + 1 extended test file + 1 doc. No conflict markers, no dropped lines, no duplicated logic.
+- **Adversarial review of changes**:
+  - `_proc.py` — own-group guard: `os.getpgid(0)` resolves this process's pgid; when it matches the child's pgid the `killpg` path is skipped, falling through to parent-only `process.kill()`/`terminate()`. Correct: prevents a caller that forgot `new_session_kwargs()` from killing the entire app.
+  - `logging_setup.py` — `_prune_worker_logs`: globs scoped to `worker-*.log*` and `voiceclone-worker-*.log*` only (bare `*worker-*.log*` would catch unrelated files); sorts by mtime descending, keeps newest `WORKER_LOG_KEEP=10`, age-checks with `WORKER_LOG_MAX_AGE_DAYS=14`; `OSError` on stat/unlink skipped gracefully. Called from `setup_logging()` on every startup.
+  - `search.py` — `_read_segments`: `OSError` → `None` (transient read failure keeps existing index); `JSONDecodeError`/`UnicodeDecodeError` → `[]` (corrupt file marks for retry). `index_file`: checks `_file_has_embeddings` when an embedder is provided (backfill after dependency install); returns 0 on `segments is None`. `reindex_all_history`: per-file `try/except` so one bad transcript cannot abort the walk. `search`: `try/except` around `_semantic_query` falls back to FTS. `_fts_match_query`: per-token quoting prevents operator literals from crashing sqlite. BM25 score: `1/(1+exp(min(rank,500)))` logistic map replaces `1/(1+max(0,rank))` which clamped every negative rank to exactly 1.0.
+  - No untested behavior: 3 new/extended test files (`test_search.py`, `test_proc.py`, `test_logging_setup.py`) cover every merged fix — multi-word AND, operator literals, score ordering, transient-read keep, embeddings backfill, per-file skip, semantic-fallback, own-group refusal, prune keep-count/age/glob scoping.
+- **Test coverage of merged behavior**: All 2335 tests pass. The 3 merge-specific test files exercise every change with realistic edge cases (file locked by AV, corrupt JSON, operator literals in FTS5, own-group PID match). Pre-fix code would fail these tests (old `_read_segments` deleted existing rows on OSError; old `_fts_match_query` used whole-query quoting; old BM25 score was always 1.0).
+
+Result: clean. No source changes needed.
