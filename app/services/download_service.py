@@ -1154,6 +1154,17 @@ class DownloadService:
         if getattr(task, "caption_only", False):
             try:
                 self.maybe_update_yt_dlp(task)
+                # Same pre-start guard the media path already has (below):
+                # a pause landing during maybe_update_yt_dlp's up-to-60s
+                # blocking wait has no process to kill (caption-only hasn't
+                # spawned yt-dlp yet), so pause_download only sets the flag
+                # and frees the slot -- without this check the run would
+                # still launch its own yt-dlp afterward, writing caption
+                # files for a task the user paused, and a fast resume in
+                # that window would launch a SECOND concurrent yt-dlp onto
+                # the same task.process slot.
+                if _superseded() or getattr(task, "paused", False):
+                    return
                 self._run_caption_only_task(task, run_generation=my_gen)
             except Exception as e:  # noqa: BLE001
                 if not _superseded():
@@ -1361,6 +1372,13 @@ class DownloadService:
         try:
             os.replace(part_path, target_path)
         except OSError as e:
+            # A fully-downloaded, multi-hundred-MB .part left on disk with
+            # no cleanup path is a worse outcome than the streaming-failure
+            # branch above already avoids (target is a directory, a
+            # permission change mid-download, a transient Windows sharing
+            # violation on the rename). Same cleanup as every other failure
+            # path in this method.
+            _quiet_unlink(part_path)
             raise RuntimeError(f"could not finalise download to {target_path}: {e}") from e
 
         transcript_text = (episode.transcript_text or "").strip()
@@ -1822,6 +1840,18 @@ class DownloadService:
                     task, self.build_download_command(task, force_no_cookies=True)
                 )
             )
+            if (
+                run_generation is not None
+                and getattr(task, "_run_generation", run_generation) != run_generation
+            ):
+                # Same staleness check as above the retry, re-applied: the
+                # retry's own process drain is exactly as long-running and
+                # blocking as the first one, so a pause+fast-resume landing
+                # DURING the retry must be caught here too -- without this,
+                # a stale run could still post a terminal event for, or
+                # release the download slot out from under, the fresh run
+                # the resume already started.
+                return
 
         if task.cancelled:
             app.download_events.put(("done", task, "cancelled"))

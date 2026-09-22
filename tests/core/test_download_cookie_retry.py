@@ -171,6 +171,49 @@ def test_media_phase_reports_actionable_error_when_retry_also_fails(monkeypatch)
     assert "logged-in session" in msg and "cookie" in msg
 
 
+def test_media_phase_stays_silent_when_superseded_during_the_retry(monkeypatch):
+    """Found by an adversarial review (2026-09-22): the generation check
+    only ran once, right after the FIRST _run_media_process call -- not
+    after the cookie retry's own call. A pause+fast-resume landing while
+    the retry was draining (exactly as long-running/blocking as the
+    first attempt) used to fall through to the terminal branching anyway,
+    posting a terminal event for a task a fresh run already owns and
+    potentially releasing its download slot out from under it."""
+    app = _app("brave")
+    task = _task()
+    task._run_generation = 1  # type: ignore[attr-defined]
+
+    calls: list[list[str]] = []
+    responses = iter([
+        ([COOKIE_ERROR_LINE], 1),  # first attempt: cookie-jar read failure
+        (["[download] Destination: C:/out/clip.mp4"], 0),  # retry succeeds
+    ])
+
+    def _popen(command, **_):  # noqa: ANN001, ANN003
+        calls.append(command)
+        lines, rc = next(responses)
+        if len(calls) == 2:
+            # Simulate a resume bumping the generation WHILE this retry
+            # process is what's actually running (the real race is a
+            # pause landing during the retry's blocking drain; bumping
+            # here, before _media_phase reads the result, has the same
+            # observable effect on the post-retry generation check).
+            task._run_generation = 2  # type: ignore[attr-defined]
+        return _FakeProcess(lines, rc)
+
+    monkeypatch.setattr("app.services.download_service.subprocess.Popen", _popen)
+
+    DownloadService(app)._media_phase(task, run_generation=1)
+
+    assert len(calls) == 2, "the retry must still have been attempted"
+    events = _drain(app)
+    terminal_kinds = [e[0] for e in events if e[0] in ("done", "done_full", "error")]
+    assert terminal_kinds == [], (
+        f"a stale run posted terminal event(s) for a task a fresh run "
+        f"already owns: {terminal_kinds}"
+    )
+
+
 def test_media_phase_does_not_retry_when_cookies_not_configured(monkeypatch):
     app = _app("")  # "Cookies from browser" is off
     calls = _fake_popen_factory(monkeypatch, [([COOKIE_ERROR_LINE], 1)])

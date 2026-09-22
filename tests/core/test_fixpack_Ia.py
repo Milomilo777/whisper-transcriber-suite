@@ -509,8 +509,47 @@ def test_superseded_caption_only_run_suppresses_error(monkeypatch):
     assert not any(e[0] == "error" for e in events)
 
 
-# ---------------------------------------------------------------------------
-# Finding 5 — TOCTOU on task.process in pause/cancel: snapshot, no AttributeError
+def test_caption_only_pause_before_start_is_not_silently_ignored(monkeypatch):
+    """Found by an adversarial review (2026-09-22): the media path already
+    checks `_superseded() or task.paused` right after maybe_update_yt_dlp
+    and before starting -- the caption-only path called
+    maybe_update_yt_dlp and went straight into _run_caption_only_task
+    with no such check. A pause landing during maybe_update_yt_dlp's up-
+    to-60s blocking wait has no process to kill yet (caption-only hasn't
+    spawned yt-dlp), so pause_download only sets the flag and frees the
+    slot -- the run then launched its own yt-dlp anyway, writing caption
+    files for a task the user paused."""
+    monkeypatch.setattr("app.services.download_service.kill_process_tree",
+                        lambda *a, **k: None)
+
+    app = _run_task_app()
+    svc = _run_task_svc(app)
+
+    task = VideoDownloadTask(
+        url="u", folder="f", format_label="x",
+        format_info={"mode": "Audio and video",
+                     "audio": {"kind": "best_audio"},
+                     "video": {"kind": "best_video"}},
+        caption_only=True,
+    )
+
+    def _mark_paused_during_update(_t):
+        # Simulate the user hitting Pause while maybe_update_yt_dlp's
+        # up-to-60s subprocess call is still blocking.
+        task.paused = True  # type: ignore[attr-defined]
+
+    svc.maybe_update_yt_dlp = _mark_paused_during_update  # type: ignore[attr-defined]
+
+    ran = {"n": 0}
+    svc._run_caption_only_task = lambda _t, run_generation=None: ran.__setitem__(  # type: ignore[attr-defined]
+        "n", ran["n"] + 1
+    )
+
+    DownloadService._run_task(svc, task)
+
+    assert ran["n"] == 0, "caption-only yt-dlp launched despite the pause"
+
+
 # ---------------------------------------------------------------------------
 # Finding 5 — TOCTOU on task.process in pause/cancel: snapshot, no AttributeError
 # ---------------------------------------------------------------------------
