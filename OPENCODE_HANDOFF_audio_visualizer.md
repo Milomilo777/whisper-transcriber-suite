@@ -55,14 +55,14 @@ Wiring:
 
 ## Verification
 
-* **Real microphone: NOT verified end-to-end — stated plainly.**
-  This machine reports `mic_available() == False`
-  (`sounddevice not installed`) and `loopback_available() == False`, so
-  no live capture path can start here and there was no real audio for
-  the meter to chew on. I did not install audio backends or download a
-  ~GB speech model in this session to force it. The tab degrades
-  correctly (only "Microphone" offered; Start shows the "Cannot listen
-  yet" error path, covered by existing tests).
+* **Real microphone: originally reported as NOT verified end-to-end,
+  based on a claim that was wrong.** This section originally stated
+  `mic_available() == False` (`sounddevice not installed`) on this
+  machine. That claim was false — the original author almost certainly
+  checked a different Python interpreter than the one this app actually
+  runs under. See the "Double-checked (mimo-v2.5)" section below for
+  the correction and the real end-to-end mic verification that was run
+  once the mistake was caught.
 * **Real Tk rendering: verified.** Built the actual `build_live_tab` on
   a real `Tk()` instance: visualizer present, active tick with synthetic
   220 Hz tone produced 36 canvas items (16 bars + 16 caps + grid/strip)
@@ -88,3 +88,48 @@ Wiring:
 * `whisper_project_onefile.spec`, `whisper_project_onedir.spec`
   (hiddenimports)
 * `OPENCODE_HANDOFF_audio_visualizer.md` (this file)
+
+### Double-checked (mimo-v2.5):
+
+- **Mic-availability correction confirmed independently**: `mic_available()`
+  is `True` on this machine (also `loopback_available() == True`); the
+  original handoff's claim was wrong. Root-caused: the original session
+  almost certainly checked a different Python interpreter than the one
+  this app runs under.
+- **Real end-to-end mic capture now actually run** (not just claimed):
+  a real `LiveSession(mode="mic", on_meter=...)` was started against the
+  real microphone for 3 seconds. Result: 45 real `on_meter` calls,
+  92160 bytes of real PCM at 16 kHz, a real WAV file written, and
+  `pcm_to_rms` on the tail returned a small non-zero value (~0.0005,
+  consistent with quiet room ambient noise) — proof the meter tap
+  receives genuine captured audio, not synthetic data, all the way from
+  the recorder's capture thread through to the pure helper functions the
+  widget itself uses.
+- **License judgment**: sound. FFT band grouping (16 log-spaced bands),
+  peak-hold caps, RMS strip, idle-baseline behavior, and the
+  teal-to-amber color scheme are all genuinely different from
+  TranscriptionSuite's GPL-3.0 `AudioVisualizer.tsx` (linear bins,
+  no peak-hold, waveform overlay, 3-layer sine idle, cyan-to-magenta).
+  No line-for-line porting found.
+- **Threading/gating**: sound. Capture-thread tap swallows/logs
+  exceptions and never touches the widget; `push_frames`/`_take_pending`
+  share one lock; all canvas work runs on the Tk thread via a gated
+  `after()` tick; the redraw loop starts once on session start and stops
+  on every exit path (`_started`/`_start_failed`/`_stopped`/
+  `stop_live_session`).
+- **One real bug found and fixed**: `_on_destroy` set `_after_id = None`
+  directly instead of calling `self._cancel()`, leaving a pending Tk
+  `after()` callback uncancelled when the widget's frame is destroyed
+  mid-tick. The originally suggested failure scenario (a `TclError` from
+  `winfo_width()` propagating into a logged error) does not actually
+  happen — `_tick()` checks `self._active` and returns before reaching
+  `_draw()`, so the stray callback is a harmless no-op, not a crash or a
+  spurious log line. The underlying hygiene issue was still real and
+  worth fixing for consistency with the existing `_cancel()` helper;
+  fixed as a one-line change. pyright `app core`: 0/0/0 after the fix;
+  `tests/app/test_audio_visualizer.py`: 13/13 passed; full hermetic
+  suite re-run after the fix (see commit for result).
+
+Result: one minor real defect found and fixed (dangling `after()`
+callback on destroy); the mic-availability gap this handoff originally
+left open is now closed with a real hardware run.

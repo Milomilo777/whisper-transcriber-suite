@@ -264,7 +264,7 @@ class AudioVisualizer:
 
     def _on_destroy(self) -> None:
         self._active = False
-        self._after_id = None
+        self._cancel()
 
     def _take_pending(self) -> bytes | None:
         with self._lock:
