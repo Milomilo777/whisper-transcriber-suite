@@ -388,12 +388,16 @@ def write_subtitle_extra_formats(
 
         from core.writers import json_writer as _json_writer
 
-        with tempfile.NamedTemporaryFile(
-            "w", suffix=".json", encoding="utf-8", delete=False
-        ) as tmp:
-            tmp.write(_json_writer.write(segments, sub_path))
-            tmp_path = tmp.name
+        # tmp_path is assigned right away (mkstemp itself creates the
+        # file) and the write is inside the try/finally that cleans it
+        # up -- the old code assigned tmp_path only AFTER a successful
+        # write, so a raise from _json_writer.write() (e.g. a
+        # non-serialisable segment field) left the file on disk with no
+        # path recorded to unlink it, leaking it in %TEMP% forever.
+        fd, tmp_path = tempfile.mkstemp(suffix=".json")
         try:
+            with os.fdopen(fd, "w", encoding="utf-8") as tmp:
+                tmp.write(_json_writer.write(segments, sub_path))
             otr_text = _otr.whisper_json_to_otr(
                 tmp_path, media_filename=os.path.basename(sub_path)
             )
@@ -406,7 +410,10 @@ def write_subtitle_extra_formats(
         with open(otr_path, "w", encoding="utf-8", newline="\n") as f:
             f.write(otr_text)
         written.append(otr_path)
-    except (OSError, ValueError, json.JSONDecodeError) as e:
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as e:
+        # TypeError included: a non-serialisable segment field raises it
+        # from the json writer, and this function is documented to
+        # never escape with an exception for any single export failing.
         logger.warning("oTranscribe export for %s failed: %s", sub_path, e)
 
     # SMTV transcription .docx (needs python-docx; skip cleanly if absent).
@@ -657,7 +664,17 @@ class DownloadService:
                 last_dt = datetime.fromisoformat(last)
                 if datetime.now(timezone.utc) - last_dt < timedelta(hours=24):
                     return
-            except ValueError:
+            except (ValueError, TypeError):
+                # ValueError: unparseable string. TypeError: a value
+                # without a UTC offset (a hand-edited config, or a
+                # legacy value from before this key always stored an
+                # aware timestamp) parses fine into a NAIVE datetime,
+                # and subtracting it from the aware now() above raises
+                # TypeError -- which used to propagate out of this
+                # function and abort every yt-dlp download (media and
+                # caption-only both call it) until the key was fixed by
+                # hand. Either error just means "treat it as stale and
+                # check again", same as an empty value.
                 pass
         yt_dlp_path = self.app.yt_dlp_path()
         # The Setup-Standard installer (embeddable Python, not frozen) puts

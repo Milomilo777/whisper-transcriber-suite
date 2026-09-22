@@ -422,6 +422,30 @@ class _PathUpdateApp(_UpdateApp):
         return self._yt_dlp_path
 
 
+def test_maybe_update_yt_dlp_survives_a_naive_stored_timestamp(monkeypatch):
+    """Found by an adversarial review (2026-09-22): a stored timestamp
+    without a UTC offset (hand-edited config, or a legacy value from
+    before this key always stored an aware timestamp) parses into a
+    NAIVE datetime; subtracting it from the aware now() raised
+    TypeError, uncaught by the old `except ValueError`, aborting every
+    yt-dlp download (media and caption-only both call this) until the
+    key was fixed by hand."""
+    monkeypatch.setattr(
+        "app.services.download_service.subprocess.run",
+        lambda *_a, **_k: types.SimpleNamespace(stdout="", stderr="", returncode=0),
+    )
+    monkeypatch.setattr(
+        "app.services.download_service.save_config", lambda _c: None
+    )
+    cfg = {
+        "auto_update_yt_dlp": True,
+        "last_yt_dlp_update_check": "2026-09-01T10:00:00",  # naive, no offset
+    }
+    app = _UpdateApp(cfg)
+    DownloadService(app).maybe_update_yt_dlp(task=None)  # must not raise
+    assert "last_yt_dlp_update_check" in cfg
+
+
 def test_maybe_update_yt_dlp_skips_when_directory_not_writable(monkeypatch, tmp_path):
     """A Program-Files-style install dir the current account can't write to
     must be skipped outright: no subprocess call, no timestamp stamped.

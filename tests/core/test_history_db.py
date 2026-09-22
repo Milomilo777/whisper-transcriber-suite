@@ -58,6 +58,54 @@ def test_insert_and_finish_transcription(db):
     assert rows[0]["output_paths"] == ["/tmp/x.srt"]
 
 
+def test_finish_download_reports_whether_a_row_was_actually_updated(db):
+    """Found by an adversarial review (2026-09-22): finish_download used
+    to return None unconditionally, so a stale/nonexistent row_id (e.g.
+    insert_download's own failure being swallowed by a caller's broad
+    except, falling back to lastrowid-or-0) silently updated zero rows
+    while the caller went on to report success."""
+    rid = db.insert_download("https://x")
+    assert db.finish_download(rid, "finished") is True
+    assert db.finish_download(999_999, "finished") is False
+
+
+def test_finish_transcription_reports_whether_a_row_was_actually_updated(db):
+    rid = db.insert_transcription("/tmp/x.wav")
+    assert db.finish_transcription(rid, "finished") is True
+    assert db.finish_transcription(999_999, "finished") is False
+
+
+def test_close_waits_for_an_in_flight_write(db):
+    """Found by the same review: close() bypassed _write_lock while
+    every write path serialises on it -- calling close() from one
+    thread while another is between execute() and commit() inside
+    _txn() could tear the connection down mid-transaction."""
+    import threading
+
+    started = threading.Event()
+    finish = threading.Event()
+    rid = db.insert_download("https://race")
+
+    def slow_write():
+        with db._write_lock:
+            started.set()
+            finish.wait(timeout=2.0)
+
+    t = threading.Thread(target=slow_write, daemon=True)
+    t.start()
+    assert started.wait(timeout=2.0)
+
+    closer = threading.Thread(target=db.close, daemon=True)
+    closer.start()
+    time.sleep(0.05)
+    assert closer.is_alive(), "close() did not wait for the write lock"
+
+    finish.set()
+    t.join(timeout=2.0)
+    closer.join(timeout=2.0)
+    assert not closer.is_alive()
+
+
 def test_list_orders_by_id_desc(db):
     a = db.insert_download("https://a")
     b = db.insert_download("https://b")

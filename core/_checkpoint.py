@@ -22,6 +22,7 @@ import hashlib
 import json
 import logging
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -160,11 +161,36 @@ def write_checkpoint(
     }
 
     path = checkpoint_path(abs_path)
-    tmp = path.with_suffix(path.suffix + ".tmp")
+    # A fixed ".tmp" name let two writers for the same source (two app
+    # instances resuming the same interrupted transcription) race: one
+    # writer's truncate/write could land on the same inode the other was
+    # mid-write into, right before its own os.replace -- producing a
+    # torn final file despite the atomic rename. mkstemp's own O_EXCL
+    # guarantees a name unique to this call, so concurrent writers never
+    # share an inode.
+    fd, tmp_name = tempfile.mkstemp(
+        dir=str(path.parent), prefix=path.name + ".", suffix=".tmp"
+    )
+    tmp = Path(tmp_name)
     try:
-        with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
             json.dump(payload, f, ensure_ascii=False)
-        os.replace(tmp, path)
+        # Two writers can still legitimately race AT the rename itself
+        # (two app instances resuming the same source at nearly the same
+        # moment): on Windows a destination mid-replace by one thread can
+        # make a concurrent os.replace() targeting the SAME path raise
+        # PermissionError (WinError 5) rather than silently ordering —
+        # POSIX rename has no such window. Retry a few times with a
+        # short backoff before giving up; each retry's own os.replace is
+        # still atomic, so the eventual winner still leaves a whole file.
+        for attempt in range(5):
+            try:
+                os.replace(tmp, path)
+                break
+            except PermissionError:
+                if attempt == 4:
+                    raise
+                _time.sleep(0.02 * (attempt + 1))
     except OSError:
         try:
             os.unlink(tmp)

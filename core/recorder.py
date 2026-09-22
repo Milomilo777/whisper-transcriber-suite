@@ -130,15 +130,24 @@ def list_mic_devices() -> list[InputDevice]:
         import sounddevice as sd  # type: ignore[import-not-found]
         out: list[InputDevice] = []
         for idx, info in enumerate(sd.query_devices()):
-            channels = int(info.get("max_input_channels", 0))
-            if channels <= 0:
+            try:
+                channels = int(info.get("max_input_channels", 0))
+                if channels <= 0:
+                    continue
+                out.append(InputDevice(
+                    index=idx,
+                    name=str(info.get("name", f"Device {idx}")),
+                    max_input_channels=channels,
+                    default_samplerate=float(
+                        info.get("default_samplerate", SAMPLE_RATE)
+                    ),
+                ))
+            except (TypeError, ValueError):
+                # One malformed entry (a driver reporting None for a
+                # numeric field — seen on hot-unplug/virtual-cable
+                # devices) must not hide every other working device.
+                logger.debug("Skipping malformed device entry %r: %r", idx, info)
                 continue
-            out.append(InputDevice(
-                index=idx,
-                name=str(info.get("name", f"Device {idx}")),
-                max_input_channels=channels,
-                default_samplerate=float(info.get("default_samplerate", SAMPLE_RATE)),
-            ))
         return out
     except Exception as e:  # noqa: BLE001
         logger.exception("list_mic_devices failed: %s", e)
@@ -235,7 +244,15 @@ class Recorder:
         if thread is not None and thread.is_alive():
             return self.output_path
         if not self._wrote_wave or not os.path.isfile(self.output_path):
-            self._finalize_wav()
+            try:
+                self._finalize_wav()
+            except Exception as e:  # noqa: BLE001
+                # An unwritable output_path (read-only folder, disk
+                # full, parent is a file) must not turn a recoverable
+                # empty/no-capture take into stop() raising instead of
+                # returning a path, per this method's own contract.
+                self.last_error = str(e)
+                logger.exception("Writing the fallback empty WAV failed")
         return self.output_path
 
     def duration_seconds(self) -> float:
@@ -273,6 +290,7 @@ class Recorder:
 
     def _mic_loop(self) -> None:
         wf: "wave.Wave_write | None" = None
+        wrote_any_frames = False
         try:
             import sounddevice as sd  # type: ignore[import-not-found]
             stream_kwargs: dict[str, Any] = {
@@ -284,14 +302,27 @@ class Recorder:
             if self.device_index is not None:
                 stream_kwargs["device"] = self.device_index
             with sd.RawInputStream(**stream_kwargs) as stream:
+                # The requested rate is a hint; a fixed-rate device (or a
+                # future PortAudio that nearest-matches instead of
+                # raising) can silently open at a different rate. Read
+                # the stream's own negotiated rate back rather than
+                # trusting the request, so the WAV header and the live
+                # tap always agree with what was actually captured — a
+                # LOCAL variable, never self.sample_rate, so this
+                # session's negotiated rate can't leak into the next
+                # session if this Recorder is reused (see _loopback_loop
+                # for the same reasoning).
+                actual_rate = int(getattr(stream, "samplerate", self.sample_rate)) \
+                    or self.sample_rate
                 # Stream straight to disk — never buffer the whole take in
                 # memory (a multi-hour recording would OOM the app).
-                wf = self._open_wave(self.sample_rate)
+                wf = self._open_wave(actual_rate)
                 while not self._stop_event.is_set():
                     data, _overflow = stream.read(1024)
                     block = bytes(data)
                     wf.writeframes(block)
-                    self._emit_frames(block, self.sample_rate)
+                    wrote_any_frames = True
+                    self._emit_frames(block, actual_rate)
         except Exception as e:  # noqa: BLE001
             self.last_error = str(e)
             logger.exception("Mic recording failed: %s", e)
@@ -302,9 +333,16 @@ class Recorder:
                     self._wrote_wave = True
                 except Exception:  # noqa: BLE001
                     logger.exception("Closing mic WAV failed")
+                    if wrote_any_frames:
+                        # Real audio already reached disk even though the
+                        # header flush on close() failed (e.g. disk full).
+                        # stop()'s empty-file fallback must never truncate
+                        # a non-empty partial take.
+                        self._wrote_wave = True
 
     def _loopback_loop(self) -> None:
         wf: "wave.Wave_write | None" = None
+        wrote_any_frames = False
         try:
             import pyaudiowpatch as pya  # type: ignore[import-not-found]
             with pya.PyAudio() as p:
@@ -314,21 +352,30 @@ class Recorder:
                     self.last_error = "No default WASAPI loopback device available."
                     return
                 device_idx = int(info["index"])
-                native_rate = int(info["defaultSampleRate"])
+                # Native rate, in a LOCAL variable — never self.sample_rate.
+                # That field is the caller's ORIGINAL request; mutating it
+                # from the capture thread would silently change what the
+                # next mic/loopback session on a reused Recorder expects
+                # (the documented mono-16kHz contract) to whatever this
+                # session's device happened to negotiate.
+                actual_rate = int(info["defaultSampleRate"])
                 channels = int(info["maxInputChannels"]) or 1
                 stream = p.open(
                     format=pya.paInt16,
                     channels=channels,
-                    rate=native_rate,
+                    rate=actual_rate,
                     frames_per_buffer=1024,
                     input=True,
                     input_device_index=device_idx,
                 )
-                # Store the native rate in the WAV header; the transcriber
-                # upsamples internally if needed.
-                self.sample_rate = native_rate
-                wf = self._open_wave(native_rate)
                 try:
+                    # wave-open (and everything after) is now INSIDE this
+                    # try so the stream is always stopped/closed below,
+                    # even if _open_wave raises (e.g. an unwritable output
+                    # path) before a single frame is captured — it used to
+                    # run before this try started, leaking the WASAPI
+                    # stream handle on that failure.
+                    wf = self._open_wave(actual_rate)
                     # The FIRST stream.read() here can block far longer than
                     # 1024 frames' worth of audio (~49s measured on real
                     # hardware with a silent output device) -- WASAPI only
@@ -339,10 +386,22 @@ class Recorder:
                         data = stream.read(1024, exception_on_overflow=False)
                         mono = _downmix_to_mono_int16(data, channels)
                         wf.writeframes(mono)
-                        self._emit_frames(mono, native_rate)
+                        wrote_any_frames = True
+                        self._emit_frames(mono, actual_rate)
                 finally:
-                    stream.stop_stream()
-                    stream.close()
+                    # Each guarded independently: if stop_stream() raises
+                    # (e.g. the device vanished), close() must still run
+                    # rather than being skipped — and a stop_stream()
+                    # failure must not mask whatever error stream.read()
+                    # already raised above.
+                    try:
+                        stream.stop_stream()
+                    except Exception:  # noqa: BLE001
+                        logger.exception("Failed to stop loopback stream")
+                    try:
+                        stream.close()
+                    except Exception:  # noqa: BLE001
+                        logger.exception("Failed to close loopback stream")
         except Exception as e:  # noqa: BLE001
             self.last_error = str(e)
             logger.exception("Loopback recording failed: %s", e)
@@ -353,6 +412,8 @@ class Recorder:
                     self._wrote_wave = True
                 except Exception:  # noqa: BLE001
                     logger.exception("Closing loopback WAV failed")
+                    if wrote_any_frames:
+                        self._wrote_wave = True
 
     def _finalize_wav(self) -> None:
         """Fallback writer for the no-capture case.
@@ -390,10 +451,21 @@ def _downmix_to_mono_int16(data: bytes, channels: int) -> bytes:
         frames = arr.reshape(-1, channels)
         mono = frames.mean(axis=1).astype(np.int16)
         return mono.tobytes()
-    except ImportError:
-        # No numpy — fall back to interleaved pick of channel 0.
-        # Acceptable for transcription where exact loudness doesn't
-        # matter as much as content.
+    except Exception as e:  # noqa: BLE001
+        # No numpy, numpy present-but-broken (missing MKL/DLL raises
+        # OSError, not ImportError), or a corrupt/unexpected block this
+        # block's reshape/mean choked on — any of these must degrade to
+        # the pure-Python fallback below rather than abort the whole
+        # take (this can run per-block in the capture loop).
+        if not isinstance(e, ImportError):
+            logger.debug("numpy downmix failed; using pure-Python fallback",
+                         exc_info=True)
+        # Fall back to interleaved pick of channel 0. Acceptable for
+        # transcription where exact loudness doesn't matter as much as
+        # content. Only a COMPLETE frame (all channels) counts — a
+        # trailing stub shorter than sample_bytes is a partial frame,
+        # not a valid sample, and must be dropped like the numpy path
+        # does, not fabricated from a fraction of a frame.
         sample_bytes = SAMPLE_WIDTH_BYTES * channels
         frames = [data[i:i + sample_bytes] for i in range(0, len(data), sample_bytes)]
-        return b"".join(f[:SAMPLE_WIDTH_BYTES] for f in frames if len(f) >= SAMPLE_WIDTH_BYTES)
+        return b"".join(f[:SAMPLE_WIDTH_BYTES] for f in frames if len(f) >= sample_bytes)

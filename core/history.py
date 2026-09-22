@@ -252,10 +252,15 @@ class HistoryDB:
             pass
 
     def close(self) -> None:
-        try:
-            self._conn.close()
-        except Exception:  # noqa: BLE001
-            pass
+        # Every write path serialises on _write_lock; closing without it
+        # can tear down the shared connection while a worker thread is
+        # between execute() and commit() inside _txn(), losing a
+        # just-finished write the caller already believes is durable.
+        with self._write_lock:
+            try:
+                self._conn.close()
+            except Exception:  # noqa: BLE001
+                pass
 
     def __enter__(self) -> "HistoryDB":
         return self
@@ -292,14 +297,29 @@ class HistoryDB:
     def finish_download(self, row_id: int, status: str,
                         output_paths: Iterable[str] = (),
                         detected_language: str = "",
-                        error: str = "") -> None:
+                        error: str = "") -> bool:
+        """Returns True iff a row was actually updated.
+
+        ``row_id=0`` (the caller's ``insert_download`` failed/was
+        swallowed and returned the ``lastrowid or 0`` fallback) or a
+        stale id from a recovered/recreated DB would otherwise UPDATE
+        zero rows and still return normally -- the caller reports
+        success with no durable record of the finished work.
+        """
         paths_json = json.dumps(list(output_paths))
         with self._txn() as conn:
-            conn.execute(
+            cur = conn.execute(
                 "UPDATE downloads SET status=?, finished_at=?, output_paths=?,"
                 " detected_language=?, error=? WHERE id=?",
                 (status, int(time.time()), paths_json, detected_language, error, row_id),
             )
+            if cur.rowcount != 1:
+                logger.error(
+                    "finish_download(row_id=%s) matched %d rows, expected 1 "
+                    "-- the finished download was not persisted.",
+                    row_id, cur.rowcount,
+                )
+            return cur.rowcount == 1
 
     def list_downloads(self, limit: int = 200) -> list[dict[str, Any]]:
         # Serialise the read through _write_lock (same rationale as
@@ -333,16 +353,30 @@ class HistoryDB:
                              duration_seconds: float = 0.0,
                              language: str = "",
                              error: str = "",
-                             word_count: int = 0) -> None:
+                             word_count: int = 0) -> bool:
+        """Returns True iff a row was actually updated.
+
+        See finish_download's docstring: an id that matches no row
+        (a swallowed insert_transcription failure, or a stale id after
+        a corrupt-DB recovery reopened an empty database) must not be
+        reported as a successful, durable finish.
+        """
         paths_json = json.dumps(list(output_paths))
         with self._txn() as conn:
-            conn.execute(
+            cur = conn.execute(
                 "UPDATE transcriptions SET status=?, finished_at=?,"
                 " output_paths=?, duration_seconds=?, language=?, error=?,"
                 " word_count=? WHERE id=?",
                 (status, int(time.time()), paths_json, duration_seconds,
                  language, error, int(word_count or 0), row_id),
             )
+            if cur.rowcount != 1:
+                logger.error(
+                    "finish_transcription(row_id=%s) matched %d rows, "
+                    "expected 1 -- the finished transcription was not "
+                    "persisted.", row_id, cur.rowcount,
+                )
+            return cur.rowcount == 1
 
     def list_transcriptions(self, limit: int = 200) -> list[dict[str, Any]]:
         # Serialise the read through _write_lock — see list_downloads().

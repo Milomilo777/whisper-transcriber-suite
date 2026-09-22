@@ -99,6 +99,27 @@ def test_list_mic_devices_filters_zero_input_channels(monkeypatch):
     assert "Speakers" not in names
 
 
+def test_list_mic_devices_skips_one_malformed_entry_not_the_whole_list(monkeypatch):
+    """Found by an adversarial review (2026-09-22): a driver reporting
+    None for a numeric field (seen on hot-unplug/virtual-cable devices)
+    used to raise inside the loop and wipe out every working device via
+    the whole-function except -> []."""
+    monkeypatch.setattr(rec, "mic_available", lambda: True)
+    fake_sd = types.ModuleType("sounddevice")
+    fake_sd.query_devices = lambda: [  # type: ignore[attr-defined]
+        {"name": "Microphone", "max_input_channels": 2,
+         "default_samplerate": 48000.0},
+        {"name": "Virtual Cable", "max_input_channels": 2,
+         "default_samplerate": None},  # malformed: float(None) raises
+        {"name": "USB Mic", "max_input_channels": 1,
+         "default_samplerate": 44100.0},
+    ]
+    monkeypatch.setitem(sys.modules, "sounddevice", fake_sd)
+    devices = rec.list_mic_devices()
+    names = {d.name for d in devices}
+    assert names == {"Microphone", "USB Mic"}
+
+
 # ---------- Recorder dataclass -------------------------------------------------
 
 
@@ -179,6 +200,59 @@ def test_recorder_streams_to_wav_without_buffering(tmp_path, monkeypatch):
         assert wf.getsampwidth() == rec.SAMPLE_WIDTH_BYTES
 
 
+def test_mic_loop_uses_the_stream_negotiated_rate_not_the_request(tmp_path, monkeypatch):
+    """Found by an adversarial review (2026-09-22): the requested rate is
+    a hint, not a guarantee -- a fixed-rate device can silently open at
+    a different rate. The WAV header and the live tap must reflect what
+    was actually negotiated, not the request."""
+    out = tmp_path / "rate.wav"
+    r = rec.Recorder(output_path=str(out), mode="mic", sample_rate=16_000)
+    monkeypatch.setattr(rec, "mic_available", lambda: True)
+    seen_rates: list[int] = []
+    r.on_frames = lambda pcm, rate: seen_rates.append(rate)
+    block = b"\x01\x02" * 512
+
+    class _FakeStream:
+        samplerate = 48_000  # negotiated a different rate than requested
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self, n):
+            r._stop_event.set()
+            return (block, False)
+
+    fake_sd = types.ModuleType("sounddevice")
+    fake_sd.RawInputStream = lambda **kw: _FakeStream()  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "sounddevice", fake_sd)
+
+    r._mic_loop()
+
+    assert seen_rates == [48_000], "on_meter got the requested rate, not the real one"
+    with wave.open(str(out), "rb") as wf:
+        assert wf.getframerate() == 48_000, "WAV header still claims the requested rate"
+    assert r.sample_rate == 16_000, "the capture thread must not mutate the requested rate"
+
+
+def test_stop_survives_a_finalize_failure(tmp_path, monkeypatch):
+    """Found by the same review: stop()'s own docstring promises it
+    always returns a path; an unwritable output location used to make
+    the unguarded _finalize_wav() call raise out of stop() instead."""
+    out = tmp_path / "readonly" / "out.wav"
+    r = rec.Recorder(output_path=str(out), mode="mic")
+
+    def boom():
+        raise OSError("disk full")
+
+    monkeypatch.setattr(r, "_finalize_wav", boom)
+    path = r.stop()
+    assert path == str(out)
+    assert r.last_error and "disk full" in r.last_error
+
+
 def test_recorder_duration_seconds_after_stop():
     r = rec.Recorder(output_path="/tmp/x.wav", mode="mic")
     r._started_at = 100.0
@@ -202,6 +276,26 @@ def test_downmix_to_mono_averages_stereo_with_numpy():
     mono = rec._downmix_to_mono_int16(data, 2)
     expected = np.array([150, 350, 0], dtype=np.int16).tobytes()
     assert mono == expected
+
+
+def test_downmix_without_numpy_drops_a_trailing_partial_frame(monkeypatch):
+    """Found by an adversarial review (2026-09-22): the pure-Python
+    fallback's guard was `len(f) >= SAMPLE_WIDTH_BYTES` (one channel's
+    worth) instead of a full frame across all channels -- a short read
+    ending mid-frame fabricated a phantom sample from a stub instead of
+    dropping it, the same way the numpy path already does."""
+    monkeypatch.setitem(sys.modules, "numpy", None)  # force the no-numpy path
+    channels = 6
+    # 2 full 6-channel frames (12 bytes each) + a 2-byte stub of a 3rd.
+    frame1 = bytes(range(0, 12))
+    frame2 = bytes(range(12, 24))
+    stub = bytes([99, 99])
+    data = frame1 + frame2 + stub
+    mono = rec._downmix_to_mono_int16(data, channels)
+    # Only the two complete frames may contribute a sample; the stub
+    # must be dropped, not turned into a fabricated third sample.
+    assert len(mono) == 2 * rec.SAMPLE_WIDTH_BYTES
+    assert mono == frame1[:2] + frame2[:2]
 
 
 def test_downmix_handles_partial_trailing_frame(monkeypatch):
