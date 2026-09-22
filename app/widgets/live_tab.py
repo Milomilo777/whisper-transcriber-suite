@@ -78,6 +78,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
     app.live_transcriber = None
     app.live_lines = []
     app._live_poll_scheduled = False
+    app._live_cancel_pending = False
 
     app.live_source_var = tk.StringVar(value=_SOURCE_MIC)
     app.live_device_var = tk.StringVar(value="Default input device")
@@ -290,6 +291,7 @@ def _start(app: Any) -> None:
         return
 
     app.live_status_var.set("Loading the speech model…")
+    app._live_cancel_pending = False
     _set_running(app, True)
 
     language = _selected_language_code(app)
@@ -353,6 +355,32 @@ def _start(app: Any) -> None:
 
 
 def _started(app: Any, transcriber: Any, session: Any) -> None:
+    if getattr(app, "_live_cancel_pending", False):
+        # The user hit Stop while the model was still loading (see
+        # _stop). Tear this session down immediately instead of
+        # activating it — it must never become a running-but-unreachable
+        # orphan.
+        app._live_cancel_pending = False
+        app.live_transcriber = transcriber
+        app.live_session = session
+        app.log("Live transcription started then immediately stopped (cancelled during load).")
+
+        def worker() -> None:
+            try:
+                session.stop()
+            except Exception:  # noqa: BLE001
+                logger.exception("Stopping the just-started live session failed")
+            try:
+                transcriber.stop()
+            except Exception:  # noqa: BLE001
+                logger.exception("Stopping the live worker failed")
+            app.post_to_main(lambda: _stopped(app))
+
+        import threading
+
+        threading.Thread(target=worker, name="live-start-cancel", daemon=True).start()
+        return
+
     app.live_transcriber = transcriber
     app.live_session = session
     app.live_status_var.set("Listening…")
@@ -367,6 +395,7 @@ def _started(app: Any, transcriber: Any, session: Any) -> None:
 
 
 def _start_failed(app: Any, error: Exception) -> None:
+    app._live_cancel_pending = False
     app.live_session = None
     app.live_transcriber = None
     _set_running(app, False)
@@ -387,7 +416,19 @@ def _stop(app: Any) -> None:
     session = app.live_session
     transcriber = app.live_transcriber
     if session is None:
-        _set_running(app, False)
+        # The worker is still loading the model and hasn't reached
+        # _started yet. Recording the cancellation (instead of just
+        # resetting the buttons and returning) is what closes the
+        # unstoppable-session gap: _started checks this flag and tears
+        # the just-created session down immediately, rather than the
+        # request being silently dropped and the session running on
+        # with Start re-enabled and no way left to stop it.
+        app._live_cancel_pending = True
+        app.live_status_var.set("Will stop once loading finishes…")
+        try:
+            app.live_stop_btn.configure(state="disabled")
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not update live controls", exc_info=True)
         return
     app.live_status_var.set("Finishing the last few seconds…")
     app.live_stop_btn.configure(state="disabled")

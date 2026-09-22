@@ -334,6 +334,12 @@ class LiveSession:
 
     def stop(self, *, timeout: float = 10.0) -> str:
         """Stop capture, transcribe the tail, and return the recording path."""
+        if self._stopping.is_set():
+            # Already stopped or stopping (e.g. the Stop button's worker
+            # and the app-exit teardown both call this). Re-running the
+            # teardown would queue a second sentinel with no consumer
+            # left to drain it and emit duplicate "stopped"/error events.
+            return self.recording_path
         self._stopping.set()
         rec = self._recorder
         if rec is not None:
@@ -342,8 +348,13 @@ class LiveSession:
             except Exception as e:  # noqa: BLE001
                 logger.exception("Stopping the recorder failed: %s", e)
                 self._emit(LiveEvent(kind="error", detail=str(e)))
-        # Flush whatever was mid-utterance when the user hit stop.
-        tail = self._segmenter.flush()
+        # Flush whatever was mid-utterance when the user hit stop. Guarded
+        # by the same lock _on_frames takes around feed(): Segmenter has
+        # no lock of its own, and a capture-thread call still in flight
+        # when rec.stop()'s join times out (a wedged backend) would
+        # otherwise race flush() over the same buffer.
+        with self._lock:
+            tail = self._segmenter.flush()
         if tail:
             self._submit(tail)
         self._chunks.put(None)   # sentinel: drain then exit
@@ -369,10 +380,12 @@ class LiveSession:
         meter = self.on_meter
         if meter is not None and pcm:
             try:
-                meter(pcm, rate)
+                meter(pcm, self._rate)
             except Exception:  # noqa: BLE001
                 logger.exception("Live meter sink raised; continuing capture")
-        for chunk in self._segmenter.feed(pcm):
+        with self._lock:
+            chunks = self._segmenter.feed(pcm)
+        for chunk in chunks:
             self._submit(chunk)
 
     def _submit(self, pcm: bytes) -> None:

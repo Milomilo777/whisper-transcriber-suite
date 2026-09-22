@@ -405,6 +405,58 @@ def test_session_transcribes_the_tail_on_stop(fake_recorder, tmp_path):
     assert seen, "the trailing utterance was dropped at stop"
 
 
+def test_stop_called_twice_emits_stopped_only_once(fake_recorder, tmp_path):
+    """Found by an adversarial review (2026-09-22): a second stop() call
+    (e.g. the Stop button's worker racing app-exit teardown) used to
+    re-run the whole teardown -- a stranded extra sentinel and duplicate
+    "stopped"/error events a UI counting them would double-report.
+    """
+    session = live.LiveSession(
+        transcribe_chunk=lambda p: "", work_dir=str(tmp_path / "work")
+    )
+    session.start()
+    session.stop()
+    session.stop()  # must be a harmless no-op, not a second teardown
+
+    stopped_events = [
+        e for e in session.drain_events(limit=1000)
+        if e.kind == "state" and e.detail == "stopped"
+    ]
+    assert len(stopped_events) == 1
+
+
+def test_feed_and_flush_do_not_race_over_the_segmenter(fake_recorder, tmp_path):
+    """Found by the same review: _on_frames' feed() and stop()'s flush()
+    both touch the lock-free Segmenter and could, in principle, run on
+    different threads at once. Both now take the session's own lock;
+    hammering the capture path concurrently with stop() must not raise
+    or corrupt state.
+    """
+    session = live.LiveSession(
+        transcribe_chunk=lambda p: "", work_dir=str(tmp_path / "work")
+    )
+    session.start()
+    block = _speech(0.064)  # one recorder-sized block
+
+    errors: list[BaseException] = []
+
+    def hammer() -> None:
+        try:
+            for _ in range(200):
+                session._on_frames(block, RATE)
+        except BaseException as e:  # noqa: BLE001
+            errors.append(e)
+
+    t = threading.Thread(target=hammer, daemon=True)
+    t.start()
+    time.sleep(0.01)  # let the hammering thread get into feed()
+    session.stop()
+    t.join(timeout=5.0)
+
+    assert not t.is_alive(), "the hammering thread never finished"
+    assert not errors, f"concurrent feed/flush raised: {errors}"
+
+
 def test_session_start_failure_does_not_leak_the_consumer_thread(
     fake_recorder, tmp_path, monkeypatch
 ):

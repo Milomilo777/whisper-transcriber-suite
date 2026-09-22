@@ -6,6 +6,7 @@ sound card, model, or subprocess is involved.
 """
 from __future__ import annotations
 
+import threading
 import types
 
 import pytest
@@ -251,6 +252,87 @@ def test_start_refuses_when_the_backend_is_missing(built, monkeypatch):
     assert shown, "the user got no explanation"
     assert built.live_session is None
     assert str(built.live_start_btn.cget("state")) == "normal", "controls stayed locked"
+
+
+# ------------------------------------------------ stop-during-load race
+#
+# Found by an adversarial review (2026-09-22): Stop, pressed while the
+# worker thread was still loading the model (live_session is still
+# None), used to be silently dropped -- _stop() just reset the button
+# state and returned with no record of the request. When the worker
+# eventually reached _started(), the session was activated anyway with
+# Stop disabled and Start enabled, leaving an unstoppable, unreachable
+# session; a second Start then orphaned it entirely. The fix threads a
+# cancellation flag from _stop() through to _started().
+
+
+def test_stop_during_load_records_cancellation_instead_of_dropping_it(built):
+    assert built.live_session is None  # still "loading" from the caller's POV
+    built._live_cancel_pending = False
+
+    live_tab._stop(built)
+
+    assert built._live_cancel_pending is True
+    assert str(built.live_stop_btn.cget("state")) == "disabled"
+    assert "loading" in built.live_status_var.get().lower()
+
+
+def test_started_after_cancel_tears_down_instead_of_activating(built):
+    done = threading.Event()
+    stopped: list[str] = []
+    posted: list = []
+
+    def session_stop(**kw):
+        stopped.append("session")
+
+    def transcriber_stop():
+        stopped.append("worker")
+
+    fake_session = types.SimpleNamespace(
+        stop=session_stop, drain_events=lambda limit=64: []
+    )
+    fake_transcriber = types.SimpleNamespace(stop=transcriber_stop)
+
+    def post_and_signal(fn):
+        # Mirror the real post_to_main bridge: queue for the caller to
+        # drain on the main thread rather than running fn() here. The
+        # `app` fixture's own post_to_main runs fn() immediately, which
+        # is fine for every other test (always called from the main
+        # thread) but this is the first test where _started's
+        # cancel-teardown worker calls post_to_main from a real
+        # background thread -- running a Tk widget update there raises
+        # "main thread is not in main loop", same as the real app would
+        # hit if it called Tk directly off-thread instead of marshalling.
+        posted.append(fn)
+        done.set()
+
+    built.post_to_main = post_and_signal
+    built._live_cancel_pending = True
+    live_tab._started(built, fake_transcriber, fake_session)
+
+    assert done.wait(timeout=2.0), "the cancel-teardown worker never posted back"
+    assert stopped == ["session", "worker"]
+    assert posted, "_stopped was never queued back to the main thread"
+    posted[0]()  # drain on the main (Tk) thread, like the real bridge would
+
+    assert built.live_session is None
+    assert built.live_transcriber is None
+    assert built._live_cancel_pending is False
+    assert "Stopped" in built.live_status_var.get()
+    assert str(built.live_start_btn.cget("state")) == "normal"
+    assert str(built.live_stop_btn.cget("state")) == "disabled"
+
+
+def test_started_without_cancel_activates_normally(built):
+    fake_session = types.SimpleNamespace(stop=lambda **kw: None)
+    fake_transcriber = types.SimpleNamespace(stop=lambda: None)
+
+    built._live_cancel_pending = False
+    live_tab._started(built, fake_transcriber, fake_session)
+
+    assert built.live_session is fake_session
+    assert built.live_transcriber is fake_transcriber
+    assert "Listening" in built.live_status_var.get()
 
 
 # ---------------------------------------------------------------- polling

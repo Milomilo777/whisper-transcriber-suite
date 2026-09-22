@@ -215,6 +215,7 @@ class AudioVisualizer:
         self._level_id: int | None = None
         self._baseline_id: int | None = None
         self.frame.bind("<Destroy>", lambda _e: self._on_destroy())
+        self._draw_idle()
 
     # -- thread-safe input ------------------------------------------
 
@@ -237,6 +238,7 @@ class AudioVisualizer:
             self._schedule()
         else:
             self._cancel()
+            self._take_pending()  # drop any stale block so it can't leak into the next session
             try:
                 self._levels = [0.0] * self.num_bands
                 self._peaks = [0.0] * self.num_bands
