@@ -267,6 +267,15 @@ class LiveSession:
     #: Bounded so a slow machine drops audio visibly instead of growing
     #: an unbounded backlog and drifting further behind reality.
     max_pending_chunks: int = 8
+    #: Optional live-meter tap ``(pcm_bytes, rate)`` called on the
+    #: recorder's capture thread for every captured block. Added for the
+    #: Live tab visualizer, which needs the audio *while* it is being
+    #: captured. Purely additive: transcription never depends on it, and
+    #: exceptions from the sink are swallowed and logged so a broken
+    #: meter can never kill a session.
+    on_meter: Optional[Callable[[bytes, int], None]] = field(
+        default=None, repr=False
+    )
 
     events: "queue.Queue[LiveEvent]" = field(
         default_factory=lambda: queue.Queue(maxsize=1000), repr=False
@@ -357,6 +366,12 @@ class LiveSession:
             return
         with self._lock:
             self._rate = int(rate) or self.config.sample_rate
+        meter = self.on_meter
+        if meter is not None and pcm:
+            try:
+                meter(pcm, rate)
+            except Exception:  # noqa: BLE001
+                logger.exception("Live meter sink raised; continuing capture")
         for chunk in self._segmenter.feed(pcm):
             self._submit(chunk)
 
