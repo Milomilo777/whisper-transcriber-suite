@@ -359,13 +359,47 @@ class TranscriptionService:
         self._pending_load_event = ready_event
 
         if headless:
-            # Background path — no UI. wait() yields the Tk thread
-            # while we wait, but watched-folder + crash-resume
-            # callers already run on background threads / are tolerant
-            # of a blocking wait on the main thread for ~10s.
+            # Background path — no UI. Off the Tk main thread a plain
+            # blocking wait is fine (poll() keeps running on the main
+            # thread and will set the event). ON the main thread it
+            # deadlocks: the ONLY thing that can set the event is
+            # poll(), itself scheduled via app.after(), which cannot
+            # fire while this thread is blocked inside wait() — so a
+            # pure wait() always burns the full HEADLESS_READY_TIMEOUT_S
+            # then tears down the just-became-ready worker.
             self._pending_load_dialog = None
             try:
-                ok = ready_event.wait(timeout=HEADLESS_READY_TIMEOUT_S)
+                if threading.current_thread() is threading.main_thread():
+                    import time as _time
+
+                    deadline = (
+                        _time.monotonic() + HEADLESS_READY_TIMEOUT_S
+                    )
+                    ok = False
+                    while True:
+                        remaining = deadline - _time.monotonic()
+                        if remaining <= 0:
+                            break
+                        if ready_event.wait(timeout=min(0.1, remaining)):
+                            ok = True
+                            break
+                        # Pump the Tk event loop in small slices so the
+                        # after()-scheduled poll() still runs and can
+                        # observe the worker's ready/startup_error/exit.
+                        # Tolerate fakes without update(); off-thread
+                        # callers never reach this branch (Tk is
+                        # main-thread-only).
+                        try:
+                            update = getattr(self.app, "update", None)
+                            if callable(update):
+                                update()
+                        except Exception:  # noqa: BLE001 - pump best-effort
+                            logger.debug(
+                                "headless ready-pump update() failed",
+                                exc_info=True,
+                            )
+                else:
+                    ok = ready_event.wait(timeout=HEADLESS_READY_TIMEOUT_S)
             finally:
                 self._pending_load_worker_id = None
                 self._pending_load_event = None
@@ -579,6 +613,30 @@ class TranscriptionService:
             self.stop_worker(w)
 
     def restart_worker(self, worker: dict[str, Any]) -> None:
+        live = worker.get("task")
+        if live is not None:
+            # Never silently drop a live task: every in-file call site
+            # happens to call this only when the slot is already empty,
+            # but a future caller must not be able to orphan a task with
+            # zero cleanup by accident. Preserve an already-terminal
+            # status (finish_task keeps it under keep_status=True).
+            try:
+                if getattr(live, "status", None) not in (
+                    "finished", "error", "cancelled",
+                ):
+                    live.status = "error"
+                self.finish_task(worker, keep_status=True)
+            except Exception:  # noqa: BLE001 - teardown must not raise
+                logger.exception(
+                    "Failed to finish task on worker %s during restart",
+                    worker.get("id", "?"),
+                )
+            # finish_task() retires (and un-registers) a temporary worker
+            # when no waiting task is left — restarting such a removed
+            # worker would orphan it (see the poll() watchdog guard), so
+            # do not schedule a restart for it.
+            if worker not in self.app.workers:
+                return
         self.stop_worker(worker)
         worker["process"] = None
         worker["ready"] = False
@@ -587,6 +645,29 @@ class TranscriptionService:
         self.app.after(300, lambda: self.start_worker(worker, temporary=worker.get("temporary", False)))
 
     def retire_worker(self, worker: dict[str, Any]) -> None:
+        live = worker.get("task")
+        if live is not None:
+            # Same guarantee as restart_worker: dropping worker["task"]
+            # directly would leave a terminal status unset and a history
+            # row open. finish_task (keep_status=True) closes both while
+            # preserving an already-terminal status.
+            try:
+                if getattr(live, "status", None) not in (
+                    "finished", "error", "cancelled",
+                ):
+                    live.status = "error"
+                self.finish_task(worker, keep_status=True)
+            except Exception:  # noqa: BLE001 - teardown must not raise
+                logger.exception(
+                    "Failed to finish task on worker %s during retire",
+                    worker.get("id", "?"),
+                )
+            # finish_task() may already have retired (removed) a
+            # temporary worker with nothing waiting; its retire already
+            # stopped the process and refreshed state, so there is
+            # nothing left to do.
+            if worker not in self.app.workers:
+                return
         self.stop_worker(worker)
         worker["process"] = None
         worker["ready"] = False
@@ -633,6 +714,65 @@ class TranscriptionService:
             ):
                 return worker
         return None
+
+    def _is_stale_task_event(
+        self, worker: dict[str, Any], event: dict[str, Any]
+    ) -> bool:
+        """True when ``event`` targets a DIFFERENT task than the one currently
+        in ``worker["task"]``.
+
+        ``worker_for_event`` only identifies the correct *worker*; when a
+        worker slot is reused, a stale/duplicate event for an OLDER task (or
+        a synthetic dispatch-failure that lands late) can otherwise be
+        misapplied to the NEWER task now sitting in that slot. Only events
+        that actually carry a non-empty ``task_id`` can be checked — id-less
+        events (old workers, generic worker errors) keep the historical
+        apply-to-current-task behaviour. Never raises.
+        """
+        try:
+            event_id = event.get("task_id")
+            if not event_id:
+                return False
+            task = worker.get("task")
+            if task is None:
+                return False
+            expected = task_correlation_id(task)
+            return str(event_id) != str(expected)
+        except Exception:  # noqa: BLE001 - never break poll on a guard
+            return False
+
+    def _fail_tasks_and_clear_workers_on_startup_error(self) -> None:
+        """Finish every in-flight task before discarding all worker dicts.
+
+        ``startup_error`` handling tree-kills ALL workers via ``stop_all``
+        (which genuinely targets every active worker, not just the failed
+        one) and then clears ``app.workers``. Without this, healthy workers
+        mid-transcribe on a DIFFERENT task have their ``worker["task"]``
+        silently discarded: never finished, history never closed, status
+        stuck at "running" forever with no owner. Mirrors the
+        ``worker_exit`` pattern (status -> "error", ``finish_task`` with
+        ``keep_status=True``) but preserves an already-terminal status
+        instead of overwriting it. Per-task guards so one bad task cannot
+        block the rest of the teardown.
+        """
+        for other in list(self.app.workers):
+            otask = other.get("task")
+            if otask is None:
+                continue
+            try:
+                if getattr(otask, "status", None) not in (
+                    "finished", "error", "cancelled",
+                ):
+                    otask.status = "error"
+                self.finish_task(other, keep_status=True)
+            except Exception:  # noqa: BLE001 - teardown must not wedge poll
+                logger.exception(
+                    "Failed to finish orphaned task on worker %s during "
+                    "startup_error teardown",
+                    other.get("id", "?"),
+                )
+        self.stop_all()
+        self.app.workers = []
 
     # Audit D8: if a worker stops emitting events (including the
     # 5-second heartbeat) for this long, declare it wedged + restart.
@@ -725,8 +865,7 @@ class TranscriptionService:
                         app.app_config.get("transcribe_backend")
                     )
                     if engine != "faster_whisper":
-                        self.stop_all()
-                        app.workers = []
+                        self._fail_tasks_and_clear_workers_on_startup_error()
                         detail = str(
                             event.get("message") or "engine failed to start"
                         )
@@ -748,8 +887,7 @@ class TranscriptionService:
                                 pass
                     elif not app.model_setup_running:
                         app.log("Existing model failed to load. Starting required download.")
-                        self.stop_all()
-                        app.workers = []
+                        self._fail_tasks_and_clear_workers_on_startup_error()
                         # Defer so the loading modal is fully torn down (its
                         # cancel() runs on the next main-thread drain) before the
                         # download modal opens — no stacked modals.
@@ -758,47 +896,81 @@ class TranscriptionService:
                     pass
                 elif event_type == "progress":
                     if worker["task"]:
-                        p = event.get("percent", 0)
-                        worker["task"].progress = p
-                        app.update_overall_progress()
-                        # Mirror progress onto the Download row when this task
-                        # was auto-spawned from a download (it shows
-                        # "transcribing" there); the download poll won't refresh
-                        # on its own once the download itself has finished.
-                        if getattr(worker["task"], "source_download", None) is not None:
-                            app.refresh_download_queue()
+                        if self._is_stale_task_event(worker, event):
+                            logger.warning(
+                                "Dropping stale progress event for task %r "
+                                "on worker %s (current task %r)",
+                                event.get("task_id"), worker.get("id"),
+                                task_correlation_id(worker["task"]),
+                            )
+                        else:
+                            p = event.get("percent", 0)
+                            worker["task"].progress = p
+                            app.update_overall_progress()
+                            # Mirror progress onto the Download row when this task
+                            # was auto-spawned from a download (it shows
+                            # "transcribing" there); the download poll won't refresh
+                            # on its own once the download itself has finished.
+                            if getattr(worker["task"], "source_download", None) is not None:
+                                app.refresh_download_queue()
                 elif event_type == "language_detected":
                     if worker["task"]:
-                        worker["task"].detected_language = event.get("language", "")
-                        worker["task"].language_probability = event.get("probability", 0.0)
-                        app.refresh()
+                        if self._is_stale_task_event(worker, event):
+                            logger.warning(
+                                "Dropping stale language_detected event for task %r "
+                                "on worker %s (current task %r)",
+                                event.get("task_id"), worker.get("id"),
+                                task_correlation_id(worker["task"]),
+                            )
+                        else:
+                            worker["task"].detected_language = event.get("language", "")
+                            worker["task"].language_probability = event.get("probability", 0.0)
+                            app.refresh()
                 elif event_type == "done":
                     # The worker reports the files it actually wrote; store
                     # them so finish_task's history record + the Last-result
                     # card reflect reality (incl. docx/pdf and de-duped names)
                     # instead of re-deriving from config.
                     if worker["task"] is not None:
-                        outs = event.get("outputs")
-                        if isinstance(outs, list):
-                            worker["task"].output_paths = [str(p) for p in outs]
-                        # Worker-computed transcript stats (absent from older
-                        # workers) — the authoritative word count even when no
-                        # machine-readable output format was selected.
-                        try:
-                            worker["task"].word_count = int(
-                                event.get("word_count") or 0
+                        if self._is_stale_task_event(worker, event):
+                            logger.warning(
+                                "Dropping stale done event for task %r "
+                                "on worker %s (current task %r)",
+                                event.get("task_id"), worker.get("id"),
+                                task_correlation_id(worker["task"]),
                             )
-                            worker["task"].audio_duration = float(
-                                event.get("audio_duration") or 0.0
-                            )
-                        except (TypeError, ValueError):
-                            pass
-                    self.finish_task(worker)
+                        else:
+                            outs = event.get("outputs")
+                            if isinstance(outs, list):
+                                worker["task"].output_paths = [str(p) for p in outs]
+                            # Worker-computed transcript stats (absent from older
+                            # workers) — the authoritative word count even when no
+                            # machine-readable output format was selected.
+                            try:
+                                worker["task"].word_count = int(
+                                    event.get("word_count") or 0
+                                )
+                                worker["task"].audio_duration = float(
+                                    event.get("audio_duration") or 0.0
+                                )
+                            except (TypeError, ValueError):
+                                pass
+                            self.finish_task(worker)
+                    else:
+                        self.finish_task(worker)
                 elif event_type == "error":
                     if worker["task"]:
-                        worker["task"].status = "error"
-                        app.log(event.get("message", "Worker error"))
-                        self.finish_task(worker, keep_status=True)
+                        if self._is_stale_task_event(worker, event):
+                            logger.warning(
+                                "Dropping stale error event for task %r "
+                                "on worker %s (current task %r)",
+                                event.get("task_id"), worker.get("id"),
+                                task_correlation_id(worker["task"]),
+                            )
+                        else:
+                            worker["task"].status = "error"
+                            app.log(event.get("message", "Worker error"))
+                            self.finish_task(worker, keep_status=True)
                     else:
                         app.log(event.get("message", "Worker error"))
                 elif event_type == "control_applied":
@@ -835,9 +1007,18 @@ class TranscriptionService:
                 elif event_type == "worker_exit":
                     worker["ready"] = False
                     worker["process"] = None
-                    if worker["task"] and worker["task"].status in ("running", "paused"):
-                        worker["task"].status = "error"
-                        app.log(f"Transcription worker exited with code {event.get('return_code')}")
+                    if worker["task"] is not None:
+                        # Any live task pins its worker slot until it is
+                        # finished: the old ("running", "paused") allowlist
+                        # left e.g. a "cancelled"-but-unacknowledged task
+                        # pinned forever with its history row open. Preserve
+                        # an already-terminal status; anything else died
+                        # with its worker, so it is an error.
+                        if getattr(worker["task"], "status", None) not in (
+                            "finished", "error", "cancelled",
+                        ):
+                            worker["task"].status = "error"
+                            app.log(f"Transcription worker exited with code {event.get('return_code')}")
                         self.finish_task(worker, keep_status=True)
                     # A worker that dies before going ready would otherwise hang
                     # an ensure_worker_ready() modal forever — release it.
@@ -925,6 +1106,20 @@ class TranscriptionService:
                         model=str(app.app_config.get("model", {}).get("name", "")),
                         language=getattr(t, "language", "") or "",
                     )
+                    # A retry gets a FRESH history_id but task_correlation_id
+                    # caches task_id on first use — without this reset the
+                    # second attempt would keep "h<old_id>", so a control
+                    # parked from attempt 1 could misapply to attempt 2 and
+                    # attempt 2's own worker-echoed events could never join
+                    # back to its fresh history row. Clearing here (and ONLY
+                    # here, at a fresh DISPATCH — never mid-attempt) forces
+                    # the next task_correlation_id(t) to recompute from the
+                    # fresh history_id; transcribe_command below re-caches
+                    # it, so same-attempt command/control agreement is kept.
+                    try:
+                        t.task_id = ""
+                    except Exception:  # noqa: BLE001 - frozen/tuple-like tasks
+                        pass
                 except Exception as e:
                     logger.exception(
                         "history insert failed for %s; deferring dispatch",
@@ -1014,6 +1209,7 @@ class TranscriptionService:
                     app.worker_events.put({
                         "event": "error",
                         "message": f"Failed to dispatch task: {e}",
+                        "task_id": task_correlation_id(task),
                         "_pid": worker["process"].pid if worker.get("process") else 0,
                         "_worker_id": worker_id,
                     })
