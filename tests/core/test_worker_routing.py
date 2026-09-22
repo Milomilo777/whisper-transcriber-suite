@@ -61,3 +61,23 @@ def test_no_match_returns_none():
     ws = _workers()
     svc = _svc(ws)
     assert svc.worker_for_event({"_token": "x", "_pid": 999, "_worker_id": 9}) is None
+
+
+def test_stale_token_does_not_fall_back_to_pid_match():
+    """Found by an adversarial review (2026-09-22): a PRESENT but
+    non-matching token used to fall through to the PID+worker_id match
+    below -- exactly defeating the protection the token exists for.
+    restart_worker() assigns worker["id"]=1 a FRESH token while a
+    lingering event from the dead instance (still carrying the OLD
+    token) sits queued; if the OS also recycled the PID, the stale
+    event's _pid/_worker_id now match the freshly-restarted worker too,
+    and the old fallback silently routed it there -- crediting the live
+    task with a dead task's progress/done."""
+    ws = _workers()
+    # Simulate restart_worker() having already assigned worker 1 a new
+    # token by the time this event (still carrying the OLD token) is
+    # processed.
+    ws[0]["token"] = "tok-A-after-restart"
+    svc = _svc(ws)
+    stale_event = {"_token": "tok-A", "_pid": 100, "_worker_id": 1}
+    assert svc.worker_for_event(stale_event) is None

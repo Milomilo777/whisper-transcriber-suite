@@ -12,7 +12,6 @@ import os
 import subprocess
 import sys
 import threading
-import uuid
 from queue import Empty
 from typing import TYPE_CHECKING, Any
 
@@ -61,7 +60,16 @@ def task_correlation_id(t: Any) -> str:
         history_id = int(getattr(t, "history_id", 0) or 0)
     except (TypeError, ValueError):
         history_id = 0
-    cid = f"h{history_id}" if history_id > 0 else f"u{uuid.uuid4().hex}"
+    # id(t) rather than uuid.uuid4(): this fallback must be deterministic
+    # per task even when the caching assignment below fails (a frozen/
+    # tuple-like task object, the exact case the except anticipates) --
+    # a fresh random uuid on every call meant transcribe_command and a
+    # later send_control for the SAME such task silently generated two
+    # DIFFERENT ids, so the worker could never match the control to its
+    # transcribe. id(t) is stable for the object's entire lifetime, and
+    # the object is guaranteed alive (referenced by the caller/worker
+    # dict) for the whole window this id needs to stay consistent.
+    cid = f"h{history_id}" if history_id > 0 else f"u{id(t):x}"
     try:
         t.task_id = cid
     except Exception:  # noqa: BLE001 - frozen/tuple-like task objects
@@ -602,7 +610,20 @@ class TranscriptionService:
             for worker in self.app.workers:
                 if worker.get("token") == token:
                     return worker
-        # Legacy / synthetic path — match on PID + worker id.
+            # A token was present but matched no current worker: this
+            # event belongs to an instance that has since been restarted
+            # (start_worker assigns a fresh token, "so stale events from
+            # the dead instance can't survive") or removed. Falling
+            # through to the PID+worker-id match below would defeat
+            # exactly the protection the token exists for -- Windows can
+            # recycle a PID quickly enough that a dead worker's lingering
+            # queued event matches the id+PID of its own freshly-
+            # restarted replacement, crediting the live task with a dead
+            # task's progress/done.
+            return None
+        # Legacy / synthetic path — only for events with no token at all
+        # (an old worker binary spawned before WHISPER_WORKER_TOKEN, or a
+        # parent that hasn't set the env var).
         for worker in self.app.workers:
             process = worker.get("process")
             if (
@@ -645,6 +666,19 @@ class TranscriptionService:
             event_type = event.get("event")
             worker = self.worker_for_event(event)
             if not worker:
+                # An unroutable event (worker restarted/removed since it
+                # was queued, or a stale token) is silently dropped below
+                # this point -- including "done", which can carry a
+                # genuinely completed transcription's outputs/word_count.
+                # A log line is the difference between recoverable-and-
+                # visible and invisible data loss (contrast
+                # control_unmatched, which was already logged).
+                logger.warning(
+                    "Dropping unroutable worker event %r (no matching "
+                    "worker for worker_id=%r pid=%r token=%r)",
+                    event_type, event.get("_worker_id"), event.get("_pid"),
+                    bool(event.get("_token")),
+                )
                 continue
 
             # Audit D8: any event counts as liveness.
@@ -653,161 +687,174 @@ class TranscriptionService:
                 # Pure liveness — already recorded above.
                 continue
 
-            if event_type == "log":
-                app.model_status(event.get("message", ""))
-            elif event_type == "ready":
-                worker["ready"] = True
-                # R3: the worker's ready event additively carries the device
-                # it actually loaded onto. .get() defaults keep an OLD worker
-                # (no device fields) working — it just leaves these blank.
-                worker["device"] = str(event.get("device", "") or "")
-                worker["compute_type"] = str(event.get("compute_type", "") or "")
-                worker["requested_device"] = str(
-                    event.get("requested_device", "") or ""
-                )
-                worker["downgraded"] = bool(event.get("downgraded", False))
-                self.update_model_state()
-                # If this is the worker an ensure_worker_ready() call is
-                # awaiting, unblock it (headless Event) and close its modal.
-                self._release_pending_load(worker, success=True)
-            elif event_type == "startup_error":
-                worker["ready"] = False
-                app.log(event.get("message", "Existing model failed to load."))
-                # Release any ensure_worker_ready() waiter FIRST so its
-                # loading modal closes (with success=False) before we maybe
-                # open the download modal — otherwise the two modals stack
-                # and, because we clear app.workers below, poll() stops and
-                # the loading modal's ready-routing would be dead forever.
-                self._release_pending_load(worker, success=False)
-                # A startup failure on an ALTERNATIVE engine (whisper.cpp /
-                # cloud / NVIDIA) cannot be fixed by downloading the Whisper
-                # model — that flow both hid the real error behind a generic
-                # "model load was cancelled" line AND force-opened a
-                # mandatory ~3 GB download modal for a model the selected
-                # engine never uses. Surface the engine's own error instead.
-                from core.backends import availability as _eng
-                engine = _eng.normalise_engine(
-                    app.app_config.get("transcribe_backend")
-                )
-                if engine != "faster_whisper":
-                    self.stop_all()
-                    app.workers = []
-                    detail = str(
-                        event.get("message") or "engine failed to start"
+            try:
+                if event_type == "log":
+                    app.model_status(event.get("message", ""))
+                elif event_type == "ready":
+                    worker["ready"] = True
+                    # R3: the worker's ready event additively carries the device
+                    # it actually loaded onto. .get() defaults keep an OLD worker
+                    # (no device fields) working — it just leaves these blank.
+                    worker["device"] = str(event.get("device", "") or "")
+                    worker["compute_type"] = str(event.get("compute_type", "") or "")
+                    worker["requested_device"] = str(
+                        event.get("requested_device", "") or ""
                     )
-                    label = _eng.VALUE_TO_LABEL.get(engine, engine)
-                    if now - self._engine_error_dialog_at > 10.0:
-                        self._engine_error_dialog_at = now
+                    worker["downgraded"] = bool(event.get("downgraded", False))
+                    self.update_model_state()
+                    # If this is the worker an ensure_worker_ready() call is
+                    # awaiting, unblock it (headless Event) and close its modal.
+                    self._release_pending_load(worker, success=True)
+                elif event_type == "startup_error":
+                    worker["ready"] = False
+                    app.log(event.get("message", "Existing model failed to load."))
+                    # Release any ensure_worker_ready() waiter FIRST so its
+                    # loading modal closes (with success=False) before we maybe
+                    # open the download modal — otherwise the two modals stack
+                    # and, because we clear app.workers below, poll() stops and
+                    # the loading modal's ready-routing would be dead forever.
+                    self._release_pending_load(worker, success=False)
+                    # A startup failure on an ALTERNATIVE engine (whisper.cpp /
+                    # cloud / NVIDIA) cannot be fixed by downloading the Whisper
+                    # model — that flow both hid the real error behind a generic
+                    # "model load was cancelled" line AND force-opened a
+                    # mandatory ~3 GB download modal for a model the selected
+                    # engine never uses. Surface the engine's own error instead.
+                    from core.backends import availability as _eng
+                    engine = _eng.normalise_engine(
+                        app.app_config.get("transcribe_backend")
+                    )
+                    if engine != "faster_whisper":
+                        self.stop_all()
+                        app.workers = []
+                        detail = str(
+                            event.get("message") or "engine failed to start"
+                        )
+                        label = _eng.VALUE_TO_LABEL.get(engine, engine)
+                        if now - self._engine_error_dialog_at > 10.0:
+                            self._engine_error_dialog_at = now
+                            try:
+                                from app.widgets.error_dialog import show_error
+                                show_error(
+                                    app,
+                                    "Transcription engine failed to start",
+                                    f"The selected engine ({label}) could not "
+                                    "start. Check its model/key settings in "
+                                    "Advanced > Backend, or switch back to the "
+                                    "default Faster-Whisper engine.",
+                                    detail=detail,
+                                )
+                            except Exception:  # noqa: BLE001
+                                pass
+                    elif not app.model_setup_running:
+                        app.log("Existing model failed to load. Starting required download.")
+                        self.stop_all()
+                        app.workers = []
+                        # Defer so the loading modal is fully torn down (its
+                        # cancel() runs on the next main-thread drain) before the
+                        # download modal opens — no stacked modals.
+                        app.after(0, lambda: app.ensure_model_with_modal(mandatory=True))
+                elif event_type == "started":
+                    pass
+                elif event_type == "progress":
+                    if worker["task"]:
+                        p = event.get("percent", 0)
+                        worker["task"].progress = p
+                        app.update_overall_progress()
+                        # Mirror progress onto the Download row when this task
+                        # was auto-spawned from a download (it shows
+                        # "transcribing" there); the download poll won't refresh
+                        # on its own once the download itself has finished.
+                        if getattr(worker["task"], "source_download", None) is not None:
+                            app.refresh_download_queue()
+                elif event_type == "language_detected":
+                    if worker["task"]:
+                        worker["task"].detected_language = event.get("language", "")
+                        worker["task"].language_probability = event.get("probability", 0.0)
+                        app.refresh()
+                elif event_type == "done":
+                    # The worker reports the files it actually wrote; store
+                    # them so finish_task's history record + the Last-result
+                    # card reflect reality (incl. docx/pdf and de-duped names)
+                    # instead of re-deriving from config.
+                    if worker["task"] is not None:
+                        outs = event.get("outputs")
+                        if isinstance(outs, list):
+                            worker["task"].output_paths = [str(p) for p in outs]
+                        # Worker-computed transcript stats (absent from older
+                        # workers) — the authoritative word count even when no
+                        # machine-readable output format was selected.
                         try:
-                            from app.widgets.error_dialog import show_error
-                            show_error(
-                                app,
-                                "Transcription engine failed to start",
-                                f"The selected engine ({label}) could not "
-                                "start. Check its model/key settings in "
-                                "Advanced > Backend, or switch back to the "
-                                "default Faster-Whisper engine.",
-                                detail=detail,
+                            worker["task"].word_count = int(
+                                event.get("word_count") or 0
                             )
-                        except Exception:  # noqa: BLE001
+                            worker["task"].audio_duration = float(
+                                event.get("audio_duration") or 0.0
+                            )
+                        except (TypeError, ValueError):
                             pass
-                elif not app.model_setup_running:
-                    app.log("Existing model failed to load. Starting required download.")
-                    self.stop_all()
-                    app.workers = []
-                    # Defer so the loading modal is fully torn down (its
-                    # cancel() runs on the next main-thread drain) before the
-                    # download modal opens — no stacked modals.
-                    app.after(0, lambda: app.ensure_model_with_modal(mandatory=True))
-            elif event_type == "started":
-                pass
-            elif event_type == "progress":
-                if worker["task"]:
-                    p = event.get("percent", 0)
-                    worker["task"].progress = p
-                    app.update_overall_progress()
-                    # Mirror progress onto the Download row when this task
-                    # was auto-spawned from a download (it shows
-                    # "transcribing" there); the download poll won't refresh
-                    # on its own once the download itself has finished.
-                    if getattr(worker["task"], "source_download", None) is not None:
-                        app.refresh_download_queue()
-            elif event_type == "language_detected":
-                if worker["task"]:
-                    worker["task"].detected_language = event.get("language", "")
-                    worker["task"].language_probability = event.get("probability", 0.0)
-                    app.refresh()
-            elif event_type == "done":
-                # The worker reports the files it actually wrote; store
-                # them so finish_task's history record + the Last-result
-                # card reflect reality (incl. docx/pdf and de-duped names)
-                # instead of re-deriving from config.
-                if worker["task"] is not None:
-                    outs = event.get("outputs")
-                    if isinstance(outs, list):
-                        worker["task"].output_paths = [str(p) for p in outs]
-                    # Worker-computed transcript stats (absent from older
-                    # workers) — the authoritative word count even when no
-                    # machine-readable output format was selected.
-                    try:
-                        worker["task"].word_count = int(
-                            event.get("word_count") or 0
+                    self.finish_task(worker)
+                elif event_type == "error":
+                    if worker["task"]:
+                        worker["task"].status = "error"
+                        app.log(event.get("message", "Worker error"))
+                        self.finish_task(worker, keep_status=True)
+                    else:
+                        app.log(event.get("message", "Worker error"))
+                elif event_type == "control_applied":
+                    # An id-bearing control was honoured. Delayed means the worker
+                    # parked it briefly because it arrived before its transcribe
+                    # was registered — the exact race this increment fixes; a
+                    # debug line is all the parent needs.
+                    if event.get("delayed"):
+                        logger.debug(
+                            "worker %s applied %s for task %s after parking it",
+                            worker.get("id"),
+                            event.get("action"),
+                            event.get("task_id"),
                         )
-                        worker["task"].audio_duration = float(
-                            event.get("audio_duration") or 0.0
-                        )
-                    except (TypeError, ValueError):
-                        pass
-                self.finish_task(worker)
-            elif event_type == "error":
-                if worker["task"]:
-                    worker["task"].status = "error"
-                    app.log(event.get("message", "Worker error"))
-                    self.finish_task(worker, keep_status=True)
-                else:
-                    app.log(event.get("message", "Worker error"))
-            elif event_type == "control_applied":
-                # An id-bearing control was honoured. Delayed means the worker
-                # parked it briefly because it arrived before its transcribe
-                # was registered — the exact race this increment fixes; a
-                # debug line is all the parent needs.
-                if event.get("delayed"):
-                    logger.debug(
-                        "worker %s applied %s for task %s after parking it",
+                elif event_type == "control_unmatched":
+                    # The worker never saw a transcribe with this task's id, so
+                    # the control could not be honoured. Do not swallow that: log
+                    # it for the user. UI state is not rewritten here — a failed
+                    # dispatch is already reported by the dispatch-error path /
+                    # worker_exit / the liveness watchdog.
+                    reason = event.get("reason", "unknown")
+                    logger.warning(
+                        "worker %s could not apply %s for task %s (%s)",
                         worker.get("id"),
                         event.get("action"),
                         event.get("task_id"),
+                        reason,
                     )
-            elif event_type == "control_unmatched":
-                # The worker never saw a transcribe with this task's id, so
-                # the control could not be honoured. Do not swallow that: log
-                # it for the user. UI state is not rewritten here — a failed
-                # dispatch is already reported by the dispatch-error path /
-                # worker_exit / the liveness watchdog.
-                reason = event.get("reason", "unknown")
-                logger.warning(
-                    "worker %s could not apply %s for task %s (%s)",
-                    worker.get("id"),
-                    event.get("action"),
-                    event.get("task_id"),
-                    reason,
+                    app.log(
+                        f"Worker did not apply {event.get('action', 'control')} "
+                        f"for task {event.get('task_id', '?')} ({reason}); no "
+                        "matching in-flight task was found."
+                    )
+                elif event_type == "worker_exit":
+                    worker["ready"] = False
+                    worker["process"] = None
+                    if worker["task"] and worker["task"].status in ("running", "paused"):
+                        worker["task"].status = "error"
+                        app.log(f"Transcription worker exited with code {event.get('return_code')}")
+                        self.finish_task(worker, keep_status=True)
+                    # A worker that dies before going ready would otherwise hang
+                    # an ensure_worker_ready() modal forever — release it.
+                    self._release_pending_load(worker, success=False)
+                    self.update_model_state()
+            except Exception:  # noqa: BLE001
+                # One malformed/unexpected event must never wedge the whole
+                # transcription pump: an uncaught exception here would abort
+                # this while loop early, skipping both the liveness watchdog
+                # below and the _ensure_poll_scheduled() re-arm -- with
+                # _poll_scheduled already cleared at the top of poll(), no
+                # future 100 ms tick would ever fire again, and every running
+                # task's progress/done/error events would sit unprocessed
+                # until something else happened to call start_worker().
+                logger.exception(
+                    "Transcription event handling failed for %r", event_type
                 )
-                app.log(
-                    f"Worker did not apply {event.get('action', 'control')} "
-                    f"for task {event.get('task_id', '?')} ({reason}); no "
-                    "matching in-flight task was found."
-                )
-            elif event_type == "worker_exit":
-                worker["ready"] = False
-                worker["process"] = None
-                if worker["task"] and worker["task"].status in ("running", "paused"):
-                    worker["task"].status = "error"
-                    app.log(f"Transcription worker exited with code {event.get('return_code')}")
-                    self.finish_task(worker, keep_status=True)
-                # A worker that dies before going ready would otherwise hang
-                # an ensure_worker_ready() modal forever — release it.
-                self._release_pending_load(worker, success=False)
-                self.update_model_state()
 
         # Audit D8: liveness watchdog. After draining the queue,
         # check every active worker. If one has been silent past the
@@ -1049,17 +1096,22 @@ class TranscriptionService:
         newly_finished = (
             not keep_status and not task.cancelled
         )
-        if newly_finished:
-            task.status = "finished"
-            task.progress = 100
-            # Surface the success on the Transcribe tab so the user
-            # sees a real "this is done, here are the files" card
-            # rather than just a Treeview row flipping to "finished".
-            try:
-                self.app.show_last_result(task)
-            except Exception:  # noqa: BLE001
-                pass
-        # Phase 3a — finalise the history row.
+        # The status this run must be recorded/reported under. task.status
+        # itself isn't flipped to "finished" until after the history write
+        # below (see the ordering comment there) -- history must record
+        # the REAL terminal status, not whatever task.status still held
+        # from mid-run (e.g. "running") at the moment this call happens.
+        terminal_status = "finished" if newly_finished else task.status
+        # Phase 3a — finalise the history row BEFORE reporting success to
+        # the UI. This used to run AFTER show_last_result below: the user
+        # saw the "done, here are the files" card, and only THEN did the
+        # history write happen -- so a write failure (a locked history.db
+        # on Windows + antivirus is this module's own documented common
+        # case) landed after success was already reported, silently
+        # leaving the durable record in its pre-dispatch state forever.
+        # The repo's own standing rule ("a completed transcription must
+        # reach durable storage before the UI/worker reports success")
+        # requires this ordering, not just the write eventually happening.
         app = self.app
         history = getattr(app, "history", None)
         # Best-effort word count + audio duration from the produced JSON
@@ -1086,16 +1138,41 @@ class TranscriptionService:
                         f"{base}.{ext}"
                         for ext in (app.app_config.get("output_formats") or ["srt", "json"])
                     ]
-                history.finish_transcription(
+                persisted = history.finish_transcription(
                     task.history_id,
-                    status=task.status,
+                    status=terminal_status,
                     output_paths=paths,
                     duration_seconds=float(duration),
                     language=getattr(task, "detected_language", "") or "",
                     word_count=word_count,
                 )
+                if not persisted:
+                    # Surfaced, not swallowed: the transcript FILES are
+                    # still safely on disk (the worker wrote them before
+                    # ever sending "done"), but the supplementary History/
+                    # Stats DB record for this run did not persist -- the
+                    # user should know, even though this alone doesn't
+                    # withhold the success card below.
+                    app.log(
+                        f"History record for '{task.file_path}' was not "
+                        "saved (no matching row); the transcript files "
+                        "themselves are still on disk."
+                    )
             except Exception as e:  # noqa: BLE001
-                app.log(f"history record update failed: {e}")
+                app.log(
+                    f"History record update failed: {e}; the transcript "
+                    "files themselves are still on disk."
+                )
+        if newly_finished:
+            task.status = "finished"
+            task.progress = 100
+            # Surface the success on the Transcribe tab so the user
+            # sees a real "this is done, here are the files" card
+            # rather than just a Treeview row flipping to "finished".
+            try:
+                self.app.show_last_result(task)
+            except Exception:  # noqa: BLE001
+                pass
         # P4-4 — opt-in usage stats POST (best-effort, daemon thread, swallows
         # all errors). post_stats_async re-checks telemetry_opt_in + stats_url.
         # Only for a genuine successful completion: an error/cancelled task

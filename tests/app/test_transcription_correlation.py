@@ -68,6 +68,38 @@ def test_correlation_id_survives_a_hostile_history_id():
     assert task_correlation_id(t).startswith("u")
 
 
+class _RejectsTaskId:
+    """A task-like object that rejects the task_id caching assignment --
+    the "frozen/tuple-like task objects" case the function's own except
+    anticipates. No history_id, so every call falls onto the uuid/id(t)
+    fallback path."""
+
+    __slots__ = ("file_path",)
+
+    def __init__(self) -> None:
+        self.file_path = "clip.mp4"
+
+    def __setattr__(self, name, value):  # noqa: ANN001
+        if name == "task_id":
+            raise AttributeError("read-only")
+        object.__setattr__(self, name, value)
+
+
+def test_correlation_id_agrees_across_calls_even_when_caching_fails():
+    """Found by an adversarial review (2026-09-22): the fallback used to
+    be a fresh uuid.uuid4() on every call. For a task with no usable
+    history_id where the t.task_id = cid caching assignment fails, two
+    separate calls (e.g. transcribe_command building the dispatch, then
+    a later send_control) generated two DIFFERENT ids -- the worker
+    could never match the control to its transcribe, so cancel/pause
+    silently did nothing for such a task, every time."""
+    t = _RejectsTaskId()
+    first = task_correlation_id(t)
+    second = task_correlation_id(t)
+    assert first == second
+    assert first.startswith("u")
+
+
 # ------------------------------------------------------- command id agreement
 
 

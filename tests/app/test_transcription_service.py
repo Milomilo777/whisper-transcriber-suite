@@ -283,6 +283,60 @@ def test_finish_task_posts_usage_stats_for_a_genuine_successful_completion(monke
     assert task.status == "finished"
 
 
+def test_finish_task_persists_history_with_the_real_terminal_status(monkeypatch):
+    """Found by an adversarial review (2026-09-22) alongside the
+    persist-before-report reorder below: the history write was moved to
+    run BEFORE task.status is flipped to "finished" -- naively reusing
+    task.status at that point would have recorded whatever status the
+    task held mid-run (e.g. "running") instead of the real outcome."""
+    app = SimpleNamespace(
+        app_config={}, update_overall_progress=lambda: None,
+        show_last_result=lambda task: None,
+    )
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    monkeypatch.setattr(svc, "_post_usage_stats", lambda *a, **k: None)
+    recorded: list = []
+    history = SimpleNamespace(
+        finish_transcription=lambda *a, **k: (recorded.append(k), True)[1]
+    )
+    app.history = history
+    task = SimpleNamespace(
+        status="running", cancelled=False, end_time=None, start_time=time.time(),
+        output_paths=["clip.srt"], file_path="clip.mp4", history_id=7,
+        source_download=None, detected_language="",
+    )
+    worker = {"task": task, "temporary": False}
+
+    svc.finish_task(worker, keep_status=False)
+
+    assert recorded and recorded[0]["status"] == "finished"
+    assert task.status == "finished"
+
+
+def test_finish_task_persists_history_before_reporting_success(monkeypatch):
+    """The ordering half of the same fix: history.finish_transcription
+    must be called BEFORE show_last_result, so a durable-write failure
+    is never masked by an already-shown success card."""
+    app = SimpleNamespace(app_config={}, update_overall_progress=lambda: None)
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    monkeypatch.setattr(svc, "_post_usage_stats", lambda *a, **k: None)
+    order: list[str] = []
+    app.history = SimpleNamespace(
+        finish_transcription=lambda *a, **k: (order.append("history"), True)[1]
+    )
+    app.show_last_result = lambda task: order.append("show_last_result")
+    task = SimpleNamespace(
+        status="running", cancelled=False, end_time=None, start_time=time.time(),
+        output_paths=["clip.srt"], file_path="clip.mp4", history_id=7,
+        source_download=None, detected_language="",
+    )
+    worker = {"task": task, "temporary": False}
+
+    svc.finish_task(worker, keep_status=False)
+
+    assert order == ["history", "show_last_result"]
+
+
 def test_finish_task_skips_usage_stats_post_for_a_cancelled_task(monkeypatch):
     app = SimpleNamespace(app_config={}, update_overall_progress=lambda: None)
     svc = TranscriptionService(app)  # type: ignore[arg-type]
