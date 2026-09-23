@@ -119,7 +119,7 @@
 | **Linux / Flatpak / AppImage** | 🟡 Linux is real, just not packaged | Buzz (.deb, AppImage), Vibe (.deb, AppImage) | L | Was marked Windows-only; confirmed `platform/linux/{install,update,uninstall}.sh` + a full Ubuntu CI matrix (Python 3.11/3.12 under xvfb-run) — a real, tested source/venv install path exists, just no `.deb`/Flatpak/AppImage binary yet. |
 | **Reproducible builds** | 🔴 not enforced | Tor Project, Reproducible Builds Project | M | A Method-A user who hash-compares the binary to ours would not get a match because of build-time inputs. |
 | **Crash reporting** | 🟡 Sentry available but commented out | Buzz uses sentry-sdk | XS | Just uncomment + flip a config; need to add a UI consent toggle. |
-| **Opt-in usage telemetry** | 🟢 shipped (`core/stats.py`, `telemetry_opt_in` config key, off by default) | Vibe (anonymous metrics, off by default), MacWhisper | — | Was marked absent; confirmed implemented (host/hardware/app-version fields added v1.5.0). |
+| **Usage statistics** | 🟢 shipped (`core/stats.py`, `telemetry_opt_in` config key) | Vibe (anonymous metrics, off by default), MacWhisper | — | Was marked absent; confirmed implemented (host/hardware/app-version fields added v1.5.0). |
 | **GitHub Actions CI** | 🟢 shipped — `.github/workflows/ci.yml` (Windows + Ubuntu, Python 3.11/3.12) gates every push/PR, plus 7 macOS workflows | Buzz (matrix Win/Mac/Linux), Vibe | — | Was marked absent; confirmed implemented and green. |
 | **Release-notes RSS / API integration** | 🔴 manual `gh release create` | Modern desktop tooling | S | A `latest.json` we can publish so future auto-update can pick it up. |
 

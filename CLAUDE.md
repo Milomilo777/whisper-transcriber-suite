@@ -226,6 +226,16 @@ download-count incident, specifically because the repo-front-page badge
 mistake — a per-version badge row makes each release's own count
 visible and durable regardless of what happens to the aggregate.
 
+## Private notes stay local — never in the repo (2026-09-24, owner request)
+
+- Messages between the owner and colleagues never go into anything tracked —
+  docs, handoff, changelog, code comments, commit messages, release notes.
+  Write only a one-line summary of the topic there ("a colleague reported X").
+- Topics the owner marks as private are likewise summarised neutrally at most.
+- The full text, quotes and details go into `NOTES.local.md` at the repo root
+  (gitignored, local only). Read it at session start alongside the handoff;
+  it lists which topics are private.
+
 ## Release page layout — every release (2026-09-24, owner request)
 
 - File order on the release page: Windows installer, then Portable ZIP, then

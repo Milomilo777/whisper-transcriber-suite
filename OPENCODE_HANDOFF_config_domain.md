@@ -107,8 +107,6 @@ and the command-level
   `app/services/download_service.py`, and the values that reach it are already
   range-validated by `_parse_timecode()`. Nothing real found.
 - `app/__init__.py` — lazy `__getattr__` / `run()` entry point is correct; no finding.
-- The known `telemetry_opt_in` default-`True` + `_NON_PERSISTED_KEYS` contradiction is a
-  flagged owner-decision item; left exactly as-is.
 - `config_url` being stripped by `_NON_PERSISTED_KEYS` means a hand-blanked
   `config_url: ""` (the load path's documented network opt-out) does not survive the next
   `save_config()`. This is a real tension, but it is a deliberate, tested invariant

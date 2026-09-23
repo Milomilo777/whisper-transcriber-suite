@@ -7,7 +7,7 @@ running app version, and coarse host/hardware facts (OS, machine, CPU count,
 total RAM — no serial numbers, no user names, no IPs; the client IP + geoip
 country are added server-side from the request, not by this module). It is
 therefore sent ONLY when the user has opted in
-(``config['telemetry_opt_in']``, default OFF); the caller must gate on that.
+(``config['telemetry_opt_in']``); the caller must gate on that.
 
 Design rules (mirrors app.observability's opt-in posture):
 

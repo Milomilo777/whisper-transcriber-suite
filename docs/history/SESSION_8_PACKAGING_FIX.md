@@ -2,8 +2,7 @@
 
 **Date:** 2026-05-14
 **Branch:** `master`
-**Driver:** report from a colleague that "the app is broken — nice GUI,
-loads faster-whisper, but broken app".
+**Driver:** a colleague reported that the packaged app did not work.
 
 ## TL;DR
 

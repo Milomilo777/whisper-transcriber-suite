@@ -142,31 +142,9 @@ Tests: `test_locked_integrity_check_does_not_rotate_db`,
   a usable DB. No further real bug.
 - `core/hub.py` — after item 6, no further issue found.
 
-## Out-of-scope observation — docs vs code, needs an owner decision (NOT changed here)
+## Out-of-scope observation
 
-Telemetry is deliberately opt-*out* for this distribution while the public
-claims say opt-in; the code side is test-pinned, the docs are stale:
-
-- `core/config.py` has `DEFAULT_CONFIG["telemetry_opt_in"] = True` (commit
-  `4618139 feat(telemetry): enable anonymous usage stats by default`, and
-  `tests/core/test_config.py` asserts it), and `stats_url` defaults to the
-  live collector — so a fresh install POSTs the per-transcription payload
-  (file basename, model, language, duration, hostname + hardware facts)
-  without the user opting in.
-- `telemetry_opt_in` is in `_NON_PERSISTED_KEYS` (also test-pinned), so
-  `save_config` strips it: unchecking "Send anonymous usage statistics" in
-  the Advanced dialog never persists and the next launch is back on. The
-  checkbox label itself says "uncheck to opt out", and the module docstrings
-  in `core/stats.py` / `app/observability.py`, `docs/CONFIG.md`, the README
-  ("no telemetry by default") and PROJECT_INDEX all describe opt-in / off by
-  default. `docs/SESSION_HANDOFF_NEXT.md` already flags the default mismatch
-  as unresolved.
-
-Not a code bug against the current defaults (both behaviors are intentional
-and pinned by tests), but either the docs should say opt-out, or the default
-and the persistence rule should change so the toggle the user is shown
-actually sticks. Both would be `core/config.py` changes, outside this task's
-file scope.
+One owner-policy item outside this task's scope was noted for the owner privately; nothing changed here.
 
 ## Gate notes
 

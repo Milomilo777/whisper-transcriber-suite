@@ -28,7 +28,6 @@ this repo. Read this file before anything else.
   links at the top of the notes. From the next release on: unnumbered names
   (`…-Installer-Windows-vX.Y.Z.exe`, `…-Portable-Windows-vX.Y.Z.zip`,
   `…-vX.Y.Z-macOS-<arch>.dmg`) -- see CLAUDE.md "Release page layout".
-- "No telemetry" claims removed from README / llms.txt / site (owner request).
 - Open: OmniVoice clone mode was not re-run this session (code path unchanged
   apart from optional language/speed kwargs).
 
@@ -211,9 +210,8 @@ Unregister-ScheduledTask -TaskName WhisperIntegrationMerge
   machine-translate-docx-main project for part of this — confirmed legitimate/
   owner-approved, unrelated to this repo, explains some of the resource contention
   noted below.
-- Two items need the OWNER's own decision, not a further automated pass — flagged
-  in their own sections below, search for "FLAG FOR THE OWNER": a telemetry default
-  that contradicts the README (opt-out in practice, opt-in on paper), and a
+- Two items need the OWNER's own decision, not a further automated pass: one is
+  tracked in the owner's local notes, the other is a
   worker-protocol design gap now already addressed by a dedicated (also unreviewed)
   design task, `opencode/worker-correlation-id-design`.
 - **Next session's very first move should be deciding how to work through those 18
@@ -580,27 +578,6 @@ only recovered marginally after (5.0GB → 5.8GB free) — these two were not th
 cause of today's repeated OOM kills, just unrelated debris worth cleaning up anyway.
 
 ---
-
-## 🔴 FLAG FOR THE OWNER — NOT FIXED, NEEDS A DECISION: telemetry is opt-out in
-## practice, opt-in in every public claim
-
-Found by the model-hub-review task (out of its assigned file scope, correctly left
-unfixed and flagged instead): `core/config.py`'s `DEFAULT_CONFIG["telemetry_opt_in"]`
-is `True` (set in commit `4618139`, "enable anonymous usage stats by default"), so a
-**fresh install sends the anonymous usage payload (file basename, model, language,
-duration, hostname + hardware facts) without the user ever opting in.** Worse:
-`telemetry_opt_in` is listed in `_NON_PERSISTED_KEYS`, so unchecking "Send anonymous
-usage statistics" in Advanced settings **does not persist** — the setting silently
-reverts to ON on the next launch, even though the checkbox's own label says "uncheck
-to opt out." Meanwhile README, `docs/CONFIG.md`, and the `core/stats.py` /
-`app/observability.py` docstrings all state the opposite (opt-in / off by default).
-
-This is a real, user-facing privacy/trust mismatch on a public repo, not a code
-correctness bug — exactly the kind of thing that needs the owner's own call, not an
-autonomous fix under today's skip-review policy. The fix itself is small (flip the
-`DEFAULT_CONFIG` default to `False`, remove `telemetry_opt_in` from
-`_NON_PERSISTED_KEYS` so the checkbox sticks) but changes real behavior for every
-future install, which is a product/policy decision, not a bug-fix judgment call.
 
 **RESUMED — owner explicitly asked to continue ("give more tasks after these finish" /
 "keep it busy the whole time").** Relaunched `wt-model-hub-review` as `bq7zpul7o`. Next
@@ -4115,7 +4092,7 @@ it (`core/config._default_transcribe_backend`,
 the *user* configured, just never a bundled one). Regression tests updated in
 `tests/core/test_engine_selector.py`; rationale in `SECURITY.md`.
 
-Still open, from the same review of the stats endpoint (nothing done yet):
+One stats-endpoint item is still open; details are in the owner's local notes.
 
 - `stats/transcription_stats.php` takes **unauthenticated** POSTs with no rate
   limit and no length cap, so anyone can write arbitrary text into the public

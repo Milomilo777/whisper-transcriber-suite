@@ -68,7 +68,7 @@ Tkinter desktop GUI layer of Whisper Transcriber Suite. The App(tk.Tk) root in a
 **Key files**
 - `app/app.py` — The App(tk.Tk) god-object root: owns self.queue/self.download_queue, the 500ms loop() driver, thread-safe cross-thread bridges (post_to_main/_drain_main_calls), drag-and-drop, watched-folder, tray, crash-resume, menu, and window lifecycle (on_exit). ~4650 lines; tab widgets are forward-declared here as type annotations but actually assigned by app/widgets/tabs.py builders.
 - `app/__init__.py` — Package doc + lazy run() entry point; uses module __getattr__ so `import app` alone does not pull in tkinter/faster-whisper until app.App/app.run() is actually touched.
-- `app/observability.py` — Optional Sentry crash reporting + anonymous launch ping; strictly opt-in via config telemetry_opt_in AND env vars SENTRY_DSN / WHISPER_TELEMETRY_URL — a total no-op otherwise.
+- `app/observability.py` — Optional Sentry crash reporting + anonymous launch ping; gated on config telemetry_opt_in AND env vars SENTRY_DSN / WHISPER_TELEMETRY_URL — a total no-op otherwise.
 - `app/domain/tasks.py` — VideoDownloadTask model (status/progress/pause/section_start-end/history_id); re-exports TranscriptionTask from core.task.
 - `app/domain/languages.py` — SUBTITLE_LANGUAGES display-name/code table + subtitle_lang_args() for yt-dlp --sub-langs.
 - `app/services/transcription_service.py` — TranscriptionService: spawns/manages long-lived `python -m core.worker` (or `<exe> --worker`) subprocesses, dispatches queued tasks to idle workers, drains worker JSON stdout events, drives the device badge, model-loading modal, and telemetry stats.
@@ -177,7 +177,7 @@ Tk-free transcription engine package: pluggable ASR backends, ~13 output-format 
 - `core/tiling.py` — TilingController: one yt-dlp stream fanned out to an NxN-tile ffplay grid across one or more monitors, with self-healing reconnect/backoff and a yt-dlp -U self-heal after repeated failures.
 - `core/burn_subs.py` — burn(): ffmpeg subtitle burn-in; copies the SRT to a graph-safe ASCII temp path before invoking the subtitles= filter to avoid libavfilter metacharacter injection from an attacker-influenced download title.
 - `core/convert.py` — Format-to-format conversion via the universal segment-list middle representation. parse_to_segments() auto-detects json/srt/vtt/tsv/otr/eaf/inqscribe; convert_file() re-emits through core.writers (plus smtv_docx as the one binary target).
-- `core/stats.py` — Opt-in (telemetry_opt_in) anonymous telemetry-stats POST to config['stats_url']; build_stats_payload() is a pure/testable payload builder, post_stats_async() fires on a daemon thread.
+- `core/stats.py` — telemetry_opt_in-gated anonymous telemetry-stats POST to config['stats_url']; build_stats_payload() is a pure/testable payload builder, post_stats_async() fires on a daemon thread.
 - `core/updates.py` — Tk-free GitHub 'update available' check (releases/latest); notify-only, never downloads/installs, silent on any failure including a private repo's 404.
 - `core/backends/base.py` — Backend ABC + LanguageInfo dataclass -- the load()/is_ready()/transcribe_to_segments()/unload()/get_error() contract every engine implements.
 - `core/backends/__init__.py` — get_backend(name) factory dispatching faster_whisper (default) / whisper_cpp / cloud_stt / google_cloud_stt / nvidia_asr; unknown names silently fall back to faster_whisper.

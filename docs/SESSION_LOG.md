@@ -416,7 +416,7 @@ Plus `docs/PHASE_1_ACCEPTANCE.md` with ten grep-able tests, all sample tests ver
 
 **Coordinator:** Claude Opus 4.7 (1M context), interactive session with the user.
 
-**Goal as briefed:** "It is broken, and does load faster-whisper. Nice GUI but broken app. AI does not test code it produce, that's why i go into small increment changes test them and commit or rollback."
+**Goal as briefed:** a colleague reported the packaged app as broken (the GUI loaded, transcription did not work); fix it in small, tested steps.
 
 **What got done:**
 
@@ -429,7 +429,7 @@ Plus `docs/PHASE_1_ACCEPTANCE.md` with ten grep-able tests, all sample tests ver
      File doesn't exist
    ```
 
-   `faster-whisper` loads the Silero VAD ONNX by file path at VAD-filter time. VAD is on by default, so every default-configuration transcription on the compiled exe crashed the worker on the first segment. This was the user's colleague's "nice GUI, broken app" symptom — the GUI loads fine, the worker subprocess dies the moment you click Transcribe.
+   `faster-whisper` loads the Silero VAD ONNX by file path at VAD-filter time. VAD is on by default, so every default-configuration transcription on the compiled exe crashed the worker on the first segment. This was the symptom a colleague reported — the GUI loads fine, the worker subprocess dies the moment you click Transcribe.
 
 3. **Fixed `whisper_project.spec`** by adding `collect_data_files('faster_whisper')` to `Analysis(datas=...)`. Rebuilt, re-ran the exe smoke test, transcription succeeded end-to-end (84s for the 60-second test clip; lang=en p=1.00; 9 segments; SRT + JSON written to `E:\3029-NWN-Daily-Scroll-2m_0002.{srt,json}`).
 4. **Added `tests/smoke/` to the repo** so this class of bug can't regress silently:
