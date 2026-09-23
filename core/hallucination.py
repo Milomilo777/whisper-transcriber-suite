@@ -23,6 +23,7 @@ detection.
 from __future__ import annotations
 
 import logging
+import math
 import re
 from typing import Any, Iterable
 
@@ -148,8 +149,19 @@ def detect_vad_disagreement(
     """
     if not vad_segments:
         return False
-    s = float(seg.get("start", 0.0))
-    e = float(seg.get("end", s))
+    try:
+        s = float(seg.get("start", 0.0))
+        e = float(seg.get("end", s))
+    except (TypeError, ValueError, OverflowError):
+        # A malformed backend payload (None / "" / unparseable timestamp)
+        # gives no evidence of disagreement; one bad segment must not
+        # abort annotation of all the others.
+        return False
+    if not (math.isfinite(s) and math.isfinite(e)):
+        # NaN / +-inf compare false against every interval, which would
+        # turn a garbage timestamp into a "disagreement"; only a finite
+        # interval can establish one.
+        return False
     for vs, ve in vad_segments:
         if e >= vs and s <= ve:
             return False

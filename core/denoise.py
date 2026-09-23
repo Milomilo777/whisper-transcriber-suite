@@ -63,6 +63,7 @@ import shutil
 import statistics
 import subprocess
 import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -110,6 +111,12 @@ SAMPLE_WINDOW_S = 30.0
 SAMPLE_POSITIONS: tuple[float, ...] = (0.15, 0.50, 0.80)
 
 _DEFAULT_CACHE_BUDGET_MB = 1024
+
+#: A render written / used this recently may be mid-read by another
+#: concurrent worker process (the app can run several transcription
+#: workers at once), so it is never evicted even when the budget is
+#: exceeded. Same protection as the demucs stem cache.
+_CACHE_IN_USE_GRACE_S = 300
 
 _ANALYSIS_TIMEOUT_S = 300.0
 _MIN_FILTER_TIMEOUT_S = 600.0
@@ -402,6 +409,11 @@ def verdict(before: NoiseProfile, after: NoiseProfile) -> tuple[bool, str]:
     "revert" costs one wasted ffmpeg pass, a wrong "keep" costs
     transcript quality on every segment. When the measurement is
     inconclusive we keep the *original*.
+
+    A render whose measured SNR is *worse* than the input's is rejected:
+    the band/entropy guards can miss a filter that adds spectral
+    artefacts without gating speech, whereas a measured regression is
+    direct evidence the source got noisier.
     """
     b_band = before.speech_band
     a_band = after.speech_band
@@ -431,6 +443,11 @@ def verdict(before: NoiseProfile, after: NoiseProfile) -> tuple[bool, str]:
 
     gain = after.snr_db - before.snr_db
     if gain == gain and gain != float("inf"):
+        if gain < 0.0:
+            return False, (
+                f"speech/noise regressed by {abs(gain):.1f} dB — the filter "
+                "left the audio noisier than the original"
+            )
         return True, f"speech/noise improved by {gain:.1f} dB"
     return True, "noise floor no longer measurable"
 
@@ -470,33 +487,79 @@ def _cached_path(audio_path: str, level: str) -> Path:
     return cache_dir() / f"{_cache_key(audio_path, level)}_denoised.wav"
 
 
+def _cache_hit(path: Path) -> bool:
+    """True when ``path`` is a usable cached render; refreshes its mtime.
+
+    Mirrors :mod:`core.separator`'s hit path: the ``exists()``/``stat()``
+    pair races a concurrent prune, so ``OSError`` means "miss", never a
+    raise.  A hit refreshes mtime so the in-use grace in
+    :func:`prune_cache` treats the render as active (use-based LRU, not
+    write-based) — without this a popular but old render loses its
+    mid-read protection the moment the grace expires.
+    """
+    try:
+        if not (path.exists() and path.stat().st_size >= _MIN_OUTPUT_BYTES):
+            return False
+    except OSError:
+        # A concurrent prune removed the render between exists() and
+        # stat() — treat as a miss and regenerate it.
+        return False
+    try:
+        os.utime(path, None)
+    except OSError:
+        pass
+    return True
+
+
 def prune_cache(budget_mb: int | None = None, *, keep: str | None = None) -> int:
     """Evict oldest renders until the cache fits its byte budget.
 
-    Returns the number of files removed. ``keep`` is never evicted.
-    A budget <= 0 disables eviction. Never raises.
+    Returns the number of files removed. ``keep`` is never evicted, and
+    neither is a render touched within the last ``_CACHE_IN_USE_GRACE_S``
+    seconds — another worker may be mid-read. A budget <= 0 disables
+    eviction. Never raises.
     """
     budget = _cache_budget_mb() if budget_mb is None else max(0, budget_mb)
     if budget <= 0:
         return 0
     try:
-        files = [p for p in cache_dir().glob("*_denoised.wav") if p.is_file()]
-        files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        # Resolving the directory can itself fail (user_cache_dir() on a
+        # read-only / unresolvable home — the exact trigger fixed at the
+        # entry points), so it must sit inside the same guard as the glob
+        # it feeds: the docstring promises this sweep never raises.
+        d = cache_dir()
+        files = [p for p in d.glob("*_denoised.wav") if p.is_file()]
+    except Exception:  # noqa: BLE001
+        return 0
+
+    def _mtime_or_zero(p: Path) -> float:
+        # A concurrent worker may delete a render mid-sort; one vanishing
+        # file must not abort the whole sweep.
+        try:
+            return p.stat().st_mtime
+        except OSError:
+            return 0.0
+
+    try:
+        files.sort(key=_mtime_or_zero, reverse=True)  # newest first
     except OSError:
         return 0
     budget_bytes = budget * 1024 * 1024
     keep_norm = os.path.normcase(os.path.abspath(keep)) if keep else None
+    now = time.time()
     total = 0
     removed = 0
     for p in files:
         try:
-            size = p.stat().st_size
+            st = p.stat()
         except OSError:
             continue
+        size = st.st_size
         is_keeper = bool(keep_norm) and (
             os.path.normcase(os.path.abspath(str(p))) == keep_norm
         )
-        if total + size <= budget_bytes or is_keeper:
+        in_use = (now - st.st_mtime) < _CACHE_IN_USE_GRACE_S
+        if total + size <= budget_bytes or is_keeper or in_use:
             total += size
             continue
         try:
@@ -509,7 +572,13 @@ def prune_cache(budget_mb: int | None = None, *, keep: str | None = None) -> int
 
 def clear_cache() -> None:
     """Remove the whole denoise cache directory. Never raises."""
-    shutil.rmtree(cache_dir(), ignore_errors=True)
+    try:
+        # ignore_errors covers rmtree's own failures, not cache_dir()
+        # raising before the call — an unresolvable user_cache_dir()
+        # must not escape this contract either.
+        shutil.rmtree(cache_dir(), ignore_errors=True)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # ------------------------------------------------------------- availability
@@ -646,7 +715,16 @@ def analyze(
     # silent gap or a single burst of noise must not steer the decision.
     snrs = sorted(m[0] for m in usable)
     median_snr = statistics.median(snrs)
-    chosen = min(usable, key=lambda m: abs(m[0] - median_snr))
+    # Select a window AT the median. Plain abs(snr - median) breaks when
+    # both are +inf (a pristine / digital-silence window): inf - inf is
+    # NaN, NaN loses every min() comparison, and the first measured
+    # window won instead -- letting a lone noisy window steer the level
+    # on a majority-pristine file, exactly what the median exists to
+    # prevent. Testing equality first makes inf == inf select 0.
+    chosen = min(
+        usable,
+        key=lambda m: 0.0 if m[0] == median_snr else abs(m[0] - median_snr),
+    )
     return NoiseProfile(
         full=chosen[1],
         speech_band=chosen[2],
@@ -745,7 +823,13 @@ def denoise_audio(
         # their transcription.
         logger.exception("Denoise pre-process failed: %s", e)
         if log:
-            log(f"Denoise failed ({e}); using the original audio.")
+            try:
+                log(f"Denoise failed ({e}); using the original audio.")
+            except Exception:  # noqa: BLE001
+                # This handler IS the "never raises" safety net; a dead
+                # UI callback must not throw its own exception back out
+                # of the net and take the transcription down anyway.
+                logger.exception("Denoise log callback failed")
         return audio_path
 
 
@@ -776,7 +860,7 @@ def _denoise_audio_inner(
     # measurement, so there is nothing to look up yet.
     if cache and requested in LEVELS:
         hit = _cached_path(audio_path, requested)
-        if hit.exists() and hit.stat().st_size >= _MIN_OUTPUT_BYTES:
+        if _cache_hit(hit):
             if log:
                 log(f"Denoise cache hit ({requested}) -> {hit}")
             return str(hit)
@@ -796,8 +880,7 @@ def _denoise_audio_inner(
 
     if cache:
         target = _cached_path(audio_path, effective)
-        hit = target.exists() and target.stat().st_size >= _MIN_OUTPUT_BYTES
-        if hit:
+        if _cache_hit(target):
             if log:
                 log(f"Denoise cache hit ({effective}) -> {target}")
             return str(target)
@@ -824,47 +907,50 @@ def _denoise_audio_inner(
     staging = target.with_suffix(
         f".{os.getpid()}-{threading.get_ident()}.part"
     )
-    if not _apply_chain(audio_path, str(staging), chain,
-                        duration_s=duration_s, log=log):
-        _unlink(staging)
-        if log:
-            log("Denoise: ffmpeg could not process this audio; "
-                "using the original.")
-        return audio_path
-
-    # Re-measure the SAME window the "before" profile came from. Sampling
-    # afresh would pick the median window of the *denoised* file, which
-    # need not be the same span — and loudness varies far more along a
-    # recording than the verdict's tolerance, so a mismatched pair
-    # produces a meaningless verdict.
-    after = analyze(
-        str(staging),
-        duration_s=duration_s,
-        window=before.window,
-        log=log,
-    )
-    if after is None:
-        _unlink(staging)
-        if log:
-            log("Denoise: result could not be verified; using the original.")
-        return audio_path
-
-    keep, reason = verdict(before, after)
-    if not keep:
-        _unlink(staging)
-        if log:
-            log(f"Denoise reverted — {reason}. Using the original audio.")
-        return audio_path
-
     try:
-        os.replace(str(staging), str(target))
-    except OSError as e:
-        logger.info("Could not move denoised render into place: %s", e)
-        _unlink(staging)
-        return audio_path
+        if not _apply_chain(audio_path, str(staging), chain,
+                            duration_s=duration_s, log=log):
+            if log:
+                log("Denoise: ffmpeg could not process this audio; "
+                    "using the original.")
+            return audio_path
 
-    if log:
-        log(f"Denoise applied ({effective}) — {reason}.")
+        # Re-measure the SAME window the "before" profile came from.
+        # Sampling afresh would pick the median window of the *denoised*
+        # file, which need not be the same span — and loudness varies far
+        # more along a recording than the verdict's tolerance, so a
+        # mismatched pair produces a meaningless verdict.
+        after = analyze(
+            str(staging),
+            duration_s=duration_s,
+            window=before.window,
+            log=log,
+        )
+        if after is None:
+            if log:
+                log("Denoise: result could not be verified; using the original.")
+            return audio_path
+
+        keep, reason = verdict(before, after)
+        if not keep:
+            if log:
+                log(f"Denoise reverted — {reason}. Using the original audio.")
+            return audio_path
+
+        try:
+            os.replace(str(staging), str(target))
+        except OSError as e:
+            logger.info("Could not move denoised render into place: %s", e)
+            return audio_path
+
+        if log:
+            log(f"Denoise applied ({effective}) — {reason}.")
+    finally:
+        # Any abandoned render must not survive as a stray ``.part``
+        # file: it does not match the cache's ``*_denoised.wav`` glob, so
+        # nothing would ever evict it.  After a successful ``os.replace``
+        # the staging path no longer exists and this is a no-op.
+        _unlink(staging)
     if cache:
         try:
             evicted = prune_cache(keep=str(target))

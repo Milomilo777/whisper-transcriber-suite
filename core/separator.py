@@ -44,6 +44,11 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "htdemucs"
 
+#: A vocals stem at or below this many bytes cannot be a usable render
+#: (demucs wrote nothing, the disk filled up, ...).  Used both when
+#: accepting a cache hit and before publishing a fresh stem.
+_MIN_STEM_BYTES = 1024
+
 
 class SeparatorUnavailable(RuntimeError):
     """Raised when the demucs package isn't installed."""
@@ -52,14 +57,21 @@ class SeparatorUnavailable(RuntimeError):
 def is_available() -> bool:
     """demucs pulls in torch, a heavy C-extension package -- see
     core/_gc_import_guard.py for why the import runs under a shared,
-    process-wide GC-disable guard."""
-    with gc_disabled_import():
-        try:
+    process-wide GC-disable guard.
+
+    A missing package is the documented "not installed" case, but a
+    *broken* install is not: torch can fail to load a DLL (``OSError``)
+    or abort initialisation (``RuntimeError``) at import time.  Those
+    must degrade to "unavailable" too, otherwise ``separate_vocals``
+    raises instead of handing the caller the original audio.
+    """
+    try:
+        with gc_disabled_import():
             import demucs  # type: ignore[import-not-found] # noqa: F401
-        except ImportError:
-            return False
-        else:
-            return True
+    except Exception as e:  # noqa: BLE001
+        logger.debug("demucs unavailable: %s", e)
+        return False
+    return True
 
 
 def availability_reason() -> str:
@@ -131,10 +143,14 @@ def prune_cache(budget_mb: int | None = None, *, keep: str | None = None) -> int
     budget = _cache_budget_mb() if budget_mb is None else max(0, budget_mb)
     if budget <= 0:
         return 0
-    d = cache_dir()
     try:
+        # Resolving the directory can itself fail (user_cache_dir() on a
+        # read-only / unresolvable home — the exact trigger fixed at the
+        # entry points), so it must sit inside the same guard as the glob
+        # it feeds: the docstring promises this sweep never raises.
+        d = cache_dir()
         files = [p for p in d.glob("*_vocals.wav") if p.is_file()]
-    except OSError:
+    except Exception:  # noqa: BLE001
         return 0
     def _mtime_or_zero(p: Path) -> float:
         # A concurrent worker may delete a stem mid-sort; a single
@@ -173,10 +189,34 @@ def prune_cache(budget_mb: int | None = None, *, keep: str | None = None) -> int
 
 def clear_cache() -> None:
     """Remove the entire demucs cache directory. Never raises."""
-    shutil.rmtree(cache_dir(), ignore_errors=True)
+    try:
+        # ignore_errors covers rmtree's own failures, not cache_dir()
+        # raising before the call — an unresolvable user_cache_dir()
+        # must not escape this contract either.
+        shutil.rmtree(cache_dir(), ignore_errors=True)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # ---------------------------------------------------------------- entry point
+
+
+def _notify(log: Callable[[str], None] | None, message: str) -> None:
+    """Deliver ``message`` without letting a dead callback escape.
+
+    ``separate_vocals`` promises never to raise so the caller still gets
+    a transcript; a UI callback that dies (widget torn down, queue full)
+    at either chokepoint -- the demucs-unavailable log before the
+    fallback wrapper, or the wrapper's own fallback log -- would break
+    that promise, so those two calls are guarded.  Every other log call
+    sits inside the wrapper and is absorbed by this same guard.
+    """
+    if not log:
+        return
+    try:
+        log(message)
+    except Exception:  # noqa: BLE001
+        logger.exception("separator log callback failed")
 
 
 def separate_vocals(
@@ -201,14 +241,32 @@ def separate_vocals(
     if not enabled:
         return audio_path
     if not is_available():
-        if log:
-            log(f"Demucs skipped: {availability_reason()}")
+        _notify(log, f"Demucs skipped: {availability_reason()}")
+        return audio_path
+    try:
+        return _separate_vocals_inner(audio_path, model=model, log=log)
+    except Exception as e:  # noqa: BLE001
+        # Belt and braces, mirroring denoise_audio(): a filesystem error
+        # before or during the cache work -- a full / read-only cache
+        # volume, or a user_cache_dir() that cannot resolve (it is hit
+        # first, inside _cached_vocals_path) -- must not take the
+        # caller's transcription down with it.
+        logger.exception("Demucs pre-process failed: %s", e)
+        _notify(log, f"Demucs failed ({e}); falling back to original audio.")
         return audio_path
 
+
+def _separate_vocals_inner(
+    audio_path: str,
+    *,
+    model: str,
+    log: Callable[[str], None] | None,
+) -> str:
+    """Separate + cache. Raises on runtime failure; the caller falls back."""
     cached = _cached_vocals_path(audio_path, model)
     hit = False
     try:
-        hit = cached.exists() and cached.stat().st_size > 1024
+        hit = cached.exists() and cached.stat().st_size > _MIN_STEM_BYTES
     except OSError:
         # A concurrent prune removed the stem between exists() and
         # stat() -- treat as a miss and regenerate it.
@@ -224,8 +282,19 @@ def separate_vocals(
             log(f"Demucs cache hit → {cached}")
         return str(cached)
 
-    cache_dir().mkdir(parents=True, exist_ok=True)
-    out_dir = Path(tempfile.mkdtemp(prefix="demucs_", dir=str(cache_dir())))
+    try:
+        cache_dir().mkdir(parents=True, exist_ok=True)
+        out_dir = Path(tempfile.mkdtemp(prefix="demucs_", dir=str(cache_dir())))
+    except OSError as e:
+        # Stems are roughly the size of the source, so a full or read-only
+        # cache volume is a realistic failure.  This setup used to run
+        # before the guard below, letting its OSError escape the
+        # documented "always hand the caller the original audio" fallback
+        # and take the transcription down with it.
+        logger.exception("Demucs cache setup failed: %s — using original audio", e)
+        if log:
+            log(f"Demucs failed ({e}); falling back to original audio.")
+        return audio_path
 
     # Wrap the whole post-mkdtemp section in try/finally so the
     # temp out_dir tree (htdemucs/<stem>/{vocals,no_vocals}.wav) is
@@ -250,12 +319,40 @@ def separate_vocals(
                 log("Demucs produced no vocals.wav; using original audio.")
             return audio_path
 
+        # demucs can exit 0 having written a truncated/empty stem (disk
+        # full, killed decode).  The cache-hit path already rejects such
+        # files; reject them here too instead of publishing a degenerate
+        # stem this run and handing its path to the transcriber.
+        try:
+            stem_size = found.stat().st_size
+        except OSError:
+            stem_size = 0
+        if stem_size <= _MIN_STEM_BYTES:
+            if log:
+                log("Demucs produced a degenerate vocals stem; "
+                    "using original audio.")
+            return audio_path
+
         try:
             os.replace(str(found), str(cached))
         except OSError:
-            # Cross-drive replace can fail; fall back to copy+remove.
+            # Cross-drive replace can fail; fall back to copy+remove --
+            # but copy into a staging file and rename into place.
+            # copyfile() writes non-atomically, and a truncated file
+            # left on the published cache path would satisfy the
+            # size-only cache-hit check on every future run, serving a
+            # corrupt stem to the transcriber until the cache happened
+            # to evict it (denoise's staging pattern, same reason).
+            staging: str | None = None
             try:
-                shutil.copyfile(str(found), str(cached))
+                fd, staging = tempfile.mkstemp(
+                    prefix="demucs_stem_", suffix=".part",
+                    dir=str(cache_dir()),
+                )
+                os.close(fd)
+                shutil.copyfile(str(found), staging)
+                os.replace(staging, str(cached))
+                staging = None
             except OSError as e:
                 if log:
                     log(f"Could not cache vocals stem: {e}")
@@ -276,6 +373,15 @@ def separate_vocals(
                         log("Could not keep vocals stem; using original audio.")
                     return audio_path
                 return str(survivor)
+            finally:
+                # After a successful publish the staging path is gone
+                # and this is a no-op; after a mid-copy failure it is
+                # the only remnant, and it never matches the hit path.
+                if staging is not None:
+                    try:
+                        os.unlink(staging)
+                    except OSError:
+                        pass
         if log:
             log(f"Demucs vocals → {cached}")
         # Bound the cache: evict oldest stems beyond the budget, never
