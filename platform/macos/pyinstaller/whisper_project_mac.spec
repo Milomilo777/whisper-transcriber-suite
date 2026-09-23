@@ -13,8 +13,10 @@
 # Output: dist/Whisper Transcriber Suite.app  (then wrap into a .dmg via builddmg.command).
 #
 # Packaging prerequisites on the Mac (see ../pyinstaller/README.md):
-#   * put the MAC ffmpeg/ffprobe/ffplay (+ yt-dlp) in ./bin — NOT the .exe
-#     ones. ffplay is what makes the Video Tiling tab work out of the box.
+#   * put SELF-CONTAINED mac ffmpeg/ffprobe/ffplay + yt-dlp in ./bin — NOT the
+#     .exe ones and NOT Homebrew's (dylib-dependent) ffmpeg. Run
+#     platform/macos/pyinstaller/fetch_mac_binaries.sh to fetch + verify them.
+#     ffplay is what makes the Video Tiling tab work out of the box.
 #   * optional: assets/whisper.icns for the Dock icon.
 #
 # The app's core.paths.resource_base() returns sys._MEIPASS inside the frozen
@@ -78,6 +80,42 @@ for _name in ('stable_whisper', 'whisper', 'tiktoken'):
 # works regardless of the working directory.
 _REPO_ROOT = os.path.abspath(os.path.join(SPECPATH, os.pardir, os.pardir, os.pardir))
 
+# Bundle version comes from core.__version__ (the single source of truth) so
+# the Info.plist can no longer drift from the app (it was stuck at 1.6.0
+# while core.__version__ had moved on to 1.8.0).
+import re as _re
+with open(os.path.join(_REPO_ROOT, 'core', '__init__.py'), encoding='utf-8') as _f:
+    _VERSION = _re.search(r'__version__\s*=\s*"([^"]+)"', _f.read()).group(1)
+
+# bin/ helpers. ffmpeg/ffprobe/ffplay must be SELF-CONTAINED builds (only
+# /usr/lib + /System dylibs, e.g. evermeet.cx) — PyInstaller does not bundle
+# the dylibs of executables it copies, so Homebrew's ffmpeg (18 dylibs under
+# /opt/homebrew) breaks on every Mac without that exact Homebrew install.
+# platform/macos/pyinstaller/fetch_mac_binaries.sh fetches + verifies them.
+#
+# yt-dlp is special: the official yt-dlp_macos is itself a PyInstaller
+# onefile executable whose Python payload is appended to the Mach-O file.
+# PyInstaller's Mach-O processing of collected binaries rewrites the file and
+# drops that payload (bundled copy shrank 37 MB -> 73 KB and died with
+# "Could not load PyInstaller's embedded PKG archive"). So yt-dlp is NOT
+# collected here; it is copied byte-for-byte into the finished .app after
+# BUNDLE (see the end of this file).
+_BIN_DIR = os.path.join(_REPO_ROOT, 'bin')
+_POST_COPY_BINS = ('yt-dlp',)
+bin_datas = []
+bin_binaries = []
+if os.path.isdir(_BIN_DIR):
+    for _entry in sorted(os.listdir(_BIN_DIR)):
+        _src = os.path.join(_BIN_DIR, _entry)
+        if _entry in _POST_COPY_BINS or _entry.endswith('.exe'):
+            continue
+        if os.path.isdir(_src):
+            bin_datas.append((_src, os.path.join('bin', _entry)))
+        elif os.access(_src, os.X_OK):
+            bin_binaries.append((_src, 'bin'))
+        else:
+            bin_datas.append((_src, 'bin'))
+
 # Dock icon — bundle assets/whisper.icns when present (see the README for how
 # to generate it from whisper.png). None is fine; PyInstaller uses a default.
 _icns = os.path.join(_REPO_ROOT, 'assets', 'whisper.icns')
@@ -135,6 +173,7 @@ a = Analysis(
     [os.path.join(_REPO_ROOT, 'gui.py')],
     pathex=[_REPO_ROOT],
     binaries=[
+        *bin_binaries,
         *_fw_binaries,
         *whisper_cpp_binaries,
         *alignment_binaries,
@@ -142,7 +181,7 @@ a = Analysis(
         *_npstack_binaries,
     ],
     datas=[
-        (os.path.join(_REPO_ROOT, 'bin'), 'bin'),
+        *bin_datas,
         (os.path.join(_REPO_ROOT, 'assets'), 'assets'),
         # Static page served by the optional LAN/web HTTP job server
         # (gui.py serve -> core.server). Ship it so the frozen build can
@@ -275,11 +314,61 @@ a = Analysis(
         'screeninfo',
     ],
     hookspath=[],
-    runtime_hooks=[],
+    # Diverts multiprocessing's resource-tracker helper re-launch (see file).
+    runtime_hooks=[os.path.join(SPECPATH, 'rthook_mp_helpers.py')],
     excludes=[],
     noarchive=False,
 )
 pyz = PYZ(a.pure)
+
+
+# ---- Real minimum macOS of what is being bundled ---------------------------
+# Every wheel/binary carries its own minimum-OS (LC_BUILD_VERSION minos /
+# LC_VERSION_MIN_MACOSX). MACOSX_DEPLOYMENT_TARGET does NOT lower those for
+# prebuilt wheels, so e.g. onnxruntime 1.23.2 (the newest Intel wheel) needs
+# macOS 13 no matter what the build sets. Compute the max over everything
+# bundled and put THAT in LSMinimumSystemVersion, so the Info.plist never
+# promises less than the bundle can deliver.
+#
+# WTS_MACOS_MIN overrides it — only for a value that was actually VERIFIED by
+# running the built app on that macOS version (e.g. onnxruntime 1.19.2 is
+# tagged 11.0 but was verified to work on 10.15).
+def _macho_minos(path):
+    try:
+        from macholib.MachO import MachO
+        from macholib import mach_o
+        best = None
+        for header in MachO(path).headers:
+            for cmd in header.commands:
+                if cmd[0].cmd == mach_o.LC_BUILD_VERSION:
+                    v = cmd[1].minos
+                elif cmd[0].cmd == mach_o.LC_VERSION_MIN_MACOSX:
+                    v = cmd[1].version
+                else:
+                    continue
+                t = ((v >> 16) & 0xFFFF, (v >> 8) & 0xFF)
+                best = t if best is None or t > best else best
+        return best
+    except Exception:
+        return None
+
+
+_minos_files = [src for _dest, src, _kind in a.binaries] + [
+    os.path.join(_BIN_DIR, n) for n in _POST_COPY_BINS
+    if os.path.isfile(os.path.join(_BIN_DIR, n))
+]
+_minos_hits = {}
+for _p in _minos_files:
+    _v = _macho_minos(_p)
+    if _v:
+        _minos_hits.setdefault(_v, []).append(_p)
+_computed_min = max(_minos_hits) if _minos_hits else (10, 13)
+_computed_min = max(_computed_min, (10, 13))
+_MIN_MACOS = os.environ.get('WTS_MACOS_MIN') or '%d.%d' % _computed_min
+print('[mac-spec] highest bundled minos: %d.%d  <- %s' % (
+    _computed_min + (', '.join(os.path.basename(p) for p in _minos_hits.get(_computed_min, [])),)))
+print('[mac-spec] LSMinimumSystemVersion = %s%s' % (
+    _MIN_MACOS, ' (WTS_MACOS_MIN override)' if os.environ.get('WTS_MACOS_MIN') else ''))
 
 exe = EXE(
     pyz,
@@ -295,8 +384,9 @@ exe = EXE(
     disable_windowed_traceback=False,
     argv_emulation=False,
     # Build for the host arch by default. To ship one app for Intel + Apple
-    # Silicon, build under a universal2 Python and set this to 'universal2'.
-    target_arch=None,
+    # Silicon, build under a universal2 Python with universal2/fused wheels and
+    # set WTS_TARGET_ARCH=universal2.
+    target_arch=os.environ.get('WTS_TARGET_ARCH') or None,
     codesign_identity=None,
     entitlements_file=None,
     icon=_icon,
@@ -310,28 +400,57 @@ coll = COLLECT(
     upx_exclude=[],
     name='Whisper Transcriber Suite',
 )
-# macOS .app wrapper. Keep CFBundleVersion / CFBundleShortVersionString in
-# lock-step with core.__version__ (bump alongside it on every release) —
-# they were previously left at a stale 1.3.6 while core.__version__ moved
-# on. The install.command source/venv path writes its own Info.plist
+# macOS .app wrapper. CFBundleVersion / CFBundleShortVersionString come from
+# core.__version__ (read at the top of this file), so they can't go stale.
+# The install.command source/venv path writes its own Info.plist
 # separately and is tracked independently.
 app = BUNDLE(
     coll,
     name='Whisper Transcriber Suite.app',
     icon=_icon,
     bundle_identifier='com.translation-robot.whisperproject',
-    version='1.6.0',
+    version=_VERSION,
     info_plist={
         'CFBundleName': 'Whisper Transcriber Suite',
         'CFBundleDisplayName': 'Whisper Transcriber Suite',
         'CFBundleIdentifier': 'com.translation-robot.whisperproject',
-        'CFBundleVersion': '1.6.0',
-        'CFBundleShortVersionString': '1.6.0',
+        'CFBundleVersion': _VERSION,
+        'CFBundleShortVersionString': _VERSION,
         'CFBundlePackageType': 'APPL',
         'NSHighResolutionCapable': True,
-        # The app reads media files the user drops / picks; declaring a
-        # minimum system version keeps macOS from down-ranking the unsigned
-        # bundle's file access.
-        'LSMinimumSystemVersion': '11.0',
+        # Computed above from the bundled binaries (or a verified
+        # WTS_MACOS_MIN override). A value higher than the real minimum
+        # blocks launch outright (LaunchServices error -10825); a lower one
+        # lets the app start and then crash in dyld.
+        'LSMinimumSystemVersion': _MIN_MACOS,
     },
 )
+
+# ---- Post-BUNDLE: byte-for-byte copy of self-contained PyInstaller tools -----
+# (see the yt-dlp note near the top). Copy the original file, then re-seal the
+# ad-hoc signature so the bundle still verifies (`codesign --verify --deep
+# --strict`), and smoke-test that the copied tool actually runs.
+import shutil as _shutil
+import subprocess as _subprocess
+
+_app_path = os.path.join(DISTPATH, 'Whisper Transcriber Suite.app')
+_app_bin = os.path.join(_app_path, 'Contents', 'Frameworks', 'bin')
+for _name in _POST_COPY_BINS:
+    _src = os.path.join(_BIN_DIR, _name)
+    if not os.path.isfile(_src):
+        print('[mac-spec] WARNING: bin/%s missing — the .app will have no %s' % (_name, _name))
+        continue
+    os.makedirs(_app_bin, exist_ok=True)
+    _dst = os.path.join(_app_bin, _name)
+    _shutil.copy2(_src, _dst)
+    os.chmod(_dst, 0o755)
+    _subprocess.run(['codesign', '--force', '--sign', '-', _dst], check=True)
+    _out = _subprocess.run([_dst, '--version'], capture_output=True, text=True, timeout=300)
+    if _out.returncode != 0:
+        raise SystemExit('[mac-spec] bundled %s does not run: %s' % (_name, _out.stderr.strip()))
+    print('[mac-spec] bundled %s %s (%d bytes, copied verbatim)' % (
+        _name, _out.stdout.strip(), os.path.getsize(_dst)))
+if os.path.isdir(_app_bin):
+    # Re-seal the outer bundle signature over the replaced nested code.
+    _subprocess.run(['codesign', '--force', '--sign', '-', _app_path], check=True)
+    _subprocess.run(['codesign', '--verify', '--deep', '--strict', _app_path], check=True)
