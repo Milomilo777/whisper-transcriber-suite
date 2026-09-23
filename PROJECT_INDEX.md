@@ -529,30 +529,31 @@ pip install pyright pytest
 <!-- AUTO-INDEX:STRUCTURE:START -->
 ## Structure (auto-refreshed — do not hand-edit this block)
 
-- **Source files tracked:** 468
-- **Structure refreshed:** 2026-09-12T05:44:39
+- **Source files tracked:** 549
+- **Structure refreshed:** 2026-09-23T23:36:23
 - **Semantic sections last built:** 2026-07-04T15:30:21
-- **Drift since semantic build:** +65 added · ~141 changed · -5 removed
+- **Drift since semantic build:** +146 added · ~199 changed · -5 removed
 
 > ⚠️ **STALE** — the source tree changed a lot since the semantic sections were built. Re-run `/project-index` to regenerate purposes / gotchas / subsystem maps.
 >
-> Notable: `.github/CODE_OF_CONDUCT.md`, `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/workflows/ci.yml`, `.github/workflows/macos-app.yml`, `.github/workflows/macos-compileall-script-test.yml`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`
+> Notable: `.github/CODE_OF_CONDUCT.md`, `.github/FUNDING.yml`, `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/workflows/ci.yml`, `.github/workflows/codeql.yml`, `.github/workflows/macos-app.yml`, `.github/workflows/macos-compileall-script-test.yml`, `AGENTS.md`
 
 | Top-level | Source files |
 |---|---|
-| `tests` | 191 |
-| `docs` | 97 |
-| `core` | 69 |
-| `app` | 29 |
-| `(root)` | 20 |
+| `tests` | 218 |
+| `docs` | 103 |
+| `core` | 74 |
+| `(root)` | 42 |
+| `app` | 33 |
 | `.claude` | 20 |
-| `.github` | 13 |
-| `platform` | 12 |
+| `platform` | 17 |
+| `.github` | 15 |
+| `site` | 10 |
 | `tools` | 8 |
 | `whisper_transcriber_suite.egg-info` | 5 |
 | `downloads` | 3 |
 | `assets` | 1 |
 
-**By type:** `.py`×293  `.md`×112  `.json`×17  `.yml`×11  `.txt`×10  `.bat`×6  `.spec`×4  `.html`×4  `.sh`×4  `.iss`×2  `.ps1`×2  `.toml`×1  `.js`×1  `.rb`×1
+**By type:** `.py`×329  `.md`×140  `.json`×17  `.txt`×14  `.yml`×13  `.sh`×7  `.bat`×6  `.js`×6  `.html`×6  `.spec`×4  `.iss`×2  `.ps1`×2  `.toml`×1  `.rb`×1
 
 <!-- AUTO-INDEX:STRUCTURE:END -->

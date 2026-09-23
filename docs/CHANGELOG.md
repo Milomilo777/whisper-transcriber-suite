@@ -4,27 +4,42 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
-### Added
+## [1.9.0] — 2026-09-23
+
+The macOS assets were built from `0bbabc3`; the Windows Setup + Portable
+were built later from master and also include the first block below.
+
+### Windows build additions
+
+#### Added
 
 - **New "Supreme Master TV" tab** — an introduction to the channel (watch
   live, about, schedule) plus its video library: search, program shortcuts,
   28 site languages, thumbnail cards with Watch / Download / Transcribe.
   Nothing is fetched until the tab is first opened.
-- **Live tab: its own "Model:" choice.** "Automatic" (default) uses a small,
-  fast model on a computer without a supported graphics card — the large
-  models were several times slower than speech there, so text fell further
-  and further behind — and the Transcribe tab's model on a graphics card.
-  Any catalog model can also be picked by hand.
+- **Live tab: its own "Model:" choice**, defaulting to Tiny (keeps up on any
+  computer). Downloaded models show in bold, missing ones greyed with a
+  Download button right there. "Automatic" and any catalog model can be
+  picked. The Live language now defaults to English.
+- **Clone Your Voice / Text to Voice: a model picker and ready-made voices.**
+  Kokoro (54 voices, 9 languages, fast on CPU, ~350 MB on first use) needs
+  no recording; OmniVoice can now also design a voice (gender, age, pitch,
+  accent) or pick one itself. Language, speed, and text up to 5,000
+  characters (was 500).
 
-### Changed
+#### Changed
 
-- **Live tab level display is now Siri-style sine waves** instead of bars,
-  and animates at ~30 fps (ported from SiriWave, MIT).
+- **Live tab level display: iOS 9-style Siri waves plus a peak meter**
+  (green/yellow/red, peak hold, dB readout) instead of bars (ported from
+  SiriWave, MIT).
+- **Tab order**: Transcribe, Queue, Download Videos, Live, Clone Your Voice
+  / Text to Voice, Video Tiling, Web / LAN access, and Supreme Master TV
+  always last.
 - **Live tab auto-detect locks the language after the first confident
   chunk**, instead of re-detecting on every chunk (which doubled the time
   each chunk took).
 
-### Fixed
+#### Fixed
 
 - **Background checks started while the window was being built could lose
   their result** (e.g. the engine status line at startup): the app's
@@ -32,8 +47,6 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Live tab Stop no longer throws away speech still waiting to be
   transcribed.** The microphone stops at once and the rest is finished;
   pressing "Discard rest" skips it.
-
-## [1.9.0] — 2026-09-23
 
 ### Added
 
