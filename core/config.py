@@ -556,6 +556,143 @@ def migrate_config_location() -> str:
     return new_path
 
 
+# Pre-rebrand APP_NAME (renamed 2026-08-23). Only the Windows installer
+# carried a migration for it, so Portable / run-from-source / macOS /
+# Linux users silently started on an empty profile: no settings, no
+# history, and every already-downloaded model reported "not downloaded".
+LEGACY_APP_NAME = "WhisperProject"
+_LEGACY_DATA_FILES = ("history.db", "hardware.json", "search.db")
+# Large, non-configurable model / recording caches. Moved (one atomic
+# same-volume rename each), never copied -- a copy of several GB would
+# stall launch. A folder that already exists under the new name is left
+# alone.
+_LEGACY_CACHE_SUBDIRS = ("whisper_cpp", "llm", "live", "demucs")
+_legacy_migration_done = False
+
+
+def _legacy_app_dirs() -> dict[str, Path] | None:
+    """Per-user dirs of the pre-rebrand app. Patched to None by the test suite."""
+    return {
+        "config": Path(platformdirs.user_config_dir(LEGACY_APP_NAME, APP_AUTHOR)),
+        "data": Path(platformdirs.user_data_dir(LEGACY_APP_NAME, APP_AUTHOR)),
+        "cache": Path(platformdirs.user_cache_dir(LEGACY_APP_NAME, APP_AUTHOR)),
+    }
+
+
+def _has_model_folders(hub: Path) -> bool:
+    try:
+        return any(p.is_dir() and p.name.startswith("models--") for p in hub.iterdir())
+    except OSError:
+        return False
+
+
+def _set_local_hub_folder(value: str) -> None:
+    """Write only ``hub_folder`` into config.json, leaving every other key as-is."""
+    with _SAVE_LOCK:
+        path = config_path()
+        local: dict[str, Any] = {}
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            if not isinstance(loaded, dict):
+                return
+            local = loaded
+        local["hub_folder"] = value
+        directory = os.path.dirname(path) or "."
+        fd, tmp = tempfile.mkstemp(dir=directory, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(local, f, indent=2, ensure_ascii=False)
+            os.replace(tmp, path)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+
+
+def migrate_legacy_app_data() -> None:
+    """Carry data over from the pre-rebrand ``WhisperProject`` profile.
+
+    Runs once per process from ``load_config``. Never deletes anything
+    from the old profile, and every step is individually best-effort:
+
+    1. No new config.json yet -> copy config.json + history/hardware/search
+       files (same set as the installer's MigrateOldAppData).
+    2. Hub still at the new, model-less default while the old hub has
+       models -> point ``hub_folder`` at the old hub (no multi-GB copy).
+       Independent of step 1, so it also rescues a profile that a
+       previous launch already created empty.
+    3. Move the non-configurable caches in ``_LEGACY_CACHE_SUBDIRS``.
+    """
+    global _legacy_migration_done
+    if _legacy_migration_done:
+        return
+    _legacy_migration_done = True
+    try:
+        legacy = _legacy_app_dirs()
+    except Exception:  # noqa: BLE001
+        return
+    if not legacy or not legacy["config"].is_dir():
+        return
+
+    new_config = Path(config_path())
+    legacy_config = legacy["config"] / "config.json"
+    if legacy_config.is_file() and not new_config.exists():
+        copies = [(legacy_config, new_config)] + [
+            (legacy["data"] / name, user_data_dir() / name)
+            for name in _LEGACY_DATA_FILES
+        ]
+        # SQLite sidecars hold not-yet-checkpointed rows.
+        for db in ("history.db", "search.db"):
+            for suffix in ("-wal", "-shm"):
+                copies.append(
+                    (legacy["data"] / (db + suffix), user_data_dir() / (db + suffix))
+                )
+        for src, dst in copies:
+            if not src.is_file() or dst.exists():
+                continue
+            try:
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dst)
+                logger.info("Migrated %s -> %s", src, dst)
+            except OSError as e:
+                logger.warning("Could not migrate %s: %s", src, e)
+
+    try:
+        from .hub import default_hub_folder
+
+        legacy_hub = legacy["cache"] / "models"
+        new_default = default_hub_folder()
+        local = _read_local_config()
+        hub = str(local.get("hub_folder") or "").strip()
+        at_default = not hub or os.path.normcase(
+            os.path.abspath(hub)
+        ) == os.path.normcase(os.path.abspath(new_default))
+        if (
+            at_default
+            and not _has_model_folders(new_default)
+            and _has_model_folders(legacy_hub)
+        ):
+            _set_local_hub_folder(str(legacy_hub))
+            logger.info("Pointed hub_folder at pre-rebrand model hub %s", legacy_hub)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Could not reuse pre-rebrand model hub: %s", e)
+
+    for name in _LEGACY_CACHE_SUBDIRS:
+        src = legacy["cache"] / name
+        dst = user_cache_dir() / name
+        if not src.is_dir() or os.path.lexists(dst):
+            continue
+        try:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            os.rename(src, dst)
+            logger.info("Moved pre-rebrand cache %s -> %s", src, dst)
+        except OSError as e:
+            logger.warning("Could not move pre-rebrand cache %s: %s", src, e)
+
+
 def _drive_is_mounted(path: str | Path) -> bool:
     if os.name != "nt":
         return True
@@ -870,6 +1007,7 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     hard-coded layers — useful in tests and for an offline-only run.
     """
     migrate_config_location()
+    migrate_legacy_app_data()
     local = _read_local_config()
 
     # The online config URL itself can be overridden locally (an expert can

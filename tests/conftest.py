@@ -52,3 +52,18 @@ def _isolate_transcriber_globals():
         for name, value in saved.items():
             if value is not sentinel:
                 setattr(_t, name, value)
+
+
+@pytest.fixture(autouse=True)
+def _no_legacy_app_data_migration(monkeypatch):
+    """Keep load_config() from touching the real pre-rebrand profile.
+
+    ``migrate_legacy_app_data`` copies files and MOVES cache folders out of
+    the developer's actual ``WhisperProject`` profile; tests that exercise
+    it patch ``_legacy_app_dirs`` back to a tmp_path layout themselves.
+    """
+    try:
+        import core.config as _cfg
+    except Exception:  # noqa: BLE001
+        return
+    monkeypatch.setattr(_cfg, "_legacy_app_dirs", lambda: None)
