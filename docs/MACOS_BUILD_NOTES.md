@@ -22,6 +22,28 @@ bash platform/macos/pyinstaller/builddmg.command                   # create-dmg,
 Release file name: `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` / `-arm64.dmg`.
 CI (`macos-app.yml`, manual dispatch) runs exactly these steps on both archs.
 
+## Next macOS release — the short checklist
+
+What v1.9.0 did, in order; repeat it for the next version.
+
+1. Bump the version (`core/__init__.py`, `pyproject.toml`, both `.iss`, README badge, CHANGELOG) and push.
+2. **arm64 (Apple silicon):** `gh workflow run macos-app.yml --ref master`, wait until both jobs are green,
+   then `gh run download <run-id> -n macos-dmg-arm64`. In the job log, note `[mac-spec] highest bundled minos`
+   (14.0 for v1.9.0) for the release notes. The job has already smoke-tested the app on real Apple silicon.
+3. **x64 (Intel):** build on the oldest macOS you can (the 10.15 VM gave a 10.15+ app; the CI Intel build
+   needs macOS 14 because pip picks newer wheels there): run the TL;DR pipeline above with
+   `WTS_MACOS_MIN=10.15` (see the 10.15 onnxruntime note), then `verify_mac_bundle.sh` and
+   `smoke_test_app.sh` must both pass. If no old Mac is available, the CI x64 dmg is acceptable. It needs macOS 14.
+4. Check `sha256sum -c` for each `.dmg.sha256` and create the release with the dmgs + `.sha256` files and
+   `docs/release-notes/RELEASE_NOTES_vX.Y.Z.md`. If the Windows assets aren't uploaded yet, use
+   `--latest=false` (README's "Download for Windows" points at `releases/latest`). Mark it Latest with
+   `gh release edit vX.Y.Z --latest` once they are.
+5. Test the Terminal one-liner from the release notes against the published release. It downloads with
+   `curl`, so there's no quarantine flag and no Gatekeeper dialog. Verified for v1.9.0 x64 on 10.15.
+6. Never commit from a VM/sandbox clone without first setting the repo identity
+   (`Milomilo777 <117558067+Milomilo777@users.noreply.github.com>`). Don't commit machine user names,
+   home paths (`/Users/<name>`), or screenshots that show them.
+
 ## Why earlier Mac builds "didn't work for users"
 
 Each of these was reproduced on a real Mac. Any one of them is enough to ship a broken app.
