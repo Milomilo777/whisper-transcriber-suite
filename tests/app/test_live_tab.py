@@ -477,18 +477,90 @@ def test_first_stop_drains_backlog_second_stop_discards(built, root):
 # ------------------------------------------------------------ model picker
 
 
-def test_model_picker_defaults_to_auto_and_saves_choice(built, monkeypatch):
+def _menu_labels(built):
+    menu = built.live_model_menu
+    return [menu.entrycget(i, "label") for i in range(menu.index("end") + 1)
+            if menu.type(i) == "radiobutton"]
+
+
+def test_model_picker_defaults_to_tiny_and_saves_choice(built, monkeypatch):
     saved: list[dict] = []
     monkeypatch.setattr("core.config.save_config", lambda cfg: saved.append(dict(cfg)))
-    values = list(built.live_model_combo.cget("values"))
-    assert values[0] == live_tab._MODEL_AUTO and values[1] == live_tab._MODEL_MAIN
-    assert len(values) > 2  # catalog models follow
-    assert built.live_model_var.get() == live_tab._MODEL_AUTO
+    labels = _menu_labels(built)
+    assert labels[0] == live_tab._MODEL_AUTO and labels[1] == live_tab._MODEL_MAIN
+    assert len(labels) > 2  # catalog models follow
+    assert live_tab._selected_live_value(built) == "tiny"
 
     built.live_model_var.set(live_tab._MODEL_MAIN)
     live_tab._on_live_model_selected(built)
     assert built.app_config["live_model"] == "main"
     assert saved and saved[-1]["live_model"] == "main"
+
+
+def test_language_defaults_to_english(built):
+    assert built.live_lang_var.get() == "English"
+    assert live_tab._selected_language_code(built) == "en"
+
+
+def test_missing_model_is_greyed_and_offers_download(app, root, monkeypatch, tmp_path):
+    app.app_config["hub_folder"] = str(tmp_path)  # empty hub: nothing downloaded
+    frame = ttk.Frame(root)
+    live_tab.build_live_tab(app, frame)
+    frame.pack()
+    root.update()
+    menu = app.live_model_menu
+    tiny_label = app.live_model_var.get()  # the tiny default is selected
+    tiny = next(i for i in range(menu.index("end") + 1)
+                if menu.type(i) == "radiobutton"
+                and menu.entrycget(i, "value") == tiny_label)
+    assert "not downloaded" in menu.entrycget(tiny, "label")
+    assert app.live_model_btn.cget("style") == live_tab._MODEL_MISSING_STYLE
+    assert app.live_model_dl_btn.grid_info()
+
+
+def test_downloaded_model_is_bold_and_hides_download(app, root, monkeypatch):
+    monkeypatch.setattr("core.model_manager.model_downloaded", lambda cfg, slug: True)
+    frame = ttk.Frame(root)
+    live_tab.build_live_tab(app, frame)
+    frame.pack()
+    root.update()
+    assert not any("not downloaded" in lbl for lbl in _menu_labels(app))
+    assert app.live_model_btn.cget("style") == live_tab._MODEL_READY_STYLE
+    assert not app.live_model_dl_btn.grid_info()
+
+
+def test_download_button_fetches_the_selected_model(app, root, monkeypatch, tmp_path):
+    app.app_config["hub_folder"] = str(tmp_path)
+    frame = ttk.Frame(root)
+    live_tab.build_live_tab(app, frame)
+    frame.pack()
+    root.update()
+    got: list[str] = []
+
+    def fake_ensure(cfg, progress_cb=None, **kw):
+        got.append(cfg["whisper_model"])
+        if progress_cb:
+            progress_cb({"percent": 50, "detail": "halfway"})
+        import pathlib
+        p = pathlib.Path(cfg["model_path"])
+        p.mkdir(parents=True, exist_ok=True)
+        (p / "model.bin").write_bytes(b"x")
+        return str(p)
+
+    monkeypatch.setattr("core.model_manager.ensure_model", fake_ensure)
+    queued: list = []
+    app.post_to_main = queued.append  # like the real app: run later, on Tk
+    live_tab._download_live_model(app)
+    deadline = time.time() + 5
+    while app._live_model_downloading and time.time() < deadline:
+        while queued:
+            queued.pop(0)()
+        root.update()
+        time.sleep(0.02)
+    root.update()
+    assert got == ["tiny"]
+    assert app.live_model_btn.cget("style") == live_tab._MODEL_READY_STYLE
+    assert not app.live_model_dl_btn.grid_info()
 
 
 def test_prepare_live_model_uses_main_model_on_gpu(built, monkeypatch):

@@ -17,7 +17,7 @@ def test_cpu_recommendation_by_language_and_cores():
 @pytest.mark.parametrize("choice,device,expected", [
     ("auto", "cuda", None),        # GPU keeps the main model
     ("auto", "cpu", "small"),
-    (None, "cpu", "small"),        # missing key behaves like auto
+    (None, "cpu", "tiny"),         # missing key -> the tiny default
     ("main", "cpu", None),
     ("medium", "cpu", "medium"),   # explicit pick wins everywhere
     ("medium", "cuda", "medium"),

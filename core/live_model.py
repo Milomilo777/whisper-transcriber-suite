@@ -10,9 +10,10 @@ models simply cannot keep up. Measured on a 4-core/8-thread i7-6700
     large-v3        ~19 s     large-v3-turbo  ~17 s
     medium          ~12 s     small           ~4 s      base   ~1.6 s
 
-So the default ("auto") keeps the main model on a GPU, and on a CPU
-picks a small model sized to the machine. The user can override it with
-any model from the catalog; the choice is stored as ``live_model``.
+The default is ``tiny`` (owner request, 2026-09-23): it keeps up on any
+machine and downloads in seconds. "auto" keeps the main model on a GPU
+and picks a small model sized to the machine on a CPU. The user can
+pick any model from the catalog; the choice is stored as ``live_model``.
 """
 from __future__ import annotations
 
@@ -23,6 +24,9 @@ from typing import Any
 #: ``live_model`` values that are not catalog slugs.
 LIVE_AUTO = "auto"
 LIVE_MAIN = "main"
+
+#: ``live_model`` when the config has none.
+LIVE_DEFAULT = "tiny"
 
 #: Environment variable the Live tab sets on its worker subprocess.
 LIVE_MODEL_ENV = "WHISPER_LIVE_MODEL"
@@ -45,7 +49,7 @@ def resolve_live_slug(
     config: dict[str, Any], language: str | None, device: str
 ) -> str | None:
     """Catalog slug the live worker should load, or None for the main model."""
-    choice = str(config.get("live_model") or LIVE_AUTO).strip()
+    choice = str(config.get("live_model") or LIVE_DEFAULT).strip()
     if choice == LIVE_MAIN:
         return None
     if choice == LIVE_AUTO:

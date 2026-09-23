@@ -208,9 +208,10 @@ DEFAULT_CONFIG = {
     # When the user changes this, the Advanced dialog also rewrites
     # ``model`` + ``model_path`` so ensure_model downloads the new one.
     "whisper_model": "large-v3",
-    # Live tab model: "auto" (small model on CPU, main model on GPU),
-    # "main" (same as whisper_model) or a catalog slug. See core/live_model.py.
-    "live_model": "auto",
+    # Live tab model: a catalog slug (default "tiny"), "auto" (small model
+    # on CPU, main model on GPU) or "main" (same as whisper_model). See
+    # core/live_model.py.
+    "live_model": "tiny",
     # v0.8 Phase 2 — Demucs vocal-separation pre-process (off by default;
     # heavy dep, large model). When True + demucs installed, transcribe
     # pipeline runs the input through Demucs first and feeds Whisper the

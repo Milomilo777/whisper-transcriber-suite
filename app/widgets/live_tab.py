@@ -73,9 +73,13 @@ def _make_readonly_but_selectable(text: tk.Text) -> None:
 _MODEL_AUTO = "Automatic (fast enough for this computer)"
 _MODEL_MAIN = "Same as the Transcribe tab"
 
+_MISSING_FG = "#8a8a8a"
+_MODEL_MISSING_STYLE = "LiveModelMissing.TMenubutton"
+_MODEL_READY_STYLE = "LiveModelReady.TMenubutton"
+
 
 def _live_model_choices(app: Any) -> list[tuple[str, str]]:
-    """``[(label, live_model value), ...]`` for the Model dropdown."""
+    """``[(label, live_model value), ...]`` for the Model picker."""
     out = [(_MODEL_AUTO, "auto"), (_MODEL_MAIN, "main")]
     try:
         from core.model_manager import catalog_models
@@ -86,8 +90,132 @@ def _live_model_choices(app: Any) -> list[tuple[str, str]]:
     return out
 
 
+def _selected_live_value(app: Any) -> str:
+    return dict(_live_model_choices(app)).get(app.live_model_var.get(), "auto")
+
+
+def _is_catalog_slug(value: str) -> bool:
+    from core.live_model import LIVE_AUTO, LIVE_MAIN
+
+    return value not in (LIVE_AUTO, LIVE_MAIN)
+
+
+def _slug_downloaded(app: Any, slug: str) -> bool:
+    try:
+        from core.model_manager import model_downloaded
+
+        return model_downloaded(app.app_config, slug)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _rebuild_model_menu(app: Any) -> None:
+    """Refill the Model menu: downloaded models bold, missing ones greyed.
+
+    A native Tk menu (not a Combobox) because only a menu can style each
+    entry on its own -- that per-entry styling is how "already on this
+    computer" shows at a glance.
+    """
+    import tkinter.font as tkfont
+
+    menu = app.live_model_menu
+    menu.delete(0, "end")
+    bold = tkfont.nametofont("TkMenuFont").copy()
+    bold.configure(weight="bold")
+    app._live_model_bold_font = bold  # keep a reference; Tk fonts are GC'd
+    for label, value in _live_model_choices(app):
+        kwargs: dict[str, Any] = {}
+        shown = label
+        if _is_catalog_slug(value):
+            if _slug_downloaded(app, value):
+                kwargs["font"] = bold
+            else:
+                kwargs["foreground"] = _MISSING_FG
+                shown = f"{label}   (not downloaded)"
+        menu.add_radiobutton(
+            label=shown, value=label, variable=app.live_model_var,
+            command=lambda: _on_live_model_selected(app), **kwargs,
+        )
+        if value == "main":
+            menu.add_separator()
+
+
+def _refresh_model_status(app: Any) -> None:
+    """Grey the picker + show "Download" only for a model not on disk."""
+    value = _selected_live_value(app)
+    missing = _is_catalog_slug(value) and not _slug_downloaded(app, value)
+    try:
+        app.live_model_btn.configure(
+            text=app.live_model_var.get(),
+            style=(_MODEL_MISSING_STYLE if missing else _MODEL_READY_STYLE),
+        )
+        if missing or getattr(app, "_live_model_downloading", False):
+            app.live_model_dl_btn.grid()
+        else:
+            app.live_model_dl_btn.grid_remove()
+            app.live_model_dl_var.set("")
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not refresh the live model status", exc_info=True)
+
+
+def _download_live_model(app: Any) -> None:
+    """Download the selected catalog model from the tab (worker thread)."""
+    value = _selected_live_value(app)
+    if not _is_catalog_slug(value) or getattr(app, "_live_model_downloading", False):
+        return
+    from core import live_model as _lm
+
+    model_cfg = _lm.live_model_config(app.app_config, value)
+    if model_cfg is None:
+        return
+    app._live_model_downloading = True
+    app.live_model_dl_btn.configure(state="disabled", text="Downloading\u2026")
+    app.live_model_dl_var.set("Starting\u2026")
+    app.live_start_btn.configure(state="disabled")
+
+    def progress(payload: dict[str, Any]) -> None:
+        pct = payload.get("percent")
+        detail = payload.get("detail") or payload.get("status") or ""
+        text = f"{pct}% \u2014 {detail}" if isinstance(pct, int) and pct else str(detail)
+        app.post_to_main(lambda: app.live_model_dl_var.set(text))
+
+    def worker() -> None:
+        error: str | None = None
+        try:
+            from core.model_manager import ensure_model
+
+            ensure_model(model_cfg, progress_cb=progress)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Live model download failed")
+            error = str(e)
+        app.post_to_main(lambda: _download_finished(app, value, error))
+
+    import threading
+
+    threading.Thread(target=worker, name="live-model-download", daemon=True).start()
+
+
+def _download_finished(app: Any, slug: str, error: str | None) -> None:
+    app._live_model_downloading = False
+    try:
+        app.live_model_dl_btn.configure(state="normal", text="Download")
+        if getattr(app, "live_session", None) is None:
+            app.live_start_btn.configure(state="normal")
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not reset the download button", exc_info=True)
+    if error is not None:
+        app.live_model_dl_var.set("Download failed.")
+        show_error(app, "Could not download the model",
+                   f"The '{slug}' model could not be downloaded.", detail=error)
+    else:
+        app.log(f"Live: downloaded the '{slug}' model.")
+    _rebuild_model_menu(app)
+    _refresh_model_status(app)
+
+
 def _on_live_model_selected(app: Any) -> None:
-    value = dict(_live_model_choices(app)).get(app.live_model_var.get(), "auto")
+    _refresh_model_status(app)
+    value = _selected_live_value(app)
     if app.app_config.get("live_model") == value:
         return
     app.app_config["live_model"] = value
@@ -111,13 +239,20 @@ def build_live_tab(app: Any, parent: Any) -> None:
 
     app.live_source_var = tk.StringVar(value=_SOURCE_MIC)
     app.live_device_var = tk.StringVar(value="Default input device")
-    app.live_lang_var = tk.StringVar(value="Auto")
+    # English by default (owner request): naming the language is faster
+    # and more reliable than auto-detect on short live chunks.
+    app.live_lang_var = tk.StringVar(value="English")
     app.live_status_var = tk.StringVar(value="Idle.")
     _choices = _live_model_choices(app)
-    _saved = str(app.app_config.get("live_model") or "auto")
+    from core.live_model import LIVE_DEFAULT
+
+    _saved = str(app.app_config.get("live_model") or LIVE_DEFAULT)
     app.live_model_var = tk.StringVar(value=next(
-        (label for label, value in _choices if value == _saved), _MODEL_AUTO
+        (label for label, value in _choices if value == _saved),
+        next((label for label, value in _choices if value == LIVE_DEFAULT), _MODEL_AUTO),
     ))
+    app.live_model_dl_var = tk.StringVar(value="")
+    app._live_model_downloading = False
 
     parent.columnconfigure(0, weight=1)
     parent.rowconfigure(3, weight=1)
@@ -174,22 +309,40 @@ def build_live_tab(app: Any, parent: Any) -> None:
     ).grid(row=2, column=2, sticky="w", padx=(0, 8), pady=6)
 
     ttk.Label(src, text="Model:").grid(row=3, column=0, sticky="e", padx=8, pady=6)
-    app.live_model_combo = ttk.Combobox(
-        src, textvariable=app.live_model_var, state="readonly", width=48,
-        values=[label for label, _v in _choices],
+    style = ttk.Style(src)
+    style.configure(_MODEL_MISSING_STYLE, foreground=_MISSING_FG)
+    import tkinter.font as tkfont
+
+    try:  # sv_ttk's body font, so the bold label matches the comboboxes
+        app._live_model_btn_font = tkfont.nametofont("SunValleyBodyFont").copy()
+    except tk.TclError:
+        app._live_model_btn_font = tkfont.nametofont("TkTextFont").copy()
+    app._live_model_btn_font.configure(weight="bold")
+    style.configure(_MODEL_READY_STYLE, font=app._live_model_btn_font)
+    model_row = ttk.Frame(src)
+    model_row.grid(row=3, column=1, sticky="ew", padx=8, pady=6)
+    model_row.columnconfigure(0, weight=1)
+    app.live_model_btn = ttk.Menubutton(model_row, style=_MODEL_READY_STYLE)
+    app.live_model_menu = tk.Menu(app.live_model_btn, tearoff=0)
+    app.live_model_btn.configure(menu=app.live_model_menu)
+    app.live_model_btn.grid(row=0, column=0, sticky="ew")
+    app.live_model_dl_btn = ttk.Button(
+        model_row, text="Download", command=lambda: _download_live_model(app),
     )
-    app.live_model_combo.grid(row=3, column=1, sticky="ew", padx=8, pady=6)
-    app.live_model_combo.bind(
-        "<<ComboboxSelected>>", lambda _e: _on_live_model_selected(app)
+    app.live_model_dl_btn.grid(row=0, column=1, sticky="w", padx=(8, 0))
+    ttk.Label(model_row, textvariable=app.live_model_dl_var, foreground="#666").grid(
+        row=1, column=0, columnspan=2, sticky="w"
     )
+    _rebuild_model_menu(app)
+    _refresh_model_status(app)
     help_icon(
         src,
         "Live text only keeps up if the model transcribes faster than you "
-        "speak. On a computer without a supported graphics card the large "
-        "models are several times too slow, so Automatic uses a small model "
-        "there (downloaded once, about 0.5 GB) and the Transcribe tab's model "
-        "on a graphics card. Pick a model yourself to trade speed for "
-        "accuracy.",
+        "speak. Tiny (the default) keeps up on any computer; bigger models "
+        "are more accurate but several times too slow on a computer without "
+        "a supported graphics card. Models already on this computer are "
+        "shown in bold; greyed ones still need a one-time download -- use "
+        "the Download button next to the picker.",
     ).grid(row=3, column=2, sticky="w", padx=(0, 8), pady=6)
 
     # ── Controls ──────────────────────────────────────────────────────
@@ -320,9 +473,13 @@ def _set_running(app: Any, running: bool) -> None:
     try:
         app.live_start_btn.configure(state=("disabled" if running else "normal"))
         app.live_stop_btn.configure(state=("normal" if running else "disabled"))
-        for widget in (app.live_source_combo, app.live_lang_combo,
-                       app.live_model_combo):
+        for widget in (app.live_source_combo, app.live_lang_combo):
             widget.configure(state=("disabled" if running else "readonly"))
+        app.live_model_btn.configure(state=("disabled" if running else "normal"))
+        app.live_model_dl_btn.configure(state=(
+            "disabled" if running or getattr(app, "_live_model_downloading", False)
+            else "normal"
+        ))
         if not running:
             _sync_device_state(app)
         else:
