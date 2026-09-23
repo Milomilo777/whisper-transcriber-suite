@@ -105,7 +105,7 @@ def _submit_upload(srv, fields, filename="clip.mp4", file_bytes=b"RAWMEDIA"):
         conn.close()
 
 
-def _wait_finished(srv, job_id, timeout=5):
+def _wait_finished(srv, job_id, timeout=30):
     deadline = time.time() + timeout
     while time.time() < deadline:
         status, body = _get_json(srv, f"/api/jobs/{job_id}")

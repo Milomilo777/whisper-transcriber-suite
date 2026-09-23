@@ -21,6 +21,12 @@ def test_dialog_builds_and_starts_indexing(monkeypatch):
     # patching at that boundary (not "safe_thread", which search_dialog only
     # ever imports inside the worker closure, never as a module attribute).
     monkeypatch.setattr("core.search.reindex_all_history", lambda: 0)
+    # Never start the real worker thread either: with a bare Tk root (no
+    # post_to_main) it falls back to self.after() from a non-main thread,
+    # which can outlive root.destroy() and abort the interpreter when Tcl
+    # objects are garbage-collected off the main thread (seen on CI as
+    # "Fatal Python error: Aborted" in a later, unrelated test).
+    monkeypatch.setattr("core._threads.safe_thread", lambda target, name=None: None)
 
     root = tk.Tk()
     root.withdraw()
@@ -210,6 +216,12 @@ def test_escape_routes_through_the_real_on_close(monkeypatch):
     import app.dialogs.search_dialog as sd
 
     monkeypatch.setattr("core.search.reindex_all_history", lambda: 0)
+    # Never start the real worker thread either: with a bare Tk root (no
+    # post_to_main) it falls back to self.after() from a non-main thread,
+    # which can outlive root.destroy() and abort the interpreter when Tcl
+    # objects are garbage-collected off the main thread (seen on CI as
+    # "Fatal Python error: Aborted" in a later, unrelated test).
+    monkeypatch.setattr("core._threads.safe_thread", lambda target, name=None: None)
 
     root = tk.Tk()
     root.deiconify()
