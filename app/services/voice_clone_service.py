@@ -146,6 +146,10 @@ class VoiceCloneWorker:
         consent_accepted: bool,
         device: str = "cpu",
         on_model_loading: Optional[Callable[[], None]] = None,
+        instruct: str = "",
+        language: str = "",
+        speed: float = 1.0,
+        timeout_s: float = GENERATE_TIMEOUT_S,
     ) -> dict[str, Any]:
         """Send one generation request and block until it answers.
 
@@ -172,6 +176,9 @@ class VoiceCloneWorker:
             "output_path": output_path,
             "consent_accepted": consent_accepted,
             "device": device,
+            "instruct": instruct,
+            "language": language,
+            "speed": speed,
         }
         try:
             if proc.stdin is None:
@@ -183,7 +190,7 @@ class VoiceCloneWorker:
                 self._pending.pop(req_id, None)
             raise VoiceCloneWorkerError(f"Voice-clone worker write failed: {e}") from e
 
-        if not done.wait(timeout=GENERATE_TIMEOUT_S):
+        if not done.wait(timeout=max(GENERATE_TIMEOUT_S, timeout_s)):
             reason = "The voice-clone worker did not answer in time."
             self._abandon_worker(reason)
             raise VoiceCloneWorkerError(reason)

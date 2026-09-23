@@ -185,6 +185,7 @@ a = Analysis(
         'core.voiceprint',
         'core.voice_clone',
         'core.voice_clone_worker',
+        'core.tts_kokoro',
         # Opt-in backends — explicit submodule names so a user
         # who flips the config gets a working backend rather than
         # a silent ImportError. The collect_all calls above pick

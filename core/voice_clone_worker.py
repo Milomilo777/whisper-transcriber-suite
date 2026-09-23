@@ -27,7 +27,9 @@ Protocol (newline-delimited JSON, one object per line -- same shape as
 
 Commands (stdin):
   - ``{"action": "generate", "id", "text", "reference_paths", "output_path",
-     "device"}``
+     "device", "instruct"?, "language"?, "speed"?}``  (empty
+     reference_paths = voice design with ``instruct``, or the model's own
+     voice without it)
   - ``{"action": "shutdown"}``
 
 Events (stdout):
@@ -138,6 +140,9 @@ def main() -> int:
         output_path = command.get("output_path") or ""
         consent_accepted = bool(command.get("consent_accepted"))
         device = command.get("device") or "cpu"
+        instruct = command.get("instruct") or None
+        language = command.get("language") or None
+        speed = command.get("speed") or None
 
         emit("started", id=req_id)
         try:
@@ -151,6 +156,7 @@ def main() -> int:
             result = voice_clone.generate(
                 model, text, reference_paths, output_path,
                 consent_accepted=consent_accepted,
+                instruct=instruct, language=language, speed=speed,
             )
             emit(
                 "done", id=req_id, output_path=result.output_path,

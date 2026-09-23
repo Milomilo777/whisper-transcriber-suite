@@ -45,10 +45,30 @@ MAX_REFERENCE_SECONDS = 10.0
 MAX_REFERENCE_SAMPLES = 3
 
 #: Sanity cap on how much text one generation call accepts. Not an
-#: OmniVoice limit -- ours, to keep a single request from turning into a
-#: many-minutes generation with no way to know how long it'll take. The
-#: UI should chunk longer text into several calls if it ever needs to.
-MAX_TEXT_CHARS = 500
+#: OmniVoice limit: OmniVoice splits long text into ~15 s chunks itself
+#: (``audio_chunk_duration``) and cross-fades them. Raised from 500
+#: (owner request, 2026-09-23); the tab shows a time estimate first,
+#: since on a CPU this much text takes hours.
+MAX_TEXT_CHARS = 5000
+
+#: OmniVoice voice-design attributes (omnivoice/utils/voice_design.py).
+#: One value per group, all optional; joined with ", " into ``instruct``.
+DESIGN_GENDERS = ("male", "female")
+DESIGN_AGES = ("child", "teenager", "young adult", "middle-aged", "elderly")
+DESIGN_PITCHES = ("very low pitch", "low pitch", "moderate pitch", "high pitch",
+                  "very high pitch")
+DESIGN_ACCENTS = ("american accent", "british accent", "australian accent",
+                  "canadian accent", "indian accent", "chinese accent",
+                  "korean accent", "japanese accent", "portuguese accent",
+                  "russian accent")
+
+
+def build_instruct(*parts: "str | None", whisper: bool = False) -> str:
+    """Voice-design instruct from the picked attributes ("" = none)."""
+    tags = [p for p in parts if p]
+    if whisper:
+        tags.append("whisper")
+    return ", ".join(tags)
 
 
 def session_work_dir() -> str:
@@ -261,10 +281,19 @@ def generate(
     output_path: str,
     *,
     consent_accepted: bool,
+    instruct: "str | None" = None,
+    language: "str | None" = None,
+    speed: "float | None" = None,
 ) -> GenerateResult:
-    """Run one zero-shot cloning generation against an already-loaded
-    *model* (see :func:`load_model`). Blocking; call off the Tk thread
-    (this is what ``core.voice_clone_worker`` does).
+    """Run one generation against an already-loaded *model* (see
+    :func:`load_model`). Blocking; call off the Tk thread (this is what
+    ``core.voice_clone_worker`` does).
+
+    OmniVoice's three modes: with ``reference_paths`` it clones that
+    voice (consent required); otherwise ``instruct`` designs a voice from
+    attributes (see :func:`build_instruct`), and with neither the model
+    picks a voice itself. ``language`` (name or code) and ``speed`` are
+    optional in every mode.
 
     ``reference_paths`` -- OmniVoice's own API takes a single reference
     clip; when more than one sample was recorded we concatenate them
@@ -275,7 +304,7 @@ def generate(
     worker wraps this call and turns exceptions into an ``error`` event
     rather than crashing silently.
     """
-    if not consent_accepted:
+    if reference_paths and not consent_accepted:
         raise ValueError("Consent not accepted; refusing to generate.")
     if not text or not text.strip():
         raise ValueError("No text to speak.")
@@ -284,12 +313,15 @@ def generate(
             f"Text is {len(text)} characters; the limit for one "
             f"generation is {MAX_TEXT_CHARS}."
         )
-    if not reference_paths:
-        raise ValueError("No reference voice sample provided.")
-
     import soundfile as sf  # type: ignore[import-not-found] # noqa: PLC0415
 
-    ref_path = reference_paths[0]
+    options: dict[str, object] = {}
+    if language:
+        options["language"] = language
+    if speed and abs(speed - 1.0) > 1e-3:
+        options["speed"] = float(speed)
+
+    ref_path = reference_paths[0] if reference_paths else None
     cleanup_ref_path: str | None = None
     if len(reference_paths) > 1:
         ref_path = _concat_references(reference_paths)
@@ -307,7 +339,12 @@ def generate(
     # in practice.
     try:
         t0 = time.time()
-        audio = model.generate(text=text, ref_audio=ref_path, ref_text="")  # type: ignore[attr-defined]
+        if ref_path is not None:
+            audio = model.generate(text=text, ref_audio=ref_path, ref_text="", **options)  # type: ignore[attr-defined]
+        elif instruct:
+            audio = model.generate(text=text, instruct=instruct, **options)  # type: ignore[attr-defined]
+        else:
+            audio = model.generate(text=text, **options)  # type: ignore[attr-defined]
         elapsed = time.time() - t0
 
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)

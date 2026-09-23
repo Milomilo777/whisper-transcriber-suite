@@ -99,9 +99,36 @@ def test_generate_raises_on_text_too_long():
         voice_clone.generate(object(), long_text, ["/x.wav"], "/out.wav", consent_accepted=True)
 
 
-def test_generate_raises_on_no_reference_paths():
-    with pytest.raises(ValueError, match="reference"):
-        voice_clone.generate(object(), "hello", [], "/out.wav", consent_accepted=True)
+def test_generate_without_reference_uses_design_or_auto(monkeypatch, tmp_path):
+    calls: list[dict] = []
+
+    class FakeModel:
+        def generate(self, **kw):
+            calls.append(kw)
+            return [[0.0] * 2400]
+
+    written: list = []
+    monkeypatch.setitem(sys.modules, "soundfile", types.SimpleNamespace(
+        write=lambda path, data, sr: written.append((path, sr))))
+    out = str(tmp_path / "o.wav")
+    voice_clone.generate(FakeModel(), "hi", [], out, consent_accepted=False,
+                         instruct="female, low pitch", language="en", speed=1.2)
+    voice_clone.generate(FakeModel(), "hi", [], out, consent_accepted=False)
+    assert calls[0] == {"text": "hi", "instruct": "female, low pitch",
+                        "language": "en", "speed": 1.2}
+    assert calls[1] == {"text": "hi"}
+    assert len(written) == 2
+
+
+def test_cloning_still_requires_consent():
+    with pytest.raises(ValueError, match="Consent"):
+        voice_clone.generate(object(), "hello", ["/x.wav"], "/out.wav", consent_accepted=False)
+
+
+def test_build_instruct():
+    assert voice_clone.build_instruct("female", None, "low pitch", whisper=True) == \
+        "female, low pitch, whisper"
+    assert voice_clone.build_instruct() == ""
 
 
 # ---------- default_device ------------------------------------------------
