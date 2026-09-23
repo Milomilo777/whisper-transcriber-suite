@@ -23,6 +23,12 @@ this repo. Read this file before anything else.
 - v1.9.0 release: Windows Setup-Standard + Portable built from master and added
   next to the macOS assets; the tag still points at `0bbabc3` (published tags are
   never moved) -- the release notes say which commit each asset came from.
+- v1.9.0 release page: Windows first via a one-off `-1-`/`-2-`/`-3-` rename of the
+  assets (API rename, download counts kept) and a "## Download" table with direct
+  links at the top of the notes. From the next release on: unnumbered names
+  (`…-Installer-Windows-vX.Y.Z.exe`, `…-Portable-Windows-vX.Y.Z.zip`,
+  `…-vX.Y.Z-macOS-<arch>.dmg`) -- see CLAUDE.md "Release page layout".
+- "No telemetry" claims removed from README / llms.txt / site (owner request).
 - Open: OmniVoice clone mode was not re-run this session (code path unchanged
   apart from optional language/speed kwargs).
 

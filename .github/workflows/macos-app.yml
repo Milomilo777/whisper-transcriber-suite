@@ -78,7 +78,7 @@ jobs:
         run: |
           brew install create-dmg || true
           bash platform/macos/pyinstaller/builddmg.command
-          out="WhisperTranscriberSuite-v${{ steps.ver.outputs.version }}-3-macOS-${{ matrix.suffix }}.dmg"
+          out="WhisperTranscriberSuite-v${{ steps.ver.outputs.version }}-macOS-${{ matrix.suffix }}.dmg"
           mv "dist/Whisper Transcriber Suite-${{ matrix.suffix }}.dmg" "dist/$out"
           (cd dist && shasum -a 256 "$out" | tee "$out.sha256")
           hdiutil verify "dist/$out"

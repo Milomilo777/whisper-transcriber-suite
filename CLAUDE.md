@@ -226,6 +226,21 @@ download-count incident, specifically because the repo-front-page badge
 mistake — a per-version badge row makes each release's own count
 visible and durable regardless of what happens to the aggregate.
 
+## Release page layout — every release (2026-09-24, owner request)
+
+- File order on the release page: Windows installer, then Portable ZIP, then
+  macOS. GitHub sorts files alphabetically, so this comes from the names in
+  `docs/BUILD.md` ("Release file names") -- `…-Installer-Windows-vX.Y.Z.exe`,
+  `…-Portable-Windows-vX.Y.Z.zip`, `…-vX.Y.Z-macOS-<arch>.dmg`. No number
+  prefixes (v1.9.0's `-1-`/`-2-`/`-3-` was a one-off). A published asset
+  can be renamed via the API (`PATCH /releases/assets/{id}`), which keeps its
+  download count -- never delete/re-upload to fix a name.
+- Release notes open with a **"## Download" table right after the title
+  paragraph**: each file name is a direct download link
+  (`.../releases/download/vX.Y.Z/<file>`), what it is for, and its size;
+  Windows rows first. GitHub's own Assets box cannot be moved from the
+  bottom, so this table is the "assets at the top".
+
 ## macOS builds — do not build (2026-08-14, owner request, repeated)
 
 **Before ANY macOS build work read `docs/MACOS_BUILD_NOTES.md`** — it records why
