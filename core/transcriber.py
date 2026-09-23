@@ -822,28 +822,45 @@ def _write_outputs(
     The final path is composed by expanding the
     ``output_filename_template`` config key (default ``"{base}.{ext}"``).
     """
-    formats = formats or list(config.get("output_formats") or ["srt", "json"])
     template = str(config.get("output_filename_template") or "{base}.{ext}")
     written: list[str] = []
     write_errors: list[str] = []
     available = supported_formats()
+    # Not list()-ed: a malformed override must reach the TypeError guard
+    # below instead of raising here, so the value stays typed as Any.
+    fmts: Any = formats or config.get("output_formats") or ["srt", "json"]
     # Catch the "user asked for formats but every name we got is
     # unknown" case up front — otherwise the function silently
     # returns [] and the caller reports "Done in 0.02s, Wrote 0
     # output file(s)". Treat it as a hard error so the user knows
     # their config is broken.
-    requested_known = [f for f in formats if f in available]
-    if formats and not requested_known:
+    #
+    # F5 class at the consumption point: a raw-JSON project override (or a
+    # hand-edited app config) can make this a non-iterable (``5`` /
+    # ``true``) or hold unhashable members (``[["srt"]]``), so the registry
+    # membership test below would raise a raw ``TypeError`` after the
+    # transcription already ran instead of the module's clear per-file
+    # error. _apply_runtime_overrides' coercion table deliberately covers
+    # only scalar keys, so the guard lives here, where the value is
+    # actually used; a task-provided formats list is never reinterpreted.
+    try:
+        requested_known: list[str] = [f for f in fmts if f in available]
+    except TypeError as e:
+        raise RuntimeError(
+            f"Invalid 'output_formats' value: {fmts!r} "
+            f"(expected a list of format names): {e}"
+        ) from e
+    if fmts and not requested_known:
         raise RuntimeError(
             f"None of the requested output formats are known: "
-            f"{formats!r}. Supported: {sorted(available)!r}."
+            f"{fmts!r}. Supported: {sorted(available)!r}."
         )
     # Render every requested format's path up front, then pick ONE
     # shared index so re-running a transcription never overwrites the
     # previous output: name.srt + name.json become name (1).srt +
     # name (1).json together (a consistent set, not mismatched indices).
     planned: list[tuple[str, str]] = []
-    for fmt_name in formats:
+    for fmt_name in requested_known:
         if fmt_name not in available:
             continue
         # Map the registry key to the on-disk extension. Most formats
@@ -966,6 +983,7 @@ def _write_outputs(
 
 
 _ALT_BACKEND_LOCK = threading.Lock()
+_DEFAULT_BACKEND_LOCK = threading.Lock()
 
 
 def _deep_merge_dict(dest: dict[str, Any], src: dict[str, Any]) -> None:
@@ -1002,13 +1020,102 @@ def _get_alt_backend(
         if _ALT_BACKEND is not None and _ALT_BACKEND_NAME == name:
             return _ALT_BACKEND
         from .backends import get_backend
-        backend = get_backend(name)
-        if not backend.load(status_cb):
+        try:
+            backend = get_backend(name)
+        except Exception as e:  # noqa: BLE001
+            # Mirror load_existing_model's graceful message instead of
+            # letting a raw ValueError/KeyError escape transcribe().
+            raise RuntimeError(f"Backend {name} not available: {e}") from e
+        try:
+            loaded = backend.load(status_cb)
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(f"{name} load failed: {e}") from e
+        if not loaded:
             err = backend.get_error() or f"failed to load {name} backend"
             raise RuntimeError(err)
         _ALT_BACKEND = backend
         _ALT_BACKEND_NAME = name
         return backend
+
+
+def _ensure_default_backend_loaded(
+    status_cb: Callable[[str], None] | None = None,
+) -> None:
+    """Lazy-load the default faster-whisper model when per-file dispatch needs it.
+
+    ``load_existing_model()`` loads only the STARTUP backend: when the worker
+    started on an alt backend, ``MODEL``/``PIPELINE`` stay None while
+    ``MODEL_READY`` is True. ``transcribe()``/``resume_transcription()`` then
+    re-resolve the backend PER FILE (a project file can override
+    ``transcribe_backend``). If that resolves to the default backend, the old
+    code sailed through the ``MODEL_READY`` wait and hit
+    ``assert MODEL is not None`` (or a None-AttributeError under ``-O``).
+
+    This mirrors ``_get_alt_backend`` for the opposite direction: when the
+    default path is taken but ``MODEL`` was never loaded, load it now using
+    the same self-healing constructor ``load_existing_model`` uses. Raises
+    ``RuntimeError`` with a clear message when the model cannot be loaded.
+    Thread-safe via ``_DEFAULT_BACKEND_LOCK`` with double-checked ``MODEL``.
+    """
+    global MODEL, PIPELINE, MODEL_READY, MODEL_ERROR
+    if MODEL is not None:
+        return
+    with _DEFAULT_BACKEND_LOCK:
+        if MODEL is not None:
+            return
+        # Match load_existing_model()/load_model(): a fresh attempt resets
+        # the previous attempt's error, and any failure records a new one.
+        # Without this a successful lazy load after a failed one left the
+        # stale message visible via get_model_error() (and a RuntimeError
+        # from the loader was re-raised without recording anything at all).
+        MODEL_ERROR = None
+        try:
+            model_path = Path(config["model_path"])
+        except Exception as e:  # noqa: BLE001
+            MODEL_ERROR = f"Model path misconfigured: {e}"
+            if status_cb:
+                try:
+                    status_cb(MODEL_ERROR)
+                except Exception:  # noqa: BLE001
+                    pass
+            raise RuntimeError(MODEL_ERROR) from e
+        if not model_path.exists():
+            MODEL_ERROR = f"Model folder missing: {model_path}"
+            if status_cb:
+                try:
+                    status_cb(MODEL_ERROR)
+                except Exception:  # noqa: BLE001
+                    pass
+            raise RuntimeError(MODEL_ERROR)
+        try:
+            if status_cb:
+                try:
+                    status_cb("Loading existing Whisper model (per-file backend)...")
+                except Exception:  # noqa: BLE001
+                    pass
+            logger.info(
+                "model_load backend=faster_whisper model_path=%s "
+                "device=%s compute_type=%s (lazy per-file)",
+                model_path, device, compute_type,
+            )
+            MODEL = _load_whisper_model_self_healing(
+                str(model_path), device, compute_type, status_cb
+            )
+            PIPELINE = _wrap_for_batched(MODEL)
+            MODEL_READY = True
+            if status_cb:
+                try:
+                    status_cb("Model loaded")
+                except Exception:  # noqa: BLE001
+                    pass
+        except Exception as e:  # noqa: BLE001
+            MODEL_ERROR = str(e)
+            if status_cb:
+                try:
+                    status_cb(f"Existing model failed to load: {e}")
+                except Exception:  # noqa: BLE001
+                    pass
+            raise RuntimeError(MODEL_ERROR) from e
 
 
 def _run_post_pipeline(
@@ -1225,6 +1332,57 @@ _RUNTIME_OVERRIDE_DEFAULTS: tuple[tuple[str, Any], ...] = (
 )
 
 
+def _coerce_bool_value(value: Any) -> bool:
+    """Parse a config override into bool without the ``bool("false")`` trap.
+
+    ``bool("false")`` is True in Python, so a project file setting
+    ``"diarization_enabled": "false"`` (string) would silently ENABLE the
+    feature. Accept common string spellings explicitly; raise ValueError
+    for unrecognised strings so the caller can report a clear per-file
+    error instead of guessing.
+    """
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in ("1", "true", "yes", "y", "on", "enabled"):
+            return True
+        if text in ("0", "false", "no", "n", "off", "disabled", ""):
+            return False
+        raise ValueError(f"cannot interpret {value!r} as bool")
+    if isinstance(value, (list, dict)):
+        raise ValueError(f"cannot interpret {value!r} as bool")
+    return bool(value)
+
+
+# Remaining scalar (bool/int/float) config keys the transcriber reads later
+# in the per-file path with bare int()/float()/`bool()`/truthiness. A
+# project override arrives as raw JSON, so a typo like
+# ``"batch_size": "big"`` previously raised a raw builtin exception deep
+# inside transcribe(), and ``"vad_enabled": "false"`` / ``"demucs_enabled":
+# "false"`` silently inverted the setting (bool("false") is True). The F5
+# fix closed the diarisation/alignment coercions in
+# _apply_runtime_overrides; this closes the same class for the remaining
+# scalar keys, at the same choke point, so a bad override fails as a clear
+# per-file RuntimeError before any work starts.
+_OVERRIDE_SCALAR_COERCIONS: tuple[tuple[str, str, Callable[[Any], Any]], ...] = (
+    ("batch_size", "int", int),
+    ("vad_min_silence_ms", "int", int),
+    ("vad_speech_pad_ms", "int", int),
+    ("vad_threshold", "float", float),
+    ("vad_enabled", "bool", _coerce_bool_value),
+    ("word_timestamps", "bool", _coerce_bool_value),
+    ("demucs_enabled", "bool", _coerce_bool_value),
+    ("denoise_enabled", "bool", _coerce_bool_value),
+    ("auto_chapters_enabled", "bool", _coerce_bool_value),
+    ("hallucination_detect_enabled", "bool", _coerce_bool_value),
+)
+
+
 def _apply_runtime_overrides(task: "TranscriptionTask") -> dict[str, Any]:
     """Apply per-folder overrides + refresh diarisation defaults.
 
@@ -1238,6 +1396,7 @@ def _apply_runtime_overrides(task: "TranscriptionTask") -> dict[str, Any]:
     tests that monkeypatch ``transcriber.config``.
     """
     runtime_cfg = load_config()
+    project_overrides: dict[str, Any] = {}
     try:
         from .config import load_project_overrides
         project_overrides = load_project_overrides(task.file_path)
@@ -1252,12 +1411,69 @@ def _apply_runtime_overrides(task: "TranscriptionTask") -> dict[str, Any]:
     for key, default in _RUNTIME_OVERRIDE_DEFAULTS:
         if key not in config:
             config[key] = runtime_cfg.get(key, default)
-    config["diarization_enabled"] = bool(config["diarization_enabled"])
-    config["diarization_num_speakers"] = int(config["diarization_num_speakers"])
-    config["diarization_cluster_threshold"] = float(
-        config["diarization_cluster_threshold"]
-    )
-    config["alignment"] = str(config["alignment"])
+    # Project overrides arrive as raw JSON: a value like
+    # "diarization_num_speakers": "auto" would previously raise a bare
+    # ValueError out of transcribe(), failing the worker call with a raw
+    # traceback. Wrap each coercion so an invalid value becomes a clear,
+    # per-file RuntimeError (recoverable: the worker marks this file failed
+    # and continues) instead of a raw int()/float() exception.
+    try:
+        config["diarization_enabled"] = _coerce_bool_value(
+            config["diarization_enabled"]
+        )
+    except (ValueError, TypeError) as e:
+        raise RuntimeError(
+            f"Invalid project override for 'diarization_enabled': "
+            f"{config.get('diarization_enabled')!r} (expected bool): {e}"
+        ) from e
+    try:
+        config["diarization_num_speakers"] = int(
+            config["diarization_num_speakers"]  # type: ignore[arg-type]
+        )
+    # OverflowError too: JSON's ``1e999`` parses to float('inf'), and
+    # int(inf) raises it. The R2 scalar table already catches OverflowError;
+    # this original coercion predates that and was the last hole (R2's
+    # self-critique declined it believing JSON could not express it).
+    except (ValueError, TypeError, OverflowError) as e:
+        raise RuntimeError(
+            f"Invalid project override for 'diarization_num_speakers': "
+            f"{config.get('diarization_num_speakers')!r} (expected int): {e}"
+        ) from e
+    try:
+        config["diarization_cluster_threshold"] = float(
+            config["diarization_cluster_threshold"]  # type: ignore[arg-type]
+        )
+    # OverflowError too: a huge integer JSON literal parses to an
+    # arbitrary-precision int, and float(huge_int) raises it.
+    except (ValueError, TypeError, OverflowError) as e:
+        raise RuntimeError(
+            f"Invalid project override for 'diarization_cluster_threshold': "
+            f"{config.get('diarization_cluster_threshold')!r} (expected float): {e}"
+        ) from e
+    try:
+        config["alignment"] = str(config["alignment"])
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError(
+            f"Invalid project override for 'alignment': "
+            f"{config.get('alignment')!r} (expected str): {e}"
+        ) from e
+    # Scalar keys consumed later with bare int()/float()/truthiness (see
+    # _OVERRIDE_SCALAR_COERCIONS). Only keys the project file actually set
+    # are validated: the F5 threat model is raw-JSON project overrides, and
+    # the app-level config is typed by the settings UI. A successful
+    # coercion is restored by _runtime_overrides_scope like any other
+    # override key.
+    if isinstance(project_overrides, dict):
+        for key, expected, caster in _OVERRIDE_SCALAR_COERCIONS:
+            if key not in project_overrides:
+                continue
+            try:
+                config[key] = caster(config.get(key))
+            except (ValueError, TypeError, OverflowError) as e:
+                raise RuntimeError(
+                    f"Invalid project override for '{key}': "
+                    f"{config.get(key)!r} (expected {expected}): {e}"
+                ) from e
     return runtime_cfg
 
 
@@ -1306,6 +1522,20 @@ def _runtime_overrides_scope(
             # snapshot and no restore needed.
             logger.exception(
                 "project-overrides snapshot raised for %s", task.file_path,
+            )
+            overrides = {}
+
+        # Raw-JSON guard (F5 class): a corrupt project file can decode to
+        # valid JSON that is not a dict (`null`, `5`, `[...]`). The load
+        # above only catches *raised* errors, and `_apply_runtime_overrides`
+        # already treats a non-dict as "no overrides" (its `.items()` call
+        # fails into the logged except). Mirror that here: without this,
+        # `set(None)` / `set(5)` / `set([[...]])` raise a raw TypeError out
+        # of the per-file path before any work starts.
+        if not isinstance(overrides, dict):
+            logger.warning(
+                "project-overrides for %s is not a dict (%s); ignoring",
+                task.file_path, repr(overrides)[:200],
             )
             overrides = {}
 
@@ -1527,6 +1757,12 @@ def transcribe(
                 raise RuntimeError(MODEL_ERROR)
             time.sleep(0.5)
 
+        # Per-file backend re-resolution above can select the default
+        # backend even when the worker started on an alt backend (in which
+        # case MODEL is still None but MODEL_READY is True). Lazy-load the
+        # default model now instead of crashing on `assert MODEL is not None`.
+        _ensure_default_backend_loaded(log_cb)
+
         # Optional Demucs vocal-separation pre-process (v0.8 Phase 2).
         # Returns the input path unchanged when demucs isn't installed or
         # the feature is off, so this is safe to always call.
@@ -1618,9 +1854,9 @@ def transcribe(
 
         try:
             segments, info = runner.transcribe(audio_path, **transcribe_kwargs)
-        finally:
-            # The slice is only read during transcribe(); remove it whether the
-            # call succeeded or raised, so an error mid-transcribe never leaks it.
+        except BaseException:
+            # If the backend fails before returning its lazy segment iterator,
+            # the temporary inputs are still ours to clean up immediately.
             for _tmp in (_clip_slice_path, _denoise_tmp):
                 if not _tmp:
                     continue
@@ -1628,6 +1864,7 @@ def transcribe(
                     os.remove(_tmp)
                 except OSError:
                     pass
+            raise
         if _ts_offset:
             segments = _shift_segments(segments, _ts_offset)
 
@@ -1670,60 +1907,89 @@ def transcribe(
         lang_prob_so_far = float(getattr(info, "language_probability", 0.0) or 0.0)
 
         segments_data: list[dict[str, Any]] = []
-        for seg in segments:
-            if task.cancelled:
-                # Final-flush: persist whatever we have so the user can
-                # resume from this point. Skipped for a clipped run (no
-                # resumable checkpoint — see the periodic block below).
-                if segments_data and clip is None:
-                    _write_periodic_checkpoint(
-                        task,
-                        segments_data,
-                        float(segments_data[-1].get("end", 0.0)),
-                        detected_lang_so_far,
-                        lang_prob_so_far,
-                        log_cb,
-                    )
-                log("Task cancelled", log_cb)
-                return
-            while task.paused and not task.cancelled:
-                time.sleep(0.2)
 
-            percent = (
-                min(100, max(0, int(((seg.end - _clip_start_s) / progress_span) * 100)))
-                if progress_span else 0
-            )
-            msg = f"[{percent}%] {fmt(seg.start)} --> {fmt(seg.end)} | {(seg.text or '').strip()}"
-            log(msg, log_cb)
-
-            if progress_cb:
-                progress_cb(percent)
-
-            segments_data.append(_segment_to_dict(seg, want_words))
-            segments_since_checkpoint += 1
-
-            now = time.time()
-            # No checkpoints for a clipped run: the checkpoint is keyed to
-            # the whole file with no clip marker, so a later resume would
-            # transcribe past clip_end. Clips are short — no resume needed.
-            if clip is None and (
-                segments_since_checkpoint >= _CHECKPOINT_EVERY_N_SEGMENTS
-                or (now - last_checkpoint_time) >= _CHECKPOINT_EVERY_N_SECONDS
-            ):
+        def _handle_cancelled() -> bool:
+            if not task.cancelled:
+                return False
+            # A cancellation can arrive after the final segment, or an empty
+            # iterator can finish after cancellation. Preserve resumable work
+            # and never turn that request into a successful empty output.
+            if segments_data and clip is None:
                 _write_periodic_checkpoint(
                     task,
                     segments_data,
-                    float(seg.end),
+                    float(segments_data[-1].get("end", 0.0)),
                     detected_lang_so_far,
                     lang_prob_so_far,
                     log_cb,
                 )
-                last_checkpoint_time = now
-                segments_since_checkpoint = 0
+            log("Task cancelled", log_cb)
+            return True
+
+        try:
+            # faster-whisper returns a lazy generator. Keep the slice alive
+            # until iteration finishes, not merely until transcribe() returns.
+            for seg in segments:
+                if _handle_cancelled():
+                    return
+                while task.paused and not task.cancelled:
+                    time.sleep(0.2)
+                if _handle_cancelled():
+                    return
+
+                percent = (
+                    min(100, max(0, int(((seg.end - _clip_start_s) / progress_span) * 100)))
+                    if progress_span else 0
+                )
+                msg = f"[{percent}%] {fmt(seg.start)} --> {fmt(seg.end)} | {(seg.text or '').strip()}"
+                log(msg, log_cb)
+
+                if progress_cb:
+                    progress_cb(percent)
+
+                segments_data.append(_segment_to_dict(seg, want_words))
+                segments_since_checkpoint += 1
+
+                now = time.time()
+                # No checkpoints for a clipped run: the checkpoint is keyed to
+                # the whole file with no clip marker, so a later resume would
+                # transcribe past clip_end. Clips are short — no resume needed.
+                if clip is None and (
+                    segments_since_checkpoint >= _CHECKPOINT_EVERY_N_SEGMENTS
+                    or (now - last_checkpoint_time) >= _CHECKPOINT_EVERY_N_SECONDS
+                ):
+                    _write_periodic_checkpoint(
+                        task,
+                        segments_data,
+                        float(seg.end),
+                        detected_lang_so_far,
+                        lang_prob_so_far,
+                        log_cb,
+                    )
+                    last_checkpoint_time = now
+                    segments_since_checkpoint = 0
+        finally:
+            # The iterator may perform the real decode during iteration, so
+            # remove the temporary inputs only after the loop is finished (or
+            # if iteration/cancellation raises).
+            _close_iterator_quietly(segments)
+            for _tmp in (_clip_slice_path, _denoise_tmp):
+                if not _tmp:
+                    continue
+                try:
+                    os.remove(_tmp)
+                except OSError:
+                    pass
+
+        if _handle_cancelled():
+            return
 
         # Speaker diarization (opt-in) + word-level alignment (opt-in).
         detected_lang = str(getattr(info, "language", "") or "")
         speaker_count = _run_post_pipeline(task, segments_data, detected_lang, log_cb, progress_cb)
+
+        if _handle_cancelled():
+            return
 
         written = _write_outputs(
             base,
@@ -1744,8 +2010,12 @@ def transcribe(
 
         # On success the partial is no longer useful — delete it so
         # the next "Re-run" doesn't accidentally resume from a stale
-        # checkpoint of the previous (now-complete) run.
-        _checkpoint.delete_checkpoint(task.file_path)
+        # checkpoint of the previous (now-complete) run. Only for a
+        # whole-file run: a clipped run never writes a checkpoint (keyed
+        # to the whole file with no clip marker), so deleting here would
+        # wipe an unrelated partial from a cancelled whole-file job.
+        if clip is None:
+            _checkpoint.delete_checkpoint(task.file_path)
 
         if progress_cb:
             progress_cb(100)
@@ -1763,7 +2033,26 @@ def _transcribe_via_alt_backend(
 ) -> None:
     """Drive a non-default backend through the same writers + diarisation."""
     backend = _get_alt_backend(backend_name, log_cb)
-    duration = get_duration(task.file_path)
+
+    # Demucs vocal separation — mirror the default faster-whisper path
+    # (transcribe() lines 1761-1771). Without this, an alt-backend run
+    # with demucs_enabled=true silently transcribes the raw mix while
+    # the config fingerprint records demucs as enabled, producing the
+    # same conditioning-mismatch class as F4's resume bug.
+    audio_path = task.file_path
+    if config.get("demucs_enabled", False):
+        try:
+            from . import separator as _sep
+            audio_path = _sep.separate_vocals(
+                task.file_path,
+                enabled=True,
+                log=log_cb,
+            )
+        except Exception as e:  # noqa: BLE001
+            log(f"Demucs separation failed (using original audio): {e}", log_cb)
+            audio_path = task.file_path
+
+    duration = get_duration(audio_path)
     start = time.time()
     log(f"Processing ({backend_name}): {task.file_path}", log_cb)
 
@@ -1792,12 +2081,12 @@ def _transcribe_via_alt_backend(
             f"the media length ({float(duration):.0f}s) — nothing to "
             "transcribe. Pick an earlier start."
         )
-    transcribe_path = task.file_path
+    transcribe_path = audio_path
     slice_to_clean: str | None = None
     if is_clipped:
         try:
             slice_to_clean = _slice_audio_from(
-                task.file_path,
+                audio_path,
                 clip_start_s,
                 _checkpoint.partials_dir(),
                 end_seconds=(clip_end_s if clip_end_s > clip_start_s else None),
@@ -1901,6 +2190,18 @@ def _transcribe_via_alt_backend(
     # see "None" as a stringified language code.
     detected_lang = str(lang_info.language or "")
     speaker_count = _run_post_pipeline(task, segments_data, detected_lang, log_cb, progress_cb)
+
+    # Cancellation can arrive while the post-pipeline runs — diarisation on
+    # a long file takes minutes, which is exactly why a checkpoint is
+    # written above before it starts. Mirror transcribe() and
+    # resume_transcription(): a cancelled run must not write successful
+    # outputs or delete the checkpoint that still holds its partial work.
+    # (The checkpoint write above already persisted the whole-file partial;
+    # a clipped run never has one.)
+    if task.cancelled:
+        log("Task cancelled", log_cb)
+        return
+
     written = _write_outputs(
         base,
         segments_data,
@@ -1917,8 +2218,11 @@ def _transcribe_via_alt_backend(
         f"{', '.join(os.path.basename(p) for p in written)}",
         log_cb,
     )
-    # Success — drop the partial.
-    _checkpoint.delete_checkpoint(task.file_path)
+    # Success — drop the partial. Only for a whole-file run: a clipped
+    # run never writes a checkpoint, so deleting would wipe an unrelated
+    # whole-file partial (same key, no clip marker).
+    if not is_clipped:
+        _checkpoint.delete_checkpoint(task.file_path)
     # Cloud backend only: accumulate the transcribed minutes locally so
     # the Advanced dialog can show usage. The dollar free-credit balance
     # is NOT readable from an API key, so this local minute counter is
@@ -2009,6 +2313,17 @@ def _remove_quietly(path: str) -> None:
     try:
         os.unlink(path)
     except OSError:
+        pass
+
+
+def _close_iterator_quietly(iterator: Any) -> None:
+    """Close a lazy decoder before its temporary input is unlinked."""
+    close = getattr(iterator, "close", None)
+    if not callable(close):
+        return
+    try:
+        close()
+    except Exception:  # noqa: BLE001
         pass
 
 
@@ -2108,6 +2423,21 @@ def resume_transcription(
     """
     log_cb = _with_task_prefix(log_cb, task)
     with _runtime_overrides_scope(task) as runtime_cfg:
+        # A checkpoint is keyed to the whole file with no clip marker, and
+        # clipped runs never write one. Resuming a clipped task from a
+        # whole-file partial would transcribe past clip_end (prior segments
+        # + tail to EOF), silently ignoring the requested range. Refuse the
+        # resume path so the caller falls through to a normal clipped
+        # transcribe() run. Do NOT delete the checkpoint: it still belongs
+        # to a different, still-relevant whole-file job.
+        if _clip_timestamps_arg(task) is not None:
+            log(
+                "Resume: clipped time-range request cannot resume a "
+                "whole-file checkpoint; falling back to full clipped run.",
+                log_cb,
+            )
+            return False
+
         data = _checkpoint.load_checkpoint(task.file_path)
         if data is None:
             log("Resume: no checkpoint on disk; falling back to full re-run.", log_cb)
@@ -2116,7 +2446,14 @@ def resume_transcription(
         backend, model_name = _current_backend_and_model()
         # Resume currently supports only the faster_whisper path; alt
         # backends would need a per-backend slicer. Fall back to a
-        # full re-run rather than guess.
+        # full re-run rather than guess. Do NOT delete the checkpoint:
+        # it may be a valid faster_whisper partial (a cancelled
+        # whole-file run) that this refusal never consumed — the same
+        # F1/F3 rule as the clip refusal above. The fallback fresh run
+        # supersedes it naturally (its success path deletes, its own
+        # checkpoint writes overwrite the same key), and a future
+        # faster_whisper run of this file can still resume it if the
+        # fallback crashes before writing anything.
         backend_for_check = backend
         if backend and backend != "faster_whisper":
             log(
@@ -2124,7 +2461,6 @@ def resume_transcription(
                 "falling back to full re-run.",
                 log_cb,
             )
-            _checkpoint.delete_checkpoint(task.file_path)
             return False
 
         cfg_fp = _checkpoint.config_fingerprint(config)
@@ -2167,6 +2503,11 @@ def resume_transcription(
                 raise RuntimeError(MODEL_ERROR)
             time.sleep(0.5)
 
+        # Same per-file lazy-load as transcribe(): the worker may have
+        # started on an alt backend (MODEL None, MODEL_READY True) while
+        # this file resolves to the default backend.
+        _ensure_default_backend_loaded(log_cb)
+
         # Slice the source audio from last_end_time to end. Slices live
         # under ``user_data_dir()/partials/`` next to the checkpoint
         # JSON so a stray temp file is easy to garbage-collect later.
@@ -2186,6 +2527,27 @@ def resume_transcription(
             # overwrite the partial as it progresses anyway.
             return False
 
+        # Demucs vocal separation must match the first half: checkpointed
+        # segments were decoded from separated vocals when demucs was on,
+        # so the tail must be separated too or one transcript mixes two
+        # conditioning regimes across the seam. Mirrors the transcribe()
+        # pre-process (same call, same fallback). The separated tail is an
+        # intermediate like the slice itself — the slice cleanup below still
+        # removes the raw slice; the separated output is left alone exactly
+        # like transcribe() leaves its separated file (separator-owned/cache).
+        demucs_tail_path = slice_path
+        if config.get("demucs_enabled", False):
+            try:
+                from . import separator as _sep
+                demucs_tail_path = _sep.separate_vocals(
+                    slice_path,
+                    enabled=True,
+                    log=log_cb,
+                )
+            except Exception as e:  # noqa: BLE001
+                log(f"Demucs separation failed (using original audio): {e}", log_cb)
+                demucs_tail_path = slice_path
+
         # Denoise the tail exactly like the first half was denoised, or
         # the two halves of one transcript come from differently
         # conditioned audio. The checkpoint fingerprint covers the
@@ -2200,7 +2562,7 @@ def resume_transcription(
         except Exception:  # noqa: BLE001
             _tail_dur = 0.0
         transcribe_slice, denoise_tmp = _maybe_denoise(
-            slice_path,
+            demucs_tail_path,
             duration=_tail_dur,
             transient=True,
             log_cb=log_cb,
@@ -2209,6 +2571,7 @@ def resume_transcription(
         start = time.time()
         log(f"Resume: transcribing tail slice {transcribe_slice}", log_cb)
 
+        new_segments_iter: Any = None
         try:
             assert MODEL is not None
             want_words = bool(config.get("word_timestamps", False))
@@ -2242,25 +2605,33 @@ def resume_transcription(
             except Exception:  # noqa: BLE001
                 total_dur = 0.0
             new_segments_data: list[dict[str, Any]] = []
+
+            def _handle_resume_cancelled() -> bool:
+                if not task.cancelled:
+                    return False
+                # Keep the existing checkpoint when cancellation arrives
+                # before the tail yields anything; replace it with the merged
+                # progress when some new tail segments were captured.
+                merged_so_far = prior_segments + new_segments_data
+                if merged_so_far:
+                    _write_periodic_checkpoint(
+                        task,
+                        merged_so_far,
+                        float(merged_so_far[-1].get("end", last_end_time)),
+                        cp_language,
+                        cp_lang_prob,
+                        log_cb,
+                    )
+                log("Task cancelled during resume.", log_cb)
+                return True
+
             for seg in new_segments_iter:
-                if task.cancelled:
-                    # Cancel during resume — persist the merged
-                    # partial so the user can resume again from the
-                    # new end. Keep the checkpoint on disk.
-                    merged_so_far = prior_segments + new_segments_data
-                    if merged_so_far:
-                        _write_periodic_checkpoint(
-                            task,
-                            merged_so_far,
-                            float(merged_so_far[-1].get("end", last_end_time)),
-                            cp_language,
-                            cp_lang_prob,
-                            log_cb,
-                        )
-                    log("Task cancelled during resume.", log_cb)
+                if _handle_resume_cancelled():
                     return True  # We "handled" the cancel cleanly.
                 while task.paused and not task.cancelled:
                     time.sleep(0.2)
+                if _handle_resume_cancelled():
+                    return True
 
                 d = _segment_to_dict(seg, want_words)
                 d["start"] = float(d.get("start", 0.0)) + last_end_time
@@ -2288,6 +2659,7 @@ def resume_transcription(
             # succeeded (final outputs written) or fell back, in both
             # cases the slice is disposable. Same for any denoised copy
             # of it (empty string when denoise was off / reverted).
+            _close_iterator_quietly(new_segments_iter)
             for _tmp in (slice_path, denoise_tmp):
                 if not _tmp:
                     continue
@@ -2305,6 +2677,9 @@ def resume_transcription(
         speaker_count = _run_post_pipeline(
             task, final_segments, detected_lang, log_cb, progress_cb
         )
+
+        if _handle_resume_cancelled():
+            return True
 
         base = os.path.splitext(task.file_path)[0]
         written = _write_outputs(
