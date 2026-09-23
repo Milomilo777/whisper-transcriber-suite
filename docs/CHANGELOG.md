@@ -4,6 +4,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-09-23
+
 ### Added
 
 - **Pick the Whisper model straight from the Transcribe tab** — a "Model:"
@@ -50,6 +52,20 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   if starting a live session failed for any reason — no error dialog, no
   way to tell it had actually failed. The error-handling callback itself
   was silently crashing before it could show anything.
+
+### macOS
+
+- **The macOS app actually works now, and was tested on a real Mac.**
+  Earlier `.dmg` builds bundled a Homebrew ffmpeg without its ~18 dylibs
+  (and built for macOS 15 only), no working yt-dlp, and declared the wrong
+  minimum macOS. The build now bundles self-contained ffmpeg/ffprobe/ffplay
+  + yt-dlp, verifies every file in the `.app`, and reads its version from
+  the app. Intel build runs on macOS 10.15+. Details:
+  `docs/MACOS_BUILD_NOTES.md`.
+- **`install.command` (run from source) no longer aborts on Intel Macs**
+  (sdist-only PyAV, optional pywhispercpp compile failure) and no longer
+  installs stable-ts there, whose torch crashed every transcription
+  (`OMP: Error #15`).
 
 ## [1.8.0] — 2026-08-23
 

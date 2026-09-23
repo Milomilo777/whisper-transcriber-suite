@@ -6,4 +6,4 @@ from __future__ import annotations
 # available). The About dialog and the telemetry ping read this so the
 # displayed version never goes stale. Bump it alongside pyproject.toml
 # and the two .iss files on every release.
-__version__ = "1.8.0"
+__version__ = "1.9.0"
