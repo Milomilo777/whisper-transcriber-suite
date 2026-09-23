@@ -97,14 +97,39 @@ class VoiceCloneWorker:
             return
         except subprocess.TimeoutExpired:
             logger.info("Voice-clone worker ignored shutdown; terminating tree")
+        self._kill_process_tree(proc)
+
+    @staticmethod
+    def _kill_process_tree(proc: subprocess.Popen[str]) -> None:
         # A generation in flight has no cooperative cancel (see
         # core.voice_clone_worker's docstring) -- killing the tree is
-        # how the user gives up on a run that's taking too long.
+        # how the caller gives up on a run that's taking too long.
         kill_process_tree(proc, force=False)
         try:
             proc.wait(timeout=2.0)
         except subprocess.TimeoutExpired:
             kill_process_tree(proc, force=True)
+
+    def _abandon_worker(self, reason: str) -> None:
+        """Make the session terminal after a request is given up on.
+
+        A timed-out generation cannot be cancelled cooperatively, and
+        the worker only reads its next command after the current one
+        finishes -- leaving it running would make every later request
+        queue behind the abandoned generation (blocking the caller for
+        up to another full timeout, with nothing to show for it). Kill
+        the tree here exactly as the user-cancel path does, and mark the
+        session dead so a retry fails fast instead of appearing to hang.
+        """
+        proc = self._process
+        self._dead.set()
+        self._fail_all_pending(reason)
+        if proc is None:
+            return
+        logger.info("Voice-clone worker abandoned (%s); terminating tree", reason)
+        self._kill_process_tree(proc)
+        if self._process is proc:
+            self._process = None
 
     def is_running(self) -> bool:
         proc = self._process
@@ -159,11 +184,9 @@ class VoiceCloneWorker:
             raise VoiceCloneWorkerError(f"Voice-clone worker write failed: {e}") from e
 
         if not done.wait(timeout=GENERATE_TIMEOUT_S):
-            with self._lock:
-                self._pending.pop(req_id, None)
-            raise VoiceCloneWorkerError(
-                "The voice-clone worker did not answer in time."
-            )
+            reason = "The voice-clone worker did not answer in time."
+            self._abandon_worker(reason)
+            raise VoiceCloneWorkerError(reason)
         if slot["error"]:
             raise VoiceCloneWorkerError(str(slot["error"]))
         return slot["result"] or {}
@@ -182,15 +205,36 @@ class VoiceCloneWorker:
                 try:
                     msg = json.loads(line)
                 except (ValueError, TypeError):
-                    if self._log:
-                        self._log(f"[voice-clone worker] {line}")
+                    self._log_line(line)
                     continue
-                self._handle(msg)
+                if not isinstance(msg, dict):
+                    # A stray non-object line (a bare number or list from
+                    # some library's own stdout print) parses as valid
+                    # JSON but is not an event; _handle assumes a dict.
+                    self._log_line(line)
+                    continue
+                try:
+                    self._handle(msg)
+                except Exception:  # noqa: BLE001
+                    # This is the session's only reader: letting one bad
+                    # event kill it would strand every later request for
+                    # the full timeout. Report it and keep reading.
+                    logger.exception("Unhandled voice-clone worker event: %s", line)
         except (OSError, ValueError):
             pass
         finally:
             self._dead.set()
             self._fail_all_pending("The voice-clone worker exited unexpectedly.")
+
+    def _log_line(self, line: str) -> None:
+        if self._log:
+            try:
+                self._log(f"[voice-clone worker] {line}")
+            except Exception:  # noqa: BLE001
+                # Called from the reader for malformed/non-object lines,
+                # outside the per-event guard: a throwing log callback
+                # must not take the session's only reader down.
+                logger.exception("voice-clone log callback failed")
 
     def _handle(self, msg: dict[str, Any]) -> None:
         event = str(msg.get("event") or "")
@@ -218,18 +262,31 @@ class VoiceCloneWorker:
             return
         if event in ("done", "error"):
             req_id = str(msg.get("id") or "")
+            # Parse the payload BEFORE popping the slot: if a malformed
+            # event is popped first and parsing then raises, the slot is
+            # gone and its waiter blocks for the whole GENERATE_TIMEOUT_S
+            # with nothing left that could ever wake it.
+            result: Optional[dict[str, Any]] = None
+            error: Optional[str] = None
+            if event == "error":
+                error = str(msg.get("message") or "Unknown voice-clone error")
+            else:
+                try:
+                    result = {
+                        "output_path": str(msg.get("output_path") or ""),
+                        "audio_seconds": float(msg.get("audio_seconds") or 0.0),
+                        "elapsed_seconds": float(msg.get("elapsed_seconds") or 0.0),
+                    }
+                except (TypeError, ValueError):
+                    error = "Malformed completion event from the voice-clone worker."
             with self._lock:
                 slot = self._pending.pop(req_id, None)
             if slot is None:
                 return
-            if event == "error":
-                slot["error"] = msg.get("message") or "Unknown voice-clone error"
+            if result is not None:
+                slot["result"] = result
             else:
-                slot["result"] = {
-                    "output_path": str(msg.get("output_path") or ""),
-                    "audio_seconds": float(msg.get("audio_seconds") or 0.0),
-                    "elapsed_seconds": float(msg.get("elapsed_seconds") or 0.0),
-                }
+                slot["error"] = error or "Unknown voice-clone error"
             slot["event"].set()
             return
         if event == "model_error":
