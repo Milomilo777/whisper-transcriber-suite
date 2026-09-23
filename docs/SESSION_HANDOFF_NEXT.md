@@ -5,6 +5,27 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-24 — Owner UX round + Windows assets added to v1.9.0
+
+- Tab order: Transcribe, Queue, Download Videos, Live, Clone Your Voice / Text to
+  Voice, Video Tiling, Web / LAN, **Supreme Master TV always last** (comment in
+  `App._build_tabs`).
+- Live tab: English + `tiny` by default (`core.live_model.LIVE_DEFAULT`); model
+  picker is a Menubutton+Menu (bold = downloaded, grey = missing) with an in-place
+  Download button. Level display = SiriWave **iOS 9** port (numpy+Pillow, additive
+  blend) + DAW-style peak meter (`app/widgets/audio_visualizer.py`).
+- Voice tab: model picker. **Kokoro** (`core/tts_kokoro.py`, sherpa-onnx, fp32
+  `kokoro-multi-lang-v1_0`, 54 voices/9 languages, ~350 MB on first use; int8 was
+  2.3x slower than real time on the i7-6700, fp32 0.8x). **OmniVoice** gained
+  design (instruct) + auto modes, language, speed; text cap 500 -> 5000
+  (OmniVoice chunks itself). Verified for real: every Kokoro language, OmniVoice
+  design + auto (~53 s for ~2 s of audio on CPU).
+- v1.9.0 release: Windows Setup-Standard + Portable built from master and added
+  next to the macOS assets; the tag still points at `0bbabc3` (published tags are
+  never moved) -- the release notes say which commit each asset came from.
+- Open: OmniVoice clone mode was not re-run this session (code path unchanged
+  apart from optional language/speed kwargs).
+
 ## 🟢 2026-09-23 (evening) — Live tab overhaul + pre-rebrand profile migration (unreleased)
 
 On master, NOT in any release yet (owner must approve a version bump):
