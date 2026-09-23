@@ -1631,33 +1631,30 @@ class App(tk.Tk):
         self.t6 = ttk.Frame(self.nb)
         self.t7 = ttk.Frame(self.nb)
         self.t8 = ttk.Frame(self.nb)
+        # Tab order (2026-09-23, owner review): the core transcribe flow
+        # first, then the other ways audio comes in (downloads, live
+        # capture), then the standalone tools, then settings-like tabs.
+        # The Supreme Master TV introduction is ALWAYS the last tab --
+        # keep it last when adding a new one.
         self.nb.add(self.t1, text="Transcribe")
         self.nb.add(self.t2, text="Transcription Queue")
-        self.nb.add(self.t6, text="Live")
         self.nb.add(self.t3, text="Download Videos")
-        self.nb.add(self.t8, text="Supreme Master TV")
-        # Video Tiling is optional: the Standard installer can drop a
-        # no_tiling.flag marker into {app} when the user opts out at install
-        # time, in which case we don't add the tab at all. self.tiling (the
-        # controller) is still constructed in __init__, so on_exit's
-        # self.tiling.stop() stays safe; only the UI surface is hidden. All
-        # tiling_* vars + start/stop callbacks are reachable only through this
-        # tab's widgets, so skipping it leaves nothing dangling.
+        self.nb.add(self.t6, text="Live")
+        # Clone Your Voice / Text to Voice and Video Tiling are both
+        # opt-in at install time (no_voice_clone.flag / no_tiling.flag via
+        # voice_clone_tab_enabled / tiling_tab_enabled); each is simply
+        # not added when disabled. self.tiling (the controller) is still
+        # constructed in __init__, so on_exit's self.tiling.stop() stays
+        # safe; the voice-clone worker is spawned lazily on first
+        # Generate, so a skipped tab leaves nothing to tear down.
+        self._voice_clone_tab_visible = voice_clone_tab_enabled()
+        if self._voice_clone_tab_visible:
+            self.nb.add(self.t7, text="Clone Your Voice / Text to Voice")
         self._tiling_tab_visible = tiling_tab_enabled()
         if self._tiling_tab_visible:
             self.nb.add(self.t4, text="Video Tiling")
         self.nb.add(self.t5, text="Web / LAN access")
-        # Clone Your Voice / Text to Voice: same opt-in-at-install shape as
-        # Video Tiling above (no_voice_clone.flag / voice_clone_tab_enabled),
-        # but an entirely independent marker and worker -- the two features
-        # are unrelated and toggled separately. Nothing needs constructing
-        # in __init__ the way self.tiling is: the worker subprocess is
-        # spawned lazily on first Generate, not up front, so skipping the
-        # tab here leaves nothing to tear down (stop_voice_clone_worker is
-        # a no-op when app.vc_worker was never set).
-        self._voice_clone_tab_visible = voice_clone_tab_enabled()
-        if self._voice_clone_tab_visible:
-            self.nb.add(self.t7, text="Clone Your Voice")
+        self.nb.add(self.t8, text="Supreme Master TV")
         build_transcribe_tab(self, self.t1)
         build_queue_tab(self, self.t2)
         build_live_tab(self, self.t6)
