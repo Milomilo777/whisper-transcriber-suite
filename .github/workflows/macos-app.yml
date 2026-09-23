@@ -1,41 +1,31 @@
 name: macOS app build
 
-# Heavy build — MANUAL dispatch only (does not auto-run on push), so it never
-# burns private-repo macOS minutes by accident. Builds the macOS distribution
-# methods on a real Apple-silicon runner, smoke-launches the result, and uploads
-# the .app/.dmg as a downloadable artifact.
+# Heavy build — MANUAL dispatch only (does not auto-run on push to master).
+# Builds the PyInstaller .app/.dmg on real Apple-silicon and Intel runners and
+# TESTS THE RESULT LIKE A USER WOULD (real transcription with the frozen app,
+# GUI launch, bundled ffmpeg/yt-dlp) before uploading it.
+#
+# Why each step exists — and what broke in earlier builds of this workflow —
+# is documented in docs/MACOS_BUILD_NOTES.md. Read it before changing this.
 on:
   workflow_dispatch:
-  # Manual-only in practice: it fires solely on a push to the dedicated
-  # `macos-app-build` branch (NOT on macos-ci), so a normal macos-ci push never
-  # triggers this heavy build. To run it: push macos-ci's HEAD to macos-app-build.
   push:
     branches: [macos-app-build]
 
 jobs:
   build-app:
-    name: Build macOS .app/.dmg + smoke (${{ matrix.arch }})
+    name: Build + test macOS .app/.dmg (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15  # Apple Silicon
+          - runner: macos-15        # Apple Silicon
             arch: arm64
-          # x86_64 on macos-15-intel (NOT macos-13): the macos-13 Intel queue
-          # for this account never schedules (jobs sit "queued" indefinitely).
-          # macos-15-intel is available and, with MACOSX_DEPLOYMENT_TARGET=12.0
-          # + the numpy 1.26.4 pin + full collect_all below, still produces a
-          # bundle that runs on older/virtualised Intel Macs (e.g. Monterey 12).
-          - runner: macos-15-intel  # Intel — runs on Monterey via deployment target
+            suffix: arm64
+          - runner: macos-15-intel  # Intel
             arch: x86_64
-    env:
-      # Target Monterey (12.0) as the minimum runtime so wheels built here
-      # (numpy, ctranslate2, etc.) and PyInstaller's bundled extensions don't
-      # require a newer macOS than the user's machine provides. Applies to
-      # both matrix legs; arm64 Macs all run far newer macOS anyway, so this
-      # is a no-op there but harmless.
-      MACOSX_DEPLOYMENT_TARGET: "12.0"
+            suffix: x64
     steps:
       - uses: actions/checkout@v4
 
@@ -43,135 +33,61 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
-      - name: Install deps (slim — drop stable-ts/torch to match the shipped build) + PyInstaller
+      - name: Version
+        id: ver
+        run: echo "version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' core/__init__.py)" >> "$GITHUB_OUTPUT"
+
+      # --prefer-binary: several deps' newest release is sdist-only on some
+      # macOS/arch combos. The constraints file pins onnxruntime, whose
+      # default pick would silently raise the app's minimum macOS to 13/14.
+      # stable-ts (torch) and pywhispercpp are optional and left out, as in
+      # every shipped build.
+      - name: Install deps (slim) + PyInstaller
         run: |
           python -m pip install --upgrade pip
-          grep -viE '^stable-ts' requirements.txt > requirements.slim.txt
-          pip install -r requirements.slim.txt
-          pip install pyinstaller
+          grep -viE '^\s*(pywhispercpp|stable-ts)' requirements.txt > requirements.slim.txt
+          pip install --prefer-binary -c platform/macos/pyinstaller/constraints-macos.txt \
+            -r requirements.slim.txt pyinstaller
+          pip freeze | grep -iE '^(numpy|onnxruntime|ctranslate2|av|tokenizers|sherpa|faster|pyinstaller)'
 
-      # requirements.txt has no numpy pin (faster-whisper/ctranslate2 pull it
-      # in transitively, currently numpy 2.x). numpy 2.x C-extensions built on
-      # macos-15 (newer SDK + aggressive SIMD baseline) have been seen failing
-      # to import on older/virtualised Intel Macs (e.g. Monterey 12, no AVX).
-      # Force a conservative numpy 1.x AFTER the slim install so it overrides
-      # the transitive 2.x resolution. ctranslate2 4.x and faster-whisper 1.x
-      # both declare numpy>=1.21,<3, so 1.26.4 (last 1.x, Python 3.12-capable)
-      # is compatible and closest to the known-good 1.24.3 from source/venv.
-      - name: Pin numpy to a Monterey/VM-safe 1.x
-        run: pip install "numpy==1.26.4"
+      # Self-contained ffmpeg/ffprobe/ffplay + yt-dlp. NOT Homebrew's ffmpeg:
+      # it links ~18 dylibs under the Homebrew prefix that PyInstaller does
+      # not bundle, and is built for the runner's own macOS (minos 15.0).
+      - name: Fetch + verify self-contained bin/ tools
+        run: bash platform/macos/pyinstaller/fetch_mac_binaries.sh ${{ matrix.arch }}
 
-      - name: Provide macOS ffmpeg/ffprobe in bin/
-        run: |
-          brew install ffmpeg
-          mkdir -p bin
-          cp "$(brew --prefix)/bin/ffmpeg"  bin/ffmpeg
-          cp "$(brew --prefix)/bin/ffprobe" bin/ffprobe
-          chmod +x bin/ffmpeg bin/ffprobe
-          file bin/ffmpeg
-          ls -la bin
-
-      # ---- Method 1: PyInstaller .app ----
-      - name: "Method 1 - build .app (PyInstaller)"
+      - name: Build .app (PyInstaller)
         run: pyinstaller --noconfirm --clean platform/macos/pyinstaller/whisper_project_mac.spec
 
-      - name: "Method 1 - REAL smoke: the frozen .app is a valid native bundle and boots"
-        continue-on-error: true
-        run: |
-          set +e
-          APP="dist/Whisper Transcriber Suite.app"
-          BIN="$APP/Contents/MacOS/Whisper Transcriber Suite"
-          [ -d "$APP" ] && echo "OK .app bundle present"
-          [ -f "$APP/Contents/Info.plist" ] && echo "OK Info.plist present"
-          [ -x "$BIN" ] && echo "OK launcher present"
-          echo "--- file/arch ---"; file "$BIN"
-          echo "--- boot smoke: 'transcribe --help' under a 60s hard timeout ---"
-          "$BIN" transcribe --help & PID=$!
-          ( sleep 60 && kill -9 $PID 2>/dev/null ) & WD=$!
-          wait $PID; RC=$?
-          kill -9 $WD 2>/dev/null
-          echo "transcribe --help exit code: $RC (0 = the frozen app booted + imported on macOS)"
+      - name: Verify bundle (every Mach-O self-contained, right arch, tools run)
+        run: bash platform/macos/pyinstaller/verify_mac_bundle.sh "dist/Whisper Transcriber Suite.app" ${{ matrix.arch }}
 
-      # NON-continue-on-error: the step above is informational only (a bundle
-      # can be malformed in other ways without us wanting to fail the whole
-      # matrix leg), but a numpy import failure is exactly the bug this build
-      # exists to prevent — it must fail the job loudly here, not silently
-      # ship a broken .dmg. `transcribe --help` runs gui.py's CLI path, which
-      # imports core.transcriber -> core.backends.faster_whisper_be ->
-      # faster_whisper -> ctranslate2 -> numpy, so a nonzero exit here means
-      # that chain (including numpy's C-extensions) failed to import in the
-      # frozen bundle on THIS runner. As a second, independent signal, also
-      # confirm numpy's compiled _multiarray_umath extension was actually
-      # collected into the bundle (catches "PyInstaller silently dropped the
-      # .so" even if the boot smoke above happens to still pass).
-      - name: "Method 1 - numpy/faster-whisper import MUST succeed in the frozen .app"
-        run: |
-          set -e
-          APP="dist/Whisper Transcriber Suite.app"
-          BIN="$APP/Contents/MacOS/Whisper Transcriber Suite"
-          echo "--- bundled numpy C-extension check ---"
-          # Search the WHOLE bundle: PyInstaller 6.x on macOS lays compiled
-          # extensions under Contents/Frameworks (or Resources), NOT directly
-          # in Contents/MacOS — checking only MacOS/ was a false-negative.
-          if find "$APP" -iname '_multiarray_umath*' | grep -q .; then
-            echo "OK numpy _multiarray_umath extension is bundled:"
-            find "$APP" -iname '_multiarray_umath*'
-          else
-            echo "ERROR: numpy's _multiarray_umath C-extension was not found in the bundle." >&2
-            exit 1
-          fi
-          echo "--- boot smoke (hard requirement): 'transcribe --help' under a 60s timeout ---"
-          "$BIN" transcribe --help & PID=$!
-          ( sleep 60 && kill -9 $PID 2>/dev/null ) & WD=$!
-          wait $PID; RC=$?
-          kill -9 $WD 2>/dev/null
-          echo "transcribe --help exit code: $RC"
-          if [ "$RC" -ne 0 ]; then
-            echo "ERROR: the frozen app failed to boot/import (numpy/faster-whisper chain)." >&2
-            exit 1
-          fi
+      - name: Smoke test like a user (real transcription, GUI launch, yt-dlp)
+        run: bash platform/macos/pyinstaller/smoke_test_app.sh "dist/Whisper Transcriber Suite.app" python tiny
 
-      - name: "Method 1 - wrap into .dmg (create-dmg) + arch-suffix the name"
-        continue-on-error: true
-        run: |
-          brew install create-dmg
-          bash platform/macos/pyinstaller/builddmg.command
-          # builddmg.command now arch-suffixes the name itself (x64/arm64,
-          # from uname -m) so a single-arch build can't masquerade as
-          # universal. Keep this legacy rename as a no-op fallback in case
-          # an older script revision produced the unsuffixed name.
-          if [ -f "dist/Whisper Transcriber Suite.dmg" ]; then
-            mv "dist/Whisper Transcriber Suite.dmg" "dist/Whisper Transcriber Suite-${{ matrix.arch }}.dmg"
-          fi
-          ls -la dist/*.dmg || true
-
-      # ---- Method 2: source-venv install.command ----
-      - name: "Method 2 - run install.command (source venv -> .app)"
-        if: ${{ !cancelled() }}
-        continue-on-error: true
-        run: |
-          chmod +x platform/macos/install.command
-          bash platform/macos/install.command
-          echo "--- ~/Applications after install.command ---"
-          ls -la "$HOME/Applications" 2>/dev/null || true
-
-      # ---- Method 3: Homebrew formula ----
-      - name: "Method 3 - lint the Homebrew formula"
-        if: ${{ !cancelled() }}
-        continue-on-error: true
-        run: |
-          brew audit --formula --strict platform/macos/homebrew/whisper-transcriber-suite.rb || true
-          echo "NOTE: a real 'brew install' is blocked until the repo is PUBLIC and a release"
-          echo "tarball with a real sha256 is published (the formula's sha256 is a placeholder)."
-
-      - name: Upload build artifacts
-        if: ${{ !cancelled() }}
+      - name: Upload app logs on failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: macos-build-${{ matrix.arch }}
+          name: macos-logs-${{ matrix.arch }}
+          path: ~/Library/Logs/WhisperTranscriberSuite/
+          if-no-files-found: ignore
+
+      - name: Wrap into .dmg
+        run: |
+          brew install create-dmg || true
+          bash platform/macos/pyinstaller/builddmg.command
+          out="WhisperTranscriberSuite-v${{ steps.ver.outputs.version }}-macOS-${{ matrix.suffix }}.dmg"
+          mv "dist/Whisper Transcriber Suite-${{ matrix.suffix }}.dmg" "dist/$out"
+          (cd dist && shasum -a 256 "$out" | tee "$out.sha256")
+          hdiutil verify "dist/$out"
+
+      - name: Upload .dmg
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg-${{ matrix.arch }}
           path: |
-            dist/*.app
             dist/*.dmg
-          if-no-files-found: warn
+            dist/*.dmg.sha256
+          if-no-files-found: error

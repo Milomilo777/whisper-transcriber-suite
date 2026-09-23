@@ -1,0 +1,10 @@
+# pip constraints for the macOS .app build (pip install -c this-file ...).
+#
+# Every prebuilt wheel carries its own minimum macOS; MACOSX_DEPLOYMENT_TARGET
+# does not lower it. Left unpinned, pip on a current build host picks
+# onnxruntime 1.23.2 (Intel, needs macOS 13) or >= 1.24 (Apple Silicon, needs
+# macOS 14), which silently raises the whole app's minimum macOS.
+# 1.19.2 is the newest cp312 release tagged macosx_11_0 (universal2) and was
+# verified end-to-end (VAD + transcription) on macOS 10.15 in 2026-09.
+# See docs/MACOS_BUILD_NOTES.md.
+onnxruntime==1.19.2
