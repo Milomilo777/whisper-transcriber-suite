@@ -1,5 +1,11 @@
 # Build
 
+**Release file names carry a 1-/2-/3- prefix** (`-1-Windows-Setup.exe`,
+`-2-Windows-Portable.zip`, `-3-macOS-<arch>.dmg`) because GitHub lists a
+release's files alphabetically and offers no manual order -- the prefix keeps
+the Windows installer first, then the Portable ZIP, then the Mac builds
+(owner request, 2026-09-24). Releases up to v1.8.0 use the older names.
+
 How to produce Windows binaries from source.
 
 **Currently shipped (both from the same `embed_build\` tree):**
@@ -21,11 +27,11 @@ build_embed_installer.bat
 
 :: 2. Setup-Standard installer, from embed_build\
 "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer_embed.iss
-:: Output: dist_installer\WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe
+:: Output: dist_installer\WhisperTranscriberSuite-vX.Y.Z-1-Windows-Setup.exe
 
 :: 3. Portable zip — literally the same embed_build\ tree, zipped whole
-python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscriberSuite-vX.Y.Z-Portable', 'zip', r'embed_build')"
-:: Output: dist_installer\WhisperTranscriberSuite-vX.Y.Z-Portable.zip
+python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscriberSuite-vX.Y.Z-2-Windows-Portable', 'zip', r'embed_build')"
+:: Output: dist_installer\WhisperTranscriberSuite-vX.Y.Z-2-Windows-Portable.zip
 ```
 
 See "Rebuild without bumping the version" below for the full,
@@ -147,7 +153,7 @@ Then wrap the tree in an Inno Setup installer:
 "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer_embed.iss
 ```
 
-Output: `dist_installer\WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe`
+Output: `dist_installer\WhisperTranscriberSuite-vX.Y.Z-1-Windows-Setup.exe`
 (~150-400 MB depending on which optional heavy deps — torch/stable-ts
 — happen to be present; the batch script prunes them from
 `embed_build\`, see its "slim" step).
@@ -162,11 +168,11 @@ same `embed_build\` tree, just zipped whole instead of wrapped by
 Inno Setup:
 
 ```cmd
-python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscriberSuite-vX.Y.Z-Portable', 'zip', r'embed_build')"
+python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscriberSuite-vX.Y.Z-2-Windows-Portable', 'zip', r'embed_build')"
 ```
 
-`WhisperTranscriberSuite-vX.Y.Z-Portable.zip` and
-`WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe` are the two files that get
+`WhisperTranscriberSuite-vX.Y.Z-2-Windows-Portable.zip` and
+`WhisperTranscriberSuite-vX.Y.Z-1-Windows-Setup.exe` are the two files that get
 uploaded to the GitHub release (see "Rebuild without bumping the
 version" below, and `docs/RELEASE_PROCESS.md` for a full version-bump
 release).
@@ -219,7 +225,7 @@ CI gate to catch a regression.
 ```cmd
 build_embed_installer.bat
 "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer_embed.iss
-python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscriberSuite-vX.Y.Z-Portable', 'zip', r'embed_build')"
+python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscriberSuite-vX.Y.Z-2-Windows-Portable', 'zip', r'embed_build')"
 ```
 
 `build_embed_installer.bat` always does a **full** rebuild (deletes
@@ -240,8 +246,8 @@ import time) is sanity-checked here.
 
 ```cmd
 gh release upload vX.Y.Z ^
-    dist_installer\WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe ^
-    dist_installer\WhisperTranscriberSuite-vX.Y.Z-Portable.zip ^
+    dist_installer\WhisperTranscriberSuite-vX.Y.Z-1-Windows-Setup.exe ^
+    dist_installer\WhisperTranscriberSuite-vX.Y.Z-2-Windows-Portable.zip ^
     --clobber
 ```
 

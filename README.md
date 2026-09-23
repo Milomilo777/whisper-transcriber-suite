@@ -80,9 +80,9 @@ Grab the latest build from the **[releases page](https://github.com/Milomilo777/
 
 | Asset | Size | Best for |
 |---|---|---|
-| **`WhisperTranscriberSuite-…-Setup-Standard.exe`** | ~215 MB | **Most people.** A normal installer: Start-menu shortcut, upgrades in place over an older version, files visible on disk. |
-| **`WhisperTranscriberSuite-…-Portable.zip`** | ~330 MB | Unzip and run. No installation, no admin rights, happy on a USB stick. |
-| **`WhisperTranscriberSuite-…-macOS-*.dmg`** | ~400 MB | macOS (x64 and arm64 builds are published separately). |
+| **`WhisperTranscriberSuite-…-1-Windows-Setup.exe`** | ~215 MB | **Most people.** A normal installer: Start-menu shortcut, upgrades in place over an older version, files visible on disk. |
+| **`WhisperTranscriberSuite-…-2-Windows-Portable.zip`** | ~330 MB | Unzip and run. No installation, no admin rights, happy on a USB stick. |
+| **`WhisperTranscriberSuite-…-3-macOS-*.dmg`** | ~400 MB | macOS (x64 and arm64 builds are published separately). |
 
 **Downloads by version** (each badge counts only that version's own
 release — older versions stay published and their counts are never
@@ -256,7 +256,7 @@ Full reference: [docs/CONFIG.md](docs/CONFIG.md).
 <br>
 
 **No uninstall needed.** The Standard installer uses a stable application ID,
-so you just download the newer `…-Setup-Standard.exe` and run it — it upgrades
+so you just download the newer `…-Windows-Setup.exe` and run it — it upgrades
 over the existing install and keeps your shortcut and settings. The Portable
 build is self-contained: replace the old folder with the new one.
 

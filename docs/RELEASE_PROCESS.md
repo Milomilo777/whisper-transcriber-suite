@@ -124,7 +124,7 @@ build_embed_installer.bat
 
 :: Setup-Standard installer
 "C:\Users\Owner\AppData\Local\Programs\Inno Setup 6\ISCC.exe" installer_embed.iss
-::    →  dist_installer\WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe
+::    →  dist_installer\WhisperTranscriberSuite-vX.Y.Z-1-Windows-Setup.exe
 ```
 
 Update the version-string portions of `installer.iss` /

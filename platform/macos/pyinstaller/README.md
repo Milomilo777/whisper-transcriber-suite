@@ -39,7 +39,7 @@ bash platform/macos/pyinstaller/verify_mac_bundle.sh
 # 5. wrap into a .dmg (create-dmg if installed, else plain hdiutil)
 bash platform/macos/pyinstaller/builddmg.command
 #    -> dist/Whisper Transcriber Suite-x64.dmg   (rename for the release:
-#       WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg)
+#       WhisperTranscriberSuite-vX.Y.Z-3-macOS-x64.dmg)
 ```
 
 ## Which Macs will the result run on?

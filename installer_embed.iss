@@ -1,7 +1,7 @@
 ; installer_embed.iss — Inno Setup script for Method C
 ; (Standard installer with an embeddable Python interpreter).
 ;
-; Builds: dist_installer\WhisperTranscriberSuite-v0.7.1-Setup-Standard.exe
+; Builds: dist_installer\WhisperTranscriberSuite-vX.Y.Z-1-Windows-Setup.exe
 ;
 ; Source tree expected: embed_build\ — produced by
 ; build_embed_installer.bat. The tree contains a self-contained
@@ -28,7 +28,7 @@ AppPublisher=translation-robot
 AppPublisherURL=https://github.com/translation-robot
 DefaultDirName={autopf}\WhisperTranscriberSuite
 DefaultGroupName=Whisper Transcriber Suite
-OutputBaseFilename=WhisperTranscriberSuite-v{#MyAppVersion}-Setup-Standard
+OutputBaseFilename=WhisperTranscriberSuite-v{#MyAppVersion}-1-Windows-Setup
 OutputDir=dist_installer
 Compression=lzma2/ultra
 SolidCompression=yes
