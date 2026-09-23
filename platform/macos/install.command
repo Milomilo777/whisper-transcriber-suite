@@ -68,7 +68,36 @@ rm -rf "$VENV"
 . "$VENV/bin/activate"
 python -m pip install --upgrade pip wheel >/dev/null
 say "installing dependencies (a few minutes)…"
-python -m pip install -r "$REPO_ROOT/requirements.txt"
+# --prefer-binary: on Intel Macs the newest release of several native deps
+# (e.g. av) ships only an sdist, which needs pkg-config + the FFmpeg dev
+# libraries to compile. Without this flag pip picks that sdist over the
+# older x86_64 wheel and the whole install aborts.
+#
+# pywhispercpp (whisper.cpp backend) and stable-ts (alignment, pulls torch)
+# are OPTIONAL features: there is no x86_64 macOS wheel for pywhispercpp>=1.4,
+# so on Intel it compiles from source and can fail on older Command Line
+# Tools. Install the required deps first, then the optional ones best-effort
+# so a failed optional build no longer aborts the whole installer.
+OPTIONAL_RE='^[[:space:]]*(pywhispercpp|stable-ts)'
+REQS_CORE="$(mktemp)"
+grep -viE "$OPTIONAL_RE" "$REPO_ROOT/requirements.txt" > "$REQS_CORE"
+python -m pip install --prefer-binary -r "$REQS_CORE"
+rm -f "$REQS_CORE"
+grep -iE "$OPTIONAL_RE" "$REPO_ROOT/requirements.txt" | sed 's/[[:space:]]*#.*//' | while read -r req; do
+  [ -n "$req" ] || continue
+  # Intel Macs: stable-ts pulls torch 2.2.2 (the last torch with x86_64
+  # macOS wheels). torch and ctranslate2 each ship their own libiomp5.dylib,
+  # and ctranslate2 imports torch whenever it is installed, so EVERY
+  # transcription then aborts with "OMP: Error #15: Initializing
+  # libiomp5.dylib, but found libiomp5.dylib already initialized" (exit 134).
+  # Skip it there unless explicitly requested.
+  if [ "$(uname -m)" = "x86_64" ] && [[ "$req" == stable-ts* ]] && [ "${WTS_INSTALL_STABLE_TS:-0}" != 1 ]; then
+    warn "skipping optional '$req' on Intel: its torch clashes with ctranslate2 (duplicate libiomp5 -> transcription aborts)."
+    continue
+  fi
+  python -m pip install --prefer-binary "$req" || \
+    warn "optional '$req' failed to install — that one feature stays disabled; the app still works."
+done
 python -m pip install --upgrade yt-dlp
 
 # ---- ffmpeg -------------------------------------------------------------
