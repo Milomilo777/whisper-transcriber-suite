@@ -1130,11 +1130,11 @@ class TranscriptViewer(tk.Toplevel):
         self._set_ai_result(f"{label}…")
 
         def _worker() -> None:
-            runner, err = self._get_llm_runner()
-            if runner is None:
-                self._post_to_main(lambda: self._finish_ai_task(err))
-                return
             try:
+                runner, err = self._get_llm_runner()
+                if runner is None:
+                    self._post_to_main(lambda: self._finish_ai_task(err))
+                    return
                 result = work(runner)
             except Exception as e:  # noqa: BLE001
                 result = f"{label} failed: {e}"
@@ -1207,6 +1207,7 @@ class TranscriptViewer(tk.Toplevel):
             parent=self,
         ):
             return
+        segments_snap = [dict(s) for s in self.segments]
         self._bilingual_cancel = threading.Event()
         self._set_ai_buttons_busy(True)
         self._ai_cancel_btn.pack(side="left", padx=(6, 0))
@@ -1218,16 +1219,18 @@ class TranscriptViewer(tk.Toplevel):
             )
 
         def _worker() -> None:
-            runner, err = self._get_llm_runner()
-            if runner is None:
-                self._post_to_main(
-                    lambda: self._finish_bilingual_translate(None, lang, err)
-                )
-                return
-            from core import llm as _llm
             try:
+                runner, err = self._get_llm_runner()
+                if runner is None:
+                    self._post_to_main(
+                        lambda: self._finish_bilingual_translate(
+                            segments_snap, None, lang, err
+                        )
+                    )
+                    return
+                from core import llm as _llm
                 translations = _llm.translate_segments(
-                    runner, self.segments, target_language=lang,
+                    runner, segments_snap, target_language=lang,
                     progress_cb=_progress, cancel_event=self._bilingual_cancel,
                 )
                 error = None
@@ -1235,7 +1238,9 @@ class TranscriptViewer(tk.Toplevel):
                 translations = None
                 error = str(e)
             self._post_to_main(
-                lambda: self._finish_bilingual_translate(translations, lang, error)
+                lambda: self._finish_bilingual_translate(
+                    segments_snap, translations, lang, error
+                )
             )
 
         from core._threads import safe_thread
@@ -1247,7 +1252,8 @@ class TranscriptViewer(tk.Toplevel):
             self._ai_progress_var.set("Cancelling…")
 
     def _finish_bilingual_translate(
-        self, translations: "list[str] | None", lang: str, error: str | None,
+        self, segments: "list[dict[str, Any]]",
+        translations: "list[str] | None", lang: str, error: str | None,
     ) -> None:
         if self._closing:
             return
@@ -1270,7 +1276,7 @@ class TranscriptViewer(tk.Toplevel):
             return
         from core.writers import bilingual_srt as _bsrt
         try:
-            body = _bsrt.write(self.segments, translations, self.media_path or "")
+            body = _bsrt.write(segments, translations, self.media_path or "")
         except ValueError as e:
             show_error(
                 self, "Save failed", "Could not build the bilingual subtitle.",
