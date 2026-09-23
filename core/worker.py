@@ -555,6 +555,17 @@ def main() -> int:
                      daemon=True).start()
 
     try:
+        # Live tab worker only: load the (usually smaller) live model the
+        # tab picked instead of the main one -- see core/live_model.py.
+        from . import transcriber as _transcriber
+        from .live_model import apply_env_override
+
+        live_slug = apply_env_override(_transcriber.config)
+        if live_slug:
+            logger.info("Live worker using model %s", live_slug)
+    except Exception:  # noqa: BLE001
+        logger.exception("Live model override failed; loading the main model")
+    try:
         model_loaded = load_existing_model(log_cb)
     except Exception as e:  # noqa: BLE001
         # A raise here (e.g. a bad model-path type slipping past the

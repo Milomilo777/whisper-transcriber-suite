@@ -472,3 +472,38 @@ def test_first_stop_drains_backlog_second_stop_discards(built, root):
     assert built._live_draining is False
     assert built.live_stop_btn.cget("text") == "Stop"
     assert any("discarded 2" in m for m in built.logged)
+
+
+# ------------------------------------------------------------ model picker
+
+
+def test_model_picker_defaults_to_auto_and_saves_choice(built, monkeypatch):
+    saved: list[dict] = []
+    monkeypatch.setattr("core.config.save_config", lambda cfg: saved.append(dict(cfg)))
+    values = list(built.live_model_combo.cget("values"))
+    assert values[0] == live_tab._MODEL_AUTO and values[1] == live_tab._MODEL_MAIN
+    assert len(values) > 2  # catalog models follow
+    assert built.live_model_var.get() == live_tab._MODEL_AUTO
+
+    built.live_model_var.set(live_tab._MODEL_MAIN)
+    live_tab._on_live_model_selected(built)
+    assert built.app_config["live_model"] == "main"
+    assert saved and saved[-1]["live_model"] == "main"
+
+
+def test_prepare_live_model_uses_main_model_on_gpu(built, monkeypatch):
+    monkeypatch.setattr("core.hardware.detect_device_for", lambda cfg: ("cuda", "float16"))
+    built.app_config["live_model"] = "auto"
+    assert live_tab._prepare_live_model(built, "fa") is None
+
+
+def test_prepare_live_model_falls_back_when_download_fails(built, monkeypatch, tmp_path):
+    monkeypatch.setattr("core.hardware.detect_device_for", lambda cfg: ("cpu", "int8"))
+
+    def boom(cfg, *a, **kw):
+        raise OSError("offline")
+
+    monkeypatch.setattr("core.model_manager.ensure_model", boom)
+    built.app_config.update(live_model="auto", hub_folder=str(tmp_path))
+    assert live_tab._prepare_live_model(built, "fa") is None
+    assert any("could not download" in m for m in built.logged)

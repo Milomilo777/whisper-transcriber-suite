@@ -178,6 +178,7 @@ a = Analysis(
         'core.search',
         'core.denoise',
         'core.live',
+        'core.live_model',
         'core.separator',
         'core.tiling',
         'core.voiceprint',

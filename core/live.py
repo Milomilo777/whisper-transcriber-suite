@@ -499,7 +499,7 @@ class LiveSession:
             kind="warning",
             detail=(
                 f"Transcription is behind the audio; {self.dropped_chunks} "
-                f"chunk(s) skipped. Try a smaller model in Advanced."
+                f"chunk(s) skipped. Pick a faster model in the Model list."
             ),
         ))
 

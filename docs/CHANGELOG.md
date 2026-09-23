@@ -4,6 +4,28 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- **Live tab: its own "Model:" choice.** "Automatic" (default) uses a small,
+  fast model on a computer without a supported graphics card — the large
+  models were several times slower than speech there, so text fell further
+  and further behind — and the Transcribe tab's model on a graphics card.
+  Any catalog model can also be picked by hand.
+
+### Changed
+
+- **Live tab level display is now Siri-style sine waves** instead of bars,
+  and animates at ~30 fps (ported from SiriWave, MIT).
+- **Live tab auto-detect locks the language after the first confident
+  chunk**, instead of re-detecting on every chunk (which doubled the time
+  each chunk took).
+
+### Fixed
+
+- **Live tab Stop no longer throws away speech still waiting to be
+  transcribed.** The microphone stops at once and the rest is finished;
+  pressing "Discard rest" skips it.
+
 ## [1.9.0] — 2026-09-23
 
 ### Added

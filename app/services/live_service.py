@@ -61,9 +61,12 @@ class LiveTranscriber:
         *,
         language: Optional[str] = None,
         log: Optional[Callable[[str], None]] = None,
+        model_slug: Optional[str] = None,
     ) -> None:
         self.entry_file = entry_file
         self.language = language
+        #: Catalog slug for the worker to load instead of the main model.
+        self.model_slug = model_slug
         #: Set when auto-detect locked onto a language this session.
         self.locked_language = ""
         self._log = log
@@ -87,6 +90,12 @@ class LiveTranscriber:
             cmd = [sys.executable, "-u", "-m", "core.worker"]
         env = os.environ.copy()
         env["WHISPER_WORKER_TOKEN"] = self._token
+        from core.live_model import LIVE_MODEL_ENV
+
+        if self.model_slug:
+            env[LIVE_MODEL_ENV] = self.model_slug
+        else:
+            env.pop(LIVE_MODEL_ENV, None)
         kwargs: dict[str, Any] = {
             "cwd": os.path.dirname(os.path.abspath(self.entry_file)),
             "stdin": subprocess.PIPE,
@@ -122,7 +131,7 @@ class LiveTranscriber:
                 )
         raise LiveWorkerError(
             "Timed out waiting for the speech model to load. "
-            "Try a smaller model in Advanced."
+            "Pick a faster model in the Live tab's Model list."
         )
 
     def stop(self) -> None:

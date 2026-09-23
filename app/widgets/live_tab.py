@@ -70,6 +70,35 @@ def _make_readonly_but_selectable(text: tk.Text) -> None:
     text.bind("<Key>", _filter_key)
 
 
+_MODEL_AUTO = "Automatic (fast enough for this computer)"
+_MODEL_MAIN = "Same as the Transcribe tab"
+
+
+def _live_model_choices(app: Any) -> list[tuple[str, str]]:
+    """``[(label, live_model value), ...]`` for the Model dropdown."""
+    out = [(_MODEL_AUTO, "auto"), (_MODEL_MAIN, "main")]
+    try:
+        from core.model_manager import catalog_models
+
+        out += [(label, slug) for slug, label in catalog_models(app.app_config)]
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not list models for the Live tab", exc_info=True)
+    return out
+
+
+def _on_live_model_selected(app: Any) -> None:
+    value = dict(_live_model_choices(app)).get(app.live_model_var.get(), "auto")
+    if app.app_config.get("live_model") == value:
+        return
+    app.app_config["live_model"] = value
+    from core.config import save_config
+
+    try:
+        save_config(app.app_config)
+    except Exception:  # noqa: BLE001
+        logger.exception("Could not save the Live tab model choice")
+
+
 def build_live_tab(app: Any, parent: Any) -> None:
     """Construct the Live tab onto ``parent`` and wire it to ``app``."""
     from core import live as _live
@@ -84,6 +113,11 @@ def build_live_tab(app: Any, parent: Any) -> None:
     app.live_device_var = tk.StringVar(value="Default input device")
     app.live_lang_var = tk.StringVar(value="Auto")
     app.live_status_var = tk.StringVar(value="Idle.")
+    _choices = _live_model_choices(app)
+    _saved = str(app.app_config.get("live_model") or "auto")
+    app.live_model_var = tk.StringVar(value=next(
+        (label for label, value in _choices if value == _saved), _MODEL_AUTO
+    ))
 
     parent.columnconfigure(0, weight=1)
     parent.rowconfigure(3, weight=1)
@@ -138,6 +172,25 @@ def build_live_tab(app: Any, parent: Any) -> None:
         "audio: each chunk is short, and detection on a few seconds of "
         "speech can guess wrong and switch mid-session.",
     ).grid(row=2, column=2, sticky="w", padx=(0, 8), pady=6)
+
+    ttk.Label(src, text="Model:").grid(row=3, column=0, sticky="e", padx=8, pady=6)
+    app.live_model_combo = ttk.Combobox(
+        src, textvariable=app.live_model_var, state="readonly", width=48,
+        values=[label for label, _v in _choices],
+    )
+    app.live_model_combo.grid(row=3, column=1, sticky="ew", padx=8, pady=6)
+    app.live_model_combo.bind(
+        "<<ComboboxSelected>>", lambda _e: _on_live_model_selected(app)
+    )
+    help_icon(
+        src,
+        "Live text only keeps up if the model transcribes faster than you "
+        "speak. On a computer without a supported graphics card the large "
+        "models are several times too slow, so Automatic uses a small model "
+        "there (downloaded once, about 0.5 GB) and the Transcribe tab's model "
+        "on a graphics card. Pick a model yourself to trade speed for "
+        "accuracy.",
+    ).grid(row=3, column=2, sticky="w", padx=(0, 8), pady=6)
 
     # ── Controls ──────────────────────────────────────────────────────
     ctl = ttk.Frame(parent)
@@ -267,7 +320,8 @@ def _set_running(app: Any, running: bool) -> None:
     try:
         app.live_start_btn.configure(state=("disabled" if running else "normal"))
         app.live_stop_btn.configure(state=("normal" if running else "disabled"))
-        for widget in (app.live_source_combo, app.live_lang_combo):
+        for widget in (app.live_source_combo, app.live_lang_combo,
+                       app.live_model_combo):
             widget.configure(state=("disabled" if running else "readonly"))
         if not running:
             _sync_device_state(app)
@@ -314,8 +368,10 @@ def _start(app: Any) -> None:
 
         transcriber = None
         try:
+            model_slug = _prepare_live_model(app, language)
             transcriber = LiveTranscriber(
-                app.entry_file, language=language, log=app.log
+                app.entry_file, language=language, log=app.log,
+                model_slug=model_slug,
             )
             transcriber.start()
             session = _live.LiveSession(
@@ -351,6 +407,47 @@ def _start(app: Any) -> None:
     import threading
 
     threading.Thread(target=worker, name="live-start", daemon=True).start()
+
+
+def _prepare_live_model(app: Any, language: str | None) -> str | None:
+    """Pick the live model and download it if needed (worker thread).
+
+    Returns the catalog slug for the live worker, or None to load the
+    main model. A failed download falls back to the main model rather
+    than refusing to start.
+    """
+    from core import live_model as _lm
+    from core.hardware import detect_device_for
+
+    try:
+        device, _ct = detect_device_for(app.app_config)
+    except Exception:  # noqa: BLE001
+        device = "cpu"
+    slug = _lm.resolve_live_slug(app.app_config, language, device)
+    if not slug:
+        return None
+    model_cfg = _lm.live_model_config(app.app_config, slug)
+    if model_cfg is None:
+        app.post_to_main(lambda: app.log(
+            f"Live: unknown model '{slug}'; using the Transcribe tab's model."
+        ))
+        return None
+    if not _lm.is_downloaded(model_cfg):
+        app.post_to_main(lambda: app.live_status_var.set(
+            f"Downloading the live model ({slug}) — one time only…"
+        ))
+        try:
+            from core.model_manager import ensure_model
+
+            ensure_model(model_cfg)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Live model download failed")
+            msg = f"Live: could not download '{slug}' ({e}); using the Transcribe tab's model."
+            app.post_to_main(lambda: app.log(msg))
+            return None
+        app.post_to_main(lambda: app.live_status_var.set("Loading the speech model…"))
+    app.post_to_main(lambda: app.log(f"Live: using the '{slug}' model."))
+    return slug
 
 
 def _started(app: Any, transcriber: Any, session: Any) -> None:
