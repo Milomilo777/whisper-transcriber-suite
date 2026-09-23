@@ -23,6 +23,16 @@ from .config import user_data_dir
 logger = logging.getLogger(__name__)
 
 
+# One lock for every HistoryDB in this process. SQLite serialises writes
+# between connections itself, but only by making the loser wait out its
+# busy timeout; the download and transcription services each hold their own
+# HistoryDB instance, so a per-instance lock would not stop their worker
+# threads from contending at the SQLite layer and surfacing "database is
+# locked" to callers that swallow it. Sharing the lock keeps in-process
+# writers strictly queued (and stats()/list_* consistent with them).
+_WRITE_LOCK = threading.Lock()
+
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS downloads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,6 +91,28 @@ def _is_transient_lock_error(exc: sqlite3.Error) -> bool:
     )
 
 
+def _is_corruption_error(exc: sqlite3.Error) -> bool:
+    """True only for errors that mean the file itself is unreadable.
+
+    ``SQLITE_IOERR`` / ``SQLITE_CANTOPEN`` / ``SQLITE_PERM`` / ``SQLITE_FULL``
+    are transient or environmental: antivirus, a network share, or a full
+    disk can make one read fail while the file is perfectly healthy.
+    Renaming the DB to ``.corrupt`` for those costs the user their entire
+    history — the same reasoning that exempts lock errors in
+    :func:`_is_transient_lock_error`. Only corruption-class errors get the
+    recover-aside treatment.
+    """
+    name = str(getattr(exc, "sqlite_errorname", "") or "")
+    if name.startswith(("SQLITE_CORRUPT", "SQLITE_NOTADB")):
+        return True
+    message = str(exc).lower()
+    return (
+        "database disk image is malformed" in message
+        or "file is not a database" in message
+        or "malformed database schema" in message
+    )
+
+
 class HistoryDB:
     def __init__(self, path: str | Path | None = None) -> None:
         self.path: Path = Path(path) if path else default_db_path()
@@ -95,31 +127,58 @@ class HistoryDB:
             str(self.path), check_same_thread=False
         )
         self._conn.row_factory = sqlite3.Row
-        # Module-level write lock — SQLite serialises writes
-        # internally but the Python connection object is not
-        # thread-safe for concurrent write attempts; the lock
-        # gives us deterministic queue + commit semantics.
-        self._write_lock = threading.Lock()
-        # WAL mode (audit D2): the default DELETE journal locks the
-        # whole DB during writes, starves concurrent readers, and on
-        # a hard crash mid-write can leave the file unopenable on
-        # the next launch. WAL allows concurrent read while a write
-        # is in-flight and recovers automatically. NORMAL sync is
-        # the standard trade-off — slightly weaker durability than
-        # FULL but avoids fsync on every commit (history.db can
-        # afford to lose the last few inserts on a kernel-panic).
-        try:
-            self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA synchronous=NORMAL")
-        except sqlite3.Error as e:
-            logger.exception("history.db PRAGMA setup failed: %s", e)
+        # Module-level write lock (see _WRITE_LOCK) — the Python
+        # connection object is not thread-safe for concurrent write
+        # attempts; the lock gives us deterministic queue + commit
+        # semantics across every instance in this process, not just
+        # this connection.
+        self._write_lock = _WRITE_LOCK
+        self._setup_pragmas()
         # Integrity check on open (audit D6) — a crash-corrupted DB
         # is detected up front and renamed aside so the user gets
         # a fresh-but-empty history instead of a launch crash.
         self._check_integrity_or_recover()
-        with self._conn:
-            self._conn.executescript(SCHEMA)
+        try:
+            with self._conn:
+                self._conn.executescript(SCHEMA)
+        except sqlite3.Error as e:
+            # Same contract as _setup_pragmas above and _migrate_schema
+            # below: a locked or transiently-unavailable DB at launch must
+            # not crash the app. For an existing DB the schema is already
+            # on disk; for a fresh DB the writes that follow fail loudly
+            # through _txn() instead of taking the process down here.
+            logger.exception("history.db schema creation failed: %s", e)
         self._migrate_schema()
+
+    def _setup_pragmas(self) -> None:
+        """Enable WAL mode (audit D2) and the matching synchronous level.
+
+        WAL lets a read proceed while a write is in-flight and recovers
+        automatically after a crash; the default DELETE journal locks the
+        whole DB during writes and can leave the file unopenable after a
+        hard reset mid-write. NORMAL sync is the standard WAL trade-off —
+        slightly weaker durability than FULL but no fsync per commit.
+
+        WAL is not always granted (redirected/network ``user_data_dir``,
+        some VFS): SQLite does not raise then, it simply keeps the rollback
+        journal and *returns* the mode. NORMAL sync is only corruption-safe
+        in WAL mode, so FULL is kept for the rollback journal instead of
+        silently weakening it.
+        """
+        try:
+            row = self._conn.execute("PRAGMA journal_mode=WAL").fetchone()
+            mode = str(row[0]).lower() if row is not None else ""
+            if mode == "wal":
+                self._conn.execute("PRAGMA synchronous=NORMAL")
+            else:
+                logger.warning(
+                    "history.db WAL not enabled (journal_mode=%r); "
+                    "keeping synchronous=FULL for the rollback journal.",
+                    mode,
+                )
+                self._conn.execute("PRAGMA synchronous=FULL")
+        except sqlite3.Error as e:
+            logger.exception("history.db PRAGMA setup failed: %s", e)
 
     def _migrate_schema(self) -> None:
         """Idempotent ADD COLUMN migrations guarded by a PRAGMA table_info
@@ -155,12 +214,15 @@ class HistoryDB:
         A badly-mangled file makes the PRAGMA itself raise
         ``sqlite3.DatabaseError`` ("file is not a database") rather than
         returning a non-``ok`` row — that is ALSO corruption and must trigger
-        the same recover-aside, otherwise __init__ would fall through to
-        ``executescript(SCHEMA)`` and crash on the malformed file at launch.
+        the same recover-aside, otherwise every later statement would run
+        against a file SQLite cannot read at all.
 
         A LOCK error is deliberately NOT corruption (see
-        :func:`_is_transient_lock_error`): another connection merely holding
-        the DB must never cost the user their history.
+        :func:`_is_transient_lock_error`), and neither is a transient
+        environmental failure (see :func:`_is_corruption_error`): another
+        connection merely holding the DB, or one unreadable page during an
+        antivirus scan / network hiccup / full disk, must never cost the
+        user their history.
         """
         try:
             row = self._conn.execute("PRAGMA integrity_check").fetchone()
@@ -170,6 +232,14 @@ class HistoryDB:
                     "history.db is locked by another connection (%s); "
                     "skipping this open's integrity_check instead of "
                     "treating a healthy DB as corrupt.", e,
+                )
+                return
+            if not _is_corruption_error(e):
+                logger.error(
+                    "history.db integrity_check raised a non-corruption "
+                    "error (%s); leaving the database in place and skipping "
+                    "the check instead of renaming a healthy history aside.",
+                    e,
                 )
                 return
             logger.error(
@@ -229,10 +299,9 @@ class HistoryDB:
                 except OSError:
                     pass
         # If the main DB could NOT be moved aside (e.g. a Windows file
-        # lock on os.replace), do not silently reopen the still-corrupt
-        # file — reopening it and running executescript() on a malformed
-        # DB raises an uncaught DatabaseError in __init__ and crashes the
-        # app on launch. Delete it in place so a clean DB is created.
+        # lock on os.replace), do not leave the still-corrupt file in
+        # place: reopening it would hand every later statement "file is
+        # not a database". Delete it in place so a clean DB is created.
         if not moved_main:
             try:
                 _os.unlink(str(self.path))
@@ -245,11 +314,7 @@ class HistoryDB:
             str(self.path), check_same_thread=False
         )
         self._conn.row_factory = sqlite3.Row
-        try:
-            self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA synchronous=NORMAL")
-        except sqlite3.Error:
-            pass
+        self._setup_pragmas()
 
     def close(self) -> None:
         # Every write path serialises on _write_lock; closing without it
