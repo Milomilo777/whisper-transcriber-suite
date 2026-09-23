@@ -5,6 +5,37 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-23 — parallel-wave cheap-model campaign merged to master; campaign stopped
+
+- All 8 whisper sandboxes of the 2026-09-22 campaign (`C:\oc-sandbox\<name>\`,
+  final-wave votes in `C:\oc-sandbox\_automation_whisper\FINAL_WAVE_SUMMARY.md`)
+  were ported to master as commits `9fbcd99`..`a21897d` (transcriber, server jobs,
+  transcript viewer, voice clone, history, download service, cloud STT, denoise/
+  separator/hallucination). The scheduled task `Whisper-OpenCode-CheapModel-Rotation`
+  is now **Disabled**.
+- Verified: pyright 0 errors, full hermetic suite green, each sandbox's own test
+  suite re-run against the merged files, plus a real faster-whisper (small, CPU)
+  run: full / denoise / clipped / cancel→checkpoint→resume / clipped-resume refusal,
+  and a 2-instance concurrent HistoryDB write burst. SMTV live smoke tests passed.
+- The sandbox tests were NOT copied into `tests/`: they replace `sys.modules["core"]`
+  with stubs and would poison the shared suite. Porting them properly is open work.
+- Two long-standing flaky CI failures fixed at the root (`aeae4f4`).
+
+### Backlog added this session
+
+- **"Pick the best model for my PC" button** (owner idea, 2026-09-23). The hardware
+  wizard (`core/hardware.py` `probe_tiers`) already picks device/compute_type but
+  nothing maps hardware to a *model*. Sketch: read VRAM (CUDA) / system RAM / CPU
+  cores, then offer two presets — "Fastest" (e.g. `small`/`distil-*` on CPU,
+  `large-v3-turbo` on a ≥6 GB GPU) and "Most accurate" (`large-v3` on a ≥10 GB GPU,
+  `medium` or turbo int8 on CPU) — shown next to the model picker with a one-line
+  reason and an estimated speed. Must be exercised on real hardware before release.
+- GitHub issue #7 (RTX 5060 / sm_120 falls back to CPU) has an unanswered reporter
+  reply offering to test a dev build; the architecture-specific error message is
+  only on master, not in v1.8.0.
+
+---
+
 ## 🟡 2026-09-21 — the 18-branch merge phase is LIVE and unattended, driven by
 ## an OS-level Windows Scheduled Task, NOT a Claude Code session — read this
 ## before concluding the pipeline is "stalled"
