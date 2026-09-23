@@ -31,6 +31,7 @@ from app.widgets.console import apply_console_theme, build_console, insert_log_l
 from app.widgets.error_dialog import show_error
 from app.widgets.platform import open_folder as _open_folder_helper
 from app.widgets.live_tab import build_live_tab, stop_live_session
+from app.widgets.smtv_tab import build_smtv_tab
 from app.widgets.voice_clone_tab import build_voice_clone_tab, stop_voice_clone_worker
 from app.widgets.tabs import (
     build_download_tab,
@@ -1629,10 +1630,12 @@ class App(tk.Tk):
         self.t5 = ttk.Frame(self.nb)
         self.t6 = ttk.Frame(self.nb)
         self.t7 = ttk.Frame(self.nb)
+        self.t8 = ttk.Frame(self.nb)
         self.nb.add(self.t1, text="Transcribe")
         self.nb.add(self.t2, text="Transcription Queue")
         self.nb.add(self.t6, text="Live")
         self.nb.add(self.t3, text="Download Videos")
+        self.nb.add(self.t8, text="Supreme Master TV")
         # Video Tiling is optional: the Standard installer can drop a
         # no_tiling.flag marker into {app} when the user opts out at install
         # time, in which case we don't add the tab at all. self.tiling (the
@@ -1659,6 +1662,7 @@ class App(tk.Tk):
         build_queue_tab(self, self.t2)
         build_live_tab(self, self.t6)
         build_download_tab(self, self.t3)
+        build_smtv_tab(self, self.t8)
         if self._tiling_tab_visible:
             build_tiling_tab(self, self.t4)
         build_server_tab(self, self.t5)

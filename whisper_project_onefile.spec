@@ -158,6 +158,7 @@ a = Analysis(
         'app.widgets.hardware_wizard',
         'app.widgets.platform',
         'app.widgets.live_tab',
+        'app.widgets.smtv_tab',
         'app.widgets.audio_visualizer',
         'app.widgets.tabs',
         'app.widgets.tray',
@@ -215,6 +216,7 @@ a = Analysis(
         'core.worker',
         'core.integrations.otranscribe',
         'core.integrations.smtv',
+        'core.integrations.smtv_browse',
         # Optional LAN/web HTTP job server (stdlib only).
         'core.server',
         'core.server.httpd',

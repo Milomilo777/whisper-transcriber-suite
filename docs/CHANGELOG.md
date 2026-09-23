@@ -6,6 +6,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **New "Supreme Master TV" tab** — an introduction to the channel (watch
+  live, about, schedule) plus its video library: search, program shortcuts,
+  28 site languages, thumbnail cards with Watch / Download / Transcribe.
+  Nothing is fetched until the tab is first opened.
 - **Live tab: its own "Model:" choice.** "Automatic" (default) uses a small,
   fast model on a computer without a supported graphics card — the large
   models were several times slower than speech there, so text fell further
