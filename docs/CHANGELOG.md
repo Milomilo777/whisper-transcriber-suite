@@ -22,6 +22,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Background checks started while the window was being built could lose
+  their result** (e.g. the engine status line at startup): the app's
+  main-thread queue now exists before any tab is built.
 - **Live tab Stop no longer throws away speech still waiting to be
   transcribed.** The microphone stops at once and the rest is finished;
   pressing "Discard rest" skips it.

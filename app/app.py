@@ -721,6 +721,15 @@ class App(tk.Tk):
         # diagnose.
         self.worker_events: Queue = Queue(maxsize=2000)
         self.worker_ready = False
+        # Background threads (burn-subs worker, hardware-wizard benchmark,
+        # tray clicks, …) can't call self.after() directly on Python 3.14
+        # (RuntimeError; undefined on earlier 3.x). They push callables
+        # here; _drain_main_calls() runs them on the Tk main thread.
+        # Created before _build_tabs: tab builders start background probes
+        # (e.g. the engine-status check) whose post_to_main used to land
+        # before this queue existed -> AttributeError in that thread and
+        # the result silently lost.
+        self._main_thread_calls: Queue = Queue(maxsize=2000)
         self.app_config = load_config()
         setup_logging(self.app_config.get("log_level", "INFO"))
         init_sentry()
@@ -814,11 +823,8 @@ class App(tk.Tk):
         # _watched_path_queue is filesystem-watcher → main thread;
         # _main_thread_calls is any-thread → main thread.
         self._watched_path_queue: Queue = Queue(maxsize=2000)
-        # Background threads (burn-subs worker, hardware-wizard benchmark,
-        # tray clicks, …) can't call self.after() directly on Python 3.14
-        # (RuntimeError; undefined on earlier 3.x). They push callables
-        # here; _drain_main_calls() runs them on the Tk main thread.
-        self._main_thread_calls: Queue = Queue(maxsize=2000)
+        # (_main_thread_calls itself is created near the top of __init__,
+        # before _build_tabs -- see the comment there.)
         self._install_tray()
         self._install_clipboard_keys()
         self._install_text_context_menu()
