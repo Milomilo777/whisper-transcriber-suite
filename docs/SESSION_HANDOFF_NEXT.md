@@ -5,6 +5,26 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-23 (later) — macOS build fixed, verified on a real Mac, v1.9.0 (macOS assets)
+
+- Built + tested on a real Intel Mac (macOS 10.15.7 VirtualBox VM, temporary) and on
+  GitHub's `macos-15` / `macos-15-intel` runners. Root causes of the earlier broken Mac
+  builds and the new pipeline: **`docs/MACOS_BUILD_NOTES.md`**; full run log with every
+  command/error and screenshots: `docs/reports/2026-09-23-macos-vm-build-report.md`.
+- Packaging-only fixes: static ffmpeg (no Homebrew), yt-dlp copied verbatim after BUNDLE,
+  computed `LSMinimumSystemVersion`, version from `core.__version__`, onnxruntime pinned
+  (`platform/macos/pyinstaller/constraints-macos.txt`), `install.command` works on Intel,
+  new `fetch_mac_binaries.sh` / `verify_mac_bundle.sh` / `smoke_test_app.sh`, CI rewritten.
+- Version bumped to **1.9.0** (owner request). The v1.9.0 GitHub release was created with
+  the **macOS assets only**; the Windows Setup-Standard + Portable for 1.9.0 are still to
+  be built and uploaded from the Windows machine (don't re-tag; `gh release upload v1.9.0`).
+- Open app/test issues found (not fixed — app code): see "Open issues" in
+  MACOS_BUILD_NOTES.md (freeze_support in gui.py, a Tk test that hangs on macOS, a
+  non-hermetic google_cloud_stt test, 5 macOS test failures, "about 3 GB" prompt text for
+  small models, CLI can't download models, "Engine: Checking…" never finishes on 10.15).
+
+---
+
 ## 🟢 2026-09-23 — parallel-wave cheap-model campaign merged to master; campaign stopped
 
 - All 8 whisper sandboxes of the 2026-09-22 campaign (`C:\oc-sandbox\<name>\`,

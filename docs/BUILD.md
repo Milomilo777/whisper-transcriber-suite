@@ -254,24 +254,23 @@ asset is unaffected (their file doesn't change under them), but
 edit vX.Y.Z --notes-file docs/RELEASE_NOTES_vX.Y.Z.md` if the release
 notes body should also mention what changed in this refresh.
 
-**Step 4b — macOS, from a Windows machine (can't build a `.dmg` locally):**
-there is no local macOS build step here; dispatch the CI workflow and
-pull its artifacts instead.
+**Step 4b — macOS (can't build a `.dmg` on Windows):** read
+[`docs/MACOS_BUILD_NOTES.md`](MACOS_BUILD_NOTES.md) first. Either build on a
+real Mac with the scripts listed there, or dispatch the CI workflow — it
+builds AND tests (real transcription with the frozen app, GUI launch,
+bundled ffmpeg/yt-dlp) on Apple-silicon and Intel runners and uploads
+`WhisperTranscriberSuite-vX.Y.Z-macOS-{arm64,x64}.dmg` + `.sha256`.
 
 ```cmd
 gh workflow run macos-app.yml --ref master
-:: poll or watch until both matrix legs (arm64, x86_64) finish:
 gh run list --workflow=macos-app.yml -L 1
 gh run watch <run-id> --exit-status
-
 gh run download <run-id> --dir some_temp_dir
-:: each matrix leg's artifact folder holds "Whisper Transcriber Suite-<arch>.dmg";
-:: copy/rename them to match the release naming convention, then:
-gh release upload vX.Y.Z ^
-    dist_installer\WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg ^
-    dist_installer\WhisperTranscriberSuite-vX.Y.Z-macOS-x86_64.dmg ^
-    --clobber
+:: upload to a NEW release/version only - never --clobber (see CLAUDE.md)
+gh release upload vX.Y.Z some_temp_dir\macos-dmg-arm64\*.dmg* some_temp_dir\macos-dmg-x86_64\*.dmg*
 ```
+Check each job's log for `[mac-spec] highest bundled minos` — that is the
+real minimum macOS of that .dmg; put it in the release notes.
 
 `macos-app.yml` is `workflow_dispatch`-only (see the file's own header
 comment) so it never fires by accident on a normal push. The repo is

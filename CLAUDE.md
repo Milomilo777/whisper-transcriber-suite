@@ -228,6 +228,11 @@ visible and durable regardless of what happens to the aggregate.
 
 ## macOS builds — do not build (2026-08-14, owner request, repeated)
 
+**Before ANY macOS build work read `docs/MACOS_BUILD_NOTES.md`** — it records why
+earlier Mac artifacts were broken (Homebrew ffmpeg dylibs, destroyed yt-dlp,
+wrong minimum macOS) and the verified pipeline + CI smoke test that replaced them
+(2026-09-23, v1.9.0, tested on a real Mac).
+
 Never build or dispatch a macOS artifact for this project — not the
 local `platform/macos/pyinstaller/` `.app`/`.dmg` pipeline, not
 `gh workflow run macos-app.yml`. Standing exception to "release assets

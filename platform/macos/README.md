@@ -1,8 +1,10 @@
 # Whisper Transcriber Suite on macOS
 
-> Status: **groundwork, not yet validated on a real Mac.** The code is
-> cross-platform and the scripts follow current best practice for unsigned
-> apps, but no one has run them on macOS yet — treat as beta and report back.
+> Status (2026-09-23): **validated on a real Mac** (Intel, macOS 10.15.7):
+> this installer, the PyInstaller `.app`/`.dmg` (installed from a quarantined
+> `.dmg` through Finder, Gatekeeper, real transcription and YouTube download).
+> Every problem found and fixed on the way is in
+> [`docs/MACOS_BUILD_NOTES.md`](../../docs/MACOS_BUILD_NOTES.md).
 
 The app is plain Python (Tkinter + faster-whisper + yt-dlp + ffmpeg), so it
 runs from source on macOS. It is **unsigned** (no paid Apple Developer
