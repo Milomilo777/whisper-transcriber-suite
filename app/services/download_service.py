@@ -63,6 +63,33 @@ if TYPE_CHECKING:
     from app.domain.tasks import VideoDownloadTask
 
 
+def _finalize_owned_process(task: Any, generation: int) -> None:
+    """Reap/clear ``task.process`` only if it still belongs to this run.
+
+    A pause+resume reuses the same task object, bumps ``_run_generation``
+    and installs a fresh Popen in ``task.process`` for the resumed run. So
+    the generation check and the ``task.process`` read must be a
+    read-then-validate pair over the SAME captured value: checking the
+    generation first and *then* reading ``task.process`` leaves a window
+    between the two steps in which a resume can bump the generation and
+    assign its new Popen, after which the stale run would tree-kill the
+    FRESH process and null the slot out from under the resume (which then
+    dies silently while its row still reads "running"). Capture the slot
+    first, re-verify the generation against the captured run, and require
+    the slot to still hold that exact Popen. The final check after the
+    (blocking) reap is what stops the null from landing on a process a
+    resume installed while we were waiting.
+    """
+    proc = getattr(task, "process", None)
+    if getattr(task, "_run_generation", generation) != generation:
+        return
+    if getattr(task, "process", None) is not proc:
+        return
+    _reap_process(proc)
+    if getattr(task, "process", None) is proc:
+        task.process = None
+
+
 def _dir_is_writable(path: str) -> bool:
     """Probe write access to ``path`` by actually writing a throwaway file.
 
@@ -280,13 +307,22 @@ def _cookies_from_browser_args(value: str | None) -> list[str]:
 
 # yt-dlp's own failure to read the local browser's cookie jar — e.g. "Could
 # not copy Chrome cookie database" when the browser is still open and holds
-# a lock on the file (see yt-dlp#7271) — is a LOCAL file-access problem, not
-# the target site rejecting an unauthenticated request. Most URLs (a public
-# post, a public video) do not actually need the cookies at all, so this
-# case is worth a same-process retry without them rather than failing the
-# whole download outright.
+# a lock on the file (see yt-dlp#7271), or "Failed to decrypt with DPAPI"
+# when Chrome's encryption key can't be unwrapped (yt-dlp#10927, common when
+# the profile/context differs from the one that wrote it) — is a LOCAL
+# cookie-jar problem, not the target site rejecting an unauthenticated
+# request. Most URLs (a public post, a public video) do not actually need
+# the cookies at all, so this case is worth a same-process retry without
+# them rather than failing the whole download outright.
+#
+# The DPAPI wording carries no "cookie" token (yt-dlp raises it from
+# cookies.py during browser extraction), so it needs its own alternative:
+# without it the retry never fired for that failure and every affected
+# download just failed, even for public URLs that don't need cookies.
 _COOKIE_EXTRACTION_ERROR_RE = re.compile(
-    r"could not (?:copy|find|load|extract)\b.{0,40}\bcookie", re.IGNORECASE
+    r"could not (?:copy|find|load|extract)\b.{0,40}\bcookie"
+    r"|failed to decrypt\b.{0,40}\bdpapi",
+    re.IGNORECASE,
 )
 
 
@@ -616,6 +652,17 @@ def select_saved_path(lines: "Iterable[str]") -> str | None:
 
 # Service class wired into the App ------------------------------------------------
 
+# Single-flight guard for maybe_update_yt_dlp's blocking ``yt-dlp --update``
+# (up to 60 s). pause_download frees the download slot even while that
+# subprocess runs — there is no task.process to kill yet — so a resume or
+# the next queued task can dispatch a second _run_task that also passes the
+# still-unstamped 24h backoff gate (the holder stamps it only on completion)
+# and starts a SECOND concurrent self-updater against the same install;
+# two racing updaters renaming/replacing the same binary can leave a broken
+# yt-dlp. Non-blocking acquire: the second attempt skips — the update is
+# best-effort — instead of stacking another 60 s wait behind the first.
+_YT_DLP_UPDATE_LOCK = threading.Lock()
+
 
 class DownloadService:
     def __init__(self, app: "App") -> None:
@@ -690,6 +737,18 @@ class DownloadService:
         yt_dlp_dir = os.path.dirname(yt_dlp_path)
         if yt_dlp_dir and not _dir_is_writable(yt_dlp_dir):
             return
+        if not _YT_DLP_UPDATE_LOCK.acquire(blocking=False):
+            # Another _run_task already holds the updater (this call got
+            # here through the slot a pause freed mid-update — the
+            # holder's backoff stamp above is still pending). Skip; see
+            # the lock's comment. The holder stamps the backoff when it
+            # finishes, and a holder that times out leaves it unstamped,
+            # so a later download still retries.
+            self.app.download_events.put((
+                "log", task,
+                "yt-dlp update already in progress; skipping this check",
+            ))
+            return
         try:
             update_cmd = [yt_dlp_path, "--update"]
             update = subprocess.run(
@@ -723,6 +782,8 @@ class DownloadService:
             self.app.download_events.put(("log", task, "yt-dlp update timed out; continuing"))
         except Exception as e:  # noqa: BLE001
             self.app.download_events.put(("log", task, f"yt-dlp update skipped: {e}"))
+        finally:
+            _YT_DLP_UPDATE_LOCK.release()
 
     def _warn_format_missing(self, kind: str) -> None:
         """Explain why a required audio/video format isn't selected.
@@ -1132,15 +1193,6 @@ class DownloadService:
             except Exception:  # noqa: BLE001
                 task.history_id = 0
 
-        def _finalize_own_process() -> None:
-            # Only this run's process may be reaped/nulled. A newer run
-            # (resume) has bumped _run_generation; touching its task.process
-            # here would kill the just-started download.
-            if getattr(task, "_run_generation", my_gen) != my_gen:
-                return
-            _reap_process(task.process)
-            task.process = None
-
         def _superseded() -> bool:
             # A pause+resume re-uses the SAME task object and spawns a NEW
             # _run_task that bumps _run_generation. If that happened while
@@ -1162,24 +1214,55 @@ class DownloadService:
                 # still launch its own yt-dlp afterward, writing caption
                 # files for a task the user paused, and a fast resume in
                 # that window would launch a SECOND concurrent yt-dlp onto
-                # the same task.process slot.
-                if _superseded() or getattr(task, "paused", False):
+                # the same task.process slot. A cancel landing in the same
+                # window needs the same treatment: report the stop exactly
+                # like every other cancel path in this file does, and
+                # launch nothing (the superseded check stays first -- a
+                # newer run owns all reporting then).
+                if _superseded():
+                    return
+                if task.cancelled:
+                    app.download_events.put(("subtitle_status", task, "cancelled"))
+                    app.download_events.put(("done", task, "cancelled"))
+                    return
+                if getattr(task, "paused", False):
                     return
                 self._run_caption_only_task(task, run_generation=my_gen)
             except Exception as e:  # noqa: BLE001
                 if not _superseded():
                     app.download_events.put(("error", task, str(e)))
             finally:
-                _finalize_own_process()
+                _finalize_owned_process(task, my_gen)
             return
 
         if _is_smtv_task(task):
+            # A pause that lands before SMTV streaming starts must not keep
+            # streaming: pause_download() already released the slot, so
+            # continuing here would fetch from the CDN for a task the user
+            # explicitly paused -- possibly concurrently with the next waiting
+            # download process_queue() just started in that freed slot. The
+            # generation check covers the resume race: pause then fast resume
+            # clears the flag while this run was still blocked, and only a
+            # newer run's bump proves this one stale. Matches the pre-start
+            # pause guard the media path already has (lines 1246-1247).
+            if _superseded():
+                return
+            if task.cancelled:
+                app.download_events.put(("done", task, "cancelled"))
+                return
+            if getattr(task, "paused", False):
+                return
             try:
-                self._run_smtv_task(task)
+                self._run_smtv_task(task, run_generation=my_gen)
             except Exception as e:  # noqa: BLE001
-                app.download_events.put(("error", task, str(e)))
+                # Same staleness contract as the media path's except: a
+                # newer run owns all reporting for this task object, so a
+                # stale run must not post a terminal "error" that would
+                # flip the fresh run's row and release its slot.
+                if not _superseded():
+                    app.download_events.put(("error", task, str(e)))
             finally:
-                _finalize_own_process()
+                _finalize_owned_process(task, my_gen)
             return
 
         try:
@@ -1194,16 +1277,45 @@ class DownloadService:
             # just started in that freed slot. The generation check covers
             # the resume race: pause then fast resume clears the flag while
             # this run was still blocked, and only a newer run's bump
-            # proves this one stale.
-            if _superseded() or getattr(task, "paused", False):
+            # proves this one stale. A cancel landing in the same window
+            # is the stop this guard historically missed: cancel sets no
+            # generation, so without an explicit check the run fell
+            # through to _media_phase and downloaded the whole video for
+            # a task the user had already cancelled (possibly alongside
+            # the next task, if the stop path freed the slot). Report the
+            # stop the way every other cancel path here does, then bail.
+            if _superseded():
+                return
+            if task.cancelled:
+                app.download_events.put(("done", task, "cancelled"))
+                return
+            if getattr(task, "paused", False):
                 return
 
             if task.subtitles_enabled and not task.cancelled:
-                self._subtitle_phase(task)
+                reported_cancel = self._subtitle_phase(task)
                 # Re-check after the subtitle phase: a pause during it only
                 # kills the subtitle process, and without this the media
-                # download would still run.
-                if _superseded() or task.cancelled or getattr(task, "paused", False):
+                # download would still run. A cancel landing after
+                # _subtitle_phase's own post-wait check — i.e. during its
+                # slow extras-conversion loop — must be REPORTED, not just
+                # bailed on: every other cancel arm in this file posts
+                # "done cancelled", and a silent return here would leave the
+                # stop unreported (row/slot/history rely on the worker's
+                # event, same contract the pre-start guard got in f58a4be).
+                # _subtitle_phase returns True when it already posted that
+                # event (cancel during its process drain), so each stop
+                # still reports exactly once; superseded stays first (a
+                # newer run owns all reporting) and pause keeps its silent
+                # contract (pause_download owns the row/slot/reporting).
+                if _superseded():
+                    return
+                if task.cancelled:
+                    if not reported_cancel:
+                        app.download_events.put(("subtitle_status", task, "cancelled"))
+                        app.download_events.put(("done", task, "cancelled"))
+                    return
+                if getattr(task, "paused", False):
                     return
 
             self._media_phase(task, run_generation=my_gen)
@@ -1211,7 +1323,7 @@ class DownloadService:
             if not _superseded():
                 app.download_events.put(("error", task, str(e)))
         finally:
-            _finalize_own_process()
+            _finalize_owned_process(task, my_gen)
 
     def _build_smtv_sibling_tasks(
         self,
@@ -1302,7 +1414,9 @@ class DownloadService:
 
         return sibling_tasks
 
-    def _run_smtv_task(self, task: "VideoDownloadTask") -> None:
+    def _run_smtv_task(
+        self, task: "VideoDownloadTask", *, run_generation: int | None = None
+    ) -> None:
         """Direct CDN download for an SMTV task, bypassing yt-dlp.
 
         The format_info dict (built by format_service._apply_smtv_formats
@@ -1351,18 +1465,59 @@ class DownloadService:
         target_path = os.path.join(task.folder, basename)
         part_path = target_path + ".part"
 
+        def _superseded() -> bool:
+            # A retry (or any re-dispatch that bumped _run_generation) can
+            # take over this task while this run is blocked in the CDN
+            # stream. The retry clears the shared cancelled flag, so the
+            # stop checks below cannot detect that — the generation token
+            # can. A stale run must stop writing to the shared .part path
+            # and must not rename/report: the fresh run owns all of that.
+            return (
+                run_generation is not None
+                and getattr(task, "_run_generation", run_generation)
+                != run_generation
+            )
+
+        # Post-fetch stop check: fetch_episode above blocks up to 30 s, so a
+        # cancel or a retry (generation bump, which also clears the shared
+        # cancelled flag) can land while this run is blocked there. Without
+        # this, the stale run would still urlopen + truncate the SHARED
+        # .part path and stream, clobbering the fresh run's in-progress
+        # data before the post-stream check ever runs. Same shape as the
+        # media path's post-subtitle re-check; paused included for symmetry
+        # with the pre-start guard (pause is unreachable for SMTV, so that
+        # arm is dead but harmless).
+        if _superseded():
+            return
+        if task.cancelled:
+            app.download_events.put(("done", task, "cancelled"))
+            return
+        if getattr(task, "paused", False):
+            return
+
         app.download_events.put(
             ("log", task, f"--- SMTV download: {basename} ({cdn_url}) ---")
         )
 
         try:
-            self._stream_smtv_file(task, cdn_url, part_path)
+            self._stream_smtv_file(
+                task, cdn_url, part_path, run_generation=run_generation
+            )
         except Exception:  # noqa: BLE001
             # Whatever went wrong, the partial file is useless to the
             # user — clean it up and re-raise so the caller posts the
-            # error event.
+            # error event. Unless a newer run has taken over: the .part
+            # path is shared, so deleting it would destroy the fresh
+            # run's in-progress download; that run owns cleanup/reporting.
+            if _superseded():
+                return
             _quiet_unlink(part_path)
             raise
+
+        if _superseded():
+            # The fresh run owns the task, the shared .part file, and all
+            # terminal reporting; touch nothing.
+            return
 
         if task.cancelled:
             _quiet_unlink(part_path)
@@ -1408,14 +1563,36 @@ class DownloadService:
         )
 
     def _stream_smtv_file(
-        self, task: "VideoDownloadTask", url: str, dest_path: str
+        self, task: "VideoDownloadTask", url: str, dest_path: str,
+        *, run_generation: int | None = None,
     ) -> None:
         """Chunked GET → write to dest_path with progress events.
 
         Posts ``progress`` events throttled to once per ~500 ms so we
-        don't drown the Tk poll loop. Honours ``task.cancelled``.
+        don't drown the Tk poll loop. Honours ``task.cancelled`` and a
+        superseding re-dispatch: *run_generation* identifies this run, and
+        a bump means a retry took the task over while this stream was
+        blocked in a read, so writing must stop (the .part path is shared
+        with the fresh run).
         """
         app = self.app
+
+        def _stopped() -> bool:
+            if task.cancelled:
+                return True
+            return (
+                run_generation is not None
+                and getattr(task, "_run_generation", run_generation)
+                != run_generation
+            )
+
+        # Already stale/cancelled before any network or file side effect:
+        # the pre-start guard in _run_task ran before the (up-to-30 s)
+        # fetch_episode, so a stop can land in that window. Opening the
+        # destination here truncates the SHARED .part path, so it must not
+        # happen for a run that no longer owns the task.
+        if _stopped():
+            return
         req = urllib.request.Request(
             url,
             headers={
@@ -1427,9 +1604,15 @@ class DownloadService:
                 total = _content_length_or_none(resp)
                 downloaded = 0
                 last_emit = 0.0
+                # urlopen above blocks up to 60 s: a retry can take over
+                # while waiting for headers. Check again BEFORE the "wb"
+                # open truncates the shared .part out from under the fresh
+                # run; the loop's per-chunk check is too late for that.
+                if _stopped():
+                    return
                 with open(dest_path, "wb") as out:
                     while True:
-                        if task.cancelled:
+                        if _stopped():
                             return
                         chunk = resp.read(262144)
                         if not chunk:
@@ -1441,7 +1624,7 @@ class DownloadService:
                             percent = (downloaded / total) * 100.0
                             app.download_events.put(("progress", task, percent))
                             last_emit = now
-                if task.cancelled:
+                if _stopped():
                     return
                 # A clean EOF before Content-Length bytes have arrived
                 # means the CDN dropped the connection mid-transfer — no
@@ -1471,13 +1654,19 @@ class DownloadService:
         except TimeoutError as e:
             raise RuntimeError("SMTV CDN read timeout") from e
 
-    def _subtitle_phase(self, task: "VideoDownloadTask") -> None:
+    def _subtitle_phase(self, task: "VideoDownloadTask") -> bool:
+        """Fetch subtitles before the media download.
+
+        Returns True when this call already reported a terminal cancel
+        (``done cancelled``), so ``_run_task``'s post-phase stop-check can
+        avoid posting a second one for the same stop.
+        """
         app = self.app
         sub_lang = self.resolve_subtitle_lang(task)
         if not sub_lang:
             app.download_events.put(("subtitle_status", task, "no language detected"))
             app.download_events.put(("log", task, "Skipping subtitles: original language could not be detected."))
-            return
+            return False
 
         app.download_events.put(("subtitle_status", task, f"fetching subtitles ({sub_lang})..."))
         app.download_events.put(("log", task, f"--- Subtitle phase: requesting {sub_lang} ---"))
@@ -1526,7 +1715,7 @@ class DownloadService:
                     )
             app.download_events.put(("subtitle_status", task, "cancelled"))
             app.download_events.put(("done", task, "cancelled"))
-            return
+            return True
         if wrote_files:
             app.download_events.put(
                 (
@@ -1566,6 +1755,7 @@ class DownloadService:
         else:
             app.download_events.put(("subtitle_status", task, "completed (no files written)"))
             app.download_events.put(("log", task, "--- Subtitle phase: completed without writing files ---"))
+        return False
 
     def _run_caption_only_task(self, task: "VideoDownloadTask", run_generation: int | None = None) -> None:
         """"Use captions instead" shortcut: fetch only the existing captions
@@ -1670,6 +1860,17 @@ class DownloadService:
         try:
             segments = _convert.parse_to_segments(caption_path)
         except _convert.ConvertError as e:
+            # parse_to_segments reads and parses the caption file, so a
+            # pause+resume can take the task over while it runs -- the
+            # generation check above is stale by now. A newer run owns all
+            # terminal reporting; posting "error" here would flip the fresh
+            # run's row and release its slot, exactly the contract the
+            # re-check after the conversion loop below enforces.
+            if (
+                run_generation is not None
+                and getattr(task, "_run_generation", run_generation) != run_generation
+            ):
+                return
             app.download_events.put(("subtitle_status", task, "conversion failed"))
             app.download_events.put(
                 ("error", task, f"Captions were downloaded but could not be read: {e}")
@@ -1702,6 +1903,32 @@ class DownloadService:
                 app.download_events.put(
                     ("log", task, f"Caption conversion to {fmt_lower} failed: {e}")
                 )
+
+        # The conversion loop above can be slow (rolling-caption dedupe plus a
+        # write per requested format). Re-check ownership before posting
+        # anything terminal: a resume landing in that window means a newer run
+        # owns this task, and a success/error event from here would flip the
+        # fresh run's row and release the download slot it holds. A cancel or
+        # pause in the same window is likewise handled by its own path, so
+        # report it the same way the post-wait checks above do.
+        if (
+            run_generation is not None
+            and getattr(task, "_run_generation", run_generation) != run_generation
+        ):
+            return
+        if task.cancelled:
+            for partial in wrote_files:
+                try:
+                    if os.path.isfile(partial):
+                        os.unlink(partial)
+                except OSError:
+                    pass
+            app.download_events.put(("subtitle_status", task, "cancelled"))
+            app.download_events.put(("done", task, "cancelled"))
+            return
+        if getattr(task, "paused", False):
+            app.download_events.put(("subtitle_status", task, "paused"))
+            return
 
         if skipped:
             app.download_events.put((
@@ -1961,7 +2188,25 @@ class DownloadService:
         elif kind == "done_full":
             self._finish(task, payload["status"], saved_path=payload.get("saved_path"))
         elif kind == "error":
-            task.status = "error"
+            # Late-error guard, the error-event twin of _finish's
+            # late-success guard: the worker posts "error" while the task
+            # is still live, but the event then waits in download_events
+            # for the next poll tick (up to 300 ms), and some producers
+            # (the SMTV except branch, the _run_task except branches)
+            # never check the stop flags at all before posting. A
+            # cancel/pause click landing in that gap already owns the row;
+            # flipping it to "error" would undo the stop state — on a
+            # paused row that drops the Resume action, exactly the
+            # failure mode the caption-only pause guard exists to prevent.
+            # Land on the task's stop state instead and keep the message
+            # in the log, mirroring how _finish converts a late
+            # "finished" to the stop state.
+            if getattr(task, "cancelled", False):
+                task.status = "cancelled"
+            elif getattr(task, "paused", False):
+                task.status = "paused"
+            else:
+                task.status = "error"
             import time as _time
             if getattr(task, "end_time", None) is None:
                 try:
@@ -2021,8 +2266,60 @@ class DownloadService:
         # been re-dispatched (status running/waiting) and may even be the
         # current download again. The torn-down thread's late "paused" event
         # must not clobber that fresh run back to "paused".
-        if status == "paused" and getattr(task, "status", "") in ("running", "waiting"):
+        #
+        # Cancel supersedes pause here (same precedence the error and
+        # late-success branches use): the worker only posts "paused" while
+        # the cancelled flag was still False, so if the flag is set by the
+        # time the event drains, a cancel click in that gap is the newer
+        # intent and landing "paused" would resurrect the cancelled row.
+        if status == "paused":
+            if getattr(task, "cancelled", False):
+                status = "cancelled"
+                # Stop-state history rows keep no output path (same as the
+                # late-success guard below).
+                saved_path = None
+            elif getattr(task, "status", "") in ("running", "waiting"):
+                return
+        # Stale-cancel guard, same shape as the pause one above: a cancel
+        # posts "done cancelled" from the worker, but that event can wait
+        # in download_events for up to 300 ms. The queue's retry re-uses
+        # the SAME task object (like resume does) and must clear the
+        # cancelled flag to run again; if that re-dispatch happens before
+        # the late event drains, processing it would flip the fresh row
+        # back to "cancelled" and tear down the state the new run owns.
+        # Key off the FLAG, not the status: every done-cancelled producer
+        # in this file only posts after seeing task.cancelled True, while
+        # whether cancel_click also sets the status synchronously is not
+        # visible from here — status-only matching could swallow a
+        # legitimate first cancel whose row still reads "running". After a
+        # retry clears the flag, ANY state other than already-cancelled
+        # means this event is stale: running/waiting (fresh run mid-flight),
+        # or even transcribing/finished/paused/error if the re-run got far
+        # enough before the late event drained. Flag still set (no retry
+        # yet) or row already cancelled → finalise normally (idempotent).
+        if (
+            status == "cancelled"
+            and not getattr(task, "cancelled", False)
+            and getattr(task, "status", "") != "cancelled"
+        ):
             return
+        # Late-success guard: the worker checks cancelled/paused a moment
+        # before posting done_full, so a stop click that lands after that
+        # check (the event then waits in download_events for the next poll
+        # tick, up to 300 ms) arrives here as a "finished" event while the
+        # task is already stopped. Processing it would resurrect the row to
+        # "finished"/"transcribing" and start auto-transcription for a
+        # download the user stopped. Honour the stop state instead; the stop
+        # path and a later resume own all further reporting. Drop the output
+        # path too (the stop paths never carry one) -- the file stays on
+        # disk and a resume re-detects it as already downloaded.
+        if status == "finished":
+            if getattr(task, "cancelled", False):
+                status = "cancelled"
+                saved_path = None
+            elif getattr(task, "paused", False):
+                status = "paused"
+                saved_path = None
         task.status = status
         # Freeze the Elapsed column the moment the task is terminal,
         # regardless of which status it ended in (finished / error /

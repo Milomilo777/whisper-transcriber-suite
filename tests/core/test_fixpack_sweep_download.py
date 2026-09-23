@@ -57,7 +57,7 @@ def _run_capturing_basename(tmp_path, cdn_url: str) -> str:
     """Run _run_smtv_task with a stubbed streamer; return the captured basename."""
     captured: dict[str, str] = {}
 
-    def _fake_stream(self, task, url, dest_path):
+    def _fake_stream(self, task, url, dest_path, **_kw):
         # dest_path is target_path + ".part"; record the basename actually
         # used to form the on-disk path.
         captured["basename"] = os.path.basename(dest_path)[: -len(".part")]
