@@ -127,6 +127,8 @@ Hangs block the whole suite (Tk's Cocoa event loop never returns to Python, so n
 
 ## Open issues found (app/test code — not fixed by the packaging work)
 
+**Owner decision (2026-09-23): fix all of these in the next build round.**
+
 1. `gui.py` should call `multiprocessing.freeze_support()` first thing in `main()` (the runtime hook is a stop-gap).
 2. `tests/core/test_advanced_simplified.py::test_gcloud_autotest_only_runs_when_google_cloud_is_picked` hangs forever in `dlg.update()` on macOS Tk.
 3. `tests/core/test_google_cloud_stt.py::test_transcribe_without_load_raises` is not hermetic: `load()` → `core/optional_deps.install` runs a real `pip install` of google-cloud.

@@ -24,7 +24,8 @@ this repo. Read this file before anything else.
 - Release assets: x64 dmg built on the macOS 10.15 VM (min macOS 10.15, full user test);
   arm64 dmg from CI run 35859440142 (min macOS 14, smoke-tested on Apple silicon). The CI
   x64 build is NOT released (numpy's Accelerate wheel makes it need macOS 14).
-- Open app/test issues found (not fixed — app code): see "Open issues" in
+- **TODO for the next build round (owner, 2026-09-23): fix these.** Open app/test issues found (not
+  fixed in v1.9.0 — app code): see "Open issues" in
   MACOS_BUILD_NOTES.md (freeze_support in gui.py, a Tk test that hangs on macOS, a
   non-hermetic google_cloud_stt test, 5 macOS test failures, "about 3 GB" prompt text for
   small models, CLI can't download models, "Engine: Checking…" never finishes on 10.15).
