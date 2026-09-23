@@ -62,7 +62,8 @@ xattr -dr com.apple.quarantine "$BIN" 2>/dev/null || true
 # ---- verify ----------------------------------------------------------------
 fail=0
 for f in "$BIN"/ffmpeg "$BIN"/ffprobe "$BIN"/ffplay "$BIN"/yt-dlp; do
-  ext="$(otool -L "$f" | tail -n +2 | grep -vE '^[[:space:]]*(/usr/lib/|/System/Library/)' || true)"
+  # otool prints one "<file> (architecture X):" header per slice of a fat file; drop them all.
+  ext="$(otool -L "$f" | grep -v ':$' | grep -vE '^[[:space:]]*(/usr/lib/|/System/Library/)' || true)"
   minos="$(otool -l "$f" | awk '/LC_BUILD_VERSION/{b=1} b&&/minos/{print $2; exit} /LC_VERSION_MIN_MACOSX/{v=1} v&&/ version/{print $2; exit}')"
   printf '%-14s archs=%-14s minos=%s\n' "$(basename "$f")" "$(lipo -archs "$f")" "${minos:-?}"
   if [ -n "$ext" ]; then

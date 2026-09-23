@@ -24,7 +24,7 @@ while IFS= read -r -d '' f; do
     universal2) { [[ " $archs " == *" x86_64 "* ]] && [[ " $archs " == *" arm64 "* ]]; } || { echo "ARCH  $rel: $archs"; bad=$((bad + 1)); } ;;
     *) [[ " $archs " == *" $WANT "* ]] || { echo "ARCH  $rel: $archs"; bad=$((bad + 1)); } ;;
   esac
-  ext="$(otool -L "$f" 2>/dev/null | tail -n +2 | grep -vE '@rpath|@loader_path|@executable_path|/usr/lib/|/System/Library/' || true)"
+  ext="$(otool -L "$f" 2>/dev/null | grep -v ':$' | grep -vE '@rpath|@loader_path|@executable_path|/usr/lib/|/System/Library/' || true)"
   if [ -n "$ext" ]; then
     echo "DEP   $rel:"; echo "$ext"; bad=$((bad + 1))
   fi
