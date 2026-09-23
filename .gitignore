@@ -125,3 +125,10 @@ VOICE_PRO_GAP_FA_EN.txt
 
 # Live SMTV E2E fixtures — downloaded on demand; keep out of repo
 tests/fixtures/smtv_clip/
+
+# macOS build inputs/outputs (platform/macos/pyinstaller)
+.buildenv/
+bin/ffmpeg
+bin/ffprobe
+bin/ffplay
+bin/yt-dlp
