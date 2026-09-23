@@ -49,7 +49,13 @@ The .app's real floor is `max(minos)` over every Mach-O inside it
 | Build | Where built | Highest minos found | Tested on |
 |---|---|---|---|
 | x64 (release) | macOS 10.15.7 VM, python.org 3.12.10 | 12.0 (`protobuf google/_upb/_message.abi3.so`), 11.0 (onnxruntime); everything else ≤ 10.15 | **10.15.7**, full user flow (Stage 7 of the report); both >10.15 files exercised → `WTS_MACOS_MIN=10.15` |
-| arm64 (release) | GitHub `macos-15` runner | printed by the CI job (`[mac-spec] highest bundled minos`) | the CI job's smoke test on real Apple silicon |
+| arm64 (release) | GitHub `macos-15` runner | **14.0** — PyAV 18.1.0's bundled ffmpeg libs (`libavcodec.62…`, `libSvtAv1Enc…`) and `tkinterdnd2/tkdnd/osx-arm64/libtkdnd2.10.2.dylib` | smoke test on real Apple silicon (WAV + MP4 transcription, GUI launch) |
+| x64 via CI (not released) | GitHub `macos-15-intel` runner | **14.0** — numpy 2.5.3's `macosx_14_0_x86_64` (Accelerate) wheel | smoke test on real Intel hardware |
+
+Every Apple-silicon Mac can run macOS 14, so 14.0 is acceptable for arm64. To lower a build's floor, pin the
+packages the spec names in `[mac-spec] highest bundled minos` in `constraints-macos.txt` (e.g. `av` to a release whose
+arm64 wheel is tagged `macosx_11_0`, numpy to a non-Accelerate wheel) and re-check the printed value. The Intel
+release is built on the old macOS VM instead, where pip can only pick ≤10.15-compatible wheels.
 
 dyld on 10.15 does not enforce a dylib's `minos`; what matters is whether a
 newer API is actually called. That is why an override is only allowed after a
