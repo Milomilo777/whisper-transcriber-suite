@@ -312,6 +312,14 @@ a = Analysis(
         # working multi-monitor detection. Its absence only degrades to a
         # single-monitor fallback.
         'screeninfo',
+        # (No pystray entry: app/widgets/tray.py deliberately disables the
+        # tray on macOS because pystray's AppKit loop needs the main thread
+        # that Tk owns — "Tray icon unavailable" in the log is expected.)
+        # huggingface_hub only uses hf_xet if it can import it (dynamic
+        # check); without it model downloads fall back to plain HTTP with
+        # "Xet Storage is enabled for this repo, but the 'hf_xet' package
+        # is not installed".
+        'hf_xet',
     ],
     hookspath=[],
     # Diverts multiprocessing's resource-tracker helper re-launch (see file).
