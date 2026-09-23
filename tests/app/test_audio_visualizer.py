@@ -45,37 +45,40 @@ def test_rms_scales_with_amplitude():
     assert 0.0 < quiet < loud <= 1.0
 
 
-def test_spectrum_silence_is_all_zeros():
-    assert av.compute_spectrum(_silence(0.2), 16) == [0.0] * 16
+def test_level_is_log_scaled_and_clamped():
+    assert av.level_from_rms(0.0) == 0.0
+    assert av.level_from_rms(10 ** (-70 / 20)) == 0.0          # below the floor
+    assert av.level_from_rms(1.0) == 1.0                       # clamped
+    speech = av.level_from_rms(10 ** (-26 / 20))
+    assert 0.6 < speech < 0.9                                  # normal speech reads high
 
 
-def test_spectrum_empty_input_is_zeros():
-    assert av.compute_spectrum(b"", 8) == [0.0] * 8
+def test_blend_pre_multiplies_opacity_over_background():
+    assert av.blend(1.0) == "#%02x%02x%02x" % av._WAVE_RGB
+    assert av.blend(0.0) == av._BG
+    assert av.blend(0.5) not in (av.blend(0.0), av.blend(1.0))
 
 
-def test_spectrum_tone_lights_bands():
-    levels = av.compute_spectrum(_tone(0.3, amplitude=0.6), 16)
-    assert len(levels) == 16
-    assert all(0.0 <= v <= 1.0 for v in levels)
-    assert max(levels) > 0.1
+def test_curve_points_flat_when_silent_and_bounded_when_loud():
+    width, hm = 400.0, 49.0
+    for curve in av.CURVES:
+        flat = av.curve_points(curve, width, hm, 0.0, 1.0)
+        assert flat[0] == 0.0 and flat[-2] == pytest.approx(width)
+        assert all(y == pytest.approx(hm) for y in flat[1::2])
+        loud = av.curve_points(curve, width, hm, 1.0, 1.0)
+        ys = loud[1::2]
+        assert max(abs(y - hm) for y in ys) > 0.0
+        assert all(0.0 <= y <= 2 * hm for y in ys)
 
 
-def test_spectrum_louder_tone_reads_higher():
-    # Relative-peak normalisation means shape is stable, but the
-    # loudness gate still separates whisper from silence-adjacent.
-    whisper = av.compute_spectrum(_tone(0.3, amplitude=0.05), 16)
-    normal = av.compute_spectrum(_tone(0.3, amplitude=0.6), 16)
-    assert max(normal) >= max(whisper)
-
-
-def test_heights_map_levels_to_pixels():
-    assert av.heights_for_levels([0.0, 0.5, 1.0, 2.0, -1.0], 100) == [0, 50, 100, 100, 0]
-
-
-def test_band_color_endpoints_differ():
-    assert av.band_color(0.0) != av.band_color(1.0)
-    assert av.band_color(0.0).startswith("#")
-    assert av.band_color(1.0).startswith("#")
+def test_curve_edges_are_attenuated_to_the_centre_line():
+    # SiriWave's global attenuation pins both ends of every curve near the
+    # centre, so the wave swells in the middle only.
+    pts = av.curve_points(av.CURVES[-1], 400.0, 49.0, 1.0, 0.7)
+    ys = pts[1::2]
+    mid = ys[len(ys) // 2 - 10: len(ys) // 2 + 10]
+    assert abs(ys[0] - 49.0) < 1.0 and abs(ys[-1] - 49.0) < 1.0
+    assert max(abs(y - 49.0) for y in mid) > 5.0
 
 
 # ------------------------------------------------------- meter plumbing
@@ -155,17 +158,21 @@ def test_widget_builds_pushes_and_idles(root):
     viz.frame.pack(fill="both", expand=True)
     root.update()
     assert viz._active is False
-    assert viz._levels == [0.0] * viz.num_bands
+    assert viz.amplitude == 0.0
 
     viz.set_active(True)
-    viz.push_frames(_tone(0.2, amplitude=0.6), RATE)
-    # Drain one tick synchronously on the Tk thread.
-    viz._tick()
+    for _ in range(10):
+        viz.push_frames(_tone(0.05, amplitude=0.6), RATE)
+        viz._tick()  # drain synchronously on the Tk thread
     root.update()
-    assert max(viz._levels) > 0.0
+    assert viz.amplitude > av.IDLE_AMPLITUDE
+    assert len(viz._line_ids) == len(av.CURVES)
+    ids = list(viz._line_ids)
+    viz._tick()
+    assert viz._line_ids == ids  # items reused, not recreated per frame
     viz.set_active(False)
     root.update()
-    assert viz._levels == [0.0] * viz.num_bands
+    assert viz.amplitude == 0.0 and viz._line_ids == []
     frame.destroy()
 
 

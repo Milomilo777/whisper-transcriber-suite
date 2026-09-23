@@ -155,15 +155,14 @@ def build_live_tab(app: Any, parent: Any) -> None:
     )
 
     # ── Level meter ───────────────────────────────────────────────────
-    # Independent Tk implementation inspired by TranscriptionSuite's
-    # AudioVisualizer (see app/widgets/audio_visualizer.py for the
-    # license note and the visible differences). Fed by the recorder's
-    # capture thread via LiveSession.on_meter; drawing stays on Tk.
+    # Siri-style sine waves ported from SiriWave (MIT; see
+    # app/widgets/audio_visualizer.py). Fed by the recorder's capture
+    # thread via LiveSession.on_meter; drawing stays on Tk.
     from app.widgets.audio_visualizer import AudioVisualizer
 
     lvl = section_labelframe(
         parent, "Input level",
-        "Live audio level while listening. Bars move with the sound "
+        "Live audio level while listening. The wave moves with the sound "
         "coming in; when nothing moves, nothing is being captured.",
     )
     lvl.grid(row=2, column=0, sticky="ew", padx=15, pady=(0, 6))
