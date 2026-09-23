@@ -278,7 +278,7 @@ class JobManager:
             self._worker.start()
 
     def stop(self, *, timeout: float = 5.0) -> None:
-        """Signal the worker to exit and wait briefly for it.
+        """Signal the worker to exit, wait briefly, reclaim work_dirs.
 
         Before joining, flip every non-terminal job to ``cancelled=True`` /
         ``paused=False`` (exactly what :meth:`cancel` does). A PAUSED in-flight
@@ -288,6 +288,17 @@ class JobManager:
         worker would not exit, ``join`` would time out, and the worker thread
         (pinning the open media handle + the ~3 GB model) would leak — blocking
         a clean in-process restart and the per-job work_dir deletion on Windows.
+
+        After the join, every job the worker will never finish is marked
+        CANCELLED and its work_dir reclaimed: a job still queued when
+        ``_stop`` is set is never dequeued (``_drain`` exits without draining
+        the queue), and a job whose engine ignored the cancel past ``timeout``
+        would otherwise keep its media dir forever. An in-flight job the
+        worker is still winding down is left alone — ``_run_one``/``_drain``
+        set its status and clean up as soon as the engine returns. FINISHED
+        jobs are untouched: their work_dir still backs ``output_path``
+        downloads. ``_rmtree_quiet`` tolerates the open media handle a
+        still-running engine may briefly hold on Windows.
         """
         self._stop.set()
         with self._lock:
@@ -300,6 +311,22 @@ class JobManager:
         w = self._worker
         if w is not None:
             w.join(timeout=timeout)
+
+        worker_alive = w is not None and w.is_alive()
+        leftovers: list[Job] = []
+        with self._lock:
+            for job in self._jobs.values():
+                if job.status in _TERMINAL:
+                    continue
+                if worker_alive and job.status != STATUS_QUEUED:
+                    # Still in flight; _run_one/_drain will finish it.
+                    continue
+                job.cancelled = True
+                job.paused = False
+                self._set_status(job, STATUS_CANCELLED)
+                leftovers.append(job)
+        for job in leftovers:
+            _rmtree_quiet(job.work_dir)
 
     # --- submission ----------------------------------------------------------
 
@@ -524,6 +551,13 @@ class JobManager:
                     _rmtree_quiet(job.work_dir)
                 continue
             self._run_one(job)
+            # Path B reclaim: a job that ended CANCELLED (cancelled mid-run)
+            # or ERROR (engine raised) owns no downloadable output, so its
+            # work_dir is dead weight. FINISHED work_dirs are deliberately
+            # kept — ``output_path`` serves client downloads straight out of
+            # them; ``_evict_locked`` reclaims those once the table fills.
+            if job.status in (STATUS_CANCELLED, STATUS_ERROR) and not job.outputs:
+                _rmtree_quiet(job.work_dir)
 
     def _run_one(self, job: Job) -> None:
         history_db = None
