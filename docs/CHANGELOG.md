@@ -4,14 +4,6 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
-### Fixed
-
-- **Portable / run-from-source users lost their settings and models after the
-  rename.** Only the Windows installer carried data over from the old
-  `WhisperProject` profile; the app now does it itself on launch (copies
-  settings/history, reuses the old model folder, moves the whisper.cpp / LLM
-  model caches), so already-downloaded models are no longer reported missing.
-
 ## [1.9.0] — 2026-09-23
 
 ### Added
@@ -42,6 +34,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Portable / run-from-source users lost their settings and models after the
+  rename.** Only the Windows installer carried data over from the old
+  `WhisperProject` profile; the app now does it itself on launch (copies
+  settings/history, reuses the old model folder, moves the whisper.cpp / LLM
+  model caches), so already-downloaded models are no longer reported missing.
 - **Clearer reason when Hardware Autodetect falls back to CPU on a CUDA
   GPU.** The self-healing CUDA→CPU downgrade used to always blame missing
   cuDNN/cuBLAS runtime libraries. It now recognizes the separate case where

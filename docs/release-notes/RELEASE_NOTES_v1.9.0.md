@@ -70,6 +70,11 @@ transcribe.
 
 ## Fixed
 
+- **Settings, history and downloaded models carry over from the old
+  "WhisperProject" name** on every platform (portable, run-from-source,
+  macOS, Linux) — previously only the Windows installer did this, so
+  already-downloaded models showed as "not downloaded". Mac users of the
+  v1.5.0 `WhisperProject` build keep their settings and models.
 - **Clearer reason when Hardware Autodetect falls back to CPU** on a
   GPU newer than the bundled CTranslate2 supports (e.g. RTX 50-series,
   #7), instead of blaming missing CUDA libraries.
