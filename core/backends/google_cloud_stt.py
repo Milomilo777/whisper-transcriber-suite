@@ -74,11 +74,13 @@ from .._gc_import_guard import gc_disabled_import
 from .._liveness_tick import liveness_tick
 from ..config import load_config
 from .base import Backend, LanguageInfo
-# Shared pure seam from the Gemini backend (same cross-import convention as
+# Shared pure seams from the Gemini backend (same cross-import convention as
 # nvidia_asr's use of plan_chunks/offset_segments): ffmpeg writes a full FLAC
 # container for a past-EOF slice, so the unknown-duration STANDARD path needs
-# an ffprobe duration probe, not a byte-size check, to detect end of file.
-from .cloud_stt import flac_slice_has_audio
+# an ffprobe duration probe (probe_flac_slice), plus an up-front ffprobe
+# health check (ffprobe_is_usable) so a dead probe aborts the paid loop
+# instead of letting it fall back to its worst-case chunk plan.
+from .cloud_stt import ffprobe_is_usable, probe_flac_slice
 
 logger = logging.getLogger(__name__)
 
@@ -111,12 +113,21 @@ DEFAULT_CHUNK_SECONDS = 55.0
 #: ``auto_decoding_config`` recogniser detects without an explicit config.
 CHUNK_MIME = "audio/flac"
 CHUNK_EXT = ".flac"
+#: Hard ceiling on one ffmpeg FLAC-encode call. A source file on a
+#: disconnected network share (or any blocking-device scenario) can make
+#: ffmpeg block in open/read forever, and nothing else in this module's
+#: liveness/timeout wiring covers the encode step (only the RPC calls are
+#: bounded). The duration probe next door is bounded for the same reason;
+#: this is generous enough for a slow machine to decode a whole multi-hour
+#: file (batch mode) while still guaranteeing a wedged ffmpeg cannot hang
+#: the worker forever.
+ENCODE_TIMEOUT_S = 1800.0
 
 #: A cheap lower bound for "obviously no audio in this slice". NOTE: this is
 #: NOT the reliable past-EOF test — ffmpeg writes a complete FLAC container
 #: (streaminfo + VORBIS_COMMENT + padding, measured ~8 KiB) even for a slice
 #: that starts past the end of the file, which is well ABOVE this value. The
-#: byte check remains as a fast first cut; ``flac_slice_has_audio`` (imported
+#: byte check remains as a fast first cut; ``probe_flac_slice`` (imported
 #: from cloud_stt) is what actually detects EOF.
 _EMPTY_FLAC_BYTES = 4096
 
@@ -268,6 +279,10 @@ def recognizer_path(project_id: str, location: str = DEFAULT_LOCATION) -> str:
 #: naturally returns empty FLAC for windows past EOF (-> 0 segments), so the
 #: bound just caps wasted requests on a genuinely unknown-length file.
 #: 1200 * 55s ~= 18 h, comfortably longer than any realistic input.
+#: Reaching this cap costs real money, so the caller refuses the plan up front
+#: when ffprobe (the only reliable EOF signal) does not work, and the in-loop
+#: EOF test fails closed — a dead probe stops the run instead of trusting the
+#: cap.
 MAX_UNKNOWN_DURATION_CHUNKS = 1200
 
 
@@ -1194,32 +1209,32 @@ class GoogleCloudSttBackend(Backend):
 
         # Reset the per-run accounting state these helpers populate. The run
         # methods record how many SECONDS of audio Google actually
-        # transcribed and whether the user cancelled, so accounting bills
-        # only the processed audio (not the full file) and is skipped on
-        # cancel. Defaults are conservative: 0 billable, cancelled=True, so a
-        # run method that raises before recording leaves nothing to count.
+        # transcribed; the default (0 billable) is conservative so a run
+        # method that raises before recording leaves nothing to count. The
+        # cancelled flag is kept for diagnostics, but accounting no longer
+        # depends on it — billed audio is recorded on every exit path.
         self._last_billable_seconds = 0.0
         self._last_was_cancelled = True
 
-        if self._batch_mode:
-            segments = self._run_batch(
-                audio_path, language_code, effective_words, duration,
-                progress_cb, log_cb, cancelled,
-            )
-        else:
-            segments = self._run_standard(
-                audio_path, language_code, effective_words, duration,
-                progress_cb, log_cb, cancelled, paused,
-            )
-
-        # Local monthly minute accounting (free tier is 60 min/month and NOT
-        # readable from the key). Count ONLY the audio Google actually
-        # transcribed (``_last_billable_seconds``), and SKIP accounting
-        # entirely on a user cancel — billing the full file duration when the
-        # user pressed Stop after one chunk (or the batch op was cancelled)
-        # over-counts the free tier and the cost estimate for audio Google
-        # never processed.
-        if not self._last_was_cancelled:
+        try:
+            if self._batch_mode:
+                segments = self._run_batch(
+                    audio_path, language_code, effective_words, duration,
+                    progress_cb, log_cb, cancelled,
+                )
+            else:
+                segments = self._run_standard(
+                    audio_path, language_code, effective_words, duration,
+                    progress_cb, log_cb, cancelled, paused,
+                )
+        finally:
+            # Local monthly minute accounting (free tier is 60 min/month and
+            # NOT readable from the key). Record the audio Google actually
+            # transcribed (``_last_billable_seconds``) regardless of how the
+            # run ended: a user Cancel or a mid-run error must not discard
+            # already-billed chunks from the local counter (which would
+            # silently understate real usage). The value is updated as each
+            # paid request completes, so it is accurate on every exit path.
             self._accumulate_usage(self._last_billable_seconds, log_cb)
 
         detected = language or ""
@@ -1243,10 +1258,11 @@ class GoogleCloudSttBackend(Backend):
         """Run the chunked online recognize, returning the stitched segments.
 
         Side effects for usage accounting (read by ``transcribe_to_segments``):
-        sets ``self._last_billable_seconds`` to the SECONDS of audio actually
-        sent to ``recognize`` (so a partial / cancelled run bills only what
-        Google processed, never the full file length) and
-        ``self._last_was_cancelled`` to whether the user pressed Stop.
+        ``self._last_billable_seconds`` accumulates the SECONDS of audio sent
+        to ``recognize`` as each paid request completes, so a partial,
+        cancelled or mid-run-failed run bills exactly what Google processed
+        (never the full file length, and never zero for audio already billed);
+        ``self._last_was_cancelled`` records whether the user pressed Stop.
         """
         client = self._build_client()
         cloud_speech = self._cloud_speech_types()
@@ -1281,6 +1297,22 @@ class GoogleCloudSttBackend(Backend):
                 )
 
         duration_unknown = effective_duration <= 0
+        if duration_unknown and not ffprobe_is_usable():
+            # Fail closed BEFORE any paid request. The unknown-length plan
+            # below is only safe because probe_flac_slice can detect a
+            # past-EOF slice — and that needs a working ffprobe. With a
+            # missing/broken ffprobe every probe is untrusted, so the plan
+            # would send up to MAX_UNKNOWN_DURATION_CHUNKS paid recognize
+            # calls even for a short file. Abort with the same kind of
+            # clear, recoverable error _encode_chunk_flac gives for missing
+            # ffmpeg.
+            raise RuntimeError(
+                "Could not determine this file's duration and the bundled "
+                "ffprobe is missing or not working, so the Google Cloud "
+                "backend cannot safely bound how many paid API requests it "
+                "would send. Install a full ffmpeg build (which includes "
+                "ffprobe), or use the offline engine."
+            )
         chunks = plan_chunks(effective_duration, self._chunk_seconds)
         total = len(chunks)
         if log_cb:
@@ -1295,8 +1327,11 @@ class GoogleCloudSttBackend(Backend):
             )
 
         all_segments: list[dict[str, Any]] = []
-        transcribed_seconds = 0.0
         was_cancelled = False
+        # Track billed audio on the instance AS each paid request completes
+        # (not once at the end): if a later chunk raises, everything Google
+        # already billed stays recorded for the caller's accounting.
+        self._last_billable_seconds = 0.0
         # A run that completes its planned chunks (or stops early at EOF) is a
         # SUCCESS; only an explicit Stop sets was_cancelled.
         self._last_was_cancelled = False
@@ -1322,22 +1357,31 @@ class GoogleCloudSttBackend(Backend):
                 # comes back with no audio, instead of firing the rest of the
                 # bounded chunk plan at Google for nothing. The byte-size test
                 # is only a cheap first cut (a past-EOF slice is still a full
-                # ~8 KiB FLAC container); flac_slice_has_audio is the reliable
-                # ffprobe-based signal.
-                if (
-                    duration_unknown
-                    and idx > 0
-                    and (
-                        len(content) < _EMPTY_FLAC_BYTES
-                        or not flac_slice_has_audio(flac_path)
-                    )
-                ):
-                    if log_cb:
-                        log_cb(
-                            "Google Cloud STT: reached end of file "
-                            f"after {idx} chunk(s)."
-                        )
-                    break
+                # ~8 KiB FLAC container); probe_flac_slice is the reliable
+                # ffprobe-based signal. FAIL CLOSED: only an exact True keeps
+                # the loop going — an untrusted probe (ffprobe missing /
+                # broken / unparseable) stops the run too, so a dead probe can
+                # never make every past-EOF slice look like audio and bill the
+                # whole worst-case plan.
+                if duration_unknown and idx > 0:
+                    probe: bool | None = True
+                    if len(content) >= _EMPTY_FLAC_BYTES:
+                        probe = probe_flac_slice(flac_path)
+                    if len(content) < _EMPTY_FLAC_BYTES or probe is not True:
+                        if log_cb:
+                            if probe is None:
+                                log_cb(
+                                    "Google Cloud STT: could not verify audio "
+                                    f"in the next slice (ffprobe failed); "
+                                    f"stopping after {idx} chunk(s) to avoid "
+                                    "unbounded API cost."
+                                )
+                            else:
+                                log_cb(
+                                    "Google Cloud STT: reached end of file "
+                                    f"after {idx} chunk(s)."
+                                )
+                        break
                 request = cloud_speech.RecognizeRequest(
                     recognizer=recognizer,
                     config=config,
@@ -1361,12 +1405,14 @@ class GoogleCloudSttBackend(Backend):
                 # past EOF is not over-counted; when unknown, the planned
                 # window length is the best available estimate of audio sent
                 # (a window past EOF would have tripped the empty-FLAC break
-                # above before reaching here, so it is not counted).
+                # above before reaching here, so it is not counted). The
+                # instance attribute is updated NOW so a later chunk's
+                # failure cannot discard this already-billed amount.
                 if duration_unknown:
-                    transcribed_seconds += max(0.0, chunk_end - chunk_start)
+                    self._last_billable_seconds += max(0.0, chunk_end - chunk_start)
                 else:
                     upper = min(chunk_end, effective_duration)
-                    transcribed_seconds += max(0.0, upper - chunk_start)
+                    self._last_billable_seconds += max(0.0, upper - chunk_start)
             finally:
                 try:
                     os.unlink(flac_path)
@@ -1394,7 +1440,6 @@ class GoogleCloudSttBackend(Backend):
                     f"Google Cloud STT: chunk {idx + 1}/{total} -> "
                     f"{len(seg)} segment(s)."
                 )
-        self._last_billable_seconds = transcribed_seconds
         self._last_was_cancelled = was_cancelled
         return all_segments
 
@@ -1414,9 +1459,11 @@ class GoogleCloudSttBackend(Backend):
 
         Side effects for usage accounting (read by ``transcribe_to_segments``):
         batch processes the WHOLE file, so on success ``_last_billable_seconds``
-        is the full audio length and ``_last_was_cancelled`` is False; on a
-        user cancel there is no partial result, so billable seconds is 0 and
-        ``_last_was_cancelled`` is True (the caller then skips accounting).
+        is the full audio length. On a user cancel, billable seconds is 0 when
+        the cancellation actually took effect; if the best-effort cancel lost
+        the race against an already-finished operation, Google billed the whole
+        file, so the full length is recorded instead. ``_last_was_cancelled``
+        records that the user pressed Stop.
         """
         if not self._bucket:
             raise RuntimeError(
@@ -1458,6 +1505,7 @@ class GoogleCloudSttBackend(Backend):
                 pass
 
         response: Any = None
+        operation: Any = None
         was_cancelled = False
         try:
             request = cloud_speech.BatchRecognizeRequest(
@@ -1491,15 +1539,29 @@ class GoogleCloudSttBackend(Backend):
         if was_cancelled:
             # User pressed Stop mid-batch. The standard path returns its
             # partial; batch has no partial, so return an empty list — the
-            # caller sees task.cancelled and treats it as a clean cancel. No
-            # billable audio (nothing transcribed) and _last_was_cancelled
-            # stays True so the caller skips usage accounting.
+            # caller sees task.cancelled and treats it as a clean cancel.
             if log_cb:
                 log_cb("Task cancelled")
-            self._last_billable_seconds = 0.0
+            # The best-effort operation.cancel() can LOSE the race against a
+            # batch op that has already finished: Google then billed the whole
+            # file even though we have no result for the user. Record the real
+            # usage in that case instead of 0, so the local counter does not
+            # understate what was billed. (A cancel that worked, or an op that
+            # failed, did not bill the file and stays at 0.)
+            if _operation_completed(operation):
+                self._last_billable_seconds = _seconds_for(audio_path, duration)
+            else:
+                self._last_billable_seconds = 0.0
             self._last_was_cancelled = True
             return []
 
+        # The batch op COMPLETED (we hold a response): Google billed the whole
+        # file at this point. Record that BEFORE parsing, so a malformed /
+        # empty response that fails to parse does not discard real usage
+        # from the local counter (same fail-safe as _run_standard, which
+        # records each chunk before parsing its results).
+        self._last_billable_seconds = _seconds_for(audio_path, duration)
+        self._last_was_cancelled = False
         segments = self._parse_batch_response(
             response, gcs_uri, want_words
         )
@@ -1507,9 +1569,6 @@ class GoogleCloudSttBackend(Backend):
             progress_cb(100)
         if log_cb:
             log_cb(f"Google Cloud STT (batch): {len(segments)} segment(s).")
-        # Batch transcribed the whole file -> bill the full audio length.
-        self._last_billable_seconds = _seconds_for(audio_path, duration)
-        self._last_was_cancelled = False
         return segments
 
     def _await_batch_with_cancel(
@@ -1559,9 +1618,19 @@ class GoogleCloudSttBackend(Backend):
         """Pull the inline transcript out of a BatchRecognizeResponse.
 
         ``response.results`` is a map keyed by the input ``gs://`` URI; each
-        value's ``transcript`` is a ``BatchRecognizeResults`` whose
-        ``.results`` mirror the synchronous shape. We look up our URI, and
-        fall back to the single map value when the key doesn't match.
+        value's ``BatchRecognizeResults`` (``.results``) mirrors the
+        synchronous shape. We look up our URI, and fall back to the single
+        map value when the key doesn't match.
+
+        The documented location for the inline transcript is
+        ``inline_result.transcript`` — the ``BatchRecognizeFileResult`` proto
+        marks the top-level ``transcript`` field as DEPRECATED ("Use
+        ``inline_result.transcript`` instead"), and this backend requests
+        inline output via ``InlineOutputConfig``. So read the documented
+        field first, then fall back to the deprecated one for responses that
+        still populate only that. Reading ONLY the deprecated field would
+        silently return an empty transcript (after Google billed the whole
+        file) the day the server stops filling it.
         """
         results_map = getattr(response, "results", None) or {}
         file_result = None
@@ -1580,10 +1649,35 @@ class GoogleCloudSttBackend(Backend):
             raise RuntimeError(
                 "Google returned no batch results for the uploaded audio."
             )
-        transcript = getattr(file_result, "transcript", None)
-        inner = getattr(transcript, "results", None)
+        transcript = None
+        inline_result = getattr(file_result, "inline_result", None)
+        if inline_result is not None:
+            candidate = getattr(inline_result, "transcript", None)
+            if candidate is not None and getattr(candidate, "results", None):
+                transcript = candidate
+        if transcript is None:
+            legacy = getattr(file_result, "transcript", None)
+            if legacy is not None and getattr(legacy, "results", None):
+                transcript = legacy
+        if transcript is None:
+            # No transcript on a file result: either a clean "no speech"
+            # result (return no segments) or a per-file failure carried in
+            # ``error``. Surface the failure instead of reporting an empty
+            # transcript for audio Google already processed.
+            error = getattr(file_result, "error", None)
+            code = (getattr(error, "code", 0) or 0) if error is not None else 0
+            message = (
+                str(getattr(error, "message", "") or "")
+                if error is not None else ""
+            )
+            if code:
+                raise RuntimeError(
+                    "Google could not transcribe the uploaded audio"
+                    + (f": {message}" if message else ".")
+                )
+            return []
         return parse_recognize_results(
-            inner,
+            transcript.results,
             want_words=want_words,
             want_speaker=self._diarization,
         )
@@ -1656,7 +1750,8 @@ class GoogleCloudSttBackend(Backend):
         ``billable_seconds`` is the audio Google actually transcribed (the
         sum of windows sent in STANDARD mode, or the whole file in BATCH) —
         NOT necessarily the full input length, so a partial run is not
-        over-counted. The caller skips this entirely on a user cancel.
+        over-counted. The caller records this on EVERY exit path (success,
+        cancel, error) so already-billed audio is never discarded.
         Persists via save_config so the UI can show "minutes used this
         month". Never raises — accounting must not break a successful
         transcription.
@@ -1752,6 +1847,30 @@ class GoogleCloudSttBackend(Backend):
 # ---------------------------------------------------------------- helpers
 
 
+def _operation_completed(operation: Any) -> bool:
+    """True only when a long-running op finished SUCCESSFULLY.
+
+    Tells a genuinely cancelled batch op apart from one whose best-effort
+    ``cancel()`` lost the race because the operation had already finished —
+    the latter was billed by Google even though the user will not see the
+    result. ``done()`` alone is not enough: a CANCELLED (or FAILED)
+    operation is also "done", and counting those as billed would
+    over-state usage after a Stop that actually worked. A successful
+    completion exposes a result; a cancelled/failed one raises from
+    ``result()`` (e.g. ``google.api_core.exceptions.Cancelled``). Never
+    raises.
+    """
+    if operation is None:
+        return False
+    try:
+        if not operation.done():
+            return False
+        operation.result(timeout=0)
+        return True
+    except Exception:  # noqa: BLE001 - diagnostics only
+        return False
+
+
 def _seconds_for(audio_path: str, duration: float = 0.0) -> float:
     """Return the audio length in SECONDS (uses ``duration`` when > 0).
 
@@ -1786,6 +1905,12 @@ def _encode_chunk_flac(
     backends). ``end_seconds <= start_seconds`` means "to end of file"
     (used by batch mode, which sends the whole file). Returns the temp
     path; the caller deletes it.
+
+    The ffmpeg call is bounded by ``ENCODE_TIMEOUT_S``: a source file on a
+    disconnected network share can block the process forever, and unlike
+    the RPC calls there is no other timeout covering this step. A timeout
+    is reported the same way as any other ffmpeg failure — a clear,
+    recoverable RuntimeError.
     """
     import tempfile
     from ..paths import bundled_binary
@@ -1806,6 +1931,7 @@ def _encode_chunk_flac(
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "check": True,
+        "timeout": ENCODE_TIMEOUT_S,
     }
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
@@ -1820,6 +1946,16 @@ def _encode_chunk_flac(
             "ffmpeg is required to prepare audio for the Google Cloud "
             "backend but was not found. Use the default engine, or install "
             "ffmpeg."
+        ) from e
+    except subprocess.TimeoutExpired as e:
+        try:
+            os.unlink(out_path)
+        except OSError:
+            pass
+        raise RuntimeError(
+            "ffmpeg timed out preparing this file for the Google Cloud "
+            "backend (the source file may be on a slow or disconnected "
+            "drive). Check the file location and try again."
         ) from e
     except subprocess.CalledProcessError as e:
         try:

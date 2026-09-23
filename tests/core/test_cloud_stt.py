@@ -325,12 +325,12 @@ def test_unknown_duration_stops_on_past_eof_slice_above_byte_threshold(
 
     monkeypatch.setattr(cs, "_encode_chunk_flac", fake_encode)
     monkeypatch.setattr(
-        cs, "flac_slice_has_audio", lambda path: not path.endswith("chunk1.flac")
+        cs, "probe_flac_slice", lambda path: not path.endswith("chunk1.flac")
     )
 
     calls = {"n": 0}
 
-    def fake_one_chunk(self, flac_path, prompt):
+    def fake_one_chunk(self, flac_path, prompt, log_cb=None):
         calls["n"] += 1
         return "[00:00:00.000 --> 00:00:01.000] hi"
 

@@ -57,6 +57,7 @@ import json
 import logging
 import os
 import re
+import http.client
 import subprocess
 import threading
 import time
@@ -98,6 +99,15 @@ INLINE_LIMIT_BYTES = int((20 * 1024 * 1024 - 64 * 1024) * 3 / 4)
 FILE_ACTIVE_TIMEOUT_S = 120.0
 #: Per-request network timeout for the generateContent call.
 GENERATE_TIMEOUT_S = 600.0
+#: Hard ceiling on one ffmpeg FLAC-encode call. A source file on a
+#: disconnected network share (or any blocking-device scenario) can make
+#: ffmpeg block in open/read forever, and nothing else in this module's
+#: liveness/timeout wiring covers the encode step (only the HTTP calls are
+#: bounded). The duration probe next door is bounded for the same reason;
+#: this is generous enough for a slow machine to decode a whole multi-hour
+#: file (batch mode) while still guaranteeing a wedged ffmpeg cannot hang
+#: the worker forever.
+ENCODE_TIMEOUT_S = 1800.0
 
 #: FLAC is lossless, far smaller than WAV, and a Gemini-supported mime.
 CHUNK_MIME = "audio/flac"
@@ -112,14 +122,18 @@ CHUNK_EXT = ".flac"
 #: windows past EOF (-> stops early), so the bound just caps wasted requests on
 #: a genuinely unknown-length file. 120 * 480 s ~= 16 h, longer than any
 #: realistic input. (Mirrors google_cloud_stt.MAX_UNKNOWN_DURATION_CHUNKS.)
+#: Reaching this cap costs real money, so the caller refuses the plan up front
+#: when ffprobe (the only reliable EOF signal) does not work, and the in-loop
+#: EOF test fails closed — a dead probe stops the run instead of trusting the
+#: cap.
 MAX_UNKNOWN_DURATION_CHUNKS = 120
 
 #: A cheap lower bound for "obviously no audio in this slice". NOTE: this is
 #: NOT the reliable past-EOF test — ffmpeg writes a complete FLAC container
 #: (streaminfo + VORBIS_COMMENT + padding, measured ~8 KiB) even for a slice
 #: that starts past the end of the file, which is well ABOVE this value. The
-#: byte check remains as a fast first cut; ``flac_slice_has_audio`` (an
-#: ffprobe duration probe) is what actually detects EOF.
+#: byte check remains as a fast first cut; ``probe_flac_slice`` (an ffprobe
+#: duration probe) is what actually detects EOF.
 _EMPTY_FLAC_BYTES = 4096
 
 #: The transcription instruction. Asks for strict verbatim output with
@@ -423,6 +437,23 @@ def _should_inline(num_bytes: int) -> bool:
     return num_bytes <= INLINE_LIMIT_BYTES
 
 
+def _is_invalid_api_key_body(body: str) -> bool:
+    """True when a Gemini error body says the API KEY itself is invalid.
+
+    The Gemini API returns an invalid / revoked key as HTTP 400 with an
+    ``INVALID_ARGUMENT`` body ("API key not valid. Please pass a valid API
+    key."), NOT the 401/403 the classifier's key branch matches. Without
+    this check a user with a bad key sees a raw JSON dump instead of the
+    actionable "check the key in Advanced > Backend" message.
+    """
+    low = (body or "").lower()
+    return (
+        "api key not valid" in low
+        or "api_key_invalid" in low
+        or ("invalid_argument" in low and "api key" in low)
+    )
+
+
 def classify_http_error(status: int, body: str) -> str:
     """Map an HTTP status + body into a clear, user-facing message.
 
@@ -430,7 +461,7 @@ def classify_http_error(status: int, body: str) -> str:
     error-translation style).
     """
     snippet = (body or "").strip()[:300]
-    if status in (401, 403):
+    if status in (401, 403) or (status == 400 and _is_invalid_api_key_body(body)):
         return (
             "Invalid Google API key (or it lacks Gemini API access). "
             "Check the key in Advanced > Backend, or get a new one at "
@@ -607,6 +638,21 @@ class CloudSttBackend(Backend):
                 )
 
         duration_unknown = effective_duration <= 0
+        if duration_unknown and not ffprobe_is_usable():
+            # Fail closed BEFORE any paid request. The unknown-length plan
+            # below is only safe because probe_flac_slice can detect a
+            # past-EOF slice — and that needs a working ffprobe. With a
+            # missing/broken ffprobe every probe is untrusted, so the plan
+            # would send up to MAX_UNKNOWN_DURATION_CHUNKS paid chunks even
+            # for a short file. Abort with the same kind of clear,
+            # recoverable error _encode_chunk_flac gives for missing ffmpeg.
+            raise RuntimeError(
+                "Could not determine this file's duration and the bundled "
+                "ffprobe is missing or not working, so the cloud backend "
+                "cannot safely bound how many paid API requests it would "
+                "send. Install a full ffmpeg build (which includes ffprobe), "
+                "or use the offline engine."
+            )
         chunks = plan_chunks(
             effective_duration, self._chunk_seconds, chunk_when_unknown=True
         )
@@ -629,6 +675,14 @@ class CloudSttBackend(Backend):
                 break
             while paused and paused() and not (cancelled and cancelled()):
                 time.sleep(0.2)
+            # Re-check after the pause wait: a Stop that arrives WHILE paused
+            # exits the wait loop on the cancel flag, and without this check
+            # control would fall straight through to encoding + sending the
+            # next paid chunk. (google_cloud_stt's loop already re-checks.)
+            if cancelled and cancelled():
+                if log_cb:
+                    log_cb("Task cancelled")
+                break
 
             flac_path = _encode_chunk_flac(
                 audio_path, chunk_start, chunk_end
@@ -640,23 +694,33 @@ class CloudSttBackend(Backend):
                 # at Google for nothing. The byte-size test is only a cheap
                 # first cut: ffmpeg still writes a complete FLAC container
                 # (~8 KiB) for a past-EOF slice, so the reliable signal is
-                # the ffprobe check in flac_slice_has_audio.
-                if (
-                    duration_unknown
-                    and idx > 0
-                    and (
-                        os.path.getsize(flac_path) < _EMPTY_FLAC_BYTES
-                        or not flac_slice_has_audio(flac_path)
-                    )
-                ):
-                    if log_cb:
-                        log_cb(
-                            "Cloud STT: reached end of file "
-                            f"after {idx} chunk(s)."
-                        )
-                    break
+                # probe_flac_slice. FAIL CLOSED: only an exact True ("real
+                # audio") keeps the loop going. A probe that cannot be
+                # trusted (ffprobe missing/broken/unparseable) stops the run
+                # here too, so a dead ffprobe can never make every past-EOF
+                # slice look like audio and bill the whole worst-case plan.
+                if duration_unknown and idx > 0:
+                    size_bytes = os.path.getsize(flac_path)
+                    probe: bool | None = True
+                    if size_bytes >= _EMPTY_FLAC_BYTES:
+                        probe = probe_flac_slice(flac_path)
+                    if size_bytes < _EMPTY_FLAC_BYTES or probe is not True:
+                        if log_cb:
+                            if probe is None:
+                                log_cb(
+                                    "Cloud STT: could not verify audio in "
+                                    f"the next slice (ffprobe failed); "
+                                    f"stopping after {idx} chunk(s) to avoid "
+                                    "unbounded API cost."
+                                )
+                            else:
+                                log_cb(
+                                    "Cloud STT: reached end of file "
+                                    f"after {idx} chunk(s)."
+                                )
+                        break
                 with liveness_tick(log_cb, f"Cloud STT chunk {idx + 1}/{total}"):
-                    text = self._transcribe_one_chunk(flac_path, prompt)
+                    text = self._transcribe_one_chunk(flac_path, prompt, log_cb)
             finally:
                 try:
                     os.unlink(flac_path)
@@ -691,7 +755,12 @@ class CloudSttBackend(Backend):
 
     # -- one chunk: upload (or inline) + generateContent ------------------
 
-    def _transcribe_one_chunk(self, flac_path: str, prompt: str) -> str:
+    def _transcribe_one_chunk(
+        self,
+        flac_path: str,
+        prompt: str,
+        log_cb: Callable[[str], None] | None = None,
+    ) -> str:
         num_bytes = os.path.getsize(flac_path)
         if _should_inline(num_bytes):
             import base64
@@ -707,7 +776,7 @@ class CloudSttBackend(Backend):
         # delete that uploaded blob after we are done with it — success or
         # failure — so the user's audio is not left on Google indefinitely.
         # (Inline audio is never persisted, so only this branch needs it.)
-        file_uri, file_name = self._upload_file(flac_path, num_bytes)
+        file_uri, file_name = self._upload_file(flac_path, num_bytes, log_cb)
         try:
             url, body = build_generate_request(
                 model=self._model, prompt=prompt,
@@ -716,17 +785,24 @@ class CloudSttBackend(Backend):
             resp = self._post_json(url, body, GENERATE_TIMEOUT_S)
             return extract_text_from_response(resp)
         finally:
-            self._delete_file(file_name)
+            self._delete_file(file_name, log_cb)
 
     # -- Files API resumable upload ---------------------------------------
 
-    def _upload_file(self, path: str, num_bytes: int) -> tuple[str, str]:
+    def _upload_file(
+        self,
+        path: str,
+        num_bytes: int,
+        log_cb: Callable[[str], None] | None = None,
+    ) -> tuple[str, str]:
         """Upload ``path`` via the Files API, return ``(file_uri, file_name)``.
 
         Resumable two-step protocol: start (get an upload URL) then
         upload+finalize, then poll the file until ``state == "ACTIVE"``.
         ``file_name`` (the ``files/<id>`` resource id) is returned so the
-        caller can DELETE the blob once transcription is done.
+        caller can DELETE the blob once transcription is done. ``log_cb`` is
+        forwarded to :meth:`_delete_file` so a failed cleanup on an error
+        path is surfaced to the user, not just debug-logged.
         """
         start_url = f"{API_HOST}/upload/{API_VERSION}/files"
         start_req = urllib.request.Request(
@@ -748,7 +824,7 @@ class CloudSttBackend(Backend):
                 resp.read()
         except urllib.error.HTTPError as e:
             raise RuntimeError(classify_http_error(e.code, _read_err_body(e))) from e
-        except urllib.error.URLError as e:
+        except (urllib.error.URLError, OSError, http.client.HTTPException) as e:
             raise RuntimeError(
                 f"Could not reach Google to upload audio: {getattr(e, 'reason', e)}"
             ) from e
@@ -775,7 +851,7 @@ class CloudSttBackend(Backend):
                 meta = _json_body(resp)
         except urllib.error.HTTPError as e:
             raise RuntimeError(classify_http_error(e.code, _read_err_body(e))) from e
-        except urllib.error.URLError as e:
+        except (urllib.error.URLError, OSError, http.client.HTTPException) as e:
             raise RuntimeError(
                 f"Audio upload to Google failed: {getattr(e, 'reason', e)}"
             ) from e
@@ -786,8 +862,28 @@ class CloudSttBackend(Backend):
         file_uri = file_obj.get("uri")
         file_name = file_obj.get("name")
         state = file_obj.get("state")
-        if not file_uri or not file_name:
-            raise RuntimeError("Gemini Files API response missing file uri/name.")
+        if not file_name:
+            # Nothing was finalized under a known resource id, so there is
+            # nothing this method can clean up.
+            raise RuntimeError("Gemini Files API response missing file name.")
+        if not file_uri:
+            # The upload WAS finalized (we have the resource id) but the
+            # response carried no uri to transcribe from. The caller's
+            # ``finally: self._delete_file(...)`` cannot run — this method
+            # raises before returning the name — so delete the known blob
+            # here, before raising, rather than leaving the user's audio on
+            # Google until its ~48 h expiry.
+            deleted = self._delete_file(str(file_name), log_cb)
+            raise RuntimeError(
+                "Gemini Files API returned no file URI for the uploaded "
+                "audio."
+                + (
+                    " The uploaded audio was deleted from Google."
+                    if deleted
+                    else " Cleanup of the uploaded audio failed — it will be "
+                    "removed automatically within ~48 hours."
+                )
+            )
         if state != "ACTIVE":
             # The blob is already finalized on Google's servers. If the
             # wait-for-active poll raises (timeout, state FAILED, HTTP / URL
@@ -799,7 +895,7 @@ class CloudSttBackend(Backend):
             try:
                 self._wait_for_active(str(file_name))
             except Exception:
-                self._delete_file(str(file_name))
+                self._delete_file(str(file_name), log_cb)
                 raise
         return str(file_uri), str(file_name)
 
@@ -816,7 +912,7 @@ class CloudSttBackend(Backend):
                     meta = _json_body(resp)
             except urllib.error.HTTPError as e:
                 raise RuntimeError(classify_http_error(e.code, _read_err_body(e))) from e
-            except urllib.error.URLError as e:
+            except (urllib.error.URLError, OSError, http.client.HTTPException) as e:
                 raise RuntimeError(
                     f"Could not check uploaded-file status: {getattr(e, 'reason', e)}"
                 ) from e
@@ -832,7 +928,11 @@ class CloudSttBackend(Backend):
 
     # -- Files API delete (privacy: don't leave audio on Google) ----------
 
-    def _delete_file(self, file_name: str | None) -> None:
+    def _delete_file(
+        self,
+        file_name: str | None,
+        log_cb: Callable[[str], None] | None = None,
+    ) -> bool:
         """Best-effort DELETE of an uploaded Files-API blob.
 
         Removes the user's audio from Google's servers as soon as the
@@ -841,9 +941,15 @@ class CloudSttBackend(Backend):
         Files-API blobs automatically after ~48 h, so this is the
         primary, not the only, line of defence). ``file_name`` is the
         ``files/<id>`` resource id from the upload response.
+
+        Returns True when the blob is gone (or there was nothing to do),
+        False when the delete failed. A failure is surfaced via ``log_cb``
+        (like the GCS backend's cleanup warning) as well as ``logger``, so
+        the user is told their audio is still on Google instead of the
+        failure being hidden at debug level.
         """
         if not file_name or not self._api_key:
-            return
+            return True
         url = f"{API_HOST}/{API_VERSION}/{file_name}"
         req = urllib.request.Request(
             url, method="DELETE", headers={API_KEY_HEADER: self._api_key}
@@ -851,8 +957,18 @@ class CloudSttBackend(Backend):
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
                 resp.read()
+            return True
         except Exception as e:  # noqa: BLE001 - cleanup is best-effort
-            logger.debug("Could not delete uploaded Gemini file %s: %s", file_name, e)
+            logger.warning(
+                "Could not delete uploaded Gemini file %s: %s", file_name, e
+            )
+            if log_cb:
+                log_cb(
+                    f"Note: could not delete the audio uploaded to Google "
+                    f"({file_name}): {e}. It will be removed automatically "
+                    "within ~48 hours."
+                )
+            return False
 
     # -- POST + JSON helper ------------------------------------------------
 
@@ -873,7 +989,7 @@ class CloudSttBackend(Backend):
                 return _json_body(resp)
         except urllib.error.HTTPError as e:
             raise RuntimeError(classify_http_error(e.code, _read_err_body(e))) from e
-        except urllib.error.URLError as e:
+        except (urllib.error.URLError, OSError, http.client.HTTPException) as e:
             raise RuntimeError(
                 "Could not reach Google for transcription (offline or "
                 f"blocked): {getattr(e, 'reason', e)}"
@@ -893,18 +1009,19 @@ def _read_err_body(e: urllib.error.HTTPError) -> str:
 def _json_body(resp: Any) -> dict[str, Any]:
     """Read + decode a JSON response body into a dict.
 
-    Converts a truncated read (``IncompleteRead``) or a non-JSON 200 body
+    Converts a truncated read (``IncompleteRead``), a stalled/reset
+    connection during the body read (``TimeoutError`` / ``OSError`` — the
+    socket timeout behind ``urlopen`` surfaces those raw, not wrapped in
+    ``URLError``), or a non-JSON 200 body
     (typically a captive portal / corporate proxy answering with HTML) into
     a clear RuntimeError instead of a raw
-    ``http.client.IncompleteRead`` / ``json.JSONDecodeError`` traceback —
-    every other failure on these requests is already classified into a
-    user-facing message.
+    ``http.client.IncompleteRead`` / ``TimeoutError`` / ``json.JSONDecodeError``
+    traceback — every other failure on these requests is already classified
+    into a user-facing message.
     """
-    import http.client
-
     try:
         raw = resp.read()
-    except http.client.HTTPException as e:
+    except (http.client.HTTPException, OSError) as e:
         raise RuntimeError(
             "Google closed the connection before sending a complete "
             "response. Check your network or proxy and try again."
@@ -922,22 +1039,23 @@ def _json_body(resp: Any) -> dict[str, Any]:
     return data
 
 
-def flac_slice_has_audio(path: str) -> bool:
-    """True when an encoded chunk FLAC actually contains audio.
+def probe_flac_slice(path: str) -> bool | None:
+    """Probe an encoded chunk FLAC for audio: True / False / None (untrusted).
 
-    Used by the unknown-duration path in this module (and in
-    ``google_cloud_stt``) to detect a slice that starts past the end of the
-    source file. A byte-size check alone cannot: ffmpeg still writes a
-    complete FLAC container (streaminfo + VORBIS_COMMENT + padding —
-    measured ~8 KiB for this module's encode command) with zero audio
-    frames. ffprobe reports ``N/A`` duration for such a container, which is
-    the signal used here.
+    A byte-size check alone cannot detect a slice that starts past the end
+    of the source file: ffmpeg still writes a complete FLAC container
+    (streaminfo + VORBIS_COMMENT + padding — measured ~8 KiB for this
+    module's encode command) with zero audio frames. ffprobe reports
+    ``N/A`` duration for such a container, which is the ``False`` signal
+    used here.
 
-    Conservative by design: returns True whenever the probe cannot be
-    trusted (ffprobe missing / failed / unparseable output that is not the
-    ``N/A`` empty-container marker), so an unknown-length run is only ever
-    stopped early on a POSITIVE empty result — a probe failure must never
-    truncate a multi-chunk transcript.
+    ``None`` means the probe could not be TRUSTED — ffprobe missing /
+    broken, a non-zero exit, empty or unparseable output. Callers on the
+    unknown-duration EOF-stop path must treat ``None`` as "stop the paid
+    loop" (fail-closed) so a missing/broken ffprobe cannot make the loop
+    fire its whole worst-case chunk plan at the API. Callers that must
+    never truncate a multi-chunk transcript can use
+    :func:`flac_slice_has_audio`, which maps ``None`` to True.
     """
     from ..paths import bundled_binary
 
@@ -960,19 +1078,64 @@ def flac_slice_has_audio(path: str) -> bool:
             **kwargs,
         )
     except (OSError, subprocess.SubprocessError):
-        return True
+        return None
     raw = (proc.stdout or "").strip()
     if proc.returncode != 0 or not raw:
-        return True
+        return None
     if raw.upper().startswith("N/A"):
         # "N/A" — a valid container with no audio frames (past EOF).
         return False
     try:
         return float(raw) > 0.0
     except ValueError:
-        # Some other unexpected non-numeric output: treat as "has audio"
-        # rather than risk truncating a real chunk's transcript.
-        return True
+        # Some other unexpected non-numeric output: untrusted.
+        return None
+
+
+def flac_slice_has_audio(path: str) -> bool:
+    """True unless the probe POSITIVELY proves the slice has no audio.
+
+    Fail-open by design, kept for callers that must never truncate a
+    transcript: an untrusted probe counts as "has audio". The
+    unknown-duration EOF-stop must NOT use this helper — it must use
+    :func:`probe_flac_slice` and stop unless the result is exactly True,
+    otherwise a missing/broken ffprobe makes every past-EOF slice look like
+    real audio and the full worst-case chunk plan gets billed.
+    """
+    return probe_flac_slice(path) is not False
+
+
+def ffprobe_is_usable() -> bool:
+    """True when the bundled ``ffprobe`` binary actually runs.
+
+    Guards the unknown-duration chunk loop: that loop's early EOF-stop
+    depends on ffprobe (see :func:`probe_flac_slice`), so if ffprobe is
+    missing or broken the loop cannot be bounded by anything but its
+    worst-case chunk cap — sized for many hours of real audio. Detecting a
+    dead probe up front (the same failure ``get_duration`` already reports)
+    lets the caller abort with a clear message instead of firing that plan
+    at the paid API for a short file. Never raises. Mirrors the missing-
+    ffmpeg handling in ``_encode_chunk_flac``: a required binary that does
+    not work is a clear, recoverable error, not a silent fallback.
+    """
+    from ..paths import bundled_binary
+
+    kwargs: dict[str, Any] = {
+        "capture_output": True,
+        "text": True,
+        "encoding": "utf-8",
+        "errors": "replace",
+        "timeout": 30,
+    }
+    if os.name == "nt":
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    try:
+        proc = subprocess.run(
+            [bundled_binary("ffprobe"), "-version"], **kwargs
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return proc.returncode == 0
 
 
 def _encode_chunk_flac(
@@ -985,6 +1148,12 @@ def _encode_chunk_flac(
     so the upload is compact (16 kHz mono FLAC is ~1/10th of the source
     bitrate for typical speech). Returns the temp file path; the caller
     deletes it. ``end_seconds <= start_seconds`` means "to end of file".
+
+    The ffmpeg call is bounded by ``ENCODE_TIMEOUT_S``: a source file on a
+    disconnected network share can block the process forever, and unlike
+    the HTTP calls there is no other timeout covering this step. A timeout
+    is reported the same way as any other ffmpeg failure — a clear,
+    recoverable RuntimeError.
     """
     import tempfile
     from ..paths import bundled_binary
@@ -1005,6 +1174,7 @@ def _encode_chunk_flac(
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "check": True,
+        "timeout": ENCODE_TIMEOUT_S,
     }
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
@@ -1018,6 +1188,16 @@ def _encode_chunk_flac(
         raise RuntimeError(
             "ffmpeg is required to prepare audio for the cloud backend but "
             "was not found. Use the default engine, or install ffmpeg."
+        ) from e
+    except subprocess.TimeoutExpired as e:
+        try:
+            os.unlink(out_path)
+        except OSError:
+            pass
+        raise RuntimeError(
+            "ffmpeg timed out preparing this file for the cloud backend "
+            "(the source file may be on a slow or disconnected drive). "
+            "Check the file location and try again."
         ) from e
     except subprocess.CalledProcessError as e:
         try:

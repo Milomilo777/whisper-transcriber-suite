@@ -205,7 +205,7 @@ def test_usage_counts_only_transcribed_seconds_on_partial(monkeypatch, tmp_path)
 
     Pre-fix: the full 600 s (10 min) duration was billed regardless of how
     much was actually sent. Post-fix: only the windows actually sent to
-    ``recognize`` are counted (and accounting is skipped on cancel).
+    ``recognize`` are counted, including on cancel.
     """
     backend, cfg = _ready_backend(tmp_path)
     _wire_standard(monkeypatch, backend, tmp_path)
@@ -224,9 +224,10 @@ def test_usage_counts_only_transcribed_seconds_on_partial(monkeypatch, tmp_path)
     )
     # One chunk's worth of audio was transcribed before the user cancelled.
     assert backend._last_billable_seconds == pytest.approx(55.0)
-    # ...but because the user CANCELLED, accounting is skipped entirely.
     assert backend._last_was_cancelled is True
-    assert cfg.get("gcloud_stt_minutes_used", 0.0) in (0.0, None)
+    # Google already billed that chunk, so a cancel must still record it in
+    # the local free-tier counter (55 s / 60) rather than discard it.
+    assert cfg.get("gcloud_stt_minutes_used", 0.0) == pytest.approx(55.0 / 60, abs=1e-3)
     assert segs  # chunk 0 produced segments
 
 

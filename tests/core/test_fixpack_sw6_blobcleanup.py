@@ -106,7 +106,7 @@ def test_upload_deletes_blob_when_wait_for_active_raises(monkeypatch, tmp_path):
     monkeypatch.setattr(b, "_wait_for_active", boom_wait)
 
     deleted: list[str | None] = []
-    monkeypatch.setattr(b, "_delete_file", lambda name: deleted.append(name))
+    monkeypatch.setattr(b, "_delete_file", lambda name, log_cb=None: deleted.append(name))
 
     with pytest.raises(RuntimeError):
         b._upload_file(str(flac), num_bytes)
@@ -142,7 +142,7 @@ def test_upload_returns_tuple_and_does_not_delete_on_active(monkeypatch, tmp_pat
     b = _backend()
 
     deleted: list[str | None] = []
-    monkeypatch.setattr(b, "_delete_file", lambda name: deleted.append(name))
+    monkeypatch.setattr(b, "_delete_file", lambda name, log_cb=None: deleted.append(name))
 
     file_uri, file_name = b._upload_file(str(flac), num_bytes)
     assert file_uri == "https://files/ok"

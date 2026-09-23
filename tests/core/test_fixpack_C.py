@@ -113,9 +113,9 @@ def test_cloud_stt_unknown_duration_chunks_and_stops_at_eof(monkeypatch, tmp_pat
     # This test exercises the byte-size fast path with its tiny 100-byte EOF
     # slice; stub the ffprobe probe so the test never spawns a real binary
     # (and never depends on one being installed).
-    monkeypatch.setattr(cs, "flac_slice_has_audio", lambda _p: True)
+    monkeypatch.setattr(cs, "probe_flac_slice", lambda _p: True)
 
-    def fake_one_chunk(self, flac_path, prompt):
+    def fake_one_chunk(self, flac_path, prompt, log_cb=None):
         calls["n"] += 1
         return "[00:00:00.000 --> 00:00:01.000] hi"
 
@@ -144,7 +144,7 @@ def test_cloud_stt_known_duration_still_chunks_normally(monkeypatch, tmp_path):
     monkeypatch.setattr(cs, "_encode_chunk_flac", fake_encode)
     monkeypatch.setattr(
         cs.CloudSttBackend, "_transcribe_one_chunk",
-        lambda self, fp, pr: "[00:00:00.000 --> 00:00:01.000] hi",
+        lambda self, fp, pr, log_cb=None: "[00:00:00.000 --> 00:00:01.000] hi",
     )
     backend.transcribe_to_segments("/x.wav", duration=1000.0)
     assert seen == [(0.0, 480.0), (480.0, 960.0), (960.0, 1000.0)]

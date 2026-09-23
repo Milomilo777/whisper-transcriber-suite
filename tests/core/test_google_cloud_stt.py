@@ -156,7 +156,7 @@ def test_run_standard_unknown_duration_stops_on_past_eof_slice(
 
     monkeypatch.setattr(g, "_encode_chunk_flac", fake_encode)
     monkeypatch.setattr(
-        g, "flac_slice_has_audio", lambda path: not path.endswith("g1.flac")
+        g, "probe_flac_slice", lambda path: not path.endswith("g1.flac")
     )
 
     calls = {"n": 0}
