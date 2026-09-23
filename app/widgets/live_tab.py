@@ -361,19 +361,22 @@ def build_live_tab(app: Any, parent: Any) -> None:
     )
 
     # ── Level meter ───────────────────────────────────────────────────
-    # Siri-style sine waves ported from SiriWave (MIT; see
+    # iOS 9 Siri waves ported from SiriWave (MIT) plus a peak meter (see
     # app/widgets/audio_visualizer.py). Fed by the recorder's capture
     # thread via LiveSession.on_meter; drawing stays on Tk.
     from app.widgets.audio_visualizer import AudioVisualizer
 
     lvl = section_labelframe(
         parent, "Input level",
-        "Live audio level while listening. The wave moves with the sound "
-        "coming in; when nothing moves, nothing is being captured.",
+        "Live audio level while listening. The waves move with the sound "
+        "coming in; the bar underneath is a peak meter (green = normal "
+        "speech, yellow = loud, red = close to clipping) with the level in "
+        "dB at the top right. When nothing moves, nothing is being "
+        "captured.",
     )
     lvl.grid(row=2, column=0, sticky="ew", padx=15, pady=(0, 6))
     lvl.columnconfigure(0, weight=1)
-    app.live_visualizer = AudioVisualizer(lvl, height=110)
+    app.live_visualizer = AudioVisualizer(lvl, height=130)
     app.live_visualizer.frame.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
 
     # ── Transcript ────────────────────────────────────────────────────

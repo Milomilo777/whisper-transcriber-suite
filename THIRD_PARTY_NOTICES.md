@@ -76,7 +76,7 @@ Full OFL text for all three font families is in `assets/fonts/OFL.txt`.
 
 | Component | License | Where |
 |---|---|---|
-| **SiriWave** ([kopiro/siriwave](https://github.com/kopiro/siriwave)) — classic-style curve maths, curve set and animation defaults | MIT | `app/widgets/audio_visualizer.py` (Live tab wave display), ported from TypeScript to Tk. |
+| **SiriWave** ([kopiro/siriwave](https://github.com/kopiro/siriwave)) — iOS 9-style curve maths, spawn/despawn behaviour, colours and animation defaults | MIT | `app/widgets/audio_visualizer.py` (Live tab wave display), ported from TypeScript to numpy + Pillow. |
 
 SiriWave license:
 

@@ -84,6 +84,25 @@ def shorten(text: str, limit: int = 260) -> str:
 # --------------------------------------------------------------------- build
 
 
+# Adapted from SiriWave (https://github.com/kopiro/siriwave) — the "classic"
+# curve set (attenuation, line width, opacity) and ClassicCurve's
+# globalAttFn / xPos / yPos (MIT, Copyright (c) 2020 Flavio Maria De Stefano).
+_HERO_CURVES = ((-2, 1, 0.1), (-6, 1, 0.2), (4, 1, 0.4), (2, 1, 0.6), (1, 1.5, 1.0))
+
+
+def _hero_curve_points(attenuation: float, width: float, height_max: float,
+                       amplitude: float, phase: float) -> list[float]:
+    out: list[float] = []
+    scale = 0.6 * height_max * amplitude / attenuation
+    steps = 200
+    for k in range(steps + 1):
+        x = -2 + 4 * k / steps
+        att = (4 / (4 + x ** 4)) ** 4
+        out.append(width * ((x + 2) / 4))
+        out.append(height_max + att * scale * math.sin(6 * x - phase))
+    return out
+
+
 def build_smtv_tab(app: Any, parent: Any) -> None:
     from core.integrations import smtv_browse as sb
 
@@ -219,14 +238,13 @@ def _build_hero(app: Any, state: "_TabState", parent: Any) -> tk.Canvas:
             hero.create_rectangle(x0, 0, w * (k + 1) / steps + 1, _HERO_H,
                                   fill=_mix(_HERO_LEFT, _HERO_RIGHT, k / (steps - 1)),
                                   outline="")
-        # Decorative sine waves on the right, echoing the Live tab display.
-        from app.widgets.audio_visualizer import CURVES, blend, curve_points
+        # Decorative sine waves on the right.
         wave_w = w * 0.45
-        for cv in CURVES:
-            pts = curve_points(cv, wave_w, _HERO_H / 2, 0.85, math.pi / 3)
+        for att, width, opacity in _HERO_CURVES:
+            pts = _hero_curve_points(att, wave_w, _HERO_H / 2, 0.85, math.pi / 3)
             pts = [p + (w - wave_w) if i % 2 == 0 else p for i, p in enumerate(pts)]
-            hero.create_line(*pts, fill=blend(cv.opacity * 0.7, (253, 230, 138), _HERO_RIGHT),
-                             width=cv.line_width, smooth=True)
+            hero.create_line(*pts, fill=_mix((253, 230, 138), _HERO_RIGHT, 1 - opacity * 0.7),
+                             width=width, smooth=True)
         hero.create_text(24, 26, anchor="nw", text="SUPREME MASTER TELEVISION",
                          fill=_HERO_ACCENT, font=("Segoe UI", 10, "bold"))
         hero.create_text(24, 46, anchor="nw", text="Good news from around our beautiful planet",
