@@ -327,6 +327,9 @@ def test_unknown_duration_stops_on_past_eof_slice_above_byte_threshold(
     monkeypatch.setattr(
         cs, "probe_flac_slice", lambda path: not path.endswith("chunk1.flac")
     )
+    # The up-front "can ffprobe verify EOF?" gate must not depend on the
+    # runner having ffprobe installed (CI does not).
+    monkeypatch.setattr(cs, "ffprobe_is_usable", lambda: True)
 
     calls = {"n": 0}
 

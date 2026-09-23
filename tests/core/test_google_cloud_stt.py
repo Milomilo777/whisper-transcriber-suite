@@ -158,6 +158,9 @@ def test_run_standard_unknown_duration_stops_on_past_eof_slice(
     monkeypatch.setattr(
         g, "probe_flac_slice", lambda path: not path.endswith("g1.flac")
     )
+    # The up-front "can ffprobe verify EOF?" gate must not depend on the
+    # runner having ffprobe installed (CI does not).
+    monkeypatch.setattr(g, "ffprobe_is_usable", lambda: True)
 
     calls = {"n": 0}
 

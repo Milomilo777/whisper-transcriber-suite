@@ -114,6 +114,9 @@ def test_cloud_stt_unknown_duration_chunks_and_stops_at_eof(monkeypatch, tmp_pat
     # slice; stub the ffprobe probe so the test never spawns a real binary
     # (and never depends on one being installed).
     monkeypatch.setattr(cs, "probe_flac_slice", lambda _p: True)
+    # The up-front "can ffprobe verify EOF?" gate must not depend on the
+    # runner having ffprobe installed (CI does not).
+    monkeypatch.setattr(cs, "ffprobe_is_usable", lambda: True)
 
     def fake_one_chunk(self, flac_path, prompt, log_cb=None):
         calls["n"] += 1
