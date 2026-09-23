@@ -23,7 +23,7 @@
 
 ## Key Facts
 
-- Free and open source: BSD-3-Clause license, no subscription, no per-minute cost, no telemetry by default.
+- Free and open source: BSD-3-Clause license, no subscription, no per-minute cost.
 - Runs fully offline after a one-time Whisper model download (about 1-3 GB); no account and no API key required for local transcription.
 - Local transcription backends: faster-whisper (default), whisper.cpp, NVIDIA Parakeet. Two cloud backends (Gemini API, Google Cloud Speech-to-Text) are opt-in only and off by default.
 - Output formats: srt, vtt, ass, tsv, txt, json, lrc, md, docx, pdf, plus oTranscribe, ELAN, InqScribe and Express Scribe.

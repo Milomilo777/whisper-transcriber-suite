@@ -67,11 +67,12 @@ No account. No API key. No subscription. Your files stay on your disk.
 - 🔒 **Runs on your machine** — [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2) by default, plus **whisper.cpp** and **NVIDIA Parakeet**
 - 📝 **14 output formats** — `srt` `vtt` `ass` `tsv` `txt` `json` `lrc` `md` `docx` `pdf`, plus oTranscribe / ELAN / InqScribe / Express Scribe
 - 🎙️ **Live transcription** — a microphone or the system audio, transcribed as it happens → [docs/LIVE.md](docs/LIVE.md)
+- 🗨️ **Text to voice & voice cloning** (optional) — 54 ready-made voices, or clone / design your own, locally
 - 🗣️ **Speaker labels** — offline diarisation, per-word timestamps, time-range clipping
 - 🎬 **Downloads** — any `yt-dlp` site, with optional transcribe-on-finish
 - 🧹 **Adaptive denoise** — measures the audio and only cleans it when that helps → [docs/DENOISE.md](docs/DENOISE.md)
 - 🌐 **Local-network mode** — turn this machine into a transcription page for your other devices
-- 💸 **Free and BSD-3 licensed** — no per-minute cost, no subscription, no telemetry by default
+- 💸 **Free and BSD-3 licensed** — no per-minute cost, no subscription
 
 ## Download
 
@@ -159,7 +160,7 @@ for the phones and PCs on your network.
 | **Video wall** | Tile one live stream as an N×N grid across one or many monitors. |
 | **Local network mode** | A stdlib-only web server so other devices can transcribe through this machine — optional password, off until you start it. |
 | **Post-processing** | Automatic chapters and hallucination detection, both toggleable. |
-| **Clone Your Voice** | Optional, off by default (opt in at install time) — record a short sample and generate new speech in that voice via OmniVoice, Apache-2.0, running locally. Downloads ~2GB the first time you use it. |
+| **Clone Your Voice / Text to Voice** | Optional, off by default (opt in at install time). Pick a model: **Kokoro** reads text aloud in 54 ready-made voices across 9 languages, fast on any CPU (~350 MB on first use); **OmniVoice** clones a voice from a short recording, designs one from gender / age / pitch / accent, or picks one itself (~2 GB on first use). Speed control, up to 5,000 characters, all local. |
 
 Keyboard: `Ctrl+O` browse · `Ctrl+Enter` transcribe · `Esc` cancel ·
 `Ctrl+Q` exit.
@@ -346,8 +347,8 @@ freeze and stability audits are archived under
 ## Frequently asked questions
 
 **Is Whisper Transcriber Suite free?**
-Yes. It's BSD-3-Clause licensed, with no subscription, no per-minute cost and
-no telemetry by default. The Whisper model itself downloads once (~1–3 GB)
+Yes. It's BSD-3-Clause licensed, with no subscription and no per-minute
+cost. The Whisper model itself downloads once (~1–3 GB)
 on first launch; after that the app runs fully offline.
 
 **Does it upload my audio or video anywhere?**
@@ -386,7 +387,9 @@ using either the bundled local model or your own OpenAI-compatible endpoint
 **Can it clone a voice and make it say new text?**
 Yes, via the optional Clone Your Voice / Text to Voice tab — record or load
 1-3 short reference clips, type text, and it generates that text spoken in
-the cloned voice using OmniVoice (Apache-2.0), entirely on your machine. It's
+the cloned voice using OmniVoice (Apache-2.0), entirely on your machine. No
+recording? Pick one of Kokoro's 54 ready-made voices instead, or let
+OmniVoice design a voice from a description. It's
 off by default; opt in to it as an installer task when you install or
 upgrade. Downloads its ~2GB speech model on first use (needs internet for
 that one-time download only), and requires you to confirm you own or have

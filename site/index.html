@@ -72,7 +72,7 @@
   "@context": "https://schema.org",
   "@type": "FAQPage",
   "mainEntity": [
-    {"@type":"Question","name":"Is Whisper Transcriber Suite free?","acceptedAnswer":{"@type":"Answer","text":"Yes. It's BSD-3-Clause licensed, with no subscription, no per-minute cost and no telemetry by default. The Whisper model itself downloads once (about 1-3 GB) on first launch; after that the app runs fully offline."}},
+    {"@type":"Question","name":"Is Whisper Transcriber Suite free?","acceptedAnswer":{"@type":"Answer","text":"Yes. It's BSD-3-Clause licensed, with no subscription and no per-minute cost. The Whisper model itself downloads once (about 1-3 GB) on first launch; after that the app runs fully offline."}},
     {"@type":"Question","name":"Does it upload my audio or video anywhere?","acceptedAnswer":{"@type":"Answer","text":"No, not by default. Every default backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — runs locally on your machine. Two backends are opt-in only (cloud_stt via the Gemini API, and google_cloud_stt), and both stay off until you turn them on yourself in Advanced to Backend."}},
     {"@type":"Question","name":"What platforms does it run on?","acceptedAnswer":{"@type":"Answer","text":"Windows, macOS and Linux. Published downloads are a Windows installer, a Windows portable ZIP, and a macOS DMG; Linux runs from source."}},
     {"@type":"Question","name":"What transcript formats can it produce?","acceptedAnswer":{"@type":"Answer","text":"SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and PDF, plus oTranscribe, ELAN, InqScribe and Express Scribe."}},
@@ -390,7 +390,7 @@ python gui.py</code></pre>
         <p class="section-lede">Something else on your mind? Ask in <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">GitHub Discussions</a>.</p>
       </header>
       <div class="faq-list sr">
-        <details><summary>Is Whisper Transcriber Suite free?</summary><div class="faq-a"><p>Yes. It's BSD-3-Clause licensed, with no subscription, no per-minute cost and no telemetry by default. The Whisper model itself downloads once (about 1-3 GB) on first launch; after that the app runs fully offline.</p></div></details>
+        <details><summary>Is Whisper Transcriber Suite free?</summary><div class="faq-a"><p>Yes. It's BSD-3-Clause licensed, with no subscription and no per-minute cost. The Whisper model itself downloads once (about 1-3 GB) on first launch; after that the app runs fully offline.</p></div></details>
         <details><summary>Does it upload my audio or video anywhere?</summary><div class="faq-a"><p>No, not by default. Every default backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — runs locally on your machine. Two backends are opt-in only (a cloud Gemini-API backend, and Google Cloud Speech-to-Text), and both stay off until you enable them yourself in Advanced &rarr; Backend.</p></div></details>
         <details><summary>What platforms does it run on?</summary><div class="faq-a"><p>Windows, macOS and Linux. Published downloads are a Windows installer, a Windows portable ZIP, and a macOS DMG; Linux runs from source.</p></div></details>
         <details><summary>What transcript formats can it produce?</summary><div class="faq-a"><p><code>srt</code> <code>vtt</code> <code>ass</code> <code>tsv</code> <code>txt</code> <code>json</code> <code>lrc</code> <code>md</code> <code>docx</code> <code>pdf</code>, plus oTranscribe, ELAN, InqScribe and Express Scribe.</p></div></details>

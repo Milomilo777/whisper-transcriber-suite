@@ -2,7 +2,7 @@
 
 > Free, offline desktop app (BSD-3-Clause) that transcribes audio/video with OpenAI's Whisper — no account, no cloud upload, no per-minute cost. Windows, macOS, Linux.
 
-Whisper Transcriber Suite runs faster-whisper, whisper.cpp or NVIDIA Parakeet locally to turn audio and video into SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and PDF (plus oTranscribe, ELAN, InqScribe and Express Scribe). It adds live microphone/system-audio transcription, offline speaker diarisation with per-word timestamps, yt-dlp-powered downloads from any site it supports, adaptive denoise, a pause/resume/re-run batch queue, and a local-network mode that turns the machine into a transcription page for other devices on the LAN. Two cloud backends (a Gemini API option and Google Cloud Speech-to-Text) exist purely as opt-in extras, off by default — every default path keeps recordings on the user's own machine. Actively maintained; CI runs the full test suite on every push. Written by translation-robot; no telemetry, no personal data collected.
+Whisper Transcriber Suite runs faster-whisper, whisper.cpp or NVIDIA Parakeet locally to turn audio and video into SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and PDF (plus oTranscribe, ELAN, InqScribe and Express Scribe). It adds live microphone/system-audio transcription, offline speaker diarisation with per-word timestamps, yt-dlp-powered downloads from any site it supports, adaptive denoise, a pause/resume/re-run batch queue, and a local-network mode that turns the machine into a transcription page for other devices on the LAN. Two cloud backends (a Gemini API option and Google Cloud Speech-to-Text) exist purely as opt-in extras, off by default — every default path keeps recordings on the user's own machine. Actively maintained; CI runs the full test suite on every push. Written by translation-robot.
 
 Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscription, no per-minute fee; only the ~1-3GB Whisper model itself downloads once, on first launch. Does it upload recordings anywhere? No, not by default — the two cloud backends above are opt-in and stay off until enabled. What platforms does it run on? Windows, macOS and Linux, with published Windows and macOS installers and a from-source build for Linux. How is this different from calling the Whisper API directly? No per-minute cost and nothing leaves the machine, because transcription runs locally by default instead of through a paid cloud API.
 
@@ -20,7 +20,7 @@ Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscri
 - [Changelog](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md): what shipped in each version.
 
 ## Key facts
-- Free and open source: no subscription, no per-minute cost, no telemetry by default.
+- Free and open source: no subscription, no per-minute cost.
 - License: BSD-3-Clause for the project's own source; bundled ffmpeg, ffprobe, yt-dlp and the Whisper model keep their own upstream licenses (see THIRD_PARTY_NOTICES.md in the repository).
 - Offline by default: faster-whisper, whisper.cpp and NVIDIA Parakeet all transcribe locally; cloud backends are opt-in only.
 - Cross-platform: Windows and macOS installers published; Linux builds from source.
