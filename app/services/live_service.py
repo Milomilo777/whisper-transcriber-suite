@@ -37,6 +37,11 @@ MODEL_READY_TIMEOUT_S = 600.0
 #: large model on a weak CPU is slow, and abandoning early would silently
 #: drop audio the user spoke.
 CHUNK_TIMEOUT_S = 180.0
+#: Auto-detect locks onto the first confident answer. Whisper's language
+#: detection is a whole extra encoder pass per chunk -- measured on a
+#: 4-core i7-6700 it doubled per-chunk time for every model size -- so
+#: re-detecting a language that cannot change mid-sentence is pure cost.
+LANGUAGE_LOCK_MIN_PROB = 0.7
 
 
 class LiveWorkerError(RuntimeError):
@@ -59,6 +64,8 @@ class LiveTranscriber:
     ) -> None:
         self.entry_file = entry_file
         self.language = language
+        #: Set when auto-detect locked onto a language this session.
+        self.locked_language = ""
         self._log = log
         self._process: Optional[subprocess.Popen[str]] = None
         self._reader: Optional[threading.Thread] = None
@@ -189,7 +196,27 @@ class LiveTranscriber:
             )
         if slot["error"]:
             raise LiveWorkerError(str(slot["error"]))
-        return slot["result"] or {"text": "", "language": ""}
+        result = slot["result"] or {"text": "", "language": ""}
+        self._maybe_lock_language(result)
+        return result
+
+    def _maybe_lock_language(self, result: dict[str, Any]) -> None:
+        """After auto-detect is confident once, stop re-detecting per chunk."""
+        if self.language:
+            return
+        lang = str(result.get("language") or "")
+        prob = float(result.get("language_probability") or 0.0)
+        if not lang or not str(result.get("text") or "").strip():
+            return
+        if prob < LANGUAGE_LOCK_MIN_PROB:
+            return
+        self.language = lang
+        self.locked_language = lang
+        if self._log:
+            self._log(
+                f"Live: detected language '{lang}' ({prob:.0%}); using it for "
+                f"the rest of this session."
+            )
 
     # ---------- reader ------------------------------------------------
 
@@ -239,9 +266,14 @@ class LiveTranscriber:
             if event == "live_error":
                 slot["error"] = msg.get("message") or "Unknown live error"
             else:
+                try:
+                    prob = float(msg.get("language_probability") or 0.0)
+                except (TypeError, ValueError):
+                    prob = 0.0
                 slot["result"] = {
                     "text": str(msg.get("text") or ""),
                     "language": str(msg.get("language") or ""),
+                    "language_probability": prob,
                     "segments": msg.get("segments") or [],
                 }
             slot["event"].set()

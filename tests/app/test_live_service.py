@@ -180,6 +180,56 @@ def test_language_is_forwarded(monkeypatch):
     _stop_and_join(lt, proc)
 
 
+def _answer_next(lt, proc, n_before, **reply):
+    """Send one chunk from a thread, answer it with ``reply``, return result."""
+    out: dict = {}
+    t = threading.Thread(
+        target=lambda: out.update(lt.transcribe_chunk("c.wav")), daemon=True
+    )
+    t.start()
+    assert _wait(lambda: len(_sent(proc)) > n_before)
+    request = _sent(proc)[n_before]
+    proc.stdout.push({"event": "live_result", "id": request["id"], **reply})
+    t.join(timeout=3.0)
+    return request, out
+
+
+def test_auto_detect_locks_after_first_confident_chunk(wired):
+    lt, proc = wired
+    logged: list[str] = []
+    lt._log = logged.append
+    # Unsure (low probability) -> keep auto-detecting.
+    req, _ = _answer_next(lt, proc, 0, text="hm", language="en",
+                          language_probability=0.4)
+    assert req["language"] is None and lt.language is None
+    # Empty text never locks, however confident.
+    req, _ = _answer_next(lt, proc, 1, text="", language="en",
+                          language_probability=0.99)
+    assert lt.language is None
+    req, out = _answer_next(lt, proc, 2, text="salam", language="fa",
+                            language_probability=0.93)
+    assert req["language"] is None
+    assert out["language_probability"] == pytest.approx(0.93)
+    assert lt.language == "fa" and lt.locked_language == "fa"
+    assert any("'fa'" in m for m in logged)
+    req, _ = _answer_next(lt, proc, 3, text="khoobi", language="fa",
+                          language_probability=0.9)
+    assert req["language"] == "fa"  # later chunks skip detection
+
+
+def test_explicit_language_is_never_overridden(monkeypatch):
+    proc = _FakeProc()
+    monkeypatch.setattr(
+        "app.services.live_service.subprocess.Popen", lambda *a, **kw: proc
+    )
+    lt = LiveTranscriber("gui.py", language="en")
+    lt.start(wait_ready=False)
+    _answer_next(lt, proc, 0, text="bonjour", language="fr",
+                 language_probability=0.99)
+    assert lt.language == "en" and lt.locked_language == ""
+    _stop_and_join(lt, proc)
+
+
 def _swallow(fn, *a):
     try:
         fn(*a)
