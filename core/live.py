@@ -292,6 +292,13 @@ class LiveSession:
     _stopping: threading.Event = field(
         default_factory=threading.Event, repr=False
     )
+    _discard: threading.Event = field(
+        default_factory=threading.Event, repr=False
+    )
+    _stopped_emitted: bool = False
+    #: Chunks queued but not yet picked up, plus one while transcribing.
+    _queued: int = 0
+    _busy: bool = False
     _seq: int = 0
     _elapsed_bytes: int = 0
     _rate: int = 0
@@ -333,7 +340,24 @@ class LiveSession:
         self._emit(LiveEvent(kind="state", detail="started"))
 
     def stop(self, *, timeout: float = 10.0) -> str:
-        """Stop capture, transcribe the tail, and return the recording path."""
+        """Stop capture, transcribe the tail, and return the recording path.
+
+        Blocking teardown (app exit): waits at most ``timeout`` for the
+        backlog. The Stop button uses :meth:`stop_capture` +
+        :meth:`wait_drained` instead, so a slow model finishes every
+        chunk rather than losing them after a fixed timeout.
+        """
+        self.stop_capture()
+        self.wait_drained(timeout=timeout)
+        return self.recording_path
+
+    def stop_capture(self) -> str:
+        """Stop the microphone now and queue the tail; returns immediately.
+
+        Chunks already queued keep transcribing on the consumer thread;
+        follow with :meth:`wait_drained` (and optionally
+        :meth:`discard_pending`).
+        """
         if self._stopping.is_set():
             # Already stopped or stopping (e.g. the Stop button's worker
             # and the app-exit teardown both call this). Re-running the
@@ -357,14 +381,62 @@ class LiveSession:
             tail = self._segmenter.flush()
         if tail:
             self._submit(tail)
-        self._chunks.put(None)   # sentinel: drain then exit
+        self._put_sentinel()
+        if rec is not None and rec.last_error:
+            self._emit(LiveEvent(kind="error", detail=rec.last_error))
+        return self.recording_path
+
+    def wait_drained(self, timeout: float | None = None) -> bool:
+        """Block until every queued chunk is transcribed (or discarded).
+
+        Returns True once the consumer has finished; False on timeout.
+        Emits the single "stopped" state event when it finishes.
+        """
         consumer = self._consumer
         if consumer is not None and consumer.is_alive():
             consumer.join(timeout=timeout)
-        if rec is not None and rec.last_error:
-            self._emit(LiveEvent(kind="error", detail=rec.last_error))
+            if consumer.is_alive():
+                return False
+        with self._lock:
+            if self._stopped_emitted:
+                return True
+            self._stopped_emitted = True
         self._emit(LiveEvent(kind="state", detail="stopped"))
-        return self.recording_path
+        return True
+
+    def discard_pending(self) -> int:
+        """Drop every chunk still waiting; returns how many were dropped.
+
+        The chunk being transcribed right now is not interrupted here --
+        the caller stops the worker for that -- but its failure is then
+        swallowed rather than reported as an error.
+        """
+        self._discard.set()
+        dropped = 0
+        while True:
+            try:
+                item = self._chunks.get_nowait()
+            except queue.Empty:
+                break
+            if item is not None:
+                dropped += 1
+                with self._lock:
+                    self._queued = max(0, self._queued - 1)
+        self._put_sentinel()
+        return dropped
+
+    def pending_chunks(self) -> int:
+        """Chunks not yet transcribed, including the one in progress."""
+        with self._lock:
+            return self._queued + (1 if self._busy else 0)
+
+    def _put_sentinel(self) -> None:
+        try:
+            self._chunks.put_nowait(None)   # sentinel: drain then exit
+        except queue.Full:
+            # Full of real chunks: make room by blocking briefly -- the
+            # consumer is draining. Never drop a real chunk for this.
+            self._chunks.put(None)
 
     def is_running(self) -> bool:
         rec = self._recorder
@@ -401,6 +473,8 @@ class LiveSession:
         item = (seq, pcm, start_s, rate)
         try:
             self._chunks.put_nowait(item)
+            with self._lock:
+                self._queued += 1
             return
         except queue.Full:
             pass
@@ -408,12 +482,16 @@ class LiveSession:
         # audio is what the user is watching for, and silently growing
         # the backlog would drift further behind with every chunk.
         try:
-            self._chunks.get_nowait()
-            self.dropped_chunks += 1
+            if self._chunks.get_nowait() is not None:
+                self.dropped_chunks += 1
+                with self._lock:
+                    self._queued = max(0, self._queued - 1)
         except queue.Empty:
             pass
         try:
             self._chunks.put_nowait(item)
+            with self._lock:
+                self._queued += 1
         except queue.Full:
             self.dropped_chunks += 1
             return
@@ -432,35 +510,51 @@ class LiveSession:
             item = self._chunks.get()
             if item is None:
                 return
-            seq, pcm, start_s, rate = item
-            path = os.path.join(self.work_dir, f"chunk-{seq:06d}.wav")
+            with self._lock:
+                self._queued = max(0, self._queued - 1)
+                self._busy = True
             try:
-                write_wav(path, pcm, rate)
-            except OSError as e:
-                self._emit(LiveEvent(kind="error", detail=f"Chunk write failed: {e}"))
-                continue
-            try:
-                result = self.transcribe_chunk(path)
-            except Exception as e:  # noqa: BLE001
-                # One failed chunk must not end the session.
-                logger.exception("Live chunk transcription failed: %s", e)
-                self._emit(LiveEvent(kind="error", detail=str(e)))
-                continue
+                self._consume_one(item)
             finally:
-                try:
-                    os.remove(path)
-                except OSError:
-                    pass
-            text, language = _result_text(result)
-            if not text:
-                continue
-            self._emit(LiveEvent(
-                kind="text",
-                text=text,
-                start=start_s,
-                end=start_s + (len(pcm) / float(self.config.bytes_per_second())),
-                language=language,
-            ))
+                with self._lock:
+                    self._busy = False
+
+    def _consume_one(self, item: tuple[int, bytes, float, int]) -> None:
+        seq, pcm, start_s, rate = item
+        if self._discard.is_set():
+            return
+        path = os.path.join(self.work_dir, f"chunk-{seq:06d}.wav")
+        try:
+            write_wav(path, pcm, rate)
+        except OSError as e:
+            self._emit(LiveEvent(kind="error", detail=f"Chunk write failed: {e}"))
+            return
+        try:
+            result = self.transcribe_chunk(path)
+        except Exception as e:  # noqa: BLE001
+            if self._discard.is_set():
+                # The user chose to discard the rest; the worker was
+                # stopped under this chunk on purpose.
+                return
+            # One failed chunk must not end the session.
+            logger.exception("Live chunk transcription failed: %s", e)
+            self._emit(LiveEvent(kind="error", detail=str(e)))
+            return
+        finally:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        text, language = _result_text(result)
+        if not text:
+            return
+        self._emit(LiveEvent(
+            kind="text",
+            text=text,
+            start=start_s,
+            end=start_s + (len(pcm) / float(self.config.bytes_per_second())),
+            language=language,
+        ))
 
     # ---------- events ----------------------------------------------
 

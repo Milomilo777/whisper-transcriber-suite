@@ -7,6 +7,7 @@ sound card, model, or subprocess is involved.
 from __future__ import annotations
 
 import threading
+import time
 import types
 
 import pytest
@@ -419,3 +420,55 @@ def test_teardown_continues_when_the_session_raises(built):
     )
     live_tab.stop_live_session(built)
     assert stopped == ["worker"], "the worker subprocess would have leaked"
+
+
+# ------------------------------------------------------ stop: drain / discard
+
+
+def _drain_posted(app, root, until, timeout=5.0):
+    deadline = time.time() + timeout
+    while time.time() < deadline and not until():
+        while app.posted:
+            app.posted.pop(0)()
+        root.update()
+        time.sleep(0.01)
+
+
+def test_first_stop_drains_backlog_second_stop_discards(built, root):
+    """First Stop: mic off, backlog keeps transcribing, button offers
+    "Discard rest". Second press: backlog dropped, worker stopped."""
+    finished = threading.Event()
+    calls: list[str] = []
+    built.post_to_main = built.posted.append  # run on the Tk thread only
+
+    def discard_pending():
+        calls.append("discard")
+        finished.set()
+        return 2
+
+    session = types.SimpleNamespace(
+        stop_capture=lambda: calls.append("capture"),
+        wait_drained=lambda timeout=None: finished.wait(5.0),
+        discard_pending=discard_pending,
+        pending_chunks=lambda: 3,
+        drain_events=lambda limit=64: [],
+    )
+    transcriber = types.SimpleNamespace(stop=lambda: calls.append("worker"))
+    built.live_session, built.live_transcriber = session, transcriber
+    live_tab._set_running(built, True)
+
+    live_tab._stop(built)
+    _drain_posted(built, root, lambda: "capture" in calls)
+    assert built._live_draining is True
+    assert built.live_stop_btn.cget("text") == "Discard rest"
+    assert str(built.live_stop_btn.cget("state")) == "normal"
+    live_tab._poll_once(built)
+    assert "3 remaining" in built.live_status_var.get()
+
+    live_tab._stop(built)
+    _drain_posted(built, root, lambda: built.live_session is None)
+    assert calls.count("discard") == 1 and "worker" in calls
+    assert built.live_session is None
+    assert built._live_draining is False
+    assert built.live_stop_btn.cget("text") == "Stop"
+    assert any("discarded 2" in m for m in built.logged)

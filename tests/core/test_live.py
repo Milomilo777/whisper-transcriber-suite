@@ -405,6 +405,63 @@ def test_session_transcribes_the_tail_on_stop(fake_recorder, tmp_path):
     assert seen, "the trailing utterance was dropped at stop"
 
 
+def _three_utterances():
+    return (_speech(2.5) + _silence(0.8)) * 3
+
+
+def test_stop_capture_keeps_transcribing_the_whole_backlog(fake_recorder, tmp_path):
+    """Owner report (2026-09-23): with a model slower than real time,
+    pressing Stop threw away every chunk still queued (a fixed 10 s join,
+    then the worker was killed under them). Stop now only ends capture;
+    the backlog is transcribed however long it takes.
+    """
+    release = threading.Event()
+    done: list[str] = []
+
+    def slow_transcribe(path):
+        release.wait(5.0)
+        done.append(path)
+        return f"part {len(done)}"
+
+    session = live.LiveSession(
+        transcribe_chunk=slow_transcribe, work_dir=str(tmp_path / "work")
+    )
+    session.start()
+    fake_recorder.instances[0].push(_three_utterances())
+    session.stop_capture()                    # returns at once
+    assert session.pending_chunks() == 3
+    assert session.wait_drained(timeout=0.05) is False   # still working
+    release.set()
+    assert session.wait_drained(timeout=5.0) is True
+    texts = [e.text for e in session.drain_events(limit=100) if e.kind == "text"]
+    assert texts == ["part 1", "part 2", "part 3"]
+    assert session.pending_chunks() == 0
+
+
+def test_discard_pending_drops_the_backlog_quietly(fake_recorder, tmp_path):
+    started = threading.Event()
+    release = threading.Event()
+
+    def blocking_transcribe(path):
+        started.set()
+        release.wait(5.0)
+        raise RuntimeError("worker stopped under this chunk")
+
+    session = live.LiveSession(
+        transcribe_chunk=blocking_transcribe, work_dir=str(tmp_path / "work")
+    )
+    session.start()
+    fake_recorder.instances[0].push(_three_utterances())
+    session.stop_capture()
+    assert started.wait(5.0)
+    assert session.discard_pending() == 2     # the in-flight one is not queued
+    release.set()                             # simulate the killed worker
+    assert session.wait_drained(timeout=5.0) is True
+    events = session.drain_events(limit=100)
+    assert not [e for e in events if e.kind in ("error", "text")]
+    assert [e.detail for e in events if e.kind == "state"][-1] == "stopped"
+
+
 def test_stop_called_twice_emits_stopped_only_once(fake_recorder, tmp_path):
     """Found by an adversarial review (2026-09-22): a second stop() call
     (e.g. the Stop button's worker racing app-exit teardown) used to

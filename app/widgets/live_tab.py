@@ -429,12 +429,30 @@ def _stop(app: Any) -> None:
         except Exception:  # noqa: BLE001
             logger.debug("Could not update live controls", exc_info=True)
         return
-    app.live_status_var.set("Finishing the last few seconds…")
-    app.live_stop_btn.configure(state="disabled")
+    if getattr(app, "_live_draining", False):
+        _discard_rest(app, session, transcriber)
+        return
+    # First press: the microphone stops now, but every chunk already
+    # captured still gets transcribed -- a slow model used to lose its
+    # whole backlog here to a fixed 10 s join timeout. The button turns
+    # into "Discard rest" for anyone who does not want to wait.
+    app._live_draining = True
+    try:
+        viz = getattr(app, "live_visualizer", None)
+        if viz is not None:
+            viz.set_active(False)
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not deactivate visualizer", exc_info=True)
+    try:
+        app.live_stop_btn.configure(text="Discard rest")
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not update live controls", exc_info=True)
+    app.live_status_var.set("Microphone off — transcribing what was already said…")
 
     def worker() -> None:
         try:
-            session.stop()
+            session.stop_capture()
+            session.wait_drained()
         except Exception as e:  # noqa: BLE001
             logger.exception("Stopping the live session failed: %s", e)
         try:
@@ -449,11 +467,46 @@ def _stop(app: Any) -> None:
     threading.Thread(target=worker, name="live-stop", daemon=True).start()
 
 
+def _discard_rest(app: Any, session: Any, transcriber: Any) -> None:
+    """Second Stop press while draining: drop the backlog and end now."""
+    try:
+        app.live_stop_btn.configure(state="disabled")
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not update live controls", exc_info=True)
+    app.live_status_var.set("Discarding the rest…")
+
+    def worker() -> None:
+        try:
+            dropped = session.discard_pending()
+            if dropped:
+                app.post_to_main(
+                    lambda: app.log(f"Live: discarded {dropped} untranscribed chunk(s).")
+                )
+        except Exception:  # noqa: BLE001
+            logger.exception("Discarding live chunks failed")
+        try:
+            # Interrupts the chunk being transcribed right now; the drain
+            # worker started by the first press then finishes promptly.
+            if transcriber is not None:
+                transcriber.stop()
+        except Exception:  # noqa: BLE001
+            logger.exception("Stopping the live worker failed")
+
+    import threading
+
+    threading.Thread(target=worker, name="live-discard", daemon=True).start()
+
+
 def _stopped(app: Any) -> None:
     # Drain whatever the tail produced before dropping the session.
     _poll_once(app)
     app.live_session = None
     app.live_transcriber = None
+    app._live_draining = False
+    try:
+        app.live_stop_btn.configure(text="Stop")
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not update live controls", exc_info=True)
     _set_running(app, False)
     app.live_status_var.set("Stopped.")
     app.log("Live transcription stopped.")
@@ -525,6 +578,16 @@ def _poll_once(app: Any) -> None:
             app.log(f"Live error: {ev.detail}")
         elif ev.kind == "state" and ev.detail == "started":
             app.live_status_var.set("Listening…")
+    if getattr(app, "_live_draining", False):
+        try:
+            left = int(session.pending_chunks())
+        except Exception:  # noqa: BLE001
+            left = 0
+        if left > 0:
+            app.live_status_var.set(
+                f"Microphone off — transcribing {left} remaining "
+                f"part{'s' if left != 1 else ''}… (Discard rest to skip)"
+            )
 
 
 def _append_line(app: Any, text: str) -> None:
