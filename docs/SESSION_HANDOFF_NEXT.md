@@ -5,6 +5,26 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-23 (evening) — Live tab overhaul + pre-rebrand profile migration (unreleased)
+
+On master, NOT in any release yet (owner must approve a version bump):
+
+- `47995df` in-app migration of the old `%LOCALAPPDATA%\WhisperProject` profile
+  (`core/config.migrate_legacy_app_data`) — Portable/source/macOS/Linux users had
+  no migration (installer-only), so every downloaded model showed "not downloaded".
+- `8d4ef62` Live level display = SiriWave classic sine waves (MIT, attributed;
+  THIRD_PARTY_NOTICES.md). The old bar meter was a GPL-3.0-inspired reimplementation
+  — TranscriptionSuite is GPL-3.0: ideas only, never copy its code.
+- `7e3a17c` Stop = mic off + finish backlog; second press "Discard rest".
+- `ea7938e` auto-detect locks the language after one confident chunk.
+- `d1870c4` Live "Model:" picker, config `live_model` = auto|main|slug (`core/live_model.py`).
+
+Benchmark (dev box i7-6700 4c/8t, CPU int8, 8 s real speech, language named):
+large-v3 19 s, turbo 17 s, medium 12 s, small 4 s, base 1.6 s; auto-detect doubles each.
+Possible follow-ups: small still only ~1x real time on this CPU for 3 s chunks (encoder pads
+to 30 s) — a larger min chunk on CPU would amortise it at the cost of latency; neural VAD
+(Silero) sentence cuts like TranscriptionSuite.
+
 ## 🟢 2026-09-23 (later) — macOS build fixed, verified on a real Mac, v1.9.0 (macOS assets)
 
 - Built + tested on a real Intel Mac (macOS 10.15.7 VirtualBox VM, temporary) and on
