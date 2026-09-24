@@ -54,6 +54,12 @@ from datetime import datetime, timedelta, timezone
 from queue import Empty
 from typing import TYPE_CHECKING, Any
 
+from app.domain.cookies import (
+    COOKIE_BROWSERS,
+    COOKIE_EXTRACTION_ERROR_RE,
+    cookies_from_browser_args,
+    is_cookie_extraction_error,
+)
 from app.domain.languages import subtitle_lang_args
 from core.config import save_config
 from core.integrations import smtv as smtv_mod
@@ -280,60 +286,13 @@ def _time_range_badge(
 # Module-level pure builders (tested in tests/test_download_command.py) ---------
 
 
-_COOKIE_BROWSERS = frozenset({
-    "brave", "chrome", "chromium", "edge", "firefox", "opera",
-    "safari", "vivaldi", "whale",
-})
-
-
-def _cookies_from_browser_args(value: str | None) -> list[str]:
-    """``--cookies-from-browser`` args for yt-dlp, or [] when unset.
-
-    Lets the app download login-walled / age-gated content (Facebook,
-    Instagram, TikTok stories; some YouTube Shorts) using the user's
-    logged-in browser session. ``value`` accepts yt-dlp's
-    ``BROWSER[+KEYRING][:PROFILE][::CONTAINER]`` syntax; the leading
-    browser token is validated against the supported set so a typo in a
-    hand-edited config can't pass a bogus flag.
-    """
-    raw = (value or "").strip()
-    if not raw:
-        return []
-    browser = raw.split("+", 1)[0].split(":", 1)[0].strip().lower()
-    if browser not in _COOKIE_BROWSERS:
-        return []
-    return ["--cookies-from-browser", raw]
-
-
-# yt-dlp's own failure to read the local browser's cookie jar — e.g. "Could
-# not copy Chrome cookie database" when the browser is still open and holds
-# a lock on the file (see yt-dlp#7271), or "Failed to decrypt with DPAPI"
-# when Chrome's encryption key can't be unwrapped (yt-dlp#10927, common when
-# the profile/context differs from the one that wrote it) — is a LOCAL
-# cookie-jar problem, not the target site rejecting an unauthenticated
-# request. Most URLs (a public post, a public video) do not actually need
-# the cookies at all, so this case is worth a same-process retry without
-# them rather than failing the whole download outright.
-#
-# The DPAPI wording carries no "cookie" token (yt-dlp raises it from
-# cookies.py during browser extraction), so it needs its own alternative:
-# without it the retry never fired for that failure and every affected
-# download just failed, even for public URLs that don't need cookies.
-_COOKIE_EXTRACTION_ERROR_RE = re.compile(
-    r"could not (?:copy|find|load|extract)\b.{0,40}\bcookie"
-    r"|failed to decrypt\b.{0,40}\bdpapi",
-    re.IGNORECASE,
-)
-
-
-def _is_cookie_extraction_error(text: str) -> bool:
-    """True when yt-dlp failed to read the browser's cookie jar itself.
-
-    Distinct from the target site genuinely requiring a logged-in session
-    (that shows up as a normal auth/permission error from the site, not a
-    local "could not copy/find the cookie database" failure).
-    """
-    return bool(_COOKIE_EXTRACTION_ERROR_RE.search(text or ""))
+# The cookie helpers live in app.domain.cookies (shared with the format
+# lookup, the Download tab and Advanced settings); these names stay for the
+# existing callers and tests.
+_COOKIE_BROWSERS = COOKIE_BROWSERS
+_COOKIE_EXTRACTION_ERROR_RE = COOKIE_EXTRACTION_ERROR_RE
+_cookies_from_browser_args = cookies_from_browser_args
+_is_cookie_extraction_error = is_cookie_extraction_error
 
 
 def build_subtitle_command(

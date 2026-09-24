@@ -16,6 +16,11 @@ import subprocess
 from queue import Empty
 from typing import TYPE_CHECKING, Any
 
+from app.domain.cookies import (
+    cookies_from_browser_args,
+    is_cookie_extraction_error,
+    login_required_hint,
+)
 from core.integrations import smtv as smtv_mod
 
 if TYPE_CHECKING:
@@ -100,36 +105,56 @@ class FormatService:
             return
 
         self.app.format_status_var.set("Loading formats...")
+        # Read on the Tk thread; the lookup thread only uses the copy.
+        cookie_args = cookies_from_browser_args(
+            self.app.app_config.get("cookies_from_browser", "")
+        )
+
+        def _probe(extra: list[str]) -> subprocess.CompletedProcess[str]:
+            cmd = [self.app.yt_dlp_path()]
+            # Only pass --ffmpeg-location when a bundled ffmpeg dir is
+            # known; an empty value points yt-dlp at the cwd instead of
+            # letting it discover ffmpeg on PATH (Linux/macOS without a
+            # bundled binary). Mirrors download_service's guard.
+            bin_path = self.app.bin_path()
+            if bin_path:
+                cmd += ["--ffmpeg-location", bin_path]
+            cmd += [
+                *extra,
+                "--dump-single-json",
+                "--no-playlist",
+                "--no-warnings",
+                # End-of-options: this probe auto-fires on paste, so a
+                # "URL" starting with '-' must not be read as a flag
+                # (e.g. --exec → arbitrary command execution).
+                "--",
+                url,
+            ]
+            return subprocess.run(
+                cmd,
+                cwd=os.path.dirname(os.path.abspath(self.app.entry_file)),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=60,
+            )
 
         def run() -> None:
             try:
-                cmd = [self.app.yt_dlp_path()]
-                # Only pass --ffmpeg-location when a bundled ffmpeg dir is
-                # known; an empty value points yt-dlp at the cwd instead of
-                # letting it discover ffmpeg on PATH (Linux/macOS without a
-                # bundled binary). Mirrors download_service's guard.
-                bin_path = self.app.bin_path()
-                if bin_path:
-                    cmd += ["--ffmpeg-location", bin_path]
-                cmd += [
-                    "--dump-single-json",
-                    "--no-playlist",
-                    "--no-warnings",
-                    # End-of-options: this probe auto-fires on paste, so a
-                    # "URL" starting with '-' must not be read as a flag
-                    # (e.g. --exec → arbitrary command execution).
-                    "--",
-                    url,
-                ]
-                r = subprocess.run(
-                    cmd,
-                    cwd=os.path.dirname(os.path.abspath(self.app.entry_file)),
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=60,
-                )
+                # Same browser cookies the download itself uses: without
+                # them a login-walled link (Instagram, Facebook, age-gated
+                # YouTube) failed the lookup even with cookies configured.
+                r = _probe(cookie_args)
+                if (
+                    r.returncode
+                    and cookie_args
+                    and is_cookie_extraction_error(r.stderr or r.stdout or "")
+                ):
+                    # The browser's cookie jar could not be read (Chrome/Edge
+                    # still open on Windows, DPAPI). Public links don't need
+                    # it -- same fallback as the download service.
+                    r = _probe([])
                 if r.returncode:
                     raise RuntimeError(
                         (r.stderr or r.stdout or "yt-dlp could not read this URL").strip()
@@ -274,7 +299,9 @@ class FormatService:
             return
 
         if kind == "error":
-            app.format_status_var.set(payload)
+            cfg = getattr(app, "app_config", None) or {}
+            hint = login_required_hint(str(payload), cfg.get("cookies_from_browser", ""))
+            app.format_status_var.set(f"{hint}\n{payload}" if hint else payload)
             app.format_lookup_error = str(payload)
             app.current_video_caption_langs = {}
             if hasattr(app, "update_caption_shortcut_state"):
