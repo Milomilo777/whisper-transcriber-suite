@@ -52,6 +52,25 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
         return 2
 
     cfg = load_config()
+    model_slug = (getattr(args, "model", "") or "").strip()
+    if model_slug:
+        from core.model_manager import catalog_models, catalog_resolve_entry
+        entry = catalog_resolve_entry(cfg, model_slug)
+        if entry is None:
+            known = ", ".join(slug for slug, _label in catalog_models(cfg))
+            print(
+                f"error: unknown model {model_slug!r}; choose one of: {known}",
+                file=sys.stderr,
+            )
+            return 2
+        if model_slug != cfg.get("whisper_model") or cfg.get("model") != entry:
+            # Same as picking the model in the app: the choice is saved and
+            # model_path is re-resolved for the new model's folder.
+            cfg["whisper_model"] = model_slug
+            cfg["model"] = entry
+            cfg["model_path"] = ""
+            save_config(cfg)
+            cfg = load_config()
     formats = args.formats or cfg.get("output_formats") or ["srt", "json"]
     cfg["output_formats"] = formats
     # Mirror the explicit CLI flags onto cfg so save_config writes
@@ -68,9 +87,41 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
     # so the writer sees the just-saved values on this very run.
     _trans.config.update(cfg)
 
-    print("[cli] loading model...", flush=True)
-    if not _trans.load_existing_model(lambda m: print(f"[cli] {m}", flush=True)):
-        print("error: model not loaded", file=sys.stderr)
+    def _status(m: str) -> None:
+        print(f"[cli] {m}", flush=True)
+
+    model_dir = str(cfg.get("model_path") or "")
+    if not model_dir or os.path.isfile(os.path.join(model_dir, "model.bin")):
+        print("[cli] loading model...", flush=True)
+        loaded = _trans.load_existing_model(_status)
+    else:
+        # First run (or a newly picked model): download it, like the app's
+        # first-transcription prompt does, instead of failing with "model
+        # not loaded".
+        from core.model_manager import approx_download_size_text
+        slug = str(cfg.get("whisper_model") or "")
+        size = approx_download_size_text(cfg, slug)
+        print(
+            f"[cli] model {slug or '(configured)'} is not downloaded yet; "
+            f"downloading it{f' ({size})' if size else ''}, one time only...",
+            flush=True,
+        )
+        last_pct = {"value": -5}
+
+        def _download_progress(info: dict) -> None:
+            pct = info.get("percent")
+            if isinstance(pct, (int, float)) and pct >= last_pct["value"] + 5:
+                last_pct["value"] = int(pct)
+                print(f"[cli] download {int(pct)}%", flush=True)
+
+        try:
+            loaded = _trans.load_model(_status, _download_progress)
+        except Exception as e:  # noqa: BLE001
+            print(f"error: {e}", file=sys.stderr)
+            return 3
+    if not loaded:
+        detail = _trans.get_model_error() or ""
+        print(f"error: model not loaded{f' ({detail})' if detail else ''}", file=sys.stderr)
         return 3
 
     task = TranscriptionTask(src)
@@ -251,6 +302,13 @@ def _build_argparser() -> argparse.ArgumentParser:
     tr.add_argument(
         "--diarization", action="store_true",
         help="enable speaker diarization for this transcription",
+    )
+    tr.add_argument(
+        "--model", "-m", default="",
+        help="Whisper model, e.g. tiny, small, medium, large-v3, "
+             "large-v3-turbo (default: the app's current model). Downloaded "
+             "on first use and saved as the app's model, like picking it in "
+             "the app",
     )
 
     sv = sub.add_parser(
