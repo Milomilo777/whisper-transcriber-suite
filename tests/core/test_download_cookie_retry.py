@@ -245,3 +245,25 @@ def test_media_phase_success_on_first_try_needs_no_retry(monkeypatch):
     events = _drain(app)
     # One "log" event for the Destination line, then the final done_full.
     assert [e[0] for e in events] == ["log", "done_full"]
+
+
+_LOGIN_WALL_LINE = (
+    "ERROR: [Instagram] abc: Requested content is not available, rate-limit "
+    "reached or login required. Use --cookies, --cookies-from-browser"
+)
+
+
+def test_login_wall_with_cookies_off_points_at_the_download_tab_picker(monkeypatch):
+    app = _app("")
+    _fake_popen_factory(monkeypatch, [([_LOGIN_WALL_LINE], 1)])
+    DownloadService(app)._media_phase(_task())
+    msg = [e for e in _drain(app) if e[0] == "error"][0][2]
+    assert "pick your browser under 'Log-in cookies' in the Download tab" in msg
+
+
+def test_login_wall_with_cookies_on_says_to_check_the_browser_login(monkeypatch):
+    app = _app("firefox")
+    _fake_popen_factory(monkeypatch, [([_LOGIN_WALL_LINE], 1)])
+    DownloadService(app)._media_phase(_task())
+    msg = [e for e in _drain(app) if e[0] == "error"][0][2]
+    assert "check that you are logged in" in msg

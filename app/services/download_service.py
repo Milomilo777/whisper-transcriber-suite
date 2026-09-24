@@ -2073,10 +2073,18 @@ class DownloadService:
                 "private video", "members-only", "age-restrict",
                 "age restrict", "this video is private", "confirm your age",
             )):
-                msg += (
-                    "  — this site likely needs a logged-in session: turn on "
-                    "'Cookies from browser' in Advanced settings and retry."
-                )
+                if cookies_configured:
+                    msg += (
+                        "  — the site still wants a logged-in session: check "
+                        "that you are logged in to it in the browser picked "
+                        "under 'Log-in cookies' (Download tab), then retry."
+                    )
+                else:
+                    msg += (
+                        "  — this site likely needs a logged-in session: pick "
+                        "your browser under 'Log-in cookies' in the Download "
+                        "tab and retry."
+                    )
             app.download_events.put(("error", task, msg))
         else:
             payload = {"status": "finished", "saved_path": saved_path}
