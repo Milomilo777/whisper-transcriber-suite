@@ -458,26 +458,37 @@ for _name in _POST_COPY_BINS:
         raise SystemExit('[mac-spec] bundled %s does not run: %s' % (_name, _out.stderr.strip()))
     print('[mac-spec] bundled %s %s (%d bytes, copied verbatim)' % (
         _name, _out.stdout.strip(), os.path.getsize(_dst)))
-    # core.paths.resource_base() resolves to dirname(sys.executable), i.e.
-    # Contents/MacOS/ at runtime -- so core.paths.bundled_binary() looks for
-    # this tool under Contents/MacOS/bin/, NOT Contents/Frameworks/bin/ where
-    # it was just copied. PyInstaller's own BUNDLE step leaves a matching
-    # Contents/MacOS/bin/<name> SYMLINK for every binary it collected via
-    # a.binaries (ffmpeg/ffprobe/ffplay), which is why those already resolve
-    # correctly. yt-dlp is copied here manually, AFTER BUNDLE, and never gets
-    # that symlink -- so bundled_binary("yt-dlp") silently fell back to a
-    # bare "yt-dlp" PATH lookup, which fails on any machine without yt-dlp
-    # installed globally (every real download in the packaged app). Create
-    # the same symlink PyInstaller would have, so the runtime lookup finds it.
+
+# core.paths.resource_base() resolves to dirname(sys.executable) at runtime,
+# i.e. Contents/MacOS/ -- so core.paths.bundled_binary() looks for every tool
+# under Contents/MacOS/bin/. But PyInstaller's macOS BUNDLE step physically
+# relocates ALL of a.binaries (ffmpeg/ffprobe/ffplay included, since they were
+# collected as executable "binaries" not plain "datas") into
+# Contents/Frameworks/bin/ and leaves NOTHING behind at Contents/MacOS/bin/ --
+# there is no automatic symlink. So bundled_binary() found NONE of
+# ffmpeg/ffprobe/ffplay/yt-dlp at runtime; every one fell back to a bare
+# name via PATH lookup, which fails on a real user's Mac (verified directly:
+# simulating the frozen runtime against a real build, core.paths.bundled_binary
+# returned the bare string "ffmpeg", not a path). yt-dlp above additionally
+# never even reaches Frameworks/bin via the normal route (see the note near
+# the top of this file) -- it's copied there by hand, same target directory.
+# Fix: mirror every entry actually present in Contents/Frameworks/bin/ as a
+# symlink of the same name under Contents/MacOS/bin/, so core.paths' runtime
+# lookup succeeds for ffmpeg/ffprobe/ffplay/yt-dlp alike.
+if os.path.isdir(_app_bin):
     _macos_bin = os.path.join(_app_path, 'Contents', 'MacOS', 'bin')
     os.makedirs(_macos_bin, exist_ok=True)
-    _link = os.path.join(_macos_bin, _name)
-    if os.path.lexists(_link):
-        os.remove(_link)
-    os.symlink(os.path.relpath(_dst, os.path.dirname(_link)), _link)
-    if not os.path.isfile(os.path.join(_macos_bin, _name)):
-        raise SystemExit('[mac-spec] symlink for %s did not resolve to a file' % _name)
-if os.path.isdir(_app_bin):
+    for _entry in sorted(os.listdir(_app_bin)):
+        _target = os.path.join(_app_bin, _entry)
+        if not os.path.isfile(_target):
+            continue
+        _link = os.path.join(_macos_bin, _entry)
+        if os.path.lexists(_link):
+            os.remove(_link)
+        os.symlink(os.path.relpath(_target, _macos_bin), _link)
+        if not os.path.isfile(_link):
+            raise SystemExit('[mac-spec] symlink for %s did not resolve to a file' % _entry)
+    print('[mac-spec] Contents/MacOS/bin symlinks: %s' % ', '.join(sorted(os.listdir(_macos_bin))))
     # Re-seal the outer bundle signature over the replaced nested code.
     _subprocess.run(['codesign', '--force', '--sign', '-', _app_path], check=True)
     _subprocess.run(['codesign', '--verify', '--deep', '--strict', _app_path], check=True)

@@ -18,12 +18,12 @@
 ; from the predecessor product).
 AppId={{BD640ACA-1EDB-4F9F-890E-C2DC04221871}
 AppName=SMTV Whisper Transcriber Suite
-AppVersion=1.9.2
+AppVersion=1.9.1
 AppPublisher=translation-robot
 AppPublisherURL=https://github.com/translation-robot
 DefaultDirName={autopf}\WhisperTranscriberSuite
 DefaultGroupName=Whisper Transcriber Suite
-OutputBaseFilename=WhisperTranscriberSuite-v1.9.2-Setup-Compact
+OutputBaseFilename=WhisperTranscriberSuite-v1.9.1-Setup-Compact
 OutputDir=dist_installer
 Compression=lzma2/ultra
 SolidCompression=yes
