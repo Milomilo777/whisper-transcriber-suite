@@ -700,7 +700,7 @@ def _missing_runtime_status(
     return CudaStatus(
         usable=False, gpu_present=True,
         reason=(
-            f"The GPU works, but the NVIDIA {' and '.join(families)} library "
+            f"The GPU was found, but the NVIDIA {' and '.join(families)} library "
             f"it needs ({', '.join(missing)}) is not installed -- the "
             "graphics driver does not include it."
         ),

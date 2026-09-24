@@ -332,7 +332,7 @@ class HardwareWizard(tk.Toplevel):
             self.tree.insert(
                 "", 0, iid=_CUDA_INFO_ROW,
                 values=(
-                    "✗",
+                    "",
                     f"NVIDIA CUDA — {status.gpu_name or 'NVIDIA GPU'}",
                     "needs setup",
                 ),
