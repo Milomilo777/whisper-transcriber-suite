@@ -413,3 +413,43 @@ def test_gcloud_autotest_only_runs_when_google_cloud_is_picked(
     make_dialog(transcribe_backend=engine)
 
     assert len(scheduled) == expected_calls
+
+
+# ---- owner request 2026-09-24: cloud setups collapsed + faint, VAD sliders tucked away
+
+
+@pytest.mark.parametrize("engine", ["cloud_stt", "google_cloud_stt"])
+def test_cloud_setup_starts_collapsed_even_when_its_engine_is_picked(make_dialog, engine) -> None:
+    dlg = make_dialog(transcribe_backend=engine)
+    outer = dlg._engine_setup_frames[engine]
+    assert outer.winfo_manager() == "pack"          # the one-line header is there
+    assert outer.is_open() is False                 # ...but the fields are hidden
+    assert str(outer.header.cget("foreground")) == "#a0a0a0"  # faint
+    outer.toggle()
+    assert outer.is_open() is True
+
+
+def test_jumping_to_a_cloud_setup_opens_it(make_dialog) -> None:
+    dlg = make_dialog(transcribe_backend="google_cloud_stt")
+    link = next(
+        w for w in dlg._nav_links
+        if w.winfo_class() == "TLabel" and w.cget("text") == "Google Cloud setup"
+    )
+    assert str(link.cget("foreground")) == "#a0a0a0"
+    link.event_generate("<Button-1>")
+    assert dlg._engine_setup_frames["google_cloud_stt"].is_open() is True
+
+
+def test_vad_sliders_are_behind_fine_tune(make_dialog) -> None:
+    dlg = make_dialog(transcribe_backend="faster_whisper")
+    widgets = [w for row in dlg._vad_control_rows for w in row]
+    assert all(w.winfo_manager() == "" for w in widgets)
+    dlg._toggle_vad_sliders()
+    assert all(w.winfo_manager() == "grid" for w in widgets)
+
+
+def test_cloud_engines_are_listed_last():
+    from core.backends.availability import ENGINE_CHOICES
+
+    values = [v for _l, v in ENGINE_CHOICES]
+    assert values[-2:] == ["cloud_stt", "google_cloud_stt"]

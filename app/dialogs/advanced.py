@@ -37,7 +37,12 @@ from app.domain.cookies import (
     cookie_browser_label,
     cookie_browser_value,
 )
-from app.widgets.tooltip import bind_tooltip, help_icon, section_labelframe
+from app.widgets.tooltip import (
+    bind_tooltip,
+    collapsible_section,
+    help_icon,
+    section_labelframe,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -394,7 +399,17 @@ class AdvancedDialog(tk.Toplevel):
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
 
-        canvas.create_window((0, 0), window=body, anchor="nw")
+        body_window = canvas.create_window((0, 0), window=body, anchor="nw")
+        # Keep the page exactly as wide as the visible area. Left at its own
+        # requested width (~1030 px) it overflowed the ~950 px viewport of
+        # the 1100 px window (the "Jump to" sidebar takes the rest), cutting
+        # buttons off at the right edge -- the default size on a 1366 px
+        # laptop screen. Pinned to the canvas width, the stretchy grid
+        # columns shrink instead.
+        canvas.bind(
+            "<Configure>",
+            lambda e: canvas.itemconfigure(body_window, width=e.width),
+        )
 
         canvas.configure(yscrollcommand=scrollbar.set)
 
@@ -436,8 +451,17 @@ class AdvancedDialog(tk.Toplevel):
         # by _sync_engine_sections — someone on the default Faster-Whisper
         # engine never sees the Gemini / Google Cloud / Parakeet setup.
         engine = self._build_engine_section(body)
-        gemini = self._build_gemini_frame(body)
-        gcloud = self._build_gcloud_frame(body)
+        # The two cloud engines are optional extras almost nobody uses (they
+        # upload audio): their setup is a single pale, collapsed line that
+        # opens on click, even while that engine is picked (owner request).
+        gemini, gemini_holder = collapsible_section(
+            body, "Gemini cloud setup (optional — uploads audio to Google)",
+        )
+        self._build_gemini_frame(gemini_holder).pack(fill="x")
+        gcloud, gcloud_holder = collapsible_section(
+            body, "Google Cloud Speech-to-Text setup (optional — uploads audio)",
+        )
+        self._build_gcloud_frame(gcloud_holder).pack(fill="x")
         nvidia = self._build_nvidia_frame(body)
         outputs = self._build_outputs_section(body)
         noise = self._build_noise_section(body)
@@ -448,13 +472,13 @@ class AdvancedDialog(tk.Toplevel):
         misc = self._build_misc_section(body)
 
         self._engine_section = engine
-        self._engine_setup_frames: dict[str, ttk.LabelFrame] = {
+        self._engine_setup_frames: dict[str, tk.Widget] = {
             "cloud_stt": gemini,
             "google_cloud_stt": gcloud,
             "nvidia_asr": nvidia,
         }
         # "Jump to" links in on-screen order; hidden sections are skipped.
-        self._nav_targets: list[tuple[str, ttk.LabelFrame]] = [
+        self._nav_targets: list[tuple[str, tk.Widget]] = [
             ("Model & engine", engine),
             ("Gemini setup", gemini),
             ("Google Cloud setup", gcloud),
@@ -508,7 +532,11 @@ class AdvancedDialog(tk.Toplevel):
             widget.destroy()
         self._nav_links = []
 
-        def _jump(frame: "ttk.LabelFrame") -> None:
+        def _jump(frame: "tk.Widget") -> None:
+            # A collapsed section (the cloud setups) opens when jumped to.
+            is_open = getattr(frame, "is_open", None)
+            if callable(is_open) and not is_open():
+                frame.toggle()  # type: ignore[attr-defined]
             self.update_idletasks()
             total = max(body.winfo_height(), 1)
             canvas.yview_moveto(max(0.0, min(1.0, frame.winfo_y() / total)))
@@ -526,9 +554,10 @@ class AdvancedDialog(tk.Toplevel):
                 )
                 caption_label.pack(anchor="w", pady=(0, 2))
                 self._nav_links += [separator, caption_label]
+            muted = bool(getattr(frame, "muted", False))
             link = ttk.Label(
-                nav, text=label, foreground="#1a73e8", cursor="hand2",
-                wraplength=122, justify="left",
+                nav, text=label, foreground="#a0a0a0" if muted else "#1a73e8",
+                cursor="hand2", wraplength=122, justify="left",
             )
             link.pack(anchor="w", pady=2, fill="x")
             link.bind("<Button-1>", lambda _e, f=frame: _jump(f))
@@ -661,6 +690,9 @@ class AdvancedDialog(tk.Toplevel):
         if label is None or var is None:
             return
         text = "" if st.ready else format_engine_status(st, action_hint="")
+        # The shared status says "... in Advanced settings" (right on the
+        # Transcribe tab); inside this dialog point at the setup line.
+        text = text.replace(" in Advanced settings", " (open its setup line below)")
         try:
             var.set(text)
             if text:
@@ -904,11 +936,12 @@ class AdvancedDialog(tk.Toplevel):
             engine, text="Re-detect hardware…",
             command=self._open_hardware_wizard,
         ).grid(row=4, column=1, sticky="w", padx=8, pady=4)
-        ttk.Label(
+        help_icon(
             engine,
-            text="Probes CUDA / NPU / DirectML and picks the fastest tier.",
-            foreground="#666", wraplength=170, justify="left",
-        ).grid(row=4, column=2, sticky="w", padx=8, pady=4)
+            "Checks for an NVIDIA GPU (CUDA), NPUs and DirectML and picks the "
+            "fastest option. If an NVIDIA GPU can't be used yet it says why "
+            "and can install the missing NVIDIA library.",
+        ).grid(row=4, column=3, sticky="w", padx=(0, 8), pady=4)
 
         # Word-timing refinement — a plain on/off instead of the old
         # "none"/"stable_ts" dropdown; _save_and_close maps it back.
@@ -1108,11 +1141,20 @@ class AdvancedDialog(tk.Toplevel):
             "these for a typical non-studio recording.",
         )
         noise.pack(fill="x", pady=(0, 14))
+        vad_row = ttk.Frame(noise)
+        vad_row.grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=(4, 2))
         ttk.Checkbutton(
-            noise, text="Enable VAD (skip silent segments)",
+            vad_row, text="Enable VAD (skip silent segments)",
             variable=self._vad_enabled,
             command=self._sync_vad_controls_state,
-        ).grid(row=0, column=0, columnspan=2, sticky="w", padx=8, pady=(4, 2))
+        ).pack(side="left")
+        # The three tuning sliders are expert knobs most people never touch;
+        # they stay one click away instead of dominating the section.
+        self._vad_tune_link = ttk.Label(
+            vad_row, text="▸ Fine-tune", foreground="#1a73e8", cursor="hand2",
+        )
+        self._vad_tune_link.pack(side="left", padx=(14, 0))
+        self._vad_tune_link.bind("<Button-1>", lambda _e: self._toggle_vad_sliders())
         help_icon(
             noise,
             "On (recommended): silent stretches are detected and skipped "
@@ -1131,6 +1173,8 @@ class AdvancedDialog(tk.Toplevel):
             self._slider_row(noise, "Threshold", self._vad_threshold, 0.1, 0.9, 0.05, 2, is_float=True),
             self._slider_row(noise, "Speech pad (ms)", self._vad_speech_pad, 0, 1000, 50, 3),
         ]
+        self._vad_sliders_shown = True
+        self._toggle_vad_sliders()  # start collapsed
         self._sync_vad_controls_state()
 
         ttk.Checkbutton(
@@ -2037,6 +2081,18 @@ class AdvancedDialog(tk.Toplevel):
             HardwareWizard(self, app=self.app)
         except Exception as e:  # noqa: BLE001
             self.app.log(f"Hardware wizard failed to launch: {e}")
+
+    def _toggle_vad_sliders(self) -> None:
+        """Show/hide the three VAD tuning sliders ("▸ Fine-tune")."""
+        self._vad_sliders_shown = not getattr(self, "_vad_sliders_shown", False)
+        shown = self._vad_sliders_shown
+        for widgets in self._vad_control_rows:
+            for w in widgets:
+                if shown:
+                    w.grid()
+                else:
+                    w.grid_remove()
+        self._vad_tune_link.configure(text=("▾ Fine-tune" if shown else "▸ Fine-tune"))
 
     def _sync_vad_controls_state(self) -> None:
         """Grey out the three VAD sliders while VAD itself is off.

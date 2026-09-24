@@ -23,17 +23,19 @@ from .._gc_import_guard import gc_disabled_import
 # (friendly label, transcribe_backend value) — also the display order. Offline
 # engines stay first; the two cloud options spell out their auth model so a
 # non-technical user can tell them apart (a pasted key vs a downloaded file).
+# Local engines first; the two optional cloud engines (they upload audio and
+# almost nobody uses them) sit at the bottom of both pickers.
 ENGINE_CHOICES: list[tuple[str, str]] = [
     ("Faster-Whisper — offline, default", "faster_whisper"),
     ("whisper.cpp — offline, low-end CPUs", "whisper_cpp"),
+    (
+        "NVIDIA Parakeet TDT v3 — local, multilingual (transformers)",
+        "nvidia_asr",
+    ),
     ("Gemini cloud — simple API key", "cloud_stt"),
     (
         "Google Cloud Speech-to-Text — service account (60 min/mo free)",
         "google_cloud_stt",
-    ),
-    (
-        "NVIDIA Parakeet TDT v3 — local, multilingual (transformers)",
-        "nvidia_asr",
     ),
 ]
 LABEL_TO_VALUE: dict[str, str] = {label: value for label, value in ENGINE_CHOICES}

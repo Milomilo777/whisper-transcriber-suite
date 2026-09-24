@@ -186,3 +186,45 @@ def section_labelframe(
     help_icon(header, help_text, wraplength=wraplength).pack(side="left", padx=(4, 0))
     frame.configure(labelwidget=header)
     return frame
+
+
+def collapsible_section(
+    parent: tk.Misc, title: str, *, expanded: bool = False, muted: bool = True,
+) -> tuple[ttk.Frame, ttk.Frame]:
+    """A one-line clickable header ("▸ title") that shows/hides a body.
+
+    Returns ``(outer, holder)``: lay ``outer`` out like any section and build
+    the content with ``holder`` as its parent; ``holder`` is packed only while
+    expanded. ``muted`` draws the header in light grey so a rarely used,
+    optional section stays out of the way (owner request for the Google
+    Cloud / Gemini setup in Settings).
+    """
+    outer = ttk.Frame(parent)
+    header = ttk.Label(
+        outer,
+        foreground="#a0a0a0" if muted else "#1a73e8",
+        cursor="hand2",
+        font=("TkDefaultFont", 9),
+    )
+    header.pack(anchor="w")
+    holder = ttk.Frame(outer)
+    state = {"open": expanded}
+
+    def _render() -> None:
+        header.configure(text=("▾ " if state["open"] else "▸ ") + title)
+        if state["open"]:
+            holder.pack(fill="x", pady=(4, 0))
+        else:
+            holder.pack_forget()
+
+    def _toggle(_event: object = None) -> None:
+        state["open"] = not state["open"]
+        _render()
+
+    header.bind("<Button-1>", _toggle)
+    _render()
+    outer.toggle = _toggle  # type: ignore[attr-defined]
+    outer.is_open = lambda: state["open"]  # type: ignore[attr-defined]
+    outer.muted = muted  # type: ignore[attr-defined]
+    outer.header = header  # type: ignore[attr-defined]
+    return outer, holder
