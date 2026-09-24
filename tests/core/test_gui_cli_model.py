@@ -100,3 +100,11 @@ def test_unknown_model_is_a_usage_error_listing_the_choices(cli, capsys):
     err = capsys.readouterr().err
     assert "unknown model 'gigantic'" in err and "large-v3" in err
     assert cli["calls"] == []
+
+
+def test_other_engine_never_downloads_a_whisper_model(cli):
+    # A cloud/NVIDIA/whisper.cpp engine loads its own way; a missing Whisper
+    # model folder must not start a multi-GB download.
+    cli["cfg"]["transcribe_backend"] = "google_cloud"
+    assert cli["run"]() == 0
+    assert cli["calls"] == ["load_existing_model"]

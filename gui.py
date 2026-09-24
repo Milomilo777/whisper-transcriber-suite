@@ -91,7 +91,12 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
         print(f"[cli] {m}", flush=True)
 
     model_dir = str(cfg.get("model_path") or "")
-    if not model_dir or os.path.isfile(os.path.join(model_dir, "model.bin")):
+    backend = str(cfg.get("transcribe_backend") or "faster_whisper").strip().lower()
+    # Only the default faster-whisper engine uses the downloadable Whisper
+    # model folder; other engines (cloud, NVIDIA, whisper.cpp...) load their
+    # own way, so a missing folder there must not trigger a model download.
+    if (backend and backend != "faster_whisper") or not model_dir \
+            or os.path.isfile(os.path.join(model_dir, "model.bin")):
         print("[cli] loading model...", flush=True)
         loaded = _trans.load_existing_model(_status)
     else:
