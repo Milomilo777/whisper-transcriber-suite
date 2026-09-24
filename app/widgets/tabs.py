@@ -43,6 +43,101 @@ class _AutoScrollbar(ttk.Scrollbar):
         super().set(first, last)
 
 
+# Widget classes that scroll themselves: the wheel over one of them must keep
+# scrolling it, not the page around it.
+_SELF_SCROLLING = frozenset({
+    "Treeview", "Text", "Listbox", "Canvas", "TCombobox", "TSpinbox", "TScale",
+})
+
+
+def fit_or_scroll(page: tk.Misc) -> ttk.Frame:
+    """Give ``page`` a vertical scroller that only appears when needed.
+
+    Returns the frame to build the tab into. That frame always spans the
+    page's full width and at least its full height, so lists that expand
+    still fill a big window; only when the content is taller than the
+    window does a scrollbar appear. On a 1366x768 laptop the Download tab's
+    list and Pause/Cancel buttons, the end of the Live tab and the Web / LAN
+    options were simply cut off with no way to reach them.
+    """
+    canvas = tk.Canvas(page, highlightthickness=0, borderwidth=0)
+    vsb = _AutoScrollbar(page, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=vsb.set)
+    page.rowconfigure(0, weight=1)  # type: ignore[attr-defined]
+    page.columnconfigure(0, weight=1)  # type: ignore[attr-defined]
+    canvas.grid(row=0, column=0, sticky="nsew")
+    vsb.grid(row=0, column=1, sticky="ns")
+    inner = ttk.Frame(canvas)
+    window = canvas.create_window((0, 0), window=inner, anchor="nw")
+    last: dict[str, tuple[int, int, int]] = {}
+
+    def _layout() -> None:
+        try:
+            cw, ch = canvas.winfo_width(), canvas.winfo_height()
+            req = inner.winfo_reqheight()
+        except tk.TclError:
+            return
+        if cw <= 1:
+            return
+        key = (cw, ch, req)
+        if last.get("k") == key:
+            return
+        last["k"] = key
+        height = max(ch, req)
+        canvas.itemconfigure(window, width=cw, height=height)
+        canvas.configure(scrollregion=(0, 0, cw, height))
+
+    def _poll() -> None:
+        # Tk has no "requested size changed" event: rows that appear later
+        # (the SMTV toggle, the caption shortcut, the YouTube helper) change
+        # the content height without a <Configure>, so re-check cheaply.
+        try:
+            if not canvas.winfo_exists():
+                return
+        except tk.TclError:
+            return
+        _layout()
+        canvas.after(400, _poll)
+
+    canvas.bind("<Configure>", lambda _e: _layout())
+    canvas.after(50, _poll)
+
+    def _scrollable() -> bool:
+        first, last_frac = canvas.yview()
+        return not (first <= 0.0 and last_frac >= 1.0)
+
+    canvas_path = str(canvas)
+
+    def _on_wheel(event: tk.Event) -> None:
+        widget = event.widget
+        if not isinstance(widget, tk.Misc):
+            return
+        # Only for the pointer over THIS tab's content, only when it overflows,
+        # and never over a widget that scrolls (or cycles values) itself.
+        path = str(widget)
+        inside = path == canvas_path or path.startswith(canvas_path + ".")
+        if not inside or not _scrollable():
+            return
+        if widget is not canvas and widget.winfo_class() in _SELF_SCROLLING:
+            return
+        if getattr(event, "num", None) == 4:
+            step = -1
+        elif getattr(event, "num", None) == 5:
+            step = 1
+        else:
+            divisor = 1 if sys.platform == "darwin" else 120
+            step = int(-1 * (event.delta / divisor)) or (-1 if event.delta > 0 else 1)
+        canvas.yview_scroll(step, "units")
+
+    # Bound on the main window (every widget's event reaches it through its
+    # bindtags), NOT bind_all: the Settings dialog unbind_all()s the wheel on
+    # <Leave>, which would silently remove a global binding.
+    root = page.winfo_toplevel()
+    for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+        root.bind(seq, _on_wheel, add="+")
+    return inner
+
+
 # Glanceable status icons for both Treeviews. Plain Unicode so they
 # render without an embedded image set, and so they survive the
 # packaging mode that ships no icon assets.
@@ -466,10 +561,12 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # "Word timestamps". The research's vocabulary mapping: Aiko ships
     # "Produce timestamps" and "Skip silent parts"; speaker-detection
     # is universally framed as "Identify / detect speakers".
+    # The reason can carry a long file path; it goes in the hover text so the
+    # row doesn't run off the window (it did at the default size).
     diar_label = (
         "Identify speakers"
         if _diar_available
-        else f"Identify speakers (unavailable — {_diar_reason})"
+        else "Identify speakers (unavailable)"
     )
     diar_check = ttk.Checkbutton(
         opts_line1,
@@ -479,6 +576,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     )
     if not _diar_available:
         diar_check.state(["disabled"])
+        bind_tooltip(diar_check, f"Unavailable: {_diar_reason}")
     diar_check.pack(side="left", padx=(0, 4))
     help_icon(
         opts_line1,

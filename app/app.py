@@ -689,13 +689,19 @@ class App(tk.Tk):
         # to a sensible default. _save_window_geometry persists it on
         # the WM_DELETE_WINDOW exit path.
         saved_geom = load_config().get("window_geometry") or ""
-        if isinstance(saved_geom, str) and saved_geom.count("x") == 1:
+        # "960x640..." was the old fixed default, not a size the user chose;
+        # the tabs have outgrown it (labels were truncated, lists cut off),
+        # so treat it like "no saved size" and fit the screen instead.
+        if (
+            isinstance(saved_geom, str) and saved_geom.count("x") == 1
+            and not saved_geom.startswith("960x640")
+        ):
             try:
                 self.geometry(saved_geom)
             except Exception:  # noqa: BLE001
-                self.geometry("960x640")
+                self._apply_default_geometry()
         else:
-            self.geometry("960x640")
+            self._apply_default_geometry()
         # Nothing previously stopped the user (or a stale saved
         # window_geometry from an older, less-crowded layout) from
         # shrinking the window below the size every tab's layout is
@@ -1663,16 +1669,21 @@ class App(tk.Tk):
             self.nb.add(self.t4, text="Video Tiling")
         self.nb.add(self.t5, text="Web / LAN access")
         self.nb.add(self.t8, text="Supreme Master TV")
+        # The taller tabs scroll when the window is shorter than their
+        # content (e.g. a 768 px laptop screen) instead of cutting it off;
+        # on a big window they fill it exactly as before.
+        from app.widgets.tabs import fit_or_scroll
+
         build_transcribe_tab(self, self.t1)
         build_queue_tab(self, self.t2)
-        build_live_tab(self, self.t6)
-        build_download_tab(self, self.t3)
+        build_live_tab(self, fit_or_scroll(self.t6))
+        build_download_tab(self, fit_or_scroll(self.t3))
         build_smtv_tab(self, self.t8)
         if self._tiling_tab_visible:
             build_tiling_tab(self, self.t4)
-        build_server_tab(self, self.t5)
+        build_server_tab(self, fit_or_scroll(self.t5))
         if self._voice_clone_tab_visible:
-            build_voice_clone_tab(self, self.t7)
+            build_voice_clone_tab(self, fit_or_scroll(self.t7))
 
     def _save_auto_transcribe_pref(self) -> None:
         self.app_config["auto_transcribe_after_download"] = bool(self.auto_transcribe_var.get())
@@ -5429,6 +5440,24 @@ class App(tk.Tk):
                 ):
                     self.cancel_download(d)
                 return
+
+    def _apply_default_geometry(self) -> None:
+        """First-run window size: as large as the layout wants (1320x900),
+        shrunk to fit the screen with a margin, centred. On a small screen
+        (1366x768 laptops) Windows also maximises it."""
+        try:
+            sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
+        except Exception:  # noqa: BLE001
+            sw, sh = 1366, 768
+        w = max(960, min(1320, sw - 40))
+        h = max(640, min(900, sh - 90))
+        x, y = max(0, (sw - w) // 2), max(0, (sh - h) // 3)
+        try:
+            self.geometry(f"{w}x{h}+{x}+{y}")
+            if sys.platform == "win32" and (sw < 1440 or sh < 900):
+                self.state("zoomed")
+        except Exception:  # noqa: BLE001
+            self.geometry("960x640")
 
     def _save_window_geometry(self) -> None:
         """Persist the window's current size + position in config.json."""
