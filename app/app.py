@@ -1773,7 +1773,14 @@ class App(tk.Tk):
         self._refresh_engine_selector()
         self._refresh_model_selector()
 
-    def _confirm_backend_switch(self, parent: "tk.Misc | None" = None) -> bool:
+    def _confirm_backend_switch(
+        self,
+        parent: "tk.Misc | None" = None,
+        *,
+        title: str = "Switch transcription engine?",
+        action: str = "Switching engines",
+        question: str = "Switch anyway?",
+    ) -> bool:
         """True if it's safe to stop_all() workers for an engine switch.
 
         stop_worker() is a hard terminate (shutdown request, then
@@ -1792,13 +1799,13 @@ class App(tk.Tk):
         from tkinter import messagebox
         n = len(busy)
         return messagebox.askyesno(
-            "Switch transcription engine?",
+            title,
             (
                 f"{n} transcription{'s are' if n != 1 else ' is'} running "
-                "right now. Switching engines stops "
+                f"right now. {action} stops "
                 f"{'them' if n != 1 else 'it'} immediately -- more "
                 "abruptly than a normal Cancel, so more progress may be "
-                "lost.\n\nSwitch anyway?"
+                f"lost.\n\n{question}"
             ),
             parent=parent or self,
         )
@@ -2151,6 +2158,16 @@ class App(tk.Tk):
         entry = catalog_resolve_entry(self.app_config, new_slug)
         if entry is None:
             self.log(f"Unknown model slug {new_slug!r}; keeping current model.")
+            return
+        # stop_all() below is a hard stop: never kill a running transcription
+        # without asking (the engine picker already asked; this one did not).
+        if not self._confirm_backend_switch(
+            title="Change the Whisper model?",
+            action="Changing the model",
+            question="Change it anyway?",
+        ):
+            slug_to_label = {s: lbl for lbl, s in label_to_slug.items()}
+            mvar.set(slug_to_label.get(old_slug, mvar.get()))
             return
         self.app_config["whisper_model"] = new_slug
         self.app_config["model"] = entry

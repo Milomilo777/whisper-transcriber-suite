@@ -50,11 +50,17 @@ class _Var:
 
 
 class _Svc:
-    def __init__(self) -> None:
+    def __init__(self, busy: bool = False) -> None:
         self.stop_all_calls = 0
+        self._busy = busy
 
     def stop_all(self) -> None:
         self.stop_all_calls += 1
+
+    def active_workers(self) -> list:
+        # _on_model_selected asks before stop_all() only when a worker has a
+        # task (App._confirm_backend_switch); empty = nothing running.
+        return [{"task": object()}] if self._busy else []
 
 
 def _bare_app(App, *, model_label_to_slug: dict[str, str], model_label: str, whisper_model: str):
@@ -257,3 +263,34 @@ def test_refresh_model_selector_noop_without_a_var(App):
     a.transcribe_model_var = None
 
     App._refresh_model_selector(a)  # must not raise
+
+
+@pytest.mark.parametrize("answer", [False, True])
+def test_model_switch_asks_before_stopping_a_running_transcription(App, monkeypatch, answer):
+    """stop_all() is a hard stop: switching models mid-transcription must ask
+    (the engine picker already did; the model picker did not)."""
+    label_to_slug = {"Tiny": "tiny", "Large v3": "large-v3"}
+    a = _bare_app(App, model_label_to_slug=label_to_slug, model_label="Tiny",
+                  whisper_model="large-v3")
+    a.transcription_service = _Svc(busy=True)
+    asked: list[str] = []
+
+    def _ask(title, _msg, parent=None):
+        asked.append(title)
+        return answer
+
+    monkeypatch.setattr("tkinter.messagebox.askyesno", _ask)
+    saved: list[dict] = []
+    monkeypatch.setattr("app.app.save_config", lambda _cfg: saved.append(_cfg))
+
+    App._on_model_selected(a)
+
+    assert asked == ["Change the Whisper model?"]
+    if answer:
+        assert a.app_config["whisper_model"] == "tiny"
+        assert a.transcription_service.stop_all_calls == 1
+    else:
+        assert a.app_config["whisper_model"] == "large-v3"
+        assert a.transcription_service.stop_all_calls == 0
+        assert saved == []
+        assert a.transcribe_model_var.get() == "Large v3"  # picker reverted
