@@ -139,6 +139,7 @@ a = Analysis(
         'app.dialogs.statistics',
         'app.dialogs.transcript_viewer',
         'app.dialogs.search_dialog',
+        'app.domain.cookies',
         'app.domain.languages',
         'app.domain.tasks',
         'app.services.download_service',
