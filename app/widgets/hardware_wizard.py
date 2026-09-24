@@ -710,16 +710,19 @@ class HardwareWizard(tk.Toplevel):
             return
         if not workers:
             return
-        if any(w.get("task") is not None for w in workers):
-            if not messagebox.askyesno(
-                "Apply now?",
-                "A transcription is running. Apply the new hardware setting "
-                "now? That stops the running transcription.\n\n"
-                "Choose No to let it finish; the setting is then used after "
-                "the app is restarted.",
-                parent=self,
-            ):
-                return
+        # Same "a transcription is running -- stop it?" prompt as an engine
+        # or model switch (App._confirm_backend_switch); no prompt when idle.
+        confirm = getattr(self.app, "_confirm_backend_switch", None)
+        if callable(confirm) and not confirm(
+            self,
+            title="Apply now?",
+            action="Applying the new hardware setting now",
+            question=(
+                "Apply it now? Choose No to let it finish; the setting is "
+                "then used after the app is restarted."
+            ),
+        ):
+            return
         try:
             svc.stop_all()
             self.app.log("The new hardware setting is used from the next transcription.")

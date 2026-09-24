@@ -419,3 +419,26 @@ def test_close_restores_the_masters_modal_grab(monkeypatch, tmp_path):
         assert root.grab_current() is master
     finally:
         root.destroy()
+
+
+@pytest.mark.parametrize("answer, stopped", [(True, True), (False, False)])
+def test_save_restarts_the_engine_via_the_apps_busy_prompt(answer, stopped):
+    """A busy worker gets the app's standard "stop the running
+    transcription?" prompt; only a Yes stops the workers."""
+    import types
+
+    from app.widgets.hardware_wizard import HardwareWizard
+
+    calls: list[str] = []
+    svc = types.SimpleNamespace(
+        active_workers=lambda: [{"task": object()}],
+        stop_all=lambda: calls.append("stop_all"),
+    )
+    app = types.SimpleNamespace(
+        transcription_service=svc,
+        _confirm_backend_switch=lambda *_a, **k: calls.append(k["title"]) or answer,
+        log=lambda _m: None,
+    )
+    HardwareWizard._restart_idle_engine(types.SimpleNamespace(app=app))  # type: ignore[arg-type]
+    assert calls[0] == "Apply now?"
+    assert ("stop_all" in calls) is stopped
