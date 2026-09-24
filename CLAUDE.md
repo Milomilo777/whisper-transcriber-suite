@@ -266,6 +266,11 @@ visible and durable regardless of what happens to the aggregate.
   (`.../releases/download/vX.Y.Z/<file>`), what it is for, and its size;
   Windows rows first. GitHub's own Assets box cannot be moved from the
   bottom, so this table is the "assets at the top".
+- Every release that ships macOS files must include the full **"Installing on
+  a Mac"** section with the **one-line Terminal install** (`curl` → `hdiutil`
+  → copy to `/Applications`), pointing at that release's own dmg names --
+  never replace it with "same as the previous release" (2026-09-24, owner:
+  v1.9.1 shipped without it). Copy it from v1.9.0/v1.9.1's notes.
 
 ## macOS builds — do not build (2026-08-14, owner request, repeated)
 
