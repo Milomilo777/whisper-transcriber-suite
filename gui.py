@@ -332,6 +332,17 @@ def _activate_safe_mode() -> None:
 
 
 def main() -> int:
+    # First, before anything reads argv: in a frozen (PyInstaller) build
+    # multiprocessing re-launches this very executable for its helper
+    # processes (resource tracker, spawn children). freeze_support() hands
+    # those launches to multiprocessing instead of letting them re-enter the
+    # app, where argparse rejects the "-c ..." command and the helper dies.
+    # A no-op when not frozen (source runs, the Windows embed build). The
+    # macOS spec's rthook_mp_helpers.py stays as a belt-and-braces early
+    # diversion for the resource tracker.
+    import multiprocessing
+    multiprocessing.freeze_support()
+
     # Worker mode is a special early branch — bypasses argparse so
     # we never break the spawn-contract.
     if "--worker" in sys.argv:
