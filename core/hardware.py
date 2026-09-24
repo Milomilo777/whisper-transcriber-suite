@@ -1236,11 +1236,12 @@ def system_ram_gb() -> float:
         return float(psutil.virtual_memory().total) / 1024 ** 3
     except Exception:  # noqa: BLE001
         pass
+    sysconf: Any = getattr(os, "sysconf", None)  # POSIX only; psutil covers Windows
+    if sysconf is None:
+        return 0.0
     try:
-        pages = os.sysconf("SC_PHYS_PAGES")
-        page_size = os.sysconf("SC_PAGE_SIZE")
-        return float(pages * page_size) / 1024 ** 3
-    except (AttributeError, ValueError, OSError):
+        return float(sysconf("SC_PHYS_PAGES") * sysconf("SC_PAGE_SIZE")) / 1024 ** 3
+    except (ValueError, OSError):
         return 0.0
 
 
