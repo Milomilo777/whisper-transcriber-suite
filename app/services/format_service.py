@@ -22,7 +22,11 @@ from app.domain.cookies import (
     login_required_hint,
 )
 from core.integrations import smtv as smtv_mod
-from core.js_runtime import mentions_missing_js_runtime, yt_dlp_js_args
+from core.js_runtime import (
+    mentions_missing_js_runtime,
+    missing_js_runtime_hint,
+    yt_dlp_js_args,
+)
 
 if TYPE_CHECKING:
     from app.app import App
@@ -315,10 +319,7 @@ class FormatService:
             cfg = getattr(app, "app_config", None) or {}
             hint = login_required_hint(str(payload), cfg.get("cookies_from_browser", ""))
             if not hint and mentions_missing_js_runtime(str(payload)):
-                hint = (
-                    "YouTube needs a small helper to read this video: click "
-                    "\"Install YouTube helper\"."
-                )
+                hint = missing_js_runtime_hint(app.yt_dlp_path())
             app.format_status_var.set(f"{hint}\n{payload}" if hint else payload)
             app.format_lookup_error = str(payload)
             app.current_video_caption_langs = {}

@@ -189,3 +189,19 @@ def test_download_command_carries_the_js_runtime_args():
                                  js_runtime_args=["--js-runtimes", "deno:/d"])
     assert cmd[cmd.index("--js-runtimes") + 1] == "deno:/d"
     assert cmd.index("--js-runtimes") < cmd.index("--")
+
+
+def test_missing_runtime_hint_without_deno_points_at_the_button(no_deno):
+    assert "Install YouTube helper" in js.missing_js_runtime_hint()
+
+
+def test_missing_runtime_hint_with_deno_says_update_yt_dlp(no_deno, monkeypatch):
+    target = js.installed_deno_path()
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"")
+    monkeypatch.setattr(js, "yt_dlp_version", lambda _p=None: (2025, 3, 7))
+    hint = js.missing_js_runtime_hint()
+    assert "Install YouTube helper" not in hint  # that button is hidden now
+    assert "2025.03.07" in hint and "too old" in hint and "update yt-dlp" in hint
+    monkeypatch.setattr(js, "yt_dlp_version", lambda _p=None: (2026, 8, 19))
+    assert "could not use it" in js.missing_js_runtime_hint()

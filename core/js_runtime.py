@@ -145,6 +145,33 @@ def mentions_missing_js_runtime(text: str) -> bool:
     return bool(_NO_RUNTIME_RE.search(text or ""))
 
 
+def missing_js_runtime_hint(yt_dlp_path: str | None = None) -> str:
+    """What to tell the user when yt-dlp reports no JavaScript runtime.
+
+    Without Deno: point at the "Install YouTube helper" button. With Deno
+    already installed the button is hidden, so the likely cause is a yt-dlp
+    too old to use it (see ``yt_dlp_js_args``): say to update yt-dlp. The
+    version is normally cached by then (the failing call asked for it).
+    """
+    if find_deno() is None:
+        return (
+            "YouTube needs a small helper: click \"Install YouTube helper\" "
+            "in the Download tab (next to the status line) and retry."
+        )
+    version = yt_dlp_version(yt_dlp_path)
+    shown = ".".join(f"{p:02d}" if i else str(p) for i, p in enumerate(version))
+    older = bool(version) and version < _MIN_YT_DLP_FOR_JS_RUNTIMES
+    what = (
+        f"this app's yt-dlp ({shown}) is too old to use it"
+        if older else "yt-dlp could not use it"
+    )
+    return (
+        f"The YouTube helper is installed, but {what}: update yt-dlp (run "
+        "\"yt-dlp -U\" in the app's bin folder as administrator, or install "
+        "the newest version of this app) and retry."
+    )
+
+
 def is_youtube_url(url: str) -> bool:
     """YouTube (incl. youtu.be, music, shorts) -- the site that needs Deno."""
     host = re.sub(r"^[a-z]+://", "", (url or "").strip().lower()).split("/", 1)[0]

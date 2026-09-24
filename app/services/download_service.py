@@ -22,7 +22,11 @@ import urllib.error
 import urllib.request
 
 from core._proc import kill_process_tree, new_session_kwargs
-from core.js_runtime import mentions_missing_js_runtime, yt_dlp_js_args
+from core.js_runtime import (
+    mentions_missing_js_runtime,
+    missing_js_runtime_hint,
+    yt_dlp_js_args,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -2066,11 +2070,7 @@ class DownloadService:
                 msg = f"{msg}: {reason}"
             low = reason.lower()
             if mentions_missing_js_runtime(reason):
-                msg += (
-                    "  — YouTube needs a small helper: click 'Install YouTube "
-                    "helper' in the Download tab (next to the status line) "
-                    "and retry."
-                )
+                msg += "  — " + missing_js_runtime_hint(app.yt_dlp_path())
             elif retried_without_cookies:
                 msg += (
                     "  — could not read cookies from your browser, and the "
