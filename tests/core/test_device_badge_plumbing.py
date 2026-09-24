@@ -100,11 +100,10 @@ def test_plain_cpu_only_host_does_not_warn(monkeypatch):
 
     app = _FakeApp([_worker(device="cpu", compute_type="int8")])
     svc = _svc(app)
-    # No CUDA tier detected on this host.
-    monkeypatch.setattr(hw, "probe_tiers", lambda: [
-        hw.Tier(slug="cpu_int8", label="CPU", device="cpu", compute_type="int8"),
-    ])
-    monkeypatch.setattr(hw, "cuda_load_ok", lambda: False)
+    # No NVIDIA GPU on this host at all.
+    monkeypatch.setattr(hw, "cuda_status", lambda: hw.CudaStatus(
+        usable=False, gpu_present=False, reason="No NVIDIA CUDA GPU was found.",
+    ))
     svc.update_model_state()
     text, kind = app.badge_calls[-1]
     assert kind == "cpu"
@@ -116,13 +115,10 @@ def test_cpu_with_detected_but_unusable_gpu_warns(monkeypatch):
 
     app = _FakeApp([_worker(device="cpu", compute_type="int8")])
     svc = _svc(app)
-    # A CUDA tier was detected on the host but is not actually usable.
-    monkeypatch.setattr(hw, "probe_tiers", lambda: [
-        hw.Tier(slug="cuda_float16", label="CUDA", device="cuda",
-                compute_type="float16"),
-        hw.Tier(slug="cpu_int8", label="CPU", device="cpu", compute_type="int8"),
-    ])
-    monkeypatch.setattr(hw, "cuda_load_ok", lambda: False)
+    # An NVIDIA GPU is on the host but not usable (e.g. cuBLAS missing).
+    monkeypatch.setattr(hw, "cuda_status", lambda: hw.CudaStatus(
+        usable=False, gpu_present=True, reason="cuBLAS missing",
+    ))
     svc.update_model_state()
     assert app.warn_calls == [False]
 

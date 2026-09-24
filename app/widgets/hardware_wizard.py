@@ -17,7 +17,9 @@ Layout:
   |  |      | CPU int8 — Intel i7-…         | fallback     | |
   |  +------+---------------------------------+-------------+ |
   |  Selected tier: NVIDIA CUDA (float16)                     |
-  |  [ Re-probe ]  [ Run 5 s benchmark ]                      |
+  |  (why an NVIDIA GPU cannot be used yet + how to fix it)   |
+  |  [ Re-probe ] [ Benchmark ] [ Copy diagnostics ]          |
+  |  [ Install GPU support ]  (only when that is the fix)     |
   |                                                           |
   |                    [ Cancel ] [ Save and use ]            |
   +----------------------------------------------------------+
@@ -37,7 +39,7 @@ import threading
 import time
 import tkinter as tk
 from tkinter import messagebox, ttk
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from app.widgets.error_dialog import show_error
 from core import hardware as _hw
@@ -51,6 +53,9 @@ logger = logging.getLogger(__name__)
 
 
 _BENCHMARK_SECONDS = 5
+
+# Tree iid of the informational "NVIDIA CUDA — needs setup" row; not a tier.
+_CUDA_INFO_ROW = "cuda_unusable"
 
 
 class HardwareWizard(tk.Toplevel):
@@ -75,6 +80,8 @@ class HardwareWizard(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self._tiers: list[_hw.Tier] = []
+        self._cuda_status: _hw.CudaStatus | None = None
+        self._busy: bool = False
         self._selected_idx: int = -1
         self._benchmark_rtf: float | None = None
         # Generation token: each _reprobe bumps it; a result from a superseded
@@ -88,7 +95,9 @@ class HardwareWizard(tk.Toplevel):
         # self.after() from the worker thread — on Python 3.14 that raises
         # "main thread is not in main loop".
         self._probe_lock = threading.Lock()
-        self._probe_result: tuple[int, list[_hw.Tier]] | None = None
+        self._probe_result: (
+            tuple[int, list[_hw.Tier], _hw.CudaStatus | None] | None
+        ) = None
         # Re-entrancy guard: True while we programmatically set the tree
         # selection so _on_select ignores the event we caused (see
         # _select_index — otherwise it feedback-loops forever).
@@ -134,6 +143,15 @@ class HardwareWizard(tk.Toplevel):
             anchor="w"
         )
 
+        # Why a detected NVIDIA GPU cannot be used yet, and what fixes it
+        # (core.hardware.cuda_status). Before this line existed the wizard
+        # just listed "CPU" with no explanation (GitHub issue #7).
+        self.cuda_var = tk.StringVar(value="")
+        ttk.Label(
+            body, textvariable=self.cuda_var, foreground="#b06a00",
+            wraplength=640, justify="left",
+        ).pack(anchor="w", pady=(4, 0))
+
         tools = ttk.Frame(body)
         tools.pack(fill="x", pady=(8, 4))
         self.reprobe_btn = ttk.Button(tools, text="Re-probe", command=self._reprobe)
@@ -143,6 +161,15 @@ class HardwareWizard(tk.Toplevel):
             command=self._run_benchmark,
         )
         self.bench_btn.pack(side="left", padx=(8, 0))
+        self.diag_btn = ttk.Button(
+            tools, text="Copy diagnostics", command=self._copy_diagnostics,
+        )
+        self.diag_btn.pack(side="left", padx=(8, 0))
+        self.install_btn = ttk.Button(
+            tools, text="Install GPU support…", command=self._install_gpu_support,
+        )
+        # Packed only when installing NVIDIA's cuBLAS is the fix
+        # (see _update_cuda_line).
 
         actions = ttk.Frame(body)
         actions.pack(fill="x", pady=(12, 0))
@@ -160,8 +187,8 @@ class HardwareWizard(tk.Toplevel):
         """Re-run the hardware probe OFF the Tk main thread.
 
         ``probe_tiers()`` does seconds-long first imports (ctranslate2 /
-        onnxruntime / openvino / torch) and the cuDNN/cuBLAS ctypes dlopen
-        probe, which can BLOCK for many seconds on a broken CUDA stack.
+        onnxruntime / openvino / torch) and loads the CUDA runtime library
+        (cuBLAS), which can BLOCK for many seconds on a broken CUDA stack.
         Running that inline froze the UI ("Not Responding"). Mirror the
         benchmark path: run on a daemon thread, then marshal the result back
         to the Tk thread via App.post_to_main (with the no-app self.after(0)
@@ -204,8 +231,8 @@ class HardwareWizard(tk.Toplevel):
             # Still probing — re-arm unless a newer probe superseded us.
             self._schedule_probe_poll()
             return
-        seq, tiers = pending
-        self._reprobe_done(seq, tiers)
+        seq, tiers, status = pending
+        self._reprobe_done(seq, tiers, status)
 
     def _reprobe_worker(self, seq: int) -> None:
         """Daemon-thread body: run the blocking probe, stash the result.
@@ -221,10 +248,21 @@ class HardwareWizard(tk.Toplevel):
                 tiers = _hw._probe_cpu()
             except Exception:  # noqa: BLE001
                 tiers = []
+        status: _hw.CudaStatus | None
+        try:
+            status = _hw.cuda_status()
+        except Exception:  # noqa: BLE001
+            logger.exception("CUDA status check failed")
+            status = None
         with self._probe_lock:
-            self._probe_result = (seq, tiers)
+            self._probe_result = (seq, tiers, status)
 
-    def _reprobe_done(self, seq: int, tiers: list[_hw.Tier]) -> None:
+    def _reprobe_done(
+        self,
+        seq: int,
+        tiers: list[_hw.Tier],
+        status: "_hw.CudaStatus | None" = None,
+    ) -> None:
         """Main-thread continuation: refresh the tree + re-enable buttons.
 
         Ignores a stale result (an older probe finishing after a newer
@@ -238,7 +276,9 @@ class HardwareWizard(tk.Toplevel):
         if seq != self._probe_seq:
             return  # superseded by a newer probe
         self._tiers = tiers
+        self._cuda_status = status
         self._refresh_tree()
+        self._update_cuda_line()
         self._set_buttons_enabled(True)
         if not self._tiers:
             self.status_var.set("No tier detected — falling back to CPU.")
@@ -260,10 +300,12 @@ class HardwareWizard(tk.Toplevel):
     def _set_buttons_enabled(self, enabled: bool) -> None:
         """Toggle Re-probe / Save / Benchmark while a probe is in flight."""
         flag = "!disabled" if enabled else "disabled"
+        self._busy = not enabled
         for btn in (
             getattr(self, "reprobe_btn", None),
             getattr(self, "save_btn", None),
             getattr(self, "bench_btn", None),
+            getattr(self, "install_btn", None),
         ):
             if btn is None:
                 continue
@@ -282,6 +324,40 @@ class HardwareWizard(tk.Toplevel):
                 "", "end", iid=str(idx),
                 values=("", tier.label, note), tags=tags,
             )
+        status = self._cuda_status
+        if status is not None and status.gpu_present and not status.usable:
+            # List the GPU even though it cannot be picked yet, so "only CPU
+            # detected" never looks like the GPU was not seen at all. The
+            # non-numeric iid keeps it out of selection (_on_select).
+            self.tree.insert(
+                "", 0, iid=_CUDA_INFO_ROW,
+                values=(
+                    "✗",
+                    f"NVIDIA CUDA — {status.gpu_name or 'NVIDIA GPU'}",
+                    "needs setup",
+                ),
+                tags=("unsupported",),
+            )
+
+    def _update_cuda_line(self) -> None:
+        """Explain an unusable NVIDIA GPU (or a first-run note) under the table."""
+        status = self._cuda_status
+        text = ""
+        if status is not None and status.gpu_present:
+            if status.usable:
+                text = status.note
+            else:
+                name = status.gpu_name or "NVIDIA GPU"
+                text = f"{name} cannot be used yet. {status.summary()}"
+        self.cuda_var.set(text)
+        try:
+            if status is not None and status.can_install_runtime:
+                if not self.install_btn.winfo_ismapped():
+                    self.install_btn.pack(side="left", padx=(8, 0))
+            elif self.install_btn.winfo_ismapped():
+                self.install_btn.pack_forget()
+        except tk.TclError:
+            pass
 
     def _select_index(self, idx: int, *, set_widget_selection: bool = True) -> None:
         """Mark tier ``idx`` as chosen (logical state + the ✓ column).
@@ -329,6 +405,9 @@ class HardwareWizard(tk.Toplevel):
         try:
             idx = int(sel)
         except ValueError:
+            # The informational "NVIDIA CUDA — needs setup" row.
+            if sel == _CUDA_INFO_ROW and self._cuda_status is not None:
+                self.status_var.set(self._cuda_status.summary())
             return
         self._select_index(idx)
         if 0 <= idx < len(self._tiers):
@@ -337,6 +416,124 @@ class HardwareWizard(tk.Toplevel):
                 f"Selected: {t.label}  "
                 f"(device={t.device}, compute_type={t.compute_type})"
             )
+
+    # ---------- diagnostics / GPU runtime install ----------------------
+
+    def _run_in_background(
+        self,
+        fn: Callable[[], object],
+        on_done: Callable[[object, BaseException | None], None],
+    ) -> None:
+        """Run ``fn`` off the Tk thread; call ``on_done(result, error)`` on it.
+
+        Same stash-and-poll pattern as the probe: the worker never touches Tk
+        (self.after from a non-main thread raises on Python 3.14).
+        """
+        box: dict[str, tuple[object, BaseException | None]] = {}
+
+        def _work() -> None:
+            try:
+                box["done"] = (fn(), None)
+            except Exception as e:  # noqa: BLE001
+                box["done"] = (None, e)
+
+        threading.Thread(target=_work, daemon=True).start()
+
+        def _poll() -> None:
+            try:
+                if not self.winfo_exists():
+                    return
+            except tk.TclError:
+                return
+            if "done" not in box:
+                self.after(100, _poll)
+                return
+            result, error = box["done"]
+            on_done(result, error)
+
+        self.after(100, _poll)
+
+    def _copy_diagnostics(self) -> None:
+        """Copy a full GPU/CUDA report to the clipboard for a bug report."""
+        self.diag_btn.state(["disabled"])
+        self.status_var.set("Collecting GPU diagnostics…")
+
+        def _done(report: object, error: object) -> None:
+            try:
+                self.diag_btn.state(["!disabled"])
+            except tk.TclError:
+                return
+            text = str(report) if error is None else f"Diagnostics failed: {error}"
+            try:
+                self.clipboard_clear()
+                self.clipboard_append(text)
+            except tk.TclError:
+                pass
+            if self.app is not None:
+                self.app.log(text)
+            self.status_var.set(
+                "GPU diagnostics copied to the clipboard (also written to the "
+                "log) — paste them into a GitHub issue."
+            )
+
+        self._run_in_background(_hw.diagnostics_report, _done)
+
+    def _install_gpu_support(self) -> None:
+        """pip-install NVIDIA cuBLAS (core.optional_deps 'cuda_runtime')."""
+        status = self._cuda_status
+        if status is None or not status.can_install_runtime or self._busy:
+            return
+        from core import optional_deps
+
+        if not messagebox.askyesno(
+            "Install GPU support",
+            "Your NVIDIA GPU needs NVIDIA's cuBLAS library, which the graphics "
+            "driver does not include.\n\n"
+            "Download and install it now? It is a one-time download of about "
+            "550 MB from NVIDIA (via PyPI) into:\n"
+            f"{optional_deps.extras_dir()}",
+            parent=self,
+        ):
+            return
+        self._set_buttons_enabled(False)
+        self.status_var.set("Installing GPU support (about 550 MB)… this can take a few minutes.")
+        tail: list[str] = []
+        app = self.app
+
+        def _log(line: str) -> None:
+            tail.append(line)
+            del tail[:-15]
+            if app is not None:
+                log = app.log
+                app.post_to_main(lambda: log(f"[GPU support] {line}"))
+
+        # A present-but-unloadable copy must be reinstalled, not reported as
+        # already installed by install()'s short-circuit.
+        force = optional_deps.is_available("cuda_runtime")
+
+        def _work() -> bool:
+            return optional_deps.install("cuda_runtime", log_cb=_log, force=force)
+
+        def _done(ok: object, error: object) -> None:
+            try:
+                if not self.winfo_exists():
+                    return
+            except tk.TclError:
+                return
+            if ok is True and error is None:
+                if app is not None:
+                    app.log("GPU support installed; re-probing hardware.")
+                self._reprobe()
+                return
+            self._set_buttons_enabled(True)
+            self.status_var.set("GPU support install failed — see the log.")
+            show_error(
+                self, "Install failed",
+                "Could not install NVIDIA's cuBLAS library.",
+                detail=str(error) if error is not None else "\n".join(tail),
+            )
+
+        self._run_in_background(_work, _done)
 
     # ---------- benchmark ----------------------------------------------
 
@@ -491,7 +688,41 @@ class HardwareWizard(tk.Toplevel):
                 f"Hardware preference saved → {path}  "
                 f"(device={tier.device}, compute_type={tier.compute_type})"
             )
+            self._restart_idle_engine()
         self._on_close()
+
+    def _restart_idle_engine(self) -> None:
+        """Make a saved choice take effect on the next transcription.
+
+        The transcription worker picks its device once, when it starts, so
+        without a restart a new choice only applied after the app was
+        restarted. Stops the workers (a fresh one starts on the next
+        transcription) -- after asking, if one is busy.
+        """
+        svc = getattr(self.app, "transcription_service", None)
+        if svc is None or self.app is None:
+            return
+        try:
+            workers = svc.active_workers()
+        except Exception:  # noqa: BLE001
+            return
+        if not workers:
+            return
+        if any(w.get("task") is not None for w in workers):
+            if not messagebox.askyesno(
+                "Apply now?",
+                "A transcription is running. Apply the new hardware setting "
+                "now? That stops the running transcription.\n\n"
+                "Choose No to let it finish; the setting is then used after "
+                "the app is restarted.",
+                parent=self,
+            ):
+                return
+        try:
+            svc.stop_all()
+            self.app.log("The new hardware setting is used from the next transcription.")
+        except Exception as e:  # noqa: BLE001
+            self.app.log(f"Could not restart the transcription worker: {e}")
 
     def _on_close(self) -> None:
         try:

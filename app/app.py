@@ -2344,9 +2344,9 @@ class App(tk.Tk):
             tip += f" ({ct})"
         if kind in ("cpu", "cpu_downgraded"):
             tip += (
-                ". CPU is much slower than a GPU. Open the Hardware wizard to "
-                "check for a CUDA GPU; if you have an NVIDIA card, install its "
-                "drivers + the cuDNN/cuBLAS runtime."
+                ". CPU is much slower than a GPU. If you have an NVIDIA card, "
+                "open Advanced > Re-detect hardware: it says why the GPU is "
+                "not used and can install the missing NVIDIA library."
             )
         if kind == "cpu_downgraded" and req:
             tip = f"Requested {req} but it was unavailable. " + tip
@@ -2380,16 +2380,16 @@ class App(tk.Tk):
             msg = (
                 "Your GPU could not be used, so transcription is running on "
                 "the CPU — this is much slower.\n\n"
-                "This usually means the NVIDIA cuDNN/cuBLAS runtime is missing "
-                "or broken (not a corrupt model). Open the Hardware wizard "
-                "for details."
+                "This usually means an NVIDIA library (cuBLAS) is missing or "
+                "the GPU needs a newer driver (not a corrupt model). Open "
+                "Advanced > Re-detect hardware for the exact reason and a fix."
             )
         else:
             msg = (
-                "A GPU was detected but cannot be used, so transcription is "
-                "running on the CPU — this is much slower.\n\n"
-                "Check your NVIDIA drivers and the cuDNN/cuBLAS runtime. Open "
-                "the Hardware wizard for details."
+                "An NVIDIA GPU was detected but cannot be used yet, so "
+                "transcription is running on the CPU — this is much slower.\n\n"
+                "Open Advanced > Re-detect hardware: it shows the exact reason "
+                "and can install the missing NVIDIA library."
             )
         self.log(msg.replace("\n\n", " "))
         try:

@@ -257,13 +257,13 @@ class TranscriptionService:
             return
         gpu_detected_unusable = False
         if not downgraded:
-            # Was a GPU tier detected on this host but not actually usable?
+            # Is there an NVIDIA GPU on this host that cannot be used? (The
+            # old check looked for a CUDA tier in probe_tiers(), but the probe
+            # only lists CUDA when it IS usable, so this never fired.)
             try:
                 from core import hardware as _hw
-                tiers = _hw.probe_tiers()
-                gpu_detected_unusable = any(
-                    t.device == "cuda" for t in tiers
-                ) and not _hw.cuda_load_ok()
+                status = _hw.cuda_status()
+                gpu_detected_unusable = status.gpu_present and not status.usable
             except Exception:  # noqa: BLE001
                 gpu_detected_unusable = False
         if not (downgraded or gpu_detected_unusable):
