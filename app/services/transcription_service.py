@@ -126,6 +126,9 @@ class TranscriptionService:
         self._pending_load_worker_id: int | None = None
         self._pending_load_dialog: "ModelLoadingDialog | None" = None
         self._pending_load_event: threading.Event | None = None
+        # The CPU warning's "is there an unusable NVIDIA GPU?" check runs
+        # once per session, on a daemon thread (see _maybe_warn_cpu).
+        self._gpu_check_thread: threading.Thread | None = None
         # Single-owner guard for the poll() after()-chain. Without it every
         # start_worker() + every poll() re-arm started an independent
         # self-perpetuating 100 ms chain, so over a long session the number
@@ -255,19 +258,43 @@ class TranscriptionService:
         app = self.app
         if app.app_config.get("cpu_warning_shown"):
             return
-        gpu_detected_unusable = False
-        if not downgraded:
-            # Is there an NVIDIA GPU on this host that cannot be used? (The
-            # old check looked for a CUDA tier in probe_tiers(), but the probe
-            # only lists CUDA when it IS usable, so this never fired.)
+        if downgraded:
+            self._show_cpu_warning(True)
+            return
+        # Is there an NVIDIA GPU on this host that cannot be used? (The old
+        # check looked for a CUDA tier in probe_tiers(), but the probe only
+        # lists CUDA when it IS usable, so this never fired.) cuda_status()
+        # loads the CUDA libraries -- seconds on a first run -- so it runs
+        # once per session on a daemon thread, never on the Tk thread (a
+        # CPU-only box never sets the flag and would re-check every time
+        # the badge refreshes). A main-thread poll picks up the answer.
+        if self._gpu_check_thread is not None:
+            return
+        result: dict[str, bool] = {}
+
+        def _check() -> None:
             try:
                 from core import hardware as _hw
                 status = _hw.cuda_status()
-                gpu_detected_unusable = status.gpu_present and not status.usable
+                result["unusable"] = status.gpu_present and not status.usable
             except Exception:  # noqa: BLE001
-                gpu_detected_unusable = False
-        if not (downgraded or gpu_detected_unusable):
-            return
+                result["unusable"] = False
+
+        thread = threading.Thread(target=_check, name="cpu-warning-gpu-check", daemon=True)
+        self._gpu_check_thread = thread
+        thread.start()
+
+        def _poll() -> None:
+            if thread.is_alive():
+                app.after(250, _poll)
+                return
+            if result.get("unusable") and not app.app_config.get("cpu_warning_shown"):
+                self._show_cpu_warning(False)
+
+        app.after(250, _poll)
+
+    def _show_cpu_warning(self, downgraded: bool) -> None:
+        app = self.app
         warn = getattr(app, "warn_cpu_once", None)
         if callable(warn):
             warn(downgraded)

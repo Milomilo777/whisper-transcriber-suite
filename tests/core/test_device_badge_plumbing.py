@@ -39,6 +39,10 @@ class _FakeApp:
         self.badge_calls: list[tuple[str, str]] = []
         self.warn_calls: list[bool] = []
         self.logs: list[str] = []
+        self.after_calls: list = []
+
+    def after(self, _ms, fn):
+        self.after_calls.append(fn)
 
     def apply_device_badge(self, text, kind, worker):
         self.badge_calls.append((text, kind))
@@ -62,6 +66,14 @@ def _worker(**kw):
 
 def _svc(app):
     return TranscriptionService(app)  # type: ignore[arg-type]
+
+
+def _settle(app, svc):
+    """Let the background GPU check finish and run the main-thread polls."""
+    if svc._gpu_check_thread is not None:
+        svc._gpu_check_thread.join(5)
+    while app.after_calls:
+        app.after_calls.pop(0)()
 
 
 def test_gpu_worker_sets_green_badge(monkeypatch):
@@ -105,6 +117,7 @@ def test_plain_cpu_only_host_does_not_warn(monkeypatch):
         usable=False, gpu_present=False, reason="No NVIDIA CUDA GPU was found.",
     ))
     svc.update_model_state()
+    _settle(app, svc)
     text, kind = app.badge_calls[-1]
     assert kind == "cpu"
     assert app.warn_calls == []  # genuine CPU-only box — no nag
@@ -120,7 +133,10 @@ def test_cpu_with_detected_but_unusable_gpu_warns(monkeypatch):
         usable=False, gpu_present=True, reason="cuBLAS missing",
     ))
     svc.update_model_state()
+    assert app.warn_calls == []  # the check runs off the Tk thread
+    _settle(app, svc)
     assert app.warn_calls == [False]
+    assert app.app_config["cpu_warning_shown"] is True
 
 
 def test_old_worker_without_device_fields_is_tolerated(monkeypatch):
@@ -132,4 +148,28 @@ def test_old_worker_without_device_fields_is_tolerated(monkeypatch):
     svc = _svc(app)
     svc.update_model_state()  # must not raise
     assert app.badge_calls == []  # no informed worker => no badge update
+    assert app.warn_calls == []
+
+
+def test_gpu_check_runs_once_per_session_off_the_tk_thread(monkeypatch):
+    """A CPU-only box never sets cpu_warning_shown; the (slow) GPU check
+    must still run only once, and never on the calling (Tk) thread."""
+    import threading
+
+    import core.hardware as hw
+
+    calls: list[str] = []
+
+    def _status():
+        calls.append(threading.current_thread().name)
+        return hw.CudaStatus(usable=False, gpu_present=False, reason="none")
+
+    monkeypatch.setattr(hw, "cuda_status", _status)
+    app = _FakeApp([_worker(device="cpu", compute_type="int8")])
+    svc = _svc(app)
+    for _ in range(3):
+        svc.update_model_state()
+        _settle(app, svc)
+    assert len(calls) == 1
+    assert calls[0] != threading.current_thread().name
     assert app.warn_calls == []
