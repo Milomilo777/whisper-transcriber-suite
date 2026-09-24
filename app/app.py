@@ -532,6 +532,10 @@ class App(tk.Tk):
     download_cookies_var: tk.StringVar
     download_cookies_combo: "ttk.Combobox"
     download_folder_var: tk.StringVar
+    # "Install YouTube helper" (Deno for yt-dlp; core.js_runtime).
+    js_runtime_button: "ttk.Button"
+    format_status_label: "ttk.Label"
+    _js_runtime_installing: bool = False
     # v1.0.3 — optional time-range slice on the Download tab. Both
     # vars are created by tabs.build_download_tab and are per-job
     # (DownloadService clears them after enqueue, no config save).
@@ -2376,6 +2380,90 @@ class App(tk.Tk):
         else:
             self.subtitle_lang_combo.configure(state="disabled")
             self.subtitle_status_var.set("")
+
+    def update_js_runtime_prompt(self, url: str | None = None) -> None:
+        """Show "Install YouTube helper" while a YouTube link is loaded and
+        yt-dlp has no JavaScript runtime (Deno) to solve YouTube's challenges."""
+        button = getattr(self, "js_runtime_button", None)
+        if button is None:
+            return
+        from core.js_runtime import find_deno, is_youtube_url
+
+        if url is None:
+            var = getattr(self, "download_url_var", None)
+            url = var.get() if var is not None else ""
+        needed = bool(
+            is_youtube_url(url or "") and find_deno() is None
+            and not getattr(self, "_js_runtime_installing", False)
+        )
+        try:
+            packed = bool(button.winfo_manager())
+            if needed and not packed:
+                # Before the status text, so a long error can't push it out.
+                label = getattr(self, "format_status_label", None)
+                if label is not None:
+                    button.pack(side="left", padx=(0, 10), before=label)
+                else:
+                    button.pack(side="left", padx=(0, 10))
+            elif not needed and packed:
+                button.pack_forget()
+        except tk.TclError:
+            pass
+
+    def install_js_runtime(self) -> None:
+        """Download + verify Deno into the user cache, off the Tk thread."""
+        if getattr(self, "_js_runtime_installing", False):
+            return
+        from core.js_runtime import DENO_DOWNLOAD_MB, install_deno
+
+        self._js_runtime_installing = True
+        button = getattr(self, "js_runtime_button", None)
+        if button is not None:
+            try:
+                button.state(["disabled"])
+            except tk.TclError:
+                pass
+        self.format_status_var.set(
+            f"Installing the YouTube helper (Deno, about {DENO_DOWNLOAD_MB} MB)…"
+        )
+
+        def _progress(pct: int) -> None:
+            if pct % 5 == 0:
+                self.post_to_main(lambda: self.format_status_var.set(
+                    f"Installing the YouTube helper… {pct}%"
+                ))
+
+        def _work() -> None:
+            try:
+                path = install_deno(progress_cb=_progress)
+                result, error = path, ""
+            except Exception as e:  # noqa: BLE001
+                logger.exception("Deno install failed")
+                result, error = "", str(e)
+            self.post_to_main(lambda: self._js_runtime_install_done(result, error))
+
+        from core._threads import safe_thread
+        safe_thread(_work, name="deno-install")
+
+    def _js_runtime_install_done(self, path: str, error: str) -> None:
+        self._js_runtime_installing = False
+        button = getattr(self, "js_runtime_button", None)
+        if button is not None:
+            try:
+                button.state(["!disabled"])
+            except tk.TclError:
+                pass
+        if error:
+            self.format_status_var.set(f"Could not install the YouTube helper: {error}")
+            self.log(f"YouTube helper (Deno) install failed: {error}")
+            return
+        self.log(f"YouTube helper installed: {path}")
+        self.update_js_runtime_prompt()
+        url_var = getattr(self, "download_url_var", None)
+        if url_var is not None and url_var.get().strip():
+            self.format_service.schedule_lookup()  # look the link up again with Deno
+        else:
+            self.format_status_var.set("YouTube helper installed.")
 
     def update_caption_shortcut_state(self) -> None:
         """Show/hide the "Use captions instead" shortcut.

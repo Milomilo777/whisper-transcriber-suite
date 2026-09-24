@@ -22,6 +22,7 @@ import urllib.error
 import urllib.request
 
 from core._proc import kill_process_tree, new_session_kwargs
+from core.js_runtime import mentions_missing_js_runtime, yt_dlp_js_args
 
 logger = logging.getLogger(__name__)
 
@@ -302,6 +303,7 @@ def build_subtitle_command(
     yt_dlp_path: str,
     bin_path: str,
     cookies_from_browser: str | None = None,
+    js_runtime_args: list[str] | None = None,
 ) -> list[str]:
     output = os.path.join(task.folder, "%(title)s.%(ext)s")
     sub_langs = subtitle_lang_args(lang)
@@ -309,6 +311,7 @@ def build_subtitle_command(
     if bin_path:
         command += ["--ffmpeg-location", bin_path]
     command += ["--newline"]
+    command.extend(js_runtime_args or [])
     command.extend(_cookies_from_browser_args(cookies_from_browser))
     command.extend([
         "--skip-download",
@@ -436,6 +439,7 @@ def build_download_command(
     sponsorblock_categories: list[str] | None = None,
     progress_template: str | None = None,
     cookies_from_browser: str | None = None,
+    js_runtime_args: list[str] | None = None,
 ) -> list[str]:
     output = os.path.join(task.folder, "%(title)s.%(ext)s")
     command = [yt_dlp_path]
@@ -446,6 +450,8 @@ def build_download_command(
     # from zero. yt-dlp continues by default for plain downloads, but being
     # explicit also covers the modes where it would otherwise overwrite.
     command += ["--newline", "-c", "-o", output]
+    # Deno for YouTube's JS challenges (core.js_runtime); [] when absent.
+    command.extend(js_runtime_args or [])
     command.extend(_cookies_from_browser_args(cookies_from_browser))
     if progress_template:
         command.extend(["--progress-template", progress_template])
@@ -638,6 +644,7 @@ class DownloadService:
             yt_dlp_path=self.app.yt_dlp_path(),
             bin_path=self.app.bin_path(),
             cookies_from_browser=self.app.app_config.get("cookies_from_browser", ""),
+            js_runtime_args=yt_dlp_js_args(),
         )
 
     def build_download_command(
@@ -652,6 +659,7 @@ class DownloadService:
             cookies_from_browser=(
                 None if force_no_cookies else self.app.app_config.get("cookies_from_browser", "")
             ),
+            js_runtime_args=yt_dlp_js_args(),
         )
 
     def maybe_update_yt_dlp(self, task: "VideoDownloadTask") -> None:
@@ -2057,7 +2065,13 @@ class DownloadService:
             if reason:
                 msg = f"{msg}: {reason}"
             low = reason.lower()
-            if retried_without_cookies:
+            if mentions_missing_js_runtime(reason):
+                msg += (
+                    "  — YouTube needs a small helper: click 'Install YouTube "
+                    "helper' in the Download tab (next to the status line) "
+                    "and retry."
+                )
+            elif retried_without_cookies:
                 msg += (
                     "  — could not read cookies from your browser, and the "
                     "download failed again without them too: this video "

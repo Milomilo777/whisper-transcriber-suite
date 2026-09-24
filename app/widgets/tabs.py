@@ -993,8 +993,31 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
 
     app.format_status_var = tk.StringVar(value="Enter a URL to load available formats")
     app.format_lookup_error = ""
-    ttk.Label(top, textvariable=app.format_status_var).grid(
+    status_frame = ttk.Frame(top)
+    status_frame.grid(
         row=11, column=1, columnspan=2, sticky="w", padx=(6, 0), pady=(4, 0)
+    )
+    # wraplength: a yt-dlp error is often one very long line; unwrapped it
+    # widened the whole form and squeezed out the helper button below.
+    app.format_status_label = ttk.Label(
+        status_frame, textvariable=app.format_status_var,
+        wraplength=820, justify="left",
+    )
+    app.format_status_label.pack(side="left")
+    # One-click install of Deno, the JavaScript runtime yt-dlp needs for
+    # YouTube (core.js_runtime). Packed only while a YouTube link is loaded
+    # and no Deno exists (App.update_js_runtime_prompt).
+    app.js_runtime_button = ttk.Button(
+        status_frame,
+        text="Install YouTube helper",
+        command=app.install_js_runtime,
+    )
+    bind_tooltip(
+        app.js_runtime_button,
+        "YouTube downloads need a small JavaScript engine (Deno, one-time "
+        "download of about 40 MB from its official GitHub page, checked "
+        "against its published checksum). Without it some or all YouTube "
+        "formats are missing and downloads can fail.",
     )
 
     # Primary CTA for the Download tab — same Accent style + larger

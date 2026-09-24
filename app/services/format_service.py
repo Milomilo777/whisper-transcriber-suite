@@ -22,6 +22,7 @@ from app.domain.cookies import (
     login_required_hint,
 )
 from core.integrations import smtv as smtv_mod
+from core.js_runtime import mentions_missing_js_runtime, yt_dlp_js_args
 
 if TYPE_CHECKING:
     from app.app import App
@@ -96,6 +97,11 @@ class FormatService:
                 toggle(visible=False)
             except Exception:  # noqa: BLE001
                 pass
+        # Offer the Deno install for a YouTube link when yt-dlp has no JS
+        # runtime (hides the button again for any other / empty URL).
+        prompt = getattr(self.app, "update_js_runtime_prompt", None)
+        if callable(prompt):
+            prompt(url)
         if not url:
             self.app.format_status_var.set("Enter a URL to load available formats")
             return
@@ -109,6 +115,8 @@ class FormatService:
         cookie_args = cookies_from_browser_args(
             self.app.app_config.get("cookies_from_browser", "")
         )
+        # Deno for YouTube's JS challenges (core.js_runtime); [] when absent.
+        js_args = yt_dlp_js_args()
 
         def _probe(extra: list[str]) -> subprocess.CompletedProcess[str]:
             cmd = [self.app.yt_dlp_path()]
@@ -120,6 +128,7 @@ class FormatService:
             if bin_path:
                 cmd += ["--ffmpeg-location", bin_path]
             cmd += [
+                *js_args,
                 *extra,
                 "--dump-single-json",
                 "--no-playlist",
@@ -301,6 +310,11 @@ class FormatService:
         if kind == "error":
             cfg = getattr(app, "app_config", None) or {}
             hint = login_required_hint(str(payload), cfg.get("cookies_from_browser", ""))
+            if not hint and mentions_missing_js_runtime(str(payload)):
+                hint = (
+                    "YouTube needs a small helper to read this video: click "
+                    "\"Install YouTube helper\"."
+                )
             app.format_status_var.set(f"{hint}\n{payload}" if hint else payload)
             app.format_lookup_error = str(payload)
             app.current_video_caption_langs = {}

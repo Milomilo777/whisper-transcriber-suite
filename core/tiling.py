@@ -559,17 +559,22 @@ class TilingController:
 
     # ---- command building ------------------------------------------------- #
     def _yt_dlp_argv(self, yt_path: str) -> list[str]:
+        from .js_runtime import yt_dlp_js_args
+
+        js_args = yt_dlp_js_args()  # Deno for YouTube's JS challenges, if present
         explicit = self._explicit_fmt
         if explicit:
             return [
                 yt_path,
+                *js_args,
                 "--extractor-args", "youtube:player_client=" + YT_PLAYER_CLIENTS,
                 "--no-warnings", "--retries", "10", "--socket-timeout", "15",
                 "-f", explicit, "-o", "-", "--", self._url,
             ]
-        return build_yt_dlp_command(
+        argv = build_yt_dlp_command(
             yt_path, self._url, self._divisions, self._quality
         )
+        return [argv[0], *js_args, *argv[1:]]
 
     def _targets(self) -> tuple[list[_monitors.Monitor], bool]:
         mons = _monitors.list_monitors()

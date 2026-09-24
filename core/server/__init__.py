@@ -71,10 +71,13 @@ def _download_url(url: str, dest_dir: str) -> str:
     from core._proc import new_session_kwargs
     from core.paths import bin_dir, bundled_binary
 
+    from core.js_runtime import yt_dlp_js_args
+
     yt_dlp = bundled_binary("yt-dlp")
     out_template = os.path.join(dest_dir, "%(title).200s.%(ext)s")
     command = [
         yt_dlp,
+        *yt_dlp_js_args(),  # Deno for YouTube's JS challenges, if present
         "--ffmpeg-location", bin_dir(),
         "--no-playlist",
         "--newline",

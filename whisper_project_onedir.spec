@@ -194,6 +194,7 @@ a = Analysis(
         'core.diarization',
         'core.hallucination',
         'core.hardware',
+        'core.js_runtime',
         'core.history',
         'core.hub',
         'core.logging_setup',
