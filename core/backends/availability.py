@@ -151,7 +151,17 @@ def _faster_whisper_model_present(cfg: Mapping[str, Any]) -> bool:
 def _faster_whisper_status(cfg: Mapping[str, Any]) -> EngineStatus:
     """Cheap status: model presence only — no heavy import (startup-safe)."""
     present = _faster_whisper_model_present(cfg)
-    detail = "" if present else "model downloads on first run (~3 GB)"
+    if present:
+        return EngineStatus("faster_whisper", True, "")
+    size = ""
+    try:
+        from core.model_manager import DEFAULT_MODEL_SLUG, approx_download_size_text
+
+        slug = str(cfg.get("whisper_model") or DEFAULT_MODEL_SLUG)
+        size = approx_download_size_text(dict(cfg), slug)
+    except Exception:  # noqa: BLE001 -- a size hint must never break the probe
+        size = ""
+    detail = f"model downloads on first run ({size})" if size else "model downloads on first run"
     return EngineStatus("faster_whisper", True, detail)
 
 

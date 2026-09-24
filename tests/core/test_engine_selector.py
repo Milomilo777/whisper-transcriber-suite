@@ -392,3 +392,54 @@ def test_refresh_engine_status_drops_stale_result_after_engine_switch(App, monke
     # still shows the synchronous "Checking…" placeholder, never a ✓/⚠
     # result computed for the engine the user has since switched away from.
     assert text == "Checking…"
+
+
+def test_refresh_engine_status_falls_back_when_the_probe_never_answers(App, monkeypatch):
+    """A deep probe that hangs (seen on macOS 10.15) must not leave
+    "Checking…" up forever: the cheap status replaces it after a while."""
+    fw_label = eng.VALUE_TO_LABEL["faster_whisper"]
+    a = _bare_app(App, engine_label=fw_label, backend="faster_whisper")
+    pending: list = []
+    a.after = lambda _ms, fn: pending.append(fn)  # fire the timer by hand
+
+    class _NeverThread:  # the probe thread never runs -> never answers
+        def __init__(self, target=None, daemon=None, **_kw):
+            pass
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr("app.app.threading.Thread", _NeverThread)
+    monkeypatch.setattr(eng, "_faster_whisper_model_present", lambda cfg: True)
+
+    App._refresh_engine_status(a)
+    assert a.engine_status_var.get() == "Checking…"
+    assert len(pending) == 1
+    pending[0]()  # the fallback timer fires
+    assert a.engine_status_var.get().startswith("✓")
+
+
+def test_engine_status_fallback_keeps_a_real_answer(App, monkeypatch):
+    fw_label = eng.VALUE_TO_LABEL["faster_whisper"]
+    a = _bare_app(App, engine_label=fw_label, backend="faster_whisper")
+    pending: list = []
+    a.after = lambda _ms, fn: pending.append(fn)
+    _run_probe_inline(monkeypatch)
+    monkeypatch.setattr(
+        eng, "engine_status",
+        lambda value, cfg, deep=True: eng.EngineStatus(value, False, "deep verdict"),
+    )
+    App._refresh_engine_status(a)
+    answered = a.engine_status_var.get()
+    pending[0]()
+    assert a.engine_status_var.get() == answered  # not overwritten
+
+
+def test_cheap_status_names_the_selected_models_size(monkeypatch):
+    monkeypatch.setattr(eng, "_faster_whisper_model_present", lambda cfg: False)
+    st = eng.engine_status(
+        "faster_whisper",
+        {"whisper_model": "small", "model_path": "/definitely/missing"},
+        deep=False,
+    )
+    assert "about 500 MB" in st.detail

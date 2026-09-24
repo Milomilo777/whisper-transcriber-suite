@@ -1873,14 +1873,62 @@ class App(tk.Tk):
                     pass
 
             # 2) Real probe on a daemon thread — never blocks the UI thread.
-            self.probe_engine_status(
-                value, lambda st: self._apply_engine_status(value, st)
+            seq = int(getattr(self, "_engine_status_seq", 0)) + 1
+            self._engine_status_seq = seq
+
+            def _on_result(st: Any, _seq: int = seq) -> None:
+                self._engine_status_answered = _seq
+                self._apply_engine_status(value, st)
+
+            self.probe_engine_status(value, _on_result)
+            # 3) Safety net: the deep probe imports native libraries on a
+            #    thread and has no timeout of its own. If it never answers
+            #    (seen on macOS 10.15), "Checking…" stayed up forever; after
+            #    a while show the cheap status instead. A late real result
+            #    still replaces it.
+            self.after(
+                self._ENGINE_PROBE_FALLBACK_MS,
+                lambda: self._engine_status_fallback(seq, value),
             )
         except Exception:  # noqa: BLE001
             try:
                 var.set("")
             except Exception:  # noqa: BLE001
                 pass
+
+    # How long the Transcribe-tab status line waits for the deep engine probe
+    # before falling back to the cheap status (see _refresh_engine_status).
+    _ENGINE_PROBE_FALLBACK_MS = 15000
+    # Generation of the last status refresh / of the last probe that answered.
+    _engine_status_seq: int = 0
+    _engine_status_answered: int = 0
+
+    def _engine_status_fallback(self, seq: int, value: str) -> None:
+        """Replace a still-pending "Checking…" with the cheap engine status."""
+        if seq != getattr(self, "_engine_status_seq", 0):
+            return  # a newer refresh owns the line
+        if getattr(self, "_engine_status_answered", 0) >= seq:
+            return  # the real probe already answered
+        var = getattr(self, "engine_status_var", None)
+        if var is None:
+            return
+        try:
+            if var.get() != "Checking…":
+                return
+            from core.backends import availability as _eng
+
+            st = _eng.engine_status(value, self.app_config, deep=False)
+            logger.warning(
+                "Engine readiness probe for %s did not answer in %.0f s; "
+                "showing the quick status instead.",
+                value, self._ENGINE_PROBE_FALLBACK_MS / 1000,
+            )
+            var.set(_eng.format_engine_status(st))
+            lbl = getattr(self, "engine_status_label", None)
+            if lbl is not None:
+                lbl.configure(foreground="#3a8f3a" if st.ready else "#b06a00")
+        except Exception:  # noqa: BLE001 -- a status line must never raise
+            logger.exception("Engine status fallback failed")
 
     def probe_engine_status(
         self,
