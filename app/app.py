@@ -607,6 +607,7 @@ class App(tk.Tk):
     _engine_deep_statuses: "dict[str, Any]"
     # Model picker row on the Transcribe tab (built in tabs.py).
     transcribe_model_var: tk.StringVar
+    transcribe_model_advisor_btn: "ttk.Button"
     transcribe_model_combo: "ttk.Combobox"
     _transcribe_model_label_to_slug: "dict[str, str]"
     model_status_var: tk.StringVar
@@ -2202,9 +2203,22 @@ class App(tk.Tk):
         try:
             active = self._engine_uses_whisper_model()
             combo.configure(state="readonly" if active else "disabled")
+            advisor = _inst_attr(self, "transcribe_model_advisor_btn")
+            if advisor is not None:
+                advisor.state(["!disabled"] if active else ["disabled"])
         except Exception:  # noqa: BLE001
             logger.debug("Could not sync the model picker state", exc_info=True)
         self._refresh_model_status()
+
+    def open_model_advisor(self) -> None:
+        """Transcribe tab "Best for this PC…": suggest models for this hardware."""
+        try:
+            from app.dialogs.model_advisor import open_model_advisor
+
+            open_model_advisor(self, self)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Model advisor failed to open")
+            self.log(f"Could not open the model advisor: {e}")
 
     def _engine_uses_whisper_model(self) -> bool:
         """True while the picked engine actually uses the Whisper-model

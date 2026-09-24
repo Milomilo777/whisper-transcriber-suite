@@ -1210,6 +1210,114 @@ def detect_device_for(config: dict[str, Any]) -> tuple[str, str]:
     return "cpu", ct
 
 
+# ---------------------------------------------------------------- model advice
+#
+# "Pick the best model for my PC" (owner idea, 2026-09-23). The device pick
+# above says WHERE to run; this says WHICH Whisper model fits that hardware.
+# Thresholds are deliberately conservative and come from real runs: on the
+# 4-core i7-6700 dev box (CPU int8, 8 s of speech) small took 4 s, medium
+# 12 s, large-v3-turbo 17 s and large-v3 19 s; large-v3 in float16 plus the
+# batched pipeline needs roughly 5-6 GB of VRAM, turbo about half that.
+
+
+@dataclass(frozen=True)
+class ModelPick:
+    """One recommended model: ``kind`` is "fastest" or "accurate"."""
+
+    kind: str
+    slug: str
+    reason: str
+
+
+def system_ram_gb() -> float:
+    """Total physical memory in GB; 0.0 when it cannot be read."""
+    try:
+        import psutil  # type: ignore[import-not-found]
+        return float(psutil.virtual_memory().total) / 1024 ** 3
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        pages = os.sysconf("SC_PHYS_PAGES")
+        page_size = os.sysconf("SC_PAGE_SIZE")
+        return float(pages * page_size) / 1024 ** 3
+    except (AttributeError, ValueError, OSError):
+        return 0.0
+
+
+def recommend_models(
+    status: CudaStatus | None = None,
+    *,
+    ram_gb: float | None = None,
+    cpu_cores: int | None = None,
+) -> list[ModelPick]:
+    """Fastest + most accurate Whisper model for this machine.
+
+    Uses the GPU's memory when CUDA is usable, else CPU cores and RAM. When
+    both picks are the same model, one "accurate" pick is returned.
+    """
+    status = cuda_status() if status is None else status
+    if status.usable:
+        vram_gb = status.memory_mb / 1024 if status.memory_mb else 0.0
+        gpu = status.gpu_name or "your NVIDIA GPU"
+        if vram_gb == 0.0 or vram_gb >= 7.5:
+            fastest = ModelPick(
+                "fastest", "large-v3-turbo",
+                f"Runs on {gpu}: several times faster than Large v3 with "
+                "nearly the same accuracy.",
+            )
+            accurate = ModelPick(
+                "accurate", "large-v3" if vram_gb else "large-v3-turbo",
+                f"The most accurate model; {gpu} has enough memory for it."
+                if vram_gb else
+                f"Runs on {gpu}; its memory size is unknown, so the lighter "
+                "large model is the safe choice.",
+            )
+        elif vram_gb >= 3.5:
+            fastest = accurate = ModelPick(
+                "accurate", "large-v3-turbo",
+                f"Near-best accuracy that still fits in the {vram_gb:.0f} GB "
+                f"of {gpu}; Large v3 would be tight.",
+            )
+        else:
+            fastest = ModelPick(
+                "fastest", "small",
+                f"Fits easily in the {vram_gb:.0f} GB of {gpu}.",
+            )
+            accurate = ModelPick(
+                "accurate", "medium",
+                f"The largest model that fits comfortably in {vram_gb:.0f} GB.",
+            )
+    else:
+        cores = cpu_cores if cpu_cores is not None else (os.cpu_count() or 0)
+        ram = system_ram_gb() if ram_gb is None else ram_gb
+        weak = (0 < ram < 7.5) or (0 < cores < 4)
+        if weak:
+            fastest = ModelPick(
+                "fastest", "base",
+                "Runs on the CPU; quick even on a modest computer.",
+            )
+            accurate = ModelPick(
+                "accurate", "small",
+                "Clearly better than Base and still usable on this computer's "
+                "CPU and memory.",
+            )
+        else:
+            fastest = ModelPick(
+                "fastest", "small",
+                "Runs on the CPU faster than real time on a typical 4-core "
+                "computer.",
+            )
+            accurate = ModelPick(
+                "accurate", "large-v3-turbo",
+                "Near-best accuracy; on the CPU it takes roughly twice the "
+                "audio's length on a typical 4-core computer (faster with "
+                "more cores).",
+            )
+    if fastest.slug == accurate.slug:
+        return [accurate]
+    return [fastest, accurate]
+
+
 def diagnostics_report() -> str:
     """Plain-text GPU/CUDA report for bug reports. Never raises.
 

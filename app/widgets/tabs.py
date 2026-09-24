@@ -394,6 +394,17 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     )
     model_combo.pack(side="left", padx=(6, 8))
     app.transcribe_model_combo = model_combo
+    # Owner idea (2026-09-23): recommend a model for this computer's GPU /
+    # CPU / memory instead of leaving the size choice to guesswork.
+    app.transcribe_model_advisor_btn = ttk.Button(
+        model_row, text="Best for this PC…", command=app.open_model_advisor,
+    )
+    app.transcribe_model_advisor_btn.pack(side="left", padx=(0, 8))
+    bind_tooltip(
+        app.transcribe_model_advisor_btn,
+        "Checks this computer's NVIDIA GPU (and its memory) or CPU and RAM "
+        "and suggests the fastest and the most accurate model that fit.",
+    )
     # A disabled combobox still fires Enter/Leave, so this hover text is the
     # reason the picker is greyed out whenever the engine doesn't use it.
     bind_tooltip(model_combo, app._model_picker_disabled_reason)
