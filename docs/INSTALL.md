@@ -134,7 +134,7 @@ This needs **Python**, installable from https://python.org (tick "Add to PATH" d
 ### Transcription is very slow
 
 - The default model is `large-v3` (large). On CPU with int8 it takes about 2–3× the audio length.
-- If you have an NVIDIA GPU with CUDA: Advanced → device → cuda; compute_type → float16. Speedup is 10×–20×.
+- If you have an NVIDIA GPU: open Advanced → **Re-detect hardware…**. It picks CUDA when it can, and otherwise says why not — usually NVIDIA's cuBLAS library is missing (the graphics driver does not include it); the **Install GPU support** button installs it (~550 MB, one time). Speedup is 10×–20×. **Copy diagnostics** there gives a report to attach to a GitHub issue if it still fails.
 - Or use a smaller model (edit `config.json` at `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json` by hand).
 
 ### Use an existing Whisper model from elsewhere

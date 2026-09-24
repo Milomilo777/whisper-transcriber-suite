@@ -112,8 +112,12 @@ stable-ts>=2.17
 # --- Notes -----------------------------------------------------------
 # * tkinter ships with the Windows Python installer. On Linux install
 #   python3-tk via the package manager. On macOS use the python.org build.
-# * GPU support: faster-whisper picks up a system CUDA install
-#   automatically. For a self-contained CUDA wheel pair, install:
-#       pip install nvidia-cublas-cu12 nvidia-cudnn-cu12
+# * GPU support: the NVIDIA driver alone is not enough -- CTranslate2 4.x
+#   also needs cuBLAS for CUDA 12 (4.6.3+ needs nothing else; older builds
+#   also needed cuDNN). core/hardware.py finds it on the system path, in a
+#   CUDA Toolkit, in a CUDA PyTorch, or from NVIDIA's pip wheel:
+#       pip install nvidia-cublas-cu12
+#   which the app's Advanced > Re-detect hardware > "Install GPU support"
+#   button installs on demand (core/optional_deps.py "cuda_runtime").
 # * darkdetect is optional; sv-ttk falls back to dark when missing.
 # * For dev / test deps see pyproject.toml [project.optional-dependencies.dev].

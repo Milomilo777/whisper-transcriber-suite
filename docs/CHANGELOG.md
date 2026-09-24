@@ -4,6 +4,25 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Fixed
+
+- **NVIDIA GPUs were never used (#7).** Hardware Autodetect called a
+  CTranslate2 function that does not exist, so every machine silently fell
+  back to CPU. It now uses the real API; a CPU choice saved by the old
+  probe is re-checked automatically.
+- **A GPU that fails on its first real use falls back to CPU at load time**
+  (one short warm-up pass), instead of failing the first transcription.
+- **"Save and use" in Hardware Autodetect takes effect right away** (it
+  needed an app restart), and the one-time "running on CPU" warning now
+  appears when an NVIDIA GPU is present but unusable.
+
+### Added
+
+- **Hardware Autodetect explains an unusable NVIDIA GPU** (reason + fix),
+  offers **Install GPU support** (NVIDIA cuBLAS, ~550 MB) when that is the
+  missing piece, and **Copy diagnostics** for bug reports
+  (`python -m core.hardware` prints the same report).
+
 ## [1.9.1] — 2026-09-24
 
 macOS-only release: assets rebuilt from master with the pending commits

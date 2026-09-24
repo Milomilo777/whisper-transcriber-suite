@@ -141,6 +141,18 @@ Hangs block the whole suite (Tk's Cocoa event loop never returns to Python, so n
 7. The "Engine: Checking…" label on the Transcribe tab never finished on 10.15.
 8. yt-dlp warns `No supported JavaScript runtime could be found` — YouTube extraction may degrade without deno; consider bundling it.
 
+## Pending for the next Mac build — changes made since v1.9.1 (not built for Mac yet)
+
+- **GPU autodetect fix (issue #7, 2026-09-24).** `core/hardware.py` now uses
+  CTranslate2's real `get_cuda_device_count()` and gained `cuda_status()`,
+  CUDA-library discovery, a GPU warm-up pass and a diagnostics report.
+  On macOS `cuda_status()` returns "NVIDIA CUDA is not available on macOS"
+  before touching any CUDA library, so the Mac app behaves as before. No new
+  module (only stdlib `glob`/`re` imports), so the PyInstaller spec needs no
+  change. Check on the Mac build: Advanced → Re-detect hardware lists only the
+  CPU tier (no "needs setup" row, no "Install GPU support" button), and
+  "Copy diagnostics" works and says CUDA is not available on macOS.
+
 ## Next steps worth doing
 
 - **universal2**: python.org 3.12 is universal2; fuse per-arch wheels with `delocate-merge`, `fetch_mac_binaries.sh universal2`, `WTS_TARGET_ARCH=universal2 WTS_DMG_SUFFIX=universal`, then `verify_mac_bundle.sh <app> universal2`.
