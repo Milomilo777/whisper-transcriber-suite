@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
-import sys
-import types
 
 import pytest
 
@@ -373,31 +371,15 @@ def test_nvidia_asr_in_known_engines():
 def test_nvidia_asr_in_advanced_backend_choices():
     """NVIDIA ASR must appear in the Advanced dialog's backend picker.
 
-    Imports app.dialogs.advanced headlessly by stubbing tkinter + the heavy
-    core modules it pulls at module level (same technique as
-    test_engine_selector.py).
+    Imports the real app.dialogs.advanced. This test used to plant stub
+    ``tkinter`` / ``core.config`` / ``core.model_manager`` / ``core.writers``
+    modules in sys.modules (never removed) whenever they were not imported
+    yet -- harmless in a full run where tkinter was already loaded, but on
+    macOS, where test files run one per process, the stub tkinter had no
+    ``font`` submodule and broke every later tkinter import ("cannot import
+    name 'font' from 'tkinter' (unknown location)").
     """
-    for mod_name in ("tkinter", "tkinter.ttk", "tkinter.filedialog"):
-        if mod_name not in sys.modules:
-            fake_tk = types.ModuleType(mod_name)
-            for attr in (
-                "Toplevel", "Frame", "StringVar", "BooleanVar",
-                "IntVar", "DoubleVar", "Canvas", "Label",
-            ):
-                setattr(fake_tk, attr, object)
-            sys.modules[mod_name] = fake_tk
-
-    for mod_name in ("core.config", "core.model_manager", "core.writers"):
-        if mod_name not in sys.modules:
-            fake = types.ModuleType(mod_name)
-            fake.save_config = lambda *a, **kw: None  # type: ignore[attr-defined]
-            fake.DEFAULT_MODEL_SLUG = "large-v3"  # type: ignore[attr-defined]
-            fake.catalog_entry_info = lambda *a, **kw: None  # type: ignore[attr-defined]
-            fake.catalog_models = lambda *a, **kw: []  # type: ignore[attr-defined]
-            fake.catalog_resolve_entry = lambda *a, **kw: None  # type: ignore[attr-defined]
-            fake.supported_formats = lambda: []  # type: ignore[attr-defined]
-            sys.modules[mod_name] = fake
-
+    pytest.importorskip("tkinter")
     advanced = importlib.import_module("app.dialogs.advanced")
     values = set(advanced._BACKEND_LABEL_TO_VALUE.values())
     assert "nvidia_asr" in values

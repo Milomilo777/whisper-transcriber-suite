@@ -199,13 +199,27 @@ def test_dialog_geometry_screen_centres_for_minimised_parent(tk_root, monkeypatc
     monkeypatch.setattr(tk_root, "winfo_screenwidth", lambda: 1920)
     monkeypatch.setattr(tk_root, "winfo_screenheight", lambda: 1080)
 
+    # Record the position the dialog REQUESTS rather than reading it back:
+    # macOS Tk does not report a withdrawn window's requested position via
+    # geometry() (it returned the window manager's own placement there,
+    # failing this test although the dialog asked for the right spot).
+    requested: list[str] = []
+    real_geometry = ModelLoadingDialog.geometry
+
+    def _geometry(self, new_geometry=None):  # type: ignore[no-untyped-def]
+        if new_geometry is not None:
+            requested.append(new_geometry)
+        return real_geometry(self, new_geometry)
+
+    monkeypatch.setattr(ModelLoadingDialog, "geometry", _geometry)
+
     dialog = ModelLoadingDialog(tk_root)
     dialog.withdraw()
     try:
         w, h = dialog.winfo_width(), dialog.winfo_height()
         expected = f"+{(1920 - w) // 2}+{(1080 - h) // 2}"
-        assert expected in dialog.geometry(), (
-            f"expected screen-centred {expected!r}, got {dialog.geometry()!r}"
+        assert expected in requested, (
+            f"expected screen-centred {expected!r}, requested {requested!r}"
         )
     finally:
         dialog.destroy()

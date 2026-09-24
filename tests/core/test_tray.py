@@ -37,7 +37,7 @@ def test_build_icon_image_idle_and_active():
     assert idle.size == (64, 64)
     assert active.size == (64, 64)
     # The two images shouldn't be identical (different pixels).
-    assert list(idle.getdata()) != list(active.getdata())
+    assert idle.tobytes() != active.tobytes()
 
 
 def test_failed_start_reports_the_tray_as_unsupported(monkeypatch):
@@ -67,6 +67,9 @@ def test_failed_start_reports_the_tray_as_unsupported(monkeypatch):
         Icon=_FailingIcon,
     )
     monkeypatch.setattr(tray_mod, "_try_load_pystray", lambda: (fake_pystray, object()))
+    # The tray is disabled on macOS by design (see TrayController.is_supported);
+    # this test is about the failed-start logic, so pin a tray platform.
+    monkeypatch.setattr(sys, "platform", "win32")
 
     fake_app = types.SimpleNamespace(post_to_main=lambda fn: None)
     c = tray_mod.TrayController(fake_app)  # type: ignore[arg-type]
@@ -115,6 +118,7 @@ def test_successful_retry_after_a_failed_start_reports_supported(monkeypatch):
         return t
 
     monkeypatch.setattr("core._threads.safe_thread", _fake_safe_thread)
+    monkeypatch.setattr(sys, "platform", "win32")  # tray is off on macOS by design
 
     fake_app = types.SimpleNamespace(post_to_main=lambda fn: None)
     c = tray_mod.TrayController(fake_app)  # type: ignore[arg-type]
@@ -126,3 +130,14 @@ def test_successful_retry_after_a_failed_start_reports_supported(monkeypatch):
     assert len(attempts) == 2
     assert c._icon is not None
     assert c.is_supported() is True
+
+
+def test_tray_is_unsupported_on_macos_even_with_the_libraries(monkeypatch):
+    """pystray's AppKit backend needs the main thread, which Tk owns, so the
+    tray is off on macOS (the app lives in the Dock)."""
+    from app.widgets import tray as tray_mod
+
+    monkeypatch.setattr(tray_mod, "_try_load_pystray", lambda: (object(), object()))
+    monkeypatch.setattr(sys, "platform", "darwin")
+    c = tray_mod.TrayController(types.SimpleNamespace(post_to_main=lambda fn: None))  # type: ignore[arg-type]
+    assert c.is_supported() is False

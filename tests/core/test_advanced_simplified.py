@@ -14,7 +14,6 @@ Two halves:
 """
 from __future__ import annotations
 
-import time
 import types
 from typing import Any
 
@@ -389,16 +388,28 @@ def test_gcloud_autotest_only_runs_when_google_cloud_is_picked(
     from app.dialogs import advanced as adv
     from core.backends import availability
 
-    calls: list[int] = []
     monkeypatch.setattr(availability, "has_gcloud_key", lambda _cfg: True)
-    monkeypatch.setattr(
-        adv.AdvancedDialog, "_test_gcloud_connection", lambda self: calls.append(1),
-    )
 
-    dlg = make_dialog(transcribe_backend=engine)
-    deadline = time.monotonic() + 0.8
-    while time.monotonic() < deadline and not calls:
-        dlg.update()
-        time.sleep(0.02)
+    def _fake_test(self) -> None:  # never runs: only its scheduling is checked
+        raise AssertionError("the connection test must not run in this test")
 
-    assert len(calls) == expected_calls
+    monkeypatch.setattr(adv.AdvancedDialog, "_test_gcloud_connection", _fake_test)
+
+    # Record the dialog's own after(...) request for the test instead of
+    # pumping the event loop until it fires: dlg.update() never returns on
+    # macOS Tk here (Cocoa event loop), which hung the whole suite. The
+    # decision is taken synchronously in __init__, so recording is enough.
+    scheduled: list[int] = []
+    real_after = adv.AdvancedDialog.after
+
+    def _after(self, ms, func=None, *args):  # type: ignore[no-untyped-def]
+        if getattr(func, "__func__", None) is _fake_test:
+            scheduled.append(ms)
+            return "recorded"
+        return real_after(self, ms, func, *args)
+
+    monkeypatch.setattr(adv.AdvancedDialog, "after", _after)
+
+    make_dialog(transcribe_backend=engine)
+
+    assert len(scheduled) == expected_calls

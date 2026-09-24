@@ -908,7 +908,14 @@ def test_load_batch_without_bucket_refused(monkeypatch, tmp_path):
 
 
 def test_transcribe_without_load_raises(monkeypatch):
+    from core import optional_deps
+
     monkeypatch.setattr(g, "runtime_available", lambda: False)
+    # load() would otherwise run a REAL on-demand `pip install` of the
+    # google-cloud libraries (network, minutes, and it writes into the
+    # user's extras dir) -- keep the test hermetic by refusing it.
+    monkeypatch.setattr(optional_deps, "install", lambda *_a, **_k: False)
+    monkeypatch.setattr(optional_deps, "is_available", lambda *_a, **_k: False)
     backend = g.GoogleCloudSttBackend(config={"gcloud_stt_credentials_json": ""})
     with pytest.raises(RuntimeError):
         backend.transcribe_to_segments("/tmp/whatever.wav", duration=1.0)
