@@ -7,7 +7,13 @@
 #      PATH (so nothing from Homebrew/the system can mask a missing binary),
 #      and the transcript must contain the spoken words
 #   4. the GUI launches through LaunchServices (`open`) and logs its startup
-#   5. (best-effort) the bundled yt-dlp can resolve a public YouTube video
+#   5. (best-effort) the RUNTIME-resolved yt-dlp/ffmpeg (core.paths.bundled_binary(), i.e.
+#      Contents/MacOS/bin/ -- what the app itself actually calls, not the
+#      Contents/Frameworks/bin/ copies) perform a real download + ffmpeg
+#      merge of a short public video end-to-end. Hard failure, not
+#      best-effort: this is the exact path a 2026-09-24 regression broke
+#      (yt-dlp had no Contents/MacOS/bin symlink, so every real download in
+#      the packaged app silently fell back to a missing "yt-dlp" on PATH).
 #
 # Usage: bash platform/macos/pyinstaller/smoke_test_app.sh [app] [python-with-repo-deps] [model-slug]
 # The user's WhisperTranscriberSuite config.json is backed up and restored.
@@ -21,6 +27,9 @@ MODEL="${3:-tiny}"
 case "$APP" in /*) ;; *) APP="$REPO/$APP" ;; esac
 BIN="$APP/Contents/MacOS/Whisper Transcriber Suite"
 TOOLS="$APP/Contents/Frameworks/bin"
+# The path the app itself resolves at runtime via core.paths.bundled_binary()
+# (core.paths.resource_base() = dirname(sys.executable) = Contents/MacOS/).
+RUNTIME_BIN="$APP/Contents/MacOS/bin"
 CFG_DIR="$HOME/Library/Application Support/WhisperTranscriberSuite"
 LOG_DIR="$HOME/Library/Logs/WhisperTranscriberSuite"
 WORK="$(mktemp -d)"
@@ -98,12 +107,29 @@ fi
 grep -iE "Traceback|ERROR" "$LOG_DIR/app.log" 2>/dev/null | tail -5 || true
 pkill -f "$APP/Contents/MacOS/" 2>/dev/null || true
 
-echo "== 5. bundled yt-dlp against YouTube (best-effort: CI IPs are often bot-blocked)"
-if "$TOOLS/yt-dlp" --ffmpeg-location "$TOOLS" --simulate --print title \
-     "https://www.youtube.com/watch?v=jNQXAC9IVRw" 2>"$WORK/ytdlp.err"; then
-  echo "OK   yt-dlp resolved the video"
-else
-  echo "WARN yt-dlp could not resolve the video (not failing the build):"; tail -3 "$WORK/ytdlp.err"
+echo "== 5. runtime-resolved yt-dlp/ffmpeg: real download + merge (Contents/MacOS/bin)"
+for _n in yt-dlp ffmpeg; do
+  if [ ! -f "$RUNTIME_BIN/$_n" ]; then
+    echo "FAIL $RUNTIME_BIN/$_n does not exist (or is a dangling symlink) -- this is exactly"
+    echo "     the path core.paths.bundled_binary(\"$_n\") resolves at runtime"
+    fail=1
+  fi
+done
+if [ "$fail" = 0 ]; then
+  dl_ok=0
+  for _try in 1 2; do
+    if "$RUNTIME_BIN/yt-dlp" --ffmpeg-location "$RUNTIME_BIN"          -f 'bv*[height<=360]+ba/b[height<=360]' --merge-output-format mp4          -o "$WORK/smoketest.%(ext)s"          "https://www.youtube.com/watch?v=jNQXAC9IVRw" 2>"$WORK/ytdlp.err"; then
+      dl_ok=1; break
+    fi
+    echo "WARN download attempt $_try failed, retrying:"; tail -3 "$WORK/ytdlp.err"
+  done
+  if [ "$dl_ok" = 1 ] && [ -s "$WORK/smoketest.mp4" ]; then
+    echo "OK   real download + ffmpeg merge produced $(du -h "$WORK/smoketest.mp4" | cut -f1)"
+  else
+    echo "FAIL real download via the runtime-resolved binaries did not produce a file:"
+    tail -10 "$WORK/ytdlp.err" 2>/dev/null || true
+    fail=1
+  fi
 fi
 
 [ "$fail" = 0 ] && echo "SMOKE TEST PASSED" || { echo "SMOKE TEST FAILED" >&2; exit 1; }

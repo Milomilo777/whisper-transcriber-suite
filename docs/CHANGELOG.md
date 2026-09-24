@@ -4,6 +4,29 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [1.9.2] — 2026-09-24
+
+macOS-only release: fixes real-world video downloading in the packaged
+app (reported by coworker QA against 1.9.0).
+
+### Fixed
+
+- **Downloading videos was broken in the packaged macOS app** —
+  `yt-dlp` is copied into the bundle *after* PyInstaller's own packaging
+  step, so it never got the `Contents/MacOS/bin/` symlink that PyInstaller
+  automatically creates for `ffmpeg`/`ffprobe`/`ffplay`. `core.paths`
+  resolves bundled tools through that exact path at runtime, so every
+  real download silently fell back to a bare `yt-dlp` PATH lookup and
+  failed on any machine without yt-dlp installed globally — while
+  ffmpeg-based features (transcription) worked fine, since ffmpeg *did*
+  get its symlink. The packaging spec now creates the matching symlink
+  for yt-dlp too.
+- `platform/macos/pyinstaller/smoke_test_app.sh` and `verify_mac_bundle.sh`
+  now check the same `Contents/MacOS/bin/` runtime path the app actually
+  uses, and the smoke test performs a real (non-simulated) download +
+  ffmpeg merge through it — a hard build failure, not best-effort —
+  so this class of bug can't ship silently again.
+
 ## [1.9.1] — 2026-09-24
 
 macOS-only release: assets rebuilt from master with the pending commits
