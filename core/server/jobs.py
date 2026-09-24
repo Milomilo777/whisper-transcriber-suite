@@ -426,7 +426,13 @@ class JobManager:
                    clip_end: float | None = None) -> str:
         """Register a URL job; return job_id. Scheme is validated here."""
         if not is_safe_url(url):
-            raise ValueError("only http(s) URLs are accepted")
+            # is_safe_url also refuses loopback / link-local / cloud-metadata
+            # hosts (SSRF guard); say so, instead of claiming a plain
+            # http://127.0.0.1/... link is not http.
+            raise ValueError(
+                "only http(s) URLs to a public or LAN host are accepted "
+                "(this computer's own / link-local addresses are refused)"
+            )
         with self._lock:
             job = self._new_job("url", formats, language, url,
                                 options=options, clip_start=clip_start,
