@@ -12,6 +12,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING
 
+from app.domain.cookies import cookie_browser_choices, cookie_browser_label
 from app.domain.languages import SUBTITLE_LANGUAGES
 from app.widgets.tooltip import bind_tooltip, help_icon, section_labelframe
 
@@ -705,21 +706,56 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         "soon as you paste it.",
     ).grid(row=0, column=3, sticky="w", padx=(6, 0))
 
-    ttk.Label(top, text="Folder").grid(row=1, column=0, sticky="w", pady=(8, 0))
+    # Browser cookies right under the URL: login-walled sites (Instagram,
+    # Facebook, TikTok stories, age-gated YouTube) need them, and the option
+    # used to exist only in Advanced settings. Same config key, so the two
+    # controls stay in sync (App.sync_cookies_browser_from_config).
+    ttk.Label(top, text="Log-in cookies").grid(row=1, column=0, sticky="w", pady=(8, 0))
+    cookies_row = ttk.Frame(top)
+    cookies_row.grid(row=1, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(8, 0))
+    current_cookies = str(app.app_config.get("cookies_from_browser") or "")
+    app.download_cookies_var = tk.StringVar(value=cookie_browser_label(current_cookies))
+    app.download_cookies_combo = ttk.Combobox(
+        cookies_row,
+        textvariable=app.download_cookies_var,
+        state="readonly",
+        values=cookie_browser_choices(current_cookies),
+        width=14,
+    )
+    app.download_cookies_combo.pack(side="left")
+    app.download_cookies_combo.bind(
+        "<<ComboboxSelected>>", lambda _e: app._on_download_cookies_selected()
+    )
+    ttk.Label(
+        cookies_row,
+        text="use my browser's log-in — for Instagram, Facebook, TikTok stories, age-gated videos",
+        foreground="#666",
+    ).pack(side="left", padx=(10, 0))
+    help_icon(
+        top,
+        "Pick the browser you are logged in with. The download then uses "
+        "that browser's log-in session, so videos that need an account "
+        "(Instagram, Facebook, TikTok stories, age-restricted YouTube) work. "
+        "The cookies are read on this computer only; nothing is uploaded. "
+        "On Windows, close Chrome/Edge completely if it says it could not "
+        "copy the cookie database. Same setting as Advanced › Downloads.",
+    ).grid(row=1, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
+
+    ttk.Label(top, text="Folder").grid(row=2, column=0, sticky="w", pady=(8, 0))
     app.download_folder_var = tk.StringVar(value=app.app_config.get("download_folder", ""))
     ttk.Entry(top, textvariable=app.download_folder_var, width=70).grid(
-        row=1, column=1, sticky="ew", padx=(6, 0), pady=(8, 0)
+        row=2, column=1, sticky="ew", padx=(6, 0), pady=(8, 0)
     )
     ttk.Button(top, text="Browse", command=app.browse_download_folder).grid(
-        row=1, column=2, sticky="ew", padx=(6, 0), pady=(8, 0)
+        row=2, column=2, sticky="ew", padx=(6, 0), pady=(8, 0)
     )
     help_icon(
         top,
         "Where the downloaded file is saved. Defaults to the folder "
         "you last used; Browse to change it.",
-    ).grid(row=1, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
+    ).grid(row=2, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
-    ttk.Label(top, text="Mode").grid(row=2, column=0, sticky="w", pady=(8, 0))
+    ttk.Label(top, text="Mode").grid(row=3, column=0, sticky="w", pady=(8, 0))
     app.download_mode_var = tk.StringVar(value="Audio and video")
     app.download_mode_combo = ttk.Combobox(
         top,
@@ -728,52 +764,52 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         values=("Audio and video", "Audio"),
         width=24,
     )
-    app.download_mode_combo.grid(row=2, column=1, sticky="w", padx=(6, 0), pady=(8, 0))
+    app.download_mode_combo.grid(row=3, column=1, sticky="w", padx=(6, 0), pady=(8, 0))
     app.download_mode_combo.bind("<<ComboboxSelected>>", lambda _e: app.update_download_mode())
     help_icon(
         top,
         "'Audio and video' downloads a normal video file. 'Audio' "
         "extracts just the audio track — smaller and faster if you only "
         "need the sound or plan to transcribe it.",
-    ).grid(row=2, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
+    ).grid(row=3, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
-    ttk.Label(top, text="Audio").grid(row=3, column=0, sticky="w", pady=(8, 0))
+    ttk.Label(top, text="Audio").grid(row=4, column=0, sticky="w", pady=(8, 0))
     app.audio_format_var = tk.StringVar()
     app.audio_format_combo = ttk.Combobox(
         top, textvariable=app.audio_format_var, state="readonly", width=76
     )
-    app.audio_format_combo.grid(row=3, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(8, 0))
+    app.audio_format_combo.grid(row=4, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(8, 0))
     help_icon(
         top,
         "Audio-only quality/codec choice, filled in once the URL is "
         "looked up. Higher bitrate means a larger file and better "
         "quality.",
-    ).grid(row=3, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
+    ).grid(row=4, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
-    ttk.Label(top, text="Video").grid(row=4, column=0, sticky="w", pady=(8, 0))
+    ttk.Label(top, text="Video").grid(row=5, column=0, sticky="w", pady=(8, 0))
     app.video_format_var = tk.StringVar()
     app.video_format_combo = ttk.Combobox(
         top, textvariable=app.video_format_var, state="readonly", width=76
     )
-    app.video_format_combo.grid(row=4, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(8, 0))
+    app.video_format_combo.grid(row=5, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(8, 0))
     help_icon(
         top,
         "Video quality/resolution choice, filled in once the URL is "
         "looked up. Only used in 'Audio and video' mode.",
-    ).grid(row=4, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
+    ).grid(row=5, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
-    ttk.Label(top, text="Output").grid(row=5, column=0, sticky="w", pady=(8, 0))
+    ttk.Label(top, text="Output").grid(row=6, column=0, sticky="w", pady=(8, 0))
     app.output_format_var = tk.StringVar(value="mp4")
     app.output_format_combo = ttk.Combobox(
         top, textvariable=app.output_format_var, state="readonly", width=20
     )
-    app.output_format_combo.grid(row=5, column=1, sticky="w", padx=(6, 0), pady=(8, 0))
+    app.output_format_combo.grid(row=6, column=1, sticky="w", padx=(6, 0), pady=(8, 0))
     help_icon(
         top,
         "Container format for the saved file (e.g. mp4). Changing it may "
         "re-encode the file instead of just repackaging it, which takes "
         "longer.",
-    ).grid(row=5, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
+    ).grid(row=6, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
     # --- Optional time-range slice (v1.0.3) -------------------------------
     # Two short Entry widgets inside a LabelFrame, plus a tiny hint label
@@ -790,7 +826,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         padding=(8, 4),
     )
     trim_frame.grid(
-        row=5, column=2, sticky="ew", padx=(12, 0), pady=(8, 0)
+        row=6, column=2, sticky="ew", padx=(12, 0), pady=(8, 0)
     )
     ttk.Label(trim_frame, text="Start").grid(row=0, column=0, sticky="w")
     start_entry = ttk.Entry(
@@ -838,9 +874,9 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         row=3, column=0, columnspan=3, sticky="w"
     )
 
-    ttk.Label(top, text="Subtitles").grid(row=6, column=0, sticky="w", pady=(8, 0))
+    ttk.Label(top, text="Subtitles").grid(row=7, column=0, sticky="w", pady=(8, 0))
     sub_frame = ttk.Frame(top)
-    sub_frame.grid(row=6, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(8, 0))
+    sub_frame.grid(row=7, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(8, 0))
     saved_sub_enabled = bool(app.app_config.get("download_subtitles_enabled", False))
     app.download_subtitles_var = tk.BooleanVar(value=saved_sub_enabled)
     ttk.Checkbutton(
@@ -871,7 +907,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         "generated or manual) in the chosen language, instead of "
         "transcribing the audio yourself. Only available when the site "
         "provides them.",
-    ).grid(row=6, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
+    ).grid(row=7, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
     app.subtitle_lang_combo.bind(
         "<<ComboboxSelected>>", lambda _e: app.update_caption_shortcut_state()
     )
@@ -884,7 +920,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     # language (see app/services/format_service.py::caption_lang_map).
     caption_shortcut_frame = ttk.Frame(top)
     caption_shortcut_frame.grid(
-        row=7, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(4, 0)
+        row=8, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(4, 0)
     )
     app.caption_shortcut_status_var = tk.StringVar(value="")
     ttk.Label(
@@ -909,13 +945,13 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         text="Transcribe after download",
         variable=app.auto_transcribe_var,
         command=app._save_auto_transcribe_pref,
-    ).grid(row=8, column=1, columnspan=2, sticky="w", padx=(6, 0), pady=(4, 0))
+    ).grid(row=9, column=1, columnspan=2, sticky="w", padx=(6, 0), pady=(4, 0))
     help_icon(
         top,
         "Automatically queues the downloaded file for transcription as "
         "soon as the download finishes, using the settings in the "
         "Transcribe tab.",
-    ).grid(row=8, column=3, sticky="w", padx=(6, 0), pady=(4, 0))
+    ).grid(row=9, column=3, sticky="w", padx=(6, 0), pady=(4, 0))
 
     # SMTV "all parts" toggle. Built always, shown only when an SMTV
     # episode with >=1 sibling parts is detected. format_service sets
@@ -936,7 +972,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
 
     def _toggle(*, visible: bool) -> None:
         if visible:
-            smtv_frame.grid(row=9, column=1, columnspan=2, sticky="w",
+            smtv_frame.grid(row=10, column=1, columnspan=2, sticky="w",
                             padx=(6, 0), pady=(4, 0))
         else:
             smtv_frame.grid_remove()
@@ -947,7 +983,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.format_status_var = tk.StringVar(value="Enter a URL to load available formats")
     app.format_lookup_error = ""
     ttk.Label(top, textvariable=app.format_status_var).grid(
-        row=9, column=1, columnspan=2, sticky="w", padx=(6, 0), pady=(4, 0)
+        row=11, column=1, columnspan=2, sticky="w", padx=(6, 0), pady=(4, 0)
     )
 
     # Primary CTA for the Download tab — same Accent style + larger
@@ -961,7 +997,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         style="Accent.TButton",
     )
     download_btn.grid(
-        row=10, column=0, columnspan=3, sticky="e",
+        row=12, column=0, columnspan=3, sticky="e",
         padx=(0, 0), pady=(12, 0), ipadx=24, ipady=8,
     )
 

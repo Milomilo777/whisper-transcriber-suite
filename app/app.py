@@ -528,6 +528,9 @@ class App(tk.Tk):
     queue_action_buttons: dict[str, "ttk.Button"]
     # Download tab
     download_url_var: tk.StringVar
+    # Download tab "Log-in cookies" picker (mirrors Advanced › Downloads).
+    download_cookies_var: tk.StringVar
+    download_cookies_combo: "ttk.Combobox"
     download_folder_var: tk.StringVar
     # v1.0.3 — optional time-range slice on the Download tab. Both
     # vars are created by tabs.build_download_tab and are per-job
@@ -1678,6 +1681,49 @@ class App(tk.Tk):
             # silently reverts on the next launch.
             logger.exception("Failed to save auto-transcribe preference")
             self.log(f"Could not save preference: {e}")
+
+    def _on_download_cookies_selected(self) -> None:
+        """Download tab "Log-in cookies" pick: save it and re-check the URL.
+
+        Same config key as Advanced › Downloads. A pasted link that failed
+        the lookup for want of a log-in is looked up again right away.
+        """
+        from app.domain.cookies import cookie_browser_value
+
+        var = getattr(self, "download_cookies_var", None)
+        if var is None:
+            return
+        value = cookie_browser_value(var.get())
+        if value == str(self.app_config.get("cookies_from_browser") or ""):
+            return
+        self.app_config["cookies_from_browser"] = value
+        try:
+            save_config(self.app_config)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Failed to save cookies-from-browser preference")
+            self.log(f"Could not save preference: {e}")
+        self.log(
+            f"Downloads now use log-in cookies from {value}." if value
+            else "Downloads no longer use browser log-in cookies."
+        )
+        url_var = getattr(self, "download_url_var", None)
+        if url_var is not None and url_var.get().strip():
+            self.format_service.schedule_lookup()
+
+    def sync_cookies_browser_from_config(self) -> None:
+        """Refresh the Download tab's cookies picker after Advanced saved it."""
+        from app.domain.cookies import cookie_browser_choices, cookie_browser_label
+
+        var = getattr(self, "download_cookies_var", None)
+        combo = getattr(self, "download_cookies_combo", None)
+        if var is None or combo is None:
+            return
+        current = str(self.app_config.get("cookies_from_browser") or "")
+        try:
+            combo.configure(values=cookie_browser_choices(current))
+            var.set(cookie_browser_label(current))
+        except tk.TclError:
+            pass
 
     def _save_transcribe_prefs(self) -> None:
         # vad_enabled is intentionally NOT written here, same reasoning as

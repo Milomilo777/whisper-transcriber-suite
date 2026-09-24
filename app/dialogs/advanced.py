@@ -32,6 +32,11 @@ from core.model_manager import (
 )
 from core.writers import supported_formats
 
+from app.domain.cookies import (
+    cookie_browser_choices,
+    cookie_browser_label,
+    cookie_browser_value,
+)
 from app.widgets.tooltip import bind_tooltip, help_icon, section_labelframe
 
 logger = logging.getLogger(__name__)
@@ -182,7 +187,7 @@ class AdvancedDialog(tk.Toplevel):
         self._initial_prompt = tk.StringVar(value=str(cfg.get("initial_prompt", "")))
         self._hotwords = tk.StringVar(value=str(cfg.get("hotwords", "")))
         self._cookies_browser = tk.StringVar(
-            value=(cfg.get("cookies_from_browser") or "").strip() or "(off)"
+            value=cookie_browser_label(cfg.get("cookies_from_browser"))
         )
         existing_formats = set(cfg.get("output_formats") or ["srt", "json"])
         self._format_vars: dict[str, tk.BooleanVar] = {
@@ -1417,8 +1422,9 @@ class AdvancedDialog(tk.Toplevel):
         ttk.Combobox(
             download, textvariable=self._cookies_browser, state="readonly",
             width=14,
-            values=["(off)", "chrome", "edge", "firefox", "brave",
-                    "chromium", "opera", "vivaldi"],
+            values=cookie_browser_choices(
+                str(self.app.app_config.get("cookies_from_browser") or "")
+            ),
         ).grid(row=5, column=0, sticky="w", padx=8, pady=(0, 4))
         return download
 
@@ -1850,8 +1856,7 @@ class AdvancedDialog(tk.Toplevel):
         cfg["initial_prompt"] = self._initial_prompt.get().strip()
         cfg["hotwords"] = self._hotwords.get().strip()
         cfg["sponsorblock_categories"] = [c for c, v in self._sb_vars.items() if v.get()]
-        _cb = self._cookies_browser.get().strip()
-        cfg["cookies_from_browser"] = "" if _cb in ("", "(off)") else _cb
+        cfg["cookies_from_browser"] = cookie_browser_value(self._cookies_browser.get())
         _old_backend = str(cfg.get("transcribe_backend") or "")
         cfg["transcribe_backend"] = (
             engine_value_for_label(self._backend_display.get()) or "faster_whisper"
@@ -1966,6 +1971,13 @@ class AdvancedDialog(tk.Toplevel):
         if callable(_refresh_model):
             try:
                 _refresh_model()
+            except Exception:  # noqa: BLE001
+                pass
+        # The Download tab has its own copy of the cookies picker.
+        _sync_cookies = getattr(self.app, "sync_cookies_browser_from_config", None)
+        if callable(_sync_cookies):
+            try:
+                _sync_cookies()
             except Exception:  # noqa: BLE001
                 pass
         # Restart the folder watcher when its settings changed.
