@@ -32,10 +32,13 @@ flagged both issues).
   now symlinks every `Contents/Frameworks/bin/` entry into
   `Contents/MacOS/bin/` so `core.paths` finds them.
 - `platform/macos/pyinstaller/smoke_test_app.sh` and `verify_mac_bundle.sh`
-  now check that same `Contents/MacOS/bin/` runtime path, and the smoke
-  test performs a real (non-simulated) download + ffmpeg merge through it
-  — a hard build failure, not best-effort — so this class of bug can't
-  ship silently again.
+  now check that same `Contents/MacOS/bin/` runtime path and hard-fail the
+  build if a bundled tool is missing there (no network needed — this alone
+  would have caught the regression above). The smoke test also attempts a
+  real, non-simulated download + ffmpeg merge through that path; on a real
+  machine (e.g. the release VM) that's a hard failure too, and only
+  degrades to best-effort on `GITHUB_ACTIONS` runners specifically, since
+  their IPs are routinely YouTube-bot-blocked regardless of the app.
 
 ## [1.9.0] — 2026-09-23
 
