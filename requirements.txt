@@ -81,9 +81,14 @@ screeninfo>=0.8
 # the installers ship with.
 pywhispercpp>=1.4
 
-# Word-level alignment refinement via stable-ts (loads its own
-# ~75 MB Whisper checkpoint on first use).
-stable-ts>=2.17
+# Word-level alignment refinement via stable-ts is NOT a base requirement
+# any more (2026-09-24). It pulls torch -- on Linux the whole CUDA stack,
+# about 6 GB, which made platform/linux/install.sh a multi-gigabyte install
+# (measured in a clean container) -- while the app already installs it on
+# demand the first time "Refine word timings with stable-ts" is used
+# (core/optional_deps.py, feature "alignment"). The Windows embed build
+# deleted it after installing anyway, and the Mac installers filtered it
+# out. For a dev checkout: pip install -e ".[alignment]".
 
 # Optional cloud Speech-to-Text backend (Google Gemini API): needs NO
 # new dependency. It talks to the Gemini REST API with the stdlib
