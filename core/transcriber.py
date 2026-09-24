@@ -14,6 +14,7 @@ twice. Phase 2a additions:
 from __future__ import annotations
 
 import copy
+import gc
 import logging
 import os
 import subprocess
@@ -320,26 +321,32 @@ def _load_whisper_model_self_healing(
     except Exception as e:
         if req_device != "cuda":
             raise
-        model = None  # release a half-working CUDA model before the CPU load
-        cpu_device, cpu_compute = _CPU_FALLBACK
-        from .hardware import cuda_load_failure_reason
-        reason = cuda_load_failure_reason(str(e))
-        logger.warning(
-            "CUDA model load failed (%s); downgrading to %s/%s. %s",
-            e, cpu_device, cpu_compute, reason,
+        error = str(e)
+    # The CPU load runs OUTSIDE the except block: while it is active, the
+    # traceback's frames (e.g. warm_up_cuda_model's argument) keep the
+    # half-working CUDA model -- and its VRAM / host copy -- alive, so a
+    # large model would briefly be held twice.
+    model = None
+    gc.collect()
+    cpu_device, cpu_compute = _CPU_FALLBACK
+    from .hardware import cuda_load_failure_reason
+    reason = cuda_load_failure_reason(error)
+    logger.warning(
+        "CUDA model load failed (%s); downgrading to %s/%s. %s",
+        error, cpu_device, cpu_compute, reason,
+    )
+    if status_cb:
+        status_cb(
+            f"GPU unavailable ({error}); falling back to CPU (slower). {reason}"
         )
-        if status_cb:
-            status_cb(
-                f"GPU unavailable ({e}); falling back to CPU (slower). {reason}"
-            )
-        model = WhisperModel(model_path, device=cpu_device, compute_type=cpu_compute)
-        # Reflect the downgrade in the module globals so _wrap_for_batched
-        # does NOT try to wrap a CPU model in a CUDA batched pipeline.
-        device = cpu_device
-        compute_type = cpu_compute
-        _DEVICE_DOWNGRADED = True
-        _capture_effective_device(model, cpu_device, cpu_compute)
-        return model
+    model = WhisperModel(model_path, device=cpu_device, compute_type=cpu_compute)
+    # Reflect the downgrade in the module globals so _wrap_for_batched
+    # does NOT try to wrap a CPU model in a CUDA batched pipeline.
+    device = cpu_device
+    compute_type = cpu_compute
+    _DEVICE_DOWNGRADED = True
+    _capture_effective_device(model, cpu_device, cpu_compute)
+    return model
 
 
 def load_existing_model(status_cb: Callable[[str], None] | None = None) -> bool:

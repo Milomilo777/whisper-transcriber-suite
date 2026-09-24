@@ -8,6 +8,7 @@ the model exactly once, and the existing smoke tests
 """
 from __future__ import annotations
 
+import gc
 import logging
 import threading
 import time
@@ -134,23 +135,27 @@ class FasterWhisperBackend(Backend):
         except Exception as e:
             if req_device != "cuda":
                 raise
-            self._model = None  # release a half-working CUDA model first
-            from ..hardware import cuda_load_failure_reason
-            reason = cuda_load_failure_reason(str(e))
-            logger.warning(
-                "CUDA model load failed (%s); downgrading to cpu/int8. %s",
-                e, reason,
+            error = str(e)
+        # CPU retry OUTSIDE the except block: while it is active the
+        # traceback's frames keep the half-working CUDA model alive.
+        self._model = None
+        gc.collect()
+        from ..hardware import cuda_load_failure_reason
+        reason = cuda_load_failure_reason(error)
+        logger.warning(
+            "CUDA model load failed (%s); downgrading to cpu/int8. %s",
+            error, reason,
+        )
+        if status_cb:
+            status_cb(
+                f"GPU unavailable ({error}); falling back to CPU (slower). {reason}"
             )
-            if status_cb:
-                status_cb(
-                    f"GPU unavailable ({e}); falling back to CPU (slower). {reason}"
-                )
-            self._device, self._compute_type = "cpu", "int8"
-            self._model = WhisperModel(
-                model_path, device="cpu", compute_type="int8"
-            )
-            self._downgraded = True
-            self._capture_effective_device("cpu", "int8")
+        self._device, self._compute_type = "cpu", "int8"
+        self._model = WhisperModel(
+            model_path, device="cpu", compute_type="int8"
+        )
+        self._downgraded = True
+        self._capture_effective_device("cpu", "int8")
 
     def load_existing(self, status_cb: Callable[[str], None] | None = None) -> bool:
         config = load_config(fetch_online=False)  # worker path: local keys only

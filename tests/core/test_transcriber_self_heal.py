@@ -200,3 +200,39 @@ def test_cuda_load_prepares_the_runtime_before_constructing(transcriber, monkeyp
     transcriber._load_whisper_model_self_healing("/fake/model", "cuda", "float16", None)
     assert order == ["prepare", "construct:cuda", "warm_up"]
     assert transcriber.get_effective_device().downgraded is False
+
+
+@pytest.mark.parametrize("where", ["transcriber", "backend"])
+def test_failed_cuda_model_is_freed_before_the_cpu_load(transcriber, monkeypatch, where):
+    """The half-working CUDA model must be gone before the CPU copy loads;
+    an exception traceback holding it would keep a large model in memory
+    twice (VRAM + RAM) during the fallback."""
+    import weakref
+
+    import core.hardware as hw
+    from core.backends import faster_whisper_be as be
+
+    cuda_refs: list[weakref.ref] = []
+
+    class _TrackedModel:
+        def __init__(self, model_path, device="cpu", compute_type="int8"):
+            if device == "cpu":
+                assert all(r() is None for r in cuda_refs), "CUDA model still alive"
+            else:
+                cuda_refs.append(weakref.ref(self))
+            self.model = _FakeCt2(device, compute_type)
+
+    monkeypatch.setattr(hw, "prepare_cuda_runtime", lambda: True)
+    monkeypatch.setattr(hw, "warm_up_cuda_model", _warmup_fails_on_cuda)
+    if where == "transcriber":
+        monkeypatch.setattr(transcriber, "WhisperModel", _TrackedModel)
+        transcriber._load_whisper_model_self_healing("/fake/model", "cuda", "float16", None)
+        assert transcriber.get_effective_device().device == "cpu"
+    else:
+        monkeypatch.setattr(be, "WhisperModel", _TrackedModel)
+        backend = be.FasterWhisperBackend()
+        backend._requested_device = "cuda"
+        backend._compute_type = "float16"
+        backend._load_self_healing("/fake/model", None)
+        assert backend.device == "cpu"
+    assert cuda_refs  # the CUDA attempt really happened
