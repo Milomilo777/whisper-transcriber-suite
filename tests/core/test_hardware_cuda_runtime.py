@@ -153,7 +153,7 @@ def test_windows_dll_dir_is_added_to_path_once(monkeypatch, tmp_path):
 def test_status_names_the_missing_cublas_and_offers_the_install(monkeypatch):
     _fake_ct2(monkeypatch)
     _fake_driver(monkeypatch)
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: False)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": None})
     monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": None})
     status = hw.cuda_status()
     assert not status.usable and status.gpu_present
@@ -167,7 +167,7 @@ def test_status_names_the_missing_cublas_and_offers_the_install(monkeypatch):
 def test_status_does_not_offer_install_when_old_engine_also_needs_cudnn(monkeypatch):
     _fake_ct2(monkeypatch, version="4.5.0")
     _fake_driver(monkeypatch)
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: False)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": None})
     monkeypatch.setattr(
         hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": None, "cuDNN": None},
     )
@@ -179,7 +179,7 @@ def test_status_does_not_offer_install_when_old_engine_also_needs_cudnn(monkeypa
 def test_status_reports_a_stalled_loader(monkeypatch):
     _fake_ct2(monkeypatch)
     _fake_driver(monkeypatch)
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: False)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": None})
     monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: None)
     status = hw.cuda_status()
     assert not status.usable and "did not finish" in status.reason
@@ -212,7 +212,7 @@ def test_status_no_gpu_at_all_is_not_actionable(monkeypatch):
 def test_usable_blackwell_gpu_gets_the_first_run_note(monkeypatch):
     _fake_ct2(monkeypatch, types_=("float16",))
     _fake_driver(monkeypatch, cc=(12, 0))
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: True)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": "/fake/cublas"})
     status = hw.cuda_status()
     assert status.usable and status.compute_capability == "12.0"
     assert "first GPU run" in status.note
@@ -224,7 +224,7 @@ def test_usable_blackwell_gpu_gets_the_first_run_note(monkeypatch):
 def test_ada_gpu_needs_no_first_run_note(monkeypatch):
     _fake_ct2(monkeypatch)
     _fake_driver(monkeypatch, name="NVIDIA GeForce RTX 4070", cc=(8, 9))
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: True)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": "/fake/cublas"})
     assert hw.cuda_status().note == ""
 
 

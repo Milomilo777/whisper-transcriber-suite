@@ -40,7 +40,7 @@ def test_tier_dataclass_round_trips_via_asdict():
 
 
 def test_probe_tiers_always_includes_cpu_fallback(monkeypatch):
-    monkeypatch.setattr(hw, "_probe_cuda", lambda: [])
+    monkeypatch.setattr(hw, "_probe_cuda", lambda *_a: [])
     monkeypatch.setattr(hw, "_probe_qnn_npu", lambda: [])
     monkeypatch.setattr(hw, "_probe_openvino", lambda: [])
     monkeypatch.setattr(hw, "_probe_directml", lambda: [])
@@ -112,7 +112,7 @@ def test_probe_cuda_returns_both_compute_types_when_supported(monkeypatch):
     # also load. Stub the runtime gate True so this test still exercises the
     # compute-type ordering (the broken-runtime case is covered separately in
     # test_hardware_cuda_gate.py).
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: True)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": "/fake/cublas"})
     tiers = hw._probe_cuda()
     slugs = [t.slug for t in tiers]
     assert "cuda_float16" in slugs
@@ -224,7 +224,7 @@ def test_device_choice_honours_cuda_when_still_present(tmp_path, monkeypatch):
     monkeypatch.setitem(sys.modules, "ctranslate2", fake_ct2)
     # R3: the persisted CUDA choice is only honoured if the runtime libs also
     # load now; stub the gate True for this "still present" path.
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: True)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": "/fake/cublas"})
     assert hw.device_choice_from_hardware_file() == ("cuda", "float16")
 
 
@@ -263,7 +263,7 @@ def test_hardware_wizard_constructs_without_crashing(monkeypatch, tmp_path):
     monkeypatch.setattr(hw, "user_data_dir", lambda: tmp_path)
     # Force a single CPU tier so we don't depend on the host's actual
     # hardware in CI.
-    monkeypatch.setattr(hw, "_probe_cuda", lambda: [])
+    monkeypatch.setattr(hw, "_probe_cuda", lambda *_a: [])
     monkeypatch.setattr(hw, "_probe_qnn_npu", lambda: [])
     monkeypatch.setattr(hw, "_probe_openvino", lambda: [])
     monkeypatch.setattr(hw, "_probe_directml", lambda: [])
@@ -389,7 +389,7 @@ def test_close_restores_the_masters_modal_grab(monkeypatch, tmp_path):
     that dialog's Tk grab; closing the wizard must give it back."""
     tk = pytest.importorskip("tkinter")
     monkeypatch.setattr(hw, "user_data_dir", lambda: tmp_path)
-    monkeypatch.setattr(hw, "_probe_cuda", lambda: [])
+    monkeypatch.setattr(hw, "_probe_cuda", lambda *_a: [])
     monkeypatch.setattr(hw, "_probe_qnn_npu", lambda: [])
     monkeypatch.setattr(hw, "_probe_openvino", lambda: [])
     monkeypatch.setattr(hw, "_probe_directml", lambda: [])

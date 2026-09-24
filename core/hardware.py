@@ -646,8 +646,13 @@ def _cuda_status() -> CudaStatus:
             reason=f"The transcription engine found the GPU but could not query it: {e}",
             fix=driver_fix, device_count=count, **info,
         )
-    if not _cuda_runtime_dlls_loadable():
-        return _missing_runtime_status(version, count, compute_types, info)
+    # ONE runtime-library probe per check, shared by the verdict and the
+    # explanation: two probes could disagree (the first timing out on an
+    # antivirus scan, the second finding the now-cached DLL) and doubled the
+    # worst-case wait.
+    report = _cuda_runtime_report(version)
+    if not (report and all(report.values())):
+        return _missing_runtime_status(version, count, compute_types, info, report)
     note = ""
     if len(cc) == 2 and cc[0] > _CT2_NEWEST_PRECOMPILED_CC_MAJOR:
         note = (
@@ -667,10 +672,10 @@ def _missing_runtime_status(
     count: int,
     compute_types: tuple[str, ...],
     info: dict[str, Any],
+    report: dict[str, str | None] | None,
 ) -> CudaStatus:
     """CudaStatus for "GPU fine, CUDA runtime library missing"."""
     required = _required_cuda_libs(version)
-    report = _cuda_runtime_report(version)
     if report is None:
         return CudaStatus(
             usable=False, gpu_present=True,
@@ -852,14 +857,14 @@ def _cpu_name() -> str:
         return "CPU"
 
 
-def _probe_cuda() -> list[Tier]:
+def _probe_cuda(status: CudaStatus | None = None) -> list[Tier]:
     """Return ordered list of CUDA-backed tiers actually supported.
 
     Built from :func:`cuda_status`, so a GPU is offered only when CTranslate2
     sees it AND the CUDA runtime libraries load (selecting CUDA otherwise used
     to make the first transcription hard-fail). Never raises.
     """
-    status = cuda_status()
+    status = cuda_status() if status is None else status
     if not status.usable:
         if status.gpu_present:
             logger.info(
@@ -976,7 +981,7 @@ def _probe_cpu() -> list[Tier]:
     )]
 
 
-def probe_tiers() -> list[Tier]:
+def probe_tiers(cuda: CudaStatus | None = None) -> list[Tier]:
     """Return every tier the current host supports, best → worst.
 
     CPU int8 is always last and always present so the list is never
@@ -990,7 +995,9 @@ def probe_tiers() -> list[Tier]:
     """
     with gc_disabled_import():
         tiers: list[Tier] = []
-        tiers.extend(_probe_cuda())
+        # A caller that already ran cuda_status() (the wizard shows its
+        # reason too) passes it, so the CUDA chain is probed only once.
+        tiers.extend(_probe_cuda(cuda) if cuda is not None else _probe_cuda())
         tiers.extend(_probe_qnn_npu())
         tiers.extend(_probe_openvino())
         tiers.extend(_probe_directml())

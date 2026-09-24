@@ -240,20 +240,22 @@ class HardwareWizard(tk.Toplevel):
         Must NOT touch Tk (no self.after / no widget calls) — the main-thread
         _poll_probe_result picks the stashed result up.
         """
-        try:
-            tiers = _hw.probe_tiers()
-        except Exception as e:  # noqa: BLE001
-            logger.exception("Hardware probe failed: %s", e)
-            try:
-                tiers = _hw._probe_cpu()
-            except Exception:  # noqa: BLE001
-                tiers = []
+        # One CUDA check, shared by the tier list and the "needs setup" line,
+        # so the two can't disagree and the (slow) chain runs once.
         status: _hw.CudaStatus | None
         try:
             status = _hw.cuda_status()
         except Exception:  # noqa: BLE001
             logger.exception("CUDA status check failed")
             status = None
+        try:
+            tiers = _hw.probe_tiers(status)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Hardware probe failed: %s", e)
+            try:
+                tiers = _hw._probe_cpu()
+            except Exception:  # noqa: BLE001
+                tiers = []
         with self._probe_lock:
             self._probe_result = (seq, tiers, status)
 

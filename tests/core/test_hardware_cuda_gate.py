@@ -33,20 +33,20 @@ def _fake_ct2(monkeypatch, *, has_device: bool):
 
 def test_cuda_load_ok_false_when_no_device(monkeypatch):
     _fake_ct2(monkeypatch, has_device=False)
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: True)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": "/fake/cublas"})
     assert hw.cuda_load_ok() is False
 
 
 def test_cuda_load_ok_false_when_runtime_dlls_broken(monkeypatch):
     """Device present but cuBLAS not loadable => not ready."""
     _fake_ct2(monkeypatch, has_device=True)
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: False)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": None})
     assert hw.cuda_load_ok() is False
 
 
 def test_cuda_load_ok_true_when_device_and_runtime_ok(monkeypatch):
     _fake_ct2(monkeypatch, has_device=True)
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: True)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": "/fake/cublas"})
     assert hw.cuda_load_ok() is True
 
 
@@ -62,13 +62,13 @@ def test_cuda_load_ok_never_raises_when_ct2_absent(monkeypatch):
 
 def test_probe_cuda_returns_empty_when_runtime_dlls_broken(monkeypatch):
     _fake_ct2(monkeypatch, has_device=True)
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: False)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": None})
     assert hw._probe_cuda() == []
 
 
 def test_probe_cuda_returns_tiers_when_runtime_ok(monkeypatch):
     _fake_ct2(monkeypatch, has_device=True)
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: True)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": "/fake/cublas"})
     monkeypatch.setattr(hw, "_gpu_name", lambda: "RTX 4090")
     tiers = hw._probe_cuda()
     assert tiers and all(t.device == "cuda" for t in tiers)
@@ -78,7 +78,7 @@ def test_probe_cuda_returns_tiers_when_runtime_ok(monkeypatch):
 def test_probe_tiers_falls_back_to_cpu_on_broken_cuda(monkeypatch):
     """End-to-end: a broken-DLL host yields only the CPU tier."""
     _fake_ct2(monkeypatch, has_device=True)
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: False)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": None})
     monkeypatch.setattr(hw, "_probe_qnn_npu", lambda: [])
     monkeypatch.setattr(hw, "_probe_openvino", lambda: [])
     monkeypatch.setattr(hw, "_probe_directml", lambda: [])
@@ -91,7 +91,7 @@ def test_probe_tiers_falls_back_to_cpu_on_broken_cuda(monkeypatch):
 
 def test_detect_device_for_skips_cuda_when_runtime_broken(monkeypatch):
     _fake_ct2(monkeypatch, has_device=True)
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: False)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": None})
     monkeypatch.setattr(hw, "device_choice_from_hardware_file", lambda: None)
     # Block the torch legacy fallback so we land on cpu deterministically.
     monkeypatch.setitem(sys.modules, "torch", None)
@@ -101,7 +101,7 @@ def test_detect_device_for_skips_cuda_when_runtime_broken(monkeypatch):
 
 def test_detect_device_for_uses_cuda_when_runtime_ok(monkeypatch):
     _fake_ct2(monkeypatch, has_device=True)
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: True)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": "/fake/cublas"})
     monkeypatch.setattr(hw, "device_choice_from_hardware_file", lambda: None)
     dev, ct = hw.detect_device_for({"device": "auto", "compute_type": "int8"})
     assert dev == "cuda"
@@ -113,7 +113,7 @@ def test_detect_device_for_uses_cuda_when_runtime_ok(monkeypatch):
 
 def test_hardware_file_cuda_rejected_when_runtime_broken(monkeypatch):
     _fake_ct2(monkeypatch, has_device=True)
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: False)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": None})
     monkeypatch.setattr(
         hw, "load_hardware_choice",
         lambda: {"device": "cuda", "compute_type": "float16",
@@ -124,7 +124,7 @@ def test_hardware_file_cuda_rejected_when_runtime_broken(monkeypatch):
 
 def test_hardware_file_cuda_accepted_when_runtime_ok(monkeypatch):
     _fake_ct2(monkeypatch, has_device=True)
-    monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: True)
+    monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": "/fake/cublas"})
     monkeypatch.setattr(
         hw, "load_hardware_choice",
         lambda: {"device": "cuda", "compute_type": "float16",
