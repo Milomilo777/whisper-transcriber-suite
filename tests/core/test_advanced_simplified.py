@@ -47,6 +47,7 @@ def _fake_dialog(app: Any, **overrides: Any) -> types.SimpleNamespace:
         _hotwords=_V(""),
         _sb_vars={},
         _cookies_browser=_V("(off)"),
+        _cookies_browser_initial="(off)",
         _backend_display=_V("Faster-Whisper — offline, default"),
         _cloud_api_key=_V(""),
         _cloud_model=_V("gemini-3.5-flash"),
@@ -453,3 +454,20 @@ def test_cloud_engines_are_listed_last():
 
     values = [v for _l, v in ENGINE_CHOICES]
     assert values[-2:] == ["cloud_stt", "google_cloud_stt"]
+
+
+def test_save_keeps_a_cookie_pick_made_in_the_download_tab(monkeypatch) -> None:
+    """The Download tab saves its cookies picker at once. Saving Advanced
+    afterwards (its picker untouched) must not write its stale copy back."""
+    from app.dialogs import advanced as adv
+
+    monkeypatch.setattr(adv, "save_config", lambda _cfg: None)
+    cfg = _base_cfg()
+    cfg["cookies_from_browser"] = "firefox"  # picked in the Download tab
+    adv.AdvancedDialog._save_and_close(_fake_dialog(_fake_app(cfg)))  # type: ignore[arg-type]
+    assert cfg["cookies_from_browser"] == "firefox"
+
+    # A change made in the dialog itself is saved.
+    dlg = _fake_dialog(_fake_app(cfg), _cookies_browser=_V("edge"))
+    adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
+    assert cfg["cookies_from_browser"] == "edge"

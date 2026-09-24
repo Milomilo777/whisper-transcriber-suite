@@ -194,6 +194,10 @@ class AdvancedDialog(tk.Toplevel):
         self._cookies_browser = tk.StringVar(
             value=cookie_browser_label(cfg.get("cookies_from_browser"))
         )
+        # The Download tab has its own copy of this picker and saves it at
+        # once; remember what was shown so Save only writes a change made
+        # HERE (a stale copy must not undo a pick made there meanwhile).
+        self._cookies_browser_initial = self._cookies_browser.get()
         existing_formats = set(cfg.get("output_formats") or ["srt", "json"])
         self._format_vars: dict[str, tk.BooleanVar] = {
             f: tk.BooleanVar(value=(f in existing_formats)) for f in supported_formats()
@@ -1900,7 +1904,8 @@ class AdvancedDialog(tk.Toplevel):
         cfg["initial_prompt"] = self._initial_prompt.get().strip()
         cfg["hotwords"] = self._hotwords.get().strip()
         cfg["sponsorblock_categories"] = [c for c, v in self._sb_vars.items() if v.get()]
-        cfg["cookies_from_browser"] = cookie_browser_value(self._cookies_browser.get())
+        if self._cookies_browser.get() != self._cookies_browser_initial:
+            cfg["cookies_from_browser"] = cookie_browser_value(self._cookies_browser.get())
         _old_backend = str(cfg.get("transcribe_backend") or "")
         cfg["transcribe_backend"] = (
             engine_value_for_label(self._backend_display.get()) or "faster_whisper"

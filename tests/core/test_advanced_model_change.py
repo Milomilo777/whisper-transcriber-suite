@@ -37,6 +37,7 @@ def _advanced_fake(app, *, chosen_label, slug_map):
         _hotwords=_V(""),
         _sb_vars={},
         _cookies_browser=_V("(off)"),
+        _cookies_browser_initial="(off)",
         _backend_display=_V("Faster-Whisper (local)"),
         _cloud_api_key=_V(""),
         _cloud_model=_V("gemini-3.5-flash"),
