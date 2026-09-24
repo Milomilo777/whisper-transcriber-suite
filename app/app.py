@@ -2575,7 +2575,7 @@ class App(tk.Tk):
     def _ensure_transcribe_ready(self) -> bool:
         """Run the one-time transcribe gates; True if a task may be enqueued.
 
-        Shared by add() and _bulk_enqueue so the ~3 GB model-download modal,
+        Shared by add() and _bulk_enqueue so the model-download modal,
         the optional-alignment offer, and the worker spawn happen exactly
         ONCE per user action — not once per file in a multi-file batch.
 
@@ -2593,7 +2593,7 @@ class App(tk.Tk):
             if not messagebox.askyesno(
                 "Whisper model required",
                 "The Whisper model must be downloaded before the first transcription. "
-                "Download it now? (about 3 GB, one time only)",
+                f"Download it now? ({self._model_download_size_hint()}one time only)",
                 parent=self,
             ):
                 self.log("Transcription cancelled: the Whisper model is required.")
@@ -2611,6 +2611,19 @@ class App(tk.Tk):
             self.log("Transcription cancelled: model load was cancelled")
             return False
         return True
+
+    def _model_download_size_hint(self) -> str:
+        """Return e.g. "about 500 MB, " for the configured model ("" if unknown)."""
+        try:
+            from core.model_manager import (
+                DEFAULT_MODEL_SLUG,
+                approx_download_size_text,
+            )
+            slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG)
+            text = approx_download_size_text(self.app_config, slug)
+        except Exception:  # noqa: BLE001 -- a size hint must never block the prompt
+            text = ""
+        return f"{text}, " if text else ""
 
     def _apply_task_options(self, task: TranscriptionTask) -> None:
         """Apply the Transcribe-tab language + clip-range options to a task.
@@ -2673,7 +2686,7 @@ class App(tk.Tk):
         """True when the Whisper model files are already on disk.
 
         Cheap probe used by the lazy-load enqueue gate to decide
-        whether to surface the ~3 GB download dialog. Just checks
+        whether to surface the model download dialog. Just checks
         that the resolved model directory exists; the worker's
         load step will surface any deeper corruption via a
         ``startup_error`` event.

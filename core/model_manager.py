@@ -472,6 +472,25 @@ def catalog_entry_info(config: dict[str, Any] | None, slug: str) -> dict[str, An
     }
 
 
+def approx_download_size_text(config: dict[str, Any] | None, slug: str) -> str:
+    """Human download size for ``slug``, e.g. "about 500 MB" / "about 1.5 GB".
+
+    "" when the catalog has no size for it, so a caller can leave the size
+    out instead of guessing -- the first-download prompt used to say "about
+    3 GB" for every model, including the ~0.5 GB Small.
+    """
+    info = catalog_entry_info(config, slug)
+    try:
+        gb = float((info or {}).get("approx_size_gb") or 0.0)
+    except (TypeError, ValueError):
+        gb = 0.0
+    if gb <= 0:
+        return ""
+    if gb < 1:
+        return f"about {max(10, int(round(gb * 1000, -1)))} MB"
+    return f"about {gb:g} GB"
+
+
 def model_downloaded(config: dict[str, Any] | None, slug: str) -> bool:
     """True when ``slug``'s weights already exist on disk under the
     configured hub folder.
