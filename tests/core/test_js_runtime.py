@@ -24,11 +24,52 @@ def test_no_deno_means_no_extra_yt_dlp_args(no_deno):
     assert js.yt_dlp_js_args() == []
 
 
-def test_installed_deno_is_passed_to_yt_dlp(no_deno):
+def test_installed_deno_is_passed_to_yt_dlp(no_deno, monkeypatch):
+    monkeypatch.setattr(js, "yt_dlp_version", lambda _p=None: (2026, 8, 19))
     target = js.installed_deno_path()
     target.parent.mkdir(parents=True)
     target.write_bytes(b"")
     assert js.yt_dlp_js_args() == ["--js-runtimes", f"deno:{target}"]
+
+
+def test_old_yt_dlp_gets_no_js_runtimes_option(no_deno, monkeypatch):
+    # --js-runtimes arrived in yt-dlp 2025.11.12; an older binary would fail
+    # every call with "no such option".
+    target = js.installed_deno_path()
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"")
+    monkeypatch.setattr(js, "yt_dlp_version", lambda _p=None: (2025, 10, 22))
+    assert js.yt_dlp_js_args() == []
+    monkeypatch.setattr(js, "yt_dlp_version", lambda _p=None: ())  # unknown
+    assert js.yt_dlp_js_args() == []
+
+
+def test_deno_on_path_is_left_to_yt_dlp(no_deno, monkeypatch, tmp_path):
+    # yt-dlp finds a Deno on PATH itself; no option needed (or safe on old yt-dlp).
+    on_path = tmp_path / "deno"
+    on_path.write_bytes(b"")
+    monkeypatch.setattr(js.shutil, "which", lambda _n: str(on_path))
+    monkeypatch.setattr(js, "yt_dlp_version", lambda _p=None: (2026, 8, 19))
+    assert js.find_deno() == str(on_path)
+    assert js.yt_dlp_js_args() == []
+
+
+def test_yt_dlp_version_is_read_once_per_binary(tmp_path, monkeypatch):
+    exe = tmp_path / "yt-dlp"
+    exe.write_bytes(b"")
+    calls = []
+
+    class _Res:
+        returncode = 0
+        stdout = "2026.08.19\n"
+
+    import subprocess
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: calls.append(a) or _Res())
+    js._yt_dlp_version_cache.clear()
+    assert js.yt_dlp_version(str(exe)) == (2026, 8, 19)
+    assert js.yt_dlp_version(str(exe)) == (2026, 8, 19)
+    assert len(calls) == 1
+    assert js.yt_dlp_version(str(tmp_path / "missing")) == ()
 
 
 def test_bundled_deno_wins(no_deno, monkeypatch, tmp_path):

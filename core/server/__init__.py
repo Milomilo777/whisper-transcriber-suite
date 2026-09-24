@@ -77,7 +77,7 @@ def _download_url(url: str, dest_dir: str) -> str:
     out_template = os.path.join(dest_dir, "%(title).200s.%(ext)s")
     command = [
         yt_dlp,
-        *yt_dlp_js_args(),  # Deno for YouTube's JS challenges, if present
+        *yt_dlp_js_args(yt_dlp),  # Deno for YouTube's JS challenges, if present
         "--ffmpeg-location", bin_dir(),
         "--no-playlist",
         "--newline",

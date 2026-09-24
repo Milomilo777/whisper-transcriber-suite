@@ -115,11 +115,15 @@ class FormatService:
         cookie_args = cookies_from_browser_args(
             self.app.app_config.get("cookies_from_browser", "")
         )
-        # Deno for YouTube's JS challenges (core.js_runtime); [] when absent.
-        js_args = yt_dlp_js_args()
+
+        yt_dlp = self.app.yt_dlp_path()
 
         def _probe(extra: list[str]) -> subprocess.CompletedProcess[str]:
-            cmd = [self.app.yt_dlp_path()]
+            cmd = [yt_dlp]
+            # Deno for YouTube's JS challenges (core.js_runtime); [] when
+            # absent. Resolved here, on the lookup thread: the first call
+            # asks yt-dlp for its version.
+            js_args = yt_dlp_js_args(yt_dlp)
             # Only pass --ffmpeg-location when a bundled ffmpeg dir is
             # known; an empty value points yt-dlp at the cwd instead of
             # letting it discover ffmpeg on PATH (Linux/macOS without a

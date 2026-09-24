@@ -57,10 +57,11 @@ def installed_deno_path() -> Path:
     return user_cache_dir() / "tools" / "deno" / _exe_name()
 
 
-def find_deno() -> str | None:
+def find_deno(*, include_path: bool = True) -> str | None:
     """Path of a usable Deno, or None.
 
-    Order: bundled next to yt-dlp (``bin/``), installed by this app, PATH.
+    Order: bundled next to yt-dlp (``bin/``), installed by this app, then
+    (unless ``include_path`` is False) one on PATH.
     """
     bundled = bundled_binary("deno")
     if os.path.isabs(bundled) and os.path.isfile(bundled):
@@ -68,18 +69,68 @@ def find_deno() -> str | None:
     installed = installed_deno_path()
     if installed.is_file():
         return str(installed)
+    if not include_path:
+        return None
     on_path = shutil.which("deno")
     return on_path or None
 
 
-def yt_dlp_js_args() -> list[str]:
-    """``--js-runtimes deno:<path>`` for yt-dlp, or [] when no Deno exists.
+# yt-dlp gained --js-runtimes (with its YouTube JS-challenge solver) in
+# 2025.11.12. Passing the option to an older yt-dlp fails EVERY call with
+# "no such option", so it is only added when the binary is new enough.
+_MIN_YT_DLP_FOR_JS_RUNTIMES = (2025, 11, 12)
+_yt_dlp_version_cache: dict[tuple[str, float], tuple[int, ...]] = {}
 
-    yt-dlp would find a Deno on PATH by itself, but not the bundled or
-    app-installed one; passing the path explicitly covers all three.
+
+def yt_dlp_version(path: str | None = None) -> tuple[int, ...]:
+    """Version of the yt-dlp the app runs, e.g. (2026, 8, 19); () if unknown.
+
+    Asked once per binary (cached by path + modification time, so a
+    self-update is noticed). The first call runs ``yt-dlp --version`` --
+    about a second for the Windows exe -- so call it off the Tk thread.
     """
-    path = find_deno()
-    return ["--js-runtimes", f"deno:{path}"] if path else []
+    import subprocess
+
+    exe = path or bundled_binary("yt-dlp")
+    resolved = exe if os.path.isabs(exe) else (shutil.which(exe) or "")
+    if not resolved:
+        return ()
+    try:
+        key = (resolved, os.path.getmtime(resolved))
+    except OSError:
+        return ()
+    if key in _yt_dlp_version_cache:
+        return _yt_dlp_version_cache[key]
+    version: tuple[int, ...] = ()
+    try:
+        kwargs: dict[str, object] = {"capture_output": True, "text": True, "timeout": 30}
+        if sys.platform == "win32":
+            kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        res = subprocess.run([resolved, "--version"], **kwargs)  # type: ignore[call-overload]
+        m = re.match(r"\s*(\d{4})\.(\d{1,2})\.(\d{1,2})", res.stdout or "")
+        if res.returncode == 0 and m:
+            version = tuple(int(g) for g in m.groups())
+    except Exception:  # noqa: BLE001
+        version = ()
+    _yt_dlp_version_cache[key] = version
+    return version
+
+
+def yt_dlp_js_args(yt_dlp_path: str | None = None) -> list[str]:
+    """``--js-runtimes deno:<path>`` for yt-dlp, or [] when not applicable.
+
+    Only for a Deno this app bundles or installed: yt-dlp finds one on PATH
+    by itself. And only when the yt-dlp in use knows the option (see
+    ``_MIN_YT_DLP_FOR_JS_RUNTIMES``). May run ``yt-dlp --version`` once --
+    call it off the Tk thread.
+    """
+    path = find_deno(include_path=False)
+    if not path:
+        return []
+    version = yt_dlp_version(yt_dlp_path)
+    if not version or version < _MIN_YT_DLP_FOR_JS_RUNTIMES:
+        return []
+    return ["--js-runtimes", f"deno:{path}"]
 
 
 _NO_RUNTIME_RE = re.compile(

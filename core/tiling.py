@@ -561,7 +561,7 @@ class TilingController:
     def _yt_dlp_argv(self, yt_path: str) -> list[str]:
         from .js_runtime import yt_dlp_js_args
 
-        js_args = yt_dlp_js_args()  # Deno for YouTube's JS challenges, if present
+        js_args = yt_dlp_js_args(yt_path)  # Deno for YouTube's JS challenges, if present
         explicit = self._explicit_fmt
         if explicit:
             return [

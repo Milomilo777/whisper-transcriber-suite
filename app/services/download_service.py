@@ -644,7 +644,7 @@ class DownloadService:
             yt_dlp_path=self.app.yt_dlp_path(),
             bin_path=self.app.bin_path(),
             cookies_from_browser=self.app.app_config.get("cookies_from_browser", ""),
-            js_runtime_args=yt_dlp_js_args(),
+            js_runtime_args=yt_dlp_js_args(self.app.yt_dlp_path()),
         )
 
     def build_download_command(
@@ -659,7 +659,7 @@ class DownloadService:
             cookies_from_browser=(
                 None if force_no_cookies else self.app.app_config.get("cookies_from_browser", "")
             ),
-            js_runtime_args=yt_dlp_js_args(),
+            js_runtime_args=yt_dlp_js_args(self.app.yt_dlp_path()),
         )
 
     def maybe_update_yt_dlp(self, task: "VideoDownloadTask") -> None:
