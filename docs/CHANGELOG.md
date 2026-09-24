@@ -15,6 +15,19 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **"Save and use" in Hardware Autodetect takes effect right away** (it
   needed an app restart), and the one-time "running on CPU" warning now
   appears when an NVIDIA GPU is present but unusable.
+- **The link check on paste now uses the browser log-in cookies** too, so
+  Instagram/Facebook links no longer fail it when cookies are set; a
+  "login required" error says what to do.
+- **The first-download prompt, the engine status line and the CLI show the
+  selected model's real size** instead of always "about 3 GB".
+- **"Engine: Checking…" can no longer stay forever** (falls back to the
+  quick status after 15 s).
+- **Changing the model while a transcription runs asks first** instead of
+  stopping it silently.
+- **The SMTV "Download all parts" checkbox no longer overlaps the format
+  status line.**
+- **Frozen builds call `multiprocessing.freeze_support()`** before anything
+  else.
 
 ### Added
 
@@ -22,6 +35,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   offers **Install GPU support** (NVIDIA cuBLAS, ~550 MB) when that is the
   missing piece, and **Copy diagnostics** for bug reports
   (`python -m core.hardware` prints the same report).
+- **"Log-in cookies" picker in the Download tab** (same setting as Advanced
+  settings; Safari is now offered on macOS).
+- **"Best for this PC…"** next to the model picker suggests the fastest and
+  the most accurate model for this computer's GPU or CPU/RAM.
+- **CLI: `transcribe --model SLUG`**, and a missing model is downloaded
+  instead of failing with "model not loaded".
 
 ## [1.9.1] — 2026-09-24
 

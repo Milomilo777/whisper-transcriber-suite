@@ -5,6 +5,60 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-24 (cloud session) — issue #7 real root cause fixed + open issues 1-7 + two features
+
+**Where:** branch `claude/keen-gauss-5eduxy` (pushed), **not merged to master, no
+version bump, no build** — owner decision mid-session: "forget the new build and
+version, fix the remaining issues". Merging to master is the owner's call.
+
+- **Issue #7 (NVIDIA GPU never used) — real cause:** every CUDA check in
+  `core/hardware.py` called `ctranslate2.contains_cuda_device()`, which no
+  CTranslate2 release has (real API: `get_cuda_device_count()`); the
+  AttributeError was swallowed, so CUDA read as absent on **every** machine since
+  v1.0.0 (a torch fallback hid it while torch was bundled). The 2026-09-20 "fix"
+  only changed an error message. Tests used a fake ctranslate2 that defined the
+  missing function. Now: real API + `tests/core/test_hardware_ct2_contract.py`
+  (checks every ctranslate2 attribute we use against the real package; fails on
+  the old code). Hardening in the same chain: `cuda_status()` (driver API → GPU
+  name/VRAM/compute capability, device count, compute types, runtime libs, one
+  reason + fix), cuBLAS-only for CTranslate2 ≥ 4.6.3 (cuDNN dropped; read from the
+  wheels' binaries), library discovery in NVIDIA pip wheels / CUDA Toolkit / torch
+  with preload + PATH/add_dll_directory, a one-pass GPU warm-up so lazy CUDA
+  failures self-heal to CPU at load, stale probe-v1 `hardware.json` CPU choices
+  re-probed, no torch fallback, wizard shows the unusable GPU + reason, "Install
+  GPU support" (`nvidia-cublas-cu12>=12.8`, ~550 MB, via optional_deps
+  `cuda_runtime`), "Copy diagnostics" / `python -m core.hardware`, Save applies
+  without restart, CPU warning fires again. Blackwell: CT2 wheels carry
+  compute_86 PTX → the driver JITs sm_120. Replied on #7 (asked the reporter to
+  re-test in the next release or debug on their RTX 5060 with Claude/Codex and
+  send a PR).
+- **⚠ Not verified on NVIDIA hardware** (cloud container, no GPU, no Windows).
+  Before releasing: on a Windows PC with an NVIDIA GPU run Advanced › Re-detect
+  hardware (expect a CUDA tier, or "needs setup" + Install GPU support → re-probe),
+  transcribe, check the green GPU badge; `python -m core.hardware` for the report.
+- **Open issues 1-7 from MACOS_BUILD_NOTES fixed (code/tests):** freeze_support in
+  `gui.main()`; gcloud autotest hang (records `after` instead of pumping
+  `update()`); gcloud test's real pip install stubbed; macOS geometry / nvidia_asr
+  (leaking stub tkinter in sys.modules) / tray tests; real model size instead of
+  "about 3 GB" (prompt, engine status, CLI); CLI `transcribe --model` + download a
+  missing model; "Engine: Checking…" falls back after 15 s. #8 (yt-dlp JS
+  runtime/deno) still open — it affects Windows YouTube downloads too.
+- **Owner request:** "Log-in cookies" picker in the Download tab (same config key
+  as Advanced, Safari on macOS, `app/domain/cookies.py` shared). Found on the way:
+  the paste-time format lookup never passed the cookies (now does, with the
+  cookie-jar retry) and login-wall errors now say what to do.
+- **Other fixes:** model change mid-transcription now asks first; SMTV
+  "Download all parts" checkbox overlapped the format status line; **new**
+  "Best for this PC…" model advisor (owner backlog idea; `recommend_models()` in
+  `core/hardware.py`, dialog `app/dialogs/model_advisor.py`).
+- **Checks:** pyright 0/0/0 for Linux and `--pythonplatform Windows`; full
+  hermetic suite green (Linux, Python 3.12). Real runs: cuBLAS pip wheel found +
+  preloaded (by-name dlopen then resolves); a real faster-whisper `WhisperModel`
+  warm-up + simulated "no kernel image" self-heal; real CLI `--model` download
+  attempt + transcription; the Download tab, wizard and advisor rendered in the
+  real app under Xvfb. Mac: nothing built; notes in MACOS_BUILD_NOTES "Pending
+  for the next Mac build".
+
 ## 🟢 2026-09-24 — Owner UX round + Windows assets added to v1.9.0
 
 - Tab order: Transcribe, Queue, Download Videos, Live, Clone Your Voice / Text to

@@ -131,6 +131,8 @@ Hangs block the whole suite (Tk's Cocoa event loop never returns to Python, so n
 ## Open issues found (app/test code — not fixed by the packaging work)
 
 **Owner decision (2026-09-23): fix all of these in the next build round.**
+**Status 2026-09-24:** 1-7 fixed in code (not in a Mac build yet; see "Pending
+for the next Mac build" below); 8 is still open.
 
 1. `gui.py` should call `multiprocessing.freeze_support()` first thing in `main()` (the runtime hook is a stop-gap).
 2. `tests/core/test_advanced_simplified.py::test_gcloud_autotest_only_runs_when_google_cloud_is_picked` hangs forever in `dlg.update()` on macOS Tk.
@@ -152,6 +154,20 @@ Hangs block the whole suite (Tk's Cocoa event loop never returns to Python, so n
   change. Check on the Mac build: Advanced → Re-detect hardware lists only the
   CPU tier (no "needs setup" row, no "Install GPU support" button), and
   "Copy diagnostics" works and says CUDA is not available on macOS.
+- **Open issues 1-7 above, fixed in code 2026-09-24:** `gui.main()` calls
+  `multiprocessing.freeze_support()` first (keep `rthook_mp_helpers.py`; check
+  that the resource-tracker warning is gone); the hanging / non-hermetic /
+  macOS-failing tests were fixed test-side (run the per-file suite on the Mac
+  to confirm); the download prompt shows the model's real size; the CLI has
+  `--model` and downloads a missing model; "Engine: Checking…" falls back
+  after 15 s (on 10.15 check whether the deep probe itself still hangs — the
+  log line "Engine readiness probe ... did not answer" says so).
+- **New in the UI, cross-platform:** "Log-in cookies" in the Download tab
+  (now offers Safari on macOS — test it with a logged-in Safari: macOS asks
+  for Full Disk Access to read Safari's cookies), "Best for this PC…" next to
+  the model picker (on a Mac it always advises for the CPU). The new modules
+  `app.domain.cookies` and `app.dialogs.model_advisor` are already listed in
+  `whisper_project_mac.spec`.
 
 ## Next steps worth doing
 
