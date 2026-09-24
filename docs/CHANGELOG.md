@@ -4,6 +4,18 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [1.9.1] — 2026-09-24
+
+macOS-only release: assets rebuilt from master with the pending commits
+that had landed after 1.9.0 shipped.
+
+### Changed
+
+- **Video Tiling now restricted to an approved-URL allow-list** —
+  following coworker QA feedback, Start Tiling refuses any URL not on a
+  short pre-approved list (one entry today), instead of accepting any
+  stream.
+
 ## [1.9.0] — 2026-09-23
 
 The macOS assets were built from `0bbabc3`; the Windows Setup + Portable

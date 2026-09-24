@@ -3774,9 +3774,16 @@ class App(tk.Tk):
             divisions = self.tiling_divisions_var.get()
         except (tk.TclError, ValueError):
             divisions = 3
+        from core.tiling import ALLOWED_TILING_URLS
+        url = self.tiling_url_var.get()
+        if url not in ALLOWED_TILING_URLS:
+            self.tiling_status_var.set(
+                "Video Tiling is limited to approved streams."
+            )
+            return
         try:
             self.tiling.start(
-                self.tiling_url_var.get(),
+                url,
                 divisions,
                 quality=self.tiling_quality_var.get(),
                 mute=bool(self.tiling_mute_var.get()),

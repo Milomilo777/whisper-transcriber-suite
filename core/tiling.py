@@ -54,6 +54,14 @@ MAX_DIVISIONS = 64
 
 QUALITY_CHOICES = ["Auto", "1080p", "720p", "480p", "360p", "240p", "144p"]
 
+# Owner decision after coworker QA feedback: Video Tiling is restricted to a
+# small allow-list of pre-approved streams rather than any URL, so the tool
+# can't be pointed at arbitrary/unauthorized content. Exact match only; add
+# more entries here as streams are approved.
+ALLOWED_TILING_URLS = [
+    "https://www.youtube.com/watch?v=ZzWBpGwKoaI",
+]
+
 # On Windows, keep helper processes (yt-dlp / ffplay) from flashing a console
 # window. ffplay still shows its own SDL video window. No effect on other OSes.
 #
