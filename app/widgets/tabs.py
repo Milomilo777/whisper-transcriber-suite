@@ -1075,8 +1075,12 @@ def build_tiling_tab(app: "App", parent: ttk.Frame) -> None:
     row = ttk.Frame(frame)
     row.pack(fill="x", pady=(0, 8))
     ttk.Label(row, text="Stream URL:").pack(side="left")
-    app.tiling_url_var = tk.StringVar()
-    ttk.Entry(row, textvariable=app.tiling_url_var).pack(
+    # Locked to the single approved stream: shown greyed-out, not editable.
+    from core.tiling import ALLOWED_TILING_URLS
+    app.tiling_url_var = tk.StringVar(value=ALLOWED_TILING_URLS[0])
+    ttk.Entry(
+        row, textvariable=app.tiling_url_var, state="disabled"
+    ).pack(
         side="left", fill="x", expand=True, padx=(8, 0)
     )
 
