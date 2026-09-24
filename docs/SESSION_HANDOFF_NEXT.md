@@ -5,11 +5,107 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-24 (cloud session, part 2) — #8 Deno, simpler Settings, laptop fit, review fixes; merged to master
+
+**Where:** everything from both cloud-session entries (this one and the one
+below) was merged into `master` (fast-forward, no history rewrite) and pushed at
+the end of the session. **No version bump, no build, no release** (owner: "forget
+the new build and version"). The next release should batch all of it.
+
+**Done this part:**
+
+- **#8 YouTube JS runtime (Deno)** — new `core/js_runtime.py`. yt-dlp gets
+  `--js-runtimes deno:<path>` for a Deno bundled in `bin/` or installed by the
+  app; the Download tab shows **Install YouTube helper** for a YouTube link when
+  none is found (official zip, `.sha256sum` verified, user cache, no admin).
+  The option is passed only to yt-dlp ≥ 2025.11.12 (older ones reject it and
+  would fail every call); a Deno on PATH is left to yt-dlp's own detection. When
+  yt-dlp still reports no runtime with Deno present, the error says to update
+  yt-dlp (`missing_js_runtime_hint`). All yt-dlp call sites pass it: download,
+  subtitles, format lookup, web server, Video Tiling.
+- **Settings simpler** (owner request): Google Cloud + Gemini sections collapsed
+  and greyed (`collapsible_section` in `app/widgets/tooltip.py`; code kept), VAD
+  sliders behind "▸ Fine-tune", clipped Save/Cancel fixed (canvas window width).
+- **Laptop screens**: window sized to the screen; Live/Download/Web/Voice tabs
+  scroll when taller than the window (`fit_or_scroll` in `app/widgets/tabs.py`).
+- **`requirements.txt` drops stable-ts** (torch + CUDA, ~5 GB; Linux install
+  went 6.1 GB → 570 MB). Word alignment still installs it on demand.
+- **Server**: a URL job for a local address now says why it is refused.
+- **Review fixes** (second pass over this session's own diff): GPU→CPU fallback
+  now frees the failed CUDA model before the CPU load (the traceback kept it
+  alive); CPU-warning GPU check moved off the Tk thread and runs once per
+  session; CUDA runtime probed once per status (wizard re-probe was doing it
+  twice); CLI downloads a Whisper model only for the faster-whisper engine;
+  Advanced Save no longer overwrites a cookie pick made in the Download tab;
+  wizard "Apply now?" reuses `App._confirm_backend_switch`.
+
+**Checked in the cloud (Linux, Xvfb, Python 3.12 + 3.13, no GPU, restricted network):**
+
+- pyright 0/0/0 on `app/` + `core/`, Linux and `--pythonplatform Windows`.
+- Full hermetic suite green on 3.12 (Tk); 3.13 non-Tk tests green (no tkinter there).
+- Real Deno install from github.com/denoland (checksum verified, `deno 2.9.7`
+  runs); yt-dlp picks it up. YouTube itself is blocked by the container proxy,
+  so no real YouTube download was possible.
+- Real faster-whisper load + warm-up on CPU, simulated CUDA failures self-heal;
+  the failed model is provably released before the CPU load (weakref test).
+- Real app under Xvfb at 1366×768: Settings, Download tab (cookies picker,
+  helper button), Transcribe tab, wizard, model advisor; screenshots drove the
+  layout fixes. Real GUI transcription, download via a local HTTP server +
+  auto-transcribe, server upload job, CLI transcription.
+- Corrupted/readonly config, history and `hardware.json` at startup; Linux
+  `install.sh` + launchers from a clean profile.
+
+**To check in the next LOCAL Windows session (cannot be done in the cloud) —
+in priority order:**
+
+1. **NVIDIA GPU path (#7)** on a real NVIDIA PC: Advanced › Re-detect hardware →
+   CUDA tier or "needs setup" + **Install GPU support** → re-probe → transcribe →
+   green GPU badge. Ideally an RTX 50 (Blackwell, PTX JIT on first use — first
+   load is slower). `python -m core.hardware` report. Also a PC with no NVIDIA GPU:
+   no warning, no wizard GPU row.
+2. **YouTube on Windows**: paste a YouTube link with no Deno → the button shows →
+   install → download works; the bundled `bin\yt-dlp.exe` version (CLAUDE.md
+   staleness rule: `bin\yt-dlp.exe --version`, `-U` if old). Consider bundling
+   `deno.exe` in `bin\` in `build_embed_installer.bat` so no click is needed.
+3. **Real browsers for "Log-in cookies"**: Chrome/Edge while open (cookie-DB lock
+   → retry without cookies), Chrome's app-bound encryption/DPAPI errors, Firefox;
+   an Instagram/Facebook link that needs a login.
+4. **Microphone / Live tab** (CLAUDE.md real-hardware rule): record with the real
+   mic; the tab now scrolls on small screens — check nothing is cut off.
+5. **Windows DPI / 1366×768 laptop at 125–150 % scaling**: Settings Save visible,
+   collapsible sections open/close, mouse wheel scrolls the tall tabs but not
+   while over a combobox/spinbox.
+6. **Build** (only when the owner asks for a release): embed installer + Portable;
+   the new modules `core.js_runtime`, `app.domain.cookies`,
+   `app.dialogs.model_advisor` are in all specs; check the installed app finds
+   Deno in the user cache and that "Install GPU support" can pip-install into the
+   user extras dir from the embedded Python.
+7. **stable-ts on demand**: turn on "Refine word timings with stable-ts" on a
+   fresh install → the one-time install prompt works (it is no longer in
+   `requirements.txt`).
+8. **Tk tests on Python 3.13/3.14** (the cloud 3.13 had no tkinter).
+
+**Ideas / known gaps for the next improvement round:**
+
+- **In-app yt-dlp updater** (top item). `auto_update_yt_dlp` is skipped in
+  frozen builds and the installer puts `bin\` under Program Files (admin), so
+  users cannot update yt-dlp without an admin prompt. Idea: download the
+  newest `yt-dlp.exe` (+ `SHA2-256SUMS`) from
+  `github.com/yt-dlp/yt-dlp/releases/latest/download/` into the user cache and
+  prefer that copy in `core.paths` when newer (same pattern as Deno). Release
+  downloads were reachable from the cloud; `api.github.com` was not.
+- Centralise building yt-dlp base args (cookies + JS runtime + ffmpeg location)
+  in one helper — today five call sites assemble them separately.
+- `find_deno()` / `yt_dlp_version()` do a subprocess once per binary; keep them
+  off the Tk thread (the Download-tab button uses only the file check).
+- The Advanced dialog is still long; the next step would be tabs or a
+  "Basic / All settings" switch.
+
 ## 🟢 2026-09-24 (cloud session) — issue #7 real root cause fixed + open issues 1-7 + two features
 
-**Where:** branch `claude/keen-gauss-5eduxy` (pushed), **not merged to master, no
-version bump, no build** — owner decision mid-session: "forget the new build and
-version, fix the remaining issues". Merging to master is the owner's call.
+**Where:** branch `claude/keen-gauss-5eduxy`; merged to master at the end of the
+session (see part 2 above). **No version bump, no build** — owner decision
+mid-session: "forget the new build and version, fix the remaining issues".
 
 - **Issue #7 (NVIDIA GPU never used) — real cause:** every CUDA check in
   `core/hardware.py` called `ctranslate2.contains_cuda_device()`, which no
@@ -42,7 +138,7 @@ version, fix the remaining issues". Merging to master is the owner's call.
   (leaking stub tkinter in sys.modules) / tray tests; real model size instead of
   "about 3 GB" (prompt, engine status, CLI); CLI `transcribe --model` + download a
   missing model; "Engine: Checking…" falls back after 15 s. #8 (yt-dlp JS
-  runtime/deno) still open — it affects Windows YouTube downloads too.
+  runtime/deno) was fixed later the same session (part 2 above).
 - **Owner request:** "Log-in cookies" picker in the Download tab (same config key
   as Advanced, Safari on macOS, `app/domain/cookies.py` shared). Found on the way:
   the paste-time format lookup never passed the cookies (now does, with the

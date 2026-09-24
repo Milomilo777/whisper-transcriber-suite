@@ -28,8 +28,33 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   status line.**
 - **Frozen builds call `multiprocessing.freeze_support()`** before anything
   else.
+- **The GPU-to-CPU fallback frees the failed GPU model first**, so a large
+  model is no longer held in memory twice while the CPU copy loads.
+- **The "running on CPU" check no longer freezes the window**: it runs once
+  per session in the background instead of on every model load.
+- **The CLI downloads a Whisper model only for the faster-whisper engine**
+  (other engines load their own way).
+- **Saving Advanced settings no longer undoes a cookie pick** made in the
+  Download tab meanwhile.
+- **The web server says why a URL job for a local address is refused.**
+
+### Changed
+
+- **Settings are simpler**: the Google Cloud and Gemini setups are folded
+  away (click to open), the VAD sliders sit behind "Fine-tune", and buttons
+  are no longer clipped on small screens.
+- **The window fits laptop screens** (sized to the screen; tall tabs
+  scroll).
+- **`requirements.txt` no longer installs stable-ts** (it pulled in torch +
+  CUDA, ~5 GB); word alignment installs it on demand as before.
 
 ### Added
+
+- **YouTube works again without a system Deno (#8)**: yt-dlp is given a
+  JavaScript runtime, and the Download tab offers a one-click, checksum-
+  verified **Install YouTube helper** (Deno, ~42 MB, no admin rights). It is
+  only passed to a yt-dlp new enough to use it; otherwise the error says to
+  update yt-dlp.
 
 - **Hardware Autodetect explains an unusable NVIDIA GPU** (reason + fix),
   offers **Install GPU support** (NVIDIA cuBLAS, ~550 MB) when that is the

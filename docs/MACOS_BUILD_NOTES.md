@@ -131,8 +131,8 @@ Hangs block the whole suite (Tk's Cocoa event loop never returns to Python, so n
 ## Open issues found (app/test code — not fixed by the packaging work)
 
 **Owner decision (2026-09-23): fix all of these in the next build round.**
-**Status 2026-09-24:** 1-7 fixed in code (not in a Mac build yet; see "Pending
-for the next Mac build" below); 8 is still open.
+**Status 2026-09-24:** 1-8 fixed in code (not in a Mac build yet; see "Pending
+for the next Mac build" below).
 
 1. `gui.py` should call `multiprocessing.freeze_support()` first thing in `main()` (the runtime hook is a stop-gap).
 2. `tests/core/test_advanced_simplified.py::test_gcloud_autotest_only_runs_when_google_cloud_is_picked` hangs forever in `dlg.update()` on macOS Tk.
@@ -142,6 +142,8 @@ for the next Mac build" below); 8 is still open.
 6. The headless CLI cannot download a model (no `--model`, default is the 3 GB large-v3; fresh config → `error: model not loaded`).
 7. The "Engine: Checking…" label on the Transcribe tab never finished on 10.15.
 8. yt-dlp warns `No supported JavaScript runtime could be found` — YouTube extraction may degrade without deno; consider bundling it.
+   **Fixed in code 2026-09-24** (`core/js_runtime.py`): one-click Deno install into the user cache, or a
+   `bin/deno` bundled next to yt-dlp is used automatically — see "Pending" below.
 
 ## Pending for the next Mac build — changes made since v1.9.1 (not built for Mac yet)
 
@@ -168,6 +170,42 @@ for the next Mac build" below); 8 is still open.
   the model picker (on a Mac it always advises for the CPU). The new modules
   `app.domain.cookies` and `app.dialogs.model_advisor` are already listed in
   `whisper_project_mac.spec`.
+
+- **Deno for YouTube (issue 8, 2026-09-24).** New module `core.js_runtime`
+  (already in `whisper_project_mac.spec`). The Download tab shows **Install
+  YouTube helper** for a YouTube link when no Deno is found; it downloads
+  `deno-aarch64-apple-darwin.zip` / `deno-x86_64-apple-darwin.zip` from
+  github.com/denoland/deno, verifies the `.sha256sum`, and unpacks it into
+  `~/Library/Caches/WhisperTranscriberSuite/tools/deno/`. Check on the Mac
+  build: the button appears, the install works, the unpacked `deno` runs
+  (quarantine: it is fetched with `requests`, so it should carry no
+  quarantine flag — verify), and a real YouTube download then works. Option
+  for the build: put a `deno` binary into the bundle's `bin/` next to
+  yt-dlp (`find_deno` checks `bundled_binary("deno")` first; it would also
+  need the `Contents/Frameworks/bin` → `Contents/MacOS/bin` symlink the spec
+  already makes for yt-dlp). The app passes `--js-runtimes` only to a
+  yt-dlp ≥ 2025.11.12 — the bundled yt-dlp must be at least that.
+- **stable-ts is no longer in `requirements.txt` (2026-09-24).** It pulled
+  torch + CUDA (~5 GB on Linux/Windows). Effects on macOS: `install.command`
+  no longer installs it on arm64 either (its optional-package loop finds
+  nothing), and a build venv made from `requirements.txt` will not contain
+  it, so the specs' `collect_all('stable_whisper')` silently bundles
+  nothing. Decide before the next Mac build: `pip install stable-ts` into
+  the build venv explicitly if word alignment should ship inside the
+  `.app`, or leave it out (the on-demand install then has to work from the
+  frozen app — test it).
+- **Settings and window layout (2026-09-24).** Google Cloud / Gemini
+  sections are collapsed, VAD sliders behind "Fine-tune", the window is
+  sized to the screen and tall tabs scroll (`app/widgets/tabs.py
+  fit_or_scroll`; mouse-wheel via `<MouseWheel>` deltas — on macOS the
+  delta is ±1 per notch, check scrolling feels right on a trackpad and a
+  mouse). Check on a 13" MacBook screen that Settings' Save button is
+  visible and nothing is clipped.
+- **Review fixes (2026-09-24), all cross-platform:** the GPU→CPU fallback
+  frees the failed model first (no effect on Mac: no CUDA); the CPU
+  warning's GPU check runs off the UI thread; the CLI downloads a model
+  only for the faster-whisper engine; Saving Settings no longer overwrites
+  a cookie pick made in the Download tab.
 
 ## Next steps worth doing
 

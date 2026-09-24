@@ -93,6 +93,14 @@ Once the download finishes, the app is ready to use.
 
 If "Auto-transcribe after download" is enabled in Advanced, the downloaded file is transcribed automatically.
 
+- **YouTube** needs a small JavaScript helper (Deno) for yt-dlp. When a
+  YouTube link is pasted and it is missing, an **Install YouTube helper**
+  button appears next to the status line: one click downloads it (~42 MB,
+  checksum-verified, no admin rights) into the app's cache.
+- **Instagram / Facebook / private or age-restricted videos**: pick the
+  browser you are logged in with under **Log-in cookies** (next to the URL).
+  On Windows, close that browser completely if reading its cookies fails.
+
 ### oTranscribe round-trip (text editing)
 
 1. After a successful transcription, go to **Transcription Queue**
@@ -165,6 +173,15 @@ diarization toggle, watched folder, telemetry opt-in — are stored in:
 You can edit it by hand while the app is closed. If the file gets
 corrupted (non-UTF8 bytes, malformed JSON), the app moves it aside as
 `config.json.corrupt` on next launch and starts with defaults.
+
+### YouTube downloads fail ("No supported JavaScript runtime", 403 Forbidden)
+
+1. Click **Install YouTube helper** in the Download Videos tab if it is shown.
+2. If the error then says yt-dlp is too old, or downloads stop with
+   `HTTP Error 403: Forbidden`, update the bundled yt-dlp: open a Command
+   Prompt **as administrator** in the app's `bin` folder
+   (`C:\Program Files\WhisperTranscriberSuite\bin` for the installer) and
+   run `yt-dlp.exe -U`. Installing the newest app version also updates it.
 
 ### The app crashes
 
