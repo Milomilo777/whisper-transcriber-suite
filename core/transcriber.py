@@ -292,32 +292,45 @@ def _load_whisper_model_self_healing(
 ) -> Any:
     """Construct a WhisperModel, self-healing a failed CUDA load onto CPU.
 
-    Returns the loaded model. On a CUDA construction failure (the classic
-    missing-cuDNN/cuBLAS RuntimeError) this logs the real reason, flips the
-    module-level downgrade flag, and RETRIES with ("cpu", "int8") instead of
-    propagating — turning a hard crash + bogus re-download prompt into a
-    visible, graceful downgrade. A CPU load that fails still raises (nothing to
-    fall back to).
+    Returns the loaded model. On a CUDA failure -- at construction or in the
+    one-pass GPU warm-up right after it (see
+    ``core.hardware.warm_up_cuda_model``; CTranslate2 only loads cuBLAS and
+    runs its first kernels at the first forward pass) -- this logs the real
+    reason, flips the module-level downgrade flag, and RETRIES with
+    ("cpu", "int8") instead of propagating — turning a hard crash + bogus
+    re-download prompt into a visible, graceful downgrade. A CPU load that
+    fails still raises (nothing to fall back to).
     """
     global device, compute_type, _DEVICE_DOWNGRADED, _REQUESTED_DEVICE
     _REQUESTED_DEVICE = req_device
     _DEVICE_DOWNGRADED = False
+    model: Any = None
     try:
+        if req_device == "cuda":
+            from .hardware import prepare_cuda_runtime
+            prepare_cuda_runtime()
         model = WhisperModel(model_path, device=req_device, compute_type=req_compute)
+        if req_device == "cuda":
+            from .hardware import warm_up_cuda_model
+            if status_cb:
+                status_cb("Checking the GPU with a short warm-up pass...")
+            warm_up_cuda_model(model)
         _capture_effective_device(model, req_device, req_compute)
         return model
     except Exception as e:
         if req_device != "cuda":
             raise
+        model = None  # release a half-working CUDA model before the CPU load
         cpu_device, cpu_compute = _CPU_FALLBACK
         from .hardware import cuda_load_failure_reason
+        reason = cuda_load_failure_reason(str(e))
         logger.warning(
             "CUDA model load failed (%s); downgrading to %s/%s. %s",
-            e, cpu_device, cpu_compute, cuda_load_failure_reason(str(e)),
+            e, cpu_device, cpu_compute, reason,
         )
         if status_cb:
             status_cb(
-                f"GPU unavailable ({e}); falling back to CPU (slower)."
+                f"GPU unavailable ({e}); falling back to CPU (slower). {reason}"
             )
         model = WhisperModel(model_path, device=cpu_device, compute_type=cpu_compute)
         # Reflect the downgrade in the module globals so _wrap_for_batched

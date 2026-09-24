@@ -75,6 +75,15 @@ FEATURES: dict[str, tuple[str, list[str]]] = {
     # specifically for that clean license; see docs/SESSION_HANDOFF_NEXT.md
     # (2026-09-12 entry) for the full evaluation.
     "voice_clone": ("omnivoice", ["omnivoice", "torch", "soundfile"]),
+    # NVIDIA cuBLAS for CUDA 12 -- the only CUDA runtime library CTranslate2
+    # 4.6.3+ needs on top of the graphics driver (which does not ship it).
+    # ~550 MB, so it is offered by the Hardware wizard's "Install GPU
+    # support" button only when an NVIDIA GPU is present and this library is
+    # the one thing missing (core.hardware.cuda_status). core.hardware finds
+    # it under <extras>/nvidia/cublas/{bin,lib} and preloads it for
+    # CTranslate2. 12.8+ is the first cuBLAS with native RTX 50-series
+    # (Blackwell, sm_120) kernels (GitHub issue #7).
+    "cuda_runtime": ("nvidia.cublas", ["nvidia-cublas-cu12>=12.8"]),
 }
 
 

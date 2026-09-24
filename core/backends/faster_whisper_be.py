@@ -110,28 +110,41 @@ class FasterWhisperBackend(Backend):
         """Build ``self._model``, self-healing a failed CUDA load onto CPU.
 
         Mirrors ``core.transcriber._load_whisper_model_self_healing``: a CUDA
-        construction failure (typically a missing cuDNN/cuBLAS runtime) logs
-        the real reason, flips ``self._downgraded``, and retries with
-        ("cpu", "int8") rather than crashing the worker.
+        failure at construction or in the GPU warm-up pass right after it
+        (typically a missing cuBLAS runtime, or GPU code that cannot run on
+        this GPU) logs the real reason, flips ``self._downgraded``, and
+        retries with ("cpu", "int8") rather than crashing the worker.
         """
         req_device = self._requested_device
         req_compute = self._compute_type
         try:
+            if req_device == "cuda":
+                from ..hardware import prepare_cuda_runtime
+                prepare_cuda_runtime()
             self._model = WhisperModel(
                 model_path, device=req_device, compute_type=req_compute
             )
+            if req_device == "cuda":
+                from ..hardware import warm_up_cuda_model
+                if status_cb:
+                    status_cb("Checking the GPU with a short warm-up pass...")
+                warm_up_cuda_model(self._model)
             self._capture_effective_device(req_device, req_compute)
             return
         except Exception as e:
             if req_device != "cuda":
                 raise
+            self._model = None  # release a half-working CUDA model first
             from ..hardware import cuda_load_failure_reason
+            reason = cuda_load_failure_reason(str(e))
             logger.warning(
                 "CUDA model load failed (%s); downgrading to cpu/int8. %s",
-                e, cuda_load_failure_reason(str(e)),
+                e, reason,
             )
             if status_cb:
-                status_cb(f"GPU unavailable ({e}); falling back to CPU (slower).")
+                status_cb(
+                    f"GPU unavailable ({e}); falling back to CPU (slower). {reason}"
+                )
             self._device, self._compute_type = "cpu", "int8"
             self._model = WhisperModel(
                 model_path, device="cpu", compute_type="int8"

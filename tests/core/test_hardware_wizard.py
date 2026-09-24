@@ -95,14 +95,14 @@ def test_first_supported_tier_picks_cuda_when_present():
 
 def test_probe_cuda_returns_empty_when_no_device(monkeypatch):
     fake_ct2 = types.ModuleType("ctranslate2")
-    fake_ct2.contains_cuda_device = lambda: False  # type: ignore[attr-defined]
+    fake_ct2.get_cuda_device_count = lambda: 0  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "ctranslate2", fake_ct2)
     assert hw._probe_cuda() == []
 
 
 def test_probe_cuda_returns_both_compute_types_when_supported(monkeypatch):
     fake_ct2 = types.ModuleType("ctranslate2")
-    fake_ct2.contains_cuda_device = lambda: True  # type: ignore[attr-defined]
+    fake_ct2.get_cuda_device_count = lambda: 1  # type: ignore[attr-defined]
     fake_ct2.get_supported_compute_types = lambda _d: {  # type: ignore[attr-defined]
         "float16", "int8_float16",
     }
@@ -204,7 +204,7 @@ def test_device_choice_revalidates_cuda_at_load(tmp_path, monkeypatch):
     )
     hw.save_hardware_choice(tier)
     fake_ct2 = types.ModuleType("ctranslate2")
-    fake_ct2.contains_cuda_device = lambda: False  # type: ignore[attr-defined]
+    fake_ct2.get_cuda_device_count = lambda: 0  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "ctranslate2", fake_ct2)
     assert hw.device_choice_from_hardware_file() is None
 
@@ -217,7 +217,10 @@ def test_device_choice_honours_cuda_when_still_present(tmp_path, monkeypatch):
     )
     hw.save_hardware_choice(tier)
     fake_ct2 = types.ModuleType("ctranslate2")
-    fake_ct2.contains_cuda_device = lambda: True  # type: ignore[attr-defined]
+    fake_ct2.get_cuda_device_count = lambda: 1  # type: ignore[attr-defined]
+    fake_ct2.get_supported_compute_types = lambda _d: {  # type: ignore[attr-defined]
+        "float16", "int8_float16",
+    }
     monkeypatch.setitem(sys.modules, "ctranslate2", fake_ct2)
     # R3: the persisted CUDA choice is only honoured if the runtime libs also
     # load now; stub the gate True for this "still present" path.
@@ -264,6 +267,9 @@ def test_hardware_wizard_constructs_without_crashing(monkeypatch, tmp_path):
     monkeypatch.setattr(hw, "_probe_qnn_npu", lambda: [])
     monkeypatch.setattr(hw, "_probe_openvino", lambda: [])
     monkeypatch.setattr(hw, "_probe_directml", lambda: [])
+    monkeypatch.setattr(hw, "cuda_status", lambda: hw.CudaStatus(
+        usable=False, gpu_present=False, reason="No NVIDIA CUDA GPU was found.",
+    ))
 
     from app.widgets.hardware_wizard import HardwareWizard
 
@@ -305,22 +311,21 @@ def test_cuda_dll_probe_returns_false_on_wedged_loader(monkeypatch):
     """A wedged ctypes.CDLL must not freeze the probe.
 
     On a broken CUDA stack a single dlopen can block for many seconds inside
-    the OS loader. _cuda_runtime_dlls_loadable now runs the dlopen probe in a
+    the OS loader. _cuda_runtime_dlls_loadable runs the library loads in a
     helper thread with a bounded join; a timeout is treated as 'not loadable'
     (the safe CPU fallback) and the helper must return quickly.
     """
-    import ctypes
     import threading as _threading
     import time as _time
 
     started = _threading.Event()
 
-    def _hang(_name):
+    def _hang(_target):
         started.set()
         _time.sleep(30)  # simulate a wedged loader
         raise OSError("never reached")
 
-    monkeypatch.setattr(ctypes, "CDLL", _hang)
+    monkeypatch.setattr(hw, "_load_library", _hang)
     monkeypatch.setattr(hw, "_CUDA_DLL_PROBE_TIMEOUT_S", 0.2)
 
     t0 = _time.time()
@@ -334,13 +339,12 @@ def test_cuda_dll_probe_returns_false_on_wedged_loader(monkeypatch):
 
 
 def test_cuda_dll_probe_true_when_libs_load(monkeypatch):
-    """When a cuDNN and a cuBLAS name both load, the probe reports True."""
-    import ctypes
+    """When every library the installed CTranslate2 needs loads, True."""
 
-    def _loads(name):
+    def _loads(_target):
         return object()  # any non-raising load counts
 
-    monkeypatch.setattr(ctypes, "CDLL", _loads)
+    monkeypatch.setattr(hw, "_load_library", _loads)
     assert hw._cuda_runtime_dlls_loadable() is True
 
 
@@ -389,6 +393,9 @@ def test_close_restores_the_masters_modal_grab(monkeypatch, tmp_path):
     monkeypatch.setattr(hw, "_probe_qnn_npu", lambda: [])
     monkeypatch.setattr(hw, "_probe_openvino", lambda: [])
     monkeypatch.setattr(hw, "_probe_directml", lambda: [])
+    monkeypatch.setattr(hw, "cuda_status", lambda: hw.CudaStatus(
+        usable=False, gpu_present=False, reason="No NVIDIA CUDA GPU was found.",
+    ))
 
     from app.widgets.hardware_wizard import HardwareWizard
 

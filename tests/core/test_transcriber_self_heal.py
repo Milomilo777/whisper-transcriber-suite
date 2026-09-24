@@ -127,3 +127,76 @@ def test_get_effective_device_capture_is_getattr_guarded(transcriber, monkeypatc
     eff = transcriber.get_effective_device()
     assert eff.device == "cpu"
     assert eff.compute_type == "int8"
+
+
+# ---------- GPU warm-up failures self-heal too (issue #7) ------------------------
+
+
+def _warmup_fails_on_cuda(model):
+    """Stand-in for core.hardware.warm_up_cuda_model: CTranslate2 raises the
+    first time the GPU really runs (cuBLAS is loaded lazily)."""
+    if getattr(getattr(model, "model", None), "device", "") == "cuda":
+        raise RuntimeError(
+            "CUDA failed with error no kernel image is available for "
+            "execution on the device"
+        )
+
+
+def test_self_heal_downgrades_when_the_gpu_warm_up_fails(transcriber, monkeypatch):
+    """Construction succeeds but the first GPU pass fails -> CPU, not a
+    broken model that dies on the user's first transcription."""
+    import core.hardware as hw
+
+    class _OkModel:
+        def __init__(self, model_path, device="cpu", compute_type="int8"):
+            self.model = _FakeCt2(device, compute_type)
+
+    monkeypatch.setattr(transcriber, "WhisperModel", _OkModel)
+    monkeypatch.setattr(hw, "prepare_cuda_runtime", lambda: True)
+    monkeypatch.setattr(hw, "warm_up_cuda_model", _warmup_fails_on_cuda)
+    msgs: list[str] = []
+    transcriber._load_whisper_model_self_healing(
+        "/fake/model", "cuda", "float16", msgs.append
+    )
+    eff = transcriber.get_effective_device()
+    assert eff.downgraded is True
+    assert eff.device == "cpu"
+    # The user-facing status carries the architecture-specific reason.
+    assert any("CPU" in m and "brand-new NVIDIA generation" in m for m in msgs)
+
+
+def test_backend_self_heal_downgrades_when_the_gpu_warm_up_fails(monkeypatch):
+    import core.hardware as hw
+    from core.backends import faster_whisper_be as be
+
+    class _OkModel:
+        def __init__(self, model_path, device="cpu", compute_type="int8"):
+            self.model = _FakeCt2(device, compute_type)
+
+    monkeypatch.setattr(be, "WhisperModel", _OkModel)
+    monkeypatch.setattr(hw, "prepare_cuda_runtime", lambda: True)
+    monkeypatch.setattr(hw, "warm_up_cuda_model", _warmup_fails_on_cuda)
+    backend = be.FasterWhisperBackend()
+    backend._requested_device = "cuda"
+    backend._compute_type = "float16"
+    backend._load_self_healing("/fake/model", None)
+    assert backend.downgraded is True
+    assert backend.device == "cpu"
+
+
+def test_cuda_load_prepares_the_runtime_before_constructing(transcriber, monkeypatch):
+    import core.hardware as hw
+
+    order: list[str] = []
+
+    class _OkModel:
+        def __init__(self, model_path, device="cpu", compute_type="int8"):
+            order.append(f"construct:{device}")
+            self.model = _FakeCt2(device, compute_type)
+
+    monkeypatch.setattr(transcriber, "WhisperModel", _OkModel)
+    monkeypatch.setattr(hw, "prepare_cuda_runtime", lambda: order.append("prepare") or True)
+    monkeypatch.setattr(hw, "warm_up_cuda_model", lambda m: order.append("warm_up"))
+    transcriber._load_whisper_model_self_healing("/fake/model", "cuda", "float16", None)
+    assert order == ["prepare", "construct:cuda", "warm_up"]
+    assert transcriber.get_effective_device().downgraded is False

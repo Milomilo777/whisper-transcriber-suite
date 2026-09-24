@@ -1,10 +1,13 @@
 """Tests for the R3 CUDA usability gate in ``core.hardware``.
 
-``ctranslate2.contains_cuda_device()`` only proves a driver + GPU exist; it
-does NOT verify the cuDNN/cuBLAS runtime libraries load. When they don't, a
-CUDA model construction hard-fails. ``cuda_load_ok()`` + the probe gating make
+``ctranslate2.get_cuda_device_count()`` only proves a driver + GPU exist; it
+does NOT verify the CUDA runtime libraries (cuBLAS) load. When they don't, the
+first CUDA forward pass hard-fails. ``cuda_load_ok()`` + the probe gating make
 the autodetect refuse CUDA in that state. These tests monkeypatch ctranslate2
-and the DLL-loadable probe so no real CUDA stack is needed.
+and the DLL-loadable probe so no real CUDA stack is needed. The fake exposes
+the REAL CTranslate2 API (``get_cuda_device_count``) -- the old fake defined a
+``contains_cuda_device`` that no real CTranslate2 has, which hid issue #7;
+tests/core/test_hardware_ct2_contract.py checks the real package.
 """
 from __future__ import annotations
 
@@ -18,7 +21,8 @@ from core import hardware as hw
 
 def _fake_ct2(monkeypatch, *, has_device: bool):
     fake = types.ModuleType("ctranslate2")
-    fake.contains_cuda_device = lambda: has_device  # type: ignore[attr-defined]
+    fake.__version__ = "4.8.2"  # type: ignore[attr-defined]
+    fake.get_cuda_device_count = lambda: 1 if has_device else 0  # type: ignore[attr-defined]
     fake.get_supported_compute_types = lambda dev: {"float16", "int8_float16"}  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "ctranslate2", fake)
     return fake
@@ -34,7 +38,7 @@ def test_cuda_load_ok_false_when_no_device(monkeypatch):
 
 
 def test_cuda_load_ok_false_when_runtime_dlls_broken(monkeypatch):
-    """Device present but cuDNN/cuBLAS not loadable => not ready."""
+    """Device present but cuBLAS not loadable => not ready."""
     _fake_ct2(monkeypatch, has_device=True)
     monkeypatch.setattr(hw, "_cuda_runtime_dlls_loadable", lambda: False)
     assert hw.cuda_load_ok() is False
@@ -178,7 +182,13 @@ def test_classify_cuda_load_failure_detects_runtime_libs(text):
 
 
 def test_classify_cuda_load_failure_unknown_for_unrelated_text():
-    assert hw.classify_cuda_load_failure("out of memory") == "unknown"
+    assert hw.classify_cuda_load_failure("something unexpected") == "unknown"
+
+
+def test_classify_cuda_load_failure_detects_out_of_memory():
+    text = "CUDA failed with error out of memory"
+    assert hw.classify_cuda_load_failure(text) == "out_of_memory"
+    assert "memory" in hw.cuda_load_failure_reason(text).lower()
 
 
 def test_cuda_load_failure_reason_mentions_upgrade_for_arch_unsupported():
@@ -191,7 +201,7 @@ def test_cuda_load_failure_reason_mentions_upgrade_for_arch_unsupported():
 
 def test_cuda_load_failure_reason_is_generic_runtime_libs_message_by_default():
     reason = hw.cuda_load_failure_reason("some other unrelated failure")
-    assert "cudnn/cublas" in reason.lower()
+    assert "cublas" in reason.lower()
 
 
 def test_probe_tiers_serializes_concurrent_calls():

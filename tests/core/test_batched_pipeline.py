@@ -52,7 +52,7 @@ def test_detect_device_works_without_torch(monkeypatch):
     monkeypatch.setattr(t, "config", {"device": "auto", "compute_type": "int8"})
 
     fake_ct2 = types.ModuleType("ctranslate2")
-    fake_ct2.contains_cuda_device = lambda: False  # type: ignore[attr-defined]
+    fake_ct2.get_cuda_device_count = lambda: 0  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "ctranslate2", fake_ct2)
     monkeypatch.setitem(sys.modules, "torch", None)  # ImportError on access
 
