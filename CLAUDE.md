@@ -207,6 +207,22 @@ patch bump to protect an already-shipped asset's download count (e.g.
 1.7.0 → 1.7.1 for a same-day fix) is small and cheap; it is not the
 kind of release that rule is warning against.
 
+**2026-09-24 recurrence:** during a macOS-only fix session, `gh release
+delete-asset` + `gh release upload` was used twice to swap the macOS
+dmgs on an already-published tag (v1.9.0) at the owner's own in-session
+request ("no new page needed"), specifically to avoid a new release
+page for a mac-only change while the Windows assets on that same tag
+stayed untouched. This is the exact same asset-object-delete-then-
+recreate effect as `--clobber` (see above) even though the `--clobber`
+flag itself was never used, and it reset the mac assets' download
+counts twice in one day. The owner caught it after the fact and
+reasserted this rule. Closing the loophole explicitly: this rule
+covers ANY way of removing+re-adding an asset under an existing tag
+(`--clobber`, or manual `delete-asset` + `upload`), and applies even
+when only some platforms' assets are being refreshed — always a new
+tag, even for a mac-only (or Windows-only) patch, even if it makes a
+release's asset set look "incomplete" for one platform for a while.
+
 ### README: add a per-version download badge on every release, never remove an old one
 
 `README.md`'s "Download" section carries one shields.io badge per

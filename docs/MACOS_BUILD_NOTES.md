@@ -35,7 +35,10 @@ What v1.9.0 did, in order; repeat it for the next version.
    `WTS_MACOS_MIN=10.15` (see the 10.15 onnxruntime note), then `verify_mac_bundle.sh` and
    `smoke_test_app.sh` must both pass. If no old Mac is available, the CI x64 dmg is acceptable. It needs macOS 14.
 4. Check `sha256sum -c` for each `.dmg.sha256` and create the release with the dmgs + `.sha256` files and
-   `docs/release-notes/RELEASE_NOTES_vX.Y.Z.md`. If the Windows assets aren't uploaded yet, use
+   `docs/release-notes/RELEASE_NOTES_vX.Y.Z.md`. **New tag every time, even for a mac-only fix** — see
+   CLAUDE.md "Never `--clobber` an existing release asset": never `delete-asset` + `upload` mac dmgs onto
+   an already-published tag to avoid a new release page. Cut vX.Y.(Z+1) instead, even same-day, even if
+   only macOS changed. If the Windows assets aren't uploaded yet, use
    `--latest=false` (README's "Download for Windows" points at `releases/latest`). Mark it Latest with
    `gh release edit vX.Y.Z --latest` once they are.
 5. Test the Terminal one-liner from the release notes against the published release. It downloads with
