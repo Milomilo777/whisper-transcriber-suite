@@ -4,6 +4,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [1.9.3] — 2026-09-27
+
+Windows, macOS and Linux. (There is no 1.9.2.)
+
 ### Fixed
 
 - **A link copied from inside a playlist downloaded the whole playlist.**
@@ -60,8 +64,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   JavaScript runtime, and the Download tab offers a one-click, checksum-
   verified **Install YouTube helper** (Deno, ~42 MB, no admin rights). It is
   only passed to a yt-dlp new enough to use it; otherwise the error says to
-  update yt-dlp.
-
+  update yt-dlp. The Windows installer and Portable ZIP ship Deno in
+  `bin\`, so YouTube works there with no click at all.
 - **Hardware Autodetect explains an unusable NVIDIA GPU** (reason + fix),
   offers **Install GPU support** (NVIDIA cuBLAS, ~550 MB) when that is the
   missing piece, and **Copy diagnostics** for bug reports

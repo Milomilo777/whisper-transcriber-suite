@@ -54,6 +54,7 @@ desktop.ini
 bin/ffmpeg.exe
 bin/ffprobe.exe
 bin/yt-dlp.exe
+bin/deno.exe
 
 # Diarisation ONNX models — fetched by tools/download_diarization_models.bat
 # at build time. ~35 MB total; not committed for the same reason as the

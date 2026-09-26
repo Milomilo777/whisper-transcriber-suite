@@ -78,6 +78,20 @@ for %%P in (llvmlite.libs numba.libs torch.libs torchaudio.libs) do if exist "%%
 for /d %%D in (torch-* torchaudio-* openai_whisper-* stable_ts-* numba-* llvmlite-* sympy-* networkx-* mpmath-* functorch-* torchgen-*) do rmdir /s /q "%%D"
 popd
 
+REM Deno for yt-dlp's YouTube JS challenges, next to yt-dlp so it needs no
+REM click in the Download tab (core.js_runtime.find_deno checks bin\ first).
+REM Official zip, SHA-256 verified by install_deno(); bin\deno.exe is gitignored.
+if not exist "%ROOT%bin\deno.exe" (
+  echo [embed] fetching Deno into bin\
+  pushd "%ROOT%"
+  python -c "import shutil; from core.js_runtime import install_deno; shutil.copy2(install_deno(), r'bin\deno.exe')"
+  popd
+  if not exist "%ROOT%bin\deno.exe" (
+    echo [embed] Deno fetch failed
+    exit /b 9
+  )
+)
+
 echo [embed] copying source tree
 xcopy /E /I /Y "%ROOT%app" "%BUILD%\app" >nul
 xcopy /E /I /Y "%ROOT%core" "%BUILD%\core" >nul
