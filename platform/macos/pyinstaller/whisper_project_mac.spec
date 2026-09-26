@@ -105,6 +105,65 @@ with open(os.path.join(_REPO_ROOT, 'core', '__init__.py'), encoding='utf-8') as 
 # Mach-O rewrite.
 _BIN_DIR = os.path.join(_REPO_ROOT, 'bin')
 _POST_COPY_BINS = ('yt-dlp', 'deno')
+
+# ---- Preconditions a fresh clone does not meet on its own -------------------
+# platform/macos/build_mac.sh does all of this (and the venv, deps, checks and
+# .dmg) in one command. Stop with one clear line rather than build an .app
+# that fails on the user's Mac.
+import platform as _platform
+import subprocess as _sp
+import sys as _sys
+
+
+def _stop(msg):
+    raise SystemExit('[mac-spec] ERROR: %s\n[mac-spec] The one-command build: '
+                     'bash platform/macos/build_mac.sh' % msg)
+
+
+try:
+    import tkinter as _tk
+    _tk_version = float(_tk.TkVersion)
+except Exception as _e:  # noqa: BLE001
+    _stop('this Python (%s) has no working tkinter (%s). Use Python 3.12 from '
+          'https://www.python.org/downloads/macos/' % (_sys.executable, _e))
+if _tk_version < 8.6:
+    _stop('this Python (%s) links Tk %s; the app needs Tk 8.6 (Apple\'s '
+          '/usr/bin/python3 has 8.5). Use Python 3.12 from '
+          'https://www.python.org/downloads/macos/' % (_sys.executable, _tk_version))
+
+
+def _links_only_system_libs(path):
+    out = _sp.run(['otool', '-L', path], capture_output=True, text=True).stdout
+    libs = [ln.strip() for ln in out.splitlines() if ln.strip() and not ln.rstrip().endswith(':')]
+    return all(ln.startswith(('/usr/lib/', '/System/Library/')) for ln in libs)
+
+
+def _yt_dlp_new_enough(path):
+    # --js-runtimes (Deno for YouTube) needs yt-dlp >= 2025.11.12.
+    try:
+        out = _sp.run([path, '--version'], capture_output=True, text=True, timeout=300).stdout
+    except Exception:  # noqa: BLE001
+        return False
+    m = _re.match(r'\s*(\d{4})\.(\d{1,2})\.(\d{1,2})', out)
+    return bool(m) and tuple(int(g) for g in m.groups()) >= (2025, 11, 12)
+
+
+_tool_problems = []
+for _n in ('ffmpeg', 'ffprobe', 'ffplay', 'yt-dlp', 'deno'):
+    _p = os.path.join(_BIN_DIR, _n)
+    if not os.path.isfile(_p):
+        _tool_problems.append('%s missing' % _n)
+    elif _n.startswith('ff') and not _links_only_system_libs(_p):
+        _tool_problems.append('%s links non-system libraries (Homebrew?)' % _n)
+    elif _n == 'yt-dlp' and not _yt_dlp_new_enough(_p):
+        _tool_problems.append('yt-dlp broken or older than 2025.11.12')
+if _tool_problems:
+    print('[mac-spec] bin/: %s -> running fetch_mac_binaries.sh' % '; '.join(_tool_problems))
+    _arch = os.environ.get('WTS_TARGET_ARCH') or _platform.machine()
+    if _sp.run(['bash', os.path.join(SPECPATH, 'fetch_mac_binaries.sh'), _arch]).returncode:
+        _stop('fetching the macOS tools into bin/ failed (network?). Run '
+              'bash platform/macos/pyinstaller/fetch_mac_binaries.sh and look at its error.')
+
 bin_datas = []
 bin_binaries = []
 if os.path.isdir(_BIN_DIR):
@@ -376,11 +435,25 @@ for _p in _minos_files:
     _v = _macho_minos(_p)
     if _v:
         _minos_hits.setdefault(_v, []).append(_p)
-_computed_min = max(_minos_hits) if _minos_hits else (10, 13)
-_computed_min = max(_computed_min, (10, 13))
-_MIN_MACOS = os.environ.get('WTS_MACOS_MIN') or '%d.%d' % _computed_min
+_highest_min = max(_minos_hits) if _minos_hits else (10, 13)
+_computed_min = max(_highest_min, (10, 13))
 print('[mac-spec] highest bundled minos: %d.%d  <- %s' % (
-    _computed_min + (', '.join(os.path.basename(p) for p in _minos_hits.get(_computed_min, [])),)))
+    _highest_min + (', '.join(os.path.basename(p) for p in _minos_hits.get(_highest_min, [])),)))
+# A native build on an older Mac: pip only installed wheels tagged for this
+# macOS and the bundled tools were run above, yet a few files still carry a
+# newer minos (protobuf's and deno's 12.0 on Intel) and work (verified on
+# 10.15). Claiming more than this Mac's version would make LaunchServices
+# refuse to open the app on the machine that built it (error -10825), so cap
+# it at the build host; smoke_test_app.sh then runs the app on this macOS.
+try:
+    _host_macos = tuple(int(x) for x in _platform.mac_ver()[0].split('.')[:2])
+except ValueError:
+    _host_macos = ()
+if (len(_host_macos) == 2 and _computed_min > _host_macos
+        and os.environ.get('WTS_TARGET_ARCH') in (None, '', _platform.machine())):
+    print('[mac-spec] capped to this build Mac: %d.%d' % _host_macos)
+    _computed_min = _host_macos
+_MIN_MACOS = os.environ.get('WTS_MACOS_MIN') or '%d.%d' % _computed_min
 print('[mac-spec] LSMinimumSystemVersion = %s%s' % (
     _MIN_MACOS, ' (WTS_MACOS_MIN override)' if os.environ.get('WTS_MACOS_MIN') else ''))
 
