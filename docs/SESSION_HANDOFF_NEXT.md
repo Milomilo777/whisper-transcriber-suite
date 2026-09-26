@@ -25,7 +25,7 @@ Machine: Windows 10, Intel HD 530 (no NVIDIA), Python 3.14.4, 2560×1440.
 - App starts from source without errors. 125–150 % DPI not tested (needs a
   scaling change on the owner's screen).
 - README "Contributing" now opens with an invitation to report bugs, share ideas
-  and star the repo (owner request).
+  and star the repo.
 
 ## 🟢 2026-09-24 (cloud session, part 2) — #8 Deno, simpler Settings, laptop fit, review fixes; merged to master
 

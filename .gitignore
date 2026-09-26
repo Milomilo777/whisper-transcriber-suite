@@ -115,6 +115,8 @@ htmlcov/
 # Local notes that should not be committed
 New Text Document.txt
 NOTES.local.md
+# Any *.local.md (CLAUDE.local.md, handoff notes, ...) is the local-only layer
+*.local.md
 TODO.local.md
 # AI-session-only tips cherry-picked from another repo (kept in the
 # worktree for review, never committed).

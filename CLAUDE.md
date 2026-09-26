@@ -242,15 +242,26 @@ download-count incident, specifically because the repo-front-page badge
 mistake — a per-version badge row makes each release's own count
 visible and durable regardless of what happens to the aggregate.
 
-## Private notes stay local — never in the repo (2026-09-24, owner request)
+## Two layers: public repo vs. local notes (2026-09-27, replaces the 2026-09-24 rule)
 
-- Messages between the owner and colleagues never go into anything tracked —
-  docs, handoff, changelog, code comments, commit messages, release notes.
-  Write only a one-line summary of the topic there ("a colleague reported X").
-- Topics the owner marks as private are likewise summarised neutrally at most.
-- The full text, quotes and details go into `NOTES.local.md` at the repo root
-  (gitignored, local only). Read it at session start alongside the handoff;
-  it lists which topics are private.
+The repo is public and widely read. Tracked files (docs, handoff, changelog,
+code comments, commit messages, release notes, this file) carry only what a
+contributor needs: what changed, why technically, how to build/test, what is
+left. Everything else stays local:
+
+- Conversations with the owner: quotes, requests ("owner asked…"), reasoning,
+  preferences, plans and decisions still being discussed.
+- Messages between the owner and colleagues, and topics the owner marks as
+  private (one neutral line in tracked files at most).
+- Incident narratives about the owner's own mistakes or setup, machine details,
+  other people.
+
+Local layer (gitignored via `*.local.md`): `NOTES.local.md` at the repo root.
+Read it at session start alongside the handoff; write the full detail there.
+Before writing to a tracked file, ask: "would a stranger contributor need
+this?" If not, it goes to `NOTES.local.md`. When unsure, local.
+Tracked text must not say "owner request" / "owner decision" or quote the
+owner; state the rule or the change on its own.
 
 ## Release page layout — every release (2026-09-24, owner request)
 
