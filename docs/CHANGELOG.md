@@ -4,6 +4,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Fixed
+
+- **macOS: the "Loading the Whisper model" dialog was off-centre** (placed
+  by its top-left corner). It now uses the dialog's requested size.
+
 ## [1.9.3] — 2026-09-27
 
 Windows, macOS and Linux. (There is no 1.9.2.)

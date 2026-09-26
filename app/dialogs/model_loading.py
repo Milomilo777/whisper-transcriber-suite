@@ -119,11 +119,14 @@ class ModelLoadingDialog(tk.Toplevel):
 
         body.columnconfigure(0, weight=1)
 
-        # Centre on parent. update_idletasks first so winfo_width
-        # returns the real laid-out width rather than 1.
+        # Centre on parent. update_idletasks first so the laid-out size is
+        # known. macOS Tk still reports winfo_width() == 1 for a window
+        # that has not been mapped yet, so fall back to the requested size.
         self.update_idletasks()
         try:
-            x, y = _compute_position(master, self.winfo_width(), self.winfo_height())
+            width = max(self.winfo_width(), self.winfo_reqwidth())
+            height = max(self.winfo_height(), self.winfo_reqheight())
+            x, y = _compute_position(master, width, height)
             # "+-500" (not "-500") is Tk's accepted form for an absolute
             # negative position; "-500" alone means 500 px from the right
             # screen edge (verified on Windows/Tk 8.6). A parent on a
