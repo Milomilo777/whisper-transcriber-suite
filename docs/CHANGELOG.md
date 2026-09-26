@@ -6,6 +6,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A link copied from inside a playlist downloaded the whole playlist.**
+  Downloads now fetch only the linked video.
+- **A video with no sound failed with "tuple index out of range".** It now
+  says the file has no audio track.
+- **Chrome/Edge/Brave cookie errors on Windows** now suggest Firefox instead
+  of "close the browser", which does not help there.
 - **NVIDIA GPUs were never used (#7).** Hardware Autodetect called a
   CTranslate2 function that does not exist, so every machine silently fell
   back to CPU. It now uses the real API; a CPU choice saved by the old

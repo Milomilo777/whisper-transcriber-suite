@@ -24,6 +24,14 @@ Machine: Windows 10, Intel HD 530 (no NVIDIA), Python 3.14.4, 2560×1440.
 - **Mic:** real Yeti mic records via sounddevice. Live tab itself not driven.
 - App starts from source without errors. 125–150 % DPI not tested (needs a
   scaling change on the owner's screen).
+- **Download / transcription debug pass (real runs):**
+  - Fixed: download command lacked `--no-playlist`, so a `watch?v=X&list=Y`
+    link downloaded the whole playlist (dba1e4c).
+  - Fixed: a video with no audio track failed with "tuple index out of range"
+    from PyAV; now a readable error (c142f11 — wrong commit message, see c6f9df5).
+  - OK: YouTube video + audio, direct mp3 link, Persian/space/`[]&'` file names,
+    0.2 s file; empty/corrupt files give ffprobe's message; Vimeo login wall,
+    removed video and bad host give readable errors.
 - README "Contributing" now opens with an invitation to report bugs, share ideas
   and star the repo.
 
