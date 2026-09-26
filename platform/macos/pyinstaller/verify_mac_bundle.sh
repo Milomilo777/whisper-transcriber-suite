@@ -43,6 +43,7 @@ echo "LSMinimumSystemVersion: $plist_min"
 B="$APP/Contents/Frameworks/bin"
 v="$("$B/ffmpeg" -hide_banner -version 2>&1)" && echo "${v%%$'\n'*}" || { echo "ffmpeg FAILED: $v"; bad=$((bad + 1)); }
 v="$("$B/yt-dlp" --version 2>&1)" && echo "yt-dlp $v" || { echo "yt-dlp FAILED: $v"; bad=$((bad + 1)); }
+v="$("$B/deno" --version 2>&1)" && echo "${v%%$'\n'*}" || { echo "deno FAILED: $v"; bad=$((bad + 1)); }
 
 # core.paths.bundled_binary() resolves tools via dirname(sys.executable)/bin,
 # i.e. Contents/MacOS/bin/ -- NOT the Contents/Frameworks/bin/ copies above.
@@ -51,7 +52,7 @@ v="$("$B/yt-dlp" --version 2>&1)" && echo "yt-dlp $v" || { echo "yt-dlp FAILED: 
 # real app's downloads silently fall back to a missing "yt-dlp" on PATH
 # (the 2026-09-24 regression). Check the exact path the app actually uses.
 RB="$APP/Contents/MacOS/bin"
-for _n in ffmpeg yt-dlp; do
+for _n in ffmpeg yt-dlp deno; do
   [ -f "$RB/$_n" ] || { echo "RUNTIME-PATH $RB/$_n missing (core.paths.bundled_binary would fall back to PATH)"; bad=$((bad + 1)); }
 done
 "$APP/Contents/MacOS/Whisper Transcriber Suite" transcribe --help >/dev/null || { echo "CLI boot FAILED"; bad=$((bad + 1)); }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fetch SELF-CONTAINED macOS ffmpeg/ffprobe/ffplay + yt-dlp into ./bin for the
+# Fetch SELF-CONTAINED macOS ffmpeg/ffprobe/ffplay + yt-dlp + deno into ./bin for the
 # PyInstaller .app build (whisper_project_mac.spec), then VERIFY them.
 #
 # Why not Homebrew: `brew install ffmpeg` gives an ffmpeg that links ~18
@@ -57,11 +57,37 @@ done
 curl -fsSL --retry 3 -o "$BIN/yt-dlp" \
   "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos"
 chmod +x "$BIN/yt-dlp"
+
+# Deno: yt-dlp's JavaScript runtime for YouTube's challenges. Bundled next to
+# yt-dlp so the app needs no "Install YouTube helper" click
+# (core.js_runtime.find_deno checks bin/ first). Official release zip,
+# checked against its published .sha256sum.
+fetch_deno() {  # fetch_deno <x86_64|aarch64> <dest>
+  local base="https://github.com/denoland/deno/releases/latest/download"
+  local zip="deno-$1-apple-darwin.zip"
+  curl -fsSL --retry 3 "$base/$zip" -o "$TMP/$zip"
+  local want got
+  want="$(curl -fsSL --retry 3 "$base/$zip.sha256sum" | grep -oE '[0-9a-fA-F]{64}' | head -1 | tr 'A-F' 'a-f')"
+  got="$(shasum -a 256 "$TMP/$zip" | cut -d' ' -f1)"
+  [ -n "$want" ] && [ "$want" = "$got" ] || { echo "error: $zip checksum mismatch" >&2; exit 1; }
+  rm -rf "$TMP/deno-x" && unzip -oq "$TMP/$zip" deno -d "$TMP/deno-x"
+  cp "$TMP/deno-x/deno" "$2"
+  chmod +x "$2"
+}
+case "$ARCH" in
+  x86_64) fetch_deno x86_64 "$BIN/deno" ;;
+  arm64)  fetch_deno aarch64 "$BIN/deno" ;;
+  universal2)
+    fetch_deno x86_64 "$TMP/deno.x86_64"
+    fetch_deno aarch64 "$TMP/deno.arm64"
+    lipo -create "$TMP/deno.x86_64" "$TMP/deno.arm64" -output "$BIN/deno"
+    chmod +x "$BIN/deno" ;;
+esac
 xattr -dr com.apple.quarantine "$BIN" 2>/dev/null || true
 
 # ---- verify ----------------------------------------------------------------
 fail=0
-for f in "$BIN"/ffmpeg "$BIN"/ffprobe "$BIN"/ffplay "$BIN"/yt-dlp; do
+for f in "$BIN"/ffmpeg "$BIN"/ffprobe "$BIN"/ffplay "$BIN"/yt-dlp "$BIN"/deno; do
   # otool prints one "<file> (architecture X):" header per slice of a fat file; drop them all.
   ext="$(otool -L "$f" | grep -v ':$' | grep -vE '^[[:space:]]*(/usr/lib/|/System/Library/)' || true)"
   minos="$(otool -l "$f" | awk '/LC_BUILD_VERSION/{b=1} b&&/minos/{print $2; exit} /LC_VERSION_MIN_MACOSX/{v=1} v&&/ version/{print $2; exit}')"
@@ -74,5 +100,6 @@ for f in "$BIN"/ffmpeg "$BIN"/ffprobe "$BIN"/ffplay "$BIN"/yt-dlp; do
 done
 "$BIN/ffmpeg" -hide_banner -version | head -1
 echo "yt-dlp $("$BIN/yt-dlp" --version)"
+"$BIN/deno" --version | head -1
 [ "$fail" = 0 ] || { echo "error: bin/ contains dylib-dependent binaries" >&2; exit 1; }
 echo "OK: bin/ is self-contained."

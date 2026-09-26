@@ -107,8 +107,8 @@ fi
 grep -iE "Traceback|ERROR" "$LOG_DIR/app.log" 2>/dev/null | tail -5 || true
 pkill -f "$APP/Contents/MacOS/" 2>/dev/null || true
 
-echo "== 5. runtime-resolved yt-dlp/ffmpeg: real download + merge (Contents/MacOS/bin)"
-for _n in yt-dlp ffmpeg; do
+echo "== 5. runtime-resolved yt-dlp/ffmpeg/deno: real download + merge (Contents/MacOS/bin)"
+for _n in yt-dlp ffmpeg deno; do
   if [ ! -f "$RUNTIME_BIN/$_n" ]; then
     echo "FAIL $RUNTIME_BIN/$_n does not exist (or is a dangling symlink) -- this is exactly"
     echo "     the path core.paths.bundled_binary(\"$_n\") resolves at runtime"
@@ -118,7 +118,8 @@ done
 if [ "$fail" = 0 ]; then
   dl_ok=0
   for _try in 1 2; do
-    if "$RUNTIME_BIN/yt-dlp" --ffmpeg-location "$RUNTIME_BIN"          -f 'bv*[height<=360]+ba/b[height<=360]' --merge-output-format mp4          -o "$WORK/smoketest.%(ext)s"          "https://www.youtube.com/watch?v=jNQXAC9IVRw" 2>"$WORK/ytdlp.err"; then
+    # --js-runtimes: the bundled Deno solves YouTube's JS challenges, as in the app.
+    if "$RUNTIME_BIN/yt-dlp" --ffmpeg-location "$RUNTIME_BIN" --js-runtimes "deno:$RUNTIME_BIN/deno" -f 'bv*[height<=360]+ba/b[height<=360]' --merge-output-format mp4          -o "$WORK/smoketest.%(ext)s"          "https://www.youtube.com/watch?v=jNQXAC9IVRw" 2>"$WORK/ytdlp.err"; then
       dl_ok=1; break
     fi
     echo "WARN download attempt $_try failed, retrying:"; tail -3 "$WORK/ytdlp.err"

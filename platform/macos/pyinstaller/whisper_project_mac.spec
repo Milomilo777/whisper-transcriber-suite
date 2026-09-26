@@ -99,9 +99,12 @@ with open(os.path.join(_REPO_ROOT, 'core', '__init__.py'), encoding='utf-8') as 
 # drops that payload (bundled copy shrank 37 MB -> 73 KB and died with
 # "Could not load PyInstaller's embedded PKG archive"). So yt-dlp is NOT
 # collected here; it is copied byte-for-byte into the finished .app after
-# BUNDLE (see the end of this file).
+# BUNDLE (see the end of this file). deno (yt-dlp's JavaScript runtime for
+# YouTube, found by core.js_runtime.find_deno next to yt-dlp) is a signed
+# release binary; it takes the same verbatim path rather than PyInstaller's
+# Mach-O rewrite.
 _BIN_DIR = os.path.join(_REPO_ROOT, 'bin')
-_POST_COPY_BINS = ('yt-dlp',)
+_POST_COPY_BINS = ('yt-dlp', 'deno')
 bin_datas = []
 bin_binaries = []
 if os.path.isdir(_BIN_DIR):
