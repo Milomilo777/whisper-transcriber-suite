@@ -20,6 +20,10 @@ from core import hardware as hw
 
 
 def _fake_ct2(monkeypatch, *, has_device: bool):
+    if has_device and sys.platform == "darwin":
+        # cuda_status() answers "not available on macOS" before looking at
+        # CTranslate2; run the CUDA branch as on Linux (no real driver either).
+        monkeypatch.setattr(sys, "platform", "linux")
     fake = types.ModuleType("ctranslate2")
     fake.__version__ = "4.8.2"  # type: ignore[attr-defined]
     fake.get_cuda_device_count = lambda: 1 if has_device else 0  # type: ignore[attr-defined]

@@ -18,6 +18,13 @@ import pytest
 from core import hardware as hw
 
 
+def _pretend_cuda_platform(monkeypatch) -> None:
+    """cuda_status() answers "not available on macOS" before looking at
+    CTranslate2; run the CUDA branch as on Linux (no real driver either)."""
+    if sys.platform == "darwin":
+        monkeypatch.setattr(sys, "platform", "linux")
+
+
 # ---------- Tier dataclass -----------------------------------------------------
 
 
@@ -107,6 +114,7 @@ def test_probe_cuda_returns_both_compute_types_when_supported(monkeypatch):
         "float16", "int8_float16",
     }
     monkeypatch.setitem(sys.modules, "ctranslate2", fake_ct2)
+    _pretend_cuda_platform(monkeypatch)
     monkeypatch.setattr(hw, "_gpu_name", lambda: "RTX 9999")
     # R3: a device alone is no longer enough — the cuDNN/cuBLAS runtime must
     # also load. Stub the runtime gate True so this test still exercises the
@@ -222,6 +230,7 @@ def test_device_choice_honours_cuda_when_still_present(tmp_path, monkeypatch):
         "float16", "int8_float16",
     }
     monkeypatch.setitem(sys.modules, "ctranslate2", fake_ct2)
+    _pretend_cuda_platform(monkeypatch)
     # R3: the persisted CUDA choice is only honoured if the runtime libs also
     # load now; stub the gate True for this "still present" path.
     monkeypatch.setattr(hw, "_cuda_runtime_report", lambda v=None: {"cuBLAS": "/fake/cublas"})
