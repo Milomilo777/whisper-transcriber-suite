@@ -5,6 +5,32 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-27 (macOS session) — Mac debug pass + v1.9.3 dmgs published
+
+- **Release:** `WhisperTranscriberSuite-v1.9.3-macOS-{x64,arm64}.dmg` + `.sha256`
+  uploaded into the existing v1.9.3 release (built from master `c42472d`);
+  notes got the Mac rows, "Installing on a Mac" and the checksums
+  (mirrored in `docs/release-notes/RELEASE_NOTES_v1.9.3.md`). x64: macOS 10.15+,
+  built + tested on the 10.15.7 VM; arm64: macOS 14+, CI build + smoke test.
+  The one-liner picks x64 on Apple silicon below macOS 14 (Rosetta); tested
+  against the published release on 10.15.
+- **Fixed (master):** model-loading dialog centring on macOS; Advanced
+  Save/Cancel under the Dock; frozen app no longer offers impossible pip
+  installs (stable-ts stays out of the .app); status lines refresh after a
+  model download; yt-dlp version check / format probe timeouts 30/60 → 120 s;
+  three macOS-only test failures fixed test-side.
+- **Build:** new `platform/macos/build_mac.sh` (one command: Python/Tk check,
+  venv, 10.15 onnxruntime workaround, tools, PyInstaller, verify, smoke, dmg);
+  Deno bundled in the .app; the mac spec fetches missing tools, refuses a
+  Python without Tk 8.6 and caps the minimum macOS at the build host. The
+  repo-root specs stay Windows-only (a delegation was tried and reverted).
+- **Checks:** per-file hermetic suite on 10.15: 2759 passed, 0 failed, 0 hung;
+  pyright 0/0/0. Everything else verified and still open is in
+  `docs/MACOS_BUILD_NOTES.md` → "v1.9.3 Mac build".
+- **Next:** arm64 floor below 14 (pin av/tkinterdnd2/numpy on CI) or keep the
+  Rosetta fallback; onedir yt-dlp for faster first lookups on old Macs;
+  a hands-on Apple-silicon check.
+
 ## 🟢 2026-09-27 — v1.9.3 released (Windows); macOS dmgs added by a separate session
 
 - Tag `v1.9.3` = f7ec9b5 (no v1.9.2 exists). Windows installer (234 MB) +

@@ -31,25 +31,28 @@ CI (`macos-app.yml`, manual dispatch) runs exactly these steps on both archs.
 
 ## Next macOS release — the short checklist
 
-What v1.9.0 did, in order; repeat it for the next version.
+What v1.9.0 and v1.9.3 did, in order; repeat it for the next version.
 
 1. Bump the version (`core/__init__.py`, `pyproject.toml`, both `.iss`, README badge, CHANGELOG) and push.
 2. **arm64 (Apple silicon):** `gh workflow run macos-app.yml --ref master`, wait until both jobs are green,
    then `gh run download <run-id> -n macos-dmg-arm64`. In the job log, note `[mac-spec] highest bundled minos`
    (14.0 for v1.9.0) for the release notes. The job has already smoke-tested the app on real Apple silicon.
 3. **x64 (Intel):** build on the oldest macOS you can (the 10.15 VM gave a 10.15+ app; the CI Intel build
-   needs macOS 14 because pip picks newer wheels there): run the TL;DR pipeline above with
-   `WTS_MACOS_MIN=10.15` (see the 10.15 onnxruntime note), then `verify_mac_bundle.sh` and
-   `smoke_test_app.sh` must both pass. If no old Mac is available, the CI x64 dmg is acceptable. It needs macOS 14.
+   needs macOS 14 because pip picks newer wheels there): from a fresh clone run
+   `WTS_MACOS_MIN=10.15 bash platform/macos/build_mac.sh` in a logged-in desktop session (it runs
+   `verify_mac_bundle.sh` and `smoke_test_app.sh`; both must pass). If no old Mac is available, the CI x64 dmg is acceptable. It needs macOS 14.
 4. Check `sha256sum -c` for each `.dmg.sha256` and create the release with the dmgs + `.sha256` files and
    `docs/release-notes/RELEASE_NOTES_vX.Y.Z.md`. **New tag every time, even for a mac-only fix** — see
    CLAUDE.md "Never `--clobber` an existing release asset": never `delete-asset` + `upload` mac dmgs onto
    an already-published tag to avoid a new release page. Cut vX.Y.(Z+1) instead, even same-day, even if
    only macOS changed. If the Windows assets aren't uploaded yet, use
    `--latest=false` (README's "Download for Windows" points at `releases/latest`). Mark it Latest with
-   `gh release edit vX.Y.Z --latest` once they are.
+   `gh release edit vX.Y.Z --latest` once they are. If the version's release already exists (Windows
+   files first), `gh release upload` the four mac files into it — without `--clobber`, never over a
+   file that is already there.
 5. Test the Terminal one-liner from the release notes against the published release. It downloads with
-   `curl`, so there's no quarantine flag and no Gatekeeper dialog. Verified for v1.9.0 x64 on 10.15.
+   `curl`, so there's no quarantine flag and no Gatekeeper dialog. Verified for v1.9.0 and v1.9.3 x64 on 10.15. The one-liner picks x64 on
+   Apple-silicon Macs below the arm64 dmg's floor (macOS 14), where it runs through Rosetta.
 6. Never commit from a VM/sandbox clone without first setting the repo identity
    (`Milomilo777 <117558067+Milomilo777@users.noreply.github.com>`). Don't commit machine user names,
    home paths (`/Users/<name>`), or screenshots that show them.
@@ -76,7 +79,7 @@ PATH**, launches the GUI through LaunchServices, and checks the bundled yt-dlp.
 ## Minimum macOS — what actually decides it
 
 The .app's real floor is `max(minos)` over every Mach-O inside it
-(`verify_mac_bundle.sh` → "highest minos"). As of v1.9.0:
+(`verify_mac_bundle.sh` → "highest minos"). As of v1.9.0 (v1.9.3 in the notes below the table):
 
 | Build | Where built | Highest minos found | Tested on |
 |---|---|---|---|
@@ -84,7 +87,15 @@ The .app's real floor is `max(minos)` over every Mach-O inside it
 | arm64 (release) | GitHub `macos-15` runner | **14.0** — PyAV 18.1.0's bundled ffmpeg libs (`libavcodec.62…`, `libSvtAv1Enc…`) and `tkinterdnd2/tkdnd/osx-arm64/libtkdnd2.10.2.dylib` | smoke test on real Apple silicon (WAV + MP4 transcription, GUI launch) |
 | x64 via CI (not released) | GitHub `macos-15-intel` runner | **14.0** — numpy 2.5.3's `macosx_14_0_x86_64` (Accelerate) wheel | smoke test on real Intel hardware |
 
-Every Apple-silicon Mac can run macOS 14, so 14.0 is acceptable for arm64. To lower a build's floor, pin the
+**v1.9.3:** x64 highest minos 12.0 (protobuf `_message.abi3.so` and the bundled
+`deno` 2.9.7, which runs on 10.15 — real YouTube download through it verified);
+LSMinimumSystemVersion 10.15. arm64 unchanged at 14.0 (same PyAV libs + tkdnd).
+The mac spec now caps the computed value at the build Mac's own macOS for a
+native build (pip only installs wheels for that macOS; the smoke test then runs
+the app there), so a 10.15 build no longer needs `WTS_MACOS_MIN` to open on 10.15.
+
+Every Apple-silicon Mac can run macOS 14, so 14.0 is acceptable for arm64 (the
+release one-liner sends Apple-silicon Macs still on 11–13 to the x64 dmg). To lower a build's floor, pin the
 packages the spec names in `[mac-spec] highest bundled minos` in `constraints-macos.txt` (e.g. `av` to a release whose
 arm64 wheel is tagged `macosx_11_0`, numpy to a non-Accelerate wheel) and re-check the printed value. The Intel
 release is built on the old macOS VM instead, where pip can only pick ≤10.15-compatible wheels.
@@ -131,6 +142,14 @@ Only a paid Apple Developer ID + notarization removes the warning.
 
 ## Hermetic test suite on macOS (2026-09-23, 10.15, python.org 3.12.10)
 
+**2026-09-27 (v1.9.3, same machine):** 206 files, one per process →
+**2759 passed, 0 failed, 7 skipped, 0 hung.** The earlier failures/hangs are
+fixed; the run found three new test-side issues (fake-CUDA tests hitting the
+macOS short-circuit, a non-hermetic end-to-end test) and one real one (the
+model-loading dialog was placed as if 1×1 px), all fixed.
+
+Earlier run:
+
 2580 collected → **2565 passed, 5 failed, 7 skipped, 3 hung** (run one file per process; see the report).
 Hangs block the whole suite (Tk's Cocoa event loop never returns to Python, so neither
 `--timeout-method=thread` nor `signal` can recover), so run files separately on macOS.
@@ -138,8 +157,8 @@ Hangs block the whole suite (Tk's Cocoa event loop never returns to Python, so n
 ## Open issues found (app/test code — not fixed by the packaging work)
 
 **Owner decision (2026-09-23): fix all of these in the next build round.**
-**Status 2026-09-24:** 1-8 fixed in code (not in a Mac build yet; see "Pending
-for the next Mac build" below).
+**Status 2026-09-24:** 1-8 fixed in code. **2026-09-27:** all eight verified in
+the v1.9.3 Mac build (see below).
 
 1. `gui.py` should call `multiprocessing.freeze_support()` first thing in `main()` (the runtime hook is a stop-gap).
 2. `tests/core/test_advanced_simplified.py::test_gcloud_autotest_only_runs_when_google_cloud_is_picked` hangs forever in `dlg.update()` on macOS Tk.
@@ -152,67 +171,60 @@ for the next Mac build" below).
    **Fixed in code 2026-09-24** (`core/js_runtime.py`): one-click Deno install into the user cache, or a
    `bin/deno` bundled next to yt-dlp is used automatically — see "Pending" below.
 
-## Pending for the next Mac build — changes made since v1.9.1 (not built for Mac yet)
+## v1.9.3 Mac build (2026-09-27) — what was verified, what is still open
 
-- **GPU autodetect fix (issue #7, 2026-09-24).** `core/hardware.py` now uses
-  CTranslate2's real `get_cuda_device_count()` and gained `cuda_status()`,
-  CUDA-library discovery, a GPU warm-up pass and a diagnostics report.
-  On macOS `cuda_status()` returns "NVIDIA CUDA is not available on macOS"
-  before touching any CUDA library, so the Mac app behaves as before. No new
-  module (only stdlib `glob`/`re` imports), so the PyInstaller spec needs no
-  change. Check on the Mac build: Advanced → Re-detect hardware lists only the
-  CPU tier (no "needs setup" row, no "Install GPU support" button), and
-  "Copy diagnostics" works and says CUDA is not available on macOS.
-- **Open issues 1-7 above, fixed in code 2026-09-24:** `gui.main()` calls
-  `multiprocessing.freeze_support()` first (keep `rthook_mp_helpers.py`; check
-  that the resource-tracker warning is gone); the hanging / non-hermetic /
-  macOS-failing tests were fixed test-side (run the per-file suite on the Mac
-  to confirm); the download prompt shows the model's real size; the CLI has
-  `--model` and downloads a missing model; "Engine: Checking…" falls back
-  after 15 s (on 10.15 check whether the deep probe itself still hangs — the
-  log line "Engine readiness probe ... did not answer" says so).
-- **New in the UI, cross-platform:** "Log-in cookies" in the Download tab
-  (now offers Safari on macOS — test it with a logged-in Safari: macOS asks
-  for Full Disk Access to read Safari's cookies), "Best for this PC…" next to
-  the model picker (on a Mac it always advises for the CPU). The new modules
-  `app.domain.cookies` and `app.dialogs.model_advisor` are already listed in
-  `whisper_project_mac.spec`.
+Built from master `c42472d` (version 1.9.3): x64 on the macOS 10.15.7 VM with
+`WTS_MACOS_MIN=10.15 bash platform/macos/build_mac.sh` from a fresh clone
+(~8 min on the VM, PyInstaller ~4 min; 321 MB dmg); arm64 by
+`macos-app.yml` (both CI jobs green, smoke test on Apple silicon; its live
+YouTube leg is bot-blocked on CI runners as before).
 
-- **Deno for YouTube (issue 8, 2026-09-24).** New module `core.js_runtime`
-  (already in `whisper_project_mac.spec`). The Download tab shows **Install
-  YouTube helper** for a YouTube link when no Deno is found; it downloads
-  `deno-aarch64-apple-darwin.zip` / `deno-x86_64-apple-darwin.zip` from
-  github.com/denoland/deno, verifies the `.sha256sum`, and unpacks it into
-  `~/Library/Caches/WhisperTranscriberSuite/tools/deno/`. Check on the Mac
-  build: the button appears, the install works, the unpacked `deno` runs
-  (quarantine: it is fetched with `requests`, so it should carry no
-  quarantine flag — verify), and a real YouTube download then works. Option
-  for the build: put a `deno` binary into the bundle's `bin/` next to
-  yt-dlp (`find_deno` checks `bundled_binary("deno")` first; it would also
-  need the `Contents/Frameworks/bin` → `Contents/MacOS/bin` symlink the spec
-  already makes for yt-dlp). The app passes `--js-runtimes` only to a
-  yt-dlp ≥ 2025.11.12 — the bundled yt-dlp must be at least that.
-- **stable-ts is no longer in `requirements.txt` (2026-09-24).** It pulled
-  torch + CUDA (~5 GB on Linux/Windows). Effects on macOS: `install.command`
-  no longer installs it on arm64 either (its optional-package loop finds
-  nothing), and a build venv made from `requirements.txt` will not contain
-  it, so the specs' `collect_all('stable_whisper')` silently bundles
-  nothing. Decide before the next Mac build: `pip install stable-ts` into
-  the build venv explicitly if word alignment should ship inside the
-  `.app`, or leave it out (the on-demand install then has to work from the
-  frozen app — test it).
-- **Settings and window layout (2026-09-24).** Google Cloud / Gemini
-  sections are collapsed, VAD sliders behind "Fine-tune", the window is
-  sized to the screen and tall tabs scroll (`app/widgets/tabs.py
-  fit_or_scroll`; mouse-wheel via `<MouseWheel>` deltas — on macOS the
-  delta is ±1 per notch, check scrolling feels right on a trackpad and a
-  mouse). Check on a 13" MacBook screen that Settings' Save button is
-  visible and nothing is clipped.
-- **Review fixes (2026-09-24), all cross-platform:** the GPU→CPU fallback
-  frees the failed model first (no effect on Mac: no CUDA); the CPU
-  warning's GPU check runs off the UI thread; the CLI downloads a model
-  only for the faster-whisper engine; Saving Settings no longer overwrites
-  a cookie pick made in the Download tab.
+Verified on 10.15.7 (source run, then the installed .app, then the release
+one-liner):
+
+- **Hardware (#7):** `python -m core.hardware` → "NVIDIA CUDA is not available
+  on macOS"; Advanced → Re-detect hardware lists only the CPU tier, no
+  "Install GPU support"; "Copy diagnostics" copies the report.
+- **Deno / YouTube (#8):** from source with no Deno the Download tab shows
+  **Install YouTube helper**; it installs deno 2.9.7 into
+  `~/Library/Caches/WhisperTranscriberSuite/tools/deno/` with no quarantine
+  xattr and a real YouTube download works. The .app now bundles `deno`
+  next to yt-dlp (`Contents/MacOS/bin`), so the button no longer appears there.
+  A `watch?v=X&list=Y` link downloads one video.
+- **Log-in cookies:** Safari (9 cookies) and Firefox 156 (8 cookies, Firefox
+  open) extract fine; a download with Firefox selected works. No Full Disk
+  Access prompt for Safari on 10.15 (newer macOS may ask).
+- **CLI:** `transcribe --model tiny <file>` on a fresh profile downloads the
+  model and transcribes (source and frozen app); a video with no audio track
+  says "has no audio track". "Engine: Checking…" resolves to Ready / "Model
+  not downloaded yet" right away (no 15 s fallback needed).
+- **Layout (1280×800):** main window fits with all tabs; Settings'
+  Save/Cancel is visible (it was under the Dock — fixed); Fine-tune
+  opens/closes; Download and Live tabs scroll.
+- **stable-ts:** not bundled (torch's libiomp5 vs ctranslate2's on Intel, see
+  the source-install section). The frozen app cannot pip-install anything
+  (`sys.executable` is the app), so it now skips the 700 MB offer and says the
+  feature needs a source install.
+
+Fixed during this round (all on master): model-loading dialog centring,
+Advanced dialog under the Dock, frozen-app on-demand installs, status lines
+not refreshing after a model download, yt-dlp version/format-probe timeouts
+(the onefile `yt-dlp_macos` needs ~26 s just to start on the VM), Deno
+bundling, and the spec's own checks (tools auto-fetched, Tk 8.6 required,
+minimum macOS capped at the build host).
+
+Still open:
+
+- **Apple silicon on macOS 12/13:** the arm64 dmg needs macOS 14 (PyAV ffmpeg
+  libs, tkdnd). The one-liner sends those Macs to the x64 dmg (Rosetta);
+  lowering the arm64 floor would mean pinning `av` / `tkinterdnd2` / numpy to
+  older-tagged wheels on CI.
+- **First YouTube lookup is slow on old Macs** (~1 min on the VM: yt-dlp
+  version check + probe, each unpacking the onefile yt-dlp). Bundling the
+  onedir `yt-dlp_macos.zip` instead would cut that.
+- Not tested: a real Apple-silicon Mac by hand (CI smoke only), Chrome/Brave
+  cookies (no longer installable on 10.15), a trackpad's scroll feel,
+  microphone/Live on the VM.
 
 ## Next steps worth doing
 

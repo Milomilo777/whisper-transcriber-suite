@@ -9,12 +9,10 @@ long list of fixes for Windows, macOS and Linux. (There is no v1.9.2.)
 |---|---|---|
 | [**WhisperTranscriberSuite-Installer-Windows-v1.9.3.exe**](https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-Installer-Windows-v1.9.3.exe) | **Windows — most people.** Normal installer; upgrades an older version in place. | 234 MB |
 | [**WhisperTranscriberSuite-Portable-Windows-v1.9.3.zip**](https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-Portable-Windows-v1.9.3.zip) | Windows — unzip and run, no installation or admin rights. | 354 MB |
-<!-- MAC_ROWS -->
+| [WhisperTranscriberSuite-v1.9.3-macOS-arm64.dmg](https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-v1.9.3-macOS-arm64.dmg) | Mac with Apple silicon (M1/M2/M3/M4…), macOS 14+ (on macOS 11–13 use the Intel file; it runs through Rosetta) | 246 MB |
+| [WhisperTranscriberSuite-v1.9.3-macOS-x64.dmg](https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-v1.9.3-macOS-x64.dmg) | Intel Mac, macOS 10.15+ | 306 MB |
 
-<!-- MAC_PENDING -->
-**macOS:** the Mac builds are being tested on a real Mac and will be added to
-this page shortly.
-<!-- /MAC_PENDING -->
+Mac install steps — including the one-line Terminal install — are below.
 
 **Linux** — one line in a terminal (Debian / Ubuntu; installs from source into
 `~/whisper-transcriber-suite`, no admin rights needed after the first `apt`):
@@ -37,8 +35,8 @@ Arch: `sudo pacman -S --needed git tk`. Update later with
   **Copy diagnostics** for a bug report. A GPU that fails on first use falls
   back to the CPU instead of failing the transcription.
 - **YouTube works without extra setup (#8).** yt-dlp now gets the JavaScript
-  runtime YouTube requires (Deno). The Windows downloads include it; elsewhere
-  the Download tab offers a one-click, checksum-verified **Install YouTube
+  runtime YouTube requires (Deno). The Windows and Mac downloads include it; on
+  Linux the Download tab offers a one-click, checksum-verified **Install YouTube
   helper**.
 - **"Log-in cookies" in the Download tab** for sites that need you to be
   logged in (Instagram, Facebook, …). On Windows, Chrome/Edge/Brave cookies
@@ -59,7 +57,36 @@ Arch: `sudo pacman -S --needed git tk`. Update later with
   failing with "model not loaded".
 - Full list: [CHANGELOG](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md#193--2026-09-27).
 
-<!-- MAC_INSTALL -->
+## Installing on a Mac (the app is free but not signed by Apple)
+
+**Easiest — one line in Terminal, no security warning at all** (files
+downloaded by `curl` are not quarantined). It picks the right file for your
+Mac; an Apple-silicon Mac older than macOS 14 gets the Intel version, which
+runs through Rosetta:
+
+```bash
+A=x64; [ "$(uname -m)" = arm64 ] && [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 14 ] && A=arm64; curl -fL -o /tmp/wts.dmg "https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-v1.9.3-macOS-$A.dmg" && hdiutil attach -nobrowse -quiet -mountpoint /tmp/wts-dmg /tmp/wts.dmg && cp -R "/tmp/wts-dmg/Whisper Transcriber Suite.app" /Applications/ && hdiutil detach -quiet /tmp/wts-dmg && rm /tmp/wts.dmg && open "/Applications/Whisper Transcriber Suite.app"
+```
+
+**Or the usual way:** open the `.dmg`, drag *Whisper Transcriber Suite*
+into *Applications*. The first time you open it macOS says it "can't be
+opened because Apple cannot check it for malicious software". Then:
+
+- **macOS 14 and older:** right-click (or Control-click) the app →
+  **Open** → **Open**. Only needed once.
+- **macOS 15 and newer:** click *Done*, then System Settings → Privacy &
+  Security → scroll down → **Open Anyway**.
+- Or in Terminal:
+  `xattr -dr com.apple.quarantine "/Applications/Whisper Transcriber Suite.app"`
+
+First launch asks where to keep the speech models (large files; the
+default is fine). The model you pick downloads once, the first time you
+transcribe.
+
+**Mac notes for this version:** YouTube works out of the box (the Deno
+helper is inside the app). "Log-in cookies" works with Safari and Firefox.
+Word-timing refinement (stable-ts) is not part of the Mac app — it needs a
+source install ([platform/macos/README.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/platform/macos/README.md)).
 
 ## Help make it better
 
@@ -75,4 +102,6 @@ is how other people find it.
 ```
 d30510965bce72096cff402ca7d6407ab4580763528ff0b8b84b734a1fde5690  WhisperTranscriberSuite-Installer-Windows-v1.9.3.exe
 9f41e63864c64bb13aa401ccca5e92765460b85b343b2198b1b8eeeba6765dcf  WhisperTranscriberSuite-Portable-Windows-v1.9.3.zip
+57a126de8ec2ebf2fb1f694526a15f907b7c9d5d4df3e8f79324caf71bfe916d  WhisperTranscriberSuite-v1.9.3-macOS-arm64.dmg
+22174d3e67ab38374828926c3a4b78104013dfc576bab35efa8428f144bcb7a9  WhisperTranscriberSuite-v1.9.3-macOS-x64.dmg
 ```
