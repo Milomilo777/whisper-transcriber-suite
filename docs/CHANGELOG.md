@@ -11,6 +11,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Advanced settings: Save/Cancel could sit under the macOS Dock** on a
   1280x800 screen. The dialog now fits above the Dock and keeps the button
   row visible when the window is short.
+- **macOS app: word-timing refinement (stable-ts) offered a 700 MB download
+  that could not work** in the packaged app (it has no pip). The app now
+  says the feature needs a source install and continues without it.
 
 ## [1.9.3] — 2026-09-27
 

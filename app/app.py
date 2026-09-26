@@ -2676,6 +2676,10 @@ class App(tk.Tk):
         import core.optional_deps as optional_deps
         if optional_deps.is_available(feature):
             return True
+        if not optional_deps.can_install():
+            self.log(f"{friendly}: not included in this app -- continuing without it. "
+                     + optional_deps.FROZEN_INSTALL_MESSAGE)
+            return False
         if not messagebox.askyesno(
             f"{friendly} needs a download",
             f"{friendly} needs a one-time download of about {size_hint} "

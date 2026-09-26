@@ -122,6 +122,19 @@ def activate() -> None:
         sys.path.append(d)
 
 
+def can_install() -> bool:
+    """False in a PyInstaller build (the macOS .app): there sys.executable is
+    the app itself, not a Python with pip, so ``<app> -m pip`` cannot run.
+    The Windows builds ship a real embedded Python and are not frozen."""
+    return not getattr(sys, "frozen", False)
+
+
+FROZEN_INSTALL_MESSAGE = (
+    "This app build cannot download extra Python packages. The feature "
+    "works in a source install (see platform/macos/README.md)."
+)
+
+
 def packages_for(feature: str) -> list[str]:
     return list(FEATURES.get(feature, ("", []))[1])
 
@@ -165,6 +178,10 @@ def install(
     """
     pkgs = packages_for(feature)
     if not pkgs:
+        return False
+    if not can_install():
+        if log_cb is not None:
+            log_cb(FROZEN_INSTALL_MESSAGE)
         return False
     with _install_lock:
         # A concurrent caller may have installed it while we waited on

@@ -95,3 +95,21 @@ def test_install_timeout_aborts(monkeypatch, tmp_path):
     # pass a tiny positive value to exercise the timeout branch.)
     ok = optional_deps.install("alignment", timeout=0.01)
     assert ok is False
+
+
+def test_install_refuses_in_a_frozen_app_without_running_pip(monkeypatch):
+    """A PyInstaller .app has no pip: sys.executable is the app itself."""
+    import sys
+
+    from core import optional_deps
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+
+    def _no_popen(*_a, **_k):
+        raise AssertionError("pip must not be started in a frozen app")
+
+    monkeypatch.setattr(optional_deps.subprocess, "Popen", _no_popen)
+    logged: list[str] = []
+    assert optional_deps.can_install() is False
+    assert optional_deps.install("alignment", log_cb=logged.append) is False
+    assert logged == [optional_deps.FROZEN_INSTALL_MESSAGE]
