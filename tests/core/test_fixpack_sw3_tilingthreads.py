@@ -17,7 +17,7 @@ import threading
 
 import pytest
 
-from core import tiling
+from core import js_runtime, tiling
 
 
 class _FakeStdin:
@@ -67,6 +67,10 @@ def _patch_common(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(tiling.os.path, "isfile", lambda _p: True)
     monkeypatch.setattr(tiling, "kill_process_tree", lambda *_a, **_k: None)
     monkeypatch.setattr(tiling, "new_session_kwargs", lambda: {})
+    # _yt_dlp_argv asks for Deno + the yt-dlp version; with a yt-dlp on PATH
+    # that runs `yt-dlp --version` through the patched Popen below and eats
+    # its first fake process.
+    monkeypatch.setattr(js_runtime, "yt_dlp_js_args", lambda *_a, **_k: [])
 
 
 def test_start_launch_failure_does_not_leak_consumer_threads(
