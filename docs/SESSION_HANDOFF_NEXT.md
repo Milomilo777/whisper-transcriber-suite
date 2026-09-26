@@ -5,6 +5,28 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-27 (local Windows session) — checks from the cloud list
+
+Machine: Windows 10, Intel HD 530 (no NVIDIA), Python 3.14.4, 2560×1440.
+
+- pyright 0/0/0 on `app/` + `core/`; full hermetic suite green on Windows / 3.14
+  (Tk included — covers item 8 for 3.14).
+- One test was environment-dependent (tiling launch-failure test consumed its
+  fake Popen via `yt-dlp --version` when yt-dlp is on PATH) — fixed test-side.
+- **#7 GPU:** only the no-NVIDIA half checked: `python -m core.hardware` reports
+  "No NVIDIA CUDA GPU was found", no crash. Real NVIDIA test still open.
+- **#8 YouTube:** real `install_deno()` (deno 2.9.7 into the user cache), real
+  YouTube download with bundled `bin\yt-dlp.exe` 2026.08.19 + `--js-runtimes` works.
+- **Cookies, real browsers:** Brave open → "Could not copy … cookie database";
+  Chrome and Edge → "Failed to decrypt with DPAPI"; Firefox works. Both errors hit
+  the retry path. The final error for DPAPI now points at Firefox (closing the
+  browser does not help there). Instagram/Facebook login wall not tested.
+- **Mic:** real Yeti mic records via sounddevice. Live tab itself not driven.
+- App starts from source without errors. 125–150 % DPI not tested (needs a
+  scaling change on the owner's screen).
+- README "Contributing" now opens with an invitation to report bugs, share ideas
+  and star the repo (owner request).
+
 ## 🟢 2026-09-24 (cloud session, part 2) — #8 Deno, simpler Settings, laptop fit, review fixes; merged to master
 
 **Where:** everything from both cloud-session entries (this one and the one
