@@ -80,6 +80,16 @@ def test_build_download_command_audio_only_uses_x_flag():
     assert "--merge-output-format" not in cmd
 
 
+@pytest.mark.parametrize("mode", ["Audio", "Audio and video"])
+def test_build_download_command_downloads_one_video_not_the_playlist(mode):
+    # A watch?v=X&list=Y link (copied from inside a playlist) expanded to the
+    # whole list without this -- checked against a real YouTube playlist.
+    task = _task(url="https://www.youtube.com/watch?v=abc&list=PLx", mode=mode)
+    cmd = build_download_command(task, yt_dlp_path="ytdlp", bin_path="bin")
+    assert "--no-playlist" in cmd
+    assert cmd.index("--no-playlist") < cmd.index("--")
+
+
 def test_build_download_command_audio_only_specific_format_id():
     task = _task(mode="Audio", output="m4a", audio_kind="specific", audio_id="251")
     cmd = build_download_command(task, yt_dlp_path="ytdlp", bin_path="bin")

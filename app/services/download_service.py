@@ -454,6 +454,9 @@ def build_download_command(
     # from zero. yt-dlp continues by default for plain downloads, but being
     # explicit also covers the modes where it would otherwise overwrite.
     command += ["--newline", "-c", "-o", output]
+    # One video per task, like the format lookup: a link copied from inside
+    # a playlist (watch?v=X&list=Y) would otherwise download the whole list.
+    command.append("--no-playlist")
     # Deno for YouTube's JS challenges (core.js_runtime); [] when absent.
     command.extend(js_runtime_args or [])
     command.extend(_cookies_from_browser_args(cookies_from_browser))
