@@ -8,6 +8,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **macOS: the "Loading the Whisper model" dialog was off-centre** (placed
   by its top-left corner). It now uses the dialog's requested size.
+- **Advanced settings: Save/Cancel could sit under the macOS Dock** on a
+  1280x800 screen. The dialog now fits above the Dock and keeps the button
+  row visible when the window is short.
 
 ## [1.9.3] — 2026-09-27
 

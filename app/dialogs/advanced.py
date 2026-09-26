@@ -328,12 +328,17 @@ class AdvancedDialog(tk.Toplevel):
         width = max(width, 1100)
         height = max(height, 800)
 
-        # Never exceed screen bounds
+        # Never exceed screen bounds. On macOS the screen height still counts
+        # the menu bar and the Dock, and the title bar comes on top of the
+        # requested height -- with only 80 px spare, Save/Cancel ended up
+        # under the Dock on a 1280x800 screen.
         width = min(width, screen_w - 80)
-        height = min(height, screen_h - 80)
+        height = min(height, screen_h - (140 if sys.platform == "darwin" else 80))
 
         x = (screen_w - width) // 2
         y = (screen_h - height) // 2
+        if sys.platform == "darwin":
+            y = min(y, 30)  # just below the menu bar, clear of the Dock
 
         self.geometry(f"{width}x{height}+{x}+{y}")
         # resizable(True, True) above with no floor meant a user could drag
@@ -498,7 +503,9 @@ class AdvancedDialog(tk.Toplevel):
         self._sync_engine_sections()
 
         buttons = ttk.Frame(main)
-        buttons.pack(fill="x", pady=(8, 0))
+        # Packed at the bottom before the scroll area, so a short window
+        # squeezes the scrolling content, never the Save/Cancel row.
+        buttons.pack(side="bottom", fill="x", pady=(8, 0), before=content_container)
         ttk.Button(buttons, text="Cancel", command=self._on_close).pack(side="right", padx=(8, 0))
         ttk.Button(buttons, text="Save", command=self._save_and_close).pack(side="right")
         ttk.Button(
