@@ -5,6 +5,22 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-27 — v1.9.3 released (Windows); macOS dmgs added by a separate session
+
+- Tag `v1.9.3` = f7ec9b5 (no v1.9.2 exists). Windows installer (234 MB) +
+  Portable (354 MB) built with `build_embed_installer.bat`, which now puts a
+  checksum-verified `bin\deno.exe` in the bundle. Portable checked from a clean
+  folder: CLI transcription, YouTube download via the bundled Deno, playlist
+  link → one video, GUI starts. Published assets re-downloaded, SHA-256 match.
+- Release notes (`docs/release-notes/RELEASE_NOTES_v1.9.3.md`) carry
+  `MAC_ROWS` / `MAC_PENDING` / `MAC_INSTALL` placeholders; the macOS session
+  fills them when it uploads the two dmgs (new files only, no `--clobber`).
+- Linux: one-line install (Debian/Ubuntu) in the release notes; not re-tested
+  on Linux this round (no Linux machine here); install.sh itself was tested on
+  2026-09-24.
+- Not tested: the installer itself (installing would replace the local install);
+  NVIDIA GPU path (no NVIDIA card here).
+
 ## 🟢 2026-09-27 (local Windows session) — checks from the cloud list
 
 Machine: Windows 10, Intel HD 530 (no NVIDIA), Python 3.14.4, 2560×1440.
