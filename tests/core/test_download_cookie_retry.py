@@ -169,6 +169,22 @@ def test_media_phase_reports_actionable_error_when_retry_also_fails(monkeypatch)
     assert len(error_events) == 1
     msg = error_events[0][2].lower()
     assert "logged-in session" in msg and "cookie" in msg
+    assert "log-in cookies" in msg
+
+
+def test_media_phase_points_at_firefox_when_cookies_are_dpapi_encrypted(monkeypatch):
+    # Real yt-dlp 2026.08.19 output for Chrome / Edge on Windows: closing the
+    # browser does not help, so the message must not say it would.
+    app = _app("chrome")
+    _fake_popen_factory(monkeypatch, [
+        (["ERROR: Failed to decrypt with DPAPI. See  https://github.com/yt-dlp/yt-dlp/issues/10927  for more info"], 1),
+        (["ERROR: Private video. Sign in if you've been granted access to this video"], 1),
+    ])
+    DownloadService(app)._media_phase(_task())
+
+    msg = [e for e in _drain(app) if e[0] == "error"][0][2].lower()
+    assert "firefox" in msg
+    assert "fully close" not in msg
 
 
 def test_media_phase_stays_silent_when_superseded_during_the_retry(monkeypatch):

@@ -2020,6 +2020,7 @@ class DownloadService:
         # longer breaking every other download whenever the browser happens
         # to be open.
         retried_without_cookies = False
+        cookie_jar_encrypted = False
         if (
             return_code
             and not task.cancelled
@@ -2028,6 +2029,10 @@ class DownloadService:
             and _is_cookie_extraction_error(last_error_line or last_line)
         ):
             retried_without_cookies = True
+            # Chrome / Edge / Brave on Windows encrypt cookies so only the
+            # browser itself can read them ("Failed to decrypt with DPAPI");
+            # closing the browser does not help there, unlike a locked file.
+            cookie_jar_encrypted = "dpapi" in (last_error_line or last_line).lower()
             app.download_events.put((
                 "log", task,
                 "--- Could not read cookies from your browser (close it fully "
@@ -2071,12 +2076,20 @@ class DownloadService:
             low = reason.lower()
             if mentions_missing_js_runtime(reason):
                 msg += "  — " + missing_js_runtime_hint(app.yt_dlp_path())
+            elif retried_without_cookies and cookie_jar_encrypted:
+                msg += (
+                    "  — this browser's cookies cannot be read (Chrome, Edge "
+                    "and Brave on Windows encrypt them for the browser only), "
+                    "and the download failed without them too. Log in to the "
+                    "site in Firefox, pick Firefox under 'Log-in cookies' "
+                    "(Download tab) and retry."
+                )
             elif retried_without_cookies:
                 msg += (
                     "  — could not read cookies from your browser, and the "
                     "download failed again without them too: this video "
                     "most likely needs a logged-in session. Fully close the "
-                    "browser configured under 'Cookies from browser' and "
+                    "browser picked under 'Log-in cookies' (Download tab) and "
                     "retry so yt-dlp can read its cookie jar, or the video "
                     "may simply be private."
                 )
