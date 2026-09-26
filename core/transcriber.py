@@ -532,6 +532,35 @@ def get_duration(path: str) -> float:
     return duration if duration > 0 else 0.0
 
 
+def require_audio_stream(path: str) -> None:
+    """Raise a readable error when ``path`` has no audio track.
+
+    A video-only file (screen recording without sound, a GIF-like MP4)
+    passes ``get_duration`` but makes PyAV fail inside faster-whisper with a
+    bare "tuple index out of range". Any other ffprobe problem is left to the
+    decoder, which reports it itself.
+    """
+    kwargs: dict[str, Any] = {
+        "capture_output": True, "text": True, "encoding": "utf-8",
+        "errors": "replace", "timeout": 60,
+    }
+    if os.name == "nt":
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    try:
+        r = subprocess.run(
+            [bundled_binary("ffprobe"), "-v", "error", "-select_streams", "a",
+             "-show_entries", "stream=index", "-of", "csv=p=0", path],
+            **kwargs,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return
+    if r.returncode == 0 and not r.stdout.strip():
+        raise RuntimeError(
+            f"{os.path.basename(path)} has no audio track, so there is "
+            "nothing to transcribe."
+        )
+
+
 def fmt(sec: float) -> str:
     h = int(sec // 3600)
     m = int((sec % 3600) // 60)
@@ -1800,6 +1829,7 @@ def transcribe(
                 audio_path = task.file_path
 
         duration = get_duration(audio_path)
+        require_audio_stream(audio_path)
         start = time.time()
         log(f"Processing: {audio_path}", log_cb)
 
@@ -2073,6 +2103,7 @@ def _transcribe_via_alt_backend(
             audio_path = task.file_path
 
     duration = get_duration(audio_path)
+    require_audio_stream(audio_path)
     start = time.time()
     log(f"Processing ({backend_name}): {task.file_path}", log_cb)
 
