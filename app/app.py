@@ -2657,6 +2657,11 @@ class App(tk.Tk):
             # ``ensure_worker_ready``, which puts up its own modal.
             # Just log that the bytes are ready.
             self.log("Model downloaded.")
+            # The Transcribe tab's "Model not downloaded yet" / "Downloads
+            # automatically on first use" lines were computed before the
+            # download; recompute them now.
+            self._refresh_model_status()
+            self._refresh_engine_status()
             return True
         self.model_ready = False
         self.status_var.set("Model is required")

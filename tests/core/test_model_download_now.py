@@ -52,3 +52,27 @@ def test_ensure_model_with_modal_still_short_circuits_when_ready() -> None:
     )
     assert app_module.App.ensure_model_with_modal(fake) is True  # type: ignore[arg-type]
     assert opened["count"] == 0  # short-circuited, modal never opened
+
+
+def test_successful_download_refreshes_the_status_lines(monkeypatch) -> None:
+    """After the first-use download the Transcribe tab must stop saying
+    "Model not downloaded yet" (it kept the stale text until a restart)."""
+    from app import app as app_module
+
+    class _Dialog:
+        success = True
+
+        def __init__(self, _parent) -> None:
+            pass
+
+    monkeypatch.setattr(app_module, "ModelDownloadDialog", _Dialog)
+    calls: list[str] = []
+    fake = types.SimpleNamespace(
+        model_setup_running=False,
+        wait_window=lambda _d: None,
+        log=lambda _m: None,
+        _refresh_model_status=lambda: calls.append("model"),
+        _refresh_engine_status=lambda: calls.append("engine"),
+    )
+    assert app_module.App._open_model_download_modal(fake) is True  # type: ignore[arg-type]
+    assert calls == ["model", "engine"]

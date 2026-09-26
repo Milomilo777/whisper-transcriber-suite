@@ -14,6 +14,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **macOS app: word-timing refinement (stable-ts) offered a 700 MB download
   that could not work** in the packaged app (it has no pip). The app now
   says the feature needs a source install and continues without it.
+- **"Model not downloaded yet" stayed on the Transcribe tab** after the
+  model downloaded on first use. The engine and model lines now refresh.
 
 ## [1.9.3] — 2026-09-27
 
