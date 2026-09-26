@@ -49,9 +49,8 @@ changes.
 
 ## Unshipped / optional pipelines
 
-These two specs are Windows builds. Run on macOS, either one builds the
-macOS spec (`platform/macos/pyinstaller/whisper_project_mac.spec`)
-instead, because a Windows-style tree cannot become a working `.app`.
+These two specs are Windows builds only; macOS uses
+`platform/macos/build_mac.sh` (see Step 4b).
 
 ```cmd
 :: Method A — Portable single-file exe (~447 MB; NOT the shipped "Portable" — unpublished)
