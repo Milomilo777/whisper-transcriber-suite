@@ -13,6 +13,20 @@ no Terminal, no venv** on their side.
 
 ## Build steps (on a Mac)
 
+**One command** (does every step below, including the checks and the
+release-named `.dmg` + `.sha256`):
+
+```bash
+bash platform/macos/build_mac.sh            # --no-smoke to skip the smoke test
+```
+
+`pyinstaller whisper_project_onedir.spec` (or `…onefile.spec`) from the repo
+root also works on a Mac: those Windows specs hand over to
+`whisper_project_mac.spec`. The spec itself fetches missing/unsuitable tools
+into `bin/` and stops early on a Python without Tk 8.6.
+
+The steps by hand:
+
 ```bash
 # 0. (optional) make an icon:  generate assets/whisper.icns from whisper.png
 #    e.g.  sips -s format icns assets/whisper.png --out assets/whisper.icns
@@ -20,16 +34,19 @@ no Terminal, no venv** on their side.
 # 1. SELF-CONTAINED ffmpeg/ffprobe/ffplay + yt-dlp into ./bin (verified: no
 #    non-system dylibs). Do NOT copy Homebrew's ffmpeg — it links ~18
 #    Homebrew dylibs that PyInstaller does not bundle.
-bash platform/macos/pyinstaller/fetch_mac_binaries.sh          # host arch
+bash platform/macos/pyinstaller/fetch_mac_binaries.sh          # host arch; also deno
 
-# 2. deps + PyInstaller (python.org Python 3.12). --prefer-binary matters on
-#    Intel: several deps' newest release is sdist-only there.
-python3 -m venv .buildenv && . .buildenv/bin/activate
+# 2. deps + PyInstaller (python.org Python 3.12, NOT /usr/bin/python3).
+#    --prefer-binary matters on Intel: several deps' newest release is
+#    sdist-only there. On macOS 10.15 onnxruntime needs the wheel workaround
+#    in docs/MACOS_BUILD_NOTES.md (build_mac.sh does it for you).
+/usr/local/bin/python3.12 -m venv .buildenv && . .buildenv/bin/activate
 grep -viE '^\s*(pywhispercpp|stable-ts)' requirements.txt > /tmp/req-slim.txt
-pip install --prefer-binary -r /tmp/req-slim.txt pyinstaller
+pip install --prefer-binary -c platform/macos/pyinstaller/constraints-macos.txt -r /tmp/req-slim.txt pyinstaller
 
 # 3. build the .app. LSMinimumSystemVersion is computed from the bundled
-#    binaries; override ONLY with a version you actually tested on:
+#    binaries (capped at the build Mac's own macOS); override ONLY with a
+#    version you actually tested on:
 pyinstaller --noconfirm --clean platform/macos/pyinstaller/whisper_project_mac.spec
 #    (e.g. WTS_MACOS_MIN=10.15 pyinstaller ...  after verifying on 10.15)
 

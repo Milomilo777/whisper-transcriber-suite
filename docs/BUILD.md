@@ -49,6 +49,10 @@ changes.
 
 ## Unshipped / optional pipelines
 
+These two specs are Windows builds. Run on macOS, either one builds the
+macOS spec (`platform/macos/pyinstaller/whisper_project_mac.spec`)
+instead, because a Windows-style tree cannot become a working `.app`.
+
 ```cmd
 :: Method A — Portable single-file exe (~447 MB; NOT the shipped "Portable" — unpublished)
 pyinstaller --noconfirm --clean whisper_project_onefile.spec
@@ -270,7 +274,8 @@ notes body should also mention what changed in this refresh.
 
 **Step 4b — macOS (can't build a `.dmg` on Windows):** read
 [`docs/MACOS_BUILD_NOTES.md`](MACOS_BUILD_NOTES.md) first. Either build on a
-real Mac with the scripts listed there, or dispatch the CI workflow — it
+real Mac with `bash platform/macos/build_mac.sh` (one command: venv, tools,
+PyInstaller, checks, `.dmg`), or dispatch the CI workflow — it
 builds AND tests (real transcription with the frozen app, GUI launch,
 bundled ffmpeg/yt-dlp) on Apple-silicon and Intel runners and uploads
 `WhisperTranscriberSuite-vX.Y.Z-macOS-{arm64,x64}.dmg` + `.sha256`.

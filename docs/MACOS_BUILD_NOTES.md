@@ -9,9 +9,16 @@ The full run log (every command, every error verbatim, screenshots) is in
 
 ## TL;DR — the pipeline
 
+**One command:** `bash platform/macos/build_mac.sh` runs every step below
+(plus the 10.15 onnxruntime workaround) and leaves
+`dist/WhisperTranscriberSuite-vX.Y.Z-macOS-<arch>.dmg` + `.sha256`.
+The repo-root `whisper_project_onedir.spec` / `whisper_project_onefile.spec`
+hand over to the macOS spec when run on a Mac, and the macOS spec fetches
+missing tools and refuses a Python without Tk 8.6.
+
 ```bash
-bash platform/macos/pyinstaller/fetch_mac_binaries.sh            # self-contained ffmpeg/ffprobe/ffplay + yt-dlp -> bin/
-python3 -m venv .buildenv && . .buildenv/bin/activate              # python.org 3.12 (has Tk 8.6)
+bash platform/macos/pyinstaller/fetch_mac_binaries.sh            # self-contained ffmpeg/ffprobe/ffplay + yt-dlp + deno -> bin/
+/usr/local/bin/python3.12 -m venv .buildenv && . .buildenv/bin/activate   # python.org 3.12 (has Tk 8.6)
 grep -viE '^\s*(pywhispercpp|stable-ts)' requirements.txt > /tmp/req-slim.txt
 pip install --prefer-binary -c platform/macos/pyinstaller/constraints-macos.txt -r /tmp/req-slim.txt pyinstaller
 pyinstaller --noconfirm --clean platform/macos/pyinstaller/whisper_project_mac.spec

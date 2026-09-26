@@ -305,6 +305,11 @@ Updating a source checkout later: `platform\windows\update.bat` on Windows,
 `platform/linux/update.sh` on Linux — both pull the latest source and
 refresh the dependencies ([platform/windows/README.md](platform/windows/README.md)).
 
+**macOS app (.app + .dmg):** on a Mac, `bash platform/macos/build_mac.sh`
+does the whole build in one command — Python/Tk check, dependencies, the
+bundled tools, PyInstaller, checks and the .dmg
+([docs/MACOS_BUILD_NOTES.md](docs/MACOS_BUILD_NOTES.md)).
+
 [docs/BUILD.md](docs/BUILD.md) covers the build pipelines — which two are
 actually shipped and which are kept alive but unpublished —  and
 [docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md) has the ship sequence.
