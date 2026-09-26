@@ -154,7 +154,9 @@ class FormatService:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=60,
+                # One probe took ~30 s on a macOS 10.15 machine (onefile
+                # yt-dlp unpacking + Deno solving YouTube's challenge).
+                timeout=120,
             )
 
         def run() -> None:

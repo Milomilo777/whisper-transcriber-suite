@@ -16,6 +16,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   says the feature needs a source install and continues without it.
 - **"Model not downloaded yet" stayed on the Transcribe tab** after the
   model downloaded on first use. The engine and model lines now refresh.
+- **Slow Macs: YouTube format lookups could time out** or lose the Deno
+  helper (the macOS yt-dlp needs ~25 s just to start on an older Mac). The
+  version check and the format lookup now wait up to 2 minutes.
 
 ## [1.9.3] — 2026-09-27
 
