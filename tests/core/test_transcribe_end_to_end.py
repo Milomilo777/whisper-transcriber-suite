@@ -65,6 +65,8 @@ def test_transcribe_writes_srt_and_json(loaded_transcriber, temp_audio):
     from core.task import TranscriptionTask
 
     task = TranscriptionTask(str(temp_audio))
+    # Explicit, so the developer's own saved output_formats don't decide it.
+    task.output_formats = ["srt", "json"]
     captured_lang: dict = {}
 
     def on_lang(lang: str, prob: float) -> None:
