@@ -407,6 +407,18 @@ other devices on the network can use. See [docs/SERVER.md](docs/SERVER.md).
 
 ## Contributing
 
+**This app gets better because of the people who use it.** Every bug report,
+"this confused me", feature idea, translation fix or pull request makes it
+better for everyone who comes after you, and you don't need to write code to
+help. Found something odd? [Open an issue](https://github.com/Milomilo777/whisper-transcriber-suite/issues/new/choose);
+even a two-line report with a screenshot is gold. Have an idea, or just want
+to say what you use it for? Start a
+[Discussion](https://github.com/Milomilo777/whisper-transcriber-suite/discussions).
+
+And if it saved you some time, please
+[**give it a ⭐ on GitHub**](https://github.com/Milomilo777/whisper-transcriber-suite/stargazers).
+It takes one click, costs nothing, and it's how other people find the project.
+
 Issues, pull requests and
 [Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions) are all
 welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the dev setup, the quality bar
