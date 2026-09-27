@@ -72,7 +72,8 @@ launch, real YouTube download + merge). `compileall-whisper-mac.sh` and
 `whisper_project_onefile.spec` were checked the same way (bundle check; the
 script's dmg was mounted and smoke-tested). CI:
 `macos-compileall-script-test.yml` (manual) runs the script and the
-repo-root spec on Apple silicon.
+repo-root spec on Apple silicon, starting from Homebrew's ffmpeg in `bin/`
+(the spec replaces it); green in run 36289429714.
 
 ## Next macOS release — the short checklist
 

@@ -17,6 +17,11 @@ this repo. Read this file before anything else.
   dmg through `builddmg.command` (hdiutil fallback); its CI workflow
   `macos-compileall-script-test.yml` checked a dmg name that no longer
   existed — fixed, and it now also builds via the repo-root spec.
+- `fetch_mac_binaries.sh` failed with "cp: bin/ffmpeg: Permission denied"
+  when bin/ held a Homebrew ffmpeg (Homebrew files are 0555), which stopped
+  the mac spec; it now replaces read-only files. Found by that CI run.
+- CI: `macos-compileall-script-test.yml` run 36289429714 (master 7501f04)
+  green on Apple silicon: script -> .app + dmg, bundle check, repo-root spec.
 - Verified on the 10.15.7 VM from a fresh clone; details and the exact
   commands in `docs/MACOS_BUILD_NOTES.md` → "Building with the repo-root
   spec on a Mac".

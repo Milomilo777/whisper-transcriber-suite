@@ -12,6 +12,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   not become an app). `compileall-whisper-mac.sh` now makes its dmg with
   `builddmg.command` (hdiutil when create-dmg is missing). Windows builds
   are unchanged.
+- **macOS build: a Homebrew ffmpeg left in `bin/` stopped the build**
+  ("Permission denied" while replacing it). `fetch_mac_binaries.sh` now
+  replaces read-only files.
 
 ### Fixed
 
