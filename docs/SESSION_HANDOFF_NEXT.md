@@ -5,6 +5,20 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-27 — website redesign, search registration, visibility plan
+
+- `site/` redesigned (light theme, CSS-3D hero and tour ring, comparison table,
+  visible FAQ, checksums, macOS one-liner). Canonical URL is now
+  https://whisper-transcriber-suite.pages.dev; the old custom domain only redirects.
+- Automated: `tools/update_site_data.py` + `tools/build_llms_full.py` via
+  `.github/workflows/site-data.yml` (each release + weekly); `tools/indexnow_ping.py`
+  via `.github/workflows/indexnow.yml`. Keep the `data-auto` / `data-auto-href`
+  markers and the two search-engine verification meta tags in `site/index.html`.
+- Next, in order (see `docs/ROADMAP.md` Phase 7): 7b app-wide improvement pass and a
+  release, then 7c outreach, then the monthly visibility review.
+
+---
+
 ## 🟢 2026-09-27 (later) — the colleague's Mac build path is supported again
 
 - The owner's earlier "don't support it" was a misunderstanding: the

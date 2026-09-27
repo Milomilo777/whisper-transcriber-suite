@@ -25,10 +25,64 @@ Effort labels:
 | Phase 4 — editor and viewer | TODO | Click-word→audio, edit-back-to-subtitle, gap detection, speaker rename, filler removal (re-prioritized after Session 6 research — see `docs/COMPETITIVE_ANALYSIS_2026.md` §4) |
 | Phase 5 — power features | TODO | Diarization, vocal separation, live mic, REST, CLI |
 | Phase 6 — CJK polish + backend abstraction | NEW (Session 6 research) | SenseVoice + Parakeet backends, Chinese punctuation post-processor, CJK line splitting, simplified↔traditional normalization. See `docs/COMPETITIVE_ANALYSIS_2026.md` §1-3 |
+| Phase 7 — website & discoverability | **IN PROGRESS** | 7a done 2026-09-27 (site, search registration, automation, audit fixes); 7b app-wide improvement pass next; 7c outreach after 7b — see [Phase 7](#phase-7--website--discoverability) |
 
 Integration briefs live under `docs/integrations/` and follow a separate cadence from the numbered phases — each is a single hands-off session.
 
 **Visual:** [`docs/architecture.svg`](architecture.svg) renders the system at-a-glance: UI layer, services, subprocess workers, vendored binaries, filesystem state, external network. Color-coded by layer; killer-flow `auto-transcribe-after-download` is highlighted in red.
+
+---
+
+## Phase 7 — website & discoverability
+
+Goal: make the project easy to find through search engines and AI assistants, and
+worth recommending once found. The website lives in `site/` and deploys from `master`
+to https://whisper-transcriber-suite.pages.dev (Cloudflare Pages).
+
+### 7a — Website and search foundations — DONE (2026-09-27)
+
+- Light, animated redesign with a CSS-3D hero, a 3D product-tour ring built from
+  v1.9.3 screenshots, a motion toggle, a comparison table, visible FAQ, checksums,
+  a contact section and a one-line macOS install.
+- Canonical address moved to the permanent pages.dev URL; the old custom domain
+  301-redirects there until it lapses.
+- Google Search Console and Bing Webmaster Tools verified, sitemap (with screenshots)
+  submitted; IndexNow pings on every site change (`tools/indexnow_ping.py`).
+- Release data (version, sizes, download links, checksums, download count, macOS
+  one-liner) and `llms-full.txt` regenerate automatically on each release and weekly
+  (`tools/update_site_data.py`, `tools/build_llms_full.py`, `.github/workflows/site-data.yml`).
+- Structured data (Organization, SoftwareApplication, Person, WebSite, WebPage with
+  speakable, FAQPage), security headers, 404 page, `security.txt`.
+- First GEO audit: composite 56/100 before same-day fixes; the weakest area is
+  third-party mentions (7/100).
+
+### 7b — App-wide improvement pass — NEXT (~2 weeks)
+
+- Debug and polish the whole repository and add features, so the version that gets
+  promoted is the strongest one. Cut a release at the end of it.
+- Refresh website screenshots and the showreel from the new release
+  (`tools/update_site_data.py` handles version/size/checksum text on its own).
+
+### 7c — Outreach — after 7b (target: mid-October 2026)
+
+One coordinated launch for maximum reach, using the then-current release:
+
+| Channel | Effort | Note |
+|---|---|---|
+| `danielrosehill/Awesome-Whisper-Apps` PR | XS | Eligible now |
+| AlternativeTo listing (alternative to Buzz / MacWhisper) | XS | |
+| Reddit post (r/opensource or r/software) | S | Check each subreddit's self-promotion rules |
+| Show HN | S | |
+| 2-3 minute YouTube walkthrough | M | Link from the site and add to JSON-LD `sameAs` |
+| LinkedIn page | XS | |
+| Wikidata item | S | Only after an independent mention exists to cite |
+| `sindresorhus/awesome-whisper` PR | XS | Requires 100+ GitHub stars |
+
+### 7d — Monthly visibility review
+
+Re-run the GEO audit about a month after each baseline (next: late October 2026) and
+compare: search impressions and indexed pages (Search Console, Bing), AI-crawler
+traffic, stars, forks and downloads, plus the audit's category scores.
 
 ---
 
