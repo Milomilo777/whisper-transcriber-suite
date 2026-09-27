@@ -216,7 +216,10 @@ def test_dialog_geometry_screen_centres_for_minimised_parent(tk_root, monkeypatc
     dialog = ModelLoadingDialog(tk_root)
     dialog.withdraw()
     try:
-        w, h = dialog.winfo_width(), dialog.winfo_height()
+        # Same size rule as the dialog: a withdrawn window reports
+        # winfo_width() == 1, so its requested size is what gets centred.
+        w = max(dialog.winfo_width(), dialog.winfo_reqwidth())
+        h = max(dialog.winfo_height(), dialog.winfo_reqheight())
         expected = f"+{(1920 - w) // 2}+{(1080 - h) // 2}"
         assert expected in requested, (
             f"expected screen-centred {expected!r}, requested {requested!r}"

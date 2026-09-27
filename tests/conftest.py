@@ -23,6 +23,9 @@ suite, which was implicated in a real, hard-to-pin-down native crash).
 """
 from __future__ import annotations
 
+import gc
+import sys
+
 import pytest
 
 # core.transcriber module globals that the real load paths mutate in place.
@@ -52,6 +55,22 @@ def _isolate_transcriber_globals():
         for name, value in saved.items():
             if value is not sentinel:
                 setattr(_t, name, value)
+
+
+@pytest.fixture(autouse=True)
+def _collect_tk_garbage_on_main_thread():
+    """Free unreachable Tk objects on the main thread after every test.
+
+    Tk objects left behind by a GUI test (widgets, images, variables) sit in
+    reference cycles until the cyclic GC runs. If that GC pass happens to
+    fire on a worker thread of a later test (e.g. test_fixpack_F's
+    HistoryDB reader threads), their __del__ calls into Tcl from the wrong
+    thread and Tcl aborts the whole process (exit 134, "Garbage-collecting"
+    in the faulthandler dump). Collecting here keeps that on the main thread.
+    """
+    yield
+    if "tkinter" in sys.modules:
+        gc.collect()
 
 
 @pytest.fixture(autouse=True)
