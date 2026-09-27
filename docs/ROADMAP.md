@@ -65,6 +65,17 @@ to https://whisper-transcriber-suite.pages.dev (Cloudflare Pages).
   find it") plus a permanent Help → Star on GitHub menu item. Once only, never a modal.
 - Refresh website screenshots and the showreel from the new release
   (`tools/update_site_data.py` handles version/size/checksum text on its own).
+- Short demo GIF or video (under ~30 s) at the top of the README, recorded from the
+  improved build. Commonly cited as the single highest-impact change for stars.
+- Small public counters in a corner of the website: visitors and total downloads.
+  Downloads already appear in the hero ("900+ downloads so far", refreshed weekly by
+  `site-data.yml`); it could instead be read live from the GitHub releases API with
+  the weekly value as fallback. A visitor count needs a server side, e.g. a Cloudflare
+  Pages Function with a KV counter (cookie-free, no personal data stored). Decide
+  whether a public number helps before it is large.
+- Label a handful of real issues `good first issue` / `help wanted` (none are open
+  today) and add the `hacktoberfest` topic. Hacktoberfest 2026 rewards community
+  building rather than raw PR counts.
 
 ### 7c — Outreach — after 7b (target: mid-October 2026)
 
@@ -80,6 +91,15 @@ One coordinated launch for maximum reach, using the then-current release:
 | LinkedIn page | XS | |
 | Wikidata item | S | Only after an independent mention exists to cite |
 | `sindresorhus/awesome-whisper` PR | XS | Requires 100+ GitHub stars |
+| Open-source-alternative directories (OpenAlternative and similar) | XS | |
+| Free `llms.txt` / AI-guide directories | XS | Site already has `llms.txt` + `llms-full.txt` |
+| Package managers: winget, Scoop, Chocolatey, Homebrew Cask, Flathub | M | Download sites pick apps up from these lists |
+| SourceForge mirror with automatic release sync | S | Extra download network and visibility |
+| Zenodo DOI per release (GitHub integration) | XS | `CITATION.cff` already exists |
+
+Launch timing: Show HN Tuesday-Thursday, 8-10 am US Eastern, the same day as the
+Reddit and Product Hunt posts. Prepare a press kit first (logo, screenshots, a
+30-second video), and answer every question within 24 hours of launch.
 
 ### 7d — Monthly visibility review
 
