@@ -57,9 +57,38 @@ def _isolate_transcriber_globals():
                 setattr(_t, name, value)
 
 
+_tk_touched = False
+_last_module: object = None
+
+
+def _mark_tk_touched(cls, attr):
+    original = getattr(cls, attr)
+
+    def wrapper(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        global _tk_touched
+        _tk_touched = True
+        return original(self, *args, **kwargs)
+
+    setattr(cls, attr, wrapper)
+
+
+try:
+    import tkinter as _tkinter
+
+    for _cls, _attr in (
+        (_tkinter.Tk, "__init__"),
+        (_tkinter.BaseWidget, "_setup"),
+        (_tkinter.Variable, "__init__"),
+        (_tkinter.Image, "__init__"),
+    ):
+        _mark_tk_touched(_cls, _attr)
+except Exception:  # noqa: BLE001 — no Tk on this interpreter
+    pass
+
+
 @pytest.fixture(autouse=True)
-def _collect_tk_garbage_on_main_thread():
-    """Free unreachable Tk objects on the main thread after every test.
+def _collect_tk_garbage_on_main_thread(request):
+    """Free unreachable Tk objects on the main thread after GUI tests.
 
     Tk objects left behind by a GUI test (widgets, images, variables) sit in
     reference cycles until the cyclic GC runs. If that GC pass happens to
@@ -67,9 +96,20 @@ def _collect_tk_garbage_on_main_thread():
     HistoryDB reader threads), their __del__ calls into Tcl from the wrong
     thread and Tcl aborts the whole process (exit 134, "Garbage-collecting"
     in the faulthandler dump). Collecting here keeps that on the main thread.
+    Only tests that created a Tk object pay for the collection, plus one
+    pass at each new test module, which catches module-scoped Tk roots torn
+    down after the previous module's last test.
     """
+    global _tk_touched, _last_module
+    module = getattr(request.node, "module", None)
+    if module is not _last_module:
+        _last_module = module
+        if "tkinter" in sys.modules:
+            gc.collect()
+    _tk_touched = False
     yield
-    if "tkinter" in sys.modules:
+    if _tk_touched:
+        _tk_touched = False
         gc.collect()
 
 
