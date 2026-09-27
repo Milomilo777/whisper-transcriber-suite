@@ -61,7 +61,8 @@
   const cta = $('[data-os-cta]');
   const ctaLabel = $('[data-os-label]');
   if (cta && ctaLabel) {
-    if (platform === 'mac') ctaLabel.textContent = 'Download for macOS';
+    // The CTA links straight to the Windows installer; send everyone else to the cards.
+    if (platform === 'mac') { ctaLabel.textContent = 'Download for macOS'; cta.href = '#download'; cta.removeAttribute('rel'); }
     if (platform === 'linux') { ctaLabel.textContent = 'Get it for Linux'; cta.href = '#download'; cta.removeAttribute('rel'); }
     if (platform === 'mobile') { ctaLabel.textContent = 'Get it for your computer'; cta.href = '#download'; cta.removeAttribute('rel'); }
   }

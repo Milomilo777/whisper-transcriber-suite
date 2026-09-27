@@ -1,0 +1,46 @@
+name: Website data
+
+# Keeps the version, release date, file sizes, direct download links and
+# download count on the website (site/) in step with GitHub Releases.
+# Commits only when something actually changed; Cloudflare Pages then
+# redeploys from master. Pushes made with GITHUB_TOKEN do not trigger CI.
+
+on:
+  release:
+    types: [published, edited]
+  schedule:
+    - cron: "17 6 * * 1"   # Mondays 06:17 UTC: refresh the download count
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: site-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Update site data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python tools/update_site_data.py
+      - name: Commit if changed
+        run: |
+          if git diff --quiet; then
+            echo "Website data already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Website: refresh release data"
+          git push origin HEAD:master

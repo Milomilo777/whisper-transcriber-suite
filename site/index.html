@@ -104,6 +104,7 @@
       ],
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "isAccessibleForFree": true,
+      "interactionStatistic": { "@type": "InteractionCounter", "interactionType": "https://schema.org/DownloadAction", "userInteractionCount": 910 },
       "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
       "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
       "releaseNotes": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md",
@@ -208,7 +209,7 @@
 
     <div class="wrap hero-grid">
       <div class="hero-copy">
-        <p class="kicker reveal" style="--d:0"><span class="kicker-dot" aria-hidden="true"></span>Free &amp; open source · BSD-3-Clause · v1.9.3</p>
+        <p class="kicker reveal" style="--d:0"><span class="kicker-dot" aria-hidden="true"></span>Free &amp; open source · BSD-3-Clause · <span data-auto="version">v1.9.3</span></p>
         <h1 class="hero-title" id="hero-title">
           <span class="line"><span class="rise" style="--d:1">Sound in.</span></span>
           <span class="line"><span class="rise" style="--d:2">Text out.</span></span>
@@ -216,14 +217,14 @@
         </h1>
         <p class="hero-lede reveal" style="--d:4">Whisper Transcriber Suite runs OpenAI's Whisper model entirely on your own computer — via faster-whisper, whisper.cpp or NVIDIA Parakeet. Drag in audio or video and get a timed transcript back. No cloud, no account, no per-minute cost.</p>
         <div class="hero-actions reveal" style="--d:5">
-          <a class="btn btn-primary btn-lg" data-os-cta href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener">
+          <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-Installer-Windows-v1.9.3.exe" rel="noopener">
             <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Download for Windows</span>
           </a>
           <a class="btn btn-ghost btn-lg" href="#showreel">Take the tour<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
         </div>
         <ul class="proof reveal" style="--d:6" aria-label="At a glance">
           <li><strong data-count="14">14</strong><span>transcript formats</span></li>
-          <li><strong data-count="3">3</strong><span>local speech engines</span></li>
+          <li><strong data-auto="downloads">900+</strong><span>downloads so far</span></li>
           <li><strong>0</strong><span>uploads by default</span></li>
           <li><strong>$0</strong><span>forever</span></li>
         </ul>
@@ -443,7 +444,7 @@
   <section class="section download" id="download" aria-labelledby="download-title">
     <div class="wrap">
       <header class="section-head sr">
-        <p class="eyebrow">Download · v1.9.3</p>
+        <p class="eyebrow">Download · <span data-auto="version">v1.9.3</span> · released <span data-auto="released">2026-09-26</span></p>
         <h2 id="download-title">Download. <span class="h2-soft">Transcribe tonight.</span></h2>
         <p class="section-lede">Everything needed is bundled — a private Python runtime, ffmpeg, ffprobe and yt-dlp. Only the speech model itself downloads later (about 1–3&nbsp;GB, once); after that the app is fully offline.</p>
       </header>
@@ -452,23 +453,23 @@
         <article class="dl-card sr" data-os="windows" data-tilt-card>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows <span class="dl-badge" data-rec-badge hidden>Recommended for you</span></p>
           <h3>Installer <code>.exe</code></h3>
-          <p class="dl-size">~215&nbsp;MB</p>
+          <p class="dl-size" data-auto="size-installer">~234&nbsp;MB</p>
           <p class="dl-desc">Most people — normal installer, Start-menu shortcut, upgrades in place.</p>
-          <a class="btn btn-primary" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Get the installer</a>
+          <a class="btn btn-primary" data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-Installer-Windows-v1.9.3.exe" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Get the installer</a>
         </article>
         <article class="dl-card sr" data-os="windows-portable" data-tilt-card>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows portable</p>
           <h3>Portable <code>.zip</code></h3>
-          <p class="dl-size">~330&nbsp;MB</p>
+          <p class="dl-size" data-auto="size-portable">~354&nbsp;MB</p>
           <p class="dl-desc">Unzip and run. No install, no admin rights, happy on a USB stick.</p>
-          <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener">Get the ZIP</a>
+          <a class="btn btn-ghost" data-auto-href="portable" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-Portable-Windows-v1.9.3.zip" rel="noopener">Get the ZIP</a>
         </article>
         <article class="dl-card sr" data-os="mac" data-tilt-card>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS <span class="dl-badge" data-rec-badge hidden>Recommended for you</span></p>
           <h3>Disk image <code>.dmg</code></h3>
-          <p class="dl-size">~400&nbsp;MB</p>
-          <p class="dl-desc">Pick the build on the release page that matches your Mac — Apple Silicon or Intel.</p>
-          <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener">Get the DMG</a>
+          <p class="dl-size"><span data-auto="size-mac-arm64">~246&nbsp;MB</span> · <span data-auto="size-mac-x64">~306&nbsp;MB</span></p>
+          <p class="dl-desc">Apple Silicon (M1 and later) or Intel — pick the one that matches your Mac.</p>
+          <div class="dl-pair"><a class="btn btn-ghost" data-auto-href="mac-arm64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-v1.9.3-macOS-arm64.dmg" rel="noopener">Apple Silicon</a><a class="btn btn-ghost" data-auto-href="mac-x64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-v1.9.3-macOS-x64.dmg" rel="noopener">Intel</a></div>
         </article>
         <article class="dl-card dl-card-source sr" data-os="linux" data-tilt-card>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Linux &amp; source <span class="dl-badge" data-rec-badge hidden>Recommended for you</span></p>

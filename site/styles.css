@@ -412,6 +412,8 @@ html.js .dl-card.sr.in { transform: perspective(1000px) rotateX(var(--tx, 0deg))
 .dl-size { font-family: var(--font-mono); font-size: 0.82rem; color: var(--muted); }
 .dl-desc { flex: 1; color: var(--ink-2); font-size: 0.95rem; }
 .dl-card .btn { margin-top: 12px; }
+.dl-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dl-pair .btn { padding-inline: 10px; }
 .dl-code { overflow-x: auto; padding: 12px; border-radius: 12px; background: var(--night); color: #d9e2ff; font-size: 0.72rem; line-height: 1.6; }
 .dl-code code { padding: 0; background: none; color: inherit; }
 .dl-note { margin-top: 26px; text-align: center; color: var(--muted); }
