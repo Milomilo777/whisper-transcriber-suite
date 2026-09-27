@@ -60,6 +60,9 @@ to https://whisper-transcriber-suite.pages.dev (Cloudflare Pages).
 
 - Debug and polish the whole repository and add features, so the version that gets
   promoted is the strongest one. Cut a release at the end of it.
+- In-app star ask at the moment of value: after a user's first few successful
+  transcriptions, a small dismissible line ("Enjoying it? A ⭐ on GitHub helps others
+  find it") plus a permanent Help → Star on GitHub menu item. Once only, never a modal.
 - Refresh website screenshots and the showreel from the new release
   (`tools/update_site_data.py` handles version/size/checksum text on its own).
 
