@@ -1,0 +1,29 @@
+name: IndexNow
+
+# After the website changes, tell IndexNow search engines (Bing, Yandex,
+# Seznam, Naver, Yep) to recrawl it. Commits made by the "Website data"
+# workflow ping from there instead (GITHUB_TOKEN pushes don't trigger this).
+
+on:
+  push:
+    branches: [master]
+    paths: ["site/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: indexnow
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Wait for the Pages deploy, then ping
+        run: |
+          sleep 60
+          python tools/indexnow_ping.py --wait 300

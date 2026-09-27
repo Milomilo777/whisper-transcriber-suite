@@ -1,9 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://whisper-transcriber-suite.pages.dev/</loc>
     <lastmod>2026-09-27</lastmod>
-    <changefreq>monthly</changefreq>
+    <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://whisper-transcriber-suite.pages.dev/assets/shots/transcribe.webp</image:loc>
+    </image:image>
+    <image:image>
+      <image:loc>https://whisper-transcriber-suite.pages.dev/assets/shots/live.webp</image:loc>
+    </image:image>
+    <image:image>
+      <image:loc>https://whisper-transcriber-suite.pages.dev/assets/shots/download.webp</image:loc>
+    </image:image>
+    <image:image>
+      <image:loc>https://whisper-transcriber-suite.pages.dev/assets/shots/queue.webp</image:loc>
+    </image:image>
+    <image:image>
+      <image:loc>https://whisper-transcriber-suite.pages.dev/assets/shots/voice.webp</image:loc>
+    </image:image>
+    <image:image>
+      <image:loc>https://whisper-transcriber-suite.pages.dev/assets/shots/tiling.webp</image:loc>
+    </image:image>
+    <image:image>
+      <image:loc>https://whisper-transcriber-suite.pages.dev/assets/shots/web.webp</image:loc>
+    </image:image>
   </url>
 </urlset>

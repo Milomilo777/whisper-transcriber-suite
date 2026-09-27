@@ -22,7 +22,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,6 +35,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python tools/update_site_data.py
       - name: Commit if changed
+        id: commit
         run: |
           if git diff --quiet; then
             echo "Website data already current."
@@ -44,3 +45,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -am "Website: refresh release data"
           git push origin HEAD:master
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: Ping IndexNow
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          sleep 60
+          python tools/indexnow_ping.py --wait 300
