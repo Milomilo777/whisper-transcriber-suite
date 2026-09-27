@@ -114,7 +114,7 @@ Step-by-step walkthrough, including what to click past on Windows SmartScreen:
 </div>
 
 <details>
-<summary><b>The other four tabs</b></summary>
+<summary><b>The other tabs</b></summary>
 
 <br>
 
@@ -127,6 +127,16 @@ re-run or remove any row.
 subtitles, optionally transcribe as soon as the download finishes.
 
 <img src="docs/img/screenshot-download.png" alt="Download Videos tab" width="100%">
+
+**Live** — transcribe a microphone, or whatever this machine is playing, as it
+happens.
+
+<img src="docs/img/screenshot-live.png" alt="Live tab: microphone or system-audio source, model picker, input level and live transcript" width="100%">
+
+**Clone Your Voice / Text to Voice** — optional and fully offline: clone a voice
+from a short sample, or design one, and have it read new text.
+
+<img src="docs/img/screenshot-voice.png" alt="Clone Your Voice / Text to Voice tab" width="100%">
 
 **Video Tiling** — play one live stream as a full-screen N×N video wall,
 optionally across several monitors.
@@ -435,6 +445,13 @@ label is the place to start.
 
 This project follows the [Contributor Covenant](.github/CODE_OF_CONDUCT.md).
 Security reports go through [SECURITY.md](SECURITY.md).
+
+## Contact
+
+- **Bugs and feature requests:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
+- **Questions and ideas:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
+- **Everything else** (press, partnerships, private questions): [whisper.transcriber.suite@gmail.com](mailto:whisper.transcriber.suite@gmail.com)
+- **Website:** <https://whisper-transcriber-suite.online>
 
 ## Author and license
 

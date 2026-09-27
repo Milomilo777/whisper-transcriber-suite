@@ -9,7 +9,7 @@ description = "Local Whisper desktop app — offline transcription + yt-dlp/SMTV
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "BSD-3-Clause" }
-authors = [{ name = "translation-robot" }]
+authors = [{ name = "translation-robot", email = "whisper.transcriber.suite@gmail.com" }]
 keywords = ["whisper", "transcription", "speech-to-text", "yt-dlp"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -90,7 +90,7 @@ nvidia_asr = [
 whisper-transcriber-suite = "app:run"
 
 [project.urls]
-Homepage = "https://github.com/Milomilo777/whisper-transcriber-suite"
+Homepage = "https://whisper-transcriber-suite.online"
 Repository = "https://github.com/Milomilo777/whisper-transcriber-suite"
 Author = "https://github.com/translation-robot"
 
