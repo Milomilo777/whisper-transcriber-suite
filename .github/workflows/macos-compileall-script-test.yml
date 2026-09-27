@@ -52,14 +52,6 @@ jobs:
       - name: Verify the .app is self-contained
         run: bash platform/macos/pyinstaller/verify_mac_bundle.sh "dist/Whisper Transcriber Suite.app" arm64
 
-      # The colleague's other habit: the Windows onedir spec from the repo
-      # root, which hands over to the mac spec on macOS.
-      - name: Repo-root spec builds the same .app
-        run: |
-          rm -rf dist build
-          pyinstaller --noconfirm --clean whisper_project_onedir.spec
-          bash platform/macos/pyinstaller/verify_mac_bundle.sh "dist/Whisper Transcriber Suite.app" arm64
-
       - name: Verify the .dmg was produced
         run: |
           DMG="dist/Whisper Transcriber Suite-arm64.dmg"
@@ -76,3 +68,11 @@ jobs:
             dist/*.app
             dist/*.dmg
           if-no-files-found: warn
+
+      # The colleague's other habit: the Windows onedir spec from the repo
+      # root, which hands over to the mac spec on macOS. Separate dist/build
+      # folders so the script's output above stays untouched.
+      - name: Repo-root spec builds the same .app
+        run: |
+          pyinstaller --noconfirm --clean --distpath dist_root --workpath build_root whisper_project_onedir.spec
+          bash platform/macos/pyinstaller/verify_mac_bundle.sh "dist_root/Whisper Transcriber Suite.app" arm64
