@@ -1,0 +1,6 @@
+Contact: https://github.com/Milomilo777/whisper-transcriber-suite/security/advisories/new
+Contact: mailto:whisper.transcriber.suite@gmail.com
+Expires: 2027-09-27T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://whisper-transcriber-suite.online/.well-known/security.txt
+Policy: https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md

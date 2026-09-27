@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Whisper Transcriber Suite — Free, Offline Audio &amp; Video Transcription</title>
 <meta name="description" content="Desktop app that runs OpenAI Whisper locally via faster-whisper. Transcribe audio and video to SRT, VTT, DOCX and PDF with no cloud, no account and no upload. Speaker diarisation, batch queue, yt-dlp downloads, live microphone transcription, BSD-3-Clause, free for Windows, macOS and Linux.">
-<meta name="keywords" content="offline speech to text, local whisper GUI, faster-whisper desktop app, audio to text, video to text, subtitle generator, SRT VTT generator, transcription software, speaker diarization, private on-device transcription, yt-dlp downloader, live microphone transcription">
 <meta name="author" content="translation-robot">
-<meta name="theme-color" content="#04090a">
-<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <link rel="canonical" href="https://whisper-transcriber-suite.online/">
 
 <meta property="og:type" content="website">
@@ -20,6 +20,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Whisper Transcriber Suite — sound in, text out, nothing leaves your machine.">
 <meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Whisper Transcriber Suite — Free, Offline Audio & Video Transcription">
 <meta name="twitter:description" content="Runs OpenAI Whisper locally. No cloud, no account, no upload. 14 output formats, live transcription, speaker labels, YouTube downloads.">
@@ -28,43 +29,100 @@
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="alternate" type="text/plain" title="LLM summary" href="/llms.txt">
 
 <link rel="preload" href="assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=20260913b">
-<script>document.documentElement.classList.add('js')</script>
-<script type="importmap">
-{ "imports": { "three": "./assets/vendor/three/three.module.min.js", "three/addons/": "./assets/vendor/three/addons/" } }
+<link rel="preload" href="assets/shots/transcribe.webp" as="image" type="image/webp">
+<link rel="stylesheet" href="styles.css?v=20260927a">
+<script>
+  // Motion preference: a stored choice wins; otherwise follow the OS
+  // ("calm" = slow ambient motion only when the OS asks to reduce motion).
+  (function () {
+    var d = document.documentElement, m = null;
+    d.classList.add('js');
+    try { m = localStorage.getItem('wts-motion'); } catch (e) {}
+    if (m !== 'on' && m !== 'off') m = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'calm' : 'on';
+    d.dataset.motion = m;
+  })();
 </script>
-<link rel="modulepreload" href="js/hero3d.js">
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "Whisper Transcriber Suite",
-  "alternateName": "WhisperTranscriberSuite",
-  "url": "https://whisper-transcriber-suite.online/",
-  "image": "https://whisper-transcriber-suite.online/assets/logo-512.png",
-  "screenshot": "https://whisper-transcriber-suite.online/assets/shots/transcribe.webp",
-  "description": "Desktop app that runs OpenAI's Whisper model locally via faster-whisper, whisper.cpp or NVIDIA Parakeet. Transcribes audio and video to SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and PDF with no cloud, no account and no upload.",
-  "operatingSystem": "Windows, macOS, Linux",
-  "applicationCategory": "MultimediaApplication",
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
-  "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
-  "codeRepository": "https://github.com/Milomilo777/whisper-transcriber-suite",
-  "author": { "@type": "Person", "name": "translation-robot", "url": "https://github.com/translation-robot" },
-  "sameAs": ["https://github.com/Milomilo777/whisper-transcriber-suite"]
-}
-</script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "Whisper Transcriber Suite",
-  "url": "https://whisper-transcriber-suite.online/",
-  "sameAs": ["https://github.com/Milomilo777/whisper-transcriber-suite"]
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://whisper-transcriber-suite.online/#org",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.online/",
+      "logo": "https://whisper-transcriber-suite.online/assets/logo-512.png",
+      "email": "whisper.transcriber.suite@gmail.com",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "whisper.transcriber.suite@gmail.com",
+        "url": "https://github.com/Milomilo777/whisper-transcriber-suite/issues",
+        "availableLanguage": ["English"]
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite",
+        "https://buymeacoffee.com/mehraz1358"
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://whisper-transcriber-suite.online/#app",
+      "name": "Whisper Transcriber Suite",
+      "alternateName": "WhisperTranscriberSuite",
+      "url": "https://whisper-transcriber-suite.online/",
+      "image": "https://whisper-transcriber-suite.online/assets/logo-512.png",
+      "screenshot": [
+        "https://whisper-transcriber-suite.online/assets/shots/transcribe.webp",
+        "https://whisper-transcriber-suite.online/assets/shots/live.webp",
+        "https://whisper-transcriber-suite.online/assets/shots/download.webp",
+        "https://whisper-transcriber-suite.online/assets/shots/voice.webp"
+      ],
+      "description": "Desktop app that runs OpenAI's Whisper model locally via faster-whisper, whisper.cpp or NVIDIA Parakeet. Transcribes audio and video to SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and PDF with no cloud, no account and no upload.",
+      "softwareVersion": "1.9.3",
+      "datePublished": "2026-05-11",
+      "dateModified": "2026-09-26",
+      "operatingSystem": "Windows, macOS, Linux",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "Speech-to-text transcription",
+      "featureList": [
+        "Offline speech-to-text with faster-whisper, whisper.cpp or NVIDIA Parakeet",
+        "14 transcript formats including SRT, VTT, DOCX and PDF",
+        "Live microphone and system-audio transcription",
+        "Speaker diarisation with per-word timestamps",
+        "Batch queue with pause, resume and re-run",
+        "Video and audio downloads from any yt-dlp supported site",
+        "Adaptive denoise",
+        "Optional AI summaries, action items and bilingual SRT",
+        "Optional offline voice cloning",
+        "Web / LAN access mode"
+      ],
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "isAccessibleForFree": true,
+      "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
+      "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
+      "releaseNotes": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md",
+      "installUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md",
+      "codeRepository": "https://github.com/Milomilo777/whisper-transcriber-suite",
+      "programmingLanguage": "Python",
+      "author": { "@type": "Person", "name": "translation-robot", "url": "https://github.com/translation-robot" },
+      "publisher": { "@id": "https://whisper-transcriber-suite.online/#org" },
+      "sameAs": ["https://github.com/Milomilo777/whisper-transcriber-suite"]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://whisper-transcriber-suite.online/#website",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.online/",
+      "inLanguage": "en",
+      "publisher": { "@id": "https://whisper-transcriber-suite.online/#org" }
+    }
+  ]
 }
 </script>
 <script type="application/ld+json">
@@ -82,7 +140,8 @@
     {"@type":"Question","name":"Can it summarize a transcript, pull out action items, or answer questions about it?","acceptedAnswer":{"@type":"Answer","text":"Yes, via the optional AI Tools tab in the transcript viewer: summarize, action items, ask-a-question, and a per-segment translate pass that writes a bilingual SRT. It is off by default."}},
     {"@type":"Question","name":"Can it clone a voice and make it say new text?","acceptedAnswer":{"@type":"Answer","text":"Yes, via the optional Clone Your Voice tab, using OmniVoice (Apache-2.0) entirely on your machine. Off by default; opt in at install time."}},
     {"@type":"Question","name":"How is this different from calling the Whisper API directly?","acceptedAnswer":{"@type":"Answer","text":"It runs the model locally via faster-whisper by default, so there is no per-minute API cost and no audio leaves your machine, unless you explicitly opt into one of the two cloud backends."}},
-    {"@type":"Question","name":"Can several people on the same network use it without installing it on every machine?","acceptedAnswer":{"@type":"Answer","text":"Yes, Web/LAN access mode turns this machine into a transcription page the other devices on the network can use."}}
+    {"@type":"Question","name":"Can several people on the same network use it without installing it on every machine?","acceptedAnswer":{"@type":"Answer","text":"Yes, Web/LAN access mode turns this machine into a transcription page the other devices on the network can use."}},
+    {"@type":"Question","name":"How do I contact the project?","acceptedAnswer":{"@type":"Answer","text":"Bugs and feature requests go to GitHub Issues, questions to GitHub Discussions, and anything else to whisper.transcriber.suite@gmail.com. Security reports go through GitHub's private vulnerability reporting."}}
   ]
 }
 </script>
@@ -94,34 +153,46 @@
     <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
     <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m0 0-5-5m5 5-5 5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m12 4-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m8 4 6 6-6 6"/></symbol>
     <symbol id="i-windows" viewBox="0 0 20 20"><path fill="currentColor" d="M2 3.6 8.4 2.7v6.6H2zm7.3-1 8.7-1.2v7.9H9.3zM2 10.2h6.4v6.7L2 16zm7.3 0H18v8.4l-8.7-1.2z"/></symbol>
     <symbol id="i-apple" viewBox="0 0 20 20"><path fill="currentColor" d="M13.6 10.6c0-1.9 1.6-2.8 1.6-2.9-.9-1.3-2.3-1.5-2.8-1.5-1.2-.1-2.3.7-2.9.7-.6 0-1.5-.7-2.5-.7-1.3 0-2.5.8-3.2 1.9-1.4 2.4-.4 5.9 1 7.8.6.9 1.4 2 2.4 1.9 1-.1 1.3-.6 2.5-.6s1.5.6 2.5.6c1 0 1.7-.9 2.3-1.9.7-1.1 1-2.1 1-2.2 0 0-1.9-.8-1.9-3.1zM11.7 4.9c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-1 1.5-.8 2.4.9.1 1.8-.4 2.4-1.1z"/></symbol>
     <symbol id="i-terminal" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14v11H3zM6 8.5l2 1.5-2 1.5M10 12h4"/></symbol>
     <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
     <symbol id="i-cup" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 7h10v4.5A4.5 4.5 0 0 1 9.5 16h-1A4.5 4.5 0 0 1 4 11.5zm10 1.5h1.2a2.3 2.3 0 0 1 0 4.6H14M7 2.5v2m3-2v2"/></symbol>
     <symbol id="i-check" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 5h14v10H3zm0 0 7 6 7-6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4h14v9H8l-4 3v-3H3z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7 7a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM3 10h4m6 0h4M4 5l3 2m9-2-3 2M4 15l3-2m9 2-3-2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 20 20"><path fill="currentColor" d="M6 4v12l10-6z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 20 20"><path fill="currentColor" d="M5 4h3.5v12H5zm6.5 0H15v12h-3.5z"/></symbol>
   </defs>
 </svg>
 
 <a class="skip-link" href="#main">Skip to content</a>
-<div class="grain" aria-hidden="true"></div>
 
 <header class="site-header" data-header>
   <div class="wrap header-row">
     <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — home">
-      <img class="brand-logo" src="assets/logo.svg" alt="" width="30" height="30">
+      <img class="brand-logo" src="assets/logo.svg" alt="" width="32" height="32">
       <span class="brand-name">Whisper Transcriber Suite</span>
     </a>
     <nav class="site-nav" aria-label="Primary">
+      <a href="#showreel">Tour</a>
       <a href="#features">Features</a>
-      <a href="#screenshots">Screenshots</a>
+      <a href="#how-it-works">How it works</a>
       <a href="#download">Download</a>
       <a href="#faq">FAQ</a>
-      <a href="#support">Support</a>
+      <a href="#contact">Contact</a>
     </nav>
     <div class="header-cta">
-      <a class="btn btn-ghost btn-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg><span class="hide-sm">GitHub</span>
+      <button class="btn-icon" type="button" data-motion-toggle aria-pressed="false" title="Pause or play animations">
+        <svg class="i i-when-on" aria-hidden="true"><use href="#i-pause"/></svg>
+        <svg class="i i-when-off" aria-hidden="true"><use href="#i-play"/></svg>
+        <span class="sr-only" data-motion-label>Pause animations</span>
+      </button>
+      <a class="btn btn-ghost btn-sm hide-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">
+        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>GitHub
       </a>
       <a class="btn btn-primary btn-sm" href="#download">Download</a>
     </div>
@@ -130,70 +201,135 @@
 
 <main id="main">
 
+  <!-- ============ HERO ============ -->
   <section class="hero" id="top" aria-labelledby="hero-title">
-    <div class="hero-stage" aria-hidden="true">
-      <div class="hero-poster"><img src="assets/logo.svg" alt="" width="256" height="256"></div>
-      <canvas class="hero-canvas" data-hero-canvas></canvas>
-      <div class="hero-scrim"></div>
-    </div>
+    <canvas class="hero-waves" data-waves aria-hidden="true"></canvas>
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
 
-    <div class="wrap hero-inner">
-      <p class="hero-kicker reveal" style="--d:0">
-        <span class="kicker-dot" aria-hidden="true"></span>
-        Free &amp; open source <span class="sep" aria-hidden="true">/</span> BSD-3-Clause
-      </p>
-      <h1 class="hero-title" id="hero-title">
-        <span class="line"><span class="rise" style="--d:1">Sound in.</span></span>
-        <span class="line"><span class="rise" style="--d:2">Text out.</span></span>
-        <span class="line line-accent"><span class="rise" style="--d:3">Nothing leaves your machine.</span></span>
-      </h1>
-      <p class="hero-lede reveal" style="--d:5">Whisper Transcriber Suite runs OpenAI's Whisper model entirely on your own computer — via faster-whisper, whisper.cpp or NVIDIA Parakeet. Drag in audio or video and get a timed transcript back. No cloud, no account, no per-minute cost.</p>
-      <div class="hero-actions reveal" style="--d:6">
-        <a class="btn btn-primary btn-lg" data-os-cta href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener">
-          <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Download for Windows</span>
-        </a>
-        <a class="btn btn-ghost btn-lg" href="#how-it-works">See how it works<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="kicker reveal" style="--d:0"><span class="kicker-dot" aria-hidden="true"></span>Free &amp; open source · BSD-3-Clause · v1.9.3</p>
+        <h1 class="hero-title" id="hero-title">
+          <span class="line"><span class="rise" style="--d:1">Sound in.</span></span>
+          <span class="line"><span class="rise" style="--d:2">Text out.</span></span>
+          <span class="line"><span class="rise grad-text" style="--d:3">Nothing leaves your machine.</span></span>
+        </h1>
+        <p class="hero-lede reveal" style="--d:4">Whisper Transcriber Suite runs OpenAI's Whisper model entirely on your own computer — via faster-whisper, whisper.cpp or NVIDIA Parakeet. Drag in audio or video and get a timed transcript back. No cloud, no account, no per-minute cost.</p>
+        <div class="hero-actions reveal" style="--d:5">
+          <a class="btn btn-primary btn-lg" data-os-cta href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener">
+            <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Download for Windows</span>
+          </a>
+          <a class="btn btn-ghost btn-lg" href="#showreel">Take the tour<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </div>
+        <ul class="proof reveal" style="--d:6" aria-label="At a glance">
+          <li><strong data-count="14">14</strong><span>transcript formats</span></li>
+          <li><strong data-count="3">3</strong><span>local speech engines</span></li>
+          <li><strong>0</strong><span>uploads by default</span></li>
+          <li><strong>$0</strong><span>forever</span></li>
+        </ul>
       </div>
-      <p class="hero-platforms reveal" style="--d:7">Windows <span aria-hidden="true">·</span> macOS <span aria-hidden="true">·</span> Linux</p>
-    </div>
 
-    <div class="wrap hero-proof reveal" style="--d:8">
-      <ul class="proof" aria-label="At a glance">
-        <li><strong>14</strong><span>transcript formats</span></li>
-        <li><strong>3</strong><span>local speech engines</span></li>
-        <li><strong>0</strong><span>uploads by default</span></li>
-        <li><strong>$0</strong><span>no subscription, no per-minute cost</span></li>
-      </ul>
+      <div class="hero-scene" data-scene aria-hidden="true">
+        <div class="scene-rig" data-rig>
+          <div class="float-layer l-back">
+            <figure class="win win-sm win-a"><div class="win-bar"><i></i><i></i><i></i><span>Live</span></div><img src="assets/shots/live-640.webp" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-mid">
+            <figure class="win win-sm win-b"><div class="win-bar"><i></i><i></i><i></i><span>Download Videos</span></div><img src="assets/shots/download-640.webp" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-front">
+            <figure class="win win-main"><div class="win-bar"><i></i><i></i><i></i><span>Whisper Transcriber Suite</span></div><img src="assets/shots/transcribe.webp" alt="" width="1180" height="668" fetchpriority="high"></figure>
+          </div>
+          <div class="float-layer l-pop1">
+            <div class="chip-card wave-card"><span class="rec"></span><span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+          </div>
+          <div class="float-layer l-pop2">
+            <div class="chip-card srt-card">
+              <p class="srt-ts">00:00:04,120 → 00:00:06,880</p>
+              <p class="srt-line"><span data-hero-typer>Nothing leaves your machine.</span><span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="float-layer l-pop3">
+            <div class="chip-card fmt-card"><b>.srt</b><b>.vtt</b><b>.docx</b><b>.pdf</b></div>
+          </div>
+          <div class="float-layer l-pop4">
+            <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>100% offline</div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section class="section" id="features" aria-labelledby="features-title">
+  <!-- ============ MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>faster-whisper</span><span>whisper.cpp</span><span>NVIDIA Parakeet</span><span>large-v3</span><span>large-v3-turbo</span><span>distil-large-v3.5</span><span>SRT</span><span>VTT</span><span>DOCX</span><span>PDF</span><span>yt-dlp</span><span>Speaker diarisation</span><span>Live mic</span><span>Voice cloning</span>
+      <span>faster-whisper</span><span>whisper.cpp</span><span>NVIDIA Parakeet</span><span>large-v3</span><span>large-v3-turbo</span><span>distil-large-v3.5</span><span>SRT</span><span>VTT</span><span>DOCX</span><span>PDF</span><span>yt-dlp</span><span>Speaker diarisation</span><span>Live mic</span><span>Voice cloning</span>
+    </div>
+  </div>
+
+  <!-- ============ SHOWREEL (3D carousel) ============ -->
+  <section class="section showreel" id="showreel" aria-labelledby="reel-title">
+    <div class="reel-glow" aria-hidden="true"></div>
     <div class="wrap">
       <header class="section-head sr">
+        <p class="eyebrow">Product tour</p>
+        <h2 id="reel-title">One window. <span class="h2-soft">Seven tools.</span></h2>
+        <p class="section-lede">Drop a file, pick your options, press Transcribe. Everything else — the queue, downloads, live capture, voice cloning, video tiling and LAN sharing — sits one tab away. Drag the ring, or use the arrows.</p>
+      </header>
+
+      <div class="reel" data-reel>
+        <div class="reel-viewport" data-reel-viewport>
+          <div class="reel-ring" data-reel-ring>
+            <figure class="reel-card" data-title="Transcribe" data-caption="A drop target, engine, model and language pickers, speaker-label and per-word timestamp options."><div class="win-bar"><i></i><i></i><i></i><span>Transcribe</span></div><img src="assets/shots/transcribe-640.webp" alt="Transcribe tab: drop target, engine, model and language pickers, speaker-label and word-timestamp options" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Live" data-caption="Transcribe a microphone — or whatever this machine is playing — as it happens, with an input-level meter."><div class="win-bar"><i></i><i></i><i></i><span>Live</span></div><img src="assets/shots/live-640.webp" alt="Live tab: microphone or system-audio source, language and model pickers, input level meter and a live transcript pane" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Download Videos" data-caption="Pick a format, clip a time range, pull subtitles, and optionally transcribe as soon as the download finishes."><div class="win-bar"><i></i><i></i><i></i><span>Download Videos</span></div><img src="assets/shots/download-640.webp" alt="Download Videos tab: URL, browser log-in cookies, format, time range, subtitles and transcribe-after-download" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Transcription Queue" data-caption="Batch jobs with live progress — pause, resume, cancel, re-run or remove any row."><div class="win-bar"><i></i><i></i><i></i><span>Transcription Queue</span></div><img src="assets/shots/queue-640.webp" alt="Transcription Queue tab: file, status, progress, language and elapsed columns with pause, resume, cancel, re-run and remove" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Clone Your Voice" data-caption="Optional, fully offline: clone a voice from a short sample, or design one, and have it read new text."><div class="win-bar"><i></i><i></i><i></i><span>Clone Your Voice</span></div><img src="assets/shots/voice-640.webp" alt="Clone Your Voice / Text to Voice tab: OmniVoice model, voice sample, text to speak, language and speed" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Video Tiling" data-caption="Play one live stream as a full-screen grid, optionally across several monitors."><div class="win-bar"><i></i><i></i><i></i><span>Video Tiling</span></div><img src="assets/shots/tiling-640.webp" alt="Video Tiling tab: stream URL, grid size, quality, mute, multi-monitor and auto-restart" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Web / LAN access" data-caption="One button turns this machine into a transcription page for the other devices on your network."><div class="win-bar"><i></i><i></i><i></i><span>Web / LAN access</span></div><img src="assets/shots/web-640.webp" alt="Web / LAN access tab: start web access, port, share on local network, access password and HTTPS options" width="640" height="362" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+        <div class="reel-controls">
+          <button class="reel-btn" type="button" data-reel-prev aria-label="Previous screen"><svg class="i" aria-hidden="true"><use href="#i-left"/></svg></button>
+          <div class="reel-meta" aria-live="polite">
+            <p class="reel-title" data-reel-title>Transcribe</p>
+            <p class="reel-caption" data-reel-caption>A drop target, engine, model and language pickers, speaker-label and per-word timestamp options.</p>
+          </div>
+          <button class="reel-btn" type="button" data-reel-next aria-label="Next screen"><svg class="i" aria-hidden="true"><use href="#i-right"/></svg></button>
+        </div>
+        <div class="reel-dots" data-reel-dots role="group" aria-label="Choose a screen"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section features" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Features</p>
         <h2 id="features-title">Everything you'd want from a transcription tool. <span class="h2-soft">Running on your machine.</span></h2>
       </header>
 
       <div class="bento" data-spotlight>
-        <article class="cell cell-engines sr" data-live>
+        <article class="cell cell-engines tone-teal sr" data-live data-tilt-card>
           <div class="cell-copy">
             <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
             <h3>Local, private transcription</h3>
             <p>Whisper <code>large-v3</code> by default, plus <code>large-v3-turbo</code> and <code>distil-large-v3.5</code>. Pick the backend that fits your hardware.</p>
           </div>
+          <figure class="cell-shot" aria-hidden="true"><img src="assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
           <div class="viz viz-engines" aria-hidden="true">
             <div class="engine-list">
               <div class="engine"><span class="engine-radio"></span><span class="engine-name">faster-whisper</span><span class="engine-tag">default</span></div>
               <div class="engine"><span class="engine-radio"></span><span class="engine-name">whisper.cpp</span><span class="engine-tag">local</span></div>
               <div class="engine"><span class="engine-radio"></span><span class="engine-name">NVIDIA Parakeet</span><span class="engine-tag">local</span></div>
             </div>
-            <div class="model-row">
-              <span class="model is-on">large-v3</span><span class="model">large-v3-turbo</span><span class="model">distil-large-v3.5</span>
-            </div>
             <div class="offline-badge"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Runs offline after the one-time model download</div>
           </div>
         </article>
 
-        <article class="cell cell-formats sr" data-live>
+        <article class="cell cell-formats tone-violet sr" data-live data-tilt-card>
           <div class="cell-copy">
             <p class="chip-label">14 formats</p>
             <h3>Every transcript format you'll need</h3>
@@ -204,7 +340,7 @@
           </div>
         </article>
 
-        <article class="cell cell-live sr" data-live>
+        <article class="cell cell-live tone-coral sr" data-live data-tilt-card>
           <div class="cell-copy">
             <p class="chip-label">Mic · system audio</p>
             <h3>Live transcription</h3>
@@ -216,7 +352,7 @@
           </div>
         </article>
 
-        <article class="cell cell-speakers sr" data-live>
+        <article class="cell cell-speakers tone-sun sr" data-live data-tilt-card>
           <div class="cell-copy">
             <p class="chip-label">Per-word timestamps</p>
             <h3>Speaker diarisation</h3>
@@ -228,7 +364,7 @@
           </div>
         </article>
 
-        <article class="cell cell-queue sr" data-live>
+        <article class="cell cell-queue tone-teal sr" data-live data-tilt-card>
           <div class="cell-copy">
             <p class="chip-label">Pause · resume · re-run</p>
             <h3>Batch queue</h3>
@@ -241,7 +377,7 @@
           </div>
         </article>
 
-        <article class="cell cell-download sr" data-live>
+        <article class="cell cell-download tone-violet sr" data-live data-tilt-card>
           <div class="cell-copy">
             <p class="chip-label">yt-dlp powered</p>
             <h3>Video &amp; audio downloads</h3>
@@ -253,7 +389,7 @@
           </div>
         </article>
 
-        <article class="cell cell-denoise sr" data-live>
+        <article class="cell cell-denoise tone-coral sr" data-live data-tilt-card>
           <div class="cell-copy">
             <p class="chip-label">Measures before it filters</p>
             <h3>Adaptive denoise</h3>
@@ -272,46 +408,11 @@
     </div>
   </section>
 
-  <section class="section tour" id="screenshots" aria-labelledby="tour-title">
-    <div class="wrap">
-      <header class="section-head sr">
-        <h2 id="tour-title">One window. <span class="h2-soft">Every step.</span></h2>
-        <p class="section-lede">Drop a file, pick your options, press Transcribe. That's the whole workflow — four more tabs cover queueing, downloads, video tiling and LAN sharing.</p>
-      </header>
-
-      <div class="tour-shell sr">
-        <div class="tour-tabs" role="tablist" aria-label="App tabs">
-          <button class="tour-tab" role="tab" id="tab-transcribe" aria-selected="true" aria-controls="tour-panel" data-shot="0">Transcribe</button>
-          <button class="tour-tab" role="tab" id="tab-queue" aria-selected="false" aria-controls="tour-panel" data-shot="1" tabindex="-1">Transcription Queue</button>
-          <button class="tour-tab" role="tab" id="tab-download" aria-selected="false" aria-controls="tour-panel" data-shot="2" tabindex="-1">Download Videos</button>
-          <button class="tour-tab" role="tab" id="tab-web" aria-selected="false" aria-controls="tour-panel" data-shot="3" tabindex="-1">Web / LAN access</button>
-          <button class="tour-tab" role="tab" id="tab-tiling" aria-selected="false" aria-controls="tour-panel" data-shot="4" tabindex="-1">Video Tiling</button>
-        </div>
-
-        <div class="tour-stage" data-tilt>
-          <figure class="app-window" id="tour-panel" role="tabpanel" aria-labelledby="tab-transcribe">
-            <div class="app-titlebar" aria-hidden="true">
-              <img src="assets/logo.svg" alt="" width="16" height="16">
-              <span>Whisper Transcriber Suite</span>
-              <span class="win-ctrls"><i></i><i></i><i></i></span>
-            </div>
-            <div class="app-shots">
-              <img class="is-active" src="assets/shots/transcribe.webp" alt="Transcribe tab: a drop target, engine and language pickers, speaker-label and word-timestamp options" width="962" height="641" loading="lazy" decoding="async">
-              <img src="assets/shots/queue.webp" alt="Transcription Queue tab: batch jobs with live progress, pause, resume, cancel, re-run or remove any row" width="962" height="641" loading="lazy" decoding="async">
-              <img src="assets/shots/download.webp" alt="Download Videos tab: pick a format, clip a time range, pull subtitles, optionally transcribe as soon as the download finishes" width="962" height="641" loading="lazy" decoding="async">
-              <img src="assets/shots/web.webp" alt="Web/LAN access tab: one button turns this machine into a transcription page for other devices on the network" width="962" height="641" loading="lazy" decoding="async">
-              <img src="assets/shots/tiling.webp" alt="Video Tiling tab: play one live stream as a full-screen grid, optionally across several monitors" width="962" height="641" loading="lazy" decoding="async">
-            </div>
-          </figure>
-          <p class="tour-caption" data-tour-caption aria-live="polite">A drop target, engine and language pickers, speaker-label and word-timestamp options.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
+  <!-- ============ HOW IT WORKS ============ -->
   <section class="section how" id="how-it-works" aria-labelledby="how-title">
     <div class="wrap">
       <header class="section-head sr">
+        <p class="eyebrow">How it works</p>
         <h2 id="how-title">Private by architecture. <span class="h2-soft">Not by promise.</span></h2>
         <p class="section-lede">Every default engine runs in processes on your own computer. Nothing is uploaded unless you switch on one of the two opt-in cloud backends yourself.</p>
       </header>
@@ -338,37 +439,38 @@
     </div>
   </section>
 
+  <!-- ============ DOWNLOAD ============ -->
   <section class="section download" id="download" aria-labelledby="download-title">
-    <div class="download-glow" aria-hidden="true"></div>
     <div class="wrap">
       <header class="section-head sr">
+        <p class="eyebrow">Download · v1.9.3</p>
         <h2 id="download-title">Download. <span class="h2-soft">Transcribe tonight.</span></h2>
         <p class="section-lede">Everything needed is bundled — a private Python runtime, ffmpeg, ffprobe and yt-dlp. Only the speech model itself downloads later (about 1–3&nbsp;GB, once); after that the app is fully offline.</p>
       </header>
 
       <div class="dl-grid">
-        <article class="dl-card sr" data-os="windows">
+        <article class="dl-card sr" data-os="windows" data-tilt-card>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows <span class="dl-badge" data-rec-badge hidden>Recommended for you</span></p>
-          <h3><code>Setup-Standard.exe</code></h3>
+          <h3>Installer <code>.exe</code></h3>
           <p class="dl-size">~215&nbsp;MB</p>
           <p class="dl-desc">Most people — normal installer, Start-menu shortcut, upgrades in place.</p>
           <a class="btn btn-primary" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Get the installer</a>
         </article>
-        <article class="dl-card sr" data-os="windows-portable">
+        <article class="dl-card sr" data-os="windows-portable" data-tilt-card>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows portable</p>
-          <h3><code>Portable.zip</code></h3>
+          <h3>Portable <code>.zip</code></h3>
           <p class="dl-size">~330&nbsp;MB</p>
           <p class="dl-desc">Unzip and run. No install, no admin rights, happy on a USB stick.</p>
           <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener">Get the ZIP</a>
         </article>
-        <article class="dl-card sr" data-os="mac">
+        <article class="dl-card sr" data-os="mac" data-tilt-card>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS <span class="dl-badge" data-rec-badge hidden>Recommended for you</span></p>
-          <h3><code>macOS-*.dmg</code></h3>
+          <h3>Disk image <code>.dmg</code></h3>
           <p class="dl-size">~400&nbsp;MB</p>
-          <p class="dl-desc">A disk image for macOS — pick the build on the release page that matches your Mac.</p>
+          <p class="dl-desc">Pick the build on the release page that matches your Mac — Apple Silicon or Intel.</p>
           <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener">Get the DMG</a>
         </article>
-        <article class="dl-card dl-card-source sr" data-os="linux">
+        <article class="dl-card dl-card-source sr" data-os="linux" data-tilt-card>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Linux &amp; source <span class="dl-badge" data-rec-badge hidden>Recommended for you</span></p>
           <h3>Build from source</h3>
           <p class="dl-size">Python 3.11+</p>
@@ -383,9 +485,11 @@ python gui.py</code></pre>
     </div>
   </section>
 
+  <!-- ============ FAQ ============ -->
   <section class="section faq" id="faq" aria-labelledby="faq-title">
     <div class="wrap faq-grid">
       <header class="faq-head sr">
+        <p class="eyebrow">FAQ</p>
         <h2 id="faq-title">Frequently asked questions</h2>
         <p class="section-lede">Something else on your mind? Ask in <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">GitHub Discussions</a>.</p>
       </header>
@@ -401,20 +505,47 @@ python gui.py</code></pre>
         <details><summary>Can it clone a voice and make it say new text?</summary><div class="faq-a"><p>Yes, via the optional Clone Your Voice tab, using OmniVoice (Apache-2.0) entirely on your machine. Off by default; opt in at install time, and you must confirm you have permission to clone the reference voice.</p></div></details>
         <details><summary>How is this different from calling the Whisper API directly?</summary><div class="faq-a"><p>It runs the model locally via faster-whisper by default, so there's no per-minute API cost and no audio leaves your machine — unless you explicitly opt into one of the two cloud backends.</p></div></details>
         <details><summary>Can several people on the same network use it without installing it on every machine?</summary><div class="faq-a"><p>Yes — Web/LAN access mode turns this machine into a transcription page the other devices on the network can use.</p></div></details>
+        <details><summary>How do I contact the project?</summary><div class="faq-a"><p>Bugs and feature requests go to <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, questions to <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, and anything else to <a href="mailto:whisper.transcriber.suite@gmail.com">whisper.transcriber.suite@gmail.com</a>. Security reports go through GitHub's private vulnerability reporting.</p></div></details>
       </div>
     </div>
   </section>
 
-  <section class="section support" id="support" aria-labelledby="support-title">
+  <!-- ============ CONTACT + SUPPORT ============ -->
+  <section class="section contact" id="contact" aria-labelledby="contact-title">
     <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Contact &amp; support</p>
+        <h2 id="contact-title">Talk to us. <span class="h2-soft">Help it grow.</span></h2>
+      </header>
+      <div class="contact-grid">
+        <a class="contact-card sr" href="mailto:whisper.transcriber.suite@gmail.com" data-tilt-card>
+          <span class="contact-ic tone-teal"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg></span>
+          <h3>Email</h3>
+          <p class="contact-val">whisper.transcriber.suite@gmail.com</p>
+          <p>Press, partnerships, or anything that isn't a bug report.</p>
+        </a>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-coral"><svg class="i" aria-hidden="true"><use href="#i-bug"/></svg></span>
+          <h3>Report a bug</h3>
+          <p class="contact-val">GitHub Issues</p>
+          <p>Include your version, OS and the smallest file that reproduces it.</p>
+        </a>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-violet"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span>
+          <h3>Ask a question</h3>
+          <p class="contact-val">GitHub Discussions</p>
+          <p>Setup help, ideas, and show-and-tell from other users.</p>
+        </a>
+      </div>
+
       <div class="support-card sr">
         <div class="support-orbit" aria-hidden="true"><img src="assets/logo.svg" alt="" width="88" height="88"><span></span><span></span><span></span></div>
         <div class="support-copy">
-          <h2 id="support-title">Support the project</h2>
+          <h3 id="support">Support the project</h3>
           <p>Whisper Transcriber Suite is free and BSD-3-Clause licensed, maintained in the open. If it saved you time, a star on GitHub helps others find it — and a coffee is always appreciated.</p>
           <div class="support-actions">
             <a class="btn btn-coffee btn-lg" href="https://buymeacoffee.com/mehraz1358" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-cup"/></svg>Buy me a coffee</a>
-            <a class="btn btn-ghost btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/stargazers" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Star on GitHub</a>
+            <a class="btn btn-light btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/stargazers" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Star on GitHub</a>
           </div>
         </div>
       </div>
@@ -428,13 +559,16 @@ python gui.py</code></pre>
     <div class="footer-brand">
       <a class="brand" href="#top"><img class="brand-logo" src="assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
       <p class="muted">Written by <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Source licensed under BSD-3-Clause.</p>
+      <p class="muted"><a href="mailto:whisper.transcriber.suite@gmail.com">whisper.transcriber.suite@gmail.com</a></p>
     </div>
     <nav class="footer-nav" aria-label="Footer">
       <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a>
       <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Install guide</a>
       <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Changelog</a>
       <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Security</a>
       <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">License</a>
+      <a href="/llms.txt">llms.txt</a>
     </nav>
   </div>
   <div class="wrap">
@@ -442,7 +576,6 @@ python gui.py</code></pre>
   </div>
 </footer>
 
-<script src="js/main.js" defer></script>
-<script type="module" src="js/hero3d.js"></script>
+<script src="js/main.js?v=20260927a" defer></script>
 </body>
 </html>

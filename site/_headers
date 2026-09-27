@@ -6,9 +6,6 @@
 /assets/*
   Cache-Control: public, max-age=3600
 
-/assets/vendor/*
-  Cache-Control: public, max-age=604800, immutable
-
 /assets/fonts/*
   Cache-Control: public, max-age=604800, immutable
 
