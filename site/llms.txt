@@ -28,7 +28,7 @@ Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscri
 - Author: translation-robot.
 
 ## Contact
-- Website: https://whisper-transcriber-suite.online
+- Website: https://whisper-transcriber-suite.pages.dev
 - GitHub: https://github.com/Milomilo777/whisper-transcriber-suite
 - Issues / support: https://github.com/Milomilo777/whisper-transcriber-suite/issues
 - Questions: https://github.com/Milomilo777/whisper-transcriber-suite/discussions

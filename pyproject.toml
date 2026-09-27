@@ -90,7 +90,7 @@ nvidia_asr = [
 whisper-transcriber-suite = "app:run"
 
 [project.urls]
-Homepage = "https://whisper-transcriber-suite.online"
+Homepage = "https://whisper-transcriber-suite.pages.dev"
 Repository = "https://github.com/Milomilo777/whisper-transcriber-suite"
 Author = "https://github.com/translation-robot"
 

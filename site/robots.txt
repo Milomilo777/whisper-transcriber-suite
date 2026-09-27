@@ -62,7 +62,7 @@ Allow: /
 User-agent: omgili
 Allow: /
 
-Sitemap: https://whisper-transcriber-suite.online/sitemap.xml
+Sitemap: https://whisper-transcriber-suite.pages.dev/sitemap.xml
 
 # Content Signals Policy (https://contentsignals.org) — emerging convention, 2025.
 # This project is BSD-3-Clause and wants to be found, quoted and trained on.

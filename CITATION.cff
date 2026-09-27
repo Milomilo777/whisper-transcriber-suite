@@ -5,7 +5,7 @@ abstract: "Free, offline desktop app that transcribes audio and video using Open
 authors:
   - name: "translation-robot"
 type: software
-url: "https://whisper-transcriber-suite.online/"
+url: "https://whisper-transcriber-suite.pages.dev/"
 contact:
   - name: "Whisper Transcriber Suite"
     email: "whisper.transcriber.suite@gmail.com"

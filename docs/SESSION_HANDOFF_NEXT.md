@@ -1251,7 +1251,7 @@ both still need the owner's hands-on time on real multi-minute operations.
 
 ## 🟢 2026-09-13 — Landing-page 3D redesign published
 
-`site/` (whisper-transcriber-suite.online, built by Cloudflare Pages straight from this repo,
+`site/` (canonical address whisper-transcriber-suite.pages.dev; the whisper-transcriber-suite.online domain is only an alias until it expires, built by Cloudflare Pages straight from this repo,
 no build step) got a full redesign: a WebGL hero built from the real app icon (three.js r186,
 self-hosted, no third-party requests), new bento/tour/download/FAQ/support sections, self-hosted
 Sora/Geist/Geist Mono fonts. Content, SEO/GEO contracts, anchors, `llms.txt`/`robots.txt`/
