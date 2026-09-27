@@ -8,7 +8,8 @@
 
 **Building the `.app` / `.dmg` yourself:** `bash platform/macos/build_mac.sh`
 (one command; see [`pyinstaller/README.md`](pyinstaller/README.md)). The
-repo-root `whisper_project_*.spec` files are Windows builds only.
+repo-root `whisper_project_*.spec` files are Windows builds; on a Mac they
+hand over to the macOS spec.
 
 The app is plain Python (Tkinter + faster-whisper + yt-dlp + ffmpeg), so it
 runs from source on macOS. It is **unsigned** (no paid Apple Developer

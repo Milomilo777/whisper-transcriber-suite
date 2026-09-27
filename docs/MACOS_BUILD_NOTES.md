@@ -12,9 +12,10 @@ The full run log (every command, every error verbatim, screenshots) is in
 **One command:** `bash platform/macos/build_mac.sh` runs every step below
 (plus the 10.15 onnxruntime workaround) and leaves
 `dist/WhisperTranscriberSuite-vX.Y.Z-macOS-<arch>.dmg` + `.sha256`.
-The macOS spec fetches missing tools into `bin/` and refuses a Python
-without Tk 8.6. The repo-root `whisper_project_*.spec` files are Windows
-builds only.
+The repo-root `whisper_project_onedir.spec` / `whisper_project_onefile.spec`
+hand over to the macOS spec when run on a Mac (see "Building with the
+repo-root spec on a Mac" below), and the macOS spec fetches missing tools
+and refuses a Python without Tk 8.6.
 
 ```bash
 bash platform/macos/pyinstaller/fetch_mac_binaries.sh            # self-contained ffmpeg/ffprobe/ffplay + yt-dlp + deno -> bin/
@@ -28,6 +29,50 @@ bash platform/macos/pyinstaller/builddmg.command                   # create-dmg,
 ```
 Release file name: `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` / `-arm64.dmg`.
 CI (`macos-app.yml`, manual dispatch) runs exactly these steps on both archs.
+
+## Building with the repo-root spec on a Mac (the colleague's way)
+
+Also supported (restored 2026-09-27): the habit of the colleague who built the
+earlier Mac versions. From the repo root, in the build venv (python.org Python
+3.12 with Tk 8.6, slim requirements as in the TL;DR):
+
+```bash
+rm -rf dist
+pyinstaller --noconfirm --clean whisper_project_onedir.spec   # or whisper_project_onefile.spec
+rm -rf dist/dmg/ && mkdir dist/dmg && cp -R "dist/Whisper Transcriber Suite.app" dist/dmg/
+rm -f "dist/Whisper Transcriber Suite.dmg"
+create-dmg --volname "Whisper Transcriber Suite" --window-pos 200 120 --window-size 600 320   --icon-size 100 --icon "Whisper Transcriber Suite.app" 170 130   --hide-extension "Whisper Transcriber Suite.app" --app-drop-link 430 130   "dist/Whisper Transcriber Suite.dmg" "dist/dmg/"
+```
+
+- On macOS both repo-root specs run `whisper_project_mac.spec` and stop, so
+  this gives the same verified `.app` as the TL;DR (tools fetched into `bin/`
+  when missing, Tk 8.6 checked, minimum macOS computed). Windows is unchanged.
+- A `BUNDLE(coll, name='Whisper Project.app', ...)` line appended to the root
+  spec (the old local edit) is harmless: the hand-over stops before it.
+- The app is **`Whisper Transcriber Suite.app`**, not `Whisper Project.app`;
+  an old script that copies `dist/Whisper Project.app` needs that name
+  changed. `bash platform/macos/pyinstaller/builddmg.command` does the dmg
+  step with the right name (and falls back to `hdiutil` without create-dmg).
+- `bash platform/macos/pyinstaller/compileall-whisper-mac.sh` (the
+  colleague's committed script) is the same thing in one command:
+  clean `dist/`, mac spec, `builddmg.command`.
+- Use the **slim** venv. With torch / openai-whisper / stable-ts installed
+  (an older venv) the build still finishes (5.4 min on the VM) and passes the
+  smoke test, but PyInstaller bundles torch: the `.app` grows from 0.73 GB
+  to 1.4 GB for a feature the `.app` does not offer.
+- Then check it like any build: `verify_mac_bundle.sh` and
+  `smoke_test_app.sh "dist/Whisper Transcriber Suite.app" python tiny`.
+
+Verified 2026-09-27 on the macOS 10.15.7 VM from a fresh clone: the script
+above verbatim (with the `BUNDLE` line appended to the spec; `hdiutil` in
+place of create-dmg, which the VM lacks) built the `.app` + dmg in ~5 min
+(~3 min once `bin/` has the tools);
+`verify_mac_bundle.sh` OK; smoke test passed (WAV + MP4 transcription, GUI
+launch, real YouTube download + merge). `compileall-whisper-mac.sh` and
+`whisper_project_onefile.spec` were checked the same way (bundle check; the
+script's dmg was mounted and smoke-tested). CI:
+`macos-compileall-script-test.yml` (manual) runs the script and the
+repo-root spec on Apple silicon.
 
 ## Next macOS release — the short checklist
 

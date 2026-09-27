@@ -4,6 +4,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+
+- **macOS build: `pyinstaller whisper_project_onedir.spec` (or the onefile
+  spec) from the repo root builds the working `.app` on a Mac** by handing
+  over to the macOS spec (it used to make a Windows-style folder that could
+  not become an app). `compileall-whisper-mac.sh` now makes its dmg with
+  `builddmg.command` (hdiutil when create-dmg is missing). Windows builds
+  are unchanged.
+
 ### Fixed
 
 - **macOS: the "Loading the Whisper model" dialog was off-centre** (placed

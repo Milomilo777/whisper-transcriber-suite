@@ -5,6 +5,26 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-27 (later) — the colleague's Mac build path is supported again
+
+- The owner's earlier "don't support it" was a misunderstanding: the
+  colleague's way of building is supported and documented. No release or
+  asset was touched.
+- Repo-root `whisper_project_onedir.spec` / `whisper_project_onefile.spec`
+  hand over to `platform/macos/pyinstaller/whisper_project_mac.spec` on macOS
+  (the reverted 24e6601, restored); Windows unchanged.
+- `compileall-whisper-mac.sh` (the colleague's committed script) makes the
+  dmg through `builddmg.command` (hdiutil fallback); its CI workflow
+  `macos-compileall-script-test.yml` checked a dmg name that no longer
+  existed — fixed, and it now also builds via the repo-root spec.
+- Verified on the 10.15.7 VM from a fresh clone; details and the exact
+  commands in `docs/MACOS_BUILD_NOTES.md` → "Building with the repo-root
+  spec on a Mac".
+- Could not reproduce "the mac spec does not end compilation": a venv with
+  torch + stable-ts still builds in ~5 min, but bundles torch (1.4 GB .app),
+  so the docs say to use the slim venv. If it recurs, get the last lines of
+  the PyInstaller output from the colleague.
+
 ## 🟢 2026-09-27 (macOS session) — Mac debug pass + v1.9.3 dmgs published
 
 - **Release:** `WhisperTranscriberSuite-v1.9.3-macOS-{x64,arm64}.dmg` + `.sha256`
@@ -22,8 +42,9 @@ this repo. Read this file before anything else.
 - **Build:** new `platform/macos/build_mac.sh` (one command: Python/Tk check,
   venv, 10.15 onnxruntime workaround, tools, PyInstaller, verify, smoke, dmg);
   Deno bundled in the .app; the mac spec fetches missing tools, refuses a
-  Python without Tk 8.6 and caps the minimum macOS at the build host. The
-  repo-root specs stay Windows-only (a delegation was tried and reverted).
+  Python without Tk 8.6 and caps the minimum macOS at the build host. (The
+  repo-root spec hand-over reverted here was restored later the same day,
+  see the entry above.)
 - **Checks:** per-file hermetic suite on 10.15: 2759 passed, 0 failed, 0 hung;
   pyright 0/0/0. Everything else verified and still open is in
   `docs/MACOS_BUILD_NOTES.md` → "v1.9.3 Mac build".

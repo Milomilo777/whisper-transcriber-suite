@@ -20,10 +20,14 @@ release-named `.dmg` + `.sha256`):
 bash platform/macos/build_mac.sh            # --no-smoke to skip the smoke test
 ```
 
-Use this folder's `whisper_project_mac.spec`; the repo-root
-`whisper_project_*.spec` files are Windows builds only. The mac spec fetches
-missing/unsuitable tools into `bin/` and stops early on a Python without
-Tk 8.6.
+Also supported: `pyinstaller --noconfirm --clean whisper_project_onedir.spec`
+(or `…onefile.spec`) from the repo root — on a Mac those Windows specs hand
+over to `whisper_project_mac.spec` — and `bash
+platform/macos/pyinstaller/compileall-whisper-mac.sh` (clean `dist/`, build,
+dmg). Both give `dist/Whisper Transcriber Suite.app`; see
+[MACOS_BUILD_NOTES.md](../../../docs/MACOS_BUILD_NOTES.md) → "Building with
+the repo-root spec on a Mac". The spec itself fetches missing/unsuitable
+tools into `bin/` and stops early on a Python without Tk 8.6.
 
 The steps by hand:
 
