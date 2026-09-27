@@ -67,7 +67,7 @@ to https://whisper-transcriber-suite.pages.dev (Cloudflare Pages).
   (`tools/update_site_data.py` handles version/size text on its own).
 - Short demo GIF or video (under ~30 s) at the top of the README, recorded from the
   improved build. Commonly cited as the single highest-impact change for stars.
-- Website footer counters (visits + total downloads): `functions/api/stats.js`
+- Website footer counters (visits + total downloads): `site/functions/api/stats.js`
   (Cloudflare Pages Function). Visits are kept in a D1 database bound as
   `VISITS_DB`, starting at 1350 to carry over the previous address's traffic;
   downloads are summed live from the GitHub releases API (cached one hour).
