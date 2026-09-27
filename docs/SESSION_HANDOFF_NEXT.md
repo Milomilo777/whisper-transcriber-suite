@@ -9,10 +9,9 @@ this repo. Read this file before anything else.
 
 - Releases no longer ship `.sha256` files (`macos-app.yml`, `build_mac.sh`);
   v1.9.3's two were removed with its checksum list. The site shows no checksums.
-- Footer counters: `site/functions/api/stats.js` (Pages Function). Downloads work
-  now. **Visits need one dashboard step:** create a D1 database and bind it to
-  the Pages project as `VISITS_DB` (Production), then redeploy. The table is
-  created on first request, starting at 1350.
+- Footer counters: `site/functions/api/stats.js` (Pages Function), live. Visits
+  are stored in D1 database `wts-site-stats`, bound to the Pages project as
+  `VISITS_DB` (Production only; preview deployments show downloads only).
 - CI was red on every push: a stale dialog-centring test, plus a rare Tcl abort
   when the GC finalised Tk objects on a worker thread (`tests/conftest.py` now
   collects on the main thread after Tk-using tests).
