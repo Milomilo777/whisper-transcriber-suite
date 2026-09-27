@@ -9,7 +9,7 @@ builds, *without* number prefixes (2026-09-24), so the names are:
 |---|---|
 | 1 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` |
 | 2 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` |
-| 3 | `WhisperTranscriberSuite-vX.Y.Z-macOS-<arch>.dmg` (+ `.sha256`) |
+| 3 | `WhisperTranscriberSuite-vX.Y.Z-macOS-<arch>.dmg` |
 
 "Installer" < "Portable" < "v…" keeps that order. v1.9.0 alone uses a
 one-off `-1-`/`-2-`/`-3-` prefix; up to v1.8.0 the older names.
@@ -278,7 +278,8 @@ real Mac with `bash platform/macos/build_mac.sh` (one command: venv, tools,
 PyInstaller, checks, `.dmg`), or dispatch the CI workflow — it
 builds AND tests (real transcription with the frozen app, GUI launch,
 bundled ffmpeg/yt-dlp) on Apple-silicon and Intel runners and uploads
-`WhisperTranscriberSuite-vX.Y.Z-macOS-{arm64,x64}.dmg` + `.sha256`.
+`WhisperTranscriberSuite-vX.Y.Z-macOS-{arm64,x64}.dmg`. Releases ship no `.sha256` files (GitHub shows each
+asset's SHA-256 digest itself).
 
 ```cmd
 gh workflow run macos-app.yml --ref master

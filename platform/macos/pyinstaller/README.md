@@ -14,7 +14,7 @@ no Terminal, no venv** on their side.
 ## Build steps (on a Mac)
 
 **One command** (does every step below, including the checks and the
-release-named `.dmg` + `.sha256`):
+release-named `.dmg`):
 
 ```bash
 bash platform/macos/build_mac.sh            # --no-smoke to skip the smoke test

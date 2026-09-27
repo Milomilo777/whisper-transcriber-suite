@@ -46,7 +46,7 @@ this repo. Read this file before anything else.
 
 ## 🟢 2026-09-27 (macOS session) — Mac debug pass + v1.9.3 dmgs published
 
-- **Release:** `WhisperTranscriberSuite-v1.9.3-macOS-{x64,arm64}.dmg` + `.sha256`
+- **Release:** `WhisperTranscriberSuite-v1.9.3-macOS-{x64,arm64}.dmg`
   uploaded into the existing v1.9.3 release (built from master `c42472d`);
   notes got the Mac rows, "Installing on a Mac" and the checksums
   (mirrored in `docs/release-notes/RELEASE_NOTES_v1.9.3.md`). x64: macOS 10.15+,

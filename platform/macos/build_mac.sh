@@ -3,7 +3,7 @@
 #
 #     bash platform/macos/build_mac.sh
 #
-# -> dist/WhisperTranscriberSuite-vX.Y.Z-macOS-<x64|arm64>.dmg (+ .sha256)
+# -> dist/WhisperTranscriberSuite-vX.Y.Z-macOS-<x64|arm64>.dmg
 #
 # Steps (each one is explained in docs/MACOS_BUILD_NOTES.md):
 #   1. find a Python 3.12 with Tk 8.6 (python.org installer; not Apple's
@@ -112,7 +112,6 @@ say_step "6. .dmg"
 WTS_DMG_SUFFIX="$SUFFIX" bash platform/macos/pyinstaller/builddmg.command
 OUT="WhisperTranscriberSuite-v$VERSION-macOS-$SUFFIX.dmg"
 mv -f "dist/Whisper Transcriber Suite-$SUFFIX.dmg" "dist/$OUT"
-(cd dist && shasum -a 256 "$OUT" | tee "$OUT.sha256" && shasum -a 256 -c "$OUT.sha256")
 echo
 echo "Done: dist/$OUT"
 echo "Minimum macOS: $(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$APP/Contents/Info.plist")"

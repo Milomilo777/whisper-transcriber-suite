@@ -11,7 +11,7 @@ The full run log (every command, every error verbatim, screenshots) is in
 
 **One command:** `bash platform/macos/build_mac.sh` runs every step below
 (plus the 10.15 onnxruntime workaround) and leaves
-`dist/WhisperTranscriberSuite-vX.Y.Z-macOS-<arch>.dmg` + `.sha256`.
+`dist/WhisperTranscriberSuite-vX.Y.Z-macOS-<arch>.dmg`.
 The repo-root `whisper_project_onedir.spec` / `whisper_project_onefile.spec`
 hand over to the macOS spec when run on a Mac (see "Building with the
 repo-root spec on a Mac" below), and the macOS spec fetches missing tools
@@ -87,7 +87,7 @@ What v1.9.0 and v1.9.3 did, in order; repeat it for the next version.
    needs macOS 14 because pip picks newer wheels there): from a fresh clone run
    `WTS_MACOS_MIN=10.15 bash platform/macos/build_mac.sh` in a logged-in desktop session (it runs
    `verify_mac_bundle.sh` and `smoke_test_app.sh`; both must pass). If no old Mac is available, the CI x64 dmg is acceptable. It needs macOS 14.
-4. Check `sha256sum -c` for each `.dmg.sha256` and create the release with the dmgs + `.sha256` files and
+4. Create the release with the dmgs (no `.sha256` files) and
    `docs/release-notes/RELEASE_NOTES_vX.Y.Z.md`. **New tag every time, even for a mac-only fix** — see
    CLAUDE.md "Never `--clobber` an existing release asset": never `delete-asset` + `upload` mac dmgs onto
    an already-published tag to avoid a new release page. Cut vX.Y.(Z+1) instead, even same-day, even if
