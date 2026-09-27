@@ -35,7 +35,10 @@ jobs:
       - name: Pin numpy to a Monterey/VM-safe 1.x
         run: pip install "numpy==1.26.4"
 
-      - name: Provide macOS ffmpeg/ffprobe in bin/
+      # Homebrew's ffmpeg links Homebrew dylibs; the mac spec detects that
+      # and replaces bin/ with self-contained tools (fetch_mac_binaries.sh),
+      # so this step checks that a colleague-style bin/ still builds cleanly.
+      - name: Provide macOS ffmpeg/ffprobe in bin/ (Homebrew, replaced by the spec)
         run: |
           brew install ffmpeg
           mkdir -p bin
@@ -46,9 +49,20 @@ jobs:
       - name: Run the script itself
         run: bash platform/macos/pyinstaller/compileall-whisper-mac.sh
 
+      - name: Verify the .app is self-contained
+        run: bash platform/macos/pyinstaller/verify_mac_bundle.sh "dist/Whisper Transcriber Suite.app" arm64
+
+      # The colleague's other habit: the Windows onedir spec from the repo
+      # root, which hands over to the mac spec on macOS.
+      - name: Repo-root spec builds the same .app
+        run: |
+          rm -rf dist build
+          pyinstaller --noconfirm --clean whisper_project_onedir.spec
+          bash platform/macos/pyinstaller/verify_mac_bundle.sh "dist/Whisper Transcriber Suite.app" arm64
+
       - name: Verify the .dmg was produced
         run: |
-          DMG="dist/Whisper Transcriber Suite.dmg"
+          DMG="dist/Whisper Transcriber Suite-arm64.dmg"
           [ -f "$DMG" ] || { echo "ERROR: $DMG not found" >&2; exit 1; }
           ls -la "$DMG"
           file "$DMG"

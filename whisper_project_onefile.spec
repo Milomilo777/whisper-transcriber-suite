@@ -15,6 +15,28 @@
 # own _MEIPASS at start, which is the unavoidable cost of onefile.
 # pyright: reportMissingImports=false
 
+# macOS: this Windows spec cannot make a working .app (no BUNDLE, a flat
+# contents_directory='.', and PyInstaller would rewrite the bundled yt-dlp),
+# so on a Mac the same command builds the verified macOS spec instead:
+# dist/Whisper Transcriber Suite.app. See docs/MACOS_BUILD_NOTES.md
+# ("Building with the repo-root spec on a Mac").
+import sys as _sys
+if _sys.platform == 'darwin':
+    import os as _os
+    _mac_spec = _os.path.join(SPECPATH, 'platform', 'macos', 'pyinstaller', 'whisper_project_mac.spec')
+    print('[spec] macOS: building with platform/macos/pyinstaller/whisper_project_mac.spec')
+    SPECPATH = _os.path.dirname(_mac_spec)  # the mac spec finds the repo from its own folder
+    with open(_mac_spec, encoding='utf-8') as _f:
+        exec(compile(_f.read(), _mac_spec, 'exec'))
+    print('[spec] Built "%s". Make the .dmg with: '
+          'bash platform/macos/pyinstaller/builddmg.command  (it expects the '
+          'default dist/; or run the whole build, checks and .dmg with: '
+          'bash platform/macos/build_mac.sh)'
+          % _os.path.join(DISTPATH, 'Whisper Transcriber Suite.app'))
+    # Stop here: the Windows EXE/COLLECT below (and anything appended to this
+    # file) must not run on macOS.
+    raise SystemExit(0)
+
 from PyInstaller.utils.hooks import (
     collect_all,
     collect_data_files,
