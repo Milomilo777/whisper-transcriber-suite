@@ -98,12 +98,3 @@ or start a [Discussion](https://github.com/Milomilo777/whisper-transcriber-suite
 a two-line report with a screenshot helps a lot. And if the app saved you some
 time, a [⭐ on GitHub](https://github.com/Milomilo777/whisper-transcriber-suite)
 is how other people find it.
-
-## Checksums (SHA-256)
-
-```
-d30510965bce72096cff402ca7d6407ab4580763528ff0b8b84b734a1fde5690  WhisperTranscriberSuite-Installer-Windows-v1.9.3.exe
-9f41e63864c64bb13aa401ccca5e92765460b85b343b2198b1b8eeeba6765dcf  WhisperTranscriberSuite-Portable-Windows-v1.9.3.zip
-57a126de8ec2ebf2fb1f694526a15f907b7c9d5d4df3e8f79324caf71bfe916d  WhisperTranscriberSuite-v1.9.3-macOS-arm64.dmg
-22174d3e67ab38374828926c3a4b78104013dfc576bab35efa8428f144bcb7a9  WhisperTranscriberSuite-v1.9.3-macOS-x64.dmg
-```
