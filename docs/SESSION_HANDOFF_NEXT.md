@@ -5,10 +5,24 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-27 (evening) — no more .sha256 files, site counters, CI green
+
+- Releases no longer ship `.sha256` files (`macos-app.yml`, `build_mac.sh`);
+  v1.9.3's two were removed with its checksum list. The site shows no checksums.
+- Footer counters: `site/functions/api/stats.js` (Pages Function). Downloads work
+  now. **Visits need one dashboard step:** create a D1 database and bind it to
+  the Pages project as `VISITS_DB` (Production), then redeploy. The table is
+  created on first request, starting at 1350.
+- CI was red on every push: a stale dialog-centring test, plus a rare Tcl abort
+  when the GC finalised Tk objects on a worker thread (`tests/conftest.py` now
+  collects on the main thread after Tk-using tests).
+
+---
+
 ## 🟢 2026-09-27 — website redesign, search registration, visibility plan
 
 - `site/` redesigned (light theme, CSS-3D hero and tour ring, comparison table,
-  visible FAQ, checksums, macOS one-liner). Canonical URL is now
+  visible FAQ, macOS one-liner). Canonical URL is now
   https://whisper-transcriber-suite.pages.dev; the old custom domain only redirects.
 - Automated: `tools/update_site_data.py` + `tools/build_llms_full.py` via
   `.github/workflows/site-data.yml` (each release + weekly); `tools/indexnow_ping.py`
