@@ -27,6 +27,7 @@ fetch_zip() {  # fetch_zip <url> <member> <dest>
   local f
   f="$(find "$TMP/x" -type f -name "$2" | head -1)"
   [ -n "$f" ] || { echo "error: $2 not found in $1" >&2; exit 1; }
+  rm -f "$3"  # an old copy may be read-only (Homebrew installs its tools 0555)
   cp "$f" "$3"
   chmod +x "$3"
 }
@@ -45,6 +46,7 @@ for t in ffmpeg ffprobe ffplay; do
   if [ "$ARCH" = "universal2" ]; then
     fetch_tool "$t" x86_64 "$TMP/$t.x86_64"
     fetch_tool "$t" arm64 "$TMP/$t.arm64"
+    rm -f "$BIN/$t"
     lipo -create "$TMP/$t.x86_64" "$TMP/$t.arm64" -output "$BIN/$t"
     chmod +x "$BIN/$t"
   else
@@ -54,8 +56,9 @@ done
 
 # yt-dlp_macos is already universal2. Keep the name "yt-dlp": that is what
 # core.paths.bundled_binary("yt-dlp") resolves on macOS.
-curl -fsSL --retry 3 -o "$BIN/yt-dlp" \
+curl -fsSL --retry 3 -o "$TMP/yt-dlp" \
   "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos"
+rm -f "$BIN/yt-dlp" && mv "$TMP/yt-dlp" "$BIN/yt-dlp"
 chmod +x "$BIN/yt-dlp"
 
 # Deno: yt-dlp's JavaScript runtime for YouTube's challenges. Bundled next to
@@ -71,6 +74,7 @@ fetch_deno() {  # fetch_deno <x86_64|aarch64> <dest>
   got="$(shasum -a 256 "$TMP/$zip" | cut -d' ' -f1)"
   [ -n "$want" ] && [ "$want" = "$got" ] || { echo "error: $zip checksum mismatch" >&2; exit 1; }
   rm -rf "$TMP/deno-x" && unzip -oq "$TMP/$zip" deno -d "$TMP/deno-x"
+  rm -f "$2"
   cp "$TMP/deno-x/deno" "$2"
   chmod +x "$2"
 }
@@ -80,6 +84,7 @@ case "$ARCH" in
   universal2)
     fetch_deno x86_64 "$TMP/deno.x86_64"
     fetch_deno aarch64 "$TMP/deno.arm64"
+    rm -f "$BIN/deno"
     lipo -create "$TMP/deno.x86_64" "$TMP/deno.arm64" -output "$BIN/deno"
     chmod +x "$BIN/deno" ;;
 esac
