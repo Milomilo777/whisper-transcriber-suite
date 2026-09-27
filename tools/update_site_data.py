@@ -72,7 +72,9 @@ def fetch() -> dict:
     for key, pat in ASSETS.items():
         asset = next((a for a in latest["assets"] if pat.search(a["name"])), None)
         if asset:
-            files[key] = {"url": asset["browser_download_url"], "mb": round(asset["size"] / 1048576)}
+            digest = asset.get("digest") or ""
+            files[key] = {"url": asset["browser_download_url"], "mb": round(asset["size"] / 1048576),
+                          "sha256": digest.split(":", 1)[1] if digest.startswith("sha256:") else ""}
     return {
         "version": latest["tag_name"],
         "released": latest["published_at"][:10],
@@ -105,6 +107,8 @@ def render_page(html: str, d: dict) -> str:
     for key, f in d["files"].items():
         html = _set_text(html, f"size-{key}", f"~{f['mb']}&nbsp;MB")
         html = _set_href(html, key, f["url"])
+        if f.get("sha256"):
+            html = _set_text(html, f"sha-{key}", f["sha256"])
     html = _set_text(html, "mac-oneliner", html_escape(MAC_ONELINER.format(v=d["version"]), quote=False))
     html = re.sub(r'"softwareVersion": "[^"]*"', f'"softwareVersion": "{d["version"].lstrip("v")}"', html)
     html = re.sub(r'"dateModified": "[^"]*"', f'"dateModified": "{d["released"]}"', html)

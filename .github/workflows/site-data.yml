@@ -33,7 +33,9 @@ jobs:
       - name: Update site data
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python tools/update_site_data.py
+        run: |
+          python tools/update_site_data.py
+          python tools/build_llms_full.py
       - name: Commit if changed
         id: commit
         run: |

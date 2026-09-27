@@ -1,30 +1,104 @@
-<!--
-    title: Whisper Transcriber Suite — offline audio & video transcription for Windows, macOS and Linux
-    description: Desktop app that runs OpenAI Whisper locally via faster-whisper. Transcribe audio and video to SRT, VTT, DOCX and PDF with no cloud, no account and no upload. Speaker diarisation, batch queue, yt-dlp downloads, live microphone transcription and a local-network mode.
-    keywords: offline speech to text, local whisper GUI, faster-whisper desktop app, audio to text, video to text, subtitle generator, SRT VTT generator, transcription software, speaker diarization, private on-device transcription, yt-dlp downloader, live microphone transcription
-    author: translation-robot
-    product-type: Desktop transcription software
-    platforms: Windows, macOS, Linux
-    technology-stack: faster-whisper, CTranslate2, whisper.cpp, NVIDIA Parakeet, Tkinter, yt-dlp, ffmpeg, sherpa-onnx, stable-ts
-    license: BSD-3-Clause
--->
+# Whisper Transcriber Suite
 
-<div align="center">
+> Free, offline desktop app (BSD-3-Clause) that transcribes audio/video with OpenAI's Whisper — no account, no cloud upload, no per-minute cost. Windows, macOS, Linux.
 
-<img src="docs/img/hero.png" alt="Whisper Transcriber Suite — transcribe audio and video on your own machine. No cloud, no account, no upload." width="100%">
+Whisper Transcriber Suite runs faster-whisper, whisper.cpp or NVIDIA Parakeet locally to turn audio and video into SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and PDF (plus oTranscribe, ELAN, InqScribe and Express Scribe). It adds live microphone/system-audio transcription, offline speaker diarisation with per-word timestamps, yt-dlp-powered downloads from any site it supports, adaptive denoise, a pause/resume/re-run batch queue, optional offline voice cloning (OmniVoice), optional AI summaries and a bilingual SRT pass, and a local-network mode that turns the machine into a transcription page for other devices on the LAN. Two cloud backends (a Gemini API option and Google Cloud Speech-to-Text) exist purely as opt-in extras, off by default — every default path keeps recordings on the user's own machine. Actively maintained; CI runs the full test suite on every push. Written by translation-robot.
+
+Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscription, no per-minute fee; only the ~1-3GB Whisper model itself downloads once, on first launch. Does it upload recordings anywhere? No, not by default — the two cloud backends above are opt-in and stay off until enabled. What platforms does it run on? Windows, macOS and Linux, with published Windows and macOS installers and a from-source build for Linux. How is this different from calling the Whisper API directly? No per-minute cost and no audio leaves the machine, because transcription runs locally by default instead of through a paid cloud API.
+
+## Download
+- [Latest release](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest): v1.9.3 — free Windows installer, Windows portable ZIP and macOS DMG, no account or sign-up required; Linux builds from source.
+- [All releases](https://github.com/Milomilo777/whisper-transcriber-suite/releases): full version history, every past release kept published with its own changelog.
+- [Support the project — Buy Me a Coffee](https://buymeacoffee.com/mehraz1358): funds continued cross-platform development and testing.
+
+## Docs
+- [Full text for AI assistants](https://whisper-transcriber-suite.pages.dev/llms-full.txt): this summary plus the complete FAQ and README in one plain-text file.
+- [GitHub repository](https://github.com/Milomilo777/whisper-transcriber-suite): source code, issue tracker, discussions.
+- [Full README](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/README.md): complete feature table, FAQ, screenshots, keyboard shortcuts.
+- [Install guide](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md): setup and troubleshooting for Windows, macOS and Linux.
+- [Architecture](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md): process model — long-lived worker processes, JSON-over-stdio protocol.
+- [Local-network / server mode](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SERVER.md): turns the machine into a transcription page other devices on the LAN can use.
+- [Changelog](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md): what shipped in each version.
+
+## Key facts
+- Free and open source: no subscription, no per-minute cost.
+- License: BSD-3-Clause for the project's own source; bundled ffmpeg, ffprobe, yt-dlp and the Whisper model keep their own upstream licenses (see THIRD_PARTY_NOTICES.md in the repository).
+- Offline by default: faster-whisper, whisper.cpp and NVIDIA Parakeet all transcribe locally; cloud backends are opt-in only.
+- Cross-platform: Windows and macOS installers published; Linux builds from source.
+- Latest version v1.9.3, released 2026-09-26; repository created 2026-05-11 and actively maintained.
+- Author: translation-robot.
+
+## Contact
+- Website: https://whisper-transcriber-suite.pages.dev
+- GitHub: https://github.com/Milomilo777/whisper-transcriber-suite
+- Issues / support: https://github.com/Milomilo777/whisper-transcriber-suite/issues
+- Questions: https://github.com/Milomilo777/whisper-transcriber-suite/discussions
+- Email: whisper.transcriber.suite@gmail.com
+- Security reports: GitHub private vulnerability reporting (see SECURITY.md)
+
+---
+
+# Full text
+
+Website: https://whisper-transcriber-suite.pages.dev/ · Source: https://github.com/Milomilo777/whisper-transcriber-suite
+
+## Frequently asked questions
+
+### Is Whisper Transcriber Suite free?
+
+Yes. It's BSD-3-Clause licensed, with no subscription and no per-minute cost. The Whisper model itself downloads once (about 1-3 GB) on first launch; after that, transcription works without an internet connection.
+
+### Does it upload my audio or video anywhere?
+
+No, not by default. Every default backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — runs locally on your machine. Two backends are opt-in only (cloud_stt via the Gemini API, and google_cloud_stt), and both stay off until you turn them on yourself in Advanced to Backend.
+
+### What platforms does it run on?
+
+Windows, macOS and Linux. Published downloads are a Windows installer, a Windows portable ZIP, and a macOS DMG; Linux runs from source.
+
+### What transcript formats can it produce?
+
+SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and PDF, plus oTranscribe, ELAN, InqScribe and Express Scribe.
+
+### Can it label who is speaking?
+
+Yes, optional speaker diarisation (Identify speakers), with per-word timestamps and time-range clipping.
+
+### Can it transcribe a live microphone or system audio?
+
+Yes, from the Live tab: a microphone or the system audio, transcribed as it happens.
+
+### Can it download and transcribe online videos, e.g. from YouTube?
+
+Yes, any site yt-dlp supports, with an optional transcribe-on-finish step.
+
+### Can it summarize a transcript, pull out action items, or answer questions about it?
+
+Yes, via the optional AI Tools tab in the transcript viewer: summarize, action items, ask-a-question, and a per-segment translate pass that writes a bilingual SRT. It is off by default.
+
+### Can it clone a voice and make it say new text?
+
+Yes, via the optional Clone Your Voice tab, using OmniVoice (Apache-2.0) entirely on your machine. Off by default; opt in at install time.
+
+### How is this different from calling the Whisper API directly?
+
+It runs the model locally via faster-whisper by default, so there is no per-minute API cost and no audio leaves your machine, unless you explicitly opt into one of the two cloud backends.
+
+### Can several people on the same network use it without installing it on every machine?
+
+Yes, Web/LAN access mode turns this machine into a transcription page the other devices on the network can use.
+
+### How do I contact the project?
+
+Bugs and feature requests go to GitHub Issues, questions to GitHub Discussions, and anything else to whisper.transcriber.suite@gmail.com. Security reports go through GitHub's private vulnerability reporting.
+
+---
+
+# README
 
 # Whisper Transcriber Suite
 
 ### Drag in an audio or video file. Get back a **timed, formatted transcript** — without it ever leaving your computer.
-
-[![CI](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml)
-[![release](https://img.shields.io/github/v/release/Milomilo777/whisper-transcriber-suite?label=release&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
-[![codecov](https://codecov.io/gh/Milomilo777/whisper-transcriber-suite/graph/badge.svg)](https://codecov.io/gh/Milomilo777/whisper-transcriber-suite)
-[![License: BSD-3](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#download)
-[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/stargazers)
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?style=flat&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/mehraz1358)
 
 ### [⬇  Download for Windows](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
 
@@ -34,23 +108,16 @@
 **[FAQ](#frequently-asked-questions)** ·
 **[Build from source](#build-from-source)**
 
-<!-- Language switcher. Flag images rather than flag emoji on purpose:
-     Windows does not render regional-indicator emoji as flags, so 🇰🇷
-     shows up as the letters "KR" for a large share of readers. -->
-<p>
-  <img src="https://flagcdn.com/16x12/us.png" alt="" width="16" height="12">
+  
   <b>English</b> ∙
-  <a href="docs/i18n/README.zh-CN.md"><img src="https://flagcdn.com/16x12/cn.png" alt="" width="16" height="12"> 简体中文</a> ∙
-  <a href="docs/i18n/README.ja.md"><img src="https://flagcdn.com/16x12/jp.png" alt="" width="16" height="12"> 日本語</a> ∙
-  <a href="docs/i18n/README.ko.md"><img src="https://flagcdn.com/16x12/kr.png" alt="" width="16" height="12"> 한국어</a> ∙
-  <a href="docs/i18n/README.de.md"><img src="https://flagcdn.com/16x12/de.png" alt="" width="16" height="12"> Deutsch</a> ∙
-  <a href="docs/i18n/README.es.md"><img src="https://flagcdn.com/16x12/es.png" alt="" width="16" height="12"> Español</a> ∙
-  <a href="docs/i18n/README.fr.md"><img src="https://flagcdn.com/16x12/fr.png" alt="" width="16" height="12"> Français</a> ∙
-  <a href="docs/i18n/README.pt.md"><img src="https://flagcdn.com/16x12/pt.png" alt="" width="16" height="12"> Português</a> ∙
-  <a href="docs/i18n/README.fa.md"><img src="https://flagcdn.com/16x12/ir.png" alt="" width="16" height="12"> فارسی</a>
-</p>
-
-</div>
+   简体中文 ∙
+   日本語 ∙
+   한국어 ∙
+   Deutsch ∙
+   Español ∙
+   Français ∙
+   Português ∙
+   فارسی
 
 ---
 
@@ -66,11 +133,11 @@ No account. No API key. No subscription. Your files stay on your disk.
 
 - 🔒 **Runs on your machine** — [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2) by default, plus **whisper.cpp** and **NVIDIA Parakeet**
 - 📝 **14 output formats** — `srt` `vtt` `ass` `tsv` `txt` `json` `lrc` `md` `docx` `pdf`, plus oTranscribe / ELAN / InqScribe / Express Scribe
-- 🎙️ **Live transcription** — a microphone or the system audio, transcribed as it happens → [docs/LIVE.md](docs/LIVE.md)
+- 🎙️ **Live transcription** — a microphone or the system audio, transcribed as it happens → [docs/LIVE.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/LIVE.md)
 - 🗨️ **Text to voice & voice cloning** (optional) — 54 ready-made voices, or clone / design your own, locally
 - 🗣️ **Speaker labels** — offline diarisation, per-word timestamps, time-range clipping
 - 🎬 **Downloads** — any `yt-dlp` site, with optional transcribe-on-finish
-- 🧹 **Adaptive denoise** — measures the audio and only cleans it when that helps → [docs/DENOISE.md](docs/DENOISE.md)
+- 🧹 **Adaptive denoise** — measures the audio and only cleans it when that helps → [docs/DENOISE.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/DENOISE.md)
 - 🌐 **Local-network mode** — turn this machine into a transcription page for your other devices
 - 💸 **Free and BSD-3 licensed** — no per-minute cost, no subscription
 
@@ -88,75 +155,38 @@ Grab the latest build from the **[releases page](https://github.com/Milomilo777/
 release — older versions stay published and their counts are never
 reset):
 
-[![v1.9.3](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.9.3/total?label=v1.9.3&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.3)
-[![v1.9.1](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.9.1/total?label=v1.9.1&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.1)
-[![v1.9.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.9.0/total?label=v1.9.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.0)
-[![v1.8.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.8.0/total?label=v1.8.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.8.0)
-[![v1.7.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.7.0/total?label=v1.7.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.7.0)
-[![v1.6.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.6.0/total?label=v1.6.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.6.0)
-[![v1.5.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.5.0/total?label=v1.5.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.5.0)
-
 Everything needed is inside — a bundled Python, `ffmpeg`, `ffprobe` and
 `yt-dlp`. The only thing fetched later is the speech model itself
 (**~1–3 GB, once**, on first launch); after that, transcription works without an internet connection.
 
 Step-by-step walkthrough, including what to click past on Windows SmartScreen:
-**[docs/INSTALL.md](docs/INSTALL.md)**.
+**[docs/INSTALL.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md)**.
 
 ## What it looks like
 
-<div align="center">
+Drop a file, pick your options, press Transcribe. That is the whole workflow.
 
-<img src="docs/img/screenshot-transcribe.png" alt="The Transcribe tab: a drop target, engine and language pickers, speaker-label and word-timestamp options" width="88%">
-
-<sub>Drop a file, pick your options, press Transcribe. That is the whole workflow.</sub>
-
-</div>
-
-<details>
-<summary><b>The other tabs</b></summary>
-
-<br>
+<b>The other tabs</b>
 
 **Transcription Queue** — batch jobs with live progress; pause, resume, cancel,
 re-run or remove any row.
 
-<img src="docs/img/screenshot-queue.png" alt="Transcription Queue tab" width="100%">
-
 **Download Videos** — any `yt-dlp` site: pick a format, clip a time range, pull
 subtitles, optionally transcribe as soon as the download finishes.
-
-<img src="docs/img/screenshot-download.png" alt="Download Videos tab" width="100%">
 
 **Live** — transcribe a microphone, or whatever this machine is playing, as it
 happens.
 
-<img src="docs/img/screenshot-live.png" alt="Live tab: microphone or system-audio source, model picker, input level and live transcript" width="100%">
-
 **Clone Your Voice / Text to Voice** — optional and fully offline: clone a voice
 from a short sample, or design one, and have it read new text.
-
-<img src="docs/img/screenshot-voice.png" alt="Clone Your Voice / Text to Voice tab" width="100%">
 
 **Video Tiling** — play one live stream as a full-screen N×N video wall,
 optionally across several monitors.
 
-<img src="docs/img/screenshot-tiling.png" alt="Video Tiling tab" width="100%">
-
 **Web / LAN access** — one button turns this machine into a transcription page
 for the phones and PCs on your network.
 
-<img src="docs/img/screenshot-web.png" alt="Web / LAN access tab" width="100%">
-
-</details>
-
 ## Features
-
-<div align="center">
-
-<img src="docs/img/features.png" alt="Five tabs, one window: Transcribe, Transcription Queue, Download Videos, Video Tiling, Web/LAN access, Convert transcript" width="100%">
-
-</div>
 
 | | |
 |---|---|
@@ -179,12 +209,6 @@ Keyboard: `Ctrl+O` browse · `Ctrl+Enter` transcribe · `Esc` cancel ·
 
 ## How it works
 
-<div align="center">
-
-<img src="docs/img/how-it-works.png" alt="Drop a file, the Tk GUI queues it, a worker subprocess holds the model in memory and runs faster-whisper, and the transcript lands in your folder" width="100%">
-
-</div>
-
 Whisper Transcriber Suite keeps the window responsive by running each
 transcription job in its own long-lived worker process, which holds the
 Whisper model in memory and streams progress back over newline-delimited
@@ -194,9 +218,9 @@ download. A per-worker UUID token and a 5-second heartbeat keep that routing
 robust against PID recycling and let the GUI detect a wedged worker instead
 of hanging with it.
 
-Deeper: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (prose) ·
-[docs/architecture.svg](docs/architecture.svg) (full diagram) ·
-[docs/DECISIONS.md](docs/DECISIONS.md) (why things are the way they are).
+Deeper: [docs/ARCHITECTURE.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md) (prose) ·
+[docs/architecture.svg](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/architecture.svg) (full diagram) ·
+[docs/DECISIONS.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/DECISIONS.md) (why things are the way they are).
 
 ## Offline by default
 
@@ -210,19 +234,16 @@ downloaded.
 > are willing to send to a third party.
 >
 > - **`cloud_stt`** — Google **Gemini API**, authenticated with a free API key
->   you paste. Quickest to set up. → [docs/CLOUD_STT.md](docs/CLOUD_STT.md)
+>   you paste. Quickest to set up. → [docs/CLOUD_STT.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CLOUD_STT.md)
 > - **`google_cloud_stt`** — full **Google Cloud Speech-to-Text**, authenticated
 >   with a service-account JSON file. 60 free minutes/month, speaker labels, a
->   cheaper batch mode. → [docs/CLOUD_STT_GOOGLE.md](docs/CLOUD_STT_GOOGLE.md)
+>   cheaper batch mode. → [docs/CLOUD_STT_GOOGLE.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CLOUD_STT_GOOGLE.md)
 
 The optional update check is likewise **notify-only**: it asks GitHub whether a
 newer release exists, at most once a day, and never downloads or installs
 anything by itself. Turn it off with `update_check_enabled`.
 
-<details>
-<summary><b>First run — choosing where the model lives</b></summary>
-
-<br>
+<b>First run — choosing where the model lives</b>
 
 On first launch the app asks where to store the Whisper model files. The
 default is a private per-user cache that is always writable —
@@ -239,12 +260,7 @@ WhisperTranscriberSuite.exe --safe-mode
 That moves the user config aside and re-fires the first-run dialog with the
 defaults.
 
-</details>
-
-<details>
-<summary><b>Configuration keys</b></summary>
-
-<br>
+<b>Configuration keys</b>
 
 User settings live at `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json`.
 
@@ -258,14 +274,9 @@ User settings live at `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json`.
 | `update_check_enabled` | Opt-in GitHub update check (on by default; notify-only) |
 | `last_update_check` | ISO date of the last check (once-per-day throttle) |
 
-Full reference: [docs/CONFIG.md](docs/CONFIG.md).
+Full reference: [docs/CONFIG.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CONFIG.md).
 
-</details>
-
-<details>
-<summary><b>Updating to a newer version</b></summary>
-
-<br>
+<b>Updating to a newer version</b>
 
 **No uninstall needed.** The Standard installer uses a stable application ID,
 so you just download the newer `WhisperTranscriberSuite-Installer-Windows-….exe` and run it — it upgrades
@@ -276,12 +287,7 @@ build is self-contained: replace the old folder with the new one.
 you are already current. The quiet daily check stays silent unless something
 newer exists, and fails silently when offline.
 
-</details>
-
-<details>
-<summary><b>Share it on your local network</b></summary>
-
-<br>
+<b>Share it on your local network</b>
 
 Rather than installing the app on every machine, let people on a trusted
 network transcribe through this one. The **Web / LAN access** tab does it with
@@ -298,9 +304,7 @@ python gui.py serve --lan    REM share on the LAN (allow the firewall prompt)
 
 It has no accounts and no encryption — anyone who can reach the address (and
 knows the password, if you set one) can use it. Trusted networks only. Routes,
-the upload cap and the `--token` option: [docs/SERVER.md](docs/SERVER.md).
-
-</details>
+the upload cap and the `--token` option: [docs/SERVER.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SERVER.md).
 
 ## Build from source
 
@@ -313,16 +317,16 @@ python gui.py
 
 Updating a source checkout later: `platform\windows\update.bat` on Windows,
 `platform/linux/update.sh` on Linux — both pull the latest source and
-refresh the dependencies ([platform/windows/README.md](platform/windows/README.md)).
+refresh the dependencies ([platform/windows/README.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/platform/windows/README.md)).
 
 **macOS app (.app + .dmg):** on a Mac, `bash platform/macos/build_mac.sh`
 does the whole build in one command — Python/Tk check, dependencies, the
 bundled tools, PyInstaller, checks and the .dmg
-([docs/MACOS_BUILD_NOTES.md](docs/MACOS_BUILD_NOTES.md)).
+([docs/MACOS_BUILD_NOTES.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/MACOS_BUILD_NOTES.md)).
 
-[docs/BUILD.md](docs/BUILD.md) covers the build pipelines — which two are
+[docs/BUILD.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/BUILD.md) covers the build pipelines — which two are
 actually shipped and which are kept alive but unpublished —  and
-[docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md) has the ship sequence.
+[docs/RELEASE_PROCESS.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/RELEASE_PROCESS.md) has the ship sequence.
 
 Regenerate the images in this README with `python tools/make_graphics.py`
 (they are drawn by that script, not pasted in from a design tool).
@@ -334,31 +338,31 @@ Actively maintained. The quality bar enforced on every commit:
 - **pyright** on `app/` and `core/` — 0 errors, 0 warnings, 0 informations.
 - The hermetic unit + integration suite (`pytest tests/ --ignore=tests/smoke`)
   runs on **every push, on Windows and Ubuntu** — see
-  [docs/TESTING.md](docs/TESTING.md). Coverage is reported by the badge above.
+  [docs/TESTING.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/TESTING.md). Coverage is reported by the badge above.
 
-[docs/CHANGELOG.md](docs/CHANGELOG.md) has what shipped recently; superseded
+[docs/CHANGELOG.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md) has what shipped recently; superseded
 freeze and stability audits are archived under
-[docs/history/](docs/history/).
+[docs/history/](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/history/).
 
 ## Documentation
 
 | Doc | Audience |
 |---|---|
-| [INSTALL.md](docs/INSTALL.md) | End-user install + troubleshooting |
-| [SERVER.md](docs/SERVER.md) | Local-network / web server mode (`gui.py serve`) |
-| [BUILD.md](docs/BUILD.md) | Build the deliverables yourself |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Process model, threading, protocols |
-| [CONFIG.md](docs/CONFIG.md) | Every config key with defaults |
-| [CLOUD_STT.md](docs/CLOUD_STT.md) | Optional Gemini-API backend (paste a key) |
-| [CLOUD_STT_GOOGLE.md](docs/CLOUD_STT_GOOGLE.md) | Optional Google Cloud STT backend (service account, batch mode) |
-| [LIVE.md](docs/LIVE.md) | The Live tab: microphone / system-audio transcription |
-| [DENOISE.md](docs/DENOISE.md) | The adaptive denoise pre-process |
-| [RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md) | How to ship a new version |
-| [CHANGELOG.md](docs/CHANGELOG.md) | Version history |
-| [DECISIONS.md](docs/DECISIONS.md) | Non-obvious design choices and why |
-| [ROADMAP.md](docs/ROADMAP.md) · [roadmap/](docs/roadmap/) | What is being considered next |
+| [INSTALL.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md) | End-user install + troubleshooting |
+| [SERVER.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SERVER.md) | Local-network / web server mode (`gui.py serve`) |
+| [BUILD.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/BUILD.md) | Build the deliverables yourself |
+| [ARCHITECTURE.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md) | Process model, threading, protocols |
+| [CONFIG.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CONFIG.md) | Every config key with defaults |
+| [CLOUD_STT.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CLOUD_STT.md) | Optional Gemini-API backend (paste a key) |
+| [CLOUD_STT_GOOGLE.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CLOUD_STT_GOOGLE.md) | Optional Google Cloud STT backend (service account, batch mode) |
+| [LIVE.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/LIVE.md) | The Live tab: microphone / system-audio transcription |
+| [DENOISE.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/DENOISE.md) | The adaptive denoise pre-process |
+| [RELEASE_PROCESS.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/RELEASE_PROCESS.md) | How to ship a new version |
+| [CHANGELOG.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md) | Version history |
+| [DECISIONS.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/DECISIONS.md) | Non-obvious design choices and why |
+| [ROADMAP.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ROADMAP.md) · [roadmap/](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/roadmap/) | What is being considered next |
 
-> **Coding agents:** start at [`PROJECT_INDEX.md`](PROJECT_INDEX.md) — a
+> **Coding agents:** start at [`PROJECT_INDEX.md`](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/PROJECT_INDEX.md) — a
 > generated, tool-neutral repo map built for fast, low-token onboarding.
 
 ## Frequently asked questions
@@ -377,7 +381,7 @@ until you turn them on yourself in Advanced → Backend.
 **What platforms does it run on?**
 Windows, macOS and Linux. Published downloads are a Windows installer, a
 Windows portable ZIP, and a macOS DMG; Linux runs from source
-([docs/BUILD.md](docs/BUILD.md)).
+([docs/BUILD.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/BUILD.md)).
 
 **What transcript formats can it produce?**
 `srt` `vtt` `ass` `tsv` `txt` `json` `lrc` `md` `docx` `pdf`, plus
@@ -388,7 +392,7 @@ Yes — optional speaker diarisation ("Identify speakers"), with per-word
 timestamps and time-range clipping.
 
 **Can it transcribe a live microphone or system audio?**
-Yes, from the Live tab. See [docs/LIVE.md](docs/LIVE.md).
+Yes, from the Live tab. See [docs/LIVE.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/LIVE.md).
 
 **Can it download and transcribe online videos, e.g. from YouTube?**
 Yes, any site `yt-dlp` supports, with an optional transcribe-on-finish step.
@@ -420,7 +424,7 @@ opt into one of the two cloud backends above.
 **Can several people on the same network use it without installing it on
 every machine?**
 Yes — Web / LAN access mode turns this machine into a transcription page the
-other devices on the network can use. See [docs/SERVER.md](docs/SERVER.md).
+other devices on the network can use. See [docs/SERVER.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SERVER.md).
 
 ## Contributing
 
@@ -438,13 +442,13 @@ It takes one click, costs nothing, and it's how other people find the project.
 
 Issues, pull requests and
 [Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions) are all
-welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the dev setup, the quality bar
+welcome. [CONTRIBUTING.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/CONTRIBUTING.md) has the dev setup, the quality bar
 and the PR conventions; if you are new here, the
 [`good first issue`](https://github.com/Milomilo777/whisper-transcriber-suite/labels/good%20first%20issue)
 label is the place to start.
 
-This project follows the [Contributor Covenant](.github/CODE_OF_CONDUCT.md).
-Security reports go through [SECURITY.md](SECURITY.md).
+This project follows the [Contributor Covenant](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/.github/CODE_OF_CONDUCT.md).
+Security reports go through [SECURITY.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md).
 
 ## Contact
 
@@ -458,18 +462,14 @@ Security reports go through [SECURITY.md](SECURITY.md).
 Written by **translation-robot** — <https://github.com/translation-robot>.
 
 This project's own source is licensed under the **BSD 3-Clause License** — see
-[LICENSE](LICENSE). The bundled binaries (`ffmpeg`, `ffprobe`, `yt-dlp`), the
+[LICENSE](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE). The bundled binaries (`ffmpeg`, `ffprobe`, `yt-dlp`), the
 bundled Python runtime and packages, and the Whisper model itself keep their own
-upstream licenses; [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) summarises
+upstream licenses; [THIRD_PARTY_NOTICES.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/THIRD_PARTY_NOTICES.md) summarises
 them and says what to include when redistributing.
 
 ---
-
-<div align="center">
 
 **Keywords** — offline speech to text · local Whisper GUI · audio to text ·
 video to text · subtitle generator · SRT VTT generator · transcription software ·
 speaker diarization · faster-whisper desktop app · yt-dlp downloader ·
 private on-device transcription · Windows · macOS · Linux
-
-</div>

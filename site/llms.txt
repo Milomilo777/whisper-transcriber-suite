@@ -12,6 +12,7 @@ Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscri
 - [Support the project — Buy Me a Coffee](https://buymeacoffee.com/mehraz1358): funds continued cross-platform development and testing.
 
 ## Docs
+- [Full text for AI assistants](https://whisper-transcriber-suite.pages.dev/llms-full.txt): this summary plus the complete FAQ and README in one plain-text file.
 - [GitHub repository](https://github.com/Milomilo777/whisper-transcriber-suite): source code, issue tracker, discussions.
 - [Full README](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/README.md): complete feature table, FAQ, screenshots, keyboard shortcuts.
 - [Install guide](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md): setup and troubleshooting for Windows, macOS and Linux.

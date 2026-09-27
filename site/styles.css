@@ -271,7 +271,6 @@ html.js .sr.in { opacity: 1; transform: none; }
   display: flex; flex-direction: column; gap: 24px; justify-content: space-between;
   padding: clamp(22px, 2.4vw, 32px); border-radius: var(--r-lg);
   background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm);
-  transform: perspective(1000px) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg));
   transition: box-shadow 0.4s var(--ease-out), border-color 0.4s, transform 0.5s var(--ease-out), opacity 0.9s var(--ease-out);
 }
 .tone-violet { --tone: var(--violet); --tone-soft: var(--violet-soft); }
@@ -281,7 +280,6 @@ html.js .sr.in { opacity: 1; transform: none; }
 .cell::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--tone); opacity: 0.85; }
 .cell:hover { box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--tone) 35%, transparent); }
 .cell:hover::before { opacity: 1; }
-html.js .cell.sr.in { transform: perspective(1000px) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg)); }
 .cell h3 { font-weight: 700; font-size: clamp(1.2rem, 1.6vw, 1.45rem); line-height: 1.2; }
 .cell-copy p:not(.chip-label) { margin-top: 10px; color: var(--ink-2); font-size: 0.97rem; max-width: 52ch; }
 .chip-label { display: inline-block; margin-bottom: 14px; padding: 4px 10px; border-radius: var(--r-pill); background: var(--tone-soft); font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--tone); }
@@ -401,8 +399,7 @@ html.js .cell.sr.in { transform: perspective(1000px) rotateX(var(--tx, 0deg)) ro
 /* ---------- Download ---------- */
 .download { background: linear-gradient(180deg, var(--bg), var(--bg-2)); }
 .dl-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; perspective: 1400px; }
-.dl-card { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 26px 24px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); transform: perspective(1000px) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg)); transition: box-shadow 0.4s, border-color 0.4s, transform 0.5s var(--ease-out), opacity 0.9s var(--ease-out); }
-html.js .dl-card.sr.in { transform: perspective(1000px) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg)); }
+.dl-card { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 26px 24px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); transition: box-shadow 0.4s, border-color 0.4s, transform 0.5s var(--ease-out), opacity 0.9s var(--ease-out); }
 .dl-card:hover { box-shadow: var(--shadow); }
 .dl-card.is-recommended { border: 2px solid transparent; background: linear-gradient(#fff, #fff) padding-box, var(--grad) border-box; box-shadow: var(--shadow); }
 .dl-os { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 600; color: var(--ink-2); font-size: 0.92rem; }
@@ -444,8 +441,7 @@ html.js .dl-card.sr.in { transform: perspective(1000px) rotateX(var(--tx, 0deg))
 /* ---------- Contact + Support ---------- */
 .contact .section-head { margin-inline: auto; text-align: center; }
 .contact-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; perspective: 1400px; }
-.contact-card { display: grid; gap: 6px; align-content: start; padding: 28px 26px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); color: var(--ink); text-decoration: none; transform: perspective(1000px) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg)); transition: box-shadow 0.4s, transform 0.5s var(--ease-out), opacity 0.9s var(--ease-out); }
-html.js .contact-card.sr.in { transform: perspective(1000px) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg)); }
+.contact-card { display: grid; gap: 6px; align-content: start; padding: 28px 26px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); color: var(--ink); text-decoration: none; transition: box-shadow 0.4s, transform 0.5s var(--ease-out), opacity 0.9s var(--ease-out); }
 .contact-card:hover { color: var(--ink); box-shadow: var(--shadow); }
 .contact-ic { --tone: var(--teal); display: grid; place-items: center; width: 50px; height: 50px; margin-bottom: 10px; border-radius: 15px; color: #fff; background: var(--tone); }
 .contact-ic.tone-coral { --tone: var(--coral); } .contact-ic.tone-violet { --tone: var(--violet); }
@@ -473,6 +469,38 @@ html.js .contact-card.sr.in { transform: perspective(1000px) rotateX(var(--tx, 0
 .footer-nav a { color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: 0.94rem; }
 .footer-nav a:hover { color: var(--violet); }
 
+/* 3D tilt only while hovered (a permanent 3D transform on every card cost layout time). */
+html.js [data-tilt-card].sr.in:hover, [data-tilt-card]:hover { transform: perspective(1000px) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg)); }
+
+/* ---------- Built-on line ---------- */
+.built-on { max-width: 760px; margin: 28px auto 0; text-align: center; color: var(--ink-2); font-size: 0.97rem; }
+
+/* ---------- Checksums ---------- */
+.checksums { margin-top: 22px; padding: 16px 22px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); }
+.checksums summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
+.checksums ul { list-style: none; padding: 0; margin: 14px 0 10px; display: grid; gap: 8px; }
+.checksums li { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; align-items: baseline; font-size: 0.88rem; }
+.checksums li code { overflow-wrap: anywhere; font-size: 0.78rem; }
+.checksums p { color: var(--muted); font-size: 0.86rem; }
+
+/* ---------- Compare ---------- */
+.compare .section-head { margin-inline: auto; text-align: center; }
+.compare .section-lede { margin-inline: auto; }
+.table-wrap { overflow-x: auto; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+.compare-table { width: 100%; min-width: 720px; border-collapse: collapse; table-layout: fixed; font-size: 0.94rem; }
+.compare-table th[scope="row"], .compare-table thead th:first-child { width: 18%; }
+.compare-table caption { caption-side: bottom; padding: 12px 18px; text-align: left; color: var(--muted); font-size: 0.82rem; }
+.compare-table th, .compare-table td { padding: 14px 18px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+.compare-table thead th { font-family: var(--font-display); font-size: 0.95rem; color: var(--ink); background: var(--surface-2); }
+.compare-table thead th:nth-child(2), .compare-table td:nth-child(2) { background: var(--teal-soft); }
+.compare-table tbody th { color: var(--ink-2); font-weight: 600; }
+.compare-table tbody tr:last-child th, .compare-table tbody tr:last-child td { border-bottom: 0; }
+
+/* ---------- FAQ as visible Q&A ---------- */
+.faq-list .qa { border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); padding: 18px 22px; }
+.faq-list .qa h3 { font-family: var(--font-body); font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; }
+.faq-list .qa .faq-a { padding: 8px 0 0; }
+
 /* ---------- Motion off ---------- */
 html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; }
 html[data-motion="off"] .marquee-track, html[data-motion="off"] .rail-pulse { animation: none !important; }
@@ -499,6 +527,7 @@ html[data-motion="off"] .rail-pulse { transform: translateX(380px); }
   .cell-denoise { flex-direction: column; align-items: stretch; }
   .cell-denoise .cell-copy { flex: none; }
   .pipeline, .contact-grid, .dl-grid, .faq-grid, .mac-install { grid-template-columns: 1fr; }
+  .checksums li { grid-template-columns: 1fr; gap: 2px; }
   .faq-head { position: static; }
   .support-card { flex-direction: column; text-align: center; }
   .support-actions { justify-content: center; }

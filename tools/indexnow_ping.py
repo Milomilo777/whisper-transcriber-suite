@@ -22,7 +22,7 @@ import urllib.request
 
 HOST = "whisper-transcriber-suite.pages.dev"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-URLS = ["/", "/llms.txt", "/sitemap.xml"]
+URLS = ["/", "/llms.txt", "/llms-full.txt", "/sitemap.xml"]
 # Cloudflare answers 403 to urllib's default "Python-urllib" user agent.
 UA = {"User-Agent": "whisper-transcriber-suite-indexnow/1.0 (+https://github.com/Milomilo777/whisper-transcriber-suite)"}
 
