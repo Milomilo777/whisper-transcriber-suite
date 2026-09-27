@@ -16,16 +16,16 @@
 <meta property="og:title" content="Whisper Transcriber Suite — Free, Offline Audio & Video Transcription">
 <meta property="og:description" content="Runs OpenAI Whisper locally. No cloud, no account, no upload. 14 output formats, live transcription, speaker labels, YouTube downloads. Free, BSD-3-Clause, for Windows, macOS and Linux.">
 <meta property="og:url" content="https://whisper-transcriber-suite.pages.dev/">
-<meta property="og:image" content="https://whisper-transcriber-suite.pages.dev/assets/social-preview.png">
+<meta property="og:image" content="https://whisper-transcriber-suite.pages.dev/assets/social-card-2026-09.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Whisper Transcriber Suite — sound in, text out, nothing leaves your machine.">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — free, offline audio and video transcription for Windows, macOS and Linux.">
 <meta property="og:site_name" content="Whisper Transcriber Suite">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Whisper Transcriber Suite — Free, Offline Audio & Video Transcription">
 <meta name="twitter:description" content="Runs OpenAI Whisper locally. No cloud, no account, no upload. 14 output formats, live transcription, speaker labels, YouTube downloads.">
-<meta name="twitter:image" content="https://whisper-transcriber-suite.pages.dev/assets/social-preview.png">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.pages.dev/assets/social-card-2026-09.png">
 
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
@@ -43,6 +43,7 @@
     var d = document.documentElement, m = null;
     d.classList.add('js');
     try { m = localStorage.getItem('wts-motion'); } catch (e) {}
+    var q = /[?&]motion=(on|off|calm)\b/.exec(location.search); if (q) m = q[1]; // QA/capture override, not stored
     if (m !== 'on' && m !== 'off') m = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'calm' : 'on';
     d.dataset.motion = m;
   })();
@@ -105,7 +106,7 @@
       ],
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "isAccessibleForFree": true,
-      "interactionStatistic": { "@type": "InteractionCounter", "interactionType": "https://schema.org/DownloadAction", "userInteractionCount": 910 },
+      "interactionStatistic": { "@type": "InteractionCounter", "interactionType": "https://schema.org/DownloadAction", "userInteractionCount": 912 },
       "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
       "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
       "releaseNotes": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md",
@@ -455,7 +456,7 @@
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows <span class="dl-badge" data-rec-badge hidden>Recommended for you</span></p>
           <h3>Installer <code>.exe</code></h3>
           <p class="dl-size" data-auto="size-installer">~234&nbsp;MB</p>
-          <p class="dl-desc">Most people — normal installer, Start-menu shortcut, upgrades in place.</p>
+          <p class="dl-desc">Most people — normal installer, Start-menu shortcut, upgrades in place. The app isn't code-signed, so Windows SmartScreen may warn once: <b>More info → Run anyway</b>.</p>
           <a class="btn btn-primary" data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-Installer-Windows-v1.9.3.exe" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Get the installer</a>
         </article>
         <article class="dl-card sr" data-os="windows-portable" data-tilt-card>

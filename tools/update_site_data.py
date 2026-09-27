@@ -16,6 +16,7 @@ published release and once a week.
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import os
 import re
@@ -118,6 +119,33 @@ def render_llms(text: str, d: dict) -> str:
     return text
 
 
+def refresh_housekeeping(page_changed: bool) -> list[str]:
+    """Bump sitemap <lastmod> when the page changed, and keep security.txt's
+    Expires (RFC 9116: under a year ahead) from lapsing."""
+    changed = []
+    today = datetime.date.today()
+    sitemap = os.path.join(ROOT, "site", "sitemap.xml")
+    if page_changed:
+        with open(sitemap, encoding="utf-8", newline="") as fh:
+            old = fh.read()
+        new = re.sub(r"<lastmod>[^<]*</lastmod>", f"<lastmod>{today.isoformat()}</lastmod>", old, count=1)
+        if new != old:
+            with open(sitemap, "w", encoding="utf-8", newline="") as fh:
+                fh.write(new)
+            changed.append(os.path.relpath(sitemap, ROOT))
+    sec = os.path.join(ROOT, "site", ".well-known", "security.txt")
+    with open(sec, encoding="utf-8", newline="") as fh:
+        old = fh.read()
+    m = re.search(r"^Expires: (\d{4}-\d{2}-\d{2})", old, re.M)
+    if m and datetime.date.fromisoformat(m.group(1)) - today < datetime.timedelta(days=60):
+        expires = (today + datetime.timedelta(days=330)).isoformat()
+        new = re.sub(r"^Expires: .*$", f"Expires: {expires}T00:00:00.000Z", old, count=1, flags=re.M)
+        with open(sec, "w", encoding="utf-8", newline="") as fh:
+            fh.write(new)
+        changed.append(os.path.relpath(sec, ROOT))
+    return changed
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Refresh the website's release data from GitHub.")
     ap.add_argument("--check", action="store_true", help="report stale files instead of writing")
@@ -136,6 +164,8 @@ def main() -> int:
             if not args.check:
                 with open(path, "w", encoding="utf-8", newline="") as fh:
                     fh.write(new)
+    if not args.check:
+        stale += refresh_housekeeping(page_changed=os.path.relpath(PAGE, ROOT) in stale)
     print(("stale: " if args.check else "updated: ") + (", ".join(stale) or "nothing"))
     return 1 if (args.check and stale) else 0
 
