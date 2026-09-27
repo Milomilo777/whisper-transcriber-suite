@@ -501,6 +501,15 @@ html.js [data-tilt-card].sr.in:hover, [data-tilt-card]:hover { transform: perspe
 .faq-list .qa h3 { font-family: var(--font-body); font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; }
 .faq-list .qa .faq-a { padding: 8px 0 0; }
 
+/* ---------- Star ask (after a download) ---------- */
+.star-toast { position: fixed; z-index: 60; right: 16px; bottom: 16px; max-width: 380px; display: grid; gap: 12px; padding: 16px 18px; border-radius: var(--r); background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow-lg); opacity: 0; transform: translateY(12px); transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out); }
+.star-toast.is-on { opacity: 1; transform: none; }
+.star-toast p { font-size: 0.92rem; color: var(--ink-2); }
+.star-toast-actions { display: flex; align-items: center; gap: 10px; }
+.star-toast-close { margin-left: auto; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line-2); background: none; color: var(--muted); font-size: 1.2rem; line-height: 1; cursor: pointer; }
+.star-toast-close:hover { color: var(--ink); border-color: var(--ink); }
+@media (max-width: 760px) { .star-toast { left: 16px; right: 16px; max-width: none; } }
+
 /* ---------- Motion off ---------- */
 html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; }
 html[data-motion="off"] .marquee-track, html[data-motion="off"] .rail-pulse { animation: none !important; }

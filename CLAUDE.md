@@ -277,6 +277,9 @@ owner; state the rule or the change on its own.
   (`.../releases/download/vX.Y.Z/<file>`), what it is for, and its size;
   Windows rows first. GitHub's own Assets box cannot be moved from the
   bottom, so this table is the "assets at the top".
+- Right under the Download table, one line (and link star asks to the repo page, never
+  `/stargazers`, which has no Star button):
+  `> ⭐ **Enjoying it?** Click **Star** at the top of this page — it's free, takes one click, and it's how other people find the project.`
 - Every release that ships macOS files must include the full **"Installing on
   a Mac"** section with the **one-line Terminal install** (`curl` → `hdiutil`
   → copy to `/Applications`), pointing at that release's own dmg names --

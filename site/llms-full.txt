@@ -102,6 +102,8 @@ Bugs and feature requests go to GitHub Issues, questions to GitHub Discussions, 
 
 ### [⬇  Download for Windows](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
 
+Free and open source. If it saves you time, a ⭐ <b>Star</b> (top right of this page) helps other people find it.
+
 **[Download](#download)** · **[Screenshots](#what-it-looks-like)** ·
 **[Features](#features)** · **[How it works](#how-it-works)** ·
 **[Privacy](#offline-by-default)** · **[Docs](#documentation)** ·
@@ -437,7 +439,7 @@ to say what you use it for? Start a
 [Discussion](https://github.com/Milomilo777/whisper-transcriber-suite/discussions).
 
 And if it saved you some time, please
-[**give it a ⭐ on GitHub**](https://github.com/Milomilo777/whisper-transcriber-suite/stargazers).
+[**give it a ⭐ on GitHub**](https://github.com/Milomilo777/whisper-transcriber-suite) (the ☆ Star button at the top right of the repo page).
 It takes one click, costs nothing, and it's how other people find the project.
 
 Issues, pull requests and

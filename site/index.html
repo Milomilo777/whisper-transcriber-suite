@@ -36,7 +36,7 @@
 <link rel="preload" href="assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/shots/transcribe.webp" as="image" type="image/webp">
-<link rel="stylesheet" href="styles.css?v=20260927c">
+<link rel="stylesheet" href="styles.css?v=20260927d">
 <script src="js/motion-init.js?v=20260927b"></script>
 
 <script type="application/ld+json">
@@ -243,8 +243,8 @@
         <svg class="i i-when-off" aria-hidden="true"><use href="#i-play"/></svg>
         <span class="sr-only" data-motion-label>Pause animations</span>
       </button>
-      <a class="btn btn-ghost btn-sm hide-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>GitHub
+      <a class="btn btn-ghost btn-sm hide-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" aria-label="Star Whisper Transcriber Suite on GitHub">
+        <svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Star
       </a>
       <a class="btn btn-primary btn-sm" href="#download">Download</a>
     </div>
@@ -647,7 +647,7 @@ python gui.py</code></pre>
           <p>Whisper Transcriber Suite is free and BSD-3-Clause licensed, maintained in the open. If it saved you time, a star on GitHub helps others find it — and a coffee is always appreciated.</p>
           <div class="support-actions">
             <a class="btn btn-coffee btn-lg" href="https://buymeacoffee.com/mehraz1358" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-cup"/></svg>Buy me a coffee</a>
-            <a class="btn btn-light btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/stargazers" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Star on GitHub</a>
+            <a class="btn btn-light btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Star on GitHub</a>
           </div>
         </div>
       </div>
@@ -678,6 +678,14 @@ python gui.py</code></pre>
   </div>
 </footer>
 
-<script src="js/main.js?v=20260927c" defer></script>
+<div class="star-toast" data-star-toast role="status" hidden>
+  <p><b>Thanks for downloading!</b> While it downloads — if the app ends up saving you time, a ⭐ on GitHub is how other people find it. One click, free.</p>
+  <div class="star-toast-actions">
+    <a class="btn btn-primary btn-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" data-star-go><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Star on GitHub</a>
+    <button class="star-toast-close" type="button" data-star-close aria-label="Dismiss">×</button>
+  </div>
+</div>
+
+<script src="js/main.js?v=20260927d" defer></script>
 </body>
 </html>

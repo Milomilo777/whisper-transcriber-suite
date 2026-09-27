@@ -12,6 +12,8 @@ long list of fixes for Windows, macOS and Linux. (There is no v1.9.2.)
 | [WhisperTranscriberSuite-v1.9.3-macOS-arm64.dmg](https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-v1.9.3-macOS-arm64.dmg) | Mac with Apple silicon (M1/M2/M3/M4…), macOS 14+ (on macOS 11–13 use the Intel file; it runs through Rosetta) | 246 MB |
 | [WhisperTranscriberSuite-v1.9.3-macOS-x64.dmg](https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-v1.9.3-macOS-x64.dmg) | Intel Mac, macOS 10.15+ | 306 MB |
 
+> ⭐ **Enjoying it?** Click **Star** at the top of this page — it's free, takes one click, and it's how other people find the project.
+
 Mac install steps — including the one-line Terminal install — are below.
 
 **Linux** — one line in a terminal (Debian / Ubuntu; installs from source into
@@ -94,7 +96,7 @@ Found a bug, something confusing, or have an idea?
 [Open an issue](https://github.com/Milomilo777/whisper-transcriber-suite/issues/new/choose)
 or start a [Discussion](https://github.com/Milomilo777/whisper-transcriber-suite/discussions) —
 a two-line report with a screenshot helps a lot. And if the app saved you some
-time, a [⭐ on GitHub](https://github.com/Milomilo777/whisper-transcriber-suite/stargazers)
+time, a [⭐ on GitHub](https://github.com/Milomilo777/whisper-transcriber-suite)
 is how other people find it.
 
 ## Checksums (SHA-256)

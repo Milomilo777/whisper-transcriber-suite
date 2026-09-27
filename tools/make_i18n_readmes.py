@@ -56,7 +56,7 @@ BADGES = f"""[![CI]({REPO}/actions/workflows/ci.yml/badge.svg)]({REPO}/actions/w
 [![release](https://img.shields.io/github/v/release/Milomilo777/whisper-transcriber-suite?label=release&color=207a80)]({REPO}/releases/latest)
 [![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?color=207a80)]({REPO}/releases)
 [![License: BSD-3](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](../../LICENSE)
-[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&color=207a80)]({REPO}/stargazers)"""
+[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&color=207a80)]({REPO})"""
 
 
 TEMPLATE = """<div align="center">

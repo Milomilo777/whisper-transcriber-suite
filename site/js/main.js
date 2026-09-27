@@ -90,6 +90,25 @@
     });
   });
 
+  /* One friendly star ask, right after a download starts (or the Mac one-liner is copied).
+     Shown at most once per visit; never again once dismissed or clicked. */
+  const toastEl = $('[data-star-toast]');
+  if (toastEl) {
+    const KEY = 'wts-star-ask';
+    const seen = () => { try { return localStorage.getItem(KEY) || sessionStorage.getItem(KEY); } catch (e) { return null; } };
+    const remember = (store) => { try { store.setItem(KEY, '1'); } catch (e) { /* storage unavailable */ } };
+    const hide = (forever) => { toastEl.classList.remove('is-on'); setTimeout(() => { toastEl.hidden = true; }, 300); if (forever) remember(localStorage); };
+    const show = () => {
+      if (seen()) return;
+      remember(sessionStorage);
+      setTimeout(() => { toastEl.hidden = false; requestAnimationFrame(() => toastEl.classList.add('is-on')); }, 1200);
+    };
+    $$('[data-auto-href], [data-copy]').forEach((el) => el.addEventListener('click', show));
+    $('[data-star-close]', toastEl).addEventListener('click', () => hide(true));
+    $('[data-star-go]', toastEl).addEventListener('click', () => hide(true));
+    addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !toastEl.hidden) hide(true); });
+  }
+
   /* Scroll reveals, staggered within each batch that enters together. */
   const srEls = $$('.sr');
   if (!hasIO) {

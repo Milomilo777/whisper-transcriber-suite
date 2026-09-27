@@ -23,10 +23,12 @@
 [![codecov](https://codecov.io/gh/Milomilo777/whisper-transcriber-suite/graph/badge.svg)](https://codecov.io/gh/Milomilo777/whisper-transcriber-suite)
 [![License: BSD-3](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#download)
-[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/stargazers)
+[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?style=flat&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/mehraz1358)
 
 ### [⬇  Download for Windows](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
+
+<sub>Free and open source. If it saves you time, a ⭐ <b>Star</b> (top right of this page) helps other people find it.</sub>
 
 **[Download](#download)** · **[Screenshots](#what-it-looks-like)** ·
 **[Features](#features)** · **[How it works](#how-it-works)** ·
@@ -433,7 +435,7 @@ to say what you use it for? Start a
 [Discussion](https://github.com/Milomilo777/whisper-transcriber-suite/discussions).
 
 And if it saved you some time, please
-[**give it a ⭐ on GitHub**](https://github.com/Milomilo777/whisper-transcriber-suite/stargazers).
+[**give it a ⭐ on GitHub**](https://github.com/Milomilo777/whisper-transcriber-suite) (the ☆ Star button at the top right of the repo page).
 It takes one click, costs nothing, and it's how other people find the project.
 
 Issues, pull requests and
