@@ -56,3 +56,11 @@ def test_llms_lines():
     out = usd.render_llms(text, DATA)
     assert "v2.0.0 — free Windows installer" in out
     assert "Latest version v2.0.0, released 2027-01-02" in out
+
+
+def test_mac_oneliner_tracks_version_and_is_escaped():
+    html = '<code id="mac-cmd" data-auto="mac-oneliner">old</code>'
+    out = usd.render_page(html, DATA)
+    assert "releases/download/v2.0.0/WhisperTranscriberSuite-v2.0.0-macOS-$A.dmg" in out
+    assert "&amp;&amp; hdiutil attach" in out
+    assert " && " not in out

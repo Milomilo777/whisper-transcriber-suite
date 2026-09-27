@@ -62,7 +62,7 @@
   const ctaLabel = $('[data-os-label]');
   if (cta && ctaLabel) {
     // The CTA links straight to the Windows installer; send everyone else to the cards.
-    if (platform === 'mac') { ctaLabel.textContent = 'Download for macOS'; cta.href = '#download'; cta.removeAttribute('rel'); }
+    if (platform === 'mac') { ctaLabel.textContent = 'Install on macOS'; cta.href = '#mac-install'; cta.removeAttribute('rel'); }
     if (platform === 'linux') { ctaLabel.textContent = 'Get it for Linux'; cta.href = '#download'; cta.removeAttribute('rel'); }
     if (platform === 'mobile') { ctaLabel.textContent = 'Get it for your computer'; cta.href = '#download'; cta.removeAttribute('rel'); }
   }
@@ -72,6 +72,23 @@
     const badge = $('[data-rec-badge]', recCard);
     if (badge) badge.hidden = false;
   }
+
+  /* Copy buttons (the macOS one-line install). */
+  $$('[data-copy]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const src = $(btn.dataset.copy);
+      if (!src) return;
+      try {
+        await navigator.clipboard.writeText(src.textContent.trim());
+      } catch (e) {
+        const r = document.createRange(); r.selectNodeContents(src);
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        return;
+      }
+      btn.textContent = 'Copied'; btn.classList.add('is-done');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('is-done'); }, 1800);
+    });
+  });
 
   /* Scroll reveals, staggered within each batch that enters together. */
   const srEls = $$('.sr');

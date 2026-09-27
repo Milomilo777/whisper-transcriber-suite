@@ -416,6 +416,17 @@ html.js .dl-card.sr.in { transform: perspective(1000px) rotateX(var(--tx, 0deg))
 .dl-pair .btn { padding-inline: 10px; }
 .dl-code { overflow-x: auto; padding: 12px; border-radius: 12px; background: var(--night); color: #d9e2ff; font-size: 0.72rem; line-height: 1.6; }
 .dl-code code { padding: 0; background: none; color: inherit; }
+.mac-install { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 20px 32px; align-items: center; margin-top: 22px; padding: clamp(22px, 3vw, 34px); border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); scroll-margin-top: 90px; }
+.mac-install h3 { margin-top: 8px; font-size: 1.35rem; }
+.mac-install-head p:last-child { margin-top: 10px; color: var(--ink-2); font-size: 0.95rem; }
+.mac-install:target { box-shadow: 0 0 0 3px var(--violet), var(--shadow); }
+.code-box { position: relative; min-width: 0; }
+.code-box pre { overflow-x: auto; padding: 18px 18px 18px; padding-right: 90px; border-radius: 14px; background: var(--night); color: #d9e2ff; font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+.code-box code { padding: 0; background: none; color: inherit; font-size: inherit; }
+.copy-btn { position: absolute; top: 10px; right: 10px; padding: 7px 14px; border-radius: var(--r-pill); border: 0; background: #fff; color: var(--night); font-weight: 600; font-size: 0.82rem; cursor: pointer; transition: background 0.2s, transform 0.2s; }
+.copy-btn:hover { transform: translateY(-1px); background: var(--teal-soft); }
+.copy-btn.is-done { background: var(--teal); color: #fff; }
+.mac-note { grid-column: 1 / -1; color: var(--muted); font-size: 0.88rem; }
 .dl-note { margin-top: 26px; text-align: center; color: var(--muted); }
 
 /* ---------- FAQ ---------- */
@@ -487,7 +498,7 @@ html[data-motion="off"] .rail-pulse { transform: translateX(380px); }
   .bento { display: flex; flex-direction: column; }
   .cell-denoise { flex-direction: column; align-items: stretch; }
   .cell-denoise .cell-copy { flex: none; }
-  .pipeline, .contact-grid, .dl-grid, .faq-grid { grid-template-columns: 1fr; }
+  .pipeline, .contact-grid, .dl-grid, .faq-grid, .mac-install { grid-template-columns: 1fr; }
   .faq-head { position: static; }
   .support-card { flex-direction: column; text-align: center; }
   .support-actions { justify-content: center; }

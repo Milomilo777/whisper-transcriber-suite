@@ -468,7 +468,8 @@
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS <span class="dl-badge" data-rec-badge hidden>Recommended for you</span></p>
           <h3>Disk image <code>.dmg</code></h3>
           <p class="dl-size"><span data-auto="size-mac-arm64">~246&nbsp;MB</span> · <span data-auto="size-mac-x64">~306&nbsp;MB</span></p>
-          <p class="dl-desc">Apple Silicon (M1 and later) or Intel — pick the one that matches your Mac.</p>
+          <p class="dl-desc">Easiest: one line in Terminal — picks the right build and skips the security warning. Or grab the disk image for Apple Silicon or Intel.</p>
+          <a class="btn btn-primary" href="#mac-install"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>One-line install</a>
           <div class="dl-pair"><a class="btn btn-ghost" data-auto-href="mac-arm64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-v1.9.3-macOS-arm64.dmg" rel="noopener">Apple Silicon</a><a class="btn btn-ghost" data-auto-href="mac-x64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-v1.9.3-macOS-x64.dmg" rel="noopener">Intel</a></div>
         </article>
         <article class="dl-card dl-card-source sr" data-os="linux" data-tilt-card>
@@ -481,6 +482,18 @@ pip install -r requirements.txt
 python gui.py</code></pre>
           <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite#build-from-source" rel="noopener">Source guide</a>
         </article>
+      </div>
+      <div class="mac-install sr" id="mac-install">
+        <div class="mac-install-head">
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — one-line install</p>
+          <h3>Paste into Terminal. That's it.</h3>
+          <p>Downloads the right build for your Mac (Apple Silicon on macOS 14+, otherwise Intel via Rosetta), copies the app into <code>Applications</code> and opens it. Files fetched by <code>curl</code> aren't quarantined, so there's no "unidentified developer" warning to click past.</p>
+        </div>
+        <div class="code-box">
+          <button class="copy-btn" type="button" data-copy="#mac-cmd">Copy</button>
+          <pre><code id="mac-cmd" data-auto="mac-oneliner">A=x64; [ "$(uname -m)" = arm64 ] &amp;&amp; [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 14 ] &amp;&amp; A=arm64; curl -fL -o /tmp/wts.dmg "https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v1.9.3/WhisperTranscriberSuite-v1.9.3-macOS-$A.dmg" &amp;&amp; hdiutil attach -nobrowse -quiet -mountpoint /tmp/wts-dmg /tmp/wts.dmg &amp;&amp; cp -R "/tmp/wts-dmg/Whisper Transcriber Suite.app" /Applications/ &amp;&amp; hdiutil detach -quiet /tmp/wts-dmg &amp;&amp; rm /tmp/wts.dmg &amp;&amp; open "/Applications/Whisper Transcriber Suite.app"</code></pre>
+        </div>
+        <p class="mac-note">Prefer the usual way? Open the <code>.dmg</code> and drag the app into Applications; the first launch then needs right-click → <b>Open</b> (macOS 14 and older) or System Settings → Privacy &amp; Security → <b>Open Anyway</b> (macOS 15+).</p>
       </div>
       <p class="dl-note sr">Every release, with notes, lives on <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Install guide</a>.</p>
     </div>

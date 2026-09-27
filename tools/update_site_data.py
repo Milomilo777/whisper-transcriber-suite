@@ -21,6 +21,7 @@ import os
 import re
 import sys
 import urllib.request
+from html import escape as html_escape
 
 REPO = "Milomilo777/whisper-transcriber-suite"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -34,6 +35,16 @@ ASSETS = {
     "mac-arm64": re.compile(r"-macOS-arm64\.dmg$"),
     "mac-x64": re.compile(r"-macOS-x64\.dmg$"),
 }
+
+
+# Same command as the "Installing on a Mac" section of the release notes.
+MAC_ONELINER = (
+    'A=x64; [ "$(uname -m)" = arm64 ] && [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 14 ] && A=arm64; '
+    'curl -fL -o /tmp/wts.dmg "https://github.com/%s/releases/download/{v}/WhisperTranscriberSuite-{v}-macOS-$A.dmg" '
+    '&& hdiutil attach -nobrowse -quiet -mountpoint /tmp/wts-dmg /tmp/wts.dmg '
+    '&& cp -R "/tmp/wts-dmg/Whisper Transcriber Suite.app" /Applications/ '
+    '&& hdiutil detach -quiet /tmp/wts-dmg && rm /tmp/wts.dmg && open "/Applications/Whisper Transcriber Suite.app"'
+) % REPO
 
 
 def _get(url: str):
@@ -93,6 +104,7 @@ def render_page(html: str, d: dict) -> str:
     for key, f in d["files"].items():
         html = _set_text(html, f"size-{key}", f"~{f['mb']}&nbsp;MB")
         html = _set_href(html, key, f["url"])
+    html = _set_text(html, "mac-oneliner", html_escape(MAC_ONELINER.format(v=d["version"]), quote=False))
     html = re.sub(r'"softwareVersion": "[^"]*"', f'"softwareVersion": "{d["version"].lstrip("v")}"', html)
     html = re.sub(r'"dateModified": "[^"]*"', f'"dateModified": "{d["released"]}"', html)
     html = re.sub(r'"userInteractionCount": \d+', f'"userInteractionCount": {d["downloads"]}', html)
