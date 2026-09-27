@@ -64,9 +64,3 @@ def test_mac_oneliner_tracks_version_and_is_escaped():
     assert "releases/download/v2.0.0/WhisperTranscriberSuite-v2.0.0-macOS-$A.dmg" in out
     assert "&amp;&amp; hdiutil attach" in out
     assert " && " not in out
-
-
-def test_checksum_marker_filled_from_digest():
-    data = dict(DATA, files={"installer": {"url": "u", "mb": 1, "sha256": "ab" * 32}})
-    out = usd.render_page('<code data-auto="sha-installer">—</code>', data)
-    assert out == '<code data-auto="sha-installer">' + "ab" * 32 + "</code>"

@@ -42,13 +42,13 @@ to https://whisper-transcriber-suite.pages.dev (Cloudflare Pages).
 ### 7a — Website and search foundations — DONE (2026-09-27)
 
 - Light, animated redesign with a CSS-3D hero, a 3D product-tour ring built from
-  v1.9.3 screenshots, a motion toggle, a comparison table, visible FAQ, checksums,
+  v1.9.3 screenshots, a motion toggle, a comparison table, visible FAQ,
   a contact section and a one-line macOS install.
 - Canonical address moved to the permanent pages.dev URL; the old custom domain
   301-redirects there until it lapses.
 - Google Search Console and Bing Webmaster Tools verified, sitemap (with screenshots)
   submitted; IndexNow pings on every site change (`tools/indexnow_ping.py`).
-- Release data (version, sizes, download links, checksums, download count, macOS
+- Release data (version, sizes, download links, download count, macOS
   one-liner) and `llms-full.txt` regenerate automatically on each release and weekly
   (`tools/update_site_data.py`, `tools/build_llms_full.py`, `.github/workflows/site-data.yml`).
 - Structured data (Organization, SoftwareApplication, Person, WebSite, WebPage with
@@ -64,15 +64,13 @@ to https://whisper-transcriber-suite.pages.dev (Cloudflare Pages).
   transcriptions, a small dismissible line ("Enjoying it? A ⭐ on GitHub helps others
   find it") plus a permanent Help → Star on GitHub menu item. Once only, never a modal.
 - Refresh website screenshots and the showreel from the new release
-  (`tools/update_site_data.py` handles version/size/checksum text on its own).
+  (`tools/update_site_data.py` handles version/size text on its own).
 - Short demo GIF or video (under ~30 s) at the top of the README, recorded from the
   improved build. Commonly cited as the single highest-impact change for stars.
-- Small public counters in a corner of the website: visitors and total downloads.
-  Downloads already appear in the hero ("900+ downloads so far", refreshed weekly by
-  `site-data.yml`); it could instead be read live from the GitHub releases API with
-  the weekly value as fallback. A visitor count needs a server side, e.g. a Cloudflare
-  Pages Function with a KV counter (cookie-free, no personal data stored). Decide
-  whether a public number helps before it is large.
+- Website footer counters (visits + total downloads): `functions/api/stats.js`
+  (Cloudflare Pages Function). Visits are kept in a D1 database bound as
+  `VISITS_DB`, starting at 1350 to carry over the previous address's traffic;
+  downloads are summed live from the GitHub releases API (cached one hour).
 - Label a handful of real issues `good first issue` / `help wanted` (none are open
   today) and add the `hacktoberfest` topic. Hacktoberfest 2026 rewards community
   building rather than raw PR counts.

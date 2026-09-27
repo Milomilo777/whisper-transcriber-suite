@@ -465,6 +465,10 @@ html.js .sr.in { opacity: 1; transform: none; }
 .site-footer { padding: 56px 0 40px; border-top: 1px solid var(--line); background: var(--surface); }
 .footer-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 28px; margin-bottom: 22px; }
 .footer-brand { display: grid; gap: 8px; }
+.site-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); }
+.site-stats span + span::before { content: "·"; margin-right: 16px; }
+.site-stats[hidden], .site-stats [hidden] { display: none; }
+.site-stats strong { color: var(--ink-2); font-weight: 600; }
 .footer-nav { display: flex; flex-wrap: wrap; gap: 8px 22px; align-content: start; }
 .footer-nav a { color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: 0.94rem; }
 .footer-nav a:hover { color: var(--violet); }
@@ -474,14 +478,6 @@ html.js [data-tilt-card].sr.in:hover, [data-tilt-card]:hover { transform: perspe
 
 /* ---------- Built-on line ---------- */
 .built-on { max-width: 760px; margin: 28px auto 0; text-align: center; color: var(--ink-2); font-size: 0.97rem; }
-
-/* ---------- Checksums ---------- */
-.checksums { margin-top: 22px; padding: 16px 22px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); }
-.checksums summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
-.checksums ul { list-style: none; padding: 0; margin: 14px 0 10px; display: grid; gap: 8px; }
-.checksums li { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; align-items: baseline; font-size: 0.88rem; }
-.checksums li code { overflow-wrap: anywhere; font-size: 0.78rem; }
-.checksums p { color: var(--muted); font-size: 0.86rem; }
 
 /* ---------- Compare ---------- */
 .compare .section-head { margin-inline: auto; text-align: center; }
@@ -536,7 +532,6 @@ html[data-motion="off"] .rail-pulse { transform: translateX(380px); }
   .cell-denoise { flex-direction: column; align-items: stretch; }
   .cell-denoise .cell-copy { flex: none; }
   .pipeline, .contact-grid, .dl-grid, .faq-grid, .mac-install { grid-template-columns: 1fr; }
-  .checksums li { grid-template-columns: 1fr; gap: 2px; }
   .faq-head { position: static; }
   .support-card { flex-direction: column; text-align: center; }
   .support-actions { justify-content: center; }

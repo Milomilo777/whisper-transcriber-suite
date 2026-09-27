@@ -391,4 +391,29 @@
     onMotionChange(() => { schedule(); kick(); });
     render();
   }
+
+  /* Visit + download counters in the footer (same-origin Pages Function).
+     A visit is counted at most once per browser per day. */
+  const stats = $('[data-site-stats]');
+  if (stats && 'fetch' in window) {
+    const today = new Date().toISOString().slice(0, 10);
+    let counted = false;
+    try { counted = localStorage.getItem('wts-visit-day') === today; } catch (e) { counted = true; }
+    fetch('/api/stats', { method: counted ? 'GET' : 'POST' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        if (!counted) { try { localStorage.setItem('wts-visit-day', today); } catch (e) { /* storage unavailable */ } }
+        let shown = false;
+        ['visits', 'downloads'].forEach((k) => {
+          const el = $(`[data-stat="${k}"]`, stats);
+          if (!el || typeof d[k] !== 'number') return;
+          $('strong', el).textContent = d[k].toLocaleString('en-US');
+          el.hidden = false;
+          shown = true;
+        });
+        stats.hidden = !shown;
+      })
+      .catch(() => { /* counters are decoration; stay hidden */ });
+  }
 })();
