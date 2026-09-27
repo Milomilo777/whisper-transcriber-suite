@@ -168,7 +168,7 @@
   };
   const typer = $('[data-typer]');
   makeTyper(typer, ['so the words appear as you speak', 'cuts land on natural pauses', 'and no word is ever split in two'], typer && typer.closest('[data-live]'));
-  makeTyper($('[data-hero-typer]'), ['Nothing leaves your machine.', 'No cloud. No account. No upload.', 'Whisper runs on your own computer.', 'Fourteen formats, one click.']);
+  makeTyper($('[data-hero-typer]'), ['Your audio stays on your computer.', 'No cloud. No account. No upload.', 'Whisper runs on your own computer.', 'Fourteen formats, one click.']);
 
   /* Denoise before/after waveforms (deterministic, so the art never changes between visits). */
   const noisy = $('[data-wave="noisy"]');
