@@ -11,7 +11,7 @@
 
 <div align="center">
 
-<img src="docs/img/hero.png" alt="Whisper Transcriber Suite — transcribe audio and video on your own machine. No cloud, no account, no upload." width="100%">
+<img src="docs/img/hero.png" alt="Whisper Transcriber Suite — sound in, text out: free, open-source Whisper transcription on your own computer for Windows, macOS and Linux." width="100%">
 
 # Whisper Transcriber Suite
 
@@ -156,7 +156,7 @@ for the phones and PCs on your network.
 
 <div align="center">
 
-<img src="docs/img/features.png" alt="Five tabs, one window: Transcribe, Transcription Queue, Download Videos, Video Tiling, Web/LAN access, Convert transcript" width="100%">
+<img src="docs/img/features.png" alt="Seven tools, one window: Transcribe, Queue, Download Videos, Live, Clone Your Voice, Video Tiling, Web / LAN access" width="100%">
 
 </div>
 
@@ -183,7 +183,7 @@ Keyboard: `Ctrl+O` browse · `Ctrl+Enter` transcribe · `Esc` cancel ·
 
 <div align="center">
 
-<img src="docs/img/how-it-works.png" alt="Drop a file, the Tk GUI queues it, a worker subprocess holds the model in memory and runs faster-whisper, and the transcript lands in your folder" width="100%">
+<img src="docs/img/how-it-works.png" alt="Drop a file, the Tk interface queues it, a worker process keeps the model in memory and runs faster-whisper, whisper.cpp or Parakeet, and the transcript lands next to your file" width="100%">
 
 </div>
 

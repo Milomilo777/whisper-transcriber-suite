@@ -1,0 +1,149 @@
+<!doctype html>
+<!-- README / social graphics in the website's visual language.
+     Rendered to PNG by tools/render_graphics.py (headless Chrome); pick the
+     artboard with ?view=hero|social|features|flow. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../../site/styles.css">
+<style>
+  html, body { margin: 0; background: var(--bg); overflow: hidden; }
+  .board { position: relative; overflow: hidden; isolation: isolate; background: var(--bg); display: none; }
+  .board.on { display: block; }
+  .board .aurora { inset: -30% -10% auto; height: 160%; }
+  .board .aurora i { animation: none; }
+  .brandline { display: flex; align-items: center; gap: 14px; }
+  .brandline img { border-radius: 14px; box-shadow: 0 8px 20px -8px rgb(32 122 128 / 0.7); }
+  .brandline b { font-family: var(--font-display); font-size: 26px; letter-spacing: -0.02em; color: var(--ink); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips span { padding: 7px 13px; border-radius: 999px; background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow-sm); font-size: 15px; font-weight: 600; color: var(--ink-2); }
+  .stack { position: absolute; perspective: 1600px; }
+  .stack .rig { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateX(9deg) rotateY(-18deg) rotateZ(1.5deg); }
+  .stack .win { position: absolute; }
+  .stack .chip-card { position: absolute; }
+  .title { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.045em; line-height: 1; color: var(--ink); margin: 0; }
+
+  /* hero 1280x460 */
+  #hero { width: 1280px; height: 460px; }
+  #hero .copy { position: absolute; left: 64px; top: 52px; width: 600px; display: grid; gap: 18px; }
+  #hero .title { font-size: 64px; }
+  #hero .lede { font-size: 21px; color: var(--ink-2); margin: 0; line-height: 1.4; }
+  #hero .stack { right: 40px; top: 78px; width: 520px; height: 360px; }
+
+  /* social 1280x640 */
+  #social { width: 1280px; height: 640px; }
+  #social .copy { position: absolute; left: 72px; top: 70px; width: 640px; display: grid; gap: 22px; }
+  #social .title { font-size: 84px; }
+  #social .lede { font-size: 25px; color: var(--ink-2); margin: 0; line-height: 1.4; }
+  #social .url { position: absolute; left: 72px; bottom: 48px; font-family: var(--font-mono); font-size: 19px; color: var(--teal); font-weight: 600; }
+  #social .stack { right: 20px; top: 70px; width: 600px; height: 500px; }
+
+  /* features 1280x600 */
+  #features { width: 1280px; height: 500px; padding: 48px 56px; box-sizing: border-box; }
+  #features h2 { font-family: var(--font-display); font-size: 40px; letter-spacing: -0.04em; margin: 0; color: var(--ink); }
+  #features h2 span { color: var(--muted); }
+  #features p.sub { margin: 8px 0 28px; color: var(--ink-2); font-size: 18px; }
+  .fgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .fcard { position: relative; padding: 20px 20px 18px; border-radius: 18px; background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow-sm); overflow: hidden; }
+  .fcard::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--tone, var(--teal)); }
+  .fcard h3 { margin: 4px 0 8px; font-family: var(--font-display); font-size: 20px; letter-spacing: -0.02em; color: var(--ink); }
+  .fcard p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--ink-2); }
+  .fcard.v { --tone: var(--violet); } .fcard.c { --tone: var(--coral); } .fcard.s { --tone: var(--sun); }
+  .fcard.wide { grid-column: span 2; }
+
+  /* flow 1360x520 */
+  #flow { width: 1360px; height: 520px; padding: 48px 56px; box-sizing: border-box; }
+  #flow h2 { font-family: var(--font-display); font-size: 40px; letter-spacing: -0.04em; margin: 0; color: var(--ink); }
+  #flow p.sub { margin: 8px 0 40px; color: var(--ink-2); font-size: 18px; }
+  .steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 34px; position: relative; }
+  .step2 { position: relative; padding: 20px; border-radius: 18px; background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow-sm); min-height: 116px; }
+  .step2 b { display: block; font-family: var(--font-display); font-size: 19px; color: var(--ink); margin-bottom: 8px; }
+  .step2 code { background: none; padding: 0; font-size: 14px; color: var(--ink-2); line-height: 1.5; }
+  .step2::after { content: "→"; position: absolute; right: -27px; top: 44px; color: var(--muted); font-size: 22px; }
+  .step2:last-child::after { content: none; }
+  .step2 .n { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; color: #fff; font-weight: 700; font-size: 14px; margin-bottom: 10px; background: var(--teal); }
+  .step2:nth-child(2) .n { background: #3d6fe6; } .step2:nth-child(3) .n { background: var(--violet); } .step2:nth-child(4) .n { background: #b04fd6; } .step2:nth-child(5) .n { background: var(--coral); }
+  .proto { margin: 26px 0 0 262px; font-family: var(--font-mono); font-size: 14px; color: var(--muted); }
+  .fmts { margin-top: 34px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .fmts em { font-style: normal; color: var(--ink-2); margin-right: 8px; font-size: 16px; }
+  .fmts span { font-family: var(--font-mono); font-size: 14px; padding: 5px 11px; border-radius: 999px; background: var(--teal-soft); color: var(--teal); font-weight: 600; }
+  .badge { position: absolute; right: 56px; top: 56px; padding: 8px 14px; border-radius: 999px; background: var(--teal-soft); color: var(--teal); font-family: var(--font-mono); font-weight: 600; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<template id="stack">
+  <div class="rig">
+    <figure class="win win-sm" style="left:-2%;top:0;width:54%;transform:translateZ(-150px)"><div class="win-bar"><i></i><i></i><i></i><span>Live</span></div><img src="../../site/assets/shots/live-640.webp" alt=""></figure>
+    <figure class="win win-sm" style="right:-4%;top:48%;width:52%;transform:translateZ(-70px)"><div class="win-bar"><i></i><i></i><i></i><span>Download Videos</span></div><img src="../../site/assets/shots/download-640.webp" alt=""></figure>
+    <figure class="win" style="left:6%;top:16%;width:88%;transform:translateZ(40px)"><div class="win-bar"><i></i><i></i><i></i><span>Whisper Transcriber Suite</span></div><img src="../../site/assets/shots/transcribe.webp" alt=""></figure>
+    <div class="chip-card wave-card" style="left:-4%;top:66%;transform:translateZ(150px)"><span class="rec"></span><span class="bars"><i style="transform:scaleY(.4)"></i><i style="transform:scaleY(.9)"></i><i style="transform:scaleY(.6)"></i><i style="transform:scaleY(1)"></i><i style="transform:scaleY(.5)"></i><i style="transform:scaleY(.8)"></i><i style="transform:scaleY(.35)"></i><i style="transform:scaleY(.75)"></i><i style="transform:scaleY(.95)"></i><i style="transform:scaleY(.45)"></i></span></div>
+    <div class="chip-card srt-card" style="right:-2%;top:2%;transform:translateZ(190px)"><p class="srt-ts">00:00:04,120 → 00:00:06,880</p><p class="srt-line">Your audio stays on your computer.</p></div>
+    <div class="chip-card fmt-card" style="left:40%;bottom:-4%;transform:translateZ(120px)"><b>.srt</b><b>.vtt</b><b>.docx</b><b>.pdf</b></div>
+  </div>
+</template>
+
+<section class="board" id="hero">
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="copy">
+    <div class="brandline"><img src="../../site/assets/logo.svg" width="46" height="46" alt=""><b>Whisper Transcriber Suite</b></div>
+    <h1 class="title">Sound in. <span class="grad-text" style="animation:none">Text out.</span></h1>
+    <p class="lede">Free, open-source transcription that runs Whisper on your own computer — Windows, macOS and Linux.</p>
+    <div class="chips"><span>14 formats</span><span>Speaker labels</span><span>Live mic</span><span>Batch queue</span></div>
+  </div>
+  <div class="stack" data-stack></div>
+</section>
+
+<section class="board" id="social">
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="copy">
+    <div class="brandline"><img src="../../site/assets/logo.svg" width="54" height="54" alt=""><b style="font-size:30px">Whisper Transcriber Suite</b></div>
+    <h1 class="title">Sound in.<br><span class="grad-text" style="animation:none">Text out.</span></h1>
+    <p class="lede">Free, open-source Whisper transcription on your own computer. Windows · macOS · Linux.</p>
+    <div class="chips"><span>SRT · VTT · DOCX · PDF</span><span>Speaker labels</span><span>Live mic</span></div>
+  </div>
+  <p class="url">whisper-transcriber-suite.pages.dev</p>
+  <div class="stack" data-stack></div>
+</section>
+
+<section class="board" id="features">
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <h2>Seven tools. <span>One window.</span></h2>
+  <p class="sub">Transcription runs on your computer; the two cloud backends are opt-in.</p>
+  <div class="fgrid">
+    <div class="fcard"><h3>Transcribe</h3><p>Drop audio or video. Auto language, speaker labels, word timestamps, time-range clipping.</p></div>
+    <div class="fcard v"><h3>Queue</h3><p>Batch jobs with live progress. Pause, resume, cancel, re-run or remove any row.</p></div>
+    <div class="fcard c"><h3>Download Videos</h3><p>Any yt-dlp site. Pick a format, clip a range, grab subtitles, transcribe when done.</p></div>
+    <div class="fcard s"><h3>Live</h3><p>Microphone or system audio, transcribed as it happens — cuts on natural pauses.</p></div>
+    <div class="fcard v"><h3>Clone Your Voice</h3><p>Optional, offline: clone a voice from a short sample and have it read new text.</p></div>
+    <div class="fcard c"><h3>Video Tiling</h3><p>Play one live stream as a full-screen grid, optionally across monitors.</p></div>
+    <div class="fcard wide"><h3>Web / LAN access</h3><p>One button turns this machine into a transcription page for the phones and PCs on your network.</p></div>
+  </div>
+</section>
+
+<section class="board" id="flow">
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <span class="badge">offline transcription</span>
+  <h2>How it works</h2>
+  <p class="sub">The model runs in a worker process on your computer. Your audio never leaves it.</p>
+  <div class="steps">
+    <div class="step2"><span class="n">1</span><b>Drop a file</b><code>audio or video,<br>or a yt-dlp URL</code></div>
+    <div class="step2"><span class="n">2</span><b>Tk interface</b><code>queues the job,<br>shows progress</code></div>
+    <div class="step2"><span class="n">3</span><b>Worker process</b><code>keeps the model<br>in memory</code></div>
+    <div class="step2"><span class="n">4</span><b>Speech engine</b><code>faster-whisper,<br>whisper.cpp, Parakeet</code></div>
+    <div class="step2"><span class="n">5</span><b>Your folder</b><code>transcript next<br>to your file</code></div>
+  </div>
+  <p class="proto">newline-delimited JSON over stdin/stdout · per-worker token + heartbeat</p>
+  <div class="fmts"><em>Output formats:</em><span>srt</span><span>vtt</span><span>ass</span><span>tsv</span><span>txt</span><span>json</span><span>lrc</span><span>md</span><span>docx</span><span>pdf</span><span>oTranscribe</span><span>ELAN</span><span>InqScribe</span><span>Express Scribe</span></div>
+</section>
+
+<script>
+  var view = (location.search.match(/view=(\w+)/) || [0, 'hero'])[1];
+  document.getElementById(view).classList.add('on');
+  document.documentElement.classList.add('js');
+  document.documentElement.dataset.motion = 'off';
+  var t = document.getElementById('stack');
+  document.querySelectorAll('[data-stack]').forEach(function (el) { el.appendChild(t.content.cloneNode(true)); });
+</script>
+</body>
+</html>
