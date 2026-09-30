@@ -5,6 +5,46 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-09-30 — "Compiling failed on mac" = PyAV 19; av<19 pinned; CI green
+
+- The colleague reported only "Compiling the whisper suite failed on mac".
+  Re-running `macos-app.yml` on master (run 36736478555) failed on BOTH
+  archs at the smoke test: every transcription died with
+  `open() got an unexpected keyword argument 'metadata_errors'`. The .app
+  itself built fine, which is why `compileall-whisper-mac.sh` (no smoke
+  test) stayed green while `build_mac.sh` reports a failed build.
+- Root cause: PyAV 19.0.0 (PyPI 2026-09-29) removed `av.open(metadata_errors=...)`;
+  faster-whisper 1.2.1 (`faster_whisper/audio.py`) still passes it and only
+  requires `av>=11`. The last green run (2026-09-26) had av 18.1.0. Nothing in
+  the repo changed; the dependency moved under us.
+- Fix `c7238fe`: `av>=11,<19` in `requirements.txt`, `pyproject.toml` and
+  `platform/macos/pyinstaller/constraints-macos.txt` + CHANGELOG. After it:
+  `macos-app.yml` 36737719625 green (both archs, full smoke test),
+  `macos-compileall-script-test.yml` 36737725076 green, `ci.yml` green.
+- Blast radius: only installs/builds made from source on or after 2026-09-29
+  (fresh venv, `install.command`, `install.sh`, `run_from_source.bat`,
+  `update.bat`). Published builds are safe: av is frozen inside the bundle,
+  the app never pip-installs av (no on-demand feature lists it, and the extras
+  dir is appended after the bundle on sys.path), and the website's macOS
+  one-liner downloads the v1.9.3 dmg. No new release was cut.
+- **Follow-up (unpin):** when a faster-whisper release no longer passes
+  `metadata_errors` (check its `audio.py`), lift the `<19` cap in all three
+  files together, and re-run `macos-app.yml` (the smoke test is the only
+  automated check that exercises real audio decoding in the frozen app).
+- Lesson: when someone says "the build failed" with no log, dispatch
+  `macos-app.yml` first. It builds AND runs the app on real Macs of both
+  archs in ~10 min and catches dependency drift that static review cannot
+  (two review agents read every build script and found nothing, because
+  nothing in the repo was wrong).
+- Told the colleague: `git pull`, then `pip install "av<19"` in their venv
+  (or reinstall from requirements.txt), rebuild; if it still fails, send the
+  full build output plus `python -c "import av,sys;print(sys.version,av.__version__)"`,
+  `sw_vers -productVersion; uname -m`.
+- The colleague's Mac is Intel/x64 (their v1.5.0 build was x64-only), so the
+  x64 leg of `macos-app.yml` is the one that mirrors their machine.
+
+---
+
 ## 🟢 2026-09-27 (evening) — no more .sha256 files, site counters, CI green
 
 - Releases no longer ship `.sha256` files (`macos-app.yml`, `build_mac.sh`);

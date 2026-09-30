@@ -99,7 +99,11 @@ What v1.9.0 and v1.9.3 did, in order; repeat it for the next version.
 5. Test the Terminal one-liner from the release notes against the published release. It downloads with
    `curl`, so there's no quarantine flag and no Gatekeeper dialog. Verified for v1.9.0 and v1.9.3 x64 on 10.15. The one-liner picks x64 on
    Apple-silicon Macs below the arm64 dmg's floor (macOS 14), where it runs through Rosetta.
-6. Never commit from a VM/sandbox clone without first setting the repo identity
+6. Before the build, check the dependency pins are still right: `av<19` (PyAV 19 broke faster-whisper
+   1.2.1, row 7 below) and `onnxruntime==1.19.2` in `constraints-macos.txt`. When a report says "the build
+   failed" without a log, dispatch `macos-app.yml` first: it rebuilds and smoke-tests on real Macs of both
+   archs in ~10 min and catches dependency drift that reading the scripts cannot.
+7. Never commit from a VM/sandbox clone without first setting the repo identity
    (`Milomilo777 <117558067+Milomilo777@users.noreply.github.com>`). Don't commit machine user names,
    home paths (`/Users/<name>`), or screenshots that show them.
 
@@ -115,6 +119,7 @@ Each of these was reproduced on a real Mac. Any one of them is enough to ship a 
 | 4 | Info.plist says 1.6.0 | Hard-coded version in the spec. | Read from `core.__version__`. |
 | 5 | `invalid choice: 'from multiprocessing.resource_tracker import main;main(6)'` in logs | `gui.py` never calls `multiprocessing.freeze_support()`, so in a frozen app multiprocessing's helper re-launch re-enters the argparse CLI. | Runtime hook `rthook_mp_helpers.py` diverts it (packaging-level; the proper fix is in `gui.py`, see open issues). |
 | 6 | Model download slower than needed | `hf_xet` not collected (dynamic import in huggingface_hub). | `hiddenimports += ['hf_xet']`. |
+| 7 | Every transcription fails: `open() got an unexpected keyword argument 'metadata_errors'` (build itself succeeds; `build_mac.sh` fails at the smoke test) | **Dependency drift, not a repo change.** PyAV 19.0.0 (2026-09-29) removed `av.open(metadata_errors=...)`; faster-whisper 1.2.1 still passes it and only pins `av>=11`, so every fresh pip install from that day picked av 19. Seen on both archs in CI run 36736478555 (2026-09-30). | `av>=11,<19` in `requirements.txt`, `pyproject.toml` and `constraints-macos.txt` (c7238fe). Lift the cap only when faster-whisper's `audio.py` no longer uses the argument, then re-run `macos-app.yml`. |
 
 The old CI "smoke test" (`transcribe --help`) could not catch any of these: it
 never ran ffmpeg, yt-dlp or a real transcription, and it ran on the build
