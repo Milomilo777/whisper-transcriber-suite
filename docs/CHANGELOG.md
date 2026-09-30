@@ -18,6 +18,16 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Every transcription failed in a fresh install or build made on or after
+  2026-09-29** with `open() got an unexpected keyword argument
+  'metadata_errors'`. PyAV 19.0.0 (released 2026-09-29) removed that
+  argument of `av.open()`, which faster-whisper 1.2.1 still passes when it
+  decodes audio, and faster-whisper only requires `av>=11`, so pip picked
+  the new release. Found by the macOS build's smoke test (both archs).
+  `av>=11,<19` is now pinned in `requirements.txt`, `pyproject.toml` and
+  `constraints-macos.txt`; an existing venv needs `pip install "av<19"`.
+  Builds and installs made before 2026-09-29 (including the v1.9.3
+  downloads) are not affected.
 - **macOS: the "Loading the Whisper model" dialog was off-centre** (placed
   by its top-left corner). It now uses the dialog's requested size.
 - **Advanced settings: Save/Cancel could sit under the macOS Dock** on a

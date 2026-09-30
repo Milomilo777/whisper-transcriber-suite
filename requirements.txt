@@ -10,6 +10,13 @@
 
 # Core transcription
 faster-whisper>=1.0.3
+# PyAV 19.0.0 (2026-09-29) removed the `metadata_errors` argument of
+# av.open(), which faster-whisper (<= 1.2.1) still passes when decoding
+# audio. With av 19 every transcription fails with
+# "open() got an unexpected keyword argument 'metadata_errors'" (seen on
+# the macOS build's smoke test, 2026-09-30). faster-whisper only says
+# av>=11, so pin it here until a faster-whisper release supports av 19.
+av>=11,<19
 
 # faster-whisper pins tokenizers only loosely (>=0.13,<1), so a build done
 # today can bundle whatever tokenizers is newest on that day. The nvidia_asr

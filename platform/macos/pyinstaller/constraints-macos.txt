@@ -8,3 +8,8 @@
 # verified end-to-end (VAD + transcription) on macOS 10.15 in 2026-09.
 # See docs/MACOS_BUILD_NOTES.md.
 onnxruntime==1.19.2
+# PyAV 19.0.0 (2026-09-29) removed av.open(metadata_errors=...), which
+# faster-whisper <= 1.2.1 still passes: with av 19 the frozen app fails every
+# transcription ("open() got an unexpected keyword argument
+# 'metadata_errors'"; CI smoke test, 2026-09-30). Same pin as requirements.txt.
+av<19

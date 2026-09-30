@@ -25,6 +25,9 @@ classifiers = [
 
 dependencies = [
     "faster-whisper>=1.0.3",
+    # PyAV 19 dropped av.open(metadata_errors=...), which faster-whisper
+    # <= 1.2.1 still passes; see the note in requirements.txt.
+    "av>=11,<19",
     "requests>=2.31.0",
     "sv-ttk>=2.6.0",
     "platformdirs>=4.0.0",
