@@ -381,6 +381,13 @@ Windows, macOS and Linux. Published downloads are a Windows installer, a
 Windows portable ZIP, and a macOS DMG; Linux runs from source
 ([docs/BUILD.md](docs/BUILD.md)).
 
+**Does it use my GPU for faster transcription?**
+Yes — **Advanced → Re-detect hardware…** auto-detects an NVIDIA GPU and
+switches to CUDA when it can (about 10–20x faster than CPU), with a
+one-click **Install GPU support** (~550 MB, one time) if only the CUDA
+runtime is missing. It falls back to CPU automatically when no usable GPU
+is found.
+
 **What transcript formats can it produce?**
 `srt` `vtt` `ass` `tsv` `txt` `json` `lrc` `md` `docx` `pdf`, plus
 oTranscribe, ELAN, InqScribe and Express Scribe.
