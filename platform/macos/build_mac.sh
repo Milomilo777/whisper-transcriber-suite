@@ -14,7 +14,8 @@
 #   4. PyInstaller with platform/macos/pyinstaller/whisper_project_mac.spec
 #   5. verify_mac_bundle.sh + smoke_test_app.sh (real transcription, GUI
 #      launch, real download) -- skip the smoke test with --no-smoke
-#   6. .dmg (create-dmg if installed, else hdiutil) + SHA-256
+#   6. .dmg (create-dmg if installed, else hdiutil), then test_dmg.sh: mount
+#      it, copy the app out like Finder, run its CLI and GUI from the copy
 #
 # Options / environment:
 #   --no-smoke        skip step 5's smoke test (the bundle check still runs)
@@ -112,6 +113,11 @@ say_step "6. .dmg"
 WTS_DMG_SUFFIX="$SUFFIX" bash platform/macos/pyinstaller/builddmg.command
 OUT="WhisperTranscriberSuite-v$VERSION-macOS-$SUFFIX.dmg"
 mv -f "dist/Whisper Transcriber Suite-$SUFFIX.dmg" "dist/$OUT"
+if [ "$SMOKE" = 1 ]; then
+  bash platform/macos/pyinstaller/test_dmg.sh "dist/$OUT"
+else
+  bash platform/macos/pyinstaller/test_dmg.sh "dist/$OUT" --no-gui
+fi
 echo
 echo "Done: dist/$OUT"
 echo "Minimum macOS: $(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$APP/Contents/Info.plist")"

@@ -183,17 +183,23 @@ export PATH="$REPO_ROOT/bin:$VENV/bin:\$PATH"
 exec "$VENV/bin/python" "$REPO_ROOT/gui.py"
 EOF
 chmod +x "$APP/Contents/MacOS/whisper-transcriber-suite"
-cat > "$APP/Contents/Info.plist" <<'EOF'
+# Version from core.__version__ (this used to be a hard-coded 1.3.6).
+VERSION="$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$REPO_ROOT/core/__init__.py")"
+cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>CFBundleName</key><string>Whisper Transcriber Suite</string>
   <key>CFBundleDisplayName</key><string>Whisper Transcriber Suite</string>
   <key>CFBundleIdentifier</key><string>com.translation-robot.whisperproject</string>
-  <key>CFBundleVersion</key><string>1.3.6</string>
+  <key>CFBundleVersion</key><string>${VERSION:-0.0.0}</string>
+  <key>CFBundleShortVersionString</key><string>${VERSION:-0.0.0}</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>whisper-transcriber-suite</string>
   <key>NSHighResolutionCapable</key><true/>
+  <!-- macOS 10.14+ kills an app that opens the microphone without this key
+       (the Live tab records through sounddevice). -->
+  <key>NSMicrophoneUsageDescription</key><string>Whisper Transcriber Suite records from the microphone for live transcription in the Live tab.</string>
 </dict></plist>
 EOF
 # Ad-hoc sign the bundle ('-s -') so it has a STABLE code identity. Without

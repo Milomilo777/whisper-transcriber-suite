@@ -81,6 +81,7 @@ jobs:
           out="WhisperTranscriberSuite-v${{ steps.ver.outputs.version }}-macOS-${{ matrix.suffix }}.dmg"
           mv "dist/Whisper Transcriber Suite-${{ matrix.suffix }}.dmg" "dist/$out"
           hdiutil verify "dist/$out"
+          bash platform/macos/pyinstaller/test_dmg.sh "dist/$out"
 
       - name: Upload .dmg
         uses: actions/upload-artifact@v4

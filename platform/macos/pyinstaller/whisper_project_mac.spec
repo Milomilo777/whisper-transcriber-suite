@@ -505,6 +505,13 @@ app = BUNDLE(
         'CFBundleShortVersionString': _VERSION,
         'CFBundlePackageType': 'APPL',
         'NSHighResolutionCapable': True,
+        # macOS 10.14+ (TCC) terminates an app that opens the microphone
+        # without this key; the Live tab records through sounddevice. No
+        # earlier build had it (found 2026-10-01), so the .app could never
+        # be granted microphone access. The text is shown in the permission
+        # dialog. verify_mac_bundle.sh / test_dmg.sh check it is present.
+        'NSMicrophoneUsageDescription': 'Whisper Transcriber Suite records '
+            'from the microphone for live transcription in the Live tab.',
         # Computed above from the bundled binaries (or a verified
         # WTS_MACOS_MIN override). A value higher than the real minimum
         # blocks launch outright (LaunchServices error -10825); a lower one

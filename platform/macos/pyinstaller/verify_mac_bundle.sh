@@ -57,5 +57,10 @@ for _n in ffmpeg yt-dlp deno; do
 done
 "$APP/Contents/MacOS/Whisper Transcriber Suite" transcribe --help >/dev/null || { echo "CLI boot FAILED"; bad=$((bad + 1)); }
 codesign --verify --deep --strict "$APP" || bad=$((bad + 1))
+plutil -lint "$APP/Contents/Info.plist" >/dev/null || { echo "Info.plist does not parse"; bad=$((bad + 1)); }
+# macOS 10.14+ (TCC) terminates an app that opens the microphone without this
+# key; the Live tab records through sounddevice. The spec sets it.
+/usr/libexec/PlistBuddy -c 'Print :NSMicrophoneUsageDescription' "$APP/Contents/Info.plist" >/dev/null 2>&1 \
+  || { echo "Info.plist lacks NSMicrophoneUsageDescription (the Live tab would be killed by TCC)"; bad=$((bad + 1)); }
 
 [ "$bad" = 0 ] && echo "OK: bundle is self-contained." || { echo "FAILED: $bad problem(s)" >&2; exit 1; }
