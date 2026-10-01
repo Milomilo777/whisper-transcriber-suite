@@ -5,6 +5,42 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-10-01 — four macOS-only follow-ups: 3 done, screenshots deferred
+
+Asked: which macOS-only tools help this project. Four items were recorded;
+1, 2 and 4 were built and run on the 10.15 VM and on CI (both archs), item 3
+is deferred.
+
+1. **Microphone key (bug fix).** `NSMicrophoneUsageDescription` was missing
+   from every Info.plist (spec and `install.command`), so macOS 10.14+ would
+   kill the app the moment the Live tab opened the microphone. Added in both,
+   checked by `verify_mac_bundle.sh` and `test_dmg.sh`. `install.command`
+   also stamped a hard-coded `1.3.6`; it now reads `core.__version__`.
+   **Not verified on a real microphone**: the VM has no audio device at all
+   (`system_profiler SPAudioDataType` lists nothing), so TCC never engages
+   there. Next person with a real Mac: open Live, expect the permission
+   dialog, record a few seconds.
+2. **dmg round-trip test.** `platform/macos/pyinstaller/test_dmg.sh` mounts
+   the dmg, checks the Applications link, copies the app out, lints the
+   plist, verifies codesign, runtime tools, CLI and GUI from the copy, then
+   unmounts. Runs in `build_mac.sh` step 6 (`--no-smoke` -> `--no-gui`) and
+   in `macos-app.yml`. Passed on the VM (x64, 10.15.7, full `build_mac.sh`)
+   and in CI run 36800705359 (arm64 + x86_64) on branch `mac-dmg-test`,
+   then merged to master.
+3. **Mac screenshots for the site/README (deferred).** `screencapture` on
+   the VM can produce them, but the owner wants no screenshots until after
+   the upcoming big review. Pick this up after it.
+4. **plutil + spctl.** `plutil -lint` is in `verify_mac_bundle.sh` and
+   `test_dmg.sh`; `test_dmg.sh` prints `spctl --assess` for the record
+   (ad-hoc signed app -> "rejected", which is expected without a Developer
+   ID; the wording tells unsigned apart from damaged).
+
+- No release was cut (nothing shipped changes until the next version).
+- Host disk stayed at ~5.5 GB free during the VM build this time, but check
+  `df` on the host before any VM build; the VM's differencing disk can grow.
+
+---
+
 ## 🟢 2026-09-30 — "Compiling failed on mac" = PyAV 19; av<19 pinned; CI green
 
 - The colleague reported only "Compiling the whisper suite failed on mac".

@@ -86,7 +86,7 @@ What v1.9.0 and v1.9.3 did, in order; repeat it for the next version.
 3. **x64 (Intel):** build on the oldest macOS you can (the 10.15 VM gave a 10.15+ app; the CI Intel build
    needs macOS 14 because pip picks newer wheels there): from a fresh clone run
    `WTS_MACOS_MIN=10.15 bash platform/macos/build_mac.sh` in a logged-in desktop session (it runs
-   `verify_mac_bundle.sh` and `smoke_test_app.sh`; both must pass). If no old Mac is available, the CI x64 dmg is acceptable. It needs macOS 14.
+   `verify_mac_bundle.sh`, `smoke_test_app.sh` and, after the dmg, `test_dmg.sh`; all must pass). If no old Mac is available, the CI x64 dmg is acceptable. It needs macOS 14.
 4. Create the release with the dmgs (no `.sha256` files) and
    `docs/release-notes/RELEASE_NOTES_vX.Y.Z.md`. **New tag every time, even for a mac-only fix** — see
    CLAUDE.md "Never `--clobber` an existing release asset": never `delete-asset` + `upload` mac dmgs onto
@@ -119,6 +119,7 @@ Each of these was reproduced on a real Mac. Any one of them is enough to ship a 
 | 4 | Info.plist says 1.6.0 | Hard-coded version in the spec. | Read from `core.__version__`. |
 | 5 | `invalid choice: 'from multiprocessing.resource_tracker import main;main(6)'` in logs | `gui.py` never calls `multiprocessing.freeze_support()`, so in a frozen app multiprocessing's helper re-launch re-enters the argparse CLI. | Runtime hook `rthook_mp_helpers.py` diverts it (packaging-level; the proper fix is in `gui.py`, see open issues). |
 | 6 | Model download slower than needed | `hf_xet` not collected (dynamic import in huggingface_hub). | `hiddenimports += ['hf_xet']`. |
+| 8 | Live tab: the app dies the moment recording starts (no dialog, no log line) | macOS 10.14+ (TCC) terminates a process that opens the microphone without `NSMicrophoneUsageDescription` in Info.plist. Neither the spec's `info_plist` nor `install.command`'s launcher plist had it (found 2026-10-01 by reading the plist; the VM has no audio device, so the kill itself was not reproduced). | Key set in `whisper_project_mac.spec` and `install.command`; `verify_mac_bundle.sh` and `test_dmg.sh` fail without it. Still to do on a real Mac with a microphone: open Live, expect the permission dialog, record. |
 | 7 | Every transcription fails: `open() got an unexpected keyword argument 'metadata_errors'` (build itself succeeds; `build_mac.sh` fails at the smoke test) | **Dependency drift, not a repo change.** PyAV 19.0.0 (2026-09-29) removed `av.open(metadata_errors=...)`; faster-whisper 1.2.1 still passes it and only pins `av>=11`, so every fresh pip install from that day picked av 19. Seen on both archs in CI run 36736478555 (2026-09-30). | `av>=11,<19` in `requirements.txt`, `pyproject.toml` and `constraints-macos.txt` (c7238fe). Lift the cap only when faster-whisper's `audio.py` no longer uses the argument, then re-run `macos-app.yml`. |
 
 The old CI "smoke test" (`transcribe --help`) could not catch any of these: it

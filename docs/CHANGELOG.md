@@ -4,6 +4,14 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- **macOS: the finished `.dmg` is now tested like a user meets it**
+  (`platform/macos/pyinstaller/test_dmg.sh`, run by `build_mac.sh` and the
+  macOS CI): mount, check the drag-to-Applications link, copy the app out,
+  lint its Info.plist, verify the signature, run the CLI and open the GUI
+  from the copy, unmount. The pipeline never tested the `.dmg` itself before.
+
 ### Changed
 
 - **macOS build: `pyinstaller whisper_project_onedir.spec` (or the onefile
@@ -18,6 +26,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **macOS: the Live tab could never get the microphone.** macOS 10.14+
+  terminates an app that opens the microphone without
+  `NSMicrophoneUsageDescription` in its Info.plist, and no build had the
+  key. The `.app` (PyInstaller spec) and the `install.command` launcher now
+  declare it, and `verify_mac_bundle.sh` fails a bundle that lacks it.
+  `install.command` also stopped stamping a hard-coded `1.3.6` as the
+  launcher's version; it reads `core.__version__`.
 - **Every transcription failed in a fresh install or build made on or after
   2026-09-29** with `open() got an unexpected keyword argument
   'metadata_errors'`. PyAV 19.0.0 (released 2026-09-29) removed that
