@@ -448,6 +448,9 @@ html.js .sr.in { opacity: 1; transform: none; }
 .contact-ic .i { width: 22px; height: 22px; }
 .contact-card h3 { font-size: 1.2rem; }
 .contact-val { font-family: var(--font-mono); font-size: 0.86rem; font-weight: 600; color: var(--violet); overflow-wrap: anywhere; }
+.contact-reveal { padding: 7px 14px; border: 1px solid currentColor; border-radius: 999px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.contact-reveal:hover:not(:disabled) { color: #fff; background: var(--violet); border-color: var(--violet); }
+.contact-reveal:disabled { cursor: default; opacity: 0.7; }
 .contact-card p:last-child { color: var(--ink-2); font-size: 0.95rem; }
 
 .support-card { position: relative; overflow: hidden; display: flex; align-items: center; gap: clamp(24px, 4vw, 56px); margin-top: 32px; padding: clamp(28px, 4vw, 52px); border-radius: var(--r-xl); color: var(--night-text); background: radial-gradient(600px 300px at 90% 0%, rgb(106 92 240 / 0.55), transparent 70%), radial-gradient(500px 300px at 0% 100%, rgb(12 157 149 / 0.5), transparent 70%), var(--night); box-shadow: var(--shadow-lg); }

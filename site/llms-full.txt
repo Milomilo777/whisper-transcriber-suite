@@ -33,7 +33,7 @@ Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscri
 - GitHub: https://github.com/Milomilo777/whisper-transcriber-suite
 - Issues / support: https://github.com/Milomilo777/whisper-transcriber-suite/issues
 - Questions: https://github.com/Milomilo777/whisper-transcriber-suite/discussions
-- Email: whisper.transcriber.suite@gmail.com
+- Email: shown on request in the Contact section of the website (https://whisper-transcriber-suite.pages.dev/#contact)
 - Security reports: GitHub private vulnerability reporting (see SECURITY.md)
 
 ---
@@ -90,7 +90,7 @@ Yes, Web/LAN access mode turns this machine into a transcription page the other 
 
 ### How do I contact the project?
 
-Bugs and feature requests go to GitHub Issues, questions to GitHub Discussions, and anything else to whisper.transcriber.suite@gmail.com. Security reports go through GitHub's private vulnerability reporting.
+Bugs and feature requests go to GitHub Issues, questions to GitHub Discussions, and anything else by email (the address is shown on request in the Contact section). Security reports go through GitHub's private vulnerability reporting.
 
 ---
 
@@ -385,6 +385,13 @@ Windows, macOS and Linux. Published downloads are a Windows installer, a
 Windows portable ZIP, and a macOS DMG; Linux runs from source
 ([docs/BUILD.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/BUILD.md)).
 
+**Does it use my GPU for faster transcription?**
+Yes — **Advanced → Re-detect hardware…** auto-detects an NVIDIA GPU and
+switches to CUDA when it can (about 10–20x faster than CPU), with a
+one-click **Install GPU support** (~550 MB, one time) if only the CUDA
+runtime is missing. It falls back to CPU automatically when no usable GPU
+is found.
+
 **What transcript formats can it produce?**
 `srt` `vtt` `ass` `tsv` `txt` `json` `lrc` `md` `docx` `pdf`, plus
 oTranscribe, ELAN, InqScribe and Express Scribe.
@@ -456,7 +463,7 @@ Security reports go through [SECURITY.md](https://github.com/Milomilo777/whisper
 
 - **Bugs and feature requests:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Questions and ideas:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
-- **Everything else** (press, partnerships, private questions): [whisper.transcriber.suite@gmail.com](mailto:whisper.transcriber.suite@gmail.com)
+- **Everything else** (press, partnerships, private questions): by email — the address is shown on request in the [Contact section of the website](https://whisper-transcriber-suite.pages.dev/#contact)
 - **Website:** <https://whisper-transcriber-suite.pages.dev>
 
 ## Author and license

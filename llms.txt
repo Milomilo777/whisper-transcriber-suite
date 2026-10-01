@@ -37,5 +37,5 @@
 - Repository: https://github.com/Milomilo777/whisper-transcriber-suite
 - Issues and discussions: https://github.com/Milomilo777/whisper-transcriber-suite/discussions
 - Website: https://whisper-transcriber-suite.pages.dev
-- Email: whisper.transcriber.suite@gmail.com
+- Email: shown on request in the Contact section of the website (https://whisper-transcriber-suite.pages.dev/#contact)
 - Security reports: see SECURITY.md in the repository.

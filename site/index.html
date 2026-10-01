@@ -36,7 +36,7 @@
 <link rel="preload" href="assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/shots/transcribe.webp" as="image" type="image/webp">
-<link rel="stylesheet" href="styles.css?v=20260927d">
+<link rel="stylesheet" href="styles.css?v=20261002a">
 <script src="js/motion-init.js?v=20260927b"></script>
 
 <script type="application/ld+json">
@@ -54,11 +54,9 @@
         "width": 512,
         "height": 512
       },
-      "email": "whisper.transcriber.suite@gmail.com",
       "contactPoint": {
         "@type": "ContactPoint",
         "contactType": "customer support",
-        "email": "whisper.transcriber.suite@gmail.com",
         "url": "https://github.com/Milomilo777/whisper-transcriber-suite/issues",
         "availableLanguage": [
           "English"
@@ -192,7 +190,7 @@
     {"@type":"Question","name":"Can it clone a voice and make it say new text?","acceptedAnswer":{"@type":"Answer","text":"Yes, via the optional Clone Your Voice tab, using OmniVoice (Apache-2.0) entirely on your machine. Off by default; opt in at install time."}},
     {"@type":"Question","name":"How is this different from calling the Whisper API directly?","acceptedAnswer":{"@type":"Answer","text":"It runs the model locally via faster-whisper by default, so there is no per-minute API cost and no audio leaves your machine, unless you explicitly opt into one of the two cloud backends."}},
     {"@type":"Question","name":"Can several people on the same network use it without installing it on every machine?","acceptedAnswer":{"@type":"Answer","text":"Yes, Web/LAN access mode turns this machine into a transcription page the other devices on the network can use."}},
-    {"@type":"Question","name":"How do I contact the project?","acceptedAnswer":{"@type":"Answer","text":"Bugs and feature requests go to GitHub Issues, questions to GitHub Discussions, and anything else to whisper.transcriber.suite@gmail.com. Security reports go through GitHub's private vulnerability reporting."}}
+    {"@type":"Question","name":"How do I contact the project?","acceptedAnswer":{"@type":"Answer","text":"Bugs and feature requests go to GitHub Issues, questions to GitHub Discussions, and anything else by email (the address is shown on request in the Contact section). Security reports go through GitHub's private vulnerability reporting."}}
   ]
 }
 </script>
@@ -597,7 +595,7 @@ python gui.py</code></pre>
         <article class="qa"><h3>Can it clone a voice and make it say new text?</h3><div class="faq-a"><p>Yes, via the optional Clone Your Voice tab, using OmniVoice (Apache-2.0) entirely on your machine. Off by default; opt in at install time, and you must confirm you have permission to clone the reference voice.</p></div></article>
         <article class="qa"><h3>How is this different from calling the Whisper API directly?</h3><div class="faq-a"><p>It runs the model locally via faster-whisper by default, so there's no per-minute API cost and no audio leaves your machine — unless you explicitly opt into one of the two cloud backends.</p></div></article>
         <article class="qa"><h3>Can several people on the same network use it without installing it on every machine?</h3><div class="faq-a"><p>Yes — Web/LAN access mode turns this machine into a transcription page the other devices on the network can use.</p></div></article>
-        <article class="qa"><h3>How do I contact the project?</h3><div class="faq-a"><p>Bugs and feature requests go to <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, questions to <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, and anything else to <a href="mailto:whisper.transcriber.suite@gmail.com">whisper.transcriber.suite@gmail.com</a>. Security reports go through GitHub's private vulnerability reporting.</p></div></article>
+        <article class="qa"><h3>How do I contact the project?</h3><div class="faq-a"><p>Bugs and feature requests go to <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, questions to <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, and anything else by email (the address is shown on request in the <a href="#contact">Contact section</a>). Security reports go through GitHub's private vulnerability reporting.</p></div></article>
       </div>
     </div>
   </section>
@@ -610,12 +608,12 @@ python gui.py</code></pre>
         <h2 id="contact-title">Talk to us. <span class="h2-soft">Help it grow.</span></h2>
       </header>
       <div class="contact-grid">
-        <a class="contact-card sr" href="mailto:whisper.transcriber.suite@gmail.com" data-tilt-card>
+        <div class="contact-card sr" data-tilt-card data-contact>
           <span class="contact-ic tone-teal"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg></span>
           <h3>Email</h3>
-          <p class="contact-val">whisper.transcriber.suite@gmail.com</p>
+          <p class="contact-val"><button type="button" class="contact-reveal" data-contact-reveal>Show email address</button><span data-contact-out aria-live="polite" hidden></span><noscript> (needs JavaScript)</noscript></p>
           <p>Press, partnerships, or anything that isn't a bug report.</p>
-        </a>
+        </div>
         <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener" data-tilt-card>
           <span class="contact-ic tone-coral"><svg class="i" aria-hidden="true"><use href="#i-bug"/></svg></span>
           <h3>Report a bug</h3>
@@ -651,7 +649,7 @@ python gui.py</code></pre>
     <div class="footer-brand">
       <a class="brand" href="#top"><img class="brand-logo" src="assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
       <p class="muted">Maintained by one independent developer, <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Source licensed under BSD-3-Clause.</p>
-      <p class="muted"><a href="mailto:whisper.transcriber.suite@gmail.com">whisper.transcriber.suite@gmail.com</a></p>
+      <p class="muted"><a href="#contact">Contact</a></p>
       <p class="site-stats" data-site-stats hidden><span data-stat="visits" hidden><strong></strong> visits</span><span data-stat="downloads" hidden><strong></strong> downloads</span></p>
     </div>
     <nav class="footer-nav" aria-label="Footer">
@@ -677,6 +675,6 @@ python gui.py</code></pre>
   </div>
 </div>
 
-<script src="js/main.js?v=20260927d" defer></script>
+<script src="js/main.js?v=20261002a" defer></script>
 </body>
 </html>

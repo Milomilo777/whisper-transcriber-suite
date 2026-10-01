@@ -416,4 +416,68 @@
       })
       .catch(() => { /* counters are decoration; stay hidden */ });
   }
+
+  /* Contact address: it is not in this page or in any file the site serves.
+     A real click asks the same-origin /api/contact for it, after a short
+     proof-of-work (see site/functions/api/contact.js). */
+  const contact = $('[data-contact]');
+  if (contact) {
+    const btn = $('[data-contact-reveal]', contact);
+    const out = $('[data-contact-out]', contact);
+    const BITS = 14;
+    const zeroBits = (bytes) => {
+      let bits = 0;
+      for (const b of bytes) {
+        if (b === 0) { bits += 8; continue; }
+        return bits + Math.clz32(b) - 24;
+      }
+      return bits;
+    };
+    const solve = async (t) => {
+      const enc = new TextEncoder();
+      for (let n = 0; ; n++) {
+        const digest = await crypto.subtle.digest('SHA-256', enc.encode(`${t}:${n}`));
+        if (zeroBits(new Uint8Array(digest)) >= BITS) return n;
+      }
+    };
+    const ask = async (t) => {
+      const n = await solve(t);
+      const r = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ t, n }),
+      });
+      return { r, n };
+    };
+    const reveal = async () => {
+      let { r, n } = await ask(Date.now());
+      if (r.status === 409) {
+        // This device's clock is off: use the server's time once.
+        const { now } = await r.json();
+        ({ r, n } = await ask(now));
+      }
+      if (!r.ok) throw new Error(String(r.status));
+      const { d } = await r.json();
+      return d.map((c, i) => String.fromCharCode(c ^ ((n + i * 7) & 255))).reverse().join('');
+    };
+    const supported = 'fetch' in window && window.crypto && crypto.subtle && 'TextEncoder' in window;
+    btn.addEventListener('click', async (ev) => {
+      if (!ev.isTrusted || btn.disabled) return;
+      if (!supported) { btn.textContent = 'Please write to us on GitHub Discussions'; btn.disabled = true; return; }
+      btn.disabled = true;
+      btn.textContent = 'One moment…';
+      try {
+        const addr = await reveal();
+        const link = document.createElement('a');
+        link.href = `mailto:${addr}`;
+        link.textContent = addr;
+        out.replaceChildren(link);
+        out.hidden = false;
+        btn.hidden = true;
+      } catch (e) {
+        btn.textContent = 'Could not load it. Try again';
+        btn.disabled = false;
+      }
+    });
+  }
 })();

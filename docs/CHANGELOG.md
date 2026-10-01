@@ -14,6 +14,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Website and docs: the contact address is no longer written in any
+  file.** The website's Contact section shows it on request (a same-origin
+  function hands it over after a short proof-of-work); README, SECURITY.md,
+  `llms.txt` and the package metadata point to that section instead.
 - **macOS build: `pyinstaller whisper_project_onedir.spec` (or the onefile
   spec) from the repo root builds the working `.app` on a Mac** by handing
   over to the macOS spec (it used to make a Windows-style folder that could

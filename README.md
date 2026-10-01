@@ -459,7 +459,7 @@ Security reports go through [SECURITY.md](SECURITY.md).
 
 - **Bugs and feature requests:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Questions and ideas:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
-- **Everything else** (press, partnerships, private questions): [whisper.transcriber.suite@gmail.com](mailto:whisper.transcriber.suite@gmail.com)
+- **Everything else** (press, partnerships, private questions): by email — the address is shown on request in the [Contact section of the website](https://whisper-transcriber-suite.pages.dev/#contact)
 - **Website:** <https://whisper-transcriber-suite.pages.dev>
 
 ## Author and license
