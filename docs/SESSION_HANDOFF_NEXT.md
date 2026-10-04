@@ -34,41 +34,38 @@ its full path.
 Fix these as far as possible in that version; check each one on the 10.15
 VM (release builder) and, where useful, on the 13 VM.
 
-1. **yt-dlp start time (main item).** The bundled `yt-dlp_macos` is a
-   PyInstaller onefile. Every call unpacks into a new temp dir and dyld
-   waits on signature validation of the fresh libraries: 25–29 s warm,
-   66 s cold, about 0.7 s of CPU (sampled: dyld `__fcntl`). Plan:
-   - bundle the onedir build (`yt-dlp_macos.zip` from the same yt-dlp
-     release, unpacked once inside the bundle, e.g.
-     `Contents/Frameworks/bin/yt-dlp_dist/`, with `bin/yt-dlp` pointing at
-     its executable);
-   - keep the Mach-O check in the spec, `verify_mac_bundle.sh` and
-     `test_dmg.sh`; add a start-time check, e.g. `--version` under 10 s on
-     the VM;
-   - **make `clear_bundled_quarantine()` recursive.** It only clears the
-     top-level entries of `bin/` today, so a quarantined onedir folder would
-     still be blocked file by file;
-   - re-check universal2 vs. per-arch for the onedir zip (arm64 dmg from CI).
-2. **yt-dlp calls with short timeouts, while the onefile is still in use:**
-   - `download_service.py` runs `yt-dlp --update` with `timeout=60`. A frozen
-     build can't self-update ("needs a manual upgrade"), and a 66 s cold
-     start can hit the timeout. Skip `--update` for the frozen macOS bundle.
-   - `format_service.py` probe `timeout=120`: the observed probe took about
-     60 s on the 13 VM. Keep at least 120 s until item 1 lands, and show a
-     status like "starting yt-dlp (first run can take a minute)" so the UI
-     doesn't look hung.
+1. ✅ **yt-dlp start time — DONE in e1cba30** (MACOS_BUILD_NOTES row 10).
+   The onedir `yt-dlp_macos.zip`, checked against SHA2-256SUMS, is in
+   `Contents/Resources/yt-dlp_dist`, linked from `Frameworks/bin` and
+   `Contents/MacOS/bin`. `clear_bundled_quarantine()` is recursive.
+   Verified with a full `build_mac.sh` on 10.15.7 x86_64:
+   - EXIT=0, covering the bundle check, smoke test and dmg test (the dmg
+     test includes a nested quarantine file);
+   - 2nd start 0.4 s;
+   - a YouTube format lookup took 27–29 s with v1.9.3 and 3 s now.
+
+   Still open:
+   - The arm64 dmg comes from CI (`macos-app.yml`) and was not built: no
+     release was approved. Check it when the next release is built.
+     The zip is universal2 (x86_64 minos 10.13/10.15, arm64 11.0).
+   - The first run after install still takes ~25 s, once.
+2. ✅ **`yt-dlp --update` is not an issue:** `maybe_update_yt_dlp`
+   already returns early on frozen builds (and `auto_update_yt_dlp` defaults
+   to off). The "needs a manual upgrade (frozen build)" line comes from the
+   Video Tiling self-heal. The `--version` timeout (120 s, `core/js_runtime`)
+   and the probe timeout (120 s) stay as they are; they only matter for the
+   one-time ~25 s first run now.
 3. **First-run Gatekeeper block (no notarization).**
-   - Keep 415d2d1, which clears the flags at the first approved start.
-   - Release notes and README: make the `curl` one-liner the first-choice
-     Mac install; it is verified to give no dialog and no blocked tools.
-     Keep "Open Anyway" as the second way.
-   - Say there that bundled tools must not be run from Terminal before the
-     app was opened once, and that the bundled yt-dlp must not be replaced
-     (yt-dlp's plain `yt-dlp` file is a Python zipapp that needs Python 3.10+).
+   - ✅ Both macOS READMEs now put the `curl` one-liner first and explain
+     "open the app once before running its tools from Terminal" (e1cba30).
+   - Release notes of the next version: keep the one-liner first (it already
+     is in v1.9.3) and add one line: never replace the bundled yt-dlp (yt-dlp's
+     plain `yt-dlp` file is a Python zipapp that needs Python 3.10+).
    - `platform/macos/unblock.command` only covers the source install
      (`~/Applications`), not the dmg app in `/Applications`.
-4. **Ship 415d2d1 + 37be38b** (CHANGELOG [Unreleased]): the quarantine strip
-   and the refusal of a non-Mach-O yt-dlp/deno.
+4. **Ship 415d2d1 + 37be38b + e1cba30** (CHANGELOG [Unreleased]): the
+   quarantine strip, the refusal of a non-Mach-O yt-dlp/deno, and the onedir
+   yt-dlp.
 5. **Remove Video Tiling** (planned). It is also a yt-dlp consumer, so drop
    its yt-dlp paths and tests together with the tab.
 6. **deno 2.9.7 reports minos 12.0** while the app targets 10.15. It ran in
