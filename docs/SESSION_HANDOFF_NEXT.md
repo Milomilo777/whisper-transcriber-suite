@@ -16,16 +16,67 @@ its full path.
   hangs, Gatekeeper shows "can't be opened because Apple cannot check it",
   and the process is killed (exit 137 after 7m57s). This is the same
   mechanism as on 10.15 (row 9 of `docs/MACOS_BUILD_NOTES.md`). 415d2d1
-  clears the flag only after the first approved launch, so only
-  notarization removes this first-run block.
+  clears the flag only after the first approved launch.
+- **The release-notes Terminal one-liner avoids it completely** (re-verified
+  on 10.15.7 x86_64 with v1.9.3): `curl` sets no quarantine flag, the app
+  opens without any dialog, and the nested yt-dlp runs from Terminal at
+  once (`2026.08.19`, exit 0, 25.2 s).
 - **After "Open Anyway":** quarantine flags become `01c3`; the same command
   prints `2026.08.19`, exit 0, but takes 28.7 s (0.75 s CPU). That's the
   known onefile start cost.
 - **In the app after approval:** formats load (about 1 min) and a 19 s
   YouTube test video downloads and merges to mp4 in 35 s.
-- **Next, with the big app change:** switch to the onedir `yt-dlp_macos.zip`
-  (open item in the entry below), and keep the 415d2d1 quarantine strip. Not tested:
-  macOS 12 or older, Apple silicon.
+- **Apple notarization / Developer ID is out of scope for good** (project
+  decision). Don't propose it; use the mitigations below.
+
+### macOS — deferred to the next version (with the big app change)
+
+Fix these as far as possible in that version; check each one on the 10.15
+VM (release builder) and, where useful, on the 13 VM.
+
+1. **yt-dlp start time (main item).** The bundled `yt-dlp_macos` is a
+   PyInstaller onefile. Every call unpacks into a new temp dir and dyld
+   waits on signature validation of the fresh libraries: 25–29 s warm,
+   66 s cold, about 0.7 s of CPU (sampled: dyld `__fcntl`). Plan:
+   - bundle the onedir build (`yt-dlp_macos.zip` from the same yt-dlp
+     release, unpacked once inside the bundle, e.g.
+     `Contents/Frameworks/bin/yt-dlp_dist/`, with `bin/yt-dlp` pointing at
+     its executable);
+   - keep the Mach-O check in the spec, `verify_mac_bundle.sh` and
+     `test_dmg.sh`; add a start-time check, e.g. `--version` under 10 s on
+     the VM;
+   - **make `clear_bundled_quarantine()` recursive.** It only clears the
+     top-level entries of `bin/` today, so a quarantined onedir folder would
+     still be blocked file by file;
+   - re-check universal2 vs. per-arch for the onedir zip (arm64 dmg from CI).
+2. **yt-dlp calls with short timeouts, while the onefile is still in use:**
+   - `download_service.py` runs `yt-dlp --update` with `timeout=60`. A frozen
+     build can't self-update ("needs a manual upgrade"), and a 66 s cold
+     start can hit the timeout. Skip `--update` for the frozen macOS bundle.
+   - `format_service.py` probe `timeout=120`: the observed probe took about
+     60 s on the 13 VM. Keep at least 120 s until item 1 lands, and show a
+     status like "starting yt-dlp (first run can take a minute)" so the UI
+     doesn't look hung.
+3. **First-run Gatekeeper block (no notarization).**
+   - Keep 415d2d1, which clears the flags at the first approved start.
+   - Release notes and README: make the `curl` one-liner the first-choice
+     Mac install; it is verified to give no dialog and no blocked tools.
+     Keep "Open Anyway" as the second way.
+   - Say there that bundled tools must not be run from Terminal before the
+     app was opened once, and that the bundled yt-dlp must not be replaced
+     (yt-dlp's plain `yt-dlp` file is a Python zipapp that needs Python 3.10+).
+   - `platform/macos/unblock.command` only covers the source install
+     (`~/Applications`), not the dmg app in `/Applications`.
+4. **Ship 415d2d1 + 37be38b** (CHANGELOG [Unreleased]): the quarantine strip
+   and the refusal of a non-Mach-O yt-dlp/deno.
+5. **Remove Video Tiling** (planned). It is also a yt-dlp consumer, so drop
+   its yt-dlp paths and tests together with the tab.
+6. **deno 2.9.7 reports minos 12.0** while the app targets 10.15. It ran in
+   the 10.15 smoke test; confirm with `yt-dlp -v` that YouTube really uses
+   deno there, or pin a deno build with minos ≤ 10.15.
+7. **Test matrix gaps:** macOS 11/12 Intel (no VM), Apple silicon only via CI,
+   and the Live tab microphone (the VMs have no audio device).
+8. Lift the `av<19` pin when faster-whisper allows it (MACOS_BUILD_NOTES row 7).
 
 ## 🟢 2026-10-04 — macOS: bundled yt-dlp vs. Gatekeeper and the Python-script yt-dlp
 

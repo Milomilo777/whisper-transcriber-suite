@@ -183,7 +183,9 @@ Observed on 10.15.7 with a `.dmg` carrying a Safari quarantine flag:
 3. Not needed on 10.15, but documented for newer macOS: on **macOS 15+ the right-click route is gone** — use System Settings → Privacy & Security → **Open Anyway**, or `xattr -dr com.apple.quarantine "/Applications/Whisper Transcriber Suite.app"`.
 4. Files fetched with `curl`/`git` are not quarantined — a Terminal one-liner install avoids the dialog entirely (see the release notes).
 
-Only a paid Apple Developer ID + notarization removes the warning.
+Apple Developer ID signing / notarization is **not pursued** (project decision, 2026-10-04); don't propose it.
+The supported ways around the warning are the `curl` one-liner (no quarantine at all; re-verified 2026-10-04 on
+10.15.7, including the nested yt-dlp run from Terminal) and Open Anyway / right-click → Open.
 
 ## Testing on a macOS VM (how the 2026-09-23 run was driven)
 
@@ -287,4 +289,5 @@ Still open:
 ## Next steps worth doing
 
 - **universal2**: python.org 3.12 is universal2; fuse per-arch wheels with `delocate-merge`, `fetch_mac_binaries.sh universal2`, `WTS_TARGET_ARCH=universal2 WTS_DMG_SUFFIX=universal`, then `verify_mac_bundle.sh <app> universal2`.
-- Developer ID signing + notarization (removes Gatekeeper friction entirely).
+- The macOS items deferred to the next version are listed in `docs/SESSION_HANDOFF_NEXT.md` (2026-10-04
+  evening entry). Developer ID signing / notarization is not pursued (project decision).
