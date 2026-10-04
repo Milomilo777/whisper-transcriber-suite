@@ -22,6 +22,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Opt-in usage stats no longer send the computer name.** The payload
   drops `platform_node` and adds `country`, a two-letter code read from the
   operating system's region setting (no network lookup; empty when unset).
+- **Stats server script: stores the app's country code instead of the IP
+  address.** It moved from `stats/` to `platform/stats-server/` (with a
+  deployment README), no longer reads the client IP or calls a geoip
+  service, accepts `country` only as two upper-case letters, and caps every
+  text field. Old columns stay; new rows leave them empty. A deployed server
+  keeps its old behaviour until its operator installs this version.
 - **Website, README and `llms.txt`: privacy wording now says exactly what
   leaves the computer.** "Private by architecture" and the blanket "no upload"
   lines are gone: audio is uploaded only by the two opt-in cloud engines, and

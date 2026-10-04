@@ -24,7 +24,8 @@ Design rules (mirrors app.observability's opt-in posture):
     POST.
   * No POST is attempted when ``stats_url`` is empty.
 
-The matching server is ``stats/transcription_stats.php`` in this repo.
+The matching server is ``platform/stats-server/transcription_stats.php`` in
+this repo (deployment notes in that folder's README).
 """
 from __future__ import annotations
 

@@ -281,7 +281,7 @@ What is sent (form-encoded, by `core.stats.post_stats_async` on a daemon thread,
 | `word_count` | total words in the transcript |
 | `status` | finished / error / cancelled / … |
 
-The server (`stats/transcription_stats.php`, a deliverable in this repo) ADDITIONALLY records the request's **client IP** and a **geoip lookup** (country + the full geoip JSON, fetched server-side from `https://smch.ir/stats/geoip/index.php?ip={ip}`). Because IP + filename are involved, the opt-in gate is mandatory. The same `word_count` is also stored locally in `history.db` (`transcriptions.word_count`, added by an idempotent migration) regardless of opt-in.
+The server script in this repo (`platform/stats-server/transcription_stats.php`; deployment notes in that folder's `README.md`) stores the fields the app sends (including the `country` code and the host facts built by `core.stats.build_stats_payload`), length-capped; it does not read, look up or store the connection's IP address. The server at the default `stats_url` is updated separately: until it runs this version, it may record the request's **client IP** and a **geoip lookup** of it, as older versions did. Because the file name is involved, the opt-in gate is mandatory. The same `word_count` is also stored locally in `history.db` (`transcriptions.word_count`, added by an idempotent migration) regardless of opt-in.
 
 The payload builder `core.stats.build_stats_payload(...)` is a pure function (no I/O), and `post_stats_async` re-checks the opt-in itself so a mistaken direct call can never leak data.
 
