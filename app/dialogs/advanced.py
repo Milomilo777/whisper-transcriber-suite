@@ -1484,12 +1484,12 @@ class AdvancedDialog(tk.Toplevel):
         return download
 
     def _build_misc_section(self, body: ttk.Frame) -> ttk.LabelFrame:
-        """"App behaviour": system tray + anonymous usage statistics."""
+        """"App behaviour": system tray + usage statistics."""
         misc = section_labelframe(
             body, "App behaviour",
             "General app behaviour: whether closing the window minimises "
-            "to the system tray instead of exiting, and whether anonymous "
-            "usage statistics (no audio or transcript content) are sent.",
+            "to the system tray instead of exiting, and whether usage "
+            "statistics (no audio or transcript content) are sent.",
         )
         misc.pack(fill="x", pady=(0, 14))
         tray_row = ttk.Frame(misc)
@@ -1513,7 +1513,7 @@ class AdvancedDialog(tk.Toplevel):
             # enabled and silently do nothing.
             tray_check.state(["disabled"])
         ttk.Checkbutton(
-            misc, text="Send anonymous usage statistics (on by default — uncheck to opt out)",
+            misc, text="Send usage statistics (on by default — uncheck to opt out)",
             variable=self._telemetry_opt_in,
         ).pack(anchor="w", padx=8, pady=4)
         return misc

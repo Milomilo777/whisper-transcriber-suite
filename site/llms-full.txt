@@ -274,7 +274,7 @@ User settings live at `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json`.
 | `whisper_model` | `large-v3` (default), `large-v3-turbo`, `distil-large-v3.5` |
 | `transcribe_backend` | `faster_whisper` (default), `whisper_cpp`, `parakeet`, `cloud_stt`, `google_cloud_stt` |
 | `auto_chapters_enabled`, `hallucination_detect_enabled` | Post-process toggles |
-| `update_check_enabled` | Opt-in GitHub update check (on by default; notify-only) |
+| `update_check_enabled` | GitHub update check (on by default; notify-only) |
 | `last_update_check` | ISO date of the last check (once-per-day throttle) |
 
 Full reference: [docs/CONFIG.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CONFIG.md).

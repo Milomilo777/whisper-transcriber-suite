@@ -1,6 +1,6 @@
 <?php
 /**
- * Whisper Transcriber Suite — opt-in usage stats endpoint.
+ * Whisper Transcriber Suite — usage stats endpoint.
  *
  * Deployment and data notes: README.md in this folder.
  *

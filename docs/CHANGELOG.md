@@ -19,7 +19,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   checked against the release's SHA2-256SUMS), unpacked once inside the
   app; the onefile build unpacked itself on every run. Only the very first
   run after installing still takes ~25 s.
-- **Opt-in usage stats no longer send the computer name.** The payload
+- **Usage stats no longer send the computer name.** The payload
   drops `platform_node` and adds `country`, a two-letter code read from the
   operating system's region setting (no network lookup; empty when unset).
 - **Stats server script: stores the app's country code instead of the IP
@@ -32,6 +32,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   leaves the computer.** "Private by architecture" and the blanket "no upload"
   lines are gone: audio is uploaded only by the two opt-in cloud engines, and
   transcript text only when a remote AI model is connected.
+- **Docs, About dialog and code comments: usage stats and network use are
+  described as they work.** `docs/CONFIG.md` gives the real `stats_url`
+  default, says stats are on by default, lists every field sent, and has a
+  new "Network use" table of every outbound connection. Wording that called
+  the stats unidentifiable or off until switched on is gone, and the About
+  dialog no longer says there is no network call without a click.
 - **Website and docs: the contact address is no longer written in any
   file.** The website's Contact section shows it on request (a same-origin
   function hands it over after a short proof-of-work); README, SECURITY.md,
@@ -621,7 +627,7 @@ were built later from master and also include the first block below.
   Changing vocal separation or denoise between cancel and resume used to
   splice differently-conditioned halves into one transcript; the partial is
   now invalidated and re-run instead.
-- **A failed or cancelled transcription no longer posts opt-in usage
+- **A failed or cancelled transcription no longer posts usage
   stats.** It used to send a fake "0 words, 0:00" row indistinguishable
   from a genuine empty transcription — e.g. every job against a backend
   with no valid key. The local history record is unaffected; only the
@@ -721,7 +727,7 @@ were built later from master and also include the first block below.
   `transcription-stats.php` (404) while `core/config.py`'s
   `DEFAULT_CONFIG` pointed at the real `transcription_stats.php` (200).
   Anyone whose effective config resolved the online copy would have had
-  opt-in telemetry silently go nowhere. Fixed to agree; added a
+  usage stats silently go nowhere. Fixed to agree; added a
   regression test so the two can't drift apart unnoticed again.
 - **macOS build didn't work** — the `arm64`/`x86_64` `.dmg`s built by
   Claude and uploaded 2026-07-04 were broken (owner-reported, no repro

@@ -22,15 +22,15 @@ The effective config is merged from **three layers**, in priority order:
 
 A key missing from a higher-priority layer falls through to the next. Dict-valued keys (e.g. `model`, `model_catalog`) are deep-merged, so a partial override keeps the sibling keys from the lower layer.
 
-The online fetch is **fail-safe**: a short timeout, the last good response cached under `user_cache_dir()/app_config_cache.json`, and a fall-through to the cache (then to nothing) when offline. It **never blocks or crashes startup**. The hot worker-subprocess code paths (`core.transcriber` import, `core.worker.main`, the faster-whisper model load) skip the fetch entirely (`load_config(fetch_online=False)`), so a worker spawn is never delayed by the network.
+The online fetch is **fail-safe**: a short timeout, the last good response cached under `user_cache_dir()/app_config_cache.json`, and a fall-through to the cache (then to nothing) when offline. It **never blocks or crashes startup**. The worker-subprocess start-up paths (`core.transcriber` import, `core.worker.main`, the faster-whisper model load) skip the fetch (`load_config(fetch_online=False)`), so a worker spawn is never delayed by the network. A worker's first transcription does fetch it once (`core.transcriber._apply_runtime_overrides` calls `load_config()`; 4 s timeout, then the cache).
 
 The merge itself is pure and testable: `core.config.merge_config_sources(hardcoded, online, local)`. The fetch is the separate `core.config.fetch_online_config(url, cache_path=...)` helper. `core.config.load_config()` wires the two together; `load_config(fetch_online=False)` uses only the local + hard-coded layers.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `config_url` | string | `https://smch.ir/whisper/app_config.json` (placeholder — owner sets the real URL) | URL of the online app-level config JSON. Fetched best-effort on startup; cached for offline fallback. Empty disables the online layer. A local `config.json` may override this (e.g. a staging URL). |
+| `config_url` | string | `https://smch.ir/whisper/app_config.json` (placeholder — the maintainer sets the real URL) | URL of the online app-level config JSON. Fetched best-effort on startup; cached for offline fallback. Empty disables the online layer. A hand edit in `config.json` (e.g. a staging URL, or `""`) is honoured on load, but `save_config` drops this key, so the edit lasts only until the app next saves its settings. |
 | `model_catalog` | object | `{}` | Online/local-supplied catalog of selectable models, same shape as `core.model_manager.MODEL_REGISTRY` (`slug → {label, name, url, md5, hf_repo, approx_size_gb, info}`). `url`/`md5` may be `""` for a model with no smch.ir mirror — `ensure_model` then downloads straight from `hf_repo`. Overlaid on the built-in catalog so new models can ship without an app update. **Allowlisted** for the online layer. |
-| `stats_url` | string | `""` | Telemetry-stats POST endpoint. The app POSTs per-transcription usage here (file name, model, language, audio duration, AI time, word count, status) **only when `telemetry_opt_in` is true** — see **Telemetry stats (P4-4)** below. Empty = no POST. **Allowlisted** for the online layer so it can be set/changed remotely. |
+| `stats_url` | string | `https://smch.ir/stats/transcription_stats.php` | Usage-stats POST endpoint. The desktop app POSTs one row here per successfully finished transcription while `telemetry_opt_in` is true, which is the default — see **Usage statistics (P4-4)** below for every field. Empty or a non-http(s) URL = no POST. **Allowlisted** for the online layer so it can be set/changed remotely; like `config_url` it is not written to `config.json`. |
 | `latest_version` | string | `""` | Newest published version string (informational; complements the GitHub update check). **Allowlisted** for the online layer. |
 | `ffplay_downloads` | object | `{"windows": "<BtbN win64-gpl .zip>", "macos": "<evermeet ffplay .zip>", "linux": ""}` | Platform → ffplay download URL map for the Video-Tiling ffplay binary (not bundled). Each value is a DIRECT `ffplay[.exe]` URL **or** a `.zip` of a full ffmpeg build that contains it (the downloader extracts just ffplay; `.7z`/`.tar.*` are NOT supported). See **ffplay auto-download (P4-5)** below. **OWNER ACTION: verify/override these URLs via the online config** — third-party static-build URLs and their archive layouts rot. **Allowlisted** for the online layer. |
 
@@ -44,6 +44,33 @@ The merge itself is pure and testable: `core.config.merge_config_sources(hardcod
 | Rotating logs | `%LOCALAPPDATA%\WhisperTranscriberSuite\Logs\app.log` (5 MB × 3) | `core.config.user_log_dir()` |
 
 `platformdirs` chooses the equivalent paths on macOS and Linux. The "Help → Open log folder" menu item opens the log directory.
+
+## Network use
+
+Every outbound connection the app can make. Transcription with a local engine works without a network once its model is on disk: the automatic requests below then fail quietly and the app carries on. The rows marked *automatic* happen without a click.
+
+| What | When | Destination | What is sent | How to stop it |
+|---|---|---|---|---|
+| Online app config | *Automatic*: at startup of the desktop app, the CLI and the server, and on the first transcription in each worker process (once per process) | `config_url`, default `https://smch.ir/whisper/app_config.json` | A plain GET | No switch. A hand-set `"config_url": ""` in `config.json` works until the app next saves its settings (see the `config_url` row above). |
+| Update check | *Automatic*: desktop app, a few seconds after launch, at most once a day; also **Help → Check for updates…** on demand | `https://api.github.com/repos/Milomilo777/whisper-transcriber-suite/releases/latest` | A plain GET | `update_check_enabled: false` in `config.json` (no UI toggle; the Help item still works). |
+| Usage statistics | *Automatic*: after each successfully finished transcription in the desktop app | `stats_url`, default `https://smch.ir/stats/transcription_stats.php` | A form POST with the fields listed under **Usage statistics (P4-4)** | Untick **Send usage statistics** in **Advanced → App behaviour** (`telemetry_opt_in: false`). |
+| Whisper model download | First transcription with a model that is not on disk (also after switching models) | The `smch.ir` mirror (zip + MD5 manifest) for `large-v3`, `large-v3-turbo`, `distil-large-v3.5` and `medium`; Hugging Face (`huggingface.co` and its download CDN) for every other model and as the fallback | GETs | Only runs while the model is missing. |
+| Model check | When `core.model_manager.ensure_model` runs for one of the four mirror models above while it is already on disk — when the Web / LAN server starts (`gui.py serve` or the **Web / LAN access** tab), and in the model dialog shown after an installed model failed to load. A normal desktop, CLI or Live transcription loads an on-disk model without this check. | The model's `.md5` manifest on `smch.ir` | A plain GET; the local files are compared with it | No switch. A failed request is ignored and the model is used as-is. |
+| Other models | First use of the feature: whisper.cpp engine, local AI Layer model, Kokoro text-to-voice, OmniVoice voice cloning, NVIDIA Parakeet, stable-ts word alignment, Demucs vocal separation | `huggingface.co` (whisper.cpp `ggml` model, Qwen2.5 GGUF, OmniVoice and Parakeet weights); `github.com` release assets (Kokoro); `openaipublic.azureedge.net` (the OpenAI Whisper checkpoint stable-ts aligns with); Demucs fetches its own weights | GETs | Only runs while that model is missing. |
+| Optional components | First use of a feature whose Python packages are not bundled (`core.optional_deps.FEATURES`). stable-ts alignment asks first; the NVIDIA Parakeet and Google Cloud engines install when a job starts with them selected (Google Cloud also from its connection test in the Advanced dialog, see **Cloud engines**); voice cloning installs on its first use; the CUDA runtime from the Hardware wizard's button | PyPI (`pypi.org`, `files.pythonhosted.org`) via `pip install` | Standard pip requests | Do not select those engines or features; nothing installs while they stay unused. |
+| Video downloads, captions, Video Tiling | When the user downloads a URL, fetches its captions or starts a stream | The site of the URL (YouTube or any site yt-dlp supports) | yt-dlp's requests to that site | User action. |
+| yt-dlp self-update | Before a download when `auto_update_yt_dlp` is `true` (default `false`), at most once every 24 h and only when the yt-dlp folder is writable; and *automatic* in Video Tiling: the self-heal after repeated stream failures while `tiling_auto_restart` is on (the default). Both are skipped in PyInstaller builds (the macOS app); the Windows installer and Portable builds run them. | yt-dlp's release channel on `github.com`, or PyPI for a pip-installed yt-dlp | GETs | `auto_update_yt_dlp: false` (default); `tiling_auto_restart: false`. |
+| YouTube JavaScript helper (Deno) | When the user clicks **Install YouTube helper** (shown for a YouTube link when no Deno is found) | `https://github.com/denoland/deno/releases/latest/download/` (archive + `.sha256sum`) | GETs | User action. |
+| ffplay | When the user clicks **Download ffplay** on the Video Tiling tab | `ffplay_downloads[<platform>]` (defaults: a BtbN FFmpeg build on `github.com`, `evermeet.cx` on macOS) | A GET | User action. |
+| SMTV integration | When the user opens the SMTV tab (it loads the listing and thumbnails) or downloads from it | `suprememastertv.com` and its video CDN | GETs | User action. |
+| Cloud engines | A job started with a cloud engine selected in **Advanced → Backend**, and the Gemini **Test key** button. The Google Cloud connection test (it also runs by itself when the Advanced dialog opens with that engine selected and a key file set) only reads the key file and builds the client; its one network use is the library install under **Optional components** | Gemini: `generativelanguage.googleapis.com`. Google Cloud Speech-to-Text: `speech.googleapis.com` (or `<region>-speech.googleapis.com`), `oauth2.googleapis.com` for the service-account sign-in, plus Cloud Storage in batch mode | Jobs: **the audio**. Every request: the API key / service-account credentials | Pick a local engine (the default). |
+| Remote AI provider | Only when the AI Layer is on (`ai_enabled`) and `llm_provider` is `remote` | `llm_remote_base_url` (default `https://api.openai.com/v1`) | **Transcript text** in the prompt, with `llm_remote_api_key` | Keep `llm_provider: "local"` (the default) or leave the AI Layer off (the default). |
+| Web / LAN server | Only while the server runs (`gui.py serve` or the **Web / LAN access** tab) | Inbound: loopback by default, the LAN when sharing is on. Outbound: the URLs clients submit, and the webhook URL when set (`server_webhook_url`, or `serve --webhook`) | Webhook: a small JSON job summary | Stop the server; leave the webhook unset (the default). |
+| Launch ping, Sentry | Only when `$WHISPER_TELEMETRY_URL` / `$SENTRY_DSN` are set (published builds set neither) and `telemetry_opt_in` is on | The URL / DSN in those variables | See **Launch ping and crash reports** | Leave the variables unset. |
+
+Two features use packages the app never installs: semantic search (`core.search`, needs `sentence-transformers`) and voiceprint speaker matching (`core.voiceprint`, needs `pyannote.audio`). When a user has installed those packages by hand, their models (`all-MiniLM-L6-v2`, `pyannote/embedding`) download from Hugging Face on first use.
+
+Opening a link (Help menu, About dialog, release page) hands the URL to the system browser; the app itself sends nothing for it.
 
 ## Field reference
 
@@ -65,9 +92,9 @@ The merge itself is pure and testable: `core.config.merge_config_sources(hardcod
 | `download_subtitle_lang` | string | `"Automatic"` | Last-selected subtitle language (display name from `SUBTITLE_LANGUAGES`, not the code). |
 | `theme` | string | `"dark"` | `"light"` / `"dark"` / `"system"` — applied via `sv_ttk` (Phase 1.1). `"system"` falls back to `"dark"` if the optional `darkdetect` package is not installed. |
 | `log_level` | string | `"INFO"` | Python logging level for the file handler (Phase 1.3) |
-| `auto_update_yt_dlp` | bool | `false` | Phase 0 fix to AUDIT A1: yt-dlp's `--update` is now opt-in and gated to once per launch (with `last_yt_dlp_update_check`). When this is `false`, downloads never wait on `--update`. |
+| `auto_update_yt_dlp` | bool | `false` | Phase 0 fix to AUDIT A1: yt-dlp's `--update` before a download is off by default. When `true` it runs at most once every 24 h (backoff stamped in `last_yt_dlp_update_check`), only when the yt-dlp folder is writable and never in a PyInstaller build. When this is `false`, downloads never wait on `--update`. |
 | `last_yt_dlp_update_check` | string (ISO date) | `""` | Timestamp of the last update attempt (used by the once-per-day guard inside `maybe_update_yt_dlp`) |
-| `update_check_enabled` | bool | `true` | Opt-in GitHub "update available" check (`core.updates`). When on, a quiet launch check runs at most once per day (throttled by `last_update_check`) and stays SILENT unless a newer release exists — never nagging when up to date, offline, or when the repo is private (a 404 is swallowed). When a newer release is found it offers to open the download page. It is **notify-only**: it never auto-downloads or auto-installs. Set to `false` to disable the quiet launch check; the **Help → Check for updates...** menu item still runs on demand. |
+| `update_check_enabled` | bool | `true` | GitHub "update available" check (`core.updates`), on by default. When on, a quiet launch check runs at most once per day (throttled by `last_update_check`) and stays SILENT unless a newer release exists — never nagging when up to date, offline, or when the repo is private (a 404 is swallowed). When a newer release is found it offers to open the download page. It is **notify-only**: it never auto-downloads or auto-installs. Set to `false` to disable the quiet launch check; the **Help → Check for updates...** menu item still runs on demand. |
 | `last_update_check` | string (ISO date) | `""` | Date (`YYYY-MM-DD`) of the last *quiet* update check, used only for the once-per-day throttle. The manual **Help → Check for updates...** menu item ignores it. |
 | `denoise_enabled` | bool | `false` | Adaptive audio denoise pre-process (`core.denoise`, **Advanced > Silence & noise**). Uses the bundled ffmpeg only — no extra dependency, no download, works offline. Off by default because it costs one measurement pass plus one filter pass per file. When on, the audio is measured first and **left completely untouched if it already measures clean**, and the filtered result is re-measured and discarded if it removed speech instead of noise. See [DENOISE.md](DENOISE.md). |
 | `denoise_level` | string | `"auto"` | `"auto"` / `"light"` / `"medium"` / `"strong"`. `auto` picks the level (including `off`) from the measured speech-to-noise ratio. Naming a level forces it regardless of the measurement — it is then applied even to clean audio. Unknown values fall back to `auto` with a logged warning. |
@@ -214,7 +241,7 @@ transformers ASR model id or a local directory.
 
 The heavy libraries (`transformers` + `torch` + `librosa`) and the model
 weights are **not bundled** — they install / download on first use (a few GB,
-one time), mirroring the on-demand openai-whisper backend.
+one time), like the other on-demand components (see **Network use**).
 
 > NVIDIA's exact `nemotron-3.5-asr-streaming-0.6b` repo ships only a NeMo
 > `.nemo` checkpoint (no transformers weights), so the transformers pipeline
@@ -265,25 +292,43 @@ It binds **loopback (`127.0.0.1`) by default** — no Windows firewall prompt
 | `server_share_lan` | bool | `false` | When `true`, the tab's Start binds `0.0.0.0` (all interfaces — other devices on the network can reach it) instead of `127.0.0.1` (this machine only). Persisted from the **Share on local network** checkbox; this is the path that triggers the Windows firewall prompt. The CLI uses `--lan` instead of this key. |
 | `server_token` | string | `""` | Optional shared-secret password. When non-empty, every request must present it (`X-Auth-Token` header or `?token=` query). Stored in **cleartext** here, consistent with cookies / API keys (the file is per-user under `%LOCALAPPDATA%\WhisperTranscriberSuite` and is not encrypted). |
 
-### Telemetry stats (P4-4)
+### Usage statistics (P4-4)
 
-After each transcription finishes (any terminal status), the app can POST a small telemetry record to `stats_url`. **It is gated on `telemetry_opt_in`** (the same flag the launch-ping telemetry uses; toggled in **Advanced → telemetry opt-in**). Nothing is sent unless BOTH `telemetry_opt_in` is true AND `stats_url` is non-empty.
+**On by default.** After each transcription that finishes successfully in the desktop app, the app POSTs one form-encoded row to `stats_url`. Failed and cancelled jobs send nothing, and the CLI, the Web / LAN server and the Live tab never send stats. Nothing is sent while `telemetry_opt_in` is false or `stats_url` is empty.
 
-What is sent (form-encoded, by `core.stats.post_stats_async` on a daemon thread, short timeout, all errors swallowed — it never blocks or crashes a transcription):
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `telemetry_opt_in` | bool | `true` | The usage-statistics switch: the **Send usage statistics** checkbox under **Advanced → App behaviour**. Turning it off is saved in `config.json` and survives restarts and upgrades; the untouched default is not written to the file. Local-only: the online config can never set it (`core.config.LOCAL_ONLY_KEYS`). The same flag also gates the launch ping and Sentry crash reports below, which in addition need environment variables. |
 
-| Field | Source |
+What is sent (built by `core.stats.build_stats_payload`, posted by `core.stats.post_stats_async` on a daemon thread with a 5 s timeout; every error is swallowed, so stats never block or crash a transcription):
+
+| Field | Content |
 |---|---|
-| `file_name` | basename of the source file (no path) |
-| `model` | the model name / slug used |
+| `form_submitted` | always `1` (tells the server script to store the row) |
+| `file_name` | name of the source file, without its folder |
+| `model` | the model or engine that transcribed: the faster-whisper model name, `nvidia_asr:<model id>`, or the engine id for other engines |
 | `language` | detected language |
-| `audio_duration` | best-effort, the last segment's end time (s) |
-| `transcription_time` | wall-clock AI compute time (s) |
-| `word_count` | total words in the transcript |
-| `status` | finished / error / cancelled / … |
+| `audio_duration` | seconds; the last segment's end time |
+| `transcription_time` | seconds of wall-clock time from task start to finish |
+| `word_count` | words in the transcript |
+| `status` | `finished` (only successful runs are sent) |
+| `program_version` | app version |
+| `country` | two-letter code from the operating system's region setting (`core.stats.region_country`: Windows "Country or region", macOS `AppleLocale`, else `LC_ALL` / `LANG`); read locally, no network lookup; empty when no region is set |
+| `platform_system`, `platform_release`, `platform_version`, `platform_machine`, `platform_processor` | OS name, release and build, CPU architecture and processor string (Python `platform` module) |
+| `cpu_count`, `mem_total` | logical CPU count and total RAM in bytes (`psutil`; `0` when it is missing) |
 
-The server script in this repo (`platform/stats-server/transcription_stats.php`; deployment notes in that folder's `README.md`) stores the fields the app sends (including the `country` code and the host facts built by `core.stats.build_stats_payload`), length-capped; it does not read, look up or store the connection's IP address. The server at the default `stats_url` is updated separately: until it runs this version, it may record the request's **client IP** and a **geoip lookup** of it, as older versions did. Because the file name is involved, the opt-in gate is mandatory. The same `word_count` is also stored locally in `history.db` (`transcriptions.word_count`, added by an idempotent migration) regardless of opt-in.
+Never sent: audio, transcript text, the file's folder path, the computer name, the user name, serial numbers or an IP address field. The server still sees the connection's IP address, as every web server does; what it stores is decided by the server script.
 
-The payload builder `core.stats.build_stats_payload(...)` is a pure function (no I/O), and `post_stats_async` re-checks the opt-in itself so a mistaken direct call can never leak data.
+The server script in this repo (`platform/stats-server/transcription_stats.php`; deployment notes in that folder's `README.md`) stores the fields above, length-capped; it does not read, look up or store the connection's IP address. The server at the default `stats_url` is updated separately: until it runs this version, it may record the request's **client IP** and a **geoip lookup** of it, as older versions did. The same `word_count` is also stored locally in `history.db` (`transcriptions.word_count`, added by an idempotent migration) whatever the switch says.
+
+`build_stats_payload` does no network I/O (it only reads local OS facts), and `post_stats_async` re-checks `telemetry_opt_in`, the `stats_url` scheme (http/https only) and the payload, so a direct call can never send while the switch is off.
+
+#### Launch ping and crash reports (inactive unless configured)
+
+`app/observability.py` holds two more senders. Both need `telemetry_opt_in` AND an environment variable that the published builds do not set, so by default neither sends anything:
+
+- **Launch ping** — one JSON POST per launch to `$WHISPER_TELEMETRY_URL`, carrying `schema`, `version`, `os`, `os_release`, `python` and `anonymised_id`. Despite its name, `anonymised_id` is a stable per-install id: a random value created once under `user_cache_dir()/telemetry_id`, so pings from one install can be linked to each other (not to a machine or a person).
+- **Sentry crash reports** — initialised only when `$SENTRY_DSN` is set and the optional `sentry-sdk` package (the `crash_reporting` extra) is installed; `send_default_pii=False`.
 
 ### Transcript conversion (P4-3)
 
@@ -293,7 +338,7 @@ Not a config key — a **File → Convert transcript…** menu action backed by 
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `crash_reporting` | bool | `false` | Opt-in to Sentry crash reports (ROADMAP 1.8) |
+| `crash_reporting` | bool | `false` | Planned separate switch for Sentry crash reports (ROADMAP 1.8). Not read today: crash reports follow `telemetry_opt_in` + `$SENTRY_DSN` (see **Launch ping and crash reports**). |
 
 ## Coming in Phase 2
 

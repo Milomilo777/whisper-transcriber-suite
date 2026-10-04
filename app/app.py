@@ -249,8 +249,9 @@ def build_about_sections() -> list[AboutSection]:
                 "Cancel, Re-run, Remove",
                 "Video Tiling — a multi-monitor video wall that "
                 "auto-reconnects if a stream drops",
-                "Built-in update check (opt-in); the installer upgrades "
-                "in place over the old version — no need to uninstall first",
+                "Built-in update check (once a day, notify-only); the "
+                "installer upgrades in place over the old version — no need "
+                "to uninstall first",
             ]),
         ]),
         ("Transcription engine", [
@@ -267,8 +268,9 @@ def build_about_sections() -> list[AboutSection]:
                 "Picker lives in the Advanced dialog",
             ]),
             ("Backends (pluggable)", [
-                "Local Whisper via faster-whisper — the default, fully "
-                "offline, nothing leaves your computer",
+                "Local Whisper via faster-whisper — the default, runs "
+                "offline once its model is downloaded, your audio never "
+                "leaves your computer",
                 "whisper.cpp via pywhispercpp — optional, quantised, "
                 "kinder to weak CPUs",
                 "NVIDIA Parakeet TDT v3 via transformers — optional, "
@@ -438,7 +440,8 @@ def build_about_sections() -> list[AboutSection]:
         ]),
         ("Updates", [
             ("Staying current", [
-                "Opt-in check against GitHub for a newer version — it only "
+                "Daily check against GitHub for a newer version (on by "
+                "default) — it only "
                 "tells you; it never downloads or installs on its own",
                 "Run it any time from Help → Check for updates…",
                 "When you install the newer Setup it upgrades in place over "
@@ -466,13 +469,20 @@ def build_about_sections() -> list[AboutSection]:
         ]),
         ("Privacy", [
             ("Default", [
-                "Everything runs locally; no network call without your action",
+                "Local engines transcribe on this computer; your audio "
+                "is not uploaded",
                 "The cloud backends above are the exception — they upload "
                 "audio only when you choose one and start a job",
+                "Network use: update check, online app settings, model "
+                "downloads on first use, usage statistics — the full list "
+                "is in the project's docs on GitHub (docs/CONFIG.md, "
+                "Network use)",
             ]),
-            ("Opt-in telemetry", [
-                "Anonymous launch ping (config: telemetry_opt_in)",
-                "Sentry crash reporting (env: SENTRY_DSN + opt-in)",
+            ("Usage statistics", [
+                "Sent after each finished transcription; on by default "
+                "(Advanced → App behaviour, config: telemetry_opt_in)",
+                "Launch ping and Sentry crash reports: only when "
+                "WHISPER_TELEMETRY_URL / SENTRY_DSN are set",
             ]),
         ]),
     ]
@@ -859,7 +869,7 @@ class App(tk.Tk):
         self.after(100, self._on_start)
         self.after(300, self.loop)
 
-        # Optional, opt-in GitHub update check. Fired ~4 s after launch
+        # GitHub update check (on by default). Fired ~4 s after launch
         # so it never competes with first-paint / model-setup work. The
         # check runs on a daemon thread; it is gated by
         # update_check_enabled AND a once-per-day throttle, and it stays
@@ -1239,9 +1249,10 @@ class App(tk.Tk):
         ttk.Label(
             header,
             text=(
-                "A local, offline Windows desktop app that turns audio "
-                "and video into subtitles. Powered by OpenAI Whisper "
-                "via faster-whisper. No cloud, no API key, no upload."
+                "A Windows desktop app that turns audio and video into "
+                "subtitles on your own computer. Powered by OpenAI "
+                "Whisper via faster-whisper. No account and no API key "
+                "needed."
             ),
             wraplength=640,
             justify="left",

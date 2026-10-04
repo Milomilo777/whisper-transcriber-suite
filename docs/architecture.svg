@@ -74,7 +74,7 @@
 
     <rect x="490" y="250" width="240" height="40" rx="6" class="box box-ui-sub"/>
     <text x="610" y="270" text-anchor="middle" class="box-label">app/observability.py</text>
-    <text x="610" y="285" text-anchor="middle" class="arrow-label">Sentry (opt-in via SENTRY_DSN)</text>
+    <text x="610" y="285" text-anchor="middle" class="arrow-label">Sentry (only with SENTRY_DSN)</text>
 
     <!-- Tabs -->
     <text x="70" y="315" class="layer-label">Tabs</text>

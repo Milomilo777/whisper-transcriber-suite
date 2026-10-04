@@ -1396,8 +1396,8 @@ class TranscriptionService:
                 self.app.show_last_result(task)
             except Exception:  # noqa: BLE001
                 pass
-        # P4-4 — opt-in usage stats POST (best-effort, daemon thread, swallows
-        # all errors). post_stats_async re-checks telemetry_opt_in + stats_url.
+        # P4-4 — usage stats POST (best-effort, daemon thread, swallows all
+        # errors). post_stats_async checks telemetry_opt_in + stats_url.
         # Only for a genuine successful completion: an error/cancelled task
         # never has a real word_count/audio_duration, so posting here used to
         # send a "0 words, 0:00" row indistinguishable from a real empty
@@ -1489,7 +1489,7 @@ class TranscriptionService:
     def _post_usage_stats(
         self, task: Any, word_count: int, audio_duration: float
     ) -> None:
-        """Fire the opt-in usage-stats POST (best-effort, off-thread).
+        """Fire the usage-stats POST (best-effort, off-thread).
 
         Gated inside ``core.stats.post_stats_async`` on
         ``telemetry_opt_in`` + a non-empty ``stats_url`` — a no-op otherwise.

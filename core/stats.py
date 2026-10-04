@@ -1,4 +1,4 @@
-"""Best-effort, opt-in usage-stats POST (P4-4).
+"""Best-effort usage-stats POST (P4-4).
 
 Sends per-transcription usage to the maintainer's stats endpoint
 (``config['stats_url']``). PRIVACY: the payload includes the file name (no
@@ -8,15 +8,16 @@ system's region setting (:func:`region_country`, read locally, no network
 lookup), and coarse host/hardware facts (OS, machine, CPU count, total RAM).
 It never includes the computer name, a user name, a serial number or an IP
 address. The server sees the connection's address like any web server; what
-it stores is decided by the server script. The payload is sent ONLY when the
-user has opted in (``config['telemetry_opt_in']``); the caller must gate on
-that.
+it stores is decided by the server script. The payload is sent only while
+``config['telemetry_opt_in']`` is true, which is the default; the user can
+switch it off in the Advanced dialog. :func:`post_stats_async` checks the
+flag itself. Every field is listed in docs/CONFIG.md ("Usage statistics").
 
-Design rules (mirrors app.observability's opt-in posture):
+Design rules:
 
   * Tk-free; local-only introspection (``platform``, ``psutil``, the OS
-    region setting) plus stdlib ``urllib`` for the POST — no data leaves the
-    machine besides the one opt-in request. Short timeout, daemon thread —
+    region setting) plus stdlib ``urllib`` for the POST — nothing leaves the
+    machine besides the one stats request. Short timeout, daemon thread —
     never blocks or crashes a transcription if stats fail. Every error is
     swallowed.
   * The payload builder :func:`build_stats_payload` is a testable function
@@ -304,12 +305,12 @@ def post_stats_async(
     *,
     timeout: float = 5.0,
 ) -> bool:
-    """Fire-and-forget the stats POST on a daemon thread, IF opted in.
+    """Fire-and-forget the stats POST on a daemon thread while stats are on.
 
     Returns ``True`` when a POST thread was started, ``False`` when it was
-    skipped (telemetry off, no ``stats_url``, or a bad payload). The caller has
-    already gated on ``telemetry_opt_in`` in the normal path, but this re-checks
-    so a mistaken direct call can never leak data without opt-in.
+    skipped (``telemetry_opt_in`` off, no ``stats_url``, or a bad payload).
+    This is the gate: it reads ``telemetry_opt_in`` itself, so no caller can
+    send while the user has switched stats off.
 
     Never raises and never blocks the caller.
     """

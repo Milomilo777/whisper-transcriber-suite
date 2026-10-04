@@ -65,7 +65,7 @@ DEFAULT_CONFIG = {
     "download_subtitle_lang": "Automatic",
     "auto_update_yt_dlp": False,
     "last_yt_dlp_update_check": "",
-    # Optional, opt-in GitHub "update available" check (core.updates).
+    # GitHub "update available" check (core.updates), on by default.
     # When enabled, a quiet launch check (once per day, throttled via
     # last_update_check) and a Help-menu manual check ask GitHub for the
     # latest release tag and offer to open the download page — they NEVER
@@ -329,10 +329,10 @@ DEFAULT_CONFIG = {
     #     cloud-metadata addresses. The CLI equivalent is --webhook.
     "server_https_enabled": False,
     "server_webhook_url": "",
-    # Window / privacy toggles set on the Advanced dialog's General tab and
-    # read at runtime. Defaulted here (both OFF) so reads are always a plain
-    # bool and they get the same merge + type-coercion protection as every
-    # other key:
+    # Window / privacy toggles set in the Advanced dialog's "App behaviour"
+    # section and read at runtime. Defaulted here (tray OFF, stats ON) so
+    # reads are always a plain bool and they get the same merge +
+    # type-coercion protection as every other key:
     #   minimise_to_tray  — when True the window's X button hides to the system
     #     tray instead of exiting (app.py close handler + widgets.tray).
     #   telemetry_opt_in  — gates the usage stats (core.stats POSTs a
@@ -368,9 +368,9 @@ DEFAULT_CONFIG = {
     "model_catalog": {},
     # App-level URLs/info that the ONLINE config is allowed to set. Defaulted
     # here so reads never KeyError. ``stats_url`` is the usage-stats POST
-    # endpoint, defaulted to the project's smch.ir collector so opted-in
-    # stats work out of the box (still a no-op unless ``telemetry_opt_in``
-    # is on — see core.stats.post_stats_async); ``latest_version`` is the
+    # endpoint, defaulted to the project's smch.ir collector so stats work
+    # out of the box (a no-op whenever ``telemetry_opt_in`` is off — see
+    # core.stats.post_stats_async); ``latest_version`` is the
     # newest published version string; ``ffplay_downloads`` maps a platform
     # key ("windows"/"macos"/...) to a download URL for the Video-Tiling
     # ffplay binary (which is NOT bundled). All three are SAFE for the online
@@ -451,8 +451,8 @@ ONLINE_ALLOWED_KEYS: frozenset[str] = frozenset({
 # Keys only the user decides. The online layer can never set them, even if a
 # later edit adds one to ONLINE_ALLOWED_KEYS by mistake: merge_config_sources
 # drops them from the online payload unconditionally. telemetry_opt_in is the
-# user's consent to send usage stats; a remote file must never be able to turn
-# a saved OFF back on.
+# user's usage-stats switch (on by default); a remote file must never be able
+# to turn a saved OFF back on.
 LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "telemetry_opt_in",
 })

@@ -1,4 +1,4 @@
-"""Optional, opt-in GitHub "update available" check (Tk-free).
+"""GitHub "update available" check (Tk-free; on by default, notify-only).
 
 This module is pure engine code: it never imports tkinter and is safe
 to call from a background daemon thread. The UI glue in ``app/`` is

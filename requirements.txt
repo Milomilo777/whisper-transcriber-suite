@@ -71,7 +71,7 @@ Pillow>=10.0
 sounddevice>=0.4.6
 PyAudioWPatch>=0.2.12.6; sys_platform == "win32"
 
-# Host/hardware facts (OS, CPU count, total RAM) for the opt-in usage-stats
+# Host/hardware facts (OS, CPU count, total RAM) for the usage-stats
 # payload (core/stats.py). Pure local introspection, no data collection by
 # itself.
 psutil>=5.9

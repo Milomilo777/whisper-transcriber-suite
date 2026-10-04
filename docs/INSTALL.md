@@ -164,7 +164,7 @@ app silently falls back to the cache and re-downloads on demand.
 ### Where the configuration file lives
 
 All app settings — model path, output formats, hotwords, theme,
-diarization toggle, watched folder, telemetry opt-in — are stored in:
+diarization toggle, watched folder, usage-statistics switch — are stored in:
 
 ```
 %LOCALAPPDATA%\WhisperTranscriberSuite\config.json

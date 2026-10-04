@@ -167,7 +167,7 @@ ship the release with a known install / uninstall regression.
    `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json` (settings + hub choice)
    survives. This is the path most existing users take to update; the
    in-app **Help → Check for updates...** notify-only check just points
-   them at the download page (`core.updates`, opt-in, never auto-installs).
+   them at the download page (`core.updates`, on by default, never auto-installs).
 
 7. **Migration from the pre-rebrand "Whisper Project" product**
    (Standard installer only, and only needs a real run once — after

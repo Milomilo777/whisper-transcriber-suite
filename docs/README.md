@@ -8,7 +8,7 @@ fits into one of five buckets.
 1. [INSTALL.md](INSTALL.md) — end-user install instructions
 2. [BUILD.md](BUILD.md) — how to produce the EXE / installer locally
 3. [ARCHITECTURE.md](ARCHITECTURE.md) — how the app is wired together
-4. [CONFIG.md](CONFIG.md) — every config key, what it does, default value
+4. [CONFIG.md](CONFIG.md) — every config key, what it does, default value; usage statistics and the table of every network connection the app makes
 
 ## Reference
 

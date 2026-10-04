@@ -1,22 +1,23 @@
-"""Optional Sentry crash reporting + anonymous launch telemetry.
+"""Optional Sentry crash reporting + launch ping.
 
-Both pieces are *strictly opt-in* via the Advanced dialog's
-``Send anonymous crash reports + launch counts`` checkbox, which maps
-to ``config["telemetry_opt_in"]``. Without that flag, this module is
-a complete no-op — nothing is sent, no DSN is contacted, no thread
-is spawned.
+Both pieces need two things at once:
 
-Even with the flag on, both pieces additionally require the matching
-environment variable so packaged installers that don't ship a DSN
-stay quiet by default:
+  * ``config["telemetry_opt_in"]`` — the Advanced dialog's usage-statistics
+    checkbox, which is ON by default (it also gates ``core.stats``); and
+  * the matching environment variable:
+      - crash reports → ``SENTRY_DSN``
+      - launch ping   → ``WHISPER_TELEMETRY_URL`` (POST endpoint)
 
-  * Crash reports → ``SENTRY_DSN``
-  * Launch telemetry → ``WHISPER_TELEMETRY_URL`` (POST endpoint)
+The published builds set neither variable, so by default this module
+sends nothing, contacts no DSN and spawns no thread. With the flag off it
+is a no-op whatever the environment says.
 
-The launch ping carries ``{os, version, anonymised_id}`` only —
-no file paths, no transcript content, no IP address from us (the
-HTTP layer's source IP is unavoidable, but the receiving server can
-strip it before logging).
+The launch ping carries ``schema``, ``version``, ``os``, ``os_release``,
+``python`` and ``anonymised_id`` — no file paths and no transcript
+content. ``anonymised_id`` is a stable per-install id (see
+:func:`_anonymised_id`), so pings from one install can be linked to each
+other. The receiving server sees the connection's IP address like any web
+server; whether it stores it is up to that server.
 """
 from __future__ import annotations
 
@@ -39,7 +40,7 @@ _LAUNCH_PING_TIMEOUT_S = 4
 
 
 def _telemetry_opted_in() -> bool:
-    """Read the opt-in flag from config.json on demand.
+    """Read ``telemetry_opt_in`` (the usage-statistics switch) on demand.
 
     Looked up dynamically so a user toggling the flag in Advanced
     takes effect on the *next* app launch without any restart
@@ -53,12 +54,12 @@ def _telemetry_opted_in() -> bool:
 
 
 def _anonymised_id() -> str:
-    """Stable, non-reversible per-install identifier.
+    """Stable per-install identifier for the launch ping.
 
-    Built from a random UUID4 written to ``user_cache_dir() /
-    telemetry_id`` on first use. Hashed via SHA-256 so the stored
-    value alone identifies an install but cannot be linked back to a
-    machine without the file on disk. Returns ``""`` when the cache
+    A SHA-256 digest of a random UUID4, written to ``user_cache_dir() /
+    telemetry_id`` on first use and reused on every later launch. It
+    identifies the install (pings from one install share it) but holds
+    nothing derived from the machine or the user. Returns ``""`` when the cache
     directory or the file cannot be written — the caller must never
     fail because telemetry could not be persisted.
     """
@@ -110,10 +111,10 @@ def _app_version() -> str:
 
 
 def init_sentry() -> bool:
-    """Initialise Sentry SDK if opted-in and SENTRY_DSN is set.
+    """Initialise Sentry SDK if ``telemetry_opt_in`` is on and SENTRY_DSN is set.
 
     Returns True only when the SDK was actually initialised. Every
-    failure — no opt-in, no DSN, missing package, or an SDK error such
+    failure — flag off, no DSN, missing package, or an SDK error such
     as a malformed DSN — returns False and is logged, never raised.
     """
     if not _telemetry_opted_in():
@@ -131,7 +132,7 @@ def init_sentry() -> bool:
     except Exception as e:  # noqa: BLE001
         # A malformed DSN (or any other SDK init failure) must not take
         # down launch: this is called unguarded from App.__init__, and the
-        # module's contract is "opt-in crash reporting", not "crash the app
+        # module's contract is "optional crash reporting", not "crash the app
         # in order to report crashes". Stay off and log it.
         logger.warning("Sentry init failed (ignored): %s", e)
         return False

@@ -1,6 +1,6 @@
 # Usage stats server
 
-`transcription_stats.php` receives the desktop app's opt-in usage stats
+`transcription_stats.php` receives the desktop app's usage stats
 (sent by `core/stats.py`, documented in `docs/CONFIG.md`) and stores one row
 per transcription in an SQLite file next to the script,
 `transcription_stats.db`.
