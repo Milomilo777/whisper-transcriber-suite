@@ -24,6 +24,9 @@
 /llms.txt
   Cache-Control: public, max-age=3600
 
+/facts.json
+  Cache-Control: public, max-age=3600
+
 /sitemap.xml
   Cache-Control: public, max-age=3600
 

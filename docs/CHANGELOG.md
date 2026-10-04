@@ -18,6 +18,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   MacWhisper and the OpenAI API) and links to the page;
   `tests/test_comparison_doc.py` checks its links and WTS facts against the code.
 
+- **One `llms.txt`, plus `site/facts.json`**: the repo-root copy is gone;
+  `site/llms.txt` (now with the full docs list and the engines/formats facts)
+  is the only one. `site/facts.json` lists version, platforms, output formats,
+  engines, licence and links for machines; the release workflow refreshes its
+  version and date, and `tests/test_site_facts.py` checks the rest against the code.
+
 - **`docs/SERVER.md` documents the whole server API**: the OpenAI-compatible
   `/v1/models` and `/v1/audio/transcriptions` routes, all `serve` flags,
   token, HTTPS and the completion webhook, with copy-paste curl and an Open

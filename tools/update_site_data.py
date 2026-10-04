@@ -2,8 +2,8 @@
 
 Fills the ``data-auto`` / ``data-auto-href`` markers in site/index.html
 (version, release date, file sizes, direct download links, total downloads)
-plus the matching lines in the JSON-LD block and both llms.txt files, so
-search engines and AI crawlers see current numbers without running any
+plus the matching lines in the JSON-LD block, site/llms.txt and
+site/facts.json, so search engines and AI crawlers see current numbers without running any
 JavaScript.
 
     python tools/update_site_data.py            # rewrite files in place
@@ -27,7 +27,8 @@ from html import escape as html_escape
 REPO = "Milomilo777/whisper-transcriber-suite"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE = os.path.join(ROOT, "site", "index.html")
-LLMS = [os.path.join(ROOT, "site", "llms.txt"), os.path.join(ROOT, "llms.txt")]
+LLMS = [os.path.join(ROOT, "site", "llms.txt")]
+FACTS = os.path.join(ROOT, "site", "facts.json")
 
 # Release file name patterns (see docs/BUILD.md "Release file names").
 ASSETS = {
@@ -119,6 +120,11 @@ def render_llms(text: str, d: dict) -> str:
     return text
 
 
+def render_facts(text: str, d: dict) -> str:
+    text = re.sub(r'("version": ")[^"]*"', lambda m: f'{m.group(1)}{d["version"]}"', text, count=1)
+    return re.sub(r'("released": ")[^"]*"', lambda m: f'{m.group(1)}{d["released"]}"', text, count=1)
+
+
 def refresh_housekeeping(page_changed: bool) -> list[str]:
     """Bump sitemap <lastmod> when the page changed, and keep security.txt's
     Expires (RFC 9116: under a year ahead) from lapsing."""
@@ -155,7 +161,7 @@ def main() -> int:
     print(f"{data['version']} released {data['released']}, {data['downloads']} downloads, "
           f"files: {', '.join(sorted(data['files']))}")
     stale = []
-    for path, render in [(PAGE, render_page)] + [(p, render_llms) for p in LLMS]:
+    for path, render in [(PAGE, render_page), (FACTS, render_facts)] + [(p, render_llms) for p in LLMS]:
         with open(path, encoding="utf-8", newline="") as fh:
             old = fh.read()
         new = render(old, data)
