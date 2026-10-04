@@ -335,11 +335,13 @@ DEFAULT_CONFIG = {
     # other key:
     #   minimise_to_tray  — when True the window's X button hides to the system
     #     tray instead of exiting (app.py close handler + widgets.tray).
-    #   telemetry_opt_in  — gates anonymous usage stats (core.stats POSTs a
+    #   telemetry_opt_in  — gates the usage stats (core.stats POSTs a
     #     per-transcription row to stats_url) plus the optional launch ping /
-    #     Sentry crash reports. ON by default so opted-in usage stats flow for
-    #     this distribution; a user can turn it off in the Advanced dialog. The
-    #     launch ping and Sentry stay inert unless their WHISPER_TELEMETRY_URL /
+    #     Sentry crash reports. ON by default for this distribution; a user can
+    #     turn it off in the Advanced dialog, and that OFF choice is saved in
+    #     config.json (see save_config) and survives restarts and upgrades.
+    #     The online config can never set it (LOCAL_ONLY_KEYS). The launch
+    #     ping and Sentry stay inert unless their WHISPER_TELEMETRY_URL /
     #     SENTRY_DSN env vars are ALSO set (a plain build sets neither), so this
     #     default only activates the stats_url POST.
     "minimise_to_tray": False,
@@ -443,6 +445,16 @@ ONLINE_ALLOWED_KEYS: frozenset[str] = frozenset({
     "stats_url",
     "latest_version",
     "ffplay_downloads",
+})
+
+
+# Keys only the user decides. The online layer can never set them, even if a
+# later edit adds one to ONLINE_ALLOWED_KEYS by mistake: merge_config_sources
+# drops them from the online payload unconditionally. telemetry_opt_in is the
+# user's consent to send usage stats; a remote file must never be able to turn
+# a saved OFF back on.
+LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
+    "telemetry_opt_in",
 })
 
 
@@ -831,8 +843,9 @@ def merge_config_sources(
 
     - ``hardcoded`` is the full baseline (``DEFAULT_CONFIG``).
     - ``online`` is the fetched app-level config; only keys in
-      ``ONLINE_ALLOWED_KEYS`` are honoured, so it can never override
-      user-private / local-only settings (paths, keys, hub folder, prefs).
+      ``ONLINE_ALLOWED_KEYS`` (and never one in ``LOCAL_ONLY_KEYS``) are
+      honoured, so it can never override user-private / local-only settings
+      (paths, keys, hub folder, prefs, the usage-stats choice).
     - ``local`` is the user's ``config.json`` (highest priority); it may set
       any key, including the local-only ones the online layer cannot touch.
 
@@ -845,7 +858,8 @@ def merge_config_sources(
     merged: dict[str, Any] = json.loads(json.dumps(hardcoded))
     if online:
         safe_online = {
-            k: v for k, v in online.items() if k in ONLINE_ALLOWED_KEYS
+            k: v for k, v in online.items()
+            if k in ONLINE_ALLOWED_KEYS and k not in LOCAL_ONLY_KEYS
         }
         deep_merge_dicts(merged, safe_online)
     if local:
@@ -1210,12 +1224,12 @@ def _persistable_download_folder(config: dict[str, Any]) -> str:
 
 
 #: App-level keys that must never be written to the user's config.json. They
-#: are either re-derived from DEFAULT_CONFIG / the online config fetch on
-#: every load, or (telemetry_opt_in) too easy to silently pin to a stale value
-#: across an upgrade. Stripped on every save, including from a config.json
-#: that already has them from before this rule existed.
+#: are re-derived from DEFAULT_CONFIG / the online config fetch on every load.
+#: Stripped on every save, including from a config.json that already has them
+#: from before this rule existed. telemetry_opt_in is NOT listed: it is the
+#: user's own choice and is persisted when it departs from the default (see
+#: save_config).
 _NON_PERSISTED_KEYS: frozenset[str] = frozenset({
-    "telemetry_opt_in",
     "config_url",
     "stats_url",
     "ffplay_downloads",
@@ -1241,6 +1255,15 @@ def save_config(config: dict[str, Any]) -> None:
         to_persist["download_folder"] = _persistable_download_folder(config)
         for key in _NON_PERSISTED_KEYS:
             to_persist.pop(key, None)
+        # Store the usage-stats choice only when it departs from the default:
+        # a user's OFF survives every save and reload, while an untouched
+        # default is not pinned into config.json, so a later change of the
+        # default still reaches users who never made a choice.
+        if (
+            "telemetry_opt_in" in to_persist
+            and to_persist["telemetry_opt_in"] == DEFAULT_CONFIG["telemetry_opt_in"]
+        ):
+            del to_persist["telemetry_opt_in"]
 
         # Guard + backup (2026-08-15, after a real incident: config.json
         # was found silently reduced from ~90 keys to 3 during ordinary

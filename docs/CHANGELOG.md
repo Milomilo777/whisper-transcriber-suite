@@ -42,6 +42,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Turning usage stats off now sticks.** The Advanced dialog's choice was
+  stripped from `config.json` on every save, so stats came back on at the
+  next start. An OFF choice is now saved and kept; the online app config can
+  never set `telemetry_opt_in` (`LOCAL_ONLY_KEYS`). The default stays on.
 - **macOS: the bundled yt-dlp could be blocked by Gatekeeper after a
   browser download** ("can't be opened because Apple cannot check it", then
   killed). Every file of a browser-downloaded `.dmg` is quarantined; the app

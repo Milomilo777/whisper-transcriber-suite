@@ -63,8 +63,11 @@ def test_shrink_guard_refuses_drastic_reduction(isolated_dirs):
     full = dict(cfg.DEFAULT_CONFIG)
     cfg.save_config(full)  # first write: nothing on disk yet, always allowed
     on_disk_before = json.loads(Path(cfg.config_path()).read_text(encoding="utf-8"))
-    assert len(on_disk_before) == len(full) - len(
-        [k for k in cfg._NON_PERSISTED_KEYS if k in full]
+    # Everything is written except the non-persisted app-level keys and the
+    # usage-stats choice, which is only stored when it departs from the
+    # default (full carries the default).
+    assert set(on_disk_before) == (
+        set(full) - cfg._NON_PERSISTED_KEYS - {"telemetry_opt_in"}
     )
 
     tiny = {"cpu_warning_shown": True, "model_path": "", "download_folder": ""}
@@ -481,9 +484,10 @@ def test_tray_and_telemetry_wrong_type_coerced(isolated_dirs, monkeypatch):
 
 
 def test_save_config_strips_non_persisted_keys(isolated_dirs, monkeypatch):
-    # telemetry_opt_in / config_url / stats_url / ffplay_downloads /
-    # latest_version must never land in config.json — they are re-derived
-    # from DEFAULT_CONFIG or the online config fetch on every load.
+    # config_url / stats_url / ffplay_downloads / latest_version must never
+    # land in config.json — they are re-derived from DEFAULT_CONFIG or the
+    # online config fetch on every load. (telemetry_opt_in left this set:
+    # it is the user's choice and is persisted, see the stats-choice tests.)
     monkeypatch.setattr(cfg, "_legacy_config_path", lambda: str(isolated_dirs / "no_legacy.json"))
     payload = {**cfg.DEFAULT_CONFIG, "theme": "dark"}
     cfg.save_config(payload)
@@ -511,6 +515,127 @@ def test_save_config_removes_preexisting_non_persisted_keys(isolated_dirs, monke
     on_disk = json.loads(Path(cfg.config_path()).read_text(encoding="utf-8"))
     for key in cfg._NON_PERSISTED_KEYS:
         assert key not in on_disk
+    # A stale telemetry_opt_in that only repeats the default is not kept.
+    assert "telemetry_opt_in" not in on_disk
+
+
+# ---------- usage-stats choice: saved, local only ----------------------------
+# Default ON with no prompt, but a user's OFF choice is saved in config.json
+# and respected; the online app config can never set or override it.
+
+
+def _no_legacy(isolated_dirs, monkeypatch):
+    monkeypatch.setattr(cfg, "_legacy_config_path", lambda: str(isolated_dirs / "no_legacy.json"))
+
+
+def _on_disk() -> dict:
+    return json.loads(Path(cfg.config_path()).read_text(encoding="utf-8"))
+
+
+def test_stats_off_survives_real_save_and_reload(isolated_dirs, monkeypatch):
+    _no_legacy(isolated_dirs, monkeypatch)
+    config = cfg.load_config(fetch_online=False)
+    assert config["telemetry_opt_in"] is True  # default ON
+    config["telemetry_opt_in"] = False
+    cfg.save_config(config)
+
+    # The choice is really in the file on disk, not only in memory.
+    assert _on_disk()["telemetry_opt_in"] is False
+    reloaded = cfg.load_config(fetch_online=False)
+    assert reloaded["telemetry_opt_in"] is False
+
+    # An unrelated later save (any other setting) must not drop it either.
+    reloaded["theme"] = "light"
+    cfg.save_config(reloaded)
+    assert _on_disk()["telemetry_opt_in"] is False
+    assert cfg.load_config(fetch_online=False)["telemetry_opt_in"] is False
+
+
+def test_stats_default_on_is_not_pinned_to_disk(isolated_dirs, monkeypatch):
+    # An untouched default is not written, so a later change of the default
+    # still reaches users who never made a choice.
+    _no_legacy(isolated_dirs, monkeypatch)
+    cfg.save_config(cfg.load_config(fetch_online=False))
+    assert "telemetry_opt_in" not in _on_disk()
+    assert cfg.load_config(fetch_online=False)["telemetry_opt_in"] is True
+
+
+def test_stats_turned_back_on_after_off(isolated_dirs, monkeypatch):
+    _no_legacy(isolated_dirs, monkeypatch)
+    config = cfg.load_config(fetch_online=False)
+    config["telemetry_opt_in"] = False
+    cfg.save_config(config)
+    config = cfg.load_config(fetch_online=False)
+    config["telemetry_opt_in"] = True
+    cfg.save_config(config)
+    assert cfg.load_config(fetch_online=False)["telemetry_opt_in"] is True
+
+
+def test_remote_config_cannot_turn_saved_off_back_on(isolated_dirs, monkeypatch):
+    """End-to-end through load_config's real online fetch: the online JSON
+    says telemetry_opt_in=true, the saved local choice is OFF -> stays OFF,
+    while an allowlisted key from the same payload still applies (proof the
+    online layer was really merged)."""
+    import io
+    _no_legacy(isolated_dirs, monkeypatch)
+    config = cfg.load_config(fetch_online=False)
+    config["telemetry_opt_in"] = False
+    cfg.save_config(config)
+
+    online_payload = {"telemetry_opt_in": True, "stats_url": "https://online/stats"}
+
+    def _fake_urlopen(req, timeout=0):  # noqa: ARG001
+        return io.BytesIO(json.dumps(online_payload).encode("utf-8"))
+
+    monkeypatch.setattr(cfg.urllib.request, "urlopen", _fake_urlopen)
+    cfg.refresh_online_config()
+    try:
+        merged = cfg.load_config(fetch_online=True)
+    finally:
+        cfg.refresh_online_config()
+    assert merged["stats_url"] == "https://online/stats"
+    assert merged["telemetry_opt_in"] is False
+
+
+def test_online_layer_never_sets_telemetry_even_if_allowlisted(monkeypatch):
+    """The stats choice is local only by design, not by the allowlist's
+    current contents: even a mistaken allowlist entry cannot let the online
+    layer set it."""
+    assert "telemetry_opt_in" not in cfg.ONLINE_ALLOWED_KEYS
+    assert "telemetry_opt_in" in cfg.LOCAL_ONLY_KEYS
+    monkeypatch.setattr(
+        cfg, "ONLINE_ALLOWED_KEYS", cfg.ONLINE_ALLOWED_KEYS | {"telemetry_opt_in"}
+    )
+    merged = cfg.merge_config_sources(
+        {"telemetry_opt_in": False}, {"telemetry_opt_in": True}, None
+    )
+    assert merged["telemetry_opt_in"] is False
+
+
+def test_no_stats_post_when_saved_off(isolated_dirs, monkeypatch):
+    """A saved OFF, reloaded from disk, means no POST at all, even though
+    stats_url still holds the built-in endpoint."""
+    from core import stats
+    _no_legacy(isolated_dirs, monkeypatch)
+    config = cfg.load_config(fetch_online=False)
+    config["telemetry_opt_in"] = False
+    cfg.save_config(config)
+    reloaded = cfg.load_config(fetch_online=False)
+    assert reloaded["stats_url"]  # the only gate left is the user's choice
+
+    posts: list = []
+    monkeypatch.setattr(stats, "_post", lambda *a, **k: posts.append(a))
+
+    def _no_network(*a, **k):  # noqa: ARG001
+        raise AssertionError("no network call allowed when stats are OFF")
+
+    monkeypatch.setattr(stats.urllib.request, "urlopen", _no_network)
+    payload = stats.build_stats_payload(
+        file_name="a.mp4", model="m", language="en",
+        audio_duration=1.0, transcription_time=1.0, status="finished",
+    )
+    assert stats.post_stats_async(reloaded, payload) is False
+    assert posts == []
 
 
 def test_save_config_lock_serialises_concurrent_calls(isolated_dirs, monkeypatch):
