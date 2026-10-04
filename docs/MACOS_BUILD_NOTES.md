@@ -272,9 +272,14 @@ Still open:
   libs, tkdnd). The one-liner sends those Macs to the x64 dmg (Rosetta);
   lowering the arm64 floor would mean pinning `av` / `tkinterdnd2` / numpy to
   older-tagged wheels on CI.
-- **First YouTube lookup is slow on old Macs** (~1 min on the VM: yt-dlp
-  version check + probe, each unpacking the onefile yt-dlp). Bundling the
-  onedir `yt-dlp_macos.zip` instead would cut that.
+- **First YouTube lookup is slow** (~1 min on the VM: yt-dlp version check +
+  probe, each unpacking the onefile yt-dlp). Not specific to 10.15: on a
+  macOS 13.7 VM `yt-dlp --version` also takes ~29 s with ~1 s of CPU, and
+  `sample` puts 3742 of 3752 samples in dyld's `__fcntl`, i.e. the loader
+  waiting on code-signature validation of the libraries the onefile build
+  extracts to a new temp folder on every run (2026-10-04). Bundling the
+  onedir `yt-dlp_macos.zip` (extracted once, inside the signed bundle)
+  should cut that.
 - Not tested: a real Apple-silicon Mac by hand (CI smoke only), Chrome/Brave
   cookies (no longer installable on 10.15), a trackpad's scroll feel,
   microphone/Live on the VM.
