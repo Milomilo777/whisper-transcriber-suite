@@ -18,6 +18,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   MacWhisper and the OpenAI API) and links to the page;
   `tests/test_comparison_doc.py` checks its links and WTS facts against the code.
 
+- **`docs/SERVER.md` documents the whole server API**: the OpenAI-compatible
+  `/v1/models` and `/v1/audio/transcriptions` routes, all `serve` flags,
+  token, HTTPS and the completion webhook, with copy-paste curl and an Open
+  WebUI setup. `tests/test_server_doc.py` checks flags, routes, config keys,
+  response formats and webhook fields against the code.
+
 ### Changed
 
 - **Repository root: the 22 per-branch handoff files are removed.** The 20
