@@ -47,7 +47,18 @@ if codesign --verify --deep --strict "$APP" 2>/dev/null; then echo "OK   signatu
 for t in ffmpeg ffprobe yt-dlp deno; do
   [ -f "$APP/Contents/MacOS/bin/$t" ] || { echo "FAIL runtime tool missing in the copy: Contents/MacOS/bin/$t"; fail=1; }
 done
+# A browser download quarantines every file in the app. Tag the bundled tools
+# that way (not the app itself, which would need a Gatekeeper click) and check
+# that starting the app clears them (core.paths.clear_bundled_quarantine), or
+# Gatekeeper holds and kills yt-dlp when it runs.
+QTN="0083;$(printf %x "$(date +%s)");Safari;$(uuidgen)"
+for t in yt-dlp deno ffmpeg; do xattr -w com.apple.quarantine "$QTN" "$APP/Contents/Frameworks/bin/$t"; done
 if "$APP/Contents/MacOS/$NAME" transcribe --help >/dev/null 2>&1; then echo "OK   CLI runs from the copy"; else echo "FAIL CLI boot from the copy"; fail=1; fi
+qleft=""
+for t in yt-dlp deno ffmpeg; do
+  xattr -p com.apple.quarantine "$APP/Contents/Frameworks/bin/$t" >/dev/null 2>&1 && qleft="$qleft $t"
+done
+if [ -z "$qleft" ]; then echo "OK   app start cleared the quarantine flag from its bundled tools"; else echo "FAIL still quarantined after app start:$qleft"; fail=1; fi
 # Gatekeeper's verdict, for the record only: an ad-hoc signed app is
 # "rejected" (no Developer ID); the wording tells unsigned from damaged.
 echo "     spctl: $(spctl --assess --type exec -vv "$APP" 2>&1 | tr '\n' ' ')"

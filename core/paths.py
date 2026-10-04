@@ -42,6 +42,42 @@ def bundled_binary(name: str) -> str:
     return candidate
 
 
+def clear_bundled_quarantine() -> None:
+    """macOS app: drop ``com.apple.quarantine`` from the bundled bin/ tools.
+
+    A .dmg downloaded with a browser tags every file in the app with the
+    quarantine flag, the bundled yt-dlp/ffmpeg/deno included. Gatekeeper
+    then holds a still-quarantined tool ("can't be opened because Apple
+    cannot check it") and kills it -- e.g. when the bundled yt-dlp is run
+    from Terminal; verified on macOS 10.15 (held 5 min, then SIGKILL). The
+    user already chose to open this app, so its own helpers need no second
+    check. Called once at startup; never raises. A read-only (translocated)
+    bundle simply keeps the flag.
+    """
+    if sys.platform != "darwin" or not getattr(sys, "frozen", False):
+        return
+    base = bin_dir()
+    try:
+        names = os.listdir(base)
+    except OSError:
+        return
+    for name in names:
+        # Contents/MacOS/bin entries are symlinks into Contents/Frameworks/bin;
+        # removexattr follows them, so the real files are cleared.
+        _remove_quarantine_xattr(os.path.join(base, name))
+
+
+def _remove_quarantine_xattr(path: str) -> None:
+    try:
+        import ctypes
+
+        libc = ctypes.CDLL(None, use_errno=True)
+        # removexattr(path, name, options); options 0 follows symlinks.
+        libc.removexattr(os.fsencode(path), b"com.apple.quarantine", 0)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _ensure_executable(path: str) -> None:
     """Best-effort ``chmod +x`` for a bundled POSIX binary.
 

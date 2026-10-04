@@ -42,7 +42,11 @@ echo "LSMinimumSystemVersion: $plist_min"
 
 B="$APP/Contents/Frameworks/bin"
 v="$("$B/ffmpeg" -hide_banner -version 2>&1)" && echo "${v%%$'\n'*}" || { echo "ffmpeg FAILED: $v"; bad=$((bad + 1)); }
-v="$("$B/yt-dlp" --version 2>&1)" && echo "yt-dlp $v" || { echo "yt-dlp FAILED: $v"; bad=$((bad + 1)); }
+# yt-dlp must be the self-contained yt-dlp_macos, run with the PATH an app
+# opened from Finder gets: the Python-script "yt-dlp" passes in a shell with a
+# venv python3 but fails in the app on Apple's python3 3.9 (needs 3.10+).
+file -b "$B/yt-dlp" | grep -q Mach-O || { echo "yt-dlp is not a Mach-O executable (Python-script build?)"; bad=$((bad + 1)); }
+v="$(env -i HOME="$HOME" TMPDIR="${TMPDIR:-/tmp}" PATH=/usr/bin:/bin:/usr/sbin:/sbin "$B/yt-dlp" --version 2>&1)" && echo "yt-dlp $v" || { echo "yt-dlp FAILED: $v"; bad=$((bad + 1)); }
 v="$("$B/deno" --version 2>&1)" && echo "${v%%$'\n'*}" || { echo "deno FAILED: $v"; bad=$((bad + 1)); }
 
 # core.paths.bundled_binary() resolves tools via dirname(sys.executable)/bin,

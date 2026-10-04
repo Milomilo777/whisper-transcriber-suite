@@ -138,10 +138,30 @@ def _links_only_system_libs(path):
     return all(ln.startswith(('/usr/lib/', '/System/Library/')) for ln in libs)
 
 
+# What an app opened from Finder gets: no venv, no python.org/Homebrew bin dirs.
+_FINDER_ENV = {k: v for k, v in os.environ.items() if k in ('HOME', 'USER', 'TMPDIR', 'LANG')}
+_FINDER_ENV['PATH'] = '/usr/bin:/bin:/usr/sbin:/sbin'
+
+
+def _is_macho(path):
+    # bin/yt-dlp must be the self-contained yt-dlp_macos (Mach-O). The plain
+    # "yt-dlp" release file is a Python zipapp (#!/usr/bin/env python3): it
+    # passes --version in a shell whose python3 is a venv/python.org 3.12, but
+    # the app opened from Finder runs it with Apple's python3 (3.9 from the
+    # Command Line Tools, or none) -> "Only Python versions 3.10 and above are
+    # supported by yt-dlp" (seen on v1.9.3 after a swap).
+    try:
+        with open(path, 'rb') as f:
+            return f.read(4) in (b'\xca\xfe\xba\xbe', b'\xcf\xfa\xed\xfe', b'\xce\xfa\xed\xfe')
+    except OSError:
+        return False
+
+
 def _yt_dlp_new_enough(path):
     # --js-runtimes (Deno for YouTube) needs yt-dlp >= 2025.11.12.
     try:
-        out = _sp.run([path, '--version'], capture_output=True, text=True, timeout=300).stdout
+        out = _sp.run([path, '--version'], capture_output=True, text=True, timeout=300,
+                      env=_FINDER_ENV).stdout
     except Exception:  # noqa: BLE001
         return False
     m = _re.match(r'\s*(\d{4})\.(\d{1,2})\.(\d{1,2})', out)
@@ -155,6 +175,8 @@ for _n in ('ffmpeg', 'ffprobe', 'ffplay', 'yt-dlp', 'deno'):
         _tool_problems.append('%s missing' % _n)
     elif _n.startswith('ff') and not _links_only_system_libs(_p):
         _tool_problems.append('%s links non-system libraries (Homebrew?)' % _n)
+    elif _n in _POST_COPY_BINS and not _is_macho(_p):
+        _tool_problems.append('%s is a script, not the self-contained Mac build' % _n)
     elif _n == 'yt-dlp' and not _yt_dlp_new_enough(_p):
         _tool_problems.append('yt-dlp broken or older than 2025.11.12')
 if _tool_problems:
@@ -534,12 +556,16 @@ for _name in _POST_COPY_BINS:
     if not os.path.isfile(_src):
         print('[mac-spec] WARNING: bin/%s missing — the .app will have no %s' % (_name, _name))
         continue
+    if not _is_macho(_src):
+        raise SystemExit('[mac-spec] bin/%s is not a self-contained Mach-O (see _is_macho); '
+                         'run fetch_mac_binaries.sh' % _name)
     os.makedirs(_app_bin, exist_ok=True)
     _dst = os.path.join(_app_bin, _name)
     _shutil.copy2(_src, _dst)
     os.chmod(_dst, 0o755)
     _subprocess.run(['codesign', '--force', '--sign', '-', _dst], check=True)
-    _out = _subprocess.run([_dst, '--version'], capture_output=True, text=True, timeout=300)
+    _out = _subprocess.run([_dst, '--version'], capture_output=True, text=True, timeout=300,
+                           env=_FINDER_ENV)
     if _out.returncode != 0:
         raise SystemExit('[mac-spec] bundled %s does not run: %s' % (_name, _out.stderr.strip()))
     print('[mac-spec] bundled %s %s (%d bytes, copied verbatim)' % (

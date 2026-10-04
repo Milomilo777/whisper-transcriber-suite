@@ -417,6 +417,11 @@ def main() -> int:
 
     _ensure_safe_stdio_encoding()
 
+    # macOS app only: un-quarantine the bundled yt-dlp/ffmpeg/deno so
+    # Gatekeeper does not block them after a browser download.
+    from core.paths import clear_bundled_quarantine
+    clear_bundled_quarantine()
+
     # --safe-mode is also handled before argparse so the user can
     # combine it with the default GUI launch without juggling
     # subcommands. The flag is sticky for this run only — the next
