@@ -19,6 +19,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   checked against the release's SHA2-256SUMS), unpacked once inside the
   app; the onefile build unpacked itself on every run. Only the very first
   run after installing still takes ~25 s.
+- **Opt-in usage stats no longer send the computer name.** The payload
+  drops `platform_node` and adds `country`, a two-letter code read from the
+  operating system's region setting (no network lookup; empty when unset).
 - **Website, README and `llms.txt`: privacy wording now says exactly what
   leaves the computer.** "Private by architecture" and the blanket "no upload"
   lines are gone: audio is uploaded only by the two opt-in cloud engines, and

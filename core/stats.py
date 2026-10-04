@@ -3,21 +3,25 @@
 Sends per-transcription usage to the maintainer's stats endpoint
 (``config['stats_url']``). PRIVACY: the payload includes the file name (no
 path), model, language, audio duration, AI transcription time, status, the
-running app version, and coarse host/hardware facts (OS, machine, CPU count,
-total RAM — no serial numbers, no user names, no IPs; the client IP + geoip
-country are added server-side from the request, not by this module). It is
-therefore sent ONLY when the user has opted in
-(``config['telemetry_opt_in']``); the caller must gate on that.
+running app version, a two-letter country code taken from the operating
+system's region setting (:func:`region_country`, read locally, no network
+lookup), and coarse host/hardware facts (OS, machine, CPU count, total RAM).
+It never includes the computer name, a user name, a serial number or an IP
+address. The server sees the connection's address like any web server; what
+it stores is decided by the server script. The payload is sent ONLY when the
+user has opted in (``config['telemetry_opt_in']``); the caller must gate on
+that.
 
 Design rules (mirrors app.observability's opt-in posture):
 
-  * Tk-free; local-only introspection (``platform``, ``psutil``) plus
-    stdlib ``urllib`` for the POST — no data leaves the machine besides the
-    one opt-in request. Short timeout, daemon thread — never blocks or
-    crashes a transcription if stats fail. Every error is swallowed.
-  * The payload builder :func:`build_stats_payload` is a PURE, testable
-    function (no network I/O); :func:`post_stats_async` does the
-    fire-and-forget POST.
+  * Tk-free; local-only introspection (``platform``, ``psutil``, the OS
+    region setting) plus stdlib ``urllib`` for the POST — no data leaves the
+    machine besides the one opt-in request. Short timeout, daemon thread —
+    never blocks or crashes a transcription if stats fail. Every error is
+    swallowed.
+  * The payload builder :func:`build_stats_payload` is a testable function
+    with no network I/O; :func:`post_stats_async` does the fire-and-forget
+    POST.
   * No POST is attempted when ``stats_url`` is empty.
 
 The matching server is ``stats/transcription_stats.php`` in this repo.
@@ -25,7 +29,10 @@ The matching server is ``stats/transcription_stats.php`` in this repo.
 from __future__ import annotations
 
 import logging
+import os
 import platform
+import re
+import sys
 import threading
 import urllib.error
 import urllib.parse
@@ -48,6 +55,132 @@ logger = logging.getLogger(__name__)
 
 # Fields the PHP endpoint records (form_submitted toggles the insert).
 _FORM_FLAG = "form_submitted"
+
+# ISO 3166-1 alpha-2 country code shape.
+_ISO2_RE = re.compile(r"[A-Za-z]{2}")
+
+# Windows NLS constants (winnls.h).
+_GEOCLASS_NATION = 16
+_GEO_ISO2 = 4
+_GEOID_NOT_AVAILABLE = -1
+
+
+def _iso2(value: str) -> str:
+    """``value`` upper-cased when it is exactly two ASCII letters, else ""."""
+    return value.upper() if _ISO2_RE.fullmatch(value) else ""
+
+
+def _region_from_locale_name(name: str) -> str:
+    """Region part of a POSIX / ICU locale name, or "".
+
+    Handles ``fa_IR.UTF-8``, ``sr_RS@latin``, ``zh_Hant_TW``, ``en-US`` and
+    the macOS region override keyword (``en_US@rg=gbzzzz`` -> ``GB``).
+    ``C`` / ``POSIX`` / a bare language carry no region.
+    """
+    base, _, modifiers = name.partition("@")
+    for modifier in modifiers.split(";"):
+        key, _, value = modifier.partition("=")
+        if key.strip().lower() == "rg":
+            code = _iso2(value.strip()[:2])
+            if code:
+                return code
+    base = base.partition(".")[0]
+    for part in re.split(r"[_-]", base)[1:]:
+        code = _iso2(part)
+        if code:
+            return code
+    return ""
+
+
+def _windows_region() -> str:
+    """The Windows "Country or region" setting as ISO alpha-2, or ""."""
+    if sys.platform != "win32":
+        return ""
+    import ctypes
+    from ctypes import wintypes
+
+    # A private WinDLL instance, so setting argtypes here cannot clash with
+    # other callers of ctypes.windll.kernel32.
+    kernel32 = ctypes.WinDLL("kernel32")
+    get_user_geo_id = kernel32.GetUserGeoID
+    get_user_geo_id.argtypes = [wintypes.DWORD]
+    get_user_geo_id.restype = ctypes.c_long
+    geo_id = get_user_geo_id(_GEOCLASS_NATION)
+    if geo_id == _GEOID_NOT_AVAILABLE:
+        return ""
+    get_geo_info = kernel32.GetGeoInfoW
+    get_geo_info.argtypes = [
+        ctypes.c_long, wintypes.DWORD, ctypes.c_wchar_p, ctypes.c_int,
+        wintypes.WORD,
+    ]
+    get_geo_info.restype = ctypes.c_int
+    buf = ctypes.create_unicode_buffer(16)
+    if get_geo_info(geo_id, _GEO_ISO2, buf, len(buf), 0) <= 0:
+        return ""
+    return _iso2(buf.value)
+
+
+def _macos_region(prefs_path: Path | None = None) -> str:
+    """Region of the macOS ``AppleLocale`` preference, or "".
+
+    Read from the global preferences plist (what ``defaults read -g
+    AppleLocale`` prints), so no subprocess and no PyObjC is needed.
+    """
+    import plistlib
+
+    path = prefs_path or (
+        Path.home() / "Library" / "Preferences" / ".GlobalPreferences.plist"
+    )
+    try:
+        with open(path, "rb") as fh:
+            prefs = plistlib.load(fh)
+    except (OSError, ValueError) as e:
+        logger.debug("AppleLocale not readable (ignored): %s", e)
+        return ""
+    locale_name = prefs.get("AppleLocale") if isinstance(prefs, dict) else None
+    if not isinstance(locale_name, str):
+        return ""
+    return _region_from_locale_name(locale_name)
+
+
+def _env_region(environ: Any) -> str:
+    """Region of the locale environment (``LC_ALL``, then ``LANG``), or "".
+
+    The first non-empty variable wins, as in POSIX, so ``LC_ALL=C`` means
+    no region even when ``LANG`` names one.
+    """
+    for key in ("LC_ALL", "LANG"):
+        value = environ.get(key) or ""
+        if value:
+            return _region_from_locale_name(str(value))
+    return ""
+
+
+def _region_for(platform_name: str) -> str:
+    """Dispatch of :func:`region_country` by ``sys.platform`` value."""
+    try:
+        if platform_name == "win32":
+            return _windows_region()
+        if platform_name == "darwin":
+            code = _macos_region()
+            if code:
+                return code
+        return _env_region(os.environ)
+    except Exception as e:  # noqa: BLE001 — stats never break anything
+        logger.debug("region lookup failed (ignored): %s", e)
+        return ""
+
+
+def region_country() -> str:
+    """Two-letter country code (e.g. ``"DE"``) from the OS region setting.
+
+    Windows: the "Country or region" setting (``GetUserGeoID`` +
+    ``GetGeoInfoW(GEO_ISO2)``). macOS: the ``AppleLocale`` preference,
+    falling back to the locale environment. Linux and others: the region
+    part of ``LC_ALL`` / ``LANG``. Returns "" when no region is set or the
+    lookup fails. Local only: no network, never raises.
+    """
+    return _region_for(sys.platform)
 
 
 def count_words(text: str) -> int:
@@ -107,12 +240,13 @@ def build_stats_payload(
     status: str,
     word_count: int = 0,
 ) -> dict[str, str]:
-    """Build the form-encoded stats payload (PURE — no I/O, no network).
+    """Build the form-encoded stats payload (no network I/O).
 
     ``file_name`` is reduced to its basename so no local path leaks. All values
     are stringified for ``application/x-www-form-urlencoded``. The
-    ``form_submitted`` flag tells the PHP endpoint to record the row; the
-    client IP + geoip are added server-side from the request, NOT here.
+    ``form_submitted`` flag tells the PHP endpoint to record the row.
+    ``country`` comes from the OS region setting (:func:`region_country`);
+    the computer name and any IP address are never included.
     """
     # Local alias: a module-level global is never narrowed by a None
     # check (it could be reassigned elsewhere), a local is.
@@ -127,8 +261,8 @@ def build_stats_payload(
         "status": str(status or ""),
         "word_count": str(int(word_count or 0)),
         "program_version": str(_PROGRAM_VERSION or ""),
+        "country": region_country(),
         "platform_system": platform.system(),
-        "platform_node": platform.node(),
         "platform_release": platform.release(),
         "platform_version": platform.version(),
         "platform_machine": platform.machine(),
