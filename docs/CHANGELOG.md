@@ -30,6 +30,17 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **macOS: the bundled yt-dlp could be blocked by Gatekeeper after a
+  browser download** ("can't be opened because Apple cannot check it", then
+  killed). Every file of a browser-downloaded `.dmg` is quarantined; the app
+  now removes that flag from its own bundled yt-dlp/ffmpeg/deno at every
+  start (`core.paths.clear_bundled_quarantine`), and `test_dmg.sh` checks
+  it. The macOS build also refuses a `bin/yt-dlp` that is yt-dlp's Python
+  script instead of the self-contained `yt-dlp_macos`: the script runs on
+  whatever `python3` the Mac has, and an app opened from Finder gets Apple's
+  Python 3.9, which yt-dlp no longer supports ("Only Python versions 3.10 and
+  above are supported by yt-dlp", seen on v1.9.3 after such a swap). The app
+  itself runs on its bundled Python 3.12.
 - **macOS: the Live tab could never get the microphone.** macOS 10.14+
   terminates an app that opens the microphone without
   `NSMicrophoneUsageDescription` in its Info.plist, and no build had the
