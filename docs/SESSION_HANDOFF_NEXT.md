@@ -5,6 +5,29 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-10-04 — macOS: bundled yt-dlp vs. Gatekeeper and the Python-script yt-dlp
+
+Report on v1.9.3 (Intel Mac): the bundled yt-dlp "failed to run"; after it
+was replaced with another yt-dlp, Download and Video Tiling failed with
+"Only Python versions 3.10 and above are supported by yt-dlp" from the
+Command Line Tools' Python 3.9.
+
+- **Diagnosed on the 10.15 VM with the published v1.9.3 x64 dmg.** The dmg
+  itself is fine (`yt-dlp_macos` 2026.08.19, app on Python 3.12.10). A
+  quarantined nested yt-dlp run before the app is approved is held by
+  Gatekeeper and killed (5 min, exit 137). The replacement was yt-dlp's
+  Python zipapp, which a Finder-launched app runs on `/usr/bin/python3`.
+  Details: `docs/MACOS_BUILD_NOTES.md` row 9.
+- **Fixed in 415d2d1:** `core.paths.clear_bundled_quarantine()` at startup;
+  the mac spec, `verify_mac_bundle.sh` and `test_dmg.sh` reject a non-Mach-O
+  yt-dlp/deno and check the quarantine strip. Full `build_mac.sh` passed on
+  the VM; the new `test_dmg.sh` check fails on the old v1.9.3 dmg as
+  expected; CI green on 37be38b.
+- **No release for this alone.** It ships with the next version, which
+  also removes Video Tiling. Don't spend work on tiling.
+- Open: yt-dlp_macos (onefile) needs ~25 s per start on the VM; the onedir
+  `yt-dlp_macos.zip` would cut that. Not done.
+
 ## 🟢 2026-10-01 — four macOS-only follow-ups: 3 done, screenshots deferred
 
 Asked: which macOS-only tools help this project. Four items were recorded;
