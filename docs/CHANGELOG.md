@@ -19,6 +19,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   checked against the release's SHA2-256SUMS), unpacked once inside the
   app; the onefile build unpacked itself on every run. Only the very first
   run after installing still takes ~25 s.
+- **Website, README and `llms.txt`: privacy wording now says exactly what
+  leaves the computer.** "Private by architecture" and the blanket "no upload"
+  lines are gone: audio is uploaded only by the two opt-in cloud engines, and
+  transcript text only when a remote AI model is connected.
 - **Website and docs: the contact address is no longer written in any
   file.** The website's Contact section shows it on request (a same-origin
   function hands it over after a short proof-of-work); README, SECURITY.md,

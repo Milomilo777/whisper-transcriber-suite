@@ -1,6 +1,6 @@
 # Whisper Transcriber Suite
 
-> Free, offline desktop app that transcribes audio and video locally via OpenAI Whisper (faster-whisper) for Windows, macOS and Linux — no cloud, no account, no upload.
+> Free, offline desktop app that transcribes audio and video locally via OpenAI Whisper (faster-whisper) for Windows, macOS and Linux — your audio stays on your computer, no account needed.
 
 ## Docs
 - [Full text for AI assistants](https://whisper-transcriber-suite.pages.dev/llms-full.txt): this summary plus the complete FAQ and README in one plain-text file.

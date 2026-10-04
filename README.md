@@ -1,6 +1,6 @@
 <!--
     title: Whisper Transcriber Suite — offline audio & video transcription for Windows, macOS and Linux
-    description: Desktop app that runs OpenAI Whisper locally via faster-whisper. Transcribe audio and video to SRT, VTT, DOCX and PDF with no cloud, no account and no upload. Speaker diarisation, batch queue, yt-dlp downloads, live microphone transcription and a local-network mode.
+    description: Desktop app that runs OpenAI Whisper locally via faster-whisper. Transcribe audio and video to SRT, VTT, DOCX and PDF. Your audio stays on your computer and no account is needed. Speaker diarisation, batch queue, yt-dlp downloads, live microphone transcription and a local-network mode.
     keywords: offline speech to text, local whisper GUI, faster-whisper desktop app, audio to text, video to text, subtitle generator, SRT VTT generator, transcription software, speaker diarization, private on-device transcription, yt-dlp downloader, live microphone transcription
     author: translation-robot
     product-type: Desktop transcription software
@@ -202,12 +202,13 @@ Deeper: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (prose) ·
 
 ## Offline by default
 
-Every default backend runs on your machine. Nothing is uploaded, no account
-exists, and the app works with the network unplugged once the model is
-downloaded.
+Every default backend runs on your machine. Your audio is uploaded only if you
+switch on one of the two optional cloud engines below, and transcript text
+leaves only if you connect a remote AI model yourself. No account exists, and
+the app works with the network unplugged once the model is downloaded.
 
 > [!IMPORTANT]
-> Two **opt-in** backends break that guarantee, and both are off unless you go
+> Two **opt-in** backends upload your audio, and both are off unless you go
 > into **Advanced → Backend** and choose them. Use them only for content you
 > are willing to send to a third party.
 >
