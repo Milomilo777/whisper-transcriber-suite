@@ -5,6 +5,28 @@ this repo. Read this file before anything else.
 
 ---
 
+## 🟢 2026-10-04 (evening) — macOS: v1.9.3 bundled yt-dlp retested on macOS 13 (no code change)
+
+User-like retest of the published `WhisperTranscriberSuite-v1.9.3-macOS-x64.dmg`
+(sha256 matches the release digest) on a macOS 13.7.8 x86_64 VM: Safari
+download, Finder copy to /Applications, bundled yt-dlp run from Terminal by
+its full path.
+
+- **Before the app is approved:** `…/Contents/Frameworks/bin/yt-dlp --version`
+  hangs, Gatekeeper shows "can't be opened because Apple cannot check it",
+  and the process is killed (exit 137 after 7m57s). This is the same
+  mechanism as on 10.15 (row 9 of `docs/MACOS_BUILD_NOTES.md`). 415d2d1
+  clears the flag only after the first approved launch, so only
+  notarization removes this first-run block.
+- **After "Open Anyway":** quarantine flags become `01c3`; the same command
+  prints `2026.08.19`, exit 0, but takes 28.7 s (0.75 s CPU). That's the
+  known onefile start cost.
+- **In the app after approval:** formats load (about 1 min) and a 19 s
+  YouTube test video downloads and merges to mp4 in 35 s.
+- **Next, with the big app change:** switch to the onedir `yt-dlp_macos.zip`
+  (open item in the entry below), and keep the 415d2d1 quarantine strip. Not tested:
+  macOS 12 or older, Apple silicon.
+
 ## 🟢 2026-10-04 — macOS: bundled yt-dlp vs. Gatekeeper and the Python-script yt-dlp
 
 Report on v1.9.3 (Intel Mac): the bundled yt-dlp "failed to run"; after it
