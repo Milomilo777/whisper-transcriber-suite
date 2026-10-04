@@ -13,6 +13,7 @@ fits into one of five buckets.
 ## Reference
 
 - [CHANGELOG.md](CHANGELOG.md) — version history
+- [COMPARISON.md](COMPARISON.md) — compared with Subtitle Edit, Vibe, Buzz, noScribe and aTrain, with a source for every fact
 - [DECISIONS.md](DECISIONS.md) — why non-obvious design choices were made
 - [MANUAL_STEPS.md](MANUAL_STEPS.md) — release-time human checklist
 - [RELEASE_PROCESS.md](RELEASE_PROCESS.md) — how to ship a new version

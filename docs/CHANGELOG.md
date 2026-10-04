@@ -11,6 +11,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   macOS CI): mount, check the drag-to-Applications link, copy the app out,
   lint its Info.plist, verify the signature, run the CLI and open the GUI
   from the copy, unmount. The pipeline never tested the `.dmg` itself before.
+- **`docs/COMPARISON.md`: a dated comparison with Subtitle Edit, Vibe, Buzz,
+  noScribe and aTrain**, with "choose X if" lines, the cases where another app
+  fits better, and a source for every fact. The website's compare table now
+  covers Subtitle Edit, Vibe and Buzz from the same facts (it compared Buzz,
+  MacWhisper and the OpenAI API) and links to the page;
+  `tests/test_comparison_doc.py` checks its links and WTS facts against the code.
 
 ### Changed
 

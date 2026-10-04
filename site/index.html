@@ -555,20 +555,21 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Compare</p>
         <h2 id="compare-title">How does it compare to other Whisper apps?</h2>
-        <p class="section-lede">Whisper Transcriber Suite is a free, open-source desktop app that transcribes on your own computer on Windows, macOS and Linux. The closest open-source alternative is Buzz; on a Mac, MacWhisper is a polished native option with a paid tier; the OpenAI Whisper API runs in the cloud and is billed per minute.</p>
+        <p class="section-lede">Whisper Transcriber Suite is one of several free, open-source desktop apps that transcribe on your own computer. Here is how it compares with Subtitle Edit, Vibe and Buzz, including when another app fits better. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Read the full comparison</a>, with a source for every fact and two more apps, noScribe and aTrain.</p>
       </header>
       <div class="table-wrap sr">
         <table class="compare-table">
-          <caption>Whisper-based transcription options at a glance — compiled September 2026 from each project's public pages; check them for current details.</caption>
+          <caption>Checked 2026-10-05 against each project's own README, docs and releases. Apps change quickly: see the <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">full comparison</a> for sources.</caption>
           <thead>
-            <tr><th scope="col"><span class="sr-only">Feature</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Buzz</th><th scope="col">MacWhisper</th><th scope="col">OpenAI Whisper API</th></tr>
+            <tr><th scope="col"><span class="sr-only">Feature</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
-            <tr><th scope="row">Price</th><td>Free</td><td>Free</td><td>Free tier + paid Pro</td><td>Pay per minute of audio</td></tr>
-            <tr><th scope="row">Source code</th><td>Open source (BSD-3-Clause)</td><td>Open source (MIT)</td><td>Closed source</td><td>Hosted service</td></tr>
-            <tr><th scope="row">Platforms</th><td>Windows, macOS, Linux</td><td>Windows, macOS, Linux</td><td>macOS only</td><td>Any, via web API</td></tr>
-            <tr><th scope="row">Where the audio is processed</th><td>On your computer (cloud backends are opt-in)</td><td>On your computer</td><td>On your computer</td><td>On OpenAI's servers</td></tr>
-            <tr><th scope="row">Also included</th><td>14 output formats, speaker labels, batch queue, live mic, video downloads, LAN mode</td><td colspan="3" class="muted">See each project's site</td></tr>
+            <tr><th scope="row">Price, licence</th><td>Free, BSD-3-Clause</td><td>Free, MIT</td><td>Free, MIT</td><td>Free, MIT</td></tr>
+            <tr><th scope="row">Downloads</th><td>Windows installer and portable ZIP, macOS (Apple silicon, Intel); Linux from source</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 is the last for Intel Macs), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
+            <tr><th scope="row">GPU acceleration</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Signed Windows installer</th><td>No</td><td>Not stated</td><td>Yes, per its docs</td><td>No</td></tr>
+            <tr><th scope="row">Interface languages</th><td>English only</td><td>35</td><td>22</td><td>16</td></tr>
+            <tr><th scope="row">Choose it if</th><td>You also want a live microphone, video downloads, 14 output formats and a local-network mode with an OpenAI-compatible route</td><td>You want many speech engines (Parakeet, Canary, Qwen3-ASR and more) or a notarized Mac app</td><td>You want a Windows installer its docs say is signed, or GPU support that names AMD and Intel</td><td>You want Linux packages (Flatpak, Snap, AppImage) or a PyPI install</td></tr>
           </tbody>
         </table>
       </div>
