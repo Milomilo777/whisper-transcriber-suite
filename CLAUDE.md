@@ -343,8 +343,7 @@ faith. That is a different situation this rule was never meant to cover.
 ## Borrowed conventions (2026-09-21, cherry-picked from homelab-00/TranscriptionSuite)
 
 Two rules from a similar-purpose transcription app that fit this repo.
-Everything else from their `CLAUDE.md` was deliberately skipped — see
-`OPENCODE_HANDOFF_conventions_signing.md` for the per-item reasons.
+Everything else from their `CLAUDE.md` was deliberately skipped.
 
 ### Credit external code sources
 

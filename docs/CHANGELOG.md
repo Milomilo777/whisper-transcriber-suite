@@ -14,6 +14,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Repository root: the 22 per-branch handoff files are removed.** The 20
+  `OPENCODE_HANDOFF_*.md` files and the two `INTEGRATION_*.md` files were
+  working notes from a past branch merge; they stay in git history.
 - **macOS: the bundled yt-dlp starts in about half a second instead of
   ~25 s per call.** It is now yt-dlp's onedir build (`yt-dlp_macos.zip`,
   checked against the release's SHA2-256SUMS), unpacked once inside the
