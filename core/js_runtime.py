@@ -103,9 +103,10 @@ def yt_dlp_version(path: str | None = None) -> tuple[int, ...]:
         return _yt_dlp_version_cache[key]
     version: tuple[int, ...] = ()
     try:
-        # Generous: the macOS yt-dlp is a onefile build that unpacks itself on
-        # every run -- 26 s for --version on a macOS 10.15 test machine. A
-        # timeout here drops --js-runtimes and YouTube loses its Deno.
+        # Generous: the first start of the bundled macOS yt-dlp after install
+        # takes ~25 s while dyld validates its files once (the old onefile
+        # build paid that on every run; the onedir one then starts in ~0.5 s).
+        # A timeout here drops --js-runtimes and YouTube loses its Deno.
         kwargs: dict[str, object] = {"capture_output": True, "text": True, "timeout": 120}
         if sys.platform == "win32":
             kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)

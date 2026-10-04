@@ -14,6 +14,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **macOS: the bundled yt-dlp starts in about half a second instead of
+  ~25 s per call.** It is now yt-dlp's onedir build (`yt-dlp_macos.zip`,
+  checked against the release's SHA2-256SUMS), unpacked once inside the
+  app; the onefile build unpacked itself on every run. Only the very first
+  run after installing still takes ~25 s.
 - **Website and docs: the contact address is no longer written in any
   file.** The website's Contact section shows it on request (a same-origin
   function hands it over after a short proof-of-work); README, SECURITY.md,

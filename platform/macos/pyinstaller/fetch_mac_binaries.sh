@@ -54,12 +54,27 @@ for t in ffmpeg ffprobe ffplay; do
   fi
 done
 
-# yt-dlp_macos is already universal2. Keep the name "yt-dlp": that is what
-# core.paths.bundled_binary("yt-dlp") resolves on macOS.
-curl -fsSL --retry 3 -o "$TMP/yt-dlp" \
-  "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos"
-rm -f "$BIN/yt-dlp" && mv "$TMP/yt-dlp" "$BIN/yt-dlp"
-chmod +x "$BIN/yt-dlp"
+# yt-dlp: the official ONEDIR build (yt-dlp_macos.zip, universal2): the
+# yt-dlp_macos executable next to its _internal/ folder, unpacked once into
+# bin/yt-dlp_dist/. The onefile yt-dlp_macos unpacked itself into a new temp
+# dir on every run, and dyld re-validated those fresh libraries each time:
+# 25-29 s per start (66 s cold). The onedir build pays that once, then starts
+# in about 0.5 s (both measured on macOS 10.15). bin/yt-dlp is a relative
+# symlink to the executable -- the name core.paths.bundled_binary("yt-dlp")
+# resolves; the PyInstaller bootloader follows symlinks to find _internal/.
+# Checked against the release's SHA2-256SUMS. ditto keeps the exec bits.
+YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download"
+curl -fsSL --retry 3 -o "$TMP/yt-dlp_macos.zip" "$YTDLP_URL/yt-dlp_macos.zip"
+want="$(curl -fsSL --retry 3 "$YTDLP_URL/SHA2-256SUMS" \
+  | awk '{n=$2; sub(/^\*/, "", n)} n=="yt-dlp_macos.zip" {print tolower($1)}')"
+got="$(shasum -a 256 "$TMP/yt-dlp_macos.zip" | cut -d' ' -f1)"
+[ -n "$want" ] && [ "$want" = "$got" ] \
+  || { echo "error: yt-dlp_macos.zip checksum mismatch (want '$want', got $got; new release mid-fetch? retry)" >&2; exit 1; }
+rm -rf "${BIN:?}/yt-dlp" "${BIN:?}/yt-dlp_dist"
+ditto -x -k "$TMP/yt-dlp_macos.zip" "$BIN/yt-dlp_dist"
+[ -x "$BIN/yt-dlp_dist/yt-dlp_macos" ] && [ -d "$BIN/yt-dlp_dist/_internal" ] \
+  || { echo "error: yt-dlp_macos.zip lacks yt-dlp_macos + _internal/" >&2; exit 1; }
+ln -s yt-dlp_dist/yt-dlp_macos "$BIN/yt-dlp"
 
 # Deno: yt-dlp's JavaScript runtime for YouTube's challenges. Bundled next to
 # yt-dlp so the app needs no "Install YouTube helper" click
@@ -104,7 +119,9 @@ for f in "$BIN"/ffmpeg "$BIN"/ffprobe "$BIN"/ffplay "$BIN"/yt-dlp "$BIN"/deno; d
   fi
 done
 "$BIN/ffmpeg" -hide_banner -version | head -1
-echo "yt-dlp $("$BIN/yt-dlp" --version)"
+"$BIN/yt-dlp" --version >/dev/null  # first run: dyld validates the new files once
+t0=$(date +%s); v="$("$BIN/yt-dlp" --version)"; t1=$(date +%s)
+echo "yt-dlp $v (second start: $((t1 - t0)) s)"
 "$BIN/deno" --version | head -1
 [ "$fail" = 0 ] || { echo "error: bin/ contains dylib-dependent binaries" >&2; exit 1; }
 echo "OK: bin/ is self-contained."

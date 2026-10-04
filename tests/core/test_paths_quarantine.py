@@ -4,7 +4,10 @@ browser download of the .dmg ("the bundled yt-dlp failed to run" on v1.9.3).
 """
 from __future__ import annotations
 
+import os
 import sys
+
+import pytest
 
 from core import paths
 
@@ -31,6 +34,47 @@ def test_frozen_mac_app_clears_every_bundled_tool(monkeypatch, tmp_path):
     assert sorted(p.replace("\\", "/").rsplit("/", 1)[1] for p in cleared) == [
         "deno", "ffmpeg", "yt-dlp",
     ]
+
+
+def test_folder_tool_is_cleared_recursively(monkeypatch, tmp_path):
+    # yt-dlp's onedir build: an executable next to a folder of libraries;
+    # Gatekeeper checks each file, so each one must lose the flag.
+    cleared = _setup(monkeypatch, tmp_path, platform="darwin", frozen=True)
+    dist = tmp_path / "bin" / "yt-dlp_dist"
+    (dist / "_internal" / "lib").mkdir(parents=True)
+    (dist / "yt-dlp_macos").write_bytes(b"\xca\xfe\xba\xbe")
+    (dist / "_internal" / "Python").write_bytes(b"\xca\xfe\xba\xbe")
+    (dist / "_internal" / "lib" / "_ssl.so").write_bytes(b"\xca\xfe\xba\xbe")
+    paths.clear_bundled_quarantine()
+    rel = sorted(
+        p.replace("\\", "/").split("/bin/", 1)[1] for p in cleared
+    )
+    assert rel == [
+        "deno", "ffmpeg", "yt-dlp", "yt-dlp_dist",
+        "yt-dlp_dist/_internal", "yt-dlp_dist/_internal/Python",
+        "yt-dlp_dist/_internal/lib", "yt-dlp_dist/_internal/lib/_ssl.so",
+        "yt-dlp_dist/yt-dlp_macos",
+    ]
+
+
+def test_symlinked_folder_tool_is_walked_like_in_the_app(monkeypatch, tmp_path):
+    # The real .app: Contents/MacOS/bin holds only symlinks into
+    # Contents/Frameworks/bin, the onedir yt-dlp folder included.
+    cleared = _setup(monkeypatch, tmp_path, platform="darwin", frozen=True)
+    internal = tmp_path / "Frameworks" / "bin" / "yt-dlp_dist" / "_internal"
+    internal.mkdir(parents=True)
+    (internal / "Python").write_bytes(b"\xca\xfe\xba\xbe")
+    try:
+        os.symlink(internal.parent, tmp_path / "bin" / "yt-dlp_dist",
+                   target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("this OS/user cannot create symlinks")
+    paths.clear_bundled_quarantine()
+    inside = sorted(
+        p.replace("\\", "/").split("/Frameworks/bin/", 1)[1]
+        for p in cleared if "/Frameworks/bin/" in p.replace("\\", "/")
+    )
+    assert inside == ["yt-dlp_dist/_internal", "yt-dlp_dist/_internal/Python"]
 
 
 def test_source_run_and_other_platforms_are_untouched(monkeypatch, tmp_path):

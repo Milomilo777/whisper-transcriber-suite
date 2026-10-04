@@ -13,6 +13,7 @@ here.
 """
 from __future__ import annotations
 
+import functools
 import os
 import sys
 from pathlib import Path
@@ -52,7 +53,9 @@ def clear_bundled_quarantine() -> None:
     from Terminal; verified on macOS 10.15 (held 5 min, then SIGKILL). The
     user already chose to open this app, so its own helpers need no second
     check. Called once at startup; never raises. A read-only (translocated)
-    bundle simply keeps the flag.
+    bundle simply keeps the flag. Folder-style tools (yt-dlp's onedir build:
+    an executable plus its libraries) are cleared recursively, since every
+    file in them carries its own flag.
     """
     if sys.platform != "darwin" or not getattr(sys, "frozen", False):
         return
@@ -64,16 +67,26 @@ def clear_bundled_quarantine() -> None:
     for name in names:
         # Contents/MacOS/bin entries are symlinks into Contents/Frameworks/bin;
         # removexattr follows them, so the real files are cleared.
-        _remove_quarantine_xattr(os.path.join(base, name))
+        path = os.path.join(base, name)
+        _remove_quarantine_xattr(path)
+        if os.path.isdir(path):
+            # os.walk does not descend into symlinked dirs, so no loops.
+            for root, dirs, files in os.walk(os.path.realpath(path)):
+                for entry in dirs + files:
+                    _remove_quarantine_xattr(os.path.join(root, entry))
+
+
+@functools.lru_cache(maxsize=1)
+def _libc():  # loaded once: the onedir yt-dlp alone has ~270 entries
+    import ctypes
+
+    return ctypes.CDLL(None, use_errno=True)
 
 
 def _remove_quarantine_xattr(path: str) -> None:
     try:
-        import ctypes
-
-        libc = ctypes.CDLL(None, use_errno=True)
         # removexattr(path, name, options); options 0 follows symlinks.
-        libc.removexattr(os.fsencode(path), b"com.apple.quarantine", 0)
+        _libc().removexattr(os.fsencode(path), b"com.apple.quarantine", 0)
     except Exception:  # noqa: BLE001
         pass
 

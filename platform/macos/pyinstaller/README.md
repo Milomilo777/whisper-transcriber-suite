@@ -81,13 +81,18 @@ Pin versions (e.g. `onnxruntime==1.19.2`) if you need an older floor.
 
 ## Gatekeeper (still unsigned)
 
-This `.app` is **unsigned/un-notarized** (ad-hoc signature only, no paid
-Apple Developer cert), so a user who downloads the `.dmg` via a browser hits
-the same Gatekeeper block as any unsigned app. Ways through: right-click the
-app → Open (macOS ≤ 14), System Settings → Privacy & Security → "Open
-Anyway", or
+This `.app` is **unsigned/un-notarized** (ad-hoc signature only), so a user
+who downloads the `.dmg` via a browser hits the same Gatekeeper block as any
+unsigned app. **First choice: the one-line Terminal install from the release
+notes** -- `curl` sets no quarantine flag, so there is no dialog and the
+bundled tools (yt-dlp, ffmpeg, deno) run at once, also from Terminal
+(verified on 10.15.7). With a browser download: right-click the app → Open
+(macOS ≤ 14), System Settings → Privacy & Security → "Open Anyway", or
 `xattr -dr com.apple.quarantine "/Applications/Whisper Transcriber Suite.app"`.
-See `docs/MACOS_BUILD_NOTES.md` for what was actually observed.
+Open the app once before running its bundled tools from Terminal: until then
+Gatekeeper holds and kills them; the first start clears their flags
+(`core.paths.clear_bundled_quarantine`). See `docs/MACOS_BUILD_NOTES.md` for
+what was actually observed.
 
 ## Universal2
 

@@ -116,8 +116,9 @@ whisper-transcribe /path/to/media.mp4 --formats srt json --language en
   now looks there); without it the transcript viewer is read-only.
 - Apple-silicon vs Intel: faster-whisper/ctranslate2 ship arm64 + x86_64
   wheels, so both should work, but neither has been run here yet.
-- A signed/notarized `.app` would remove the Gatekeeper step entirely but
-  needs a paid Apple Developer account — out of scope for now.
+- The `.app`/`.dmg` stays ad-hoc signed (no Developer ID, no notarization).
+  The release notes' one-line Terminal install downloads with `curl`, so
+  nothing is quarantined and Gatekeeper never asks.
 
 ## References (Gatekeeper / unsigned distribution)
 

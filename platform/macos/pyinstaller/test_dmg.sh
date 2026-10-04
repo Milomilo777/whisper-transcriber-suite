@@ -50,12 +50,14 @@ done
 # A browser download quarantines every file in the app. Tag the bundled tools
 # that way (not the app itself, which would need a Gatekeeper click) and check
 # that starting the app clears them (core.paths.clear_bundled_quarantine), or
-# Gatekeeper holds and kills yt-dlp when it runs.
+# Gatekeeper holds and kills yt-dlp when it runs. yt-dlp is the onedir build,
+# so also tag a library inside its folder (the clear must be recursive).
 QTN="0083;$(printf %x "$(date +%s)");Safari;$(uuidgen)"
-for t in yt-dlp deno ffmpeg; do xattr -w com.apple.quarantine "$QTN" "$APP/Contents/Frameworks/bin/$t"; done
+QTOOLS="yt-dlp deno ffmpeg yt-dlp_dist/_internal/Python"
+for t in $QTOOLS; do xattr -w com.apple.quarantine "$QTN" "$APP/Contents/Frameworks/bin/$t"; done
 if "$APP/Contents/MacOS/$NAME" transcribe --help >/dev/null 2>&1; then echo "OK   CLI runs from the copy"; else echo "FAIL CLI boot from the copy"; fail=1; fi
 qleft=""
-for t in yt-dlp deno ffmpeg; do
+for t in $QTOOLS; do
   xattr -p com.apple.quarantine "$APP/Contents/Frameworks/bin/$t" >/dev/null 2>&1 && qleft="$qleft $t"
 done
 if [ -z "$qleft" ]; then echo "OK   app start cleared the quarantine flag from its bundled tools"; else echo "FAIL still quarantined after app start:$qleft"; fail=1; fi

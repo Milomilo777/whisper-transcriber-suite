@@ -99,12 +99,17 @@ with open(os.path.join(_REPO_ROOT, 'core', '__init__.py'), encoding='utf-8') as 
 # drops that payload (bundled copy shrank 37 MB -> 73 KB and died with
 # "Could not load PyInstaller's embedded PKG archive"). So yt-dlp is NOT
 # collected here; it is copied byte-for-byte into the finished .app after
-# BUNDLE (see the end of this file). deno (yt-dlp's JavaScript runtime for
+# BUNDLE (see the end of this file). Since 2026-10-04 it is the ONEDIR build
+# (bin/yt-dlp_dist/ = yt-dlp_macos + _internal/, bin/yt-dlp = symlink to the
+# executable; see fetch_mac_binaries.sh): the onefile build unpacked itself on
+# every run and took 25-29 s per start, the onedir one ~0.5 s after its first
+# run. The whole folder is copied verbatim. deno (yt-dlp's JavaScript runtime for
 # YouTube, found by core.js_runtime.find_deno next to yt-dlp) is a signed
 # release binary; it takes the same verbatim path rather than PyInstaller's
 # Mach-O rewrite.
 _BIN_DIR = os.path.join(_REPO_ROOT, 'bin')
 _POST_COPY_BINS = ('yt-dlp', 'deno')
+_YTDLP_DIST = 'yt-dlp_dist'  # onedir yt-dlp folder; bin/yt-dlp links into it
 
 # ---- Preconditions a fresh clone does not meet on its own -------------------
 # platform/macos/build_mac.sh does all of this (and the venv, deps, checks and
@@ -177,6 +182,8 @@ for _n in ('ffmpeg', 'ffprobe', 'ffplay', 'yt-dlp', 'deno'):
         _tool_problems.append('%s links non-system libraries (Homebrew?)' % _n)
     elif _n in _POST_COPY_BINS and not _is_macho(_p):
         _tool_problems.append('%s is a script, not the self-contained Mac build' % _n)
+    elif _n == 'yt-dlp' and not os.path.isdir(os.path.join(_BIN_DIR, _YTDLP_DIST, '_internal')):
+        _tool_problems.append('yt-dlp is the slow onefile build, not the onedir %s/' % _YTDLP_DIST)
     elif _n == 'yt-dlp' and not _yt_dlp_new_enough(_p):
         _tool_problems.append('yt-dlp broken or older than 2025.11.12')
 if _tool_problems:
@@ -191,7 +198,7 @@ bin_binaries = []
 if os.path.isdir(_BIN_DIR):
     for _entry in sorted(os.listdir(_BIN_DIR)):
         _src = os.path.join(_BIN_DIR, _entry)
-        if _entry in _POST_COPY_BINS or _entry.endswith('.exe'):
+        if _entry in _POST_COPY_BINS or _entry == _YTDLP_DIST or _entry.endswith('.exe'):
             continue
         if os.path.isdir(_src):
             bin_datas.append((_src, os.path.join('bin', _entry)))
@@ -548,6 +555,7 @@ app = BUNDLE(
 # --strict`), and smoke-test that the copied tool actually runs.
 import shutil as _shutil
 import subprocess as _subprocess
+import time
 
 _app_path = os.path.join(DISTPATH, 'Whisper Transcriber Suite.app')
 _app_bin = os.path.join(_app_path, 'Contents', 'Frameworks', 'bin')
@@ -561,15 +569,42 @@ for _name in _POST_COPY_BINS:
                          'run fetch_mac_binaries.sh' % _name)
     os.makedirs(_app_bin, exist_ok=True)
     _dst = os.path.join(_app_bin, _name)
-    _shutil.copy2(_src, _dst)
-    os.chmod(_dst, 0o755)
-    _subprocess.run(['codesign', '--force', '--sign', '-', _dst], check=True)
-    _out = _subprocess.run([_dst, '--version'], capture_output=True, text=True, timeout=300,
-                           env=_FINDER_ENV)
-    if _out.returncode != 0:
-        raise SystemExit('[mac-spec] bundled %s does not run: %s' % (_name, _out.stderr.strip()))
-    print('[mac-spec] bundled %s %s (%d bytes, copied verbatim)' % (
-        _name, _out.stdout.strip(), os.path.getsize(_dst)))
+    if os.path.lexists(_dst):
+        os.remove(_dst)
+    if _name == 'yt-dlp':
+        # Onedir: copy the folder as-is (its files keep yt-dlp's own ad-hoc
+        # signatures) into Contents/Resources and link it from
+        # Frameworks/bin -- the same pattern PyInstaller uses for its own data.
+        # Under Frameworks, codesign takes dotted folders such as
+        # _internal/websockets-17.0.1.dist-info for nested bundles and refuses
+        # the whole app ("bundle format unrecognized"). Then point
+        # Frameworks/bin/yt-dlp at the executable through that link.
+        _dist_dst = os.path.join(_app_path, 'Contents', 'Resources', _YTDLP_DIST)
+        if os.path.isdir(_dist_dst):
+            _shutil.rmtree(_dist_dst)
+        _shutil.copytree(os.path.join(_BIN_DIR, _YTDLP_DIST), _dist_dst, symlinks=True)
+        _dist_link = os.path.join(_app_bin, _YTDLP_DIST)
+        if os.path.lexists(_dist_link):
+            os.remove(_dist_link)
+        os.symlink(os.path.relpath(_dist_dst, _app_bin), _dist_link)
+        os.symlink(os.path.join(_YTDLP_DIST, 'yt-dlp_macos'), _dst)
+    else:
+        _shutil.copy2(_src, _dst)
+        os.chmod(_dst, 0o755)
+        _subprocess.run(['codesign', '--force', '--sign', '-', _dst], check=True)
+    _runs = []
+    for _attempt in range(2):  # 1st run: dyld validates new files; 2nd = normal start
+        _t0 = time.monotonic()
+        _out = _subprocess.run([_dst, '--version'], capture_output=True, text=True, timeout=300,
+                               env=_FINDER_ENV)
+        _runs.append(time.monotonic() - _t0)
+        if _out.returncode != 0:
+            raise SystemExit('[mac-spec] bundled %s does not run: %s' % (_name, _out.stderr.strip()))
+    if _name == 'yt-dlp' and _runs[1] > 15:
+        raise SystemExit('[mac-spec] bundled yt-dlp needs %.0f s per start (the onefile build '
+                         'takes ~25 s); expected the onedir build' % _runs[1])
+    print('[mac-spec] bundled %s %s (copied verbatim; start %.1f s, then %.1f s)' % (
+        _name, _out.stdout.strip(), _runs[0], _runs[1]))
 
 # core.paths.resource_base() resolves to dirname(sys.executable) at runtime,
 # i.e. Contents/MacOS/ -- so core.paths.bundled_binary() looks for every tool
@@ -592,14 +627,18 @@ if os.path.isdir(_app_bin):
     os.makedirs(_macos_bin, exist_ok=True)
     for _entry in sorted(os.listdir(_app_bin)):
         _target = os.path.join(_app_bin, _entry)
-        if not os.path.isfile(_target):
+        # The onedir yt-dlp folder is mirrored too: core.paths'
+        # clear_bundled_quarantine() walks Contents/MacOS/bin and must reach
+        # every file inside it, or Gatekeeper holds the first yt-dlp run.
+        _is_dir = _entry == _YTDLP_DIST
+        if not (_is_dir or os.path.isfile(_target)):
             continue
         _link = os.path.join(_macos_bin, _entry)
         if os.path.lexists(_link):
             os.remove(_link)
         os.symlink(os.path.relpath(_target, _macos_bin), _link)
-        if not os.path.isfile(_link):
-            raise SystemExit('[mac-spec] symlink for %s did not resolve to a file' % _entry)
+        if not (os.path.isdir(_link) if _is_dir else os.path.isfile(_link)):
+            raise SystemExit('[mac-spec] symlink for %s did not resolve' % _entry)
     print('[mac-spec] Contents/MacOS/bin symlinks: %s' % ', '.join(sorted(os.listdir(_macos_bin))))
     # Re-seal the outer bundle signature over the replaced nested code.
     _subprocess.run(['codesign', '--force', '--sign', '-', _app_path], check=True)
