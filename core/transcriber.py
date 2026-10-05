@@ -49,6 +49,9 @@ from .writers import get_binary_writer, get_writer, is_binary, supported_formats
 # dialogue) still checkpoint at a steady wall-clock rate.
 _CHECKPOINT_EVERY_N_SEGMENTS = 10
 _CHECKPOINT_EVERY_N_SECONDS = 20.0
+# After this many consecutive failed checkpoint writes the periodic writer
+# stops for the rest of the run (final outputs and history still save).
+_CHECKPOINT_MAX_CONSECUTIVE_FAILURES = 3
 
 # faster-whisper accepts ISO-639-1 (+ a few special) codes only — never a
 # BCP-47 region tag like "en-US" / "pt-BR". Passing one makes transcribe()
@@ -722,12 +725,20 @@ def _write_periodic_checkpoint(
     detected_language: str,
     language_probability: float,
     log_cb: Callable[[str], None] | None,
+    *,
+    periodic: bool = False,
 ) -> None:
     """Persist a partial checkpoint; never raises — logs and moves on.
 
     The periodic writer must not interrupt transcription on any error:
     a full disk or a permissions glitch should not kill a 2-hour run.
+    ``periodic=True`` (the in-loop timer) is skipped once
+    ``_CHECKPOINT_MAX_CONSECUTIVE_FAILURES`` writes in a row have failed, so
+    a permanently stuck target does not stall every few segments; the
+    cancel and final writes still try.
     """
+    if periodic and task.checkpoint_failures >= _CHECKPOINT_MAX_CONSECUTIVE_FAILURES:
+        return
     backend, model_name = _current_backend_and_model()
     try:
         _checkpoint.write_checkpoint(
@@ -741,9 +752,18 @@ def _write_periodic_checkpoint(
             segments=segments_data,
             checkpoint_time=time.time(),
         )
+        task.checkpoint_failures = 0
     except Exception as e:  # noqa: BLE001
+        task.checkpoint_failures += 1
         logger.warning("Periodic checkpoint write failed: %s", e)
         log(f"WARN: could not write partial checkpoint: {e}", log_cb)
+        if task.checkpoint_failures == _CHECKPOINT_MAX_CONSECUTIVE_FAILURES:
+            log(
+                "WARN: partial checkpoints disabled for this run after "
+                f"{task.checkpoint_failures} consecutive failures; "
+                "the final outputs are still saved.",
+                log_cb,
+            )
 
 
 def has_resumable_checkpoint(source_path: str) -> bool:
@@ -2095,6 +2115,7 @@ def transcribe(
                         detected_lang_so_far,
                         lang_prob_so_far,
                         log_cb,
+                        periodic=True,
                     )
                     last_checkpoint_time = now
                     segments_since_checkpoint = 0

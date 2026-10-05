@@ -37,7 +37,10 @@ SCHEMA_VERSION = 1
 
 # How long write_checkpoint keeps retrying a PermissionError at the final
 # os.replace (a concurrent writer for the same source holds the target).
-_REPLACE_RETRY_SECONDS = 5.0
+# Kept short: a target that stays locked or read-only fails every periodic
+# write the same way, so each failed write must stall the transcribe loop
+# only briefly (the caller also stops periodic writes after repeated failures).
+_REPLACE_RETRY_SECONDS = 1.0
 
 # Keys from the runtime ``config`` dict that materially affect what
 # Whisper produces. A change in any of these between checkpoint write
@@ -176,6 +179,7 @@ def write_checkpoint(
         dir=str(path.parent), prefix=path.name + ".", suffix=".tmp"
     )
     tmp = Path(tmp_name)
+    replaced = False
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
             json.dump(payload, f, ensure_ascii=False)
@@ -195,18 +199,21 @@ def write_checkpoint(
         while True:
             try:
                 os.replace(tmp, path)
+                replaced = True
                 break
             except PermissionError:
                 if _time.monotonic() >= deadline:
                     raise
                 _time.sleep(delay)
                 delay = min(delay * 2, 0.1)
-    except OSError:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
+    finally:
+        # Any exception type (a TypeError from bad segment data, a
+        # KeyboardInterrupt) must leave no scratch file behind.
+        if not replaced:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
     return path
 
 

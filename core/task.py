@@ -39,6 +39,10 @@ class TranscriptionTask:
         # transcribe automatically if the partial is stale (different
         # source mtime, changed model/config, etc.).
         self.resume: bool = False
+        # Consecutive failed checkpoint writes in this run (reset by a
+        # success). Once it reaches core.transcriber's limit the periodic
+        # writer stops retrying for the rest of the run.
+        self.checkpoint_failures: int = 0
         # Set by the app when this task was auto-spawned from a finished
         # download. Holds the originating VideoDownloadTask so the
         # Download row can mirror "transcribing" + progress and flip back

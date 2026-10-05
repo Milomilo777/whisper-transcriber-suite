@@ -134,7 +134,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **A resume checkpoint is no longer lost when two writers race for the same source.**
   Writing it retried a locked target only five times (about 0.2 s); on a busy machine
-  that ran out and raised `PermissionError`. The retry is now bounded by time (5 s).
+  that ran out and raised `PermissionError`. The retry is now bounded by time (1 s).
+- **A stuck checkpoint file no longer slows a transcription.** A read-only or permanently
+  locked checkpoint target made every periodic write wait out the retry window. The window
+  is now 1 s, and after three failed writes in a row the periodic writer stops for that run
+  (cancel and final writes still try; outputs and history save as before). A write that fails
+  with any exception type now removes its scratch file.
 - **Long recordings with music no longer lose most of their speech.**
   faster-whisper ran the Silero VAD over the whole file in one pass, so after
   loud music its state could stay at "not speech" for minutes: on a 62-minute
