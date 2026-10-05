@@ -348,6 +348,7 @@ a = Analysis(
         'core.tiling',
         'core.voiceprint',
         'core.synthetic_audio',
+        'core.vad_window',
         # Opt-in backends (see the Windows specs' comment).
         'pywhispercpp',
         'pywhispercpp.model',

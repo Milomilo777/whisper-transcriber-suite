@@ -111,6 +111,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Long recordings with music no longer lose most of their speech.**
+  faster-whisper ran the Silero VAD over the whole file in one pass, so after
+  loud music its state could stay at "not speech" for minutes: on a 62-minute
+  lecture it kept 512 s of speech where a fresh state every 30 s finds
+  1,615 s, and the lost minutes came out as one-word segments. The VAD state
+  is now reset every 30 s (`vad_window_s`, `core.vad_window`).
 - **`gui.py transcribe --formats/--diarization` no longer change the app's
   saved settings**; they apply to that run only. `--model` is still saved, as
   its help says.

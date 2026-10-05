@@ -22,6 +22,7 @@ try:  # 1.0.3+ ships this; older wheels do not
 except ImportError:  # pragma: no cover
     BatchedInferencePipeline = None  # type: ignore[assignment]
 
+from .. import vad_window
 from ..config import load_config
 from ..model_manager import DownloadCancelled, ensure_model
 from .base import Backend, LanguageInfo
@@ -55,6 +56,12 @@ class FasterWhisperBackend(Backend):
         # ``_downgraded`` records that a fallback happened so the UI can warn.
         self._requested_device = "cpu"
         self._downgraded = False
+        # Long-file VAD window read from config at load time (see
+        # core.vad_window).
+        self._vad_window_s = vad_window.DEFAULT_WINDOW_S
+
+    def _read_safeguards(self, config: dict[str, Any]) -> None:
+        self._vad_window_s = vad_window.window_seconds(config)
 
     def is_ready(self) -> bool:
         return self._ready
@@ -159,6 +166,7 @@ class FasterWhisperBackend(Backend):
 
     def load_existing(self, status_cb: Callable[[str], None] | None = None) -> bool:
         config = load_config(fetch_online=False)  # worker path: local keys only
+        self._read_safeguards(config)
         self._device, self._compute_type = _detect_device(config)
         self._requested_device = self._device
         self._downgraded = False
@@ -192,6 +200,7 @@ class FasterWhisperBackend(Backend):
         cancel_event: threading.Event | None = None,
     ) -> bool:
         config = load_config(fetch_online=False)  # worker path: local keys only
+        self._read_safeguards(config)
         self._device, self._compute_type = _detect_device(config)
         self._requested_device = self._device
         self._downgraded = False
@@ -271,7 +280,8 @@ class FasterWhisperBackend(Backend):
         if self._pipeline is not None:
             transcribe_kwargs["batch_size"] = int(batch_size)
 
-        segments_iter, info = runner.transcribe(audio_path, **transcribe_kwargs)
+        with vad_window.windowed_vad(self._vad_window_s):
+            segments_iter, info = runner.transcribe(audio_path, **transcribe_kwargs)
 
         lang_info = LanguageInfo(
             language=str(getattr(info, "language", "") or ""),

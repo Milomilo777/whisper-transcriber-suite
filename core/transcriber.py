@@ -34,6 +34,7 @@ except ImportError:  # pragma: no cover
     BatchedInferencePipeline = None  # type: ignore[assignment]
 
 from . import _checkpoint
+from . import vad_window as _vad_window
 from ._proc import new_session_kwargs
 from .config import load_config
 from .model_manager import DownloadCancelled, ensure_model
@@ -578,6 +579,11 @@ def _vad_parameters() -> dict[str, Any] | None:
         "threshold": float(config.get("vad_threshold", 0.5)),
         "speech_pad_ms": int(config.get("vad_speech_pad_ms", 400)),
     }
+
+
+def _vad_window_seconds() -> float:
+    """Fresh-VAD-state window from config (``vad_window_s``); 0 = one pass."""
+    return _vad_window.window_seconds(config)
 
 
 def _segment_to_dict(seg: Any, want_words: bool) -> dict[str, Any]:
@@ -1912,7 +1918,10 @@ def transcribe(
         )
 
         try:
-            segments, info = runner.transcribe(audio_path, **transcribe_kwargs)
+            # faster-whisper runs the VAD inside transcribe(), before it
+            # returns the lazy iterator, so the window scope covers it.
+            with _vad_window.windowed_vad(_vad_window_seconds()):
+                segments, info = runner.transcribe(audio_path, **transcribe_kwargs)
         except BaseException:
             # If the backend fails before returning its lazy segment iterator,
             # the temporary inputs are still ours to clean up immediately.
@@ -2649,9 +2658,10 @@ def resume_transcription(
             if PIPELINE is not None:
                 transcribe_kwargs["batch_size"] = int(config.get("batch_size", 16))
 
-            new_segments_iter, info = runner.transcribe(
-                transcribe_slice, **transcribe_kwargs
-            )
+            with _vad_window.windowed_vad(_vad_window_seconds()):
+                new_segments_iter, info = runner.transcribe(
+                    transcribe_slice, **transcribe_kwargs
+                )
 
             # Offset each new segment back into the original timeline
             # before merging with the prior segments. The slice starts

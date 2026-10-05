@@ -91,6 +91,9 @@ DEFAULT_CONFIG = {
     "vad_min_silence_ms": 500,
     "vad_threshold": 0.5,
     "vad_speech_pad_ms": 400,
+    # Fresh VAD state every N seconds on long files (core.vad_window);
+    # 0 = one pass over the whole file, the faster-whisper default.
+    "vad_window_s": 30,
     "word_timestamps": False,
     "output_formats": ["srt", "json"],
     "batch_size": 16,
