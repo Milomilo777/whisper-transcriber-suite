@@ -20,6 +20,7 @@ import os
 import subprocess
 import threading
 import time
+import dataclasses
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -1733,26 +1734,34 @@ def _clip_timestamps_arg(task: TranscriptionTask) -> str | None:
     return f"{start_s}"
 
 
+def _shifted_copy(obj: Any, offset: float, **changes: Any) -> Any:
+    """Copy of a segment or word with ``start``/``end`` moved by *offset*."""
+    start = obj.start + offset
+    end = obj.end + offset
+    if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
+        return dataclasses.replace(obj, start=start, end=end, **changes)
+    replace: Any = getattr(obj, "_replace")  # NamedTuple (faster-whisper < 1.1)
+    return replace(start=start, end=end, **changes)
+
+
 def _shift_segments(segments: Any, offset: float) -> Any:
     """Yield faster-whisper segments shifted by ``+offset`` seconds.
 
     Used by the time-range path: we transcribe a PRE-SLICED span (whose times
     start at 0) and shift the results back onto the ORIGINAL file timeline by
-    ``clip_start``. faster_whisper segments are NamedTuples, so we ``_replace``
-    start/end (and each word's start/end) without mutating the engine's objects.
+    ``clip_start``. Segments and words are copied with new start/end (and
+    each word's start/end) without mutating the engine's objects; they are
+    dataclasses since faster-whisper 1.1 and NamedTuples before it.
     """
     for s in segments:
         words = getattr(s, "words", None)
         if words:
             try:
-                words = [
-                    w._replace(start=w.start + offset, end=w.end + offset)
-                    for w in words
-                ]
+                words = [_shifted_copy(w, offset) for w in words]
             except Exception:  # noqa: BLE001 — best-effort word shift
                 pass
         try:
-            yield s._replace(start=s.start + offset, end=s.end + offset, words=words)
+            yield _shifted_copy(s, offset, words=words)
         except Exception:  # noqa: BLE001 — non-NamedTuple fallback
             try:
                 s.start = s.start + offset

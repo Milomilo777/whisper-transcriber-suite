@@ -111,6 +111,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Word times of a Transcribe-tab time range were not moved onto the file's
+  timeline** with faster-whisper 1.1+ (its segments became dataclasses), so
+  words of a range starting at 100 s were stamped from 0 s.
 - **Turning usage stats off now sticks.** The Advanced dialog's choice was
   stripped from `config.json` on every save, so stats came back on at the
   next start. An OFF choice is now saved and kept; the online app config can
