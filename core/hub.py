@@ -92,41 +92,11 @@ def resolve_app_dir() -> Path:
 
 
 # Marker file the Standard installer drops into the {app} directory
-# unless the user ticks "Install the Video Tiling (video wall) feature"
-# at install time (opt-in, off by default since 2026-08-15). Its mere
-# presence disables the in-app Video Tiling tab; it is never written by
-# the app itself. In a source / dev checkout the repo root won't contain
-# it, so tiling stays on for developers.
-NO_TILING_MARKER = "no_tiling.flag"
-
-
-def tiling_tab_enabled() -> bool:
-    """Whether the Video Tiling tab should be shown.
-
-    Returns ``True`` unless a ``no_tiling.flag`` marker file sits in the
-    install ``{app}`` directory (see :func:`resolve_app_dir`). The installer
-    creates that marker unless the user opts in to the "Video Tiling"
-    task (excluded by default since 2026-08-15).
-
-    Any filesystem error is swallowed and treated as "enabled" so a quirky
-    path / permission problem can never block app startup — the feature
-    simply stays on, which is the safe default.
-    """
-    try:
-        return not (resolve_app_dir() / NO_TILING_MARKER).exists()
-    except OSError:
-        return True
-
-
-
-# Marker file the Standard installer drops into the {app} directory
 # unless the user ticks "Install the Clone Your Voice / Text to Voice
 # feature" at install time (opt-in, off by default). Its mere presence
 # disables the in-app Clone Your Voice tab; it is never written by the
 # app itself. In a source / dev checkout the repo root won't contain
-# it, so the tab stays on for developers. Independent of
-# NO_TILING_MARKER above — the two features are unrelated and toggled
-# separately.
+# it, so the tab stays on for developers.
 NO_VOICE_CLONE_MARKER = "no_voice_clone.flag"
 
 
@@ -143,8 +113,7 @@ def voice_clone_tab_enabled() -> bool:
 
     Any filesystem error is swallowed and treated as "enabled" so a quirky
     path / permission problem can never block app startup — the feature
-    simply stays on, which is the safe default (mirrors
-    :func:`tiling_tab_enabled`).
+    simply stays on, which is the safe default.
     """
     try:
         return not (resolve_app_dir() / NO_VOICE_CLONE_MARKER).exists()

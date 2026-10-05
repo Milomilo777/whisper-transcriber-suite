@@ -3,8 +3,8 @@
 `configuration.json` at the repo root is the **master copy of the online
 app config** — the maintainer uploads it to `config_url`
 (`https://smch.ir/whisper/app_config.json`). It contains only the
-`ONLINE_ALLOWED_KEYS` keys (`model_catalog`, `stats_url`, `latest_version`,
-`ffplay_downloads`) and is fetched/merged as described below. It is NOT
+`ONLINE_ALLOWED_KEYS` keys (`model_catalog`, `stats_url`, `latest_version`)
+and is fetched/merged as described below. It is NOT
 read by the app directly from the repo — it must be uploaded to `config_url`
 for the online layer to pick it up.
 
@@ -17,7 +17,7 @@ The file is read once at startup and written when the user changes a persisted s
 The effective config is merged from **three layers**, in priority order:
 
 1. **Local `config.json`** — the user's file (described above). **Highest priority.** A local override file is the place for expert / per-machine overrides; it may set ANY key, including the local-only ones the online layer is forbidden from touching (paths, API keys, credentials, the model hub folder, user preferences).
-2. **Online app config** — a JSON the maintainer hosts at `config_url`, fetched on startup. It lets **app-level** settings change **without redistributing the program** (the model catalog, the telemetry-stats endpoint, the latest version, the ffplay download links). It is restricted to a **safe allowlist** (`stats_url`, `latest_version`, `ffplay_downloads`, `model_catalog`) — it can **never** override user-private / local-only keys.
+2. **Online app config** — a JSON the maintainer hosts at `config_url`, fetched on startup. It lets **app-level** settings change **without redistributing the program** (the model catalog, the telemetry-stats endpoint, the latest version). It is restricted to a **safe allowlist** (`stats_url`, `latest_version`, `model_catalog`) — it can **never** override user-private / local-only keys.
 3. **Hard-coded `DEFAULT_CONFIG`** — the in-code baseline. **Lowest priority.**
 
 A key missing from a higher-priority layer falls through to the next. Dict-valued keys (e.g. `model`, `model_catalog`) are deep-merged, so a partial override keeps the sibling keys from the lower layer.
@@ -32,7 +32,6 @@ The merge itself is pure and testable: `core.config.merge_config_sources(hardcod
 | `model_catalog` | object | `{}` | Online/local-supplied catalog of selectable models, same shape as `core.model_manager.MODEL_REGISTRY` (`slug → {label, name, url, md5, hf_repo, approx_size_gb, info}`). `url`/`md5` may be `""` for a model with no smch.ir mirror — `ensure_model` then downloads straight from `hf_repo`. Overlaid on the built-in catalog so new models can ship without an app update. **Allowlisted** for the online layer. |
 | `stats_url` | string | `https://smch.ir/stats/transcription_stats.php` | Usage-stats POST endpoint. The desktop app POSTs one row here per successfully finished transcription while `telemetry_opt_in` is true, which is the default — see **Usage statistics (P4-4)** below for every field. Empty or a non-http(s) URL = no POST. **Allowlisted** for the online layer so it can be set/changed remotely; like `config_url` it is not written to `config.json`. |
 | `latest_version` | string | `""` | Newest published version string (informational; complements the GitHub update check). **Allowlisted** for the online layer. |
-| `ffplay_downloads` | object | `{"windows": "<BtbN win64-gpl .zip>", "macos": "<evermeet ffplay .zip>", "linux": ""}` | Platform → ffplay download URL map for the Video-Tiling ffplay binary (not bundled). Each value is a DIRECT `ffplay[.exe]` URL **or** a `.zip` of a full ffmpeg build that contains it (the downloader extracts just ffplay; `.7z`/`.tar.*` are NOT supported). See **ffplay auto-download (P4-5)** below. **OWNER ACTION: verify/override these URLs via the online config** — third-party static-build URLs and their archive layouts rot. **Allowlisted** for the online layer. |
 
 ## Where things live (Phase 1.2)
 
@@ -59,10 +58,9 @@ Every outbound connection the app can make. Transcription with a local engine wo
 | Model check | When `core.model_manager.ensure_model` runs for one of the four mirror models above while it is already on disk — when the Web / LAN server starts (`gui.py serve` or the **Web / LAN access** tab), and in the model dialog shown after an installed model failed to load. A normal desktop, CLI or Live transcription loads an on-disk model without this check. | The model's `.md5` manifest on `smch.ir` | A plain GET; the local files are hashed and compared with it. If a file is missing or differs, the model folder is deleted and the whole model downloads again (row above). | No switch. A failed request is ignored and the model is used as-is. |
 | Other models | First use of the feature: whisper.cpp engine, local AI Layer model, Kokoro text-to-voice, OmniVoice voice cloning, NVIDIA Parakeet, stable-ts word alignment, Demucs vocal separation | `huggingface.co` (whisper.cpp `ggml` model, Qwen2.5 GGUF, OmniVoice and Parakeet weights); `github.com` release assets (Kokoro); `openaipublic.azureedge.net` (the OpenAI Whisper checkpoint stable-ts aligns with); Demucs fetches its own weights | GETs | Only runs while that model is missing. |
 | Optional components | First use of a feature whose Python packages are not bundled (`core.optional_deps.FEATURES`). stable-ts alignment asks first; the NVIDIA Parakeet and Google Cloud engines install when a job starts with them selected (Google Cloud also from its connection test in the Advanced dialog, see **Cloud engines**); voice cloning installs on its first use; the CUDA runtime from the Hardware wizard's button | PyPI (`pypi.org`, `files.pythonhosted.org`) via `pip install` | Standard pip requests | Do not select those engines or features; nothing installs while they stay unused. |
-| Video downloads, captions, Video Tiling | When the user downloads a URL, fetches its captions or starts a stream | The site of the URL and its media servers (YouTube: `www.youtube.com` plus `*.googlevideo.com`), or any other site yt-dlp supports | yt-dlp's requests to that site; a link pasted in **Download Videos** is looked up at once (formats, title, captions) | User action. |
-| yt-dlp self-update | Before a download when `auto_update_yt_dlp` is `true` (default `false`), at most once every 24 h and only when the yt-dlp folder is writable; and *automatic* in Video Tiling: the self-heal after repeated stream failures while `tiling_auto_restart` is on (the default). Both are skipped in PyInstaller builds (the macOS app); the Windows installer and Portable builds run them. | yt-dlp's release channel on `github.com`, or PyPI for a pip-installed yt-dlp | GETs | `auto_update_yt_dlp: false` (default); `tiling_auto_restart: false`. |
+| Video downloads, captions | When the user downloads a URL or fetches its captions | The site of the URL and its media servers (YouTube: `www.youtube.com` plus `*.googlevideo.com`), or any other site yt-dlp supports | yt-dlp's requests to that site; a link pasted in **Download Videos** is looked up at once (formats, title, captions) | User action. |
+| yt-dlp self-update | Before a download when `auto_update_yt_dlp` is `true` (default `false`), at most once every 24 h and only when the yt-dlp folder is writable. It is skipped in PyInstaller builds (the macOS app); the Windows installer and Portable builds run it. | yt-dlp's release channel on `github.com`, or PyPI for a pip-installed yt-dlp | GETs | `auto_update_yt_dlp: false` (default). |
 | YouTube JavaScript helper (Deno) | When the user clicks **Install YouTube helper** (shown for a YouTube link when no Deno is found) | `https://github.com/denoland/deno/releases/latest/download/` (archive + `.sha256sum`) | GETs | User action. |
-| ffplay | When the user clicks **Download ffplay** on the Video Tiling tab | `ffplay_downloads[<platform>]` (defaults: a BtbN FFmpeg build on `github.com`, `evermeet.cx` on macOS) | A GET | User action. |
 | SMTV integration | When the user opens the SMTV tab (it loads the listing and thumbnails) or downloads from it | `suprememastertv.com` and its video CDN | GETs | User action. |
 | Cloud engines | A job started with a cloud engine selected in **Advanced → Backend**, and the Gemini **Test key** button. The Google Cloud connection test (it also runs by itself when the Advanced dialog opens with that engine selected and a key file set) only reads the key file and builds the client; its one network use is the library install under **Optional components** | Gemini: `generativelanguage.googleapis.com`. Google Cloud Speech-to-Text: `speech.googleapis.com` (or `<region>-speech.googleapis.com`), `oauth2.googleapis.com` for the service-account sign-in, plus Cloud Storage in batch mode | Jobs: **the audio**. Every request: the API key / service-account credentials | Pick a local engine (the default). |
 | Remote AI provider | Only when the AI Layer is on (`ai_enabled`) and `llm_provider` is `remote` | `llm_remote_base_url` (default `https://api.openai.com/v1`) | **Transcript text** in the prompt, with `llm_remote_api_key` | Keep `llm_provider: "local"` (the default) or leave the AI Layer off (the default). |
@@ -164,27 +162,11 @@ To add a model from the **online** config (no app update), put it under `model_c
 
 A malformed catalog entry (missing/empty `name`, or with no `url` AND no `hf_repo`, or not a dict) is skipped so a bad online payload never breaks the picker — the built-ins always survive.
 
-### Video Tiling
+### Keys of removed features
 
-Persisted choices for the Video Tiling tab (the `core.tiling.TilingController`
-video-wall engine). All are remembered between launches.
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `tiling_quality` | string | `"Auto"` | yt-dlp quality band: `Auto` / `1080p` / `720p` / `480p` / `360p` / `240p` / `144p`. `Auto` lowers resolution as the grid gets denser (a dense grid needs far less than 1080p). Always ends in `/best` so playback never fails on a missing resolution. |
-| `tiling_mute` | bool | `false` | Mute audio. In a multi-monitor wall only the first window keeps audio anyway (to avoid echo); this mutes that one too. |
-| `tiling_multi_monitor` | bool | `false` | Fan the one download out to one `ffplay` window per selected monitor (a multi-screen wall) instead of a single full-screen window. |
-| `tiling_selected_monitors` | array of int | `[]` | Spatial monitor indices (from `core.monitors`, `0` = left-most) ticked in the **Monitors…** chooser. Empty = all monitors when multi-monitor is on, or the primary when off. Stale indices (a monitor that has been unplugged) are ignored at start. |
-| `tiling_auto_restart` | bool | `true` | Reconnect automatically with exponential backoff (3s→30s) when the stream drops; after repeated quick failures the engine self-heals by updating yt-dlp. Off = a drop just stops. |
-
-#### ffplay auto-download (P4-5)
-
-ffplay is **not bundled** (only ffmpeg / ffprobe / yt-dlp are). When ffplay is missing, the Video Tiling tab behaves as follows:
-
-- If `ffplay_downloads[<platform>]` is set, it shows a **Download ffplay** button. Clicking it runs `core.tiling.download_ffplay()` on a daemon thread, fetching the URL into the app's `bin/` dir. The URL may be a direct `ffplay[.exe]` binary, or a `.zip` of a full ffmpeg build — in which case `core.tiling.extract_ffplay_from_zip()` pulls out just `ffplay[.exe]`. `.7z` / `.tar.*` are rejected (stdlib `zipfile` only).
-- If no URL is configured, it keeps the original "put ffplay in the bin folder / install ffmpeg on PATH" guidance.
-
-The pure seams are `select_ffplay_url(downloads, platform_key)` and `extract_ffplay_from_zip(zip_path, dest_dir)`. **Owner: verify the default `ffplay_downloads` URLs (Windows BtbN, macOS evermeet) and override them via the online config — those third-party builds and their archive layouts change over time.**
+`tiling_*` (the Video Tiling tab and engine) and `ffplay_downloads` came from earlier versions.
+A settings file that still holds them loads normally; the next save drops them
+(`core.config._NON_PERSISTED_KEYS`).
 
 ### Cloud Speech-to-Text (optional, Google Gemini API)
 

@@ -284,17 +284,6 @@ DEFAULT_CONFIG = {
     # with an existing config; new installs derive ``model_path`` from
     # ``hub_folder + model.name``.
     "hub_folder": "",
-    # Video Tiling tab — persisted UI choices for the tiling engine
-    # (core.tiling.TilingController). quality is a band from
-    # core.tiling.QUALITY_CHOICES ("Auto"/"1080p"/…/"144p"); multi_monitor
-    # fans the one download out to one ffplay per selected monitor; the
-    # selected list holds spatial monitor indices from core.monitors
-    # (0 = left-most); auto_restart reconnects with backoff on a drop.
-    "tiling_quality": "Auto",
-    "tiling_mute": False,
-    "tiling_multi_monitor": False,
-    "tiling_selected_monitors": [],
-    "tiling_auto_restart": True,
     # Clone Your Voice / Text to Voice tab — independent of every setting
     # above. The tab saves its engine / mode / Kokoro voice here. Consent
     # is a per-voice tick on the tab, never stored: a ``consent_accepted``
@@ -353,7 +342,7 @@ DEFAULT_CONFIG = {
     # --- Three-level config: ONLINE layer (P4-1) -------------------------
     # URL of an app-level JSON config the maintainer hosts, fetched on
     # startup so APP-LEVEL settings (model catalog, stats endpoint, latest
-    # version, ffplay download links) can change WITHOUT redistributing the
+    # version) can change WITHOUT redistributing the
     # program. The fetch is best-effort: a short timeout, a cached copy
     # under user_cache_dir(), and a fall-through to the hard-coded defaults
     # when offline — it NEVER blocks or crashes startup.
@@ -375,38 +364,10 @@ DEFAULT_CONFIG = {
     # endpoint, defaulted to the project's smch.ir collector so stats work
     # out of the box (a no-op whenever ``telemetry_opt_in`` is off — see
     # core.stats.post_stats_async); ``latest_version`` is the
-    # newest published version string; ``ffplay_downloads`` maps a platform
-    # key ("windows"/"macos"/...) to a download URL for the Video-Tiling
-    # ffplay binary (which is NOT bundled). All three are SAFE for the online
-    # layer to control.
+    # newest published version string. Both are SAFE for the online layer to
+    # control.
     "stats_url": "https://smch.ir/stats/transcription_stats.php",
     "latest_version": "",
-    # ffplay (Video Tiling) is NOT bundled. When it's missing, the app can
-    # auto-download it from the platform's URL here (see
-    # core.tiling.download_ffplay). The value maps a platform key
-    # ("windows"/"macos"/"linux") to either a DIRECT ffplay[.exe] URL or a
-    # .zip of a full ffmpeg build that CONTAINS ffplay[.exe] (the helper
-    # extracts just ffplay).
-    #
-    # OWNER ACTION — VERIFY / OVERRIDE THESE VIA THE ONLINE CONFIG. The
-    # defaults below point at well-known public static-ffmpeg builds, but
-    # third-party URLs rot and their archive layout can change. Confirm they
-    # still resolve to an ffmpeg build that includes ffplay, then host the
-    # canonical values in the online app config (config_url) so they can be
-    # corrected without an app update.
-    #
-    # The download helper only handles a direct ffplay[.exe] URL or a .ZIP
-    # that contains it (stdlib zipfile) — NOT .7z / .tar.xz. The Windows
-    # default below is a BtbN full build shipped as a .zip (contains
-    # bin/ffplay.exe); macOS evermeet.cx serves a per-binary ffplay .zip.
-    "ffplay_downloads": {
-        "windows": (
-            "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/"
-            "ffmpeg-master-latest-win64-gpl.zip"
-        ),
-        "macos": "https://evermeet.cx/ffmpeg/getrelease/ffplay/zip",
-        "linux": "",
-    },
 }
 
 
@@ -448,7 +409,6 @@ ONLINE_ALLOWED_KEYS: frozenset[str] = frozenset({
     "model_catalog",
     "stats_url",
     "latest_version",
-    "ffplay_downloads",
 })
 
 
@@ -831,7 +791,7 @@ def _merge_with_defaults(loaded: dict[str, Any]) -> dict[str, Any]:
 # DEFAULT_CONFIG`` (a key missing from a higher-priority source falls through
 # to the next). The online layer is restricted to ``ONLINE_ALLOWED_KEYS`` so
 # it can change APP-LEVEL settings (model catalog, stats endpoint, latest
-# version, ffplay links) WITHOUT touching user-private / local-only keys
+# version) WITHOUT touching user-private / local-only keys
 # (paths, API keys, hub folder, credentials, user preferences). The merge is
 # PURE/testable (the three dicts are injected); fetching the online layer is a
 # separate, best-effort helper that caches its last good result and never
@@ -1230,14 +1190,21 @@ def _persistable_download_folder(config: dict[str, Any]) -> str:
 #: App-level keys that must never be written to the user's config.json. They
 #: are re-derived from DEFAULT_CONFIG / the online config fetch on every load.
 #: Stripped on every save, including from a config.json that already has them
-#: from before this rule existed. telemetry_opt_in is NOT listed: it is the
-#: user's own choice and is persisted when it departs from the default (see
-#: save_config).
+#: from before this rule existed. Keys of removed features (Video Tiling and its
+#: ffplay download links) are listed too, so old config files lose them.
+#: telemetry_opt_in is NOT listed: it is the user's own choice and is persisted
+#: when it departs from the default (see save_config).
 _NON_PERSISTED_KEYS: frozenset[str] = frozenset({
     "config_url",
     "stats_url",
     "ffplay_downloads",
     "latest_version",
+    "tiling_quality",
+    "tiling_mute",
+    "tiling_multi_monitor",
+    "tiling_selected_monitors",
+    "tiling_auto_restart",
+    "tiling_divisions",
 })
 
 

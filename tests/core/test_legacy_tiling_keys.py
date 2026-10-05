@@ -62,6 +62,26 @@ def test_old_config_with_tiling_keys_loads(isolated_dirs, tiling_keys):
     assert loaded["parallel_workers"] == 3
 
 
+def test_old_tiling_keys_are_dropped_on_the_next_save(isolated_dirs):
+    """The tiling engine and its ffplay download links are gone: the next save
+    removes their keys from config.json and keeps every other setting."""
+    stale = {
+        "theme": "light", "parallel_workers": 3,
+        "tiling_quality": "720p", "tiling_mute": True, "tiling_multi_monitor": True,
+        "tiling_selected_monitors": [0, 1], "tiling_auto_restart": False,
+        "tiling_divisions": 5,
+        "ffplay_downloads": {"windows": "https://example.com/ffplay.zip"},
+    }
+    (isolated_dirs / "config.json").write_text(json.dumps(stale), encoding="utf-8")
+    cfg.save_config(cfg.load_config(fetch_online=False))
+    on_disk = json.loads((isolated_dirs / "config.json").read_text(encoding="utf-8"))
+    assert not [k for k in on_disk if k.startswith("tiling_") or k == "ffplay_downloads"]
+    assert on_disk["theme"] == "light" and on_disk["parallel_workers"] == 3
+    assert "ffplay_downloads" not in cfg.DEFAULT_CONFIG
+    assert "ffplay_downloads" not in cfg.ONLINE_ALLOWED_KEYS
+    assert not [k for k in cfg.DEFAULT_CONFIG if k.startswith("tiling_")]
+
+
 @pytest.fixture
 def app_mod():
     if "faster_whisper" not in sys.modules:

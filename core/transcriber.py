@@ -118,7 +118,7 @@ logger = logging.getLogger(__name__)
 # Skip the online-config fetch on this import-time read: transcriber.py is
 # imported inside the hot worker subprocess where a network stall on spawn is
 # harmful, and none of the online app-level keys (model catalog / stats /
-# ffplay links) are needed here. The parent App passes the effective config
+# latest version) are needed here. The parent App passes the effective config
 # (already online-merged) per task; this module-global is only the bootstrap
 # snapshot. See core.config.load_config(fetch_online=...).
 config = load_config(fetch_online=False)

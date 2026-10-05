@@ -198,7 +198,6 @@ a = Analysis(
         'core.live',
         'core.live_model',
         'core.separator',
-        'core.tiling',
         'core.voiceprint',
         'core.voice_clone',
         'core.voice_clone_worker',
@@ -224,7 +223,6 @@ a = Analysis(
         'core.hub',
         'core.logging_setup',
         'core.model_manager',
-        'core.monitors',
         'core.paths',
         'core.stats',
         'core.task',
@@ -261,11 +259,6 @@ a = Analysis(
         'docx',
         'reportlab',
         'sherpa_onnx',
-        # Optional multi-monitor detection for Video Tiling. Lazy-imported in
-        # core.monitors with a ctypes Win32 fallback, so PyInstaller can't see
-        # it via static analysis — list it so the frozen build keeps the
-        # screeninfo path. Its absence only disables that one detection path.
-        'screeninfo',
     ],
     hookspath=[],
     runtime_hooks=[],

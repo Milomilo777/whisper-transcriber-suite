@@ -16,7 +16,6 @@
 #   * put SELF-CONTAINED mac ffmpeg/ffprobe/ffplay + yt-dlp in ./bin — NOT the
 #     .exe ones and NOT Homebrew's (dylib-dependent) ffmpeg. Run
 #     platform/macos/pyinstaller/fetch_mac_binaries.sh to fetch + verify them.
-#     ffplay is what makes the Video Tiling tab work out of the box.
 #   * optional: assets/whisper.icns for the Dock icon.
 #
 # The app's core.paths.resource_base() returns sys._MEIPASS inside the frozen
@@ -345,7 +344,6 @@ a = Analysis(
         'core.denoise',
         'core.live',
         'core.separator',
-        'core.tiling',
         'core.voiceprint',
         'core.synthetic_audio',
         'core.vad_window',
@@ -368,7 +366,6 @@ a = Analysis(
         'core.hub',
         'core.logging_setup',
         'core.model_manager',
-        'core.monitors',
         'core.paths',
         'core.stats',
         'core.task',
@@ -403,12 +400,6 @@ a = Analysis(
         'docx',
         'reportlab',
         'sherpa_onnx',
-        # Optional multi-monitor detection for Video Tiling. Lazy-imported in
-        # core.monitors; on macOS this is the PREFERRED path (the ctypes Win32
-        # fallback is a no-op off Windows), so list it so the frozen .app keeps
-        # working multi-monitor detection. Its absence only degrades to a
-        # single-monitor fallback.
-        'screeninfo',
         # (No pystray entry: app/widgets/tray.py deliberately disables the
         # tray on macOS because pystray's AppKit loop needs the main thread
         # that Tk owns — "Tray icon unavailable" in the log is expected.)

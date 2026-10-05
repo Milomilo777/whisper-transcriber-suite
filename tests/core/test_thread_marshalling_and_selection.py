@@ -8,10 +8,9 @@ one, and the logic under test is pure orchestration):
          every-500ms delete()+re-insert() rebuild, otherwise the per-task
          action bar disables itself ~0.5s after a click. Covered via the pure
          _iids_for_tasks helper AND a fake-tree refresh round-trip.
-  BUG B  the tiling LOG callback must be marshalled onto the Tk main thread
-         (the engine calls it from a daemon worker), and the tiling STATUS
-         callback must apply the engine's state COLOUR, not discard it.
   BUG C  App.log_threadsafe must marshal the write onto the Tk main thread.
+
+(BUG B covered the Video Tiling callbacks; its tests went with that feature.)
 """
 from __future__ import annotations
 

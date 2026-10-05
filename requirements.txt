@@ -76,13 +76,6 @@ PyAudioWPatch>=0.2.12.6; sys_platform == "win32"
 # itself.
 psutil>=5.9
 
-# Multi-monitor detection for the Video Tiling video-wall. This is the
-# PREFERRED detection path, but the import is LAZY/optional: core.monitors
-# falls back to a stdlib ctypes Win32 EnumDisplayMonitors enumeration (and
-# then a single 1920x1080 monitor) when screeninfo is absent or raises, so
-# its absence only disables that one path — never crashes the app.
-screeninfo>=0.8
-
 # Alt backend: pywhispercpp (quantised ggml). Optional but pinned
 # here so `pip install -r requirements.txt` gets the same shape
 # the installers ship with.

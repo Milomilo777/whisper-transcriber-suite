@@ -32,35 +32,6 @@ def test_resolve_app_dir_frozen_returns_exe_dir(monkeypatch, tmp_path):
     assert hub.resolve_app_dir() == tmp_path
 
 
-# ---------- tiling_tab_enabled ------------------------------------------------
-
-
-def test_tiling_tab_enabled_when_no_marker(monkeypatch, tmp_path):
-    """No no_tiling.flag in the app dir → Video Tiling is enabled (the
-    default; this is the dev / opted-in case)."""
-    monkeypatch.setattr(hub, "resolve_app_dir", lambda: tmp_path)
-    assert (tmp_path / hub.NO_TILING_MARKER).exists() is False
-    assert hub.tiling_tab_enabled() is True
-
-
-def test_tiling_tab_disabled_when_marker_present(monkeypatch, tmp_path):
-    """A no_tiling.flag marker in the app dir (installer opt-out) →
-    Video Tiling is disabled / the tab is hidden."""
-    (tmp_path / hub.NO_TILING_MARKER).write_text("", encoding="utf-8")
-    monkeypatch.setattr(hub, "resolve_app_dir", lambda: tmp_path)
-    assert hub.tiling_tab_enabled() is False
-
-
-def test_tiling_tab_enabled_defaults_on_filesystem_error(monkeypatch):
-    """A filesystem error while probing the marker must never block
-    startup — it defaults to enabled (the feature stays on)."""
-    def _boom() -> Path:
-        raise OSError("simulated FS failure")
-
-    monkeypatch.setattr(hub, "resolve_app_dir", _boom)
-    assert hub.tiling_tab_enabled() is True
-
-
 # ---------- voice_clone_tab_enabled --------------------------------------------
 
 
@@ -90,11 +61,11 @@ def test_voice_clone_tab_enabled_defaults_on_filesystem_error(monkeypatch):
     assert hub.voice_clone_tab_enabled() is True
 
 
-def test_voice_clone_marker_independent_of_tiling_marker(monkeypatch, tmp_path):
-    """The two opt-in features must not affect each other."""
-    (tmp_path / hub.NO_TILING_MARKER).write_text("", encoding="utf-8")
+def test_voice_clone_tab_ignores_a_leftover_tiling_marker(monkeypatch, tmp_path):
+    """An older install's no_tiling.flag (Video Tiling is gone) must not hide
+    the Clone Your Voice tab."""
+    (tmp_path / "no_tiling.flag").write_text("", encoding="utf-8")
     monkeypatch.setattr(hub, "resolve_app_dir", lambda: tmp_path)
-    assert hub.tiling_tab_enabled() is False
     assert hub.voice_clone_tab_enabled() is True
 
 

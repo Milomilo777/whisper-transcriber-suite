@@ -12,7 +12,7 @@ This module:
 * finds a Deno the app can hand to yt-dlp -- one bundled next to yt-dlp in
   ``bin/``, one this app installed into the user cache, or one on PATH;
 * builds the matching ``--js-runtimes deno:<path>`` arguments, added to every
-  yt-dlp call (download, format lookup, subtitles, web server, Video Tiling);
+  yt-dlp call (download, format lookup, subtitles, web server);
 * installs Deno on demand (one click in the Download tab): the official
   release zip from github.com/denoland/deno, verified against the SHA-256
   file published next to it, unpacked into the user cache (no admin rights).

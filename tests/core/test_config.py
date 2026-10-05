@@ -484,7 +484,7 @@ def test_tray_and_telemetry_wrong_type_coerced(isolated_dirs, monkeypatch):
 
 
 def test_save_config_strips_non_persisted_keys(isolated_dirs, monkeypatch):
-    # config_url / stats_url / ffplay_downloads / latest_version must never
+    # config_url / stats_url / latest_version must never
     # land in config.json — they are re-derived from DEFAULT_CONFIG or the
     # online config fetch on every load. (telemetry_opt_in left this set:
     # it is the user's choice and is persisted, see the stats-choice tests.)
