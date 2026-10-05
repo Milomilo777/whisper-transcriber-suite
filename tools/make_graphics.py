@@ -313,7 +313,6 @@ def build_features(path: str, w=1280, h=470):
         ("Transcribe", "Drag files in. Language auto-detect,\nspeaker labels, word timestamps,\ntime-range clipping."),
         ("Transcription Queue", "Batch jobs with live progress.\nPause, resume, cancel, re-run\nor remove any row."),
         ("Download Videos", "Any yt-dlp site. Pick a format,\nclip a range, grab subtitles,\nauto-transcribe when done."),
-        ("Video Tiling", "Play one live stream as an\nN\u00d7N video wall, optionally\nacross several monitors."),
         ("Web / LAN access", "One button turns the machine\ninto a transcription page for\nphones and PCs on your network."),
         ("Convert transcript", "Re-emit any existing transcript\ninto oTranscribe, ELAN,\nInqScribe or Express Scribe."),
     ]

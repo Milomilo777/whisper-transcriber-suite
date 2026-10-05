@@ -75,16 +75,7 @@ If a site needs a login, the queue shows the real error plus a hint to enable
 
 ---
 
-## 4. Video Tiling (optional)
-
-The **Video Tiling** tab plays one live stream as a full-screen N×N grid (a
-"video wall"). Paste a stream URL, pick the grid size, and click **Start
-tiling**. (This feature needs **ffplay**; if it's missing the tab tells you
-how to add it.)
-
----
-
-## 5. View & edit a transcript
+## 4. View & edit a transcript
 
 After a transcription, open the result to review it in the built-in viewer:
 click a segment to jump, edit text, remove filler words, and (if VLC is
@@ -92,7 +83,7 @@ installed) play the media with the words highlighting as it plays.
 
 ---
 
-## 6. Tips
+## 5. Tips
 
 - **Speed:** the default model is the most accurate but heaviest. For faster
   results pick a smaller/faster model in **Advanced settings**.

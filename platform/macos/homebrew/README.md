@@ -2,8 +2,7 @@
 
 The cleanest install **once the repo is public**: Homebrew installs are not
 quarantined (no Gatekeeper prompt), it pulls a native `python`, `python-tk`
-and `ffmpeg` (which includes `ffplay`, so **Video Tiling works out of the
-box**), and updates are just `brew upgrade`.
+and `ffmpeg`, and updates are just `brew upgrade`.
 
 > This repo is currently private, so the tap below can't be reached by
 > others yet. The formula is kept ready for when/if it's made public.

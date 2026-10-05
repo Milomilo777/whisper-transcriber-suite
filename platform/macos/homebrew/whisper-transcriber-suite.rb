@@ -17,13 +17,13 @@
 class WhisperTranscriberSuite < Formula
   include Language::Python::Virtualenv
 
-  desc "Offline Whisper transcription + yt-dlp/ffmpeg downloader & video tiling"
+  desc "Offline Whisper transcription + yt-dlp/ffmpeg downloader"
   homepage "https://github.com/Milomilo777/whisper-transcriber-suite"
   url "https://github.com/Milomilo777/whisper-transcriber-suite/archive/refs/tags/v1.3.6.tar.gz"
   sha256 "PUT_SHA256_OF_THE_TARBALL_HERE"
   license "BSD-3-Clause"
 
-  depends_on "ffmpeg" # provides ffmpeg, ffprobe AND ffplay (Video Tiling)
+  depends_on "ffmpeg" # provides ffmpeg and ffprobe
   depends_on "python@3.12"
   depends_on "python-tk@3.12" # Tk 8.6 for the desktop GUI
 
@@ -53,7 +53,6 @@ class WhisperTranscriberSuite < Formula
   test do
     # The CLI prints usage and exits cleanly with --help.
     assert_match "transcribe", shell_output("#{bin}/whisper-transcriber-suite --help")
-    # ffmpeg brings ffplay, which the Video Tiling tab needs.
-    assert_path_exists Formula["ffmpeg"].opt_bin/"ffplay"
+    assert_path_exists Formula["ffmpeg"].opt_bin/"ffmpeg"
   end
 end

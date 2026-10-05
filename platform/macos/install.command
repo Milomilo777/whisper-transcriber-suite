@@ -101,19 +101,15 @@ done
 python -m pip install --upgrade yt-dlp
 
 # ---- ffmpeg -------------------------------------------------------------
-# Always materialise ffmpeg/ffprobe/ffplay INTO bin/ (symlink), even when
+# Always materialise ffmpeg/ffprobe INTO bin/ (symlink), even when
 # they come from the system or Homebrew. The .app launcher sets
 # PATH="$REPO_ROOT/bin:$VENV/bin:$PATH", but a Finder/LaunchServices-launched
 # .app inherits only the minimal /usr/bin:/bin PATH — NOT /opt/homebrew/bin
 # or /usr/local/bin — so without the symlink core.paths.bundled_binary()
 # falls back to the bare "ffmpeg" name and the GUI worker can't find it.
-# ffplay (no .exe on macOS — core.paths.bundled_binary() drops the suffix off
-# Windows) is what the Video Tiling tab needs; brew's ffmpeg ships it, so we
-# link it too when present (it is missing from some minimal static builds —
-# the tab then shows its clear "add ffplay" message / Download ffplay button).
 link_ffmpeg_into_bin() {
   local f p
-  for f in ffmpeg ffprobe ffplay; do
+  for f in ffmpeg ffprobe; do
     p="$(command -v "$f" 2>/dev/null || true)"
     if [ -n "$p" ]; then
       ln -sf "$p" "$REPO_ROOT/bin/$f"
@@ -152,19 +148,6 @@ else
   fi
   [ "$ok" = 1 ] && say "installed static ffmpeg + ffprobe into bin/" || \
     warn "static ffmpeg fetch failed — install Homebrew then 'brew install ffmpeg'."
-  # ffplay too (separate evermeet zip) so Video Tiling works on this path.
-  # Best-effort + non-fatal: a missing ffplay only disables that one tab,
-  # and the app's "Download ffplay" button can fetch it later.
-  ffplay_ok=1
-  curl -fsSL "https://evermeet.cx/ffmpeg/getrelease/ffplay/zip" -o "$TMP/ffplay.zip" || ffplay_ok=0
-  if [ "$ffplay_ok" = 1 ]; then
-    (cd "$TMP" && unzip -oq ffplay.zip) || ffplay_ok=0
-    cp "$TMP/ffplay" "$REPO_ROOT/bin/" 2>/dev/null || ffplay_ok=0
-    chmod +x "$REPO_ROOT/bin/ffplay" 2>/dev/null || true
-    xattr -dr com.apple.quarantine "$REPO_ROOT/bin/ffplay" 2>/dev/null || true
-  fi
-  [ "$ffplay_ok" = 1 ] && say "installed static ffplay into bin/ (Video Tiling)" || \
-    warn "ffplay fetch failed — Video Tiling will offer a 'Download ffplay' button."
   rm -rf "$TMP"
 fi
 deactivate
@@ -226,7 +209,7 @@ say "Server / CLI: whisper-transcribe /path/to/media.mp4 --formats srt json"
 say "              (add ~/.local/bin to PATH in ~/.zshrc if 'whisper-transcribe' isn't found)"
 say "LAN / web   : \"$VENV/bin/python\" \"$REPO_ROOT/gui.py\" serve --lan"
 say "              (browser transcription/download over the local network)"
-say "Also in-app : Video Tiling video-wall, cloud STT backends (Gemini key /"
+say "Also in-app : cloud STT backends (Gemini key /"
 say "              Google Cloud service-account), SMTV transcription .docx"
 say "              export, and File > Convert transcript (SRT/VTT/TSV/JSON/TXT)."
 say "If macOS still blocks the app, see platform/macos/README.md or run:"

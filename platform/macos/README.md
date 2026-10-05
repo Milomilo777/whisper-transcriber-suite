@@ -38,8 +38,7 @@ bash platform/macos/install.command
 ```
 
 The installer makes a `.venv`, installs the deps from `requirements.txt`
-(which now includes `screeninfo` for the Video Tiling multi-monitor wall)
-plus `yt-dlp`, gets `ffmpeg`/`ffprobe`/`ffplay` (Homebrew if present, else a
+plus `yt-dlp`, gets `ffmpeg`/`ffprobe` (Homebrew if present, else a
 static build into `bin/`), and creates:
 - `~/Applications/Whisper Transcriber Suite.app` — a real double-clickable app bundle
   (no lingering Terminal window), built locally so it isn't quarantined;
@@ -47,18 +46,11 @@ static build into `bin/`), and creates:
   shell can't find it, add `~/.local/bin` to PATH in **`~/.zshrc`**
   (macOS uses zsh): `echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc`.
 
-`ffplay` is materialised into `bin/` alongside `ffmpeg`/`ffprobe` so the
-**Video Tiling** video-wall works out of the box (`core.paths.bundled_binary`
-drops the `.exe` suffix off Windows, so it resolves `bin/ffplay` on macOS). If
-a minimal static build omits it, the in-app tab offers a **Download ffplay**
-button instead.
-
 ## Features that work on this path
 
 All cross-platform, so they run on macOS the same as on Windows (the engine
 code is Tk-free stdlib + REST; the only OS-specific bits — `taskkill` vs
-`killpg`, the console-window flag, the Win32 monitor probe — are guarded and
-no-op off Windows):
+`killpg`, the console-window flag — are guarded and no-op off Windows):
 
 - **LAN / web server** — `gui.py serve --lan` (or the in-app Web/LAN tab)
   serves a browser UI for transcription + downloads over the local network.
@@ -100,15 +92,13 @@ whisper-transcribe /path/to/media.mp4 --formats srt json --language en
 ## Notes / what still needs a real Mac
 
 - The static-ffmpeg fallback (evermeet.cx) is **Intel x86_64** and runs
-  under Rosetta on Apple Silicon, and now fetches `ffplay` too (for Video
-  Tiling). The installer tries Homebrew first, which gives a native arm64
-  ffmpeg + ffplay — prefer that on M-series Macs.
+  under Rosetta on Apple Silicon. The installer tries Homebrew first, which
+  gives a native arm64 ffmpeg — prefer that on M-series Macs.
 - **Two install methods are kept** (pick either):
   1. **This script** (`bash platform/macos/install.command`) — works on a
      private repo, no Homebrew needed.
   2. **Homebrew** — the cleanest channel (no quarantine; native
-     python/ffmpeg, and brew's ffmpeg includes `ffplay` so Video Tiling
-     works out of the box; `brew upgrade` to update). The ready-to-publish
+     python/ffmpeg; `brew upgrade` to update). The ready-to-publish
      formula + instructions live in `platform/macos/homebrew/`. It needs
      the repo **public** (a tap can't reach a private repo), so it's staged
      for when/if that happens.

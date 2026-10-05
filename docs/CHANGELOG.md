@@ -52,12 +52,6 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
-- **Video Tiling tab removed from the app.** The tab, its About section
-  and the monitor chooser are gone, and the app no longer offers to download ffplay.
-  Settings files that still hold `tiling_*` keys load normally, and the next save
-  drops them. The tiling engine, its monitor detection and the `screeninfo`
-  dependency are removed as well.
-
 - **Voice cloning: a permission tick instead of the one-time warning dialog.**
   The Clone Your Voice tab always shows the rules (own voice or the speaker's
   clear permission; no impersonation, no misleading audio of real people), and
@@ -126,6 +120,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **macOS build: a Homebrew ffmpeg left in `bin/` stopped the build**
   ("Permission denied" while replacing it). `fetch_mac_binaries.sh` now
   replaces read-only files.
+
+### Removed
+
+- **Video Tiling is gone.** The tab, its About section, the monitor chooser, the
+  tiling engine, monitor detection and the `screeninfo` dependency are removed, and
+  the app no longer offers to download ffplay. The Windows installer no longer has
+  the task and removes the old marker file on upgrade; the tutorial, website and
+  macOS install notes no longer mention it. Settings files that still hold
+  `tiling_*` keys load normally, and the next save drops them.
 
 ### Fixed
 

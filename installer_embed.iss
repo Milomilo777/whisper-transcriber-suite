@@ -52,19 +52,10 @@ Name: "{commondesktop}\Whisper Transcriber Suite {#MyAppVersion}"; Filename: "{a
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Shortcuts:"
 Name: "shellext"; Description: "Add 'Transcribe with Whisper Transcriber Suite' to the Windows Explorer right-click menu"; GroupDescription: "Integration:"
-; Video Tiling (video wall) is OFF by default (owner request, 2026-08-15):
-; it's a niche multi-monitor live-stream grid most users never touch.
-; Leaving this task unticked drops a no_tiling.flag marker in {app}; the
-; app reads it at startup (core.hub.tiling_tab_enabled) and hides the
-; Video Tiling tab. Ticking the task installs the feature normally.
-Name: "tiling"; Description: "Install the Video Tiling (video wall) feature (advanced; most users don't need this)"; GroupDescription: "Optional features:"; Flags: unchecked
-; Clone Your Voice / Text to Voice is OFF by default, same reasoning as
-; Video Tiling above -- a niche, legally/ethically sensitive feature most
-; users never touch. Leaving this task unticked drops a
-; no_voice_clone.flag marker in {app}; the app reads it at startup
-; (core.hub.voice_clone_tab_enabled) and hides the tab. Independent of
-; the "tiling" task above -- ticking/unticking one never affects the
-; other.
+; Clone Your Voice / Text to Voice is OFF by default -- a niche,
+; legally/ethically sensitive feature most users never touch. Leaving
+; this task unticked drops a no_voice_clone.flag marker in {app}; the app
+; reads it at startup (core.hub.voice_clone_tab_enabled) and hides the tab.
 Name: "voiceclone"; Description: "Install the Clone Your Voice / Text to Voice feature (downloads a ~2GB speech model on first use)"; GroupDescription: "Optional features:"; Flags: unchecked
 
 [Registry]
@@ -92,9 +83,12 @@ Type: filesandordirs; Name: "{app}\python"
 Type: filesandordirs; Name: "{app}\Lib"
 Type: files; Name: "{app}\gui.py"
 Type: files; Name: "{app}\sitecustomize.py"
-Type: files; Name: "{app}\no_tiling.flag"
 Type: files; Name: "{app}\no_voice_clone.flag"
 Type: dirifempty; Name: "{app}"
+
+[InstallDelete]
+; Marker written by installers from before the Video Tiling feature was removed.
+Type: files; Name: "{app}\no_tiling.flag"
 
 [Code]
 // --------------------------------------------------------------------
@@ -223,28 +217,10 @@ end;
 // --------------------------------------------------------------------
 
 // --------------------------------------------------------------------
-//  Optional "Video Tiling" feature toggle.
-//
-//  Video Tiling is EXCLUDED by default (owner request, 2026-08-15) --
-//  most users never touch this multi-monitor live-stream grid, so it
-//  should be an opt-IN, not an opt-out. Unless the user ticks the
-//  "tiling" task, we drop an empty marker file at {app}\no_tiling.flag
-//  during post-install. The app reads it at startup
-//  (core.hub.tiling_tab_enabled) and simply hides the Video Tiling tab
-//  -- no code is removed, so the toggle is fully reversible by deleting
-//  the marker. The marker is also swept on uninstall (here + in
-//  [UninstallDelete]).
-// --------------------------------------------------------------------
-
-const
-  NoTilingMarker = '{app}\no_tiling.flag';
-
-// --------------------------------------------------------------------
 //  Optional "Clone Your Voice / Text to Voice" feature toggle.
 //
-//  Same shape as Video Tiling above, own independent marker -- OFF by
-//  default (public-installer opt-in; legal/ethical sensitivity + a
-//  ~2GB on-demand model).
+//  OFF by default (public-installer opt-in; legal/ethical sensitivity
+//  + a ~2GB on-demand model).
 //  Unless the user ticks the "voiceclone" task, we drop an empty marker
 //  file at {app}\no_voice_clone.flag during post-install. The app reads
 //  it at startup (core.hub.voice_clone_tab_enabled) and hides the tab
@@ -261,18 +237,6 @@ var
 begin
   if CurStep <> ssPostInstall then
     Exit;
-  MarkerPath := ExpandConstant(NoTilingMarker);
-  if not WizardIsTaskSelected('tiling') then begin
-    if not SaveStringToFile(MarkerPath, '', False) then
-      Log('Could not create no_tiling.flag marker at ' + MarkerPath);
-  end else begin
-    // Defensive: on a reinstall/upgrade where the user previously left
-    // Tiling out but now wants it, make sure a stale marker is gone.
-    if FileExists(MarkerPath) then
-      DeleteFile(MarkerPath);
-  end;
-  // Independent block, same shape, own marker -- ticking/unticking
-  // "tiling" above never affects this one and vice versa.
   MarkerPath := ExpandConstant(NoVoiceCloneMarker);
   if not WizardIsTaskSelected('voiceclone') then begin
     if not SaveStringToFile(MarkerPath, '', False) then
@@ -335,14 +299,11 @@ procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   HubFolder, AppFolder, Msg, MarkerPath, ConfigPath: string;
 begin
-  // Remove the optional-feature markers (created post-install when the
-  // user opted out of Video Tiling / Clone Your Voice). [UninstallDelete]
-  // also covers both, but delete them explicitly so a partial uninstall
-  // leaves nothing behind.
+  // Remove the optional-feature marker (created post-install when the
+  // user opted out of Clone Your Voice). [UninstallDelete] also covers
+  // it, but delete it explicitly so a partial uninstall leaves nothing
+  // behind.
   if CurUninstallStep = usUninstall then begin
-    MarkerPath := ExpandConstant(NoTilingMarker);
-    if FileExists(MarkerPath) then
-      DeleteFile(MarkerPath);
     MarkerPath := ExpandConstant(NoVoiceCloneMarker);
     if FileExists(MarkerPath) then
       DeleteFile(MarkerPath);
