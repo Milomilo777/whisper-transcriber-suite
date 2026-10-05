@@ -6,6 +6,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **`tools/benchmark_multilingual.py`: per-language accuracy and speed of the local
+  models on public FLEURS speech (CC-BY-4.0, no account).** It transcribes through the
+  app's own faster-whisper backend on CPU and scores WER, or CER for zh/ja, with a
+  stdlib Levenshtein and a documented normaliser. Method, licence and a first
+  Persian pilot (tiny, base) are in `docs/evaluations/benchmark-v1/`.
 - **Synthetic speech is labelled as AI-generated.** Every WAV the Clone Your
   Voice / Text to Voice tab produces (OmniVoice and Kokoro) carries a RIFF
   `INFO` comment `AI-generated synthetic speech` plus the app name and version;
