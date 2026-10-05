@@ -479,8 +479,14 @@ def build_about_sections() -> list[AboutSection]:
                 "Network use)",
             ]),
             ("Usage statistics", [
-                "Sent after each finished transcription; on by default "
-                "(Advanced → App behaviour, config: telemetry_opt_in)",
+                "Sent after each finished transcription; on by default. "
+                "Switch: Help → Send usage statistics, or Advanced → App "
+                "behaviour (config: telemetry_opt_in)",
+                "What is sent: file name (not its folder), model, language, "
+                "audio length, processing time, job status, word count, app "
+                "version, OS name/version, CPU and memory size, and the "
+                "two-letter country of the OS region setting; the payload "
+                "never includes the computer name or an IP address",
                 "Launch ping and Sentry crash reports: only when "
                 "WHISPER_TELEMETRY_URL / SENTRY_DSN are set",
             ]),
@@ -998,6 +1004,19 @@ class App(tk.Tk):
         # the silent launch check. Never downloads/installs anything.
         h.add_command(label="Check for updates...",
                       command=self._check_for_updates_manual)
+        h.add_separator()
+        # The usage-statistics switch, reachable without opening Advanced.
+        # Same config key as the Advanced → App behaviour checkbox: the dialog
+        # reads app_config when it opens, and open_advanced_dialog re-syncs
+        # this item after the dialog closes, so the two never disagree.
+        self.telemetry_opt_in_var = tk.BooleanVar(
+            value=bool(self.app_config.get("telemetry_opt_in", True))
+        )
+        h.add_checkbutton(
+            label="Send usage statistics",
+            variable=self.telemetry_opt_in_var,
+            command=self._save_telemetry_pref,
+        )
         m.add_cascade(label="File", menu=f)
         m.add_cascade(label="View", menu=v)
         m.add_cascade(label="Help", menu=h)
@@ -1223,6 +1242,24 @@ class App(tk.Tk):
         except Exception as e:
             logger.exception("Failed to save chime preference")
             self.log(f"Could not save preference: {e}")
+
+    def _save_telemetry_pref(self) -> None:
+        """Help → Send usage statistics: store the choice like the Advanced checkbox does."""
+        on = bool(self.telemetry_opt_in_var.get())
+        self.app_config["telemetry_opt_in"] = on
+        try:
+            save_config(self.app_config)
+        except Exception as e:
+            logger.exception("Failed to save the usage-statistics choice")
+            self.log(f"Could not save preference: {e}")
+            return
+        self.log("Usage statistics: on." if on else "Usage statistics: off (nothing is sent).")
+
+    def _sync_telemetry_menu(self) -> None:
+        """Make the Help menu item show the current config (after the Advanced dialog)."""
+        var = getattr(self, "telemetry_opt_in_var", None)
+        if var is not None:
+            var.set(bool(self.app_config.get("telemetry_opt_in", True)))
 
     def _show_about(self) -> None:
         """A full feature inventory in a scrollable Toplevel.
@@ -1799,6 +1836,7 @@ class App(tk.Tk):
             pass
         self._refresh_engine_selector()
         self._refresh_model_selector()
+        self._sync_telemetry_menu()
 
     def _confirm_backend_switch(
         self,

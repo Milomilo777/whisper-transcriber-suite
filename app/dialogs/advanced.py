@@ -1513,7 +1513,7 @@ class AdvancedDialog(tk.Toplevel):
             # enabled and silently do nothing.
             tray_check.state(["disabled"])
         ttk.Checkbutton(
-            misc, text="Send usage statistics (on by default — uncheck to opt out)",
+            misc, text="Send usage statistics (on by default; also in the Help menu)",
             variable=self._telemetry_opt_in,
         ).pack(anchor="w", padx=8, pady=4)
         return misc

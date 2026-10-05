@@ -6,6 +6,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Help → Send usage statistics.** The usage-statistics switch is now a
+  check item in the Help menu as well as in Advanced → App behaviour; both
+  show the same saved value, and About lists exactly what is sent.
 - **macOS: the finished `.dmg` is now tested like a user meets it**
   (`platform/macos/pyinstaller/test_dmg.sh`, run by `build_mac.sh` and the
   macOS CI): mount, check the drag-to-Applications link, copy the app out,
