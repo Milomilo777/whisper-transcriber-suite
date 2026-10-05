@@ -46,9 +46,9 @@ without bumping the version". Short version:
 
 * Check the open items you track (issues, notes) — nothing pending
   should be left unacknowledged.
-* Read `docs/FINAL_FREEZE_AUDIT_2026-05-21.md` (or the most recent
-  freeze audit). Every blocker for this release should be either
-  closed or consciously deferred with rationale.
+* If a freeze audit was written for this release, read it. Every
+  blocker for this release should be either closed or consciously
+  deferred with rationale.
 * Open `docs/CHANGELOG.md`. Drafting the changelog entry first
   helps you spot anything that didn't actually land.
 
@@ -263,8 +263,7 @@ line number inside the `.iss`.
 
 Roughly every six months:
 
-* Re-read `docs/SENIOR_REVIEW_2026-05-21.md` and the latest freeze
-  audit. Items that survive two reviews are real technical debt;
+* Re-read the most recent senior code review and freeze audit. Items that survive two reviews are real technical debt;
   budget time to fix.
 * Re-run `pyright app/ core/` on `main`. Tightening the baseline
   catches drift early.

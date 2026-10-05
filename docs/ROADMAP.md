@@ -1,6 +1,6 @@
 # Roadmap
 
-The prioritized plan for turning this from a working draft into a masterpiece. Every item names the source of inspiration (which competitor does this well), the rough effort, and the reason it matters. See `AUDIT.md` for the findings that justify the priorities; see `ARCHITECTURE.md` for the current shape.
+The prioritized plan for turning this from a working draft into a masterpiece. Every item names the source of inspiration (which competitor does this well), the rough effort, and the reason it matters. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the current shape.
 
 Effort labels:
 
@@ -18,16 +18,16 @@ Effort labels:
 |---|---|---|
 | Phase 0 — correctness baseline + docs | **DONE** (`50a4fea`) | All CRITICAL and HIGH AUDIT items fixed; full docs suite published |
 | Phase 1a — theme + platformdirs + logging | **DONE** (`376141a` + 3 prior) | `sv-ttk`, `%LOCALAPPDATA%` paths, RotatingFileHandler |
-| Phase 1b — split gui.py + tests + type hints + Sentry | **DONE** (Session 5) | `gui.py` 11 lines; `app/` package with services + dialogs + widgets + observability; 80 tests; pyright clean; `pyproject.toml` with optional deps. See `docs/PHASE_1B_ACCEPTANCE.md`. |
-| Phase 2a — Whisper as serious transcription tool | **DONE** (Session 5) | VAD on by default + tunable; word timestamps opt-in; `BatchedInferencePipeline` on CUDA; multi-format writers (SRT/VTT/TSV/TXT/JSON/LRC); language detection in queue; Advanced settings dialog. See `docs/PHASE_2A_ACCEPTANCE.md`. Phase 2b (UI for `initial_prompt` / `hotwords`, model picker, presets) deferred. |
+| Phase 1b — split gui.py + tests + type hints + Sentry | **DONE** (Session 5) | `gui.py` 11 lines; `app/` package with services + dialogs + widgets + observability; 80 tests; pyright clean; `pyproject.toml` with optional deps. |
+| Phase 2a — Whisper as serious transcription tool | **DONE** (Session 5) | VAD on by default + tunable; word timestamps opt-in; `BatchedInferencePipeline` on CUDA; multi-format writers (SRT/VTT/TSV/TXT/JSON/LRC); language detection in queue; Advanced settings dialog. Phase 2b (UI for `initial_prompt` / `hotwords`, model picker, presets) deferred. |
 | Phase 2-oTranscribe — file-format compatibility | **DONE** (Session 4) | Tier 1 + Tier 2 shipped: bidirectional `.otr` converter, Export/Import UI, `Help → Open oTranscribe`. See [docs/integrations/](integrations/README.md). Tier 3 (vendored fork, in-app editor, forced alignment) deferred — see Phase 5 backlog. |
-| Phase 3a — yt-dlp as serious downloader | **DONE** (Session 5) | `--progress-template` JSON; SQLite history DB + `Statistics` menu; SponsorBlock category list in Advanced dialog; auto-transcribe-after-download fully wired; right-click `Open output folder` + `Re-run`. See `docs/PHASE_3A_ACCEPTANCE.md`. |
+| Phase 3a — yt-dlp as serious downloader | **DONE** (Session 5) | `--progress-template` JSON; SQLite history DB + `Statistics` menu; SponsorBlock category list in Advanced dialog; auto-transcribe-after-download fully wired; right-click `Open output folder` + `Re-run`. |
 | Phase 4 — editor and viewer | TODO | Click-word→audio, edit-back-to-subtitle, gap detection, speaker rename, filler removal (re-prioritized after Session 6 research) |
 | Phase 5 — power features | TODO | Diarization, vocal separation, live mic, REST, CLI |
 | Phase 6 — CJK polish + backend abstraction | NEW (Session 6 research) | SenseVoice + Parakeet backends, Chinese punctuation post-processor, CJK line splitting, simplified↔traditional normalization. |
 | Phase 7 — website & discoverability | **IN PROGRESS** | 7a done 2026-09-27 (site, search registration, automation, audit fixes); 7b app-wide improvement pass next; 7c outreach after 7b — see [Phase 7](#phase-7--website--discoverability) |
 
-Integration briefs live under `docs/integrations/` and follow a separate cadence from the numbered phases — each is a single hands-off session.
+Integrations (see [`docs/integrations/`](integrations/README.md)) follow a separate cadence from the numbered phases — each was a single hands-off session.
 
 **Visual:** [`docs/architecture.svg`](architecture.svg) renders the system at-a-glance: UI layer, services, subprocess workers, vendored binaries, filesystem state, external network. Color-coded by layer; killer-flow `auto-transcribe-after-download` is highlighted in red.
 

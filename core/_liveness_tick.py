@@ -8,8 +8,8 @@ wedged worker and SIGTERMs it. Single long-running C-level calls
 align) routinely run longer than that window with the GIL held and
 emit nothing to stdout while they run, so the parent kills the
 worker mid-pass on slow hardware. The just-fixed diarisation case
-is the prototype; the same shape recurs in P0-1, P0-2, P0-3, and
-P0-4 of ``docs/STABILITY_AUDIT_2026-05-23.md``.
+is the prototype; the same shape recurred in four more stalls
+(P0-1 to P0-4) found by the 2026-05-23 stability audit.
 
 This module provides one tiny context manager,
 :func:`liveness_tick`, that spawns a daemon thread emitting one

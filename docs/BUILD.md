@@ -42,10 +42,9 @@ python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscribe
 :: Output: dist_installer\WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip
 ```
 
-See "Rebuild without bumping the version" below for the full,
-copy-pasteable recipe (including uploading to the existing GitHub
-release) used when re-shipping the SAME version with source-only
-changes.
+Re-shipping the SAME version is retired: a fix for already published
+files always gets a new patch version (see "Rebuild without bumping
+the version" below for why).
 
 ## Unshipped / optional pipelines
 
@@ -185,9 +184,8 @@ python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscribe
 
 `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` and
 `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` are the two files that get
-uploaded to the GitHub release (see "Rebuild without bumping the
-version" below, and `docs/RELEASE_PROCESS.md` for a full version-bump
-release).
+uploaded to a new GitHub release (see `docs/RELEASE_PROCESS.md`; the
+"Rebuild without bumping the version" section below is retired).
 
 ## Rebuild without bumping the version — RETIRED, do not use (2026-08-23)
 
