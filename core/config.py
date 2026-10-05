@@ -94,6 +94,9 @@ DEFAULT_CONFIG = {
     # Fresh VAD state every N seconds on long files (core.vad_window);
     # 0 = one pass over the whole file, the faster-whisper default.
     "vad_window_s": 30,
+    # N identical lines in a row stop a repetition loop (core.loop_guard);
+    # below 2 = off.
+    "loop_guard_repeats": 3,
     "word_timestamps": False,
     "output_formats": ["srt", "json"],
     "batch_size": 16,

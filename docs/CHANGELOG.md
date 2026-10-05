@@ -117,6 +117,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   lecture it kept 512 s of speech where a fresh state every 30 s finds
   1,615 s, and the lost minutes came out as one-word segments. The VAD state
   is now reset every 30 s (`vad_window_s`, `core.vad_window`).
+- **A repetition loop no longer runs to the end of the file.** When three
+  segments in a row have the same text, decoding restarts from the second one
+  without the previous text as a prompt (once per file); later runs are cut to
+  one line, and checkpoints never hold the loop (`loop_guard_repeats`,
+  `core.loop_guard`).
 - **`gui.py transcribe --formats/--diarization` no longer change the app's
   saved settings**; they apply to that run only. `--model` is still saved, as
   its help says.

@@ -230,6 +230,7 @@ a = Analysis(
         'core.hallucination',
         'core.hardware',
         'core.js_runtime',
+        'core.loop_guard',
         'core.history',
         'core.hub',
         'core.logging_setup',

@@ -22,7 +22,7 @@ try:  # 1.0.3+ ships this; older wheels do not
 except ImportError:  # pragma: no cover
     BatchedInferencePipeline = None  # type: ignore[assignment]
 
-from .. import vad_window
+from .. import loop_guard, vad_window
 from ..config import load_config
 from ..model_manager import DownloadCancelled, ensure_model
 from .base import Backend, LanguageInfo
@@ -56,12 +56,14 @@ class FasterWhisperBackend(Backend):
         # ``_downgraded`` records that a fallback happened so the UI can warn.
         self._requested_device = "cpu"
         self._downgraded = False
-        # Long-file VAD window read from config at load time (see
-        # core.vad_window).
+        # Long-file safeguards read from config at load time (see
+        # core.vad_window and core.loop_guard).
         self._vad_window_s = vad_window.DEFAULT_WINDOW_S
+        self._loop_guard_repeats = loop_guard.DEFAULT_REPEATS
 
     def _read_safeguards(self, config: dict[str, Any]) -> None:
         self._vad_window_s = vad_window.window_seconds(config)
+        self._loop_guard_repeats = loop_guard.repeat_limit(config)
 
     def is_ready(self) -> bool:
         return self._ready
@@ -282,6 +284,10 @@ class FasterWhisperBackend(Backend):
 
         with vad_window.windowed_vad(self._vad_window_s):
             segments_iter, info = runner.transcribe(audio_path, **transcribe_kwargs)
+        # Drop runs of identical lines (no restart on this path).
+        segments_iter = loop_guard.guard_repeats(
+            segments_iter, limit=self._loop_guard_repeats, on_event=log_cb,
+        )
 
         lang_info = LanguageInfo(
             language=str(getattr(info, "language", "") or ""),

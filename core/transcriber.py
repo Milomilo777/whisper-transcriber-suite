@@ -34,6 +34,7 @@ except ImportError:  # pragma: no cover
     BatchedInferencePipeline = None  # type: ignore[assignment]
 
 from . import _checkpoint
+from . import loop_guard as _loop_guard
 from . import vad_window as _vad_window
 from ._proc import new_session_kwargs
 from .config import load_config
@@ -584,6 +585,49 @@ def _vad_parameters() -> dict[str, Any] | None:
 def _vad_window_seconds() -> float:
     """Fresh-VAD-state window from config (``vad_window_s``); 0 = one pass."""
     return _vad_window.window_seconds(config)
+
+
+def _loop_guard_restart(
+    runner: Any,
+    audio_path: str,
+    transcribe_kwargs: dict[str, Any],
+    offset: float,
+    language: str,
+    temp_files: list[str],
+) -> Callable[[float], Iterator[Any]]:
+    """Restart callback for :func:`core.loop_guard.guard_repeats`.
+
+    ``restart(at)`` decodes *audio_path* again from *at* (seconds on the
+    timeline the guarded segments use, which is *audio_path*'s own timeline
+    shifted by *offset*) without the previous text as a prompt, and returns
+    the new segments shifted onto that timeline. The language is pinned to
+    the one already in use so the tail does not re-detect it. The ffmpeg
+    slice is added to *temp_files* for the caller's cleanup.
+    """
+    def restart(at: float) -> Iterator[Any]:
+        rel = max(0.0, float(at) - offset)
+        sliced = _slice_audio_from(audio_path, rel, _checkpoint.partials_dir())
+        temp_files.append(sliced)
+        kwargs = dict(transcribe_kwargs)
+        kwargs["condition_on_previous_text"] = False
+        if language and not kwargs.get("language"):
+            kwargs["language"] = language
+        with _vad_window.windowed_vad(_vad_window_seconds()):
+            segments, _info = runner.transcribe(sliced, **kwargs)
+        return _shift_segments(segments, offset + rel)
+
+    return restart
+
+
+def _log_loop_guard_summary(
+    stats: _loop_guard.LoopGuardStats, log_cb: Callable[[str], None] | None
+) -> None:
+    if stats.restarts or stats.dropped:
+        log(
+            f"Loop guard: {stats.restarts} restart(s), "
+            f"{stats.dropped} repeated line(s) dropped.",
+            log_cb,
+        )
 
 
 def _segment_to_dict(seg: Any, want_words: bool) -> dict[str, Any]:
@@ -1974,6 +2018,24 @@ def transcribe(
         detected_lang_so_far = str(getattr(info, "language", "") or "")
         lang_prob_so_far = float(getattr(info, "language_probability", 0.0) or 0.0)
 
+        # Repetition-loop guard (core.loop_guard). A restart decodes the rest
+        # again without the previous text as a prompt; the batched pipeline
+        # never uses that prompt, so it only drops repeats.
+        _guard_stats = _loop_guard.LoopGuardStats()
+        _guard_tmp: list[str] = []
+        segments = _loop_guard.guard_repeats(
+            segments,
+            limit=_loop_guard.repeat_limit(config),
+            restart=(
+                None if use_batched else _loop_guard_restart(
+                    runner, audio_path, transcribe_kwargs, _ts_offset,
+                    detected_lang_so_far, _guard_tmp,
+                )
+            ),
+            on_event=lambda m: log(m, log_cb),
+            stats=_guard_stats,
+        )
+
         segments_data: list[dict[str, Any]] = []
 
         def _handle_cancelled() -> bool:
@@ -2041,13 +2103,14 @@ def transcribe(
             # remove the temporary inputs only after the loop is finished (or
             # if iteration/cancellation raises).
             _close_iterator_quietly(segments)
-            for _tmp in (_clip_slice_path, _denoise_tmp):
+            for _tmp in (_clip_slice_path, _denoise_tmp, *_guard_tmp):
                 if not _tmp:
                     continue
                 try:
                     os.remove(_tmp)
                 except OSError:
                     pass
+            _log_loop_guard_summary(_guard_stats, log_cb)
 
         if _handle_cancelled():
             return
@@ -2641,6 +2704,8 @@ def resume_transcription(
         log(f"Resume: transcribing tail slice {transcribe_slice}", log_cb)
 
         new_segments_iter: Any = None
+        guard_stats = _loop_guard.LoopGuardStats()
+        guard_tmp: list[str] = []
         try:
             assert MODEL is not None
             want_words = bool(config.get("word_timestamps", False))
@@ -2662,6 +2727,27 @@ def resume_transcription(
                 new_segments_iter, info = runner.transcribe(
                     transcribe_slice, **transcribe_kwargs
                 )
+            # Same repetition-loop guard as transcribe(), on the tail's own
+            # timeline (shifted below); the last checkpointed line seeds it so
+            # a loop that crosses the resume point is still seen.
+            new_segments_iter = _loop_guard.guard_repeats(
+                new_segments_iter,
+                limit=_loop_guard.repeat_limit(config),
+                restart=(
+                    None if PIPELINE is not None else _loop_guard_restart(
+                        runner, transcribe_slice, transcribe_kwargs, 0.0,
+                        cp_language or str(getattr(info, "language", "") or ""),
+                        guard_tmp,
+                    )
+                ),
+                on_event=lambda m: log(m, log_cb),
+                stats=guard_stats,
+                previous_text=(
+                    str(prior_segments[-1].get("text", "") or "")
+                    if prior_segments and isinstance(prior_segments[-1], dict)
+                    else ""
+                ),
+            )
 
             # Offset each new segment back into the original timeline
             # before merging with the prior segments. The slice starts
@@ -2730,13 +2816,14 @@ def resume_transcription(
             # cases the slice is disposable. Same for any denoised copy
             # of it (empty string when denoise was off / reverted).
             _close_iterator_quietly(new_segments_iter)
-            for _tmp in (slice_path, denoise_tmp):
+            for _tmp in (slice_path, denoise_tmp, *guard_tmp):
                 if not _tmp:
                     continue
                 try:
                     os.unlink(_tmp)
                 except OSError:
                     pass
+            _log_loop_guard_summary(guard_stats, log_cb)
 
         final_segments = prior_segments + new_segments_data
         detected_lang = cp_language or str(getattr(info, "language", "") or "")

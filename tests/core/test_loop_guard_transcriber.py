@@ -1,0 +1,262 @@
+"""Loop guard + windowed VAD wired into core.transcriber (both decode paths).
+
+The engine is faked: the first decode loops ("so good" over and over, as in
+the field report); the restart decode returns normal lines. The tests check
+what the transcriber asks the engine for on the restart (no previous-text
+prompt, language pinned, the right slice) and what ends up in the output.
+"""
+from __future__ import annotations
+
+import sys
+import time
+import types
+from dataclasses import dataclass, field
+from typing import Any
+
+import pytest
+
+from core import vad_window
+
+
+@pytest.fixture
+def t(monkeypatch, tmp_path):
+    if "core.transcriber" not in sys.modules:
+        fake = types.ModuleType("faster_whisper")
+        fake.WhisperModel = object  # type: ignore[attr-defined]
+        sys.modules.setdefault("faster_whisper", fake)
+    import core._checkpoint as cp
+    import core.config as cfg
+    import core.transcriber as tr
+
+    monkeypatch.setattr(cfg, "user_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(cp, "user_data_dir", lambda: tmp_path)
+    for key, value in (
+        ("transcribe_backend", "faster_whisper"), ("demucs_enabled", False),
+        ("denoise_enabled", False), ("word_timestamps", False),
+        ("vad_enabled", True), ("vad_window_s", 30), ("loop_guard_repeats", 3),
+    ):
+        monkeypatch.setitem(tr.config, key, value)
+    monkeypatch.setattr(tr, "PIPELINE", None, raising=False)
+    monkeypatch.setattr(tr, "MODEL_READY", True, raising=False)
+    monkeypatch.setattr(tr, "MODEL_ERROR", None, raising=False)
+    monkeypatch.setattr(tr, "get_duration", lambda p: 600.0)
+    monkeypatch.setattr(tr, "require_audio_stream", lambda p: None)
+    monkeypatch.setattr(tr, "_run_post_pipeline", lambda *a, **k: 0)
+    monkeypatch.setattr(tr, "_write_chapter_sidecar", lambda *a, **k: None)
+    return tr
+
+
+@dataclass
+class Word:
+    start: float
+    end: float
+    word: str = "w"
+    probability: float = 0.9
+
+
+@dataclass
+class Seg:
+    start: float
+    end: float
+    text: str
+    words: Any = field(default_factory=list)
+
+
+@dataclass
+class Info:
+    language: str = "zh"
+    language_probability: float = 0.8
+
+
+def run_of(text: str, start: float, n: int) -> list[Seg]:
+    return [Seg(start + i, start + i + 1, text) for i in range(n)]
+
+
+class Engine:
+    """Fake WhisperModel: one scripted segment list per transcribe() call."""
+
+    def __init__(self, *scripts: list[Seg]) -> None:
+        self.scripts = list(scripts)
+        self.calls: list[dict[str, Any]] = []
+
+    def transcribe(self, audio_path, **kwargs):
+        self.calls.append({
+            "path": audio_path, "kwargs": dict(kwargs),
+            "vad_window": vad_window._WINDOW_S.get(),
+        })
+        return iter(self.scripts.pop(0)), Info()
+
+
+def _wire(t, monkeypatch, tmp_path, engine, *, batched=False):
+    slices: list[tuple[str, float]] = []
+
+    def fake_slice(src, start, out_dir, end_seconds=None):  # noqa: ARG001
+        path = tmp_path / f"slice{len(slices)}.wav"
+        path.write_bytes(b"\0")
+        slices.append((src, float(start)))
+        return str(path)
+
+    monkeypatch.setattr(t, "_slice_audio_from", fake_slice)
+    monkeypatch.setattr(t, "MODEL", engine)
+    if batched:
+        monkeypatch.setattr(t, "PIPELINE", engine)
+    written: dict[str, Any] = {}
+    monkeypatch.setattr(
+        t, "_write_outputs",
+        lambda base, segs, *a, **k: written.__setitem__("segs", list(segs)) or [],
+    )
+    return slices, written
+
+
+def _longest_run(segs: list[dict[str, Any]]) -> int:
+    best = run = 0
+    prev = None
+    for s in segs:
+        run = run + 1 if s["text"] == prev else 1
+        prev = s["text"]
+        best = max(best, run)
+    return best
+
+
+def test_loop_restarts_without_conditioning_and_pinned_language(t, monkeypatch, tmp_path):
+    from core.task import TranscriptionTask
+
+    audio = tmp_path / "lecture.wav"
+    audio.write_bytes(b"\0" * 16)
+    engine = Engine(
+        [Seg(0, 5, "hello class"), *run_of("so good", 5, 30)],
+        [Seg(0, 4, "now the harmony"), Seg(4, 9, "the end", [Word(4, 5)])],
+    )
+    slices, written = _wire(t, monkeypatch, tmp_path, engine)
+    logs: list[str] = []
+
+    t.transcribe(TranscriptionTask(str(audio)), lambda p: None, logs.append)
+
+    assert len(engine.calls) == 2
+    first, second = engine.calls
+    assert "condition_on_previous_text" not in first["kwargs"]  # default kept
+    assert second["kwargs"]["condition_on_previous_text"] is False
+    assert second["kwargs"]["language"] == "zh"  # detected on the first pass
+    assert slices == [(str(audio), 6.0)]  # from the second "so good"
+    assert second["path"] == str(tmp_path / "slice0.wav")
+    assert first["vad_window"] == 30.0 and second["vad_window"] == 30.0
+
+    segs = written["segs"]
+    assert [s["text"] for s in segs] == [
+        "hello class", "so good", "now the harmony", "the end",
+    ]
+    assert [(s["start"], s["end"]) for s in segs] == [
+        (0, 5), (5, 6), (6.0, 10.0), (10.0, 15.0),
+    ]
+    assert not (tmp_path / "slice0.wav").exists()  # restart slice cleaned up
+    assert any("Loop guard: 3 identical lines" in m for m in logs)
+    assert any("1 restart(s), 0 repeated line(s) dropped" in m for m in logs)
+
+
+def test_clipped_run_restarts_on_the_clip_timeline(t, monkeypatch, tmp_path):
+    from core.task import TranscriptionTask
+
+    audio = tmp_path / "lecture.wav"
+    audio.write_bytes(b"\0" * 16)
+    # times are relative to the clip slice (clip_start = 100)
+    engine = Engine(
+        [Seg(0, 2, "intro"), *run_of("这个是", 2, 7)],
+        [Seg(0, 3, "后面的话")],
+    )
+    slices, written = _wire(t, monkeypatch, tmp_path, engine)
+    task = TranscriptionTask(str(audio))
+    task.clip_start = 100.0
+    task.clip_end = 200.0
+
+    t.transcribe(task, lambda p: None, lambda m: None)
+
+    clip_slice = str(tmp_path / "slice0.wav")
+    assert slices == [(str(audio), 100.0), (clip_slice, 3.0)]
+    segs = written["segs"]
+    assert [s["text"] for s in segs] == ["intro", "这个是", "后面的话"]
+    assert segs[2]["start"] == 103.0 and segs[2]["end"] == 106.0
+
+
+def test_batched_pipeline_drops_repeats_without_restart(t, monkeypatch, tmp_path):
+    from core.task import TranscriptionTask
+
+    audio = tmp_path / "lecture.wav"
+    audio.write_bytes(b"\0" * 16)
+    engine = Engine([Seg(0, 1, "a"), *run_of("so good", 1, 10), Seg(11, 12, "b")])
+    slices, written = _wire(t, monkeypatch, tmp_path, engine, batched=True)
+
+    t.transcribe(TranscriptionTask(str(audio)), lambda p: None, lambda m: None)
+
+    assert len(engine.calls) == 1 and slices == []
+    assert [s["text"] for s in written["segs"]] == ["a", "so good", "b"]
+
+
+def test_guard_and_window_can_be_switched_off(t, monkeypatch, tmp_path):
+    from core.task import TranscriptionTask
+
+    monkeypatch.setitem(t.config, "loop_guard_repeats", 0)
+    monkeypatch.setitem(t.config, "vad_window_s", 0)
+    audio = tmp_path / "lecture.wav"
+    audio.write_bytes(b"\0" * 16)
+    engine = Engine(run_of("so good", 0, 5))
+    _slices, written = _wire(t, monkeypatch, tmp_path, engine)
+
+    t.transcribe(TranscriptionTask(str(audio)), lambda p: None, lambda m: None)
+
+    assert engine.calls[0]["vad_window"] == 0.0
+    assert [s["text"] for s in written["segs"]] == ["so good"] * 5
+
+
+def test_checkpoints_never_hold_the_loop(t, monkeypatch, tmp_path):
+    """A checkpoint written mid-loop must not carry the repeats (W5)."""
+    from core.task import TranscriptionTask
+
+    monkeypatch.setattr(t, "_CHECKPOINT_EVERY_N_SEGMENTS", 1)
+    saved: list[list[str]] = []
+    monkeypatch.setattr(
+        t, "_write_periodic_checkpoint",
+        lambda task, segs, *a, **k: saved.append([s["text"] for s in segs]),
+    )
+    audio = tmp_path / "lecture.wav"
+    audio.write_bytes(b"\0" * 16)
+    engine = Engine(run_of("so good", 0, 12), [Seg(0, 1, "fine")])
+    _wire(t, monkeypatch, tmp_path, engine)
+
+    t.transcribe(TranscriptionTask(str(audio)), lambda p: None, lambda m: None)
+
+    assert saved and all(_longest_run([{"text": x} for x in s]) < 3 for s in saved)
+
+
+def test_resume_tail_is_guarded_across_the_seam(t, monkeypatch, tmp_path):
+    from core import _checkpoint
+    from core.task import TranscriptionTask
+
+    audio = tmp_path / "lecture.wav"
+    audio.write_bytes(b"\0" * 16)
+    prior = [{"start": 0.0, "end": 90.0, "text": "a"},
+             {"start": 90.0, "end": 100.0, "text": "so good"}]
+    task = TranscriptionTask(str(audio))
+    with t._runtime_overrides_scope(task):
+        fp = _checkpoint.config_fingerprint(t.config)
+        model_name = str(t.config.get("model", {}).get("name", "")) \
+            or str(t.config.get("whisper_model", ""))
+    _checkpoint.write_checkpoint(
+        str(audio), backend="faster_whisper", model_name=model_name,
+        language="zh", language_probability=0.9, cfg_fingerprint=fp,
+        last_end_time=100.0, segments=prior, checkpoint_time=time.time(),
+    )
+    # The tail starts with two more "so good": with the checkpointed one
+    # that is a run of three across the resume point.
+    engine = Engine(run_of("so good", 0, 2) + [Seg(2, 3, "x")], [Seg(0, 2, "real")])
+    slices, written = _wire(t, monkeypatch, tmp_path, engine)
+
+    assert t.resume_transcription(task) is True
+
+    tail_slice = str(tmp_path / "slice0.wav")
+    assert slices == [(str(audio), 100.0), (tail_slice, 0.0)]
+    assert engine.calls[1]["kwargs"]["condition_on_previous_text"] is False
+    assert engine.calls[1]["kwargs"]["language"] == "zh"
+    assert engine.calls[0]["vad_window"] == 30.0
+    segs = written["segs"]
+    assert [s["text"] for s in segs] == ["a", "so good", "real"]
+    assert segs[2]["start"] == 100.0 and segs[2]["end"] == 102.0
