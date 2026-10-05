@@ -13,7 +13,6 @@ fits into one of five buckets.
 ## Reference
 
 - [CHANGELOG.md](CHANGELOG.md) — version history
-- [CODE_SIGNING.md](CODE_SIGNING.md) — code signing policy: what the planned SignPath Foundation certificate signs, team roles, privacy summary
 - [COMPARISON.md](COMPARISON.md) — compared with Subtitle Edit, Vibe, Buzz, noScribe and aTrain, with a source for every fact
 - [DECISIONS.md](DECISIONS.md) — why non-obvious design choices were made
 - [MANUAL_STEPS.md](MANUAL_STEPS.md) — release-time human checklist

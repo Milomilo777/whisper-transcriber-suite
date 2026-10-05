@@ -85,9 +85,6 @@ longer kept as files in the repository). Sections to include:
   generous here — your users will read this.
 * **Bug fixes** — short list.
 * **Known issues** — items deferred to the next release.
-* A **Code signing policy** link to
-  [`docs/CODE_SIGNING.md`](CODE_SIGNING.md): the SignPath Foundation terms
-  ask for that term on every download and release page.
 
 ## Step 4 — Run the full validation matrix
 

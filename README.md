@@ -74,9 +74,8 @@ downloads once, on first use. Plan for 8 GB of RAM; on a CPU the default
 model takes about 2–3 times the length of the audio, an NVIDIA GPU is much
 faster. The Windows builds are not code-signed and the Mac builds are not
 notarized, so SmartScreen and Gatekeeper warn on first launch;
-[docs/INSTALL.md](docs/INSTALL.md) shows what to click. Signing plans:
-[Code signing policy](docs/CODE_SIGNING.md). To update, run the newer
-installer over the old one; settings are kept.
+[docs/INSTALL.md](docs/INSTALL.md) shows what to click. To update, run the
+newer installer over the old one; settings are kept.
 
 **Downloads by version** (each badge counts only that version's own
 release — older versions stay published and their counts are never
