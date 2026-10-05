@@ -65,6 +65,21 @@ New code needs new tests in the same style as its neighbors (every
 - Match the existing module's style (docstring conventions, error
   handling patterns, logging) rather than introducing a new one.
 
+## AI assistance
+
+The maintainer develops this project with heavy help from AI coding
+assistants (mainly Claude). Type checks and the unit tests must pass
+before each commit, and CI runs them again on Windows and Linux after
+every push. The release checklist
+([docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md)) includes a manual
+install test on a real machine.
+
+Contributions written with an AI assistant are welcome on the same terms
+as any other: you understand the change and it meets the quality bar
+above. End the commit message with a trailer that names the model, for
+example `Assisted-by: Claude Opus 5.5 (Anthropic)`. Use `Assisted-by:`
+rather than `Co-Authored-By:`, which GitHub would show as a co-author.
+
 ## Pull requests
 
 - Keep PRs small and focused — one logical change per PR is much

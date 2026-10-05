@@ -68,6 +68,9 @@ local HTTP API. User docs: `README.md` and `docs/README.md`; code map: `docs/ARC
 - One coherent change per commit, even if that means several small commits in a row; do not squash
   across logical groups.
 - Message: imperative subject of at most 70 characters, a blank line, then a body that explains why.
+- Work done with an AI assistant ends the message with a trailer naming the model:
+  `Assisted-by: <model name> (<vendor>)`, e.g. `Assisted-by: Claude Opus 5.5 (Anthropic)`. No
+  `Co-Authored-By:` line for an AI (GitHub would list the model as a co-author) and no session link.
 - `docs/CHANGELOG.md` (Keep a Changelog) bullets stay skimmable: 1–3 sentences on what changed and
   the fix. The investigation (repro, root cause, alternatives) goes in the commit message.
 - `*.local.md` files are local notes and git-ignored; never commit them. Tracked files carry only

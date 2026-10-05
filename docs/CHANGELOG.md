@@ -33,6 +33,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   WebUI setup. `tests/test_server_doc.py` checks flags, routes, config keys,
   response formats and webhook fields against the code.
 
+- **How the project is built, said plainly**: README and CONTRIBUTING state that
+  it is developed with heavy AI help, which checks run when, and that AI-assisted
+  commits carry an `Assisted-by:` trailer (the rule is in `AGENTS.md`). A new
+  `.mailmap` merges the maintainer's two GitHub identities in `git shortlog`;
+  `tests/test_ai_disclosure.py` ties each claim to the workflow and files behind it.
+
 ### Changed
 
 - **README cut from 27 KB to 8 KB**: who it is for, features, downloads, the

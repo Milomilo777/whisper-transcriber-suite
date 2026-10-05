@@ -1,0 +1,4 @@
+# One name per person in `git shortlog`, `git blame` and `git log --use-mailmap`.
+# The maintainer commits from two GitHub accounts; both map to the copyright holder
+# named in LICENSE. Only GitHub no-reply addresses belong here (no personal email).
+translation-robot <105587847+translation-robot@users.noreply.github.com> Milomilo777 <117558067+Milomilo777@users.noreply.github.com>

@@ -138,6 +138,14 @@ This project follows the [Contributor Covenant](.github/CODE_OF_CONDUCT.md).
 If the app saves you time, a Star at the top of this page helps other people
 find it.
 
+## How this project is built
+
+The maintainer develops it with heavy help from AI coding assistants (mainly Claude). Type checks
+and the unit tests must pass before each commit, and CI runs them again on Windows and Linux after
+every push. The [release checklist](docs/RELEASE_PROCESS.md) includes a manual install test on a
+real machine. Commits made with AI help now name the model in an `Assisted-by:` line; many older
+ones carry a `Co-Authored-By: Claude` line instead.
+
 ## License
 
 Copyright (c) 2026 [translation-robot](https://github.com/translation-robot).
