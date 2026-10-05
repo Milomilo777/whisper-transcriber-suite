@@ -380,8 +380,8 @@ freeze and stability audits are archived under
 | [DECISIONS.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/DECISIONS.md) | Non-obvious design choices and why |
 | [ROADMAP.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ROADMAP.md) · [roadmap/](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/roadmap/) | What is being considered next |
 
-> **Coding agents:** start at [`PROJECT_INDEX.md`](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/PROJECT_INDEX.md) — a
-> generated, tool-neutral repo map built for fast, low-token onboarding.
+> **Coding agents:** start at [`AGENTS.md`](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/AGENTS.md) — build and test
+> commands and the rules for working in this repository.
 
 ## Frequently asked questions
 

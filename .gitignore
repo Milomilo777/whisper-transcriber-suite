@@ -49,6 +49,10 @@ ENV/
 Thumbs.db
 desktop.ini
 
+# Generated repo map, refreshed locally by a session hook; never tracked
+PROJECT_INDEX.md
+.project_index.json
+
 # Project-specific
 # Bundled binaries — too large for git, document the download in README instead
 bin/ffmpeg.exe

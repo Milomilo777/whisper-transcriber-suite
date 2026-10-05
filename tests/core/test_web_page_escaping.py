@@ -9,8 +9,9 @@ so these checks pin the exact sink patterns by source inspection.
 Background: the 2026-07-18 hardening commit (099b759) fixed most sinks
 but left two unguarded — the ``start()`` submit-failure error message and
 ``renderSubmit()``'s progress bar — even though its own commit message
-claimed both classes were covered. See ``PROJECT_INDEX.md`` (Gotchas,
-LAN web page) for the field-by-field rule.
+claimed both classes were covered. The rule: every job-derived value
+(``source``, ``error``, output ``name``, ``formats``, transcript text and
+speaker) passes through the page's ``escapeHtml()`` before ``innerHTML``.
 """
 from __future__ import annotations
 

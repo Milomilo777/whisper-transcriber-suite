@@ -3,8 +3,7 @@
 Thanks for considering a contribution. This is a Windows desktop app
 (Python + Tkinter) that transcribes audio/video locally with Whisper
 and downloads videos via `yt-dlp` — see [README.md](README.md) for
-what it does and [PROJECT_INDEX.md](PROJECT_INDEX.md) for a fast,
-generated map of the codebase.
+what it does and [AGENTS.md](AGENTS.md) for the build and test commands.
 
 ## Before you start
 

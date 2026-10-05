@@ -361,8 +361,8 @@ freeze and stability audits are archived under
 | [DECISIONS.md](docs/DECISIONS.md) | Non-obvious design choices and why |
 | [ROADMAP.md](docs/ROADMAP.md) · [roadmap/](docs/roadmap/) | What is being considered next |
 
-> **Coding agents:** start at [`PROJECT_INDEX.md`](PROJECT_INDEX.md) — a
-> generated, tool-neutral repo map built for fast, low-token onboarding.
+> **Coding agents:** start at [`AGENTS.md`](AGENTS.md) — build and test
+> commands and the rules for working in this repository.
 
 ## Frequently asked questions
 
