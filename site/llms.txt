@@ -14,7 +14,7 @@ Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscri
 ## Docs
 - [Full text for AI assistants](https://whisper-transcriber-suite.pages.dev/llms-full.txt): this summary plus the complete FAQ and README in one plain-text file.
 - [GitHub repository](https://github.com/Milomilo777/whisper-transcriber-suite): source code, issue tracker, discussions.
-- [Full README](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/README.md): complete feature table, FAQ, screenshots, keyboard shortcuts.
+- [Full README](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/README.md): who it is for, features, downloads, what leaves the computer, links to every doc.
 - [Install guide](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md): setup and troubleshooting for Windows, macOS and Linux.
 - [Architecture](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md): process model — long-lived worker processes, JSON-over-stdio protocol.
 - [Local-network / server mode](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SERVER.md): turns the machine into a transcription page other devices on the LAN can use.

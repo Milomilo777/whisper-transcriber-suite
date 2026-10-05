@@ -15,35 +15,48 @@ This guide is for someone who doesn't know Python or programming and just wants 
 
 ## Install — pick one of two methods
 
-v1.0.3 ships two independent installers. Pick the one that fits.
+Both files are on the
+**[releases page](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)**
+and contain the same app (`X.Y.Z` is the version number).
 
-| Method | File | Size | What it is |
-|---|---|---|---|
-| **Portable** | [`WhisperTranscriberSuite-v1.0.3-Portable.exe`](https://github.com/Milomilo777/whisper_project_direct_download_v2/releases/download/v1.0.3/WhisperTranscriberSuite-v1.0.3-Portable.exe) | 447 MB | A single file. Double-click and it runs. Nothing is installed; no shortcut, no Start Menu entry. Best for USB sticks or one-off use. |
-| **Standard** | [`WhisperTranscriberSuite-v1.0.3-Setup-Standard.exe`](https://github.com/Milomilo777/whisper_project_direct_download_v2/releases/download/v1.0.3/WhisperTranscriberSuite-v1.0.3-Setup-Standard.exe) | 349 MB | A real installer — Program Files, Start Menu shortcut, Add/Remove Programs entry. Ships a full Python interpreter on disk so the entire source tree is browsable after install. Best for everyday Windows users and anyone who wants transparency for debugging. |
+| Method | File | What it is |
+|---|---|---|
+| **Installer** | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | A normal installer: Program Files, Start Menu shortcut, Add/Remove Programs entry, upgrades in place. Best for most people. |
+| **Portable** | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Unzip anywhere and run. Nothing is installed and no admin rights are needed. |
 
-Both transcribe a real video end-to-end on a clean Windows 10/11 x64 machine.
+### On a Mac
 
-🔗 Releases page (both assets):
-**https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest**
+Download `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` for Apple silicon
+(macOS 14 or newer) or `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` for
+Intel (macOS 10.15 or newer), open it and drag the app into Applications.
+The app is not notarized by Apple, so the first launch is blocked with
+"Apple cannot check it for malicious software". To open it anyway:
+
+- macOS 14 and older: right-click the app → **Open** → **Open**.
+- macOS 15 and newer: **System Settings → Privacy & Security** → scroll
+  down → **Open Anyway**.
+- Or in Terminal:
+  `xattr -dr com.apple.quarantine "/Applications/Whisper Transcriber Suite.app"`
+
+macOS remembers the choice. Running from source on a Mac:
+[platform/macos/README.md](../platform/macos/README.md).
 
 ### If you picked Portable
 
-Move `WhisperTranscriberSuite-v1.0.3-Portable.exe` anywhere convenient
-(`C:\Apps\`, your Desktop, a USB stick). Double-click to launch.
-The first launch unpacks to a temporary folder under `%TEMP%`
-(takes about 5–10 seconds). Subsequent launches feel about the
-same — every launch re-unpacks.
+Unzip the archive anywhere convenient (`C:\Apps\`, your Desktop, a USB
+stick) and double-click **Run Whisper Transcriber Suite.bat** inside the
+folder.
 
-### If you picked Standard
+### If you picked the Installer
 
-Double-click the `…-Setup-….exe` file. The installer:
+Double-click the `…-Installer-Windows-….exe` file. The installer:
 
 1. Asks for admin rights (Yes).
 2. Confirms an install location (`C:\Program Files\WhisperTranscriberSuite\`
    by default — change it if you like).
-3. Optionally creates a desktop icon (checkbox on the wizard).
-4. Installs (~45 seconds).
+3. Optionally creates a desktop icon and installs the Clone Your Voice /
+   Text to Voice feature (both are checkboxes on the wizard).
+4. Installs.
 
 After install: launch from the Start Menu under **Whisper Transcriber Suite**,
 or from the desktop icon if you ticked the box. Uninstall from
@@ -69,6 +82,32 @@ If the CDN download fails, you can install the model manually (see Troubleshooti
 
 Once the download finishes, the app is ready to use.
 
+#### Where the models live
+On first launch the app also asks where to store the model files. The
+default is a per-user cache that is always writable,
+`%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\models`, never the Program
+Files install folder; an external drive or a network share works too. The
+choice is saved as `hub_folder` in `config.json` and the dialog does not
+appear again. To start over, open a Command Prompt in the app's folder
+(the install folder, or the unzipped Portable folder) and launch it once
+with `--safe-mode`:
+
+```cmd
+python\pythonw.exe gui.py --safe-mode
+```
+
+That renames your `config.json` to a timestamped backup and shows the
+first-run dialog with the defaults.
+
+### Updating to a newer version
+
+No uninstall is needed: run the newer
+`WhisperTranscriberSuite-Installer-Windows-….exe` and it upgrades the
+existing install, keeping your shortcut and settings. For the Portable
+build, replace the old folder with the new one. **Help → Check for
+updates…** checks on demand; the automatic daily check only tells you when
+a newer version exists and never downloads anything by itself.
+
 ---
 
 ## Usage
@@ -82,6 +121,9 @@ Once the download finishes, the app is ready to use.
 5. When done, two files are written next to your input:
    - `<filename>.srt` — subtitle file
    - `<filename>.json` — segments with precise timestamps
+
+Keyboard: `Ctrl+O` browse · `Ctrl+Enter` transcribe · `Esc` cancel ·
+`Ctrl+Q` exit.
 
 ### Download Videos (from YouTube and other sites)
 

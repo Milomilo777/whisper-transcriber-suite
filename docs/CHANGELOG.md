@@ -35,6 +35,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **README cut from 27 KB to 8 KB**: who it is for, features, downloads, the
+  per-version download badges, what leaves the computer (usage statistics
+  included) and links to the docs and the comparison page. The FAQ lives on
+  the website; the model-folder choice, `--safe-mode`, updating and the
+  keyboard shortcuts moved to `docs/INSTALL.md`, whose install section now
+  names the current release files (it still described v1.0.3) and covers
+  opening the Mac app past Gatekeeper.
 - **Repository root: the 22 per-branch handoff files are removed.** The 20
   `OPENCODE_HANDOFF_*.md` files and the two `INTEGRATION_*.md` files were
   working notes from a past branch merge; they stay in git history.
