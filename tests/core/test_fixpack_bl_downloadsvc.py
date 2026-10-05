@@ -342,7 +342,10 @@ def test_poll_survives_refresh_download_queue_raising():
 
 # --------------------------------------------------------------------------
 # 4. maybe_update_yt_dlp() must not poison the 24h backoff on a failed check
-#    (2026-08-14, gpt-5.4-mini adversarial review)
+#    (2026-08-14, gpt-5.4-mini adversarial review). Since the user-writable
+#    yt-dlp copy (core.yt_dlp_update) the update itself lives in core; these
+#    tests pin the service's side: mode gate, backoff, stamp only when the
+#    updater ran to its end.
 # --------------------------------------------------------------------------
 
 
@@ -359,67 +362,92 @@ class _UpdateApp:
         return "yt-dlp"
 
 
+def _fake_update(monkeypatch, result):
+    """Replace the core updater; returns the list of calls it received."""
+    from core import yt_dlp_update
+
+    calls = []
+
+    def _update(**kwargs):
+        calls.append(kwargs)
+        return result
+
+    monkeypatch.setattr(yt_dlp_update, "update_cached_copy", _update)
+    monkeypatch.setattr("app.services.download_service.save_config", lambda _c: None)
+    return calls
+
+
 def test_maybe_update_yt_dlp_does_not_stamp_timestamp_on_timeout(monkeypatch):
     """A network hiccup / subprocess timeout must not poison the 24h
     backoff. The old code stamped last_yt_dlp_update_check unconditionally
     (even on TimeoutExpired/any Exception), so one flaky check silently
     suppressed every retry for a full day."""
-    import subprocess as subprocess_mod
+    from core.yt_dlp_update import UpdateResult
 
-    def _raise_timeout(*_a, **_k):
-        raise subprocess_mod.TimeoutExpired(cmd="yt-dlp", timeout=60)
-
-    monkeypatch.setattr(
-        "app.services.download_service.subprocess.run", _raise_timeout
+    calls = _fake_update(
+        monkeypatch, UpdateResult("failed", message="The update timed out.", completed=False)
     )
-    monkeypatch.setattr(
-        "app.services.download_service.save_config", lambda _c: None
-    )
-    cfg = {"auto_update_yt_dlp": True}
-    app = _UpdateApp(cfg)
-    DownloadService(app).maybe_update_yt_dlp(task=None)
+    cfg = {"yt_dlp_update_mode": "auto"}
+    DownloadService(_UpdateApp(cfg)).maybe_update_yt_dlp(task=None)
+    assert len(calls) == 1
     assert "last_yt_dlp_update_check" not in cfg
 
 
-def test_maybe_update_yt_dlp_stamps_timestamp_on_success(monkeypatch):
-    """A check that actually completes (any returncode) DOES stamp the
-    timestamp, so a genuinely healthy check still gets its 24h backoff."""
-    monkeypatch.setattr(
-        "app.services.download_service.subprocess.run",
-        lambda *_a, **_k: types.SimpleNamespace(stdout="", stderr="", returncode=0),
-    )
+@pytest.mark.parametrize("status", ["updated", "current", "failed"])
+def test_maybe_update_yt_dlp_stamps_timestamp_when_the_check_completed(monkeypatch, status):
+    """A check that actually completes (whatever yt-dlp answered) DOES stamp
+    the timestamp, so a genuinely healthy check still gets its 24h backoff."""
+    from core.yt_dlp_update import UpdateResult
+
     saved = []
+    _fake_update(monkeypatch, UpdateResult(status, completed=True))
     monkeypatch.setattr(
-        "app.services.download_service.save_config",
-        lambda c: saved.append(dict(c)),
+        "app.services.download_service.save_config", lambda c: saved.append(dict(c))
     )
-    cfg = {"auto_update_yt_dlp": True}
-    app = _UpdateApp(cfg)
-    DownloadService(app).maybe_update_yt_dlp(task=None)
+    cfg = {"yt_dlp_update_mode": "auto"}
+    DownloadService(_UpdateApp(cfg)).maybe_update_yt_dlp(task=None)
     assert "last_yt_dlp_update_check" in cfg
     assert saved and "last_yt_dlp_update_check" in saved[0]
 
 
-# --------------------------------------------------------------------------
-# 5. maybe_update_yt_dlp() must skip when yt-dlp's own directory isn't
-#    writable, e.g. a Setup-Standard install under Program Files run from a
-#    non-admin Windows account (issue #6). The old guard only checked
-#    sys.frozen, which the shipped embeddable-Python build never sets, so it
-#    attempted "yt-dlp --update" in a directory it had no permission to
-#    write to, every 24h, forever.
-# --------------------------------------------------------------------------
+@pytest.mark.parametrize("status", ["busy", "unsupported"])
+def test_maybe_update_yt_dlp_skipped_run_is_not_stamped(monkeypatch, status):
+    """A download already running (busy) or no copy to update: nothing was
+    checked, so the next download tries again."""
+    from core.yt_dlp_update import UpdateResult
+
+    _fake_update(monkeypatch, UpdateResult(status))
+    cfg = {"yt_dlp_update_mode": "auto"}
+    DownloadService(_UpdateApp(cfg)).maybe_update_yt_dlp(task=None)
+    assert "last_yt_dlp_update_check" not in cfg
 
 
-class _PathUpdateApp(_UpdateApp):
-    """_UpdateApp variant whose yt_dlp_path() points at a real directory,
-    so the writability guard has something concrete to check."""
+@pytest.mark.parametrize("mode", ["ask", "never", "", "bogus"])
+def test_maybe_update_yt_dlp_only_runs_in_auto_mode(monkeypatch, mode):
+    from core.yt_dlp_update import UpdateResult
 
-    def __init__(self, cfg, yt_dlp_dir):
-        super().__init__(cfg)
-        self._yt_dlp_path = str(yt_dlp_dir / "yt-dlp.exe")
+    calls = _fake_update(monkeypatch, UpdateResult("updated", completed=True))
+    cfg = {"yt_dlp_update_mode": mode}
+    DownloadService(_UpdateApp(cfg)).maybe_update_yt_dlp(task=None)
+    assert calls == []
+    assert "last_yt_dlp_update_check" not in cfg
 
-    def yt_dlp_path(self) -> str:
-        return self._yt_dlp_path
+
+def test_maybe_update_yt_dlp_respects_the_24h_backoff(monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    from core.yt_dlp_update import UpdateResult
+
+    calls = _fake_update(monkeypatch, UpdateResult("updated", completed=True))
+    recent = (datetime.now(timezone.utc) - timedelta(hours=23)).isoformat()
+    cfg = {"yt_dlp_update_mode": "auto", "last_yt_dlp_update_check": recent}
+    DownloadService(_UpdateApp(cfg)).maybe_update_yt_dlp(task=None)
+    assert calls == []
+    old = (datetime.now(timezone.utc) - timedelta(hours=25)).isoformat()
+    cfg["last_yt_dlp_update_check"] = old
+    DownloadService(_UpdateApp(cfg)).maybe_update_yt_dlp(task=None)
+    assert len(calls) == 1
+    assert cfg["last_yt_dlp_update_check"] != old
 
 
 def test_maybe_update_yt_dlp_survives_a_naive_stored_timestamp(monkeypatch):
@@ -430,61 +458,28 @@ def test_maybe_update_yt_dlp_survives_a_naive_stored_timestamp(monkeypatch):
     TypeError, uncaught by the old `except ValueError`, aborting every
     yt-dlp download (media and caption-only both call this) until the
     key was fixed by hand."""
-    monkeypatch.setattr(
-        "app.services.download_service.subprocess.run",
-        lambda *_a, **_k: types.SimpleNamespace(stdout="", stderr="", returncode=0),
-    )
-    monkeypatch.setattr(
-        "app.services.download_service.save_config", lambda _c: None
-    )
+    from core.yt_dlp_update import UpdateResult
+
+    _fake_update(monkeypatch, UpdateResult("current", completed=True))
     cfg = {
-        "auto_update_yt_dlp": True,
+        "yt_dlp_update_mode": "auto",
         "last_yt_dlp_update_check": "2026-09-01T10:00:00",  # naive, no offset
     }
-    app = _UpdateApp(cfg)
-    DownloadService(app).maybe_update_yt_dlp(task=None)  # must not raise
-    assert "last_yt_dlp_update_check" in cfg
+    DownloadService(_UpdateApp(cfg)).maybe_update_yt_dlp(task=None)  # must not raise
+    assert cfg["last_yt_dlp_update_check"] != "2026-09-01T10:00:00"
 
 
-def test_maybe_update_yt_dlp_skips_when_directory_not_writable(monkeypatch, tmp_path):
-    """A Program-Files-style install dir the current account can't write to
-    must be skipped outright: no subprocess call, no timestamp stamped.
+def test_maybe_update_yt_dlp_logs_the_updater_output(monkeypatch):
+    from core.yt_dlp_update import UpdateResult
 
-    Mocks the module's _dir_is_writable() rather than os.access(): on
-    Windows os.access(path, os.W_OK) only consults the legacy read-only
-    attribute, not the NTFS ACL that actually protects a Program Files
-    dir from a non-admin account, so it cannot be used to simulate this
-    case (confirmed empirically -- it returns True even under an explicit
-    icacls /deny ACE). _dir_is_writable() probes with a real write instead.
-    """
-    calls = []
-    monkeypatch.setattr(
-        "app.services.download_service.subprocess.run",
-        lambda *a, **k: calls.append((a, k)),
+    calls = _fake_update(
+        monkeypatch, UpdateResult("updated", before=(2026, 8, 19), after=(2026, 9, 27), completed=True)
     )
-    monkeypatch.setattr(
-        "app.services.download_service._dir_is_writable", lambda _d: False
-    )
-    cfg = {"auto_update_yt_dlp": True}
-    app = _PathUpdateApp(cfg, tmp_path)
-    DownloadService(app).maybe_update_yt_dlp(task=None)
-    assert calls == []
-    assert "last_yt_dlp_update_check" not in cfg
-
-
-def test_maybe_update_yt_dlp_runs_when_directory_writable(monkeypatch, tmp_path):
-    """Sanity check for the other side of the guard: a writable install dir
-    (e.g. Portable, or Setup-Standard under a user-writable location) must
-    still update as before. tmp_path is a real writable directory, so this
-    exercises the real _dir_is_writable() probe end to end (unmocked)."""
-    monkeypatch.setattr(
-        "app.services.download_service.subprocess.run",
-        lambda *_a, **_k: types.SimpleNamespace(stdout="", stderr="", returncode=0),
-    )
-    monkeypatch.setattr(
-        "app.services.download_service.save_config", lambda _c: None
-    )
-    cfg = {"auto_update_yt_dlp": True}
-    app = _PathUpdateApp(cfg, tmp_path)
-    DownloadService(app).maybe_update_yt_dlp(task=None)
-    assert "last_yt_dlp_update_check" in cfg
+    app = _UpdateApp({"yt_dlp_update_mode": "auto"})
+    DownloadService(app).maybe_update_yt_dlp(task="T")
+    calls[0]["log"]("Updated yt-dlp to stable@2026.09.27")
+    lines = []
+    while not app.download_events.empty():
+        lines.append(app.download_events.get_nowait())
+    assert ("log", "T", "Updated yt-dlp to stable@2026.09.27") in lines
+    assert any("2026.09.27" in ev[2] and ev[2].startswith("yt-dlp update:") for ev in lines)

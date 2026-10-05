@@ -236,10 +236,13 @@ corrupted (non-UTF8 bytes, malformed JSON), the app moves it aside as
 
 1. Click **Install YouTube helper** in the Download Videos tab if it is shown.
 2. If the error then says yt-dlp is too old, or downloads stop with
-   `HTTP Error 403: Forbidden`, update the bundled yt-dlp: open a Command
-   Prompt **as administrator** in the app's `bin` folder
-   (`C:\Program Files\WhisperTranscriberSuite\bin` for the installer) and
-   run `yt-dlp.exe -U`. Installing the newest app version also updates it.
+   `HTTP Error 403: Forbidden`, click **Update it** on the bar above the tabs
+   ("The video downloader may be out of date"). It updates a copy of yt-dlp in
+   your user folder, so no administrator rights are needed, and never runs
+   while a download runs. **Advanced → Downloads (yt-dlp)** can keep it up to
+   date automatically instead, or turn the offer off. The macOS app cannot
+   update its yt-dlp by itself; there, installing the newest app version
+   updates it.
 
 ### The app crashes
 

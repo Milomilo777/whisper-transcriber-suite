@@ -84,7 +84,7 @@ whisper_project_direct_download_v2/
 ### Download
 
 1. `App.add_download()` validates the form, appends a `VideoDownloadTask` to the module-global `download_queue`.
-2. `process_download_queue` starts a daemon thread for the first waiting task. It runs `yt-dlp --update` (unconditional, every download), then optionally a subtitle phase (`--skip-download --write-auto-subs --write-subs`), then the media phase (`-f <selector> --merge-output-format <ext>`).
+2. `process_download_queue` starts a daemon thread for the first waiting task. In the automatic update mode it first updates the user-writable yt-dlp copy at most once a day (`core.yt_dlp_update`; the bundled binary is never written, and `App.yt_dlp_path()` returns the newer of the two), then optionally a subtitle phase (`--skip-download --write-auto-subs --write-subs`), then the media phase (`-f <selector> --merge-output-format <ext>`).
 3. The thread reads each `yt-dlp` stdout line, regex-matches `[download] N%` to update progress, and pushes events onto `download_events`.
 4. Cancellation: `cancel_download(task)` sets `task.cancelled=True` and calls `task.process.terminate()`. The reader loop exits when stdout closes; the worker checks `task.cancelled` after `wait()` and emits `done` with status `cancelled`.
 

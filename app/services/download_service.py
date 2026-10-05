@@ -15,8 +15,6 @@ import math
 import os
 import re
 import subprocess
-import sys
-import threading
 import time
 import urllib.error
 import urllib.request
@@ -55,7 +53,6 @@ def _reap_process(proc: "subprocess.Popen | None") -> None:
     except Exception:  # noqa: BLE001
         pass
 from collections.abc import Iterable
-from datetime import datetime, timedelta, timezone
 from queue import Empty
 from typing import TYPE_CHECKING, Any
 
@@ -66,6 +63,7 @@ from app.domain.cookies import (
     is_cookie_extraction_error,
 )
 from app.domain.languages import subtitle_lang_args
+from core import yt_dlp_update
 from core.config import save_config
 from core.integrations import smtv as smtv_mod
 
@@ -99,33 +97,6 @@ def _finalize_owned_process(task: Any, generation: int) -> None:
     _reap_process(proc)
     if getattr(task, "process", None) is proc:
         task.process = None
-
-
-def _dir_is_writable(path: str) -> bool:
-    """Probe write access to ``path`` by actually writing a throwaway file.
-
-    ``os.access(path, os.W_OK)`` is not reliable for this on Windows: the
-    Microsoft CRT ``_waccess`` call it wraps only consults the legacy
-    per-file read-only attribute, not the NTFS ACL that actually protects
-    a Program Files install directory from a non-admin account -- it
-    returns True even where a real write would raise PermissionError
-    (confirmed against an explicit icacls /deny ACE). A real write/remove
-    is the only check that matches what "yt-dlp --update" will actually
-    hit.
-    """
-    probe = os.path.join(path, f".wp_write_probe_{os.getpid()}")
-    try:
-        with open(probe, "w"):
-            pass
-    except OSError:
-        return False
-    else:
-        return True
-    finally:
-        try:
-            os.remove(probe)
-        except OSError:
-            pass
 
 
 def _is_smtv_task(task: "VideoDownloadTask") -> bool:
@@ -624,18 +595,6 @@ def select_saved_path(lines: "Iterable[str]") -> str | None:
 
 # Service class wired into the App ------------------------------------------------
 
-# Single-flight guard for maybe_update_yt_dlp's blocking ``yt-dlp --update``
-# (up to 60 s). pause_download frees the download slot even while that
-# subprocess runs — there is no task.process to kill yet — so a resume or
-# the next queued task can dispatch a second _run_task that also passes the
-# still-unstamped 24h backoff gate (the holder stamps it only on completion)
-# and starts a SECOND concurrent self-updater against the same install;
-# two racing updaters renaming/replacing the same binary can leave a broken
-# yt-dlp. Non-blocking acquire: the second attempt skips — the update is
-# best-effort — instead of stacking another 60 s wait behind the first.
-_YT_DLP_UPDATE_LOCK = threading.Lock()
-
-
 class DownloadService:
     def __init__(self, app: "App") -> None:
         self.app = app
@@ -670,93 +629,41 @@ class DownloadService:
         )
 
     def maybe_update_yt_dlp(self, task: "VideoDownloadTask") -> None:
+        """Mode "auto": update the user-writable yt-dlp copy before a download.
+
+        At most once every 24 h (stamped in ``last_yt_dlp_update_check`` only
+        when yt-dlp's updater ran to its end, so a timeout or a skipped run
+        retries on the next download). Runs before this task's yt-dlp starts
+        and never while another download runs (core.yt_dlp_update refuses
+        then). The bundled yt-dlp is never written; see core.yt_dlp_update.
+        """
         cfg = self.app.app_config
-        if not cfg.get("auto_update_yt_dlp", False):
+        if yt_dlp_update.update_mode(cfg) != yt_dlp_update.MODE_AUTO:
             return
-        # A frozen build's bundled yt-dlp lives inside the read-only app
-        # bundle/install dir; "yt-dlp --update" can't write there and would
-        # just fail silently every 24h.
-        if getattr(sys, "frozen", False):
+        now = yt_dlp_update.now_utc()
+        if not yt_dlp_update.auto_update_due(cfg.get("last_yt_dlp_update_check"), now):
             return
-        last = cfg.get("last_yt_dlp_update_check") or ""
-        if last:
-            try:
-                last_dt = datetime.fromisoformat(last)
-                if datetime.now(timezone.utc) - last_dt < timedelta(hours=24):
-                    return
-            except (ValueError, TypeError):
-                # ValueError: unparseable string. TypeError: a value
-                # without a UTC offset (a hand-edited config, or a
-                # legacy value from before this key always stored an
-                # aware timestamp) parses fine into a NAIVE datetime,
-                # and subtracting it from the aware now() above raises
-                # TypeError -- which used to propagate out of this
-                # function and abort every yt-dlp download (media and
-                # caption-only both call it) until the key was fixed by
-                # hand. Either error just means "treat it as stale and
-                # check again", same as an empty value.
-                pass
-        yt_dlp_path = self.app.yt_dlp_path()
-        # The Setup-Standard installer (embeddable Python, not frozen) puts
-        # yt-dlp.exe under Program Files by default, which a non-admin
-        # Windows account can't write to -- "yt-dlp --update" would fail
-        # every 24h the same way. Skip whenever the resolved binary's own
-        # directory isn't writable, regardless of why (Program Files,
-        # frozen bundle, read-only mount, ...). A bare "yt-dlp" fallback
-        # name (no bundled binary found; PATH lookup on Linux/Mac) has no
-        # directory to check, so it falls through unchanged. Checked after
-        # the 24h backoff above so the real probe write in _dir_is_writable
-        # only runs once a day, not on every single download task.
-        yt_dlp_dir = os.path.dirname(yt_dlp_path)
-        if yt_dlp_dir and not _dir_is_writable(yt_dlp_dir):
+        events = self.app.download_events
+        result = yt_dlp_update.update_cached_copy(
+            log=lambda line: events.put(("log", task, line)),
+        )
+        if result.status == "unsupported":
             return
-        if not _YT_DLP_UPDATE_LOCK.acquire(blocking=False):
-            # Another _run_task already holds the updater (this call got
-            # here through the slot a pause freed mid-update — the
-            # holder's backoff stamp above is still pending). Skip; see
-            # the lock's comment. The holder stamps the backoff when it
-            # finishes, and a holder that times out leaves it unstamped,
-            # so a later download still retries.
-            self.app.download_events.put((
-                "log", task,
-                "yt-dlp update already in progress; skipping this check",
-            ))
+        events.put(("log", task, "yt-dlp update: " + yt_dlp_update.result_text(result)))
+        if not result.completed:
             return
+        cfg["last_yt_dlp_update_check"] = now.isoformat()
         try:
-            update_cmd = [yt_dlp_path, "--update"]
-            update = subprocess.run(
-                update_cmd,
-                cwd=os.path.dirname(os.path.abspath(self.app.entry_file)),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=60,
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-            )
-            if update.stdout.strip():
-                self.app.download_events.put(("log", task, update.stdout.strip()))
-            if update.stderr.strip():
-                self.app.download_events.put(("log", task, update.stderr.strip()))
-            if update.returncode:
-                self.app.download_events.put(
-                    ("log", task, f"yt-dlp update returned code {update.returncode}; continuing")
-                )
-            # Only stamp the 24h backoff once the check actually ran to
-            # completion (regardless of returncode) -- a timeout or other
-            # failure below means we never really checked, so it must not
-            # suppress a retry on the next download for a full day.
-            cfg["last_yt_dlp_update_check"] = datetime.now(timezone.utc).isoformat()
-            try:
-                save_config(cfg)
-            except Exception:
-                logger.exception("Failed to persist yt-dlp auto-update preference")
-        except subprocess.TimeoutExpired:
-            self.app.download_events.put(("log", task, "yt-dlp update timed out; continuing"))
-        except Exception as e:  # noqa: BLE001
-            self.app.download_events.put(("log", task, f"yt-dlp update skipped: {e}"))
-        finally:
-            _YT_DLP_UPDATE_LOCK.release()
+            save_config(cfg)
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to save the yt-dlp update time")
+
+    def _offer_yt_dlp_update(self, reason: str) -> None:
+        """Ask the UI to show the "may be out of date" bar (from any thread)."""
+        offer = getattr(self.app, "offer_yt_dlp_update", None)
+        post = getattr(self.app, "post_to_main", None)
+        if callable(offer) and callable(post):
+            post(lambda: offer(reason))
 
     def _warn_format_missing(self, kind: str) -> None:
         """Explain why a required audio/video format isn't selected.
@@ -1176,9 +1083,19 @@ class DownloadService:
             # a duplicate download concurrently with the fresh run.
             return getattr(task, "_run_generation", my_gen) != my_gen
 
+        # Registered while this run's yt-dlp works, so an update of the
+        # user-writable copy never runs during it (core.yt_dlp_update). The
+        # registration waits for an update that is already running, so it
+        # sits right after maybe_update_yt_dlp (which must run unregistered,
+        # or it would refuse itself as "busy") and BEFORE the pause / cancel
+        # guards: a pause or cancel landing during that wait is still caught.
+        # Unregistered in the finally, after the process is reaped.
+        run_key = object()
+
         if getattr(task, "caption_only", False):
             try:
                 self.maybe_update_yt_dlp(task)
+                yt_dlp_update.begin_download(run_key)
                 # Same pre-start guard the media path already has (below):
                 # a pause landing during maybe_update_yt_dlp's up-to-60s
                 # blocking wait has no process to kill (caption-only hasn't
@@ -1206,6 +1123,7 @@ class DownloadService:
                     app.download_events.put(("error", task, str(e)))
             finally:
                 _finalize_owned_process(task, my_gen)
+                yt_dlp_update.end_download(run_key)
             return
 
         if _is_smtv_task(task):
@@ -1240,6 +1158,7 @@ class DownloadService:
 
         try:
             self.maybe_update_yt_dlp(task)
+            yt_dlp_update.begin_download(run_key)
 
             # A pause that landed before the media phase starts must not
             # keep downloading: pause_download() already tree-killed the
@@ -1297,6 +1216,7 @@ class DownloadService:
                 app.download_events.put(("error", task, str(e)))
         finally:
             _finalize_owned_process(task, my_gen)
+            yt_dlp_update.end_download(run_key)
 
     def _build_smtv_sibling_tasks(
         self,
@@ -2115,6 +2035,8 @@ class DownloadService:
                         "tab and retry."
                     )
             app.download_events.put(("error", task, msg))
+            if yt_dlp_update.should_offer_update(reason):
+                self._offer_yt_dlp_update(reason)
         else:
             payload = {"status": "finished", "saved_path": saved_path}
             app.download_events.put(("done_full", task, payload))

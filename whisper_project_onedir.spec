@@ -232,6 +232,7 @@ a = Analysis(
         'core.task',
         'core.transcriber',
         'core.updates',
+        'core.yt_dlp_update',
         'core.watcher',
         'core.worker',
         'core.integrations.otranscribe',

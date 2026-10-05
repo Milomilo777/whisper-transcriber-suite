@@ -198,6 +198,9 @@ class AdvancedDialog(tk.Toplevel):
         # once; remember what was shown so Save only writes a change made
         # HERE (a stale copy must not undo a pick made there meanwhile).
         self._cookies_browser_initial = self._cookies_browser.get()
+        # Video downloader (yt-dlp) updates: "ask" / "auto" / "never".
+        from core.yt_dlp_update import update_mode as _yt_dlp_update_mode
+        self._yt_dlp_update_mode = tk.StringVar(value=_yt_dlp_update_mode(cfg))
         existing_formats = set(cfg.get("output_formats") or ["srt", "json"])
         self._format_vars: dict[str, tk.BooleanVar] = {
             f: tk.BooleanVar(value=(f in existing_formats)) for f in supported_formats()
@@ -1446,7 +1449,7 @@ class AdvancedDialog(tk.Toplevel):
         return watch
 
     def _build_download_section(self, body: ttk.Frame) -> ttk.LabelFrame:
-        """"Downloads (yt-dlp)": SponsorBlock cuts + browser cookies.
+        """"Downloads (yt-dlp)": SponsorBlock cuts, browser cookies, updates.
 
         "Transcribe after download" is deliberately not repeated here —
         the Download Videos tab has its own checkbox for it, right next to
@@ -1455,8 +1458,9 @@ class AdvancedDialog(tk.Toplevel):
         download = section_labelframe(
             body, "Downloads (yt-dlp)",
             "Options for video downloads (Download Videos tab): which "
-            "SponsorBlock segments get cut, and browser cookies for "
-            "login-walled sites.",
+            "SponsorBlock segments get cut, browser cookies for "
+            "login-walled sites, and how the video downloader stays up "
+            "to date.",
         )
         download.pack(fill="x", pady=(0, 14))
         ttk.Label(download, text="SponsorBlock — remove these segments:").grid(
@@ -1485,7 +1489,40 @@ class AdvancedDialog(tk.Toplevel):
                 str(self.app.app_config.get("cookies_from_browser") or "")
             ),
         ).grid(row=5, column=0, sticky="w", padx=8, pady=(0, 4))
+        self._build_yt_dlp_update_choice(download, row=6)
         return download
+
+    def _build_yt_dlp_update_choice(self, parent: ttk.LabelFrame, *, row: int) -> None:
+        """Video downloader updates: ask (default) / automatic / never. Local only."""
+        from core import yt_dlp_update as _ytu
+
+        ttk.Label(parent, text="Video downloader updates:").grid(
+            row=row, column=0, columnspan=3, sticky="w", padx=8, pady=(8, 2)
+        )
+        choices = (
+            ("Ask me when a failed download suggests it is out of date", _ytu.MODE_ASK),
+            ("Keep it up to date automatically (checks at most once a day, before a download)",
+             _ytu.MODE_AUTO),
+            ("Never update it", _ytu.MODE_NEVER),
+        )
+        for i, (text, value) in enumerate(choices, start=1):
+            ttk.Radiobutton(
+                parent, text=text, value=value, variable=self._yt_dlp_update_mode,
+            ).grid(row=row + i, column=0, columnspan=3, sticky="w", padx=24, pady=1)
+        if _ytu.can_self_update():
+            note = (
+                "Updates come from yt-dlp's own GitHub releases (stable), are "
+                "checked against their published checksums and go to a copy "
+                "in your user folder; the app's own copy is never changed."
+            )
+        else:
+            note = (
+                "This copy of the app cannot update its video downloader by "
+                "itself; a new app version brings a newer one."
+            )
+        ttk.Label(
+            parent, text=note, wraplength=560, justify="left", foreground="#666",
+        ).grid(row=row + len(choices) + 1, column=0, columnspan=3, sticky="w", padx=24, pady=(0, 6))
 
     def _build_misc_section(self, body: ttk.Frame) -> ttk.LabelFrame:
         """"App behaviour": system tray, usage statistics, update notice."""
@@ -1941,6 +1978,7 @@ class AdvancedDialog(tk.Toplevel):
         cfg["sponsorblock_categories"] = [c for c, v in self._sb_vars.items() if v.get()]
         if self._cookies_browser.get() != self._cookies_browser_initial:
             cfg["cookies_from_browser"] = cookie_browser_value(self._cookies_browser.get())
+        cfg["yt_dlp_update_mode"] = str(self._yt_dlp_update_mode.get())
         _old_backend = str(cfg.get("transcribe_backend") or "")
         cfg["transcribe_backend"] = (
             engine_value_for_label(self._backend_display.get()) or "faster_whisper"

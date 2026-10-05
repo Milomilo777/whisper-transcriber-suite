@@ -69,28 +69,32 @@ def _download_url(url: str, dest_dir: str) -> str:
     with ``-`` can never be parsed as a yt-dlp flag (e.g. ``--exec``).
     """
     from core._proc import new_session_kwargs
-    from core.paths import bin_dir, bundled_binary
+    from core.paths import bin_dir
 
+    from core import yt_dlp_update
     from core.js_runtime import yt_dlp_js_args
 
-    yt_dlp = bundled_binary("yt-dlp")
     out_template = os.path.join(dest_dir, "%(title).200s.%(ext)s")
-    command = [
-        yt_dlp,
-        *yt_dlp_js_args(yt_dlp),  # Deno for YouTube's JS challenges, if present
-        "--ffmpeg-location", bin_dir(),
-        "--no-playlist",
-        "--newline",
-        "-o", out_template,
-        # End-of-options separator — URL is never treated as a flag.
-        "--",
-        url,
-    ]
-    logger.info("server: downloading %s", url)
-    subprocess.run(
-        command, check=True, capture_output=True, text=True,
-        **new_session_kwargs(),
-    )
+    # Registered as a running download: an update of the user-writable
+    # yt-dlp copy waits for it, and this waits for a running update.
+    with yt_dlp_update.download_running():
+        yt_dlp = yt_dlp_update.resolve_yt_dlp_path()  # newer of bundled / updated copy
+        command = [
+            yt_dlp,
+            *yt_dlp_js_args(yt_dlp),  # Deno for YouTube's JS challenges, if present
+            "--ffmpeg-location", bin_dir(),
+            "--no-playlist",
+            "--newline",
+            "-o", out_template,
+            # End-of-options separator — URL is never treated as a flag.
+            "--",
+            url,
+        ]
+        logger.info("server: downloading %s", url)
+        subprocess.run(
+            command, check=True, capture_output=True, text=True,
+            **new_session_kwargs(),
+        )
     # Pick the newest file yt-dlp left in the dir.
     candidates = [
         os.path.join(dest_dir, n) for n in os.listdir(dest_dir)

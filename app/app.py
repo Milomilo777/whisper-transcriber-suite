@@ -802,6 +802,12 @@ class App(tk.Tk):
         self._latest_update: Any = None
         self._whats_new_window: Any = None
         self._update_bar_shown_this_launch = False
+        # "The video downloader may be out of date" bar (core.yt_dlp_update):
+        # offered after a download or format lookup fails the way an
+        # outdated yt-dlp fails; "Not now" keeps it away for this launch.
+        self._yt_dlp_bar: Any = None
+        self._yt_dlp_bar_dismissed = False
+        self._yt_dlp_updating = False
 
         self._build_menu()
         self._refresh_update_signs()
@@ -883,6 +889,10 @@ class App(tk.Tk):
         # the quiet bar, never a dialog. See _run_update_check /
         # core.updates.
         self.after(4000, self._maybe_quiet_update_check)
+        # Re-read the versions of the bundled and the updated yt-dlp copy when
+        # either changed since they were recorded (after an app update);
+        # local only, and a no-op until the copy exists.
+        self.after(6000, self._refresh_yt_dlp_versions)
 
     def _sweep_partials_at_startup(self) -> None:
         """Off-thread best-effort cleanup of the partials/ checkpoint dir."""
@@ -2427,9 +2437,11 @@ class App(tk.Tk):
 
     # Generic helpers ---------------------------------------------------------
     def yt_dlp_path(self) -> str:
-        # Bundled bin/yt-dlp[.exe] when present, else the bare name so
-        # Linux/Mac fall back to a yt-dlp on PATH.
-        return _bundled_binary("yt-dlp")
+        # The newer of the bundled bin/yt-dlp[.exe] and the user-writable copy
+        # that updates itself (core.yt_dlp_update); the bare name when neither
+        # exists, so Linux/Mac fall back to a yt-dlp on PATH.
+        from core.yt_dlp_update import resolve_yt_dlp_path
+        return resolve_yt_dlp_path()
 
     def bin_path(self) -> str:
         # Point yt-dlp's --ffmpeg-location at our bin/ ONLY when a bundled
@@ -4866,6 +4878,95 @@ class App(tk.Tk):
     def _hide_update_bar(self) -> None:
         if self._update_bar is not None:
             self._update_bar.hide()
+
+    # yt-dlp update bar (core.yt_dlp_update) ---------------------------------
+    def _refresh_yt_dlp_versions(self) -> None:
+        if self._closing:
+            return
+
+        def _work() -> None:
+            try:
+                from core import yt_dlp_update
+                yt_dlp_update.refresh_state_if_stale()
+            except Exception:  # noqa: BLE001
+                logger.exception("Could not refresh the yt-dlp versions")
+
+        from core._threads import safe_thread
+        safe_thread(_work, name="yt-dlp-versions")
+
+    def _ensure_yt_dlp_bar(self) -> Any:
+        bar = self._yt_dlp_bar
+        if bar is None:
+            from app.widgets.update_bar import DownloaderUpdateBar
+            bar = DownloaderUpdateBar(
+                self, on_update=self._yt_dlp_update_now, on_dismiss=self._yt_dlp_bar_dismiss,
+            )
+            self._yt_dlp_bar = bar
+        return bar
+
+    def offer_yt_dlp_update(self, reason: str = "") -> None:
+        """Offer to update the video downloader (main thread).
+
+        Called after a download or a format lookup failed in a way an
+        outdated yt-dlp fails (core.yt_dlp_update.should_offer_update). Not
+        in mode "never", not when this copy of the app cannot update yt-dlp
+        (no single-file build to copy, e.g. the macOS app), not again after
+        "Not now" in this launch, and not while an update runs.
+        """
+        if self._closing or self._yt_dlp_bar_dismissed or self._yt_dlp_updating:
+            return
+        from core import yt_dlp_update
+        if yt_dlp_update.update_mode(self.app_config) == yt_dlp_update.MODE_NEVER:
+            return
+        if not yt_dlp_update.can_self_update():
+            return
+        logger.info("Offering a yt-dlp update after: %s", reason)
+        self._ensure_yt_dlp_bar().show_offer(
+            "The video downloader may be out of date. An update (about "
+            f"{yt_dlp_update.DOWNLOAD_MB} MB) often fixes failing YouTube downloads.",
+            before=self.nb,
+        )
+
+    def _yt_dlp_bar_dismiss(self) -> None:
+        self._yt_dlp_bar_dismissed = True
+        if self._yt_dlp_bar is not None:
+            self._yt_dlp_bar.hide()
+
+    def _yt_dlp_update_now(self) -> None:
+        """"Update it": update the user-writable copy off the Tk thread."""
+        if self._yt_dlp_updating or self._closing:
+            return
+        from core import yt_dlp_update
+        bar = self._ensure_yt_dlp_bar()
+        if yt_dlp_update.downloads_running():
+            bar.show_result(
+                "A download is running. Click Update it again when it has finished.",
+                before=self.nb, can_retry=True,
+            )
+            return
+        self._yt_dlp_updating = True
+        bar.show_progress("Updating the video downloader…", before=self.nb)
+        self.log("Updating the video downloader (yt-dlp)…")
+
+        def _work() -> None:
+            result = yt_dlp_update.update_cached_copy(
+                log=lambda line: logger.info("yt-dlp update: %s", line),
+            )
+            self.post_to_main(lambda: self._yt_dlp_update_done(result))
+
+        from core._threads import safe_thread
+        safe_thread(_work, name="yt-dlp-update")
+
+    def _yt_dlp_update_done(self, result: Any) -> None:
+        self._yt_dlp_updating = False
+        from core import yt_dlp_update
+        text = yt_dlp_update.result_text(result)
+        self.log(text)
+        if self._closing or self._yt_dlp_bar is None:
+            return
+        self._yt_dlp_bar.show_result(
+            text, before=self.nb, can_retry=result.status in ("failed", "busy"),
+        )
 
     def _update_whats_new(self) -> None:
         """"What's new": a small non-modal window with the release highlights."""

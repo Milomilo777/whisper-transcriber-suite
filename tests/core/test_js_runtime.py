@@ -205,3 +205,20 @@ def test_missing_runtime_hint_with_deno_says_update_yt_dlp(no_deno, monkeypatch)
     assert "2025.03.07" in hint and "too old" in hint and "update yt-dlp" in hint
     monkeypatch.setattr(js, "yt_dlp_version", lambda _p=None: (2026, 8, 19))
     assert "could not use it" in js.missing_js_runtime_hint()
+
+
+@pytest.mark.parametrize("self_update", [True, False])
+def test_missing_runtime_hint_points_at_the_update_bar_only_where_it_exists(
+    no_deno, monkeypatch, self_update,
+):
+    from core import yt_dlp_update
+
+    target = js.installed_deno_path()
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"")
+    monkeypatch.setattr(js, "yt_dlp_version", lambda _p=None: (2025, 3, 7))
+    monkeypatch.setattr(yt_dlp_update, "can_self_update", lambda bundled=None: self_update)
+    hint = js.missing_js_runtime_hint()
+    assert ("\"Update it\"" in hint) is self_update
+    assert "install the newest version of this app" in hint
+    assert "administrator" not in hint

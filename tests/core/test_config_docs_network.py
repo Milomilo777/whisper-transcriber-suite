@@ -68,7 +68,7 @@ def test_documented_defaults_match_the_code(config_md: str) -> None:
 
 
 def test_network_table_names_every_default_endpoint(config_md: str) -> None:
-    from core import js_runtime, updates
+    from core import js_runtime, updates, yt_dlp_update
 
     section = _section(config_md, "## Network use")
     endpoints = [
@@ -77,6 +77,8 @@ def test_network_table_names_every_default_endpoint(config_md: str) -> None:
         DEFAULT_CONFIG["llm_remote_base_url"],
         updates.latest_release_api_url(updates.GITHUB_OWNER, updates.GITHUB_REPO),
         js_runtime._RELEASE_BASE,
+        yt_dlp_update.RELEASE_API_URL,
+        yt_dlp_update.RELEASE_DOWNLOADS_URL,
     ]
     missing = [u for u in endpoints if u not in section]
     assert not missing, f"default endpoints missing from Network use: {missing}"

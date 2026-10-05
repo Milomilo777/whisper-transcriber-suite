@@ -169,11 +169,15 @@ def missing_js_runtime_hint(yt_dlp_path: str | None = None) -> str:
         f"this app's yt-dlp ({shown}) is too old to use it"
         if older else "yt-dlp could not use it"
     )
-    return (
-        f"The YouTube helper is installed, but {what}: update yt-dlp (run "
-        "\"yt-dlp -U\" in the app's bin folder as administrator, or install "
-        "the newest version of this app) and retry."
+    # Local import: core.yt_dlp_update imports this module.
+    from .yt_dlp_update import can_self_update
+
+    how = (
+        "click \"Update it\" on the bar above the tabs, or install the newest "
+        "version of this app"
+        if can_self_update() else "install the newest version of this app"
     )
+    return f"The YouTube helper is installed, but {what}: update yt-dlp ({how}) and retry."
 
 
 def is_youtube_url(url: str) -> bool:

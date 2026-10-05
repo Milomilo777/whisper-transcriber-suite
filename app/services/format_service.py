@@ -21,6 +21,7 @@ from app.domain.cookies import (
     is_cookie_extraction_error,
     login_required_hint,
 )
+from core import yt_dlp_update
 from core.integrations import smtv as smtv_mod
 from core.js_runtime import (
     mentions_missing_js_runtime,
@@ -120,9 +121,11 @@ class FormatService:
             self.app.app_config.get("cookies_from_browser", "")
         )
 
-        yt_dlp = self.app.yt_dlp_path()
-
         def _probe(extra: list[str]) -> subprocess.CompletedProcess[str]:
+            # Resolved here, on the lookup thread, after any running update of
+            # the user-writable yt-dlp copy has finished (core.yt_dlp_update).
+            yt_dlp_update.wait_while_updating()
+            yt_dlp = self.app.yt_dlp_path()
             cmd = [yt_dlp]
             # Deno for YouTube's JS challenges (core.js_runtime); [] when
             # absent. Resolved here, on the lookup thread: the first call
@@ -324,6 +327,9 @@ class FormatService:
                 hint = missing_js_runtime_hint(app.yt_dlp_path())
             app.format_status_var.set(f"{hint}\n{payload}" if hint else payload)
             app.format_lookup_error = str(payload)
+            offer = getattr(app, "offer_yt_dlp_update", None)
+            if callable(offer) and yt_dlp_update.should_offer_update(str(payload)):
+                offer(str(payload))
             app.current_video_caption_langs = {}
             if hasattr(app, "update_caption_shortcut_state"):
                 app.update_caption_shortcut_state()

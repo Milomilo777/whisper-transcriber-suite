@@ -80,18 +80,17 @@ If the path is unreachable on startup, the new fallback in Phase 0 will substitu
 
 ---
 
-## F. If you want to enable `auto_update_yt_dlp` or `auto_transcribe_after_download`
+## F. If you want automatic yt-dlp updates or `auto_transcribe_after_download`
 
-Open `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json` and set:
+yt-dlp updates are a choice in **Advanced → Downloads (yt-dlp)**: "Keep it up to date automatically" (`"yt_dlp_update_mode": "auto"`) updates a copy in the user cache at most once per 24 hours, before a download. Auto-transcribe has its own checkbox in the Download Videos tab, or set in `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json`:
 
 ```json
 {
-  "auto_update_yt_dlp": true,
   "auto_transcribe_after_download": true
 }
 ```
 
-Restart. The auto-update checks GitHub at most once per 24 hours and never blocks a download (Phase 0 fix). Auto-transcribe-after-download enqueues a transcription job with the detected source language as a hint.
+Restart. Auto-transcribe-after-download enqueues a transcription job with the detected source language as a hint.
 
 ---
 

@@ -6,6 +6,14 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **The video downloader (yt-dlp) updates itself without administrator rights.** A download
+  or format lookup that fails like an outdated yt-dlp (HTTP 403, signature or extractor
+  errors) shows a bar with **Update it**: yt-dlp's own updater refreshes a copy in the user
+  cache, checked against the release's `SHA2-256SUMS`, and the app runs whichever of that copy
+  and the bundled one is newer (the bundled binary is never written, and no update runs during
+  a download). **Advanced → Downloads (yt-dlp)** offers "Ask me" (default), "Keep it up to date
+  automatically" (once a day, before a download) and "Never"; an old `auto_update_yt_dlp: true`
+  loads as the automatic mode. Not in the macOS app, whose yt-dlp build cannot update itself.
 - **"Try it now" sample clip.** An 18-second public-domain (CC0) spoken clip ships with the
   app. "Finish and try it now" in the quick start window, and a "Try it now (sample clip)"
   button on the Transcribe tab, transcribe it with the chosen model and open the transcript, so

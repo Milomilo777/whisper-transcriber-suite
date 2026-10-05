@@ -71,6 +71,7 @@ def _fake_dialog(app: Any, **overrides: Any) -> types.SimpleNamespace:
         _model_label_to_slug={"Large-v3": "large-v3"},
         _telemetry_opt_in=_V(False),
         _update_check_enabled=_V(True),
+        _yt_dlp_update_mode=_V("ask"),
         _minimise_to_tray=_V(False),
         _watched_folder=_V(""),
         _watched_folder_enabled=_V(False),
@@ -504,6 +505,40 @@ def test_updates_choice_shows_the_saved_setting(make_dialog, enabled) -> None:
     assert dlg._update_check_enabled.get() is False
     notify.invoke()
     assert dlg._update_check_enabled.get() is True
+
+
+@pytest.mark.parametrize("mode", ["ask", "auto", "never"])
+def test_save_writes_the_yt_dlp_update_choice(monkeypatch, mode) -> None:
+    from app.dialogs import advanced as adv
+
+    monkeypatch.setattr(adv, "save_config", lambda _cfg: None)
+    cfg = _base_cfg()
+    adv.AdvancedDialog._save_and_close(
+        _fake_dialog(_fake_app(cfg), _yt_dlp_update_mode=_V(mode))  # type: ignore[arg-type]
+    )
+    assert cfg["yt_dlp_update_mode"] == mode
+
+
+@pytest.mark.parametrize("mode", ["ask", "auto", "never", "bogus"])
+def test_yt_dlp_update_choice_shows_the_saved_setting(make_dialog, mode) -> None:
+    from tkinter import ttk
+
+    dlg = make_dialog(yt_dlp_update_mode=mode)
+    radios = {
+        str(w.cget("text")): w for w in _all_widgets(dlg) if isinstance(w, ttk.Radiobutton)
+    }
+    ask = next(w for t, w in radios.items() if t.startswith("Ask me when a failed download"))
+    auto = next(w for t, w in radios.items() if t.startswith("Keep it up to date automatically"))
+    never = next(w for t, w in radios.items() if t == "Never update it")
+    shown = mode if mode != "bogus" else "ask"
+    assert dlg._yt_dlp_update_mode.get() == shown
+    assert ask.instate(["selected"]) is (shown == "ask")
+    assert auto.instate(["selected"]) is (shown == "auto")
+    assert never.instate(["selected"]) is (shown == "never")
+    never.invoke()
+    assert dlg._yt_dlp_update_mode.get() == "never"
+    auto.invoke()
+    assert dlg._yt_dlp_update_mode.get() == "auto"
 
 
 def _all_widgets(widget: Any):

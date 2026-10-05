@@ -63,7 +63,13 @@ DEFAULT_CONFIG = {
     "download_folder": "",
     "download_subtitles_enabled": False,
     "download_subtitle_lang": "Automatic",
-    "auto_update_yt_dlp": False,
+    # yt-dlp updates (core.yt_dlp_update): "ask" offers an update when a
+    # download fails the way an outdated yt-dlp fails, "auto" updates the
+    # user-writable copy before a download at most once a day, "never" leaves
+    # it alone. last_yt_dlp_update_check stamps the last completed automatic
+    # check. Both are LOCAL_ONLY_KEYS. The old auto_update_yt_dlp=true is read
+    # once as "auto" (load_config) and is no longer written.
+    "yt_dlp_update_mode": "ask",
     "last_yt_dlp_update_check": "",
     # GitHub "update available" check (core.updates), on by default.
     # When enabled, a quiet launch check (once per day, throttled via
@@ -434,7 +440,8 @@ ONLINE_ALLOWED_KEYS: frozenset[str] = frozenset({
 # user's usage-stats switch (on by default); a remote file must never be able
 # to turn a saved OFF back on. The update-notice keys are the same kind of
 # choice: a remote file must not be able to switch the check back on, undo a
-# "Skip this version" or a "Later", or fake the newest version seen.
+# "Skip this version" or a "Later", or fake the newest version seen. Same for
+# the yt-dlp update mode: a remote file must not switch automatic updates on.
 LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "telemetry_opt_in",
     "update_check_enabled",
@@ -443,6 +450,9 @@ LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "update_skipped_version",
     "update_snooze_count",
     "update_snooze_until",
+    "yt_dlp_update_mode",
+    "last_yt_dlp_update_check",
+    "auto_update_yt_dlp",
 })
 
 
@@ -1050,6 +1060,12 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
         local or os.path.exists(config_path() + ".corrupt")
     ):
         merged["quick_start_done"] = True
+    # The yt-dlp update choice used to be a bool; true meant "update before a
+    # download, once a day", which is the "auto" mode now. Read only from the
+    # local file (the online layer can set neither key).
+    if "yt_dlp_update_mode" not in local and local.get("auto_update_yt_dlp") is True:
+        merged["yt_dlp_update_mode"] = "auto"
+    merged.pop("auto_update_yt_dlp", None)
     # Coerce / drop wrong-type values for keys that ship a default —
     # e.g. parallel_workers="many" survives the merge and downstream
     # int() crashes later. Drop the bad value (restore default).
@@ -1224,7 +1240,8 @@ def _persistable_download_folder(config: dict[str, Any]) -> str:
 #: are re-derived from DEFAULT_CONFIG / the online config fetch on every load.
 #: Stripped on every save, including from a config.json that already has them
 #: from before this rule existed. Keys of removed features (Video Tiling and its
-#: ffplay download links) are listed too, so old config files lose them.
+#: ffplay download links) are listed too, so old config files lose them, and so
+#: is auto_update_yt_dlp (replaced by yt_dlp_update_mode; see load_config).
 #: telemetry_opt_in is NOT listed: it is the user's own choice and is persisted
 #: when it departs from the default (see save_config).
 _NON_PERSISTED_KEYS: frozenset[str] = frozenset({
@@ -1238,6 +1255,7 @@ _NON_PERSISTED_KEYS: frozenset[str] = frozenset({
     "tiling_selected_monitors",
     "tiling_auto_restart",
     "tiling_divisions",
+    "auto_update_yt_dlp",
 })
 
 

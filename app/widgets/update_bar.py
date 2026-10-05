@@ -1,10 +1,15 @@
-"""The quiet "new version available" bar and its two small windows.
+"""The quiet update bars and the new-version bar's two small windows.
 
-The bar sits between the menu and the tabs. It never takes focus, never grabs
-input and never opens a window by itself: the user reads it when they like and
-answers with What's new / Download / Later / Skip this version. The rules for
-when it may appear live in ``core.updates`` (pure, tested without Tk); the app
-glue is ``App._on_update_result`` and the ``App._update_*`` handlers.
+The bars sit between the menu and the tabs. They never take focus, never grab
+input and never open a window by themselves: the user reads them when they like.
+
+* ``UpdateBar``: a new app version (What's new / Download / Later / Skip this
+  version). The rules for when it may appear live in ``core.updates`` (pure,
+  tested without Tk); the app glue is ``App._on_update_result`` and the
+  ``App._update_*`` handlers.
+* ``DownloaderUpdateBar``: the video downloader (yt-dlp) may be out of date
+  (Update it / Not now). The update itself is ``core.yt_dlp_update``; the app
+  glue is ``App.offer_yt_dlp_update`` and the ``App._yt_dlp_*`` handlers.
 """
 from __future__ import annotations
 
@@ -16,25 +21,11 @@ _WRAP_MIN = 220
 _WINDOW_WRAP = 460
 
 
-class UpdateBar(ttk.Frame):
-    """A one-line notice with four buttons, gridded in and out by pack."""
+class _QuietBar(ttk.Frame):
+    """A one-line notice with buttons on the right, packed in and out above
+    the tabs. Subclasses fill ``self._button_row``."""
 
-    BUTTONS = (
-        ("whats_new", "What's new"),
-        ("download", "Download"),
-        ("later", "Later"),
-        ("skip", "Skip this version"),
-    )
-
-    def __init__(
-        self,
-        master: tk.Misc,
-        *,
-        on_whats_new: Callable[[], None],
-        on_download: Callable[[], None],
-        on_later: Callable[[], None],
-        on_skip: Callable[[], None],
-    ) -> None:
+    def __init__(self, master: tk.Misc) -> None:
         super().__init__(master, padding=(10, 6, 10, 0))
         self.text_var = tk.StringVar(master=self, value="")
         row = ttk.Frame(self)
@@ -43,17 +34,6 @@ class UpdateBar(ttk.Frame):
         self.label.pack(side="left", fill="x", expand=True)
         self._button_row = ttk.Frame(row)
         self._button_row.pack(side="right")
-        commands = {
-            "whats_new": on_whats_new,
-            "download": on_download,
-            "later": on_later,
-            "skip": on_skip,
-        }
-        self.buttons: dict[str, ttk.Button] = {}
-        for key, text in self.BUTTONS:
-            button = ttk.Button(self._button_row, text=text, command=commands[key])
-            button.pack(side="left", padx=(6, 0))
-            self.buttons[key] = button
         ttk.Separator(self, orient="horizontal").pack(fill="x", pady=(6, 0))
         self.bind("<Configure>", self._rewrap, add="+")
 
@@ -74,6 +54,84 @@ class UpdateBar(ttk.Frame):
     def hide(self) -> None:
         if self.visible:
             self.pack_forget()
+
+
+class UpdateBar(_QuietBar):
+    """A one-line notice with four buttons, gridded in and out by pack."""
+
+    BUTTONS = (
+        ("whats_new", "What's new"),
+        ("download", "Download"),
+        ("later", "Later"),
+        ("skip", "Skip this version"),
+    )
+
+    def __init__(
+        self,
+        master: tk.Misc,
+        *,
+        on_whats_new: Callable[[], None],
+        on_download: Callable[[], None],
+        on_later: Callable[[], None],
+        on_skip: Callable[[], None],
+    ) -> None:
+        super().__init__(master)
+        commands = {
+            "whats_new": on_whats_new,
+            "download": on_download,
+            "later": on_later,
+            "skip": on_skip,
+        }
+        self.buttons: dict[str, ttk.Button] = {}
+        for key, text in self.BUTTONS:
+            button = ttk.Button(self._button_row, text=text, command=commands[key])
+            button.pack(side="left", padx=(6, 0))
+            self.buttons[key] = button
+
+
+class DownloaderUpdateBar(_QuietBar):
+    """"The video downloader may be out of date": Update it / Not now.
+
+    One bar for the whole round trip: the offer, "Updating…" (both buttons
+    off), then the result with the dismiss button reading "Close" (and
+    "Update it" back only when another try makes sense).
+    """
+
+    def __init__(
+        self,
+        master: tk.Misc,
+        *,
+        on_update: Callable[[], None],
+        on_dismiss: Callable[[], None],
+    ) -> None:
+        super().__init__(master)
+        self.update_button = ttk.Button(self._button_row, text="Update it", command=on_update)
+        self.update_button.pack(side="left", padx=(6, 0))
+        self.dismiss_button = ttk.Button(self._button_row, text="Not now", command=on_dismiss)
+        self.dismiss_button.pack(side="left", padx=(6, 0))
+
+    def _set_buttons(self, *, update: str, dismiss: str, dismiss_enabled: bool = True) -> None:
+        """``update``: "enabled", "disabled" or "hidden"."""
+        if update == "hidden":
+            self.update_button.pack_forget()
+        else:
+            if not self.update_button.winfo_manager():
+                self.update_button.pack(side="left", padx=(6, 0), before=self.dismiss_button)
+            self.update_button.state(["!disabled"] if update == "enabled" else ["disabled"])
+        self.dismiss_button.configure(text=dismiss)
+        self.dismiss_button.state(["!disabled"] if dismiss_enabled else ["disabled"])
+
+    def show_offer(self, text: str, *, before: tk.Misc) -> None:
+        self._set_buttons(update="enabled", dismiss="Not now")
+        self.show(text, before=before)
+
+    def show_progress(self, text: str, *, before: tk.Misc) -> None:
+        self._set_buttons(update="disabled", dismiss="Not now", dismiss_enabled=False)
+        self.show(text, before=before)
+
+    def show_result(self, text: str, *, before: tk.Misc, can_retry: bool) -> None:
+        self._set_buttons(update="enabled" if can_retry else "hidden", dismiss="Close")
+        self.show(text, before=before)
 
 
 def _window(parent: tk.Misc, title: str) -> tuple[tk.Toplevel, ttk.Frame]:
