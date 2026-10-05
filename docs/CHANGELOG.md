@@ -168,6 +168,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **The yt-dlp updater no longer carries a "rejected" mark over to a replacement file.** The
+  mark is matched by file size and modification time, so a new copy written in the same timer
+  tick as the rejected one could be refused too. Copying the bundled binary into place now
+  drops the old record; a new test pins the two files to the same size and time.
 - **A resume checkpoint is no longer lost when two writers race for the same source.**
   Writing it retried a locked target only five times (about 0.2 s); on a busy machine
   that ran out and raised `PermissionError`. The retry is now bounded by time (1 s).

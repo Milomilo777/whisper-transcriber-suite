@@ -399,6 +399,44 @@ def test_a_build_that_cannot_be_removed_is_marked_rejected(env, monkeypatch):
     assert ytu.resolve_yt_dlp_path() == str(target)
 
 
+def test_a_rejected_record_does_not_outlive_the_file_it_was_made_for(env, monkeypatch):
+    """The rejection belongs to the file that was rejected. When the next update
+    replaces that file, a new build with the same size and modification time
+    (two files written within one timer tick) must not inherit the rejection."""
+    target = ytu.cached_path()
+    real_unlink, real_replace = Path.unlink, os.replace
+    locked = {"on": True}
+
+    def _unlink(self, *a, **k):
+        if locked["on"] and Path(self) == target:
+            raise PermissionError("in use")
+        return real_unlink(self, *a, **k)
+
+    def _replace(src, dst):
+        if locked["on"] and Path(src) == target:
+            raise PermissionError("in use")
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(Path, "unlink", _unlink)
+    monkeypatch.setattr(ytu.os, "replace", _replace)
+    unverified = _FakeUpdater(output="WARNING: ... skipping verification")
+    assert _update(run=unverified).status == "failed"
+    rejected_fingerprint = ytu.load_state()["cached"]["fingerprint"]
+    locked["on"] = False
+
+    class _SameTick(_FakeUpdater):
+        def __call__(self, cmd, **kwargs):
+            result = super().__call__(cmd, **kwargs)
+            # The new build lands with the rejected file's size and mtime.
+            os.utime(cmd[0], ns=(rejected_fingerprint[1], rejected_fingerprint[1]))
+            assert ytu._fingerprint(cmd[0]) == rejected_fingerprint  # the aliasing is real here
+            return result
+
+    result = _update(run=_SameTick())
+    assert result.status == "updated"
+    assert ytu.resolve_yt_dlp_path() == str(target)
+
+
 def test_an_unremovable_build_is_renamed_away_when_possible(env, monkeypatch):
     target = ytu.cached_path()
     real_unlink = Path.unlink

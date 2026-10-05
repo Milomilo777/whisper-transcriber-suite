@@ -425,6 +425,13 @@ def _seed(bundled: str, target: Path) -> None:
     if os.name != "nt":
         tmp.chmod(tmp.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     os.replace(tmp, target)
+    # A rejection is remembered by size and modification time. It belongs to the
+    # file just replaced; a new file with the same two numbers (written within
+    # one timer tick) must not inherit it.
+    with _state_lock:
+        state = load_state()
+        if state.pop("cached", None) is not None:
+            _save_state(state)
 
 
 def _discard_copy(target: Path, *, version_of: VersionOf) -> None:
