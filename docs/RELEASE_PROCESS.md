@@ -6,9 +6,8 @@ its GitHub releases are now public (`gh release create`/`gh release
 view` against `Milomilo777/whisper-transcriber-suite`) — "Step 8 — Distribute" below
 is stale on that point, everything else still applies.
 
-If anything here disagrees with `CLAUDE.md`, CLAUDE.md wins (it's
-auto-loaded into every Claude Code session and represents durable
-rules).
+If anything here disagrees with `AGENTS.md`, AGENTS.md wins (it holds
+the durable rules every contributor and coding agent follows).
 
 ---
 
@@ -16,7 +15,7 @@ rules).
 
 **Retired.** The `--clobber` step below resets the affected asset's
 GitHub download count to zero (it deletes-then-reuploads under the
-hood). See CLAUDE.md "Never `--clobber` an existing release asset" —
+hood). See AGENTS.md "Guardrails" —
 cut a new patch version (Steps 1-10 below) instead, even for a small
 same-day fix. Left below for historical reference only.
 
@@ -194,9 +193,9 @@ git tag -a vX.Y.Z -m "Release vX.Y.Z"
 git push origin vX.Y.Z
 ```
 
-Force-push to a tag is pre-authorised in CLAUDE.md only for
-v0.7.0 — for any newer tag you'd be re-tagging, which means
-something went wrong; investigate before forcing.
+Never force-push or move a published tag (`v1.0.3` and later; see
+AGENTS.md "Guardrails"). Needing to re-tag means something went
+wrong; investigate first.
 
 ## Step 8 — Distribute
 

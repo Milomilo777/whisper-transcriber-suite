@@ -88,7 +88,7 @@ What v1.9.0 and v1.9.3 did, in order; repeat it for the next version.
    `verify_mac_bundle.sh`, `smoke_test_app.sh` and, after the dmg, `test_dmg.sh`; all must pass). If no old Mac is available, the CI x64 dmg is acceptable. It needs macOS 14.
 4. Create the release with the dmgs (no `.sha256` files) and
    its release notes (written in the release body; they are no longer kept as files in the repository). **New tag every time, even for a mac-only fix** — see
-   CLAUDE.md "Never `--clobber` an existing release asset": never `delete-asset` + `upload` mac dmgs onto
+   AGENTS.md "Guardrails": never `delete-asset` + `upload` mac dmgs onto
    an already-published tag to avoid a new release page. Cut vX.Y.(Z+1) instead, even same-day, even if
    only macOS changed. If the Windows assets aren't uploaded yet, use
    `--latest=false` (README's "Download for Windows" points at `releases/latest`). Mark it Latest with

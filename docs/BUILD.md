@@ -18,8 +18,8 @@ How to produce Windows binaries from source.
 
 **Currently shipped (both from the same `embed_build\` tree):**
 Setup-Standard (installer) + Portable (zip of that same tree — NOT
-a PyInstaller onefile exe; that changed at v1.3.2, see CLAUDE.md
-"Style & scope"). The PyInstaller onefile (Method A below) and
+a PyInstaller onefile exe; that changed at v1.3.2, see AGENTS.md
+"Shipped builds"). The PyInstaller onefile (Method A below) and
 Compact/onedir (Method B) pipelines still exist and still build —
 their specs are kept in lock-step so they don't bit-rot — but
 neither is published.
@@ -68,8 +68,8 @@ pyinstaller --noconfirm --clean --distpath dist_onedir whisper_project_onedir.sp
 
 * Python 3.10+ on PATH (used to invoke PyInstaller and pip).
 * `pip install pyinstaller` in the working environment.
-* `bin\ffmpeg.exe`, `bin\ffprobe.exe`, `bin\yt-dlp.exe` checked into
-  the repo's `bin\` folder — Method A and B bundle them via the
+* `bin\ffmpeg.exe`, `bin\ffprobe.exe`, `bin\yt-dlp.exe` placed in the
+  git-ignored `bin\` folder — Method A and B bundle them via the
   spec's `('bin', 'bin')` data entry; Method C copies them with
   `xcopy`.
 * Inno Setup 6 for Methods B and C. Install via `winget install
@@ -195,9 +195,8 @@ release).
 asset and uploads a fresh one, which silently resets that asset's
 GitHub download count to zero (confirmed via `cli/cli` issue #8822) —
 discovered after this exact pattern had already been used at least
-once (the v1.7.0 GC-lock-fix re-upload). See CLAUDE.md "Never
-`--clobber` an existing release asset" for the full story and the
-replacement rule: cut a new patch version instead. Left below for
+once (the v1.7.0 GC-lock-fix re-upload). See AGENTS.md "Guardrails"
+for the replacement rule: cut a new patch version instead. Left below for
 historical reference only.
 
 <details>
@@ -222,7 +221,7 @@ All three must already show the version you intend to ship — this
 recipe does NOT bump anything.
 
 **Step 2 — validate the source first** (this is the same bar as any
-commit — see CLAUDE.md):
+commit — see AGENTS.md):
 
 ```cmd
 python -m pyright app core
@@ -286,7 +285,7 @@ gh workflow run macos-app.yml --ref master
 gh run list --workflow=macos-app.yml -L 1
 gh run watch <run-id> --exit-status
 gh run download <run-id> --dir some_temp_dir
-:: upload to a NEW release/version only - never --clobber (see CLAUDE.md)
+:: upload to a NEW release/version only - never --clobber (see AGENTS.md)
 gh release upload vX.Y.Z some_temp_dir\macos-dmg-arm64\*.dmg* some_temp_dir\macos-dmg-x86_64\*.dmg*
 ```
 Check each job's log for `[mac-spec] highest bundled minos` — that is the

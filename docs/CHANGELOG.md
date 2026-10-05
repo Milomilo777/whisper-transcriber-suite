@@ -45,6 +45,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the integration research/brief/acceptance notes, the macOS VM report and
   its screenshots, the Gemma evaluation and the video script (43 files in
   all) stay in git history; the references to them are fixed.
+- **Agent rules live in one tool-neutral `AGENTS.md`.** It now holds the
+  layout, build and test commands, code rules and release/macOS guardrails;
+  `CLAUDE.md` only imports it and `.cursorrules` is removed (Cursor reads
+  `AGENTS.md`). `tests/test_agents_md.py` keeps it that way.
 - **macOS: the bundled yt-dlp starts in about half a second instead of
   ~25 s per call.** It is now yt-dlp's onedir build (`yt-dlp_macos.zip`,
   checked against the release's SHA2-256SUMS), unpacked once inside the

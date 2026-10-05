@@ -1,6 +1,6 @@
 # whisper_project_mac.spec — macOS .app build for the PyInstaller pipeline.
 #
-# THIS IS THE THIRD SPEC COPY (see CLAUDE.md "Style & scope"): adding a new
+# THIS IS THE THIRD SPEC COPY (see AGENTS.md "Shipped builds"): adding a new
 # module means updating whisper_project_onefile.spec AND
 # whisper_project_onedir.spec AND this file's hiddenimports / datas so none of
 # the pipelines bit-rot. Its hiddenimports + datas are kept in lock-step with

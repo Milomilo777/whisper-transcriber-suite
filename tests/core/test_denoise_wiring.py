@@ -2,9 +2,9 @@
 
 ``tests/core/test_denoise.py`` proves the module behaves; this file proves
 the transcriber calls it, hands it the right flags, and cleans up after
-it. That seam is exactly where this repo has shipped silent bugs before
-(a field omitted at the call site is invisible to helper-level tests) —
-see the ``transcribe_command`` note in CLAUDE.md.
+it. That seam is exactly where this repo has shipped silent bugs before:
+a field omitted at the call site (for example in ``transcribe_command``)
+is invisible to helper-level tests.
 """
 from __future__ import annotations
 

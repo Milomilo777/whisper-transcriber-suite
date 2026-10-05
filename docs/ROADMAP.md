@@ -660,7 +660,7 @@ These are the items that take the project beyond "best-in-class for our niche" i
     `core/optional_deps.py` on-demand-install pattern, not a hard
     dependency.
   - Repo's English-only code/docs/commit-message policy (repo-root
-    `CLAUDE.md`) is unaffected either way — it governs
+    `AGENTS.md`) is unaffected either way — it governs
     the codebase, not what languages a shipped feature can speak to a
     user.
 - **Implementation sketch (if greenlit):** a new optional module

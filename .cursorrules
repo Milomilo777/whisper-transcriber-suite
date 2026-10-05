@@ -1,6 +1,0 @@
-# Cursor rules
-
-Read `AGENTS.md` at the repo root first: it holds the build and test commands and the
-rules every coding agent follows in this repository.
-
-Project-specific Claude guidance lives in `CLAUDE.md`. Always honor it.
