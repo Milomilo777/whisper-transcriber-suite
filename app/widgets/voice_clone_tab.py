@@ -24,7 +24,7 @@ import logging
 import os
 import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, ttk
 from typing import Any
 
 from app.widgets.error_dialog import show_error
@@ -39,19 +39,20 @@ _SAMPLE_SECONDS = 6
 # text length, so this is deliberately described as approximate.
 _MEASURED_CPU_RTF = 55.0
 
-_CONSENT_TEXT = (
-    "This feature clones a voice from a short recording and can make it "
-    "say anything you type.\n\n"
-    "Only use it with a voice you own, or that you have the speaker's "
-    "clear permission to clone. Do not use it to impersonate someone "
-    "without their consent, or to create misleading audio of real "
-    "people.\n\n"
-    "The OmniVoice model downloads to this computer the first time you "
-    "continue (about 2GB total, one-time). This needs an internet "
-    "connection and can take anywhere from a few minutes to over an "
-    "hour depending on your connection speed -- after that, generation "
-    "runs fully offline.\n\n"
-    "Continue?"
+# Always visible on the tab: the rules replace the old one-time
+# confirmation dialog, and consent is the per-voice tick below.
+_RULES_TEXT = (
+    "AI-generated audio. Clone only your own voice, or a voice whose speaker "
+    "has given you clear permission. Do not impersonate anyone, and do not "
+    "make misleading audio of real people."
+)
+_CONSENT_TICK_TEXT = "I have the speaker's permission to clone this voice (or it is my own)"
+
+# Shown when the OmniVoice install actually starts (the first Generate).
+_OMNI_INSTALL_STATUS = (
+    "Downloading OmniVoice (about 2 GB, one time; needs internet, a few "
+    "minutes to over an hour depending on the connection). After that it "
+    "runs offline..."
 )
 
 _ENGINE_KOKORO = "Kokoro — 53 ready-made voices, 9 languages (fast; ~350 MB download)"
@@ -120,6 +121,10 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_lang_var = tk.StringVar(value=_AUTO_LANG)
     app.vc_speed_var = tk.DoubleVar(value=1.0)
     app.vc_count_var = tk.StringVar(value="")
+    # Never restored from the config: every session (and every change of
+    # the reference clips) starts unticked.
+    app.vc_consent_var = tk.BooleanVar(value=False)
+    app.vc_busy = False
 
     # Best-effort sweep of aged-out scratch dirs from earlier sessions.
     app.after(2000, _sweep_scratch_dirs)
@@ -192,6 +197,10 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
                command=lambda: _load_sample(app)).pack(side="left", padx=(8, 0))
     ttk.Button(ref_btns, text="Remove selected",
                command=lambda: _remove_sample(app)).pack(side="left", padx=(8, 0))
+    app.vc_consent_check = ttk.Checkbutton(
+        app.vc_clone_frame, text=_CONSENT_TICK_TEXT, variable=app.vc_consent_var,
+        command=lambda: _sync_generate_state(app))
+    app.vc_consent_check.grid(row=2, column=0, sticky="w", padx=8, pady=(0, 6))
 
     app.vc_design_frame = ttk.Frame(app.vc_omni_frame)
     for col, (label, var, values) in enumerate((
@@ -263,12 +272,8 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_progress.grid(row=0, column=4, sticky="w", padx=(16, 0))
     ttk.Label(parent, textvariable=app.vc_status_var, foreground="#666").grid(
         row=4, column=0, sticky="w", padx=15, pady=(0, 2))
-    ttk.Label(
-        parent,
-        text=("AI-generated audio. Only clone voices you have the right "
-              "to use -- see the confirmation shown before your first clone."),
-        foreground="#666",
-    ).grid(row=5, column=0, sticky="w", padx=15, pady=(0, 12))
+    app.vc_rules_label = ttk.Label(parent, text=_RULES_TEXT, foreground="#666", wraplength=760)
+    app.vc_rules_label.grid(row=5, column=0, sticky="w", padx=15, pady=(0, 12))
 
     _sync_engine(app)
     _on_text_modified(app)
@@ -310,7 +315,36 @@ def _sync_engine(app: Any) -> None:
                  else "not downloaded yet (~2 GB, downloads on first use)")
         app.vc_engine_state.configure(text=f"OmniVoice (Apache-2.0, k2-fsa), runs locally -- {state}.")
         app.vc_lang_combo.configure(state="readonly")
+    _sync_generate_state(app)
     _save_prefs(app)
+
+
+def _consent_required(app: Any) -> bool:
+    """True when Generate would clone from reference audio (OmniVoice, clone mode)."""
+    return not _is_kokoro(app) and app.vc_mode_var.get() == _MODE_CLONE
+
+
+def _sync_generate_state(app: Any) -> None:
+    """Generate is off during a run, and while a clone lacks the permission tick.
+    Voice design, the model's own voice and Kokoro need no tick."""
+    blocked = app.vc_busy or (_consent_required(app) and not app.vc_consent_var.get())
+    app.vc_generate_btn.configure(state="disabled" if blocked else "normal")
+
+
+def _reset_consent(app: Any) -> bool:
+    """Untick the permission box (the reference clips changed, so the tick no
+    longer covers them). Returns True when it was ticked."""
+    was_ticked = bool(app.vc_consent_var.get())
+    app.vc_consent_var.set(False)
+    _sync_generate_state(app)
+    return was_ticked
+
+
+def _samples_changed_status(app: Any, untick: bool) -> str:
+    status = f"{len(app.vc_samples)} reference sample(s)."
+    if untick:
+        status += " The clips changed: tick the permission box again."
+    return status
 
 
 def _save_prefs(app: Any) -> None:
@@ -446,7 +480,7 @@ def _finish_adding_sample(app: Any, path: str, issue: "Any") -> None:
         # (e.g. a clip a hair under/over the recommended range).
     app.vc_samples.append(path)
     _refresh_samples_listbox(app)
-    app.vc_status_var.set(f"{len(app.vc_samples)} reference sample(s).")
+    app.vc_status_var.set(_samples_changed_status(app, _reset_consent(app)))
 
 
 def _record_sample(app: Any) -> None:
@@ -523,35 +557,15 @@ def _remove_sample(app: Any) -> None:
     idx = sel[0]
     del app.vc_samples[idx]
     _refresh_samples_listbox(app)
-    app.vc_status_var.set(f"{len(app.vc_samples)} reference sample(s).")
-
-
-# --------------------------------------------------------------- consent
-
-
-def _consent_accepted(app: Any) -> bool:
-    cfg = app.app_config.setdefault("voice_clone", {})
-    if cfg.get("consent_accepted"):
-        return True
-    accepted = messagebox.askyesno(
-        "Clone Your Voice / Text to Voice", _CONSENT_TEXT,
-        icon="warning", parent=app,
-    )
-    if accepted:
-        cfg["consent_accepted"] = True
-        from core.config import save_config
-        try:
-            save_config(app.app_config)
-        except Exception:  # noqa: BLE001
-            logger.exception("Could not persist voice-clone consent")
-    return bool(accepted)
+    app.vc_status_var.set(_samples_changed_status(app, _reset_consent(app)))
 
 
 # --------------------------------------------------------------- generate
 
 
 def _set_busy(app: Any, busy: bool) -> None:
-    app.vc_generate_btn.configure(state="disabled" if busy else "normal")
+    app.vc_busy = busy
+    _sync_generate_state(app)
     app.vc_preview_btn.configure(state="disabled" if busy else "normal")
     app.vc_cancel_btn.configure(state="normal" if busy else "disabled")
     app.vc_engine_combo.configure(state="disabled" if busy else "readonly")
@@ -639,13 +653,17 @@ def _generate_omnivoice(app: Any, text: str) -> None:
     from core import voice_clone
 
     mode = app.vc_mode_var.get()
+    consent = False
     if mode == _MODE_CLONE:
         if not app.vc_samples:
             show_error(app, "No reference voice",
                        "Record or load at least one reference clip first, or "
                        "choose \"Design a voice\" / \"Let the model choose\".")
             return
-        if not _consent_accepted(app):
+        consent = bool(app.vc_consent_var.get())
+        if not consent:
+            # Generate is disabled until the tick; this guards other callers.
+            app.vc_status_var.set("Tick the permission box under the reference clips first.")
             return
     samples = list(app.vc_samples) if mode == _MODE_CLONE else []
     instruct = _design_instruct(app) if mode == _MODE_DESIGN else ""
@@ -662,12 +680,7 @@ def _generate_omnivoice(app: Any, text: str) -> None:
     def worker() -> None:
         try:
             if not voice_clone.is_available():
-                app.post_to_main(
-                    lambda: app.vc_status_var.set(
-                        "Downloading the OmniVoice software (one-time, "
-                        "~2GB -- needs internet, can take a while)..."
-                    )
-                )
+                app.post_to_main(lambda: app.vc_status_var.set(_OMNI_INSTALL_STATUS))
                 ok = voice_clone.ensure_installed(
                     log_cb=app.log_threadsafe, cancel_event=cancel_event
                 )
@@ -717,7 +730,7 @@ def _generate_omnivoice(app: Any, text: str) -> None:
 
             result = app.vc_worker.generate(
                 text, samples, output_path,
-                consent_accepted=bool(samples), device=device,
+                consent_accepted=consent, device=device,
                 on_model_loading=_on_model_loading,
                 instruct=instruct, language=language, speed=speed,
                 # Generous: 3x the CPU estimate, never below the default.

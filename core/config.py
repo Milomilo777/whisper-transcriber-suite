@@ -296,12 +296,10 @@ DEFAULT_CONFIG = {
     "tiling_selected_monitors": [],
     "tiling_auto_restart": True,
     # Clone Your Voice / Text to Voice tab — independent of every setting
-    # above. consent_accepted gates the one-time confirmation dialog
-    # (own-voice-or-permission + ethics note) so it only ever asks once
-    # per profile, not on every generation.
-    "voice_clone": {
-        "consent_accepted": False,
-    },
+    # above. The tab saves its engine / mode / Kokoro voice here. Consent
+    # is a per-voice tick on the tab, never stored: a ``consent_accepted``
+    # key left by older versions still loads and is ignored.
+    "voice_clone": {},
     # Optional local-network / web HTTP job server (``gui.py serve`` and the
     # one-click toggle on the Web / LAN access tab).
     # Defaulted here so reads never KeyError and pyright sees the type.

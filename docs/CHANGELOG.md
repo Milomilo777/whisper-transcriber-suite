@@ -47,6 +47,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Voice cloning: a permission tick instead of the one-time warning dialog.**
+  The Clone Your Voice tab always shows the rules (own voice or the speaker's
+  clear permission; no impersonation, no misleading audio of real people), and
+  Generate stays disabled for a clone until "I have the speaker's permission"
+  is ticked; adding or removing a reference clip clears the tick. Voice design,
+  the model's own voice and Kokoro need no tick. The "about 2 GB, one time"
+  notice now appears when the OmniVoice download starts.
 - **README cut from 27 KB to 8 KB**: who it is for, features, downloads, the
   per-version download badges, what leaves the computer (usage statistics
   included) and links to the docs and the comparison page. The FAQ lives on

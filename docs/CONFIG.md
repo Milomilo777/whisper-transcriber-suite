@@ -278,7 +278,18 @@ need an internet connection for that one-time step only.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `voice_clone.consent_accepted` | bool | `false` | Set to `true` after the user accepts the one-time consent dialog (own-voice-or-permission confirmation + ethics note) shown before the very first generation. Once accepted, the dialog does not reappear. |
+| `voice_clone.engine` | str | unset (Kokoro) | Last model picked on the tab: `kokoro` or `omnivoice`. |
+| `voice_clone.mode` | str | unset (`clone`) | Last OmniVoice mode: `clone`, `design` or `auto`. |
+| `voice_clone.kokoro_voice` | str | unset (`af_heart`) | Last Kokoro voice key. |
+
+Consent is not a setting. The tab always shows the rules (own voice, or the
+speaker's clear permission; no impersonation, no misleading audio of real
+people), and cloning from reference clips needs the tick "I have the
+speaker's permission to clone this voice (or it is my own)" each session;
+adding or removing a reference clip clears it. Voice design, the model's own
+voice and Kokoro need no tick. A `voice_clone.consent_accepted` key written by
+older versions (it backed a one-time confirmation dialog) still loads and is
+ignored.
 
 #### AI-generated tag
 
@@ -315,7 +326,7 @@ goes to the app log.
 | `output_file` | Absolute path of the generated WAV in the session scratch folder (`Cache\voice_clone\<timestamp>\`, swept after 7 days); use **Save** to keep the file. |
 | `output_sha256` | SHA-256 of that finished, tagged WAV. A copy made with **Save** has the same hash, so it can be matched to its record. |
 | `reference_sha256` | List of SHA-256 hashes, one per reference clip used (at most 3), in order, of the clip as fed to the model: a clip longer than 10 s is first cut to its first 10 s, so its hash differs from the original file's. The clips themselves are not copied. |
-| `consent_accepted` | The consent confirmation the generation ran under (always `true`: cloning is refused without it). |
+| `consent_accepted` | The permission tick the generation ran under (always `true`: cloning is refused without it). |
 | `engine` | `omnivoice`. |
 | `app_version` | App version that generated the file. |
 
