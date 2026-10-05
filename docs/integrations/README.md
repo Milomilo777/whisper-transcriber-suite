@@ -1,27 +1,21 @@
 # Integrations
 
-Notes and briefs for interoperating with third-party tools. Each integration has at minimum a **research** note (what the third-party tool is, what its file format / API looks like, design constraints) and an **implementation brief** (the scope, acceptance criteria, and constraints for an autonomous Claude Code session).
-
-The pattern is the same for every integration:
-
-1. A research note answers: *what is this thing, what does it accept and produce, what are the constraints and traps, what are the open questions*. Written before any code.
-2. A brief turns the research into actionable scope for a single hands-off implementation session: tasks, tests, acceptance plan, push policy.
-3. The implementation lands on `master`. The brief is preserved for history — never deleted.
-4. When the work is shipped, an `<integration>-acceptance.md` is added next to the brief, holding the machine-parseable acceptance test plan.
+Interoperability with third-party tools. Both integrations below are shipped;
+the design notes, implementation briefs and acceptance plans that led to them
+are no longer kept in the repository.
 
 ## Index
 
-| Integration | Status | Research | Brief | Acceptance |
-|---|---|---|---|---|
-| oTranscribe (web app for manual transcription) | **shipped** (Phase 2-oTranscribe, Session 4) | [otranscribe-research.md](otranscribe-research.md) | [otranscribe-brief.md](otranscribe-brief.md) | [otranscribe-acceptance.md](otranscribe-acceptance.md) |
-| Supreme Master TV (multi-quality download + transcript) | **shipped** (Session 11) | [smtv-research.md](smtv-research.md) | [smtv-brief.md](smtv-brief.md) | [smtv-acceptance.md](smtv-acceptance.md) |
-| machine-translate-docx (sibling translator tool — SMTV docx compatibility) | **researched, not scoped** (2026-07-04) | [smtv-translator-bridge-research.md](smtv-translator-bridge-research.md) | — | — |
+| Integration | Status | Code | Tests |
+|---|---|---|---|
+| oTranscribe (web app for manual transcription): bidirectional `.otr` converter, Export/Import UI, `Help -> Open oTranscribe` | shipped | [`core/integrations/otranscribe.py`](../../core/integrations/otranscribe.py) | `tests/integrations/test_otranscribe.py` |
+| Supreme Master TV (multi-quality download + transcript) | shipped | [`core/integrations/smtv.py`](../../core/integrations/smtv.py) | `tests/integrations/test_smtv.py` |
+| machine-translate-docx (sibling translator tool, SMTV docx compatibility) | researched, not scoped | none | none |
 
 ## How to add a new integration
 
-1. Create `docs/integrations/<name>-research.md`. Cover: what the tool is, its license and source URL, file formats consumed and produced, schemas, any quirks discovered, three-tier integration plan (MVP / nice-to-have / power), open questions for the user, sources cited.
-2. Create `docs/integrations/<name>-brief.md` modeled on [otranscribe-brief.md](otranscribe-brief.md). Cover: scope, public API, UI changes, tests, documentation, acceptance plan, hands-off policy, constraints, known traps, source files to glance at, push policy.
-3. Append a row to the index above.
-4. When implementation lands, add `docs/integrations/<name>-acceptance.md` and update the row's Status.
-
-This keeps every cross-tool design decision recoverable from the repository alone. No external context required.
+1. Put the integration code under `core/integrations/<name>.py` with a module
+   docstring that states the public API and the format or page contract it
+   relies on.
+2. Add tests under `tests/` and a row to the index above.
+3. Record the user-visible change in [`docs/CHANGELOG.md`](../CHANGELOG.md).

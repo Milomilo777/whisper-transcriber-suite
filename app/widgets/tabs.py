@@ -294,8 +294,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     """Beginner-friendly Transcribe tab.
 
     Layout philosophy comes from researching MacWhisper / Aiko / Vibe /
-    OpenWhispr / Buzz / WhisperUI in May 2026 (see
-    ``docs/V08_FEATURE_RESEARCH.md`` for the citations). The pattern
+    OpenWhispr / Buzz / WhisperUI in May 2026. The pattern
     every well-loved offline app converges on is:
 
       1. A *hero drop-zone* takes the visual centre of the tab — it's

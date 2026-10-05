@@ -357,7 +357,7 @@ Actively maintained. The quality bar enforced on every commit:
 | [RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md) | How to ship a new version |
 | [CHANGELOG.md](docs/CHANGELOG.md) | Version history |
 | [DECISIONS.md](docs/DECISIONS.md) | Non-obvious design choices and why |
-| [ROADMAP.md](docs/ROADMAP.md) · [roadmap/](docs/roadmap/) | What is being considered next |
+| [ROADMAP.md](docs/ROADMAP.md) | What is being considered next |
 
 > **Coding agents:** start at [`AGENTS.md`](AGENTS.md) — build and test
 > commands and the rules for working in this repository.

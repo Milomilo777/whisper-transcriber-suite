@@ -10,7 +10,7 @@ Public API (exactly five names):
 
 Everything else in this module is private.
 
-The .otr format is documented in docs/integrations/otranscribe-research.md.
+The .otr format is a JSON-wrapped HTML transcript; see the helpers below.
 The contract for end-time inference in otr_to_srt: for all but the last
 segment, end = next segment's start. For the last segment,
 end = max(media_time, start + 5.0).

@@ -20,11 +20,11 @@ Effort labels:
 | Phase 1a — theme + platformdirs + logging | **DONE** (`376141a` + 3 prior) | `sv-ttk`, `%LOCALAPPDATA%` paths, RotatingFileHandler |
 | Phase 1b — split gui.py + tests + type hints + Sentry | **DONE** (Session 5) | `gui.py` 11 lines; `app/` package with services + dialogs + widgets + observability; 80 tests; pyright clean; `pyproject.toml` with optional deps. See `docs/PHASE_1B_ACCEPTANCE.md`. |
 | Phase 2a — Whisper as serious transcription tool | **DONE** (Session 5) | VAD on by default + tunable; word timestamps opt-in; `BatchedInferencePipeline` on CUDA; multi-format writers (SRT/VTT/TSV/TXT/JSON/LRC); language detection in queue; Advanced settings dialog. See `docs/PHASE_2A_ACCEPTANCE.md`. Phase 2b (UI for `initial_prompt` / `hotwords`, model picker, presets) deferred. |
-| Phase 2-oTranscribe — file-format compatibility | **DONE** (Session 4) | Tier 1 + Tier 2 shipped: bidirectional `.otr` converter, Export/Import UI, `Help → Open oTranscribe`. See [docs/integrations/otranscribe-acceptance.md](integrations/otranscribe-acceptance.md). Tier 3 (vendored fork, in-app editor, forced alignment) deferred — see Phase 5 backlog. |
+| Phase 2-oTranscribe — file-format compatibility | **DONE** (Session 4) | Tier 1 + Tier 2 shipped: bidirectional `.otr` converter, Export/Import UI, `Help → Open oTranscribe`. See [docs/integrations/](integrations/README.md). Tier 3 (vendored fork, in-app editor, forced alignment) deferred — see Phase 5 backlog. |
 | Phase 3a — yt-dlp as serious downloader | **DONE** (Session 5) | `--progress-template` JSON; SQLite history DB + `Statistics` menu; SponsorBlock category list in Advanced dialog; auto-transcribe-after-download fully wired; right-click `Open output folder` + `Re-run`. See `docs/PHASE_3A_ACCEPTANCE.md`. |
-| Phase 4 — editor and viewer | TODO | Click-word→audio, edit-back-to-subtitle, gap detection, speaker rename, filler removal (re-prioritized after Session 6 research — see `docs/COMPETITIVE_ANALYSIS_2026.md` §4) |
+| Phase 4 — editor and viewer | TODO | Click-word→audio, edit-back-to-subtitle, gap detection, speaker rename, filler removal (re-prioritized after Session 6 research) |
 | Phase 5 — power features | TODO | Diarization, vocal separation, live mic, REST, CLI |
-| Phase 6 — CJK polish + backend abstraction | NEW (Session 6 research) | SenseVoice + Parakeet backends, Chinese punctuation post-processor, CJK line splitting, simplified↔traditional normalization. See `docs/COMPETITIVE_ANALYSIS_2026.md` §1-3 |
+| Phase 6 — CJK polish + backend abstraction | NEW (Session 6 research) | SenseVoice + Parakeet backends, Chinese punctuation post-processor, CJK line splitting, simplified↔traditional normalization. |
 | Phase 7 — website & discoverability | **IN PROGRESS** | 7a done 2026-09-27 (site, search registration, automation, audit fixes); 7b app-wide improvement pass next; 7c outreach after 7b — see [Phase 7](#phase-7--website--discoverability) |
 
 Integration briefs live under `docs/integrations/` and follow a separate cadence from the numbered phases — each is a single hands-off session.
@@ -109,12 +109,12 @@ traffic, stars, forks and downloads, plus the audit's category scores.
 
 ## Research notes
 
-- **`docs/COMPETITIVE_ANALYSIS_2026.md`** (Session 6) — 2026 snapshot of the speech-to-text landscape: Alibaba FunAudioLLM stack (SenseVoice / FunASR / CapsWriter), NVIDIA NeMo (Parakeet-TDT-0.6B-v3, Canary-1B-v2), Whisper speedups (Insanely-Fast-Whisper, WhisperX, stable-ts, WhisperKit), commercial reference (Deepgram Nova-3, AssemblyAI LeMUR, ElevenLabs Scribe v2, Descript, MacWhisper 12, Apple Voice Memos). Synthesizes 15 candidate features, Chinese-specific gotchas, backend abstraction proposal, Phase 4 editor blueprint.
+- **2026 speech-to-text landscape survey** (Session 6) — snapshot of the speech-to-text landscape: Alibaba FunAudioLLM stack (SenseVoice / FunASR / CapsWriter), NVIDIA NeMo (Parakeet-TDT-0.6B-v3, Canary-1B-v2), Whisper speedups (Insanely-Fast-Whisper, WhisperX, stable-ts, WhisperKit), commercial reference (Deepgram Nova-3, AssemblyAI LeMUR, ElevenLabs Scribe v2, Descript, MacWhisper 12, Apple Voice Memos). Synthesizes 15 candidate features, Chinese-specific gotchas, backend abstraction proposal, Phase 4 editor blueprint.
 
 ## Completed integrations
 
-- **oTranscribe** (Session 4) — bidirectional `.otr` ↔ SRT round-trip, Export/Import UI, `Help → Open oTranscribe`. Reference: [research note](integrations/otranscribe-research.md), [implementation brief](integrations/otranscribe-brief.md), [acceptance plan](integrations/otranscribe-acceptance.md).
-- **Supreme Master TV download** (Session 11) — Download tab auto-detects SMTV episode URLs (`/{lang}1/v/<id>.html`), reads `videoPlayerData` from the page, exposes 1080p/720p/396p MP4 plus an MP3 audio mode in the existing dropdowns. Multi-part series get a "Download all parts" checkbox (default on). Page-embedded article transcript is saved as `<base>.txt` next to the media; auto-transcribe-after-download still runs on top for the whisper SRT/JSON. No new dependencies, stdlib only. Reference: [research note](integrations/smtv-research.md), [implementation brief](integrations/smtv-brief.md), [acceptance plan](integrations/smtv-acceptance.md).
+- **oTranscribe** (Session 4) — bidirectional `.otr` ↔ SRT round-trip, Export/Import UI, `Help → Open oTranscribe`. Code: `core/integrations/otranscribe.py`.
+- **Supreme Master TV download** (Session 11) — Download tab auto-detects SMTV episode URLs (`/{lang}1/v/<id>.html`), reads `videoPlayerData` from the page, exposes 1080p/720p/396p MP4 plus an MP3 audio mode in the existing dropdowns. Multi-part series get a "Download all parts" checkbox (default on). Page-embedded article transcript is saved as `<base>.txt` next to the media; auto-transcribe-after-download still runs on top for the whisper SRT/JSON. No new dependencies, stdlib only. Code: `core/integrations/smtv.py`.
 
 ---
 
@@ -509,7 +509,7 @@ Take the app from "produces subtitle files" to "produces good subtitle files tha
 - **Why:** Help the user find places to review. Words with `probability < 0.5` get underlined red.
 - **Implementation:** color tags in the Text widget tied to word confidence from 2.2.
 
-> **Implementation order** (per `docs/COMPETITIVE_ANALYSIS_2026.md` §4): 4.1 → 4.2 → 4.3 → 4.4 → 4.5. Items 4.1/4.2/4.3 are pure media-player + data-structure work; 4.4/4.5 sit on top of the Phase 5 diarization branch. 4.6/4.7 are independent and can land at any time after 2.2.
+> **Implementation order**: 4.1 → 4.2 → 4.3 → 4.4 → 4.5. Items 4.1/4.2/4.3 are pure media-player + data-structure work; 4.4/4.5 sit on top of the Phase 5 diarization branch. 4.6/4.7 are independent and can land at any time after 2.2.
 
 ---
 
@@ -672,7 +672,7 @@ These are the items that take the project beyond "best-in-class for our niche" i
 
 ## Phase 6 — CJK polish + pluggable backends (new, Session 6 research)
 
-Driven by `docs/COMPETITIVE_ANALYSIS_2026.md`. The target audience is producing transcripts in EN/CJK/FR/DE; the gaps versus 2026 state-of-the-art are sharply localized in those four languages, and the research surfaced concrete fixes. Persian/Arabic are out of scope.
+Driven by the 2026 speech-to-text landscape survey. The target audience is producing transcripts in EN/CJK/FR/DE; the gaps versus 2026 state-of-the-art are sharply localized in those four languages, and the research surfaced concrete fixes. Persian/Arabic are out of scope.
 
 ### 6.1 Pluggable transcription backends
 

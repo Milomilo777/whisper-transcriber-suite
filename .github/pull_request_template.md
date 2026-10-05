@@ -19,7 +19,7 @@ or developer-visible thing is different after this PR? -->
 - [ ] CHANGELOG.md `[Unreleased]` entry
 - [ ] If feature is user-visible: README.md / INSTALL.md updated
 - [ ] If feature is build-related: BUILD.md updated
-- [ ] If feature is a gap-closer: GAPS_AGAINST_PEERS_2026.md row updated
+- [ ] If feature is a gap-closer: docs/COMPARISON.md and docs/ROADMAP.md updated
 
 ## Notes for the reviewer
 

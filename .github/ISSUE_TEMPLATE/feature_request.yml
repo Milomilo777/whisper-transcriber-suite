@@ -8,7 +8,7 @@ body:
       value: |
         Before opening, please skim
         [docs/ROADMAP.md](../blob/master/docs/ROADMAP.md) and
-        [docs/GAPS_AGAINST_PEERS_2026.md](../blob/master/docs/GAPS_AGAINST_PEERS_2026.md)
+        [docs/COMPARISON.md](../blob/master/docs/COMPARISON.md)
         — many obvious features are already planned.
 
   - type: textarea

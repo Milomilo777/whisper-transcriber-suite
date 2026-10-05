@@ -810,7 +810,7 @@ class DownloadService:
         # Resolve the SMTV episode up front: an SMTV news/short clip ships
         # WITHOUT an mp3 (only video qualities), so audio_format_map is empty
         # for it. The audio-format gate below must not reject such a clip in
-        # video mode (smtv-research.md R3) — so we need is_smtv before the
+        # video mode — so we need is_smtv before the
         # validation runs, not after it (as it used to be ordered).
         # Match the stashed episode against THIS url's page_url, not just
         # "is it some SMTV episode". The format lookup is debounced 800ms,

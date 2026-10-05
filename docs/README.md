@@ -28,24 +28,17 @@ fits into one of five buckets.
 - [SERVER.md](SERVER.md) — optional local-network / web server mode (`gui.py serve`)
 - [LIVE.md](LIVE.md) — the Live tab: microphone / system-audio transcription as it happens
 - [DENOISE.md](DENOISE.md) — optional adaptive audio denoise pre-process (ffmpeg-only, measures before it filters)
-- [COMPETITIVE_ANALYSIS_2026.md](COMPETITIVE_ANALYSIS_2026.md) — ecosystem survey (ASR models, cloud APIs, CJK specifics)
-- [GAPS_AGAINST_PEERS_2026.md](GAPS_AGAINST_PEERS_2026.md) — companion product gap-analysis vs. peer apps
-- [GAPS_VS_VOICE_PRO_2026.md](GAPS_VS_VOICE_PRO_2026.md) — gap-analysis vs. Voice-Pro (TTS / translation / dubbing)
+- [COMPARISON.md](COMPARISON.md) — sourced comparison with similar apps
 - [integrations/](integrations/) — third-party service integrations (SMTV, oTranscribe)
 - [evaluations/](evaluations/) — model / backend evaluation writeups
-- [tutorial/](tutorial/) — end-user install-and-use walkthrough + video script
+- [tutorial/](tutorial/) — end-user install-and-use walkthrough
 
 ## Release notes
 
-Newest first:
-
-- [release-notes/RELEASE_NOTES_v1.7.0.md](release-notes/RELEASE_NOTES_v1.7.0.md)
-- [release-notes/RELEASE_NOTES_v1.6.0.md](release-notes/RELEASE_NOTES_v1.6.0.md)
-- [release-notes/RELEASE_NOTES_v1.5.0.md](release-notes/RELEASE_NOTES_v1.5.0.md)
-- [release-notes/RELEASE_NOTES_v1.4.0.md](release-notes/RELEASE_NOTES_v1.4.0.md)
-- see [release-notes/](release-notes/) for the full history (v0.7.0 through v1.7.0, 21 releases)
+Release notes for every version are on the
+[GitHub Releases page](https://github.com/Milomilo777/whisper-transcriber-suite/releases);
+the one-line-per-change history is [CHANGELOG.md](CHANGELOG.md).
 
 ## Development state
 
 - [ROADMAP.md](ROADMAP.md) — high-level direction
-- [roadmap/](roadmap/) — future feature research (one file per planned release)

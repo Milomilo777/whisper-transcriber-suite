@@ -1,7 +1,7 @@
 # Whisper Transcriber Suite — Install & Use Guide
 
 A plain-English, step-by-step guide for new users. It doubles as the
-outline for the YouTube tutorial (see `VIDEO_SCRIPT.md` in this folder).
+outline for a video tutorial.
 
 > Whisper Transcriber Suite turns audio/video into text and subtitles — **offline**,
 > on your own computer. No account, no API key, nothing uploaded.

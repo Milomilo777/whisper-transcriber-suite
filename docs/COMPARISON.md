@@ -110,7 +110,7 @@ Vibe, Buzz, noScribe and aTrain.
 | Online video downloads with yt-dlp | [`core/tiling.py`](../core/tiling.py) |
 | Watched folder | [`core/watcher.py`](../core/watcher.py) |
 | Local-network mode: browser page, JSON job API, OpenAI-compatible `/v1/audio/transcriptions`, optional HTTPS | [SERVER.md](SERVER.md), [`core/server/httpd.py`](../core/server/httpd.py), [`core/server/tls.py`](../core/server/tls.py) |
-| Interface in English only (no translation files and no interface-language setting) | [GAPS_AGAINST_PEERS_2026.md](GAPS_AGAINST_PEERS_2026.md), [`core/config.py`](../core/config.py) |
+| Interface in English only (no translation files and no interface-language setting) | [`core/config.py`](../core/config.py) |
 | README in 8 more languages | [`docs/i18n/`](i18n/) |
 | Usage statistics on by default, file name included | [CONFIG.md](CONFIG.md#usage-statistics-p4-4), [`core/stats.py`](../core/stats.py), [`core/config.py`](../core/config.py) |
 

@@ -376,7 +376,7 @@ Actively maintained. The quality bar enforced on every commit:
 | [RELEASE_PROCESS.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/RELEASE_PROCESS.md) | How to ship a new version |
 | [CHANGELOG.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md) | Version history |
 | [DECISIONS.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/DECISIONS.md) | Non-obvious design choices and why |
-| [ROADMAP.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ROADMAP.md) · [roadmap/](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/roadmap/) | What is being considered next |
+| [ROADMAP.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ROADMAP.md) | What is being considered next |
 
 > **Coding agents:** start at [`AGENTS.md`](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/AGENTS.md) — build and test
 > commands and the rules for working in this repository.

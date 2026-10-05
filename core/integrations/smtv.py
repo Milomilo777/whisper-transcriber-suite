@@ -14,9 +14,9 @@ module:
 
 No yt-dlp involvement. No new third-party dependency.
 
-See ``docs/integrations/smtv-research.md`` for the URL / DOM contract
-this module relies on, and ``docs/integrations/smtv-brief.md`` for
-how it plugs into the Download tab.
+The URL / DOM contract this module relies on is described in the
+function docstrings below; ``docs/integrations/README.md`` lists the
+integration.
 """
 from __future__ import annotations
 
@@ -514,8 +514,6 @@ def warn_time_range_unsupported(url: str) -> None:
     available. The downloader still proceeds; this warning makes sure
     the user is told why they got the full clip.
 
-    Documented in ``docs/integrations/smtv-brief.md`` under "Known
-    limitations".
     """
     logger.warning(
         "Time-range download is not supported for Supreme Master TV URLs "

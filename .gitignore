@@ -126,8 +126,8 @@ TODO.local.md
 # AI-session-only tips cherry-picked from another repo (kept in the
 # worktree for review, never committed).
 docs/CLAUDE_LOCAL_NOTES.md
-# Bilingual (Persian + English) working copy of docs/GAPS_VS_VOICE_PRO_2026.md —
-# the repo itself is English-only, so this owner-facing copy stays untracked.
+# Bilingual (Persian + English) working copy of a gap analysis —
+# the repo itself is English-only, so this copy stays untracked.
 VOICE_PRO_GAP_FA_EN.txt
 
 # Live SMTV E2E fixtures — downloaded on demand; keep out of repo

@@ -76,8 +76,8 @@ In `docs/CHANGELOG.md`:
 
 ## Step 3 — Write release notes
 
-Create `docs/RELEASE_NOTES_v0.8.0.md` (mirroring the v0.7.0 / v0.7.1
-shape). Sections to include:
+Write the release notes as the body of the GitHub release (they are no
+longer kept as files in the repository). Sections to include:
 
 * **What's new** — user-facing additions.
 * **What changed** — behaviour changes (incl. silent ones).
@@ -203,8 +203,7 @@ something went wrong; investigate before forcing.
 Upload to your private channel:
 
 * Three `*.exe` files
-* The release notes (`docs/RELEASE_NOTES_vX.Y.Z.md`) — paste into
-  the announcement.
+* The release notes (from Step 3) — paste into the announcement.
 * If the changelog mentioned migration notes (Step 3), repeat
   them in the announcement.
 

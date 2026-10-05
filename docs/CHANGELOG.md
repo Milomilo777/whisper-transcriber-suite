@@ -39,6 +39,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   `.project_index.json` are git-ignored (a local hook keeps refreshing them)
   and `tools/index_refresh.py` is removed; README, CONTRIBUTING and
   `.cursorrules` now point coding agents to `AGENTS.md`.
+- **Docs: market analyses, per-release notes and integration briefs are
+  removed.** `docs/release-notes/` (24 files; release notes live on GitHub
+  Releases), `docs/roadmap/`, the competitive-analysis and gap-analysis files,
+  the integration research/brief/acceptance notes, the macOS VM report and
+  its screenshots, the Gemma evaluation and the video script (43 files in
+  all) stay in git history; the references to them are fixed.
 - **macOS: the bundled yt-dlp starts in about half a second instead of
   ~25 s per call.** It is now yt-dlp's onedir build (`yt-dlp_macos.zip`,
   checked against the release's SHA2-256SUMS), unpacked once inside the

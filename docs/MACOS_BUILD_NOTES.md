@@ -2,8 +2,7 @@
 
 _First written 2026-09-23 after building and testing v1.9.0 on a real Intel Mac
 (macOS 10.15 in a VirtualBox VM) and on GitHub's Apple-silicon + Intel runners.
-The full run log (every command, every error verbatim, screenshots) is in
-[`docs/reports/2026-09-23-macos-vm-build-report.md`](reports/2026-09-23-macos-vm-build-report.md)._
+The full run log with every error verbatim is kept outside the repository; this file holds the lessons._
 
 **Read this before touching** `platform/macos/**` or `.github/workflows/macos-app.yml`.
 
@@ -88,7 +87,7 @@ What v1.9.0 and v1.9.3 did, in order; repeat it for the next version.
    `WTS_MACOS_MIN=10.15 bash platform/macos/build_mac.sh` in a logged-in desktop session (it runs
    `verify_mac_bundle.sh`, `smoke_test_app.sh` and, after the dmg, `test_dmg.sh`; all must pass). If no old Mac is available, the CI x64 dmg is acceptable. It needs macOS 14.
 4. Create the release with the dmgs (no `.sha256` files) and
-   `docs/release-notes/RELEASE_NOTES_vX.Y.Z.md`. **New tag every time, even for a mac-only fix** — see
+   its release notes (written in the release body; they are no longer kept as files in the repository). **New tag every time, even for a mac-only fix** — see
    CLAUDE.md "Never `--clobber` an existing release asset": never `delete-asset` + `upload` mac dmgs onto
    an already-published tag to avoid a new release page. Cut vX.Y.(Z+1) instead, even same-day, even if
    only macOS changed. If the Windows assets aren't uploaded yet, use

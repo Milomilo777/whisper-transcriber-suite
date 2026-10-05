@@ -269,7 +269,7 @@ download actually sees — anyone who already downloaded the old
 asset is unaffected (their file doesn't change under them), but
 `gh release view vX.Y.Z` afterwards should show fresh
 `createdAt`/size for both assets. Optionally follow with `gh release
-edit vX.Y.Z --notes-file docs/RELEASE_NOTES_vX.Y.Z.md` if the release
+edit vX.Y.Z --notes-file <notes file>` if the release
 notes body should also mention what changed in this refresh.
 
 **Step 4b — macOS (can't build a `.dmg` on Windows):** read
