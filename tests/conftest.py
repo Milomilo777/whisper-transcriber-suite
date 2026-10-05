@@ -28,6 +28,8 @@ import sys
 
 import pytest
 
+from tests import tk_init_retry as _tk_init_retry
+
 # core.transcriber module globals that the real load paths mutate in place.
 _TRANSCRIBER_GLOBALS = (
     "MODEL",
@@ -82,8 +84,20 @@ try:
         (_tkinter.Image, "__init__"),
     ):
         _mark_tk_touched(_cls, _attr)
+    # Retry the one transient "cannot read init.tcl" start-up fault (see tk_init_retry).
+    _tkinter.Tk.__init__ = _tk_init_retry.wrap_init(_tkinter.Tk.__init__)  # type: ignore[method-assign]
 except Exception:  # noqa: BLE001 — no Tk on this interpreter
     pass
+
+
+def pytest_terminal_summary(terminalreporter):  # type: ignore[no-untyped-def]
+    """Report how many times tk.Tk() needed the init.tcl retry (never silent)."""
+    if _tk_init_retry.retries:
+        terminalreporter.write_sep(
+            "-", f"tk.Tk() init.tcl retries: {len(_tk_init_retry.retries)}"
+        )
+        for line in _tk_init_retry.retries:
+            terminalreporter.write_line(f"  {line}")
 
 
 @pytest.fixture(autouse=True)
