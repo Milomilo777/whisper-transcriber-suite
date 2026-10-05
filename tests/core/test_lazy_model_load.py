@@ -118,6 +118,8 @@ def test_on_start_does_not_call_start_standby(monkeypatch: Any) -> None:
         app_config={},
         transcription_service=TranscriptionService(_FakeApp()),  # type: ignore[arg-type]
         log=lambda _m: None,
+        # _on_start hands the model-folder check to this App method.
+        _ensure_hub_folder=lambda: app_module.App._ensure_hub_folder(fake_self),  # type: ignore[arg-type]
     )
 
     app_module.App._on_start(fake_self)  # type: ignore[arg-type]
@@ -154,6 +156,8 @@ def test_on_start_does_not_call_start_standby_when_hub_unset(monkeypatch: Any) -
         app_config={},
         transcription_service=TranscriptionService(_FakeApp()),  # type: ignore[arg-type]
         log=lambda _m: None,
+        # _on_start hands the model-folder check to this App method.
+        _ensure_hub_folder=lambda: app_module.App._ensure_hub_folder(fake_self),  # type: ignore[arg-type]
     )
     app_module.App._on_start(fake_self)  # type: ignore[arg-type]
 

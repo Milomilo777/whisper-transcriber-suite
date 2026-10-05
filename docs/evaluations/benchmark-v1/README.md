@@ -232,8 +232,12 @@ What the tables show (counts from `results.csv`):
   audio length in seven languages (1.00 in Hindi), right on any "twice as fast as real time"
   line, so a speed cap would flip with noise.
 - `core/language_defaults.py` holds these picks (`recommended_model(language, mode)`); a language
-  that is not in the table keeps the app's default model (`large-v3`). A test recomputes the
+  that is not in the table gets `small` for "fast" (the size rule picked it in all eight measured
+  languages) and keeps the app's default model (`large-v3`) for "best". A test recomputes the
   picks from `results.csv` and fails when the table, this page or the CSV disagree.
+- The median RTF of each model over the eight languages is the CPU speed the first-run quick
+  start window shows per minute of audio (`core.hardware.CPU_SECONDS_PER_AUDIO_SECOND`, also
+  checked against `results.csv` by a test).
 
 ## Limits
 

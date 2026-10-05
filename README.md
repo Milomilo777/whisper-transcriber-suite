@@ -69,10 +69,11 @@ Latest release: **[releases page](https://github.com/Milomilo777/whisper-transcr
 
 Linux runs from source: [platform/linux/README.md](platform/linux/README.md).
 
-ffmpeg and yt-dlp are bundled. The default speech model (about 3 GB)
-downloads once, on first use. Plan for 8 GB of RAM; on a CPU the default
-model takes about 2–3 times the length of the audio, an NVIDIA GPU is much
-faster. The Windows builds are not code-signed and the Mac builds are not
+ffmpeg and yt-dlp are bundled. On first launch a quick start window picks
+the speech model for your language: Fast (Small, about 500 MB) or Best
+quality (up to about 3 GB); it downloads once, on first use. Plan for 8 GB
+of RAM; on a CPU the Large models take about 1.5–2.5 times the length of
+the audio and Small about half, an NVIDIA GPU is much faster. The Windows builds are not code-signed and the Mac builds are not
 notarized, so SmartScreen and Gatekeeper warn on first launch;
 [docs/INSTALL.md](docs/INSTALL.md) shows what to click. To update, run the
 newer installer over the old one; settings are kept.

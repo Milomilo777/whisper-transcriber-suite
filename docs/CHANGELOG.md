@@ -6,6 +6,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Quick start window on the first launch of a new install.** Three choices:
+  the main spoken language, "Fast" or "Best quality", and the folder for
+  downloaded media. Each choice shows the model, its download size and a rough time
+  per minute of audio on this computer, and the model comes from the
+  per-language table. Skip keeps the old first-run path; existing installs
+  never see it, and `quick_start_enabled` switches it off. Unmeasured languages
+  now get `small` as their "fast" model instead of the 3 GB default.
 - **Multilingual benchmark results and a per-language model table.** Six local
   models (tiny to large-v3) were scored in eight languages on FLEURS, five
   utterances each, on CPU; the tables are in `docs/evaluations/benchmark-v1/`.

@@ -73,22 +73,34 @@ This is **normal** because the binary is not code-signed. To continue:
 1. Click **More info**
 2. The **Run anyway** button appears — click it
 
-#### ⚠️ Model download dialog (one time, 3 GB)
-On first launch, a "Whisper model required" dialog appears. Click **Download**.
+#### Quick start (one time)
+On the first launch a **Quick start** window asks three things: the main
+language you will transcribe, **Fast** or **Best quality**, and the folder
+for downloaded videos and audio (transcripts are always saved next to the
+file they come from). Each choice shows the model it picks, its download
+size and a rough time per minute of audio on your computer.
+Click **Finish**, or **Skip** to keep the defaults (the Large v3 model,
+about 3 GB). Either way the window does not appear again; every choice can
+be changed later (the model on the Transcribe tab, the folder on the
+Download tab).
 
-The model is fetched from a CDN (≈3 GB). At average speeds this takes 10–30 minutes.
+#### Model download (one time)
+The model downloads the first time you transcribe: a "Whisper model
+required" dialog appears with its size. Click **Download**. Small is about
+500 MB; Large v3 is about 3 GB and takes 10–30 minutes at average speeds.
 
 If the CDN download fails, you can install the model manually (see Troubleshooting below).
 
 Once the download finishes, the app is ready to use.
 
 #### Where the models live
-On first launch the app also asks where to store the model files. The
-default is a per-user cache that is always writable,
+Models are stored in a per-user cache that is always writable,
 `%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\models`, never the Program
-Files install folder; an external drive or a network share works too. The
-choice is saved as `hub_folder` in `config.json` and the dialog does not
-appear again. To start over, open a Command Prompt in the app's folder
+Files install folder. **Finish** in the quick start window uses it; after
+**Skip** the app asks where to store the model files (an external drive or
+a network share works too). The choice is saved as `hub_folder` in
+`config.json`, and **Advanced settings → Model folder → Change...** moves it
+later. To start over, open a Command Prompt in the app's folder
 (the install folder, or the unzipped Portable folder) and launch it once
 with `--safe-mode`:
 
@@ -97,7 +109,7 @@ python\pythonw.exe gui.py --safe-mode
 ```
 
 That renames your `config.json` to a timestamped backup and shows the
-first-run dialog with the defaults.
+first-run windows again with the defaults.
 
 ### Updating to a newer version
 

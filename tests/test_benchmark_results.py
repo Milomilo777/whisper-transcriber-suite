@@ -118,9 +118,38 @@ def test_measured_languages_use_the_table(mode):
 
 
 @pytest.mark.parametrize("language", ["en", "de", "ko", "", None, "auto"])
-@pytest.mark.parametrize("mode", ["fast", "best"])
-def test_unmeasured_languages_keep_todays_default(language, mode):
-    assert ld.recommended_model(language, mode) == DEFAULT_MODEL_SLUG
+def test_unmeasured_languages_get_small_for_fast_and_the_default_for_best(language):
+    # "fast" = the most accurate model of at most 0.5 GB, which was small in every
+    # measured language; "best" keeps the app's default model.
+    assert {row["fast"] for row in ld.MODEL_BY_LANGUAGE.values()} == {"small"}
+    assert ld.recommended_model(language, "fast") == "small"
+    assert ld.recommended_model(language, "best") == DEFAULT_MODEL_SLUG
+
+
+def test_unmeasured_fast_pick_is_within_the_size_cap():
+    assert MODEL_REGISTRY[ld.UNMEASURED["fast"]]["approx_size_gb"] <= 0.5
+
+
+# ------------------------------------------------ speed table in core.hardware
+
+def test_cpu_speed_table_is_the_median_rtf_per_model():
+    import statistics
+
+    from core import hardware as hw
+
+    per_pair: dict[tuple[str, str], list[float]] = {}
+    with CSV_PATH.open(encoding="utf-8", newline="") as fh:
+        for r in csv.DictReader(fh):
+            sums = per_pair.setdefault((r["model"], r["language"]), [0.0, 0.0])
+            sums[0] += float(r["decode_s"])
+            sums[1] += float(r["audio_s"])
+    medians = {
+        model: statistics.median(d / a for (m, _lang), (d, a) in per_pair.items() if m == model)
+        for model in bm.MODELS
+    }
+    assert set(hw.CPU_SECONDS_PER_AUDIO_SECOND) == set(medians)
+    for model, value in medians.items():
+        assert hw.CPU_SECONDS_PER_AUDIO_SECOND[model] == pytest.approx(value, abs=0.006), model
 
 
 def test_unknown_mode_is_rejected():

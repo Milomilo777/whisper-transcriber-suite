@@ -284,6 +284,14 @@ DEFAULT_CONFIG = {
     # with an existing config; new installs derive ``model_path`` from
     # ``hub_folder + model.name``.
     "hub_folder": "",
+    # Quick start window (app.dialogs.quick_start): main language, Fast or
+    # Best quality, output folder, shown once on a new install.
+    #   quick_start_enabled — False switches the window off for good.
+    #   quick_start_done    — set by Skip or Finish. load_config() treats an
+    #     existing config.json without this key as done, so people upgrading
+    #     from an older version never see the window.
+    "quick_start_enabled": True,
+    "quick_start_done": False,
     # Clone Your Voice / Text to Voice tab — independent of every setting
     # above. The tab saves its engine / mode / Kokoro voice here. Consent
     # is a per-voice tick on the tab, never stored: a ``consent_accepted``
@@ -1017,6 +1025,15 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
                 _ONLINE_MEMO[config_url] = online
 
     merged = merge_config_sources(DEFAULT_CONFIG, online, local)
+    # A config.json written before the quick start existed belongs to someone
+    # who already uses the app: the window is only for a new install. So does
+    # an unreadable one (renamed to ".corrupt"): Finish would otherwise reset a
+    # custom model folder that the old first-run picker lets them pick again.
+    # A deleted config.json (or --safe-mode) is a deliberate fresh start.
+    if "quick_start_done" not in local and (
+        local or os.path.exists(config_path() + ".corrupt")
+    ):
+        merged["quick_start_done"] = True
     # Coerce / drop wrong-type values for keys that ship a default —
     # e.g. parallel_workers="many" survives the merge and downstream
     # int() crashes later. Drop the bad value (restore default).

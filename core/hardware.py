@@ -1326,6 +1326,75 @@ def recommend_models(
     return [fastest, accurate]
 
 
+# Decode seconds per second of audio on the CPU (int8, faster-whisper's default of
+# four threads): the median over the eight languages of the multilingual benchmark
+# (docs/evaluations/benchmark-v1/, one 4-core / 8-thread desktop CPU).
+# tests/test_benchmark_results.py recomputes these from its results.csv.
+CPU_SECONDS_PER_AUDIO_SECOND: dict[str, float] = {
+    "tiny": 0.10,
+    "base": 0.18,
+    "small": 0.46,
+    "medium": 1.27,
+    "large-v3-turbo": 1.41,
+    "large-v3": 2.24,
+}
+_BENCHMARK_CPU_CORES = 4
+
+# On a usable NVIDIA GPU: faster-whisper's README benchmark transcribes 13 minutes of
+# audio with large-v2 (fp16, beam 5, not batched) in 63 s on an RTX 3070 Ti, about
+# 0.08 s per audio second (https://github.com/SYSTRAN/faster-whisper#benchmark).
+# Other models are scaled by their CPU cost relative to large-v3. A rough guide only:
+# no GPU was measured with this app.
+_GPU_SECONDS_PER_AUDIO_SECOND_LARGE = 63.0 / (13 * 60)
+# GPU memory a model needs before the estimate assumes it runs on the GPU, the same
+# thresholds recommend_models() uses; with less (and a known size) the CPU figure is
+# shown, since a model that does not fit ends up on the CPU.
+_GPU_MIN_MEMORY_GB = {"large-v3": 7.5, "large-v3-turbo": 3.5}
+
+
+def runs_on_gpu(slug: str, status: CudaStatus) -> bool:
+    """True when ``slug`` is expected to run on the usable NVIDIA GPU of ``status``."""
+    if not status.usable:
+        return False
+    if not status.memory_mb:
+        return True  # unknown size: assume it fits, as recommend_models does
+    return status.memory_mb / 1024 >= _GPU_MIN_MEMORY_GB.get(slug, 0.0)
+
+
+def physical_cpu_cores() -> int:
+    """Physical CPU cores (not hardware threads); 0 when it cannot be read."""
+    try:
+        import psutil  # type: ignore[import-not-found]
+        return int(psutil.cpu_count(logical=False) or 0)
+    except Exception:  # noqa: BLE001
+        return 0
+
+
+def estimate_seconds_per_audio_minute(
+    slug: str,
+    status: CudaStatus,
+    *,
+    physical_cores: int,
+) -> float | None:
+    """Rough decode time for one minute of audio with model ``slug`` on this computer.
+
+    CPU: the benchmark speed, slowed down in proportion when the computer has fewer
+    physical cores than the benchmark CPU's four (faster-whisper uses four threads, so
+    more cores do not help). GPU (:func:`runs_on_gpu`): the faster-whisper README figure
+    scaled by model size. ``None`` for a model without a measured speed.
+    """
+    cpu = CPU_SECONDS_PER_AUDIO_SECOND.get(slug)
+    if cpu is None:
+        return None
+    if runs_on_gpu(slug, status):
+        large = CPU_SECONDS_PER_AUDIO_SECOND["large-v3"]
+        return 60.0 * _GPU_SECONDS_PER_AUDIO_SECOND_LARGE * cpu / large
+    slowdown = 1.0
+    if 0 < physical_cores < _BENCHMARK_CPU_CORES:
+        slowdown = _BENCHMARK_CPU_CORES / physical_cores
+    return 60.0 * cpu * slowdown
+
+
 def diagnostics_report() -> str:
     """Plain-text GPU/CUDA report for bug reports. Never raises.
 

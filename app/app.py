@@ -16,6 +16,7 @@ import sv_ttk
 
 from app.dialogs.advanced import AdvancedDialog
 from app.dialogs.model_download import ModelDownloadDialog
+from app.dialogs.quick_start import QuickStartChoice, QuickStartDialog, apply_choice, should_show
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
 from app.domain.tasks import TranscriptionTask, VideoDownloadTask
 from app.observability import init_sentry, send_launch_ping_async
@@ -811,6 +812,8 @@ class App(tk.Tk):
         # touching destroyed widgets. Keep watched_after_ids so
         # each path only schedules ONE stability-check ladder.
         self._closing = False
+        # True while the quick start window is open (see _on_start).
+        self._quick_start_open = False
         self._watched_after_ids: dict[str, str] = {}
         # Thread-safe queue drained on the Tk main thread by
         # _drain_watched_paths. watchdog fires callbacks from a
@@ -873,7 +876,7 @@ class App(tk.Tk):
 
     # Bootstrap ---------------------------------------------------------------
     def _on_start(self) -> None:
-        # First-run Hub Folder picker.
+        # First-run windows: quick start, then the Hub Folder picker.
         #
         # v1.0.3 — lazy model load.
         # We used to call ``transcription_service.start_standby()`` here
@@ -888,6 +891,45 @@ class App(tk.Tk):
         # short modal "Loading Whisper model…" dialog. Do NOT re-add
         # the standby calls here — the trade-off is intentional.
         #
+        # A new install first gets the quick start window (language, Fast or
+        # Best quality, output folder). Finish also settles the model folder;
+        # Skip falls through to the hub-setup dialog, as before.
+        if should_show(self.app_config):
+            try:
+                self._quick_start_open = True
+                QuickStartDialog(
+                    self, self.app_config, on_done=self._on_quick_start_done,
+                )
+                return
+            except Exception as e:  # noqa: BLE001
+                self._quick_start_open = False
+                logger.warning("Quick start window failed: %s", e)
+        self._ensure_hub_folder()
+
+    def _on_quick_start_done(self, choice: QuickStartChoice | None) -> None:
+        """Save the quick start outcome, then sync the widgets that show it."""
+        self._quick_start_open = False
+        apply_choice(self.app_config, choice)
+        try:
+            save_config(self.app_config)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Failed to save the quick start choices")
+            self.log(f"Could not save the quick start choices: {e}")
+        if choice is None:
+            self._ensure_hub_folder()
+            return
+        var = getattr(self, "download_folder_var", None)
+        if var is not None:
+            var.set(self.app_config.get("download_folder", ""))
+        self._refresh_model_selector()
+        self.log(
+            f"Quick start: model {self.app_config.get('whisper_model')}, downloads go to "
+            f"{self.app_config.get('download_folder')}. The model downloads on the first "
+            "transcription."
+        )
+
+    def _ensure_hub_folder(self) -> None:
+        """First-run Hub Folder picker, when no model folder is set yet."""
         # The hub-setup dialog still fires on first launch so the user
         # picks where models live; we just don't preload the model.
         from core import hub as _hub
@@ -4548,6 +4590,11 @@ class App(tk.Tk):
         NOTHING when up to date, offline, or on a private repo.
         """
         if self._closing:
+            return
+        if self._quick_start_open:
+            # The quick start window promises no network traffic while it is
+            # open; check again once it has closed.
+            self.after(4000, self._maybe_quiet_update_check)
             return
         try:
             if not bool(self.app_config.get("update_check_enabled", True)):

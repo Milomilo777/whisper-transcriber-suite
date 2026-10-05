@@ -162,6 +162,7 @@ a = Analysis(
         'app.dialogs.transcript_viewer',
         'app.dialogs.search_dialog',
         'app.dialogs.model_advisor',
+        'app.dialogs.quick_start',
         'app.domain.cookies',
         'app.domain.languages',
         'app.domain.tasks',
