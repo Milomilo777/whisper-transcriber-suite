@@ -897,8 +897,15 @@ class App(tk.Tk):
         if should_show(self.app_config):
             try:
                 self._quick_start_open = True
+                from core.sample_clip import bundled_clip_path
+
+                def _try_sample_soon() -> None:
+                    # After the dialog is gone, so the model prompt is not under it.
+                    self.after(200, self.try_sample_clip)
+
                 QuickStartDialog(
                     self, self.app_config, on_done=self._on_quick_start_done,
+                    on_try_sample=_try_sample_soon if bundled_clip_path() else None,
                 )
                 return
             except Exception as e:  # noqa: BLE001
@@ -2853,6 +2860,56 @@ class App(tk.Tk):
         self.nb.select(self.t2)
         self.log(f"Queued: {os.path.basename(self.fv.get())}")
         self.refresh()
+
+    def try_sample_clip(self) -> None:
+        """"Try it now": transcribe the bundled sample clip with the chosen model.
+
+        Goes through the same gates as Transcribe (model download prompt, worker load);
+        the transcript opens in the viewer when the task finishes (``open_sample_result``).
+        """
+        from core import sample_clip
+
+        try:
+            path = sample_clip.prepare_working_copy()
+        except OSError as e:
+            self.log(f"Could not prepare the sample clip: {e}")
+            show_error(
+                self, "Sample clip unavailable",
+                "Could not copy the sample clip into your data folder.", detail=str(e),
+            )
+            return
+        if path is None:
+            self.log("The sample clip is missing from this install.")
+            return
+        if any(
+            t.file_path == path and t.status in ("waiting", "running", "paused")
+            for t in self.queue
+        ):
+            self.log("The sample clip is already in the queue.")
+            self.nb.select(self.t2)
+            return
+        if not self._ensure_transcribe_ready():
+            return
+        task = TranscriptionTask(path)
+        task.language = sample_clip.SAMPLE_CLIP_LANGUAGE
+        task.open_when_done = True
+        self.queue.append(task)
+        self.pb["value"] = 0
+        self.nb.select(self.t2)
+        self.log("Queued the sample clip; its transcript opens when it is done.")
+        self.refresh()
+
+    def open_sample_result(self, task: TranscriptionTask) -> None:
+        """Show the finished sample clip's transcript: the viewer, else the first output."""
+        json_path = self._task_json_output(task)
+        if json_path and os.path.isfile(json_path):
+            self.open_transcript_viewer_for(task.file_path, json_path)
+            return
+        for out in task.output_paths or ():
+            if os.path.isfile(out):
+                self._open_file(out)
+                return
+        self.log("The sample clip finished but no transcript file was found.")
 
     def _ensure_transcribe_ready(self) -> bool:
         """Run the one-time transcribe gates; True if a task may be enqueued.

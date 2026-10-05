@@ -367,6 +367,12 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     browse_row = ttk.Frame(drop_zone)
     browse_row.pack()
     ttk.Button(browse_row, text="Browse files...", command=app.browse).pack(side="left")
+    from core.sample_clip import bundled_clip_path
+
+    if bundled_clip_path():
+        ttk.Button(
+            browse_row, text="Try it now (sample clip)", command=app.try_sample_clip,
+        ).pack(side="left", padx=(8, 0))
     help_icon(
         browse_row,
         "Pick an audio or video file to transcribe locally (mp3, wav, mp4, "

@@ -6,6 +6,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **"Try it now" sample clip.** An 18-second public-domain (CC0) spoken clip ships with the
+  app. "Finish and try it now" in the quick start window, and a "Try it now (sample clip)"
+  button on the Transcribe tab, transcribe it with the chosen model and open the transcript, so
+  a new user sees a real result before finding a file of their own. Credit and licence:
+  `docs/SAMPLE_CLIP.md`.
 - **Quick start window on the first launch of a new install.** Three choices:
   the main spoken language, "Fast" or "Best quality", and the folder for
   downloaded media. Each choice shows the model, its download size and a rough time

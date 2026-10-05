@@ -28,6 +28,7 @@ fits into one of five buckets.
 - [SERVER.md](SERVER.md) — optional local-network / web server mode (`gui.py serve`)
 - [LIVE.md](LIVE.md) — the Live tab: microphone / system-audio transcription as it happens
 - [DENOISE.md](DENOISE.md) — optional adaptive audio denoise pre-process (ffmpeg-only, measures before it filters)
+- [SAMPLE_CLIP.md](SAMPLE_CLIP.md) — the bundled "Try it now" sample clip: source, licence, speaker credit
 - [COMPARISON.md](COMPARISON.md) — sourced comparison with similar apps
 - [integrations/](integrations/) — third-party service integrations (SMTV, oTranscribe)
 - [evaluations/](evaluations/) — model / backend evaluation writeups

@@ -38,6 +38,7 @@ SetupIconFile=assets\whisper.ico
 Source: "dist_onedir\WhisperTranscriberSuite\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "assets\whisper.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "assets\whisper.png"; DestDir: "{app}\assets"; Flags: ignoreversion
+Source: "assets\sample_clip.mp3"; DestDir: "{app}\assets"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Whisper Transcriber Suite"; Filename: "{app}\WhisperTranscriberSuite.exe"; IconFilename: "{app}\assets\whisper.ico"

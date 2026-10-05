@@ -1396,6 +1396,11 @@ class TranscriptionService:
                 self.app.show_last_result(task)
             except Exception:  # noqa: BLE001
                 pass
+            if getattr(task, "open_when_done", False):
+                try:
+                    self.app.open_sample_result(task)
+                except Exception:  # noqa: BLE001
+                    logger.exception("Could not open the sample clip result")
         # P4-4 — usage stats POST (best-effort, daemon thread, swallows all
         # errors). post_stats_async checks telemetry_opt_in + stats_url.
         # Only for a genuine successful completion: an error/cancelled task

@@ -69,6 +69,9 @@ class TranscriptionTask:
         # re-deriving names from config (which missed docx/pdf and the
         # de-duped "name (1).srt" form). None until a run completes.
         self.output_paths: list[str] | None = None
+        # True for the "Try it now" sample clip: when it finishes, the app opens
+        # the transcript in the viewer instead of leaving the user in the queue.
+        self.open_when_done: bool = False
         # Transcript stats computed by the worker from the in-memory
         # segments (word total; last segment end as the duration lower
         # bound) and carried back in its "done" event. The parent's

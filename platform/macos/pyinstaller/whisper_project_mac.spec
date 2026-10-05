@@ -341,6 +341,7 @@ a = Analysis(
         'core.chapters',
         'core.llm',
         'core.recorder',
+        'core.sample_clip',
         'core.search',
         'core.denoise',
         'core.live',

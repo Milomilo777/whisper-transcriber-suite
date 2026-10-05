@@ -135,8 +135,10 @@ class QuickStartDialog(tk.Toplevel):
         *,
         on_done: Callable[[QuickStartChoice | None], None],
         probe: Probe | None = None,
+        on_try_sample: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(master)
+        self._on_try_sample = on_try_sample
         try:
             self._open_window(master, config, on_done, probe)
         except Exception:
@@ -245,6 +247,10 @@ class QuickStartDialog(tk.Toplevel):
         ttk.Button(
             actions, text="Finish", command=self.finish, style="Accent.TButton",
         ).pack(side="right")
+        if self._on_try_sample is not None:
+            ttk.Button(
+                actions, text="Finish and try it now", command=self.finish_and_try_sample,
+            ).pack(side="right", padx=(0, 8))
         ttk.Button(actions, text="Skip", command=self.skip).pack(side="right", padx=(0, 8))
 
     def _center_on(self, master: "tk.Misc") -> None:
@@ -347,7 +353,11 @@ class QuickStartDialog(tk.Toplevel):
         if folder:
             self.folder_var.set(os.path.normpath(folder))
 
-    def finish(self) -> None:
+    def finish_and_try_sample(self) -> None:
+        """Finish, then transcribe the bundled sample clip with the chosen model."""
+        self.finish(try_sample=True)
+
+    def finish(self, try_sample: bool = False) -> None:
         choice = self.choice()
         if not choice.output_folder:
             messagebox.showwarning(
@@ -368,6 +378,8 @@ class QuickStartDialog(tk.Toplevel):
             )
             return
         self._close(choice)
+        if try_sample and self._on_try_sample is not None:
+            self._on_try_sample()
 
     def skip(self) -> None:
         self._close(None)
