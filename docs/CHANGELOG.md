@@ -111,6 +111,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **`gui.py transcribe --formats/--diarization` no longer change the app's
+  saved settings**; they apply to that run only. `--model` is still saved, as
+  its help says.
 - **Word times of a Transcribe-tab time range were not moved onto the file's
   timeline** with faster-whisper 1.1+ (its segments became dataclasses), so
   words of a range starting at 100 s were stamped from 0 s.

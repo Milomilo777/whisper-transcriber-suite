@@ -114,8 +114,9 @@ There is also a one-shot command-line transcription that needs no server:
 python gui.py transcribe FILE [--language en] [--formats srt txt] [--diarization] [--model large-v3]
 ```
 
-`--model`, `--formats` and `--diarization` are saved as the app's settings, as if
-you had changed them in the app. It writes the outputs next to the input file and exits with code 0 on success,
+`--model` is saved as the app's model, as if you had picked it in the app.
+`--formats` and `--diarization` apply to that one run and leave the app's
+settings unchanged. It writes the outputs next to the input file and exits with code 0 on success,
 2 for a missing file or unknown model, 3 when the model cannot be loaded and 4
 when the transcription failed. Run `python gui.py transcribe --help` for the
 list of formats.

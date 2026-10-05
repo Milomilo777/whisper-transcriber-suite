@@ -73,18 +73,13 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
             cfg = load_config()
     formats = args.formats or cfg.get("output_formats") or ["srt", "json"]
     cfg["output_formats"] = formats
-    # Mirror the explicit CLI flags onto cfg so save_config writes
-    # them through AND the module-level _trans.config snapshot is
-    # refreshed to match — the worker module was originally read
-    # once at import time and never re-read non-diarization keys
-    # like output_formats, so the FIRST CLI run with new --formats
-    # / --diarization silently fell back to whatever was on disk
-    # at import time.
     if args.diarization:
         cfg["diarization_enabled"] = True
-    save_config(cfg)
-    # CRITICAL — _trans.config was loaded at import time. Refresh it
-    # so the writer sees the just-saved values on this very run.
+    # --formats and --diarization apply to this run only: they go into the
+    # in-memory config the transcriber reads (loaded once at import, so it
+    # must be refreshed here or this run would use the values on disk), and
+    # are never written to config.json, where they would silently change
+    # the app's own settings. Only --model is saved (above), as documented.
     _trans.config.update(cfg)
 
     def _status(m: str) -> None:
@@ -302,11 +297,12 @@ def _build_argparser() -> argparse.ArgumentParser:
     tr.add_argument(
         "--formats", "-f", nargs="+",
         choices=tuple(supported_formats()),
-        help="output formats (default: from config.json)",
+        help="output formats for this run only (default: the app's saved "
+             "formats); not saved",
     )
     tr.add_argument(
         "--diarization", action="store_true",
-        help="enable speaker diarization for this transcription",
+        help="enable speaker diarization for this transcription only (not saved)",
     )
     tr.add_argument(
         "--model", "-m", default="",
