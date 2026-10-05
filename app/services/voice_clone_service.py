@@ -283,6 +283,7 @@ class VoiceCloneWorker:
                         "output_path": str(msg.get("output_path") or ""),
                         "audio_seconds": float(msg.get("audio_seconds") or 0.0),
                         "elapsed_seconds": float(msg.get("elapsed_seconds") or 0.0),
+                        "warning": str(msg.get("warning") or ""),
                     }
                 except (TypeError, ValueError):
                     error = "Malformed completion event from the voice-clone worker."

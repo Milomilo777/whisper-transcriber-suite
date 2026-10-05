@@ -6,6 +6,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Synthetic speech is labelled as AI-generated.** Every WAV the Clone Your
+  Voice / Text to Voice tab produces (OmniVoice and Kokoro) carries a RIFF
+  `INFO` comment `AI-generated synthetic speech` plus the app name and version;
+  the audio samples are unchanged. Each voice clone from reference clips also
+  appends a local, never-uploaded consent record (time, output hash, reference
+  hashes) to `voice_clone_consent.jsonl`; see `docs/CONFIG.md`.
 - **Help → Send usage statistics.** The usage-statistics switch is now a
   check item in the Help menu as well as in Advanced → App behaviour; both
   show the same saved value, and About lists exactly what is sent.

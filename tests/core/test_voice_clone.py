@@ -108,8 +108,18 @@ def test_generate_without_reference_uses_design_or_auto(monkeypatch, tmp_path):
             return [[0.0] * 2400]
 
     written: list = []
-    monkeypatch.setitem(sys.modules, "soundfile", types.SimpleNamespace(
-        write=lambda path, data, sr: written.append((path, sr))))
+
+    def fake_write(path, data, sr):
+        # A real (silent) WAV: generate() tags the file it just wrote.
+        import wave
+        with wave.open(path, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(sr)
+            w.writeframes(b"\x00\x00" * len(data))
+        written.append((path, sr))
+
+    monkeypatch.setitem(sys.modules, "soundfile", types.SimpleNamespace(write=fake_write))
     out = str(tmp_path / "o.wav")
     voice_clone.generate(FakeModel(), "hi", [], out, consent_accepted=False,
                          instruct="female, low pitch", language="en", speed=1.2)

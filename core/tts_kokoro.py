@@ -247,6 +247,9 @@ def generate(
         w.setsampwidth(2)
         w.setframerate(int(audio.sample_rate))
         w.writeframes(pcm)
+    from .synthetic_audio import tag_wav
+
+    tag_wav(output_path)
     seconds = samples.size / float(audio.sample_rate)
     logger.info("kokoro generate: %.2fs audio in %.1fs (voice=%s)", seconds, elapsed, voice.key)
     return KokoroResult(output_path, seconds, elapsed)

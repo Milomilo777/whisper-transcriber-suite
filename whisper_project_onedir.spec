@@ -203,6 +203,7 @@ a = Analysis(
         'core.voice_clone',
         'core.voice_clone_worker',
         'core.tts_kokoro',
+        'core.synthetic_audio',
         # Opt-in backends (see onefile spec comment).
         'pywhispercpp',
         'pywhispercpp.model',

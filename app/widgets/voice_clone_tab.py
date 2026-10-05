@@ -766,9 +766,14 @@ def _generate_done(app: Any, result: dict[str, Any], play: bool = False) -> None
         app.vc_save_btn.configure(state="normal")
     elapsed = result.get("elapsed_seconds") or 0.0
     audio = result.get("audio_seconds") or 0.0
-    app.vc_status_var.set(
-        f"Done: {audio:.0f}s of speech in {elapsed:.0f}s." if audio else f"Done in {elapsed:.0f}s.")
+    status = f"Done: {audio:.0f}s of speech in {elapsed:.0f}s." if audio else f"Done in {elapsed:.0f}s."
+    warning = result.get("warning") or ""
+    if warning:
+        status += " Warning: the consent record was not saved (see the log)."
+    app.vc_status_var.set(status)
     app.log(f"Text to voice finished: {app.vc_last_output}")
+    if warning:
+        app.log(warning)
     if play:
         _play(app)
 

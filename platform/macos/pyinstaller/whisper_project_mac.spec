@@ -347,6 +347,7 @@ a = Analysis(
         'core.separator',
         'core.tiling',
         'core.voiceprint',
+        'core.synthetic_audio',
         # Opt-in backends (see the Windows specs' comment).
         'pywhispercpp',
         'pywhispercpp.model',

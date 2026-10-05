@@ -39,7 +39,8 @@ Events (stdout):
   - ``model_ready``                             : model loaded, generating
   - ``model_error``    (message)                : model failed to load
   - ``started``        (id)                     : generation accepted
-  - ``done``            (id, output_path, audio_seconds, elapsed_seconds)
+  - ``done``            (id, output_path, audio_seconds, elapsed_seconds,
+                         warning: "" or a non-fatal problem to show)
   - ``error``           (id, message)
   - ``log``             (message)
   - ``heartbeat``       (ts)
@@ -162,6 +163,7 @@ def main() -> int:
                 "done", id=req_id, output_path=result.output_path,
                 audio_seconds=result.audio_seconds,
                 elapsed_seconds=result.elapsed_seconds,
+                warning=result.warning,
             )
         except Exception as e:  # noqa: BLE001
             logger.exception("Voice-clone generation failed")

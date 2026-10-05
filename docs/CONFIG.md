@@ -42,6 +42,7 @@ The merge itself is pure and testable: `core.config.merge_config_sources(hardcod
 | Model hub (default `hub_folder`) | `%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\models\` | `core.hub.default_hub_folder()` |
 | Cached models (default `model_path`) | `%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\models\<model-folder>\` | `core.config.user_cache_dir()` |
 | Rotating logs | `%LOCALAPPDATA%\WhisperTranscriberSuite\Logs\app.log` (5 MB × 3) | `core.config.user_log_dir()` |
+| Voice-clone consent record (local only, see [below](#consent-record-local-only)) | `%LOCALAPPDATA%\WhisperTranscriberSuite\voice_clone_consent.jsonl` | `core.synthetic_audio.consent_log_path()` |
 
 `platformdirs` chooses the equivalent paths on macOS and Linux. The "Help → Open log folder" menu item opens the log directory.
 
@@ -276,6 +277,45 @@ need an internet connection for that one-time step only.
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `voice_clone.consent_accepted` | bool | `false` | Set to `true` after the user accepts the one-time consent dialog (own-voice-or-permission confirmation + ethics note) shown before the very first generation. Once accepted, the dialog does not reappear. |
+
+#### AI-generated tag
+
+Every WAV file the tab produces (OmniVoice clone, voice design or model
+voice, and every Kokoro voice, the voice preview included) carries a RIFF
+`LIST`/`INFO` chunk, placed just before the audio data:
+
+| INFO field | Value | ffmpeg shows it as |
+|---|---|---|
+| `ICMT` | `AI-generated synthetic speech` (fixed text, safe to match in scripts) | `comment` |
+| `ISFT` | `Whisper Transcriber Suite <version>` | `encoder` |
+
+The audio samples are untouched; only the container gets the extra chunk
+(`core.synthetic_audio.tag_wav`). **Save** copies the generated file
+byte for byte, so the saved copy keeps the tag. To check a file:
+`ffmpeg -i file.wav` lists both fields under `Metadata:`.
+
+#### Consent record (local only)
+
+Each generation that clones a voice from reference clips appends one JSON
+line to `voice_clone_consent.jsonl` in the user data folder
+(`%LOCALAPPDATA%\WhisperTranscriberSuite\` on Windows,
+`core.synthetic_audio.consent_log_path()`). Generations without reference
+audio (voice design, model voice, Kokoro) write no line. The file never
+leaves this computer: nothing uploads it and it is not part of the usage
+statistics. The app only appends to it; delete it whenever you like. If the
+line cannot be written (for example the folder is read-only), the generated
+file is kept anyway: the tab's status line shows a warning and the error
+goes to the app log.
+
+| Field | Meaning |
+|---|---|
+| `time_utc` | When the file was generated, UTC, e.g. `2026-10-05T14:03:22Z`. |
+| `output_file` | Absolute path of the generated WAV in the session scratch folder (`Cache\voice_clone\<timestamp>\`, swept after 7 days); use **Save** to keep the file. |
+| `output_sha256` | SHA-256 of that finished, tagged WAV. A copy made with **Save** has the same hash, so it can be matched to its record. |
+| `reference_sha256` | List of SHA-256 hashes, one per reference clip used (at most 3), in order, of the clip as fed to the model: a clip longer than 10 s is first cut to its first 10 s, so its hash differs from the original file's. The clips themselves are not copied. |
+| `consent_accepted` | The consent confirmation the generation ran under (always `true`: cloning is refused without it). |
+| `engine` | `omnivoice`. |
+| `app_version` | App version that generated the file. |
 
 ### Web / LAN access (optional local HTTP job server)
 

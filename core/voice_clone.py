@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from . import optional_deps
+from . import optional_deps, synthetic_audio
 from .transcriber import get_duration
 
 logger = logging.getLogger(__name__)
@@ -241,6 +241,9 @@ class GenerateResult:
     output_path: str
     audio_seconds: float
     elapsed_seconds: float
+    #: Non-fatal problem to show the user ("" = none), e.g. the local
+    #: consent record could not be written.
+    warning: str = ""
 
 
 # Process-local cache: loading OmniVoice takes minutes (mostly the
@@ -299,6 +302,10 @@ def generate(
     into a single temp WAV first (more reference speech generally helps
     similarity) rather than only ever using the first one.
 
+    The finished WAV is tagged as AI-generated
+    (:func:`core.synthetic_audio.tag_wav`), and a cloning run appends its
+    local consent record (:func:`core.synthetic_audio.append_consent_record`).
+
     Raises whatever OmniVoice / torch raises on a real failure -- the
     worker wraps this call and turns exceptions into an ``error`` event
     rather than crashing silently.
@@ -348,12 +355,29 @@ def generate(
 
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         sf.write(output_path, audio[0], 24000)
+        synthetic_audio.tag_wav(output_path)
+        warning = ""
+        if reference_paths:
+            try:
+                # The clips actually fed to the model (_concat_references
+                # takes at most MAX_REFERENCE_SAMPLES).
+                synthetic_audio.append_consent_record(
+                    output_path, reference_paths[:MAX_REFERENCE_SAMPLES],
+                    consent_accepted=consent_accepted, engine="omnivoice",
+                )
+            except OSError as e:
+                # The clip is finished and tagged; failing the whole run
+                # (possibly an hour of CPU time) over a local log line
+                # would discard it, so report it as a warning instead.
+                logger.exception("Could not write the voice-clone consent record")
+                warning = f"The local consent record could not be saved: {e}"
         audio_seconds = len(audio[0]) / 24000
         logger.info(
             "voice_clone generate: %.2fs audio in %.1fs (RTF=%.2f)",
             audio_seconds, elapsed, elapsed / max(audio_seconds, 0.01),
         )
-        return GenerateResult(output_path=output_path, audio_seconds=audio_seconds, elapsed_seconds=elapsed)
+        return GenerateResult(output_path=output_path, audio_seconds=audio_seconds,
+                              elapsed_seconds=elapsed, warning=warning)
     finally:
         if cleanup_ref_path is not None:
             try:
