@@ -6,6 +6,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **An empty Transcribe tab says what to do, and About moved under Help.** While nothing is queued
+  the tab shows one block: "Drop a file here, paste a link, or try the sample" (it names only what
+  works on that install), where a link goes, the supported formats and the sample button; it
+  disappears once a file is queued. **About** is now the last item of the **Help** menu instead of
+  a separate menu bar entry.
 - **The Download tab says which subtitles a video already has.** After a link lookup a line under the
   link field names them ("Subtitles available: English (made by the uploader), Spanish (automatic)"),
   uploader-made and automatic told apart; it is hidden when there are none and for SMTV episodes. With

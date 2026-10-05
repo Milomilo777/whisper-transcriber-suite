@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest release gets fixes. Check yours under **About**, or against
+Only the latest release gets fixes. Check yours under **Help → About**, or against
 [the releases page](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest).
 
 ## Reporting a vulnerability

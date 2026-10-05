@@ -40,6 +40,7 @@ from app.widgets.tabs import (
     build_queue_tab,
     build_server_tab,
     build_transcribe_tab,
+    sync_transcribe_empty_state,
 )
 from app.widgets.tray import TrayController
 from core import __version__ as _APP_VERSION
@@ -57,6 +58,7 @@ logger = logging.getLogger(__name__)
 # Menu labels the update notice decorates with a dot (_refresh_update_signs).
 _HELP_MENU_LABEL = "Help"
 _CHECK_FOR_UPDATES_LABEL = "Check for updates..."
+_ABOUT_MENU_LABEL = "About"
 # An app left open keeps checking about once a day (the date throttle in
 # _maybe_quiet_update_check still applies).
 _UPDATE_RECHECK_MS = 24 * 60 * 60 * 1000
@@ -660,6 +662,13 @@ class App(tk.Tk):
     last_result_body: "ttk.Frame"
     last_result_title_var: tk.StringVar
     last_result_files_frame: "ttk.Frame"
+    # Transcribe-tab empty-state block (shown while the queue is empty)
+    transcribe_empty_state: "ttk.Frame"
+    transcribe_empty_headline_var: tk.StringVar
+    transcribe_browse_row: "ttk.Frame"
+    transcribe_has_sample: bool
+    # True once drag-and-drop is wired (tkinterdnd2 present and registered)
+    _dnd_ready: bool
     # Queue-tab empty-state placeholder
     queue_empty_var: tk.StringVar
     queue_empty_label: "ttk.Label"
@@ -1080,15 +1089,14 @@ class App(tk.Tk):
             variable=self.telemetry_opt_in_var,
             command=self._save_telemetry_pref,
         )
+        # About is the last Help item (the usual place), one click from Help.
+        h.add_separator()
+        h.add_command(label=_ABOUT_MENU_LABEL, command=self._show_about)
         m.add_cascade(label="File", menu=f)
         m.add_cascade(label="View", menu=v)
         m.add_cascade(label=_HELP_MENU_LABEL, menu=h)
         self._menubar = m
         self._help_cascade_index = m.index("end")
-        # Direct menubar command — clicking "About" opens the dialog in
-        # one click. (It used to be a cascade whose only item was
-        # another "About", so the user had to click About twice.)
-        m.add_command(label="About", command=self._show_about)
         self.config(menu=m)
 
     def _populate_recent_menu(self) -> None:
@@ -4369,6 +4377,7 @@ class App(tk.Tk):
                 self.queue_empty_label.pack_forget()
             else:
                 self.queue_empty_label.pack(fill="x", pady=(2, 0))
+        sync_transcribe_empty_state(self)
         # Reflect work-in-progress in the window title so users with
         # the app minimised see "Whisper — 34% transcribing foo.mp4"
         # in their taskbar / Alt-Tab.
@@ -5528,6 +5537,8 @@ class App(tk.Tk):
             self.drop_target_register(DND_FILES)  # type: ignore[attr-defined]
             self.dnd_bind("<<Drop>>", self._on_drop)  # type: ignore[attr-defined]
             logger.info("Drag-and-drop enabled (tkinterdnd2)")
+            self._dnd_ready = True
+            sync_transcribe_empty_state(self)  # the headline may now promise a drop
         except Exception as e:  # noqa: BLE001
             logger.warning("Could not initialise drag-and-drop: %s", e)
 

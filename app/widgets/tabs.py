@@ -289,6 +289,43 @@ def download_button_states_for_status(
     return states
 
 
+EMPTY_STATE_LINK_HINT = "To use a link, paste it into the Selected file box below and click Transcribe."
+EMPTY_STATE_FORMATS = (
+    "Works with MP3, WAV, M4A, FLAC, OGG, MP4, MKV, MOV, WebM and most other "
+    "audio and video formats."
+)
+
+
+def empty_state_headline(dnd_ready: bool, has_sample: bool) -> str:
+    """The empty Transcribe tab's headline; it names only what this install can do.
+
+    Drag-and-drop needs the optional tkinterdnd2 package and the sample clip needs
+    its bundled file, so each phrase appears only when it works. Pure (no Tk).
+    """
+    actions = ["Drop a file here" if dnd_ready else "Pick a file", "paste a link"]
+    if has_sample:
+        actions.append("try the sample")
+    if len(actions) == 2:
+        return f"{actions[0]} or {actions[1]}"
+    return f"{actions[0]}, {actions[1]}, or {actions[2]}"
+
+
+def sync_transcribe_empty_state(app: "App") -> None:
+    """Show the empty-state block while the queue is empty, hide it once a file is queued."""
+    frame = getattr(app, "transcribe_empty_state", None)
+    if frame is None:
+        return
+    app.transcribe_empty_headline_var.set(
+        empty_state_headline(
+            bool(getattr(app, "_dnd_ready", False)), bool(app.transcribe_has_sample)
+        )
+    )
+    if app.queue:
+        frame.pack_forget()
+    elif not frame.winfo_manager():
+        frame.pack(fill="x", before=app.transcribe_browse_row)
+
+
 def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     """Beginner-friendly Transcribe tab.
 
@@ -350,29 +387,47 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         row=0, column=0, columnspan=3, sticky="ew",
         padx=15, pady=(15, 6),
     )
+    # The empty-state block: tells a new user what to do. It is shown while the
+    # queue is empty and hidden once a file is queued (sync_transcribe_empty_state,
+    # called from App.refresh); Browse below stays for adding more files.
+    from core.sample_clip import bundled_clip_path
+
+    app.transcribe_has_sample = bool(bundled_clip_path())
+    empty_state = ttk.Frame(drop_zone)
+    app.transcribe_empty_state = empty_state
+    app.transcribe_empty_headline_var = tk.StringVar(
+        value=empty_state_headline(False, app.transcribe_has_sample)
+    )
     ttk.Label(
-        drop_zone,
-        text="🎵    Drop an audio or video file here",
+        empty_state,
+        textvariable=app.transcribe_empty_headline_var,
         font=("TkDefaultFont", 14, "bold"),
         anchor="center",
         justify="center",
     ).pack(fill="x")
     ttk.Label(
-        drop_zone,
-        text="or use the Browse button below",
+        empty_state,
+        text=EMPTY_STATE_LINK_HINT,
+        foreground="#888",
+        anchor="center",
+        justify="center",
+    ).pack(fill="x", pady=(2, 0))
+    ttk.Label(
+        empty_state,
+        text=EMPTY_STATE_FORMATS,
         foreground="#888",
         anchor="center",
         justify="center",
     ).pack(fill="x", pady=(2, 12))
+    if app.transcribe_has_sample:
+        ttk.Button(
+            empty_state, text="Try it now (sample clip)", command=app.try_sample_clip,
+        ).pack(pady=(0, 12))
+    empty_state.pack(fill="x")
     browse_row = ttk.Frame(drop_zone)
+    app.transcribe_browse_row = browse_row
     browse_row.pack()
     ttk.Button(browse_row, text="Browse files...", command=app.browse).pack(side="left")
-    from core.sample_clip import bundled_clip_path
-
-    if bundled_clip_path():
-        ttk.Button(
-            browse_row, text="Try it now (sample clip)", command=app.try_sample_clip,
-        ).pack(side="left", padx=(8, 0))
     help_icon(
         browse_row,
         "Pick an audio or video file to transcribe locally (mp3, wav, mp4, "
