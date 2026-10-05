@@ -675,8 +675,7 @@ class DownloadService:
             return
         # A frozen build's bundled yt-dlp lives inside the read-only app
         # bundle/install dir; "yt-dlp --update" can't write there and would
-        # just fail silently every 24h (matches the core.tiling self-heal
-        # guard for the same reason).
+        # just fail silently every 24h.
         if getattr(sys, "frozen", False):
             return
         last = cfg.get("last_yt_dlp_update_check") or ""

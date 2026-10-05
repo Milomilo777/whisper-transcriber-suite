@@ -239,53 +239,5 @@ def test_log_threadsafe_marshals_through_post_to_main():
     assert app._log_msgs == ["hello from a worker thread"]
 
 
-def test_tiling_log_marshals_through_post_to_main():
-    app = _marshal_app()
-    App._tiling_log(app, "Tiling dropped; reconnecting in 3s")  # type: ignore[arg-type]
-    assert len(app._posted) == 1
-    assert app._log_msgs == ["Tiling dropped; reconnecting in 3s"]
-
-
-def test_tiling_status_applies_text_and_colour():
-    posted: list = []
-    var_value = {"text": None}
-    label_colour = {"fg": None}
-
-    def _post(fn):
-        posted.append(fn)
-        fn()
-
-    label = types.SimpleNamespace(
-        configure=lambda **kw: label_colour.update(fg=kw.get("foreground"))
-    )
-    app = types.SimpleNamespace(
-        post_to_main=_post,
-        tiling_status_var=types.SimpleNamespace(
-            set=lambda v: var_value.update(text=v)
-        ),
-        tiling_status_label=label,
-    )
-    App._tiling_status(app, "Playing", "#1f7a1f")  # type: ignore[arg-type]
-
-    assert len(posted) == 1                       # marshalled, not direct
-    assert var_value["text"] == "Tiling: Playing"  # text applied
-    assert label_colour["fg"] == "#1f7a1f"         # engine colour applied (BUG B)
-
-
-def test_tiling_status_blank_colour_falls_back_to_grey():
-    posted: list = []
-    label_colour = {"fg": None}
-    label = types.SimpleNamespace(
-        configure=lambda **kw: label_colour.update(fg=kw.get("foreground"))
-    )
-    app = types.SimpleNamespace(
-        post_to_main=lambda fn: (posted.append(fn), fn()),
-        tiling_status_var=types.SimpleNamespace(set=lambda _v: None),
-        tiling_status_label=label,
-    )
-    App._tiling_status(app, "idle", "")  # type: ignore[arg-type]
-    assert label_colour["fg"] == "#666"
-
-
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-q"]))

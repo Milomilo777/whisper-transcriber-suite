@@ -37,7 +37,6 @@ from app.widgets.tabs import (
     build_download_tab,
     build_queue_tab,
     build_server_tab,
-    build_tiling_tab,
     build_transcribe_tab,
 )
 from app.widgets.tray import TrayController
@@ -45,7 +44,7 @@ from core import __version__ as _APP_VERSION
 from core._proc import kill_process_tree
 from core.config import load_config, save_config
 from core.history import HistoryDB
-from core.hub import tiling_tab_enabled, voice_clone_tab_enabled
+from core.hub import voice_clone_tab_enabled
 from core.logging_setup import get_ui_logger, open_log_folder, setup_logging
 from core.paths import bin_dir as _resource_bin_dir
 from core.paths import bundled_binary as _bundled_binary
@@ -247,8 +246,6 @@ def build_about_sections() -> list[AboutSection]:
                 "or another device transcribe, with nothing to install",
                 "Per-task buttons on every queue item: Pause, Resume, "
                 "Cancel, Re-run, Remove",
-                "Video Tiling — a multi-monitor video wall that "
-                "auto-reconnects if a stream drops",
                 "Built-in update check (once a day, notify-only); the "
                 "installer upgrades in place over the old version — no need "
                 "to uninstall first",
@@ -364,15 +361,6 @@ def build_about_sections() -> list[AboutSection]:
                 "Cookies from browser — download login-walled / "
                 "age-gated content (Facebook / Instagram / TikTok, "
                 "some YouTube Shorts)",
-            ]),
-        ]),
-        ("Video Tiling (video wall)", [
-            ("What it does", [
-                "Plays one live stream as a full-screen N×N grid",
-                "Can spread the wall across several monitors",
-                "Auto-reconnects if the stream drops, so the wall "
-                "keeps running unattended",
-                "Lives on its own \"Video Tiling\" tab",
             ]),
         ]),
         ("Web / LAN access", [
@@ -560,22 +548,6 @@ class App(tk.Tk):
     # Transcribe-tab time-slice (created by tabs.build_transcribe_tab).
     transcribe_start_time_var: tk.StringVar
     transcribe_end_time_var: tk.StringVar
-    # Video Tiling tab (created by tabs.build_tiling_tab).
-    tiling_url_var: tk.StringVar
-    tiling_divisions_var: tk.IntVar
-    tiling_status_var: tk.StringVar
-    tiling_status_label: "ttk.Label"
-    tiling_quality_var: tk.StringVar
-    tiling_mute_var: tk.BooleanVar
-    tiling_multi_monitor_var: tk.BooleanVar
-    tiling_auto_restart_var: tk.BooleanVar
-    tiling_monitors_info_var: tk.StringVar
-    # Spatial monitor indices (core.monitors) ticked for multi-monitor.
-    tiling_selected_monitors: list[int]
-    # ffplay auto-download notice + button (only when ffplay is absent and a
-    # download URL is configured; see tabs.build_tiling_tab).
-    tiling_ffplay_notice: "ttk.Frame"
-    tiling_download_ffplay_btn: "ttk.Button"
     # Web / LAN access tab (created by tabs.build_server_tab).
     server_port_var: tk.IntVar
     server_share_lan_var: tk.BooleanVar
@@ -786,8 +758,6 @@ class App(tk.Tk):
         self.format_service = FormatService(self)
         self.download_service = DownloadService(self)
         self.transcription_service = TranscriptionService(self)
-        from core.tiling import TilingController
-        self.tiling = TilingController()
         self.integrations_service = IntegrationsService(self)
         # Optional in-process web / LAN server (built lazily on first
         # Start so importing core.server — and its model load — is paid
@@ -1620,10 +1590,6 @@ class App(tk.Tk):
                     kill_process_tree(proc, force=False)
                 except Exception:  # noqa: BLE001
                     pass
-        try:
-            self.tiling.stop()
-        except Exception:  # noqa: BLE001
-            pass
         # Stop the Live tab BEFORE the transcription workers: it owns its
         # own worker subprocess plus a capture thread holding the audio
         # device, and both would outlive the window otherwise.
@@ -1688,7 +1654,6 @@ class App(tk.Tk):
         self.t1 = ttk.Frame(self.nb)
         self.t2 = ttk.Frame(self.nb)
         self.t3 = ttk.Frame(self.nb)
-        self.t4 = ttk.Frame(self.nb)
         self.t5 = ttk.Frame(self.nb)
         self.t6 = ttk.Frame(self.nb)
         self.t7 = ttk.Frame(self.nb)
@@ -1702,19 +1667,14 @@ class App(tk.Tk):
         self.nb.add(self.t2, text="Transcription Queue")
         self.nb.add(self.t3, text="Download Videos")
         self.nb.add(self.t6, text="Live")
-        # Clone Your Voice / Text to Voice and Video Tiling are both
-        # opt-in at install time (no_voice_clone.flag / no_tiling.flag via
-        # voice_clone_tab_enabled / tiling_tab_enabled); each is simply
-        # not added when disabled. self.tiling (the controller) is still
-        # constructed in __init__, so on_exit's self.tiling.stop() stays
-        # safe; the voice-clone worker is spawned lazily on first
-        # Generate, so a skipped tab leaves nothing to tear down.
+        # Clone Your Voice / Text to Voice is opt-in at install time
+        # (no_voice_clone.flag via voice_clone_tab_enabled); it is simply
+        # not added when disabled. The voice-clone worker is spawned
+        # lazily on first Generate, so a skipped tab leaves nothing to
+        # tear down.
         self._voice_clone_tab_visible = voice_clone_tab_enabled()
         if self._voice_clone_tab_visible:
             self.nb.add(self.t7, text="Clone Your Voice / Text to Voice")
-        self._tiling_tab_visible = tiling_tab_enabled()
-        if self._tiling_tab_visible:
-            self.nb.add(self.t4, text="Video Tiling")
         self.nb.add(self.t5, text="Web / LAN access")
         self.nb.add(self.t8, text="Supreme Master TV")
         # The taller tabs scroll when the window is shorter than their
@@ -1727,8 +1687,6 @@ class App(tk.Tk):
         build_live_tab(self, fit_or_scroll(self.t6))
         build_download_tab(self, fit_or_scroll(self.t3))
         build_smtv_tab(self, self.t8)
-        if self._tiling_tab_visible:
-            build_tiling_tab(self, self.t4)
         build_server_tab(self, fit_or_scroll(self.t5))
         if self._voice_clone_tab_visible:
             build_voice_clone_tab(self, fit_or_scroll(self.t7))
@@ -3900,270 +3858,6 @@ class App(tk.Tk):
         ]
         self.refresh_download_queue()
 
-    # Video tiling ------------------------------------------------------------
-    def _save_tiling_prefs(self) -> None:
-        """Persist the Video Tiling tab choices to config.
-
-        Mirrors the Tk vars into ``app_config`` and saves. Surfaces a save
-        failure in the status line rather than letting the choice silently
-        revert on the next launch.
-        """
-        self.app_config["tiling_quality"] = self.tiling_quality_var.get()
-        self.app_config["tiling_mute"] = bool(self.tiling_mute_var.get())
-        self.app_config["tiling_multi_monitor"] = bool(
-            self.tiling_multi_monitor_var.get()
-        )
-        self.app_config["tiling_auto_restart"] = bool(
-            self.tiling_auto_restart_var.get()
-        )
-        # Persist the grid size too (it was never saved/restored). The Spinbox
-        # is free-text editable, so .get() can raise TclError on junk — keep the
-        # prior saved value in that case rather than crashing the save.
-        try:
-            from core.tiling import clamp_divisions
-            self.app_config["tiling_divisions"] = clamp_divisions(
-                self.tiling_divisions_var.get()
-            )
-        except (tk.TclError, ValueError):
-            pass
-        self.app_config["tiling_selected_monitors"] = list(
-            getattr(self, "tiling_selected_monitors", [])
-        )
-        try:
-            save_config(self.app_config)
-        except Exception as e:  # noqa: BLE001
-            self.log(f"Could not save tiling settings: {e}")
-
-    def refresh_tiling_monitor_info(self) -> None:
-        """Update the detected-monitors info line under the tiling controls."""
-        try:
-            from core.monitors import list_monitors
-            mons = list_monitors()
-            sel = [
-                m for m in mons
-                if m["index"] in getattr(self, "tiling_selected_monitors", [])
-            ]
-            txt = ", ".join("#{}".format(m["index"] + 1) for m in sel) or "none"
-            self.tiling_monitors_info_var.set(
-                f"Detected {len(mons)} monitor(s).  "
-                f"Selected for multi-monitor: {txt}"
-            )
-        except Exception:  # noqa: BLE001
-            pass
-
-    def identify_tiling_monitors(self) -> None:
-        """Flash each monitor's number on its own borderless overlay (~2.5s)."""
-        try:
-            from core.monitors import list_monitors
-            wins: list[tk.Toplevel] = []
-            for m in list_monitors():
-                w = tk.Toplevel(self)
-                w.overrideredirect(True)
-                w.geometry(
-                    "{w}x{h}+{x}+{y}".format(
-                        w=m["width"], h=m["height"], x=m["x"], y=m["y"]
-                    )
-                )
-                w.configure(bg="black")
-                try:
-                    w.attributes("-topmost", True)
-                except Exception:  # noqa: BLE001
-                    pass
-                tk.Label(
-                    w, text=str(m["index"] + 1), fg="#39d0ff", bg="black",
-                    font=("Helvetica", 240, "bold"),
-                ).pack(expand=True)
-                wins.append(w)
-            self.after(2500, lambda: [w.destroy() for w in wins])
-        except Exception as e:  # noqa: BLE001
-            self.log(f"Identify monitors failed: {e}")
-
-    def choose_tiling_monitors(self) -> None:
-        """Modal chooser: tick which monitors get a tiled-playback window."""
-        from core.monitors import describe, list_monitors
-        monitors = list_monitors()
-        dlg = tk.Toplevel(self)
-        dlg.title("Select monitors")
-        dlg.transient(self)
-        dlg.grab_set()
-        dlg.bind("<Escape>", lambda _e: dlg.destroy())
-        ttk.Label(
-            dlg, text="Tick the monitors to use for tiled playback:",
-        ).pack(padx=12, pady=(12, 6), anchor="w")
-        rows: list[tuple[int, tk.BooleanVar]] = []
-        current = getattr(self, "tiling_selected_monitors", [])
-        for m in monitors:
-            var = tk.BooleanVar(value=(m["index"] in current))
-            ttk.Checkbutton(dlg, text=describe(m), variable=var).pack(
-                padx=18, pady=2, anchor="w"
-            )
-            rows.append((m["index"], var))
-
-        def set_all(value: bool) -> None:
-            for _, v in rows:
-                v.set(value)
-
-        def apply_sel() -> None:
-            chosen = [idx for idx, v in rows if v.get()]
-            if not chosen:
-                messagebox.showwarning(
-                    "Monitors", "Please tick at least one monitor.", parent=dlg
-                )
-                return
-            self.tiling_selected_monitors = chosen
-            if len(chosen) > 1:
-                self.tiling_multi_monitor_var.set(True)
-            self._save_tiling_prefs()
-            self.refresh_tiling_monitor_info()
-            dlg.destroy()
-
-        helpers = ttk.Frame(dlg)
-        helpers.pack(pady=(8, 0))
-        ttk.Button(
-            helpers, text="Select all", command=lambda: set_all(True)
-        ).pack(side="left", padx=6)
-        ttk.Button(
-            helpers, text="Select none", command=lambda: set_all(False)
-        ).pack(side="left", padx=6)
-        ttk.Button(
-            helpers, text="Identify", command=self.identify_tiling_monitors
-        ).pack(side="left", padx=6)
-        btns = ttk.Frame(dlg)
-        btns.pack(pady=12)
-        ttk.Button(btns, text="OK", width=10, command=apply_sel).pack(
-            side="left", padx=10
-        )
-        ttk.Button(btns, text="Cancel", width=10, command=dlg.destroy).pack(
-            side="left", padx=10
-        )
-
-    def _tiling_status(self, message: str, color: str) -> None:
-        """Status callback for the tiling engine (called from its worker
-        thread). Marshals the widget update onto the Tk main thread, applying
-        BOTH the text and the engine's state colour (green Playing / orange
-        Reconnecting / grey Stopped) so the status line reflects health at a
-        glance instead of a fixed grey."""
-        def _apply() -> None:
-            self.tiling_status_var.set(f"Tiling: {message}")
-            label = getattr(self, "tiling_status_label", None)
-            if label is not None:
-                try:
-                    label.configure(foreground=color or "#666")
-                except Exception:  # noqa: BLE001
-                    pass
-        self.post_to_main(_apply)
-
-    def _tiling_log(self, msg: str) -> None:
-        """Log callback for the tiling engine. The engine calls this from its
-        daemon worker thread (every stream drop / reconnect / self-heal), so
-        it must be marshalled onto the Tk main thread — App.log writes the
-        console Text widget directly and Tk is not thread-safe."""
-        self.post_to_main(lambda: self.log(msg))
-
-    def start_tiling(self) -> None:
-        # A cleared / non-numeric Grid spinbox makes IntVar.get() raise
-        # tk.TclError ("expected floating-point number"), which would surface
-        # as a confusing "Could not start tiling" message. Default to 3 (the
-        # engine also clamps to 1–64); mirrors _save_server_prefs' guarded get.
-        try:
-            divisions = self.tiling_divisions_var.get()
-        except (tk.TclError, ValueError):
-            divisions = 3
-        from core.tiling import ALLOWED_TILING_URLS
-        url = self.tiling_url_var.get()
-        if url not in ALLOWED_TILING_URLS:
-            self.tiling_status_var.set(
-                "Video Tiling is limited to approved streams."
-            )
-            return
-        try:
-            self.tiling.start(
-                url,
-                divisions,
-                quality=self.tiling_quality_var.get(),
-                mute=bool(self.tiling_mute_var.get()),
-                multi_monitor=bool(self.tiling_multi_monitor_var.get()),
-                selected_monitors=list(
-                    getattr(self, "tiling_selected_monitors", [])
-                ),
-                auto_restart=bool(self.tiling_auto_restart_var.get()),
-                log=self._tiling_log,
-                status=self._tiling_status,
-            )
-            self._save_tiling_prefs()
-        except (FileNotFoundError, RuntimeError) as e:
-            self.tiling_status_var.set(str(e))
-        except Exception as e:  # noqa: BLE001
-            self.tiling_status_var.set(f"Could not start tiling: {e}")
-            self.log(f"Tiling error: {e}")
-
-    def stop_tiling(self) -> None:
-        try:
-            self.tiling.stop()
-        except Exception:  # noqa: BLE001
-            pass
-        self.tiling_status_var.set("Stopped.")
-
-    def download_ffplay(self) -> None:
-        """Download ffplay for Video Tiling on a daemon thread (P4-5).
-
-        ffplay isn't bundled; when a download URL is configured for this
-        platform (``config['ffplay_downloads']``) this fetches it into the
-        app's bin/ dir. The blocking download runs off-thread; progress + the
-        success/failure result are marshalled back to the Tk main thread via
-        post_to_main — this method NEVER touches Tk from the worker thread.
-        """
-        from core.tiling import download_ffplay as _download_ffplay
-
-        btn = getattr(self, "tiling_download_ffplay_btn", None)
-        try:
-            if btn is not None:
-                btn.config(state="disabled", text="Downloading ffplay…")
-        except Exception:  # noqa: BLE001
-            pass
-        self.tiling_status_var.set("Downloading ffplay…")
-
-        def _progress(msg: str) -> None:
-            self.post_to_main(lambda m=msg: self._on_ffplay_progress(m))
-
-        def _worker() -> None:
-            ok = _download_ffplay(progress_cb=_progress, config=self.app_config)
-            self.post_to_main(lambda: self._on_ffplay_done(ok))
-
-        import threading as _threading
-        _threading.Thread(target=_worker, daemon=True).start()
-
-    def _on_ffplay_progress(self, msg: str) -> None:
-        self.tiling_status_var.set(msg)
-        self.log(msg)
-
-    def _on_ffplay_done(self, ok: bool) -> None:
-        from core.tiling import ffplay_available
-
-        btn = getattr(self, "tiling_download_ffplay_btn", None)
-        if ok and ffplay_available():
-            # Hide the whole notice (label + button) — ffplay is here now.
-            notice = getattr(self, "tiling_ffplay_notice", None)
-            if notice is not None:
-                try:
-                    notice.pack_forget()
-                except Exception:  # noqa: BLE001
-                    pass
-            self.tiling_status_var.set("ffplay is ready — you can start tiling.")
-        else:
-            if btn is not None:
-                try:
-                    btn.config(state="normal", text="Download ffplay")
-                except Exception:  # noqa: BLE001
-                    pass
-            messagebox.showwarning(
-                "Download ffplay",
-                "Could not download ffplay automatically. You can put "
-                "ffplay in the app's bin folder manually (it ships with the "
-                "full ffmpeg build).",
-                parent=self,
-            )
-
     # Web / LAN access server -------------------------------------------------
     def _save_server_prefs(self) -> None:
         """Persist the port / share-on-LAN / token choices."""
@@ -5557,7 +5251,7 @@ class App(tk.Tk):
         thread-safe, so any background-thread caller (e.g. the Advanced
         dialog's install / model-download / cloud-key / gcloud-test workers)
         must marshal through here. Mirrors the post_to_main pattern already
-        used by _offer_optional_install and the tiling callbacks."""
+        used by _offer_optional_install."""
         self.post_to_main(lambda: self.log(msg))
 
     # Driver loops ------------------------------------------------------------

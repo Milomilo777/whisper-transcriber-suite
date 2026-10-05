@@ -77,9 +77,6 @@ def test_whats_new_section_is_first():
         "resume",
         "re-run",
         "remove",
-        # Video tiling.
-        "video wall",
-        "auto-reconnect",
         # Updates.
         "check for updates",
         "upgrades in place",

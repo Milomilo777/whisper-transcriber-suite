@@ -47,6 +47,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Video Tiling tab removed from the app.** The tab, its About section
+  and the monitor chooser are gone, and the app no longer offers to download ffplay.
+  Settings files that still hold `tiling_*` keys load normally (the keys are ignored).
+  The tiling engine itself is removed in a follow-up.
+
 - **Voice cloning: a permission tick instead of the one-time warning dialog.**
   The Clone Your Voice tab always shows the rules (own voice or the speaker's
   clear permission; no impersonation, no misleading audio of real people), and
