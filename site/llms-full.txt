@@ -30,6 +30,7 @@ Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscri
 - [Cloud STT via Gemini](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CLOUD_STT.md): optional opt-in cloud backend authenticated with a Gemini API key.
 - [Cloud STT via Google Cloud](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CLOUD_STT_GOOGLE.md): optional opt-in Google Cloud Speech-to-Text backend with a service account.
 - [Design decisions](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/DECISIONS.md): non-obvious design choices and why they were made.
+- [Code signing policy](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CODE_SIGNING.md): how Windows releases will be signed once the SignPath Foundation grants a certificate, team roles, privacy summary.
 - [Roadmap](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ROADMAP.md): what is being considered next.
 
 ## Key facts
@@ -173,8 +174,9 @@ downloads once, on first use. Plan for 8 GB of RAM; on a CPU the default
 model takes about 2–3 times the length of the audio, an NVIDIA GPU is much
 faster. The Windows builds are not code-signed and the Mac builds are not
 notarized, so SmartScreen and Gatekeeper warn on first launch;
-[docs/INSTALL.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md) shows what to click. To update, run the
-newer installer over the old one; settings are kept.
+[docs/INSTALL.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md) shows what to click. Signing plans:
+[Code signing policy](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CODE_SIGNING.md). To update, run the newer
+installer over the old one; settings are kept.
 
 **Downloads by version** (each badge counts only that version's own
 release — older versions stay published and their counts are never

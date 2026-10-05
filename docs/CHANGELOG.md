@@ -6,6 +6,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **`docs/CODE_SIGNING.md`: a code signing policy** for the free SignPath
+  Foundation certificate the project is applying for: what will be signed
+  (the Windows installer only), how a signed release is built and approved,
+  team roles and the privacy summary. README, the website's download section
+  and the release checklist link it; Windows releases are still unsigned.
 - **Help → Send usage statistics.** The usage-statistics switch is now a
   check item in the Help menu as well as in Advanced → App behaviour; both
   show the same saved value, and About lists exactly what is sent.
