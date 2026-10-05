@@ -132,6 +132,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A resume checkpoint is no longer lost when two writers race for the same source.**
+  Writing it retried a locked target only five times (about 0.2 s); on a busy machine
+  that ran out and raised `PermissionError`. The retry is now bounded by time (5 s).
 - **Long recordings with music no longer lose most of their speech.**
   faster-whisper ran the Silero VAD over the whole file in one pass, so after
   loud music its state could stay at "not speech" for minutes: on a 62-minute

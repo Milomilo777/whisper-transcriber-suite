@@ -35,6 +35,10 @@ logger = logging.getLogger(__name__)
 # do NOT require a bump; the loader tolerates unknown keys.
 SCHEMA_VERSION = 1
 
+# How long write_checkpoint keeps retrying a PermissionError at the final
+# os.replace (a concurrent writer for the same source holds the target).
+_REPLACE_RETRY_SECONDS = 5.0
+
 # Keys from the runtime ``config`` dict that materially affect what
 # Whisper produces. A change in any of these between checkpoint write
 # and resume means the new segments would be inconsistent with the
@@ -183,14 +187,20 @@ def write_checkpoint(
         # POSIX rename has no such window. Retry a few times with a
         # short backoff before giving up; each retry's own os.replace is
         # still atomic, so the eventual winner still leaves a whole file.
-        for attempt in range(5):
+        # The wait is bounded by time, not by a fixed attempt count: five
+        # attempts spanning ~0.2 s ran out on a busy machine (8 racing
+        # writers raised PermissionError about once in 100 rounds).
+        deadline = _time.monotonic() + _REPLACE_RETRY_SECONDS
+        delay = 0.005
+        while True:
             try:
                 os.replace(tmp, path)
                 break
             except PermissionError:
-                if attempt == 4:
+                if _time.monotonic() >= deadline:
                     raise
-                _time.sleep(0.02 * (attempt + 1))
+                _time.sleep(delay)
+                delay = min(delay * 2, 0.1)
     except OSError:
         try:
             os.unlink(tmp)
