@@ -182,7 +182,9 @@ aTrain's default branch is `develop`; its `main` README is older.
 - aTrain's Microsoft Store price.
 - Whether WTS's optional whisper.cpp engine uses the Apple GPU on a Mac (WTS
   sets no GPU option for it).
-- Accuracy and speed. No benchmark is part of this page; WTS's own engine
-  tests are in [evaluations/](evaluations/).
+- Accuracy and speed of the other apps. None of them was run here. WTS's own
+  models are measured per language (eight languages, FLEURS read speech, CPU)
+  in [evaluations/benchmark-v1/](evaluations/benchmark-v1/README.md); other
+  engine tests are in [evaluations/](evaluations/).
 - Accessibility, package-manager availability (winget, Scoop, Homebrew) and
   download numbers.

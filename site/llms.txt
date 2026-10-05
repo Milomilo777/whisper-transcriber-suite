@@ -22,6 +22,7 @@ Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscri
 - [Live transcription](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/LIVE.md): microphone and system-audio transcription in real time.
 - [Build from source](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/BUILD.md): the build pipelines, which two are shipped, and how to build them.
 - [Comparison with similar apps](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md): sourced side-by-side facts for five other transcription apps.
+- [Multilingual benchmark](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/evaluations/benchmark-v1/README.md): error rate and CPU speed of six local Whisper models in eight languages (FLEURS read speech), and the recommended model per language.
 - [Machine-readable facts](https://whisper-transcriber-suite.pages.dev/facts.json): version, platforms, output formats, engines, licence and links as JSON.
 - [Changelog](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md): what shipped in each version.
 

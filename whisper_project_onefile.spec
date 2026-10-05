@@ -211,6 +211,7 @@ a = Analysis(
         'core.tts_kokoro',
         'core.synthetic_audio',
         'core.vad_window',
+        'core.language_defaults',
         # Opt-in backends — explicit submodule names so a user
         # who flips the config gets a working backend rather than
         # a silent ImportError. The collect_all calls above pick

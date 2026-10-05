@@ -13,10 +13,19 @@ yet. Only the start of the archive is downloaded, never the whole file.
 
 Usage:
     python tools/benchmark_multilingual.py --languages fa --models tiny base -n 10
+    python tools/benchmark_multilingual.py --languages es zh --models small -n 5 --resume
+    python tools/benchmark_multilingual.py --report
 
 Output: one CSV row per (language, model, utterance) in ``--out``
 (default ``docs/evaluations/benchmark-v1/results.csv``). Audio and model files go to a
-cache outside the repository (``--cache``, default ``<app cache>/benchmark``).
+cache outside the repository (``--cache``, default ``<app cache>/benchmark``);
+``--model-hub`` reads already downloaded models from an existing hub folder instead,
+without downloading into it or writing to it.
+
+``--resume`` keeps every (language, model) pair of the CSV whose rows hold exactly the
+utterances this run would pick, drops the rows of a requested pair that is incomplete
+and measures only the missing pairs, so an interrupted run continues where it stopped.
+``--report`` prints the per-language tables and the recommended models from the CSV.
 """
 from __future__ import annotations
 
@@ -32,7 +41,7 @@ import unicodedata
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable, Mapping, Sequence
 
 ROOT = Path(__file__).resolve().parent.parent
 FLEURS_BASE = "https://huggingface.co/datasets/google/fleurs/resolve/main/data"
@@ -53,6 +62,20 @@ CSV_FIELDS = [
     "language", "model", "utterance_id", "metric", "score",
     "ref_len", "errors", "audio_s", "decode_s", "rtf",
 ]
+
+# The local multilingual models users actually pick, smallest first.
+MODELS = ["tiny", "base", "small", "medium", "large-v3-turbo", "large-v3"]
+
+# CTranslate2 sampling seed, set before every utterance: Whisper's temperature fallback
+# samples. The seed narrows the run-to-run variation but does not remove it (repeated
+# decodes of one fallback-prone utterance in one process still differ).
+SEED = 0
+
+# "fast" pick: the most accurate model with a download of at most this size (tiny, base,
+# small). A size cap, not a speed cap: speed varies with the CPU and with hallucination
+# loops, and the measured speeds of small (0.40-0.55, Hindi 1.00) sit right at any
+# 2x-real-time line on a 4-core CPU.
+FAST_MAX_DOWNLOAD_GB = 0.5
 
 _UTTERANCE_FILE = re.compile(r"^test/(\d+)\.wav$")
 
@@ -247,8 +270,13 @@ def audio_seconds(wav_path: Path) -> float:
     return seconds
 
 
-def load_backend(slug: str, cache: Path):
-    """Build the app's faster-whisper backend for ``slug`` on CPU, models under ``cache``."""
+def load_backend(slug: str, cache: Path, model_hub: Path | None = None):
+    """Build the app's faster-whisper backend for ``slug`` on CPU.
+
+    Models come from ``cache/models`` (downloaded there by the app's ``ensure_model``
+    when missing) or, with ``model_hub``, from an existing hub folder that is only read:
+    a model missing there is an error, never a download.
+    """
     sys.path.insert(0, str(ROOT))
     import copy
 
@@ -260,11 +288,14 @@ def load_backend(slug: str, cache: Path):
     entry = resolve_model_entry(slug)
     if entry is None:
         raise SystemExit(f"unknown model slug: {slug}")
-    hub = cache / "models"
+    hub = model_hub if model_hub is not None else cache / "models"
+    folder = model_folder_for(hub, entry["name"])
+    if model_hub is not None and not (folder / "model.bin").is_file():
+        raise SystemExit(f"{slug}: no model.bin in {folder} (--model-hub is never downloaded into)")
     cfg = copy.deepcopy(app_config.DEFAULT_CONFIG)
     cfg["model"] = entry
     cfg["hub_folder"] = str(hub)
-    cfg["model_path"] = str(model_folder_for(hub, entry["name"]))
+    cfg["model_path"] = str(folder)
     cfg["device"] = "cpu"
     cfg["compute_type"] = "int8"
     # The backend reads its settings through load_config(); hand it this private dict so
@@ -272,27 +303,94 @@ def load_backend(slug: str, cache: Path):
     faster_whisper_be.load_config = lambda *a, **k: copy.deepcopy(cfg)  # type: ignore[assignment]
     backend = faster_whisper_be.FasterWhisperBackend()
     t0 = time.perf_counter()
-    backend.load()
+    if model_hub is None:
+        backend.load()
+    else:
+        messages: list[str] = []
+        if not backend.load_existing(messages.append):  # loads in place, no download
+            raise RuntimeError(f"{slug}: {messages[-1] if messages else 'load failed'}")
     return backend, time.perf_counter() - t0
 
 
+def _seed_decoder() -> None:
+    """Reset CTranslate2's sampling seed (narrows, does not remove, fallback variation)."""
+    import ctranslate2
+
+    ctranslate2.set_random_seed(SEED)
+
+
+def read_results(path: Path) -> list[dict[str, str]]:
+    """Rows of a results CSV; a file with other columns is refused, never guessed at."""
+    with path.open(newline="", encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        if reader.fieldnames != CSV_FIELDS:
+            raise SystemExit(f"{path}: unexpected columns {reader.fieldnames}")
+        return list(reader)
+
+
+def _render_csv(rows: Iterable[Mapping[str, object]]) -> bytes:
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=CSV_FIELDS, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    return buf.getvalue().encode("utf-8")
+
+
+def complete_pairs(rows: Iterable[dict[str, str]],
+                   utterances: dict[str, list[tuple[str, Path, str]]],
+                   models: Iterable[str]) -> set[tuple[str, str]]:
+    """Requested (language, model) pairs whose rows are exactly the picked utterances."""
+    by_pair: dict[tuple[str, str], list[str]] = {}
+    for r in rows:
+        by_pair.setdefault((r["language"], r["model"]), []).append(r["utterance_id"])
+    return {
+        (lang, slug)
+        for lang, items in utterances.items()
+        for slug in models
+        if by_pair.get((lang, slug)) == [uid for uid, _wav, _ref in items]
+    }
+
+
 def run(languages: Iterable[str], models: Iterable[str], count: int, cache: Path,
-        out: Path) -> list[dict[str, object]]:
+        out: Path, *, resume: bool = False,
+        model_hub: Path | None = None) -> list[dict[str, object]]:
+    """Measure every requested (language, model) pair; return the rows measured now."""
+    models = list(models)
     rows: list[dict[str, object]] = []
     utterances = {lang: fetch_utterances(lang, count, cache) for lang in languages}
+    kept: list[dict[str, str]] = []
+    done: set[tuple[str, str]] = set()
+    if resume and out.exists():
+        # A row cut off by a killed run (empty or missing fields) is dropped, so its pair
+        # counts as incomplete and is measured again.
+        old = [r for r in read_results(out) if all(r.get(f) for f in CSV_FIELDS)]
+        done = complete_pairs(old, utterances, models)
+        requested = {(lang, slug) for lang in utterances for slug in models}
+        # Rows of pairs this run does not ask for stay untouched; a requested pair is
+        # either complete (kept) or measured again from its first utterance.
+        kept = [r for r in old
+                if (r["language"], r["model"]) not in requested
+                or (r["language"], r["model"]) in done]
+        print(f"resume: {len(done)} of {len(requested)} requested pairs complete, "
+              f"{len(old) - len(kept)} rows of incomplete pairs dropped", flush=True)
     out.parent.mkdir(parents=True, exist_ok=True)
-    # Rows are written as they are produced, so an interrupted run keeps what it measured.
-    with out.open("w", newline="", encoding="utf-8") as fh:
+    _write_atomic(out, _render_csv(kept))
+    # Rows are appended as they are produced, so an interrupted run keeps what it measured.
+    with out.open("a", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=CSV_FIELDS, lineterminator="\n")
-        writer.writeheader()
         for slug in models:
-            backend, load_s = load_backend(slug, cache)
+            todo = [lang for lang in utterances if (lang, slug) not in done]
+            if not todo:
+                print(f"model {slug}: all requested languages already measured", flush=True)
+                continue
+            backend, load_s = load_backend(slug, cache, model_hub)
             print(f"model {slug}: loaded in {load_s:.1f} s", flush=True)
             try:
-                for lang, items in utterances.items():
+                for lang in todo:
                     metric = LANGUAGES[lang][1]
-                    for uid, wav, reference in items:
+                    for uid, wav, reference in utterances[lang]:
                         dur = audio_seconds(wav)
+                        _seed_decoder()
                         t0 = time.perf_counter()
                         segments, _info = backend.transcribe_to_segments(
                             str(wav), language=lang, duration=dur)
@@ -316,22 +414,114 @@ def run(languages: Iterable[str], models: Iterable[str], count: int, cache: Path
     return rows
 
 
-def summarise(rows: Sequence[dict[str, object]]) -> str:
-    """One line per (language, model): corpus-level error rate and RTF (total decode time
-    over total audio time, the figure the README table uses)."""
-    groups: dict[tuple[str, str], list[dict[str, object]]] = {}
+@dataclass(frozen=True)
+class Aggregate:
+    """Corpus-level figures of one (language, model) pair."""
+    metric: str
+    n: int
+    errors: int
+    ref_len: int
+    audio_s: float
+    decode_s: float
+
+    @property
+    def rate(self) -> float:
+        return self.errors / self.ref_len if self.ref_len else 0.0
+
+    @property
+    def rtf(self) -> float:
+        return self.decode_s / self.audio_s if self.audio_s else 0.0
+
+
+def aggregate(rows: Iterable[Mapping[str, object]]) -> dict[tuple[str, str], Aggregate]:
+    """Sum the rows of each (language, model): the error rate is total errors over total
+    reference units (not a mean of utterance rates), the RTF total decode over total audio."""
+    groups: dict[tuple[str, str], list[Mapping[str, object]]] = {}
     for r in rows:
         groups.setdefault((str(r["language"]), str(r["model"])), []).append(r)
-    lines = []
-    for (lang, model), items in groups.items():
-        errors = sum(int(str(r["errors"])) for r in items)
-        ref_len = sum(int(str(r["ref_len"])) for r in items)
-        audio = sum(float(str(r["audio_s"])) for r in items)
-        decode = sum(float(str(r["decode_s"])) for r in items)
-        rate = errors / ref_len if ref_len else 0.0
-        rtf = decode / audio if audio else 0.0
-        lines.append(f"{lang} {model}: {items[0]['metric']} {rate:.3f} "
-                     f"({errors}/{ref_len}) rtf {rtf:.2f} n={len(items)}")
+    return {
+        key: Aggregate(
+            metric=str(items[0]["metric"]),
+            n=len(items),
+            errors=sum(int(str(r["errors"])) for r in items),
+            ref_len=sum(int(str(r["ref_len"])) for r in items),
+            audio_s=sum(float(str(r["audio_s"])) for r in items),
+            decode_s=sum(float(str(r["decode_s"])) for r in items),
+        )
+        for key, items in groups.items()
+    }
+
+
+def summarise(rows: Sequence[Mapping[str, object]]) -> str:
+    """One line per (language, model): corpus-level error rate and RTF (total decode time
+    over total audio time, the figure the README table uses)."""
+    return "\n".join(
+        f"{lang} {model}: {a.metric} {a.rate:.3f} ({a.errors}/{a.ref_len}) "
+        f"rtf {a.rtf:.2f} n={a.n}"
+        for (lang, model), a in aggregate(rows).items()
+    )
+
+
+def download_sizes() -> dict[str, float]:
+    """Registry download size (GB) of every built-in model slug."""
+    sys.path.insert(0, str(ROOT))
+    from core.model_manager import MODEL_REGISTRY
+
+    return {slug: float(e.get("approx_size_gb") or 0.0) for slug, e in MODEL_REGISTRY.items()}
+
+
+def recommend(aggs: dict[tuple[str, str], Aggregate],
+              sizes: Mapping[str, float] | None = None,
+              max_fast_gb: float = FAST_MAX_DOWNLOAD_GB) -> dict[str, tuple[str, str]]:
+    """Language -> (fast, best) model slugs from measured pairs.
+
+    best: the lowest error rate (ties: the lower RTF). fast: the lowest error rate among
+    models with a download of at most ``max_fast_gb`` (ties: the lower RTF); when no such
+    model was measured, the smallest measured model. A model of unknown size never counts
+    as small.
+    """
+    if sizes is None:
+        sizes = download_sizes()
+    by_lang: dict[str, list[tuple[str, Aggregate]]] = {}
+    for (lang, model), a in aggs.items():
+        by_lang.setdefault(lang, []).append((model, a))
+    picks: dict[str, tuple[str, str]] = {}
+    for lang, items in by_lang.items():
+        best = min(items, key=lambda it: (it[1].rate, it[1].rtf))[0]
+        small = [it for it in items if 0 < sizes.get(it[0], 0.0) <= max_fast_gb]
+        if small:
+            fast = min(small, key=lambda it: (it[1].rate, it[1].rtf))[0]
+        else:
+            fast = min(items, key=lambda it: (sizes.get(it[0]) or float("inf"), it[1].rtf))[0]
+        picks[lang] = (fast, best)
+    return picks
+
+
+def _model_rank(slug: str) -> tuple[int, str]:
+    return (MODELS.index(slug), "") if slug in MODELS else (len(MODELS), slug)
+
+
+def report(rows: Sequence[Mapping[str, object]]) -> str:
+    """Markdown tables for the results page: one per language, then the picks."""
+    aggs = aggregate(rows)
+    lines: list[str] = []
+    languages = [lang for lang in LANGUAGES if any(k[0] == lang for k in aggs)]
+    for lang in languages:
+        models = sorted((m for (lg, m) in aggs if lg == lang), key=_model_rank)
+        metric = aggs[(lang, models[0])].metric.upper()
+        lines += [f"### {lang}", "",
+                  f"| Model | {metric} | Errors / units | Utterances | Audio | Decode | RTF |",
+                  "|---|---|---|---|---|---|---|"]
+        for m in models:
+            a = aggs[(lang, m)]
+            lines.append(f"| {m} | {a.rate:.3f} | {a.errors} / {a.ref_len} | {a.n} | "
+                         f"{a.audio_s:.1f} s | {a.decode_s:.1f} s | {a.rtf:.2f} |")
+        lines.append("")
+    lines += ["### Recommended models", "", "| Language | Fast | Best |", "|---|---|---|"]
+    picks = recommend(aggs)
+    for lang in languages:
+        fast, best = picks[lang]
+        lines.append(f"| {lang} | {fast} | {best} |")
     return "\n".join(lines)
 
 
@@ -342,11 +532,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("-n", "--count", type=int, default=10, help="utterances per language")
     ap.add_argument("--out", type=Path,
                     default=ROOT / "docs" / "evaluations" / "benchmark-v1" / "results.csv")
-    ap.add_argument("--force", action="store_true",
-                    help="overwrite an existing --out file (refused by default)")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--force", action="store_true",
+                      help="overwrite an existing --out file (refused by default)")
+    mode.add_argument("--resume", action="store_true",
+                      help="keep the complete pairs of --out and measure only the rest")
+    mode.add_argument("--report", action="store_true",
+                      help="print the result tables and recommended models of --out")
     ap.add_argument("--cache", type=Path, default=None,
                     help="audio + model cache outside the repo")
+    ap.add_argument("--model-hub", type=Path, default=None,
+                    help="read models from this existing hub folder (never written to)")
     args = ap.parse_args(argv)
+    if args.report:
+        print(report(read_results(args.out)))
+        return 0
+    if args.count < 1:
+        raise SystemExit("-n must be at least 1")
     cache = args.cache
     if cache is None:
         sys.path.insert(0, str(ROOT))
@@ -354,10 +556,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         cache = default_hub_folder().parent / "benchmark"
     if ROOT in cache.resolve().parents or cache.resolve() == ROOT:
         raise SystemExit("--cache must be outside the repository")
-    if args.out.exists() and not args.force:
-        raise SystemExit(f"{args.out} exists; pass --force to overwrite it or choose --out")
-    rows = run(args.languages, args.models, args.count, cache, args.out)
-    print(summarise(rows))
+    if args.out.exists() and not (args.force or args.resume):
+        raise SystemExit(f"{args.out} exists; pass --resume to continue it, --force to "
+                         "overwrite it, or choose --out")
+    unknown = [m for m in args.models if m not in MODELS]
+    if unknown:
+        print(f"note: {unknown} are not in the standard model list {MODELS}", flush=True)
+    rows = run(args.languages, args.models, args.count, cache, args.out,
+               resume=args.resume, model_hub=args.model_hub)
+    print(f"measured now: {len(rows)} rows")
+    print(summarise(read_results(args.out)))
     print(f"wrote {args.out}")
     return 0
 
