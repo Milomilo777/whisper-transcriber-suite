@@ -1,7 +1,6 @@
 """Regression tests for AdvancedDialog's "Restore transcription defaults".
 
-Scoped like Voice-Pro's own per-panel "Load Defaults" button (see
-docs/SESSION_HANDOFF_NEXT.md, 2026-08-14 entry): only the settings that
+Scoped like Voice-Pro's own per-panel "Load Defaults" button: only the settings that
 shape a single transcription run get reset. Output formats, the
 initial_prompt/hotwords text, model/backend choice, watched folder, and
 every credential field must be left untouched -- those are persistent

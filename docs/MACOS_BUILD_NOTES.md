@@ -295,5 +295,4 @@ Still open:
 ## Next steps worth doing
 
 - **universal2**: python.org 3.12 is universal2; fuse per-arch wheels with `delocate-merge`, `fetch_mac_binaries.sh universal2`, `WTS_TARGET_ARCH=universal2 WTS_DMG_SUFFIX=universal`, then `verify_mac_bundle.sh <app> universal2`.
-- The macOS items deferred to the next version are listed in `docs/SESSION_HANDOFF_NEXT.md` (2026-10-04
-  evening entry). Developer ID signing / notarization is not pursued (project decision).
+- Developer ID signing / notarization is not pursued (project decision).

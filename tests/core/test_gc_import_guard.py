@@ -6,8 +6,7 @@ gave every guarded call site its OWN threading.Lock(), which does not
 actually serialize gc.disable()/gc.enable() (a PROCESS-GLOBAL pair)
 across modules. Two differently-locked probes running concurrently could
 still race and re-enable GC mid-import on the other thread -- exactly
-the crash class this mitigation exists to prevent. See
-docs/history/CODE_REVIEW_v1.7.0_2026-08-15.md.
+the crash class this mitigation exists to prevent.
 """
 from __future__ import annotations
 

@@ -11,8 +11,7 @@ conceptually with the smoke tests (same model-load cost, same
 skip-when-resources-missing gating pattern) but originally lived in
 ``tests/core/`` for a shared-fixture reason that no longer applies.
 
-Moved here 2026-08-15 (see ``docs/DECISIONS.md`` ADR 0008 and
-``docs/SESSION_HANDOFF_NEXT.md``): on a machine where both the fixture
+Moved here 2026-08-15 (see ``docs/DECISIONS.md`` ADR 0008): on a machine where both the fixture
 clip and the real model happen to be present, this file used to run for
 real as part of ``run_tests.bat``'s ~700-test "hermetic" suite
 (``pytest tests/ --ignore=tests/smoke``) — concurrently with dozens of

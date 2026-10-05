@@ -29,8 +29,7 @@ python gui.py
 
 Python 3.11+ on Windows. The app also runs on Linux (headless `gui.py
 serve`) and there's early macOS support (`platform/macos/`) — see
-[docs/CROSS_PLATFORM_ROADMAP.md](docs/history/CROSS_PLATFORM_ROADMAP.md)
-history for what's shipped.
+[docs/CHANGELOG.md](docs/CHANGELOG.md) for what's shipped.
 
 ## Quality bar (checked on every push by CI)
 

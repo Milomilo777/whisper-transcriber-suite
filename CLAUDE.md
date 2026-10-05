@@ -48,8 +48,9 @@ Atomic-commit hygiene:
 `docs/CHANGELOG.md` bullets must stay skimmable: 1–3 sentences —
 what broke/changed + the fix, not a root-cause narrative. The full
 investigation (repro steps, why it happened, alternatives considered)
-belongs in the commit message and/or `docs/SESSION_HANDOFF_NEXT.md`,
-never in the changelog itself.
+belongs in the commit message and/or the local handoff file
+(`_local/repo-archive/docs/SESSION_HANDOFF_NEXT.md`), never in the
+changelog itself.
 
 ## New capabilities need real-hardware testing before release (2026-08-14, owner request)
 
@@ -301,7 +302,7 @@ must track every bug fix" above, even for a cross-platform fix.
 **Why:** the owner has repeatedly said Claude-built macOS artifacts do
 not work for them, regardless of the CI workflow's own passing smoke
 test. Treat this repo's "macOS validated" claims (PROJECT_INDEX.md,
-SESSION_HANDOFF_NEXT.md, `platform/macos/README.md`) as unverified.
+the local handoff file, `platform/macos/README.md`) as unverified.
 
 **How to apply:** if macOS status needs mentioning, point at the last
 human-supplied `.dmg` and stop — do not offer or dispatch a new build.
@@ -370,11 +371,12 @@ write outputs + history entry first, then emit done/success.
 
 ## Handoff file
 
-`docs/SESSION_HANDOFF_NEXT.md` is the source of truth for what's
-left. Read it on session start, update it at session end.
+`_local/repo-archive/docs/SESSION_HANDOFF_NEXT.md` (private local
+layer, no longer tracked) is the source of truth for what's left. Read
+it on session start, update it at session end.
 
 ## The 1-line restart prompt
 
 ```
-Read docs/SESSION_HANDOFF_NEXT.md first, then continue on master (the single mainline). Normal pushes to master are fine; don't force-push / rewrite master and don't move or delete published release tags (v1.0.3+ are public) without an explicit ask.
+Read _local/repo-archive/docs/SESSION_HANDOFF_NEXT.md first, then continue on master (the single mainline). Normal pushes to master are fine; don't force-push / rewrite master and don't move or delete published release tags (v1.0.3+ are public) without an explicit ask.
 ```

@@ -6,8 +6,7 @@ file and in [`docs/MACOS_BUILD_NOTES.md`](../MACOS_BUILD_NOTES.md)._
 **Status:** x86_64 build **built, verified and tested end-to-end like a real user on macOS 10.15.7 — PASSED.**
 Scope change during the run: the original brief said "local commits only, never push/release"; the owner later
 explicitly asked to (1) version it 1.9.0, (2) verify on real Mac hardware via GitHub Actions, (3) push all useful
-notes/fixes to `master`, and (4) publish the macOS assets as release v1.9.0. The CI/release outcome is recorded in
-`docs/SESSION_HANDOFF_NEXT.md` and on the release page.
+notes/fixes to `master`, and (4) publish the macOS assets as release v1.9.0. The CI/release outcome is recorded on the release page.
 
 Summary of root causes of the earlier broken Mac builds (details below and in MACOS_BUILD_NOTES.md):
 Homebrew ffmpeg with 18 unbundled dylibs (hypothesis **confirmed**), yt-dlp missing / destroyed by PyInstaller,

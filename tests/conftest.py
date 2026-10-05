@@ -9,7 +9,7 @@ attributes it set itself), so without this guard a test that activates a fake
 model or an alternate backend leaks that state into later test files — which
 produces order-dependent failures whose set shifts with machine state (for
 example whether a bundled Google Cloud key flips the default engine to cloud
-STT). See ``docs/history/TEST_ISOLATION_FOLLOWUP.md``.
+STT).
 
 This snapshots + restores (NOT resets) the globals around every test, so a
 module-scoped model fixture (e.g. ``tests/smoke/test_v08_real_file_e2e.py``'s
@@ -17,7 +17,7 @@ module-scoped model fixture (e.g. ``tests/smoke/test_v08_real_file_e2e.py``'s
 leakage is contained at the source. Lives at the ``tests/`` root (not just
 ``tests/core/``) so it also covers ``tests/smoke/``, which needed it after
 ``test_v08_real_file_e2e.py`` moved there 2026-08-15 (see
-``docs/DECISIONS.md`` ADR 0008 / ``docs/SESSION_HANDOFF_NEXT.md`` — that move
+``docs/DECISIONS.md`` ADR 0008 — that move
 was to stop it running concurrently with the rest of the ~700-test hermetic
 suite, which was implicated in a real, hard-to-pin-down native crash).
 """

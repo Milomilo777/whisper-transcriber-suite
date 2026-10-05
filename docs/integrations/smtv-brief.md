@@ -384,8 +384,6 @@ After implementation, before declaring done:
   Download tab section describes the new checkbox
 - `docs/ROADMAP.md` — move "SMTV download" from TODO to "Completed
   integrations" alongside oTranscribe
-- `docs/SESSION_LOG.md` — Session N entry following the same template
-  the file's tail documents
 - `docs/integrations/README.md` — append a row to the index table
 - `docs/integrations/smtv-acceptance.md` — the grep-able acceptance
   file, modelled on `docs/integrations/otranscribe-acceptance.md`
@@ -526,7 +524,7 @@ After all SMTV-T1 … SMTV-T8 are PASS:
    - `feat(smtv): expand multi-part series into N download tasks`
    - `feat(smtv): persist page transcript as <base>.txt`
    - `spec: add core.integrations.smtv to onefile + onedir hidden imports`
-   - `docs: smtv-acceptance.md + SESSION_LOG + README + ROADMAP`
+   - `docs: smtv-acceptance.md + README + ROADMAP`
 
 No `git push`. Stay local until the user says push.
 

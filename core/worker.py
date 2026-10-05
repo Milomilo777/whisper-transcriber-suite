@@ -541,7 +541,7 @@ def main() -> int:
     # thread would keep ticking for the rest of the whole pytest run,
     # printing stray "heartbeat" lines into whichever later test happens to
     # have capsys capturing stdout at the 5 s mark — a real, previously
-    # unfixed source of CI flakiness (see docs/SESSION_HANDOFF_NEXT.md).
+    # unfixed source of CI flakiness.
     heartbeat_stop = threading.Event()
 
     def _heartbeat() -> None:

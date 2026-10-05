@@ -339,9 +339,7 @@ Actively maintained. The quality bar enforced on every commit:
   runs on **every push, on Windows and Ubuntu** — see
   [docs/TESTING.md](docs/TESTING.md). Coverage is reported by the badge above.
 
-[docs/CHANGELOG.md](docs/CHANGELOG.md) has what shipped recently; superseded
-freeze and stability audits are archived under
-[docs/history/](docs/history/).
+[docs/CHANGELOG.md](docs/CHANGELOG.md) has what shipped recently.
 
 ## Documentation
 

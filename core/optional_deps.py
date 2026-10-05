@@ -72,8 +72,7 @@ FEATURES: dict[str, tuple[str, list[str]]] = {
     # OmniVoice (k2-fsa) pulls torch + its own weights (~2GB, downloaded
     # separately by the package itself on first model load, not by pip).
     # Apache-2.0 on both code and weights — chosen over other candidates
-    # specifically for that clean license; see docs/SESSION_HANDOFF_NEXT.md
-    # (2026-09-12 entry) for the full evaluation.
+    # specifically for that clean license.
     "voice_clone": ("omnivoice", ["omnivoice", "torch", "soundfile"]),
     # NVIDIA cuBLAS for CUDA 12 -- the only CUDA runtime library CTranslate2
     # 4.6.3+ needs on top of the graphics driver (which does not ship it).

@@ -15,8 +15,7 @@ model) so they run off the Tk thread; results come back through
 ``app.post_to_main``.
 
 CPU generation measured ~50-57x slower than real-time in
-pre-implementation testing (see docs/SESSION_HANDOFF_NEXT.md, 2026-09-12
-entry) -- the status label always shows a concrete time estimate before
+pre-implementation testing -- the status label always shows a concrete time estimate before
 a run starts, never a bare "please wait".
 """
 from __future__ import annotations
@@ -34,8 +33,8 @@ from app.widgets.tooltip import section_labelframe
 logger = logging.getLogger(__name__)
 
 _SAMPLE_SECONDS = 6
-# Measured on a representative consumer CPU (8 logical cores, no GPU) --
-# see docs/SESSION_HANDOFF_NEXT.md. Used only to word the estimate the
+# Measured on a representative consumer CPU (8 logical cores, no GPU).
+# Used only to word the estimate the
 # UI shows before a run; the real number depends on the machine and the
 # text length, so this is deliberately described as approximate.
 _MEASURED_CPU_RTF = 55.0

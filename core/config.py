@@ -1268,7 +1268,7 @@ def save_config(config: dict[str, Any]) -> None:
         # Guard + backup (2026-08-15, after a real incident: config.json
         # was found silently reduced from ~90 keys to 3 during ordinary
         # use; the root cause was never pinned down despite a real,
-        # repeated investigation — see docs/SESSION_HANDOFF_NEXT.md).
+        # repeated investigation).
         # Compares against what is CURRENTLY on disk, not a hardcoded
         # key count, so a deliberately-small dict written to a fresh
         # path (every test fixture in tests/core/test_config.py etc.)

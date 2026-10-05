@@ -39,14 +39,14 @@ without bumping the version". Short version:
     then `gh release upload` them alongside the Windows assets. Full
     commands: `docs/BUILD.md` → "Step 4b".
 5. Update `docs/CHANGELOG.md` (add bullets under the existing version
-   heading, don't create a new one) and `docs/SESSION_HANDOFF_NEXT.md`.
+   heading, don't create a new one).
 
 ---
 
 ## Step 0 — Decide what's shipping
 
-* Read `docs/SESSION_HANDOFF_NEXT.md` — "what's pending" should be
-  empty / acknowledged.
+* Check the open items you track (issues, notes) — nothing pending
+  should be left unacknowledged.
 * Read `docs/FINAL_FREEZE_AUDIT_2026-05-21.md` (or the most recent
   freeze audit). Every blocker for this release should be either
   closed or consciously deferred with rationale.
@@ -218,9 +218,9 @@ Upload to your private channel:
 Commit. This signals on `main` that the next release is in progress
 and prevents accidental re-release of the same artefact.
 
-## Step 10 — Update SESSION_HANDOFF_NEXT.md
+## Step 10 — Update the handoff notes
 
-Set "Current state" to reflect the post-release state:
+Set "Current state" in your handoff notes to reflect the post-release state:
 
 * Last release tag = vX.Y.Z
 * Working branch = whatever's active for the next round

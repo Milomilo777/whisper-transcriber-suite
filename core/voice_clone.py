@@ -10,8 +10,7 @@ because the tab exists.
 
 Engine: OmniVoice (k2-fsa), chosen after evaluating it against
 Chatterbox Multilingual and the flagship engines of a comparable
-open-source project (see docs/SESSION_HANDOFF_NEXT.md, 2026-09-12
-entry, for the full evaluation and why). Apache-2.0 on both code and
+open-source project. Apache-2.0 on both code and
 weights, ~0.6B params, CPU-capable but slow (measured ~50-57x slower
 than real-time on a representative consumer CPU) — callers MUST show a
 time estimate before generating, never a bare progress spinner.
@@ -334,7 +333,7 @@ def generate(
     # app's own configured model would mean loading a SECOND heavy model
     # in this same process, working against the memory problem rather
     # than solving it. Cuts a real, measured OOM risk on a representative
-    # 17GB machine (see docs/SESSION_HANDOFF_NEXT.md, 2026-09-12 entry)
+    # 17GB machine
     # at some cost to cloning quality; revisit if that trade proves wrong
     # in practice.
     try:

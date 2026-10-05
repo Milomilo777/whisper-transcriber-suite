@@ -47,8 +47,5 @@ Newest first:
 
 ## Development state
 
-- [SESSION_HANDOFF_NEXT.md](SESSION_HANDOFF_NEXT.md) — what to pick up next
-- [SESSION_LOG.md](SESSION_LOG.md) — chronological session log
 - [ROADMAP.md](ROADMAP.md) — high-level direction
 - [roadmap/](roadmap/) — future feature research (one file per planned release)
-- [history/](history/) — archived audits, freeze reviews, phase-acceptance plans, and superseded planning docs from earlier development cycles (see its own README for the index)

@@ -760,8 +760,7 @@ were built later from master and also include the first block below.
   was uploaded 2026-07-15, replacing both prior macOS assets. On
   2026-07-18 the colleague clarified it is Intel/x64-only (not
   universal), so the asset was renamed
-  `WhisperProject-v1.5.0-macOS-x64.dmg`. See
-  `docs/SESSION_HANDOFF_NEXT.md` for the provenance caveat.
+  `WhisperProject-v1.5.0-macOS-x64.dmg`.
 
 ### Changed
 
@@ -1115,7 +1114,7 @@ were built later from master and also include the first block below.
 
 - **Google Cloud STT defaults are now `chirp_2` / `us-central1`** (were
   `long` / `global`). This was **live-verified** against the owner's
-  service-account JSON (project `crucial-context-297802`): the previous
+  service-account JSON: the previous
   `long` / `global` pairing rejected language auto-detect, whereas `chirp_2`
   supports auto-detect and multilingual input. New config defaults
   `gcloud_stt_model = "chirp_2"` and `gcloud_stt_location = "us-central1"`

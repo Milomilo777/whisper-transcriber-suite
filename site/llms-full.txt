@@ -358,9 +358,7 @@ Actively maintained. The quality bar enforced on every commit:
   runs on **every push, on Windows and Ubuntu** — see
   [docs/TESTING.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/TESTING.md). Coverage is reported by the badge above.
 
-[docs/CHANGELOG.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md) has what shipped recently; superseded
-freeze and stability audits are archived under
-[docs/history/](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/history/).
+[docs/CHANGELOG.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md) has what shipped recently.
 
 ## Documentation
 

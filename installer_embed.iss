@@ -244,7 +244,7 @@ const
 //
 //  Same shape as Video Tiling above, own independent marker -- OFF by
 //  default (public-installer opt-in; legal/ethical sensitivity + a
-//  ~2GB on-demand model, see docs/SESSION_HANDOFF_NEXT.md 2026-09-12).
+//  ~2GB on-demand model).
 //  Unless the user ticks the "voiceclone" task, we drop an empty marker
 //  file at {app}\no_voice_clone.flag during post-install. The app reads
 //  it at startup (core.hub.voice_clone_tab_enabled) and hides the tab
