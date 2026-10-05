@@ -37,8 +37,9 @@ app by mistake.
 ## Why the app does not update itself
 
 `core/updates.py` is deliberately **notify-only**: it asks GitHub once a
-day whether a newer release exists and, if so, offers to open the
-download page. It never downloads or installs anything.
+day whether a newer release exists and, if so, shows a quiet bar whose
+**Download** button opens the matching file in the browser. It never
+downloads or installs anything itself.
 
 An installed application that rewrites its own files is a support
 nightmare — a half-applied update leaves a user with nothing that runs,
@@ -47,5 +48,8 @@ antivirus heuristics. Updating an *installed* build stays the installer's
 job. This script exists only for the source install, where "update" is
 honestly just `git pull` plus `pip install -U`.
 
-Turn the notification off with `update_check_enabled` — see
-[docs/CONFIG.md](../../docs/CONFIG.md).
+Turn the notification off under **Advanced → App behaviour** ("Don't check
+for updates", config key `update_check_enabled`) or with the environment
+variable `WTS_DISABLE_UPDATER=1` — see [docs/CONFIG.md](../../docs/CONFIG.md).
+On a source install its **Download** button shows the command that runs this
+script.

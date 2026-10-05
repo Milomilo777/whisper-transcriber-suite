@@ -60,6 +60,7 @@ def _advanced_fake(app, *, chosen_label, slug_map):
         _model_display=_V(chosen_label),
         _model_label_to_slug=slug_map,
         _telemetry_opt_in=_V(False),
+        _update_check_enabled=_V(True),
         _minimise_to_tray=_V(False),
         _watched_folder=_V(""),
         _watched_folder_enabled=_V(False),

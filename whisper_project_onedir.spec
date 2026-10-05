@@ -180,6 +180,7 @@ a = Analysis(
         'app.widgets.audio_visualizer',
         'app.widgets.tabs',
         'app.widgets.tray',
+        'app.widgets.update_bar',
         'app.widgets.voice_clone_tab',
         'core',
         'core.alignment',

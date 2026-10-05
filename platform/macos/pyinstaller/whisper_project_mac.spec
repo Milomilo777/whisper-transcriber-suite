@@ -328,6 +328,7 @@ a = Analysis(
         'app.widgets.live_tab',
         'app.widgets.tabs',
         'app.widgets.tray',
+        'app.widgets.update_bar',
         'core',
         'core.alignment',
         'core.backends',

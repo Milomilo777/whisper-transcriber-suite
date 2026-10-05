@@ -86,6 +86,14 @@ longer kept as files in the repository). Sections to include:
 * **Bug fixes** — short list.
 * **Known issues** — items deferred to the next release.
 
+The app's update bar reads this body (`core.updates.release_headline` /
+`release_highlights`): it shows the first sentence of the paragraph right
+under the title, and its **What's new** window shows the first three bullets
+under a `## Highlights` (or `## What's new`) heading. Keep that intro
+paragraph first and each of those bullets readable on its own. Upload every
+platform's file before relying on the bar: it stays silent for a kind of
+install whose file is not on the release yet.
+
 ## Step 4 — Run the full validation matrix
 
 All of these must be green BEFORE building:

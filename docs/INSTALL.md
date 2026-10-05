@@ -118,7 +118,11 @@ No uninstall is needed: run the newer
 existing install, keeping your shortcut and settings. For the Portable
 build, replace the old folder with the new one. **Help → Check for
 updates…** checks on demand; the automatic daily check only tells you when
-a newer version exists and never downloads anything by itself.
+a newer version exists and never downloads anything by itself. It shows a
+quiet bar under the menu: **What's new**, **Download** (opens the file for
+your kind of install in the browser; close the app before you run it),
+**Later** (again in 3, 7, then 14 days, then only a dot on the Help menu) and
+**Skip this version**. Turn the check off under **Advanced → App behaviour**.
 
 ---
 

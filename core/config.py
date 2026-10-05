@@ -68,12 +68,20 @@ DEFAULT_CONFIG = {
     # GitHub "update available" check (core.updates), on by default.
     # When enabled, a quiet launch check (once per day, throttled via
     # last_update_check) and a Help-menu manual check ask GitHub for the
-    # latest release tag and offer to open the download page — they NEVER
-    # auto-download or auto-install, and a private-repo 404 / offline box
-    # fails silently. last_update_check is the ISO date (YYYY-MM-DD) of
-    # the last quiet check, used only for the once-per-day throttle.
+    # latest release and show a quiet bar under the menu (What's new /
+    # Download / Later / Skip this version) — they NEVER auto-download or
+    # auto-install, and a private-repo 404 / offline box fails silently.
+    # last_update_check is the ISO date (YYYY-MM-DD) of the last quiet
+    # check, used only for the once-per-day throttle. The update_* keys
+    # below are the bar's memory: the newest version seen, the version the
+    # user skipped, and the "Later" ladder (count + ISO date the bar may
+    # come back). All of these are LOCAL_ONLY_KEYS.
     "update_check_enabled": True,
     "last_update_check": "",
+    "update_latest_seen": "",
+    "update_skipped_version": "",
+    "update_snooze_count": 0,
+    "update_snooze_until": "",
     # Browser to read cookies from for yt-dlp, so login-walled / age-gated
     # content downloads using the user's logged-in session (Facebook,
     # Instagram, TikTok stories; some YouTube Shorts). Empty = off. One of
@@ -424,9 +432,17 @@ ONLINE_ALLOWED_KEYS: frozenset[str] = frozenset({
 # later edit adds one to ONLINE_ALLOWED_KEYS by mistake: merge_config_sources
 # drops them from the online payload unconditionally. telemetry_opt_in is the
 # user's usage-stats switch (on by default); a remote file must never be able
-# to turn a saved OFF back on.
+# to turn a saved OFF back on. The update-notice keys are the same kind of
+# choice: a remote file must not be able to switch the check back on, undo a
+# "Skip this version" or a "Later", or fake the newest version seen.
 LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "telemetry_opt_in",
+    "update_check_enabled",
+    "last_update_check",
+    "update_latest_seen",
+    "update_skipped_version",
+    "update_snooze_count",
+    "update_snooze_until",
 })
 
 

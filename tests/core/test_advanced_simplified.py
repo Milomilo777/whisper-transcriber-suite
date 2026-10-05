@@ -70,6 +70,7 @@ def _fake_dialog(app: Any, **overrides: Any) -> types.SimpleNamespace:
         _model_display=_V("Large-v3"),
         _model_label_to_slug={"Large-v3": "large-v3"},
         _telemetry_opt_in=_V(False),
+        _update_check_enabled=_V(True),
         _minimise_to_tray=_V(False),
         _watched_folder=_V(""),
         _watched_folder_enabled=_V(False),
@@ -471,3 +472,41 @@ def test_save_keeps_a_cookie_pick_made_in_the_download_tab(monkeypatch) -> None:
     dlg = _fake_dialog(_fake_app(cfg), _cookies_browser=_V("edge"))
     adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
     assert cfg["cookies_from_browser"] == "edge"
+
+
+@pytest.mark.parametrize("notify", [True, False])
+def test_save_writes_the_update_choice(monkeypatch, notify) -> None:
+    from app.dialogs import advanced as adv
+
+    monkeypatch.setattr(adv, "save_config", lambda _cfg: None)
+    cfg = _base_cfg()
+    cfg["update_check_enabled"] = not notify
+    adv.AdvancedDialog._save_and_close(
+        _fake_dialog(_fake_app(cfg), _update_check_enabled=_V(notify))  # type: ignore[arg-type]
+    )
+    assert cfg["update_check_enabled"] is notify
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_updates_choice_shows_the_saved_setting(make_dialog, enabled) -> None:
+    from tkinter import ttk
+
+    dlg = make_dialog(update_check_enabled=enabled)
+    radios = {
+        str(w.cget("text")): w for w in _all_widgets(dlg) if isinstance(w, ttk.Radiobutton)
+    }
+    notify = next(w for t, w in radios.items() if t.startswith("Tell me when a new version"))
+    off = next(w for t, w in radios.items() if t == "Don't check for updates")
+    assert dlg._update_check_enabled.get() is enabled
+    assert notify.instate(["selected"]) is enabled
+    assert off.instate(["selected"]) is (not enabled)
+    off.invoke()
+    assert dlg._update_check_enabled.get() is False
+    notify.invoke()
+    assert dlg._update_check_enabled.get() is True
+
+
+def _all_widgets(widget: Any):
+    for child in widget.winfo_children():
+        yield child
+        yield from _all_widgets(child)

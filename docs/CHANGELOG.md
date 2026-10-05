@@ -72,6 +72,14 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **A quiet update bar instead of the "Open the download page?" dialog.** A newer
+  release shows one line under the menu (version and headline) with What's new (its
+  first highlights), Download (the installer, Portable ZIP or Mac dmg this copy came
+  from), Later (again in 3, 7, then 14 days, then only a dot on the Help menu) and
+  Skip this version. It never takes focus, appears at most once per launch, and
+  stays silent offline or until the matching file is uploaded. Turn it off in
+  Advanced → App behaviour or with `WTS_DISABLE_UPDATER=1`; the online config can
+  never change these settings.
 - **Voice cloning: a permission tick instead of the one-time warning dialog.**
   The Clone Your Voice tab always shows the rules (own voice or the speaker's
   clear permission; no impersonation, no misleading audio of real people), and

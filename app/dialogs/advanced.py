@@ -303,6 +303,10 @@ class AdvancedDialog(tk.Toplevel):
         self._telemetry_opt_in = tk.BooleanVar(
             value=bool(cfg.get("telemetry_opt_in", False))
         )
+        # Updates: True = tell me about a new version (default), False = off.
+        self._update_check_enabled = tk.BooleanVar(
+            value=bool(cfg.get("update_check_enabled", True))
+        )
         self._minimise_to_tray = tk.BooleanVar(
             value=bool(cfg.get("minimise_to_tray", False))
         )
@@ -1484,12 +1488,13 @@ class AdvancedDialog(tk.Toplevel):
         return download
 
     def _build_misc_section(self, body: ttk.Frame) -> ttk.LabelFrame:
-        """"App behaviour": system tray + usage statistics."""
+        """"App behaviour": system tray, usage statistics, update notice."""
         misc = section_labelframe(
             body, "App behaviour",
             "General app behaviour: whether closing the window minimises "
-            "to the system tray instead of exiting, and whether usage "
-            "statistics (no audio or transcript content) are sent.",
+            "to the system tray instead of exiting, whether usage "
+            "statistics (no audio or transcript content) are sent, and "
+            "whether the app tells you about a new version.",
         )
         misc.pack(fill="x", pady=(0, 14))
         tray_row = ttk.Frame(misc)
@@ -1516,7 +1521,30 @@ class AdvancedDialog(tk.Toplevel):
             misc, text="Send usage statistics (on by default; also in the Help menu)",
             variable=self._telemetry_opt_in,
         ).pack(anchor="w", padx=8, pady=4)
+        self._build_updates_choice(misc)
         return misc
+
+    def _build_updates_choice(self, parent: ttk.LabelFrame) -> None:
+        """New versions: notify (default) or off. Never set by the online config."""
+        from core import updates as _updates
+
+        ttk.Label(parent, text="New versions:").pack(anchor="w", padx=8, pady=(8, 0))
+        for text, value in (
+            ("Tell me when a new version is available (a quiet bar under the menu)", True),
+            ("Don't check for updates", False),
+        ):
+            ttk.Radiobutton(
+                parent, text=text, value=value, variable=self._update_check_enabled,
+            ).pack(anchor="w", padx=24, pady=1)
+        note = "Help → Check for updates… always works. The app never installs anything by itself."
+        if _updates.disabled_by_environment():
+            note = (
+                f"The {_updates.DISABLE_ENV_VAR} environment variable turns the daily "
+                "check off on this computer. " + note
+            )
+        ttk.Label(
+            parent, text=note, wraplength=560, justify="left", foreground="#666",
+        ).pack(anchor="w", padx=24, pady=(0, 6))
 
     def _build_gcloud_frame(self, body) -> ttk.LabelFrame:
         """Build the Google Cloud Speech-to-Text (service-account) frame.
@@ -1974,6 +2002,7 @@ class AdvancedDialog(tk.Toplevel):
             else:
                 self.app.log(f"Unknown model slug {new_slug!r}; keeping current model.")
         cfg["telemetry_opt_in"] = bool(self._telemetry_opt_in.get())
+        cfg["update_check_enabled"] = bool(self._update_check_enabled.get())
         cfg["minimise_to_tray"] = bool(self._minimise_to_tray.get())
         new_watched = (self._watched_folder.get() or "").strip()
         new_watched_enabled = bool(self._watched_folder_enabled.get())

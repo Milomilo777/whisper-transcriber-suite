@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 import tkinter as tk
+from datetime import date
 from queue import Empty, Full, Queue
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Callable, Mapping
@@ -52,6 +53,18 @@ from core.paths import bundled_binary as _bundled_binary
 from core.watcher import FolderWatcher
 
 logger = logging.getLogger(__name__)
+
+# Menu labels the update notice decorates with a dot (_refresh_update_signs).
+_HELP_MENU_LABEL = "Help"
+_CHECK_FOR_UPDATES_LABEL = "Check for updates..."
+# An app left open keeps checking about once a day (the date throttle in
+# _maybe_quiet_update_check still applies).
+_UPDATE_RECHECK_MS = 24 * 60 * 60 * 1000
+
+
+def _today() -> date:
+    """Today's local date (one seam for the update-notice tests)."""
+    return date.today()
 
 
 def _iids_for_tasks(
@@ -432,7 +445,12 @@ def build_about_sections() -> list[AboutSection]:
                 "Daily check against GitHub for a newer version (on by "
                 "default) — it only "
                 "tells you; it never downloads or installs on its own",
-                "Run it any time from Help → Check for updates…",
+                "A newer version shows a quiet bar under the menu: What's "
+                "new, Download (the file for this kind of install), Later "
+                "(again in 3, 7, then 14 days, then only a dot on the Help "
+                "menu) or Skip this version",
+                "Run it any time from Help → Check for updates…; turn the "
+                "daily check off in Advanced → App behaviour",
                 "When you install the newer Setup it upgrades in place over "
                 "the old version — you do NOT need to uninstall first",
             ]),
@@ -778,7 +796,15 @@ class App(tk.Tk):
             logger.warning("history.db unavailable: %s", e)
             self.history = None
 
+        # Update notice (core.updates + app.widgets.update_bar): the bar is
+        # built on first use; the last check result feeds its buttons.
+        self._update_bar: Any = None
+        self._latest_update: Any = None
+        self._whats_new_window: Any = None
+        self._update_bar_shown_this_launch = False
+
         self._build_menu()
+        self._refresh_update_signs()
         self._build_tabs()
         self.txt = build_console(self, theme=_resolve_theme(self.theme_var.get()))
 
@@ -853,8 +879,9 @@ class App(tk.Tk):
         # check runs on a daemon thread; it is gated by
         # update_check_enabled AND a once-per-day throttle, and it stays
         # SILENT unless an update is actually available (no nagging when
-        # up to date, offline, or on a private repo). See
-        # _run_update_check / core.updates.
+        # up to date, offline, or on a private repo); a found update shows
+        # the quiet bar, never a dialog. See _run_update_check /
+        # core.updates.
         self.after(4000, self._maybe_quiet_update_check)
 
     def _sweep_partials_at_startup(self) -> None:
@@ -1021,8 +1048,12 @@ class App(tk.Tk):
         # throttle the quiet launch check obeys) and DOES report the
         # "you're up to date" / "couldn't reach the server" cases, unlike
         # the silent launch check. Never downloads/installs anything.
-        h.add_command(label="Check for updates...",
+        # _refresh_update_signs adds a dot to this item and to "Help" while
+        # a newer version is known (the passive sign).
+        h.add_command(label=_CHECK_FOR_UPDATES_LABEL,
                       command=self._check_for_updates_manual)
+        self._help_menu = h
+        self._check_updates_index = h.index("end")
         h.add_separator()
         # The usage-statistics switch, reachable without opening Advanced.
         # Same config key as the Advanced → App behaviour checkbox: the dialog
@@ -1038,7 +1069,9 @@ class App(tk.Tk):
         )
         m.add_cascade(label="File", menu=f)
         m.add_cascade(label="View", menu=v)
-        m.add_cascade(label="Help", menu=h)
+        m.add_cascade(label=_HELP_MENU_LABEL, menu=h)
+        self._menubar = m
+        self._help_cascade_index = m.index("end")
         # Direct menubar command — clicking "About" opens the dialog in
         # one click. (It used to be a cascade whose only item was
         # another "About", so the user had to click About twice.)
@@ -1314,6 +1347,14 @@ class App(tk.Tk):
             justify="left",
             foreground="#666",
         ).pack(anchor="w", pady=(4, 0))
+        # Passive update sign: the newest version seen, unless skipped.
+        from core import updates as _updates
+        newer = _updates.passive_sign_version(self.app_config, _app_ver)
+        if newer:
+            ttk.Label(
+                header,
+                text=f"Version {newer} is available. Help → Check for updates… shows it.",
+            ).pack(anchor="w", pady=(4, 0))
 
         body_frame = ttk.Frame(dlg, padding=(16, 4, 16, 8))
         body_frame.pack(fill="both", expand=True)
@@ -1844,6 +1885,7 @@ class App(tk.Tk):
         self._refresh_engine_selector()
         self._refresh_model_selector()
         self._sync_telemetry_menu()
+        self._apply_update_setting()
 
     def _confirm_backend_switch(
         self,
@@ -4639,12 +4681,14 @@ class App(tk.Tk):
         """Fire the silent launch-time GitHub update check, if eligible.
 
         Runs on the Tk main thread (scheduled via ``after``). Gated by
-        ``update_check_enabled`` and a once-per-day throttle keyed on
-        ``last_update_check`` (an ISO date). When eligible, the date is
-        stamped immediately (so a second launch the same day won't
-        re-check) and the network call runs on a daemon thread. The
-        result only ever pops the "update available" prompt — it shows
-        NOTHING when up to date, offline, or on a private repo.
+        ``update_check_enabled`` (and the ``WTS_DISABLE_UPDATER`` variable)
+        and a once-per-day throttle keyed on ``last_update_check`` (an ISO
+        date). When eligible, the date is stamped immediately (so a second
+        launch the same day won't re-check) and the network call runs on a
+        daemon thread. A found update shows the quiet bar at most once per
+        launch — NOTHING appears when up to date, offline, or on a private
+        repo. Each call books the next one a day later, so an app left open
+        for days still hears about a new version.
         """
         if self._closing:
             return
@@ -4654,10 +4698,14 @@ class App(tk.Tk):
             self.after(4000, self._maybe_quiet_update_check)
             return
         try:
-            if not bool(self.app_config.get("update_check_enabled", True)):
+            self.after(_UPDATE_RECHECK_MS, self._maybe_quiet_update_check)
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not book the next update check", exc_info=True)
+        try:
+            from core import updates as _updates
+            if not _updates.automatic_check_enabled(self.app_config):
                 return
-            from datetime import date
-            today = date.today().isoformat()
+            today = _today().isoformat()
             if (self.app_config.get("last_update_check") or "") == today:
                 return  # already checked today
             # Stamp the date up-front so we throttle even if the check
@@ -4697,17 +4745,20 @@ class App(tk.Tk):
         safe_thread(_worker, name="update-check")
 
     def _on_update_result(self, info: object, *, manual: bool) -> None:
-        """Show the appropriate dialog for an update-check result (main thread).
+        """Act on an update-check result (main thread).
 
         ``info`` is a ``core.updates.UpdateInfo`` or ``None`` (typed as
         ``object`` here to keep this glue free of a hard import at the
-        annotation site). On a found newer release we ask whether to open
-        the download page; on a manual check we also report up-to-date /
-        unreachable; the quiet launch check stays silent in those cases.
+        annotation site). A newer release shows the quiet bar (never a
+        dialog) when ``core.updates.notice_level`` allows it, at most once
+        per launch; otherwise only the passive signs change. A manual check
+        always shows the bar for a newer release (asking first when the user
+        skipped that version) and also reports up-to-date / unreachable; the
+        quiet launch check stays silent in those cases.
         """
         if self._closing:
             return
-        from core.updates import RELEASES_PAGE_URL, UpdateInfo
+        from core import updates as _updates
 
         if info is None:
             if manual:
@@ -4720,26 +4771,215 @@ class App(tk.Tk):
                 )
             return
 
-        if not isinstance(info, UpdateInfo):  # defensive; never expected
+        if not isinstance(info, _updates.UpdateInfo):  # defensive; never expected
             return
 
-        if info.is_newer:
-            open_page = messagebox.askyesno(
-                "Update available",
-                f"A newer version ({info.latest_tag}) is available — "
-                f"you have v{_APP_VERSION}.\n\n"
-                "Open the download page?",
-                parent=self,
+        if not info.is_newer:
+            if manual:
+                messagebox.showinfo(
+                    "Check for updates",
+                    f"You're on the latest version ({_updates.version_label(_APP_VERSION)}).",
+                    parent=self,
+                )
+            return
+
+        if not manual:
+            kind = self._install_kind()
+            if (
+                _updates.kind_has_a_release_file(kind)
+                and _updates.pick_asset(kind, info.assets) is None
+            ):
+                # The file for this kind of install is not uploaded yet (the
+                # macOS files sometimes follow the Windows ones): stay silent
+                # until a later check finds it.
+                logger.info("Update %s found, but not its file for %s yet", info.latest_tag, kind)
+                return
+
+        self._latest_update = info
+        changed = _updates.note_latest(self.app_config, info.latest_tag)
+        version = _updates.version_label(info.latest_tag)
+        if manual:
+            if _updates.is_skipped(self.app_config, info.latest_tag):
+                if messagebox.askyesno(
+                    "Check for updates",
+                    f"Version {version} is available. You chose to skip it.\n\n"
+                    "Show it again?",
+                    parent=self,
+                ):
+                    _updates.stop_skipping(self.app_config)
+                    changed = True
+                else:
+                    if changed:
+                        self._save_update_prefs()
+                    return
+            if changed:
+                self._save_update_prefs()
+            self._show_update_bar(info)
+        else:
+            if changed:
+                self._save_update_prefs()
+            level = _updates.notice_level(
+                self.app_config, _APP_VERSION, _today(),
             )
-            if open_page:
-                import webbrowser
-                webbrowser.open(info.html_url or RELEASES_PAGE_URL)
-        elif manual:
-            messagebox.showinfo(
-                "Check for updates",
-                f"You're on the latest version (v{_APP_VERSION}).",
-                parent=self,
+            bar_visible = self._update_bar is not None and self._update_bar.visible
+            # Once per launch; a bar still on screen is refreshed instead, so
+            # its text names the version its buttons now act on.
+            if level == _updates.NOTICE_BAR and (
+                bar_visible or not self._update_bar_shown_this_launch
+            ):
+                self._show_update_bar(info)
+        self._refresh_update_signs()
+
+    # Update notice: bar, buttons and passive signs ----------------------------
+    def _install_kind(self) -> str:
+        from core import updates as _updates
+        from core.hub import resolve_app_dir
+        return _updates.detect_install_kind(resolve_app_dir())
+
+    def _save_update_prefs(self) -> None:
+        try:
+            save_config(self.app_config)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Failed to save the update-notice state")
+            self.log(f"Could not save the update-notice choice: {e}")
+
+    def _show_update_bar(self, info: Any) -> None:
+        """Show (or refresh) the quiet bar above the tabs. Never moves the focus."""
+        from core import updates as _updates
+        bar = self._update_bar
+        if bar is None:
+            from app.widgets.update_bar import UpdateBar
+            bar = UpdateBar(
+                self,
+                on_whats_new=self._update_whats_new,
+                on_download=self._update_download,
+                on_later=self._update_later,
+                on_skip=self._update_skip,
             )
+            self._update_bar = bar
+        bar.show(
+            _updates.bar_text(info.latest_tag, _APP_VERSION, info.headline),
+            before=self.nb,
+        )
+        self._update_bar_shown_this_launch = True
+
+    def _hide_update_bar(self) -> None:
+        if self._update_bar is not None:
+            self._update_bar.hide()
+
+    def _update_whats_new(self) -> None:
+        """"What's new": a small non-modal window with the release highlights."""
+        info = self._latest_update
+        if info is None:
+            return
+        window = _inst_attr(self, "_whats_new_window")
+        if window is not None and window.winfo_exists():
+            window.destroy()  # one window, showing the latest release
+        import webbrowser
+
+        from app.widgets.update_bar import show_whats_new
+        from core import updates as _updates
+        self._whats_new_window = show_whats_new(
+            self,
+            version=_updates.version_label(info.latest_tag),
+            headline=info.headline,
+            highlights=info.highlights,
+            on_full_notes=lambda: webbrowser.open(info.html_url or _updates.RELEASES_PAGE_URL),
+        )
+
+    def _update_download(self) -> None:
+        """"Download": the file for this kind of install, in the browser.
+
+        A source checkout gets the update command instead (Linux and
+        developers); an unknown install, or a release without the matching
+        file, gets the release page.
+        """
+        info = self._latest_update
+        if info is None:
+            return
+        import webbrowser
+
+        from core import updates as _updates
+        version = _updates.version_label(info.latest_tag)
+        kind = self._install_kind()
+        if kind == _updates.INSTALL_SOURCE:
+            from app.widgets.update_bar import show_update_command
+            from core.hub import resolve_app_dir
+            show_update_command(
+                self, version=version, command=_updates.update_command(resolve_app_dir()),
+            )
+            return
+        name = _updates.pick_asset(kind, info.assets)
+        if name:
+            url = _updates.asset_download_url(info.latest_tag, name)
+            self.log(f"Downloading {name} in your browser. Close this app before you run it.")
+        else:
+            url = info.html_url or _updates.RELEASES_PAGE_URL
+            self.log(f"Opening the page of version {version} in your browser.")
+        webbrowser.open(url)
+        self._hide_update_bar()
+
+    def _update_later(self) -> None:
+        """"Later": hide the bar for 3, 7, then 14 days, then only the passive signs."""
+        info = self._latest_update
+        from core import updates as _updates
+        until = _updates.snooze(self.app_config, _today())
+        self._save_update_prefs()
+        self._hide_update_bar()
+        self._refresh_update_signs()
+        version = _updates.version_label(info.latest_tag) if info is not None else "the new version"
+        if until is None:
+            self.log(
+                f"No more reminders about version {version}; Help → Check for updates "
+                "still shows it."
+            )
+        else:
+            self.log(f"Update reminder for version {version} again on {until.isoformat()}.")
+
+    def _update_skip(self) -> None:
+        """"Skip this version": silent until a newer version appears."""
+        info = self._latest_update
+        if info is None:
+            return
+        from core import updates as _updates
+        _updates.skip_version(self.app_config, info.latest_tag)
+        self._save_update_prefs()
+        self._hide_update_bar()
+        self._refresh_update_signs()
+        self.log(
+            f"Version {_updates.version_label(info.latest_tag)} skipped; you will hear "
+            "about the next one."
+        )
+
+    def _apply_update_setting(self) -> None:
+        """After Advanced closes: "Don't check for updates" also hides the bar."""
+        from core import updates as _updates
+        if not _updates.automatic_check_enabled(self.app_config):
+            self._hide_update_bar()
+        self._refresh_update_signs()
+
+    def _refresh_update_signs(self) -> None:
+        """The passive signs: a dot on "Help" and on "Check for updates...".
+
+        Shown while a newer, unskipped version is known (stored, no network)
+        and automatic checks are on; cleared otherwise.
+        """
+        from core import updates as _updates
+        menubar = _inst_attr(self, "_menubar")
+        help_menu = _inst_attr(self, "_help_menu")
+        if menubar is None or help_menu is None:
+            return
+        try:
+            version = _updates.passive_sign_version(self.app_config, _APP_VERSION)
+            if version:
+                help_label = f"{_HELP_MENU_LABEL} ●"
+                item_label = f"{_CHECK_FOR_UPDATES_LABEL}  ● {version} available"
+            else:
+                help_label, item_label = _HELP_MENU_LABEL, _CHECK_FOR_UPDATES_LABEL
+            menubar.entryconfigure(self._help_cascade_index, label=help_label)
+            help_menu.entryconfigure(self._check_updates_index, label=item_label)
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not refresh the update signs", exc_info=True)
 
     def _drain_main_calls(self) -> None:
         """Drain the cross-thread queue of main-thread callables.
