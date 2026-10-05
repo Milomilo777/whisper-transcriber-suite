@@ -1,13 +1,15 @@
 """Best-effort usage-stats POST (P4-4).
 
 Sends per-transcription usage to the maintainer's stats endpoint
-(``config['stats_url']``). PRIVACY: the payload includes the file name (no
-path), model, language, audio duration, AI transcription time, status, the
+(``config['stats_url']``). PRIVACY: the payload includes the model,
+language, audio duration, AI transcription time, status, word count, the
 running app version, a two-letter country code taken from the operating
 system's region setting (:func:`region_country`, read locally, no network
 lookup), and coarse host/hardware facts (OS, machine, CPU count, total RAM).
-It never includes the computer name, a user name, a serial number or an IP
-address. The server sees the connection's address like any web server; what
+It never includes the source file's name or folder, the computer name, a
+user name, a serial number or an IP address (:func:`build_stats_payload`
+takes no file argument at all). The server sees the connection's address
+like any web server; what
 it stores is decided by the server script. The payload is sent only while
 ``config['telemetry_opt_in']`` is true, which is the default; the user can
 switch it off in the Advanced dialog. :func:`post_stats_async` checks the
@@ -234,7 +236,6 @@ def audio_duration_from_segments(segments: list[dict] | None) -> float:
 
 def build_stats_payload(
     *,
-    file_name: str,
     model: str,
     language: str,
     audio_duration: float,
@@ -244,18 +245,18 @@ def build_stats_payload(
 ) -> dict[str, str]:
     """Build the form-encoded stats payload (no network I/O).
 
-    ``file_name`` is reduced to its basename so no local path leaks. All values
-    are stringified for ``application/x-www-form-urlencoded``. The
-    ``form_submitted`` flag tells the PHP endpoint to record the row.
-    ``country`` comes from the OS region setting (:func:`region_country`);
-    the computer name and any IP address are never included.
+    All values are stringified for ``application/x-www-form-urlencoded``.
+    The ``form_submitted`` flag tells the PHP endpoint to record the row.
+    ``country`` comes from the OS region setting (:func:`region_country`).
+    The source file's name or path, the computer name and any IP address
+    are never included; there is deliberately no file parameter, so no
+    caller can add one by accident.
     """
     # Local alias: a module-level global is never narrowed by a None
     # check (it could be reassigned elsewhere), a local is.
     ps = psutil
     return {
         _FORM_FLAG: "1",
-        "file_name": Path(str(file_name or "")).name,
         "model": str(model or ""),
         "language": str(language or ""),
         "audio_duration": f"{float(audio_duration or 0.0):.3f}",

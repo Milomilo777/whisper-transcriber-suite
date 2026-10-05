@@ -12,7 +12,7 @@ per transcription in an SQLite file next to the script,
 | `server_time` | when the row was written (server clock, RFC 3339) |
 | `country_code` | two-letter code the app reads from the operating system's region setting; empty unless it is exactly two upper-case letters |
 | `country_name` | the same code, so a viewer that shows this older column keeps working (rows written by older versions hold a full country name) |
-| `file_name` | file name only; any path part is dropped |
+| `file_name` | always NULL in new rows (see below); the column stays for old rows |
 | `model`, `language`, `status`, `program_version` | as sent by the app |
 | `audio_duration`, `transcription_time` | seconds |
 | `word_count` | words in the transcript |
@@ -37,6 +37,16 @@ then run:
 
 ```sql
 UPDATE transcription_stats SET client_ip = '', ip_location_json = '', platform_node = '';
+```
+
+The script also never stores the name of the transcribed file. The app no
+longer sends one; app versions up to 1.9.3 still post a `file_name` field,
+and the script ignores it, so new rows get NULL in that column. Versions of
+this script before this change stored that name (without its folder). To
+clear the names in old rows, back up the `.db` file and then run:
+
+```sql
+UPDATE transcription_stats SET file_name = NULL;
 ```
 
 **Web-server access logs** are a separate matter: most web servers log every
@@ -67,9 +77,10 @@ not of this script.
    - Open the URL in a browser: it prints the endpoint name, the SQLite
      version and the accepted fields.
    - Send a test row:
-     `curl -d form_submitted=1 -d country=DE -d model=test <url>` prints `OK`.
-   - The newest row has `country_code` = `DE` and empty `client_ip`.
-     Delete the test row afterwards.
+     `curl -d form_submitted=1 -d country=DE -d model=test -d file_name=test.mp4 <url>`
+     prints `OK`.
+   - The newest row has `country_code` = `DE`, empty `client_ip` and NULL
+     `file_name` (the posted name is ignored). Delete the test row afterwards.
 
 On a database or PHP error the script answers HTTP 500 with `ERROR` and
 writes the message to the host's PHP error log; the app ignores the answer

@@ -13,6 +13,8 @@ import json
 import time
 from types import SimpleNamespace
 
+import pytest
+
 from app.services.transcription_service import TranscriptionService
 from core import stats as core_stats
 
@@ -171,7 +173,43 @@ def test_post_usage_stats_builds_the_expected_payload(monkeypatch):
     assert payload["language"] == "fa"
     assert payload["status"] == "done"
     assert payload["model"] == "large-v3"
-    assert payload["file_name"] == "some clip.mp4"  # basename only -- no local path leak
+    assert "file_name" not in payload
+
+
+@pytest.mark.parametrize("file_path", [
+    "/media/Interview with Dr Zed 2026.mp4",
+    r"C:\Users\someone\Videos\Interview with Dr Zed 2026.mkv",
+    "/tmp/مصاحبه-خصوصی-۱۴۰۵.wav",
+])
+def test_post_usage_stats_never_sends_the_input_file_name(monkeypatch, file_path):
+    """No key or value of the stats payload carries the transcribed file's
+    name, stem, extension-less stem or folder, whatever the path looks like."""
+    captured: dict = {}
+
+    def _fake_post_stats_async(config, payload, **kwargs):
+        captured["payload"] = payload
+        return True
+
+    monkeypatch.setattr(core_stats, "post_stats_async", _fake_post_stats_async)
+    app_config = {
+        "telemetry_opt_in": True,
+        "stats_url": "https://example/stats",
+        "model": {"name": "large-v3"},
+    }
+    task = SimpleNamespace(
+        file_path=file_path, detected_language="en", status="done", start_time=1.0,
+    )
+
+    _service(app_config)._post_usage_stats(task, word_count=3, audio_duration=2.0)
+
+    payload = captured["payload"]
+    name = file_path.replace("\\", "/").rsplit("/", 1)[-1]
+    stem = name.rsplit(".", 1)[0]
+    folder = file_path.replace("\\", "/").rsplit("/", 1)[0].strip("/").split("/")[-1]
+    assert not [k for k in payload if "file" in k.lower() or "path" in k.lower()]
+    for value in payload.values():
+        for piece in (file_path, name, stem, folder):
+            assert piece.lower() not in value.lower(), (piece, value)
 
 
 def test_post_usage_stats_reports_the_engine_model_for_alt_backends(monkeypatch):

@@ -347,7 +347,6 @@ What is sent (built by `core.stats.build_stats_payload`, posted by `core.stats.p
 | Field | Content |
 |---|---|
 | `form_submitted` | always `1` (tells the server script to store the row) |
-| `file_name` | name of the source file, without its folder |
 | `model` | the model or engine that transcribed: the faster-whisper model name, `nvidia_asr:<model id>`, or the engine id for other engines |
 | `language` | detected language |
 | `audio_duration` | seconds; the last segment's end time |
@@ -359,9 +358,9 @@ What is sent (built by `core.stats.build_stats_payload`, posted by `core.stats.p
 | `platform_system`, `platform_release`, `platform_version`, `platform_machine`, `platform_processor` | OS name, release and build, CPU architecture and processor string (Python `platform` module) |
 | `cpu_count`, `mem_total` | logical CPU count and total RAM in bytes (`psutil`; `0` when it is missing) |
 
-Never sent: audio, transcript text, the file's folder path, the computer name, the user name, serial numbers or an IP address field. The server still sees the connection's IP address, as every web server does; what it stores is decided by the server script.
+Never sent: audio, transcript text, the source file's name or folder path, the computer name, the user name, serial numbers or an IP address field. (App versions up to 1.9.3 also sent `file_name`, the source file's name without its folder.) The server still sees the connection's IP address, as every web server does; what it stores is decided by the server script.
 
-The server script in this repo (`platform/stats-server/transcription_stats.php`; deployment notes in that folder's `README.md`) stores the fields above, length-capped; it does not read, look up or store the connection's IP address. The server at the default `stats_url` is updated separately: until it runs this version, it may record the request's **client IP** and a **geoip lookup** of it, as older versions did. The same `word_count` is also stored locally in `history.db` (`transcriptions.word_count`, added by an idempotent migration) whatever the switch says.
+The server script in this repo (`platform/stats-server/transcription_stats.php`; deployment notes in that folder's `README.md`) stores the fields above, length-capped; it does not read, look up or store the connection's IP address, and it ignores a `file_name` posted by an older app version. The server at the default `stats_url` is updated separately: until it runs this version, it may record the request's **client IP** and a **geoip lookup** of it, as older versions did, and the `file_name` that app versions up to 1.9.3 still send. The same `word_count` is also stored locally in `history.db` (`transcriptions.word_count`, added by an idempotent migration) whatever the switch says.
 
 `build_stats_payload` does no network I/O (it only reads local OS facts), and `post_stats_async` re-checks `telemetry_opt_in`, the `stats_url` scheme (http/https only) and the payload, so a direct call can never send while the switch is off.
 

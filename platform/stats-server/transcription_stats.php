@@ -16,7 +16,6 @@
  *                          two upper-case letters
  *   - country_name         the same code, so viewers that show this older
  *                          column keep working (old rows hold a full name)
- *   - file_name            basename only (any path part is dropped)
  *   - model, language, status, program_version
  *   - audio_duration       (seconds)
  *   - transcription_time   (seconds of AI compute)
@@ -30,6 +29,10 @@
  * platform_node columns stay in the table only so an existing database keeps
  * its old rows; new rows write "" into them. Web-server access logs are a
  * separate setting of the host (see README.md).
+ *
+ * Not stored either: the name of the transcribed file. The app no longer
+ * sends one, and a file_name field posted by an older app version is never
+ * read. The file_name column stays for old rows; new rows store NULL.
  */
 
 error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING);
@@ -44,7 +47,6 @@ date_default_timezone_set('Europe/Paris');
 // Longest value kept per text field, in characters. Longer input is cut, so
 // one request can never grow a row without bound.
 $text_limits = array(
-    'file_name'          => 255,
     'model'              => 128,
     'language'           => 32,
     'status'             => 32,
@@ -83,19 +85,6 @@ function post_text($name, $max_chars) {
         return '';
     }
     return clean_text($_POST[$name], $max_chars);
-}
-
-/** The POSTed file name reduced to its last path part, then capped. */
-function post_file_basename($name, $max_chars) {
-    if (!isset($_POST[$name]) || !is_string($_POST[$name])) {
-        return '';
-    }
-    $value = str_replace('\\', '/', $_POST[$name]);
-    $slash = strrpos($value, '/');
-    if ($slash !== false) {
-        $value = substr($value, $slash + 1);
-    }
-    return clean_text($value, $max_chars);
 }
 
 /** The POSTed number $name as a finite float in [0, $max]; 0.0 otherwise. */
@@ -219,7 +208,8 @@ try {
         $stmt->bindValue(':platform_node', '');
         $stmt->bindValue(':country_code', $country_code);
         $stmt->bindValue(':country_name', $country_code);
-        $stmt->bindValue(':file_name', post_file_basename('file_name', $text_limits['file_name']));
+        // Kept column; the file name is never read from the request.
+        $stmt->bindValue(':file_name', null, PDO::PARAM_NULL);
         foreach (array('model', 'language', 'status', 'program_version',
                        'platform_system', 'platform_release', 'platform_version',
                        'platform_machine', 'platform_processor') as $field) {
@@ -259,7 +249,7 @@ if ($recorded) {
 } else {
     echo "Whisper Transcriber Suite transcription stats endpoint.\n";
     echo "SQLite " . $sqlite_version . "\n";
-    echo "POST form_submitted=1 with: country, file_name, model, language, ";
+    echo "POST form_submitted=1 with: country, model, language, ";
     echo "audio_duration, transcription_time, word_count, status, ";
     echo "program_version, platform_system, platform_release, ";
     echo "platform_version, platform_machine, platform_processor, ";

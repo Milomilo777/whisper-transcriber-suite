@@ -72,8 +72,8 @@ Vibe, Buzz, noScribe and aTrain.
 - **You want a Linux package.** WTS runs on Linux from source, set up by an
   install script; there is no .deb, .rpm, Flatpak or Snap.
 - **You want no data sent by default.** After each transcription that finishes
-  in the desktop app, WTS sends one usage-statistics row (it includes the
-  file name) unless you turn the switch off; see
+  in the desktop app, WTS sends one usage-statistics row (model, language,
+  durations, system facts; no file name) unless you turn the switch off; see
   [Usage statistics](CONFIG.md#usage-statistics-p4-4) and the full list of
   [network connections](CONFIG.md#network-use).
 
@@ -112,7 +112,7 @@ Vibe, Buzz, noScribe and aTrain.
 | Local-network mode: browser page, JSON job API, OpenAI-compatible `/v1/audio/transcriptions`, optional HTTPS | [SERVER.md](SERVER.md), [`core/server/httpd.py`](../core/server/httpd.py), [`core/server/tls.py`](../core/server/tls.py) |
 | Interface in English only (no translation files and no interface-language setting) | [`core/config.py`](../core/config.py) |
 | README in 8 more languages | [`docs/i18n/`](i18n/) |
-| Usage statistics on by default, file name included | [CONFIG.md](CONFIG.md#usage-statistics-p4-4), [`core/stats.py`](../core/stats.py), [`core/config.py`](../core/config.py) |
+| Usage statistics on by default, no file name | [CONFIG.md](CONFIG.md#usage-statistics-p4-4), [`core/stats.py`](../core/stats.py), [`core/config.py`](../core/config.py) |
 
 ## Sources for the other apps
 

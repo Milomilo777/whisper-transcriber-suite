@@ -1529,8 +1529,9 @@ class TranscriptionService:
                 model = f"{backend}:{model_id}"
             else:
                 model = backend
+            # No file name or path: the payload never says what was
+            # transcribed (core.stats.build_stats_payload has no file field).
             payload = _stats.build_stats_payload(
-                file_name=getattr(task, "file_path", "") or "",
                 model=model,
                 language=getattr(task, "detected_language", "") or "",
                 audio_duration=audio_duration,

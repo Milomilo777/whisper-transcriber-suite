@@ -491,11 +491,11 @@ def build_about_sections() -> list[AboutSection]:
                 "Sent after each finished transcription; on by default. "
                 "Switch: Help → Send usage statistics, or Advanced → App "
                 "behaviour (config: telemetry_opt_in)",
-                "What is sent: file name (not its folder), model, language, "
-                "audio length, processing time, job status, word count, app "
-                "version, OS name/version, CPU and memory size, and the "
-                "two-letter country of the OS region setting; the payload "
-                "never includes the computer name or an IP address",
+                "What is sent: model, language, audio length, processing "
+                "time, job status, word count, app version, OS name/version, "
+                "CPU and memory size, and the two-letter country of the OS "
+                "region setting; the payload never includes the file's name "
+                "or folder, the computer name or an IP address",
                 "Launch ping and Sentry crash reports: only when "
                 "WHISPER_TELEMETRY_URL / SENTRY_DSN are set",
             ]),

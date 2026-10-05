@@ -8,7 +8,6 @@ generated inputs while the computer name is forced to an IP-shaped value.
 from __future__ import annotations
 
 import ipaddress
-import os
 import plistlib
 import random
 import re
@@ -43,7 +42,7 @@ def _looks_like_ip(value: str) -> bool:
 
 def _payload(**overrides: Any) -> dict[str, str]:
     kwargs: dict[str, Any] = dict(
-        file_name="a.mp4", model="m", language="en",
+        model="m", language="en",
         audio_duration=1.0, transcription_time=1.0, status="finished",
     )
     kwargs.update(overrides)
@@ -90,18 +89,15 @@ def test_property_no_payload_value_looks_like_an_ip(monkeypatch):
     alphabet = "abcXYZ019 ._-()فایل"
     checked = 0
     for _ in range(300):
-        name = _random_text(rng, alphabet, 30) + rng.choice(
-            ["", ".mp4", ".wav", ".mkv"])
-        file_name = os.path.join(_random_text(rng, "abc19", 8) or "d", name)
         model = rng.choice(["tiny", "large-v3", "distil-large-v3",
                             _random_text(rng, alphabet, 20)])
         language = rng.choice(["", "en", "fa", "auto",
                                _random_text(rng, "abcxyz", 3)])
-        inputs = (file_name, model, language)
+        inputs = (model, language)
         if any(_looks_like_ip(s) for s in inputs):
             continue  # the property is about what the module ADDS
         p = _payload(
-            file_name=file_name, model=model, language=language,
+            model=model, language=language,
             audio_duration=rng.uniform(0, 1e5),
             transcription_time=rng.uniform(0, 1e4),
             status=rng.choice(["finished", "error", "cancelled"]),

@@ -53,11 +53,81 @@ def config_md() -> str:
 def test_every_payload_field_is_documented(config_md: str) -> None:
     section = _section(config_md, "### Usage statistics (P4-4)")
     payload = stats.build_stats_payload(
-        file_name="a.wav", model="m", language="en", audio_duration=1.0,
+        model="m", language="en", audio_duration=1.0,
         transcription_time=1.0, status="finished", word_count=1,
     )
     missing = [k for k in payload if f"`{k}`" not in section]
     assert not missing, f"payload fields missing from docs/CONFIG.md: {missing}"
+
+
+def _sent_table_fields(section: str) -> set[str]:
+    """Field names in the first cell of the "What is sent" table."""
+    table = section.split("What is sent", 1)[1].split("Never sent", 1)[0]
+    fields: set[str] = set()
+    for line in table.splitlines():
+        if line.startswith("| `"):
+            first_cell = line.split("|")[1]
+            fields.update(re.findall(r"`(\w+)`", first_cell))
+    return fields
+
+
+def test_no_documented_field_is_missing_from_the_payload(config_md: str) -> None:
+    # The reverse direction: the docs must not claim a field the app no
+    # longer sends (file_name was dropped from the payload).
+    section = _section(config_md, "### Usage statistics (P4-4)")
+    documented = _sent_table_fields(section)
+    assert "model" in documented and "cpu_count" in documented  # parser control
+    payload = stats.build_stats_payload(
+        model="m", language="en", audio_duration=1.0,
+        transcription_time=1.0, status="finished", word_count=1,
+    )
+    extra = sorted(documented - set(payload))
+    assert not extra, f"docs/CONFIG.md lists fields the payload lacks: {extra}"
+
+
+# Public texts that summarise the usage statistics in prose.
+_STATS_SUMMARIES = [
+    ROOT / "README.md",
+    ROOT / "docs" / "COMPARISON.md",
+    ROOT / "site" / "llms-full.txt",
+]
+_FILE_NAME = re.compile(r"file(?:'s)? ?name", re.I)
+_NEGATION = re.compile(r"\b(?:no|never|not|without)\b[^.;:]{0,15}$", re.I)
+
+
+def _stats_blocks(text: str) -> list[str]:
+    """Paragraphs, list items and table rows that mention usage statistics."""
+    blocks = re.split(r"\n\s*\n|\n(?=\s*[-*] )|\n(?=\|)", text)
+    return [b for b in blocks if re.search(r"usage[- ]statistics", b, re.I)]
+
+
+def _claims_file_name_is_sent(block: str) -> bool:
+    return any(
+        not _NEGATION.search(block[max(0, m.start() - 25):m.start()])
+        for m in _FILE_NAME.finditer(block)
+    )
+
+
+def test_stats_file_name_guard_controls() -> None:
+    assert _claims_file_name_is_sent("usage statistics: the file name, model")
+    assert _claims_file_name_is_sent("usage-statistics row (it includes the file name)")
+    assert not _claims_file_name_is_sent("usage statistics: model, never the file's name.")
+    assert not _claims_file_name_is_sent("| Usage statistics on by default, no file name |")
+
+
+def test_public_texts_never_say_the_file_name_is_sent() -> None:
+    checked = 0
+    for path in _STATS_SUMMARIES:
+        for block in _stats_blocks(path.read_text(encoding="utf-8")):
+            checked += 1
+            assert not _claims_file_name_is_sent(block), (path.name, block)
+    assert checked >= 4  # README, COMPARISON (2) and llms-full were found
+
+
+def test_config_never_sent_line_names_the_file(config_md: str) -> None:
+    section = _section(config_md, "### Usage statistics (P4-4)")
+    never = section.split("Never sent:", 1)[1].split(".", 1)[0]
+    assert "file's name" in never
 
 
 def test_documented_defaults_match_the_code(config_md: str) -> None:

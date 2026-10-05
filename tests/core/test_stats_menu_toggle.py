@@ -84,3 +84,12 @@ def test_about_names_both_switches_and_avoids_anonymous():
     assert "Help → Send usage statistics" in text and "Advanced → App" in text
     assert "computer name" in text
     assert "anonymous" not in text.lower()
+
+
+def test_about_does_not_list_the_file_name_as_sent():
+    text = " ".join(
+        line for _title, subs in build_about_sections() for _sub, lines in subs for line in lines
+    )
+    sent = text.split("What is sent:", 1)[1].split(";", 1)[0]
+    assert "model" in sent  # the split found the list
+    assert "file" not in sent.lower()

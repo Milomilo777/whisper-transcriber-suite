@@ -98,10 +98,10 @@ The app does use the network for:
 - downloading a model or an optional component the first time it is needed;
 - its online settings at startup and a daily update check on GitHub, which
   only tells you about a new version;
-- usage statistics, on by default, after each finished transcription: the
-  file name (not its folder), model, language, durations, word count, app
-  version, operating system, CPU and memory size, and region. Turn them off
-  under **Help → Send usage statistics**.
+- usage statistics, on by default, after each finished transcription: model,
+  language, durations, word count, app version, operating system, CPU and
+  memory size, and region, never the file's name. Turn them off under
+  **Help → Send usage statistics**.
 
 Audio or transcript text is sent only if you choose a cloud engine (Gemini API
 or Google Cloud Speech-to-Text) or connect a remote AI provider yourself.

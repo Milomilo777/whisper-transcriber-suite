@@ -37,7 +37,7 @@ def _code() -> str:
 
 def _payload_fields() -> set[str]:
     payload = stats.build_stats_payload(
-        file_name="a.wav", model="m", language="en", audio_duration=1.0,
+        model="m", language="en", audio_duration=1.0,
         transcription_time=1.0, status="finished", word_count=1,
     )
     return set(payload) - {"form_submitted"}
@@ -110,14 +110,24 @@ def test_every_text_field_is_length_capped():
     text_fields = _payload_fields() - NUMERIC_FIELDS - {"country"}
     assert sorted(text_fields - set(limits)) == []
     assert all(0 < n <= 1024 for n in limits.values())
-    # Each text field is bound through a capped reader: file_name through
-    # post_file_basename, the rest through the post_text loop.
-    assert "post_file_basename('file_name', $text_limits['file_name'])" in code
+    # Each text field is bound through the capped post_text loop.
     loop = re.search(r"foreach \(array\((.*?)\) as \$field\)", code, re.S)
     assert loop, "post_text loop not found"
     assert "post_text($field, $text_limits[$field])" in code
     looped = set(re.findall(r"'(\w+)'", loop.group(1)))
-    assert sorted(text_fields - {"file_name"} - looped) == []
+    assert sorted(text_fields - looped) == []
+
+
+def test_file_name_is_never_read_and_new_rows_store_null():
+    # Older app versions still post file_name; the script must ignore it.
+    code = _code()
+    assert re.search(r"\bfile_name TEXT\b", code), "column must stay for old rows"
+    assert "'file_name'" not in code, "file_name must not be read or capped"
+    assert "post_file_basename" not in code
+    binds = re.findall(r"bindValue\(':file_name',\s*([^)]*)\)", code)
+    assert binds == ["null, PDO::PARAM_NULL"]
+    assert "file_name" not in _text_limits()
+    assert "file_name" not in _payload_fields()
 
 
 def test_numeric_fields_are_clamped():

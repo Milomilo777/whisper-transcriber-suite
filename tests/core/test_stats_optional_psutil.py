@@ -12,7 +12,6 @@ suite.
 from __future__ import annotations
 
 import importlib
-import os
 import sys
 
 
@@ -26,11 +25,6 @@ def test_stats_import_and_payload_survive_missing_psutil():
         assert reloaded.psutil is None
 
         payload = reloaded.build_stats_payload(
-            # Build the path with the RUNNING OS's separator: pathlib only
-            # splits on the native one, so a hard-coded r"C:\..." string kept
-            # its backslashes as part of the .name on Linux and this test
-            # failed on the Ubuntu CI legs.
-            file_name=os.path.join("somewhere", "clip.mp4"),
             model="large-v3",
             language="en",
             audio_duration=12.5,
@@ -42,7 +36,7 @@ def test_stats_import_and_payload_survive_missing_psutil():
         assert payload["cpu_count"] == "0"
         assert payload["mem_total"] == "0"
         # ...while everything else still works normally.
-        assert payload["file_name"] == "clip.mp4"
+        assert payload["model"] == "large-v3"
         assert payload["word_count"] == "42"
         assert payload["audio_duration"] == "12.500"
     finally:
@@ -58,7 +52,7 @@ def test_stats_payload_uses_real_psutil_when_present():
 
     assert stats_mod.psutil is not None
     payload = stats_mod.build_stats_payload(
-        file_name="x.mp4", model="m", language="", audio_duration=0.0,
+        model="m", language="", audio_duration=0.0,
         transcription_time=0.0, status="done", word_count=0,
     )
     assert int(payload["cpu_count"]) >= 1

@@ -2,7 +2,7 @@
 builder, and the telemetry opt-in gate."""
 from __future__ import annotations
 
-import os
+import inspect
 import sqlite3
 
 import pytest
@@ -112,7 +112,6 @@ def test_audio_duration_from_segments():
 
 def test_build_stats_payload_pure():
     p = stats.build_stats_payload(
-        file_name=(r"C:\videos\my clip.mp4" if os.name == "nt" else "/videos/my clip.mp4"),
         model="large-v3",
         language="en",
         audio_duration=123.456,
@@ -120,8 +119,6 @@ def test_build_stats_payload_pure():
         status="finished",
         word_count=99,
     )
-    # Path is stripped to a basename — no local path leaks.
-    assert p["file_name"] == "my clip.mp4"
     assert p["model"] == "large-v3"
     assert p["language"] == "en"
     assert p["audio_duration"] == "123.456"
@@ -131,11 +128,32 @@ def test_build_stats_payload_pure():
     assert p["form_submitted"] == "1"
 
 
+# --- no file name -----------------------------------------------------------
+
+def test_payload_builder_takes_no_file_argument():
+    params = inspect.signature(stats.build_stats_payload).parameters
+    assert not [n for n in params if "file" in n.lower() or "path" in n.lower()]
+    with pytest.raises(TypeError):
+        stats.build_stats_payload(  # type: ignore[call-arg]
+            file_name="a.mp4", model="m", language="en",
+            audio_duration=1.0, transcription_time=1.0, status="finished",
+        )
+
+
+def test_payload_has_no_file_name_key():
+    p = stats.build_stats_payload(
+        model="m", language="en", audio_duration=1.0,
+        transcription_time=1.0, status="finished",
+    )
+    assert "file_name" not in p
+    assert not [k for k in p if "file" in k.lower() or "path" in k.lower()]
+
+
 # --- opt-in gate ------------------------------------------------------------
 
 def _payload():
     return stats.build_stats_payload(
-        file_name="a.mp4", model="m", language="en",
+        model="m", language="en",
         audio_duration=1.0, transcription_time=1.0, status="finished",
     )
 
@@ -171,7 +189,7 @@ def test_posts_when_opted_in(monkeypatch):
             break
         _t.sleep(0.01)
     assert calls.get("url") == "https://example.com/s.php"
-    assert calls["payload"]["file_name"] == "a.mp4"
+    assert calls["payload"] == _payload()
 
 
 def test_no_post_with_empty_payload(monkeypatch):

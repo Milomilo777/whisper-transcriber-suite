@@ -631,7 +631,7 @@ def test_no_stats_post_when_saved_off(isolated_dirs, monkeypatch):
 
     monkeypatch.setattr(stats.urllib.request, "urlopen", _no_network)
     payload = stats.build_stats_payload(
-        file_name="a.mp4", model="m", language="en",
+        model="m", language="en",
         audio_duration=1.0, transcription_time=1.0, status="finished",
     )
     assert stats.post_stats_async(reloaded, payload) is False

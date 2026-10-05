@@ -185,7 +185,7 @@ def test_exited_process_is_not_touched(monkeypatch):
 # --------------------------------------------------------------------------- #
 def _payload():
     return stats.build_stats_payload(
-        file_name="a.mp4", model="m", language="en",
+        model="m", language="en",
         audio_duration=1.0, transcription_time=1.0, status="finished",
     )
 

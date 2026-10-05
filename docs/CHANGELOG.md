@@ -92,6 +92,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Usage statistics no longer include the file name.** The row sent after a finished
+  transcription has no `file_name` field any more, so nothing in it says what was transcribed.
+  The stats server script ignores a `file_name` posted by older app versions and stores NULL in
+  that column; its README shows how to clear the names kept in old rows.
 - **A quiet update bar instead of the "Open the download page?" dialog.** A newer
   release shows one line under the menu (version and headline) with What's new (its
   first highlights), Download (the installer, Portable ZIP or Mac dmg this copy came
