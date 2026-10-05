@@ -16,6 +16,19 @@ on:
     branches: [master, "release/**", "chore/**"]
 
 jobs:
+  repo-hygiene:
+    name: repo hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Fails when a path that was moved out of the tree (session notes, agent briefs,
+      # generated repo maps, local notes) is tracked again, or the root grows past the limit.
+      - name: Deny-listed paths and root size
+        run: python3 tools/check_repo_hygiene.py
+
   unit-tests:
     name: ${{ matrix.os }} · Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}

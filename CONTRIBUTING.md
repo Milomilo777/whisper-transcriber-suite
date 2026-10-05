@@ -45,6 +45,9 @@ Both must be clean before opening a PR:
   `tests/smoke/`) must pass. `tests/smoke/` needs a real Whisper model
   + a real video file and isn't part of CI — see
   [docs/TESTING.md](docs/TESTING.md) if you want to run it locally.
+- **repo hygiene** (CI job): `python tools/check_repo_hygiene.py` fails when a path that
+  was moved out of the tree (session notes, agent briefs, generated repo maps, local notes)
+  is tracked again, or when the repository root holds more than 24 files.
 
 New code needs new tests in the same style as its neighbors (every
 `core/writers/*.py` and `core/integrations/*.py` module has a matching
