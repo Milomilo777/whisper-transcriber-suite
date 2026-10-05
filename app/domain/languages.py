@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 
 # Display name → comma-separated yt-dlp subtitle language codes.
 # Order: Automatic, English, then alphabetical by display name. Multi-variant
@@ -141,6 +142,78 @@ def subtitle_lang_args(lang: str) -> str:
     return ",".join(_SUB_LANG_REGEX_METACHARS.sub(r"\\\1", c) for c in codes)
 
 
+CAPTION_BAR_MAX_LANGUAGES = 6
+_AUTO_ORIGINAL_SUFFIX = "-orig"
+
+
+def caption_language_name(code: str) -> str:
+    """Display name for a yt-dlp caption code: ``"es"`` -> ``"Spanish"``, else the code."""
+    base = code[: -len(_AUTO_ORIGINAL_SUFFIX)] if code.endswith(_AUTO_ORIGINAL_SUFFIX) else code
+    for name, codes in SUBTITLE_LANGUAGES:
+        entries = [c.strip() for c in codes.split(",") if c.strip()]
+        if base in entries:
+            return name.split(" (")[0]
+    head = base.split("-")[0]
+    if head != base:
+        for name, codes in SUBTITLE_LANGUAGES:
+            if head in [c.strip() for c in codes.split(",")]:
+                return name.split(" (")[0]
+    return base
+
+
+def real_caption_langs(caption_langs: dict[str, str]) -> dict[str, str]:
+    """Drop YouTube's automatic translations when the real speech-recognition track exists.
+
+    YouTube lists an automatic translation into every language beside the one real
+    track (``xx-orig``, with ``xx`` itself as its alias). When that track is present
+    only it and its alias are kept, so "available" never means "machine-translated".
+    """
+    originals = {c for c, kind in caption_langs.items() if kind == "auto" and c.endswith(_AUTO_ORIGINAL_SUFFIX)}
+    if not originals:
+        return caption_langs
+    keep = originals | {c[: -len(_AUTO_ORIGINAL_SUFFIX)] for c in originals}
+    return {c: kind for c, kind in caption_langs.items() if kind != "auto" or c in keep}
+
+
+def caption_availability_text(
+    caption_langs: dict[str, str], prefer: Iterable[str] = (),
+) -> str:
+    """One line naming the languages that already have subtitles, or ``""`` for none.
+
+    *caption_langs* is the ``code -> "manual" / "auto"`` map of the format lookup.
+    Subtitles made by the uploader come first, automatic ones after. YouTube lists
+    an automatic translation into every language next to the one real speech
+    recognition track (``xx-orig``); when such a track exists only it is shown, so
+    the line never claims a hundred languages. At most ``CAPTION_BAR_MAX_LANGUAGES``
+    are named, the rest are counted. Languages in *prefer* (the chosen subtitle
+    language, the video's own) are named first, so a video with forty uploader
+    subtitle tracks does not open with whichever sorts first.
+    """
+    if not caption_langs:
+        return ""
+    caption_langs = real_caption_langs(caption_langs)
+    manual = [c for c, kind in caption_langs.items() if kind == "manual"]
+    automatic = [c for c, kind in caption_langs.items() if kind == "auto"]
+    entries: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for codes, label in ((manual, "made by the uploader"), (automatic, "automatic")):
+        for code in codes:
+            name = caption_language_name(code)
+            if name not in seen:
+                seen.add(name)
+                entries.append((name, label))
+    if not entries:
+        return ""
+    wanted = [caption_language_name(code) for code in prefer if code]
+    entries.sort(key=lambda e: wanted.index(e[0]) if e[0] in wanted else len(wanted))
+    shown = entries[:CAPTION_BAR_MAX_LANGUAGES]
+    text = ", ".join(f"{name} ({label})" for name, label in shown)
+    extra = len(entries) - len(shown)
+    if extra > 0:
+        text += f" and {extra} more"
+    return f"Subtitles available: {text}"
+
+
 def resolve_caption_kind(
     caption_langs: dict[str, str], lang_codes_csv: str, fallback_lang: str = "",
 ) -> str:
@@ -159,6 +232,7 @@ def resolve_caption_kind(
     """
     if not caption_langs:
         return ""
+    caption_langs = real_caption_langs(caption_langs)
     candidates = [c.strip() for c in (lang_codes_csv or "").split(",") if c.strip()]
     if not candidates and fallback_lang:
         candidates = [fallback_lang.strip()]

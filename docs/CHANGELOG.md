@@ -6,6 +6,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **The Download tab says which subtitles a video already has.** After a link lookup a line under the
+  link field names them ("Subtitles available: English (made by the uploader), Spanish (automatic)"),
+  uploader-made and automatic told apart; it is hidden when there are none and for SMTV episodes. With
+  "Transcribe after download" on and subtitles in the chosen language, **Download** asks "Use the existing
+  subtitles (seconds) or transcribe (minutes)?" with a "Don't ask again" box (`download_caption_choice`,
+  also in Advanced settings > Downloads). YouTube's automatic translations no longer count as subtitles
+  once the real speech-recognition track is listed.
 - **The video downloader (yt-dlp) updates itself without administrator rights.** A download
   or format lookup that fails like an outdated yt-dlp (HTTP 403, signature or extractor
   errors) shows a bar with **Update it**: yt-dlp's own updater refreshes a copy in the user

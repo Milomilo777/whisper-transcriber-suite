@@ -72,6 +72,7 @@ def _fake_dialog(app: Any, **overrides: Any) -> types.SimpleNamespace:
         _telemetry_opt_in=_V(False),
         _update_check_enabled=_V(True),
         _yt_dlp_update_mode=_V("ask"),
+        _caption_choice_var=_V("ask"),
         _minimise_to_tray=_V(False),
         _watched_folder=_V(""),
         _watched_folder_enabled=_V(False),
@@ -545,3 +546,15 @@ def _all_widgets(widget: Any):
     for child in widget.winfo_children():
         yield child
         yield from _all_widgets(child)
+
+
+@pytest.mark.parametrize("choice", ["ask", "captions", "transcribe"])
+def test_save_writes_the_subtitle_choice(monkeypatch, choice) -> None:
+    from app.dialogs import advanced as adv
+
+    monkeypatch.setattr(adv, "save_config", lambda _cfg: None)
+    cfg = _base_cfg()
+    adv.AdvancedDialog._save_and_close(
+        _fake_dialog(_fake_app(cfg), _caption_choice_var=_V(choice))  # type: ignore[arg-type]
+    )
+    assert cfg["download_caption_choice"] == choice

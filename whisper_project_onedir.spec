@@ -156,6 +156,7 @@ a = Analysis(
         'app.widgets',
         'app.observability',
         'app.dialogs.advanced',
+        'app.dialogs.caption_choice',
         'app.dialogs.hub_setup',
         'app.dialogs.model_download',
         'app.dialogs.statistics',

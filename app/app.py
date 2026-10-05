@@ -599,6 +599,9 @@ class App(tk.Tk):
     # recent format lookup found — see app.services.format_service).
     caption_shortcut_status_var: tk.StringVar
     caption_shortcut_button: "ttk.Button"
+    # "Subtitles available: ..." line under the link field (update_caption_bar).
+    caption_bar_var: tk.StringVar
+    caption_bar_label: "ttk.Label"
     smtv_download_all_parts_var: tk.BooleanVar
     # Diarization toggle (Transcribe tab)
     diarization_var: tk.BooleanVar
@@ -2586,6 +2589,33 @@ class App(tk.Tk):
         else:
             self.format_status_var.set("YouTube helper installed.")
 
+    def update_caption_bar(self) -> None:
+        """Show which subtitles the looked-up video has under the link field.
+
+        Hidden when there are none, and never for an SMTV episode (it writes
+        its own transcript with every download).
+        """
+        var = getattr(self, "caption_bar_var", None)
+        label = getattr(self, "caption_bar_label", None)
+        if var is None or label is None:
+            return
+        from app.domain.languages import SUBTITLE_LANGUAGES, caption_availability_text
+
+        text = ""
+        if getattr(self, "_smtv_episode", None) is None:
+            chosen = self.subtitle_lang_var.get() if hasattr(self, "subtitle_lang_var") else ""
+            chosen_codes = next((c for n, c in SUBTITLE_LANGUAGES if n == chosen), "")
+            prefer = [c.strip() for c in chosen_codes.split(",")]
+            prefer.append(getattr(self, "current_video_language", "") or "")
+            text = caption_availability_text(
+                getattr(self, "current_video_caption_langs", None) or {}, prefer
+            )
+        var.set(text)
+        if text:
+            label.pack(anchor="w", pady=(2, 0))
+        else:
+            label.pack_forget()
+
     def update_caption_shortcut_state(self) -> None:
         """Show/hide the "Use captions instead" shortcut.
 
@@ -2596,6 +2626,7 @@ class App(tk.Tk):
         writes its own transcript alongside every download, so the
         shortcut never applies while an SMTV episode is loaded.
         """
+        self.update_caption_bar()
         status_var = getattr(self, "caption_shortcut_status_var", None)
         button = getattr(self, "caption_shortcut_button", None)
         if status_var is None or button is None:

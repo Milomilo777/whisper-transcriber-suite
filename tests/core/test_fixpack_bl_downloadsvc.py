@@ -98,6 +98,7 @@ def _bare_app(monkeypatch, tmp_path, *, url: str, episode):
     app.current_video_title = "Episode"
     app.current_video_language = "en"
     app.download_subtitles_var = _Var("")
+    app.auto_transcribe_var = _Var(False)
     app.subtitle_lang_var = _Var("")
     app.download_start_time_var = _Var("")
     app.download_end_time_var = _Var("")

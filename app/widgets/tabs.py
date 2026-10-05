@@ -809,8 +809,15 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Label(top, text="URL").grid(row=0, column=0, sticky="w")
     app.download_url_var = tk.StringVar()
     app.download_url_var.trace_add("write", lambda *_: app.format_service.schedule_lookup())
-    ttk.Entry(top, textvariable=app.download_url_var, width=80).grid(
-        row=0, column=1, columnspan=2, sticky="ew", padx=(6, 0)
+    url_cell = ttk.Frame(top)
+    url_cell.grid(row=0, column=1, columnspan=2, sticky="ew", padx=(6, 0))
+    ttk.Entry(url_cell, textvariable=app.download_url_var, width=80).pack(fill="x")
+    # Which subtitles the looked-up video already has; packed only when there
+    # are some (App.update_caption_bar), so it takes no room otherwise.
+    app.caption_bar_var = tk.StringVar(value="")
+    app.caption_bar_label = ttk.Label(
+        url_cell, textvariable=app.caption_bar_var,
+        foreground="#2a7", wraplength=760, justify="left",
     )
     help_icon(
         top,

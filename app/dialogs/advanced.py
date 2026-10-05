@@ -201,6 +201,9 @@ class AdvancedDialog(tk.Toplevel):
         # Video downloader (yt-dlp) updates: "ask" / "auto" / "never".
         from core.yt_dlp_update import update_mode as _yt_dlp_update_mode
         self._yt_dlp_update_mode = tk.StringVar(value=_yt_dlp_update_mode(cfg))
+        # Subtitles or transcription for a download to transcribe: "ask" / "captions" / "transcribe".
+        from app.dialogs.caption_choice import remembered_choice
+        self._caption_choice_var = tk.StringVar(value=remembered_choice(cfg))
         existing_formats = set(cfg.get("output_formats") or ["srt", "json"])
         self._format_vars: dict[str, tk.BooleanVar] = {
             f: tk.BooleanVar(value=(f in existing_formats)) for f in supported_formats()
@@ -1490,7 +1493,24 @@ class AdvancedDialog(tk.Toplevel):
             ),
         ).grid(row=5, column=0, sticky="w", padx=8, pady=(0, 4))
         self._build_yt_dlp_update_choice(download, row=6)
+        self._build_caption_choice(download, row=12)
         return download
+
+    def _build_caption_choice(self, parent: ttk.LabelFrame, *, row: int) -> None:
+        """What a download to transcribe does when the video already has subtitles."""
+        ttk.Label(
+            parent,
+            text="When a video already has subtitles and I download it to transcribe:",
+        ).grid(row=row, column=0, columnspan=3, sticky="w", padx=8, pady=(8, 2))
+        choices = (
+            ("Ask me each time", "ask"),
+            ("Use the subtitles (seconds) instead of transcribing", "captions"),
+            ("Always download and transcribe", "transcribe"),
+        )
+        for i, (text, value) in enumerate(choices, start=1):
+            ttk.Radiobutton(
+                parent, text=text, value=value, variable=self._caption_choice_var,
+            ).grid(row=row + i, column=0, columnspan=3, sticky="w", padx=24, pady=1)
 
     def _build_yt_dlp_update_choice(self, parent: ttk.LabelFrame, *, row: int) -> None:
         """Video downloader updates: ask (default) / automatic / never. Local only."""
@@ -1979,6 +1999,7 @@ class AdvancedDialog(tk.Toplevel):
         if self._cookies_browser.get() != self._cookies_browser_initial:
             cfg["cookies_from_browser"] = cookie_browser_value(self._cookies_browser.get())
         cfg["yt_dlp_update_mode"] = str(self._yt_dlp_update_mode.get())
+        cfg["download_caption_choice"] = str(self._caption_choice_var.get())
         _old_backend = str(cfg.get("transcribe_backend") or "")
         cfg["transcribe_backend"] = (
             engine_value_for_label(self._backend_display.get()) or "faster_whisper"

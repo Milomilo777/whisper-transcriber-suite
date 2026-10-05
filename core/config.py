@@ -63,6 +63,10 @@ DEFAULT_CONFIG = {
     "download_folder": "",
     "download_subtitles_enabled": False,
     "download_subtitle_lang": "Automatic",
+    # A download to be transcribed, of a video that already has subtitles in the
+    # chosen language: "ask" shows the question, "captions" always takes the
+    # subtitles, "transcribe" always transcribes (the dialog's "Don't ask again").
+    "download_caption_choice": "ask",
     # yt-dlp updates (core.yt_dlp_update): "ask" offers an update when a
     # download fails the way an outdated yt-dlp fails, "auto" updates the
     # user-writable copy before a download at most once a day, "never" leaves

@@ -693,6 +693,62 @@ class DownloadService:
             message = f"Wait for formats to load, then select an {kind} format."
         messagebox.showwarning(f"Missing {kind} format", message, parent=app)
 
+    def _caption_choice(self) -> str:
+        """Subtitles or transcription? ``""`` = no question applies.
+
+        Applies only when "Transcribe after download" is on, the loaded video is
+        not an SMTV episode, and its latest format lookup found subtitles in the
+        language the Subtitles combo resolves to (the same rule as the "Use
+        captions instead" button). Returns ``"captions"``, ``"transcribe"`` or
+        ``"cancel"``; a remembered "don't ask again" answer skips the dialog.
+        No question while a format lookup is still pending (the subtitle data
+        would belong to the previous link) or while a time range is set (the
+        user wants that slice of the media, not only its subtitles).
+        """
+        from app.dialogs.caption_choice import (
+            CHOICE_CANCEL, ask_caption_choice, remembered_choice,
+        )
+        from app.domain.languages import (
+            SUBTITLE_LANGUAGES, caption_language_name, resolve_caption_kind,
+        )
+
+        app = self.app
+        auto_var = getattr(app, "auto_transcribe_var", None)
+        if auto_var is None or not auto_var.get():
+            return ""
+        if getattr(app, "_smtv_episode", None) is not None:
+            return ""
+        if getattr(app, "format_lookup_after", None) is not None:
+            return ""
+        for var_name in ("download_start_time_var", "download_end_time_var"):
+            var = getattr(app, var_name, None)
+            if var is not None and _parse_timecode(var.get()):
+                return ""
+        sub_lang_var = getattr(app, "subtitle_lang_var", None)
+        sub_lang_name = sub_lang_var.get() if sub_lang_var is not None else ""
+        lang_code_csv = next((code for name, code in SUBTITLE_LANGUAGES if name == sub_lang_name), "")
+        detected = getattr(app, "current_video_language", "") or ""
+        kind = resolve_caption_kind(
+            getattr(app, "current_video_caption_langs", None) or {},
+            lang_code_csv, fallback_lang=detected,
+        )
+        if not kind:
+            return ""
+        remembered = remembered_choice(app.app_config)
+        if remembered != "ask":
+            return remembered
+        language = sub_lang_name if sub_lang_name and sub_lang_name != "Automatic" else (
+            caption_language_name(detected) if detected else "the detected language"
+        )
+        answer, dont_ask = ask_caption_choice(app, kind=kind, language=language)
+        if dont_ask and answer != CHOICE_CANCEL:
+            app.app_config["download_caption_choice"] = answer
+            try:
+                save_config(app.app_config)
+            except OSError:
+                logger.exception("Failed to persist the subtitle choice")
+        return answer
+
     def enqueue_from_form(self) -> None:
         """Read the download tab form, validate, build a task, and enqueue."""
         from tkinter import messagebox
@@ -711,6 +767,15 @@ class DownloadService:
             return
         if not folder:
             messagebox.showwarning("Missing folder", "Select a download folder first.", parent=app)
+            return
+
+        # A download that will be transcribed, of a video that already has
+        # subtitles in the chosen language: offer the seconds-long shortcut.
+        choice = self._caption_choice()
+        if choice == "cancel":
+            return
+        if choice == "captions":
+            self.enqueue_caption_only_from_form()
             return
 
         # Resolve the SMTV episode up front: an SMTV news/short clip ships
