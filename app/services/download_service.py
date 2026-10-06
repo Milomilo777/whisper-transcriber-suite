@@ -613,12 +613,16 @@ class DownloadService:
         lang = task.subtitle_lang or task.detected_language or ""
         return lang.strip()
 
-    def build_subtitle_command(self, task: "VideoDownloadTask", lang: str) -> list[str]:
+    def build_subtitle_command(
+        self, task: "VideoDownloadTask", lang: str, *, force_no_cookies: bool = False
+    ) -> list[str]:
         return build_subtitle_command(
             task, lang,
             yt_dlp_path=self.app.yt_dlp_path(),
             bin_path=self.app.bin_path(),
-            cookies_from_browser=self.app.app_config.get("cookies_from_browser", ""),
+            cookies_from_browser=(
+                None if force_no_cookies else self.app.app_config.get("cookies_from_browser", "")
+            ),
             js_runtime_args=yt_dlp_js_args(self.app.yt_dlp_path()),
         )
 
@@ -1656,6 +1660,90 @@ class DownloadService:
         except TimeoutError as e:
             raise RuntimeError("SMTV CDN read timeout") from e
 
+    def _run_subtitle_process(
+        self, task: "VideoDownloadTask", sub_lang: str, *, force_no_cookies: bool = False
+    ) -> tuple[list[str], bool, int, str]:
+        """Run one yt-dlp caption fetch to completion.
+
+        Returns ``(written_files, no_captions_warning, return_code,
+        last_error_line)``; streams every output line to the task log.
+        """
+        app = self.app
+        proc = subprocess.Popen(
+            self.build_subtitle_command(task, sub_lang, force_no_cookies=force_no_cookies),
+            cwd=os.path.dirname(os.path.abspath(app.entry_file)),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=_utf8_subprocess_env(),
+            # Isolate so a cancel/exit can kill yt-dlp AND its ffmpeg child.
+            **new_session_kwargs(),
+        )
+        task.process = proc
+        wrote_files: list[str] = []
+        no_subs_warning = False
+        last_error_line = ""
+        last_line = ""
+        for line in proc.stdout:  # type: ignore[union-attr]
+            line = line.rstrip()
+            if not line:
+                continue
+            last_line = line
+            if "error" in line.lower():
+                last_error_line = line
+            app.download_events.put(("log", task, line))
+            if "Writing video subtitles to:" in line:
+                wrote_files.append(line.split("Writing video subtitles to:", 1)[1].strip())
+            elif (
+                "no subtitles for the requested languages" in line.lower()
+                or "no automatic captions for the requested languages" in line.lower()
+            ):
+                no_subs_warning = True
+        sub_rc = proc.wait()
+        # Only clear the slot if it is still ours. A pause+resume can start
+        # a newer run that has already assigned its own Popen here; nulling
+        # it would make that live process unkillable/unwaitable.
+        if task.process is proc:
+            task.process = None
+        return wrote_files, no_subs_warning, sub_rc, last_error_line or last_line
+
+    def _fetch_subtitles(
+        self, task: "VideoDownloadTask", sub_lang: str, run_generation: int | None = None
+    ) -> tuple[list[str], bool, int]:
+        """Caption fetch with the same cookie fallback as the media download.
+
+        A cookie-jar read failure (browser open and locking its database,
+        DPAPI) is a local problem: public captions need no login, so retry
+        once without the browser cookies. Returns ``(written_files,
+        no_captions_warning, return_code)``.
+        """
+        wrote_files, no_subs_warning, sub_rc, error_line = self._run_subtitle_process(
+            task, sub_lang
+        )
+        if (
+            sub_rc
+            and not wrote_files
+            and not task.cancelled
+            and not getattr(task, "paused", False)
+            and (
+                run_generation is None
+                or getattr(task, "_run_generation", run_generation) == run_generation
+            )
+            and _cookies_from_browser_args(self.app.app_config.get("cookies_from_browser", ""))
+            and _is_cookie_extraction_error(error_line)
+        ):
+            self.app.download_events.put((
+                "log", task,
+                "--- Could not read cookies from your browser (close it fully "
+                "if it's open) — retrying the captions without cookies ---",
+            ))
+            wrote_files, no_subs_warning, sub_rc, _ = self._run_subtitle_process(
+                task, sub_lang, force_no_cookies=True
+            )
+        return wrote_files, no_subs_warning, sub_rc
+
     def _subtitle_phase(self, task: "VideoDownloadTask") -> bool:
         """Fetch subtitles before the media download.
 
@@ -1672,39 +1760,7 @@ class DownloadService:
 
         app.download_events.put(("subtitle_status", task, f"fetching subtitles ({sub_lang})..."))
         app.download_events.put(("log", task, f"--- Subtitle phase: requesting {sub_lang} ---"))
-        proc = subprocess.Popen(
-            self.build_subtitle_command(task, sub_lang),
-            cwd=os.path.dirname(os.path.abspath(app.entry_file)),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            env=_utf8_subprocess_env(),
-            # Isolate so a cancel/exit can kill yt-dlp AND its ffmpeg child.
-            **new_session_kwargs(),
-        )
-        task.process = proc
-        wrote_files: list[str] = []
-        no_subs_warning = False
-        for line in proc.stdout:  # type: ignore[union-attr]
-            line = line.rstrip()
-            if not line:
-                continue
-            app.download_events.put(("log", task, line))
-            if "Writing video subtitles to:" in line:
-                wrote_files.append(line.split("Writing video subtitles to:", 1)[1].strip())
-            elif (
-                "no subtitles for the requested languages" in line.lower()
-                or "no automatic captions for the requested languages" in line.lower()
-            ):
-                no_subs_warning = True
-        sub_rc = proc.wait()
-        # Only clear the slot if it is still ours. A pause+resume can start
-        # a newer run that has already assigned its own Popen here; nulling
-        # it would make that live process unkillable/unwaitable.
-        if task.process is proc:
-            task.process = None
+        wrote_files, no_subs_warning, sub_rc = self._fetch_subtitles(task, sub_lang)
         if task.cancelled:
             for partial in wrote_files:
                 try:
@@ -1783,36 +1839,9 @@ class DownloadService:
 
         app.download_events.put(("subtitle_status", task, f"fetching captions ({sub_lang})..."))
         app.download_events.put(("log", task, f"--- Caption-only phase: requesting {sub_lang} ---"))
-        proc = subprocess.Popen(
-            self.build_subtitle_command(task, sub_lang),
-            cwd=os.path.dirname(os.path.abspath(app.entry_file)),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            env=_utf8_subprocess_env(),
-            **new_session_kwargs(),
+        wrote_files, no_subs_warning, sub_rc = self._fetch_subtitles(
+            task, sub_lang, run_generation
         )
-        task.process = proc
-        wrote_files: list[str] = []
-        no_subs_warning = False
-        for line in proc.stdout:  # type: ignore[union-attr]
-            line = line.rstrip()
-            if not line:
-                continue
-            app.download_events.put(("log", task, line))
-            if "Writing video subtitles to:" in line:
-                wrote_files.append(line.split("Writing video subtitles to:", 1)[1].strip())
-            elif (
-                "no subtitles for the requested languages" in line.lower()
-                or "no automatic captions for the requested languages" in line.lower()
-            ):
-                no_subs_warning = True
-        sub_rc = proc.wait()
-        # Only clear the slot if it is still ours (mirrors _subtitle_phase).
-        if task.process is proc:
-            task.process = None
         if (
             run_generation is not None
             and getattr(task, "_run_generation", run_generation) != run_generation

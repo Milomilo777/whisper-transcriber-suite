@@ -223,6 +223,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **"Use captions instead" no longer fails while the browser is open.** When yt-dlp cannot copy
+  the browser's cookie database (`Could not copy Chrome cookie database`), the caption fetch now
+  retries once without browser cookies and logs one line saying so, as the media download already
+  did. The caption step that runs before a download got the same fallback.
 - **The yt-dlp updater no longer carries a "rejected" mark over to a replacement file.** The
   mark is matched by file size and modification time, so a new copy written in the same timer
   tick as the rejected one could be refused too. Copying the bundled binary into place now
