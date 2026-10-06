@@ -26,9 +26,11 @@ that Segoe UI's line already fits get no font of their own.
 
 A Treeview tag's font restyles every column of the row. Han text never lost pixels under the
 default fallback, so trees with more than one column give it no font (the progress bars and the
-times of all rows stay alike); single-column trees and text boxes keep it. A row font whose line
-is taller than the rows is used a little smaller (down to ``_ROW_MIN_SCALE``) before a tree gets
-taller rows, so a list keeps its row count.
+times of all rows stay alike); single-column trees and text boxes keep it. For the same reason a
+script font in a multi-column tree keeps the tree's size and row height (the list keeps its row
+count; Myanmar's tallest marks may lose a pixel). In a single-column tree a row font whose line is
+taller than the rows is used a little smaller (down to ``_ROW_MIN_SCALE``) before the tree gets
+taller rows.
 
 Windows only: macOS and Linux keep the platform's fonts and font fallback. A font that is not
 installed is skipped (logged once) and the widget keeps the font it had.
@@ -290,14 +292,16 @@ def tree_row_tags(tree: ttk.Treeview, *texts: str, language: str | None = None) 
     ``texts`` are the row's cells in that script (a file name, a transcript line). ttk applies a
     tag's font to the whole row, which leads to three rules (module docstring): a Sinhala or
     Myanmar cell longer than ``RUN_BYTES`` keeps the default font, because one font would make Tk
-    cut the row inside a cluster; a tree with more than one column gives Han no font, so the
-    other columns keep the default font; the first row in a font configures the tag, a little
+    cut the row inside a cluster; a tree with more than one column gives Han no font and other
+    scripts their font at the tree's size and row height, so the other columns look like every
+    other row's; in a single-column tree the first row in a font configures the tag, a little
     smaller if that makes its line fit the rows, else this tree gets taller rows.
     """
     key = font_key(" ".join(texts), language) if _on_windows() else None
     if key is None:
         return ()
-    if key in _HAN_KEYS and len(tree.tk.splitlist(tree.cget("columns"))) > 1:
+    columns = len(tree.tk.splitlist(tree.cget("columns")))
+    if key in _HAN_KEYS and columns > 1:
         return ()
     if key not in _HAN_KEYS and any(text_script(t) == key and sum(map(_tk_bytes, t)) > RUN_BYTES
                                     for t in texts):
@@ -309,6 +313,13 @@ def tree_row_tags(tree: ttk.Treeview, *texts: str, language: str | None = None) 
     if not str(tree.tag_configure(tag, "font")):
         style_name = str(tree.cget("style")) or "Treeview"
         size = _tree_font_size(tree, style_name)
+        if columns > 1:
+            # The other columns (status, a progress bar of block characters, times) take this
+            # font too: at the tree's own size and row height they look like every other row's,
+            # and the list keeps its row count; a line taller than the rows loses at most its
+            # outermost pixel rows (Myanmar Text 10 in 22-pixel rows: 2 pixels in 2 of 7 samples).
+            tree.tag_configure(tag, font=(family, size))
+            return (tag,)
         rows = _int(ttk.Style(tree).lookup(style_name, "rowheight"))
         fitted = _fitting_size(tree, family, size, rows)
         tree.tag_configure(tag, font=(family, size if fitted is None else fitted))

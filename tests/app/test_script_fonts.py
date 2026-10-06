@@ -407,18 +407,22 @@ def test_a_row_font_shrinks_to_fit_the_rows_before_the_tree_grows(windows: set[s
     if rows >= full:
         pytest.skip("this machine's Myanmar font has the same line height at both sizes")
     style.configure("Treeview", rowheight=rows)  # the full size does not fit, one step smaller does
-    tree = ttk.Treeview(root, columns=("file", "status"), show="headings", height=8)
-    root.update_idletasks()
-    before = tree.winfo_reqheight()
-    tags = script_fonts.tree_row_tags(tree, "interview_မြန်မာ.mp4")
-    assert tags == ("script-font-Myanmar_Text",)
-    font = tkfont.Font(root=root, font=tree.tag_configure(tags[0], "font"))
-    assert font.metrics("linespace") <= rows
-    assert abs(font.cget("size")) >= abs(size) * script_fonts._ROW_MIN_SCALE
-    assert str(tree.cget("style")) == ""
-    tree.insert("", "end", values=("interview_မြန်မာ.mp4", "finished"), tags=tags)
-    root.update_idletasks()
-    assert tree.winfo_reqheight() == before  # still 8 rows in the same pixels
+    for columns in (("file",), ("file", "status", "progress")):
+        tree = ttk.Treeview(root, columns=columns, show="headings", height=8)
+        root.update_idletasks()
+        before = tree.winfo_reqheight()
+        tags = script_fonts.tree_row_tags(tree, "interview_မြန်မာ.mp4")
+        assert tags == ("script-font-Myanmar_Text",)
+        font = tkfont.Font(root=root, font=tree.tag_configure(tags[0], "font"))
+        if len(columns) == 1:
+            assert font.metrics("linespace") <= rows
+            assert abs(font.cget("size")) >= abs(size) * script_fonts._ROW_MIN_SCALE
+        else:  # status and progress bar take the font too: the tree's own size, like other rows
+            assert font.cget("size") == size
+        assert str(tree.cget("style")) == ""
+        tree.insert("", "end", values=("interview_မြန်မာ.mp4",) * len(columns), tags=tags)
+        root.update_idletasks()
+        assert tree.winfo_reqheight() == before  # still 8 rows in the same pixels
 
 
 def test_long_sinhala_and_myanmar_rows_keep_the_default_font(windows: set[str], root: tk.Tk) -> None:
