@@ -19,6 +19,7 @@ import pytest
 import app.app as app_mod
 from app.app import App
 from app.widgets import update_bar as bar_mod
+from app.widgets.notice import host_for
 from core import updates as u
 
 _TODAY = date(2026, 10, 6)
@@ -355,9 +356,11 @@ def test_manual_check_of_a_skipped_version_asks_first(host, boxes, answer):
 
 def test_manual_check_reports_up_to_date_and_offline(host, boxes):
     host._on_update_result(_info("v1.9.3", newer=False), manual=True)
-    assert "latest version (1.9.3)" in boxes.showinfo.call_args.args[1]
+    notices = host_for(host)
+    assert notices.current is not None and "latest version (1.9.3)" in notices.current[0]
     host._on_update_result(None, manual=True)
-    assert "Could not reach the update server" in boxes.showinfo.call_args.args[1]
+    assert "Could not reach the update server" in notices.pending[-1][0]
+    boxes.showinfo.assert_not_called()
     assert host._update_bar is None
 
 

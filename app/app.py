@@ -32,6 +32,7 @@ from app.dialogs.statistics import show_statistics as _show_stats
 from app.dpi import scaled_size
 from app.widgets.console import apply_console_theme, build_console, insert_log_line
 from app.widgets.error_dialog import show_error
+from app.widgets.notice import notify
 from app.widgets.platform import open_folder as _open_folder_helper
 from app.widgets.live_tab import build_live_tab, stop_live_session
 from app.widgets.smtv_tab import build_smtv_tab
@@ -4816,12 +4817,11 @@ class App(tk.Tk):
 
         if info is None:
             if manual:
-                messagebox.showinfo(
-                    "Check for updates",
-                    "Could not reach the update server.\n\n"
-                    "Please check your internet connection and try again "
-                    "later.",
-                    parent=self,
+                notify(
+                    self,
+                    "Could not reach the update server. Please check your "
+                    "internet connection and try again later.",
+                    "warning",
                 )
             return
 
@@ -4830,10 +4830,10 @@ class App(tk.Tk):
 
         if not info.is_newer:
             if manual:
-                messagebox.showinfo(
-                    "Check for updates",
+                notify(
+                    self,
                     f"You're on the latest version ({_updates.version_label(_APP_VERSION)}).",
-                    parent=self,
+                    "success",
                 )
             return
 

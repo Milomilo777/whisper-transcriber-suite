@@ -5,10 +5,11 @@ A read-only summary of the SQLite history. Opened from File → Statistics....
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import ttk
 from typing import TYPE_CHECKING
 
 from app.widgets.error_dialog import show_error
+from app.widgets.notice import notify
 
 if TYPE_CHECKING:
     from app.app import App
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 
 def show_statistics(app: "App") -> None:
     if not app.history:
-        messagebox.showinfo("Statistics", "history.db is unavailable.", parent=app)
+        notify(app, "Statistics are unavailable: history.db could not be opened.", "warning")
         return
     try:
         s = app.history.stats()

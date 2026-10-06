@@ -6,6 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Quiet notices instead of message boxes for plain information.** "Saved", "Renamed", "You're on the latest version", "Could not reach the update server" and similar hints now show as a short notice along the bottom edge of the window (`app/widgets/notice.py`): it hides by itself after a few seconds, stays while the pointer is over it, never takes the keyboard focus, and `Ctrl+.` or its close button dismisses it. At most three are held. Questions, errors that need action, consent and data-loss warnings are still dialogs.
 - **One place for colours, spacing and type sizes, and one icon set.** `app/theme/tokens.py` now
   holds every colour the UI uses (the 48 literal hex values in `app/` are gone), the 4/8/12/16/24/32
   spacing scale and a type scale. Near-duplicate colours were unified, so the blue of links and

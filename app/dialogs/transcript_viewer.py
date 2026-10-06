@@ -46,6 +46,7 @@ from typing import Any, Optional
 from app.dpi import scaled_size
 from app.theme import tokens
 from app.widgets.error_dialog import show_error
+from app.widgets.notice import notify
 from app.widgets.tooltip import help_icon
 
 
@@ -1116,18 +1117,15 @@ class TranscriptViewer(tk.Toplevel):
             return
         cfg = self._app_config()
         if not cfg.get("ai_enabled", False):
-            messagebox.showinfo(
-                "AI tools",
+            notify(
+                self,
                 "AI Layer is off — turn it on in Advanced Settings' AI "
                 "Layer section.",
-                parent=self,
+                "warning",
             )
             return
         if not self.segments:
-            messagebox.showinfo(
-                "AI tools", "This transcript has no segments to work with.",
-                parent=self,
-            )
+            notify(self, "This transcript has no segments to work with.", "warning")
             return
         self._set_ai_buttons_busy(True)
         self._set_ai_result(f"{label}…")
@@ -1170,7 +1168,7 @@ class TranscriptViewer(tk.Toplevel):
     def _run_ask(self) -> None:
         question = (self._ai_question_var.get() or "").strip()
         if not question:
-            messagebox.showinfo("Ask a question", "Type a question first.", parent=self)
+            notify(self, "Type a question first.", "warning")
             return
         text = self._full_transcript_text()
         self._run_ai_task("Ask", lambda runner: runner.ask(text, question))
@@ -1186,19 +1184,15 @@ class TranscriptViewer(tk.Toplevel):
         if self._ai_busy:
             return
         if not self.segments:
-            messagebox.showinfo(
-                "Bilingual subtitle",
-                "This transcript has no segments to translate.",
-                parent=self,
-            )
+            notify(self, "This transcript has no segments to translate.", "warning")
             return
         cfg = self._app_config()
         if not cfg.get("ai_enabled", False):
-            messagebox.showinfo(
-                "Bilingual subtitle",
+            notify(
+                self,
                 "AI Layer is off — turn it on in Advanced Settings' AI "
                 "Layer section.",
-                parent=self,
+                "warning",
             )
             return
         lang = (self._ai_target_lang_var.get() or "English").strip() or "English"
@@ -1305,6 +1299,8 @@ class TranscriptViewer(tk.Toplevel):
             )
             return
         translated_count = sum(1 for t in translations if t)
+        # A long background job ends here and the user may be in another window, so
+        # the result stays a dialog (a notice would be gone before it is seen).
         messagebox.showinfo(
             "Bilingual subtitle saved",
             f"Wrote {translated_count}/{len(translations)} translated "
@@ -1477,11 +1473,7 @@ class TranscriptViewer(tk.Toplevel):
 
     def _open_in_system_player(self) -> None:
         if not self.media_path:
-            messagebox.showinfo(
-                "No media",
-                "No media file was found alongside the transcript JSON.",
-                parent=self,
-            )
+            notify(self, "No media file was found alongside the transcript JSON.", "warning")
             return
         try:
             _os_open(self.media_path)
@@ -1527,10 +1519,10 @@ class TranscriptViewer(tk.Toplevel):
         if renamed:
             self._dirty = True
             self._populate_listbox()
-            messagebox.showinfo(
-                "Renamed",
+            notify(
+                self,
                 f"Renamed {renamed} segment(s). Use Save changes (Ctrl+S) to write.",
-                parent=self,
+                "success",
             )
 
     def _open_edit_timestamp(self, idx: int) -> None:
@@ -1556,10 +1548,10 @@ class TranscriptViewer(tk.Toplevel):
         if changed:
             self._dirty = True
             self._populate_listbox()
-        messagebox.showinfo(
-            "Fillers removed",
-            f"Updated {changed} segment(s). Use Save changes (Ctrl+S) to write.",
-            parent=self,
+        notify(
+            self,
+            f"Fillers removed: updated {changed} segment(s). Use Save changes (Ctrl+S) to write.",
+            "success" if changed else "info",
         )
 
     def _save_changes(self) -> None:
@@ -1589,11 +1581,11 @@ class TranscriptViewer(tk.Toplevel):
             )
             return
         self._dirty = False
-        messagebox.showinfo(
-            "Saved",
-            f"Wrote {len(self.segments)} segment(s) → "
+        notify(
+            self,
+            f"Saved {len(self.segments)} segment(s) → "
             f"{os.path.basename(self.json_path)}",
-            parent=self,
+            "success",
         )
 
     def _copy_to_clipboard(self, text: str) -> None:
