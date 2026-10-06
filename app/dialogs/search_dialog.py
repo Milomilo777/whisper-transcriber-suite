@@ -20,6 +20,7 @@ from tkinter import ttk
 from typing import Any
 
 from app.dpi import scaled_size
+from app.theme import script_fonts
 
 logger = logging.getLogger(__name__)
 
@@ -192,13 +193,11 @@ class SearchDialog(tk.Toplevel):
             return
         self._hits = hits
         for i, hit in enumerate(hits):
+            name = os.path.basename(hit.json_path)
             self.tree.insert(
                 "", "end", iid=str(i),
-                values=(
-                    os.path.basename(hit.json_path),
-                    _fmt_hms(hit.start_seconds),
-                    hit.text,
-                ),
+                values=(name, _fmt_hms(hit.start_seconds), hit.text),
+                tags=script_fonts.tree_row_tags(self.tree, name, hit.text),
             )
         self.status_var.set(f"{len(hits)} result(s)")
 

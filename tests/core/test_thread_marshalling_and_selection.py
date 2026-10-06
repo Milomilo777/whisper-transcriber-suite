@@ -73,7 +73,7 @@ class _FakeTree:
                 self._children.remove(i)
         self._sel = tuple(s for s in self._sel if s in self._children)
 
-    def insert(self, _parent, _index, values=()):
+    def insert(self, _parent, _index, values=(), tags=()):
         self._n += 1
         iid = f"I{self._n}"
         self._children.append(iid)

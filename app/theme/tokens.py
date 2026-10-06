@@ -80,3 +80,23 @@ FONT_SUBTITLE = 12
 FONT_TITLE = 14
 FONT_HEADLINE = 18
 TYPE_SCALE = (FONT_CAPTION, FONT_BODY, FONT_SUBTITLE, FONT_TITLE, FONT_HEADLINE)
+
+# ------------------------------------------------------------- font families
+# Windows only (see app.theme.script_fonts): elsewhere the platform fonts stay.
+# "ui": the proportional font of the transcript text boxes and, on Windows 10, of the
+# Treeview rows (sv_ttk asks for the Windows 11 font "Segoe UI Variable Text"; Tk then
+# uses Arial). The other keys (from ``script_fonts.font_key``) name the font for file
+# names and transcript lines that the UI font draws badly: tall marks cut off by the
+# line height, a Sinhala conjunct split, Chinese glyph shapes for Japanese.
+FONT_FAMILIES_WINDOWS = {
+    "ui": "Segoe UI",
+    "indic": "Nirmala UI",
+    "sinhala": "Nirmala UI",
+    "myanmar": "Myanmar Text",
+    "thai": "Leelawadee UI",
+    "lao": "Leelawadee UI",
+    "khmer": "Leelawadee UI",
+    "zh-hans": "Microsoft YaHei UI",
+    "zh-hant": "Microsoft JhengHei UI",
+    "ja": "Yu Gothic UI",
+}

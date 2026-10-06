@@ -47,7 +47,7 @@ from app.widgets.tabs import (
 from app.widgets.tray import TrayController
 from core import __version__ as _APP_VERSION
 from core import offline
-from app.theme import tokens
+from app.theme import script_fonts, tokens
 from core._proc import kill_process_tree
 from core.config import load_config, save_config
 from core.history import HistoryDB
@@ -784,6 +784,7 @@ class App(tk.Tk):
         logger.info("App startup; theme=%s", self.app_config.get("theme", "dark"))
         self.theme_var = tk.StringVar(value=self.app_config.get("theme", "light"))
         sv_ttk.set_theme(_resolve_theme(self.theme_var.get()))
+        script_fonts.apply_theme_fonts(self)
         self.parallel_workers = max(1, int(self.app_config.get("parallel_workers", 2)))
         self.next_worker_id = 1
         self.format_events: Queue = Queue(maxsize=2000)
@@ -1708,6 +1709,7 @@ class App(tk.Tk):
         name = self.theme_var.get()
         resolved = _resolve_theme(name)
         sv_ttk.set_theme(resolved)
+        script_fonts.apply_theme_fonts(self)
         if hasattr(self, "txt") and self.txt is not None:
             apply_console_theme(self.txt, resolved)
         self.app_config["theme"] = name
@@ -4459,16 +4461,18 @@ class App(tk.Tk):
             lang = getattr(t, "detected_language", "") or ""
             prob = getattr(t, "language_probability", None)
             lang_str = f"{lang} ({prob * 100:.0f}%)" if (lang and isinstance(prob, (int, float))) else lang
+            name = os.path.basename(t.file_path)
             item_id = self.tree.insert(
                 "",
                 "end",
                 values=(
-                    os.path.basename(t.file_path),
+                    name,
                     status_label(t.status),
                     self._row_progress_text(t.status, t.progress),
                     lang_str,
                     self.fmt_time(t),
                 ),
+                tags=script_fonts.tree_row_tags(self.tree, name, language=t.language or lang),
             )
             self.row_map[item_id] = t
         # Re-select the same task objects on their new iids (no-op when the
@@ -4525,6 +4529,10 @@ class App(tk.Tk):
                     status_label(task.status),
                     self._row_progress_text(task.status, prog),
                     self.fmt_time(task),
+                ),
+                tags=script_fonts.tree_row_tags(
+                    self.download_tree, task.title,
+                    language=task.subtitle_lang or task.detected_language,
                 ),
             )
             self.download_row_map[item_id] = task

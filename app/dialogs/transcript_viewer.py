@@ -44,7 +44,7 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any, Optional
 
 from app.dpi import scaled_size
-from app.theme import tokens
+from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
 from app.widgets.notice import notify
 from app.widgets.tooltip import help_icon
@@ -856,6 +856,7 @@ class TranscriptViewer(tk.Toplevel):
             start = _seg_float(ch, "start")
             self._chapters_tree.insert(
                 "", "end", iid=str(i), values=(_fmt_hms(start), title),
+                tags=script_fonts.tree_row_tags(self._chapters_tree, title),
             )
 
     def _on_chapter_select(self, _event: tk.Event) -> None:
@@ -1051,6 +1052,7 @@ class TranscriptViewer(tk.Toplevel):
         self._ai_result_text = tk.Text(
             result_frame, wrap="word", height=12, state="disabled",
         )
+        script_fonts.use_text_font(self._ai_result_text)
         ai_vsb = ttk.Scrollbar(
             result_frame, orient="vertical", command=self._ai_result_text.yview,
         )
@@ -1093,6 +1095,7 @@ class TranscriptViewer(tk.Toplevel):
             self._ai_result_text.configure(state="normal")
             self._ai_result_text.delete("1.0", "end")
             self._ai_result_text.insert("1.0", text)
+            script_fonts.tag_script_lines(self._ai_result_text)
             self._ai_result_text.configure(state="disabled")
         except Exception:  # noqa: BLE001
             pass
@@ -1356,28 +1359,10 @@ class TranscriptViewer(tk.Toplevel):
             if query and query not in text.lower() and query not in speaker.lower():
                 continue
             self.filtered_indices.append(idx)
-            min_prob = _segment_min_probability(seg)
-            conf_tags: tuple[str, ...] = ()
-            if min_prob is not None:
-                if min_prob >= 0.85:
-                    conf_tags = ("conf_high",)
-                elif min_prob >= 0.6:
-                    conf_tags = ("conf_med",)
-                else:
-                    conf_tags = ("conf_low",)
-            # v0.8 — light-red row background when the hallucination
-            # detector flagged this segment. Layer underneath karaoke
-            # 'active' so playback highlight still wins on the active
-            # row.
-            warn_tags: tuple[str, ...] = (
-                ("ts_warn",) if _segment_has_timing_issue(self.segments, idx) else ()
-            )
-            base_tags: tuple[str, ...] = warn_tags + conf_tags
-            if seg.get("suspect"):
-                base_tags = ("suspect",) + warn_tags + conf_tags
-            # Re-layer the karaoke 'active' tag on top of the
-            # confidence + suspect colours when this row is the
-            # currently-playing segment.
+            # Confidence colour, suspect / timing backgrounds and the script
+            # font (see _tags_for). Re-layer the karaoke 'active' tag on top
+            # when this row is the currently-playing segment.
+            base_tags = self._tags_for(idx)
             if active_idx is not None and idx == active_idx:
                 tags = ("active",) + base_tags
             else:
@@ -1929,9 +1914,12 @@ class TranscriptViewer(tk.Toplevel):
         warn: tuple[str, ...] = (
             ("ts_warn",) if _segment_has_timing_issue(self.segments, idx) else ()
         )
+        # A font that draws the segment's script in full (tall marks,
+        # conjuncts); only the font, so it never competes with the colours.
+        font = script_fonts.tree_row_tags(self.tree, str(seg.get("text") or ""))
         if seg.get("suspect"):
-            return ("suspect",) + warn + conf
-        return warn + conf
+            return ("suspect",) + warn + conf + font
+        return warn + conf + font
 
     def _update_karaoke(self, t_seconds: float) -> None:
         """Refresh the active segment + word highlight from the playhead.

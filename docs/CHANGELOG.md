@@ -223,6 +223,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **File names and transcript lines in Indic scripts, Sinhala, Thai, Lao, Khmer, Myanmar, Chinese
+  and Japanese are drawn in full on Windows.** The queue, download, search, segment and chapter
+  lists give each row the font its script needs (`app/theme/script_fonts.py`; taller rows for
+  Myanmar, the regional CJK font by transcript or caption language, whole Sinhala conjuncts), and
+  the Live, Text to Voice and AI result boxes use Segoe UI plus that per-line font instead of
+  Courier New, which cut off tall vowel marks. On Windows 10 the lists use Segoe UI instead of
+  Arial; a missing font is skipped, and macOS and Linux keep their fonts.
 - **The test suite no longer writes into the real per-user folders.** Tests used to add log
   files, history rows and job folders under the developer's own app data and could reach the real
   `config.json`; an autouse fixture now redirects every platformdirs user folder to a temp tree,

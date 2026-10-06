@@ -25,7 +25,7 @@ from tkinter import filedialog, ttk
 from typing import Any
 
 from app.dpi import scaled
-from app.theme import tokens
+from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
 from app.widgets.tooltip import help_icon, section_labelframe
 
@@ -392,6 +392,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
     out.rowconfigure(0, weight=1)
 
     app.live_text = tk.Text(out, wrap="word", height=14)
+    script_fonts.use_text_font(app.live_text)
     _make_readonly_but_selectable(app.live_text)
     app.live_text.grid(row=0, column=0, sticky="nsew", padx=(8, 0), pady=8)
     bar = ttk.Scrollbar(out, orient="vertical", command=app.live_text.yview)
@@ -856,10 +857,13 @@ def _append_line(app: Any, text: str) -> None:
     try:
         widget = app.live_text
         at_bottom = widget.yview()[1] >= 0.999
+        start = widget.index("end-1c")
         # Widget stays state="normal" (see _make_readonly_but_selectable);
         # only the <Key> filter keeps the user from typing into it, so
         # this insert needs no enable/disable dance around it.
         widget.insert("end", text + "\n")
+        script_fonts.tag_script_lines(widget, start, "end",
+                                      language=_selected_language_code(app))
         # Only follow the tail when the user has not scrolled up to read
         # something earlier — yanking the view is worse than lagging it.
         if at_bottom:

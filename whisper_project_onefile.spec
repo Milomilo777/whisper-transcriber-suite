@@ -162,6 +162,7 @@ a = Analysis(
         'app.services',
         'app.widgets',
         'app.observability',
+        'app.theme.script_fonts',
         'app.dialogs.advanced',
         'app.dialogs.caption_choice',
         'app.dialogs.hub_setup',

@@ -31,6 +31,7 @@ from pathlib import Path
 from tkinter import filedialog, ttk
 from typing import Any
 
+from app.theme import script_fonts
 from app.widgets.error_dialog import show_error
 from app.widgets.tooltip import section_labelframe
 from core import offline
@@ -256,6 +257,7 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     txt.columnconfigure(0, weight=1)
     txt.rowconfigure(0, weight=1)
     app.vc_text = tk.Text(txt, wrap="word", height=6, undo=True)
+    script_fonts.use_text_font(app.vc_text)
     app.vc_text.grid(row=0, column=0, sticky="nsew", padx=(8, 0), pady=(8, 4))
     bar = ttk.Scrollbar(txt, orient="vertical", command=app.vc_text.yview)
     bar.grid(row=0, column=1, sticky="ns", padx=(0, 8), pady=(8, 4))
@@ -430,6 +432,7 @@ def _on_text_modified(app: Any) -> None:
     except Exception:  # noqa: BLE001
         return
     app.vc_count_var.set(f"{n:,} / {MAX_TEXT_CHARS:,} characters")
+    script_fonts.tag_script_lines(app.vc_text, language=_language_code(app))
 
 
 def _design_instruct(app: Any) -> str:
