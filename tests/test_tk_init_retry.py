@@ -44,6 +44,28 @@ def test_retries_init_tcl_error_then_succeeds(capsys):
     assert capsys.readouterr().err.count("[tk-init-retry]") == 2
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Can't find a usable tk.tcl in the following directories: \n    C:/Python314/tcl/tk8.6",
+        'invalid command name "tcl_findLibrary"',
+    ],
+)
+def test_retries_the_other_spellings_of_the_same_fault(message):
+    wrapped, calls = _flaky(failures=1, message=message)
+    assert wrapped(object()) == "ok"
+    assert calls["n"] == 2
+    assert len(r.retries) == 1
+
+
+def test_unrelated_invalid_command_name_is_not_retried():
+    wrapped, calls = _flaky(failures=99, message='invalid command name ".!frame.!button"')
+    with pytest.raises(tkinter.TclError, match="invalid command"):
+        wrapped(object())
+    assert calls["n"] == 1
+    assert r.retries == []
+
+
 def test_gives_up_after_max_tries_with_the_original_error():
     wrapped, calls = _flaky(failures=99)
     with pytest.raises(tkinter.TclError, match="init.tcl"):

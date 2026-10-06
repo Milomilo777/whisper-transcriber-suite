@@ -76,6 +76,7 @@ Fix the cause, then re-run `run_tests.bat`. Keep pyright at 0 errors on
 `app\` and `core\` before committing.
 
 On Windows, `tk.Tk()` can rarely fail inside a full run with `Can't find a usable init.tcl` (a transient
-Tcl read error; the file is fine and the test passes alone). `tests/conftest.py` retries exactly that error
-at most 3 times in total; each retry is printed and the pytest summary shows `tk.Tk() init.tcl retries: N`.
+Tcl read error; the file is fine and the test passes alone). The same fault can also read
+`Can't find a usable tk.tcl` or `invalid command name "tcl_findLibrary"`. `tests/conftest.py` retries exactly
+those errors at most 3 times in total; each retry is printed and the pytest summary shows `tk.Tk() init.tcl retries: N`.
 Any other `TclError` fails the test as usual.

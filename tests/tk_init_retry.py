@@ -5,7 +5,12 @@ fails inside ``tk.Tk()`` itself with ``Can't find a usable init.tcl ... couldn't
 ".../init.tcl"``, although the file is readable from Python in the same process and every
 affected test passes alone. The read fails transiently inside Tcl, before any test code runs.
 
-Only that exact error is retried, at most ``MAX_TRIES`` attempts in total. Any other
+The same fault surfaces under three spellings, depending on which library script Tcl failed to
+read first: the ``init.tcl`` message above, ``Can't find a usable tk.tcl ...`` and the follow-on
+``invalid command name "tcl_findLibrary"`` (``init.tcl`` defines that command, so it only appears
+when ``init.tcl`` was not read). All three are retried; they are one fault.
+
+Only those errors are retried, at most ``MAX_TRIES`` attempts in total. Any other
 ``TclError`` (for example "no display name") propagates at once. Every retry is printed and
 counted; ``tests/conftest.py`` reports the count in the pytest summary, so the fault is never
 hidden. After the last attempt the original error is raised unchanged.
@@ -16,14 +21,17 @@ import sys
 from typing import Any, Callable
 
 MAX_TRIES = 3
-_MARKER = "init.tcl"
+_MARKERS = ("init.tcl", "tk.tcl", 'invalid command name "tcl_findLibrary"')
 
 retries: list[str] = []
 
 
 def is_init_tcl_error(exc: BaseException) -> bool:
-    """True only for the Tcl "cannot read init.tcl" start-up error."""
-    return type(exc).__name__ == "TclError" and _MARKER in str(exc)
+    """True only for the Tcl "cannot read its library script" start-up error."""
+    if type(exc).__name__ != "TclError":
+        return False
+    text = str(exc)
+    return any(marker in text for marker in _MARKERS)
 
 
 def wrap_init(original: Callable[..., Any]) -> Callable[..., Any]:
