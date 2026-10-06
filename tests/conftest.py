@@ -25,10 +25,51 @@ from __future__ import annotations
 
 import gc
 import sys
+from pathlib import Path
 
+import platformdirs
 import pytest
 
 from tests import tk_init_retry as _tk_init_retry
+
+# The real platformdirs functions, captured before any fixture patches them.
+# ``tests/test_user_dir_isolation.py`` uses them to learn where the real
+# per-user folders are, so it can prove no test path points there.
+REAL_PLATFORMDIRS = {
+    name: getattr(platformdirs, name)
+    for name in (
+        "user_config_dir",
+        "user_cache_dir",
+        "user_log_dir",
+        "user_data_dir",
+        "user_state_dir",
+    )
+}
+
+
+@pytest.fixture(autouse=True)
+def _isolate_user_dirs(tmp_path_factory, monkeypatch):
+    """Point every platformdirs per-user folder at a throwaway directory.
+
+    ``core.config.user_config_dir()`` / ``user_log_dir()`` / ``user_data_dir()`` /
+    ``user_cache_dir()`` all resolve through ``platformdirs``. Without this a test
+    that does not patch them writes into the developer's real app folders: log
+    lines in ``Logs/``, rows in ``history.db``, job folders in ``Cache/`` and even
+    a ``save_config()`` call against the real ``config.json``. Each test gets its
+    own empty tree; a test that needs a specific path still patches
+    ``core.config.user_*_dir`` itself, which takes precedence.
+    """
+    root = tmp_path_factory.mktemp("userdirs")
+
+    def _fake(kind: str):
+        def user_dir(appname=None, *args, **kwargs):  # noqa: ANN001, ANN002, ANN003
+            return str(Path(root) / kind / str(appname or "app"))
+
+        return user_dir
+
+    for name in REAL_PLATFORMDIRS:
+        monkeypatch.setattr(platformdirs, name, _fake(name))
+    yield
 
 # core.transcriber module globals that the real load paths mutate in place.
 _TRANSCRIBER_GLOBALS = (

@@ -31,8 +31,11 @@ at a glance whether the project is still green.
 
 - **`tests\` (everything except `tests\smoke\`)** — *hermetic* unit
   tests. No Whisper model, no network, no GUI window. Fast (seconds).
-  These are the ones `run_tests.bat` runs. Each file targets one area,
-  e.g.:
+  These are the ones `run_tests.bat` runs. An autouse fixture in
+  `tests\conftest.py` points every platformdirs per-user folder (config,
+  data, cache, log) at a temp tree, so a run never touches your real app
+  data; `tests\test_user_dir_isolation.py` fails if that redirect breaks.
+  Each file targets one area, e.g.:
   - `tests\core\test_config.py` — config load/save, the model_path and
     download_folder persistence rules.
   - `tests\core\test_download_command.py` — the yt-dlp command builder

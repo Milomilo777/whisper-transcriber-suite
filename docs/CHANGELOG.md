@@ -223,6 +223,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **The test suite no longer writes into the real per-user folders.** Tests used to add log
+  files, history rows and job folders under the developer's own app data and could reach the real
+  `config.json`; an autouse fixture now redirects every platformdirs user folder to a temp tree,
+  with a guard test that fails if the redirect breaks.
 - **"Use captions instead" no longer fails while the browser is open.** When yt-dlp cannot copy
   the browser's cookie database (`Could not copy Chrome cookie database`), the caption fetch now
   retries once without browser cookies and logs one line saying so, as the media download already

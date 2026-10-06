@@ -245,6 +245,14 @@ class _Task:
         self.progress = 0
 
 
+class _ExplodingVar:
+    """Stands in for ``app.subtitle_status_var`` and fails on purpose, so a
+    handler error is a deliberate RuntimeError rather than a missing attribute."""
+
+    def set(self, _value):  # noqa: ANN001
+        raise RuntimeError("deliberate failure in the subtitle_status handler")
+
+
 @pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf"), "oops", None])
 def test_poll_survives_bad_progress_value(bad):
     task = _Task()
@@ -269,10 +277,11 @@ def test_poll_survives_unexpected_exception_in_any_branch():
     coercion. poll() now wraps EVERY event's dispatch in one try/except
     (2026-08-14, gpt-5.4-mini adversarial review), so an unrelated
     exception in a completely different branch -- here 'subtitle_status',
-    whose handler touches an attribute this minimal app doesn't define --
+    whose handler is made to raise here --
     still cannot skip the after(300) re-arm and wedge the pump."""
     task = _Task()
     app = _PollApp([("subtitle_status", task, "some text")])
+    app.subtitle_status_var = _ExplodingVar()
     DownloadService(app).poll()
     assert app.rearmed is True
 
@@ -282,9 +291,10 @@ def test_poll_one_bad_event_does_not_block_later_good_events():
     tasks, in the same poll() call) from being processed."""
     task1, task2 = _Task(), _Task()
     app = _PollApp([
-        ("subtitle_status", task1, "boom"),  # no subtitle_status_var -> raises
+        ("subtitle_status", task1, "boom"),  # the exploding var raises
         ("progress", task2, 55.0),  # must still be processed despite the above
     ])
+    app.subtitle_status_var = _ExplodingVar()
     DownloadService(app).poll()
     assert task2.progress == 55
     assert app.rearmed is True
