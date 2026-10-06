@@ -184,12 +184,13 @@ def test_the_result_opens_in_the_viewer_else_as_a_file(tmp_path):
     srt.write_text("1", encoding="utf-8")
     task = TranscriptionTask(str(tmp_path / "sample_clip.mp3"))
     task.output_paths = [str(srt), str(js)]
+    task.language = "en"  # reaches the viewer (per-script fonts)
     fake = SimpleNamespace(
         _task_json_output=app_mod.App._task_json_output, open_transcript_viewer_for=MagicMock(),
         _open_file=MagicMock(), log=MagicMock(),
     )
     app_mod.App.open_sample_result(fake, task)  # type: ignore[arg-type]
-    fake.open_transcript_viewer_for.assert_called_once_with(task.file_path, str(js))
+    fake.open_transcript_viewer_for.assert_called_once_with(task.file_path, str(js), "en")
     fake._open_file.assert_not_called()
 
     os.remove(js)

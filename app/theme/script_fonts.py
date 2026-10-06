@@ -19,8 +19,16 @@ A font of their own has a cost: Tk then draws the whole line as one run, and Tk 
 run in pieces of about 200 bytes, cut wherever that falls (``MultiFontTextOut`` in
 win/tkWinFont.c), even inside a cluster. Text boxes therefore cut such lines into pieces under that
 size, after a space or between clusters, each piece in its own tag (a tag boundary starts a new
-run); Treeview rows cannot be cut. That cost is why scripts that Segoe UI's line already fits get
-no font of their own.
+run). Treeview rows cannot be cut, so a Sinhala or Myanmar row longer than that keeps the default
+font: its words are then separate runs (Segoe UI draws the spaces and separators), and a mark that
+the line height clips is the lesser harm than a cluster split in two. That cost is why scripts
+that Segoe UI's line already fits get no font of their own.
+
+A Treeview tag's font restyles every column of the row. Han text never lost pixels under the
+default fallback, so trees with more than one column give it no font (the progress bars and the
+times of all rows stay alike); single-column trees and text boxes keep it. A row font whose line
+is taller than the rows is used a little smaller (down to ``_ROW_MIN_SCALE``) before a tree gets
+taller rows, so a list keeps its row count.
 
 Windows only: macOS and Linux keep the platform's fonts and font fallback. A font that is not
 installed is skipped (logged once) and the widget keeps the font it had.
@@ -71,6 +79,8 @@ _TREE_TAG = "script-font-"   # Treeview tags: "script-font-Myanmar_Text"
 _TEXT_TAG = "script-font-"   # tk.Text tags, same shape
 _ROW_PAD = 3                 # sv_ttk's row height = line height + 3
 _ROW_STYLE = "WtsRows{}.Treeview"  # a Treeview style with taller rows, by height in pixels
+_ROW_MIN_SCALE = 0.8         # a row font may shrink to 80 % of the tree's size to fit the rows
+_HAN_KEYS = frozenset({"ja", "zh-hans", "zh-hant"})
 RUN_BYTES = 150              # pieces of a tagged Text line stay under Tk's ~200-byte drawing runs
 
 _families: frozenset[str] | None = None
@@ -211,8 +221,30 @@ def _tree_font_size(widget: tk.Misc, style_name: str = "Treeview") -> int:
         return tokens.FONT_BODY
 
 
+def _linespace(widget: tk.Misc, family: str, size: int) -> int:
+    return int(tkfont.Font(root=widget, family=family, size=size).metrics("linespace"))
+
+
 def _row_need(widget: tk.Misc, family: str, size: int) -> int:
-    return int(tkfont.Font(root=widget, family=family, size=size).metrics("linespace")) + _ROW_PAD
+    return _linespace(widget, family, size) + _ROW_PAD
+
+
+def _fitting_size(widget: tk.Misc, family: str, size: int, rowheight: int) -> int | None:
+    """The largest size from ``size`` down to ``_ROW_MIN_SCALE`` of it whose line fits the rows.
+
+    Measured on Windows 10 at 100 %: Myanmar Text 10 (23-pixel line) in sv_ttk's 22-pixel rows
+    lost the top pixel of the tallest marks; at 9 (21 pixels) no sample lost a pixel. Negative
+    sizes are pixels, positive ones points. None when no size fits (the tree then grows).
+    """
+    if rowheight <= 0:
+        return None
+    step = 1 if size > 0 else -1
+    s = size
+    while s != 0 and abs(s) >= abs(size) * _ROW_MIN_SCALE:
+        if _linespace(widget, family, s) <= rowheight:
+            return s
+        s -= step
+    return None
 
 
 def apply_theme_fonts(root: tk.Misc) -> None:
@@ -220,8 +252,9 @@ def apply_theme_fonts(root: tk.Misc) -> None:
 
     Setting a ttk style option makes Tk send <<ThemeChanged>> to every widget, and sv_ttk then
     resets each ttk.Entry / Combobox to its own font. So the row styles a script font may need
-    ("WtsRows28.Treeview") are set up here, together with the theme, and a tree only switches
-    to one later (``tree_row_tags``), which changes no style.
+    ("WtsRows28.Treeview": only a font that does not fit the rows even a little smaller) are set
+    up here, together with the theme, and a tree only switches to one later
+    (``tree_row_tags``), which changes no style.
     """
     fix_tree_font(root)
     if not _on_windows():
@@ -231,7 +264,7 @@ def apply_theme_fonts(root: tk.Misc) -> None:
     size = _tree_font_size(root)
     installed = installed_families(root)
     for key, family in tokens.FONT_FAMILIES_WINDOWS.items():
-        if key != "ui" and family in installed:
+        if key != "ui" and family in installed and _fitting_size(root, family, size, base) is None:
             need = _row_need(root, family, size)
             if need > base:
                 style.configure(_ROW_STYLE.format(need), rowheight=need)
@@ -254,20 +287,33 @@ def _fit_rows(tree: ttk.Treeview, need: int) -> None:
 def tree_row_tags(tree: ttk.Treeview, *texts: str, language: str | None = None) -> tuple[str, ...]:
     """The tag that gives a row the font its text's script needs, or ``()``.
 
-    ttk applies a tag's font to the whole row, and a row cannot be cut into pieces like a Text
-    line (module docstring): a row of more than ~200 bytes in one font may show one split
-    cluster. The first row in a font configures the tag and, if that font's lines are taller
-    than the rows, gives this tree a row height that fits them.
+    ``texts`` are the row's cells in that script (a file name, a transcript line). ttk applies a
+    tag's font to the whole row, which leads to three rules (module docstring): a Sinhala or
+    Myanmar cell longer than ``RUN_BYTES`` keeps the default font, because one font would make Tk
+    cut the row inside a cluster; a tree with more than one column gives Han no font, so the
+    other columns keep the default font; the first row in a font configures the tag, a little
+    smaller if that makes its line fit the rows, else this tree gets taller rows.
     """
     key = font_key(" ".join(texts), language) if _on_windows() else None
-    family = None if key is None else _installed_family(key, installed_families(tree))
+    if key is None:
+        return ()
+    if key in _HAN_KEYS and len(tree.tk.splitlist(tree.cget("columns"))) > 1:
+        return ()
+    if key not in _HAN_KEYS and any(text_script(t) == key and sum(map(_tk_bytes, t)) > RUN_BYTES
+                                    for t in texts):
+        return ()
+    family = _installed_family(key, installed_families(tree))
     if family is None:
         return ()
     tag = _TREE_TAG + family.replace(" ", "_")
     if not str(tree.tag_configure(tag, "font")):
-        size = _tree_font_size(tree, str(tree.cget("style")))
-        tree.tag_configure(tag, font=(family, size))
-        _fit_rows(tree, _row_need(tree, family, size))
+        style_name = str(tree.cget("style")) or "Treeview"
+        size = _tree_font_size(tree, style_name)
+        rows = _int(ttk.Style(tree).lookup(style_name, "rowheight"))
+        fitted = _fitting_size(tree, family, size, rows)
+        tree.tag_configure(tag, font=(family, size if fitted is None else fitted))
+        if fitted is None:
+            _fit_rows(tree, _row_need(tree, family, size))
     return (tag,)
 
 
@@ -277,15 +323,23 @@ def use_text_font(widget: tk.Text) -> bool:
     """A proportional font with room for tall marks instead of Tk's Courier New (Windows only).
 
     Segoe UI's line is one pixel shallower below the baseline than Courier New's, so each line
-    also gets ``tokens.TEXT_LINE_GAP`` pixels above and below (marks below Lao letters).
+    also gets ``tokens.TEXT_LINE_GAP`` pixels above and below (marks below Lao letters). The
+    taller lines would make the box ask for more room and push the widgets below it out of a
+    small window, so its ``height`` (in lines) drops until the box asks for no more pixels than
+    before.
     """
     if not _on_windows():
         return False
     family = _installed_family("ui", installed_families(widget))
     if family is None:
         return False
+    before = widget.winfo_reqheight()
+    lines = _int(widget.cget("height"))
     widget.configure(font=(family, tokens.FONT_BODY),
                      spacing1=tokens.TEXT_LINE_GAP, spacing3=tokens.TEXT_LINE_GAP)
+    while lines > 1 and widget.winfo_reqheight() > before:
+        lines -= 1
+        widget.configure(height=lines)
     return True
 
 

@@ -182,6 +182,18 @@ def test_text_box_gets_a_proportional_font_and_per_line_script_fonts(windows: se
     assert [str(i) for i in text.tag_ranges(tag)] == ["2.0", text.index("2.end")]
 
 
+@pytest.mark.parametrize("lines", [14, 12, 6, 2])
+def test_text_box_keeps_its_pixel_height(windows: set[str], root: tk.Tk, lines: int) -> None:
+    # Taller lines at the same line count pushed the Live tab's buttons below a 900-pixel window.
+    text = tk.Text(root, height=lines)
+    before = text.winfo_reqheight()
+    assert script_fonts.use_text_font(text)
+    after = text.winfo_reqheight()
+    line = tkfont.Font(root=root, font=text.cget("font")).metrics("linespace") + 2 * tokens.TEXT_LINE_GAP
+    assert before - line < after <= before
+    assert 1 <= int(text.cget("height")) <= lines
+
+
 def test_retagging_follows_edits(windows: set[str], root: tk.Tk) -> None:
     text = tk.Text(root)
     text.insert("1.0", "မြန်မာ\nEnglish")
@@ -349,7 +361,7 @@ def _rowheight(style: ttk.Style, name: str) -> int:
 
 def test_tree_row_gets_the_script_font_and_only_that_tree_grows(windows: set[str], root: tk.Tk) -> None:
     style = ttk.Style(root)
-    style.configure("Treeview", rowheight=21)
+    style.configure("Treeview", rowheight=10)  # no font fits, not even a little smaller
     tree = ttk.Treeview(root, columns=("file",), show="headings")
     other = ttk.Treeview(root, columns=("file",), show="headings")
     assert script_fonts.tree_row_tags(tree, "interview_2026.mp4") == ()
@@ -358,14 +370,12 @@ def test_tree_row_gets_the_script_font_and_only_that_tree_grows(windows: set[str
     assert tags == ("script-font-Myanmar_Text",)
     assert "Myanmar Text" in str(tree.tag_configure(tags[0], "font"))
     name = str(tree.cget("style"))
-    line = tkfont.Font(root=root, font=tree.tag_configure(tags[0], "font")).metrics("linespace")
-    if line + 3 > 21:
-        assert re.fullmatch(r"WtsRows\d+\.Treeview", name)
-        assert _rowheight(style, name) == line + 3
-    else:  # the font's lines fit the rows already: the tree keeps its style
-        assert name == ""
+    font = tkfont.Font(root=root, font=tree.tag_configure(tags[0], "font"))
+    assert font.cget("size") == script_fonts._tree_font_size(root)  # full size when it cannot fit
+    assert re.fullmatch(r"WtsRows\d+\.Treeview", name)
+    assert _rowheight(style, name) == font.metrics("linespace") + 3
     assert str(other.cget("style")) == ""
-    assert _rowheight(style, "Treeview") == 21
+    assert _rowheight(style, "Treeview") == 10
     # Rows insert with the tag; a second Myanmar row reuses tag and style.
     tree.insert("", "end", values=("x",), tags=tags)
     assert script_fonts.tree_row_tags(tree, "မြန်မာ") == tags
@@ -383,6 +393,58 @@ def test_tree_rows_only_grow(windows: set[str], root: tk.Tk) -> None:
     script_fonts.tree_row_tags(tree, "中文", language="zh")
     assert 10 < first <= tall == _rowheight(style, str(tree.cget("style")))
     assert script_fonts.tree_row_tags(tree, "हिन्दी ไทย ខ្មែរ") == ()  # Segoe UI's row fits these
+
+
+def test_a_row_font_shrinks_to_fit_the_rows_before_the_tree_grows(windows: set[str], root: tk.Tk) -> None:
+    # A taller row style would cost a list rows on screen (Downloads showed 6 of its 8).
+    style = ttk.Style(root)
+    size = script_fonts._tree_font_size(root)
+
+    def line(s: int) -> int:
+        return int(tkfont.Font(root=root, family="Myanmar Text", size=s).metrics("linespace"))
+
+    full, rows = line(size), line(size - (1 if size > 0 else -1))
+    if rows >= full:
+        pytest.skip("this machine's Myanmar font has the same line height at both sizes")
+    style.configure("Treeview", rowheight=rows)  # the full size does not fit, one step smaller does
+    tree = ttk.Treeview(root, columns=("file", "status"), show="headings", height=8)
+    root.update_idletasks()
+    before = tree.winfo_reqheight()
+    tags = script_fonts.tree_row_tags(tree, "interview_မြန်မာ.mp4")
+    assert tags == ("script-font-Myanmar_Text",)
+    font = tkfont.Font(root=root, font=tree.tag_configure(tags[0], "font"))
+    assert font.metrics("linespace") <= rows
+    assert abs(font.cget("size")) >= abs(size) * script_fonts._ROW_MIN_SCALE
+    assert str(tree.cget("style")) == ""
+    tree.insert("", "end", values=("interview_မြန်မာ.mp4", "finished"), tags=tags)
+    root.update_idletasks()
+    assert tree.winfo_reqheight() == before  # still 8 rows in the same pixels
+
+
+def test_long_sinhala_and_myanmar_rows_keep_the_default_font(windows: set[str], root: tk.Tk) -> None:
+    # One font makes the whole row one Tk run, cut every ~200 bytes even inside a cluster.
+    tree = ttk.Treeview(root, columns=("file",), show="headings")
+    sri = "ශ්" + ZWJ + "රී"  # one conjunct, 15 bytes
+    assert script_fonts.tree_row_tags(tree, sri * 10) == ("script-font-Nirmala_UI",)  # 150 bytes
+    assert script_fonts.tree_row_tags(tree, sri * 10 + "a") == ()
+    assert script_fonts.tree_row_tags(tree, (sri + " ") * 12) == ()
+    assert script_fonts.tree_row_tags(tree, " ".join(["မြန်မာ"] * 9)) == ()
+    assert script_fonts.tree_row_tags(tree, "မြန်မာ_2026.mp4") == ("script-font-Myanmar_Text",)
+    # Only the cells in that script count: a long Latin line next to a short name is no reason.
+    assert script_fonts.tree_row_tags(tree, "မြန်မာ.mp4", "a" * 400) == ("script-font-Myanmar_Text",)
+    # Han has no clusters to split: a long Japanese row keeps its font.
+    assert script_fonts.tree_row_tags(tree, "日本語のテスト" * 20) == ("script-font-Yu_Gothic_UI",)
+
+
+def test_lists_with_more_columns_give_han_no_font(windows: set[str], root: tk.Tk) -> None:
+    # A row tag restyles every column: a Han font drew the queue's progress bar twice as wide.
+    queue = ttk.Treeview(root, columns=("file", "status", "progress"), show="headings")
+    single = ttk.Treeview(root, columns=("file",), show="headings")
+    for text, language in (("interview_日本語のテスト.mp4", None), ("中文.mp4", "zh"), ("中文.mp4", "zh-TW")):
+        assert script_fonts.tree_row_tags(queue, text, language=language) == ()
+        assert script_fonts.tree_row_tags(single, text, language=language) != ()
+    assert script_fonts.tree_row_tags(queue, "interview_မြန်မာ.mp4") == ("script-font-Myanmar_Text",)
+    assert script_fonts.tree_row_tags(queue, "interview_සිංහල.mp4") == ("script-font-Nirmala_UI",)
 
 
 def test_tree_rows_change_no_style_once_the_theme_is_prepared(windows: set[str], root: tk.Tk) -> None:
@@ -488,3 +550,55 @@ def test_viewer_rows_carry_the_script_font_next_to_the_colours(
         assert _font_of_line(viewer._ai_result_text, 1) is None
     finally:
         viewer._on_close()
+
+
+def test_viewer_ai_results_use_the_transcript_language_the_app_passed(
+        windows: set[str], root: tk.Tk, tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+    import types
+
+    from app.dialogs.transcript_viewer import TranscriptViewer
+    from core import _threads
+
+    p = tmp_path / "zh.json"
+    p.write_text(json.dumps([{"start": 0.0, "end": 1.0, "text": "中文"}], ensure_ascii=False),
+                 encoding="utf-8")
+    monkeypatch.setattr(_threads, "safe_thread", lambda fn, **_k: fn())
+    runner = types.SimpleNamespace(summarise=lambda _t: "中文摘要", translate=lambda _t, target_language: "中文")
+    viewer = TranscriptViewer(root, str(p), language="zh-TW")
+    viewer.withdraw()
+    try:
+        monkeypatch.setattr(viewer, "_app_config", lambda: {"ai_enabled": True})
+        monkeypatch.setattr(viewer, "_get_llm_runner", lambda: (runner, None))
+        monkeypatch.setattr(viewer, "_post_to_main", lambda fn: fn())
+        viewer._run_summarise()
+        assert "Microsoft JhengHei UI" in str(_font_of_line(viewer._ai_result_text, 1))
+        # A translation is in the target language, not the transcript's: no regional guess.
+        viewer._run_translate_preview()
+        assert viewer._ai_result_text.get("1.0", "end-1c") == "中文"
+        assert _font_of_line(viewer._ai_result_text, 1) is None
+    finally:
+        viewer._on_close()
+
+
+def test_the_task_language_reaches_the_viewer(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    import types
+
+    import app.app as app_mod
+    from app.dialogs import transcript_viewer
+
+    seen: list[tuple] = []
+    monkeypatch.setattr(transcript_viewer, "TranscriptViewer",
+                        lambda master, path, **kw: seen.append(("viewer", path, kw.get("language"))))
+    p = tmp_path / "t.json"
+    p.write_text("[]", encoding="utf-8")
+    transcript_viewer.open_viewer(None, str(p), language="ja")  # type: ignore[arg-type]
+    assert seen == [("viewer", str(p), "ja")]
+
+    calls: list[tuple] = []
+    monkeypatch.setattr(app_mod, "_open_transcript_viewer",
+                        lambda master, path, **kw: calls.append((path, kw.get("language"))))
+    fake = types.SimpleNamespace()
+    app_mod.App.open_transcript_viewer_for(fake, str(tmp_path / "t.mp4"), str(p), "zh-TW")  # type: ignore[arg-type]
+    app_mod.App.open_transcript_viewer_for(fake, str(tmp_path / "t.mp4"), None, "ja")  # type: ignore[arg-type]
+    assert calls == [(str(p), "zh-TW"), (str(p), "ja")]  # the second one found t.json beside t.mp4

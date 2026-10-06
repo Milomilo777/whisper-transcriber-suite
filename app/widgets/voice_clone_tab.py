@@ -272,6 +272,8 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_lang_combo = _combo(opts, app.vc_lang_var,
                                [_AUTO_LANG] + [n for n, c in _LANGS if c], 18)
     app.vc_lang_combo.pack(side="left", padx=(6, 18))
+    # The language picks the font of Han lines: retag when it changes, not only on the next edit.
+    app.vc_lang_var.trace_add("write", lambda *_a: _retag_text(app))
     ttk.Label(opts, text="Speed:").pack(side="left")
     app.vc_speed_scale = ttk.Scale(
         opts, from_=0.5, to=2.0, variable=app.vc_speed_var, length=140,
@@ -432,6 +434,10 @@ def _on_text_modified(app: Any) -> None:
     except Exception:  # noqa: BLE001
         return
     app.vc_count_var.set(f"{n:,} / {MAX_TEXT_CHARS:,} characters")
+    _retag_text(app)
+
+
+def _retag_text(app: Any) -> None:
     script_fonts.tag_script_lines(app.vc_text, language=_language_code(app))
 
 

@@ -539,3 +539,29 @@ def test_cancel_while_measuring_starts_nothing(root, fakes, monkeypatch, tmp_pat
     assert app.vc_status_var.get() == "Cancelled."
     assert fakes["kokoro"] == [] and _stored(tmp_path) == {}
     assert _state(app) == "normal"
+
+
+# ------------------------------------------------------------ script fonts
+
+
+def test_changing_the_language_retags_the_text(root, fakes, monkeypatch):
+    # Han text without kana takes its font from the language picker; picking another language
+    # must restyle the text at once, not only after the next keystroke.
+    from app.theme import script_fonts, tokens
+
+    monkeypatch.setattr(script_fonts, "_on_windows", lambda: True)
+    monkeypatch.setattr(script_fonts, "installed_families",
+                        lambda _w: frozenset(tokens.FONT_FAMILIES_WINDOWS.values()))
+    app = _build(root, fakes)
+    app.vc_text.insert("1.0", "中文")
+    root.update()
+
+    def font() -> str:
+        tags = [t for t in app.vc_text.tag_names("1.0") if t.startswith("script-font-")]
+        return str(app.vc_text.tag_cget(tags[0], "font")) if tags else ""
+
+    assert font() == ""  # Automatic: no regional guess
+    app.vc_lang_var.set("Chinese (Traditional)")
+    assert "Microsoft JhengHei UI" in font()
+    app.vc_lang_var.set("Japanese")
+    assert "Yu Gothic UI" in font()

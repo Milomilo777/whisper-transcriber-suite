@@ -476,12 +476,17 @@ class TranscriptViewer(tk.Toplevel):
     Build it via :func:`open_viewer` from anywhere in the app.
     """
 
+    # The transcript's language, when known (set in __init__; the class default keeps
+    # partly built viewers working, as some tests make them).
+    language: str | None = None
+
     def __init__(
         self,
         master: "tk.Tk | tk.Toplevel",
         json_path: str,
         media_path: str | None = None,
         initial_seek_seconds: float | None = None,
+        language: str | None = None,
     ) -> None:
         super().__init__(master)
         self.title(f"Transcript — {os.path.basename(json_path)}")
@@ -500,6 +505,10 @@ class TranscriptViewer(tk.Toplevel):
 
         self.json_path = json_path
         self.media_path = media_path or _find_media_next_to(json_path)
+        # The transcript's language when the opener knows it (a queue task); the JSON itself has
+        # none. Picks the regional font for Han text without kana (app.theme.script_fonts);
+        # None (file picker, search results) leaves Han to Tk's default fallback font.
+        self.language = language or None
 
         self.segments: list[dict[str, Any]] = []
         self.filtered_indices: list[int] = []
@@ -856,7 +865,7 @@ class TranscriptViewer(tk.Toplevel):
             start = _seg_float(ch, "start")
             self._chapters_tree.insert(
                 "", "end", iid=str(i), values=(_fmt_hms(start), title),
-                tags=script_fonts.tree_row_tags(self._chapters_tree, title),
+                tags=script_fonts.tree_row_tags(self._chapters_tree, title, language=self.language),
             )
 
     def _on_chapter_select(self, _event: tk.Event) -> None:
@@ -1090,12 +1099,13 @@ class TranscriptViewer(tk.Toplevel):
             except Exception:  # noqa: BLE001
                 pass
 
-    def _set_ai_result(self, text: str) -> None:
+    def _set_ai_result(self, text: str, language: str | None = None) -> None:
+        """Show ``text`` in the result box; ``language`` is the result's, when known."""
         try:
             self._ai_result_text.configure(state="normal")
             self._ai_result_text.delete("1.0", "end")
             self._ai_result_text.insert("1.0", text)
-            script_fonts.tag_script_lines(self._ai_result_text)
+            script_fonts.tag_script_lines(self._ai_result_text, language=language)
             self._ai_result_text.configure(state="disabled")
         except Exception:  # noqa: BLE001
             pass
@@ -1107,13 +1117,14 @@ class TranscriptViewer(tk.Toplevel):
             return
         self._copy_to_clipboard(text)
 
-    def _run_ai_task(self, label: str, work) -> None:
+    def _run_ai_task(self, label: str, work, language: str | None = None) -> None:
         """Shared driver for the 3 simple (non-bilingual) AI actions.
 
         ``work(runner) -> str`` runs on a background thread — including
         the runner build/load itself, so a first-use local-model load
         never blocks the Tk main thread. Its return value (or a
-        friendly error) lands in the result box back on the Tk thread.
+        friendly error) lands in the result box back on the Tk thread,
+        tagged for ``language`` (the result's language, when known).
         Guarded by self._ai_busy against double-clicks.
         """
         if self._ai_busy:
@@ -1142,20 +1153,20 @@ class TranscriptViewer(tk.Toplevel):
                 result = work(runner)
             except Exception as e:  # noqa: BLE001
                 result = f"{label} failed: {e}"
-            self._post_to_main(lambda: self._finish_ai_task(result))
+            self._post_to_main(lambda: self._finish_ai_task(result, language))
 
         from core._threads import safe_thread
         safe_thread(_worker, name=f"ai-{label.lower().replace(' ', '-')}")
 
-    def _finish_ai_task(self, result: str) -> None:
+    def _finish_ai_task(self, result: str, language: str | None = None) -> None:
         if self._closing:
             return
         self._set_ai_buttons_busy(False)
-        self._set_ai_result(result)
+        self._set_ai_result(result, language)
 
     def _run_summarise(self) -> None:
         text = self._full_transcript_text()
-        self._run_ai_task("Summarise", lambda runner: runner.summarise(text))
+        self._run_ai_task("Summarise", lambda runner: runner.summarise(text), self.language)
 
     def _run_action_items(self) -> None:
         text = self._full_transcript_text()
@@ -1166,7 +1177,7 @@ class TranscriptViewer(tk.Toplevel):
                 "(no action items detected)"
             )
 
-        self._run_ai_task("Action items", work)
+        self._run_ai_task("Action items", work, self.language)
 
     def _run_ask(self) -> None:
         question = (self._ai_question_var.get() or "").strip()
@@ -1174,11 +1185,13 @@ class TranscriptViewer(tk.Toplevel):
             notify(self, "Type a question first.", "warning")
             return
         text = self._full_transcript_text()
-        self._run_ai_task("Ask", lambda runner: runner.ask(text, question))
+        self._run_ai_task("Ask", lambda runner: runner.ask(text, question), self.language)
 
     def _run_translate_preview(self) -> None:
         lang = (self._ai_target_lang_var.get() or "English").strip() or "English"
         text = self._full_transcript_text()
+        # The target is a free-text name ("Japanese"), not a code: the result's Han text picks
+        # its font from kana alone, never from the transcript's language.
         self._run_ai_task(
             "Translate", lambda runner: runner.translate(text, target_language=lang),
         )
@@ -1916,7 +1929,9 @@ class TranscriptViewer(tk.Toplevel):
         )
         # A font that draws the segment's script in full (tall marks,
         # conjuncts); only the font, so it never competes with the colours.
-        font = script_fonts.tree_row_tags(self.tree, str(seg.get("text") or ""))
+        font = script_fonts.tree_row_tags(
+            self.tree, str(seg.get("text") or ""), language=self.language,
+        )
         if seg.get("suspect"):
             return ("suspect",) + warn + conf + font
         return warn + conf + font
@@ -2283,13 +2298,15 @@ def open_viewer(
     master: "tk.Tk | tk.Toplevel",
     json_path: Optional[str] = None,
     initial_seek_seconds: float | None = None,
+    language: str | None = None,
 ) -> None:
     """Open the viewer.
 
     If ``json_path`` is None, prompt the user to pick one.
     ``initial_seek_seconds``, when given, seeks the media and selects
     the nearest segment on open — used by the search dialog's "Open at
-    result" action.
+    result" action. ``language`` is the transcript's language when the
+    caller knows it (``TranscriptViewer.language``).
     """
     if json_path is None:
         chosen = filedialog.askopenfilename(
@@ -2307,4 +2324,4 @@ def open_viewer(
             parent=master,
         )
         return
-    TranscriptViewer(master, json_path, initial_seek_seconds=initial_seek_seconds)
+    TranscriptViewer(master, json_path, initial_seek_seconds=initial_seek_seconds, language=language)

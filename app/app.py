@@ -1249,7 +1249,8 @@ class App(tk.Tk):
         open_search_dialog(self)
 
     def open_transcript_viewer_for(
-        self, file_path: str, json_path: str | None = None
+        self, file_path: str, json_path: str | None = None,
+        language: str | None = None,
     ) -> None:
         """Open the viewer for the transcript JSON belonging to a task.
 
@@ -1262,15 +1263,17 @@ class App(tk.Tk):
         recomputing ``splitext(file_path)[0] + '.json'`` would miss it and
         pop a confusing file picker even though a real transcript exists.
         Only when no known JSON is on disk do we fall back to recomputing the
-        beside-input name, and finally to the picker.
+        beside-input name, and finally to the picker. ``language`` (the
+        task's chosen or detected language) reaches the viewer for its
+        per-script fonts; a file picked by hand gets none.
         """
         if json_path and os.path.isfile(json_path):
-            _open_transcript_viewer(self, json_path)
+            _open_transcript_viewer(self, json_path, language=language)
             return
         base, _ = os.path.splitext(file_path)
         guessed = base + ".json"
         if os.path.isfile(guessed):
-            _open_transcript_viewer(self, guessed)
+            _open_transcript_viewer(self, guessed, language=language)
         else:
             _open_transcript_viewer(self, None)
 
@@ -3106,7 +3109,9 @@ class App(tk.Tk):
         """Show the finished sample clip's transcript: the viewer, else the first output."""
         json_path = self._task_json_output(task)
         if json_path and os.path.isfile(json_path):
-            self.open_transcript_viewer_for(task.file_path, json_path)
+            self.open_transcript_viewer_for(
+                task.file_path, json_path, task.language or task.detected_language
+            )
             return
         for out in task.output_paths or ():
             if os.path.isfile(out):
@@ -3403,7 +3408,8 @@ class App(tk.Tk):
                 m.add_command(
                     label="View transcript",
                     command=lambda: self.open_transcript_viewer_for(
-                        task.file_path, self._task_json_output(task)
+                        task.file_path, self._task_json_output(task),
+                        task.language or task.detected_language,
                     ),
                 )
                 m.add_command(
@@ -4683,7 +4689,7 @@ class App(tk.Tk):
             ttk.Button(
                 button_row, text="View transcript",
                 command=lambda jp=json_output: self.open_transcript_viewer_for(
-                    task.file_path, jp
+                    task.file_path, jp, task.language or task.detected_language
                 ),
             ).pack(side="left", padx=(8, 0))
 
