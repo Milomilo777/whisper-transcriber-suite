@@ -84,6 +84,37 @@ def emit(event: str, **payload: Any) -> None:
         print(line, flush=True)
 
 
+def _process_priority() -> str:
+    """This process's CPU and I/O priority for the start log line, e.g.
+    ``"cpu=BELOW_NORMAL_PRIORITY_CLASS, io=IOPRIO_LOW"`` ("unknown" when it
+    cannot be read).
+
+    The worker inherits both from whatever started the app. A low I/O
+    priority (Windows gives it to programs started by a scheduled task) lets
+    another program's reads on the same disk starve the model load for many
+    minutes, which looks exactly like a hang; this line tells the two apart.
+    """
+    try:
+        import psutil  # type: ignore[import-not-found] # noqa: PLC0415
+
+        proc = psutil.Process()
+        parts = [f"cpu={_priority_name(proc.nice())}"]
+        ionice = getattr(proc, "ionice", None)  # absent on macOS
+        if ionice is not None:
+            parts.append(f"io={_priority_name(ionice())}")
+        return ", ".join(parts)
+    except Exception:  # noqa: BLE001
+        logger.debug("could not read the process priority", exc_info=True)
+        return "unknown"
+
+
+def _priority_name(value: Any) -> str:
+    # psutil returns enum members on Windows (named) and plain ints or an
+    # (ioclass, value) tuple on POSIX.
+    name = getattr(value, "name", None)
+    return str(name) if name else str(value)
+
+
 def main() -> int:
     # Work offline backstop: OmniVoice fetches its weights from Hugging Face.
     from . import offline
@@ -94,7 +125,8 @@ def main() -> int:
         _activate_extras()
     except Exception:  # noqa: BLE001
         pass
-    logger.info("Voice-clone worker starting (pid=%d)", os.getpid())
+    logger.info("Voice-clone worker starting (pid=%d, priority %s)",
+                os.getpid(), _process_priority())
 
     heartbeat_stop = threading.Event()
 
@@ -107,7 +139,11 @@ def main() -> int:
 
     threading.Thread(target=_heartbeat, name="voiceclone-heartbeat", daemon=True).start()
 
+    t_import = time.time()
     from . import voice_clone
+    # This import pulls in the transcription stack (seconds on a quiet
+    # disk); timed so a slow start is not mistaken for a slow model load.
+    logger.info("Voice-clone worker listening (imports took %.1fs)", time.time() - t_import)
 
     # The model is loaded lazily (see module docstring) via
     # voice_clone.load_model, which caches it at module level -- a

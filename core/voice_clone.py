@@ -279,14 +279,24 @@ def load_model(device: str = "cpu") -> object:
     cached = _model_cache.get(device)
     if cached is not None:
         return cached
+    # Start and end are logged so a slow load is visible in the worker log:
+    # the load reads ~3 GB of weights, and a busy disk can stretch it from
+    # seconds to many minutes with nothing else written in between.
+    logger.info("voice_clone load_model: loading OmniVoice on %s", device)
+    t0 = time.time()
     optional_deps.activate()
     import torch  # type: ignore[import-not-found] # noqa: PLC0415
     from omnivoice import OmniVoice  # type: ignore[import-not-found] # noqa: PLC0415
 
+    imports_s = time.time() - t0
     model = OmniVoice.from_pretrained(
         "k2-fsa/OmniVoice", device_map=device, dtype=torch.float32,
     )
     _model_cache[device] = model
+    logger.info(
+        "voice_clone load_model: OmniVoice ready on %s in %.1fs (imports %.1fs)",
+        device, time.time() - t0, imports_s,
+    )
     return model
 
 

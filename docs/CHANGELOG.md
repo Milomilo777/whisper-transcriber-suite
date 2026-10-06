@@ -130,6 +130,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **The voice-clone worker log shows how long the OmniVoice model load takes.** The worker's
+  log now has a line when the load starts and one when the model is ready (total and import
+  time), times the worker's own start-up imports, and names the process's CPU and I/O priority.
+  A worker started at low I/O priority (as a scheduled task does) can wait many minutes for a
+  busy disk, which looked like a hang; the priority and the timed lines now point at that cause.
 - **Usage statistics no longer include the file name.** The row sent after a finished
   transcription has no `file_name` field any more, so nothing in it says what was transcribed.
   The stats server script ignores a `file_name` posted by older app versions and stores NULL in

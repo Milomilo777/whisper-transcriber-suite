@@ -7,6 +7,7 @@ test_alignment.py for a similarly-optional dependency.
 """
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import sys
@@ -307,3 +308,124 @@ def test_trim_reference_sample_raises_and_cleans_up_on_ffmpeg_failure(monkeypatc
     assert not dest.exists()
     # No stray "<dest>*"-prefixed staging file left behind in tmp_path either.
     assert list(tmp_path.iterdir()) == [src]
+
+
+# ---------- load_model / worker start: logs that make a slow load visible --
+
+
+def _fake_omnivoice(monkeypatch, from_pretrained):
+    fake_torch = types.ModuleType("torch")
+    fake_torch.float32 = "float32"  # type: ignore[attr-defined]
+    fake_omni = types.ModuleType("omnivoice")
+    fake_omni.OmniVoice = types.SimpleNamespace(from_pretrained=from_pretrained)  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setitem(sys.modules, "omnivoice", fake_omni)
+    monkeypatch.setattr(voice_clone.optional_deps, "activate", lambda: None)
+    monkeypatch.setattr(voice_clone, "_model_cache", {})
+
+
+def _messages(caplog) -> "list[str]":
+    return [r.getMessage() for r in caplog.records if r.name == "core.voice_clone"]
+
+
+def test_load_model_logs_the_start_before_loading_and_the_end_with_its_time(monkeypatch, caplog):
+    seen_at_load: list = []
+    model = object()
+
+    def from_pretrained(name, **kwargs):
+        seen_at_load.extend(_messages(caplog))
+        return model
+
+    _fake_omnivoice(monkeypatch, from_pretrained)
+    # Clock: start, after the imports, after the load.
+    clock = iter([100.0, 103.5, 110.0])
+    monkeypatch.setattr(voice_clone, "time", types.SimpleNamespace(time=lambda: next(clock)))
+    with caplog.at_level(logging.INFO, logger="core.voice_clone"):
+        assert voice_clone.load_model("cpu") is model
+
+    # The start line is already written while the (possibly slow) load runs.
+    assert seen_at_load == ["voice_clone load_model: loading OmniVoice on cpu"]
+    assert _messages(caplog) == [
+        "voice_clone load_model: loading OmniVoice on cpu",
+        "voice_clone load_model: OmniVoice ready on cpu in 10.0s (imports 3.5s)",
+    ]
+
+
+def test_load_model_from_the_cache_logs_nothing(monkeypatch, caplog):
+    calls: list = []
+    _fake_omnivoice(monkeypatch, lambda name, **kw: calls.append(name) or object())
+    with caplog.at_level(logging.INFO, logger="core.voice_clone"):
+        first = voice_clone.load_model("cpu")
+        caplog.clear()
+        assert voice_clone.load_model("cpu") is first
+    assert calls == ["k2-fsa/OmniVoice"]
+    assert _messages(caplog) == []
+
+
+def test_a_failed_load_leaves_only_the_start_line_and_caches_nothing(monkeypatch, caplog):
+    def from_pretrained(name, **kwargs):
+        raise OSError("weights unreadable")
+
+    _fake_omnivoice(monkeypatch, from_pretrained)
+    with caplog.at_level(logging.INFO, logger="core.voice_clone"):
+        with pytest.raises(OSError, match="weights unreadable"):
+            voice_clone.load_model("cpu")
+    assert _messages(caplog) == ["voice_clone load_model: loading OmniVoice on cpu"]
+    assert voice_clone._model_cache == {}
+
+
+class _Named(int):
+    """Stands in for psutil's Windows priority enums (an int with a name)."""
+
+    def __new__(cls, value: int, name: str) -> "_Named":
+        obj = super().__new__(cls, value)
+        obj.name = name  # type: ignore[attr-defined]
+        return obj
+
+
+def _fake_psutil(monkeypatch, process):
+    fake = types.ModuleType("psutil")
+    fake.Process = process  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "psutil", fake)
+
+
+def test_worker_start_line_names_the_process_priority(monkeypatch, caplog):
+    import io
+    import json
+
+    from core import voice_clone_worker as vw
+
+    _fake_psutil(monkeypatch, lambda: types.SimpleNamespace(
+        nice=lambda: _Named(16384, "BELOW_NORMAL_PRIORITY_CLASS"),
+        ionice=lambda: _Named(1, "IOPRIO_LOW")))
+    monkeypatch.setattr(vw, "setup_logging", lambda *a, **k: None)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({"action": "shutdown"}) + "\n"))
+    with caplog.at_level(logging.INFO, logger=vw.__name__):
+        assert vw.main() == 0
+    msgs = [r.getMessage() for r in caplog.records if r.name == vw.__name__]
+    starts = [m for m in msgs if m.startswith("Voice-clone worker starting")]
+    assert len(starts) == 1
+    assert starts[0].endswith(
+        "priority cpu=BELOW_NORMAL_PRIORITY_CLASS, io=IOPRIO_LOW)")
+    # The worker's own imports are timed too, after the start line.
+    listening = [m for m in msgs if m.startswith("Voice-clone worker listening (imports took ")]
+    assert len(listening) == 1
+    assert msgs.index(listening[0]) > msgs.index(starts[0])
+
+
+def test_process_priority_without_io_priority_or_names(monkeypatch):
+    from core import voice_clone_worker as vw
+
+    # macOS: psutil has no ionice; POSIX nice() is a plain int.
+    _fake_psutil(monkeypatch, lambda: types.SimpleNamespace(nice=lambda: 10))
+    assert vw._process_priority() == "cpu=10"
+
+
+def test_process_priority_unreadable_says_unknown(monkeypatch):
+    from core import voice_clone_worker as vw
+
+    def broken():
+        raise OSError("access denied")
+
+    _fake_psutil(monkeypatch, broken)
+    assert vw._process_priority() == "unknown"
