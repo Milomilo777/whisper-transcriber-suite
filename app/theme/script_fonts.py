@@ -15,14 +15,17 @@ Segoe UI as the base font fixes the line height for Indic scripts, Thai, Lao and
 Myanmar and Han get a font of their own per row or line. Measured with every language of the
 caption-language list on Windows 10; right-to-left order is a separate problem no font fixes.
 
-A font of their own has a cost: Tk then draws the whole line as one run, and Tk on Windows draws a
-run in pieces of about 200 bytes, cut wherever that falls (``MultiFontTextOut`` in
-win/tkWinFont.c), even inside a cluster. Text boxes therefore cut such lines into pieces under that
-size, after a space or between clusters, each piece in its own tag (a tag boundary starts a new
-run). Treeview rows cannot be cut, so a Sinhala or Myanmar row longer than that keeps the default
-font: its words are then separate runs (Segoe UI draws the spaces and separators), and a mark that
-the line height clips is the lesser harm than a cluster split in two. That cost is why scripts
-that Segoe UI's line already fits get no font of their own.
+A font of their own has a cost: Tk then draws the whole line as one run, and Tk 8.6 on Windows
+draws a run in pieces of about 200 bytes, the first cut at the first character boundary at or
+after byte 201 (measured with Tk 8.6.15), even inside a cluster. Text boxes therefore cut such
+lines into pieces under that size, after a space or between clusters, each piece in its own tag (a
+tag boundary starts a new run). Treeview rows cannot be cut, so a Myanmar row, or a Sinhala row
+without U+200D, longer than ``ROW_BYTES`` keeps the default font: its words are then separate runs
+(Segoe UI draws the spaces and separators), at the price of Myanmar marks that the row height
+clips. A Sinhala row with U+200D keeps its font at any length: under the default font Tk splits
+the run around every joiner, so every conjunct falls apart, while one font breaks at most one
+cluster per piece (ten Sinhala rows of 150 to 600 bytes: 59 broken clusters against 4). That cost
+is why scripts that Segoe UI's line already fits get no font of their own.
 
 A Treeview tag's font restyles every column of the row. Han text never lost pixels under the
 default fallback, so trees with more than one column give it no font (the progress bars and the
@@ -84,6 +87,8 @@ _ROW_STYLE = "WtsRows{}.Treeview"  # a Treeview style with taller rows, by heigh
 _ROW_MIN_SCALE = 0.8         # a row font may shrink to 80 % of the tree's size to fit the rows
 _HAN_KEYS = frozenset({"ja", "zh-hans", "zh-hant"})
 RUN_BYTES = 150              # pieces of a tagged Text line stay under Tk's ~200-byte drawing runs
+ROW_BYTES = 200              # a Treeview cell up to this size is drawn in one piece
+_ZWJ = chr(0x200D)           # ZERO WIDTH JOINER
 
 _families: frozenset[str] | None = None
 _missing_logged: set[str] = set()
@@ -286,16 +291,28 @@ def _fit_rows(tree: ttk.Treeview, need: int) -> None:
     tree.configure(style=name)
 
 
+def _cut_costs_more(text: str, key: str) -> bool:
+    """True when a cell in ``key``'s script should keep the default font for its length.
+
+    Up to ``ROW_BYTES`` Tk draws the cell in one piece, so the font costs nothing. A longer cell is
+    cut inside a cluster now and then. Sinhala with U+200D keeps its font anyway: the default font
+    splits every conjunct (one in a few words), the cut at most one cluster in ~200 bytes.
+    """
+    if text_script(text) != key or sum(map(_tk_bytes, text)) <= ROW_BYTES:
+        return False
+    return not (key == "sinhala" and _ZWJ in text)
+
+
 def tree_row_tags(tree: ttk.Treeview, *texts: str, language: str | None = None) -> tuple[str, ...]:
     """The tag that gives a row the font its text's script needs, or ``()``.
 
     ``texts`` are the row's cells in that script (a file name, a transcript line). ttk applies a
-    tag's font to the whole row, which leads to three rules (module docstring): a Sinhala or
-    Myanmar cell longer than ``RUN_BYTES`` keeps the default font, because one font would make Tk
-    cut the row inside a cluster; a tree with more than one column gives Han no font and other
-    scripts their font at the tree's size and row height, so the other columns look like every
-    other row's; in a single-column tree the first row in a font configures the tag, a little
-    smaller if that makes its line fit the rows, else this tree gets taller rows.
+    tag's font to the whole row, which leads to three rules (module docstring): a cell that one
+    font would make Tk cut inside a cluster keeps the default font (``_cut_costs_more``); a tree
+    with more than one column gives Han no font and other scripts their font at the tree's size
+    and row height, so the other columns look like every other row's; in a single-column tree the
+    first row in a font configures the tag, a little smaller if that makes its line fit the rows,
+    else this tree gets taller rows.
     """
     key = font_key(" ".join(texts), language) if _on_windows() else None
     if key is None:
@@ -303,8 +320,7 @@ def tree_row_tags(tree: ttk.Treeview, *texts: str, language: str | None = None) 
     columns = len(tree.tk.splitlist(tree.cget("columns")))
     if key in _HAN_KEYS and columns > 1:
         return ()
-    if key not in _HAN_KEYS and any(text_script(t) == key and sum(map(_tk_bytes, t)) > RUN_BYTES
-                                    for t in texts):
+    if key not in _HAN_KEYS and any(_cut_costs_more(t, key) for t in texts):
         return ()
     family = _installed_family(key, installed_families(tree))
     if family is None:

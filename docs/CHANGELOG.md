@@ -226,8 +226,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **File names and transcript lines in Indic scripts, Sinhala, Thai, Lao, Khmer, Myanmar, Chinese
   and Japanese are drawn in full on Windows.** Text boxes and lists use Segoe UI instead of
   Courier New or Windows 10's Arial fallback, at the same box and row heights, and Sinhala and
-  Myanmar a font of their own (`app/theme/script_fonts.py`), except in list rows long enough for
-  Tk to split a cluster. Chinese and Japanese get a regional font in text boxes and one-column
+  Myanmar a font of their own (`app/theme/script_fonts.py`); list rows long enough for Tk to split
+  a cluster keep the default font, except Sinhala rows with joined conjuncts, which the default
+  font would pull apart. Chinese and Japanese get a regional font in text boxes and one-column
   lists, chosen by kana or by the transcript's language where the app knows it (not for a
   transcript opened from the file picker).
 - **The test suite no longer writes into the real per-user folders.** Tests used to add log

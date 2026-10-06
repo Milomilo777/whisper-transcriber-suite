@@ -426,18 +426,37 @@ def test_a_row_font_shrinks_to_fit_the_rows_before_the_tree_grows(windows: set[s
 
 
 def test_long_sinhala_and_myanmar_rows_keep_the_default_font(windows: set[str], root: tk.Tk) -> None:
-    # One font makes the whole row one Tk run, cut every ~200 bytes even inside a cluster.
+    # One font makes the whole row one Tk run, cut after byte 200 even inside a cluster.
     tree = ttk.Treeview(root, columns=("file",), show="headings")
-    sri = "ශ්" + ZWJ + "රී"  # one conjunct, 15 bytes
-    assert script_fonts.tree_row_tags(tree, sri * 10) == ("script-font-Nirmala_UI",)  # 150 bytes
-    assert script_fonts.tree_row_tags(tree, sri * 10 + "a") == ()
-    assert script_fonts.tree_row_tags(tree, (sri + " ") * 12) == ()
-    assert script_fonts.tree_row_tags(tree, " ".join(["မြန်မာ"] * 9)) == ()
+    myanmar = "မြန်မာ"  # 18 bytes
+    assert script_fonts.tree_row_tags(tree, myanmar * 11 + "ab") == ("script-font-Myanmar_Text",)  # 200
+    assert script_fonts.tree_row_tags(tree, myanmar * 11 + "abc") == ()
+    assert script_fonts.tree_row_tags(tree, " ".join([myanmar] * 20)) == ()
+    assert script_fonts.tree_row_tags(tree, " ".join([myanmar] * 20) + ZWJ) == ()  # Sinhala's rule
+    sinhala = "සිංහල"  # 15 bytes, no joiner
+    assert script_fonts.tree_row_tags(tree, sinhala * 13 + "abcde") == ("script-font-Nirmala_UI",)
+    assert script_fonts.tree_row_tags(tree, (sinhala + " ") * 13) == ()  # 208 bytes
     assert script_fonts.tree_row_tags(tree, "မြန်မာ_2026.mp4") == ("script-font-Myanmar_Text",)
     # Only the cells in that script count: a long Latin line next to a short name is no reason.
     assert script_fonts.tree_row_tags(tree, "မြန်မာ.mp4", "a" * 400) == ("script-font-Myanmar_Text",)
     # Han has no clusters to split: a long Japanese row keeps its font.
     assert script_fonts.tree_row_tags(tree, "日本語のテスト" * 20) == ("script-font-Yu_Gothic_UI",)
+
+
+def test_long_sinhala_rows_with_joined_conjuncts_keep_their_font(windows: set[str], root: tk.Tk) -> None:
+    # Under the default font Tk splits the run around every ZERO WIDTH JOINER, so each conjunct
+    # falls apart; one font breaks at most one cluster per ~200 bytes, so it wins at any length.
+    sri = "ශ්" + ZWJ + "රී"  # one conjunct, 15 bytes
+    line = "ශ්" + ZWJ + "රී ලංකාවේ ප්" + ZWJ + "රධාන නගරය කොළඹ වන අතර ක්" + ZWJ + "රිකට් ක්" + ZWJ + "රීඩාව"
+    for columns in (("file",), ("file", "status", "progress", "time", "size")):
+        tree = ttk.Treeview(root, columns=columns, show="headings")
+        for text in (sri * 14, (sri + " ") * 40, " ".join([line] * 6), "a" * 300 + sri):
+            assert script_fonts.tree_row_tags(tree, text) == ("script-font-Nirmala_UI",), len(text)
+        # a short file name next to a long transcript line with conjuncts (the search results)
+        tags = script_fonts.tree_row_tags(tree, "සිංහල.mp3", (line + " ") * 5)
+        assert tags == ("script-font-Nirmala_UI",)
+        # the same words without a joiner are plain Sinhala: over 200 bytes they keep the default
+        assert script_fonts.tree_row_tags(tree, " ".join([line.replace(ZWJ, "")] * 2)) == ()
 
 
 def test_lists_with_more_columns_give_han_no_font(windows: set[str], root: tk.Tk) -> None:
