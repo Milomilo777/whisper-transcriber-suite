@@ -3,16 +3,24 @@
 Tk draws a line with one base font and borrows only the glyphs that font lacks from another
 installed font. On Windows this goes wrong for several scripts the app transcribes:
 
-- the line keeps the base font's height, so tall vowel signs and stacked marks of the Indic
-  scripts, Sinhala, Thai, Khmer and Myanmar are cut off (Courier New in a ``tk.Text``; Myanmar
-  even in a Treeview row);
+- the line keeps the base font's height, so tall vowel signs and stacked marks are cut off:
+  Indic scripts, Sinhala, Thai and Khmer under Courier New in a ``tk.Text``, Myanmar even under
+  Segoe UI and in a Treeview row;
 - a Sinhala conjunct joined by U+200D ZERO WIDTH JOINER falls apart: the base font has the
   joiner, so Tk splits the borrowed run around it;
 - Chinese and Japanese text gets whichever CJK font Tk finds first, so the glyph shapes follow
   the wrong region (a Traditional Chinese font for Japanese, for example).
 
-Naming the right font for the row or line fixes all three. Measured with every language of the
+Segoe UI as the base font fixes the line height for Indic scripts, Thai, Lao and Khmer. Sinhala,
+Myanmar and Han get a font of their own per row or line. Measured with every language of the
 caption-language list on Windows 10; right-to-left order is a separate problem no font fixes.
+
+A font of their own has a cost: Tk then draws the whole line as one run, and Tk on Windows draws a
+run in pieces of about 200 bytes, cut wherever that falls (``MultiFontTextOut`` in
+win/tkWinFont.c), even inside a cluster. Text boxes therefore cut such lines into pieces under that
+size, after a space or between clusters, each piece in its own tag (a tag boundary starts a new
+run); Treeview rows cannot be cut. That cost is why scripts that Segoe UI's line already fits get
+no font of their own.
 
 Windows only: macOS and Linux keep the platform's fonts and font fallback. A font that is not
 installed is skipped (logged once) and the widget keeps the font it had.
@@ -23,6 +31,7 @@ import bisect
 import logging
 import sys
 import tkinter as tk
+import unicodedata
 from collections import Counter
 from collections.abc import Collection
 from tkinter import font as tkfont
@@ -62,6 +71,7 @@ _TREE_TAG = "script-font-"   # Treeview tags: "script-font-Myanmar_Text"
 _TEXT_TAG = "script-font-"   # tk.Text tags, same shape
 _ROW_PAD = 3                 # sv_ttk's row height = line height + 3
 _ROW_STYLE = "WtsRows{}.Treeview"  # a Treeview style with taller rows, by height in pixels
+RUN_BYTES = 150              # pieces of a tagged Text line stay under Tk's ~200-byte drawing runs
 
 _families: frozenset[str] | None = None
 _missing_logged: set[str] = set()
@@ -244,8 +254,10 @@ def _fit_rows(tree: ttk.Treeview, need: int) -> None:
 def tree_row_tags(tree: ttk.Treeview, *texts: str, language: str | None = None) -> tuple[str, ...]:
     """The tag that gives a row the font its text's script needs, or ``()``.
 
-    ttk applies a tag's font to the whole row. The first row in a font configures the tag and,
-    if that font's lines are taller than the rows, gives this tree a row height that fits them.
+    ttk applies a tag's font to the whole row, and a row cannot be cut into pieces like a Text
+    line (module docstring): a row of more than ~200 bytes in one font may show one split
+    cluster. The first row in a font configures the tag and, if that font's lines are taller
+    than the rows, gives this tree a row height that fits them.
     """
     key = font_key(" ".join(texts), language) if _on_windows() else None
     family = None if key is None else _installed_family(key, installed_families(tree))
@@ -262,19 +274,73 @@ def tree_row_tags(tree: ttk.Treeview, *texts: str, language: str | None = None) 
 # ------------------------------------------------------------------------- tk.Text
 
 def use_text_font(widget: tk.Text) -> bool:
-    """A proportional font with room for tall marks instead of Tk's Courier New (Windows only)."""
+    """A proportional font with room for tall marks instead of Tk's Courier New (Windows only).
+
+    Segoe UI's line is one pixel shallower below the baseline than Courier New's, so each line
+    also gets ``tokens.TEXT_LINE_GAP`` pixels above and below (marks below Lao letters).
+    """
     if not _on_windows():
         return False
     family = _installed_family("ui", installed_families(widget))
     if family is None:
         return False
-    widget.configure(font=(family, tokens.FONT_BODY))
+    widget.configure(font=(family, tokens.FONT_BODY),
+                     spacing1=tokens.TEXT_LINE_GAP, spacing3=tokens.TEXT_LINE_GAP)
     return True
+
+
+def _tk_bytes(ch: str) -> int:
+    """Bytes Tk 8.6 stores for a character (a character outside the BMP is two 3-byte halves)."""
+    cp = ord(ch)
+    return 1 if cp < 0x80 else 2 if cp < 0x800 else 3 if cp < 0x10000 else 6
+
+
+# A piece may end before ``i`` unless text[i] continues a cluster (a mark or a joiner) or text[i-1]
+# joins its neighbours: a virama by name (Indic, Myanmar), the Sinhala al-lakuna and Khmer coeng
+# (viramas by another name), a joiner, or a Thai / Lao vowel written before its consonant.
+_JOINS_NEXT = {0x200C, 0x200D, 0x0DCA, 0x17D2} | set(range(0x0E40, 0x0E45)) | set(range(0x0EC0, 0x0EC5))
+
+
+def _cluster_boundary(text: str, i: int) -> bool:
+    nxt, prev = text[i], text[i - 1]
+    if unicodedata.category(nxt).startswith("M") or ord(nxt) in (0x200C, 0x200D):
+        return False
+    return ord(prev) not in _JOINS_NEXT and "VIRAMA" not in unicodedata.name(prev, "")
+
+
+def run_pieces(line: str, limit: int = RUN_BYTES) -> list[tuple[int, int]]:
+    """Cut a line into pieces of at most ``limit`` Tk bytes: after a space where possible, else
+    between clusters (a single cluster longer than the limit is the only forced cut)."""
+    pieces: list[tuple[int, int]] = []
+    start = 0
+    while start < len(line):
+        size, end = 0, start
+        while end < len(line) and size + _tk_bytes(line[end]) <= limit:
+            size += _tk_bytes(line[end])
+            end += 1
+        if end >= len(line):
+            pieces.append((start, len(line)))
+            break
+        cut = next((j for j in range(end, start, -1) if line[j - 1].isspace()), None)
+        if cut is None:
+            cut = next((j for j in range(end, start, -1) if _cluster_boundary(line, j)), end)
+        pieces.append((start, cut))
+        start = cut
+    return pieces
+
+
+def _tk_index(line: str, offset: int) -> int:
+    """Tk 8.6 counts a character outside the BMP as two (UTF-16 surrogates)."""
+    return offset + sum(1 for ch in line[:offset] if ord(ch) > 0xFFFF)
 
 
 def tag_script_lines(widget: tk.Text, start: str = "1.0", end: str = "end",
                      language: str | None = None) -> None:
-    """Give each line from ``start`` to ``end`` the font its script needs (Windows only)."""
+    """Give each line from ``start`` to ``end`` the font its script needs (Windows only).
+
+    The line is tagged in pieces (``run_pieces``), alternating two tags with the same font, so Tk
+    never draws more than one piece in one run.
+    """
     if not _on_windows():
         return
     first = int(widget.index(start).split(".")[0])
@@ -284,12 +350,15 @@ def tag_script_lines(widget: tk.Text, start: str = "1.0", end: str = "end",
         if tag.startswith(_TEXT_TAG):
             widget.tag_remove(tag, f"{first}.0", f"{last}.end")
     for n in range(first, last + 1):
-        key = font_key(widget.get(f"{n}.0", f"{n}.end"), language)
+        line = widget.get(f"{n}.0", f"{n}.end")
+        key = font_key(line, language)
         family = None if key is None else _installed_family(key, installed_families(widget))
         if family is None:
             continue
-        tag = _TEXT_TAG + family.replace(" ", "_")
-        if tag not in names:
-            widget.tag_configure(tag, font=(family, tokens.FONT_BODY))
-            names.add(tag)
-        widget.tag_add(tag, f"{n}.0", f"{n}.end")
+        base = _TEXT_TAG + family.replace(" ", "_")
+        for k, (a, b) in enumerate(run_pieces(line)):
+            tag = base if k % 2 == 0 else base + "-b"
+            if tag not in names:
+                widget.tag_configure(tag, font=(family, tokens.FONT_BODY))
+                names.add(tag)
+            widget.tag_add(tag, f"{n}.{_tk_index(line, a)}", f"{n}.{_tk_index(line, b)}")

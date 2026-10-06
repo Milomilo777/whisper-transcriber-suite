@@ -124,10 +124,12 @@ def test_script_of_range_edges(cp: int, script: str | None) -> None:
     assert script_fonts.script_of(chr(cp)) == script
 
 
-def test_every_font_key_has_a_family_and_every_family_is_used() -> None:
+def test_only_sinhala_myanmar_and_han_get_a_font_of_their_own() -> None:
+    # Indic scripts, Thai, Lao and Khmer fit Segoe UI's line; a font of their own would only make
+    # Tk draw whole lines as one run, which it cuts every 200 bytes (see the module docstring).
     ranges = {s for _a, _b, s in script_fonts._RANGES} - {"kana", "han"}
-    keys = ranges | {"ja", "zh-hans", "zh-hant"}
-    assert set(tokens.FONT_FAMILIES_WINDOWS) == keys | {"ui"}
+    assert ranges == {"indic", "sinhala", "myanmar", "thai", "lao", "khmer"}
+    assert set(tokens.FONT_FAMILIES_WINDOWS) == {"ui", "sinhala", "myanmar", "ja", "zh-hans", "zh-hant"}
 
 
 def test_family_for_on_windows(windows: set[str]) -> None:
@@ -135,6 +137,8 @@ def test_family_for_on_windows(windows: set[str]) -> None:
     assert script_fonts.family_for(SRI_LANKA, installed=windows) == "Nirmala UI"
     assert script_fonts.family_for("中文", "zh-TW", installed=windows) == "Microsoft JhengHei UI"
     assert script_fonts.family_for("English", installed=windows) is None
+    for text in ("हिन्दी", "ไทย", "ລາວ", "ខ្មែរ", "தமிழ்"):
+        assert script_fonts.family_for(text, installed=windows) is None, text
 
 
 def test_a_missing_font_keeps_the_default_and_is_logged_once(
@@ -164,15 +168,16 @@ def test_text_box_gets_a_proportional_font_and_per_line_script_fonts(windows: se
     text = tk.Text(root)
     assert script_fonts.use_text_font(text)
     assert tkfont.Font(root=root, font=text.cget("font")).cget("family") == "Segoe UI"
+    assert int(text.cget("spacing1")) == int(text.cget("spacing3")) == tokens.TEXT_LINE_GAP > 0
     text.insert("1.0", "\n".join(["English line", "မြန်မာ", SRI_LANKA, "हिन्दी", "日本語", "ไทย"]))
     script_fonts.tag_script_lines(text, language="ja")
     assert _font_of_line(text, 1) is None
     assert "Myanmar Text" in str(_font_of_line(text, 2))
     assert "Nirmala UI" in str(_font_of_line(text, 3))
-    assert "Nirmala UI" in str(_font_of_line(text, 4))
+    assert _font_of_line(text, 4) is None  # Hindi: Segoe UI's line fits it
     assert "Yu Gothic UI" in str(_font_of_line(text, 5))
-    assert "Leelawadee UI" in str(_font_of_line(text, 6))
-    # The tag covers the whole line, so the line gets that font's height.
+    assert _font_of_line(text, 6) is None  # Thai: likewise
+    # A short line is one piece: the tag covers the whole line, so the line gets that font's height.
     tag = next(t for t in text.tag_names("2.0") if t.startswith("script-font-"))
     assert [str(i) for i in text.tag_ranges(tag)] == ["2.0", text.index("2.end")]
 
@@ -184,10 +189,10 @@ def test_retagging_follows_edits(windows: set[str], root: tk.Tk) -> None:
     assert _font_of_line(text, 1) is not None
     text.delete("1.0", "1.end")
     text.insert("1.0", "now Latin")
-    text.insert("2.0", "ไทย ")
+    text.insert("2.0", "සිංහල ")
     script_fonts.tag_script_lines(text)
     assert _font_of_line(text, 1) is None
-    assert "Leelawadee UI" in str(_font_of_line(text, 2))
+    assert "Nirmala UI" in str(_font_of_line(text, 2))
 
 
 def _script_tags(text: tk.Text, index: str) -> list[str]:
@@ -207,9 +212,9 @@ def test_retagging_drops_tags_that_typed_characters_inherited(windows: set[str],
     text.delete("1.0", "end")
     text.insert("1.0", "မမ")
     script_fonts.tag_script_lines(text)
-    text.insert("1.1", "ไทยไทย")  # now mostly Thai, all of it inherited the Myanmar tag
+    text.insert("1.1", "සිංහලසිංහල")  # now mostly Sinhala, all of it inherited the Myanmar tag
     script_fonts.tag_script_lines(text)
-    assert _script_tags(text, "1.0") == ["script-font-Leelawadee_UI"]
+    assert _script_tags(text, "1.0") == ["script-font-Nirmala_UI"]
 
 
 def test_appending_tags_only_the_new_lines(windows: set[str], root: tk.Tk) -> None:
@@ -217,10 +222,103 @@ def test_appending_tags_only_the_new_lines(windows: set[str], root: tk.Tk) -> No
     text.insert("end", "မြန်မာ\n")
     script_fonts.tag_script_lines(text)
     start = text.index("end-1c")
-    text.insert("end", "हिन्दी\n")
+    text.insert("end", "සිංහල\n")
     script_fonts.tag_script_lines(text, start, "end")
     assert "Myanmar Text" in str(_font_of_line(text, 1))
     assert "Nirmala UI" in str(_font_of_line(text, 2))
+
+
+# Tk on Windows draws a run of one font in pieces of about 200 bytes, cut anywhere: a tagged
+# line must reach Tk in pieces under that size, each cut after a space or between clusters.
+_CLUSTER_ALPHABET = (
+    ["ශ", "ර", "ක", "ල", "ං", "ා", "ි", "ී", "්", ZWJ]           # Sinhala letters, signs, al-lakuna
+    + ["မ", "ြ", "န", "်", "ာ", chr(0x1039), "က"]                  # Myanmar, incl. the stacking virama
+    + ["ខ", "្", "ម", "ែ", "រ"]                                    # Khmer, incl. coeng
+    + ["क", "्", "ष", "ि"]                                          # Devanagari
+    + ["เ", "ก", "ไ", "ท", "ย"]                                    # Thai, incl. vowels written first
+    + ["中", "文", " ", "_", "a", chr(0x1F600)]                     # Han, space, ASCII, outside the BMP
+)
+
+
+def _tk_size(s: str) -> int:
+    return sum(script_fonts._tk_bytes(c) for c in s)
+
+
+def _cut_is_safe(line: str, j: int) -> bool:
+    return line[j - 1].isspace() or script_fonts._cluster_boundary(line, j)
+
+
+def test_run_pieces_are_lossless_small_and_cut_between_clusters() -> None:
+    import random
+
+    rng = random.Random(242)
+    forced = 0
+    for _ in range(600):
+        line = "".join(rng.choice(_CLUSTER_ALPHABET) for _ in range(rng.randrange(0, 400)))
+        pieces = script_fonts.run_pieces(line)
+        assert "".join(line[a:b] for a, b in pieces) == line  # nothing lost or reordered
+        assert all(a < b for a, b in pieces) and [a for a, _b in pieces[1:]] == [b for _a, b in pieces[:-1]]
+        for a, b in pieces:
+            assert _tk_size(line[a:b]) <= script_fonts.RUN_BYTES
+        for _a, b in pieces[:-1]:
+            if not _cut_is_safe(line, b):
+                # Only allowed when no safe cut exists in the whole piece (one endless cluster).
+                a = next(a for a, bb in pieces if bb == b)
+                assert not any(_cut_is_safe(line, j) for j in range(a + 1, b)), (line, b)
+                forced += 1
+    assert forced < 30  # random marks make a few unsplittable clusters; real text has none
+
+
+def test_run_pieces_prefer_spaces_and_respect_clusters() -> None:
+    sri = "ශ්" + ZWJ + "රී"  # 15 bytes, one cluster
+    line = (sri + " ") * 20
+    pieces = script_fonts.run_pieces(line)
+    assert len(pieces) > 1 and all(line[b - 1] == " " for _a, b in pieces[:-1])
+    for prefix in ("", "a", "ab", "abc", "abcd"):  # shift where the byte limit falls
+        nospace = prefix + sri * 30  # no space at all: cut between the conjuncts, never inside one
+        cuts = [b for _a, b in script_fonts.run_pieces(nospace)[:-1]]
+        assert cuts and all((b - len(prefix)) % len(sri) == 0 for b in cuts)
+        khmer = prefix + "ខ្មែរ" * 40  # two syllables, ខ្មែ + រ; the coeng (U+17D2) stacks the next consonant
+        cuts = [b for _a, b in script_fonts.run_pieces(khmer)[:-1]]
+        assert cuts and all(khmer[b - 1] != chr(0x17D2) and (b - len(prefix)) % 5 in (0, 4) for b in cuts)
+    # Explicit clusters (not the module's own rule): a cut never follows a Thai vowel written
+    # before its consonant, a Myanmar stacking virama or a Devanagari virama.
+    virama = {"thai": "", "myanmar": chr(0x1039), "hindi": "्"}
+    for prefix in ("", "a", "ab", "abc"):  # shift where the byte limit falls
+        thai = prefix + "เกไท" * 60
+        cuts = [b for _a, b in script_fonts.run_pieces(thai)[:-1]]
+        assert cuts and all(thai[b - 1] not in "เไ" for b in cuts)
+        myanmar = prefix + ("က" + virama["myanmar"] + "ကမ") * 60
+        cuts = [b for _a, b in script_fonts.run_pieces(myanmar)[:-1]]
+        assert cuts and all(myanmar[b - 1] != virama["myanmar"] for b in cuts)
+        hindi = prefix + "क्ष" * 80
+        cuts = [b for _a, b in script_fonts.run_pieces(hindi)[:-1]]
+        assert cuts and all(hindi[b - 1] != virama["hindi"] and hindi[b] != virama["hindi"] for b in cuts)
+        sinhala = prefix + "ක්ෂ" * 80  # al-lakuna without a joiner: still kept with what follows
+        cuts = [b for _a, b in script_fonts.run_pieces(sinhala)[:-1]]
+        assert cuts and all(sinhala[b - 1] != chr(0x0DCA) for b in cuts)
+    assert script_fonts.run_pieces("") == []
+    assert script_fonts.run_pieces("short") == [(0, 5)]
+
+
+def test_long_lines_are_tagged_in_alternating_pieces(windows: set[str], root: tk.Tk) -> None:
+    text = tk.Text(root)
+    sri = "ශ්" + ZWJ + "රී "
+    line = sri * 30 + chr(0x1F600) + sri * 10  # an emoji: Tk counts it as two characters
+    text.insert("1.0", line + "\nEnglish")
+    script_fonts.tag_script_lines(text)
+    ranges = []
+    for tag in ("script-font-Nirmala_UI", "script-font-Nirmala_UI-b"):
+        r = [str(i) for i in text.tag_ranges(tag)]
+        ranges += list(zip(r[::2], r[1::2]))
+    ranges.sort(key=lambda p: int(p[0].split(".")[1]))
+    assert len(ranges) == len(script_fonts.run_pieces(line)) > 1
+    assert ranges[0][0] == "1.0" and ranges[-1][1] == text.index("1.end")
+    for (_a, b), (c, _d) in zip(ranges, ranges[1:]):
+        assert b == c  # contiguous: every character in exactly one piece
+    for a, b in ranges:
+        assert _tk_size(text.get(a, b)) <= script_fonts.RUN_BYTES
+    assert text.tag_cget("script-font-Nirmala_UI", "font") == text.tag_cget("script-font-Nirmala_UI-b", "font")
 
 
 def test_text_box_unchanged_off_windows(monkeypatch: pytest.MonkeyPatch, root: tk.Tk) -> None:
@@ -231,6 +329,7 @@ def test_text_box_unchanged_off_windows(monkeypatch: pytest.MonkeyPatch, root: t
     text.insert("1.0", "မြန်မာ")
     script_fonts.tag_script_lines(text)
     assert str(text.cget("font")) == before
+    assert int(text.cget("spacing1")) == int(text.cget("spacing3")) == 0
     assert _font_of_line(text, 1) is None
 
 
@@ -277,12 +376,13 @@ def test_tree_rows_only_grow(windows: set[str], root: tk.Tk) -> None:
     style = ttk.Style(root)
     style.configure("Treeview", rowheight=10)  # every font below needs more
     tree = ttk.Treeview(root, columns=("file",), show="headings")
-    script_fonts.tree_row_tags(tree, "हिन्दी")
+    script_fonts.tree_row_tags(tree, "සිංහල")
     first = _rowheight(style, str(tree.cget("style")))
     script_fonts.tree_row_tags(tree, "မြန်မာ")
     tall = _rowheight(style, str(tree.cget("style")))
-    script_fonts.tree_row_tags(tree, "ไทย")
+    script_fonts.tree_row_tags(tree, "中文", language="zh")
     assert 10 < first <= tall == _rowheight(style, str(tree.cget("style")))
+    assert script_fonts.tree_row_tags(tree, "हिन्दी ไทย ខ្មែរ") == ()  # Segoe UI's row fits these
 
 
 def test_tree_rows_change_no_style_once_the_theme_is_prepared(windows: set[str], root: tk.Tk) -> None:
@@ -298,7 +398,7 @@ def test_tree_rows_change_no_style_once_the_theme_is_prepared(windows: set[str],
     assert seen, "control: setting a style option does send <<ThemeChanged>>"
     seen.clear()
     tree = ttk.Treeview(root, columns=("file",), show="headings")
-    for text in ("မြန်မာ.mp3", "हिन्दी.mp3", "中文.mp3", "ไทย.mp3"):
+    for text in ("မြန်မာ.mp3", "සිංහල.mp3", "中文.mp3", "日本語のテスト.mp3"):
         assert script_fonts.tree_row_tags(tree, text, language="zh")
     root.update()
     assert str(tree.cget("style")).startswith("WtsRows")
