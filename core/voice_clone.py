@@ -33,7 +33,9 @@ from typing import Callable
 
 from . import optional_deps, synthetic_audio
 from .transcriber import get_duration
-# The one length limit for both engines; re-exported under its old name.
+# The length limits shared by both engines; MAX_TEXT_CHARS is re-exported
+# under its old name. One generate() call is one pass (MAX_PASS_CHARS).
+from .tts_plan import MAX_PASS_CHARS as MAX_PASS_CHARS
 from .tts_plan import MAX_TEXT_CHARS as MAX_TEXT_CHARS
 
 logger = logging.getLogger(__name__)
@@ -89,9 +91,14 @@ def sweep_old_session_dirs(max_age_days: float = SCRATCH_MAX_AGE_DAYS) -> None:
     older than *max_age_days*. Best-effort; never raises -- nothing else
     in this feature ever cleans these up, so every recorded reference
     clip and generated output would otherwise accumulate forever.
+
+    The folder of an unfinished long job (``core.tts_job``) is kept for
+    ``tts_job.UNFINISHED_MAX_AGE_DAYS`` after its last finished piece, so
+    a job someone continues now and then is never swept from under them.
     """
     import shutil
 
+    from . import tts_job
     from .config import user_cache_dir
 
     root = user_cache_dir() / "voice_clone"
@@ -99,10 +106,20 @@ def sweep_old_session_dirs(max_age_days: float = SCRATCH_MAX_AGE_DAYS) -> None:
         entries = list(root.iterdir())
     except OSError:
         return
-    cutoff = time.time() - max_age_days * 86400
+    now = time.time()
+    cutoff = now - max_age_days * 86400
+    unfinished_cutoff = now - max(max_age_days, tts_job.UNFINISHED_MAX_AGE_DAYS) * 86400
     for entry in entries:
         try:
-            if entry.is_dir() and entry.stat().st_mtime < cutoff:
+            if not entry.is_dir():
+                continue
+            last = entry.stat().st_mtime
+            limit = cutoff
+            if tts_job.is_unfinished_job_dir(entry):
+                progress = entry / tts_job.PARTS_DIR / tts_job.PROGRESS_FILE
+                last = max(last, progress.stat().st_mtime)
+                limit = unfinished_cutoff
+            if last < limit:
                 shutil.rmtree(entry, ignore_errors=True)
         except OSError:
             continue
@@ -283,6 +300,7 @@ def generate(
     instruct: "str | None" = None,
     language: "str | None" = None,
     speed: "float | None" = None,
+    consent_record: bool = True,
 ) -> GenerateResult:
     """Run one generation against an already-loaded *model* (see
     :func:`load_model`). Blocking; call off the Tk thread (this is what
@@ -302,6 +320,9 @@ def generate(
     The finished WAV is tagged as AI-generated
     (:func:`core.synthetic_audio.tag_wav`), and a cloning run appends its
     local consent record (:func:`core.synthetic_audio.append_consent_record`).
+    ``consent_record=False`` skips that record: a piece of a long job
+    (``core.tts_job``) is not the file the user gets, so the caller writes
+    one record for the joined file instead.
 
     Raises whatever OmniVoice / torch raises on a real failure -- the
     worker wraps this call and turns exceptions into an ``error`` event
@@ -311,10 +332,10 @@ def generate(
         raise ValueError("Consent not accepted; refusing to generate.")
     if not text or not text.strip():
         raise ValueError("No text to speak.")
-    if len(text) > MAX_TEXT_CHARS:
+    if len(text) > MAX_PASS_CHARS:
         raise ValueError(
             f"Text is {len(text)} characters; the limit for one "
-            f"generation is {MAX_TEXT_CHARS}."
+            f"generation is {MAX_PASS_CHARS}."
         )
     import soundfile as sf  # type: ignore[import-not-found] # noqa: PLC0415
 
@@ -354,7 +375,7 @@ def generate(
         sf.write(output_path, audio[0], 24000)
         synthetic_audio.tag_wav(output_path)
         warning = ""
-        if reference_paths:
+        if reference_paths and consent_record:
             try:
                 # The clips actually fed to the model (_concat_references
                 # takes at most MAX_REFERENCE_SAMPLES).

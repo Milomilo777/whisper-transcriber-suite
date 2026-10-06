@@ -372,6 +372,11 @@ DEFAULT_CONFIG = {
     #     requests skip themselves, user actions that need the internet say
     #     so, and the online config is not fetched. Local only.
     "work_offline": False,
+    #   tts_no_text_limit — Advanced > App behaviour, "No text length limit
+    #     (advanced)". True lifts core.tts_plan.MAX_TEXT_CHARS for Text to
+    #     Voice; the estimate, the free-disk check and the piece-by-piece
+    #     writer (core.tts_job) still apply. Local only.
+    "tts_no_text_limit": False,
     # --- Three-level config: ONLINE layer (P4-1) -------------------------
     # URL of an app-level JSON config the maintainer hosts, fetched on
     # startup so APP-LEVEL settings (model catalog, stats endpoint, latest
@@ -453,10 +458,12 @@ ONLINE_ALLOWED_KEYS: frozenset[str] = frozenset({
 # choice: a remote file must not be able to switch the check back on, undo a
 # "Skip this version" or a "Later", or fake the newest version seen. Same for
 # the yt-dlp update mode: a remote file must not switch automatic updates on.
-# And for Work offline, which a remote file must never be able to switch off.
+# And for Work offline, which a remote file must never be able to switch off,
+# and for the Text to Voice length limit, which only the user may lift.
 LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "telemetry_opt_in",
     "work_offline",
+    "tts_no_text_limit",
     "update_check_enabled",
     "last_update_check",
     "update_latest_seen",

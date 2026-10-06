@@ -39,12 +39,13 @@ def test_generate_rejects_empty_text():
         k.generate("   ", "af_heart", "out.wav")
 
 
-def test_generate_uses_the_shared_length_limit(monkeypatch):
+def test_generate_uses_the_shared_pass_limit(monkeypatch):
+    """One call is one pass; longer texts go through core.tts_job in pieces."""
     from core import tts_plan
 
     monkeypatch.setattr(k, "_load", lambda _lang: pytest.fail("loaded a model"))
-    with pytest.raises(ValueError, match=f"limit for one generation is {tts_plan.MAX_TEXT_CHARS}"):
-        k.generate("a" * (tts_plan.MAX_TEXT_CHARS + 1), "af_heart", "out.wav")
+    with pytest.raises(ValueError, match=f"limit for one generation is {tts_plan.MAX_PASS_CHARS}"):
+        k.generate("a" * (tts_plan.MAX_PASS_CHARS + 1), "af_heart", "out.wav")
 
 
 def test_measure_speed_never_downloads(monkeypatch):

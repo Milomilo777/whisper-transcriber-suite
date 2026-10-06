@@ -4,7 +4,8 @@ The Clone Your Voice / Text to Voice tab runs two engines, Kokoro
 (``core.tts_kokoro``) and OmniVoice (``core.voice_clone``). This module
 holds what both share before a job starts:
 
-* the one length limit for a single job (:data:`MAX_TEXT_CHARS`);
+* the length limits for one job and one generation pass
+  (:data:`MAX_TEXT_CHARS`, :data:`MAX_PASS_CHARS`, :func:`text_limit`);
 * the estimate shown before a long job: how long it takes on this computer,
   how long the speech is, how big the WAV file gets (:func:`estimate`);
 * the free-disk check that refuses a job the disk cannot hold
@@ -39,11 +40,25 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-#: The one cap on how much text a single job accepts, for both engines.
-#: Long texts take hours on a CPU and the whole result lives in memory
-#: until the end, so the value stays here until generation can write
-#: and resume piece by piece.
-MAX_TEXT_CHARS = 5000
+#: The cap on how much text one job accepts, for both engines: about 90
+#: minutes of speech (a WAV of about 265 MB). A long job is spoken piece by
+#: piece (``core.tts_job``), so memory stays flat and a cancelled or
+#: interrupted job continues where it stopped. The advanced setting
+#: :data:`NO_LIMIT_KEY` lifts it.
+MAX_TEXT_CHARS = 100_000
+
+#: The cap on one generation pass (one call into an engine). Pieces of a
+#: long job are far shorter; OmniVoice's voice design and own-voice modes
+#: speak in a single pass, because every pass would pick a new voice.
+MAX_PASS_CHARS = 5000
+
+#: Local-only config key (``core.config.LOCAL_ONLY_KEYS``): True lifts
+#: :data:`MAX_TEXT_CHARS`. The estimate, the free-disk check and the
+#: piece-by-piece writer still apply.
+NO_LIMIT_KEY = "tts_no_text_limit"
+
+#: The largest file a WAV header can describe (4 GB, about 24 hours of speech).
+MAX_WAV_BYTES = 0xFFFFFFFF
 
 #: Both engines write 24 kHz, 16-bit, mono WAV files.
 SAMPLE_RATE = 24000
@@ -103,6 +118,14 @@ ENGINES: "dict[str, EngineProfile]" = {
     # pass took 81 s, about as long as a 4.9 s one.
     "omnivoice": EngineProfile(min_pass_seconds=4.0, reference_ratio={"cpu": 21.0}),
 }
+
+
+def text_limit(config: "dict | None") -> "int | None":
+    """The job length limit under *config* (None: the advanced
+    :data:`NO_LIMIT_KEY` setting is on, no limit)."""
+    if config is not None and config.get(NO_LIMIT_KEY) is True:
+        return None
+    return MAX_TEXT_CHARS
 
 
 def min_calibration_audio(engine: str) -> float:
@@ -407,16 +430,25 @@ def free_bytes(path: Path) -> int:
     return int(shutil.disk_usage(path).free)
 
 
-def check_disk(est: Estimate, folder: "str | os.PathLike[str] | None" = None) -> DiskCheck:
+def check_disk(est: Estimate, folder: "str | os.PathLike[str] | None" = None,
+               need_bytes: "int | None" = None) -> DiskCheck:
     """Free space where the output goes against the largest file *est* allows
-    plus :data:`DISK_MARGIN_BYTES`. Asks the nearest existing parent when
-    the folder does not exist yet."""
+    (or *need_bytes*) plus :data:`DISK_MARGIN_BYTES`. Asks the nearest
+    existing parent when the folder does not exist yet."""
     target = Path(folder) if folder is not None else output_root()
     probe = target
     while not probe.exists() and probe.parent != probe:
         probe = probe.parent
     return DiskCheck(folder=str(target), free_bytes=free_bytes(probe),
-                     need_bytes=est.size_high, margin_bytes=DISK_MARGIN_BYTES)
+                     need_bytes=est.size_high if need_bytes is None else int(need_bytes),
+                     margin_bytes=DISK_MARGIN_BYTES)
+
+
+def piece_job_need_bytes(est: Estimate, remaining_fraction: float = 1.0) -> int:
+    """Free disk a piece-by-piece job needs at its peak: the pieces still to
+    write, plus the joined file and its tagged copy, which both exist next to
+    all the pieces for a moment before the pieces are removed."""
+    return int(math.ceil(est.size_high * (2.0 + max(0.0, min(1.0, remaining_fraction)))))
 
 
 # ------------------------------------------------------------------ wording

@@ -94,8 +94,10 @@ def test_generate_raises_on_empty_text():
 
 
 def test_generate_raises_on_text_too_long():
-    long_text = "a" * (voice_clone.MAX_TEXT_CHARS + 1)
-    with pytest.raises(ValueError, match="characters"):
+    """One call is one pass: the pass limit, not the (longer) job limit."""
+    assert voice_clone.MAX_PASS_CHARS < voice_clone.MAX_TEXT_CHARS
+    long_text = "a" * (voice_clone.MAX_PASS_CHARS + 1)
+    with pytest.raises(ValueError, match=f"limit for one generation is {voice_clone.MAX_PASS_CHARS}"):
         voice_clone.generate(object(), long_text, ["/x.wav"], "/out.wav", consent_accepted=True)
 
 

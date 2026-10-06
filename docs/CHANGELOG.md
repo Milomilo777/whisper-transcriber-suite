@@ -6,6 +6,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Text to Voice speaks long texts piece by piece, and a cancelled job continues.** A text longer
+  than one piece is split at sentence ends; each finished piece is kept on disk with a small
+  progress file (`core.tts_job`), the status line shows the time left, and Cancel, a crash or a
+  power cut lose at most the piece in progress. Generate with the same text, voice and speed
+  offers **Continue the unfinished job** or **Start over**; the final file is joined, tagged as
+  AI-generated and checked before the pieces are deleted. The job limit goes from 5,000 to
+  100,000 characters, and **Advanced → App behaviour** has a local-only "no text length limit"
+  switch (`tts_no_text_limit`). OmniVoice's designed and own voices stay single-pass (5,000
+  characters), since each pass picks a new voice.
 - **Text to Voice shows the time, file size and free space before a long text starts.** A long
   text gets a confirm step under the text box with the time range on this computer, the speech
   length and the WAV size; a job the disk cannot hold (plus 500 MB kept free) is refused with the

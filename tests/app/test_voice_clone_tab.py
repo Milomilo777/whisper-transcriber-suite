@@ -8,6 +8,7 @@ disabled for a clone until it is ticked, the tick reaches the worker as
 """
 from __future__ import annotations
 
+import os
 import types
 from typing import Any
 
@@ -17,6 +18,7 @@ tk = pytest.importorskip("tkinter")
 from tkinter import ttk  # noqa: E402
 
 from app.widgets import voice_clone_tab as vct  # noqa: E402
+from core import tts_job  # noqa: E402
 
 
 @pytest.fixture
@@ -49,6 +51,21 @@ def no_dialogs(monkeypatch):
     return errors
 
 
+FAKE_RATE = 100  # the fakes write tiny WAVs: 100 frames per second of "speech"
+
+
+def _write_wav(path: str, seconds: float) -> None:
+    import os
+    import wave
+
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with wave.open(path, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(FAKE_RATE)
+        w.writeframes(bytes(2) * max(1, int(round(seconds * FAKE_RATE))))
+
+
 @pytest.fixture
 def fakes(monkeypatch, tmp_path):
     """Hermetic stand-ins for everything Generate would really start."""
@@ -74,10 +91,12 @@ def fakes(monkeypatch, tmp_path):
 
         def generate(self, text: str, samples: list, output_path: str, **kwargs: Any) -> dict:
             calls["generate"].append({"text": text, "samples": list(samples), **kwargs})
+            _write_wav(output_path, calls["omni_result"]["audio_seconds"])
             return {"output_path": output_path, **calls["omni_result"]}
 
     def fake_kokoro(text: str, voice: str, out: str, **_k: Any) -> Any:
         calls["kokoro"].append(text)
+        _write_wav(out, len(text) / 20.0)
         return tts_kokoro.KokoroResult(out, len(text) / 20.0, len(text) / 40.0)
 
     def fake_measure(**_k: Any) -> Any:
@@ -355,7 +374,9 @@ def test_measured_speed_is_stored_shown_and_reused(root, fakes, tmp_path):
     assert fakes["kokoro"] == []  # measuring is not starting
 
     app.vc_confirm_start_btn.invoke()
-    assert fakes["kokoro"] == [LONG]
+    # Longer than one Kokoro piece: spoken piece by piece, all of it, in order.
+    assert len(fakes["kokoro"]) > 1
+    assert fakes["kokoro"] == [p.strip() for p in tts_job.split_text(LONG, 2000)]
     assert not _confirm_shown(app)
     # The finished job (202 s of speech) replaces the short check.
     assert _stored(tmp_path)["kokoro/cpu"]["source"] == "run"
@@ -457,7 +478,7 @@ def test_failed_measurement_falls_back_to_start(root, fakes, monkeypatch, no_dia
     assert "estimated from a reference computer" in app.vc_confirm_var.get()
     assert _packed(app.vc_confirm_start_btn)
     app.vc_confirm_start_btn.invoke()
-    assert fakes["kokoro"] == [LONG]
+    assert fakes["kokoro"] == [p.strip() for p in tts_job.split_text(LONG, 2000)]
 
 
 def test_cancel_while_planning_keeps_a_loaded_worker(root, fakes, monkeypatch):
@@ -565,3 +586,329 @@ def test_changing_the_language_retags_the_text(root, fakes, monkeypatch):
     assert "Microsoft JhengHei UI" in font()
     app.vc_lang_var.set("Japanese")
     assert "Yu Gothic UI" in font()
+
+
+# ------------------------------------------------- long text in pieces (C2.25)
+
+
+def _kokoro_job(app: Any) -> None:
+    """Generate a long Kokoro text up to the Start button (measuring first)."""
+    app.vc_generate_btn.invoke()
+    if _packed(app.vc_confirm_measure_btn):
+        app.vc_confirm_measure_btn.invoke()
+
+
+def _cancel_kokoro_after(monkeypatch, fakes, pieces: int) -> None:
+    """The fake Kokoro presses Cancel (sets the run's event) after *pieces*."""
+    from core import tts_kokoro
+
+    inner = tts_kokoro.generate
+
+    def gen(text: str, voice: str, out: str, **kw: Any) -> Any:
+        result = inner(text, voice, out, **kw)
+        if len(fakes["kokoro"]) >= pieces and kw.get("cancel_event") is not None:
+            kw["cancel_event"].set()
+        return result
+
+    monkeypatch.setattr(tts_kokoro, "generate", gen)
+
+
+def test_text_over_the_limit_is_refused_when_the_setting_is_off(root, fakes, monkeypatch,
+                                                                no_dialogs):
+    from core import tts_plan
+
+    monkeypatch.setattr(tts_plan, "MAX_TEXT_CHARS", 3000)
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_KOKORO, LONG)
+    vct._on_text_modified(app)
+    assert app.vc_count_var.get() == f"{len(LONG):,} / 3,000 characters"
+    app.vc_generate_btn.invoke()
+    assert [e[1] for e in no_dialogs] == ["Text too long"]
+    assert "No text length limit" in no_dialogs[0][2]
+    assert not _confirm_shown(app) and fakes["kokoro"] == []
+
+
+def test_no_limit_setting_lifts_the_limit_but_keeps_the_checks(root, fakes, monkeypatch,
+                                                              no_dialogs):
+    from core import tts_plan
+
+    monkeypatch.setattr(tts_plan, "MAX_TEXT_CHARS", 3000)
+    app = _build(root, fakes, config={tts_plan.NO_LIMIT_KEY: True})
+    _engine(app, vct._ENGINE_KOKORO, LONG)
+    vct._on_text_modified(app)
+    assert app.vc_count_var.get() == f"{len(LONG):,} characters"
+    app.vc_generate_btn.invoke()
+    assert no_dialogs == []
+    # The estimate and the free-disk check are still shown before it starts.
+    assert _confirm_shown(app)
+    text = app.vc_confirm_var.get()
+    assert "Speech:" in text and "File:" in text and "Free disk space" in text
+    assert fakes["kokoro"] == []
+
+
+def test_no_limit_setting_still_refuses_a_job_the_disk_cannot_hold(root, fakes, monkeypatch):
+    from core import tts_plan
+
+    monkeypatch.setattr(tts_plan, "MAX_TEXT_CHARS", 3000)
+    fakes["free"] = 1000
+    app = _build(root, fakes, config={tts_plan.NO_LIMIT_KEY: True})
+    _engine(app, vct._ENGINE_KOKORO, LONG)
+    app.vc_generate_btn.invoke()
+    assert "Not enough free disk space" in app.vc_confirm_var.get()
+    vct._confirm_start(app)
+    assert fakes["kokoro"] == []
+
+
+def test_piece_job_disk_check_counts_the_joined_copy(root, fakes, monkeypatch):
+    from core import tts_plan
+
+    monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_KOKORO, LONG)
+    app.vc_generate_btn.invoke()
+    plan = app.vc_plan
+    assert plan.job is not None
+    assert plan.disk.need_bytes == tts_plan.piece_job_need_bytes(plan.estimate)
+    app.vc_confirm_cancel_btn.invoke()
+
+
+def test_cancel_keeps_pieces_and_generate_offers_to_continue(root, fakes, monkeypatch,
+                                                             tmp_path):
+    monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
+    _cancel_kokoro_after(monkeypatch, fakes, 2)
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _kokoro_job(app)
+    pieces = [p.strip() for p in tts_job.split_text(LONG, 600)]
+    total = len(pieces)
+    assert total > 3
+    app.vc_confirm_start_btn.invoke()
+    assert fakes["kokoro"] == pieces[:2]
+    status = app.vc_status_var.get()
+    assert status.startswith("Cancelled.") and f"2 of {total} pieces are kept" in status
+    assert _state(app) == "normal" and app.vc_last_output is None
+
+    # Same text and voice: the confirm step offers to continue.
+    from core import tts_kokoro
+    monkeypatch.setattr(tts_kokoro, "generate", _plain_kokoro(fakes))
+    app.vc_generate_btn.invoke()
+    assert _confirm_shown(app)
+    assert f"Unfinished job found for this text and voice: 2 of {total} pieces are done" \
+        in app.vc_confirm_var.get()
+    assert str(app.vc_confirm_start_btn.cget("text")) == "Continue the unfinished job"
+    assert _packed(app.vc_confirm_start_btn) and _packed(app.vc_confirm_restart_btn)
+    app.vc_confirm_start_btn.invoke()
+    assert fakes["kokoro"] == pieces  # the first two were not spoken again
+    assert app.vc_status_var.get().startswith("Done")
+    out = app.vc_last_output
+    assert out and os.path.isfile(out)
+    from core import synthetic_audio
+    assert synthetic_audio.read_info(out)["ICMT"] == synthetic_audio.AI_COMMENT
+    import wave
+    with wave.open(out, "rb") as w:
+        assert w.getnframes() == sum(max(1, round(len(p) / 20.0 * FAKE_RATE)) for p in pieces)
+
+
+def _plain_kokoro(fakes: Any) -> Any:
+    """The fixture's fake Kokoro again (after a test wrapped it)."""
+    from core import tts_kokoro
+
+    def gen(text: str, voice: str, out: str, **_k: Any) -> Any:
+        fakes["kokoro"].append(text)
+        _write_wav(out, len(text) / 20.0)
+        return tts_kokoro.KokoroResult(out, len(text) / 20.0, len(text) / 40.0)
+
+    return gen
+
+
+def test_start_over_speaks_everything_again(root, fakes, monkeypatch):
+    from core import tts_kokoro
+
+    monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
+    _cancel_kokoro_after(monkeypatch, fakes, 1)
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _kokoro_job(app)
+    app.vc_confirm_start_btn.invoke()
+    assert len(fakes["kokoro"]) == 1
+    monkeypatch.setattr(tts_kokoro, "generate", _plain_kokoro(fakes))
+    fakes["kokoro"].clear()
+    app.vc_generate_btn.invoke()
+    app.vc_confirm_restart_btn.invoke()
+    assert fakes["kokoro"] == [p.strip() for p in tts_job.split_text(LONG, 600)]
+    assert app.vc_status_var.get().startswith("Done")
+
+
+def test_another_voice_is_not_offered_the_unfinished_job(root, fakes, monkeypatch):
+    from core import tts_kokoro
+
+    monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
+    _cancel_kokoro_after(monkeypatch, fakes, 1)
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _kokoro_job(app)
+    app.vc_confirm_start_btn.invoke()
+    monkeypatch.setattr(tts_kokoro, "generate", _plain_kokoro(fakes))
+    app.vc_voice_var.set(tts_kokoro.voice_by_key("am_adam").label)
+    app.vc_generate_btn.invoke()
+    assert "Unfinished job" not in app.vc_confirm_var.get()
+    assert not _packed(app.vc_confirm_restart_btn)
+    app.vc_confirm_cancel_btn.invoke()
+
+
+def test_designed_voice_over_one_pass_is_refused(root, fakes, no_dialogs):
+    from core import tts_plan
+
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_OMNI, "word " * 1100, mode=vct._MODE_DESIGN)
+    app.vc_generate_btn.invoke()
+    assert [e[1] for e in no_dialogs] == ["Text too long for this voice"]
+    assert f"{tts_plan.MAX_PASS_CHARS:,}" in no_dialogs[0][2]
+    assert fakes["generate"] == []
+
+
+def test_clone_long_text_goes_in_pieces_with_one_consent_record(root, fakes, monkeypatch,
+                                                                tmp_path):
+    import json
+
+    from core import synthetic_audio
+
+    log = tmp_path / "consent.jsonl"
+    monkeypatch.setattr(synthetic_audio, "consent_log_path", lambda: log)
+    ref = tmp_path / "ref.wav"
+    _write_wav(str(ref), 5.0)
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_OMNI, LONG, mode=vct._MODE_CLONE)
+    app.vc_samples[:] = [str(ref)]
+    _tick(app)
+    app.vc_generate_btn.invoke()
+    assert _confirm_shown(app)
+    app.vc_confirm_start_btn.invoke()
+    pieces = [p.strip() for p in tts_job.split_text(LONG, tts_job.PIECE_CHARS["omnivoice"])]
+    assert [c["text"] for c in fakes["generate"]] == pieces
+    assert all(c["consent_record"] is False and c["samples"] == [str(ref)]
+               for c in fakes["generate"])
+    assert app.vc_status_var.get().startswith("Done")
+    records = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+    assert len(records) == 1
+    assert records[0]["output_file"] == os.path.abspath(app.vc_last_output)
+    assert records[0]["output_sha256"] == synthetic_audio.sha256_file(app.vc_last_output)
+
+
+def test_continue_offer_shows_even_for_a_job_too_quick_to_confirm(root, fakes, monkeypatch):
+    """A fast computer may never need the confirm step for this text; an
+    unfinished job still gets it, so the user chooses Continue or Start over."""
+    from core import tts_kokoro, tts_plan
+
+    monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
+    monkeypatch.setattr(tts_plan, "needs_confirm", lambda _est: False)
+    _cancel_kokoro_after(monkeypatch, fakes, 1)
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_KOKORO, LONG)
+    app.vc_generate_btn.invoke()  # starts at once: no confirm step
+    assert len(fakes["kokoro"]) == 1 and app.vc_status_var.get().startswith("Cancelled.")
+    monkeypatch.setattr(tts_kokoro, "generate", _plain_kokoro(fakes))
+    app.vc_generate_btn.invoke()
+    assert _confirm_shown(app) and "Unfinished job found" in app.vc_confirm_var.get()
+    assert len(fakes["kokoro"]) == 1  # nothing spoken before the choice
+    app.vc_confirm_cancel_btn.invoke()
+
+
+# ------------------------------------------- review fixes (C2.25 fresh review)
+
+
+def test_voice_changed_on_the_confirm_step_does_not_change_the_job(root, fakes, monkeypatch):
+    """The job is spoken with the voice it was planned (and keyed) for."""
+    from core import tts_kokoro
+
+    voices: list = []
+    inner = tts_kokoro.generate
+
+    def gen(text: str, voice: str, out: str, **kw: Any) -> Any:
+        voices.append(voice)
+        return inner(text, voice, out, **kw)
+
+    monkeypatch.setattr(tts_kokoro, "generate", gen)
+    monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _kokoro_job(app)
+    app.vc_voice_var.set(tts_kokoro.voice_by_key("am_adam").label)  # changed while open
+    app.vc_confirm_start_btn.invoke()
+    assert len(voices) > 1 and set(voices) == {tts_kokoro.DEFAULT_VOICE}
+
+
+def test_clone_mode_flipped_on_the_confirm_step_still_clones(root, fakes, monkeypatch,
+                                                            tmp_path):
+    from core import synthetic_audio
+
+    log = tmp_path / "consent.jsonl"
+    monkeypatch.setattr(synthetic_audio, "consent_log_path", lambda: log)
+    ref = tmp_path / "ref.wav"
+    _write_wav(str(ref), 5.0)
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_OMNI, LONG, mode=vct._MODE_CLONE)
+    app.vc_samples[:] = [str(ref)]
+    _tick(app)
+    app.vc_generate_btn.invoke()
+    app.vc_mode_var.set(vct._MODE_DESIGN)  # flipped while the step is open
+    vct._sync_engine(app)
+    app.vc_confirm_start_btn.invoke()
+    assert len(fakes["generate"]) > 1
+    assert all(c["samples"] == [str(ref)] and c["consent_accepted"] is True
+               and c["instruct"] == "" for c in fakes["generate"])
+    assert len(log.read_text(encoding="utf-8").splitlines()) == 1
+
+
+def test_start_over_keeps_the_pieces_when_the_disk_cannot_hold_the_whole_job(
+        root, fakes, monkeypatch):
+    from core import tts_kokoro, tts_plan
+
+    monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
+    _cancel_kokoro_after(monkeypatch, fakes, 3)
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _kokoro_job(app)
+    app.vc_confirm_start_btn.invoke()
+    monkeypatch.setattr(tts_kokoro, "generate", _plain_kokoro(fakes))
+    app.vc_generate_btn.invoke()
+    plan = app.vc_plan
+    kept = sorted(plan.job.done)
+    assert len(kept) == 3
+    # Room for the rest of this job (Continue) but not for the whole job again.
+    held = sum(p.stat().st_size for p in plan.job.parts_dir.glob("piece-*.wav"))
+    full = tts_plan.piece_job_need_bytes(plan.estimate) - held
+    fakes["free"] = plan.disk.need_bytes + tts_plan.DISK_MARGIN_BYTES + (
+        full - plan.disk.need_bytes) // 2
+    vct._check_disk(plan)
+    assert plan.disk.ok
+    spoken = len(fakes["kokoro"])
+    app.vc_confirm_restart_btn.invoke()
+    assert "Not enough free disk space to start over" in app.vc_status_var.get()
+    assert len(fakes["kokoro"]) == spoken  # nothing started
+    assert sorted(tts_job.open_job("kokoro", LONG, {"voice": tts_kokoro.DEFAULT_VOICE}, 1.0,
+                                   root=plan.job.folder.parent).done) == kept
+    assert _confirm_shown(app)
+    app.vc_confirm_cancel_btn.invoke()
+
+
+def test_continued_job_without_a_speed_figure_offers_continue_not_measure(root, fakes,
+                                                                          monkeypatch):
+    from core import tts_kokoro
+
+    monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
+    _cancel_kokoro_after(monkeypatch, fakes, 2)
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_KOKORO, LONG)
+    app.vc_generate_btn.invoke()  # no speed figure stored: Measure is offered first
+    assert _packed(app.vc_confirm_measure_btn)
+    app.vc_confirm_measure_btn.invoke()
+    app.vc_confirm_start_btn.invoke()
+    assert len(fakes["kokoro"]) == 2
+    from core import tts_plan
+    tts_plan.calibration_path().unlink()  # no stored figure on the next Generate
+    monkeypatch.setattr(tts_kokoro, "generate", _plain_kokoro(fakes))
+    app.vc_generate_btn.invoke()
+    assert _packed(app.vc_confirm_start_btn) and not _packed(app.vc_confirm_measure_btn)
+    assert str(app.vc_confirm_start_btn.cget("text")) == "Continue the unfinished job"
+    app.vc_confirm_cancel_btn.invoke()

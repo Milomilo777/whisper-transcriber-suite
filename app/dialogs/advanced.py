@@ -22,7 +22,7 @@ from core.backends.availability import (
     engine_value_for_label,
     format_engine_status,
 )
-from core import offline
+from core import offline, tts_plan
 from core.config import DEFAULT_CONFIG, NOISY_AUDIO_PRESET, save_config
 from core.model_manager import (
     DEFAULT_MODEL_SLUG,
@@ -320,6 +320,9 @@ class AdvancedDialog(tk.Toplevel):
         )
         self._minimise_to_tray = tk.BooleanVar(
             value=bool(cfg.get("minimise_to_tray", False))
+        )
+        self._tts_no_text_limit = tk.BooleanVar(
+            value=cfg.get(tts_plan.NO_LIMIT_KEY) is True
         )
         self._watched_folder = tk.StringVar(
             value=str(cfg.get("watched_folder") or "")
@@ -1598,6 +1601,21 @@ class AdvancedDialog(tk.Toplevel):
             "Anything that needs the internet (a link, a model download, a "
             "cloud engine) tells you so and offers to turn this off.",
         ).pack(side="left")
+        tts_row = ttk.Frame(misc)
+        tts_row.pack(anchor="w", fill="x")
+        ttk.Checkbutton(
+            tts_row, text="Text to Voice: no text length limit (advanced)",
+            variable=self._tts_no_text_limit,
+        ).pack(side="left", padx=8, pady=4)
+        help_icon(
+            tts_row,
+            f"Off by default: one Text to Voice job takes up to "
+            f"{tts_plan.MAX_TEXT_CHARS:,} characters (about 90 minutes of "
+            "speech). When on, longer texts are accepted. A long job is still "
+            "spoken piece by piece, so it can be cancelled and continued, and "
+            "the time, file size and free disk space are still checked before "
+            "it starts. A very long text can take many hours.",
+        ).pack(side="left")
         self._build_updates_choice(misc)
         return misc
 
@@ -2084,6 +2102,7 @@ class AdvancedDialog(tk.Toplevel):
         cfg[offline.CONFIG_KEY] = bool(self._work_offline.get())
         cfg["update_check_enabled"] = bool(self._update_check_enabled.get())
         cfg["minimise_to_tray"] = bool(self._minimise_to_tray.get())
+        cfg[tts_plan.NO_LIMIT_KEY] = bool(self._tts_no_text_limit.get())
         new_watched = (self._watched_folder.get() or "").strip()
         new_watched_enabled = bool(self._watched_folder_enabled.get())
         watched_changed = (

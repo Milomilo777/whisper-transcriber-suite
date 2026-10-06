@@ -65,6 +65,7 @@ def _advanced_fake(app, *, chosen_label, slug_map):
         _yt_dlp_update_mode=_V("ask"),
         _caption_choice_var=_V("ask"),
         _minimise_to_tray=_V(False),
+        _tts_no_text_limit=_V(False),
         _watched_folder=_V(""),
         _watched_folder_enabled=_V(False),
         _teardown_mousewheel=lambda: None,

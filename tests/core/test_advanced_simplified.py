@@ -75,6 +75,7 @@ def _fake_dialog(app: Any, **overrides: Any) -> types.SimpleNamespace:
         _yt_dlp_update_mode=_V("ask"),
         _caption_choice_var=_V("ask"),
         _minimise_to_tray=_V(False),
+        _tts_no_text_limit=_V(False),
         _watched_folder=_V(""),
         _watched_folder_enabled=_V(False),
         _sync_vad_controls_state=lambda: None,
@@ -559,3 +560,16 @@ def test_save_writes_the_subtitle_choice(monkeypatch, choice) -> None:
         _fake_dialog(_fake_app(cfg), _caption_choice_var=_V(choice))  # type: ignore[arg-type]
     )
     assert cfg["download_caption_choice"] == choice
+
+
+def test_save_writes_the_text_to_voice_limit_switch(monkeypatch) -> None:
+    from app.dialogs import advanced as adv
+    from core import tts_plan
+
+    monkeypatch.setattr(adv, "save_config", lambda _cfg: None)
+    cfg = _base_cfg()
+    adv.AdvancedDialog._save_and_close(  # type: ignore[arg-type]
+        _fake_dialog(_fake_app(cfg), _tts_no_text_limit=_V(True)))
+    assert cfg[tts_plan.NO_LIMIT_KEY] is True
+    adv.AdvancedDialog._save_and_close(_fake_dialog(_fake_app(cfg)))  # type: ignore[arg-type]
+    assert cfg[tts_plan.NO_LIMIT_KEY] is False

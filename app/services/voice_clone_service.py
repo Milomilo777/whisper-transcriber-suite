@@ -150,6 +150,7 @@ class VoiceCloneWorker:
         language: str = "",
         speed: float = 1.0,
         timeout_s: float = GENERATE_TIMEOUT_S,
+        consent_record: bool = True,
     ) -> dict[str, Any]:
         """Send one generation request and block until it answers.
 
@@ -179,6 +180,7 @@ class VoiceCloneWorker:
             "instruct": instruct,
             "language": language,
             "speed": speed,
+            "consent_record": consent_record,
         }
         try:
             if proc.stdin is None:

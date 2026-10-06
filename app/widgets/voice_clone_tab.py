@@ -19,6 +19,12 @@ Generate first plans the job (``core.tts_plan``): a long text gets a
 confirm step with the time range on this computer, the speech length, the
 file size and a free-disk check before anything runs, and the status label
 always shows a concrete time estimate, never a bare "please wait".
+
+A text longer than one piece is spoken piece by piece (``core.tts_job``):
+every finished piece is kept on disk, the status shows the time left from
+the speed measured so far, and Cancel, a crash or a power cut lose at most
+the piece in progress. The next Generate with the same text, voice and speed
+offers to continue the unfinished job.
 """
 from __future__ import annotations
 
@@ -96,6 +102,14 @@ class _JobPlan:
     estimate: Any          # core.tts_plan.Estimate
     disk: Any              # core.tts_plan.DiskCheck
     measure_failed: bool = False
+    #: Voice settings that identify a piece-by-piece job (None: one pass).
+    voice: "dict[str, Any] | None" = None
+    job: Any = None        # core.tts_job.Job | None
+    resume_done: int = 0   # pieces an earlier run of this job finished
+    #: The voice controls as they were at Generate (voice, mode, clips,
+    #: language, design, consent): the job is spoken with these, whatever
+    #: the controls show by the time Start is pressed.
+    settings: "dict[str, Any] | None" = None
 
 
 def _sweep_scratch_dirs() -> None:
@@ -248,10 +262,13 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     # ── Text ───────────────────────────────────────────────────────────
     txt = section_labelframe(
         parent, "Text to speak",
-        f"Up to {tts_plan.MAX_TEXT_CHARS:,} characters. Long text is split into "
-        "sentences and joined back into one audio file. Before a long text "
+        f"Up to {tts_plan.MAX_TEXT_CHARS:,} characters (about 90 minutes of "
+        "speech; Advanced settings can lift the limit). Before a long text "
         "starts, the tab shows how long it takes on this computer, how big "
-        "the file gets and whether the disk has room.",
+        "the file gets and whether the disk has room. A long text is spoken "
+        "piece by piece and joined into one audio file at the end: Cancel "
+        "keeps the finished pieces, and pressing Generate again with the same "
+        "text and voice continues the job.",
     )
     txt.grid(row=2, column=0, sticky="nsew", padx=15, pady=(0, 6))
     txt.columnconfigure(0, weight=1)
@@ -297,6 +314,8 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_confirm_measure_btn = ttk.Button(
         confirm_btns, text="Measure this computer's speed", style="Accent.TButton",
         command=lambda: _measure_speed(app))
+    app.vc_confirm_restart_btn = ttk.Button(
+        confirm_btns, text="Start over", command=lambda: _confirm_restart(app))
     app.vc_confirm_cancel_btn = ttk.Button(
         confirm_btns, text="Cancel", command=lambda: _cancel_generate(app))
     app.vc_confirm_start_btn.pack(side="left")
@@ -425,15 +444,21 @@ def _selected_voice(app: Any) -> Any:
                 tts_kokoro.voice_by_key(tts_kokoro.DEFAULT_VOICE))
 
 
-def _on_text_modified(app: Any) -> None:
-    from core.tts_plan import MAX_TEXT_CHARS
+def _text_limit(app: Any) -> "int | None":
+    from core import tts_plan
 
+    return tts_plan.text_limit(getattr(app, "app_config", None))
+
+
+def _on_text_modified(app: Any) -> None:
     try:
         app.vc_text.edit_modified(False)
         n = len(app.vc_text.get("1.0", "end-1c"))
     except Exception:  # noqa: BLE001
         return
-    app.vc_count_var.set(f"{n:,} / {MAX_TEXT_CHARS:,} characters")
+    limit = _text_limit(app)
+    app.vc_count_var.set(f"{n:,} characters" if limit is None
+                         else f"{n:,} / {limit:,} characters")
     _retag_text(app)
 
 
@@ -669,18 +694,33 @@ def _generate(app: Any) -> None:
     if not text:
         show_error(app, "No text", "Type the text you want spoken.")
         return
-    if len(text) > tts_plan.MAX_TEXT_CHARS:
+    limit = _text_limit(app)
+    if limit is not None and len(text) > limit:
         show_error(
             app, "Text too long",
-            f"Text is {len(text):,} characters; the limit for one "
-            f"generation is {tts_plan.MAX_TEXT_CHARS:,}.",
+            f"Text is {len(text):,} characters; the limit for one job is "
+            f"{limit:,} (about 90 minutes of speech). Split the text, or turn "
+            'on "No text length limit" under Advanced settings > App behaviour.',
         )
         return
     kokoro = _is_kokoro(app)
     if not kokoro and _omni_refused(app):
         return
+    if (not kokoro and app.vc_mode_var.get() != _MODE_CLONE
+            and len(text) > tts_plan.MAX_PASS_CHARS):
+        show_error(
+            app, "Text too long for this voice",
+            f"Text is {len(text):,} characters. A designed voice and the "
+            f"model's own voice speak at most {tts_plan.MAX_PASS_CHARS:,} "
+            "characters in one go: each piece of a longer text would get a "
+            "different voice. Clone a voice from a recording, or use Kokoro, "
+            "for longer texts.",
+        )
+        return
     engine = "kokoro" if kokoro else "omnivoice"
     speed = float(app.vc_speed_var.get() or 1.0)
+    settings = _voice_settings(app, engine)
+    voice = _job_voice(engine, settings)
     _set_busy(app, True)
     cancel_event = threading.Event()
     app.vc_cancel_event = cancel_event
@@ -689,7 +729,8 @@ def _generate(app: Any) -> None:
 
     def worker() -> None:
         try:
-            plan = _make_plan(engine, text, speed)
+            plan = _make_plan(engine, text, speed, voice)
+            plan.settings = settings
         except Exception as e:  # noqa: BLE001
             logger.exception("Could not plan the text-to-voice job")
             message = str(e)
@@ -705,10 +746,37 @@ def _generate(app: Any) -> None:
     safe_thread(worker, name="voice-plan")
 
 
-def _make_plan(engine: str, text: str, speed: float) -> _JobPlan:
-    """Device, stored speed figure, estimate and disk check for one job.
-    Runs off the Tk thread; never downloads or loads a model."""
-    from core import tts_kokoro, tts_plan, voice_clone
+def _voice_settings(app: Any, engine: str) -> "dict[str, Any]":
+    """The voice controls at Generate (see ``_JobPlan.settings``)."""
+    if engine == "kokoro":
+        return {"voice_key": _selected_voice(app).key}
+    mode = app.vc_mode_var.get()
+    return {"mode": mode,
+            "samples": list(app.vc_samples) if mode == _MODE_CLONE else [],
+            "instruct": _design_instruct(app) if mode == _MODE_DESIGN else "",
+            "language": _language_code(app),
+            "consent": mode == _MODE_CLONE and bool(app.vc_consent_var.get())}
+
+
+def _job_voice(engine: str, settings: "dict[str, Any]") -> "dict[str, Any] | None":
+    """What makes the voice of a piece-by-piece job, or None when the job
+    runs in one pass (OmniVoice's designed and own voices change with every
+    pass, so they are never split)."""
+    if engine == "kokoro":
+        return {"voice": settings["voice_key"]}
+    if settings["mode"] != _MODE_CLONE:
+        return None
+    return {"mode": _MODE_CLONE, "language": settings["language"],
+            "references": list(settings["samples"])}
+
+
+def _make_plan(engine: str, text: str, speed: float,
+               voice: "dict[str, Any] | None" = None) -> _JobPlan:
+    """Device, stored speed figure, estimate and disk check for one job, and
+    the piece-by-piece job when the text is longer than one piece. Runs off
+    the Tk thread; never downloads or loads a model."""
+    from core import tts_job, tts_kokoro, voice_clone
+    from core.synthetic_audio import sha256_file
 
     if engine == "kokoro":
         installed = tts_kokoro.is_downloaded()
@@ -718,7 +786,14 @@ def _make_plan(engine: str, text: str, speed: float) -> _JobPlan:
         device = voice_clone.default_device() if installed else "cpu"
     plan = _JobPlan(engine=engine, text=text, speed=speed, device=device,
                     version="", hardware="", installed=installed,
-                    calibration=None, estimate=None, disk=None)
+                    calibration=None, estimate=None, disk=None, voice=voice)
+    if voice is not None and len(tts_job.split_text(text, tts_job.PIECE_CHARS[engine])) > 1:
+        identity = dict(voice)
+        if "references" in identity:
+            # The clips' contents, not their paths, identify the voice.
+            identity["references"] = [sha256_file(p) for p in identity["references"]]
+        plan.job = tts_job.open_job(engine, text, identity, speed)
+        plan.resume_done = len(plan.job.done)
     _replan(plan)
     return plan
 
@@ -734,7 +809,31 @@ def _replan(plan: _JobPlan) -> None:
         plan.engine, plan.device, plan.version, plan.hardware)
     plan.estimate = tts_plan.estimate(
         plan.text, plan.engine, plan.device, plan.calibration, plan.speed)
-    plan.disk = tts_plan.check_disk(plan.estimate)
+    _check_disk(plan)
+
+
+def _check_disk(plan: _JobPlan) -> None:
+    """Free space for the job; a piece-by-piece job needs room for the
+    pieces still to write plus the joined file."""
+    from core import tts_plan
+
+    need = None
+    job = plan.job
+    if job is not None:
+        left = 1.0 - (job.done_units / job.total_units if job.total_units else 0.0)
+        need = tts_plan.piece_job_need_bytes(plan.estimate, left)
+    plan.disk = tts_plan.check_disk(plan.estimate, need_bytes=need)
+
+
+def _too_big(plan: _JobPlan) -> bool:
+    """True when the speech could outgrow one WAV file (4 GB)."""
+    from core import tts_plan
+
+    return plan.estimate.size_high > tts_plan.MAX_WAV_BYTES
+
+
+def _can_start(plan: _JobPlan) -> bool:
+    return plan.disk.ok and not _too_big(plan)
 
 
 def _on_plan(app: Any, plan: _JobPlan, cancel_event: threading.Event) -> None:
@@ -745,7 +844,7 @@ def _on_plan(app: Any, plan: _JobPlan, cancel_event: threading.Event) -> None:
         _generate_cancelled(app)
         return
     app.vc_plan = plan
-    if tts_plan.needs_confirm(plan.estimate):
+    if tts_plan.needs_confirm(plan.estimate) or plan.resume_done or _too_big(plan):
         _show_confirm(app)
     else:
         _start(app)
@@ -754,7 +853,7 @@ def _on_plan(app: Any, plan: _JobPlan, cancel_event: threading.Event) -> None:
 def _can_measure(plan: _JobPlan) -> bool:
     """Only Kokoro has a measuring run (a few seconds); OmniVoice's first real
     job is its measurement (one pass takes over a minute on a CPU)."""
-    return (plan.engine == "kokoro" and plan.installed
+    return (plan.engine == "kokoro" and plan.installed and not plan.resume_done
             and plan.calibration is None and not plan.measure_failed)
 
 
@@ -778,6 +877,11 @@ def _confirm_text(plan: _JobPlan) -> str:
                  f"{tts_plan.min_calibration_audio(plan.engine):.0f} seconds of speech "
                  "measures this computer")
     lines = []
+    job = plan.job
+    if job is not None and plan.resume_done:
+        lines.append(
+            f"Unfinished job found for this text and voice: {plan.resume_done} of "
+            f"{len(job.pieces)} pieces are done. Continue it, or start over.")
     if est.time_high is None:
         lines.append(f"Time: not known yet for this device; {first_run}.")
     else:
@@ -795,7 +899,11 @@ def _confirm_text(plan: _JobPlan) -> str:
     if not plan.installed:
         lines.append(_KOKORO_DOWNLOAD_LINE if plan.engine == "kokoro" else _OMNI_DOWNLOAD_LINE)
     drive = Path(disk.folder).anchor or disk.folder
-    if disk.ok:
+    if _too_big(plan):
+        lines.append(
+            "This text is too long for one audio file: a WAV file holds at most "
+            "4 GB (about 24 hours of speech). Split the text into parts.")
+    elif disk.ok:
         lines.append(f"Free disk space: {tts_plan.format_size(disk.free_bytes)} on {drive}")
     else:
         lines.append(
@@ -812,18 +920,28 @@ def _show_confirm(app: Any) -> None:
     plan = app.vc_plan
     app.vc_confirm_var.set(_confirm_text(plan))
     measure = _can_measure(plan)
-    for btn in (app.vc_confirm_start_btn, app.vc_confirm_measure_btn):
+    for btn in (app.vc_confirm_start_btn, app.vc_confirm_measure_btn,
+                app.vc_confirm_restart_btn):
         btn.pack_forget()
+    app.vc_confirm_start_btn.configure(
+        text="Continue the unfinished job" if plan.resume_done else "Start")
     shown = app.vc_confirm_measure_btn if measure else app.vc_confirm_start_btn
     shown.pack(side="left", before=app.vc_confirm_cancel_btn)
-    shown.configure(state="normal" if plan.disk.ok else "disabled")
+    shown.configure(state="normal" if _can_start(plan) else "disabled")
+    if plan.resume_done:
+        app.vc_confirm_restart_btn.pack(side="left", padx=(8, 0),
+                                        before=app.vc_confirm_cancel_btn)
+        app.vc_confirm_restart_btn.configure(
+            state="normal" if _can_start(plan) else "disabled")
     app.vc_confirm_cancel_btn.configure(state="normal")
     app.vc_confirm_frame.grid()
     # The plan is for this exact text and speed.
     app.vc_text.configure(state="disabled")
     app.vc_speed_scale.state(["disabled"])
     app.vc_confirm_open = True
-    if not plan.disk.ok:
+    if _too_big(plan):
+        app.vc_status_var.set("This text is too long for one audio file.")
+    elif not plan.disk.ok:
         app.vc_status_var.set("Not enough free disk space for this text.")
     elif measure:
         app.vc_status_var.set("Long text: measure this computer's speed, or Cancel.")
@@ -840,18 +958,38 @@ def _close_confirm(app: Any) -> None:
 
 
 def _confirm_start(app: Any) -> None:
-    from core import tts_plan
-
     plan = app.vc_plan
-    if not app.vc_confirm_open or plan is None or not plan.disk.ok:
+    if not app.vc_confirm_open or plan is None or not _can_start(plan):
         return
     # The panel may have been open for a while: check the space again.
-    plan.disk = tts_plan.check_disk(plan.estimate)
+    _check_disk(plan)
     if not plan.disk.ok:
         _show_confirm(app)
         return
     _close_confirm(app)
     _start(app)
+
+
+def _confirm_restart(app: Any) -> None:
+    """Start over: forget the unfinished job's pieces, then start."""
+    plan = app.vc_plan
+    if (not app.vc_confirm_open or plan is None or plan.job is None
+            or not plan.resume_done or not _can_start(plan)):
+        return
+    from core import tts_plan
+
+    # Check the space for the whole job first (the old pieces' space counts
+    # as free once they are gone): never delete pieces for a job that then
+    # cannot start.
+    held = sum(p.stat().st_size for p in plan.job.parts_dir.glob("piece-*.wav"))
+    need = tts_plan.piece_job_need_bytes(plan.estimate) - held
+    if not tts_plan.check_disk(plan.estimate, need_bytes=need).ok:
+        app.vc_status_var.set("Not enough free disk space to start over; the finished "
+                              "pieces are kept and Continue still works.")
+        return
+    plan.job.discard()
+    plan.resume_done = 0
+    _confirm_start(app)
 
 
 def _confirm_cancelled(app: Any) -> None:
@@ -911,7 +1049,7 @@ def _on_measured(app: Any, plan: _JobPlan, cal: Any, cancel_event: threading.Eve
     app.vc_cancel_event = None
     plan.calibration = cal
     plan.estimate = tts_plan.estimate(plan.text, plan.engine, plan.device, cal, plan.speed)
-    plan.disk = tts_plan.check_disk(plan.estimate)
+    _check_disk(plan)
     _show_confirm(app)
 
 
@@ -948,22 +1086,73 @@ def _record_speed(app: Any, result: "dict[str, Any]") -> None:
     plan, app.vc_plan = app.vc_plan, None
     if plan is None:
         return
+    # A piece-by-piece run reports what THIS run spoke (a continued job
+    # skipped the pieces an earlier run finished).
+    units = result.get("units_run", plan.estimate.units)
+    audio = result.get("audio_seconds_run", result.get("audio_seconds"))
     try:
         tts_plan.record_measurement(
             plan.engine, plan.device, plan.version, plan.hardware,
-            units=plan.estimate.units,
-            audio_seconds=float(result.get("audio_seconds") or 0.0),
+            units=float(units or 0.0),
+            audio_seconds=float(audio or 0.0),
             compute_seconds=float(result.get("elapsed_seconds") or 0.0),
             speed=plan.speed, source="run")
     except (OSError, TypeError, ValueError):
         logger.exception("Could not store the measured text-to-voice speed")
 
 
+def _left_text(seconds: "float | None") -> str:
+    from core import tts_plan
+
+    if seconds is None:
+        return ""
+    return f", {tts_plan.format_duration_range(seconds, seconds)} left"
+
+
+def _run_job(app: Any, plan: _JobPlan, speak: Any, cancel_event: threading.Event,
+             label: str) -> "dict[str, Any]":
+    """Speak the unfinished pieces of ``plan.job`` (worker thread) with the
+    progress bar and the time left on the status line; returns the payload
+    for :func:`_generate_done`. Raises like ``core.tts_job.run``."""
+    from core import tts_job
+
+    job = plan.job
+    est = plan.estimate
+    # Until the first piece of this job is done: the plan's own figure.
+    fallback = None
+    if est is not None and est.time_high is not None and est.units > 0:
+        fallback = (est.time_low + est.time_high) / 2.0 / est.units
+
+    def on_progress(p: Any) -> None:
+        current = min(p.pieces_done + 1, p.pieces_total)
+        status = f"{label} piece {current} of {p.pieces_total}{_left_text(p.seconds_left)}..."
+
+        def show() -> None:
+            app.vc_progress.configure(value=p.fraction * 100)
+            app.vc_status_var.set(status)
+        app.post_to_main(show)
+
+    result = tts_job.run(job, speak, cancel_event=cancel_event,
+                         on_progress=on_progress, fallback_per_unit=fallback)
+    return {"output_path": result.output_path, "audio_seconds": result.audio_seconds,
+            "elapsed_seconds": result.compute_seconds_run,
+            "units_run": result.units_run, "audio_seconds_run": result.audio_seconds_run,
+            "pieces": len(job.pieces)}
+
+
+def _kept(plan: "_JobPlan | None") -> "tuple[int, int] | None":
+    """(finished, total) pieces of a piece-by-piece job, else None."""
+    if plan is None or plan.job is None:
+        return None
+    return len(plan.job.done), len(plan.job.pieces)
+
+
 def _generate_kokoro(app: Any, text: str, play_when_done: bool = False) -> None:
     from core import tts_kokoro, voice_clone
 
-    voice = _selected_voice(app)
     plan = app.vc_plan
+    voice = (tts_kokoro.voice_by_key(plan.settings["voice_key"])
+             if plan is not None and plan.settings else _selected_voice(app))
     speed = plan.speed if plan is not None else float(app.vc_speed_var.get() or 1.0)
     _set_busy(app, True)
     cancel_event = threading.Event()
@@ -981,6 +1170,16 @@ def _generate_kokoro(app: Any, text: str, play_when_done: bool = False) -> None:
                         f"{done / 1e6:.0f} / {total / 1e6:.0f} MB"))
                 tts_kokoro.download(progress_cb=dl, cancel_event=cancel_event)
                 app.post_to_main(lambda: _sync_engine(app))
+            if plan is not None and plan.job is not None:
+                def speak(piece: str, path: str, on_fraction: Any) -> float:
+                    return tts_kokoro.generate(
+                        piece, voice.key, path, speed=speed, progress_cb=on_fraction,
+                        cancel_event=cancel_event).elapsed_seconds
+
+                payload = _run_job(app, plan, speak, cancel_event,
+                                   f"Speaking as {voice.label}:")
+                app.post_to_main(lambda: _generate_done(app, payload))
+                return
             hint = _time_hint(plan) if plan is not None else ""
             status = f"Speaking as {voice.label}... {hint}".rstrip()
             app.post_to_main(lambda: app.vc_status_var.set(status))
@@ -995,12 +1194,13 @@ def _generate_kokoro(app: Any, text: str, play_when_done: bool = False) -> None:
                        "audio_seconds": result.audio_seconds}
             app.post_to_main(lambda: _generate_done(app, payload, play=play_when_done))
         except Exception as e:  # noqa: BLE001
+            kept = _kept(plan)
             if cancel_event.is_set():
-                app.post_to_main(lambda: _generate_cancelled(app))
+                app.post_to_main(lambda: _generate_cancelled(app, kept))
             else:
                 logger.exception("Kokoro generation failed")
                 message = str(e)  # `e` is unbound once this block exits
-                app.post_to_main(lambda: _generate_failed(app, message))
+                app.post_to_main(lambda: _generate_failed(app, message, kept))
 
     from core._threads import safe_thread
     safe_thread(worker, name="kokoro-generate")
@@ -1009,21 +1209,28 @@ def _generate_kokoro(app: Any, text: str, play_when_done: bool = False) -> None:
 def _generate_omnivoice(app: Any, text: str) -> None:
     from core import voice_clone
 
-    if _omni_refused(app):
-        _finish(app)
-        app.vc_plan = None
-        return
-    mode = app.vc_mode_var.get()
-    consent = mode == _MODE_CLONE and bool(app.vc_consent_var.get())
     plan = app.vc_plan
-    samples = list(app.vc_samples) if mode == _MODE_CLONE else []
-    instruct = _design_instruct(app) if mode == _MODE_DESIGN else ""
-    language = _language_code(app)
+    if plan is None or not plan.settings:
+        # Not planned (no Generate press): check the controls as they are now.
+        if _omni_refused(app):
+            _finish(app)
+            app.vc_plan = None
+            return
+        settings = _voice_settings(app, "omnivoice")
+    else:
+        settings = plan.settings  # checked by _omni_refused at Generate
+    mode = settings["mode"]
+    consent = bool(settings["consent"])
+    samples = list(settings["samples"])
+    instruct = settings["instruct"]
+    language = settings["language"]
     speed = plan.speed if plan is not None else float(app.vc_speed_var.get() or 1.0)
 
     _set_busy(app, True)
-    app.vc_progress.configure(mode="indeterminate")
-    app.vc_progress.start(20)
+    if plan is None or plan.job is None:
+        # One pass has no progress to show; a job moves the bar per piece.
+        app.vc_progress.configure(mode="indeterminate")
+        app.vc_progress.start(20)
     cancel_event = threading.Event()
     app.vc_cancel_event = cancel_event
     app.vc_status_var.set("Preparing...")
@@ -1074,10 +1281,8 @@ def _generate_omnivoice(app: Any, text: str) -> None:
                 app.vc_worker.start()
 
             if cancel_event.is_set():
-                app.post_to_main(lambda: _generate_cancelled(app))
+                app.post_to_main(lambda: _generate_cancelled(app, _kept(plan)))
                 return
-
-            output_path = os.path.join(voice_clone.session_work_dir(), "output.wav")
 
             def _on_model_loading() -> None:
                 app.post_to_main(
@@ -1089,6 +1294,14 @@ def _generate_omnivoice(app: Any, text: str) -> None:
                     )
                 )
 
+            if plan is not None and plan.job is not None:
+                payload = _run_omnivoice_job(
+                    app, plan, samples, consent, device, _on_model_loading,
+                    instruct, language, speed, cancel_event)
+                app.post_to_main(lambda: _generate_done(app, payload))
+                return
+
+            output_path = os.path.join(voice_clone.session_work_dir(), "output.wav")
             result = app.vc_worker.generate(
                 text, samples, output_path,
                 consent_accepted=consent, device=device,
@@ -1099,19 +1312,51 @@ def _generate_omnivoice(app: Any, text: str) -> None:
             )
             app.post_to_main(lambda: _generate_done(app, result))
         except Exception as e:  # noqa: BLE001
+            kept = _kept(plan)
             if cancel_event.is_set():
                 logger.info("Voice-clone generation cancelled")
-                app.post_to_main(lambda: _generate_cancelled(app))
+                app.post_to_main(lambda: _generate_cancelled(app, kept))
             else:
                 logger.exception("Voice-clone generation failed")
                 # Capture the message now, not `e` itself: Python deletes
                 # the `except ... as e` name when this block exits (PEP
                 # 3110), before post_to_main's queued lambda runs.
                 message = str(e)
-                app.post_to_main(lambda: _generate_failed(app, message))
+                app.post_to_main(lambda: _generate_failed(app, message, kept))
 
     from core._threads import safe_thread
     safe_thread(worker, name="voice-clone-generate")
+
+
+def _run_omnivoice_job(app: Any, plan: _JobPlan, samples: "list[str]", consent: bool,
+                       device: str, on_model_loading: Any, instruct: str, language: str,
+                       speed: float, cancel_event: threading.Event) -> "dict[str, Any]":
+    """One worker call per piece (worker thread). The voice comes from the
+    same reference clips in every piece; the consent record is written once,
+    for the joined file the user gets, not for each piece."""
+    from core import synthetic_audio, tts_plan, voice_clone
+
+    def speak(piece: str, path: str, _on_fraction: Any) -> float:
+        est = tts_plan.estimate(piece, plan.engine, plan.device, plan.calibration, speed)
+        result = app.vc_worker.generate(
+            piece, samples, path, consent_accepted=consent, device=device,
+            on_model_loading=on_model_loading, instruct=instruct,
+            language=language, speed=speed,
+            # Generous: 3x the piece's high estimate, never below the default.
+            timeout_s=(est.time_high or 0.0) * 3, consent_record=False)
+        return float(result.get("elapsed_seconds") or 0.0)
+
+    payload = _run_job(app, plan, speak, cancel_event, "Generating:")
+    if samples:
+        try:
+            synthetic_audio.append_consent_record(
+                payload["output_path"], samples[:voice_clone.MAX_REFERENCE_SAMPLES],
+                consent_accepted=consent, engine="omnivoice")
+        except OSError as e:
+            # The joined file is finished and tagged; report, never discard it.
+            logger.exception("Could not write the voice-clone consent record")
+            payload["warning"] = f"The local consent record could not be saved: {e}"
+    return payload
 
 
 def _finish(app: Any) -> None:
@@ -1133,7 +1378,11 @@ def _generate_done(app: Any, result: dict[str, Any], play: bool = False) -> None
         app.vc_save_btn.configure(state="normal")
     elapsed = result.get("elapsed_seconds") or 0.0
     audio = result.get("audio_seconds") or 0.0
-    status = f"Done: {audio:.0f}s of speech in {elapsed:.0f}s." if audio else f"Done in {elapsed:.0f}s."
+    if "units_run" in result:  # piece by piece: a continued job spoke only part of it now
+        status = f"Done: {audio:.0f}s of speech; this run took {elapsed:.0f}s."
+    else:
+        status = (f"Done: {audio:.0f}s of speech in {elapsed:.0f}s." if audio
+                  else f"Done in {elapsed:.0f}s.")
     warning = result.get("warning") or ""
     if warning:
         status += " Warning: the consent record was not saved (see the log)."
@@ -1146,23 +1395,33 @@ def _generate_done(app: Any, result: dict[str, Any], play: bool = False) -> None
         _play(app)
 
 
-def _generate_failed(app: Any, message: str) -> None:
+def _kept_text(kept: "tuple[int, int] | None") -> str:
+    if not kept or not kept[0]:
+        return ""
+    return (f" {kept[0]} of {kept[1]} pieces are kept: press Generate with the same "
+            "text and voice to continue.")
+
+
+def _generate_failed(app: Any, message: str,
+                     kept: "tuple[int, int] | None" = None) -> None:
     _finish(app)
     app.vc_plan = None
-    app.vc_status_var.set("Failed.")
+    app.vc_status_var.set("Failed." + _kept_text(kept))
     show_error(
         app, "Generation failed", message,
         detail=(
             "If this looks like a network or download problem, check your "
             "internet connection, then click Generate again to retry."
+            + (" The finished pieces are kept; the same text and voice "
+               "continue from there." if kept and kept[0] else "")
         ),
     )
 
 
-def _generate_cancelled(app: Any) -> None:
+def _generate_cancelled(app: Any, kept: "tuple[int, int] | None" = None) -> None:
     _finish(app)
     app.vc_plan = None
-    app.vc_status_var.set("Cancelled.")
+    app.vc_status_var.set("Cancelled." + _kept_text(kept))
 
 
 def _cancel_generate(app: Any) -> None:

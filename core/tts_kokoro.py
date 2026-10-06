@@ -218,21 +218,23 @@ def generate(
 ) -> KokoroResult:
     """Speak *text* in a ready-made voice and write a WAV to *output_path*.
 
-    Long text is fine: sherpa-onnx splits it into sentences itself and
-    reports progress (0..1) through *progress_cb* after each one.
+    One pass, at most ``core.tts_plan.MAX_PASS_CHARS`` characters:
+    sherpa-onnx splits it into sentences itself and reports progress (0..1)
+    through *progress_cb* after each one. Longer texts go through
+    ``core.tts_job`` piece by piece.
     """
     import wave
 
     import numpy as np  # type: ignore[import-not-found]
 
-    from .tts_plan import MAX_TEXT_CHARS
+    from .tts_plan import MAX_PASS_CHARS
 
     if not text.strip():
         raise ValueError("No text to speak.")
-    if len(text) > MAX_TEXT_CHARS:
+    if len(text) > MAX_PASS_CHARS:
         raise ValueError(
             f"Text is {len(text)} characters; the limit for one "
-            f"generation is {MAX_TEXT_CHARS}."
+            f"generation is {MAX_PASS_CHARS}."
         )
     voice = voice_by_key(voice_key)
     engine = _load(voice.lang_code)

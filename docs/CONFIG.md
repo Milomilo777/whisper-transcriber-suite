@@ -286,8 +286,9 @@ ignored.
 
 #### Estimate before a long text
 
-One job takes at most 5,000 characters (`core.tts_plan.MAX_TEXT_CHARS`, both
-engines). Before a long text starts, **Generate** shows a confirm step under
+One job takes at most 100,000 characters (`core.tts_plan.MAX_TEXT_CHARS`, both
+engines; about 90 minutes of speech and a WAV of about 265 MB);
+`tts_no_text_limit` below lifts it. Before a long text starts, **Generate** shows a confirm step under
 the text box: the time range on this computer, the speech length, the WAV size
 (24 kHz, 16-bit mono, about 2.8 MB a minute) and the free space where the file
 is written. **Start** runs it, **Cancel** runs nothing; the text box and the
@@ -315,6 +316,45 @@ fingerprint (OS, CPU name, thread count and the
 graphics card for CUDA). When the version or the fingerprint changes, the
 figure is ignored and measured again. The file stays on this computer; delete
 it to start over.
+
+#### Long text, piece by piece
+
+A text longer than one piece is spoken piece by piece (`core.tts_job`): it is
+split at sentence ends (else after a comma, else after a space) into pieces of
+at most 2,000 characters for Kokoro and 500 for OmniVoice. Each finished piece
+is written as its own WAV file, next to a small progress file:
+
+```
+Cache\voice_clone\job-<id>\output.wav                     the final file
+Cache\voice_clone\job-<id>\output.parts\progress.json      which pieces are done
+Cache\voice_clone\job-<id>\output.parts\piece-0001.wav ... one file per finished piece
+```
+
+`<id>` comes from the text, the engine, the voice (the Kokoro voice; for an
+OmniVoice clone the language and the contents of the reference clips) and the
+speed. The status line shows the piece and the time left, from the speed
+measured on the pieces done so far. **Cancel** keeps the finished pieces, and
+so do a crash and a power cut (the piece in progress is redone). Pressing
+**Generate** again with the same text, voice and speed shows the confirm step
+with **Continue the unfinished job** (skips the finished pieces) and **Start
+over** (deletes them). The final file is joined only after the last piece,
+tagged as AI-generated and checked; then the pieces are deleted. The free-disk
+check of a piece-by-piece job counts the pieces still to write plus two copies
+of the whole file (the joined file and its tagged copy exist next to all the
+pieces for a moment). **Start over** deletes the pieces only when the disk has
+room for the whole job again. The voice, mode, clips and language are the ones
+set when **Generate** was pressed. A cloning job writes one consent record, for
+the joined file.
+
+OmniVoice's voice design and own voice are never split: every pass picks a new
+voice, so the pieces would not sound like one speaker. Those two modes take up
+to 5,000 characters in one pass (`core.tts_plan.MAX_PASS_CHARS`, also the
+limit of any single call into either engine). Unfinished job folders are kept
+for 30 days after their last finished piece; other scratch folders for 7 days.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `tts_no_text_limit` | bool | `false` | **Advanced → App behaviour → Text to Voice: no text length limit (advanced)**. `true` = a Text to Voice job is not limited to `MAX_TEXT_CHARS`; the estimate, the free-disk check and the piece-by-piece writer still apply, and a speech longer than one WAV file can hold (4 GB, about 24 hours) is refused. Local only: the online config can never set it (`core.config.LOCAL_ONLY_KEYS`). |
 
 #### AI-generated tag
 

@@ -27,9 +27,10 @@ Protocol (newline-delimited JSON, one object per line -- same shape as
 
 Commands (stdin):
   - ``{"action": "generate", "id", "text", "reference_paths", "output_path",
-     "device", "instruct"?, "language"?, "speed"?}``  (empty
-     reference_paths = voice design with ``instruct``, or the model's own
-     voice without it)
+     "device", "instruct"?, "language"?, "speed"?, "consent_record"?}``
+     (empty reference_paths = voice design with ``instruct``, or the
+     model's own voice without it; ``consent_record`` false = a piece of a
+     long job, whose caller records consent for the joined file)
   - ``{"action": "shutdown"}``
 
 Events (stdout):
@@ -147,6 +148,7 @@ def main() -> int:
         instruct = command.get("instruct") or None
         language = command.get("language") or None
         speed = command.get("speed") or None
+        consent_record = command.get("consent_record", True) is not False
 
         emit("started", id=req_id)
         try:
@@ -161,6 +163,7 @@ def main() -> int:
                 model, text, reference_paths, output_path,
                 consent_accepted=consent_accepted,
                 instruct=instruct, language=language, speed=speed,
+                consent_record=consent_record,
             )
             emit(
                 "done", id=req_id, output_path=result.output_path,

@@ -352,6 +352,7 @@ a = Analysis(
         'core.voiceprint',
         'core.synthetic_audio',
         'core.tts_plan',
+        'core.tts_job',
         'core.vad_window',
         'core.language_defaults',
         # Opt-in backends (see the Windows specs' comment).

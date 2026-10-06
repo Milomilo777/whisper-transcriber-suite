@@ -209,6 +209,7 @@ a = Analysis(
         'core.tts_kokoro',
         'core.synthetic_audio',
         'core.tts_plan',
+        'core.tts_job',
         'core.vad_window',
         'core.language_defaults',
         # Opt-in backends (see onefile spec comment).
