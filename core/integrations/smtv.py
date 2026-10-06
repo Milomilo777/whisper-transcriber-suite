@@ -30,6 +30,8 @@ import urllib.request
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
+from core import offline
+
 logger = logging.getLogger(__name__)
 
 
@@ -259,6 +261,8 @@ def transcript_filename(episode: SmtvEpisode) -> str:
 
 
 def _http_get(url: str, *, timeout: float) -> str:
+    if offline.is_offline():
+        raise SmtvError(offline.message("Supreme Master TV"))
     req = urllib.request.Request(url, headers={"User-Agent": _DEFAULT_UA})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:

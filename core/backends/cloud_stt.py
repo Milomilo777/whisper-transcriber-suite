@@ -66,6 +66,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from .. import offline
 from .._liveness_tick import liveness_tick
 from ..config import load_config
 from .base import Backend, LanguageInfo
@@ -570,6 +571,8 @@ class CloudSttBackend(Backend):
         """
         if not self._api_key:
             return False, "No API key set."
+        if offline.is_offline():
+            return False, offline.message("testing the key")
         url = f"{API_HOST}/{API_VERSION}/models?pageSize=1"
         req = urllib.request.Request(
             url, method="GET", headers={API_KEY_HEADER: self._api_key}
@@ -607,6 +610,8 @@ class CloudSttBackend(Backend):
         paused: Callable[[], bool] | None = None,
         duration: float = 0.0,
     ) -> tuple[list[dict[str, Any]], LanguageInfo]:
+        # Before anything is sent: the cloud engine uploads the audio.
+        offline.require_online("the Gemini cloud engine")
         with self._lock:
             if not self.is_ready() and not self.load(log_cb):
                 raise RuntimeError(self._error or "Cloud STT backend not ready")

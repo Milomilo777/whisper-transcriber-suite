@@ -23,7 +23,7 @@ import threading
 import time
 from typing import Callable
 
-from . import _proc
+from . import _proc, offline
 from .config import user_cache_dir
 
 # Hard cap on a single on-demand pip install. A stalled PyPI / proxy
@@ -181,6 +181,10 @@ def install(
     if not can_install():
         if log_cb is not None:
             log_cb(FROZEN_INSTALL_MESSAGE)
+        return False
+    if offline.is_offline():
+        if log_cb is not None:
+            log_cb(offline.message(f"installing {feature}"))
         return False
     with _install_lock:
         # A concurrent caller may have installed it while we waited on

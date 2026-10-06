@@ -19,6 +19,7 @@ import time
 import urllib.error
 import urllib.request
 
+from core import offline
 from core._proc import kill_process_tree, new_session_kwargs
 from core.js_runtime import (
     mentions_missing_js_runtime,
@@ -27,6 +28,14 @@ from core.js_runtime import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _may_go_online(app: object, what: str) -> bool:
+    """Work offline: the App asks to turn it off; without that hook, refuse."""
+    ensure = getattr(app, "ensure_online", None)
+    if callable(ensure):
+        return bool(ensure(what))
+    return not offline.is_offline()
 
 
 def _reap_process(proc: "subprocess.Popen | None") -> None:
@@ -768,6 +777,19 @@ class DownloadService:
         if not folder:
             messagebox.showwarning("Missing folder", "Select a download folder first.", parent=app)
             return
+        was_offline = offline.is_offline()
+        if not _may_go_online(app, "Downloading this link"):
+            return
+        if was_offline and not (
+            getattr(app, "audio_format_map", None) or getattr(app, "video_format_map", None)
+        ):
+            # The link was not looked up while offline; turning the switch
+            # off has just started that lookup, so there is no format yet.
+            app.log(
+                "Work offline is off. The link is being looked up; click "
+                "Download again when its formats are listed."
+            )
+            return
 
         # A download that will be transcribed, of a video that already has
         # subtitles in the chosen language: offer the seconds-long shortcut.
@@ -1030,6 +1052,8 @@ class DownloadService:
         if not folder:
             messagebox.showwarning("Missing folder", "Select a download folder first.", parent=app)
             return
+        if not _may_go_online(app, "Fetching the subtitles of this link"):
+            return
         if getattr(app, "_smtv_episode", None) is not None:
             # The shortcut button is hidden for SMTV URLs; this only
             # guards a stale click racing a URL change.
@@ -1112,8 +1136,22 @@ class DownloadService:
         from core._threads import safe_thread
         safe_thread(self._run_task, args=(task,), name="download-task")
 
+    def _refused_offline(self, task: "VideoDownloadTask") -> bool:
+        """Work offline is on: report it for ``task`` and start nothing.
+
+        Asked before each yt-dlp start, so a task queued earlier, or one
+        that was waiting (yt-dlp update, subtitle phase) when the switch
+        was turned on, does not start a new download.
+        """
+        if not offline.is_offline():
+            return False
+        self.app.download_events.put(("error", task, offline.message("downloading this link")))
+        return True
+
     def _run_task(self, task: "VideoDownloadTask") -> None:
         app = self.app
+        if self._refused_offline(task):
+            return
         app.download_events.put(("subtitle_status", task, ""))
         # Per-run generation token. Pause tree-kills the process but the old
         # _run_task daemon keeps draining stdout, then runs its finally:
@@ -1182,6 +1220,8 @@ class DownloadService:
                     return
                 if getattr(task, "paused", False):
                     return
+                if self._refused_offline(task):
+                    return
                 self._run_caption_only_task(task, run_generation=my_gen)
             except Exception as e:  # noqa: BLE001
                 if not _superseded():
@@ -1248,6 +1288,8 @@ class DownloadService:
                 return
             if getattr(task, "paused", False):
                 return
+            if self._refused_offline(task):
+                return
 
             if task.subtitles_enabled and not task.cancelled:
                 reported_cancel = self._subtitle_phase(task)
@@ -1273,6 +1315,8 @@ class DownloadService:
                         app.download_events.put(("done", task, "cancelled"))
                     return
                 if getattr(task, "paused", False):
+                    return
+                if self._refused_offline(task):
                     return
 
             self._media_phase(task, run_generation=my_gen)

@@ -46,6 +46,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Generator, Mapping
 
+from . import offline
 from .config import user_cache_dir
 from .js_runtime import find_deno, mentions_missing_js_runtime, yt_dlp_version
 from .paths import bundled_binary
@@ -363,8 +364,9 @@ def wait_while_updating(timeout: float = WAIT_FOR_UPDATE_S) -> bool:
 @dataclass(frozen=True)
 class UpdateResult:
     """``status``: "updated", "current" (already the newest), "failed", "busy"
-    (a download or another update runs) or "unsupported" (no single-file
-    yt-dlp to copy). ``completed``: yt-dlp's updater ran and answered (a new
+    (a download or another update runs), "unsupported" (no single-file
+    yt-dlp to copy) or "offline" (Work offline is on). ``completed``:
+    yt-dlp's updater ran and answered (a new
     version, "up to date", or a build this module then rejected); a timeout,
     an updater error such as no network, or a skipped run is not a completed
     check, so the automatic mode does not wait 24 h after it."""
@@ -396,6 +398,8 @@ def update_cached_copy(
             "unsupported",
             message="This copy of the app cannot update its video downloader by itself.",
         )
+    if offline.is_offline():
+        return UpdateResult("offline", message=offline.message("updating the video downloader"))
     with _cond:
         if _updating:
             return UpdateResult("busy", message="The video downloader is already being updated.")

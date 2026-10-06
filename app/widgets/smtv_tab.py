@@ -388,8 +388,11 @@ class _TabState:
         if gen != self._generation:
             return
         self.loading = False
-        self._set_status("Could not reach Supreme Master TV — check the internet "
-                         "connection and press Search to try again.")
+        if msg.startswith("Offline mode is on"):
+            self._set_status(msg)  # core.offline's refusal names the switch
+        else:
+            self._set_status("Could not reach Supreme Master TV — check the internet "
+                             "connection and press Search to try again.")
         self.app.log(f"Supreme Master TV: {msg}")
         if self._more_btn is not None:
             self._more_btn.configure(state="normal", text="Load more")

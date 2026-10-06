@@ -13,6 +13,8 @@ from urllib.parse import unquote, urlparse
 
 import requests
 
+from core import offline
+
 
 class DownloadCancelled(RuntimeError):
     pass
@@ -880,6 +882,11 @@ def _download_via_huggingface(
     return True
 
 
+def _offline_download_text(model: dict[str, Any]) -> str:
+    name = str(model.get("name") or "").strip()
+    return f"downloading the model {name}" if name else "downloading this model"
+
+
 def ensure_model(
     config: dict[str, Any],
     status_cb: Callable[[str], None] | None = None,
@@ -921,6 +928,8 @@ def ensure_model(
             _notify(progress_cb, phase="installed", status="Model already installed", percent=100)
             return str(model_path)
 
+        # Before anything is deleted: offline, a partial folder stays as it is.
+        offline.require_online(_offline_download_text(model))
         _remove_path(model_path)
         if not _download_via_huggingface(
             model.get("name", ""), zip_url, model_path,
@@ -953,6 +962,13 @@ def ensure_model(
 
     zip_path=cache_dir / _zip_name_from_url(zip_url)
 
+    if model_path.exists() and offline.is_offline():
+        # The model check fetches the .md5 manifest; offline the model on
+        # disk is used as it is (the same as a failed manifest fetch below).
+        if status_cb: status_cb("Model already installed (offline mode: not checked).")
+        _notify(progress_cb, phase="installed", status="Model already installed", percent=100)
+        return str(model_path)
+
     if model_path.exists():
         if status_cb: status_cb("Model already installed. Verifying MD5...")
         try:
@@ -981,6 +997,7 @@ def ensure_model(
         _remove_path(zip_path)
         _remove_path(model_path)
 
+    offline.require_online(_offline_download_text(model))
     mirror_error: BaseException | None = None
     try:
         last_mismatches: list[tuple[str, str, str]] = []

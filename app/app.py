@@ -46,6 +46,7 @@ from app.widgets.tabs import (
 )
 from app.widgets.tray import TrayController
 from core import __version__ as _APP_VERSION
+from core import offline
 from app.theme import tokens
 from core._proc import kill_process_tree
 from core.config import load_config, save_config
@@ -62,6 +63,7 @@ logger = logging.getLogger(__name__)
 _HELP_MENU_LABEL = "Help"
 _CHECK_FOR_UPDATES_LABEL = "Check for updates..."
 _ABOUT_MENU_LABEL = "About"
+_WORK_OFFLINE_LABEL = "Work offline"
 # An app left open keeps checking about once a day (the date throttle in
 # _maybe_quiet_update_check still applies).
 _UPDATE_RECHECK_MS = 24 * 60 * 60 * 1000
@@ -489,6 +491,8 @@ def build_about_sections() -> list[AboutSection]:
                 "downloads on first use, usage statistics — the full list "
                 "is in the project's docs on GitHub (docs/CONFIG.md, "
                 "Network use)",
+                "File → Work offline stops all network use; anything that "
+                "needs the internet then says so (config: work_offline)",
             ]),
             ("Usage statistics", [
                 "Sent after each finished transcription; on by default. "
@@ -768,6 +772,11 @@ class App(tk.Tk):
         # the result silently lost.
         self._main_thread_calls: Queue = Queue(maxsize=2000)
         self.app_config = load_config()
+        # Work offline, held in memory from here on (before the crash
+        # reporter and the launch ping, which both ask it).
+        offline.set_offline(offline.flag_from(self.app_config))
+        if offline.is_offline():
+            self.title(f"{self._base_title} — Work offline")
         setup_logging(self.app_config.get("log_level", "INFO"))
         init_sentry()
         send_launch_ping_async()
@@ -1028,6 +1037,16 @@ class App(tk.Tk):
         f.add_command(label="Convert transcript...", command=self.convert_transcript)
         f.add_separator()
         f.add_command(label="Statistics...", command=self.show_statistics)
+        f.add_separator()
+        # Work offline (core.offline): no network connection at all while
+        # ticked. Same config key as the Advanced → App behaviour checkbox;
+        # open_advanced_dialog re-syncs this item after the dialog closes.
+        self.work_offline_var = tk.BooleanVar(value=offline.is_offline())
+        f.add_checkbutton(
+            label=_WORK_OFFLINE_LABEL,
+            variable=self.work_offline_var,
+            command=self._toggle_work_offline,
+        )
         f.add_separator()
         # File→Exit bypasses the minimise-to-tray redirect. When the
         # user explicitly clicks Exit they mean exit; the redirect is
@@ -1336,6 +1355,89 @@ class App(tk.Tk):
         var = getattr(self, "telemetry_opt_in_var", None)
         if var is not None:
             var.set(bool(self.app_config.get("telemetry_opt_in", True)))
+
+    def _toggle_work_offline(self) -> None:
+        """File → Work offline: apply and store the ticked state."""
+        self._set_work_offline(bool(self.work_offline_var.get()))
+
+    def _set_work_offline(self, on: bool) -> None:
+        """Turn Work offline on or off for this process and store the choice.
+
+        The in-memory switch changes first, so nothing in this process goes
+        online after the click even if the save fails; worker processes read
+        the saved file, so a failed save is reported.
+        """
+        self.app_config[offline.CONFIG_KEY] = on
+        offline.set_offline(on)
+        var = getattr(self, "work_offline_var", None)
+        if var is not None:
+            var.set(on)
+        try:
+            save_config(self.app_config)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Failed to save the Work offline choice")
+            self.log(
+                f"Could not save the Work offline choice ({e}); a transcription "
+                "that starts a new worker follows the old setting."
+            )
+        if on:
+            self.log(
+                "Work offline: on. From now on the app starts no network "
+                "connection; a download or install already running finishes first."
+            )
+            if _inst_attr(self, "_update_bar") is not None:
+                self._hide_update_bar()
+        else:
+            self.log("Work offline: off.")
+            self._retry_refused_link_lookup()
+        self._refresh_window_title()
+
+    def _retry_refused_link_lookup(self) -> None:
+        """Look the pasted link up again when only Work offline had stopped it."""
+        error = str(getattr(self, "format_lookup_error", "") or "")
+        url_var = getattr(self, "download_url_var", None)
+        service = getattr(self, "format_service", None)
+        if (
+            error.startswith("Offline mode is on")
+            and url_var is not None and url_var.get().strip()
+            and service is not None
+        ):
+            service.lookup_formats()
+
+    def _sync_offline_menu(self) -> None:
+        """After the Advanced dialog: the File menu item and the switch follow the config."""
+        on = offline.flag_from(self.app_config)
+        was = offline.is_offline()
+        offline.set_offline(on)
+        var = getattr(self, "work_offline_var", None)
+        if var is not None:
+            var.set(on)
+        if on and not was:
+            if _inst_attr(self, "_update_bar") is not None:
+                self._hide_update_bar()
+        elif was and not on:
+            self._retry_refused_link_lookup()
+        self._refresh_window_title()
+
+    def ensure_online(self, what: str) -> bool:
+        """True when ``what`` may use the network; asks to turn Work offline off first.
+
+        ``what`` names the action, e.g. "Downloading this link". Saying no
+        leaves the switch on and the action is not started.
+        """
+        if not offline.is_offline():
+            return True
+        from tkinter import messagebox
+        if not messagebox.askyesno(
+            "Offline mode is on",
+            f"{what} needs the internet, and Work offline is on, so the app "
+            "makes no network connection.\n\nTurn Work offline off now?",
+            parent=self,
+        ):
+            self.log(offline.message(what.lower()[:1] + what[1:]))
+            return False
+        self._set_work_offline(False)
+        return True
 
     def _show_about(self) -> None:
         """A full feature inventory in a scrollable Toplevel.
@@ -1909,6 +2011,7 @@ class App(tk.Tk):
         self._refresh_engine_selector()
         self._refresh_model_selector()
         self._sync_telemetry_menu()
+        self._sync_offline_menu()
         self._apply_update_setting()
 
     def _confirm_backend_switch(
@@ -2548,6 +2651,8 @@ class App(tk.Tk):
     def install_js_runtime(self) -> None:
         """Download + verify Deno into the user cache, off the Tk thread."""
         if getattr(self, "_js_runtime_installing", False):
+            return
+        if not self.ensure_online("Installing the YouTube helper"):
             return
         from core.js_runtime import DENO_DOWNLOAD_MB, install_deno
 
@@ -4440,7 +4545,11 @@ class App(tk.Tk):
         Idle: "Whisper Transcriber Suite".
         One running task: "Whisper Transcriber Suite — 34% transcribing foo.mp4".
         Multiple running: "Whisper Transcriber Suite — 2 tasks (avg 41%)".
+        While Work offline is on, the base ends in "— Work offline".
         """
+        base = self._base_title
+        if offline.is_offline():
+            base = f"{base} — Work offline"
         running = [t for t in self.queue if t.status == "running"]
         running_dl = [
             d for d in self.download_queue if d.status == "running"
@@ -4452,26 +4561,26 @@ class App(tk.Tk):
             except Exception:  # noqa: BLE001
                 pass
         if not running and not running_dl:
-            self.title(self._base_title)
+            self.title(base)
             return
         if running and not running_dl and len(running) == 1:
             t = running[0]
             self.title(
-                f"{self._base_title} — {t.progress}% transcribing "
+                f"{base} — {t.progress}% transcribing "
                 f"{os.path.basename(t.file_path)}"
             )
             return
         if running_dl and not running and len(running_dl) == 1:
             d = running_dl[0]
             self.title(
-                f"{self._base_title} — {d.progress}% downloading "
+                f"{base} — {d.progress}% downloading "
                 f"{d.title[:40] if d.title else d.url[:40]}"
             )
             return
         total = len(running) + len(running_dl)
         all_p = [t.progress for t in running] + [d.progress for d in running_dl]
         avg = sum(all_p) // len(all_p) if all_p else 0
-        self.title(f"{self._base_title} — {total} tasks (avg {avg}%)")
+        self.title(f"{base} — {total} tasks (avg {avg}%)")
 
     def show_last_result(self, task: "TranscriptionTask") -> None:
         """Populate the Transcribe-tab Last Result card.
@@ -4760,6 +4869,8 @@ class App(tk.Tk):
             from core import updates as _updates
             if not _updates.automatic_check_enabled(self.app_config):
                 return
+            if offline.is_offline():
+                return  # not stamped: the next daily call (or a restart) checks
             today = _today().isoformat()
             if (self.app_config.get("last_update_check") or "") == today:
                 return  # already checked today
@@ -4778,6 +4889,8 @@ class App(tk.Tk):
 
     def _check_for_updates_manual(self) -> None:
         """Help-menu "Check for updates..." — always runs, reports all cases."""
+        if not self.ensure_online("Checking for updates"):
+            return
         self._run_update_check(manual=True)
 
     def _run_update_check(self, *, manual: bool) -> None:
@@ -4977,6 +5090,8 @@ class App(tk.Tk):
     def _yt_dlp_update_now(self) -> None:
         """"Update it": update the user-writable copy off the Tk thread."""
         if self._yt_dlp_updating or self._closing:
+            return
+        if not self.ensure_online("Updating the video downloader"):
             return
         from core import yt_dlp_update
         bar = self._ensure_yt_dlp_bar()

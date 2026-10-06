@@ -20,6 +20,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Callable
 
+from .. import offline
 from .._gc_import_guard import gc_disabled_import
 from .._liveness_tick import liveness_tick
 from ..config import user_cache_dir
@@ -87,6 +88,7 @@ def download_default_model(
         if log:
             log(f"whisper.cpp model already present at {dest}")
         return str(dest)
+    offline.require_online("downloading the whisper.cpp model")
     part = dest.with_suffix(dest.suffix + ".part")
     if part.exists():
         try:

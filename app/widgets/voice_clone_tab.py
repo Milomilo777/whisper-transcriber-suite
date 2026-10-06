@@ -29,6 +29,7 @@ from typing import Any
 
 from app.widgets.error_dialog import show_error
 from app.widgets.tooltip import section_labelframe
+from core import offline
 
 logger = logging.getLogger(__name__)
 
@@ -688,9 +689,12 @@ def _generate_omnivoice(app: Any, text: str) -> None:
                     if cancel_event.is_set():
                         app.post_to_main(lambda: _generate_cancelled(app))
                     else:
-                        app.post_to_main(lambda: _generate_failed(
-                            app, "Could not download the speech model software."
-                        ))
+                        reason = (
+                            offline.message("downloading the speech model software")
+                            if offline.is_offline()
+                            else "Could not download the speech model software."
+                        )
+                        app.post_to_main(lambda: _generate_failed(app, reason))
                     return
 
             # Nothing else re-checks cancel_event before generate() below

@@ -637,8 +637,13 @@ def check_for_update(timeout: int = _DEFAULT_TIMEOUT_S) -> UpdateInfo | None:
     network down, DNS failure, timeout, non-2xx HTTP (including the 404
     a PRIVATE repo returns), or unparseable JSON. Failure is always
     silent here; the UI decides whether a *manual* check should show a
-    gentle "couldn't reach the server" note.
+    gentle "couldn't reach the server" note. Work offline returns ``None``
+    without a request (the Help menu item says so before it gets here).
     """
+    from core import offline
+    if offline.is_offline():
+        logger.info("Update check skipped: offline mode is on")
+        return None
     url = latest_release_api_url(GITHUB_OWNER, GITHUB_REPO)
     req = urllib.request.Request(
         url,

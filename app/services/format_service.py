@@ -21,7 +21,7 @@ from app.domain.cookies import (
     is_cookie_extraction_error,
     login_required_hint,
 )
-from core import yt_dlp_update
+from core import offline, yt_dlp_update
 from core.integrations import smtv as smtv_mod
 from core.js_runtime import (
     mentions_missing_js_runtime,
@@ -109,6 +109,12 @@ class FormatService:
             prompt(url)
         if not url:
             self.app.format_status_var.set("Enter a URL to load available formats")
+            return
+        if offline.is_offline():
+            # The lookup runs yt-dlp (or SMTV) against the site at once.
+            text = offline.message("looking up this link")
+            self.app.format_status_var.set(text)
+            self.app.format_lookup_error = text
             return
 
         if smtv_mod.parse_episode_id(url) is not None:

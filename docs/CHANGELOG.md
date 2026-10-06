@@ -6,6 +6,14 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Work offline: one switch that keeps the app off the network.** **File → Work offline** (also
+  in **Advanced → App behaviour**, `work_offline`) stops every network use: the online config,
+  the update check, usage statistics and crash reports are skipped, and a link lookup, a download,
+  a model or component download, a cloud engine, the remote AI provider or SMTV says "Offline
+  mode is on" and names the switch (the download, update and helper buttons offer to turn it
+  off). Models already on disk keep working. Each app process
+  also refuses any other outbound connection or name lookup while it is on (`core.offline`), and
+  the online config can never change it. `docs/CONFIG.md` lists what it blocks for every request.
 - **Quiet notices instead of message boxes for plain information.** "Saved", "Renamed", "You're on the latest version", "Could not reach the update server" and similar hints now show as a short notice along the bottom edge of the window (`app/widgets/notice.py`): it hides by itself after a few seconds, stays while the pointer is over it, never takes the keyboard focus, and `Ctrl+.` or its close button dismisses it. At most three are held. Questions, errors that need action, consent and data-loss warnings are still dialogs.
 - **One place for colours, spacing and type sizes, and one icon set.** `app/theme/tokens.py` now
   holds every colour the UI uses (the 48 literal hex values in `app/` are gone), the 4/8/12/16/24/32

@@ -44,6 +44,7 @@ from typing import TYPE_CHECKING, Callable, Optional
 from app.theme import tokens
 from app.widgets.error_dialog import show_error
 from core import hardware as _hw
+from core import offline
 from core.paths import bundled_binary
 
 if TYPE_CHECKING:
@@ -529,6 +530,9 @@ class HardwareWizard(tk.Toplevel):
                 self._reprobe()
                 return
             self._set_buttons_enabled(True)
+            if offline.is_offline():
+                self.status_var.set(offline.message("installing GPU support"))
+                return
             self.status_var.set("GPU support install failed — see the log.")
             show_error(
                 self, "Install failed",

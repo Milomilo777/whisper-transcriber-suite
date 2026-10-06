@@ -140,3 +140,26 @@ def _no_legacy_app_data_migration(monkeypatch):
     except Exception:  # noqa: BLE001
         return
     monkeypatch.setattr(_cfg, "_legacy_app_dirs", lambda: None)
+
+
+@pytest.fixture(autouse=True)
+def _work_offline_off(monkeypatch):
+    """Work offline is off in every test unless the test turns it on.
+
+    ``core.offline.is_offline`` otherwise reads the developer's real
+    config.json, where the switch may be on. Tests of that file read set the
+    in-memory switch back to None themselves. A backstop a test installed is
+    removed after it.
+    """
+    try:
+        import core.offline as _offline
+    except Exception:  # noqa: BLE001
+        yield
+        return
+    monkeypatch.setattr(_offline, "_override", False)
+    # Tests that run a real entry point (worker.main, gui.main) install the
+    # socket backstop; remove it again so it never outlives that test.
+    guard_was_installed = _offline.network_guard_installed()
+    yield
+    if not guard_was_installed:
+        _offline.uninstall_network_guard()

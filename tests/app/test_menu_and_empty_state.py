@@ -33,7 +33,7 @@ def _menu_host() -> _MenuHost:
         "browse", "convert_transcript", "show_statistics", "_force_exit", "apply_theme",
         "_save_chime_pref", "_open_transcript_viewer_picker", "_open_search_dialog",
         "open_log_folder", "_check_for_updates_manual", "_save_telemetry_pref",
-        "_show_about", "_populate_recent_menu",
+        "_show_about", "_populate_recent_menu", "_toggle_work_offline",
     ):
         setattr(root, name, MagicMock(name=name))
     root.integrations_service = MagicMock()  # type: ignore[attr-defined]
@@ -71,6 +71,24 @@ def test_about_is_the_last_help_item_and_opens_the_dialog(menu_host):
     assert help_menu.type(last) == "command"
     help_menu.invoke(last)
     menu_host._show_about.assert_called_once_with()
+
+
+def test_file_menu_has_the_work_offline_check_item_before_exit(menu_host):
+    bar = menu_host._menubar
+    cascade = next(
+        i for i in range(bar.index("end") + 1)
+        if bar.type(i) == "cascade" and bar.entrycget(i, "label") == "File"
+    )
+    file_menu = menu_host.nametowidget(bar.entrycget(cascade, "menu"))
+    labels = _labels(file_menu)
+    index = labels.index("Work offline")
+    assert labels[index + 1] == "-" and labels[index + 2].startswith("Exit")
+    entry = index + (1 if file_menu.type(0) == "tearoff" else 0)
+    assert file_menu.type(entry) == "checkbutton"
+    assert str(file_menu.entrycget(entry, "variable")) == str(menu_host.work_offline_var)
+    file_menu.invoke(entry)
+    menu_host._toggle_work_offline.assert_called_once_with()
+    assert menu_host.work_offline_var.get() is True  # the tick the handler reads
 
 
 def test_update_sign_indexes_still_point_at_their_items(menu_host):

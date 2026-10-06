@@ -70,6 +70,7 @@ import threading
 import time
 from typing import Any, Callable
 
+from .. import offline
 from .._gc_import_guard import gc_disabled_import
 from .._liveness_tick import liveness_tick
 from ..config import load_config
@@ -1197,6 +1198,8 @@ class GoogleCloudSttBackend(Backend):
         paused: Callable[[], bool] | None = None,
         duration: float = 0.0,
     ) -> tuple[list[dict[str, Any]], LanguageInfo]:
+        # Before anything is sent: the cloud engine uploads the audio.
+        offline.require_online("the Google Cloud engine")
         with self._lock:
             if not self.is_ready() and not self.load(log_cb):
                 raise RuntimeError(

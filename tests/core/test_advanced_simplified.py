@@ -70,6 +70,7 @@ def _fake_dialog(app: Any, **overrides: Any) -> types.SimpleNamespace:
         _model_display=_V("Large-v3"),
         _model_label_to_slug={"Large-v3": "large-v3"},
         _telemetry_opt_in=_V(False),
+        _work_offline=_V(False),
         _update_check_enabled=_V(True),
         _yt_dlp_update_mode=_V("ask"),
         _caption_choice_var=_V("ask"),

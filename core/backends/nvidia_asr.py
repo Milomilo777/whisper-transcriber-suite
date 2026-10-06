@@ -283,6 +283,12 @@ class NvidiaAsrBackend(Backend):
         # Ensure transformers/torch/librosa are importable; install on demand
         # (mirrors the openai-whisper / google_cloud_stt on-demand pattern).
         if not _deps_available():
+            from .. import offline
+            if offline.is_offline():
+                self._error = offline.message("installing the NVIDIA Parakeet engine")
+                if status_cb:
+                    status_cb(self._error)
+                return False
             if status_cb:
                 status_cb(
                     "Installing local NVIDIA ASR engine (transformers + torch + "

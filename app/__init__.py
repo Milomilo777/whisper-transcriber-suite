@@ -28,6 +28,9 @@ def run() -> None:
     # Before the Tk root exists, or Windows stretches the window and blurs it.
     from .dpi import enable_dpi_awareness
     enable_dpi_awareness()
+    # Work offline backstop for this process; inert while the switch is off.
+    from core import offline
+    offline.install_network_guard()
     from .app import App
     App().mainloop()
 

@@ -351,14 +351,18 @@ def post_stats_async(
     """Fire-and-forget the stats POST on a daemon thread while stats are on.
 
     Returns ``True`` when a POST thread was started, ``False`` when it was
-    skipped (``telemetry_opt_in`` off, no ``stats_url``, or a bad payload).
-    This is the gate: it reads ``telemetry_opt_in`` itself, so no caller can
-    send while the user has switched stats off.
+    skipped (``telemetry_opt_in`` off, Work offline on, no ``stats_url``, or
+    a bad payload). This is the gate: it reads ``telemetry_opt_in`` itself,
+    so no caller can send while the user has switched stats off.
 
     Never raises and never blocks the caller.
     """
     try:
         if not bool(config.get("telemetry_opt_in", False)):
+            return False
+        from core import offline
+        if offline.is_offline():
+            logger.debug("stats post skipped: offline mode is on")
             return False
         url = str(config.get("stats_url") or "").strip()
         if not url:

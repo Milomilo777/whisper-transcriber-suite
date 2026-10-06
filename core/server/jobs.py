@@ -43,7 +43,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
-from core import __version__
+from core import __version__, offline
 from core.config import PROJECT_FILE_NAME, user_cache_dir
 
 logger = logging.getLogger(__name__)
@@ -425,6 +425,9 @@ class JobManager:
                    clip_start: float | None = None,
                    clip_end: float | None = None) -> str:
         """Register a URL job; return job_id. Scheme is validated here."""
+        if offline.is_offline():
+            # Before is_safe_url, which looks the host name up.
+            raise ValueError(offline.message("a link job"))
         if not is_safe_url(url):
             # is_safe_url also refuses loopback / link-local / cloud-metadata
             # hosts (SSRF guard); say so, instead of claiming a plain
@@ -574,6 +577,8 @@ class JobManager:
                 self._set_status(job, STATUS_DOWNLOADING)
                 if self._download is None:
                     raise RuntimeError("URL downloads are not configured")
+                # A job queued before Work offline was turned on.
+                offline.require_online("downloading this link")
                 job.media_path = self._download(job.source, job.work_dir)
             if job.cancelled:
                 self._set_status(job, STATUS_CANCELLED)
@@ -740,6 +745,9 @@ class JobManager:
         if not self._webhook_url:
             return
         if job.status not in (STATUS_FINISHED, STATUS_ERROR):
+            return
+        if offline.is_offline():
+            logger.info("server: webhook not sent (offline mode is on)")
             return
         payload = webhook_payload(job)
         url = self._webhook_url

@@ -22,6 +22,7 @@ from core.backends.availability import (
     engine_value_for_label,
     format_engine_status,
 )
+from core import offline
 from core.config import DEFAULT_CONFIG, NOISY_AUDIO_PRESET, save_config
 from core.model_manager import (
     DEFAULT_MODEL_SLUG,
@@ -311,6 +312,8 @@ class AdvancedDialog(tk.Toplevel):
         self._telemetry_opt_in = tk.BooleanVar(
             value=bool(cfg.get("telemetry_opt_in", False))
         )
+        # Work offline (core.offline); also File → Work offline.
+        self._work_offline = tk.BooleanVar(value=offline.flag_from(cfg))
         # Updates: True = tell me about a new version (default), False = off.
         self._update_check_enabled = tk.BooleanVar(
             value=bool(cfg.get("update_check_enabled", True))
@@ -1547,13 +1550,14 @@ class AdvancedDialog(tk.Toplevel):
         ).grid(row=row + len(choices) + 1, column=0, columnspan=3, sticky="w", padx=24, pady=(0, 6))
 
     def _build_misc_section(self, body: ttk.Frame) -> ttk.LabelFrame:
-        """"App behaviour": system tray, usage statistics, update notice."""
+        """"App behaviour": tray, usage statistics, Work offline, update notice."""
         misc = section_labelframe(
             body, "App behaviour",
             "General app behaviour: whether closing the window minimises "
             "to the system tray instead of exiting, whether usage "
-            "statistics (no audio or transcript content) are sent, and "
-            "whether the app tells you about a new version.",
+            "statistics (no audio or transcript content) are sent, whether "
+            "the app works offline, and whether it tells you about a new "
+            "version.",
         )
         misc.pack(fill="x", pady=(0, 14))
         tray_row = ttk.Frame(misc)
@@ -1580,6 +1584,20 @@ class AdvancedDialog(tk.Toplevel):
             misc, text="Send usage statistics (on by default; also in the Help menu)",
             variable=self._telemetry_opt_in,
         ).pack(anchor="w", padx=8, pady=4)
+        offline_row = ttk.Frame(misc)
+        offline_row.pack(anchor="w", fill="x")
+        ttk.Checkbutton(
+            offline_row, text="Work offline (also in the File menu)",
+            variable=self._work_offline,
+        ).pack(side="left", padx=8, pady=4)
+        help_icon(
+            offline_row,
+            "When on, the app makes no network connection at all: no update "
+            "check, no usage statistics, no online settings. Local "
+            "transcription works with the models already on this computer. "
+            "Anything that needs the internet (a link, a model download, a "
+            "cloud engine) tells you so and offers to turn this off.",
+        ).pack(side="left")
         self._build_updates_choice(misc)
         return misc
 
@@ -2063,6 +2081,7 @@ class AdvancedDialog(tk.Toplevel):
             else:
                 self.app.log(f"Unknown model slug {new_slug!r}; keeping current model.")
         cfg["telemetry_opt_in"] = bool(self._telemetry_opt_in.get())
+        cfg[offline.CONFIG_KEY] = bool(self._work_offline.get())
         cfg["update_check_enabled"] = bool(self._update_check_enabled.get())
         cfg["minimise_to_tray"] = bool(self._minimise_to_tray.get())
         new_watched = (self._watched_folder.get() or "").strip()
@@ -2561,6 +2580,8 @@ class AdvancedDialog(tk.Toplevel):
                     )
                     if not ok_install or not _g.runtime_available():
                         _status(
+                            offline.message("installing the Google Cloud libraries")
+                            if offline.is_offline() else
                             "FAILED — could not install the Google Cloud "
                             "libraries. Check your internet connection and "
                             "retry."

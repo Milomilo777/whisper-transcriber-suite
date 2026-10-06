@@ -54,6 +54,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+from . import offline
 from ._gc_import_guard import gc_disabled_import
 from .config import user_cache_dir
 
@@ -145,6 +146,7 @@ def download_default_model(
         if log:
             log(f"LLM model already present at {dest}")
         return str(dest)
+    offline.require_online("downloading the AI Layer model")
     part = dest.with_suffix(dest.suffix + ".part")
     if part.exists():
         try:
@@ -590,6 +592,12 @@ class RemoteLLMRunner:
         max_tokens: int = 512,
         temperature: float = 0.3,
     ) -> str:
+        if offline.is_offline() and not offline.url_stays_local(self.cfg.base_url):
+            # Same error type as every other failed call, so callers show it.
+            # A server on this computer (Ollama, LM Studio) is not the network.
+            raise RemoteLLMError(offline.message("the remote AI provider")) from (
+                offline.OfflineModeError("the remote AI provider")
+            )
         base = self.cfg.base_url.rstrip("/")
         url = f"{base}/chat/completions"
         payload = {
@@ -718,7 +726,8 @@ def translate_segments(
     Returns a list the same length as ``segments``. An empty source
     segment or a translation failure yields ``""`` at that index
     rather than raising, so one bad segment doesn't discard an
-    otherwise-good pass; ``progress_cb(done, total)`` (if given) is
+    otherwise-good pass (a remote provider refused by Work offline
+    raises at once instead); ``progress_cb(done, total)`` (if given) is
     called after every segment, and ``cancel_event`` (if set)
     short-circuits the remaining segments to ``""``.
     """
@@ -735,6 +744,8 @@ def translate_segments(
                 try:
                     out.append(runner.translate(text, target_language=target_language))
                 except Exception as e:  # noqa: BLE001
+                    if isinstance(e.__cause__, offline.OfflineModeError):
+                        raise  # Work offline: every segment would fail the same way
                     logger.warning("translate_segments: segment %d failed: %s", i, e)
                     out.append("")
         if progress_cb is not None:

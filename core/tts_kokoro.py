@@ -110,9 +110,12 @@ def download(
     """
     import requests
 
+    from core import offline
+
     target = model_dir()
     if is_downloaded():
         return target
+    offline.require_online("downloading the Kokoro voice model")
     target.parent.mkdir(parents=True, exist_ok=True)
     archive = target.parent / f"{MODEL_NAME}.tar.bz2.part"
     staging = target.parent / f"{MODEL_NAME}.staging"

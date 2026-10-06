@@ -84,6 +84,9 @@ def emit(event: str, **payload: Any) -> None:
 
 
 def main() -> int:
+    # Work offline backstop: OmniVoice fetches its weights from Hugging Face.
+    from . import offline
+    offline.install_network_guard()
     setup_logging("INFO", filename=f"voiceclone-worker-{os.getpid()}.log")
     try:
         from .optional_deps import activate as _activate_extras

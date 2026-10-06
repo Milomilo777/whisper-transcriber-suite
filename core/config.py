@@ -18,6 +18,8 @@ from typing import Any
 
 import platformdirs
 
+from core import offline
+
 # Module-level lock serialises concurrent save_config calls — on
 # Windows os.replace fails with PermissionError when another thread
 # is also mid-replace on the same path; the lock collapses the race.
@@ -365,6 +367,11 @@ DEFAULT_CONFIG = {
     #     default only activates the stats_url POST.
     "minimise_to_tray": False,
     "telemetry_opt_in": True,
+    #   work_offline — File > Work offline / Advanced > App behaviour. While
+    #     True the app makes no network connection (core.offline): automatic
+    #     requests skip themselves, user actions that need the internet say
+    #     so, and the online config is not fetched. Local only.
+    "work_offline": False,
     # --- Three-level config: ONLINE layer (P4-1) -------------------------
     # URL of an app-level JSON config the maintainer hosts, fetched on
     # startup so APP-LEVEL settings (model catalog, stats endpoint, latest
@@ -446,8 +453,10 @@ ONLINE_ALLOWED_KEYS: frozenset[str] = frozenset({
 # choice: a remote file must not be able to switch the check back on, undo a
 # "Skip this version" or a "Later", or fake the newest version seen. Same for
 # the yt-dlp update mode: a remote file must not switch automatic updates on.
+# And for Work offline, which a remote file must never be able to switch off.
 LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "telemetry_opt_in",
+    "work_offline",
     "update_check_enabled",
     "last_update_check",
     "update_latest_seen",
@@ -1044,7 +1053,13 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
         else:
             config_url = str(DEFAULT_CONFIG["config_url"])
     online: dict[str, Any] = {}
-    if config_url:
+    # An empty ``local`` (no file, or a read that failed) asks core.offline to
+    # read the file itself: it keeps its last value across a transient error.
+    if config_url and offline.is_offline(local or None):
+        # Work offline: no request at all; the last good copy still applies
+        # (it is on disk), so the model catalog stays the same.
+        online = fetch_online_config("")
+    elif config_url:
         with _ONLINE_MEMO_LOCK:
             cached = _ONLINE_MEMO.get(config_url)
         if cached is not None:

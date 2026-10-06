@@ -105,7 +105,7 @@ The app does use the network for:
 
 Audio or transcript text is sent only if you choose a cloud engine (Gemini API
 or Google Cloud Speech-to-Text) or connect a remote AI provider yourself.
-Every connection is listed in
+**File → Work offline** stops all of it. Every connection is listed in
 [docs/CONFIG.md](docs/CONFIG.md#network-use).
 
 ## Documentation

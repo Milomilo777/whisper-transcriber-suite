@@ -488,6 +488,10 @@ def read_capped_lines(stream: Any, max_chars: int) -> Iterator[tuple[str, bool]]
 
 
 def main() -> int:
+    # Work offline backstop for this process (Hugging Face / PyTorch Hub
+    # downloads started by third-party code); inert while the switch is off.
+    from core import offline
+    offline.install_network_guard()
     # fetch_online=False: the worker only needs log_level here; skip the
     # network round-trip so worker spawn is never blocked on the online
     # config fetch (the parent App passes the effective per-task config).

@@ -371,6 +371,7 @@ a = Analysis(
         'core.hub',
         'core.logging_setup',
         'core.model_manager',
+        'core.offline',
         'core.paths',
         'core.stats',
         'core.task',

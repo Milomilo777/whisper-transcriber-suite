@@ -17,6 +17,8 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 
+from core import offline
+
 SITE = "https://suprememastertv.com"
 _UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) WhisperTranscriberSuite"
 
@@ -112,6 +114,8 @@ def search(
     page: int = 1, *, timeout: float = 30.0,
 ) -> SearchPage:
     """Fetch one page (20 results) of the site's search / browse listing."""
+    if offline.is_offline():
+        raise SmtvBrowseError(offline.message("Supreme Master TV"))
     url = search_url(lang, query, type_, category, page)
     req = urllib.request.Request(
         url, data=b"", method="POST",
@@ -131,6 +135,8 @@ def fetch_bytes(url: str, *, timeout: float = 20.0, limit: int = 2_000_000) -> b
     """Small binary GET (thumbnails). Refuses anything off the SMTV host."""
     if not re.match(r"^https://(?:www\.)?suprememastertv\.com/", url):
         raise SmtvBrowseError(f"Refusing non-SMTV URL: {url}")
+    if offline.is_offline():
+        raise SmtvBrowseError(offline.message("Supreme Master TV"))
     req = urllib.request.Request(url, headers={"User-Agent": _UA})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.read(limit)

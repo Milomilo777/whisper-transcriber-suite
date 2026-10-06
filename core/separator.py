@@ -35,6 +35,7 @@ import time
 from pathlib import Path
 from typing import Callable
 
+from . import offline
 from ._gc_import_guard import gc_disabled_import
 from ._liveness_tick import liveness_tick
 from .config import user_cache_dir
@@ -437,6 +438,12 @@ def _run_demucs_cli(
     }
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    # Work offline: Demucs fetches its weights itself on first use, so its
+    # proxy settings point at a closed local port; weights on disk still load.
+    if offline.is_offline():
+        kwargs["env"] = offline.child_env(os.environ)
+        if log:
+            log("Offline mode is on: Demucs uses only weights already on this computer.")
     # The demucs CLI emits its own progress bar to stderr but we
     # capture stderr (PIPE) so the worker stdout sees nothing until
     # demucs exits. Wrap the blocking subprocess.run in a liveness

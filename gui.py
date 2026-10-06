@@ -413,6 +413,11 @@ def main() -> int:
 
     _ensure_safe_stdio_encoding()
 
+    # Work offline backstop for the CLI, the server and the GUI (the worker
+    # branches above install their own); inert while the switch is off.
+    from core import offline
+    offline.install_network_guard()
+
     # macOS app only: un-quarantine the bundled yt-dlp/ffmpeg/deno so
     # Gatekeeper does not block them after a browser download.
     from core.paths import clear_bundled_quarantine

@@ -48,10 +48,13 @@ def _telemetry_opted_in() -> bool:
 
     Looked up dynamically so a user toggling the flag in Advanced
     takes effect on the *next* app launch without any restart
-    plumbing in this module.
+    plumbing in this module. Work offline counts as "off".
     """
     try:
+        from core import offline
         from core.config import load_config  # type: ignore[import-not-found]
+        if offline.is_offline():
+            return False
         return bool(load_config().get("telemetry_opt_in", False))
     except Exception:  # noqa: BLE001
         return False

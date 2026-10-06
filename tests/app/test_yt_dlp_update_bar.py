@@ -21,7 +21,7 @@ from core import yt_dlp_update as ytu
 
 _BORROWED = (
     "offer_yt_dlp_update", "_ensure_yt_dlp_bar", "_yt_dlp_bar_dismiss",
-    "_yt_dlp_update_now", "_yt_dlp_update_done",
+    "_yt_dlp_update_now", "_yt_dlp_update_done", "ensure_online",
 )
 _FAILURE = "ERROR: unable to download video data: HTTP Error 403: Forbidden"
 
