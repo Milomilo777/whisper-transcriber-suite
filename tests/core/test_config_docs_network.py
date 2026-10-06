@@ -224,11 +224,6 @@ def test_translated_readmes_never_say_nothing_is_sent(path: Path) -> None:
     assert match is None, (path.name, match and match.group(0))
 
 
-@pytest.mark.parametrize("path", [
-    pytest.param(p, marks=pytest.mark.xfail(
-        strict=True, reason="Persian sentence about usage statistics awaits review"))
-    if p.name == "README.fa.md" else p
-    for p in _I18N_READMES
-], ids=lambda p: p.name)
+@pytest.mark.parametrize("path", _I18N_READMES, ids=lambda p: p.name)
 def test_translated_readmes_name_the_stats_switch(path: Path) -> None:
     assert "**Help → Send usage statistics**" in path.read_text(encoding="utf-8")
