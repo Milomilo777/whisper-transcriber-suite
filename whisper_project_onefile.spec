@@ -214,6 +214,7 @@ a = Analysis(
         'core.voice_clone_worker',
         'core.tts_kokoro',
         'core.synthetic_audio',
+        'core.tts_plan',
         'core.vad_window',
         'core.language_defaults',
         # Opt-in backends — explicit submodule names so a user

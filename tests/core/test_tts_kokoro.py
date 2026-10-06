@@ -37,3 +37,42 @@ def test_is_downloaded_false_for_empty_cache(monkeypatch, tmp_path):
 def test_generate_rejects_empty_text():
     with pytest.raises(ValueError):
         k.generate("   ", "af_heart", "out.wav")
+
+
+def test_generate_uses_the_shared_length_limit(monkeypatch):
+    from core import tts_plan
+
+    monkeypatch.setattr(k, "_load", lambda _lang: pytest.fail("loaded a model"))
+    with pytest.raises(ValueError, match=f"limit for one generation is {tts_plan.MAX_TEXT_CHARS}"):
+        k.generate("a" * (tts_plan.MAX_TEXT_CHARS + 1), "af_heart", "out.wav")
+
+
+def test_measure_speed_never_downloads(monkeypatch):
+    monkeypatch.setattr(k, "is_downloaded", lambda: False)
+    monkeypatch.setattr(k, "download", lambda **_k: pytest.fail("download started"))
+    monkeypatch.setattr(k, "generate", lambda *_a, **_k: pytest.fail("generated"))
+    with pytest.raises(RuntimeError, match="not downloaded"):
+        k.measure_speed()
+
+
+def test_measure_speed_speaks_the_fixed_text_and_removes_its_file(monkeypatch):
+    import os
+
+    from core import tts_plan
+
+    seen = {}
+
+    def fake_generate(text, voice, out, cancel_event=None, **_k):
+        seen.update(text=text, voice=voice, out=out, cancel=cancel_event)
+        with open(out, "wb") as f:
+            f.write(b"RIFF")
+        return k.KokoroResult(out, 10.0, 6.5)
+
+    monkeypatch.setattr(k, "is_downloaded", lambda: True)
+    monkeypatch.setattr(k, "generate", fake_generate)
+    marker = object()
+    result = k.measure_speed(cancel_event=marker)  # type: ignore[arg-type]
+    assert (result.audio_seconds, result.elapsed_seconds) == (10.0, 6.5)
+    assert seen["text"] == tts_plan.CALIBRATION_TEXT
+    assert seen["voice"] == k.DEFAULT_VOICE and seen["cancel"] is marker
+    assert not os.path.exists(seen["out"])

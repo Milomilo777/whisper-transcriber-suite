@@ -6,6 +6,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Text to Voice shows the time, file size and free space before a long text starts.** A long
+  text gets a confirm step under the text box with the time range on this computer, the speech
+  length and the WAV size; a job the disk cannot hold (plus 500 MB kept free) is refused with the
+  space it needs. The range comes from a speed figure stored per engine and device
+  (`core.tts_plan`): Kokoro offers a 10-second measuring run, and every finished job of a few
+  seconds or more updates it; it is measured again after an engine or hardware change. The
+  5,000-character limit is now one constant for both engines, and Kokoro enforces it too.
 - **Work offline: one switch that keeps the app off the network.** **File → Work offline** (also
   in **Advanced → App behaviour**, `work_offline`) stops every network use: the online config,
   the update check, usage statistics and crash reports are skipped, and a link lookup, a download,

@@ -11,9 +11,11 @@ because the tab exists.
 Engine: OmniVoice (k2-fsa), chosen after evaluating it against
 Chatterbox Multilingual and the flagship engines of a comparable
 open-source project. Apache-2.0 on both code and
-weights, ~0.6B params, CPU-capable but slow (measured ~50-57x slower
-than real-time on a representative consumer CPU) — callers MUST show a
-time estimate before generating, never a bare progress spinner.
+weights, ~0.6B params, CPU-capable but slow: on a 4-core / 8-thread
+desktop CPU a pass of 5-10 s of speech took 18-21x its length, and no
+pass took less than about 80 s, however short the text — callers MUST
+show a time estimate before generating (``core.tts_plan``), never a bare
+progress spinner.
 
 This module is Tk-free and subprocess-free: it does the actual model
 work. ``core.voice_clone_worker`` wraps it in the stdin/stdout JSON
@@ -31,6 +33,8 @@ from typing import Callable
 
 from . import optional_deps, synthetic_audio
 from .transcriber import get_duration
+# The one length limit for both engines; re-exported under its old name.
+from .tts_plan import MAX_TEXT_CHARS as MAX_TEXT_CHARS
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +46,6 @@ FEATURE = "voice_clone"
 MIN_REFERENCE_SECONDS = 3.0
 MAX_REFERENCE_SECONDS = 10.0
 MAX_REFERENCE_SAMPLES = 3
-
-#: Sanity cap on how much text one generation call accepts. Not an
-#: OmniVoice limit: OmniVoice splits long text into ~15 s chunks itself
-#: (``audio_chunk_duration``) and cross-fades them. Raised from 500
-#: (owner request, 2026-09-23); the tab shows a time estimate first,
-#: since on a CPU this much text takes hours.
-MAX_TEXT_CHARS = 5000
 
 #: OmniVoice voice-design attributes (omnivoice/utils/voice_design.py).
 #: One value per group, all optional; joined with ", " into ``instruct``.

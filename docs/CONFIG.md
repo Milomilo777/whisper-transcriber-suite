@@ -42,6 +42,7 @@ The merge itself is pure and testable: `core.config.merge_config_sources(hardcod
 | Cached models (default `model_path`) | `%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\models\<model-folder>\` | `core.config.user_cache_dir()` |
 | Rotating logs | `%LOCALAPPDATA%\WhisperTranscriberSuite\Logs\app.log` (5 MB × 3) | `core.config.user_log_dir()` |
 | Voice-clone consent record (local only, see [below](#consent-record-local-only)) | `%LOCALAPPDATA%\WhisperTranscriberSuite\voice_clone_consent.jsonl` | `core.synthetic_audio.consent_log_path()` |
+| Text to Voice speed figures (see [below](#estimate-before-a-long-text)) | `%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\tts\speed_calibration.json` | `core.tts_plan.calibration_path()` |
 
 `platformdirs` chooses the equivalent paths on macOS and Linux. The "Help → Open log folder" menu item opens the log directory.
 
@@ -282,6 +283,38 @@ adding or removing a reference clip clears it. Voice design, the model's own
 voice and Kokoro need no tick. A `voice_clone.consent_accepted` key written by
 older versions (it backed a one-time confirmation dialog) still loads and is
 ignored.
+
+#### Estimate before a long text
+
+One job takes at most 5,000 characters (`core.tts_plan.MAX_TEXT_CHARS`, both
+engines). Before a long text starts, **Generate** shows a confirm step under
+the text box: the time range on this computer, the speech length, the WAV size
+(24 kHz, 16-bit mono, about 2.8 MB a minute) and the free space where the file
+is written. **Start** runs it, **Cancel** runs nothing; the text box and the
+speed slider stay locked while the step is open. If the free space is below the
+largest expected file plus 500 MB kept free (checked again on **Start**), the
+job is refused and the step says how much space it needs. Texts of up to about 300 characters, and
+jobs estimated under two minutes, start at once (`core.tts_plan.needs_confirm`).
+
+The time range comes from a speed figure measured on this computer, stored per
+engine and device in `Cache\tts\speed_calibration.json` (`core.tts_plan`):
+
+- **Kokoro**: the first long text offers **Measure this computer's speed**, a
+  short run of about 10 seconds in the default voice; nothing runs before that
+  click, and the model must already be downloaded.
+- **OmniVoice**: no separate measuring run, since on a CPU one pass takes over a
+  minute even for a single word. Until a run is measured, the range comes from a
+  reference computer and says so.
+- Every finished job with at least 5 seconds of speech (8 seconds for OmniVoice)
+  replaces the stored figure for its engine and device.
+
+A figure stores the speech length, compute time, text length in speech units
+(characters, with each Chinese, Japanese or Korean character counted as two to
+three and each run of spaces as one), speed, the engine version and a hardware
+fingerprint (OS, CPU name, thread count and the
+graphics card for CUDA). When the version or the fingerprint changes, the
+figure is ignored and measured again. The file stays on this computer; delete
+it to start over.
 
 #### AI-generated tag
 

@@ -225,8 +225,15 @@ def generate(
 
     import numpy as np  # type: ignore[import-not-found]
 
+    from .tts_plan import MAX_TEXT_CHARS
+
     if not text.strip():
         raise ValueError("No text to speak.")
+    if len(text) > MAX_TEXT_CHARS:
+        raise ValueError(
+            f"Text is {len(text)} characters; the limit for one "
+            f"generation is {MAX_TEXT_CHARS}."
+        )
     voice = voice_by_key(voice_key)
     engine = _load(voice.lang_code)
 
@@ -256,3 +263,28 @@ def generate(
     seconds = samples.size / float(audio.sample_rate)
     logger.info("kokoro generate: %.2fs audio in %.1fs (voice=%s)", seconds, elapsed, voice.key)
     return KokoroResult(output_path, seconds, elapsed)
+
+
+def measure_speed(cancel_event: "threading.Event | None" = None) -> KokoroResult:
+    """Speak ``core.tts_plan.CALIBRATION_TEXT`` once in the default voice
+    and return its speech length and compute time (a few seconds on a CPU).
+
+    The model must already be downloaded: this never starts a download.
+    The WAV goes to a temporary file that is removed again. Raises
+    ``RuntimeError`` when cancelled through *cancel_event*.
+    """
+    import tempfile
+
+    from .tts_plan import CALIBRATION_TEXT
+
+    if not is_downloaded():
+        raise RuntimeError("The Kokoro voice model is not downloaded yet.")
+    fd, tmp = tempfile.mkstemp(suffix=".wav", prefix="kokoro_speed_")
+    os.close(fd)
+    try:
+        return generate(CALIBRATION_TEXT, DEFAULT_VOICE, tmp, cancel_event=cancel_event)
+    finally:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
