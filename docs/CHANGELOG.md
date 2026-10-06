@@ -6,6 +6,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Sharp text at 125% and 150% display scaling on Windows.** The app now declares per-monitor DPI
+  awareness before its first window opens (with fallbacks for older Windows), so Windows no longer
+  stretches a blurry bitmap. Window minimum sizes, the Supreme Master TV banner and the Live tab
+  level display scale with the display; the sizes stay inside small screens. macOS and Linux are unchanged.
 - **An empty Transcribe tab says what to do, and About moved under Help.** While nothing is queued
   the tab shows one block: "Drop a file here, paste a link, or try the sample" (it names only what
   works on that install), where a link goes, the supported formats and the sample button; it

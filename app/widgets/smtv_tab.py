@@ -29,6 +29,8 @@ from concurrent.futures import ThreadPoolExecutor
 from tkinter import ttk
 from typing import Any
 
+from app.dpi import scale_factor, scaled
+
 logger = logging.getLogger(__name__)
 
 _HERO_H = 176
@@ -214,8 +216,8 @@ def _bind_wheel(canvas: tk.Canvas, inner: Any) -> None:
 def _build_hero(app: Any, state: "_TabState", parent: Any) -> tk.Canvas:
     from core.integrations import smtv_browse as sb
 
-    hero = tk.Canvas(parent, height=_HERO_H, highlightthickness=0, borderwidth=0,
-                     background=_mix(_HERO_LEFT, _HERO_LEFT, 0))
+    hero = tk.Canvas(parent, height=scaled(parent, _HERO_H), highlightthickness=0,
+                     borderwidth=0, background=_mix(_HERO_LEFT, _HERO_LEFT, 0))
     links = (
         ("▶  Watch live", sb.LIVE_URL),
         ("About the channel", "about-us/"),
@@ -231,30 +233,32 @@ def _build_hero(app: Any, state: "_TabState", parent: Any) -> tk.Canvas:
 
     def _draw(_e: Any = None) -> None:
         hero.delete("all")
-        w = max(hero.winfo_width(), 400)
+        k = scale_factor(hero)  # coordinates below are designed at 96 dpi
+        hero_h = _HERO_H * k
+        w = max(hero.winfo_width(), int(400 * k))
         steps = 64
-        for k in range(steps):
-            x0 = w * k / steps
-            hero.create_rectangle(x0, 0, w * (k + 1) / steps + 1, _HERO_H,
-                                  fill=_mix(_HERO_LEFT, _HERO_RIGHT, k / (steps - 1)),
+        for i in range(steps):
+            x0 = w * i / steps
+            hero.create_rectangle(x0, 0, w * (i + 1) / steps + 1, hero_h,
+                                  fill=_mix(_HERO_LEFT, _HERO_RIGHT, i / (steps - 1)),
                                   outline="")
         # Decorative sine waves on the right.
         wave_w = w * 0.45
         for att, width, opacity in _HERO_CURVES:
-            pts = _hero_curve_points(att, wave_w, _HERO_H / 2, 0.85, math.pi / 3)
+            pts = _hero_curve_points(att, wave_w, hero_h / 2, 0.85, math.pi / 3)
             pts = [p + (w - wave_w) if i % 2 == 0 else p for i, p in enumerate(pts)]
             hero.create_line(*pts, fill=_mix((253, 230, 138), _HERO_RIGHT, 1 - opacity * 0.7),
-                             width=width, smooth=True)
-        hero.create_text(24, 26, anchor="nw", text="SUPREME MASTER TELEVISION",
+                             width=width * k, smooth=True)
+        hero.create_text(24 * k, 26 * k, anchor="nw", text="SUPREME MASTER TELEVISION",
                          fill=_HERO_ACCENT, font=("Segoe UI", 10, "bold"))
-        hero.create_text(24, 46, anchor="nw", text="Good news from around our beautiful planet",
+        hero.create_text(24 * k, 46 * k, anchor="nw", text="Good news from around our beautiful planet",
                          fill=_HERO_TEXT, font=("Segoe UI Semibold", 20))
-        hero.create_text(24, 86, anchor="nw", text=state.stats_text(),
+        hero.create_text(24 * k, 86 * k, anchor="nw", text=state.stats_text(),
                          fill=_HERO_SUB, font=("Segoe UI", 10))
-        x = 24
+        x = 24 * k
         for btn in buttons:
-            hero.create_window(x, 124, anchor="nw", window=btn)
-            x += btn.winfo_reqwidth() + 8
+            hero.create_window(x, 124 * k, anchor="nw", window=btn)
+            x += btn.winfo_reqwidth() + 8 * k
 
     hero.bind("<Configure>", _draw)
     state.redraw_hero = _draw

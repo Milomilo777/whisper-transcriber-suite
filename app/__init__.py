@@ -25,6 +25,9 @@ __all__ = ["run", "App"]
 
 def run() -> None:
     """Launch the Tk app. Used by ``gui.py`` and the frozen exe entry point."""
+    # Before the Tk root exists, or Windows stretches the window and blurs it.
+    from .dpi import enable_dpi_awareness
+    enable_dpi_awareness()
     from .app import App
     App().mainloop()
 

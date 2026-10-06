@@ -37,6 +37,7 @@ from app.domain.cookies import (
     cookie_browser_label,
     cookie_browser_value,
 )
+from app.dpi import scaled
 from app.widgets.tooltip import (
     bind_tooltip,
     collapsible_section,
@@ -335,8 +336,8 @@ class AdvancedDialog(tk.Toplevel):
         height = int(screen_h * 0.85)
 
         # Minimum sensible size
-        width = max(width, 1100)
-        height = max(height, 800)
+        width = max(width, scaled(self, 1100))
+        height = max(height, scaled(self, 800))
 
         # Never exceed screen bounds. On macOS the screen height still counts
         # the menu bar and the Dock, and the title bar comes on top of the

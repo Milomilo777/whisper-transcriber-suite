@@ -24,6 +24,7 @@ import tkinter as tk
 from tkinter import filedialog, ttk
 from typing import Any
 
+from app.dpi import scaled
 from app.widgets.error_dialog import show_error
 from app.widgets.tooltip import help_icon, section_labelframe
 
@@ -376,7 +377,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
     )
     lvl.grid(row=2, column=0, sticky="ew", padx=15, pady=(0, 6))
     lvl.columnconfigure(0, weight=1)
-    app.live_visualizer = AudioVisualizer(lvl, height=130)
+    app.live_visualizer = AudioVisualizer(lvl, height=scaled(lvl, 130))
     app.live_visualizer.frame.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
 
     # ── Transcript ────────────────────────────────────────────────────

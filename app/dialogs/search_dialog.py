@@ -19,6 +19,8 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Any
 
+from app.dpi import scaled_size
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,8 +37,9 @@ class SearchDialog(tk.Toplevel):
     def __init__(self, master: "tk.Tk | tk.Toplevel") -> None:
         super().__init__(master)
         self.title("Search transcripts")
-        self.geometry("820x520")
-        self.minsize(820, 520)
+        width, height = scaled_size(self, 820, 520)
+        self.geometry(f"{width}x{height}")
+        self.minsize(width, height)
         self.transient(master)
 
         # tkinter types self.master as the generic Misc, not Tk | Toplevel —

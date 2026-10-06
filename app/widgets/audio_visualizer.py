@@ -38,6 +38,8 @@ import threading
 import time
 from typing import Any, Callable
 
+from app.dpi import scale_factor, scaled
+
 logger = logging.getLogger(__name__)
 
 #: ~30 fps while listening.
@@ -289,14 +291,20 @@ def _wave_background(w: int, h: int, row: int) -> Any:
 
 
 def render_frame(width: int, height: int, curves: "list[IOS9Curve]", amplitude: float,
-                 meter_db: "float | None" = None, peak_db: "float | None" = None) -> Any:
-    """Compose one RGB ``PIL.Image`` of the waves (+ meter when given)."""
+                 meter_db: "float | None" = None, peak_db: "float | None" = None,
+                 scale: float = 1.0) -> Any:
+    """Compose one RGB ``PIL.Image`` of the waves (+ meter when given).
+
+    ``scale`` is the display scale (1.0 = 96 dpi); it sizes the meter band and
+    its margins, which are designed in 96 dpi pixels.
+    """
     import numpy as np  # type: ignore[import-not-found]
     from PIL import Image, ImageDraw
 
     width, height = max(32, int(width)), max(48, int(height))
     ss = _SUPERSAMPLE
-    wave_h = height - (_METER_H + 4 if meter_db is not None else 0)
+    meter_h = max(1, round(_METER_H * scale))
+    wave_h = height - (meter_h + round(4 * scale) if meter_db is not None else 0)
     w, h = width * ss, wave_h * ss
     height_max = h / 2 - 6 * ss
     acc = _wave_background(w, h, int(height_max)).copy()
@@ -335,9 +343,10 @@ def render_frame(width: int, height: int, curves: "list[IOS9Curve]", amplitude: 
     out = Image.new("RGB", (width, height), _BG_RGB)
     out.paste(img, (0, 0))
     draw = ImageDraw.Draw(out)
-    x0, x1 = 8, width - 8
-    y0 = height - _METER_H - 3
-    y1 = y0 + _METER_H - 1
+    margin = round(8 * scale)
+    x0, x1 = margin, width - margin
+    y0 = height - meter_h - round(3 * scale)
+    y1 = y0 + meter_h - 1
     draw.rectangle((x0, y0, x1, y1), fill=_METER_TRACK_RGB)
     span = x1 - x0
 
@@ -531,7 +540,7 @@ class AudioVisualizer:
             c.delete("all")
             self._image_id = c.create_image(0, 0, image=self._photo, anchor="nw")
             self._text_id = c.create_text(
-                img.size[0] - 10, 8, anchor="ne", fill="#94a3b8",
+                img.size[0] - scaled(c, 10), scaled(c, 8), anchor="ne", fill="#94a3b8",
                 font=("Segoe UI", 8), text="",
             )
         else:
@@ -544,13 +553,15 @@ class AudioVisualizer:
 
     def _draw(self) -> None:
         img = render_frame(self._width(), self.height, self.curves, self.amplitude,
-                           meter_db=self.meter_db, peak_db=self.peak_db)
+                           meter_db=self.meter_db, peak_db=self.peak_db,
+                           scale=scale_factor(self.canvas))
         self._show(img)
 
     def _draw_idle(self) -> None:
         try:
             img = render_frame(self._width(), self.height, [], 0.0,
-                               meter_db=METER_FLOOR_DB, peak_db=None)
+                               meter_db=METER_FLOOR_DB, peak_db=None,
+                               scale=scale_factor(self.canvas))
             self._show(img)
         except Exception:  # noqa: BLE001
             logger.debug("Visualizer idle draw failed", exc_info=True)

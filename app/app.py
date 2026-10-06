@@ -29,6 +29,7 @@ from app.services.transcription_service import (
     TranscriptionService,
 )
 from app.dialogs.statistics import show_statistics as _show_stats
+from app.dpi import scaled_size
 from app.widgets.console import apply_console_theme, build_console, insert_log_line
 from app.widgets.error_dialog import show_error
 from app.widgets.platform import open_folder as _open_folder_helper
@@ -728,7 +729,7 @@ class App(tk.Tk):
         # they silently clip. 960x640 is the app's own chosen default,
         # not an arbitrary number; this only stops shrinking below it,
         # growing is unaffected.
-        self.minsize(960, 640)
+        self.minsize(*scaled_size(self, 960, 640))
         self.protocol("WM_DELETE_WINDOW", self.on_exit)
 
         # Per-instance queues (no more module-globals — AUDIT B3 fix).
@@ -1345,8 +1346,8 @@ class App(tk.Tk):
         dlg = tk.Toplevel(self)
         dlg.title("About Whisper Transcriber Suite")
         dlg.transient(self)
-        dlg.geometry("680x620")
-        dlg.minsize(560, 480)
+        dlg.geometry("%dx%d" % scaled_size(dlg, 680, 620))
+        dlg.minsize(*scaled_size(dlg, 560, 480))
 
         header = ttk.Frame(dlg, padding=(16, 14, 16, 8))
         header.pack(fill="x")
@@ -5688,8 +5689,10 @@ class App(tk.Tk):
             sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
         except Exception:  # noqa: BLE001
             sw, sh = 1366, 768
-        w = max(960, min(1320, sw - 40))
-        h = max(640, min(900, sh - 90))
+        min_w, min_h = scaled_size(self, 960, 640)
+        full_w, full_h = scaled_size(self, 1320, 900)
+        w = max(min_w, min(full_w, sw - 40))
+        h = max(min_h, min(full_h, sh - 90))
         x, y = max(0, (sw - w) // 2), max(0, (sh - h) // 3)
         try:
             self.geometry(f"{w}x{h}+{x}+{y}")
