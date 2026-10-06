@@ -46,8 +46,10 @@ from typing import Any, Optional
 from app.dpi import scaled_size
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
+from app.widgets import subtitle_edit as subtitle_edit_ui
 from app.widgets.notice import notify
 from app.widgets.tooltip import help_icon
+from core import subtitle_edit
 
 
 logger = logging.getLogger(__name__)
@@ -611,6 +613,12 @@ class TranscriptViewer(tk.Toplevel):
         ttk.Button(topbar, text="Open JSON folder", command=self._open_json_folder).pack(
             side="right"
         )
+        if subtitle_edit.is_supported():
+            ttk.Button(
+                topbar, text=subtitle_edit_ui.BUTTON_TEXT,
+                command=self._open_in_subtitle_edit,
+            ).pack(side="right", padx=(0, 4))
+            help_icon(topbar, subtitle_edit_ui.HELP_TEXT).pack(side="right", padx=(0, 4))
         help_icon(
             topbar,
             "Segment list colours: green/amber/red text is the model's "
@@ -1468,6 +1476,14 @@ class TranscriptViewer(tk.Toplevel):
                 self, "Open failed",
                 "Could not open the transcript's folder.", detail=str(e),
             )
+
+    def _open_in_subtitle_edit(self) -> None:
+        """Open the subtitle file written next to this JSON in Subtitle Edit."""
+        subtitle_path = subtitle_edit.pick_subtitle_file(
+            p for p in subtitle_edit.sibling_subtitle_candidates(self.json_path)
+            if os.path.isfile(p)
+        )
+        subtitle_edit_ui.open_in_subtitle_edit(self, self._app_config(), subtitle_path)
 
     def _open_in_system_player(self) -> None:
         if not self.media_path:

@@ -380,6 +380,11 @@ DEFAULT_CONFIG = {
     #     Voice; the estimate, the free-disk check and the piece-by-piece
     #     writer (core.tts_job) still apply. Local only.
     "tts_no_text_limit": False,
+    #   subtitle_edit_path — Advanced > App behaviour, "Subtitle Edit program".
+    #     Path to SubtitleEdit.exe for the "Open in Subtitle Edit" button
+    #     (Windows only, core.subtitle_edit). "" = look for an installed copy.
+    #     Local only: it is a program the app starts.
+    "subtitle_edit_path": "",
     # --- Three-level config: ONLINE layer (P4-1) -------------------------
     # URL of an app-level JSON config the maintainer hosts, fetched on
     # startup so APP-LEVEL settings (model catalog, stats endpoint, latest
@@ -462,11 +467,13 @@ ONLINE_ALLOWED_KEYS: frozenset[str] = frozenset({
 # "Skip this version" or a "Later", or fake the newest version seen. Same for
 # the yt-dlp update mode: a remote file must not switch automatic updates on.
 # And for Work offline, which a remote file must never be able to switch off,
-# and for the Text to Voice length limit, which only the user may lift.
+# and for the Text to Voice length limit, which only the user may lift. The
+# Subtitle Edit path names a program the app starts, so only the user sets it.
 LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "telemetry_opt_in",
     "work_offline",
     "tts_no_text_limit",
+    "subtitle_edit_path",
     "update_check_enabled",
     "last_update_check",
     "update_latest_seen",

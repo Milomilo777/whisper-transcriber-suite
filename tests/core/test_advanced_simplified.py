@@ -76,6 +76,7 @@ def _fake_dialog(app: Any, **overrides: Any) -> types.SimpleNamespace:
         _caption_choice_var=_V("ask"),
         _minimise_to_tray=_V(False),
         _tts_no_text_limit=_V(False),
+        _subtitle_edit_path=_V(""),
         _watched_folder=_V(""),
         _watched_folder_enabled=_V(False),
         _sync_vad_controls_state=lambda: None,

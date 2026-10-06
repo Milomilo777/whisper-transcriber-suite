@@ -33,6 +33,7 @@ from app.dpi import scaled_size
 from app.widgets.console import apply_console_theme, build_console, insert_log_line
 from app.widgets.error_dialog import show_error
 from app.widgets.notice import notify
+from app.widgets import subtitle_edit as subtitle_edit_ui
 from app.widgets.platform import open_folder as _open_folder_helper
 from app.widgets.live_tab import build_live_tab, stop_live_session
 from app.widgets.smtv_tab import build_smtv_tab
@@ -46,7 +47,7 @@ from app.widgets.tabs import (
 )
 from app.widgets.tray import TrayController
 from core import __version__ as _APP_VERSION
-from core import offline
+from core import offline, subtitle_edit
 from app.theme import script_fonts, tokens
 from core._proc import kill_process_tree
 from core.config import load_config, save_config
@@ -4735,6 +4736,16 @@ class App(tk.Tk):
                 button_row, text="View transcript",
                 command=lambda jp=json_output: self.open_transcript_viewer_for(
                     task.file_path, jp, task.language or task.detected_language
+                ),
+            ).pack(side="left", padx=(8, 0))
+        # Windows only: open the best subtitle file in Subtitle Edit
+        # (waveform editor) for fine timing work.
+        subtitle_output = subtitle_edit.pick_subtitle_file(existing)
+        if subtitle_output is not None and subtitle_edit.is_supported():
+            ttk.Button(
+                button_row, text=subtitle_edit_ui.BUTTON_TEXT,
+                command=lambda sp=subtitle_output: subtitle_edit_ui.open_in_subtitle_edit(
+                    self, self.app_config, sp
                 ),
             ).pack(side="left", padx=(8, 0))
 

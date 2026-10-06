@@ -6,6 +6,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Open in Subtitle Edit (Windows).** The Last Result card and the transcript viewer have an
+  **Open in Subtitle Edit** button that opens the written SRT (or VTT/ASS) in the free editor for
+  waveform-based timing work. It finds an installed copy through the uninstall registry entries and
+  `Program Files`; a portable copy is chosen once in **Advanced → App behaviour**
+  (`subtitle_edit_path`). When Subtitle Edit is missing, the button offers its official download
+  page, opened only on your click. Hidden on macOS and Linux.
 - **Translate speech straight to English.** The Transcribe tab has an **Output: English
   translation** option (off by default) that uses Whisper's own translate task: non-English
   speech becomes English subtitles in one pass, with no AI model. Files are named

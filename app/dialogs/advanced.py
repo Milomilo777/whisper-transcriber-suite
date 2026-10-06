@@ -22,7 +22,7 @@ from core.backends.availability import (
     engine_value_for_label,
     format_engine_status,
 )
-from core import offline, tts_plan
+from core import offline, subtitle_edit, tts_plan
 from core.config import DEFAULT_CONFIG, NOISY_AUDIO_PRESET, save_config
 from core.model_manager import (
     DEFAULT_MODEL_SLUG,
@@ -323,6 +323,9 @@ class AdvancedDialog(tk.Toplevel):
         )
         self._tts_no_text_limit = tk.BooleanVar(
             value=cfg.get(tts_plan.NO_LIMIT_KEY) is True
+        )
+        self._subtitle_edit_path = tk.StringVar(
+            value=str(cfg.get(subtitle_edit.CONFIG_KEY) or "")
         )
         self._watched_folder = tk.StringVar(
             value=str(cfg.get("watched_folder") or "")
@@ -1616,8 +1619,36 @@ class AdvancedDialog(tk.Toplevel):
             "the time, file size and free disk space are still checked before "
             "it starts. A very long text can take many hours.",
         ).pack(side="left")
+        if subtitle_edit.is_supported():
+            self._build_subtitle_edit_row(misc)
         self._build_updates_choice(misc)
         return misc
+
+    def _build_subtitle_edit_row(self, parent: ttk.LabelFrame) -> None:
+        """Windows only: where SubtitleEdit.exe is, for a portable copy."""
+        row = ttk.Frame(parent)
+        row.pack(anchor="w", fill="x", padx=8, pady=4)
+        ttk.Label(row, text="Subtitle Edit program:").pack(side="left")
+        ttk.Entry(row, textvariable=self._subtitle_edit_path, width=36).pack(
+            side="left", padx=(6, 4)
+        )
+        ttk.Button(row, text="Browse…", command=self._browse_subtitle_edit).pack(side="left")
+        help_icon(
+            row,
+            "Leave empty to use an installed Subtitle Edit (found automatically). "
+            "Choose SubtitleEdit.exe here only for a portable copy. The "
+            "\"Open in Subtitle Edit\" button after a job uses it.",
+        ).pack(side="left", padx=(4, 0))
+
+    def _browse_subtitle_edit(self) -> None:
+        from tkinter import filedialog
+        path = filedialog.askopenfilename(
+            parent=self,
+            title="Choose SubtitleEdit.exe",
+            filetypes=[("Program", "*.exe"), ("All files", "*.*")],
+        )
+        if path:
+            self._subtitle_edit_path.set(path)
 
     def _build_updates_choice(self, parent: ttk.LabelFrame) -> None:
         """New versions: notify (default) or off. Never set by the online config."""
@@ -2103,6 +2134,7 @@ class AdvancedDialog(tk.Toplevel):
         cfg["update_check_enabled"] = bool(self._update_check_enabled.get())
         cfg["minimise_to_tray"] = bool(self._minimise_to_tray.get())
         cfg[tts_plan.NO_LIMIT_KEY] = bool(self._tts_no_text_limit.get())
+        cfg[subtitle_edit.CONFIG_KEY] = (self._subtitle_edit_path.get() or "").strip()
         new_watched = (self._watched_folder.get() or "").strip()
         new_watched_enabled = bool(self._watched_folder_enabled.get())
         watched_changed = (
