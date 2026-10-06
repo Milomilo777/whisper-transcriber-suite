@@ -41,6 +41,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Callable, Optional
 
+from app.theme import tokens
 from app.widgets.error_dialog import show_error
 from core import hardware as _hw
 from core.paths import bundled_binary
@@ -128,7 +129,7 @@ class HardwareWizard(tk.Toplevel):
         self.tree.column("pick", width=40, anchor="center")
         self.tree.column("label", width=480, anchor="w")
         self.tree.column("note", width=140, anchor="w")
-        self.tree.tag_configure("supported", foreground="#1e6f1e")
+        self.tree.tag_configure("supported", foreground=tokens.SUCCESS_STRONG)
         self.tree.tag_configure("unsupported", foreground="#888")
         self.tree.pack(fill="x")
         self.tree.bind("<<TreeviewSelect>>", self._on_select)
@@ -139,7 +140,7 @@ class HardwareWizard(tk.Toplevel):
         )
 
         self.benchmark_var = tk.StringVar(value="")
-        ttk.Label(body, textvariable=self.benchmark_var, foreground="#1e6f1e").pack(
+        ttk.Label(body, textvariable=self.benchmark_var, foreground=tokens.SUCCESS_STRONG).pack(
             anchor="w"
         )
 
@@ -148,7 +149,7 @@ class HardwareWizard(tk.Toplevel):
         # just listed "CPU" with no explanation (GitHub issue #7).
         self.cuda_var = tk.StringVar(value="")
         ttk.Label(
-            body, textvariable=self.cuda_var, foreground="#b06a00",
+            body, textvariable=self.cuda_var, foreground=tokens.WARNING_TEXT,
             wraplength=640, justify="left",
         ).pack(anchor="w", pady=(4, 0))
 

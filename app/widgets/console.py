@@ -4,13 +4,16 @@ from __future__ import annotations
 import re
 import sys
 import tkinter as tk
+from app.theme import tokens
 
 # Two colour schemes so the log feed matches the app's own Light/Dark
 # toggle instead of always being a fixed black/lime terminal regardless
 # of theme — sv_ttk restyles every ttk widget automatically, but a plain
 # tk.Text is outside its reach and needs its own colours applied here.
-_DARK = {"bg": "#0d0d0d", "fg": "#8be08b", "error_fg": "#ff6b6b"}
-_LIGHT = {"bg": "#f5f5f5", "fg": "#1a6b1a", "error_fg": "#c62828"}
+_DARK = {"bg": tokens.DARK["console_bg"], "fg": tokens.DARK["console_fg"],
+         "error_fg": tokens.DARK["console_error_fg"]}
+_LIGHT = {"bg": tokens.LIGHT["console_bg"], "fg": tokens.LIGHT["console_fg"],
+          "error_fg": tokens.LIGHT["console_error_fg"]}
 
 # Every existing failure-path self.log(...) call in the app already
 # reads "Could not ...", "... failed", or "... error" (checked against

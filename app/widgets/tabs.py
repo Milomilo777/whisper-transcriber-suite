@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from app.domain.cookies import cookie_browser_choices, cookie_browser_label
 from app.domain.languages import SUBTITLE_LANGUAGES
+from app.theme import tokens
 from app.widgets.tooltip import bind_tooltip, help_icon, section_labelframe
 
 if TYPE_CHECKING:
@@ -1334,7 +1335,7 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     # phone or another PC. Selectable so they can copy it.
     app.server_url_var = tk.StringVar(value="")
     url_label = ttk.Label(
-        frame, textvariable=app.server_url_var, foreground="#3a7bd5",
+        frame, textvariable=app.server_url_var, foreground=tokens.LINK,
         justify="left",
     )
     url_label.pack(anchor="w", pady=(2, 12))
@@ -1463,5 +1464,5 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
             "you turn it on it may need to download the speech model; jobs "
             "will wait for that."
         ),
-        wraplength=620, justify="left", foreground="#b5651a",
+        wraplength=620, justify="left", foreground=tokens.WARNING_TEXT,
     ).pack(anchor="w", pady=(10, 0))

@@ -44,6 +44,7 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any, Optional
 
 from app.dpi import scaled_size
+from app.theme import tokens
 from app.widgets.error_dialog import show_error
 from app.widgets.tooltip import help_icon
 
@@ -629,20 +630,20 @@ class TranscriptViewer(tk.Toplevel):
         # Confidence colour tags. The cell text becomes the colour;
         # background stays unchanged so the row's highlight tag
         # (for karaoke) layers cleanly on top.
-        self.tree.tag_configure("conf_high", foreground="#1e6f1e")     # green
-        self.tree.tag_configure("conf_med", foreground="#9c6f00")      # amber
-        self.tree.tag_configure("conf_low", foreground="#a00000")      # red
-        self.tree.tag_configure("active", background="#fffacd")        # karaoke
+        self.tree.tag_configure("conf_high", foreground=tokens.SUCCESS_STRONG)     # green
+        self.tree.tag_configure("conf_med", foreground=tokens.WARNING_STRONG)      # amber
+        self.tree.tag_configure("conf_low", foreground=tokens.DANGER_STRONG)      # red
+        self.tree.tag_configure("active", background=tokens.ROW_ACTIVE)        # karaoke
         # v0.8 — segments the hallucination detector flagged as suspect.
         # Light-red background so the row stands out at a glance; the
         # confidence foreground colour layers on top normally.
-        self.tree.tag_configure("suspect", background="#ffe0e0")
+        self.tree.tag_configure("suspect", background=tokens.ROW_SUSPECT)
         # Light-orange background for a segment that overlaps the
         # previous one or is under 1s long — set after a manual
         # "Edit timestamp..." edit produces something odd. "suspect"
         # (hallucination) takes visual priority when both apply, since
         # tags earlier in the applied tuple win ties in ttk.Treeview.
-        self.tree.tag_configure("ts_warn", background="#ffe6b3")
+        self.tree.tag_configure("ts_warn", background=tokens.ROW_WARN)
         vsb = ttk.Scrollbar(left, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
         self.tree.grid(row=0, column=0, sticky="nsew")
@@ -2094,7 +2095,7 @@ class EditTimestampDialog(tk.Toplevel):
         )
 
         self.error_var = tk.StringVar(value="")
-        ttk.Label(body, textvariable=self.error_var, foreground="#a00000").grid(
+        ttk.Label(body, textvariable=self.error_var, foreground=tokens.DANGER_STRONG).grid(
             row=2, column=0, columnspan=2, sticky="w", pady=(4, 0)
         )
 

@@ -45,6 +45,7 @@ from app.widgets.tabs import (
 )
 from app.widgets.tray import TrayController
 from core import __version__ as _APP_VERSION
+from app.theme import tokens
 from core._proc import kill_process_tree
 from core.config import load_config, save_config
 from core.history import HistoryDB
@@ -1416,7 +1417,7 @@ class App(tk.Tk):
         import webbrowser
 
         text.tag_configure(
-            "link", foreground="#1a6fb5", underline=True,
+            "link", foreground=tokens.LINK, underline=True,
             lmargin1=28, lmargin2=42, spacing1=1, spacing3=1,
         )
         text.insert("end", "Helpful links\n", "section")
@@ -1447,7 +1448,7 @@ class App(tk.Tk):
         credit = ttk.Label(
             footer,
             text="Created by translation-robot — github.com/translation-robot",
-            foreground="#1a6fb5", cursor="hand2",
+            foreground=tokens.LINK, cursor="hand2",
         )
         credit.pack(side="left")
 
@@ -2069,7 +2070,7 @@ class App(tk.Tk):
             var.set(_eng.format_engine_status(st))
             lbl = getattr(self, "engine_status_label", None)
             if lbl is not None:
-                lbl.configure(foreground="#3a8f3a" if st.ready else "#b06a00")
+                lbl.configure(foreground=tokens.SUCCESS_TEXT if st.ready else tokens.WARNING_TEXT)
         except Exception:  # noqa: BLE001 -- a status line must never raise
             logger.exception("Engine status fallback failed")
 
@@ -2229,9 +2230,9 @@ class App(tk.Tk):
             self._refresh_engine_picker_labels()
 
             if st.ready:
-                color = "#3a8f3a"
+                color = tokens.SUCCESS_TEXT
             else:
-                color = "#b06a00"
+                color = tokens.WARNING_TEXT
             var.set(_eng.format_engine_status(st))
             if lbl is not None:
                 try:
@@ -2706,9 +2707,9 @@ class App(tk.Tk):
         """
         self.device_badge_var.set(text)
         colour = {
-            "gpu": "#2e9e44",            # green — running on the GPU
-            "cpu": "#d08a1d",            # amber — CPU (slower)
-            "cpu_downgraded": "#d08a1d",  # amber — GPU asked, fell back to CPU
+            "gpu": tokens.CHIP_GPU,            # green — running on the GPU
+            "cpu": tokens.CHIP_CPU,            # amber — CPU (slower)
+            "cpu_downgraded": tokens.CHIP_CPU,  # amber — GPU asked, fell back to CPU
         }.get(kind, "")
         req = str(worker.get("requested_device") or "")
         ct = str(worker.get("compute_type") or "")

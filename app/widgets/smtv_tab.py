@@ -30,6 +30,7 @@ from tkinter import ttk
 from typing import Any
 
 from app.dpi import scale_factor, scaled
+from app.theme import tokens
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +39,9 @@ _THUMB_W, _THUMB_H = 192, 108
 # Fixed hero palette (reads the same under sv_ttk light/dark).
 _HERO_LEFT = (12, 25, 58)     # deep navy
 _HERO_RIGHT = (8, 110, 130)   # teal
-_HERO_TEXT = "#f8fafc"
-_HERO_SUB = "#bae6fd"
-_HERO_ACCENT = "#fde68a"      # warm gold
+_HERO_TEXT = tokens.HERO_TEXT
+_HERO_SUB = tokens.HERO_SUB
+_HERO_ACCENT = tokens.HERO_ACCENT      # warm gold
 _SHORTCUTS = (
     "Featured Programs", "Noteworthy News", "Between Master and Disciples",
     "Words of Wisdom", "Vegan Cooking Show", "Animal World: Our Co-inhabitants",
@@ -144,7 +145,7 @@ def build_smtv_tab(app: Any, parent: Any) -> None:
 
     chips = ttk.Frame(parent, padding=(15, 2, 15, 6))
     chips.grid(row=2, column=0, sticky="ew")
-    ttk.Label(chips, text="Explore:", foreground="#64748b").pack(side="left", padx=(0, 6))
+    ttk.Label(chips, text="Explore:", foreground=tokens.TEXT_MUTED).pack(side="left", padx=(0, 6))
     for label in _SHORTCUTS:
         ttk.Button(
             chips, text=label.split(":")[0], style="Toolbutton",
@@ -157,7 +158,7 @@ def build_smtv_tab(app: Any, parent: Any) -> None:
     body.columnconfigure(0, weight=1)
     body.rowconfigure(1, weight=1)
     state.status_var = tk.StringVar(value="")
-    ttk.Label(body, textvariable=state.status_var, foreground="#64748b").grid(
+    ttk.Label(body, textvariable=state.status_var, foreground=tokens.TEXT_MUTED).grid(
         row=0, column=0, sticky="w", pady=(0, 4)
     )
     canvas = tk.Canvas(body, highlightthickness=0, borderwidth=0)
@@ -424,7 +425,7 @@ class _TabState:
             # blank image of the thumbnail size keeps every card aligned
             # while the real picture downloads.
             self._placeholder = tk.PhotoImage(width=_THUMB_W, height=_THUMB_H)
-        thumb = tk.Label(frame, image=self._placeholder, background="#1e293b",
+        thumb = tk.Label(frame, image=self._placeholder, background=tokens.THUMB_BG,
                          cursor="hand2", borderwidth=0)
         thumb.grid(row=0, column=0, rowspan=4, sticky="nw", padx=(0, 14))
         thumb.bind("<Button-1>", lambda _e, u=item.url: webbrowser.open(u))
@@ -437,11 +438,11 @@ class _TabState:
         meta = ttk.Frame(frame)
         meta.grid(row=1, column=1, sticky=anchor, pady=(2, 2))
         if item.program:
-            ttk.Label(meta, text=item.program, foreground="#0891b2").pack(side=side)
-            ttk.Label(meta, text="   ·   ", foreground="#94a3b8").pack(side=side)
-        ttk.Label(meta, text=detail_line(item), foreground="#64748b").pack(side=side)
+            ttk.Label(meta, text=item.program, foreground=tokens.PROGRAM_ACCENT).pack(side=side)
+            ttk.Label(meta, text="   ·   ", foreground=tokens.TEXT_SUBTLE).pack(side=side)
+        ttk.Label(meta, text=detail_line(item), foreground=tokens.TEXT_MUTED).pack(side=side)
         abstract = ttk.Label(frame, text=shorten(item.abstract), wraplength=self._wrap,
-                             justify=justify, foreground="#64748b")
+                             justify=justify, foreground=tokens.TEXT_MUTED)
         abstract.grid(row=2, column=1, sticky=anchor)
         actions = ttk.Frame(frame)
         actions.grid(row=3, column=1, sticky=anchor, pady=(6, 0))

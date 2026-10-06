@@ -6,6 +6,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **One place for colours, spacing and type sizes, and one icon set.** `app/theme/tokens.py` now
+  holds every colour the UI uses (the 48 literal hex values in `app/` are gone), the 4/8/12/16/24/32
+  spacing scale and a type scale. Near-duplicate colours were unified, so the blue of links and
+  info marks, the amber of warnings, the green of "ready" and the red of errors are each one value.
+  `assets/icons` ships 26 Lucide icons (ISC licence, included) pre-rendered at 16 and 24 px for
+  100%, 125%, 150% and 200% scaling; `app/theme/icons.py` picks the sharpest file for the window
+  and tints it to a theme colour. Nothing in the UI uses the icons yet. The Windows installers
+  copy the folder; the PyInstaller specs already ship all of `assets`. `tools/build_icons.py`
+  regenerates the set (PyMuPDF, development only).
 - **Sharp text at 125% and 150% display scaling on Windows.** The app now declares per-monitor DPI
   awareness before its first window opens (with fallbacks for older Windows), so Windows no longer
   stretches a blurry bitmap. Window minimum sizes, the Supreme Master TV banner and the Live tab

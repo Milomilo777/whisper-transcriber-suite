@@ -44,6 +44,7 @@ Source: "embed_build\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs c
 Source: "assets\whisper.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "assets\whisper.png"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "assets\sample_clip.mp3"; DestDir: "{app}\assets"; Flags: ignoreversion
+Source: "assets\icons\*"; DestDir: "{app}\assets\icons"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Whisper Transcriber Suite {#MyAppVersion}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\gui.py"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\whisper.ico"

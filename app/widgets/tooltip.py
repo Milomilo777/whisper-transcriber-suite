@@ -13,11 +13,12 @@ import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk
 from typing import Any, Callable, Union
+from app.theme import tokens
 
 TextOrGetter = Union[str, Callable[[], str]]
 
-_BG = "#ffffe0"
-_FG = "#000000"
+_BG = tokens.TOOLTIP_BG
+_FG = tokens.TOOLTIP_FG
 _WRAP = 340
 # Standard tooltip grace period (Windows uses ~400-500 ms): sweeping the
 # mouse across the UI shouldn't flash a popup at every widget it crosses.
@@ -137,7 +138,7 @@ def help_icon(parent: tk.Misc, text: TextOrGetter, *, wraplength: int = _WRAP) -
 
     Pack/grid the returned Label next to a control or a section's title.
     """
-    icon = ttk.Label(parent, text=" ⓘ ", foreground="#3a7bd5")
+    icon = ttk.Label(parent, text=" ⓘ ", foreground=tokens.LINK)
     # Bumped size + bold (2026-08-15): at the default label font size the
     # icon was the same weight as surrounding body text and easy to miss
     # entirely in a dense settings dialog -- confirmed by a real-mouse
@@ -202,7 +203,7 @@ def collapsible_section(
     outer = ttk.Frame(parent)
     header = ttk.Label(
         outer,
-        foreground="#a0a0a0" if muted else "#1a73e8",
+        foreground=tokens.TEXT_DISABLED if muted else tokens.LINK,
         cursor="hand2",
         font=("TkDefaultFont", 9),
     )

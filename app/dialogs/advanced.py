@@ -38,6 +38,7 @@ from app.domain.cookies import (
     cookie_browser_value,
 )
 from app.dpi import scaled
+from app.theme import tokens
 from app.widgets.tooltip import (
     bind_tooltip,
     collapsible_section,
@@ -578,7 +579,7 @@ class AdvancedDialog(tk.Toplevel):
                 self._nav_links += [separator, caption_label]
             muted = bool(getattr(frame, "muted", False))
             link = ttk.Label(
-                nav, text=label, foreground="#a0a0a0" if muted else "#1a73e8",
+                nav, text=label, foreground=tokens.TEXT_DISABLED if muted else tokens.LINK,
                 cursor="hand2", wraplength=122, justify="left",
             )
             link.pack(anchor="w", pady=2, fill="x")
@@ -944,7 +945,7 @@ class AdvancedDialog(tk.Toplevel):
         self._engine_warning = ttk.Label(
             engine,
             textvariable=self._engine_warning_var,
-            foreground="#b06a00",
+            foreground=tokens.WARNING_TEXT,
             wraplength=560,
             justify="left",
         )
@@ -1004,7 +1005,7 @@ class AdvancedDialog(tk.Toplevel):
                 "it for content you may send to a cloud service. The default "
                 "engines stay fully offline."
             ),
-            foreground="#b00020",
+            foreground=tokens.DANGER_TEXT,
             wraplength=680,
             justify="left",
         ).grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=(4, 8))
@@ -1057,7 +1058,7 @@ class AdvancedDialog(tk.Toplevel):
         link = ttk.Label(
             cloud,
             text="https://console.cloud.google.com/billing",
-            foreground="#1a73e8",
+            foreground=tokens.LINK,
             cursor="hand2",
         )
         link.grid(row=6, column=0, columnspan=3, sticky="w", padx=8, pady=(0, 4))
@@ -1173,7 +1174,7 @@ class AdvancedDialog(tk.Toplevel):
         # The three tuning sliders are expert knobs most people never touch;
         # they stay one click away instead of dominating the section.
         self._vad_tune_link = ttk.Label(
-            vad_row, text="▸ Fine-tune", foreground="#1a73e8", cursor="hand2",
+            vad_row, text="▸ Fine-tune", foreground=tokens.LINK, cursor="hand2",
         )
         self._vad_tune_link.pack(side="left", padx=(14, 0))
         self._vad_tune_link.bind("<Button-1>", lambda _e: self._toggle_vad_sliders())
@@ -1743,7 +1744,7 @@ class AdvancedDialog(tk.Toplevel):
         usage_link = ttk.Label(
             gc,
             text="Open billing/usage console",
-            foreground="#1a73e8",
+            foreground=tokens.LINK,
             cursor="hand2",
         )
         usage_link.grid(row=10, column=0, columnspan=3, sticky="w", padx=8, pady=(0, 4))
@@ -1755,7 +1756,7 @@ class AdvancedDialog(tk.Toplevel):
         ttk.Label(
             gc,
             text="Cloud transcription uploads your audio to Google (it is not offline).",
-            foreground="#b00020",
+            foreground=tokens.DANGER_TEXT,
             wraplength=680,
             justify="left",
         ).grid(row=11, column=0, columnspan=3, sticky="w", padx=8, pady=(4, 4))
@@ -2478,7 +2479,7 @@ class AdvancedDialog(tk.Toplevel):
             ).pack(anchor="w")
             if url:
                 link = ttk.Label(
-                    row, text=url, foreground="#1a73e8", cursor="hand2",
+                    row, text=url, foreground=tokens.LINK, cursor="hand2",
                     wraplength=620, justify="left",
                 )
                 link.pack(anchor="w", padx=(16, 0))
@@ -2487,7 +2488,7 @@ class AdvancedDialog(tk.Toplevel):
         guide = ttk.Label(
             frame,
             text=f"Official guide: {_GCLOUD_OFFICIAL_GUIDE}",
-            foreground="#1a73e8",
+            foreground=tokens.LINK,
             cursor="hand2",
             wraplength=620,
             justify="left",

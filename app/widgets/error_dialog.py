@@ -9,6 +9,7 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk
+from app.theme import tokens
 
 
 def show_error(
@@ -61,7 +62,7 @@ def show_error(
     # A messagebox.showerror shows the platform's error icon; keep that
     # at-a-glance "something went wrong" cue here too. A coloured glyph
     # instead of an image keeps this working on every platform/theme.
-    icon = ttk.Label(msg_row, text="⚠", foreground="#c62828")
+    icon = ttk.Label(msg_row, text="⚠", foreground=tokens.DANGER_ICON)
     try:
         icon_font = tkfont.nametofont("TkDefaultFont").copy()
         icon_font.configure(size=16)

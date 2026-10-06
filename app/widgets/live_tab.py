@@ -25,6 +25,7 @@ from tkinter import filedialog, ttk
 from typing import Any
 
 from app.dpi import scaled
+from app.theme import tokens
 from app.widgets.error_dialog import show_error
 from app.widgets.tooltip import help_icon, section_labelframe
 
@@ -74,7 +75,7 @@ def _make_readonly_but_selectable(text: tk.Text) -> None:
 _MODEL_AUTO = "Automatic (fast enough for this computer)"
 _MODEL_MAIN = "Same as the Transcribe tab"
 
-_MISSING_FG = "#8a8a8a"
+_MISSING_FG = tokens.TEXT_MISSING
 _MODEL_MISSING_STYLE = "LiveModelMissing.TMenubutton"
 _MODEL_READY_STYLE = "LiveModelReady.TMenubutton"
 
