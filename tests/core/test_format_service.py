@@ -140,6 +140,10 @@ def _run_lookup(monkeypatch, app, results):
         return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
+    # The scripted results are the lookup's own yt-dlp runs. A Deno in the
+    # user cache would add a "yt-dlp --version" probe first (unless an
+    # earlier test cached that version), shifting every result by one.
+    monkeypatch.setattr(fs, "yt_dlp_js_args", lambda _path=None: [])
     import core._threads as threads
     monkeypatch.setattr(threads, "safe_thread", lambda fn, name="": fn())
     monkeypatch.setattr(fs.smtv_mod, "parse_episode_id", lambda _u: None)
