@@ -42,7 +42,7 @@ Kein Konto. Kein API-Schlüssel. Kein Abonnement. Ihre Dateien bleiben auf Ihrer
 - 🎬 **Downloads** — alles, was `yt-dlp` kann, auf Wunsch mit Transkription direkt danach
 - 🧹 **Adaptive Rauschreduktion** — misst das Audio und bereinigt nur, wenn das hilft → [DENOISE.md](../DENOISE.md)
 - 🌐 **Lokaler Netzwerkmodus** — dieser Rechner wird zur Transkriptionsseite für Ihre anderen Geräte
-- 💸 **Kostenlos und BSD-3-lizenziert** — keine Minutenkosten, kein Abo, standardmäßig keine Telemetrie
+- 💸 **Kostenlos und BSD-3-lizenziert** — keine Minutenkosten, kein Abo
 
 ## Download
 
@@ -85,9 +85,9 @@ Alles Nötige ist enthalten — ein mitgeliefertes Python, `ffmpeg`, `ffprobe` u
 
 Die Tk-Oberfläche läuft im Hauptprozess. Jeder Transkriptionsauftrag läuft in einem langlebigen Worker-Subprozess, der das Whisper-Modell im Speicher hält und über zeilengetrenntes JSON auf stdin/stdout zurückspricht; `yt-dlp` bekommt pro Download einen eigenen Subprozess. Ein UUID-Token je Worker und ein 5-Sekunden-Heartbeat halten diese Zuordnung robust gegen wiederverwendete Prozess-IDs und lassen die Oberfläche einen hängenden Worker erkennen, statt mit ihm zu hängen.
 
-## Standardmäßig offline
+## Standardmäßig lokal
 
-Alle Standard-Backends laufen auf Ihrem Rechner. Nichts wird hochgeladen, es gibt kein Konto, und nach dem Herunterladen des Modells funktioniert die Anwendung auch ohne Netzwerk.
+Alle Standard-Backends laufen auf Ihrem Rechner: Audio und Transkripte bleiben dort, es gibt kein Konto, und nach dem Herunterladen des Modells funktioniert die Anwendung auch ohne Netzwerk. Standardmäßig sendet die Anwendung nach jeder abgeschlossenen Transkription Nutzungsstatistiken (Modell, Sprache, Audio- und Transkriptionsdauer, Wortanzahl, App-Version, Betriebssystem, CPU- und Arbeitsspeichergröße, Region; nie den Dateinamen); abschalten lässt sich das unter **Help → Send usage statistics**.
 
 > [!IMPORTANT]
 > Zwei Backends, die Sie **ausdrücklich auswählen müssen**, durchbrechen diese Garantie. Sie sind aus, solange Sie sie nicht unter **Advanced → Backend** wählen. Nutzen Sie sie nur für Inhalte, die Sie an Dritte senden möchten.

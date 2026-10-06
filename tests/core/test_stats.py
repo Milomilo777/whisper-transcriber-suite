@@ -149,6 +149,68 @@ def test_payload_has_no_file_name_key():
     assert not [k for k in p if "file" in k.lower() or "path" in k.lower()]
 
 
+# --- no local model folder --------------------------------------------------
+
+_MODEL_FOLDERS = [
+    r"C:\Users\someone\models\x",
+    "C:/Users/someone/models/x",
+    r"c:\users\someone\models\x",
+    r"\\nas\someone\models\x",
+    "/home/someone/models/x",
+    "~/models/someone-x",
+    "someone/models/x",
+    "../someone/x",
+    r"D:\someone's models\parakeet v3",
+]
+
+
+@pytest.mark.parametrize("folder", _MODEL_FOLDERS)
+@pytest.mark.parametrize("prefix", ["", "nvidia_asr:"])
+def test_payload_never_carries_a_model_folder_path(folder, prefix):
+    """A local model folder (Advanced > NVIDIA model id, or a hand-edited
+    model name) reaches the payload as a label: no path separator, no part
+    of the folder, no account name."""
+    p = stats.build_stats_payload(
+        model=prefix + folder, language="en", audio_duration=1.0,
+        transcription_time=1.0, status="finished",
+    )
+    assert p["model"] == prefix + stats.LOCAL_MODEL_LABEL
+    assert "/" not in p["model"] and "\\" not in p["model"]
+    for value in p.values():
+        assert "\\" not in value, value
+        assert "someone" not in value.lower(), value
+        assert "models" not in value, value
+
+
+@pytest.mark.parametrize("name", [
+    "faster-whisper-large-v3",
+    "faster-distil-whisper-large-v3.5",
+    "large-v3",
+    "whisper_cpp",
+    "nvidia_asr:nvidia/parakeet-tdt-0.6b-v3",
+    "nvidia_asr:nvidia/nemotron-3.5-asr-streaming-0.6b",
+    "",
+])
+def test_catalog_names_and_repo_ids_pass_unchanged(name):
+    assert stats.public_model_name(name) == name
+
+
+def test_an_existing_relative_model_folder_is_a_local_model(tmp_path, monkeypatch):
+    """``owner/name`` that names a folder on disk is a folder (transformers
+    loads it from disk), so it is not sent either."""
+    (tmp_path / "acme" / "my-model").mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+    assert stats.public_model_name("nvidia_asr:acme/my-model") == (
+        "nvidia_asr:" + stats.LOCAL_MODEL_LABEL
+    )
+    assert stats.public_model_name("acme/other-model") == "acme/other-model"
+
+
+def test_an_engine_prefix_with_no_model_is_the_engine():
+    assert stats.public_model_name("nvidia_asr:") == "nvidia_asr"
+    assert stats.public_model_name(None) == ""
+
+
 # --- opt-in gate ------------------------------------------------------------
 
 def _payload():

@@ -1530,7 +1530,9 @@ class TranscriptionService:
             else:
                 model = backend
             # No file name or path: the payload never says what was
-            # transcribed (core.stats.build_stats_payload has no file field).
+            # transcribed (core.stats.build_stats_payload has no file field),
+            # and a local model folder in nvidia_asr_model_id is sent as
+            # "local-model" (core.stats.public_model_name).
             payload = _stats.build_stats_payload(
                 model=model,
                 language=getattr(task, "detected_language", "") or "",

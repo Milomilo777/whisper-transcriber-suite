@@ -42,7 +42,7 @@ Sem conta. Sem chave de API. Sem subscrição. Os seus ficheiros ficam no seu di
 - 🎬 **Descargas** — qualquer site suportado pelo `yt-dlp`, com transcrição automática no fim se quiser
 - 🧹 **Redução de ruído adaptativa** — mede o áudio e só o limpa quando isso ajuda → [DENOISE.md](../DENOISE.md)
 - 🌐 **Modo de rede local** — torne esta máquina numa página de transcrição para os seus outros dispositivos
-- 💸 **Gratuito e com licença BSD-3** — sem custo por minuto, sem subscrição, sem telemetria por omissão
+- 💸 **Gratuito e com licença BSD-3** — sem custo por minuto, sem subscrição
 
 ## Transferência
 
@@ -85,9 +85,9 @@ Está tudo incluído — um Python integrado, `ffmpeg`, `ffprobe` e `yt-dlp`. A 
 
 A interface Tk corre no processo principal. Cada trabalho de transcrição corre num subprocesso de longa duração que mantém o modelo Whisper em memória e responde por JSON delimitado por linhas em stdin/stdout; o `yt-dlp` recebe um subprocesso próprio por descarga. Um token UUID por worker e um sinal de vida de 5 segundos tornam esse encaminhamento robusto face à reutilização de identificadores de processo e permitem à interface detetar um worker bloqueado em vez de bloquear com ele.
 
-## Offline por omissão
+## Local por omissão
 
-Todos os backends por omissão correm na sua máquina. Nada é enviado, não existe conta e, depois de o modelo ser transferido, a aplicação funciona com a rede desligada.
+Todos os backends por omissão correm na sua máquina: o áudio e as transcrições ficam nela, não existe conta e, depois de o modelo ser transferido, a aplicação funciona com a rede desligada. Por omissão, a aplicação envia estatísticas de utilização depois de cada transcrição concluída (modelo, idioma, duração do áudio e da transcrição, número de palavras, versão da aplicação, sistema operativo, CPU e tamanho da memória, região; nunca o nome do ficheiro); pode desativá-las em **Help → Send usage statistics**.
 
 > [!IMPORTANT]
 > Dois backends **opcionais** quebram essa garantia e ambos estão desligados a menos que vá a **Advanced → Backend** e os escolha. Use-os apenas com conteúdo que esteja disposto a enviar a terceiros.

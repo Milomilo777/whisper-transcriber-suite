@@ -242,6 +242,35 @@ def test_post_usage_stats_reports_the_engine_model_for_alt_backends(monkeypatch)
     assert captured["payload"]["model"] == "whisper_cpp"
 
 
+@pytest.mark.parametrize("app_config", [
+    {"transcribe_backend": "nvidia_asr",
+     "nvidia_asr_model_id": r"C:\Users\someone\models\x"},
+    {"transcribe_backend": "faster_whisper",
+     "model": {"name": r"C:\Users\someone\models\x"}},
+])
+def test_post_usage_stats_never_sends_a_local_model_folder(monkeypatch, app_config):
+    """A model folder picked in Advanced (it holds the account name) is sent
+    as a label, never as its path."""
+    captured: dict = {}
+
+    def _fake_post_stats_async(config, payload, **kwargs):
+        captured["payload"] = payload
+        return True
+
+    monkeypatch.setattr(core_stats, "post_stats_async", _fake_post_stats_async)
+    app_config = {"telemetry_opt_in": True, "stats_url": "https://example/stats",
+                  **app_config}
+    task = SimpleNamespace(file_path="a.mp4", detected_language="en", status="finished",
+                           start_time=0.0)
+
+    _service(app_config)._post_usage_stats(task, word_count=2, audio_duration=1.0)
+
+    payload = captured["payload"]
+    assert payload["model"].endswith(core_stats.LOCAL_MODEL_LABEL)
+    for value in payload.values():
+        assert "\\" not in value and "someone" not in value.lower(), value
+
+
 def test_post_usage_stats_falls_back_to_whisper_model_key_when_model_dict_is_absent():
     captured: dict = {}
     app_config = {

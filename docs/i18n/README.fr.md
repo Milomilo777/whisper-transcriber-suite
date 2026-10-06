@@ -42,7 +42,7 @@ Pas de compte. Pas de clé d'API. Pas d'abonnement. Vos fichiers restent sur vot
 - 🎬 **Téléchargements** — tous les sites gérés par `yt-dlp`, avec transcription automatique à la fin si vous le souhaitez
 - 🧹 **Débruitage adaptatif** — mesure l'audio et ne le nettoie que si cela aide → [DENOISE.md](../DENOISE.md)
 - 🌐 **Mode réseau local** — transformez cette machine en page de transcription pour vos autres appareils
-- 💸 **Gratuit et sous licence BSD-3** — aucun coût à la minute, aucun abonnement, aucune télémétrie par défaut
+- 💸 **Gratuit et sous licence BSD-3** — aucun coût à la minute, aucun abonnement
 
 ## Téléchargement
 
@@ -85,9 +85,9 @@ Tout le nécessaire est inclus : un Python embarqué, `ffmpeg`, `ffprobe` et `yt
 
 L'interface Tk s'exécute dans le processus principal. Chaque tâche de transcription tourne dans un sous-processus de longue durée qui garde le modèle Whisper en mémoire et répond en JSON délimité par des sauts de ligne sur stdin/stdout ; `yt-dlp` reçoit son propre sous-processus par téléchargement. Un jeton UUID par worker et un battement de cœur toutes les 5 secondes rendent ce routage robuste face au recyclage des identifiants de processus et permettent à l'interface de détecter un worker bloqué au lieu de se bloquer avec lui.
 
-## Hors ligne par défaut
+## Local par défaut
 
-Tous les moteurs par défaut s'exécutent sur votre machine. Rien n'est envoyé, aucun compte n'existe, et une fois le modèle téléchargé l'application fonctionne réseau débranché.
+Tous les moteurs par défaut s'exécutent sur votre machine : l'audio et les transcriptions y restent, aucun compte n'existe, et une fois le modèle téléchargé l'application fonctionne réseau débranché. Par défaut, l'application envoie des statistiques d'utilisation après chaque transcription terminée (modèle, langue, durée de l'audio et de la transcription, nombre de mots, version de l'application, système d'exploitation, processeur et taille de la mémoire, région ; jamais le nom du fichier) ; vous pouvez les désactiver dans **Help → Send usage statistics**.
 
 > [!IMPORTANT]
 > Deux moteurs **optionnels** rompent cette garantie, et tous deux restent désactivés tant que vous n'allez pas les choisir dans **Advanced → Backend**. Ne les utilisez que pour du contenu que vous acceptez d'envoyer à un tiers.

@@ -187,3 +187,48 @@ def test_about_dialog_privacy_text_avoids_false_wording() -> None:
     assert not re.search(r"\banonymous\b|opt-in telemetry", text, re.I)
     assert "no network call" not in text.lower()
     assert "nothing leaves your computer" not in text.lower()
+
+
+# The translated READMEs once said "nothing is uploaded / sent" and "no
+# telemetry by default", which the default-on usage statistics contradict.
+_I18N_READMES = sorted((ROOT / "docs" / "i18n").glob("README.*.md"))
+# Persian phrases as escapes: "nothing ... upload" and "telemetry".
+_FA_NOTHING_UPLOADED = "\u0647\u06cc\u0686\u200c\u0686\u06cc\u0632 \u0622\u067e\u0644\u0648\u062f"
+_FA_TELEMETRY = "\u062a\u0644\u0647\u200c\u0645\u062a\u0631\u06cc"
+_NOTHING_IS_SENT = re.compile(
+    "|".join([
+        "Nichts wird hochgeladen", "keine Telemetrie",
+        "Rien n'est envoy", "aucune télémétrie",
+        "No se sube nada", "sin telemetría",
+        "Nada é enviado", "sem telemetria",
+        "何もアップロードされず", "テレメトリなし",
+        "아무것도 업로드되지", "원격 수집 없음",
+        "没有任何内容被上传", "不发送任何遥测",
+        _FA_NOTHING_UPLOADED, _FA_TELEMETRY,
+    ]),
+    re.I,
+)
+
+
+def test_translated_readme_guard_controls() -> None:
+    assert len(_I18N_READMES) == 8  # de es fa fr ja ko pt zh-CN
+    assert _NOTHING_IS_SENT.search("Alle Backends laufen lokal. Nichts wird hochgeladen, ...")
+    assert _NOTHING_IS_SENT.search("sin coste por minuto, sin telemetría por defecto")
+    assert _NOTHING_IS_SENT.search("... " + _FA_NOTHING_UPLOADED + " ...")
+    assert not _NOTHING_IS_SENT.search("Nutzungsstatistiken; abschalten unter Help")
+
+
+@pytest.mark.parametrize("path", _I18N_READMES, ids=lambda p: p.name)
+def test_translated_readmes_never_say_nothing_is_sent(path: Path) -> None:
+    match = _NOTHING_IS_SENT.search(path.read_text(encoding="utf-8"))
+    assert match is None, (path.name, match and match.group(0))
+
+
+@pytest.mark.parametrize("path", [
+    pytest.param(p, marks=pytest.mark.xfail(
+        strict=True, reason="Persian sentence about usage statistics awaits review"))
+    if p.name == "README.fa.md" else p
+    for p in _I18N_READMES
+], ids=lambda p: p.name)
+def test_translated_readmes_name_the_stats_switch(path: Path) -> None:
+    assert "**Help → Send usage statistics**" in path.read_text(encoding="utf-8")

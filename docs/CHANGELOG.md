@@ -96,6 +96,16 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   transcription has no `file_name` field any more, so nothing in it says what was transcribed.
   The stats server script ignores a `file_name` posted by older app versions and stores NULL in
   that column; its README shows how to clear the names kept in old rows.
+- **Usage statistics never send a local model folder.** A model loaded from a folder (for
+  example a path typed as the NVIDIA model id) is reported as `local-model` instead of its path,
+  which could hold the account name; catalog names and Hugging Face repo ids are unchanged.
+- **Crash reports carry no file paths or machine name.** When Sentry crash reports are turned on
+  (`SENTRY_DSN`, never set in published builds), every event drops the host name, command line,
+  local variables, breadcrumbs, frame paths and log arguments, and masks URLs and file paths in
+  messages.
+- **The translated READMEs no longer say that nothing is sent.** The German, Spanish, French,
+  Japanese, Korean, Portuguese and Chinese pages now name the usage statistics and their switch
+  (**Help → Send usage statistics**); the Persian page drops the claim.
 - **A quiet update bar instead of the "Open the download page?" dialog.** A newer
   release shows one line under the menu (version and headline) with What's new (its
   first highlights), Download (the installer, Portable ZIP or Mac dmg this copy came

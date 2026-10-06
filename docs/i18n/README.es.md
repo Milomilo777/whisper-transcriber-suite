@@ -42,7 +42,7 @@ Sin cuenta. Sin clave de API. Sin suscripción. Sus archivos permanecen en su di
 - 🎬 **Descargas** — cualquier sitio compatible con `yt-dlp`, con transcripción automática al terminar si lo desea
 - 🧹 **Reducción de ruido adaptativa** — mide el audio y solo lo limpia cuando eso ayuda → [DENOISE.md](../DENOISE.md)
 - 🌐 **Modo de red local** — convierta este equipo en una página de transcripción para sus otros dispositivos
-- 💸 **Gratis y con licencia BSD-3** — sin coste por minuto, sin suscripción, sin telemetría por defecto
+- 💸 **Gratis y con licencia BSD-3** — sin coste por minuto, sin suscripción
 
 ## Descarga
 
@@ -85,9 +85,9 @@ Todo lo necesario va incluido: un Python integrado, `ffmpeg`, `ffprobe` y `yt-dl
 
 La interfaz Tk se ejecuta en el proceso principal. Cada trabajo de transcripción corre en un subproceso de larga vida que mantiene el modelo Whisper en memoria y responde mediante JSON delimitado por saltos de línea en stdin/stdout; `yt-dlp` recibe su propio subproceso por descarga. Un token UUID por trabajador y un latido de 5 segundos hacen que ese enrutado resista la reutilización de identificadores de proceso y permiten a la interfaz detectar un trabajador bloqueado en lugar de bloquearse con él.
 
-## Sin conexión por defecto
+## Local por defecto
 
-Todos los backends por defecto se ejecutan en su máquina. No se sube nada, no existe ninguna cuenta y, una vez descargado el modelo, la aplicación funciona con la red desconectada.
+Todos los backends por defecto se ejecutan en su máquina: el audio y las transcripciones se quedan en ella, no existe ninguna cuenta y, una vez descargado el modelo, la aplicación funciona con la red desconectada. Por defecto, la aplicación envía estadísticas de uso después de cada transcripción terminada (modelo, idioma, duración del audio y de la transcripción, número de palabras, versión de la aplicación, sistema operativo, CPU y tamaño de la memoria, región; nunca el nombre del archivo); puede desactivarlas en **Help → Send usage statistics**.
 
 > [!IMPORTANT]
 > Dos backends **opcionales** rompen esa garantía y ambos están desactivados salvo que entre en **Advanced → Backend** y los elija. Úselos solo con contenido que esté dispuesto a enviar a un tercero.

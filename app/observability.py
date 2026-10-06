@@ -10,7 +10,9 @@ Both pieces need two things at once:
 
 The published builds set neither variable, so by default this module
 sends nothing, contacts no DSN and spawns no thread. With the flag off it
-is a no-op whatever the environment says.
+is a no-op whatever the environment says. When crash reports are on, each
+event passes through :func:`scrub_sentry_event` first (no host name, file
+paths, local variables or log breadcrumbs).
 
 The launch ping carries ``schema``, ``version``, ``os``, ``os_release``,
 ``python`` and ``anonymised_id`` — no file paths and no transcript
@@ -26,11 +28,13 @@ import json
 import logging
 import os
 import platform
+import re
 import threading
 import urllib.error
 import urllib.request
 import uuid
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -110,12 +114,100 @@ def _app_version() -> str:
         return "0.0.0"
 
 
+# Crash-report scrubbing. A default Sentry event carries the host name,
+# every frame's absolute path (the install folder holds the account name),
+# frame local variables, log breadcrumbs and sys.argv, and exception
+# messages quote file paths ("No such file or directory: 'C:\\...'"). The
+# event keeps what the code itself defines -- exception type, module and
+# function names, source file base names, line numbers, log templates --
+# and loses or masks the rest.
+_SENTRY_DROPPED_KEYS = ("server_name", "user", "request", "extra", "breadcrumbs")
+_SENTRY_DROPPED_FRAME_KEYS = ("abs_path", "vars")
+_SCRUBBED = "[removed]"
+_URL_RE = re.compile(r"\b[A-Za-z][A-Za-z0-9+.-]*://[^\s'\"]*")
+# A drive, UNC, home or absolute POSIX path runs to the end of the line:
+# file names hold spaces, so no shorter end is safe.
+_ABS_PATH_RE = re.compile(
+    r"(?:\b[A-Za-z]:[\\/]|\\\\|~[\\/]|(?<![\w.:/\\~])/(?=[^\s/\\]+/))[^\n]*"
+)
+# A quoted value with a separator or a file extension: a relative path
+# or a bare file name as repr() prints it.
+_QUOTED_FILE_RE = re.compile(
+    r"'[^'\n]*(?:[\\/][^'\n]*|\.[A-Za-z0-9]{1,5})'"
+    r"|\"[^\"\n]*(?:[\\/][^\"\n]*|\.[A-Za-z0-9]{1,5})\""
+)
+
+
+def _scrub_text(text: str) -> str:
+    text = _URL_RE.sub(_SCRUBBED, text)
+    text = _ABS_PATH_RE.sub(_SCRUBBED, text)
+    return _QUOTED_FILE_RE.sub(_SCRUBBED, text)
+
+
+def _scrub_frame(frame: Any) -> Any:
+    if not isinstance(frame, dict):
+        return _scrub_value(frame)
+    out = {k: v for k, v in frame.items() if k not in _SENTRY_DROPPED_FRAME_KEYS}
+    filename = out.get("filename")
+    if isinstance(filename, str):
+        out["filename"] = re.split(r"[\\/]", filename)[-1]
+    return out
+
+
+def _scrub_value(value: Any, key: str = "") -> Any:
+    if isinstance(value, str):
+        return _scrub_text(value)
+    if isinstance(value, list):
+        if key == "frames":
+            return [_scrub_frame(f) for f in value]
+        return [_scrub_value(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _scrub_value(v, str(k)) for k, v in value.items()}
+    return value
+
+
+def scrub_sentry_event(event: dict[str, Any], hint: Any = None) -> dict[str, Any]:
+    """``before_send`` hook: strip paths, file names and machine details.
+
+    Drops the host name, user, request, extra (``sys.argv``) and
+    breadcrumbs; drops each frame's absolute path and local variables and
+    keeps only the source file's base name; drops log-record arguments
+    (the template stays); masks URLs, absolute paths (to the end of the
+    line) and quoted paths or file names in every remaining string.
+    A file name written into a message without quotes or a folder cannot
+    be told apart from other words and is not masked.
+    """
+    del hint
+    event = dict(event)
+    for key in _SENTRY_DROPPED_KEYS:
+        event.pop(key, None)
+    logentry = event.get("logentry")
+    if isinstance(logentry, dict):
+        event["logentry"] = {
+            k: v for k, v in logentry.items() if k not in ("params", "formatted")
+        }
+    return _scrub_value(event)
+
+
+def _sentry_options(dsn: str) -> dict[str, Any]:
+    """Keyword arguments for ``sentry_sdk.init``: no personal data."""
+    return {
+        "dsn": dsn,
+        "traces_sample_rate": 0.0,
+        "send_default_pii": False,
+        "include_local_variables": False,
+        "max_breadcrumbs": 0,
+        "before_send": scrub_sentry_event,
+    }
+
+
 def init_sentry() -> bool:
     """Initialise Sentry SDK if ``telemetry_opt_in`` is on and SENTRY_DSN is set.
 
     Returns True only when the SDK was actually initialised. Every
     failure — flag off, no DSN, missing package, or an SDK error such
     as a malformed DSN — returns False and is logged, never raised.
+    Every event passes through :func:`scrub_sentry_event`.
     """
     if not _telemetry_opted_in():
         return False
@@ -128,7 +220,7 @@ def init_sentry() -> bool:
         logger.info("SENTRY_DSN set but sentry-sdk is not installed; skipping")
         return False
     try:
-        sentry_sdk.init(dsn=dsn, traces_sample_rate=0.0, send_default_pii=False)
+        sentry_sdk.init(**_sentry_options(dsn))
     except Exception as e:  # noqa: BLE001
         # A malformed DSN (or any other SDK init failure) must not take
         # down launch: this is called unguarded from App.__init__, and the

@@ -6,9 +6,10 @@ language, audio duration, AI transcription time, status, word count, the
 running app version, a two-letter country code taken from the operating
 system's region setting (:func:`region_country`, read locally, no network
 lookup), and coarse host/hardware facts (OS, machine, CPU count, total RAM).
-It never includes the source file's name or folder, the computer name, a
-user name, a serial number or an IP address (:func:`build_stats_payload`
-takes no file argument at all). The server sees the connection's address
+It never includes the source file's name or folder, a local model folder,
+the computer name, a user name, a serial number or an IP address
+(:func:`build_stats_payload` takes no file argument at all and passes the
+model through :func:`public_model_name`). The server sees the connection's address
 like any web server; what
 it stores is decided by the server script. The payload is sent only while
 ``config['telemetry_opt_in']`` is true, which is the default; the user can
@@ -62,6 +63,17 @@ _FORM_FLAG = "form_submitted"
 
 # ISO 3166-1 alpha-2 country code shape.
 _ISO2_RE = re.compile(r"[A-Za-z]{2}")
+
+# The ``model`` field may name a catalog model ("faster-whisper-large-v3"),
+# an engine ("whisper_cpp") or a Hugging Face repo id
+# ("nvidia/parakeet-tdt-0.6b-v3"), optionally behind an "<engine>:" prefix.
+# Anything else -- above all a local model folder typed into Advanced, whose
+# path usually holds the account name -- is sent as LOCAL_MODEL_LABEL.
+LOCAL_MODEL_LABEL = "local-model"
+_ENGINE_PREFIX_RE = re.compile(r"([a-z][a-z0-9_]+):(.*)", re.DOTALL)
+_PUBLIC_MODEL_RE = re.compile(
+    r"[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)?"
+)
 
 # Windows NLS constants (winnls.h).
 _GEOCLASS_NATION = 16
@@ -234,6 +246,35 @@ def audio_duration_from_segments(segments: list[dict] | None) -> float:
         return 0.0
 
 
+def public_model_name(value: object) -> str:
+    """The ``model`` value as the stats payload may carry it: never a path.
+
+    A catalog name, an engine id or a ``owner/name`` repo id passes
+    unchanged (an ``<engine>:`` prefix is kept). A value that is a path
+    (drive, UNC, home, absolute, ``..``, more than one separator) or names
+    an existing local folder becomes :data:`LOCAL_MODEL_LABEL`, so a model
+    folder the user picked never sends its location or the account name in
+    it.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    prefix = ""
+    match = _ENGINE_PREFIX_RE.fullmatch(text)
+    if match:
+        prefix, text = match.group(1), match.group(2).strip()
+        if not text:
+            return prefix
+        prefix += ":"
+    if (
+        _PUBLIC_MODEL_RE.fullmatch(text)
+        and ".." not in text
+        and not os.path.isdir(text)
+    ):
+        return prefix + text
+    return prefix + LOCAL_MODEL_LABEL
+
+
 def build_stats_payload(
     *,
     model: str,
@@ -250,14 +291,15 @@ def build_stats_payload(
     ``country`` comes from the OS region setting (:func:`region_country`).
     The source file's name or path, the computer name and any IP address
     are never included; there is deliberately no file parameter, so no
-    caller can add one by accident.
+    caller can add one by accident. ``model`` passes through
+    :func:`public_model_name`, so a local model folder is never sent.
     """
     # Local alias: a module-level global is never narrowed by a None
     # check (it could be reassigned elsewhere), a local is.
     ps = psutil
     return {
         _FORM_FLAG: "1",
-        "model": str(model or ""),
+        "model": public_model_name(model),
         "language": str(language or ""),
         "audio_duration": f"{float(audio_duration or 0.0):.3f}",
         "transcription_time": f"{float(transcription_time or 0.0):.3f}",
