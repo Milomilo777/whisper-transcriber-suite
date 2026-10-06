@@ -6,6 +6,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Translate speech straight to English.** The Transcribe tab has an **Output: English
+  translation** option (off by default) that uses Whisper's own translate task: non-English
+  speech becomes English subtitles in one pass, with no AI model. Files are named
+  `name.en-translated.srt`, the history records the task, and a resumed job keeps it. It is
+  greyed out (reason on hover) for other engines, `large-v3-turbo` and English-only models
+  (`translate_to_english`, see `docs/CONFIG.md`).
 - **Text to Voice speaks long texts piece by piece, and a cancelled job continues.** A text longer
   than one piece is split at sentence ends; each finished piece is kept on disk with a small
   progress file (`core.tts_job`), the status line shows the time left, and Cancel, a crash or a

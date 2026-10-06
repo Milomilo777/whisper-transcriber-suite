@@ -102,7 +102,7 @@ def checkpoint_path(source_path: str) -> Path:
     return partials_dir() / f"{source_key(source_path)}.json"
 
 
-def config_fingerprint(cfg: dict[str, Any]) -> str:
+def config_fingerprint(cfg: dict[str, Any], whisper_task: str = "transcribe") -> str:
     """Stable sha1 over the transcription-affecting config keys.
 
     Only the keys in ``_CONFIG_FINGERPRINT_KEYS`` are included; the
@@ -110,11 +110,17 @@ def config_fingerprint(cfg: dict[str, Any]) -> str:
     invalidate the partial. Nested dicts (``model``) are serialised
     with ``sort_keys=True`` so dict-iteration order doesn't change
     the fingerprint either.
+
+    ``whisper_task`` joins the hash only for ``"translate"``, so the
+    fingerprint of a normal transcription (and every checkpoint written
+    before the translate option existed) stays unchanged.
     """
     extracted: dict[str, Any] = {}
     for key in _CONFIG_FINGERPRINT_KEYS:
         if key in cfg:
             extracted[key] = cfg[key]
+    if whisper_task == "translate":
+        extracted["whisper_task"] = whisper_task
     blob = json.dumps(extracted, sort_keys=True, default=str)
     return hashlib.sha1(blob.encode("utf-8")).hexdigest()
 
@@ -130,6 +136,7 @@ def write_checkpoint(
     last_end_time: float,
     segments: list[dict[str, Any]],
     checkpoint_time: float,
+    whisper_task: str = "transcribe",
 ) -> Path:
     """Atomically persist a checkpoint.
 
@@ -161,6 +168,9 @@ def write_checkpoint(
         "language": language or "",
         "language_probability": float(language_probability or 0.0),
         "config_fingerprint": cfg_fingerprint,
+        # Add-only field: "translate" or "transcribe". A resume reuses it, so
+        # a resumed job never switches task halfway through a transcript.
+        "whisper_task": whisper_task,
         "last_end_time": float(last_end_time),
         "segment_count": len(segments),
         "segments": segments,

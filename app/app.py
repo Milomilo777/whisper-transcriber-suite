@@ -552,6 +552,8 @@ class App(tk.Tk):
     fv: tk.StringVar
     vad_enabled_var: tk.BooleanVar
     word_timestamps_var: tk.BooleanVar
+    translate_var: tk.BooleanVar
+    translate_check: ttk.Checkbutton
     # Queue tab
     tree: "ttk.Treeview"
     pb: "ttk.Progressbar"
@@ -1980,6 +1982,9 @@ class App(tk.Tk):
         # the moment the user touched the language dropdown or a checkbox
         # on this tab, the exact same clobbering bug hotwords had.
         self.app_config["word_timestamps"] = bool(self.word_timestamps_var.get())
+        translate_var = _inst_attr(self, "translate_var")
+        if translate_var is not None:
+            self.app_config["translate_to_english"] = bool(translate_var.get())
         if getattr(self, "diarization_var", None) is not None:
             self.app_config["diarization_enabled"] = bool(self.diarization_var.get())
         # transcribe_language is intentionally NOT persisted: the picker
@@ -2432,6 +2437,7 @@ class App(tk.Tk):
             "next transcription."
         )
         self._refresh_model_status()
+        self._sync_translate_option()
 
     def _sync_model_picker_for_engine(self) -> None:
         """Grey out the Whisper-model picker when the picked engine can't use it.
@@ -2454,6 +2460,7 @@ class App(tk.Tk):
         except Exception:  # noqa: BLE001
             logger.debug("Could not sync the model picker state", exc_info=True)
         self._refresh_model_status()
+        self._sync_translate_option()
 
     def open_model_advisor(self) -> None:
         """Transcribe tab "Best for this PC…": suggest models for this hardware."""
@@ -2534,6 +2541,31 @@ class App(tk.Tk):
                 var.set("")
             except Exception:  # noqa: BLE001
                 pass
+
+    def _translate_unsupported_reason(self) -> str:
+        """One-line reason the English-translation option cannot run with the
+        engine picked on the Transcribe tab and the saved model; "" when it can."""
+        from core.backends import availability as _eng
+        from core.translate_task import unsupported_reason
+
+        evar = _inst_attr(self, "transcribe_engine_var")
+        label = evar.get() if evar is not None else ""
+        value = _eng.engine_value_for_label(label)
+        if value is None:
+            value = _eng.normalise_engine(self.app_config.get("transcribe_backend"))
+        return unsupported_reason(dict(self.app_config, transcribe_backend=value))
+
+    def _sync_translate_option(self) -> None:
+        """Grey out the "English translation" checkbox where Whisper cannot
+        translate (other engines, turbo and English-only models); the reason
+        is its hover text."""
+        check = _inst_attr(self, "translate_check")
+        if check is None:
+            return
+        try:
+            check.state(["disabled"] if self._translate_unsupported_reason() else ["!disabled"])
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not sync the translate option", exc_info=True)
 
     def _refresh_model_selector(self) -> None:
         """Re-sync the Transcribe-tab model picker to the saved slug (e.g.
@@ -3193,6 +3225,15 @@ class App(tk.Tk):
                 )
                 if code:
                     task.language = code
+        # "English translation" option: Whisper's own translate task, only
+        # where the engine and model can do it (the checkbox is disabled
+        # otherwise, and the worker refuses an unsupported combination).
+        if bool(self.app_config.get("translate_to_english", False)):
+            reason = self._translate_unsupported_reason()
+            if reason:
+                self.log(f"English translation skipped for this file: {reason}")
+            else:
+                task.whisper_task = "translate"
         # Optional time-slice (Transcribe-tab time range): transcribe only
         # [start, end]. A 0:00:00 / blank bound is "unset", so leaving both
         # at 0:00:00 transcribes the whole file.
@@ -3576,6 +3617,7 @@ class App(tk.Tk):
             # the WHOLE file instead of the slice the user picked.
             nt.clip_start = getattr(t, "clip_start", None)
             nt.clip_end = getattr(t, "clip_end", None)
+            nt.whisper_task = getattr(t, "whisper_task", "transcribe")
             self.queue.append(nt)
         self.refresh()
 
@@ -3595,6 +3637,7 @@ class App(tk.Tk):
                 nt.language = t.language
             nt.clip_start = getattr(t, "clip_start", None)
             nt.clip_end = getattr(t, "clip_end", None)
+            nt.whisper_task = getattr(t, "whisper_task", "transcribe")
             nt.resume = True
             nt.cancelled = False
             self.queue.append(nt)
@@ -3656,6 +3699,7 @@ class App(tk.Tk):
             new_task.language = task.language
         new_task.clip_start = getattr(task, "clip_start", None)
         new_task.clip_end = getattr(task, "clip_end", None)
+        new_task.whisper_task = getattr(task, "whisper_task", "transcribe")
         self.queue.append(new_task)
         self.refresh()
 
@@ -3687,6 +3731,7 @@ class App(tk.Tk):
             new_task.language = task.language
         new_task.clip_start = getattr(task, "clip_start", None)
         new_task.clip_end = getattr(task, "clip_end", None)
+        new_task.whisper_task = getattr(task, "whisper_task", "transcribe")
         new_task.resume = True
         new_task.cancelled = False
         self.queue.append(new_task)
@@ -5468,6 +5513,9 @@ class App(tk.Tk):
                 lang = r.get("language") or ""
                 if lang and hasattr(task, "language"):
                     task.language = lang  # type: ignore[attr-defined]
+                # Keep the Whisper task of the interrupted run (history row).
+                if r.get("task") == "translate":
+                    task.whisper_task = "translate"
                 try:
                     if has_resumable_checkpoint(r["file_path"]):
                         task.resume = True

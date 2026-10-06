@@ -363,6 +363,9 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     app.word_timestamps_var = tk.BooleanVar(
         value=bool(app.app_config.get("word_timestamps", False))
     )
+    app.translate_var = tk.BooleanVar(
+        value=bool(app.app_config.get("translate_to_english", False))
+    )
     try:
         from core import diarization as _diar  # type: ignore[import-not-found]
         _diar_available = _diar.is_available()
@@ -676,6 +679,27 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         "Transcribe only this portion of the file (format H:MM:SS). Leave "
         "both at 0:00:00 to transcribe the whole file.",
     ).pack(side="left", padx=(4, 0))
+
+    # Output in English: Whisper's own translate task (no AI model needed).
+    # Greyed out, with the reason on hover, where it cannot work (other
+    # engines, turbo, English-only models); see App._sync_translate_option.
+    app.translate_check = ttk.Checkbutton(
+        opts_line2,
+        text="Output: English translation",
+        variable=app.translate_var,
+        command=app._save_transcribe_prefs,
+    )
+    app.translate_check.pack(side="left", padx=(24, 0))
+    bind_tooltip(
+        app.translate_check,
+        lambda: app._translate_unsupported_reason()
+        or (
+            "Writes English text straight from the speech in one pass, using "
+            "Whisper's own translate task (no extra AI model). Output files "
+            "get an .en-translated name. Works with multilingual models only."
+        ),
+    )
+    app._sync_translate_option()
 
     # ── Row 4: the big accent Transcribe CTA + tiny Advanced link ────
     cta_row = ttk.Frame(parent)

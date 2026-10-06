@@ -238,6 +238,7 @@ a = Analysis(
         'core.hardware',
         'core.js_runtime',
         'core.loop_guard',
+        'core.translate_task',
         'core.history',
         'core.hub',
         'core.logging_setup',

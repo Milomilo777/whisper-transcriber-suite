@@ -16,6 +16,7 @@ from queue import Empty
 from typing import TYPE_CHECKING, Any
 
 from core._proc import kill_process_tree, new_session_kwargs
+from core.translate_task import TRANSLATED_SUFFIX
 
 if TYPE_CHECKING:
     import tkinter as tk
@@ -96,6 +97,8 @@ def transcribe_command(t: Any) -> dict[str, Any]:
         # object, so the bounds must cross the process boundary.
         "clip_start": getattr(t, "clip_start", None),
         "clip_end": getattr(t, "clip_end", None),
+        # Whisper task: "translate" = English text straight from the speech.
+        "whisper_task": getattr(t, "whisper_task", "transcribe"),
         # Output formats: the long-lived worker's config snapshot is frozen
         # at spawn time, so the user's saved docx/pdf/etc. selection must be
         # sent per task or it's silently ignored (the docx-never-written bug).
@@ -1132,6 +1135,7 @@ class TranscriptionService:
                         file_path=t.file_path,
                         model=str(app.app_config.get("model", {}).get("name", "")),
                         language=getattr(t, "language", "") or "",
+                        task=getattr(t, "whisper_task", "transcribe"),
                     )
                     # A retry gets a FRESH history_id but task_correlation_id
                     # caches task_id on first use — without this reset the
@@ -1357,6 +1361,8 @@ class TranscriptionService:
                     # 'C:\my.srt' paths. Matches the base used everywhere
                     # the actual outputs are written (transcriber.py).
                     base = os.path.splitext(task.file_path)[0]
+                    if getattr(task, "whisper_task", "") == "translate":
+                        base += TRANSLATED_SUFFIX
                     paths = [
                         f"{base}.{ext}"
                         for ext in (app.app_config.get("output_formats") or ["srt", "json"])

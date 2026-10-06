@@ -61,7 +61,7 @@ def test_command_has_exactly_the_expected_keys():
     cmd = transcribe_command(_task())
     assert set(cmd) == {
         "action", "file_path", "language", "resume", "clip_start", "clip_end",
-        "output_formats", "task_id",
+        "output_formats", "task_id", "whisper_task",
     }
 
 

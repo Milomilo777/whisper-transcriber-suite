@@ -72,6 +72,7 @@ from typing import Any, Callable, Iterator, cast
 from .config import load_config
 from .logging_setup import setup_logging, worker_log_filename
 from .task import TranscriptionTask
+from .translate_task import normalise_task
 from .transcriber import (
     get_effective_device,
     get_model_error,
@@ -743,6 +744,8 @@ def main() -> int:
             # span via clip_timestamps. None = whole file.
             task.clip_start = command.get("clip_start")
             task.clip_end = command.get("clip_end")
+            # Whisper task (transcribe / translate-to-English), per task.
+            task.whisper_task = normalise_task(command.get("whisper_task"))
             # Per-task output formats (worker's config snapshot is stale).
             task.output_formats = command.get("output_formats")
             # A clipped run must NOT resume: the checkpoint is keyed to the

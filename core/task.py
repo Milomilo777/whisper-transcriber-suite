@@ -57,6 +57,10 @@ class TranscriptionTask:
         # whole file and hung on multi-hour input (see core/transcriber.py).
         self.clip_start: float | None = None
         self.clip_end: float | None = None
+        # Whisper task for THIS file: "transcribe" (default) or "translate"
+        # (English text straight from the speech, core.translate_task). Sent to
+        # the worker per task; recorded in the history row and the checkpoint.
+        self.whisper_task: str = "transcribe"
         # Output formats for THIS task (srt/json/docx/pdf/...). Set at
         # dispatch from the live config so the long-lived worker writes the
         # formats the user currently has selected — its import-time

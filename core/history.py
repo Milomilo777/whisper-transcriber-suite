@@ -202,8 +202,16 @@ class HistoryDB:
                         "ALTER TABLE transcriptions "
                         "ADD COLUMN word_count INTEGER DEFAULT 0"
                     )
+            # ``task``: the Whisper task of the run, "transcribe" or
+            # "translate" (English text straight from the speech).
+            if "task" not in cols:
+                with self._conn:
+                    self._conn.execute(
+                        "ALTER TABLE transcriptions "
+                        "ADD COLUMN task TEXT DEFAULT 'transcribe'"
+                    )
         except sqlite3.Error as e:
-            logger.exception("history.db word_count migration failed: %s", e)
+            logger.exception("history.db column migration failed: %s", e)
 
     def _check_integrity_or_recover(self) -> None:
         """Run ``PRAGMA integrity_check``. On a non-``ok`` result, close the
@@ -403,13 +411,14 @@ class HistoryDB:
 
     def insert_transcription(self, file_path: str, model: str = "",
                              started_at: int | None = None,
-                             language: str = "") -> int:
+                             language: str = "",
+                             task: str = "transcribe") -> int:
         started_at = started_at if started_at is not None else int(time.time())
         with self._txn() as conn:
             cur = conn.execute(
-                "INSERT INTO transcriptions (file_path, model, status, started_at, language)"
-                " VALUES (?, ?, 'running', ?, ?)",
-                (file_path, model, started_at, language),
+                "INSERT INTO transcriptions (file_path, model, status, started_at, language, task)"
+                " VALUES (?, ?, 'running', ?, ?, ?)",
+                (file_path, model, started_at, language, task or "transcribe"),
             )
             return int(cur.lastrowid or 0)
 

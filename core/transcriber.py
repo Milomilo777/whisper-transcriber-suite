@@ -35,6 +35,7 @@ except ImportError:  # pragma: no cover
 
 from . import _checkpoint
 from . import loop_guard as _loop_guard
+from . import translate_task as _translate
 from . import vad_window as _vad_window
 from ._proc import new_session_kwargs
 from .config import load_config
@@ -740,6 +741,7 @@ def _write_periodic_checkpoint(
     if periodic and task.checkpoint_failures >= _CHECKPOINT_MAX_CONSECUTIVE_FAILURES:
         return
     backend, model_name = _current_backend_and_model()
+    whisper_task = _translate.normalise_task(getattr(task, "whisper_task", None))
     try:
         _checkpoint.write_checkpoint(
             task.file_path,
@@ -747,10 +749,11 @@ def _write_periodic_checkpoint(
             model_name=model_name,
             language=detected_language or "",
             language_probability=float(language_probability or 0.0),
-            cfg_fingerprint=_checkpoint.config_fingerprint(config),
+            cfg_fingerprint=_checkpoint.config_fingerprint(config, whisper_task),
             last_end_time=float(last_end_time),
             segments=segments_data,
             checkpoint_time=time.time(),
+            whisper_task=whisper_task,
         )
         task.checkpoint_failures = 0
     except Exception as e:  # noqa: BLE001
@@ -1285,8 +1288,16 @@ def _run_post_pipeline(
         except Exception as e:  # noqa: BLE001
             log(f"Diarisation failed (continuing without speakers): {e}", log_cb)
 
-    # Word-level alignment refinement via stable-ts (opt-in).
-    if config.get("alignment", "none") == "stable_ts":
+    # Word-level alignment refinement via stable-ts (opt-in). Skipped for a
+    # translate run: the English text does not match the spoken language, so
+    # re-aligning it to the audio would only damage the timings.
+    translating = (
+        _translate.normalise_task(getattr(task, "whisper_task", None))
+        == _translate.TASK_TRANSLATE
+    )
+    if translating and config.get("alignment", "none") == "stable_ts":
+        log("Word alignment skipped: the text is a translation.", log_cb)
+    elif config.get("alignment", "none") == "stable_ts":
         try:
             from . import alignment as _align
             if _align.is_available():
@@ -1685,6 +1696,38 @@ def _runtime_overrides_scope(
             config.pop(key, None)
 
 
+def _checked_whisper_task(task: "TranscriptionTask", backend_name: str) -> str:
+    """The task to run for ``task``; raises when translate cannot work here.
+
+    Translate with an engine or model that cannot do it would quietly return
+    the original language (turbo does exactly that), so it fails loudly
+    instead. The Transcribe tab hides the option in those cases; this guards
+    the other doors (HTTP API jobs, a model changed after queueing).
+    """
+    wanted = _translate.normalise_task(getattr(task, "whisper_task", None))
+    if wanted != _translate.TASK_TRANSLATE:
+        return wanted
+    reason = _translate.unsupported_reason(dict(config, transcribe_backend=backend_name))
+    if reason:
+        raise RuntimeError(f"Translate to English is not available: {reason}")
+    return wanted
+
+
+def _task_output_base(task: "TranscriptionTask") -> str:
+    """Output path stem next to the source; a translate run gets ``.en-translated``."""
+    base = os.path.splitext(task.file_path)[0]
+    if _translate.normalise_task(getattr(task, "whisper_task", None)) == _translate.TASK_TRANSLATE:
+        return _translate.translated_base(base)
+    return base
+
+
+def _task_output_lang(task: "TranscriptionTask", detected_language: str) -> str:
+    """Language tag for the writers: English for a translate run."""
+    if _translate.normalise_task(getattr(task, "whisper_task", None)) == _translate.TASK_TRANSLATE:
+        return _translate.TRANSLATED_LANGUAGE
+    return detected_language
+
+
 def _build_transcribe_kwargs(task: "TranscriptionTask") -> dict[str, Any]:
     """Assemble the kwargs dict passed to WhisperModel.transcribe.
 
@@ -1708,6 +1751,11 @@ def _build_transcribe_kwargs(task: "TranscriptionTask") -> dict[str, Any]:
     forced_lang = _normalize_language(getattr(task, "language", None))
     if forced_lang:
         kwargs["language"] = forced_lang
+    # Whisper's own translate task: English text straight from the speech.
+    # Whether the engine/model can do it is checked once per file by
+    # _checked_whisper_task() before this runs.
+    if _translate.normalise_task(getattr(task, "whisper_task", None)) == _translate.TASK_TRANSLATE:
+        kwargs["task"] = _translate.TASK_TRANSLATE
     initial_prompt = config.get("initial_prompt") or None
     if initial_prompt:
         kwargs["initial_prompt"] = initial_prompt
@@ -1873,6 +1921,7 @@ def transcribe(
             "transcribe_backend=%s file=%s",
             backend_name, task.file_path,
         )
+        _checked_whisper_task(task, backend_name or "faster_whisper")
         if backend_name and backend_name != "faster_whisper":
             _transcribe_via_alt_backend(
                 backend_name, task, progress_cb, log_cb, language_cb
@@ -2027,7 +2076,7 @@ def transcribe(
                 task.detected_language = lang_code
                 task.language_probability = lang_prob
 
-        base = os.path.splitext(task.file_path)[0]
+        base = _task_output_base(task)
 
         # Resume support: periodic checkpoint cadence. Track the
         # wall-clock time of the last write and the segment count
@@ -2148,7 +2197,7 @@ def transcribe(
             segments_data,
             task.file_path,
             getattr(task, "output_formats", None),
-            lang=detected_lang,
+            lang=_task_output_lang(task, detected_lang),
             speaker_count=speaker_count,
             chapters=getattr(task, "_chapters_for_writer", None) or [],
         )
@@ -2616,7 +2665,11 @@ def resume_transcription(
             )
             return False
 
-        cfg_fp = _checkpoint.config_fingerprint(config)
+        # The checkpoint's own task wins over whatever the task was queued
+        # with: the captured half is already in that task, so the tail must
+        # use it too or one transcript would mix two tasks.
+        cp_task = _translate.normalise_task(data.get("whisper_task"))
+        cfg_fp = _checkpoint.config_fingerprint(config, cp_task)
         reason = _checkpoint.validate_checkpoint(
             data,
             backend=backend_for_check,
@@ -2627,6 +2680,8 @@ def resume_transcription(
             log(f"Resume: checkpoint invalid ({reason}); deleting partial.", log_cb)
             _checkpoint.delete_checkpoint(task.file_path)
             return False
+        task.whisper_task = cp_task
+        _checked_whisper_task(task, backend_for_check or "faster_whisper")
 
         last_end_time = float(data.get("last_end_time") or 0.0)
         prior_segments = list(data.get("segments") or [])
@@ -2859,13 +2914,13 @@ def resume_transcription(
         if _handle_resume_cancelled():
             return True
 
-        base = os.path.splitext(task.file_path)[0]
+        base = _task_output_base(task)
         written = _write_outputs(
             base,
             final_segments,
             task.file_path,
             getattr(task, "output_formats", None),
-            lang=detected_lang,
+            lang=_task_output_lang(task, detected_lang),
             speaker_count=speaker_count,
             chapters=getattr(task, "_chapters_for_writer", None) or [],
         )

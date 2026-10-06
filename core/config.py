@@ -118,6 +118,9 @@ DEFAULT_CONFIG = {
     # below 2 = off.
     "loop_guard_repeats": 3,
     "word_timestamps": False,
+    # Transcribe tab "English translation" option: use Whisper's own translate
+    # task (core.translate_task). Applied per task when queued; off by default.
+    "translate_to_english": False,
     "output_formats": ["srt", "json"],
     "batch_size": 16,
     "initial_prompt": "",
