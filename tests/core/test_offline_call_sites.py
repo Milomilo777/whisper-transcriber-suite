@@ -388,6 +388,8 @@ def _app_stub(cfg: dict, var: bool = False) -> SimpleNamespace:
     stub._refresh_window_title = lambda: setattr(stub, "titles", stub.titles + 1)
     stub._retry_refused_link_lookup = lambda: setattr(stub, "retried", stub.retried + 1)
     stub._hide_update_bar = lambda: setattr(stub, "hidden", stub.hidden + 1)
+    stub.star_hidden = 0
+    stub._hide_star_bar = lambda: setattr(stub, "star_hidden", stub.star_hidden + 1)
     stub._set_work_offline = lambda on: App._set_work_offline(stub, on)  # type: ignore[arg-type]
     return stub
 
@@ -429,6 +431,20 @@ def test_turning_it_on_hides_a_shown_update_bar(monkeypatch):
     stub._update_bar = object()
     App._set_work_offline(stub, True)  # type: ignore[arg-type]
     assert stub.hidden == 1
+
+
+def test_turning_it_on_hides_the_star_bar_from_both_switches(monkeypatch):
+    import app.app as app_mod
+    from app.app import App
+
+    monkeypatch.setattr(app_mod, "save_config", lambda c: None)
+    stub = _app_stub({})
+    App._set_work_offline(stub, True)  # type: ignore[arg-type]
+    assert stub.star_hidden == 1
+    offline.set_offline(False)  # the Advanced dialog turns it on from "off"
+    stub = _app_stub({"work_offline": True})
+    App._sync_offline_menu(stub)  # type: ignore[arg-type]
+    assert stub.star_hidden == 1
 
 
 def test_a_failed_save_is_reported_and_the_process_stays_offline(monkeypatch):

@@ -6,6 +6,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Gentle star invitation.** After 5 successful jobs and 7 days of use, one quiet bar asks once
+  whether a GitHub star may help other people find the app (**Open GitHub page**, **Not now**,
+  **Don't ask again**). At most twice ever, 30 days apart; never while a job runs or waits and never
+  in Work offline mode. The counters are local config keys that are never sent
+  (`star_*`, see `docs/CONFIG.md`); About has one quiet link line to the repository page.
 - **Open in Subtitle Edit (Windows).** The Last Result card and the transcript viewer have an
   **Open in Subtitle Edit** button that opens the written SRT (or VTT/ASS) in the free editor for
   waveform-based timing work. It finds an installed copy through the uninstall registry entries and

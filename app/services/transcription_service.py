@@ -1434,6 +1434,13 @@ class TranscriptionService:
             except Exception:  # noqa: BLE001
                 pass
         worker["task"] = None
+        # The gentle star invitation counts real jobs only (not the sample clip)
+        # and shows its bar when nothing else is running.
+        if newly_finished and not getattr(task, "open_when_done", False):
+            try:
+                app.note_job_success()
+            except Exception:  # noqa: BLE001
+                logger.exception("Could not count the finished job")
         app.update_overall_progress()
         if worker.get("temporary") and not any(t.status == "waiting" for t in app.queue):
             self.retire_worker(worker)

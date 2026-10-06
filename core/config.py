@@ -94,6 +94,15 @@ DEFAULT_CONFIG = {
     "update_skipped_version": "",
     "update_snooze_count": 0,
     "update_snooze_until": "",
+    # The gentle GitHub star invitation (core.star_invite): local counters
+    # only, never sent. First-launch date, successful jobs, how often the bar
+    # was shown (at most 2 ever), the day of the last showing, and "Don't ask
+    # again". All of these are LOCAL_ONLY_KEYS.
+    "star_first_run": "",
+    "star_success_count": 0,
+    "star_invites_shown": 0,
+    "star_last_invite": "",
+    "star_dont_ask": False,
     # Browser to read cookies from for yt-dlp, so login-walled / age-gated
     # content downloads using the user's logged-in session (Facebook,
     # Instagram, TikTok stories; some YouTube Shorts). Empty = off. One of
@@ -480,6 +489,11 @@ LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "update_skipped_version",
     "update_snooze_count",
     "update_snooze_until",
+    "star_first_run",
+    "star_success_count",
+    "star_invites_shown",
+    "star_last_invite",
+    "star_dont_ask",
     "yt_dlp_update_mode",
     "last_yt_dlp_update_check",
     "auto_update_yt_dlp",

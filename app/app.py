@@ -836,6 +836,10 @@ class App(tk.Tk):
         self._yt_dlp_bar: Any = None
         self._yt_dlp_bar_dismissed = False
         self._yt_dlp_updating = False
+        # The gentle star invitation (core.star_invite): local counters in
+        # app_config, the bar is built on first use.
+        self._star_bar: Any = None
+        self._star_stamp_first_run()
 
         self._build_menu()
         self._refresh_update_signs()
@@ -1394,6 +1398,7 @@ class App(tk.Tk):
             )
             if _inst_attr(self, "_update_bar") is not None:
                 self._hide_update_bar()
+            self._hide_star_bar()
         else:
             self.log("Work offline: off.")
             self._retry_refused_link_lookup()
@@ -1422,6 +1427,7 @@ class App(tk.Tk):
         if on and not was:
             if _inst_attr(self, "_update_bar") is not None:
                 self._hide_update_bar()
+            self._hide_star_bar()
         elif was and not on:
             self._retry_refused_link_lookup()
         self._refresh_window_title()
@@ -1488,6 +1494,13 @@ class App(tk.Tk):
                 header,
                 text=f"Version {newer} is available. Help → Check for updates… shows it.",
             ).pack(anchor="w", pady=(4, 0))
+        # One quiet line: the repo page (never /stargazers, it has no Star button).
+        from core import star_invite as _star
+        star_line = ttk.Label(
+            header, text=_star.ABOUT_LINE, foreground=tokens.LINK, cursor="hand2",
+        )
+        star_line.pack(anchor="w", pady=(4, 0))
+        star_line.bind("<Button-1>", lambda _e: self._star_open_page())
 
         body_frame = ttk.Frame(dlg, padding=(16, 4, 16, 8))
         body_frame.pack(fill="both", expand=True)
@@ -5103,6 +5116,90 @@ class App(tk.Tk):
     def _hide_update_bar(self) -> None:
         if self._update_bar is not None:
             self._update_bar.hide()
+
+    # Gentle star invitation (core.star_invite) -------------------------------
+    def _star_save(self) -> None:
+        try:
+            save_config(self.app_config)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Failed to save the star-invitation state")
+            self.log(f"Could not save the star-invitation choice: {e}")
+
+    def _star_stamp_first_run(self) -> None:
+        from core import star_invite
+        if star_invite.ensure_first_run(self.app_config, _today()):
+            self._star_save()
+
+    def _jobs_active(self) -> bool:
+        """True while a transcription or download is queued or running."""
+        return any(
+            t.status in ("running", "waiting") for t in self.queue
+        ) or any(
+            d.status in ("running", "transcribing", "waiting")
+            for d in self.download_queue
+        )
+
+    def note_job_success(self) -> None:
+        """One transcription finished well: count it, maybe show the star bar.
+
+        Called from the task-done handler (main thread) after the queue rows
+        are final, so the finished job itself is no longer "running".
+        """
+        from core import star_invite
+        if self._closing:
+            return
+        today = _today()
+        try:
+            star_invite.record_success(self.app_config, today)
+            if star_invite.should_invite(
+                self.app_config, today,
+                job_running=self._jobs_active(), offline=offline.is_offline(),
+            ):
+                star_invite.mark_shown(self.app_config, today)
+                self._show_star_bar()
+            self._star_save()
+        except Exception:  # noqa: BLE001 - a counter must never break a finished job
+            logger.exception("Star invitation check failed")
+
+    def _show_star_bar(self) -> None:
+        """Show the quiet bar above the tabs. Never moves the focus."""
+        from core import star_invite
+        bar = self._star_bar
+        if bar is None:
+            from app.widgets.update_bar import StarBar
+            bar = StarBar(
+                self,
+                on_open=self._star_open,
+                on_not_now=self._hide_star_bar,
+                on_never=self._star_never,
+            )
+            self._star_bar = bar
+        bar.show(star_invite.BAR_TEXT, before=self.nb)
+
+    def _hide_star_bar(self) -> None:
+        bar = _inst_attr(self, "_star_bar")
+        if bar is not None:
+            bar.hide()
+
+    def _star_open_page(self) -> None:
+        import webbrowser
+
+        from core import star_invite
+        webbrowser.open(star_invite.REPO_URL)
+
+    def _star_open(self) -> None:
+        """"Open GitHub page": the repo page, then no more invitations."""
+        from core import star_invite
+        self._star_open_page()
+        star_invite.decline(self.app_config)
+        self._star_save()
+        self._hide_star_bar()
+
+    def _star_never(self) -> None:
+        from core import star_invite
+        star_invite.decline(self.app_config)
+        self._star_save()
+        self._hide_star_bar()
 
     # yt-dlp update bar (core.yt_dlp_update) ---------------------------------
     def _refresh_yt_dlp_versions(self) -> None:

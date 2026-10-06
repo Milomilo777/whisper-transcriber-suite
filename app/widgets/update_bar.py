@@ -10,6 +10,9 @@ input and never open a window by themselves: the user reads them when they like.
 * ``DownloaderUpdateBar``: the video downloader (yt-dlp) may be out of date
   (Update it / Not now). The update itself is ``core.yt_dlp_update``; the app
   glue is ``App.offer_yt_dlp_update`` and the ``App._yt_dlp_*`` handlers.
+* ``StarBar``: the gentle GitHub star invitation (Open GitHub page / Not now /
+  Don't ask again). The rules are ``core.star_invite``; the app glue is the
+  ``App._star_*`` methods.
 """
 from __future__ import annotations
 
@@ -132,6 +135,36 @@ class DownloaderUpdateBar(_QuietBar):
     def show_result(self, text: str, *, before: tk.Misc, can_retry: bool) -> None:
         self._set_buttons(update="enabled" if can_retry else "hidden", dismiss="Close")
         self.show(text, before=before)
+
+
+class StarBar(_QuietBar):
+    """The gentle star invitation: Open GitHub page / Not now / Don't ask again.
+
+    The rules for when it may appear live in ``core.star_invite``; the app glue
+    is ``App._star_*``.
+    """
+
+    BUTTONS = (
+        ("open", "Open GitHub page"),
+        ("not_now", "Not now"),
+        ("never", "Don't ask again"),
+    )
+
+    def __init__(
+        self,
+        master: tk.Misc,
+        *,
+        on_open: Callable[[], None],
+        on_not_now: Callable[[], None],
+        on_never: Callable[[], None],
+    ) -> None:
+        super().__init__(master)
+        commands = {"open": on_open, "not_now": on_not_now, "never": on_never}
+        self.buttons: dict[str, ttk.Button] = {}
+        for key, text in self.BUTTONS:
+            button = ttk.Button(self._button_row, text=text, command=commands[key])
+            button.pack(side="left", padx=(6, 0))
+            self.buttons[key] = button
 
 
 def _window(parent: tk.Misc, title: str) -> tuple[tk.Toplevel, ttk.Frame]:
