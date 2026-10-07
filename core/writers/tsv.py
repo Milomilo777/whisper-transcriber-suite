@@ -3,12 +3,14 @@
 Times are integer MILLISECONDS (the layout OpenAI Whisper's ``.tsv``
 output uses), which spreadsheets and scripts read directly. This is not
 an Audacity label track: Audacity labels have no header and use seconds.
+A diarised segment's ``Speaker: `` label goes at the start of the text
+column, so the three-column layout stays what Whisper readers expect.
 """
 from __future__ import annotations
 
 import math
 
-from .base import coerce_seconds, normalize_text
+from .base import coerce_seconds, normalize_text, speaker_prefix
 
 
 def _ms(value: object) -> int:
@@ -36,7 +38,7 @@ def _ms(value: object) -> int:
 def write(segments: list[dict], audio_path: str = "") -> str:
     rows: list[str] = ["start\tend\ttext"]
     for seg in segments:
-        text = normalize_text(seg.get("text", "")).replace("\t", " ")
+        text = (speaker_prefix(seg) + normalize_text(seg.get("text", ""))).replace("\t", " ")
         start_ms = _ms(seg.get("start", 0.0))
         # A missing or unusable end falls back to the start and an earlier
         # end is clamped to it, as in the subtitle writers (0 here made a

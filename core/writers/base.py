@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import unicodedata
 
 
 def fmt_srt_time(seconds: float) -> str:
@@ -196,3 +197,20 @@ def speaker_prefix(seg: dict) -> str:
         return ""
     label = str(raw).strip()
     return f"{label}: " if label else ""
+
+
+def is_rtl_text(text: str) -> bool:
+    """True when the first strong character of *text* is right-to-left.
+
+    This is the paragraph-direction rule of the Unicode bidi algorithm
+    (UAX #9, rules P2/P3): Arabic-script and Hebrew text gives True,
+    Latin, Cyrillic or CJK text gives False, and text with no strong
+    character (digits, punctuation) counts as left-to-right.
+    """
+    for ch in text or "":
+        kind = unicodedata.bidirectional(ch)
+        if kind in ("R", "AL"):
+            return True
+        if kind == "L":
+            return False
+    return False

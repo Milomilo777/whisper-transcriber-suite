@@ -7,6 +7,10 @@ Produces a structured DOCX file:
   - One paragraph per segment:
       [HH:MM:SS]  <bold speaker (if any)>:  segment text
 
+Arabic-script and Hebrew paragraphs are marked right-to-left: ``w:bidi``
+on the paragraph, ``w:rtl`` and a complex-script font on the runs that
+hold RTL text. The timestamp stays an LTR run inside such a paragraph.
+
 Requires ``python-docx`` (BSD-licensed, ~1 MB wheel). If the import
 fails at runtime — e.g. user runs from a Python without python-docx
 installed — the writer raises a clear RuntimeError instead of
@@ -24,7 +28,17 @@ import io
 import os
 from typing import Any
 
-from .base import coerce_seconds, fmt_srt_time, normalize_text, sanitize_for_xml
+from .base import (
+    coerce_seconds,
+    fmt_srt_time,
+    is_rtl_text,
+    normalize_text,
+    sanitize_for_xml,
+)
+
+# Complex-script font for RTL runs: ships with Windows and macOS and
+# covers Arabic, Persian, Urdu and Hebrew. Word substitutes it elsewhere.
+RTL_FONT = "Tahoma"
 
 
 def _fmt_doc_time(seconds: float) -> str:
@@ -44,6 +58,50 @@ def _require_docx() -> Any:
     return docx
 
 
+# Elements that follow w:bidi inside w:pPr (ECMA-376 CT_PPrBase order).
+_PPR_AFTER_BIDI = (
+    "w:adjustRightInd", "w:snapToGrid", "w:spacing", "w:ind",
+    "w:contextualSpacing", "w:mirrorIndents", "w:suppressOverlap", "w:jc",
+    "w:textDirection", "w:textAlignment", "w:textboxTightWrap",
+    "w:outlineLvl", "w:divId", "w:cnfStyle", "w:rPr", "w:sectPr",
+    "w:pPrChange",
+)
+
+
+def _set_paragraph_rtl(paragraph: Any) -> None:
+    """Mark *paragraph* right-to-left. Under ``w:bidi`` Word reverses the
+    meaning of a left/right ``w:jc`` (ECMA-376 17.3.1.13), so such an
+    alignment is dropped and the paragraph starts at the right edge."""
+    from docx.oxml import OxmlElement  # type: ignore
+    from docx.oxml.ns import qn  # type: ignore
+
+    ppr = paragraph._p.get_or_add_pPr()
+    if ppr.find(qn("w:bidi")) is None:
+        ppr.insert_element_before(OxmlElement("w:bidi"), *_PPR_AFTER_BIDI)
+    jc = ppr.find(qn("w:jc"))
+    if jc is not None and jc.get(qn("w:val")) in ("left", "right"):
+        ppr.remove(jc)
+
+
+def _set_run_rtl(run: Any) -> None:
+    from docx.oxml.ns import qn  # type: ignore
+
+    run.font.rtl = True
+    run._r.get_or_add_rPr().get_or_add_rFonts().set(qn("w:cs"), RTL_FONT)
+
+
+def _add_run(paragraph: Any, text: str, bold: bool = False) -> Any:
+    run = paragraph.add_run(text)
+    if bold:
+        run.bold = True
+        # Word draws RTL text, and digits inside an RTL paragraph, with
+        # the complex-script properties, which w:b alone does not set.
+        run.font.cs_bold = True
+    if is_rtl_text(text):
+        _set_run_rtl(run)
+    return run
+
+
 def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
     """Build the docx and return its raw zip bytes."""
     docx = _require_docx()
@@ -52,7 +110,11 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
     title = sanitize_for_xml(
         os.path.basename(audio_path) if audio_path else "Transcript"
     )
-    document.add_heading(title, level=1)
+    heading = document.add_heading(title, level=1)
+    if is_rtl_text(title):
+        _set_paragraph_rtl(heading)
+        for run in heading.runs:
+            _set_run_rtl(run)
 
     nonempty = [s for s in segments if normalize_text(s.get("text", ""))]
     if nonempty:
@@ -78,15 +140,15 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
         text = sanitize_for_xml(normalize_text(seg.get("text", "")))
 
         para = document.add_paragraph()
+        if is_rtl_text(text):
+            _set_paragraph_rtl(para)
         # [HH:MM:SS]
-        run_ts = para.add_run(f"[{ts}]  ")
-        run_ts.bold = True
+        _add_run(para, f"[{ts}]  ", bold=True)
         # Optional speaker prefix
         if speaker:
-            run_sp = para.add_run(f"{speaker}: ")
-            run_sp.bold = True
+            _add_run(para, f"{speaker}: ", bold=True)
         # Segment body
-        para.add_run(text)
+        _add_run(para, text)
 
     buf = io.BytesIO()
     document.save(buf)

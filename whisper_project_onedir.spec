@@ -266,6 +266,7 @@ a = Analysis(
         'core.writers.otr',
         'core.writers.docx_writer',
         'core.writers.pdf_writer',
+        'core.writers.pdf_fonts',
         'core.writers.smtv_docx_writer',
         'core.writers.bilingual_srt',
         'core.writers.elan',

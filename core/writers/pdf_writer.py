@@ -5,6 +5,8 @@ Lays out:
   - One paragraph per segment with [HH:MM:SS] prefix and an optional
     bold Speaker label
   - Auto-paginates on letter-sized pages with 0.75" margins
+  - Text in any script is drawn with the OS's own fonts (see
+    ``pdf_fonts``); Arabic-script and Hebrew letters stay unshaped
 
 Like the DOCX writer, PDFs are binary so this module exposes
 ``write_bytes`` and is registered in core.writers.__init__ under
@@ -17,6 +19,7 @@ import io
 import os
 from typing import Any
 
+from . import pdf_fonts
 from .base import coerce_seconds, fmt_srt_time, normalize_text
 
 
@@ -46,8 +49,6 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
         SimpleDocTemplate,
         Spacer,
     )
-    from xml.sax.saxutils import escape as xml_escape  # stdlib
-
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
@@ -70,10 +71,20 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
     body_style = ParagraphStyle(
         name="Body", parent=styles["BodyText"], spaceAfter=6, leading=14
     )
+    chain = pdf_fonts.default_chain()
+    markup = chain.markup
+    base = chain.base
+    if base is not None:
+        # The title is wrapped in <b> so fallback fonts pick their bold
+        # face through the same family mapping as the base font.
+        title_style = ParagraphStyle(
+            name="TitleText", parent=title_style, fontName=base.name
+        )
+        body_style.fontName = base.name
 
     story: list[Any] = []
     title = os.path.basename(audio_path) if audio_path else "Transcript"
-    story.append(Paragraph(xml_escape(title), title_style))
+    story.append(Paragraph(f"<b>{markup(title)}</b>", title_style))
     nonempty = [s for s in segments if normalize_text(s.get("text", ""))]
     if nonempty:
         last_end = coerce_seconds(nonempty[-1].get("end"))
@@ -96,9 +107,9 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
             str(raw_speaker).strip()
             if raw_speaker not in (None, "") else ""
         )
-        text = xml_escape(normalize_text(seg.get("text", "")))
+        text = markup(normalize_text(seg.get("text", "")))
         if speaker:
-            line = f"<b>[{ts}] {xml_escape(speaker)}:</b> {text}"
+            line = f"<b>[{ts}] {markup(speaker)}:</b> {text}"
         else:
             line = f"<b>[{ts}]</b> {text}"
         story.append(Paragraph(line, body_style))

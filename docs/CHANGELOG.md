@@ -264,6 +264,20 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **PDF transcripts keep Russian, Chinese, Japanese, Persian and Arabic text.** The PDF writer
+  used reportlab's built-in Helvetica, so every non-Latin letter became a placeholder glyph and
+  the text was lost. It now draws each character with the first system font that has it (Arial,
+  Microsoft YaHei, Yu Gothic, … on Windows; Arial Unicode, DejaVu, Noto, … elsewhere), nothing
+  bundled. Arabic-script and Hebrew letters are still drawn unjoined and left to right in PDF;
+  use DOCX for those languages.
+- **Word transcripts in Persian, Arabic and Hebrew read right to left.** DOCX paragraphs whose
+  text starts with an RTL letter now carry the Word bidi flag, RTL runs and a complex-script font,
+  so they align right with punctuation on the correct side; bold timestamps stay bold there.
+- **Plain formats keep the speaker.** TXT, LRC, TSV and oTranscribe output now start a diarised
+  segment's text with its `Speaker: ` label, as SRT, VTT, Markdown, DOCX and PDF already did; TSV
+  keeps its three columns.
+- **SMTV header names traditional Chinese.** A `zh-TW` language code no longer shows as
+  "Chinese (simplified)": the full tag is looked up before its base code.
 - **Edits in the transcript viewer reach every subtitle format.** VTT and ASS wrote the
   per-word karaoke list in preference to the text, so corrections made with Find & Replace or
   filler removal vanished from those files and from Convert. The writers now use the text when

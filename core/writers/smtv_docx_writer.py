@@ -176,19 +176,24 @@ _LANGUAGE_NAMES: dict[str, str] = {
     "yo": "Yoruba",
     "zu": "Zulu",
 }
+_LANGUAGE_NAMES_LOWER = {k.lower(): v for k, v in _LANGUAGE_NAMES.items()}
 
 
 def language_name(code: str) -> str:
     """Human language name for an ISO code; the raw code if unmapped.
 
-    Region/script suffixes are stripped (``pt-BR`` -> ``pt``) before the
-    lookup so a BCP-47 code still resolves.
+    The full tag is tried first (``zh-TW`` -> traditional Chinese), then
+    with its region/script suffix stripped (``pt-BR`` -> ``pt``) so any
+    BCP-47 code still resolves. Matching ignores case and ``_`` vs ``-``.
     """
     raw = (code or "").strip()
     if not raw:
         return ""
-    key = raw.replace("_", "-").split("-")[0].lower()
-    return _LANGUAGE_NAMES.get(key, raw)
+    full = raw.replace("_", "-").lower()
+    name = _LANGUAGE_NAMES_LOWER.get(full)
+    if name is None:
+        name = _LANGUAGE_NAMES_LOWER.get(full.split("-")[0])
+    return name if name is not None else raw
 
 
 def _fmt_smtv_time(seconds: float) -> str:
