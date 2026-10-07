@@ -189,11 +189,15 @@ def _extras_file_lock(
         if not told and log_cb is not None:
             log_cb("Another Whisper window or worker is installing a package; waiting for it...")
         told = True
-        if (cancel_event is not None and cancel_event.is_set()) or (
-                deadline is not None and time.monotonic() > deadline):
+        cancelled = cancel_event is not None and cancel_event.is_set()
+        if cancelled or (deadline is not None and time.monotonic() > deadline):
             fh.close()
             if log_cb is not None:
-                log_cb("Install cancelled while waiting for the other install.")
+                log_cb(
+                    "Install cancelled while waiting for the other install."
+                    if cancelled else
+                    "Install stopped: the other install did not finish in time."
+                )
             yield ""
             return
         time.sleep(0.25)

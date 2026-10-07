@@ -457,8 +457,12 @@ class TranscriptionService:
                     if remaining <= 0:
                         break
                     # Any ready worker will do, whoever's waiter it released.
-                    if (ready_event.wait(timeout=min(0.1 if on_main else 0.5, remaining))
-                            or self.ready_workers()):
+                    # The event also fires when the awaited worker dies
+                    # first, which is no ready worker.
+                    if ready_event.wait(timeout=min(0.1 if on_main else 0.5, remaining)):
+                        ok = bool(self.ready_workers())
+                        break
+                    if self.ready_workers():
                         ok = True
                         break
                     if getattr(self.app, "_closing", False):
@@ -500,11 +504,11 @@ class TranscriptionService:
         # dialog) or the user clicks Cancel.
         from app.dialogs.model_loading import ModelLoadingDialog
 
-        dialog = ModelLoadingDialog(parent_widget)
-        waiter["dialog"] = dialog
-        if self._pending_load_event is ready_event:
-            self._pending_load_dialog = dialog
         try:
+            dialog = ModelLoadingDialog(parent_widget)
+            waiter["dialog"] = dialog
+            if self._pending_load_event is ready_event:
+                self._pending_load_dialog = dialog
             self.app.wait_window(dialog)
         finally:
             self._remove_load_waiter(waiter)

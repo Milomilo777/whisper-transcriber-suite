@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import contextlib
 import errno
 import shutil
 import threading
+import time
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Generator, Iterable
 
 from core import offline
 from core.hub import model_weights_present
@@ -768,6 +770,54 @@ def _download_via_huggingface(
     return True
 
 
+@contextlib.contextmanager
+def _progress_feed(
+    model_path: Path,
+    approx_bytes: int,
+    progress_cb: Callable[[dict[str, Any]], None] | None,
+    interval: float = 1.0,
+) -> Generator[None, None, None]:
+    """Report download progress while huggingface_hub runs.
+
+    ``faster_whisper.download_model`` has no progress hook, so a helper
+    thread measures the bytes in ``model_path`` (finished files plus the
+    ``.incomplete`` blobs under ``.cache``) against the catalog size.
+    """
+    if progress_cb is None or approx_bytes <= 0:
+        yield
+        return
+    stop = threading.Event()
+    start_bytes = _tree_size(model_path)
+    started = time.monotonic()
+
+    def _feed() -> None:
+        while not stop.wait(interval):
+            done = _tree_size(model_path)
+            elapsed = max(0.001, time.monotonic() - started)
+            speed = max(0.0, (done - start_bytes) / elapsed)
+            left = max(0, approx_bytes - done)
+            _notify(
+                progress_cb,
+                phase="download",
+                status="Downloading model from Hugging Face...",
+                downloaded=done,
+                total=approx_bytes,
+                speed=speed,
+                remaining=(left / speed) if speed else None,
+                # The catalog size is approximate: stay below 100 until done.
+                percent=min(99, int(done * 100 / approx_bytes)),
+                detail=f"about {_fmt_bytes(done)} of {_fmt_bytes(approx_bytes)}",
+            )
+
+    feeder = threading.Thread(target=_feed, name="model-download-progress", daemon=True)
+    feeder.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        feeder.join(timeout=interval + 1)
+
+
 def _offline_download_text(model: dict[str, Any]) -> str:
     name = str(model.get("name") or "").strip()
     return f"downloading the model {name}" if name else "downloading this model"
@@ -878,16 +928,20 @@ def ensure_model(
         return str(model_path)
 
     offline.require_online(_offline_download_text(model))
-    _require_free_space(
-        cache_dir,
-        max(0, _approx_model_bytes(config, str(model.get("name") or ""))
-            - _tree_size(model_path)),
-        "the model download",
-    )
+    approx_bytes = _approx_model_bytes(config, str(model.get("name") or ""))
+    if not weights_present:
+        # An installed model with a leftover blob is used as it is if the
+        # resume fails, so a full disk must not refuse it here.
+        _require_free_space(
+            cache_dir,
+            max(0, approx_bytes - _tree_size(model_path)),
+            "the model download",
+        )
     # The partial folder is kept: the download resumes from it.
-    reason = _huggingface_failure(
-        model, model_path, status_cb, progress_cb, cancel_event, hf_repo
-    )
+    with _progress_feed(model_path, approx_bytes, progress_cb):
+        reason = _huggingface_failure(
+            model, model_path, status_cb, progress_cb, cancel_event, hf_repo
+        )
     if reason is not None:
         if weights_present:
             # An installed model with a leftover blob from an older cut-off

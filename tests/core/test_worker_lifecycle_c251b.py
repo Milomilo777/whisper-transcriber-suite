@@ -361,3 +361,41 @@ def test_folder_drop_takes_the_new_types(tmp_path):
     (tmp_path / "d.txt").write_text("no", encoding="utf-8")
     names = [os.path.basename(p) for p in _media_files_in_folder(str(tmp_path))]
     assert names == ["a.wmv", "b.ts"]
+
+
+def test_headless_wait_is_not_ready_when_the_worker_dies_first(monkeypatch):
+    """The waiter is released on startup_error / worker_exit too; that is
+    no ready worker, so the headless caller must not dispatch."""
+    monkeypatch.setattr(ts, "HEADLESS_READY_TIMEOUT_S", 5.0)
+    app = _app()
+    svc = _svc(app)
+
+    def update():
+        if app.workers and app.workers[0]["process"] is not None:
+            svc._release_pending_load(app.workers[0], success=False)
+            app.workers[0]["process"] = None
+
+    app.update = update
+    assert svc.ensure_worker_ready(None, headless=True) is False  # type: ignore[arg-type]
+    assert svc._load_waiters == []
+
+
+def test_lock_timeout_is_not_called_a_cancel(tmp_path, monkeypatch):
+    from core import optional_deps
+
+    import core.config as cfg
+
+    def _held(*_a, **_k):
+        raise OSError(13, "locked")
+
+    monkeypatch.setattr(cfg, "_lock_is_contended", lambda e: True)
+    if os.name == "nt":
+        import msvcrt
+        monkeypatch.setattr(msvcrt, "locking", _held)
+    else:
+        import fcntl
+        monkeypatch.setattr(fcntl, "flock", _held)
+    lines: list[str] = []
+    with optional_deps._extras_file_lock(str(tmp_path), None, 0.3, lines.append) as got:
+        assert got == ""
+    assert any("did not finish in time" in line for line in lines)

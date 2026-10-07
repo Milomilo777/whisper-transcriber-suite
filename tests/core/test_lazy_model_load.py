@@ -235,7 +235,9 @@ def test_ensure_worker_ready_spawns_when_no_worker_alive_headless() -> None:
             "start_worker fail to register a new worker id?"
         )
 
-        # Simulate the ready event landing on the awaited worker.
+        # Simulate the ready event landing on the awaited worker: poll()
+        # marks it ready, then releases the waiter.
+        app.workers[-1]["ready"] = True
         svc._pending_load_event.set()
         t.join(timeout=5.0)
 

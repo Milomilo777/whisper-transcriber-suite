@@ -420,7 +420,8 @@ def test_f6_headless_wait_pumps_main_loop_instead_of_deadlocking(monkeypatch):
         log=lambda m: None,
     )
     svc = TranscriptionService(app)  # type: ignore[arg-type]
-    svc.ready_workers = lambda: []  # type: ignore[method-assign]
+    ready: list = []
+    svc.ready_workers = lambda: list(ready)  # type: ignore[method-assign]
 
     def _fake_start_worker(temporary=False):
         app.workers.append({
@@ -436,8 +437,10 @@ def test_f6_headless_wait_pumps_main_loop_instead_of_deadlocking(monkeypatch):
 
     def _update():
         pumps.append(1)
-        # Simulate poll() observing the ready event: release the waiter.
+        # Simulate poll() observing the ready event: mark the worker ready,
+        # then release the waiter.
         if len(pumps) >= 2 and svc._pending_load_event is not None:
+            ready.append(app.workers[0])
             svc._pending_load_event.set()
 
     app.update = _update  # type: ignore[attr-defined]

@@ -514,3 +514,51 @@ def test_download_dialog_retry_resets_the_start_time(monkeypatch):
     monkeypatch.setattr(_threads, "safe_thread", lambda *a, **k: None)
     dlg._start_worker()
     assert time.time() - dlg.started < 5
+
+
+# --- C2.51b review: a full disk never refuses an installed model -------------
+
+
+def test_full_disk_does_not_refuse_an_installed_model_with_a_stale_blob(
+        tmp_path, fake_hf, monkeypatch):
+    class ConnectError(Exception):
+        pass
+
+    model_path = tmp_path / "cache" / f"models--Systran--{HF_ONLY_ENTRY['name']}"
+    _partial_hf_folder(model_path)
+    (model_path / "model.bin").write_bytes(b"weights")
+    _fake_free(monkeypatch, 1024)  # far below the 64 MB margin
+    fake_hf["raise"] = ConnectError("down")
+    assert Path(mm.ensure_model(_config(model_path, HF_ONLY_ENTRY))) == model_path
+
+
+def test_hub_download_reports_progress(tmp_path, monkeypatch):
+    """faster-whisper's download_model has no progress hook; the bytes on
+    disk feed the dialog's progress bar instead of 0 % until the end."""
+    import time
+
+    monkeypatch.setattr(offline, "is_offline", lambda *a, **k: False)
+    model_path = tmp_path / "cache" / f"models--Systran--{HF_ONLY_ENTRY['name']}"
+
+    def slow_download(ref, output_dir=None, **_kw):
+        out = Path(output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        for i in range(4):
+            (out / f"part{i}").write_bytes(b"x" * 1000)
+            time.sleep(0.15)
+        (out / "model.bin").write_bytes(b"weights")
+        return str(out)
+
+    fake = types.ModuleType("faster_whisper.utils")
+    fake.download_model = slow_download  # type: ignore[attr-defined]
+    fake._MODELS = {}  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "faster_whisper.utils", fake)
+    real_feed = mm._progress_feed
+    monkeypatch.setattr(mm, "_progress_feed",
+                        lambda p, b, cb: real_feed(p, b, cb, interval=0.05))
+    payloads: list[dict] = []
+    mm.ensure_model(_config(model_path, HF_ONLY_ENTRY), progress_cb=payloads.append)
+    sizes = [p["downloaded"] for p in payloads if p.get("downloaded")]
+    assert sizes, "no progress was reported during the download"
+    assert sizes == sorted(sizes)
+    assert all(p["percent"] < 100 for p in payloads if "downloaded" in p)

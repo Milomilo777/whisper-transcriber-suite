@@ -254,7 +254,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Models download only from the Hugging Face Hub.** The zip mirror is retired: no catalog
   entry names it, and a `url`/`md5` left in an older `config.json` (including a hand-edited
   `model_catalog` pin) is ignored. An installed model is never deleted for a re-check, and a
-  cut-off download resumes in place.
+  cut-off download resumes in place. The download window shows progress from the bytes on disk.
 - **Video Tiling is gone.** The tab, its About section, the monitor chooser, the
   tiling engine, monitor detection and the `screeninfo` dependency are removed, and
   the app no longer offers to download ffplay. The Windows installer no longer has
