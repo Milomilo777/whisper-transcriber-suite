@@ -195,6 +195,18 @@ def test_a_closing_window_loses_the_notice_without_an_error(root, fast, caplog):
     assert "too late" in caplog.text
 
 
+def test_closing_a_window_cancels_its_notice_timer(root, fast):
+    # Tk deletes a destroyed window's Tcl commands but not its after() events: a timer left
+    # pending would later fire into a deleted command ("invalid command name") as a
+    # background error, which Tk reports with an error dialog while the app still runs.
+    window = tk.Toplevel(root)
+    notify(window, "about to close")
+    timer = host_for(window)._after_id
+    assert timer in root.tk.splitlist(root.tk.call("after", "info"))
+    window.destroy()
+    assert timer not in root.tk.splitlist(root.tk.call("after", "info"))
+
+
 def test_unknown_kind_falls_back_to_info(root, fast):
     notify(root, "x", "nonsense")  # type: ignore[arg-type]
     assert host_for(root).current == ("x", "info")

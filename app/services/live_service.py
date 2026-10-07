@@ -240,9 +240,12 @@ class LiveTranscriber:
                     continue
                 try:
                     msg = json.loads(line)
-                except (ValueError, TypeError):
-                    # The worker also emits plain text on stderr->stdout;
-                    # surface it as a log line rather than dropping it.
+                except (ValueError, TypeError, RecursionError):
+                    msg = None
+                if not isinstance(msg, dict):
+                    # The worker also emits plain text on stderr->stdout, and
+                    # a stray print can be valid JSON that is not an object
+                    # (a number, a list); either is a log line, not an event.
                     if self._log:
                         self._log(f"[live worker] {line}")
                     continue

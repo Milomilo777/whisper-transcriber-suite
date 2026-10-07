@@ -561,27 +561,43 @@ class TranscriptionService:
         spawn_token = worker["token"]
 
         def reader() -> None:
-            for line in process.stdout:  # type: ignore[union-attr]
-                line = line.strip()
-                if not line:
-                    continue
-                event: dict[str, Any]
-                try:
-                    event = json.loads(line)
-                except json.JSONDecodeError:
-                    event = {"event": "log", "message": line}
-                event["_pid"] = process.pid
-                event["_worker_id"] = worker["id"]
-                # Token is set by the worker if WHISPER_WORKER_TOKEN
-                # was honoured (audit A4). Parent-side routing uses
-                # it when present, falls back to PID otherwise.
-                app.worker_events.put(event)
-            return_code = process.wait()
-            app.worker_events.put(
-                {"event": "worker_exit", "return_code": return_code,
-                 "_pid": process.pid, "_worker_id": worker["id"],
-                 "_token": spawn_token}
+            # worker_exit is queued in ``finally``: it is what finishes a
+            # running task and releases an ensure_worker_ready() wait, so no
+            # line, however malformed, may end this thread without it.
+            try:
+                for line in process.stdout:  # type: ignore[union-attr]
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        _queue_worker_line(line)
+                    except Exception:  # noqa: BLE001 - keep draining the pipe
+                        logger.exception(
+                            "Could not handle a line from worker %s", worker["id"])
+            finally:
+                return_code = process.wait()
+                app.worker_events.put(
+                    {"event": "worker_exit", "return_code": return_code,
+                     "_pid": process.pid, "_worker_id": worker["id"],
+                     "_token": spawn_token}
+                )
+
+        def _queue_worker_line(line: str) -> None:
+            try:
+                parsed = json.loads(line)
+            except (ValueError, RecursionError):
+                parsed = None
+            # Valid JSON that is not an object (a stray print of a number or
+            # a list) is a log line too.
+            event: dict[str, Any] = (
+                parsed if isinstance(parsed, dict) else {"event": "log", "message": line}
             )
+            event["_pid"] = process.pid
+            event["_worker_id"] = worker["id"]
+            # Token is set by the worker if WHISPER_WORKER_TOKEN
+            # was honoured (audit A4). Parent-side routing uses
+            # it when present, falls back to PID otherwise.
+            app.worker_events.put(event)
 
         from core._threads import safe_thread
         safe_thread(reader, name=f"worker-{worker['id']}-reader")
@@ -599,16 +615,57 @@ class TranscriptionService:
         Each step is logged so a wedged worker is debuggable from
         the log alone.
         """
-        process = worker.get("process")
-        if not (process and process.poll() is None):
-            return
+        self._stop_workers([worker])
 
-        worker_id = worker.get("id", "?")
+    def stop_all(self) -> None:
+        self._stop_workers(self.active_workers())
+
+    # stop_worker()'s step 2 and step 4 waits (seconds).
+    STOP_GRACE_S: float = 5.0
+    STOP_TERMINATE_S: float = 2.0
+
+    def _stop_workers(self, workers: list[dict[str, Any]]) -> None:
+        """stop_worker()'s steps for several workers at once.
+
+        Each step has one deadline shared by every worker, so N busy workers
+        block the Tk thread for at most one grace + one terminate wait, not
+        N of each (exit and the model/engine switch used to freeze the
+        window 7 s per busy worker).
+        """
+        live: list[tuple[dict[str, Any], Any]] = []
+        for worker in workers:
+            process = worker.get("process")
+            if process and process.poll() is None:
+                live.append((worker, process))
+        if not live:
+            return
         shutdown_msg = json.dumps({"action": "shutdown"}) + "\n"
+        for worker, _process in live:
+            self._send_shutdown_async(worker, shutdown_msg)
+
+        stragglers = self._wait_for_exit(live, self.STOP_GRACE_S)
+        for worker, process in stragglers:
+            logger.info("stop_worker: worker %s ignored shutdown; terminating",
+                        worker.get("id", "?"))
+            # Tree-terminate, not just process.terminate(): the worker may be
+            # blocked inside a grandchild (ffmpeg/ffprobe/demucs) that
+            # TerminateProcess would orphan on Windows. _proc walks the whole
+            # tree (taskkill /T on Windows, killpg on POSIX).
+            kill_process_tree(process, force=False)
+        stragglers = self._wait_for_exit(stragglers, self.STOP_TERMINATE_S)
+        for worker, process in stragglers:
+            logger.warning(
+                "stop_worker: worker %s ignored terminate(); killing",
+                worker.get("id", "?"),
+            )
+            kill_process_tree(process, force=True)
+
+    def _send_shutdown_async(self, worker: dict[str, Any], message: str) -> None:
+        worker_id = worker.get("id", "?")
 
         def _async_shutdown() -> None:
             try:
-                self._locked_stdin_write(worker, shutdown_msg)
+                self._locked_stdin_write(worker, message)
             except Exception:
                 logger.debug(
                     "stop_worker: stdin shutdown write failed for worker %s",
@@ -618,29 +675,20 @@ class TranscriptionService:
             target=_async_shutdown, name=f"shutdown-w{worker_id}", daemon=True,
         ).start()
 
-        try:
-            process.wait(timeout=5.0)
-            return
-        except subprocess.TimeoutExpired:
-            logger.info("stop_worker: worker %s ignored shutdown; terminating",
-                        worker_id)
-        # Tree-terminate, not just process.terminate(): the worker may be
-        # blocked inside a grandchild (ffmpeg/ffprobe/demucs) that
-        # TerminateProcess would orphan on Windows. _proc walks the whole
-        # tree (taskkill /T on Windows, killpg on POSIX).
-        kill_process_tree(process, force=False)
-        try:
-            process.wait(timeout=2.0)
-            return
-        except subprocess.TimeoutExpired:
-            logger.warning(
-                "stop_worker: worker %s ignored terminate(); killing", worker_id,
-            )
-        kill_process_tree(process, force=True)
-
-    def stop_all(self) -> None:
-        for w in self.active_workers():
-            self.stop_worker(w)
+    @staticmethod
+    def _wait_for_exit(
+        live: list[tuple[dict[str, Any], Any]], budget_s: float,
+    ) -> list[tuple[dict[str, Any], Any]]:
+        """Wait until ``budget_s`` from now; return the workers still running."""
+        import time as _time
+        deadline = _time.monotonic() + budget_s
+        left: list[tuple[dict[str, Any], Any]] = []
+        for worker, process in live:
+            try:
+                process.wait(timeout=max(0.0, deadline - _time.monotonic()))
+            except subprocess.TimeoutExpired:
+                left.append((worker, process))
+        return left
 
     def restart_worker(self, worker: dict[str, Any]) -> None:
         live = worker.get("task")
@@ -820,11 +868,36 @@ class TranscriptionService:
     # Mac environments (like virtual machines).
     LIVENESS_TIMEOUT_S: float = 1200.0 if sys.platform == "darwin" else 120.0
 
+    def _needs_poll(self) -> bool:
+        """True while any worker still has something for poll() to handle.
+
+        A worker whose process has already died keeps its ``process`` until
+        poll() handles its worker_exit, which the reader thread queues only
+        after the stdout pipe closes (a grandchild can hold it open). Polling
+        only while a process is alive dropped that event: the task stayed
+        "running" and an ensure_worker_ready() wait was never released.
+        """
+        if not self.app.worker_events.empty():
+            return True
+        return any(
+            w.get("process") is not None or w.get("task") is not None
+            for w in self.app.workers
+        )
+
     def poll(self) -> None:
-        app = self.app
-        # This invocation consumes the scheduled slot; the re-arm at the end
-        # (or a start_worker) will book exactly one more (Audit P2-1).
+        # This invocation consumes the scheduled slot; the re-arm in
+        # ``finally`` (or a start_worker) books exactly one more (Audit
+        # P2-1). An exception still reaches Tk's report_callback_exception,
+        # but it can no longer stop the loop.
         self._poll_scheduled = False
+        try:
+            self._poll_once()
+        finally:
+            if self._needs_poll():
+                self._ensure_poll_scheduled()
+
+    def _poll_once(self) -> None:
+        app = self.app
         import time as _time
         now = _time.time()
         while True:
@@ -1072,30 +1145,35 @@ class TranscriptionService:
         # threshold (heartbeat missed several times), restart it.
         for w in list(self.active_workers()):
             last = float(w.get("last_event_at") or 0.0)
-            if last and now - last > self.LIVENESS_TIMEOUT_S:
-                if w["task"]:
-                    w["task"].status = "error"
-                    self.finish_task(w, keep_status=True)
-                # finish_task() retires (and un-registers) a temporary
-                # worker when no waiting task is left. restart_worker()
-                # assumes the dict is still tracked by the app: restarting
-                # a removed worker spawns a replacement no worker_events
-                # event can ever route to, so it loads the model into RAM
-                # as an invisible orphan until app exit. Only restart a
-                # worker that is still on the books.
-                if w not in app.workers:
-                    continue
-                logger.warning(
-                    "Worker %s missed heartbeats for %.1fs; restarting",
-                    w.get("id", "?"), now - last,
-                )
-                app.log(
-                    f"Worker {w.get('id', '?')} appears wedged; restarting."
-                )
-                self.restart_worker(w)
+            if not (last and now - last > self.LIVENESS_TIMEOUT_S):
+                continue
+            try:
+                self._restart_wedged_worker(w, now - last)
+            except Exception:  # noqa: BLE001 - one worker must not stop the rest
+                logger.exception("Liveness check failed for worker %s", w.get("id", "?"))
 
-        if self.active_workers():
-            self._ensure_poll_scheduled()
+    def _restart_wedged_worker(self, w: dict[str, Any], silent_for: float) -> None:
+        app = self.app
+        if w["task"]:
+            w["task"].status = "error"
+            self.finish_task(w, keep_status=True)
+        # finish_task() retires (and un-registers) a temporary
+        # worker when no waiting task is left. restart_worker()
+        # assumes the dict is still tracked by the app: restarting
+        # a removed worker spawns a replacement no worker_events
+        # event can ever route to, so it loads the model into RAM
+        # as an invisible orphan until app exit. Only restart a
+        # worker that is still on the books.
+        if w not in app.workers:
+            return
+        logger.warning(
+            "Worker %s missed heartbeats for %.1fs; restarting",
+            w.get("id", "?"), silent_for,
+        )
+        app.log(
+            f"Worker {w.get('id', '?')} appears wedged; restarting."
+        )
+        self.restart_worker(w)
 
     def dispatch_waiting(self) -> None:
         """Spawn temporary workers as needed and hand them waiting tasks."""
@@ -1400,8 +1478,8 @@ class TranscriptionService:
             # rather than just a Treeview row flipping to "finished".
             try:
                 self.app.show_last_result(task)
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception:  # noqa: BLE001 - the files are saved already
+                logger.exception("Could not show the last-result card")
             if getattr(task, "open_when_done", False):
                 try:
                     self.app.open_sample_result(task)

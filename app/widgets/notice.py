@@ -77,6 +77,9 @@ class NoticeHost:
             widget.bind("<Leave>", self._on_leave, add="+")
         self.close_button.bind("<Escape>", self._on_escape, add="+")
         window.bind(DISMISS_SEQUENCE, self._on_dismiss_key, add="+")
+        # Tk deletes a destroyed window's commands but keeps its after()
+        # events: a pending timer would fire into a deleted command.
+        self.frame.bind("<Destroy>", self._on_destroy, add="+")
 
     # ------------------------------------------------------------------ state
     @property
@@ -147,6 +150,10 @@ class NoticeHost:
             except tk.TclError:
                 logger.debug("notice timer already gone", exc_info=True)
             self._after_id = None
+
+    def _on_destroy(self, event: "tk.Event[tk.Misc]") -> None:
+        if event.widget is self.frame:
+            self._cancel_timer()
 
     def _on_timeout(self) -> None:
         self._after_id = None

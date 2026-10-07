@@ -244,6 +244,10 @@ class ServerHandle:
         self._manager: JobManager | None = None
         self._server: JobHTTPServer | None = None
         self._thread: threading.Thread | None = None
+        # start() is between its guard and publishing the server; stop()
+        # during that window sets _start_cancelled (see start()).
+        self._starting = False
+        self._start_cancelled = False
         self.host = ""
         self.port = 0
         self.token = ""
@@ -276,10 +280,19 @@ class ServerHandle:
         produced raises :class:`RuntimeError` rather than silently serving
         plaintext.
         """
+        # The slow part (first-run model download, certificate generation)
+        # runs WITHOUT the lock: holding it there blocked is_running() and
+        # stop() — the app's exit path — until the download finished. A
+        # stop() meanwhile cancels this start; a second start() is a no-op.
         with self._lock:
-            if self._server is not None and self._thread is not None \
-                    and self._thread.is_alive():
-                return  # already running — idempotent double-start guard
+            if self._starting or (
+                self._server is not None and self._thread is not None
+                and self._thread.is_alive()
+            ):
+                return  # already running or starting — idempotent guard
+            self._starting = True
+            self._start_cancelled = False
+        try:
             if auto_port:
                 port = find_available_port(port, host)
             ssl_context = None
@@ -288,6 +301,10 @@ class ServerHandle:
                 ssl_context = build_server_ssl_context()
             if self._load_model:
                 _ensure_model_loaded()
+            with self._lock:
+                if self._start_cancelled:
+                    logger.info("server: start cancelled by stop() while starting")
+                    return
             manager = JobManager(
                 self._transcribe_fn, download_fn=self._download_fn,
                 webhook_url=webhook_url,
@@ -302,19 +319,31 @@ class ServerHandle:
             except OSError:
                 manager.stop()
                 raise
-            self._manager = manager
-            self._server = server
-            self.host = host
-            # Reflect the port actually bound (matters for the port-0 case).
-            self.port = int(server.server_address[1])
-            self.token = token
-            self.https = https
-            self.webhook_url = (webhook_url or "").strip()
-            self._thread = threading.Thread(
-                target=server.serve_forever,
-                name="server-http", daemon=True,
-            )
-            self._thread.start()
+            with self._lock:
+                if self._start_cancelled:
+                    cancelled = True
+                else:
+                    cancelled = False
+                    self._manager = manager
+                    self._server = server
+                    self.host = host
+                    # Reflect the port actually bound (matters for the port-0 case).
+                    self.port = int(server.server_address[1])
+                    self.token = token
+                    self.https = https
+                    self.webhook_url = (webhook_url or "").strip()
+                    self._thread = threading.Thread(
+                        target=server.serve_forever,
+                        name="server-http", daemon=True,
+                    )
+                    self._thread.start()
+            if cancelled:
+                logger.info("server: start cancelled by stop() while starting")
+                server.server_close()
+                manager.stop()
+        finally:
+            with self._lock:
+                self._starting = False
 
     def stop(self, *, timeout: float = 5.0) -> None:
         """Stop serving, close the socket, stop the worker (idempotent).
@@ -326,6 +355,8 @@ class ServerHandle:
         returns.
         """
         with self._lock:
+            # A start() still loading the model sees this and never serves.
+            self._start_cancelled = True
             server = self._server
             manager = self._manager
             thread = self._thread

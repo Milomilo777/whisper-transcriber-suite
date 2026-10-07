@@ -45,8 +45,10 @@ def test_tk_after_info_returns_tuple_for_multiple_ids() -> None:
 
 def test_app_destroy_cancels_all_after_callbacks() -> None:
     """The actual fix: App.destroy clears every pending after() ID."""
-    # Build a minimal Tk that mimics App.destroy's override without the
-    # full App stack (which needs services + history).
+    # App.destroy delegates to this helper; a plain root avoids the full
+    # App stack (which needs services + history).
+    from app.app import cancel_pending_after_callbacks
+
     root = tk.Tk()
     try:
         root.withdraw()
@@ -54,18 +56,7 @@ def test_app_destroy_cancels_all_after_callbacks() -> None:
             root.after(60_000, lambda: None)
         assert len(_pending(root)) == 5
 
-        # The corrected logic, lifted verbatim from app/app.py
-        pending = root.tk.call("after", "info")
-        if isinstance(pending, (tuple, list)):
-            ids = list(pending)
-        else:
-            text = str(pending).strip()
-            ids = text.split() if text else []
-        for cb_id in ids:
-            try:
-                root.after_cancel(cb_id)
-            except Exception:
-                pass
+        cancel_pending_after_callbacks(root)
 
         assert _pending(root) == (), "after callbacks survived destroy logic"
     finally:

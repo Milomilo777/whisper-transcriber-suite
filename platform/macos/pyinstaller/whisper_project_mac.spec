@@ -306,6 +306,7 @@ a = Analysis(
         'app.services',
         'app.widgets',
         'app.observability',
+        'app.crash_report',
         'app.theme.script_fonts',
         'app.dialogs.advanced',
         'app.dialogs.caption_choice',

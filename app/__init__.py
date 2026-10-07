@@ -31,6 +31,10 @@ def run() -> None:
     # Work offline backstop for this process; inert while the switch is off.
     from core import offline
     offline.install_network_guard()
+    # Before App(): under pythonw a crash while the window is built would
+    # otherwise leave no trace and no message.
+    from . import crash_report
+    crash_report.install_excepthook()
     from .app import App
     App().mainloop()
 

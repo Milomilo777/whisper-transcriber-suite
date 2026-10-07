@@ -369,6 +369,24 @@ def test_non_json_worker_output_is_logged_not_fatal(monkeypatch):
     _stop_and_join(lt, proc)
 
 
+@pytest.mark.parametrize("line", ["42", "[1, 2]", '"just a string"', "null"])
+def test_json_that_is_not_an_object_is_logged_not_fatal(monkeypatch, line):
+    # A valid-JSON line that is not an object used to raise in _handle and end the reader,
+    # which marked a healthy worker as dead.
+    proc = _FakeProc()
+    monkeypatch.setattr(
+        "app.services.live_service.subprocess.Popen", lambda *a, **kw: proc
+    )
+    logged: list[str] = []
+    lt = LiveTranscriber("gui.py", log=logged.append)
+    lt.start(wait_ready=False)
+    proc.stdout.push(line + "\n")
+    proc.stdout.push({"event": "ready"})
+    lt.wait_ready(timeout=3.0)
+    assert any(line in entry for entry in logged)
+    _stop_and_join(lt, proc)
+
+
 def test_spawn_failure_is_reported_clearly(monkeypatch):
     def boom(*a, **kw):
         raise OSError("no such executable")

@@ -127,6 +127,71 @@ def test_handle_can_restart_after_stop():
         handle.stop()
 
 
+def test_stop_does_not_wait_for_a_start_that_is_still_loading_the_model(monkeypatch):
+    # start() used to hold the handle's lock through the first-run model download, so
+    # is_running() and stop() (the app's exit path) blocked until the download ended.
+    import threading
+
+    import core.server as server_mod
+
+    loading = threading.Event()
+    release = threading.Event()
+
+    def _slow_model_load():
+        loading.set()
+        release.wait(10)
+
+    monkeypatch.setattr(server_mod, "_ensure_model_loaded", _slow_model_load)
+    handle = ServerHandle(transcribe_fn=_writing_transcribe, load_model=True)
+    starter = threading.Thread(
+        target=lambda: handle.start("127.0.0.1", 0, auto_port=False), daemon=True)
+    starter.start()
+    try:
+        assert loading.wait(5)
+        t0 = time.monotonic()
+        assert not handle.is_running()
+        handle.stop(timeout=3.0)
+        assert time.monotonic() - t0 < 1.0, "stop() waited for the model load"
+    finally:
+        release.set()
+        starter.join(10)
+    # The start that was stopped part-way must not begin serving afterwards.
+    assert not starter.is_alive()
+    assert not handle.is_running()
+    assert handle.urls() == []
+
+
+def test_a_second_start_while_the_first_is_loading_is_a_no_op(monkeypatch):
+    import threading
+
+    import core.server as server_mod
+
+    loading = threading.Event()
+    release = threading.Event()
+    loads = []
+
+    def _slow_model_load():
+        loads.append(1)
+        loading.set()
+        release.wait(10)
+
+    monkeypatch.setattr(server_mod, "_ensure_model_loaded", _slow_model_load)
+    handle = ServerHandle(transcribe_fn=_writing_transcribe, load_model=True)
+    starter = threading.Thread(
+        target=lambda: handle.start("127.0.0.1", 0, auto_port=False), daemon=True)
+    starter.start()
+    try:
+        assert loading.wait(5)
+        handle.start("127.0.0.1", 0, auto_port=False)  # returns at once
+        release.set()
+        starter.join(10)
+        assert loads == [1]
+        assert handle.is_running()
+    finally:
+        release.set()
+        handle.stop()
+
+
 def test_handle_auto_port_avoids_busy_port():
     # Occupy a port (plain listener, no SO_REUSEADDR), then ask the handle
     # to start on it with auto_port: it must bind a different one rather

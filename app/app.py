@@ -75,6 +75,28 @@ def _today() -> date:
     return date.today()
 
 
+def cancel_pending_after_callbacks(root: tk.Misc) -> None:
+    """Cancel every pending ``after()`` callback of the interpreter, at Tcl level only.
+
+    ``Misc.after_cancel`` also deletes the callback's Tcl command, but that command
+    belongs to whichever widget called ``after()``. Deleted through the root, it stays
+    listed by its owner (the scrollable tab page's canvas runs its own ``after()`` loop),
+    so the owner's ``destroy()`` raises ``TclError: can't delete Tcl command``, the root
+    is never destroyed and the process keeps running behind a half-empty window. A plain
+    ``after cancel`` stops the callbacks; each owner deletes its own commands when it is
+    destroyed.
+    """
+    try:
+        ids = root.tk.splitlist(root.tk.call("after", "info"))
+    except tk.TclError:
+        return
+    for cb_id in ids:
+        try:
+            root.tk.call("after", "cancel", cb_id)
+        except tk.TclError:
+            logger.debug("after() callback %s already gone", cb_id, exc_info=True)
+
+
 def _iids_for_tasks(
     row_map: dict[str, Any], tasks: "list[Any]"
 ) -> list[str]:
@@ -876,6 +898,11 @@ class App(tk.Tk):
         # touching destroyed widgets. Keep watched_after_ids so
         # each path only schedules ONE stability-check ladder.
         self._closing = False
+        # Last error text per loop() step, so a step that keeps failing is
+        # logged once instead of twice a second (see _log_loop_error).
+        self._loop_errors: dict[str, str] = {}
+        # Last Tk callback error shown in the console (report_callback_exception).
+        self._last_callback_error = ""
         # True while the quick start window is open (see _on_start).
         self._quick_start_open = False
         self._watched_after_ids: dict[str, str] = {}
@@ -1805,6 +1832,13 @@ class App(tk.Tk):
         # the same shape. Runs *before* terminating subprocesses so it
         # never sees a broken state.
         self._save_window_geometry()
+        # Hide the window before the teardown below: stopping a busy worker
+        # can take several seconds, and a visible window that no longer
+        # repaints looks like a hang.
+        try:
+            self.withdraw()
+        except tk.TclError:
+            logger.debug("Could not hide the window before exit", exc_info=True)
         if self._folder_watcher is not None:
             try:
                 self._folder_watcher.stop()
@@ -1861,28 +1895,16 @@ class App(tk.Tk):
         # Tcl interpreter. Otherwise the service poll loops fire one last
         # time after destroy() and spam the console with
         #   invalid command name "<id>poll"
-        # because their bound-method Tcl command no longer exists.
-        #
-        # tk.call("after", "info") returns a tuple of IDs when >=1 callback
-        # is pending and an empty string when none are. The earlier
-        # str(pending).split() path produced garbage tokens like
-        # "('after#0',)" for the tuple case, which after_cancel silently
-        # accepts without actually cancelling — so the fix was a no-op.
+        # because their bound-method Tcl command no longer exists. The
+        # cancel must not delete other widgets' commands (see the helper).
+        cancel_pending_after_callbacks(self)
         try:
-            pending = self.tk.call("after", "info")
-            if isinstance(pending, (tuple, list)):
-                ids = list(pending)
-            else:
-                text = str(pending).strip()
-                ids = text.split() if text else []
-            for cb_id in ids:
-                try:
-                    self.after_cancel(cb_id)
-                except Exception:  # noqa: BLE001
-                    pass
-        except Exception:  # noqa: BLE001
-            pass
-        super().destroy()
+            super().destroy()
+        except tk.TclError:
+            # A half-finished teardown leaves the root alive, so mainloop()
+            # would keep the process running with nothing left to close.
+            logger.exception("Window teardown failed; ending the event loop anyway")
+            self.quit()
 
     # Tabs --------------------------------------------------------------------
     def _build_tabs(self) -> None:
@@ -6044,7 +6066,49 @@ class App(tk.Tk):
         # after()-chain keeps firing during teardown otherwise). Audit P2-5.
         if self._closing:
             return
-        self.refresh()
-        self.transcription_service.dispatch_waiting()
-        self.download_service.process_queue()
-        self.after(500, self.loop)
+        steps: tuple[tuple[str, Callable[[], None]], ...] = (
+            ("refresh", self.refresh),
+            ("dispatch", self.transcription_service.dispatch_waiting),
+            ("downloads", self.download_service.process_queue),
+        )
+        try:
+            # One failing step (e.g. Popen blocked by an antivirus inside
+            # start_worker) must not skip the others or stop the pump.
+            for name, step in steps:
+                try:
+                    step()
+                except Exception as e:  # noqa: BLE001
+                    self._log_loop_error(name, e)
+                else:
+                    self._loop_errors.pop(name, None)
+        finally:
+            if not self._closing:
+                self.after(500, self.loop)
+
+    def _log_loop_error(self, step: str, error: Exception) -> None:
+        """Log a queue-pump failure once per distinct error, not every 500 ms."""
+        text = f"{type(error).__name__}: {error}"
+        if self._loop_errors.get(step) == text:
+            logger.debug("Queue pump step %r still failing: %s", step, text)
+            return
+        self._loop_errors[step] = text
+        logger.error("Queue pump step %r failed; retrying every 500 ms",
+                     step, exc_info=error)
+
+    def report_callback_exception(
+        self, exc: type[BaseException], val: BaseException, tb: Any
+    ) -> None:
+        """Route an error raised inside any Tk callback to the app log.
+
+        Tk's default prints the traceback to stderr, which is None under
+        pythonw (the installed app), so such errors used to vanish.
+        """
+        logger.error("Unhandled error in a Tk callback", exc_info=(exc, val, tb))
+        text = f"{exc.__name__}: {val}"
+        if getattr(self, "_last_callback_error", "") == text:
+            return
+        self._last_callback_error = text
+        try:
+            self.log(f"Unexpected error: {text} (details are in the log file)")
+        except Exception:  # noqa: BLE001 - the error is already in the log
+            logger.debug("Could not show the error in the console", exc_info=True)

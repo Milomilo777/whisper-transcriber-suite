@@ -260,6 +260,16 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Closing the window could leave the app running.** Exit cancelled pending timers in a way that
+  broke the teardown of the scrollable tabs, so the window stayed half-empty and the process kept
+  running; the window now closes and the app ends. Exit also hides the window before it stops busy
+  workers (which now stop together, so a model or engine switch no longer freezes the window for
+  several seconds per worker), and closing during "Starting…" of web access no longer waits for
+  the first-run model download.
+- **Errors no longer vanish silently.** An error in any window callback, and a crash while the app
+  starts, now goes to `app.log` with a short message; one failing step no longer stops the queue
+  pump, a worker that dies before its exit is reported no longer leaves its task "running", and a
+  stray non-object line from a transcription or Live worker no longer ends the reader.
 - **File names and transcript lines in Indic scripts, Sinhala, Thai, Lao, Khmer, Myanmar, Chinese
   and Japanese are drawn in full on Windows.** Text boxes and lists use Segoe UI instead of
   Courier New or Windows 10's Arial fallback, at the same box and row heights, and Sinhala and
