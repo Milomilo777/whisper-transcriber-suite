@@ -241,7 +241,9 @@ class VoiceCloneWorker:
                     continue
                 try:
                     msg = json.loads(line)
-                except (ValueError, TypeError):
+                except (ValueError, TypeError, RecursionError):
+                    # RecursionError: a deeply nested line; the live and
+                    # transcription readers treat it as a log line too.
                     self._log_line(line)
                     continue
                 if not isinstance(msg, dict):

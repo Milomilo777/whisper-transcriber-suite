@@ -21,16 +21,37 @@ logger = logging.getLogger(__name__)
 _MEDIA_EXTENSIONS = {
     ".mp3", ".mp4", ".wav", ".m4a", ".mkv", ".webm", ".flac",
     ".ogg", ".aac", ".aiff", ".opus", ".mov",
+    # Formats ffmpeg reads that the watcher and folder drops used to skip
+    # without a word: broadcast / camcorder / DVD video, Windows Media,
+    # older containers.
+    ".ts", ".m2ts", ".mts", ".vob", ".wmv", ".wma", ".avi", ".m4v",
+    ".3gp", ".flv", ".mpg", ".mpeg", ".mka",
 }
+
+# MPEG transport streams start every 188-byte packet with this sync byte.
+_TS_SYNC_BYTE = b"\x47"
 
 
 def is_media_file(path: str) -> bool:
     """True when ``path``'s extension is one of the watched media types.
 
     Shared with the app's drag-and-drop folder handling so "what counts
-    as a media file" stays defined in exactly one place.
+    as a media file" stays defined in exactly one place. A ``.ts`` file is
+    also a TypeScript source file: one that can be read and does not start
+    with the MPEG-TS sync byte is not media (an empty or unreadable one,
+    e.g. still being copied, gets the benefit of the doubt).
     """
-    return os.path.splitext(path)[1].lower() in _MEDIA_EXTENSIONS
+    ext = os.path.splitext(path)[1].lower()
+    if ext not in _MEDIA_EXTENSIONS:
+        return False
+    if ext == ".ts":
+        try:
+            with open(path, "rb") as f:
+                first = f.read(1)
+        except OSError:
+            return True
+        return first in (b"", _TS_SYNC_BYTE)
+    return True
 
 
 def _is_inside(folder: str, path: bytes | str) -> bool:
@@ -102,14 +123,13 @@ class FolderWatcher:
 
         cb = self.on_new_file
         err_cb = self.on_error
-        media_exts = _MEDIA_EXTENSIONS
         folder = self.folder
 
         class _Handler(FileSystemEventHandler):
             def _dispatch(self, path: bytes | str) -> None:
                 if isinstance(path, bytes):
                     path = path.decode("utf-8", "replace")
-                if not path or os.path.splitext(path)[1].lower() not in media_exts:
+                if not path or not is_media_file(path):
                     return
                 try:
                     cb(path)

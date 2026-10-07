@@ -258,7 +258,7 @@ def _media_files_in_folder(folder: str) -> list[str]:
     out: list[str] = []
     for name in names:
         full = os.path.join(folder, name)
-        if os.path.isfile(full) and is_media_file(name):
+        if os.path.isfile(full) and is_media_file(full):
             out.append(full)
     return out
 

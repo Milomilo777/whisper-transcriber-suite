@@ -264,6 +264,19 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Two jobs waiting for one loading model no longer lose a worker.** A second caller (watched
+  folder, crash resume) waiting for the same loading worker used to burn the full wait (2 min, 20
+  on macOS) and then shut down the worker the other job was using; every waiter now wakes on
+  ready, and the wait ends when the window closes.
+- **The window no longer freezes for seconds after a temporary worker's last job.** The worker
+  is stopped on a helper thread; closing the app still waits for it.
+- **A worker whose process died without a final message no longer leaves its job "running"
+  forever.** After 10 seconds the job is ended as failed. A worker that fails to start or dies
+  idle no longer leaves a dead entry behind.
+- **Voice cloning worker:** an unwritable log folder no longer stops it before it starts, and a
+  malformed, deeply nested output line no longer stops its reader.
+- **Watched folder and folder drag-and-drop take more formats:** `.ts .m2ts .mts .vob .wmv .wma
+  .avi .m4v .3gp .flv .mpg .mpeg .mka`. A `.ts` file that is TypeScript source is skipped.
 - **Settings are no longer lost or reverted.** A moment when `config.json` could not be opened
   (another save in flight, an antivirus scan) used to rename the good file aside and reset every
   setting; it is now retried and the file kept. A damaged file is replaced by its `.bak`, a file

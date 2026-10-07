@@ -157,7 +157,13 @@ def main() -> int:
     # Work offline backstop: OmniVoice fetches its weights from Hugging Face.
     from . import offline
     offline.install_network_guard()
-    setup_logging("INFO", filename=f"voiceclone-worker-{os.getpid()}.log")
+    try:
+        setup_logging("INFO", filename=f"voiceclone-worker-{os.getpid()}.log")
+    except Exception:  # noqa: BLE001
+        # Logging is best-effort, as in core.worker: an unwritable or
+        # AV-locked log folder must not kill the worker before its first
+        # event (the protocol lives on stdout).
+        pass
     try:
         from .optional_deps import activate as _activate_extras
         _activate_extras()

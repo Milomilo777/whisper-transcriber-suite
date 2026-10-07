@@ -129,6 +129,14 @@ class TranscriptionService:
         self._pending_load_worker_id: int | None = None
         self._pending_load_dialog: "ModelLoadingDialog | None" = None
         self._pending_load_event: threading.Event | None = None
+        # Every caller waiting in ensure_worker_ready, newest last: the
+        # headless pump and the modal both run queued callbacks, so a second
+        # caller can start waiting on the same loading worker. The three
+        # fields above mirror the newest waiter.
+        self._load_waiters: list[dict[str, Any]] = []
+        # Retired workers whose process a helper thread is still stopping
+        # (retire_worker runs on the Tk thread; stop_all still covers them).
+        self._retiring: list[dict[str, Any]] = []
         # The CPU warning's "is there an unusable NVIDIA GPU?" check runs
         # once per session, on a daemon thread (see _maybe_warn_cpu).
         self._gpu_check_thread: threading.Thread | None = None
@@ -161,23 +169,51 @@ class TranscriptionService:
         ensure_worker_ready returns False instead of hanging forever with a
         spinning bar (Audit P1 — modal never closed on a failed load).
         """
+        worker_id = worker.get("id")
+        released: list[tuple[threading.Event | None, Any]] = []
         if (
-            self._pending_load_worker_id is None
-            or worker.get("id") != self._pending_load_worker_id
+            self._pending_load_worker_id is not None
+            and worker_id == self._pending_load_worker_id
         ):
-            return
-        pending_dialog = self._pending_load_dialog
-        pending_event = self._pending_load_event
-        # Clear first so a later event for the same worker can't double-fire.
-        self._pending_load_worker_id = None
-        self._pending_load_dialog = None
-        self._pending_load_event = None
-        if pending_event is not None:
-            pending_event.set()
-        if pending_dialog is not None:
-            self.app.post_to_main(
-                pending_dialog.mark_success_and_close if success else pending_dialog.cancel
-            )
+            released.append((self._pending_load_event, self._pending_load_dialog))
+            # Clear first so a later event for the same worker can't double-fire.
+            self._pending_load_worker_id = None
+            self._pending_load_dialog = None
+            self._pending_load_event = None
+        # Every caller waiting on this worker wakes, not only the newest.
+        for waiter in [w for w in self._load_waiters if w["worker_id"] == worker_id]:
+            self._load_waiters.remove(waiter)
+            if not any(waiter["event"] is ev for ev, _dlg in released):
+                released.append((waiter["event"], waiter["dialog"]))
+        for pending_event, pending_dialog in released:
+            if pending_event is not None:
+                pending_event.set()
+            if pending_dialog is not None:
+                self.app.post_to_main(
+                    pending_dialog.mark_success_and_close if success else pending_dialog.cancel
+                )
+
+    def _add_load_waiter(
+        self, worker_id: int, event: threading.Event, dialog: "ModelLoadingDialog | None",
+    ) -> dict[str, Any]:
+        waiter: dict[str, Any] = {"worker_id": worker_id, "event": event, "dialog": dialog}
+        self._load_waiters.append(waiter)
+        self._pending_load_worker_id = worker_id
+        self._pending_load_event = event
+        self._pending_load_dialog = dialog
+        return waiter
+
+    def _remove_load_waiter(self, waiter: dict[str, Any]) -> None:
+        if waiter in self._load_waiters:
+            self._load_waiters.remove(waiter)
+        if self._pending_load_event is waiter["event"]:
+            newest = self._load_waiters[-1] if self._load_waiters else None
+            self._pending_load_worker_id = newest["worker_id"] if newest else None
+            self._pending_load_event = newest["event"] if newest else None
+            self._pending_load_dialog = newest["dialog"] if newest else None
+
+    def _others_wait_for(self, worker_id: int) -> bool:
+        return any(w["worker_id"] == worker_id for w in self._load_waiters)
 
     # Queries -----------------------------------------------------------------
     def active_workers(self) -> list[dict[str, Any]]:
@@ -395,12 +431,10 @@ class TranscriptionService:
         # `new_id`, it should set this Event AND (interactive only)
         # destroy the dialog.
         ready_event = threading.Event()
-        self._pending_load_worker_id = new_id
-        self._pending_load_event = ready_event
+        waiter = self._add_load_waiter(new_id, ready_event, None)
         if not spawned and self.ready_workers():
             # The adopted worker went ready before the slot was set.
-            self._pending_load_worker_id = None
-            self._pending_load_event = None
+            self._remove_load_waiter(waiter)
             return True
 
         if headless:
@@ -412,28 +446,31 @@ class TranscriptionService:
             # fire while this thread is blocked inside wait() — so a
             # pure wait() always burns the full HEADLESS_READY_TIMEOUT_S
             # then tears down the just-became-ready worker.
-            self._pending_load_dialog = None
-            try:
-                if threading.current_thread() is threading.main_thread():
-                    import time as _time
+            import time as _time
 
-                    deadline = (
-                        _time.monotonic() + HEADLESS_READY_TIMEOUT_S
-                    )
-                    ok = False
-                    while True:
-                        remaining = deadline - _time.monotonic()
-                        if remaining <= 0:
-                            break
-                        if ready_event.wait(timeout=min(0.1, remaining)):
-                            ok = True
-                            break
+            on_main = threading.current_thread() is threading.main_thread()
+            deadline = _time.monotonic() + HEADLESS_READY_TIMEOUT_S
+            ok = False
+            try:
+                while True:
+                    remaining = deadline - _time.monotonic()
+                    if remaining <= 0:
+                        break
+                    # Any ready worker will do, whoever's waiter it released.
+                    if (ready_event.wait(timeout=min(0.1 if on_main else 0.5, remaining))
+                            or self.ready_workers()):
+                        ok = True
+                        break
+                    if getattr(self.app, "_closing", False):
+                        # The window is closing: poll() no longer runs, so no
+                        # ready event can arrive (W2).
+                        break
+                    if on_main:
                         # Pump the Tk event loop in small slices so the
                         # after()-scheduled poll() still runs and can
                         # observe the worker's ready/startup_error/exit.
                         # Tolerate fakes without update(); off-thread
-                        # callers never reach this branch (Tk is
-                        # main-thread-only).
+                        # callers never pump (Tk is main-thread-only).
                         try:
                             update = getattr(self.app, "update", None)
                             if callable(update):
@@ -443,11 +480,8 @@ class TranscriptionService:
                                 "headless ready-pump update() failed",
                                 exc_info=True,
                             )
-                else:
-                    ok = ready_event.wait(timeout=HEADLESS_READY_TIMEOUT_S)
             finally:
-                self._pending_load_worker_id = None
-                self._pending_load_event = None
+                self._remove_load_waiter(waiter)
             if not ok:
                 logger.warning(
                     "ensure_worker_ready (headless): worker %s did not "
@@ -455,11 +489,9 @@ class TranscriptionService:
                     new_id, HEADLESS_READY_TIMEOUT_S,
                 )
                 # Tear the dud worker down so we don't leak it (only one
-                # spawned here; an adopted worker belongs to its starter).
-                for w in list(self.app.workers):
-                    if spawned and w["id"] == new_id:
-                        self.retire_worker(w)
-                        break
+                # spawned here; an adopted worker belongs to its starter,
+                # and one another caller still waits for stays).
+                self._retire_unwanted_worker(new_id, spawned)
                 return False
             return True
 
@@ -469,13 +501,13 @@ class TranscriptionService:
         from app.dialogs.model_loading import ModelLoadingDialog
 
         dialog = ModelLoadingDialog(parent_widget)
-        self._pending_load_dialog = dialog
+        waiter["dialog"] = dialog
+        if self._pending_load_event is ready_event:
+            self._pending_load_dialog = dialog
         try:
             self.app.wait_window(dialog)
         finally:
-            self._pending_load_worker_id = None
-            self._pending_load_dialog = None
-            self._pending_load_event = None
+            self._remove_load_waiter(waiter)
 
         if dialog.success:
             return True
@@ -489,11 +521,20 @@ class TranscriptionService:
             "ensure_worker_ready: user cancelled; tearing down worker %s",
             new_id,
         )
-        for w in list(self.app.workers):
-            if w["id"] == new_id:
-                self.retire_worker(w)
-                break
+        self._retire_unwanted_worker(new_id, spawned)
         return False
+
+    def _retire_unwanted_worker(self, worker_id: int, spawned: bool) -> None:
+        """Retire the worker this caller spawned and gave up on, unless it is
+        ready (another caller may already use it) or another caller still
+        waits for it."""
+        if not spawned or self._others_wait_for(worker_id):
+            return
+        for w in list(self.app.workers):
+            if w["id"] == worker_id:
+                if not w.get("ready"):
+                    self.retire_worker(w)
+                break
 
     def start_worker(self, worker: dict[str, Any] | None = None, temporary: bool = False) -> None:
         app = self.app
@@ -537,6 +578,8 @@ class TranscriptionService:
             import uuid as _uuid
             worker["token"] = _uuid.uuid4().hex
             worker["last_event_at"] = 0.0
+            worker.pop("dead_since", None)
+            worker.pop("exit_synthesized", None)
 
         app.model_loading = True
         worker["ready"] = False
@@ -564,7 +607,17 @@ class TranscriptionService:
         # worker leads a killable process group).
         kwargs.update(new_session_kwargs())
 
-        process = subprocess.Popen(cmd, **kwargs)
+        try:
+            process = subprocess.Popen(cmd, **kwargs)
+        except Exception:
+            # The worker never existed: leave no dead dict behind (it was
+            # appended above, before the spawn).
+            worker["process"] = None
+            worker["ready"] = False
+            if worker in app.workers:
+                app.workers.remove(worker)
+            self.update_model_state()
+            raise
         worker["process"] = process
         # Seed liveness timestamp at spawn so the watchdog grace
         # period covers initial model load.
@@ -638,7 +691,7 @@ class TranscriptionService:
         self._stop_workers([worker])
 
     def stop_all(self) -> None:
-        self._stop_workers(self.active_workers())
+        self._stop_workers(self.active_workers() + list(self._retiring))
 
     # stop_worker()'s step 2 and step 4 waits (seconds).
     STOP_GRACE_S: float = 5.0
@@ -766,13 +819,44 @@ class TranscriptionService:
             # nothing left to do.
             if worker not in self.app.workers:
                 return
-        self.stop_worker(worker)
+        process = worker.get("process")
         worker["process"] = None
         worker["ready"] = False
         worker["task"] = None
         if worker in self.app.workers:
             self.app.workers.remove(worker)
         self.update_model_state()
+        if process is not None and process.poll() is None:
+            self._stop_in_background(worker, process)
+
+    def _stop_in_background(self, worker: dict[str, Any], process: Any) -> None:
+        """stop_worker() for a retired worker, off the Tk thread.
+
+        retire_worker runs inside poll() after every job that ends a
+        temporary worker; the shutdown wait (up to STOP_GRACE_S +
+        STOP_TERMINATE_S) froze the window for that long.
+        """
+        shadow: dict[str, Any] = {
+            "id": worker.get("id", "?"),
+            "process": process,
+            "stdin_lock": worker.get("stdin_lock"),
+        }
+        self._retiring.append(shadow)
+
+        def _stop() -> None:
+            try:
+                self._stop_workers([shadow])
+            except Exception:  # noqa: BLE001 - a helper thread must not die loudly
+                logger.exception("Stopping retired worker %s failed", shadow["id"])
+            finally:
+                try:
+                    self._retiring.remove(shadow)
+                except ValueError:
+                    pass
+
+        threading.Thread(
+            target=_stop, name=f"retire-w{shadow['id']}", daemon=True,
+        ).start()
 
     # Routing -----------------------------------------------------------------
     def worker_for_event(self, event: dict[str, Any]) -> dict[str, Any] | None:
@@ -1128,6 +1212,10 @@ class TranscriptionService:
                         "matching in-flight task was found."
                     )
                 elif event_type == "worker_exit":
+                    # The exit of the process this dict still holds (not one
+                    # restart_worker already let go of) ends the worker.
+                    process = worker.get("process")
+                    own_exit = process is not None and getattr(process, "pid", None) == event.get("_pid")
                     worker["ready"] = False
                     worker["process"] = None
                     if worker["task"] is not None:
@@ -1146,6 +1234,9 @@ class TranscriptionService:
                     # A worker that dies before going ready would otherwise hang
                     # an ensure_worker_ready() modal forever — release it.
                     self._release_pending_load(worker, success=False)
+                    if own_exit and worker["task"] is None and worker in app.workers:
+                        # Dead and idle: nothing can route to it again.
+                        app.workers.remove(worker)
                     self.update_model_state()
             except Exception:  # noqa: BLE001
                 # One malformed/unexpected event must never wedge the whole
@@ -1163,6 +1254,7 @@ class TranscriptionService:
         # Audit D8: liveness watchdog. After draining the queue,
         # check every active worker. If one has been silent past the
         # threshold (heartbeat missed several times), restart it.
+        self._expire_dead_workers(now)
         for w in list(self.active_workers()):
             last = float(w.get("last_event_at") or 0.0)
             if not (last and now - last > self.LIVENESS_TIMEOUT_S):
@@ -1171,6 +1263,37 @@ class TranscriptionService:
                 self._restart_wedged_worker(w, now - last)
             except Exception:  # noqa: BLE001 - one worker must not stop the rest
                 logger.exception("Liveness check failed for worker %s", w.get("id", "?"))
+
+    # How long a worker whose process has exited may wait for its reader
+    # thread's worker_exit before poll() synthesizes one.
+    DEAD_WORKER_GRACE_S: float = 10.0
+
+    def _expire_dead_workers(self, now: float) -> None:
+        """Synthesize ``worker_exit`` for a worker whose process is dead.
+
+        The reader thread queues worker_exit only once the stdout pipe
+        closes; a grandchild (ffmpeg, a separator) that inherited the pipe
+        keeps it open, and active_workers() hides a dead process from the
+        liveness watchdog, so the task stayed "running" forever.
+        """
+        for w in list(self.app.workers):
+            process = w.get("process")
+            if process is None or process.poll() is None:
+                w.pop("dead_since", None)
+                continue
+            since = w.setdefault("dead_since", now)
+            if now - since < self.DEAD_WORKER_GRACE_S or w.get("exit_synthesized"):
+                continue
+            w["exit_synthesized"] = True
+            logger.warning(
+                "Worker %s process exited %.0fs ago without a worker_exit event; "
+                "finishing it now", w.get("id", "?"), now - since,
+            )
+            self.app.worker_events.put({
+                "event": "worker_exit", "return_code": process.poll(),
+                "_pid": getattr(process, "pid", None), "_worker_id": w.get("id"),
+                "_token": w.get("token"),
+            })
 
     def _restart_wedged_worker(self, w: dict[str, Any], silent_for: float) -> None:
         app = self.app
