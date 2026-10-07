@@ -26,7 +26,11 @@ logger = logging.getLogger(__name__)
 
 
 def _fmt_hms(seconds: float) -> str:
-    s = max(0, int(seconds))
+    try:
+        s = max(0, int(seconds))
+    except (OverflowError, ValueError):
+        # NaN / Infinity from a hand-edited transcript or an older index.
+        s = 0
     h, rem = divmod(s, 3600)
     m, sec = divmod(rem, 60)
     return f"{h:02d}:{m:02d}:{sec:02d}"
@@ -73,9 +77,10 @@ class SearchDialog(tk.Toplevel):
         entry.pack(side="left", padx=(4, 4))
         entry.bind("<Return>", lambda _e: self._run_search())
         ttk.Button(topbar, text="Search", command=self._run_search).pack(side="left")
-        ttk.Button(topbar, text="Reindex now", command=self._reindex).pack(
-            side="left", padx=(12, 0)
+        self._reindex_btn = ttk.Button(
+            topbar, text="Reindex now", command=self._reindex
         )
+        self._reindex_btn.pack(side="left", padx=(12, 0))
         self.status_var = tk.StringVar(value="Indexing…")
         ttk.Label(topbar, textvariable=self.status_var, foreground="#666").pack(
             side="right"
@@ -126,6 +131,11 @@ class SearchDialog(tk.Toplevel):
     # -- indexing ----------------------------------------------------------
 
     def _reindex(self) -> None:
+        # Single flight: a second pass while one runs would only repeat the work.
+        if getattr(self, "_reindexing", False):
+            return
+        self._reindexing = True
+        self._reindex_btn.state(["disabled"])
         self.status_var.set("Indexing…")
 
         def _worker() -> None:
@@ -144,6 +154,8 @@ class SearchDialog(tk.Toplevel):
     def _finish_reindex(self, message: str) -> None:
         if self._closing:
             return
+        self._reindexing = False
+        self._reindex_btn.state(["!disabled"])
         self.status_var.set(message)
         # Re-run whatever query is already typed so a reindex (the
         # "Reindex now" button, a fresh transcription that just finished,

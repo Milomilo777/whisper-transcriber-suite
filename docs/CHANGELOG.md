@@ -264,6 +264,16 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Transcript search finds Persian, Arabic and CJK words.** Chinese and Japanese words inside
+  an unspaced sentence ("天气") are found through a trigram index, with a substring scan for
+  one- and two-character words. Arabic kaf, yeh and alef maksura match the Persian kaf and yeh, a word typed without the ZWNJ
+  matches the ZWNJ form, and accents, Arabic vowel marks, tatweel and digit forms are ignored
+  (the same folding runs on the index and on the query). Deleted transcripts leave the index on
+  the next pass, a BOM transcript is read normally, and an odd row (null/NaN/Infinity time, a
+  number as text) no longer stops the file from being indexed or breaks later searches. The
+  index rebuilds once after the update (`PRAGMA user_version`); a SQLite build without the
+  trigram tokenizer falls back to the substring scan. **Reindex now** is greyed out while a
+  pass runs.
 - **PDF transcripts keep Russian, Chinese, Japanese, Persian and Arabic text.** The PDF writer
   used reportlab's built-in Helvetica, so every non-Latin letter became a placeholder glyph and
   the text was lost. It now draws each character with the first system font that has it (Arial,

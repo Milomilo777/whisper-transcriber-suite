@@ -27,6 +27,7 @@ import logging
 import math
 import os
 import sqlite3
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -90,28 +91,85 @@ class SearchHit:
 # ---------------------------------------------------------------- index schema
 
 
-_FTS_SCHEMA = """
-CREATE VIRTUAL TABLE IF NOT EXISTS segments_fts USING fts5(
-    json_path UNINDEXED,
-    segment_index UNINDEXED,
-    text,
-    start_seconds UNINDEXED,
-    end_seconds UNINDEXED,
-    tokenize = 'unicode61 remove_diacritics 2'
-);
-CREATE TABLE IF NOT EXISTS embeddings (
-    json_path TEXT NOT NULL,
-    segment_index INTEGER NOT NULL,
-    vector BLOB NOT NULL,
-    dim INTEGER NOT NULL,
-    PRIMARY KEY (json_path, segment_index)
-);
-CREATE TABLE IF NOT EXISTS indexed_files (
-    json_path TEXT PRIMARY KEY,
-    mtime REAL,
-    size INTEGER
-);
-"""
+# Bump when the table layout or the text normalisation changes: an index with
+# another ``PRAGMA user_version`` is dropped once and rebuilt from the JSON files.
+SCHEMA_VERSION = 2
+
+# Characters that never help a search match: zero-width joiners (the Persian
+# half-space), tatweel, soft hyphen and directional marks.
+_IGNORED_CHARS = frozenset(
+    "\u200c\u200d\u200e\u200f\u061c\u00ad\u0640\ufeff"
+)
+# Arabic letter forms folded to the Persian ones; Arabic-Indic and Persian
+# digits folded to ASCII.
+_FOLD_TABLE = str.maketrans({
+    "\u0643": "\u06a9",  # Arabic kaf -> Persian keheh
+    "\u064a": "\u06cc",  # Arabic yeh -> Persian yeh
+    "\u0649": "\u06cc",  # alef maksura -> Persian yeh
+    **{chr(0x0660 + i): str(i) for i in range(10)},
+    **{chr(0x06F0 + i): str(i) for i in range(10)},
+})
+
+
+def _is_search_noise(ch: str) -> bool:
+    if ch in _IGNORED_CHARS:
+        return True
+    if unicodedata.category(ch) != "Mn":
+        return False
+    code = ord(ch)
+    # Latin/Greek/Cyrillic accents and Arabic vowel marks; other scripts keep
+    # their combining marks (they carry meaning there).
+    return (0x0300 <= code <= 0x036F or 0x064B <= code <= 0x065F
+            or code == 0x0670 or 0x06D6 <= code <= 0x06ED)
+
+
+def normalize_search_text(text: str) -> str:
+    """Fold *text* so that spelling variants compare equal.
+
+    Used for both the indexed text and the query, so the two always agree:
+    NFKC, accents and Arabic vowel marks removed, ZWNJ/tatweel removed,
+    Arabic kaf/yeh as Persian, digits as ASCII, case folded.
+    """
+    s = unicodedata.normalize("NFD", unicodedata.normalize("NFKC", text))
+    s = "".join(ch for ch in s if not _is_search_noise(ch))
+    s = unicodedata.normalize("NFC", s).translate(_FOLD_TABLE).casefold()
+    return unicodedata.normalize("NFKC", s)
+
+
+def _trigram_supported() -> bool:
+    """True iff this SQLite build has the FTS5 ``trigram`` tokenizer (3.34+)."""
+    probe = sqlite3.connect(":memory:")
+    try:
+        probe.execute("CREATE VIRTUAL TABLE t USING fts5(a, tokenize='trigram')")
+    except sqlite3.Error:
+        return False
+    finally:
+        probe.close()
+    return True
+
+
+def _schema_statements(trigram: bool) -> list[str]:
+    # ``norm`` is the searchable column (normalised text); ``text`` keeps the
+    # original for display. Trigram matches any substring of 3+ characters,
+    # which is what unspaced scripts (Chinese, Japanese) need; queries with a
+    # shorter token fall back to ``instr`` on ``norm``.
+    tokenizer = "trigram" if trigram else "unicode61"
+    return [
+        "CREATE VIRTUAL TABLE segments_fts USING fts5("
+        "json_path UNINDEXED, segment_index UNINDEXED, text UNINDEXED, norm, "
+        "start_seconds UNINDEXED, end_seconds UNINDEXED, "
+        f"tokenize = '{tokenizer}')",
+        "CREATE TABLE embeddings ("
+        "json_path TEXT NOT NULL, segment_index INTEGER NOT NULL, "
+        "vector BLOB NOT NULL, dim INTEGER NOT NULL, "
+        "PRIMARY KEY (json_path, segment_index))",
+        "CREATE TABLE indexed_files ("
+        "json_path TEXT PRIMARY KEY, mtime REAL, size INTEGER)",
+    ]
+
+
+def _schema_version(conn: sqlite3.Connection) -> int:
+    return int(conn.execute("PRAGMA user_version").fetchone()[0])
 
 
 def _open_db(path: Path | None = None) -> sqlite3.Connection:
@@ -119,9 +177,32 @@ def _open_db(path: Path | None = None) -> sqlite3.Connection:
     p.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(p), check_same_thread=False)
     conn.row_factory = sqlite3.Row
-    with conn:
-        conn.executescript(_FTS_SCHEMA)
+    if _schema_version(conn) == SCHEMA_VERSION:
+        return conn
+    # Fresh or old-layout index: rebuild once. The write lock is taken only
+    # on this path so a normal open never waits for a running reindex, and
+    # the version is re-read under the lock so two openers do not both reset.
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        if _schema_version(conn) != SCHEMA_VERSION:
+            for table in ("segments_fts", "embeddings", "indexed_files"):
+                conn.execute(f"DROP TABLE IF EXISTS {table}")
+            for stmt in _schema_statements(_trigram_supported()):
+                conn.execute(stmt)
+            conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        conn.close()
+        raise
     return conn
+
+
+def _uses_trigram(conn: sqlite3.Connection) -> bool:
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE name='segments_fts'"
+    ).fetchone()
+    return bool(row and row[0] and "trigram" in row[0])
 
 
 # ---------------------------------------------------------------- indexing
@@ -137,15 +218,44 @@ def _read_segments(json_path: str) -> list[dict[str, Any]] | None:
     usable segments (``[]``).
     """
     try:
-        with open(json_path, "r", encoding="utf-8") as f:
+        # utf-8-sig: editors on Windows save transcripts with a BOM.
+        with open(json_path, "r", encoding="utf-8-sig") as f:
             data = json.load(f)
     except OSError:
         return None
-    except (json.JSONDecodeError, UnicodeDecodeError):
+    except UnicodeDecodeError:
+        # Not UTF-8 (e.g. half-written or saved in another encoding): treat
+        # like an unreadable file, keep the old rows and retry next pass.
+        return None
+    except json.JSONDecodeError:
         return []
     if not isinstance(data, list):
         return []
     return [s for s in data if isinstance(s, dict)]
+
+
+def _segment_text(seg: dict[str, Any]) -> str:
+    """Segment text as a stripped string; non-scalar values count as empty."""
+    raw = seg.get("text")
+    if isinstance(raw, bool) or not isinstance(raw, (str, int, float)):
+        return ""
+    return str(raw).strip()
+
+
+def _finite_seconds(value: object, default: float) -> float:
+    """A finite float from a possibly malformed ``start``/``end`` field.
+
+    ``None``, text such as ``"abc"``/``"1,5"``, NaN, Infinity and integers too
+    large for a float all give *default*, so one odd row neither stops the
+    file from being indexed nor stores a NULL that breaks later queries.
+    """
+    if isinstance(value, bool):
+        return default
+    try:
+        out = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError):
+        return default
+    return out if math.isfinite(out) else default
 
 
 def _file_needs_reindex(conn: sqlite3.Connection, json_path: str) -> bool:
@@ -211,6 +321,7 @@ def index_file(
             logger.debug("Transcript read failed, keeping existing index: %s",
                          json_path)
             return 0
+        indexed = 0
         with conn:
             conn.execute(
                 "DELETE FROM segments_fts WHERE json_path=?", (json_path,)
@@ -219,16 +330,19 @@ def index_file(
                 "DELETE FROM embeddings WHERE json_path=?", (json_path,)
             )
             for idx, seg in enumerate(segments):
-                text = (seg.get("text") or "").strip()
+                text = _segment_text(seg)
                 if not text:
                     continue
-                start = float(seg.get("start", 0.0))
-                end = float(seg.get("end", start))
+                start = _finite_seconds(seg.get("start"), 0.0)
+                end = _finite_seconds(seg.get("end"), start)
                 conn.execute(
                     "INSERT INTO segments_fts (json_path, segment_index, "
-                    "text, start_seconds, end_seconds) VALUES (?, ?, ?, ?, ?)",
-                    (json_path, idx, text, start, end),
+                    "text, norm, start_seconds, end_seconds) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (json_path, idx, text, normalize_search_text(text),
+                     start, end),
                 )
+                indexed += 1
                 if embedder is not None:
                     vec = embedder.embed(text)
                     conn.execute(
@@ -237,7 +351,7 @@ def index_file(
                         (json_path, idx, _vector_to_blob(vec), len(vec)),
                     )
             _mark_file_indexed(conn, json_path)
-        return sum(1 for seg in segments if (seg.get("text") or "").strip())
+        return indexed
     finally:
         if owns_conn:
             conn.close()
@@ -273,9 +387,32 @@ def reindex_all_history(
                                 "Search index skipped %s: %s: %s",
                                 p, type(e).__name__, e,
                             )
+        prune_missing_files(db_conn)
     finally:
         db_conn.close()
     return total
+
+
+def prune_missing_files(conn: sqlite3.Connection) -> int:
+    """Drop every index row of a transcript JSON that no longer exists.
+
+    Clears ``segments_fts``, ``embeddings`` and ``indexed_files`` so a deleted
+    transcript stops being returned. Returns the number of files removed.
+    """
+    paths = {
+        str(r[0]) for r in conn.execute(
+            "SELECT json_path FROM indexed_files "
+            "UNION SELECT json_path FROM embeddings "
+            "UNION SELECT json_path FROM segments_fts"
+        )
+    }
+    missing = [p for p in paths if not os.path.exists(p)]
+    if missing:
+        with conn:
+            for p in missing:
+                for table in ("segments_fts", "embeddings", "indexed_files"):
+                    conn.execute(f"DELETE FROM {table} WHERE json_path=?", (p,))
+    return len(missing)
 
 
 # ---------------------------------------------------------------- query
@@ -321,45 +458,69 @@ def search(
             conn.close()
 
 
-def _fts_match_query(query: str) -> str:
-    """Build an FTS5 MATCH expression for a raw user query.
+def _fts_match_query(tokens: list[str]) -> str:
+    """Build an FTS5 MATCH expression from already-normalised query tokens.
 
-    Every whitespace-separated token is quoted, so FTS5 operators the user
-    may have typed (``:``, ``*``, ``OR``, ``NEAR`` ...) are treated as
-    literal text instead of changing the query or raising
-    ``sqlite3.OperationalError``. Joining quoted tokens with a space is
-    FTS5's implicit AND: typing "cat dog" finds segments containing BOTH
-    words, not only the exact phrase "cat dog".
+    Every token is quoted, so FTS5 operators the user may have typed (``:``,
+    ``*``, ``OR``, ``NEAR`` ...) are treated as literal text instead of
+    changing the query or raising ``sqlite3.OperationalError``. Joining quoted
+    tokens with a space is FTS5's implicit AND: typing "cat dog" finds
+    segments containing BOTH words, not only the exact phrase "cat dog".
     """
-    return " ".join(
-        '"' + token.replace('"', '""') + '"' for token in query.split()
-    )
+    return " ".join('"' + token.replace('"', '""') + '"' for token in tokens)
 
 
 def _fts_query(conn: sqlite3.Connection, query: str, limit: int) -> list[SearchHit]:
-    match = _fts_match_query(query)
-    if not match:
+    tokens = normalize_search_text(query).split()
+    if not tokens:
         return []
-    cur = conn.execute(
-        "SELECT json_path, segment_index, text, start_seconds, end_seconds, "
-        "bm25(segments_fts) AS rank FROM segments_fts "
-        "WHERE segments_fts MATCH ? ORDER BY rank LIMIT ?",
-        (match, limit),
+    trigram = _uses_trigram(conn)
+    # The trigram index answers substring queries of 3+ characters; shorter
+    # tokens (a two-character Chinese word) and a build without trigram use a
+    # plain substring scan of the normalised text instead.
+    indexed = [t for t in tokens if trigram and len(t) >= 3]
+    scanned = [t for t in tokens if not (trigram and len(t) >= 3)]
+    where: list[str] = []
+    params: list[Any] = []
+    if indexed:
+        where.append("segments_fts MATCH ?")
+        params.append(_fts_match_query(indexed))
+    for t in scanned:
+        where.append("instr(norm, ?) > 0")
+        params.append(t)
+    # COALESCE: rows written by an older build may hold NULL timestamps.
+    select = (
+        "SELECT json_path, segment_index, text, length(norm) AS nlen, "
+        "COALESCE(start_seconds, 0.0) AS start_seconds, "
+        "COALESCE(end_seconds, 0.0) AS end_seconds"
     )
-    rows = cur.fetchall()
+    if indexed:
+        sql = (f"{select}, bm25(segments_fts) AS rank FROM segments_fts "
+               f"WHERE {' AND '.join(where)} ORDER BY rank LIMIT ?")
+    else:
+        sql = (f"{select} FROM segments_fts WHERE {' AND '.join(where)} "
+               "ORDER BY nlen, json_path, segment_index LIMIT ?")
+    rows = conn.execute(sql, (*params, limit)).fetchall()
+    qlen = sum(len(t) for t in tokens)
     out: list[SearchHit] = []
     for r in rows:
-        out.append(SearchHit(
-            json_path=str(r["json_path"]),
-            segment_index=int(r["segment_index"]),
-            text=str(r["text"]),
+        if indexed:
             # bm25 is smaller-is-better and (in FTS5) NEGATIVE, so the old
             # ``max(0.0, rank)`` clamped every hit to exactly 1.0. The
             # logistic map is strictly decreasing for either sign and stays
             # inside (0, 1); the clamp only guards math.exp overflow.
-            score=1.0 / (1.0 + math.exp(min(float(r["rank"]), 500.0))),
-            start_seconds=float(r["start_seconds"]),
-            end_seconds=float(r["end_seconds"]),
+            score = 1.0 / (1.0 + math.exp(min(float(r["rank"]), 500.0)))
+        else:
+            # No bm25 without MATCH: score by how much of the segment the
+            # query covers (shorter segment = tighter match).
+            score = qlen / (qlen + int(r["nlen"]))
+        out.append(SearchHit(
+            json_path=str(r["json_path"]),
+            segment_index=int(r["segment_index"]),
+            text=str(r["text"]),
+            score=score,
+            start_seconds=_finite_seconds(r["start_seconds"], 0.0),
+            end_seconds=_finite_seconds(r["end_seconds"], 0.0),
         ))
     return out
 
@@ -374,7 +535,8 @@ def _semantic_query(
     qnorm = math.sqrt(sum(x * x for x in qvec)) or 1.0
     cur = conn.execute(
         "SELECT e.json_path, e.segment_index, e.vector, e.dim, s.text, "
-        "s.start_seconds, s.end_seconds FROM embeddings e "
+        "COALESCE(s.start_seconds, 0.0) AS start_seconds, "
+        "COALESCE(s.end_seconds, 0.0) AS end_seconds FROM embeddings e "
         "JOIN segments_fts s ON e.json_path = s.json_path "
         "AND e.segment_index = s.segment_index"
     )
@@ -399,8 +561,8 @@ def _semantic_query(
             segment_index=int(r["segment_index"]),
             text=str(r["text"]),
             score=float(score),
-            start_seconds=float(r["start_seconds"]),
-            end_seconds=float(r["end_seconds"]),
+            start_seconds=_finite_seconds(r["start_seconds"], 0.0),
+            end_seconds=_finite_seconds(r["end_seconds"], 0.0),
         ))
     hits.sort(key=lambda h: h.score, reverse=True)
     return hits[:limit]

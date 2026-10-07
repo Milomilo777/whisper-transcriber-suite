@@ -262,3 +262,35 @@ def test_open_selected_with_no_selection_is_a_noop():
             dialog._on_close()
     finally:
         root.destroy()
+
+
+def test_reindex_is_single_flight_and_button_follows(monkeypatch):
+    import app.dialogs.search_dialog as sd
+
+    started = []
+    monkeypatch.setattr(
+        "core._threads.safe_thread",
+        lambda target, name=None: started.append(name),
+    )
+
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        dialog = sd.SearchDialog.__new__(sd.SearchDialog)
+        tk.Toplevel.__init__(dialog, root)
+        dialog._build_widgets()
+        dialog._closing = False
+        dialog.withdraw()
+        try:
+            dialog._reindex()
+            dialog._reindex()  # second click while the first pass runs
+            assert started == ["search-reindex"]
+            assert dialog._reindex_btn.instate(["disabled"])
+            dialog._finish_reindex("done")
+            assert not dialog._reindex_btn.instate(["disabled"])
+            dialog._reindex()
+            assert started == ["search-reindex", "search-reindex"]
+        finally:
+            dialog._on_close()
+    finally:
+        root.destroy()
