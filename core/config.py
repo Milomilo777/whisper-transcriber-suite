@@ -1061,6 +1061,22 @@ _PRIVACY_CLOSED: dict[str, bool] = {
 #: config, which must keep reaching users who never pinned it.
 _DISK_ONLY_KEYS: frozenset[str] = frozenset({"model_catalog", "config_url"})
 
+#: _catalog_digest of every ``model_catalog`` a released version shipped: the
+#: built-in default ``{}`` and each version of the online catalog
+#: (``configuration.json`` at the repo root is the master copy of the hosted
+#: file). Before ``model_catalog`` became disk-only, every save wrote the
+#: merged catalog into config.json, where it then shadowed every later fix to
+#: the online one. A copy equal to one of these was never edited by hand and
+#: is removed (_drop_shipped_model_catalog); an edited copy stays. Older
+#: versions still in use keep pinning whatever the hosted file holds, so a
+#: new online catalog adds its digest here (a test checks configuration.json).
+_SHIPPED_MODEL_CATALOG_DIGESTS: frozenset[str] = frozenset({
+    # DEFAULT_CONFIG["model_catalog"] (every version since v1.3.8)
+    "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    # configuration.json, 18 models (2026-06-13 to now)
+    "c8a2673b27d8160b6ef8222d8627d93193ea768ce15a2946dd0d754e7e366c0b",
+})
+
 
 def _remember_last_good(data: dict[str, Any]) -> None:
     global _LAST_GOOD
@@ -1277,6 +1293,27 @@ def _write_disk_dict(path: str, data: dict[str, Any]) -> None:
         _remember_last_good(data)
 
 
+def _back_up_config(path: str) -> bool:
+    """Keep one rotating backup of config.json as it is now (``.bak``).
+
+    Call only for a file that parsed, so a damaged one never replaces a good
+    backup. Goes through a temp file so a cut-off copy never leaves a torn
+    ``.bak``. A failure is logged and returns False; a save goes ahead anyway.
+    """
+    bak_tmp = path + ".bak.tmp"
+    try:
+        shutil.copy2(path, bak_tmp)
+        os.replace(bak_tmp, path + ".bak")
+    except OSError as e:
+        logger.warning("Could not back up config.json: %s", e)
+        try:
+            os.unlink(bak_tmp)
+        except OSError:
+            pass
+        return False
+    return True
+
+
 def _privacy_evidence_lost() -> bool:
     """True when the saved privacy choices cannot be known.
 
@@ -1425,6 +1462,87 @@ def update_config(fn: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
             return data
 
 
+def _integral_floats_as_int(value: Any) -> Any:
+    """``value`` with every whole float (``3.0``) as an int (``3``)."""
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, dict):
+        return {k: _integral_floats_as_int(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_integral_floats_as_int(v) for v in value]
+    return value
+
+
+def _catalog_digest(catalog: Any) -> str | None:
+    """SHA-256 of ``catalog`` as canonical JSON (sorted keys, no spaces).
+
+    Key order, indentation and number spelling (``3`` / ``3.0``, ``0.075`` /
+    ``7.5e-2``) in the file do not change it. ``None`` for a value JSON
+    cannot hold.
+    """
+    try:
+        text = json.dumps(
+            _integral_floats_as_int(catalog), sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False, allow_nan=False,
+        )
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    except (TypeError, ValueError, RecursionError):
+        return None
+
+
+def _is_shipped_catalog(data: dict[str, Any]) -> bool:
+    return (
+        "model_catalog" in data
+        and _catalog_digest(data["model_catalog"]) in _SHIPPED_MODEL_CATALOG_DIGESTS
+    )
+
+
+#: Config paths whose stale catalog this process already tried to remove:
+#: one attempt per launch, so a file that cannot be changed costs no lock
+#: wait, backup or warning on every later load_config.
+_CATALOG_CLEANUP_TRIED: set[str] = set()
+_CATALOG_CLEANUP_LOCK_SECONDS = 0.2
+
+
+def _drop_shipped_model_catalog(local: dict[str, Any]) -> dict[str, Any]:
+    """``local`` without a ``model_catalog`` that is an unedited shipped copy.
+
+    The key is also removed from config.json in one locked transaction,
+    only once the file as it was is kept as ``config.json.bak``. When the
+    file cannot be changed right now (busy, unreadable, no backup possible)
+    the copy is still ignored for this session and the next launch tries
+    again. Not while a damaged file is kept as ``.corrupt``: the ``.bak``
+    then holds the only copy of the privacy switches it had. A catalog with
+    any edit is not a shipped copy and stays where it is.
+    """
+    if not _is_shipped_catalog(local):
+        return local
+    local = {k: v for k, v in local.items() if k != "model_catalog"}
+    path = config_path()
+    key = os.path.abspath(path)
+    if key in _CATALOG_CLEANUP_TRIED or _privacy_evidence_lost():
+        return local
+    _CATALOG_CLEANUP_TRIED.add(key)
+    try:
+        with _SAVE_LOCK, _config_file_lock(path, _CATALOG_CLEANUP_LOCK_SECONDS):
+            data = _read_for_write(path)
+            # Another process may have removed or edited it since the read.
+            if data is None or not _is_shipped_catalog(data):
+                return local
+            if not _back_up_config(path):
+                return local
+            del data["model_catalog"]
+            _write_disk_dict(path, data)
+    except (OSError, ValueError) as e:
+        logger.warning("Could not remove the stale model catalog copy from config.json: %s", e)
+        return local
+    logger.info(
+        "Removed an unedited copy of a shipped model catalog from config.json "
+        "(the previous file is config.json.bak)"
+    )
+    return local
+
+
 def _read_local_config() -> dict[str, Any]:
     """Read the user's ``config.json`` and return it as a dict.
 
@@ -1520,6 +1638,9 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     # The read could not know the privacy switches (a damaged file put back
     # from its backup, or no readable file): they read closed.
     read_closed = bool(getattr(_READ_STATE, "closed", False))
+    # Older versions pinned the shipped model catalog into config.json, where
+    # it shadows every later fix to the online one: drop an unedited copy.
+    local = _drop_shipped_model_catalog(local)
 
     # The online config URL itself can be overridden locally (an expert can
     # point at a staging URL); otherwise the hard-coded default is used.
@@ -1980,20 +2101,7 @@ def save_config(config: dict[str, Any]) -> None:
                         f"Refused to save {len(to_persist)} settings over "
                         f"{len(on_disk)} in {path}; the file is unchanged",
                     )
-                # Keep one rotating backup of the last good state (only a
-                # file that parsed, so a damaged one never replaces a good
-                # backup), through a temp file so a cut-off copy never
-                # leaves a torn .bak. Best-effort: never blocks the save.
-                bak_tmp = path + ".bak.tmp"
-                try:
-                    shutil.copy2(path, bak_tmp)
-                    os.replace(bak_tmp, path + ".bak")
-                except OSError as e:
-                    logger.warning("Could not back up config.json: %s", e)
-                    try:
-                        os.unlink(bak_tmp)
-                    except OSError:
-                        pass
+                _back_up_config(path)
             _write_disk_dict(path, to_persist)
         if isinstance(config, LoadedConfig):
             config._config_baseline = snapshot

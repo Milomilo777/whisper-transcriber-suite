@@ -271,6 +271,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   save after each job and at exit. The online model catalog is no longer copied into
   `config.json`, so a corrected entry reaches every user; a hand-written `config_url` now survives
   saves too.
+- **Old copies of the model catalog are cleaned up.** Earlier versions copied the shipped model
+  catalog into `config.json`, where it hid later fixes. On the first launch, a copy identical to
+  a catalog a release shipped is removed (the previous file stays as `config.json.bak`); a
+  catalog with any hand edit is kept.
 - **Privacy switches fail closed.** A damaged or hand-edited value of Work offline, usage
   statistics or the update check now reads as offline / off instead of on, `"true"` and `"false"`
   strings are understood, and a switch whose saved choice was lost with a damaged file stays
