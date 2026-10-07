@@ -51,14 +51,21 @@ Design constraints honoured here:
     ``app/services`` exposes pure ``build_*`` seams).
   * Optional shared-secret auth via ``X-Auth-Token`` header or ``?token=``.
   * A hard max-upload-size cap enforced before any bytes are buffered.
+  * Browser guards: a request from another web origin is refused, JSON
+    POSTs must say ``application/json`` (a cross-site form cannot), and
+    without a token only a Host that names this machine directly is served
+    (a DNS-rebinding page sends its own domain name).
 """
 from __future__ import annotations
 
 import hmac
+import ipaddress
 import json
 import logging
 import math
 import os
+import re
+import socket
 import ssl
 import time
 import urllib.parse
@@ -134,6 +141,21 @@ OPENAI_RESPONSE_FORMATS: tuple[str, ...] = (
 # The synchronous OpenAI route polls its job for a terminal state at this
 # cadence while the HTTP handler thread waits.
 _OPENAI_POLL_INTERVAL_S = 0.1
+
+# Socket timeout for every read / write on a client connection. Without it an
+# idle or stalled client pins its handler thread forever. Generous, because a
+# slow LAN upload still sends something well within a minute.
+_HANDLER_TIMEOUT_S = 60.0
+
+# The HTTPS handshake runs on the connection's own thread with this timeout,
+# so a client that connects and never speaks TLS cannot hold anything up.
+_TLS_HANDSHAKE_TIMEOUT_S = 10.0
+
+# An early reject (401 / 403 / 404) reads at most this much of the declared
+# body to keep a keep-alive connection in sync; a larger body is not read at
+# all (the connection is closed), so an unauthenticated client cannot make
+# the server swallow a multi-GB upload before it hears "no".
+_EARLY_REJECT_DRAIN_BYTES = 64 * 1024
 
 
 # --- pure parsing helpers (unit-testable, no socket needed) ------------------
@@ -216,6 +238,127 @@ def token_ok(expected: str, header_token: str | None,
         if hmac.compare_digest(cand_b, exp_b):
             return True
     return False
+
+
+# One ``key=value`` pair of a query string inside a logged request line.
+_QUERY_PAIR_RE = re.compile(r"([?&;])([^=&;\s'\"]+)=([^&;\s'\"]*)")
+
+
+def redact_secrets(text: str) -> str:
+    """Replace the value of every ``token`` query parameter in ``text``.
+
+    The access token may travel as ``?token=`` (the page's download links
+    carry it), and ``http.server`` logs the whole request line. The key is
+    compared after percent-decoding because ``parse_qs`` decodes it too, so
+    ``?%74oken=`` authenticates just like ``?token=``.
+    """
+    def _sub(m: re.Match[str]) -> str:
+        if urllib.parse.unquote_plus(m.group(2)).strip().lower() == "token":
+            return f"{m.group(1)}{m.group(2)}=[redacted]"
+        return m.group(0)
+
+    return _QUERY_PAIR_RE.sub(_sub, text)
+
+
+def is_json_content_type(content_type: str | None) -> bool:
+    """True for ``application/json`` (any parameters, any case).
+
+    A cross-site HTML form or a CORS "simple" request can only send
+    ``text/plain``, ``application/x-www-form-urlencoded`` or
+    ``multipart/form-data`` without a preflight, so requiring the JSON type
+    on JSON POSTs keeps another website from creating jobs.
+    """
+    if not content_type:
+        return False
+    return content_type.split(";", 1)[0].strip().lower() == "application/json"
+
+
+def _split_host_port(value: str, default_port: int) -> tuple[str, int] | None:
+    """Parse a ``Host`` value / origin netloc into ``(host, port)``.
+
+    The host comes back lower-cased, without IPv6 brackets or a trailing dot.
+    ``None`` for anything malformed (user info, a path, a bad port).
+    """
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        split = urllib.parse.urlsplit("//" + value)
+        host = split.hostname
+        port = split.port
+    except ValueError:
+        return None
+    if (not host or split.username is not None or split.path
+            or split.query or split.fragment):
+        return None
+    return host.rstrip("."), (port if port is not None else default_port)
+
+
+def own_host_names() -> frozenset[str]:
+    """This machine's names a browser may use to reach the server directly.
+
+    The computer name and its ``.local`` (mDNS) form. ``getfqdn()`` is
+    deliberately not used: it can block on a reverse DNS lookup.
+    """
+    try:
+        name = socket.gethostname()
+    except OSError:
+        return frozenset()
+    name = (name or "").strip().lower().rstrip(".")
+    if not name:
+        return frozenset()
+    short = name.split(".", 1)[0]
+    return frozenset({name, short, short + ".local"})
+
+
+def host_allowed(host_header: str | None, own_names: frozenset[str]) -> bool:
+    """DNS-rebinding guard: does ``Host`` name this machine directly?
+
+    Accepted: any IP literal (a rebinding attack needs a DNS name the
+    attacker controls), ``localhost`` and this computer's own names. A
+    missing ``Host`` is accepted too: browsers always send one, so its
+    absence means a non-browser client.
+    """
+    if host_header is None:
+        return True
+    parsed = _split_host_port(host_header, 0)
+    if parsed is None:
+        return False
+    name = parsed[0]
+    try:
+        ipaddress.ip_address(name)
+        return True
+    except ValueError:
+        pass
+    return name == "localhost" or name in own_names
+
+
+def origin_allowed(origin: str | None, host_header: str | None, *,
+                   https: bool) -> bool:
+    """Cross-site guard: a browser request must come from the server itself.
+
+    Browsers send ``Origin`` on every cross-origin request and on POSTs; a
+    request without one comes from a non-browser client (curl, an SDK) or a
+    plain same-origin navigation. With ``Origin`` present, its scheme must
+    match the server's and its host and port must equal ``Host``.
+    ``Origin: null`` (sandboxed frames, local files) is refused.
+    """
+    if origin is None:
+        return True
+    origin = origin.strip()
+    if not origin or origin.lower() == "null":
+        return False
+    try:
+        split = urllib.parse.urlsplit(origin)
+    except ValueError:
+        return False
+    scheme = split.scheme.lower()
+    if scheme not in ("http", "https") or (scheme == "https") != https:
+        return False
+    default_port = 443 if https else 80
+    theirs = _split_host_port(split.netloc, default_port)
+    ours = _split_host_port(host_header or "", default_port)
+    return theirs is not None and ours is not None and theirs == ours
 
 
 def parse_multipart_filename(content_type: str | None) -> str:
@@ -682,7 +825,12 @@ class JobHTTPServer(ThreadingHTTPServer):
     """ThreadingHTTPServer carrying the shared JobManager + auth token."""
 
     daemon_threads = True
-    allow_reuse_address = True
+    # POSIX: SO_REUSEADDR only lets a restart rebind past TIME_WAIT. Windows:
+    # it lets a SECOND socket bind a port that is already listening, so two
+    # servers would share it silently. There a plain bind already rebinds past
+    # TIME_WAIT, and server_bind() asks for an exclusive one (the same split
+    # as the standard library's socket.create_server).
+    allow_reuse_address = os.name != "nt"
 
     def __init__(self, server_address: tuple[str, int],
                  manager: JobManager, *, token: str = "",
@@ -693,11 +841,43 @@ class JobHTTPServer(ThreadingHTTPServer):
         self.max_upload_bytes = (
             min(max(1, max_upload_mb), _ABSOLUTE_MAX_UPLOAD_MB) * 1024 * 1024
         )
+        # TLS is applied per connection in finish_request(), on that
+        # connection's own thread: wrapping the listening socket ran every
+        # handshake inside accept() on the single serve thread, with no
+        # timeout, so one idle TCP connection froze the whole server.
+        self.ssl_context = ssl_context
+        self.own_names = own_host_names()
         super().__init__(server_address, JobRequestHandler)
-        if ssl_context is not None:
-            # Wrap the listening socket before serve_forever runs, so every
-            # accepted connection is TLS from the first byte.
-            self.socket = ssl_context.wrap_socket(self.socket, server_side=True)
+
+    def server_bind(self) -> None:
+        exclusive = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
+        if os.name == "nt" and exclusive is not None:
+            self.socket.setsockopt(socket.SOL_SOCKET, exclusive, 1)
+        super().server_bind()
+
+    def finish_request(self, request: Any, client_address: Any) -> None:
+        """Handle one connection; for HTTPS, do the handshake here first.
+
+        Runs on the connection's own thread (ThreadingMixIn), so a slow or
+        silent client only ever delays itself.
+        """
+        if self.ssl_context is None:
+            super().finish_request(request, client_address)
+            return
+        request.settimeout(_TLS_HANDSHAKE_TIMEOUT_S)
+        try:
+            tls_sock = self.ssl_context.wrap_socket(request, server_side=True)
+        except (OSError, ValueError) as e:
+            # A plain-HTTP request, a port scan or a client that never spoke
+            # TLS. wrap_socket closed its own socket; the caller closes the
+            # (now detached) plain one.
+            logger.info("server: TLS handshake with %s failed: %s",
+                        client_address[0] if client_address else "?", e)
+            return
+        try:
+            super().finish_request(tls_sock, client_address)
+        finally:
+            self.shutdown_request(tls_sock)
 
 
 class JobRequestHandler(BaseHTTPRequestHandler):
@@ -705,6 +885,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
 
     server_version = "WhisperTranscriberSuiteServer/" + __version__
     protocol_version = "HTTP/1.1"
+    # StreamRequestHandler applies this to the connection socket.
+    timeout = _HANDLER_TIMEOUT_S
 
     # narrow the loosely-typed server attr for the type checker
     @property
@@ -714,12 +896,30 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         return srv
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
-        logger.info("%s - %s", self.address_string(), format % args)
+        # The request line can carry ?token= (download links do).
+        logger.info("%s - %s", self.address_string(),
+                    redact_secrets(format % args))
 
     # --- shared helpers ------------------------------------------------------
 
     def _route(self) -> Route:
         return parse_route(self.command, self.path)
+
+    def _browser_guard_problem(self) -> str:
+        """Why this request must be refused as a browser attack, or ""."""
+        srv = self._srv
+        host = self.headers.get("Host")
+        # With a token a rebinding page still cannot authenticate, and a
+        # reverse proxy may forward its own name; without one, Host is the
+        # only thing that tells the page's domain apart from this machine.
+        if not srv.token and not host_allowed(host, srv.own_names):
+            return ("unknown Host header: open the server by its IP address, "
+                    "localhost or this computer's name, or set an access "
+                    "password")
+        if not origin_allowed(self.headers.get("Origin"), host,
+                              https=srv.ssl_context is not None):
+            return "cross-origin request refused"
+        return ""
 
     def _bearer_token(self) -> str | None:
         """The OpenAI-style ``Authorization: Bearer <token>`` value, if any.
@@ -806,6 +1006,10 @@ class JobRequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         route = self._route()
+        problem = self._browser_guard_problem()
+        if problem:
+            self._send_error_json(HTTPStatus.FORBIDDEN, problem)
+            return
         if route.name == "root":
             self._serve_index()
             return
@@ -914,6 +1118,14 @@ class JobRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         route = self._route()
+        problem = self._browser_guard_problem()
+        if problem:
+            if route.name == "openai_transcriptions":
+                self._reject_openai_post_early(
+                    HTTPStatus.FORBIDDEN, problem, code="forbidden")
+            else:
+                self._reject_post_early(HTTPStatus.FORBIDDEN, problem)
+            return
         if not self._authed(route):
             # Drain the declared body before replying. Under HTTP/1.1
             # keep-alive an unread request body desyncs the connection —
@@ -976,21 +1188,26 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         if length:
             self._drain_body(length)
 
+    def _drain_small_body(self) -> None:
+        """Before an early reject: read a small declared body, never a big one.
+
+        A small body is drained so the client reads the reply cleanly (the
+        historical 401-on-POST keep-alive desync). A body over
+        :data:`_EARLY_REJECT_DRAIN_BYTES` is left unread: the reply goes out
+        with Connection: close and the connection ends, instead of the server
+        swallowing a client's (possibly endless) upload before saying no.
+        """
+        length = self._declared_length()
+        if 0 < length <= _EARLY_REJECT_DRAIN_BYTES:
+            self._drain_body(length)
+
     def _reject_post_early(self, status: int, message: str) -> None:
         """Reject a POST before reading its body, keeping HTTP/1.1 in sync.
 
-        Drains the declared Content-Length, then replies with
-        Connection: close. Without the drain, the unread body would desync
-        a keep-alive connection (the historical 401-on-POST bug).
+        Drains a small declared body (see :meth:`_drain_small_body`), then
+        replies with Connection: close.
         """
-        length = self._declared_length()
-        if length:
-            if length > self._srv.max_upload_bytes:
-                # Don't read an oversized body just to discard it on an early
-                # reject — close immediately instead.
-                self._send_error_json_close(status, message)
-                return
-            self._drain_body(length)
+        self._drain_small_body()
         self._send_error_json_close(status, message)
 
     def _reject_openai_post_early(
@@ -1003,13 +1220,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         code: str | None = None,
     ) -> None:
         """OpenAI-envelope twin of :meth:`_reject_post_early`."""
-        length = self._declared_length()
-        if length:
-            if length > self._srv.max_upload_bytes:
-                self._send_openai_error_close(
-                    status, message, err_type=err_type, param=param, code=code)
-                return
-            self._drain_body(length)
+        self._drain_small_body()
         self._send_openai_error_close(
             status, message, err_type=err_type, param=param, code=code)
 
@@ -1150,8 +1361,11 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 os.unlink(tmp_path)
             except OSError:
                 pass
+            # The OSError text names local paths; the client gets a plain
+            # message and the detail goes to the log.
+            logger.warning("server: could not receive an upload: %s", e)
             raise _UploadError(
-                HTTPStatus.BAD_REQUEST, f"could not read upload: {e}") from e
+                HTTPStatus.BAD_REQUEST, "could not read the upload") from e
         except _UploadError:
             try:
                 os.unlink(tmp_path)
@@ -1202,8 +1416,10 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                     upload.file_start, upload.file_end)
             except OSError as e:
                 manager.discard(job_id)
+                logger.warning("server: could not save upload %s: %s",
+                               job_id, e)
                 self._send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR,
-                                      f"could not save upload: {e}")
+                                      "could not save the upload on the server")
                 return
             manager.enqueue_upload(job_id)
             self._send_json(HTTPStatus.ACCEPTED, {"job_id": job_id})
@@ -1313,6 +1529,14 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         body = self._read_json_body()
         if body is None:
             return  # error already sent (JSON cap exceeded)
+        if not is_json_content_type(self.headers.get("Content-Type")):
+            # A cross-site form or fetch can send text/plain without a CORS
+            # preflight; application/json it cannot.
+            self._send_error_json(
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                "send JSON with Content-Type: application/json, "
+                "or a file as multipart/form-data")
+            return
         manager = self._srv.manager
         try:
             data = json.loads(body.decode("utf-8") or "{}")
@@ -1438,9 +1662,11 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                              upload.file_start, upload.file_end)
         except OSError as e:
             manager.discard(job_id)
+            logger.warning("server: could not save upload %s: %s", job_id, e)
             self._send_openai_error(
                 HTTPStatus.INTERNAL_SERVER_ERROR,
-                f"could not save upload: {e}", err_type="server_error")
+                "could not save the upload on the server",
+                err_type="server_error")
             return
         manager.enqueue_upload(job_id)
         job = manager.get(job_id)
@@ -1496,9 +1722,11 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             with open(path, "r", encoding="utf-8") as f:
                 segments = json.load(f)
         except (OSError, ValueError) as e:
+            logger.warning("server: could not read the transcript of job %s: %s",
+                           job.job_id, e)
             self._send_openai_error(
                 HTTPStatus.INTERNAL_SERVER_ERROR,
-                f"could not read the transcript: {e}",
+                "could not read the transcript",
                 err_type="server_error")
             return
         if not isinstance(segments, list):

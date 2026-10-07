@@ -233,6 +233,36 @@
     return t ? (sep + "token=" + encodeURIComponent(t)) : "";
   }
 
+  // A shared link may carry the password as ?token=...: move it into the
+  // password box and drop it from the address bar, so it does not stay in
+  // the browser history or travel along when the address is copied. It is
+  // kept for this tab only (sessionStorage), so a reload still works.
+  var TOKEN_KEY = "wts-token";
+  function rememberToken() {
+    try {
+      var t = tokenVal();
+      if (t) { sessionStorage.setItem(TOKEN_KEY, t); } else { sessionStorage.removeItem(TOKEN_KEY); }
+    } catch (e) { /* storage disabled: the box still works */ }
+  }
+  function adoptToken() {
+    var box = document.getElementById("token");
+    var params = null;
+    try { params = new URLSearchParams(location.search); } catch (e) { params = null; }
+    var fromUrl = params ? params.get("token") : null;
+    if (fromUrl !== null) {
+      box.value = fromUrl.trim();
+      params.delete("token");
+      var rest = params.toString();
+      try {
+        history.replaceState(null, "", location.pathname + (rest ? "?" + rest : "") + location.hash);
+      } catch (e) { /* an old browser keeps the address as it was */ }
+    } else {
+      try { box.value = sessionStorage.getItem(TOKEN_KEY) || box.value; } catch (e) { /* storage disabled */ }
+    }
+    rememberToken();
+    box.addEventListener("input", rememberToken);
+  }
+
   // ---- view routing (hash based) ----
   var views = ["submit", "jobs", "result"];
   var jobsTimer = null;
@@ -688,6 +718,7 @@
       setTimeout(function () { btn.textContent = orig; }, 1500);
     });
   });
+  adoptToken();
   loadOptions();
   showView((location.hash || "#submit").slice(1));
 })();

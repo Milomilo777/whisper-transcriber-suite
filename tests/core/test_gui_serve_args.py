@@ -25,6 +25,10 @@ def test_serve_port_rejects_unbindable_values(bad: str):
         parser.parse_args(["serve", "--port", bad])
 
 
+# Neutral saved access password for the config-fallback tests.
+_SAVED = "letmein"
+
+
 def _install_fake_run_server(monkeypatch):
     import core.server as server_mod
 
@@ -110,6 +114,33 @@ def test_cli_serve_falls_back_to_config_values(monkeypatch):
     assert captured["host"] == "127.0.0.1"
     assert captured["port"] == 9001
     assert captured["max_upload_mb"] == 256
+
+
+def test_cli_serve_falls_back_to_config_token(monkeypatch):
+    """The app's Access password protects ``serve`` too (``--lan`` above all);
+    it used to be ignored unless ``--token`` was passed again."""
+    captured = _install_fake_run_server(monkeypatch)
+    monkeypatch.setattr(
+        "core.config.load_config",
+        lambda: {"server_port": 8765, "server_token": _SAVED},
+    )
+
+    args = gui._build_argparser().parse_args(["serve", "--lan"])
+    assert gui._cli_serve(args) == 0
+    assert captured["token"] == _SAVED
+    assert captured["host"] == "0.0.0.0"
+
+
+def test_cli_serve_explicit_empty_token_overrides_config(monkeypatch):
+    captured = _install_fake_run_server(monkeypatch)
+    monkeypatch.setattr(
+        "core.config.load_config",
+        lambda: {"server_port": 8765, "server_token": _SAVED},
+    )
+
+    args = gui._build_argparser().parse_args(["serve", "--token", ""])
+    assert gui._cli_serve(args) == 0
+    assert captured["token"] == ""
 
 
 def test_cli_serve_lan_binds_all_interfaces(monkeypatch):

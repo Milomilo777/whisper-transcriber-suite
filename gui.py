@@ -250,8 +250,14 @@ def _cli_serve(args: argparse.Namespace) -> int:
         args.webhook if args.webhook is not None
         else str(cfg.get("server_webhook_url", ""))
     )
+    # The app's Access password protects the command-line server too (a
+    # `serve --lan` used to run open even with a password set in the app).
+    token = (
+        args.token if args.token is not None
+        else str(cfg.get("server_token", "") or "")
+    ).strip()
     return run_server(
-        host=host, port=port, token=args.token or "",
+        host=host, port=port, token=token,
         max_upload_mb=max_upload_mb,
         https=https, webhook_url=webhook_url,
     )
@@ -331,9 +337,11 @@ def _build_argparser() -> argparse.ArgumentParser:
              "because this is what triggers the Windows firewall prompt",
     )
     sv.add_argument(
-        "--token", default="",
+        "--token", default=None,
         help="optional shared secret; clients must send it via the "
-             "X-Auth-Token header or ?token= query",
+             "X-Auth-Token header or ?token= query (default: config "
+             "server_token, the app's Access password; --token \"\" "
+             "serves without one)",
     )
     sv.add_argument(
         "--max-upload-mb", type=int, default=None, dest="max_upload_mb",

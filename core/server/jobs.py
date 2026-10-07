@@ -33,8 +33,10 @@ import json
 import logging
 import os
 import queue
+import re
 import shutil
 import socket
+import subprocess
 import threading
 import time
 import urllib.parse
@@ -618,7 +620,9 @@ class JobManager:
             self._fire_webhook(job)
         except Exception as e:  # noqa: BLE001
             logger.exception("job %s failed", job.job_id)
-            job.error = str(e)
+            # job.error reaches web clients and the webhook: no local paths
+            # or command lines there. The local log and history keep it all.
+            job.error = public_error_text(e)
             self._set_status(job, STATUS_ERROR)
             self._finish_history(
                 history_db, history_id, job, time.time() - started,
@@ -757,7 +761,9 @@ class JobManager:
             try:
                 sender(url, payload)
             except Exception:  # noqa: BLE001 - never affect job processing
-                logger.exception("server: webhook POST to %s failed", url)
+                # The webhook URL often embeds a secret: log its origin only.
+                logger.exception("server: webhook POST to %s failed",
+                                 redact_url(url))
 
         threading.Thread(
             target=_run, name="server-webhook", daemon=True).start()
@@ -822,6 +828,93 @@ _WIN_RESERVED_NAMES = frozenset(
     | {f"LPT{i}" for i in range(1, 10)}
 )
 
+# Length caps for a saved upload name (see _safe_filename). The per-job dir
+# is about 100 characters on Windows; outputs append their own suffixes.
+_MAX_UPLOAD_STEM = 100
+_MAX_UPLOAD_EXT = 16
+
+# An absolute path inside an error text: a Windows drive path or a POSIX path
+# with at least one directory. Directory names may hold spaces ("John Smith"),
+# the last component may not, so the match stops before ordinary prose. A
+# POSIX path must not follow a word character, ":" or "/" (URL paths).
+_ABS_PATH_RE = re.compile(
+    r"(?<![\w])[A-Za-z]:[\\/]+(?:[^\\/\s'\"<>|:*?][^\\/\r\n'\"<>|:*?]*[\\/]+)*"
+    r"[^\\/\s'\"<>|:*?]*"
+    r"|(?<![\w.:/~\\-])/(?:[^/\s'\"<>|][^/\r\n'\"<>|]*/)+[^/\s'\"<>|]*"
+)
+
+
+def _last_path_part(path: str) -> str:
+    parts = [p for p in re.split(r"[\\/]+", path) if p]
+    last = parts[-1] if parts else ""
+    return "<path>" if not last or last.endswith(":") else last
+
+
+def redact_paths(text: str) -> str:
+    """Shorten every absolute path in ``text`` to its last component.
+
+    Error texts reach web clients and the webhook; the full path would show
+    the host's user name and folder layout. The file name alone stays, since
+    it is what the client sent or asked for.
+    """
+    return _ABS_PATH_RE.sub(lambda m: _last_path_part(m.group(0)), text)
+
+
+def _last_error_line(output: Any) -> str:
+    """The most telling line of a helper program's stderr (or "")."""
+    if isinstance(output, bytes):
+        output = output.decode("utf-8", "replace")
+    if not isinstance(output, str):
+        return ""
+    lines = [ln.strip() for ln in output.splitlines() if ln.strip()]
+    errors = [ln for ln in lines if ln.upper().startswith("ERROR")]
+    line = (errors or lines or [""])[-1]
+    return line[:300]
+
+
+def public_error_text(exc: BaseException) -> str:
+    """A job's failure as shown to web clients: no paths, no command lines.
+
+    A failed helper program (yt-dlp) reports its name, exit code and last
+    error line instead of the full command; an ``OSError`` reports its
+    reason and the file's name instead of its path. The local log and the
+    history keep the full text.
+    """
+    if isinstance(exc, subprocess.CalledProcessError):
+        cmd = exc.cmd
+        program = cmd[0] if isinstance(cmd, (list, tuple)) and cmd else cmd
+        name = _last_path_part(str(program or "")).replace("<path>", "")
+        text = f"{name or 'a helper program'} failed (exit code {exc.returncode})"
+        detail = _last_error_line(exc.stderr)
+        if detail:
+            text += f": {detail}"
+    elif isinstance(exc, OSError) and exc.strerror:
+        text = str(exc.strerror)
+        if exc.filename:
+            text += f": {_last_path_part(str(exc.filename))}"
+    else:
+        text = str(exc) or type(exc).__name__
+    return redact_paths(text)[:500]
+
+
+def redact_url(url: str) -> str:
+    """``scheme://host[:port]/...`` of ``url`` for a log line.
+
+    A webhook URL often carries its secret in the path, the query or the
+    user info, so only the origin is logged.
+    """
+    try:
+        split = urllib.parse.urlsplit(str(url or "").strip())
+        host = split.hostname or ""
+        port = split.port
+    except ValueError:
+        return "<invalid URL>"
+    if not split.scheme or not host:
+        return "<invalid URL>"
+    if ":" in host:
+        host = f"[{host}]"
+    return f"{split.scheme}://{host}{f':{port}' if port else ''}/..."
+
 
 def _safe_filename(name: str) -> str:
     """Reduce an uploaded filename to a safe basename.
@@ -834,6 +927,12 @@ def _safe_filename(name: str) -> str:
     COM1-9, LPT1-9 — with or without an extension) by prefixing an
     underscore, so the upload becomes an ordinary file instead of being
     routed to the device (which would silently discard the bytes).
+
+    The name is capped (stem :data:`_MAX_UPLOAD_STEM` characters, extension
+    :data:`_MAX_UPLOAD_EXT`) so the media and its outputs fit Windows' path
+    limits under the per-job dir; a 300-character name used to fail the
+    upload. Trailing dots and spaces go too: Windows drops them silently, so
+    the file on disk would not match the recorded name.
     """
     base = os.path.basename(name or "").strip()
     # Drop anything that isn't a tame filename character; keep dots,
@@ -843,6 +942,8 @@ def _safe_filename(name: str) -> str:
         if c.isalnum() or c in (".", "-", "_", " ")
     ).strip()
     cleaned = cleaned.lstrip(".") or ""
+    stem, ext = os.path.splitext(cleaned)
+    cleaned = (stem[:_MAX_UPLOAD_STEM] + ext[:_MAX_UPLOAD_EXT]).rstrip(" .")
     if not cleaned:
         return f"upload-{uuid.uuid4().hex[:8]}.bin"
     # Reserved-name guard: split off the extension and, if the stem is a
@@ -1070,7 +1171,8 @@ def post_webhook(
     is the fire-and-forget sender that logs and drops them.
     """
     if not is_safe_url(url):
-        logger.warning("server: refusing webhook POST to unsafe URL %s", url)
+        logger.warning("server: refusing webhook POST to unsafe URL %s",
+                       redact_url(url))
         return
     body = json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(

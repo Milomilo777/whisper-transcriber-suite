@@ -415,7 +415,7 @@ It binds **loopback (`127.0.0.1`) by default** — no Windows firewall prompt
 | `server_port` | int | `8765` | Default listen port for the server. If the port is busy when started from the tab, a free-port fallback picks another and shows the actual URL. |
 | `server_max_upload_mb` | int | `512` | Caps a single browser upload (MB). The worker's ~1 MB command guard does NOT cover browser uploads, so this is the upload size limit for the web path. |
 | `server_share_lan` | bool | `false` | When `true`, the tab's Start binds `0.0.0.0` (all interfaces — other devices on the network can reach it) instead of `127.0.0.1` (this machine only). Persisted from the **Share on local network** checkbox; this is the path that triggers the Windows firewall prompt. The CLI uses `--lan` instead of this key. |
-| `server_token` | string | `""` | Optional shared-secret password. When non-empty, every request must present it (`X-Auth-Token` header or `?token=` query). Stored in **cleartext** here, consistent with cookies / API keys (the file is per-user under `%LOCALAPPDATA%\WhisperTranscriberSuite` and is not encrypted). |
+| `server_token` | string | `""` | Optional shared-secret password. When non-empty, every request must present it (`X-Auth-Token` header or `?token=` query). Used by the tab and by `gui.py serve` (unless `--token` is given; `--token ""` serves without one). While it is empty the server only answers requests whose `Host` is an IP address, `localhost` or this computer's name (see [SERVER.md](SERVER.md#browser-protections)). Stored in **cleartext** here, consistent with cookies / API keys (the file is per-user under `%LOCALAPPDATA%\WhisperTranscriberSuite` and is not encrypted). |
 
 ### Usage statistics (P4-4)
 

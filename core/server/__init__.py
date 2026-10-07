@@ -444,7 +444,9 @@ def run_server(
         print("HTTPS on (self-signed certificate — accept the browser "
               "warning once).")
     if webhook_url:
-        print(f"Completion webhooks POST to {webhook_url}")
+        # Origin only: the rest of a webhook URL often holds its secret.
+        from core.server.jobs import redact_url
+        print(f"Completion webhooks POST to {redact_url(webhook_url)}")
     print("Press Ctrl+C to stop.")
 
     try:

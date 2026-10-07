@@ -30,6 +30,7 @@ Contents: [In-app toggle](#easiest-the-one-click-toggle-in-the-app) ·
 [HTTPS](#https-self-signed-certificate) ·
 [Webhook](#completion-webhook) ·
 [Security](#security-caveats) ·
+[Browser protections](#browser-protections) ·
 [Configuration](#configuration)
 
 ## Easiest: the one-click toggle in the app
@@ -88,7 +89,7 @@ Options of `serve`:
 --port, -p 9000          # listen port (default: config server_port, 8765)
 --host 0.0.0.0           # explicit bind address (default 127.0.0.1; 0.0.0.0 = same as --lan)
 --lan                    # bind all interfaces (0.0.0.0)
---token SECRET           # require a shared secret (see Authentication)
+--token SECRET           # require a shared secret (default: config server_token; see Authentication)
 --max-upload-mb 200      # reject uploads larger than this (default: config, 512)
 --https                  # serve over TLS with a self-signed certificate
 --webhook URL            # POST a JSON summary to URL when a job finishes
@@ -97,9 +98,12 @@ Options of `serve`:
 Notes:
 
 - Unlike the app's toggle, the command line uses exactly the port you give it
-  and never picks another one. Check that nothing else listens there first.
-- `--https` and `--webhook` fall back to the config keys
-  `server_https_enabled` / `server_webhook_url` when the flag is not given.
+  and never picks another one. If something already listens there, it prints
+  a "could not bind" error and exits with code 1.
+- `--token`, `--https` and `--webhook` fall back to the config keys
+  `server_token` (the app's **Access password**), `server_https_enabled` and
+  `server_webhook_url` when the flag is not given. `--token ""` serves without
+  a password even when the app has one.
 - The server loads the Whisper model once at startup (the first start can
   take a while; large models need more than a minute on a CPU) and keeps it
   hot. It processes jobs **one at a time** (a single background worker).
@@ -201,6 +205,7 @@ Errors use OpenAI's envelope:
 |---|---|
 | 400 | missing `file` or `model`, unsupported `response_format`, not multipart |
 | 401 | wrong or missing token (`code` is `invalid_api_key`) |
+| 403 | refused by the [browser protections](#browser-protections) (`code` is `forbidden`) |
 | 413 | upload larger than the cap |
 | 500 | transcription failed or was cancelled |
 | 503 | job queue full, or the server is shutting down |
@@ -271,7 +276,8 @@ set, except `GET /` (the page itself).
 
 `status` is one of `queued`, `downloading`, `running`, `finished`, `error`,
 `cancelled`. Cancel, pause and resume answer 404 `no such active job` for a
-job that already ended.
+job that already ended. A job's `error` names files by their file name only,
+never by their full path on the server.
 
 Create a job from an uploaded file (put the `file` part first, as browsers do):
 
@@ -295,6 +301,9 @@ curl -H "X-Auth-Token: mysecret" -H "Content-Type: application/json" \
   http://127.0.0.1:8765/api/jobs \
   -d '{"url": "https://example.com/video", "formats": ["srt"], "language": "en"}'
 ```
+
+The `Content-Type: application/json` header is required: a JSON body sent
+with any other type (curl's `-d` alone sends a form type) gets `415`.
 
 Fields (multipart fields or JSON keys):
 
@@ -328,9 +337,18 @@ it in one of three ways:
 | OpenAI-style header | `Authorization: Bearer mysecret` |
 | query string | `http://host:8765/api/jobs?token=mysecret` |
 
-A query-string token can end up in browser history and logs; prefer a header
-for scripts. The comparison is constant-time. The page at `/` loads without a
-token; its API calls need one.
+Prefer a header for scripts. The comparison is constant-time, and the server
+log shows a query-string token as `token=[redacted]`.
+
+The page at `/` loads without a token; its API calls need one. Type it into
+the page's **Auth token** box, or open a link with it added, for example
+`http://192.168.1.42:8765/?token=mysecret`: the page moves the token into the
+box and removes it from the address bar and the browser history. It is kept
+for that browser tab only, so a reload still works. Download links on the page
+still carry `?token=` (a plain link cannot send a header).
+
+`gui.py serve` uses the app's **Access password** (`server_token`) unless
+`--token` is given.
 
 ## HTTPS (self-signed certificate)
 
@@ -389,7 +407,9 @@ Behaviour to know:
 - It fires for jobs that **finish or fail**, from any route (browser, JSON API
   or the `/v1` route); a cancelled job sends nothing.
 - Delivery is fire-and-forget on its own thread: 10-second timeout, no retry,
-  redirects are not followed, a failure is only logged.
+  redirects are not followed, a failure is only logged. Logs and the start-up
+  message show only the receiver's `scheme://host:port/...`, never the path or
+  query of the URL.
 - Only `http` / `https` URLs are used, and a URL that points at this
   computer's own loopback, a link-local address (including cloud metadata
   addresses) or another reserved address is **refused**, so the receiver has
@@ -425,6 +445,14 @@ Behaviour to know:
   allowed on purpose (fetching from a media server on the same network).
 - **Bounded queue.** Total and queued job counts are capped; once full the
   server replies HTTP 503.
+- **Timeouts.** A connection that sends nothing for 60 seconds is closed, and
+  with HTTPS a client gets 10 seconds to finish the TLS handshake (on its own
+  connection, so a silent client cannot stall anyone else). A request refused
+  before its body is read (wrong token, browser protections, unknown route)
+  reads at most 64 KB of that body; a bigger one is not read at all and the
+  connection is closed.
+- **Busy port.** A second server cannot bind a port that is already in use
+  (an exclusive bind on Windows); the command line reports the error.
 - **Supreme Master TV (SMTV) scraping is not reachable through this
   server.** A URL job (`POST /api/jobs` with `{url: ...}`) always goes
   through the yt-dlp download path (`core.server.jobs.JobManager`'s
@@ -432,6 +460,26 @@ Behaviour to know:
   wired only into the desktop GUI's Download tab. A remote LAN/web
   client cannot trigger it, so this server's threat model does not need
   to account for that scraper's regex-based HTML parsing.
+
+### Browser protections
+
+The server runs on the same computer as your web browser, so a web page you
+visit must not be able to use it behind your back. Three checks stop that
+(each answers `403`, or `415` for the content type):
+
+- **Other web origins are refused.** A browser request whose `Origin` header
+  is not the server's own address (scheme, host and port), including
+  `Origin: null`, is refused. Requests without an `Origin` header (curl,
+  scripts, the OpenAI SDKs, Open WebUI's backend) are not affected.
+- **JSON needs `Content-Type: application/json`.** A web page can send
+  `text/plain` to another site without asking the browser first; it cannot
+  send `application/json` that way.
+- **Without a password, only direct addresses are served.** The `Host`
+  header must be an IP address (`127.0.0.1`, `192.168.1.42`, `[::1]`),
+  `localhost`, this computer's name or that name with `.local`. This stops
+  DNS rebinding, where a web page's own domain is pointed at your computer.
+  With a password set, any `Host` is accepted (a page still cannot learn the
+  password), so a reverse proxy that forwards its own name needs a password.
 
 ## Configuration
 
@@ -452,6 +500,6 @@ server_webhook_url     ""       completion webhook target (empty = off)
 
 `server_token` is stored in cleartext, the same as cookies / API keys:
 `config.json` is per-user under `%LOCALAPPDATA%\WhisperTranscriberSuite` and is not
-encrypted. The CLI's `--lan` / `--token` flags are the command-line
-equivalents of `server_share_lan` / `server_token`; the command line does not
-read `server_token` from the config, pass `--token` explicitly.
+encrypted. The CLI's `--lan` flag is the command-line equivalent of
+`server_share_lan` (the command line does not read that key). `--token`
+overrides `server_token`; without it the command line uses the saved value.
