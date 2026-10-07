@@ -495,3 +495,22 @@ def test_llm_download_refuses_a_truncated_file(tmp_path, monkeypatch):
         llm.download_default_model(dest=dest, chunk_size=1024)
     assert not dest.exists()
     assert not (tmp_path / "m.gguf.part").exists()
+
+
+# --- C2.51b M8: a retry after a re-pick restarts the elapsed time -------------
+
+
+def test_download_dialog_retry_resets_the_start_time(monkeypatch):
+    import threading
+    import time
+
+    from app.dialogs import model_download as md
+    from core import _threads
+
+    dlg = md.ModelDownloadDialog.__new__(md.ModelDownloadDialog)
+    dlg.cancel_event = threading.Event()  # type: ignore[attr-defined]
+    dlg.cancel_btn = types.SimpleNamespace(configure=lambda **_k: None)  # type: ignore[attr-defined]
+    dlg.started = 0.0  # type: ignore[attr-defined]
+    monkeypatch.setattr(_threads, "safe_thread", lambda *a, **k: None)
+    dlg._start_worker()
+    assert time.time() - dlg.started < 5

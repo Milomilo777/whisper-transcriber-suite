@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 import tarfile
 import threading
@@ -106,7 +107,11 @@ def download(
 
     Unpacks into a staging dir and renames it into place, so a cancelled
     or failed download never leaves a half-extracted model that
-    :func:`is_downloaded` would accept.
+    :func:`is_downloaded` would accept. The archive is fetched into a
+    ``.part`` file that a cancel or a network error keeps: the next try
+    resumes it with an HTTP Range request instead of restarting ~350 MB.
+    The ``.part`` goes once it is unpacked, or when it turns out not to be
+    a readable archive.
     """
     import requests
 
@@ -119,12 +124,65 @@ def download(
     target.parent.mkdir(parents=True, exist_ok=True)
     archive = target.parent / f"{MODEL_NAME}.tar.bz2.part"
     staging = target.parent / f"{MODEL_NAME}.staging"
+    _fetch_archive(requests, archive, progress_cb, cancel_event)
     try:
-        with requests.get(MODEL_URL, stream=True, timeout=(10, 60)) as r:
+        shutil.rmtree(staging, ignore_errors=True)
+        staging.mkdir(parents=True)
+        damaged: BaseException | None = None
+        try:
+            with tarfile.open(archive, "r:bz2") as tar:
+                tar.extractall(staging, filter="data")
+        except OSError as e:
+            if e.errno is not None:
+                raise  # a disk / permission problem: the archive may be fine
+            damaged = e  # bz2's "Invalid data stream"
+        except (tarfile.TarError, EOFError) as e:
+            damaged = e
+        if damaged is not None:
+            # A damaged archive would fail the same way on every retry.
+            archive.unlink(missing_ok=True)
+            raise RuntimeError(
+                "The downloaded voice model archive is damaged; it was removed. "
+                "Try the download again."
+            ) from damaged
+        inner = staging / MODEL_NAME
+        src = inner if inner.is_dir() else staging
+        shutil.rmtree(target, ignore_errors=True)
+        os.replace(src, target)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+    if not is_downloaded():
+        raise RuntimeError("The downloaded voice model is incomplete.")
+    archive.unlink(missing_ok=True)
+    return target
+
+
+def _fetch_archive(
+    requests: Any,
+    archive: Path,
+    progress_cb: "Callable[[int, int], None] | None",
+    cancel_event: "threading.Event | None",
+) -> None:
+    """Fetch :data:`MODEL_URL` into ``archive``, resuming a partial file."""
+    for _attempt in range(2):
+        existing = archive.stat().st_size if archive.is_file() else 0
+        headers = {"Range": f"bytes={existing}-"} if existing else {}
+        with requests.get(MODEL_URL, stream=True, timeout=(10, 60), headers=headers) as r:
+            if existing and r.status_code == 416:
+                # Nothing left to send: complete only when the server's
+                # size matches the file, else the leftover is not this
+                # archive and the download starts over.
+                m = re.match(r"bytes \*/(\d+)$", r.headers.get("content-range") or "")
+                if m and int(m.group(1)) == existing:
+                    return
+                archive.unlink(missing_ok=True)
+                continue
             r.raise_for_status()
-            total = int(r.headers.get("content-length") or 0)
-            done = 0
-            with open(archive, "wb") as f:
+            resumed = bool(existing) and r.status_code == 206
+            done = existing if resumed else 0
+            length = int(r.headers.get("content-length") or 0)
+            total = done + length if length else 0
+            with open(archive, "ab" if resumed else "wb") as f:
                 for chunk in r.iter_content(chunk_size=1 << 20):
                     if cancel_event is not None and cancel_event.is_set():
                         raise RuntimeError("Download cancelled.")
@@ -132,23 +190,12 @@ def download(
                     done += len(chunk)
                     if progress_cb:
                         progress_cb(done, total)
-        shutil.rmtree(staging, ignore_errors=True)
-        staging.mkdir(parents=True)
-        with tarfile.open(archive, "r:bz2") as tar:
-            tar.extractall(staging, filter="data")
-        inner = staging / MODEL_NAME
-        src = inner if inner.is_dir() else staging
-        shutil.rmtree(target, ignore_errors=True)
-        os.replace(src, target)
-    finally:
-        shutil.rmtree(staging, ignore_errors=True)
-        try:
-            archive.unlink()
-        except OSError:
-            pass
-    if not is_downloaded():
-        raise RuntimeError("The downloaded voice model is incomplete.")
-    return target
+            if total and done < total:
+                raise RuntimeError(
+                    "The voice model download was cut off; try again to resume it."
+                )
+            return
+    raise RuntimeError("The voice model server did not send the archive.")
 
 
 _engine_lock = threading.Lock()

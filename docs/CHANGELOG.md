@@ -275,6 +275,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   idle no longer leaves a dead entry behind.
 - **Voice cloning worker:** an unwritable log folder no longer stops it before it starts, and a
   malformed, deeply nested output line no longer stops its reader.
+- **The Kokoro voice model download resumes.** Cancelling or losing the connection keeps the
+  partial file (~350 MB), and the next try continues it instead of starting over; a damaged
+  archive is removed so the retry starts clean.
+- **Feature installs check free disk space first** (torch-based features need about 3 GB), both
+  before pip starts and before its files are copied into place, with a clear message instead of
+  a failed copy. Two app windows or workers no longer install into the extras folder at the same
+  time, and a package locked by the running app asks to reopen the app.
+- **The model download window's elapsed time** restarts when a download is retried in another
+  folder.
 - **Watched folder and folder drag-and-drop take more formats:** `.ts .m2ts .mts .vob .wmv .wma
   .avi .m4v .3gp .flv .mpg .mpeg .mka`. A `.ts` file that is TypeScript source is skipped.
 - **Settings are no longer lost or reverted.** A moment when `config.json` could not be opened

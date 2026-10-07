@@ -119,6 +119,9 @@ class ModelDownloadDialog(tk.Toplevel):
         self.error = None
         self.not_writable_dir = None
         self.not_writable_reason = "permission"
+        # The elapsed time shown counts this attempt, not the time spent
+        # before the user picked another folder.
+        self.started = time.time()
         # A retry can be triggered right after the user hit Cancel (the
         # cancel raced the not-writable error out of ensure_model). Without
         # clearing the event, the retry worker sees a stale cancellation,

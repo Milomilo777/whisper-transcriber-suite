@@ -12,8 +12,10 @@ this works for both the Program-Files install and the Portable build.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib
 import importlib.util
+import logging
 import os
 import shutil
 import subprocess
@@ -21,10 +23,12 @@ import sys
 import tempfile
 import threading
 import time
-from typing import Callable
+from typing import Callable, Generator
 
 from . import _proc, offline
 from .config import user_cache_dir
+
+logger = logging.getLogger(__name__)
 
 # Hard cap on a single on-demand pip install. A stalled PyPI / proxy
 # black-hole would otherwise leave the reader loop (and the modal that
@@ -84,6 +88,131 @@ FEATURES: dict[str, tuple[str, list[str]]] = {
     # (Blackwell, sm_120) kernels (GitHub issue #7).
     "cuda_runtime": ("nvidia.cublas", ["nvidia-cublas-cu12>=12.8"]),
 }
+
+
+# Rough installed size of each feature's packages, in MB (torch alone is
+# ~1 GB unpacked). Checked against free disk space before pip starts, so a
+# full disk is reported up front instead of after a long download.
+_FEATURE_SIZE_MB: dict[str, int] = {
+    "alignment": 1500,
+    "whisper_backend": 1500,
+    "google_cloud_stt": 150,
+    "nvidia_asr": 2000,
+    "voice_clone": 2000,
+    "cuda_runtime": 800,
+}
+# Kept free on top of what an install needs.
+_FREE_SPACE_MARGIN_MB = 200
+
+
+def _free_mb(path: str) -> float | None:
+    try:
+        return shutil.disk_usage(path).free / (1024 * 1024)
+    except (OSError, ValueError):
+        return None  # unreadable: the install itself still fails loudly
+
+
+def _has_room(
+    feature: str, folder: str, need_mb: float, log_cb: Callable[[str], None] | None,
+) -> bool:
+    """False (with a message) when ``folder``'s disk has less than
+    ``need_mb`` plus a margin free."""
+    free = _free_mb(folder)
+    need = need_mb + _FREE_SPACE_MARGIN_MB
+    if free is None or free >= need:
+        return True
+    if log_cb is not None:
+        log_cb(
+            f"Not enough free disk space to install {feature}: about "
+            f"{need / 1024:.1f} GB is needed in {folder}, {free / 1024:.1f} GB "
+            "is free. Free up space on that drive, then try again."
+        )
+    return False
+
+
+def _tree_mb(path: str) -> float:
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for name in files:
+            try:
+                total += os.path.getsize(os.path.join(root, name))
+            except OSError:
+                continue
+    return total / (1024 * 1024)
+
+
+@contextlib.contextmanager
+def _extras_file_lock(
+    folder: str,
+    cancel_event: "threading.Event | None",
+    timeout: float,
+    log_cb: Callable[[str], None] | None,
+) -> Generator[str, None, None]:
+    """Hold ``<folder>/.install.lock`` across processes.
+
+    Yields ``"free"`` (locked at once, or no lock usable), ``"waited"``
+    (another process held it first) or ``""`` when the wait was cancelled
+    or timed out.
+
+    ``_install_lock`` only serialises threads. The GUI (Hardware wizard)
+    and the worker processes (Parakeet, voice cloning) all install into the
+    same extras folder, and two merges of a shared package such as torch/
+    could interleave. The OS drops the lock when its process dies, so a
+    crashed install never leaves it held. A lock file that cannot be opened
+    or locked at all lets the install go on without it, logged.
+    """
+    from .config import _lock_is_contended
+
+    fh = None
+    locked = False
+    try:
+        fh = open(os.path.join(folder, ".install.lock"), "a+b")
+    except OSError as e:
+        logger.warning("Could not use the extras install lock (%s); installing without it", e)
+    deadline = (time.monotonic() + timeout) if timeout else None
+    told = False  # set once the lock was found held by another process
+    while fh is not None:
+        try:
+            if sys.platform == "win32":
+                import msvcrt
+                fh.seek(0)
+                msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            locked = True
+            break
+        except OSError as e:
+            if not _lock_is_contended(e):
+                logger.warning("Could not lock the extras install lock (%s); installing without it", e)
+                break
+        if not told and log_cb is not None:
+            log_cb("Another Whisper window or worker is installing a package; waiting for it...")
+        told = True
+        if (cancel_event is not None and cancel_event.is_set()) or (
+                deadline is not None and time.monotonic() > deadline):
+            fh.close()
+            if log_cb is not None:
+                log_cb("Install cancelled while waiting for the other install.")
+            yield ""
+            return
+        time.sleep(0.25)
+    try:
+        yield "waited" if told else "free"
+    finally:
+        if fh is not None:
+            if locked:
+                try:
+                    if sys.platform == "win32":
+                        import msvcrt
+                        fh.seek(0)
+                        msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+                    else:
+                        import fcntl
+                        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+                except OSError:
+                    pass
+            fh.close()
 
 
 def _rm(path: str) -> None:
@@ -186,7 +315,7 @@ def install(
         if log_cb is not None:
             log_cb(offline.message(f"installing {feature}"))
         return False
-    with _install_lock:
+    with _install_lock, contextlib.ExitStack() as held:
         # A concurrent caller may have installed it while we waited on
         # the lock — don't run a second redundant (and racing) pip.
         # When `force` is set, skip this short-circuit: a present-but-broken
@@ -197,6 +326,17 @@ def install(
             return True
         final_target = extras_dir()
         os.makedirs(final_target, exist_ok=True)
+        got = held.enter_context(_extras_file_lock(final_target, cancel_event, timeout, log_cb))
+        if not got:
+            return False
+        if got == "waited":
+            importlib.invalidate_caches()
+            if not force and is_available(feature):
+                return True  # the other process installed it meanwhile
+        # pip unpacks into staging, then the merge copies it next to the
+        # extras: about twice the installed size.
+        if not _has_room(feature, final_target, 2 * _FEATURE_SIZE_MB.get(feature, 500), log_cb):
+            return False
         parent = os.path.dirname(final_target) or None
         staging = tempfile.mkdtemp(prefix="pylibs-stage-", dir=parent)
         cmd = [
@@ -297,6 +437,10 @@ def install(
         # the same volume and os.replace() it into place atomically; on
         # ANY failure, remove from final_target every top-level entry
         # that staging contributes, so no partial package is left behind.
+        if not _has_room(feature, final_target, _tree_mb(staging), log_cb):
+            # The merge copies the staged tree once more.
+            shutil.rmtree(staging, ignore_errors=True)
+            return False
         staged_names = os.listdir(staging)
         # Snapshot the top-level names already present BEFORE this merge so
         # rollback can tell apart entries THIS install creates from dirs a
@@ -375,6 +519,14 @@ def install(
             backups.clear()
             if log_cb:
                 log_cb(f"Could not finalise install: {merge_err}")
+                if isinstance(merge_err, PermissionError) or getattr(
+                        merge_err, "winerror", None) in (5, 32, 33):
+                    # A loaded .pyd (torch imported by this very app) cannot
+                    # be replaced on Windows.
+                    log_cb(
+                        "A file of this package is in use, often by the app "
+                        "itself. Close and reopen the app, then install again."
+                    )
             # Roll back: delete only the top-level entries THIS install
             # newly created, so is_available() cannot observe a partial
             # tree — but leave pre-existing shared dirs (e.g. torch/numpy a

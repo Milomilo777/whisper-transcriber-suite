@@ -113,3 +113,144 @@ def test_install_refuses_in_a_frozen_app_without_running_pip(monkeypatch):
     assert optional_deps.can_install() is False
     assert optional_deps.install("alignment", log_cb=logged.append) is False
     assert logged == [optional_deps.FROZEN_INSTALL_MESSAGE]
+
+
+# --- C2.51b M5: free disk space is checked before pip runs -----------------
+
+
+def _usage(free_mb: float):
+    import types
+
+    return types.SimpleNamespace(total=10 ** 12, used=0, free=int(free_mb * 1024 * 1024))
+
+
+def test_install_refuses_a_full_disk_before_pip(monkeypatch, tmp_path):
+    final = tmp_path / "pylibs"
+    monkeypatch.setattr(optional_deps, "extras_dir", lambda: str(final))
+    monkeypatch.setattr(optional_deps, "is_available", lambda feat: False)
+    monkeypatch.setattr(optional_deps, "can_install", lambda: True)
+    monkeypatch.setattr(optional_deps.offline, "is_offline", lambda *a, **k: False)
+    monkeypatch.setattr(optional_deps.shutil, "disk_usage", lambda _p: _usage(1000))
+
+    def _no_popen(*_a, **_k):
+        raise AssertionError("pip must not start on a full disk")
+
+    monkeypatch.setattr(optional_deps.subprocess, "Popen", _no_popen)
+    lines: list[str] = []
+    assert optional_deps.install("alignment", log_cb=lines.append) is False
+    assert any("Not enough free disk space" in line and str(final) in line for line in lines)
+
+
+class _FinishedProc:
+    """pip that already ran: it wrote a package into the staging dir."""
+
+    def __init__(self, staging: str) -> None:
+        pkg = os.path.join(staging, "bigpkg")
+        os.makedirs(pkg)
+        with open(os.path.join(pkg, "__init__.py"), "wb") as f:
+            f.write(b"x" * (3 * 1024 * 1024))
+        self.stdout = iter(())
+        self.returncode = 0
+
+    def wait(self, timeout=None):
+        return 0
+
+
+def test_merge_is_refused_when_the_staged_tree_does_not_fit(monkeypatch, tmp_path):
+    final = tmp_path / "pylibs"
+    monkeypatch.setattr(optional_deps, "extras_dir", lambda: str(final))
+    monkeypatch.setattr(optional_deps, "is_available", lambda feat: False)
+    monkeypatch.setattr(optional_deps, "can_install", lambda: True)
+    monkeypatch.setattr(optional_deps.offline, "is_offline", lambda *a, **k: False)
+    monkeypatch.setattr(optional_deps, "_FEATURE_SIZE_MB", {"alignment": 1})
+    # Room for the up-front estimate, not for copying the 3 MB staged tree.
+    monkeypatch.setattr(optional_deps, "_FREE_SPACE_MARGIN_MB", 0)
+    monkeypatch.setattr(optional_deps.shutil, "disk_usage", lambda _p: _usage(2.5))
+    staged: dict = {}
+
+    def _popen(cmd, **_k):
+        staging = cmd[cmd.index("--target") + 1]
+        staged["path"] = staging
+        return _FinishedProc(staging)
+
+    monkeypatch.setattr(optional_deps.subprocess, "Popen", _popen)
+    lines: list[str] = []
+    assert optional_deps.install("alignment", log_cb=lines.append) is False
+    assert any("Not enough free disk space" in line for line in lines)
+    assert not os.path.exists(staged["path"])
+    assert not (final / "bigpkg").exists()
+
+
+def test_unreadable_disk_usage_does_not_block_the_install(monkeypatch, tmp_path):
+    def _boom(_p):
+        raise OSError("no such volume")
+
+    monkeypatch.setattr(optional_deps.shutil, "disk_usage", _boom)
+    assert optional_deps._has_room("alignment", str(tmp_path), 10 ** 9, None) is True
+
+
+# --- C2.51b M6 / M7: installs from two processes; a package in use ----------
+
+
+def test_install_lock_is_held_across_processes(tmp_path):
+    import subprocess as sp
+    import sys
+    import textwrap
+
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    script = textwrap.dedent(f"""
+        import sys, time
+        sys.path.insert(0, {root!r})
+        from core import optional_deps as od
+        with od._extras_file_lock({str(tmp_path)!r}, None, 30, None) as ok:
+            print("held", ok, flush=True)
+            sys.stdin.readline()
+    """)
+    child = sp.Popen([sys.executable, "-c", script], stdin=sp.PIPE, stdout=sp.PIPE, text=True)
+    try:
+        assert child.stdout is not None and child.stdin is not None
+        assert child.stdout.readline().strip() == "held free"
+        cancel = threading.Event()
+        threading.Timer(0.4, cancel.set).start()
+        lines: list[str] = []
+        with optional_deps._extras_file_lock(str(tmp_path), cancel, 30, lines.append) as ok:
+            assert ok == ""
+        assert any("Another Whisper" in line for line in lines)
+        stdin = child.stdin
+
+        def _release() -> None:
+            stdin.write("go\n")
+            stdin.flush()
+
+        threading.Timer(0.6, _release).start()
+        # Waits for the other process, then gets the lock.
+        with optional_deps._extras_file_lock(str(tmp_path), None, 30, None) as ok:
+            assert ok == "waited"
+    finally:
+        child.kill() if child.poll() is None else None
+        child.wait(10)
+
+
+def test_a_package_in_use_asks_to_reopen_the_app(monkeypatch, tmp_path):
+    final = tmp_path / "pylibs"
+    monkeypatch.setattr(optional_deps, "extras_dir", lambda: str(final))
+    monkeypatch.setattr(optional_deps, "is_available", lambda feat: False)
+    monkeypatch.setattr(optional_deps, "can_install", lambda: True)
+    monkeypatch.setattr(optional_deps.offline, "is_offline", lambda *a, **k: False)
+    monkeypatch.setattr(optional_deps, "_FEATURE_SIZE_MB", {"alignment": 1})
+    monkeypatch.setattr(optional_deps.subprocess, "Popen",
+                        lambda cmd, **_k: _FinishedProc(cmd[cmd.index("--target") + 1]))
+    real_replace = os.replace
+
+    def _locked(src, dst):
+        if str(dst).endswith("bigpkg"):
+            err = PermissionError(13, "The process cannot access the file")
+            err.winerror = 32  # type: ignore[attr-defined]
+            raise err
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(optional_deps.os, "replace", _locked)
+    lines: list[str] = []
+    assert optional_deps.install("alignment", log_cb=lines.append) is False
+    assert any("Close and reopen the app" in line for line in lines)
+
