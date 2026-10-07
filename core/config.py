@@ -1392,6 +1392,50 @@ def save_config(config: dict[str, Any]) -> None:
 
 PROJECT_FILE_NAME = ".whisperproject.json"
 
+# Keys a ``.whisperproject.json`` may set. The file is found by walking up from
+# the media file, so it can arrive inside a downloaded or shared folder: only
+# per-file transcription choices that keep audio, transcripts and keys on this
+# PC are honoured. Engines, URLs, API keys, tokens, webhooks, stats, programs,
+# folders, the output file name template, the model (loaded once from the app
+# settings, so a project value never switched it) and every app-level setting
+# are refused. docs/CONFIG.md "Manual / expert override files" lists these keys;
+# the server's per-job options (core.server.httpd._OPTION_SPEC) must stay a
+# subset.
+PROJECT_ALLOWED_KEYS: frozenset[str] = frozenset({
+    "output_formats",
+    "initial_prompt",
+    "hotwords",
+    "word_timestamps",
+    "batch_size",
+    "vad_enabled",
+    "vad_threshold",
+    "vad_min_silence_ms",
+    "vad_speech_pad_ms",
+    "vad_window_s",
+    "hallucination_detect_enabled",
+    "demucs_enabled",
+    "denoise_enabled",
+    "denoise_level",
+    "diarization_enabled",
+    "diarization_num_speakers",
+    "diarization_cluster_threshold",
+    "alignment",
+    "auto_chapters_enabled",
+    "chapter_min_seconds",
+    "chapter_gap_seconds",
+})
+
+# Allowed keys without a DEFAULT_CONFIG entry: a project value must match the
+# type of this default.
+_PROJECT_ONLY_DEFAULTS: dict[str, Any] = {"alignment": "none"}
+
+# (project file, refused key names) pairs already logged. The loader runs
+# twice per transcribed file and once per file of a folder; one warning per
+# file and key set is enough.
+_REFUSED_OVERRIDES_LOGGED: set[tuple[str, frozenset[str]]] = set()
+_REFUSED_OVERRIDES_LOCK = threading.Lock()
+_REFUSED_OVERRIDES_LOG_CAP = 1024
+
 
 def find_project_file(start: str | Path) -> Path | None:
     """Walk up from ``start`` looking for ``.whisperproject.json``.
@@ -1424,11 +1468,12 @@ def load_project_overrides(start: str | Path) -> dict[str, Any]:
     that bubbles past the OSError branch (e.g. when a user saves
     the file in cp1252 with a non-UTF8 character).
 
-    Audit A11: returned dict is shape-validated against
-    ``DEFAULT_CONFIG``. Entries whose type does NOT match the
-    matching default are dropped + logged so a typo
-    (``"diarization_enabled": "yes"``) surfaces as a warning
-    instead of getting silently coerced to bool("yes") == True
+    Only keys in ``PROJECT_ALLOWED_KEYS`` are returned; any other key is
+    dropped and logged once (names only, never values). Audit A11: the
+    returned dict is also shape-validated against ``DEFAULT_CONFIG``.
+    Entries whose type does NOT match the matching default are dropped +
+    logged so a typo (``"diarization_enabled": "yes"``) surfaces as a
+    warning instead of getting silently coerced to bool("yes") == True
     downstream.
     """
     f = find_project_file(start)
@@ -1453,11 +1498,13 @@ def load_project_overrides(start: str | Path) -> dict[str, Any]:
 def _validate_overrides(
     overrides: dict[str, Any], source: Path,
 ) -> dict[str, Any]:
-    """Drop entries whose type doesn't match ``DEFAULT_CONFIG``.
+    """Keep only allowed keys whose type matches their default.
 
-    Permissive: keys not present in DEFAULT_CONFIG are allowed
-    through unchanged (forward-compat with experimental config
-    keys); known keys must have the right type or they're dropped.
+    A key outside ``PROJECT_ALLOWED_KEYS`` is dropped (the file may come
+    from a downloaded or shared folder; see that constant), and every
+    dropped key name is logged once per file. Allowed keys must have
+    the type of their ``DEFAULT_CONFIG`` (or ``_PROJECT_ONLY_DEFAULTS``)
+    value or they're dropped too.
     Bool defaults still accept ints (Python bool is int), and
     numeric defaults still accept floats / ints interchangeably —
     same coercion rules as ``load_config`` to keep behaviour
@@ -1467,11 +1514,15 @@ def _validate_overrides(
     coercions as ``None`` / ``inf``.
     """
     cleaned: dict[str, Any] = {}
+    refused: list[str] = []
     for key, value in overrides.items():
-        if key not in DEFAULT_CONFIG:
-            cleaned[key] = value
+        if key not in PROJECT_ALLOWED_KEYS:
+            refused.append(str(key))
             continue
-        default = DEFAULT_CONFIG[key]
+        default = (
+            DEFAULT_CONFIG[key] if key in DEFAULT_CONFIG
+            else _PROJECT_ONLY_DEFAULTS[key]
+        )
         # No known key has a None default, so a null is never a legitimate
         # value: passing it through let ``None`` reach the runtime coercion
         # block in ``core.transcriber._apply_runtime_overrides``
@@ -1511,7 +1562,35 @@ def _validate_overrides(
             "(expected %s); dropping.",
             source, key, type(value).__name__, type(default).__name__,
         )
+    if refused:
+        _log_refused_overrides(source, refused)
     return cleaned
+
+
+def _log_refused_overrides(source: Path, refused: list[str]) -> None:
+    """Warn once per project file and key set about keys it may not set.
+
+    Names only: a refused value can be an API key or a URL. The names come
+    from a file anyone could have written, so each is repr()-escaped (no
+    raw newlines in the log) and clipped, and long lists are cut short.
+    """
+    marker = (str(source), frozenset(refused))
+    with _REFUSED_OVERRIDES_LOCK:
+        if marker in _REFUSED_OVERRIDES_LOGGED:
+            return
+        if len(_REFUSED_OVERRIDES_LOGGED) >= _REFUSED_OVERRIDES_LOG_CAP:
+            _REFUSED_OVERRIDES_LOGGED.clear()
+        _REFUSED_OVERRIDES_LOGGED.add(marker)
+    names = sorted(refused)
+    shown = ", ".join(repr(name)[:60] for name in names[:20])
+    if len(names) > 20:
+        shown += f", and {len(names) - 20} more"
+    logger.warning(
+        "Project override at %s may not set %s; ignored. A project file "
+        "can only change per-file transcription choices (see "
+        "docs/CONFIG.md).",
+        source, shown,
+    )
 
 
 def deep_merge_dicts(dest: dict[str, Any], src: dict[str, Any]) -> dict[str, Any]:

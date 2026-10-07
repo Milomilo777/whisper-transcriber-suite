@@ -379,6 +379,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the HTTPS handshake runs on the client's own connection with a 10-second limit (one idle
   connection used to stop every HTTPS request), the body of a refused upload is read for at most
   10 seconds, and on Windows a second server can no longer bind a port that is in use.
+- **A `.whisperproject.json` in a downloaded or shared folder can no longer redirect your data.**
+  Project files may now only set per-file transcription choices (formats, prompt, voice detection,
+  speakers, chapters and similar; list in `docs/CONFIG.md`). Engine, URL, API key, token, webhook,
+  stats, AI, server, folder and model keys are ignored and logged once by name, so such a file can
+  no longer send audio, transcripts or your keys to another service.
 
 ## [1.9.3] — 2026-09-27
 

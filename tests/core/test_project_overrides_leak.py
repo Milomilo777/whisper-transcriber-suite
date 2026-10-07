@@ -131,24 +131,24 @@ def test_scope_removes_keys_that_did_not_exist(transcriber, tmp_path, monkeypatc
 
 
 def test_scope_restores_string_keys(transcriber, tmp_path, monkeypatch):
-    """Cover a non-bool key shape too — output_formats list, language
+    """Cover a non-bool key shape too — output_formats list, prompt
     string — to confirm the snapshot/restore is type-agnostic."""
     _write_project_file(
         tmp_path,
-        {"output_formats": ["srt", "txt"], "transcribe_language": "fa"},
+        {"output_formats": ["srt", "txt"], "initial_prompt": "Glossary"},
     )
     monkeypatch.setattr(
         transcriber, "config",
-        {"output_formats": ["srt", "json"], "transcribe_language": "Auto"},
+        {"output_formats": ["srt", "json"], "initial_prompt": ""},
     )
     task = _StubTask(str(tmp_path / "show.mp4"))
 
     with transcriber._runtime_overrides_scope(task):
         assert transcriber.config["output_formats"] == ["srt", "txt"]
-        assert transcriber.config["transcribe_language"] == "fa"
+        assert transcriber.config["initial_prompt"] == "Glossary"
 
     assert transcriber.config["output_formats"] == ["srt", "json"]
-    assert transcriber.config["transcribe_language"] == "Auto"
+    assert transcriber.config["initial_prompt"] == ""
 
 
 def test_scope_restores_on_exception(transcriber, tmp_path, monkeypatch):

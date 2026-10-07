@@ -1624,8 +1624,9 @@ def _runtime_overrides_scope(
     ``diarization_enabled=true`` via its project file; file B in
     ``/B`` (no project file) then inherited diarisation silently.
     Same shape for any other key an override can set
-    (``output_formats``, ``transcribe_language``, ``whisper_model``,
-    …) — audit P0-6.
+    (``output_formats``, ``hotwords``, ``vad_enabled``, …; the keys a
+    project file may set are ``core.config.PROJECT_ALLOWED_KEYS``) —
+    audit P0-6.
 
     The fix: snapshot exactly the keys the override is about to
     write (read from disk before applying), then on exit put each

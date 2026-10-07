@@ -8,6 +8,7 @@ import pytest
 
 from core.config import (
     PROJECT_FILE_NAME,
+    deep_merge_dicts,
     find_project_file,
     load_project_overrides,
     merge_project_overrides,
@@ -69,15 +70,16 @@ def test_merge_project_overrides_shallow_top_level(tmp_path):
     assert base["hotwords"] == ""
 
 
-def test_merge_project_overrides_nested_dict_one_level(tmp_path):
+def test_merge_project_overrides_refuses_model_dict(tmp_path):
+    """``model`` (with its download ``url``) is not a project key: the
+    worker loads the model once from the app settings."""
     (tmp_path / PROJECT_FILE_NAME).write_text(
-        json.dumps({"model": {"name": "tiny"}}), encoding="utf-8"
+        json.dumps({"model": {"name": "tiny", "url": "https://other.example/"}}),
+        encoding="utf-8",
     )
     base = {"model": {"name": "large", "url": "https://example/"}, "device": "cpu"}
     out = merge_project_overrides(base, str(tmp_path / "a.wav"))
-    assert out["model"]["name"] == "tiny"
-    # The url key is preserved by the deep merge.
-    assert out["model"]["url"] == "https://example/"
+    assert out["model"] == {"name": "large", "url": "https://example/"}
     assert out["device"] == "cpu"
 
 
@@ -87,15 +89,12 @@ def test_merge_project_overrides_no_file_returns_base(tmp_path):
     assert out == base
 
 
-def test_merge_project_overrides_deep_merge_more_than_one_level(tmp_path):
-    """Recursive deep-merge: a 3-level override keeps untouched
-    leaf keys at every depth."""
-    (tmp_path / PROJECT_FILE_NAME).write_text(
-        json.dumps({"model": {"sub": {"deeper": 1}}}),
-        encoding="utf-8",
-    )
+def test_deep_merge_dicts_more_than_one_level():
+    """Recursive deep-merge (used by merge_project_overrides and the config
+    layers): a 3-level override keeps untouched leaf keys at every depth.
+    No project key is a dict any more, so this calls the merge directly."""
     base = {"model": {"sub": {"other": 2, "deeper": 0}, "name": "large"}}
-    out = merge_project_overrides(base, str(tmp_path / "a.wav"))
+    out = deep_merge_dicts(base, {"model": {"sub": {"deeper": 1}}})
     assert out["model"]["name"] == "large"
     assert out["model"]["sub"]["other"] == 2
     assert out["model"]["sub"]["deeper"] == 1
@@ -133,7 +132,7 @@ def test_load_project_overrides_never_raises_on_infinity(tmp_path):
     """``Infinity`` for an int-typed key used to raise OverflowError out of
     this "never raises" loader (``int(float('inf'))``). It must be dropped."""
     (tmp_path / PROJECT_FILE_NAME).write_text(
-        '{"parallel_workers": Infinity}', encoding="utf-8",
+        '{"batch_size": Infinity}', encoding="utf-8",
     )
     assert load_project_overrides(str(tmp_path)) == {}
 
@@ -161,7 +160,7 @@ def test_load_project_overrides_keeps_valid_values(tmp_path):
             "diarization_num_speakers": 3,
             "diarization_cluster_threshold": 0.7,
             "diarization_enabled": True,
-            "parallel_workers": 4,
+            "batch_size": 4,
             "vad_threshold": 0.25,
             "output_formats": ["srt"],
             "hotwords": "Anthropic",
@@ -172,7 +171,7 @@ def test_load_project_overrides_keeps_valid_values(tmp_path):
         "diarization_num_speakers": 3,
         "diarization_cluster_threshold": 0.7,
         "diarization_enabled": True,
-        "parallel_workers": 4,
+        "batch_size": 4,
         "vad_threshold": 0.25,
         "output_formats": ["srt"],
         "hotwords": "Anthropic",

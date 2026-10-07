@@ -542,4 +542,36 @@ When a new field is introduced, `load_config` will populate it with the default 
 Two override mechanisms exist, both higher-priority than the hard-coded defaults:
 
 - The user's **`config.json`** itself is the highest-priority layer in the three-level merge (see *Three-level merged configuration* above) — edit it for per-machine expert overrides, including the local-only keys the online layer cannot touch.
-- A per-folder **`.whisperproject.json`** (nearest one walking up from the input file) deep-merges on top for that job only — see `core.config.merge_project_overrides`. Wrong-typed keys are dropped + logged.
+- A per-folder **`.whisperproject.json`** (nearest one walking up from the input file) applies on top for that job only — see `core.config.merge_project_overrides`. Wrong-typed keys are dropped + logged.
+
+### What a `.whisperproject.json` may set
+
+A project file can sit inside a downloaded or shared folder, so it may only change per-file
+transcription choices that keep the audio, the transcript and your keys on this computer
+(`core.config.PROJECT_ALLOWED_KEYS`):
+
+| Group | Keys |
+|---|---|
+| Output | `output_formats` |
+| Prompting | `initial_prompt`, `hotwords` |
+| Timing | `word_timestamps`, `alignment` (`none` / `stable_ts`) |
+| Speed | `batch_size` |
+| Voice detection | `vad_enabled`, `vad_threshold`, `vad_min_silence_ms`, `vad_speech_pad_ms`, `vad_window_s` |
+| Clean-up | `hallucination_detect_enabled`, `demucs_enabled`, `denoise_enabled`, `denoise_level` |
+| Speakers | `diarization_enabled`, `diarization_num_speakers`, `diarization_cluster_threshold` |
+| Chapters | `auto_chapters_enabled`, `chapter_min_seconds`, `chapter_gap_seconds` |
+
+Every other key is ignored, and the log names the file and the ignored keys once (names only,
+never values). That includes the engine (`transcribe_backend`), anything with a URL, an API key, a
+token, a webhook or the stats upload, the AI / LLM settings, server settings, folders and program
+paths, `output_filename_template`, and the model: the model and the transcription language come from
+the app settings and the job, not from a project file. Example:
+
+```json
+{
+  "output_formats": ["srt", "txt"],
+  "hotwords": "Anthropic, Claude",
+  "diarization_enabled": true,
+  "diarization_num_speakers": 2
+}
+```
