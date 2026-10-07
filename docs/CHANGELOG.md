@@ -260,6 +260,16 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Never two speech models, never an orphan worker.** Transcribe no longer starts a second model
+  worker while one is still loading (for a watched folder, crash resume or a download), and Cancel
+  then Generate in Text to Voice waits until the cancelled voice worker is gone. When the app dies,
+  its transcription worker (even with a paused task, which keeps its resume checkpoint) and its
+  voice worker now exit instead of running on unseen; a timed-out yt-dlp update now ends the whole
+  update process tree on time.
+- **Resumed transcriptions are not offered again.** After "Yes" to "Resume interrupted
+  transcriptions?", the offered rows (duplicates of the same file too) are retired, so the next
+  launch does not ask again; a second app instance no longer marks the first one's running jobs
+  as interrupted.
 - **Closing the window could leave the app running.** Exit cancelled pending timers in a way that
   broke the teardown of the scrollable tabs, so the window stayed half-empty and the process kept
   running; the window now closes and the app ends. Exit also hides the window before it stops busy

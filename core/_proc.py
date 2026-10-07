@@ -178,3 +178,56 @@ def kill_process_tree(
         process.kill() if force else process.terminate()
     except Exception:  # noqa: BLE001
         pass
+
+
+def parent_identity() -> "tuple[int, float] | None":
+    """(pid, start time) of the process that started this one, or None.
+
+    Taken at start-up while the parent surely lives; :func:`parent_alive`
+    compares against it so a recycled PID is not mistaken for the parent.
+    """
+    try:
+        import psutil  # type: ignore[import-not-found] # noqa: PLC0415
+
+        ppid = os.getppid()
+        return ppid, float(psutil.Process(ppid).create_time())
+    except Exception:  # noqa: BLE001
+        logger.debug("could not read the parent process", exc_info=True)
+        return None
+
+
+def parent_alive(identity: "tuple[int, float] | None") -> bool:
+    """False only when the parent is known to be gone (its PID is free or
+    now belongs to a newer process). Unknown -> True, never a guess."""
+    if identity is None:
+        return True
+    try:
+        import psutil  # type: ignore[import-not-found] # noqa: PLC0415
+    except Exception:  # noqa: BLE001
+        logger.debug("psutil unavailable; cannot check the parent", exc_info=True)
+        return True
+    try:
+        return float(psutil.Process(identity[0]).create_time()) == identity[1]
+    except psutil.NoSuchProcess:  # ZombieProcess too: an unreaped dead parent
+        return False
+    except Exception:  # noqa: BLE001
+        logger.debug("could not check the parent process", exc_info=True)
+        return True
+
+
+def wait_parent_gone(
+    identity: "tuple[int, float] | None", timeout: float, interval: float = 0.2
+) -> bool:
+    """Poll until the parent is gone (True) or ``timeout`` passes (False).
+
+    A closed pipe can be seen a moment before the dying parent's process
+    object is gone, so a caller that just saw EOF waits a little here.
+    """
+    import time as _time
+
+    deadline = _time.monotonic() + max(0.0, timeout)
+    while parent_alive(identity):
+        if _time.monotonic() >= deadline:
+            return False
+        _time.sleep(interval)
+    return True

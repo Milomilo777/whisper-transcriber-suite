@@ -365,21 +365,31 @@ class TranscriptionService:
         if self.ready_workers():
             return True
 
-        # Spawn a fresh worker. start_worker bumps next_worker_id
-        # internally; capture the id we just created so the event
-        # loop can route the ready event back to us specifically
-        # (a parallel worker could go ready first if one was
-        # already loading).
-        before_ids = {w["id"] for w in self.app.workers}
-        self.start_worker(temporary=False)
-        after_ids = {w["id"] for w in self.app.workers}
-        new_ids = after_ids - before_ids
-        if not new_ids:
-            # start_worker is a no-op when an alive worker already
-            # exists for the supplied dict — but we passed
-            # worker=None, so this shouldn't happen. Defend anyway.
-            return bool(self.ready_workers())
-        new_id = next(iter(new_ids))
+        # A worker that is still loading (started by the watched folder,
+        # crash resume, auto-transcribe after a download or the queue) is
+        # awaited instead of spawning a second one beside it: two models in
+        # RAM, and the extra worker was never retired. Such an adopted
+        # worker belongs to whoever started it, so a cancel or timeout
+        # here leaves it running.
+        loading = [w for w in self.active_workers() if not w["ready"]]
+        if loading:
+            new_id = loading[0]["id"]
+            spawned = False
+        else:
+            # Spawn a fresh worker. start_worker bumps next_worker_id
+            # internally; capture the id we just created so the event
+            # loop can route the ready event back to us specifically.
+            before_ids = {w["id"] for w in self.app.workers}
+            self.start_worker(temporary=False)
+            after_ids = {w["id"] for w in self.app.workers}
+            new_ids = after_ids - before_ids
+            if not new_ids:
+                # start_worker is a no-op when an alive worker already
+                # exists for the supplied dict — but we passed
+                # worker=None, so this shouldn't happen. Defend anyway.
+                return bool(self.ready_workers())
+            new_id = next(iter(new_ids))
+            spawned = True
 
         # Coordinate with poll(): when it sees the ready event for
         # `new_id`, it should set this Event AND (interactive only)
@@ -387,6 +397,11 @@ class TranscriptionService:
         ready_event = threading.Event()
         self._pending_load_worker_id = new_id
         self._pending_load_event = ready_event
+        if not spawned and self.ready_workers():
+            # The adopted worker went ready before the slot was set.
+            self._pending_load_worker_id = None
+            self._pending_load_event = None
+            return True
 
         if headless:
             # Background path — no UI. Off the Tk main thread a plain
@@ -439,9 +454,10 @@ class TranscriptionService:
                     "become ready within %.0fs; aborting enqueue.",
                     new_id, HEADLESS_READY_TIMEOUT_S,
                 )
-                # Tear the dud worker down so we don't leak it.
+                # Tear the dud worker down so we don't leak it (only one
+                # spawned here; an adopted worker belongs to its starter).
                 for w in list(self.app.workers):
-                    if w["id"] == new_id:
+                    if spawned and w["id"] == new_id:
                         self.retire_worker(w)
                         break
                 return False
@@ -464,7 +480,11 @@ class TranscriptionService:
         if dialog.success:
             return True
 
-        # User cancelled — kill the just-spawned worker.
+        # User cancelled — kill the just-spawned worker (an adopted one
+        # keeps loading for whoever started it).
+        if not spawned:
+            logger.info("ensure_worker_ready: user cancelled the wait for worker %s", new_id)
+            return False
         logger.info(
             "ensure_worker_ready: user cancelled; tearing down worker %s",
             new_id,

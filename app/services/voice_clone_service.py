@@ -37,6 +37,9 @@ class VoiceCloneWorkerError(RuntimeError):
 class VoiceCloneWorker:
     """Owns one voice-clone worker subprocess for the tab's session."""
 
+    #: How long stop() lets the worker exit by itself before killing it.
+    STOP_GRACE_S = 5.0
+
     def __init__(
         self,
         entry_file: str,
@@ -46,6 +49,7 @@ class VoiceCloneWorker:
         self.entry_file = entry_file
         self._log = log
         self._process: Optional[subprocess.Popen[str]] = None
+        self._stopping: Optional[subprocess.Popen[str]] = None
         self._reader: Optional[threading.Thread] = None
         self._dead = threading.Event()
         self._lock = threading.Lock()
@@ -81,9 +85,13 @@ class VoiceCloneWorker:
 
     def stop(self) -> None:
         proc = self._process
-        self._process = None
         if proc is None:
             return
+        # Remember the dying process: is_running() turns False at once (the
+        # tab re-enables Generate), and wait_for_exit() lets the next start
+        # wait until this ~3 GB process is really gone.
+        self._stopping = proc
+        self._process = None
         self._dead.set()
         self._fail_all_pending("Voice-clone session stopped.")
         try:
@@ -93,11 +101,31 @@ class VoiceCloneWorker:
         except (OSError, ValueError):
             pass
         try:
-            proc.wait(timeout=5.0)
+            proc.wait(timeout=self.STOP_GRACE_S)
             return
         except subprocess.TimeoutExpired:
             logger.info("Voice-clone worker ignored shutdown; terminating tree")
         self._kill_process_tree(proc)
+
+    def wait_for_exit(self, timeout: float = 15.0) -> bool:
+        """Block until this worker's process (running or being stopped) has
+        exited; past ``timeout`` kill its tree and wait briefly once more.
+
+        Call before starting a replacement worker so two models are never
+        loaded side by side. Returns True once no process of this worker is
+        alive. Blocking: never call it on the Tk thread.
+        """
+        proc = self._process or self._stopping
+        if proc is None:
+            return True
+        try:
+            proc.wait(timeout=timeout)
+            return True
+        except subprocess.TimeoutExpired:
+            logger.warning("Voice-clone worker %s still alive after %.0fs; killing it",
+                           proc.pid, timeout)
+        self._kill_process_tree(proc)
+        return proc.poll() is not None
 
     @staticmethod
     def _kill_process_tree(proc: subprocess.Popen[str]) -> None:

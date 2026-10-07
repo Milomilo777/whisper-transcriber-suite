@@ -69,6 +69,7 @@ import time
 from collections import deque
 from typing import Any, Callable, Iterator, cast
 
+from ._proc import parent_identity, wait_parent_gone
 from .config import load_config
 from .logging_setup import setup_logging, worker_log_filename
 from .task import TranscriptionTask
@@ -116,6 +117,92 @@ def _set_current_task(task: "TranscriptionTask | None") -> None:
     global _current_task
     with _state_lock:
         _current_task = task
+
+
+# Parent loss. The app is the only writer of this worker's stdin pipe, so
+# EOF there (or a broken stdout pipe) is the sign the app may be gone; it is
+# confirmed by checking that the parent process really ended (a test feeding
+# a finite stdin keeps its parent). Then the task in flight is cancelled so
+# the transcriber saves its resume checkpoint and returns: a PAUSED task
+# would otherwise wait forever for a resume nobody can send, and the worker
+# would live on as an orphan holding the model. If the task does not return
+# within PARENT_LOST_EXIT_GRACE_S the process exits anyway. All of it only
+# while main() runs (_session_active): the stdin reader may reach EOF after
+# a shutdown already ended main(). Marked under _state_lock so a task
+# registered concurrently is cancelled too (see _register_task).
+PARENT_LOST_EXIT_GRACE_S: float = 120.0
+#: How long a closed pipe waits for the parent's process to be gone.
+PARENT_GONE_CONFIRM_S: float = 5.0
+_parent_lost = threading.Event()
+_parent_lost_timer: "threading.Timer | None" = None
+_session_active = False
+_parent: "tuple[int, float] | None" = None
+
+
+def _hard_exit(code: int) -> None:
+    """End the process at once (tests replace this)."""
+    os._exit(code)
+
+
+def _exit_after_parent_lost() -> None:
+    logger.error(
+        "Worker still busy %.0fs after the app went away; exiting",
+        PARENT_LOST_EXIT_GRACE_S,
+    )
+    _hard_exit(0)
+
+
+def _on_pipe_closed(reason: str) -> None:
+    """A pipe to the app closed: confirm off-thread that the app is gone."""
+    def _confirm() -> None:
+        if wait_parent_gone(_parent, PARENT_GONE_CONFIRM_S):
+            _mark_parent_lost(reason)
+
+    threading.Thread(target=_confirm, name="worker-parent-check", daemon=True).start()
+
+
+def _mark_parent_lost(reason: str) -> None:
+    """Cancel the in-flight task and arm the exit backstop (idempotent)."""
+    global _parent_lost_timer
+    with _state_lock:
+        if not _session_active or _parent_lost.is_set():
+            return
+        _parent_lost.set()
+        task = _current_task
+        if task is not None:
+            task.cancelled = True
+        timer = threading.Timer(PARENT_LOST_EXIT_GRACE_S, _exit_after_parent_lost)
+        timer.daemon = True
+        _parent_lost_timer = timer
+        # Logged under the lock: main() cannot return (and a test cannot
+        # tear its log capture down) halfway through this call.
+        logger.warning(
+            "The app went away (%s); %s", reason,
+            "cancelling the running task" if task is not None else "exiting",
+        )
+    timer.start()
+
+
+def _begin_session() -> None:
+    """Arm parent-loss handling for one main() run."""
+    global _session_active, _parent
+    _end_session()
+    identity = parent_identity()
+    with _state_lock:
+        _parent = identity
+        _session_active = True
+
+
+def _end_session() -> None:
+    """Disarm the backstop and clear the flags (main() entry and exit)."""
+    global _parent_lost_timer, _session_active
+    with _state_lock:
+        timer = _parent_lost_timer
+        _parent_lost_timer = None
+        _session_active = False
+        _parent_lost.clear()
+    if timer is not None:
+        timer.cancel()
 
 
 # How long an id-bearing control may wait for its transcribe command to be
@@ -279,6 +366,8 @@ def _register_task(task: "TranscriptionTask") -> list[_ParkedControl]:
     tid = _normalise_task_id(getattr(task, "task_id", ""))
     with _state_lock:
         _current_task = task
+        if _parent_lost.is_set():
+            task.cancelled = True
         if not tid:
             return []
         parked = _parked_controls.pop(tid, [])
@@ -493,6 +582,16 @@ def main() -> int:
     # downloads started by third-party code); inert while the switch is off.
     from core import offline
     offline.install_network_guard()
+    _begin_session()
+    try:
+        return _main()
+    finally:
+        # A normal return ends the process; the backstop is only for a
+        # task that never returns. (Tests call main() many times.)
+        _end_session()
+
+
+def _main() -> int:
     # fetch_online=False: the worker only needs log_level here; skip the
     # network round-trip so worker spawn is never blocked on the online
     # config fetch (the parent App passes the effective per-task config).
@@ -550,9 +649,17 @@ def main() -> int:
     heartbeat_stop = threading.Event()
 
     def _heartbeat() -> None:
+        pipe_reported = False
         while not heartbeat_stop.wait(HEARTBEAT_INTERVAL_SECONDS):
             try:
                 emit("heartbeat", ts=time.time())
+            except OSError:
+                # stdout is a pipe to the app; a broken pipe means the app
+                # may be gone (see _on_pipe_closed). Keep beating: a
+                # transient error must not silence a healthy worker.
+                if not pipe_reported:
+                    pipe_reported = True
+                    _on_pipe_closed("its output pipe is closed")
             except Exception:
                 logger.exception("heartbeat emit failed")
 
@@ -667,6 +774,7 @@ def main() -> int:
                 else:
                     cmd_queue.put(command)
         finally:
+            _on_pipe_closed("its input pipe is closed")
             cmd_queue.put(None)
 
     threading.Thread(target=_stdin_reader, name="worker-stdin",
@@ -803,6 +911,11 @@ def main() -> int:
                 ),
             )
         except Exception as e:  # noqa: BLE001
+            if isinstance(e, OSError) and _parent_lost.is_set():
+                # The result could not be sent: the app is gone. The
+                # cancelled task has saved its checkpoint; just exit.
+                _clear_parked_controls()
+                return 0
             emit("error", message=str(e), file_path=file_path, task_id=task_id)
 
 

@@ -47,6 +47,7 @@ from pathlib import Path
 from typing import Any, Callable, Generator, Mapping
 
 from . import offline
+from ._proc import kill_process_tree, new_session_kwargs
 from .config import user_cache_dir
 from .js_runtime import find_deno, mentions_missing_js_runtime, yt_dlp_version
 from .paths import bundled_binary
@@ -378,11 +379,57 @@ class UpdateResult:
     completed: bool = False
 
 
+def run_killing_tree(
+    cmd: list[str], *, timeout: float, capture_output: bool = False, **kwargs: Any
+) -> subprocess.CompletedProcess[Any]:
+    """``subprocess.run`` whose timeout ends the WHOLE process tree.
+
+    ``subprocess.run`` kills only the direct child on a timeout. A PyInstaller
+    onefile yt-dlp is a bootloader plus the real yt-dlp as its child, so the
+    child lived on: it could still swap the binary in after "timed out" was
+    reported, and its ``_MEI*`` temp folder leaked. Raises
+    ``subprocess.TimeoutExpired`` like ``subprocess.run``.
+    """
+    if capture_output:
+        kwargs["stdout"] = subprocess.PIPE
+        kwargs["stderr"] = subprocess.PIPE
+    with subprocess.Popen(cmd, **{**new_session_kwargs(), **kwargs}) as proc:
+        try:
+            out, err = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            _end_tree(proc)
+            proc.communicate()  # reap it and close the pipes
+            raise
+    return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
+
+
+def _end_tree(proc: subprocess.Popen[Any]) -> None:
+    """Kill ``proc``'s descendants first, so a onefile bootloader can still
+    exit by itself and delete its ``_MEI*`` folder; kill the rest of the
+    tree if it lingers."""
+    try:
+        import psutil  # type: ignore[import-not-found] # noqa: PLC0415
+
+        for child in psutil.Process(proc.pid).children(recursive=True):
+            try:
+                child.kill()
+            except psutil.Error:
+                pass
+    except Exception:  # noqa: BLE001 -- psutil missing or the parent already gone
+        logger.debug("could not list the update's child processes", exc_info=True)
+    try:
+        proc.wait(timeout=5.0)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+    kill_process_tree(proc, force=True)
+
+
 def update_cached_copy(
     *,
     log: Callable[[str], None] | None = None,
     timeout: float = UPDATE_TIMEOUT_S,
-    run: Callable[..., Any] = subprocess.run,
+    run: Callable[..., Any] = run_killing_tree,
     version_of: VersionOf | None = None,
 ) -> UpdateResult:
     """Bring the user-writable copy to the newest stable yt-dlp.

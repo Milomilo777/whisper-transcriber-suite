@@ -839,8 +839,13 @@ class App(tk.Tk):
         # SQLite history (Phase 3a). Mark any pre-crash row as interrupted on launch.
         try:
             self.history = HistoryDB()
-            interrupted = self.history.mark_interrupted()
-            if interrupted:
+            interrupted = self.history.mark_interrupted_on_launch()
+            # Only the owning instance offers crash resume: the other's
+            # "interrupted" rows may be on offer (or re-queued) there.
+            self._history_owner = interrupted is not None
+            if interrupted is None:
+                logger.info("Another app instance owns the history; running rows left alone")
+            elif interrupted:
                 logger.info("Marked %d running rows as interrupted on launch", interrupted)
         except Exception as e:  # noqa: BLE001
             logger.warning("history.db unavailable: %s", e)
@@ -5574,7 +5579,7 @@ class App(tk.Tk):
         """If history.db flagged any rows interrupted on launch, offer
         to re-enqueue the still-existing files."""
         history = getattr(self, "history", None)
-        if history is None:
+        if history is None or getattr(self, "_history_owner", True) is False:
             return
         try:
             rows = history.list_transcriptions(limit=200) or []
@@ -5611,7 +5616,7 @@ class App(tk.Tk):
             # offered so this prompt doesn't reappear on every launch.
             try:
                 history.dismiss_interrupted_transcriptions(
-                    [r["id"] for r in unique]
+                    [r["id"] for r in interrupted]
                 )
             except Exception:  # noqa: BLE001
                 logger.debug("Failed to dismiss interrupted rows", exc_info=True)
@@ -5664,6 +5669,15 @@ class App(tk.Tk):
                 except Exception:  # noqa: BLE001
                     pass
                 self.queue.append(task)
+            # The re-run gets its own history row; retire the offered ones
+            # (duplicates of the same file too) so the next launch does not
+            # offer the same job again.
+            try:
+                history.dismiss_interrupted_transcriptions(
+                    [r["id"] for r in interrupted]
+                )
+            except Exception:  # noqa: BLE001
+                logger.warning("Failed to dismiss resumed interrupted rows", exc_info=True)
             self.refresh()
             if resumed:
                 self.log(

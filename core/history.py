@@ -9,9 +9,11 @@ small writes (insert / mark_finished / mark_interrupted) are fast enough.
 """
 from __future__ import annotations
 
+import errno
 import json
 import logging
 import sqlite3
+import sys
 import threading
 import time
 from contextlib import contextmanager
@@ -133,6 +135,9 @@ class HistoryDB:
         # semantics across every instance in this process, not just
         # this connection.
         self._write_lock = _WRITE_LOCK
+        # Open lock file while this object holds the app-instance lock
+        # (see claim_instance_lock); None otherwise.
+        self._instance_lock: Any = None
         self._setup_pragmas()
         # Integrity check on open (audit D6) — a crash-corrupted DB
         # is detected up front and renamed aside so the user gets
@@ -334,6 +339,49 @@ class HistoryDB:
                 self._conn.close()
             except Exception:  # noqa: BLE001
                 pass
+        lock, self._instance_lock = self._instance_lock, None
+        if lock is not None:
+            lock.close()  # closing the handle releases the OS lock
+
+    def claim_instance_lock(self) -> bool:
+        """Take the lock that marks the app instance owning this history.
+
+        Only the owner may run :meth:`mark_interrupted`: a second app
+        instance started meanwhile would otherwise flip the first one's
+        live jobs to ``interrupted`` and offer them for resume while they
+        still run. The lock is an OS file lock beside the database, so it
+        is released the moment the owning process ends, crash included.
+        Returns False while another process holds it. When the lock file
+        cannot be opened at all, logs a warning and returns True (the old,
+        unguarded behaviour) rather than leave stale rows ``running``.
+        """
+        if self._instance_lock is not None:
+            return True
+        lock_path = self.path.with_name(self.path.name + ".instance.lock")
+        try:
+            fh = open(lock_path, "a+b")  # noqa: SIM115 - held open on purpose
+        except OSError as e:
+            logger.warning("Cannot open %s (%s); not guarding history rows", lock_path, e)
+            return True
+        try:
+            if sys.platform == "win32":
+                import msvcrt
+
+                fh.seek(0)
+                msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as e:
+            fh.close()
+            if e.errno in (errno.EACCES, errno.EAGAIN, errno.EWOULDBLOCK,
+                           getattr(errno, "EDEADLK", errno.EACCES)):
+                return False  # another instance holds it
+            logger.warning("Cannot lock %s (%s); not guarding history rows", lock_path, e)
+            return True
+        self._instance_lock = fh
+        return True
 
     def __enter__(self) -> "HistoryDB":
         return self
@@ -472,6 +520,14 @@ class HistoryDB:
                 "UPDATE transcriptions SET status='interrupted' WHERE status IN ('running','waiting')"
             ).rowcount
         return int(d) + int(t)
+
+    def mark_interrupted_on_launch(self) -> int | None:
+        """:meth:`mark_interrupted`, but only in the app instance that owns
+        the history (:meth:`claim_instance_lock`). Returns None, touching
+        nothing, while another instance runs: its rows are live."""
+        if not self.claim_instance_lock():
+            return None
+        return self.mark_interrupted()
 
     def dismiss_interrupted_transcriptions(self, row_ids: Iterable[int]) -> int:
         """Move the given interrupted transcription rows to ``cancelled``.

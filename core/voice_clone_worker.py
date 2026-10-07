@@ -51,17 +51,26 @@ blocking call with no interrupt hook. A caller that wants to give up
 mid-generation kills the whole process (see
 ``app.services.voice_clone_service.VoiceCloneWorker.stop``), same as
 how ``core.optional_deps.install`` handles an install-cancel.
+
+stdin is read on its own thread, so the worker notices both a
+``shutdown`` and the app going away (stdin EOF, or a broken stdout pipe)
+while a generation is running: it then exits at once instead of
+finishing a piece nobody will collect. ``voice_clone.generate`` writes
+its WAV to a temporary name and renames it at the end, so an exit
+mid-generation leaves no half-written piece.
 """
 from __future__ import annotations
 
 import json
 import logging
 import os
+import queue
 import sys
 import threading
 import time
 from typing import Any
 
+from ._proc import parent_alive, parent_identity, wait_parent_gone
 from .logging_setup import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -69,6 +78,35 @@ logger = logging.getLogger(__name__)
 _emit_lock = threading.Lock()
 
 HEARTBEAT_INTERVAL_SECONDS = 5.0
+
+# Set while voice_clone.generate (or the model load) runs on the main
+# thread. The main thread cannot look at stdin until that blocking call
+# returns, so the stdin reader (or the heartbeat) ends the process itself
+# when the app is gone meanwhile.
+_busy = threading.Event()
+
+
+def _hard_exit(code: int) -> None:
+    """End the process at once (tests replace this)."""
+    os._exit(code)
+
+
+#: How long a closed pipe waits for the parent's process to be gone (a
+#: pipe can close a moment before the dying app's process object ends).
+PARENT_GONE_CONFIRM_S = 5.0
+
+
+def _exit_if_orphaned(
+    identity: "tuple[int, float] | None", reason: str, wait_s: float = 0.0
+) -> None:
+    """End a running generation whose app is gone: its piece would be
+    written for nobody and could change under a later resumed job."""
+    if not _busy.is_set():
+        return
+    gone = wait_parent_gone(identity, wait_s) if wait_s > 0 else not parent_alive(identity)
+    if gone and _busy.is_set():
+        logger.warning("The app went away (%s) mid-generation; exiting", reason)
+        _hard_exit(0)
 
 
 def emit(event: str, **payload: Any) -> None:
@@ -128,12 +166,16 @@ def main() -> int:
     logger.info("Voice-clone worker starting (pid=%d, priority %s)",
                 os.getpid(), _process_priority())
 
+    parent = parent_identity()
     heartbeat_stop = threading.Event()
 
     def _heartbeat() -> None:
         while not heartbeat_stop.wait(HEARTBEAT_INTERVAL_SECONDS):
             try:
                 emit("heartbeat", ts=time.time())
+            except OSError:
+                # stdout is a pipe to the app: broken = the app is likely gone.
+                _exit_if_orphaned(parent, "its output pipe is closed", PARENT_GONE_CONFIRM_S)
             except Exception:
                 logger.exception("heartbeat emit failed")
 
@@ -153,7 +195,27 @@ def main() -> int:
 
     emit("ready")
 
-    for raw in sys.stdin:
+    lines: "queue.Queue[str | None]" = queue.Queue()
+    reader_done = threading.Event()
+    _busy.clear()
+
+    def _stdin_reader() -> None:
+        try:
+            for raw_line in sys.stdin:
+                lines.put(raw_line)
+        except (OSError, ValueError):
+            logger.debug("stdin read failed", exc_info=True)
+        finally:
+            lines.put(None)
+            reader_done.set()
+            _exit_if_orphaned(parent, "its input pipe is closed", PARENT_GONE_CONFIRM_S)
+
+    threading.Thread(target=_stdin_reader, name="voiceclone-stdin", daemon=True).start()
+
+    while True:
+        raw = lines.get()
+        if raw is None:
+            break
         line = raw.strip()
         if not line:
             continue
@@ -186,6 +248,11 @@ def main() -> int:
         speed = command.get("speed") or None
         consent_record = command.get("consent_record", True) is not False
 
+        # Busy BEFORE looking at reader_done: either the reader sees the
+        # flag at EOF, or this check sees the EOF (no gap between them).
+        _busy.set()
+        if reader_done.is_set():
+            _exit_if_orphaned(parent, "its input pipe is closed")
         emit("started", id=req_id)
         try:
             if not model_loaded:
@@ -212,6 +279,8 @@ def main() -> int:
             if not model_loaded:
                 emit("model_error", message=str(e))
             emit("error", id=req_id, message=str(e))
+        finally:
+            _busy.clear()
 
     heartbeat_stop.set()
     return 0

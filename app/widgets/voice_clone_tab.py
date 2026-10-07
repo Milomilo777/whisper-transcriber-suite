@@ -1275,10 +1275,7 @@ def _generate_omnivoice(app: Any, text: str) -> None:
                 lambda: app.vc_status_var.set(f"Generating... {hint}.")
             )
 
-            if app.vc_worker is None or not app.vc_worker.is_running():
-                from app.services.voice_clone_service import VoiceCloneWorker
-                app.vc_worker = VoiceCloneWorker(app.entry_file, log=app.log_threadsafe)
-                app.vc_worker.start()
+            _ensure_worker(app)
 
             if cancel_event.is_set():
                 app.post_to_main(lambda: _generate_cancelled(app, _kept(plan)))
@@ -1357,6 +1354,26 @@ def _run_omnivoice_job(app: Any, plan: _JobPlan, samples: "list[str]", consent: 
             logger.exception("Could not write the voice-clone consent record")
             payload["warning"] = f"The local consent record could not be saved: {e}"
     return payload
+
+
+def _ensure_worker(app: Any) -> None:
+    """Start a voice-clone worker unless one is running (generate thread).
+
+    A worker that was just cancelled may still be dying: Generate is enabled
+    again at once, but its process lives until it obeys the shutdown or is
+    killed. Wait for it first so two speech models never sit in memory side
+    by side.
+    """
+    old = app.vc_worker
+    if old is not None and old.is_running():
+        return
+    if old is not None and not old.wait_for_exit():
+        from app.services.voice_clone_service import VoiceCloneWorkerError
+        raise VoiceCloneWorkerError(
+            "The previous voice-clone worker is still stopping; try again in a moment.")
+    from app.services.voice_clone_service import VoiceCloneWorker
+    app.vc_worker = VoiceCloneWorker(app.entry_file, log=app.log_threadsafe)
+    app.vc_worker.start()
 
 
 def _finish(app: Any) -> None:
