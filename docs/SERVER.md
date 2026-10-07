@@ -476,6 +476,10 @@ visit must not be able to use it behind your back. These checks stop that:
   cannot send `application/json` that way. This check is always on.
 - **No framing.** The page at `/` tells browsers that no other site may show
   it inside a frame, so a visited page cannot steer your clicks on it.
+- **No loads from other sites.** A browser request that another site makes
+  in the background (`Sec-Fetch-Site: cross-site` or `same-site` on anything
+  but a navigation, such as a `<script>` tag) gets `403`, so a page cannot
+  use the answers to guess the password. Opening a shared link still works.
 
 Without an access password, two more checks apply (each answers `403`):
 
@@ -490,10 +494,13 @@ Without an access password, two more checks apply (each answers `403`):
   computer. Other names (a router name such as `mypc.lan`, a Tailscale name)
   get `403`: use the IP address, or set a password.
 
-With a password set, these two checks are off: no other page can learn the
-password, and the password is what keeps it out. That is also what makes a
-reverse proxy work (it forwards its own name and an `https://` origin to the
-plain-HTTP server), so put a password on a server behind one.
+With a password set, any `Host` is accepted and the password is what keeps
+other pages out. A request from another origin must then carry the password
+in the `X-Auth-Token` or `Authorization` header (another site's form cannot
+set a header, but it can put a guessed password in `?token=`); the server's
+own page always sends the header. This is also what makes a reverse proxy
+work (it forwards its own name and an `https://` origin to the plain-HTTP
+server), so put a password on a server behind one.
 
 ## Configuration
 

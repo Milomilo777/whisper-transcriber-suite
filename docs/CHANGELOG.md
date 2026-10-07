@@ -364,10 +364,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Security
 
 - **Web pages can no longer drive the local web server.** JSON job requests need
-  `Content-Type: application/json` (else 415), the page cannot be framed by another site, and
-  without an access password the server refuses requests from another web origin and answers
-  only addresses that name this computer directly (IP address, `localhost`,
+  `Content-Type: application/json` (else 415), the page cannot be framed or loaded by another
+  site, and without an access password the server refuses requests from another web origin and
+  answers only addresses that name this computer directly (IP address, `localhost`,
   `host.docker.internal`, its name), which stops cross-site job submissions and DNS rebinding.
+  With a password, another origin must send it in a header, not in `?token=`.
 - **The access password stays out of logs and links.** A `?token=` value is logged as
   `token=[redacted]`; the browser page now accepts a link with `?token=` (it answered 401) and
   removes it from the address bar; `gui.py serve` uses the app's Access password unless `--token`

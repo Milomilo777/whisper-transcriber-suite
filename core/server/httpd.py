@@ -51,10 +51,12 @@ Design constraints honoured here:
     ``app/services`` exposes pure ``build_*`` seams).
   * Optional shared-secret auth via ``X-Auth-Token`` header or ``?token=``.
   * A hard max-upload-size cap enforced before any bytes are buffered.
-  * Browser guards: a request from another web origin is refused, JSON
-    POSTs must say ``application/json`` (a cross-site form cannot), and
-    without a token only a Host that names this machine directly is served
-    (a DNS-rebinding page sends its own domain name).
+  * Browser guards: JSON POSTs must say ``application/json`` (a cross-site
+    form cannot) and other sites' subresource loads are refused; without a
+    token, requests from another web origin are refused and only a Host
+    that names this machine directly is served (a DNS-rebinding page sends
+    its own domain name); with a token, a foreign origin must send it in a
+    header (see ``_browser_guard_problem``).
 """
 from __future__ import annotations
 
@@ -938,24 +940,42 @@ class JobRequestHandler(BaseHTTPRequestHandler):
     def _browser_guard_problem(self) -> str:
         """Why this request must be refused as a browser attack, or "".
 
-        Only without a token. A token is the gate on its own: no other web
-        page can learn it (the token is not a cookie a browser would attach
-        by itself), and a TLS-terminating reverse proxy forwards a foreign
-        Origin scheme and often its own Host name. Without a token, Host is
-        the only thing that tells a rebinding page's domain apart from this
-        machine, and Origin the only thing that tells another site's form
-        apart from the server's own page.
+        Always: a subresource load from another site (``Sec-Fetch-Site``
+        cross-site / same-site on a non-navigation, e.g. a ``<script>`` tag)
+        is refused, so another page cannot use the 200 / 401 answer to guess
+        the password; following a shared link (a navigation) still works.
+
+        Without a token, Host is the only thing that tells a rebinding page's
+        domain apart from this machine, and Origin the only thing that tells
+        another site's form apart from the server's own page: both checked.
+
+        With a token, Host is not checked (a page cannot read anything
+        without the token, and a reverse proxy forwards its own name), and a
+        token sent in a header passes whatever the Origin: another site's
+        form cannot set a header, and a cross-origin fetch with one needs a
+        CORS preflight this server never grants. Only a query-string token
+        (which a form CAN carry, e.g. a guessed password) must come with no
+        Origin or the server's own.
         """
         srv = self._srv
-        if srv.token:
-            return ""
+        site = (self.headers.get("Sec-Fetch-Site") or "").strip().lower()
+        mode = (self.headers.get("Sec-Fetch-Mode") or "").strip().lower()
+        if site in ("cross-site", "same-site") and mode != "navigate":
+            return "cross-site request refused"
         host = self.headers.get("Host")
+        https = srv.ssl_context is not None
+        if srv.token:
+            if (self.headers.get("X-Auth-Token") or self._bearer_token()
+                    or origin_allowed(self.headers.get("Origin"), host,
+                                      https=https)):
+                return ""
+            return ("cross-origin request refused: send the token in the "
+                    "X-Auth-Token header")
         if not host_allowed(host, srv.own_names):
             return ("unknown Host header: open the server by its IP address, "
                     "localhost or this computer's name, or set an access "
                     "password")
-        if not origin_allowed(self.headers.get("Origin"), host,
-                              https=srv.ssl_context is not None):
+        if not origin_allowed(self.headers.get("Origin"), host, https=https):
             return "cross-origin request refused"
         return ""
 
@@ -1263,6 +1283,12 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 remaining -= len(buf)
         except OSError:  # incl. TimeoutError: the client paused or left
             return
+        finally:
+            # The reply that follows is written with the normal timeout.
+            try:
+                self.connection.settimeout(self.timeout)
+            except OSError:
+                pass
 
     def _reject_post_early(self, status: int, message: str) -> None:
         """Reject a POST before reading its body, keeping HTTP/1.1 in sync.

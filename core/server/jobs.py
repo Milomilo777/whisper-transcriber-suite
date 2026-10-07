@@ -826,6 +826,8 @@ _WIN_RESERVED_NAMES = frozenset(
     {"CON", "PRN", "AUX", "NUL"}
     | {f"COM{i}" for i in range(1, 10)}
     | {f"LPT{i}" for i in range(1, 10)}
+    # Windows also reserves COM and LPT with a superscript 1, 2 or 3.
+    | {f"{dev}{chr(code)}" for dev in ("COM", "LPT") for code in (0xB9, 0xB2, 0xB3)}
 )
 
 # Length caps for a saved upload name (see _safe_filename). The per-job dir
@@ -952,7 +954,9 @@ def _safe_filename(name: str) -> str:
         c for c in base
         if c.isalnum() or c in (".", "-", "_", " ")
     ).strip()
-    cleaned = cleaned.lstrip(".") or ""
+    # Spaces again after the dots, so ". a.wav" does not keep a leading
+    # space (and a second pass changes nothing).
+    cleaned = cleaned.lstrip(". ") or ""
     stem, ext = os.path.splitext(cleaned)
     if len(ext) > _MAX_UPLOAD_EXT or " " in ext:
         # Not a real extension ("notes.from the meeting"): keep it whole.
@@ -960,11 +964,10 @@ def _safe_filename(name: str) -> str:
     cleaned = (stem[:_MAX_UPLOAD_STEM] + ext).rstrip(" .")
     if not cleaned:
         return f"upload-{uuid.uuid4().hex[:8]}.bin"
-    # Reserved-name guard: split off the extension and, if the stem is a
-    # reserved device name, prefix an underscore so it becomes a real file.
-    # Windows ignores trailing spaces and dots there too ("CON .txt").
-    stem, ext = os.path.splitext(cleaned)
-    if stem.rstrip(" .").upper() in _WIN_RESERVED_NAMES:
+    # Reserved-name guard: if the part before the FIRST dot is a reserved
+    # device name, prefix an underscore so it becomes a real file. Windows
+    # treats "Con.Air.1997.mp4" and "CON .txt" as the device too.
+    if cleaned.split(".", 1)[0].rstrip(" ").upper() in _WIN_RESERVED_NAMES:
         cleaned = "_" + cleaned
     return cleaned
 

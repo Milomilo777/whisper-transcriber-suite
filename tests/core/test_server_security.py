@@ -250,11 +250,47 @@ def test_reverse_proxy_post_with_a_token_is_accepted(tmp_path):
         headers = {"Content-Type": "application/json",
                    "Host": "whisper.example.com",
                    "Origin": "https://whisper.example.com"}
+        # No token: refused (a foreign-looking Origin without a header token).
         status, _ = _request(srv, "POST", "/api/jobs", _URL_JOB, headers)
-        assert status == 401
+        assert status == 403
         status, body = _request(srv, "POST", "/api/jobs", _URL_JOB, {
             **headers, "X-Auth-Token": _SHARED})
         assert status == 202, body
+
+
+def test_cross_site_form_with_a_query_token_is_refused(tmp_path):
+    """Another site's form can carry a guessed password in ?token= (a simple
+    request, no preflight); it cannot set a header. So with a token, a
+    foreign Origin needs the token in a header."""
+    with _RunningServer(tmp_path, token=_SHARED) as srv:
+        body = _multipart("a.wav", b"x")
+        for origin in ("http://evil.example", "null"):
+            status, _ = _request(srv, "POST", f"/api/jobs?token={_SHARED}", body, {
+                "Content-Type": "multipart/form-data; boundary=BOUND",
+                "Origin": origin})
+            assert status == 403, origin
+        assert srv.manager.list() == []
+        # The same request from the server's own page (same origin) passes.
+        status, _ = _request(srv, "POST", f"/api/jobs?token={_SHARED}", body, {
+            "Content-Type": "multipart/form-data; boundary=BOUND",
+            "Origin": f"http://127.0.0.1:{srv.port}"})
+        assert status == 202
+
+
+def test_cross_site_subresource_requests_are_refused(tmp_path):
+    """A <script>/<img> load from another site (Sec-Fetch-Site: cross-site)
+    must not work as a password-guessing oracle; a navigation (a shared
+    link) still opens the page."""
+    with _RunningServer(tmp_path, token=_SHARED) as srv:
+        status, _ = _request(srv, "GET", f"/api/health?token={_SHARED}", headers={
+            "Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "no-cors"})
+        assert status == 403
+        status, _ = _request(srv, "GET", f"/?token={_SHARED}", headers={
+            "Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate"})
+        assert status == 200
+        status, _ = _request(srv, "GET", f"/api/health?token={_SHARED}", headers={
+            "Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "cors"})
+        assert status == 200
 
 
 def test_page_cannot_be_framed(tmp_path):
@@ -399,6 +435,22 @@ def test_safe_filename_reserved_names_and_dotted_names():
     assert _safe_filename("notes.from the long meeting") == "notes.from the long meeting"
     assert _safe_filename("x." + "y" * 30) == "x." + "y" * 30
     assert _safe_filename("x." + "y" * 300) == ("x." + "y" * 300)[:100]
+    # Windows treats everything after the FIRST dot as the extension here.
+    assert _safe_filename("Con.Air.1997.mp4") == "_Con.Air.1997.mp4"
+    assert _safe_filename("NUL.tar.gz") == "_NUL.tar.gz"
+    sup1 = chr(0xB9)  # superscript one
+    assert _safe_filename(f"COM{sup1}.wav") == f"_COM{sup1}.wav"
+
+
+@pytest.mark.parametrize("name", [
+    ". a.wav", "..  b.mp3", " c .wav", "x" * 300, "a. .b. .", "CON .txt",
+    "Con.Air.1997.mp4",
+    "".join(map(chr, (0x641, 0x627, 0x6CC, 0x644, 0x20, 0x635, 0x648, 0x62A, 0x6CC))) + ".wav",
+], ids=lambda n: n.encode("ascii", "replace").decode()[:20])
+def test_safe_filename_is_idempotent(name):
+    once = _safe_filename(name)
+    assert _safe_filename(once) == once
+    assert once and once == once.strip() and not once.endswith(".")
 
 
 def test_safe_filename_caps_length_and_trailing_dots():
