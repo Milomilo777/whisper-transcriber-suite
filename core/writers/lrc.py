@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 
-from .base import coerce_seconds, fmt_lrc_time, normalize_text, speaker_prefix
+from .base import coerce_seconds, fmt_lrc_time, labelled_text
 
 
 def write(segments: list[dict], audio_path: str = "") -> str:
@@ -14,6 +14,5 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         # coerce_seconds: clamp a malformed start (None / non-numeric /
         # non-finite) instead of aborting the whole .lrc.
         start = coerce_seconds(seg.get("start"))
-        text = speaker_prefix(seg) + normalize_text(seg.get("text", ""))
-        lines.append(f"{fmt_lrc_time(start)}{text}")
+        lines.append(f"{fmt_lrc_time(start)}{labelled_text(seg)}")
     return "\n".join(lines) + "\n"

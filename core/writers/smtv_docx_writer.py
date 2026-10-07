@@ -86,6 +86,9 @@ _LANGUAGE_NAMES: dict[str, str] = {
     "zh": "Chinese (simplified)",
     "zh-CN": "Chinese (simplified)",
     "zh-TW": "Chinese (traditional)",
+    "zh-HK": "Chinese (traditional)",
+    "zh-Hant": "Chinese (traditional)",
+    "zh-Hans": "Chinese (simplified)",
     "co": "Corsican",
     "hr": "Croatian",
     "cs": "Czech",
@@ -183,17 +186,19 @@ def language_name(code: str) -> str:
     """Human language name for an ISO code; the raw code if unmapped.
 
     The full tag is tried first (``zh-TW`` -> traditional Chinese), then
-    with its region/script suffix stripped (``pt-BR`` -> ``pt``) so any
-    BCP-47 code still resolves. Matching ignores case and ``_`` vs ``-``.
+    ever shorter prefixes (``zh-Hant-TW`` -> ``zh-Hant``, ``pt-BR`` ->
+    ``pt``) so any BCP-47 code still resolves. Matching ignores case and
+    ``_`` vs ``-``.
     """
     raw = (code or "").strip()
     if not raw:
         return ""
-    full = raw.replace("_", "-").lower()
-    name = _LANGUAGE_NAMES_LOWER.get(full)
-    if name is None:
-        name = _LANGUAGE_NAMES_LOWER.get(full.split("-")[0])
-    return name if name is not None else raw
+    parts = raw.replace("_", "-").lower().split("-")
+    for n in range(len(parts), 0, -1):
+        name = _LANGUAGE_NAMES_LOWER.get("-".join(parts[:n]))
+        if name is not None:
+            return name
+    return raw
 
 
 def _fmt_smtv_time(seconds: float) -> str:

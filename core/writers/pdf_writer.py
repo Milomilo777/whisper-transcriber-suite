@@ -75,8 +75,6 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
     markup = chain.markup
     base = chain.base
     if base is not None:
-        # The title is wrapped in <b> so fallback fonts pick their bold
-        # face through the same family mapping as the base font.
         title_style = ParagraphStyle(
             name="TitleText", parent=title_style, fontName=base.name
         )
@@ -84,7 +82,7 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
 
     story: list[Any] = []
     title = os.path.basename(audio_path) if audio_path else "Transcript"
-    story.append(Paragraph(f"<b>{markup(title)}</b>", title_style))
+    story.append(Paragraph(f"<b>{markup(title, bold=True)}</b>", title_style))
     nonempty = [s for s in segments if normalize_text(s.get("text", ""))]
     if nonempty:
         last_end = coerce_seconds(nonempty[-1].get("end"))
@@ -109,7 +107,7 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
         )
         text = markup(normalize_text(seg.get("text", "")))
         if speaker:
-            line = f"<b>[{ts}] {markup(speaker)}:</b> {text}"
+            line = f"<b>[{ts}] {markup(speaker, bold=True)}:</b> {text}"
         else:
             line = f"<b>[{ts}]</b> {text}"
         story.append(Paragraph(line, body_style))

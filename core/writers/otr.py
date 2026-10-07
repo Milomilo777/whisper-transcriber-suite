@@ -9,12 +9,12 @@ segment's ``Speaker: `` label goes at the start of its text.
 from __future__ import annotations
 
 from ..integrations.otranscribe import segments_to_otr
-from .base import speaker_prefix
+from .base import labelled_text, speaker_prefix
 
 
 def write(segments: list[dict], audio_path: str = "") -> str:
     labelled = [
-        {**seg, "text": speaker_prefix(seg) + str(seg.get("text") or "")}
+        {**seg, "text": labelled_text(seg)}
         if isinstance(seg, dict) and speaker_prefix(seg) else seg
         for seg in segments
     ]

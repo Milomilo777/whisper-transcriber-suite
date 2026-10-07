@@ -128,9 +128,13 @@ def test_split_runs_keeps_marks_and_joiners_with_their_letter():
     # A Persian letter with a kasra (U+0650) and a ZWNJ (U+200C): the
     # mark and the joiner must stay in the letter's run even though the
     # first font "covers" neither.
+    # Invisible format characters are dropped: the fonts draw ZWNJ and
+    # direction marks as a visible bar and unshaped text needs neither.
     chain = _chain(_FakeFont("latin", "a"), _FakeFont("arabic", "مي"))
-    text = "a م" + "ِ" + "‌" + "ي"
-    assert chain.split_runs(text) == [("latin", "a "), ("arabic", text[2:])]
+    text = "a م" + "\u0650" + "\u200c" + "ي" + "\u200f"
+    assert chain.split_runs(text) == [
+        ("latin", "a "), ("arabic", "م" + "\u0650" + "ي"),
+    ]
 
 
 def test_split_runs_prefers_japanese_font_for_kanji_next_to_kana():
@@ -146,6 +150,53 @@ def test_split_runs_prefers_japanese_font_for_kanji_next_to_kana():
 def test_split_runs_uncovered_char_goes_to_first_font():
     chain = _chain(_FakeFont("latin", "a"), _FakeFont("other", "b"))
     assert chain.split_runs("a\U0001F600") == [("latin", "a\U0001F600")]
+
+
+def test_markup_bold_names_the_bold_face_of_fallback_runs():
+    cjk = _FakeFont("cjk", "你")
+    cjk.bold_name = "cjk-Bold"
+    chain = _chain(_FakeFont("latin", "a"), cjk)
+    assert chain.markup("a你", bold=True) == 'a<font name="cjk-Bold">你</font>'
+    assert chain.markup("a你") == 'a<font name="cjk">你</font>'
+
+
+def _span_fonts(data: bytes) -> dict[str, str]:
+    fitz = pytest.importorskip("fitz")
+    page = fitz.open(stream=data, filetype="pdf")[0]
+    return {
+        span["text"].strip(): span["font"]
+        for block in page.get_text("dict")["blocks"]
+        for line in block.get("lines", [])
+        for span in line["spans"]
+    }
+
+
+def test_pdf_bold_speaker_and_title_in_fallback_font():
+    _need_fonts("日本語")
+    font = pdf_fonts.default_chain().font_for("語")
+    assert font is not None
+    if font.bold_name == font.name:
+        pytest.skip("the CJK system font has no bold face here")
+    data = pdf_writer.write_bytes(
+        [{"start": 0.0, "end": 1.0, "text": "hi", "speaker": "日本語"}],
+        "日本語.wav",
+    )
+    text = _pdf_text(data)
+    assert text.count("日本語") == 2
+    fonts = [f for t, f in _span_fonts(data).items() if t == "日本語"]
+    assert fonts and all("Bold" in f for f in fonts)
+
+
+def test_pdf_leaves_out_zero_width_characters():
+    _need_fonts("میخواهم")
+    data = pdf_writer.write_bytes(
+        [{"start": 0.0, "end": 1.0, "text": "a" + "\u200c" + "b می" + "\u200c" + "خواهم"}],
+        "a.mp4",
+    )
+    text = _pdf_text(data)
+    assert "\u200c" not in text
+    assert "ab" in text
+    assert not Counter("میخواهم") - Counter(text)
 
 
 def test_markup_escapes_and_tags_fallback_runs_only():
@@ -198,6 +249,15 @@ def test_docx_ltr_paragraph_has_no_bidi(lang):
     assert "w:rtl" not in para
 
 
+def test_docx_persian_sentence_opening_with_latin_word_is_rtl():
+    sample = "Google یک شرکت بزرگ است"
+    xml = _document_xml(docx_writer.write_bytes(
+        [{"start": 1.0, "end": 2.0, "text": sample}], "clip.mp4"
+    ))
+    para = next(p for p in _paragraphs(xml) if sample in p)
+    assert "w:bidi" in para
+
+
 def test_docx_rtl_title_and_speaker():
     xml = _document_xml(docx_writer.write_bytes(
         [{"start": 0.0, "end": 1.0, "text": "سلام", "speaker": "مریم"}],
@@ -213,7 +273,11 @@ def test_docx_rtl_title_and_speaker():
 
 
 def test_is_rtl_text_uses_first_strong_character():
-    assert is_rtl_text("سلام world")
+    assert is_rtl_text("سلام دنیا world")
+    assert is_rtl_text("Google یک شرکت بزرگ است")
+    # A tie goes to the first strong letter.
+    assert is_rtl_text("سل ab")
+    assert not is_rtl_text("ab سل")
     assert is_rtl_text("  123 שלום")
     assert not is_rtl_text("world سلام")
     assert not is_rtl_text("123 ...")
@@ -246,6 +310,20 @@ def test_tsv_keeps_speaker_in_text_column():
     assert rows[2] == "1000\t2000\tbeta"
 
 
+def test_empty_segment_gets_no_dangling_speaker_label():
+    segs = [{"start": 0.0, "end": 1.0, "text": "  ", "speaker": "A"}]
+    assert txt.write(segs) == "\n"
+    assert lrc.write(segs).endswith("]\n")
+    assert tsv.write(segs).splitlines()[1] == "0\t1000\t"
+    assert "A:" not in json.loads(otr.write(segs))["text"]
+
+
+def test_speaker_label_with_newline_stays_on_one_line():
+    segs = [{"start": 0.0, "end": 1.0, "text": "hi", "speaker": "A\nB\tC"}]
+    assert tsv.write(segs).splitlines()[1] == "0\t1000\tA B C: hi"
+    assert txt.write(segs).splitlines() == ["A B C: hi"]
+
+
 def test_otr_keeps_speaker():
     payload = json.loads(otr.write(_SPK))
     assert "SPEAKER_00: alpha" in payload["text"]
@@ -260,6 +338,10 @@ def test_otr_keeps_speaker():
     ("zh_TW", "Chinese (traditional)"),
     ("zh-tw", "Chinese (traditional)"),
     ("zh-CN", "Chinese (simplified)"),
+    ("zh-Hant", "Chinese (traditional)"),
+    ("zh-Hant-TW", "Chinese (traditional)"),
+    ("zh-HK", "Chinese (traditional)"),
+    ("zh-Hans", "Chinese (simplified)"),
     ("zh", "Chinese (simplified)"),
     ("pt-BR", "Portuguese"),
 ])

@@ -14,10 +14,12 @@ skipped.
 
 Known limit: reportlab draws Arabic-script and Hebrew text unshaped and
 in logical order unless the optional ``uharfbuzz`` and ``rlbidi``
-packages are installed, which this app does not ship. The text is still
-embedded correctly (copy, search and extraction return it), but its
-letters are not joined and run left to right. DOCX output renders these
-scripts correctly.
+packages are installed, which this app does not ship: every letter is a
+real glyph, but the letters are not joined and run left to right, so a
+reader that applies bidi on copy/extraction returns them reversed. DOCX
+output renders these scripts correctly. Invisible format characters
+(ZWNJ, ZWJ, direction marks) are left out of the PDF: without shaping
+they do nothing, and the fonts draw them as a visible bar.
 """
 from __future__ import annotations
 
@@ -167,6 +169,17 @@ class SystemFont:
         return True
 
 
+# Zero-width and direction-control characters (U+200B-200F, 202A-202E,
+# 2060-2064, 2066-2069, FEFF).
+_INVISIBLE = frozenset(
+    [chr(c) for c in range(0x200B, 0x2010)]
+    + [chr(c) for c in range(0x202A, 0x202F)]
+    + [chr(c) for c in range(0x2060, 0x2065)]
+    + [chr(c) for c in range(0x2066, 0x206A)]
+    + [chr(0xFEFF)]
+)
+
+
 def _is_attached(ch: str) -> bool:
     """Characters that belong to the run of the letter before them."""
     return ch.isspace() or unicodedata.category(ch) in ("Mn", "Mc", "Me", "Cf")
@@ -236,6 +249,8 @@ class FontChain:
         runs: list[list[str]] = []
         pending = ""
         for ch in text:
+            if ch in _INVISIBLE:
+                continue
             if _is_attached(ch):
                 if runs:
                     runs[-1][1] += ch
@@ -252,16 +267,24 @@ class FontChain:
             runs.append([base.name, pending])
         return [(name, chunk) for name, chunk in runs]
 
-    def markup(self, text: str) -> str:
+    def markup(self, text: str, bold: bool = False) -> str:
         """reportlab paragraph markup for *text*: escaped, with a
-        ``<font>`` tag around every run not in the base font."""
+        ``<font>`` tag around every run not in the base font.
+
+        reportlab ignores an enclosing ``<b>`` once a ``<font name>``
+        sets the face, so with *bold* the fallback runs name their bold
+        face directly; the caller still wraps the result in ``<b>`` for
+        the base-font runs.
+        """
         base = self.base
+        by_name = {f.name: f for f in self.fonts}
         out: list[str] = []
         for name, chunk in self.split_runs(text):
             if base is None or name == base.name:
                 out.append(xml_escape(chunk))
             else:
-                out.append(f'<font name="{name}">{xml_escape(chunk)}</font>')
+                face = by_name[name].bold_name if bold else name
+                out.append(f'<font name="{face}">{xml_escape(chunk)}</font>')
         return "".join(out)
 
 

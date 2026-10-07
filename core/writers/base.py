@@ -195,22 +195,37 @@ def speaker_prefix(seg: dict) -> str:
     raw = seg.get("speaker") if isinstance(seg, dict) else None
     if raw is None or raw == "":
         return ""
-    label = str(raw).strip()
+    # Collapse whitespace: a newline or tab in a hand-edited label would
+    # split a line-based format (txt, lrc, tsv, srt) in two.
+    label = " ".join(str(raw).split())
     return f"{label}: " if label else ""
 
 
-def is_rtl_text(text: str) -> bool:
-    """True when the first strong character of *text* is right-to-left.
+def labelled_text(seg: dict) -> str:
+    """The segment's normalised text with its speaker prefix; "" when the
+    text is empty, so an empty segment gets no dangling label."""
+    text = normalize_text(seg.get("text", "")) if isinstance(seg, dict) else ""
+    return speaker_prefix(seg) + text if text else ""
 
-    This is the paragraph-direction rule of the Unicode bidi algorithm
-    (UAX #9, rules P2/P3): Arabic-script and Hebrew text gives True,
-    Latin, Cyrillic or CJK text gives False, and text with no strong
-    character (digits, punctuation) counts as left-to-right.
+
+def is_rtl_text(text: str) -> bool:
+    """True when *text* is mostly right-to-left (Arabic script, Hebrew).
+
+    Strong RTL letters are counted against strong LTR letters (Latin,
+    Cyrillic, CJK, ...). A tie goes to the first strong character, the
+    paragraph-direction rule of the Unicode bidi algorithm (UAX #9,
+    P2/P3). Counting, not only the first letter, keeps a Persian sentence
+    that opens with a brand name ("Google ...") right-to-left. Text with
+    no strong character (digits, punctuation) counts as left-to-right.
     """
+    rtl = ltr = 0
+    first = ""
     for ch in text or "":
         kind = unicodedata.bidirectional(ch)
         if kind in ("R", "AL"):
-            return True
-        if kind == "L":
-            return False
-    return False
+            rtl += 1
+            first = first or "R"
+        elif kind == "L":
+            ltr += 1
+            first = first or "L"
+    return rtl > ltr or (rtl == ltr and first == "R")

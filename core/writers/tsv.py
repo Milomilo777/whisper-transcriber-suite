@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 
-from .base import coerce_seconds, normalize_text, speaker_prefix
+from .base import coerce_seconds, labelled_text
 
 
 def _ms(value: object) -> int:
@@ -38,7 +38,7 @@ def _ms(value: object) -> int:
 def write(segments: list[dict], audio_path: str = "") -> str:
     rows: list[str] = ["start\tend\ttext"]
     for seg in segments:
-        text = (speaker_prefix(seg) + normalize_text(seg.get("text", ""))).replace("\t", " ")
+        text = labelled_text(seg).replace("\t", " ")
         start_ms = _ms(seg.get("start", 0.0))
         # A missing or unusable end falls back to the start and an earlier
         # end is clamped to it, as in the subtitle writers (0 here made a
