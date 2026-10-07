@@ -171,6 +171,7 @@ class _ServerTask:
       * ``output_paths``, ``detected_language``, ``language_probability``
         (written back by the engine)
       * ``resume``, ``clip_start``, ``clip_end``, ``history_id`` (inputs)
+      * ``checkpoint_failures`` (the periodic checkpoint writer's counter)
       * the cooperative ``cancelled`` flag AND the ``paused`` flag, both read
         bare inside the segment loop (``while task.paused and not
         task.cancelled``). Both are bridged to the owning ``Job`` so the
@@ -196,6 +197,8 @@ class _ServerTask:
         self.clip_start: float | None = job.clip_start
         self.clip_end: float | None = job.clip_end
         self.history_id: int = 0
+        # Read and updated by the engine's periodic checkpoint writer.
+        self.checkpoint_failures: int = 0
         self._job = job
 
     @property

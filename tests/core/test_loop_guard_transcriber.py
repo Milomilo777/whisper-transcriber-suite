@@ -453,6 +453,34 @@ def test_no_speech_is_said_and_outputs_are_still_written(t, monkeypatch, tmp_pat
     assert any("No speech recognised" in m for m in logs)
 
 
+def test_a_server_job_task_survives_periodic_checkpoints(t, monkeypatch, tmp_path):
+    """Every LAN/web job runs transcribe() with core.server.jobs._ServerTask;
+    the periodic checkpoint read ``task.checkpoint_failures`` bare and the
+    job died with AttributeError at its first checkpoint."""
+    from core.server import jobs as jobs_mod
+
+    audio = tmp_path / "upload.wav"
+    audio.write_bytes(b"\0" * 16)
+
+    class _Job:
+        media_path = str(audio)
+        language = ""
+        formats = ["srt"]
+        cancelled = False
+        paused = False
+        clip_start = None
+        clip_end = None
+
+    monkeypatch.setattr(t, "_CHECKPOINT_EVERY_N_SEGMENTS", 1)
+    _slices, written = _wire(t, monkeypatch, tmp_path,
+                             Engine([Seg(0, 3, "one"), Seg(3, 6, "two")]))
+    task = jobs_mod._ServerTask(_Job())  # type: ignore[arg-type]
+
+    t.transcribe(task, lambda p: None, lambda m: None)  # type: ignore[arg-type]
+
+    assert [s["text"] for s in written["segs"]] == ["one", "two"]
+
+
 def test_speech_clears_the_no_speech_flag(t, monkeypatch, tmp_path):
     from core.task import TranscriptionTask
 

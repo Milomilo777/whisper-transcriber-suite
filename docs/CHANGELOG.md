@@ -280,6 +280,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   while the writer names its scratch `<key>.json.<random>.tmp`. A non-default `vad_window_s` or
   `loop_guard_repeats` now joins the checkpoint fingerprint, so a changed setting cannot resume a
   partial made with the old one.
+- **LAN/web server jobs no longer die at their first checkpoint.** The server's task object lacked
+  the checkpoint-failure counter the engine reads every 10 segments or 20 s, so a longer job ended
+  with an `AttributeError` and no output.
 - **Two jobs waiting for one loading model no longer lose a worker.** A second caller (watched
   folder, crash resume) waiting for the same loading worker used to burn the full wait (2 min, 20
   on macOS) and then shut down the worker the other job was using; every waiter now wakes on

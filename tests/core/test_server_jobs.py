@@ -94,7 +94,7 @@ def test_server_task_mirrors_engine_read_attributes():
     for attr in (
         "file_path", "language", "output_formats", "output_paths",
         "detected_language", "language_probability", "paused", "cancelled",
-        "resume", "clip_start", "clip_end", "history_id",
+        "resume", "clip_start", "clip_end", "history_id", "checkpoint_failures",
     ):
         assert hasattr(task, attr), f"_ServerTask missing {attr!r}"
     # paused must read as a real bool the loop can short-circuit on.
