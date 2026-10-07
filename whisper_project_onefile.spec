@@ -175,6 +175,7 @@ a = Analysis(
         'app.dialogs.quick_start',
         'app.domain.cookies',
         'app.domain.languages',
+        'app.domain.task_outputs',
         'app.domain.tasks',
         'app.services.download_service',
         'app.services.format_service',

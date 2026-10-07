@@ -271,6 +271,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Burn subtitles never replaces its source.** Saving the burned video under the source video's
   own name is refused instead of overwriting the original, and a temp folder whose path holds
   `,` `;` `[` `]` or `'` no longer breaks the burn.
+- **Task actions use the files the job really wrote.** After a re-run (`name (1).srt`) or with an
+  output template, **Burn subtitles into video** and **Export → oTranscribe** read the task's own
+  SRT instead of the previous run's `name.srt`, **View transcript** plays the task's source media
+  (the viewer also pairs `name (1).json`, `name.en-translated.json`, `.opus`, `.mov`, `.m4v`, `.avi`,
+  `.wma` and `.ts`), and **Open folder** / "Saved N files in …" show the outputs' folder.
+- The word-count fallback of a translate run reads `name.en-translated.json`.
 - **The loop guard no longer deletes real repeated speech.** Three identical lines in a row used to
   be collapsed to one, so a prayer's "Amen." x4 or a chorus lost text with only a log line. Now only
   back-to-back copies count (gap under 0.25 s, each under 5 s): runs of 3-7 such copies are kept and

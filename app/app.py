@@ -19,6 +19,7 @@ from app.dialogs.advanced import AdvancedDialog
 from app.dialogs.model_download import ModelDownloadDialog
 from app.dialogs.quick_start import QuickStartChoice, QuickStartDialog, apply_choice, should_show
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
+from app.domain.task_outputs import task_output_folder, task_srt_output
 from app.domain.tasks import TranscriptionTask, VideoDownloadTask
 from app.observability import init_sentry, send_launch_ping_async
 from app.services.download_service import DownloadService
@@ -1211,21 +1212,23 @@ class App(tk.Tk):
         menu.add_command(label="Clear list", command=self._clear_recent)
 
     def _burn_subs_for(self, task: TranscriptionTask) -> None:
-        """Burn the SRT next to the task's source media into a new MP4.
+        """Burn the task's SRT into a new MP4.
 
-        Runs ffmpeg in a daemon thread so the UI stays responsive
-        on long videos. On completion, surfaces a log line + chimes
-        + opens the output folder. Failure logs via messagebox.
+        Uses the SRT the task really wrote (``task.output_paths``), so a
+        re-run burns its own subtitles, not the previous run's. Runs ffmpeg
+        in a daemon thread so the UI stays responsive on long videos. On
+        completion, surfaces a log line + chimes + opens the output folder.
+        Failure logs via messagebox.
         """
-        import threading
         from core import burn_subs
 
         base, _ = os.path.splitext(task.file_path)
-        srt_path = base + ".srt"
-        if not os.path.isfile(srt_path):
+        srt_path = task_srt_output(task)
+        if srt_path is None:
             messagebox.showwarning(
                 "No SRT found",
-                f"Expected SRT not found next to source:\n{srt_path}",
+                "This task has no SRT file on disk. Add SRT to the output "
+                f"formats and run it again.\nLooked for:\n{base}.srt",
                 parent=self,
             )
             return
@@ -1234,6 +1237,7 @@ class App(tk.Tk):
         out_path = filedialog.asksaveasfilename(
             parent=self,
             title="Save burned-in video as...",
+            initialdir=os.path.dirname(os.path.abspath(task.file_path)),
             initialfile=os.path.basename(suggested),
             defaultextension=".mp4",
             filetypes=[("MP4 video", "*.mp4"), ("All files", "*.*")],
@@ -1306,13 +1310,19 @@ class App(tk.Tk):
         task's chosen or detected language) reaches the viewer for its
         per-script fonts; a file picked by hand gets none.
         """
+        # The task's own source is the viewer's media: pairing by the JSON's
+        # name misses re-runs ("name (1).json") and relocated outputs.
         if json_path and os.path.isfile(json_path):
-            _open_transcript_viewer(self, json_path, language=language)
+            _open_transcript_viewer(
+                self, json_path, language=language, media_path=file_path
+            )
             return
         base, _ = os.path.splitext(file_path)
         guessed = base + ".json"
         if os.path.isfile(guessed):
-            _open_transcript_viewer(self, guessed, language=language)
+            _open_transcript_viewer(
+                self, guessed, language=language, media_path=file_path
+            )
         else:
             _open_transcript_viewer(self, None)
 
@@ -1328,6 +1338,7 @@ class App(tk.Tk):
             if isinstance(p, str) and p.lower().endswith(".json"):
                 return p
         return None
+
 
     def _open_recent(self, path: str) -> None:
         if not os.path.isfile(path):
@@ -3508,7 +3519,7 @@ class App(tk.Tk):
                 )
                 m.add_command(
                     label="Open output folder",
-                    command=lambda: self._open_folder(os.path.dirname(task.file_path)),
+                    command=lambda: self._open_folder(task_output_folder(task)),
                 )
                 m.add_separator()
             # Resume-from-cancellation: a "Resume" entry sits above "Re-run"
@@ -4727,7 +4738,9 @@ class App(tk.Tk):
             pass
 
         base, _ = os.path.splitext(task.file_path)
-        folder = os.path.dirname(task.file_path) or "."
+        # The outputs' folder, not the source's: an output template can
+        # write somewhere else, and "Open folder" must show the new files.
+        folder = task_output_folder(task)
         # Prefer the exact files the worker reported writing — that
         # covers docx/pdf/md and the de-duped "name (1).srt" form the
         # hard-coded candidate list below would miss (a docx-only run

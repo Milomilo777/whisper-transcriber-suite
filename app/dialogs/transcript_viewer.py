@@ -55,7 +55,14 @@ from core import subtitle_edit
 logger = logging.getLogger(__name__)
 
 
-_MEDIA_EXTENSIONS = (".mp4", ".mp3", ".wav", ".m4a", ".mkv", ".webm", ".flac", ".ogg", ".aac")
+_MEDIA_EXTENSIONS = (
+    ".mp4", ".mp3", ".wav", ".m4a", ".mkv", ".webm", ".flac", ".ogg", ".aac",
+    ".opus", ".mov", ".m4v", ".avi", ".wma", ".ts", ".wmv", ".mka", ".oga",
+    ".mpg", ".mpeg", ".3gp",
+)
+
+# " (1)" that a re-run adds to every output name (core.transcriber._indexed_path).
+_RERUN_INDEX_RE = re.compile(r" \(\d+\)$")
 
 # Words considered "fillers" by the one-click cleanup tool. Conservative
 # — we don't strip "like" or "you know" because those frequently carry
@@ -64,12 +71,33 @@ _FILLER_WORDS = ("uh", "um", "uhm", "er", "erm", "eh", "ah", "mm", "mmm", "hm")
 
 
 def _find_media_next_to(json_path: str) -> str | None:
-    """Find a media file that pairs with the JSON next to it."""
-    base, _ = os.path.splitext(json_path)
-    for ext in _MEDIA_EXTENSIONS:
-        candidate = base + ext
-        if os.path.isfile(candidate):
-            return candidate
+    """Find a media file that pairs with the JSON next to it.
+
+    Tries ``<json stem>.<ext>`` first, then the stem without a re-run's
+    `` (N)`` index and a translate run's ``.en-translated`` suffix, so
+    ``talk (1).json`` and ``talk.en-translated.json`` still find
+    ``talk.mp4``. Extensions match case-insensitively (``clip.MP4``).
+    Callers that know the real source pass it to the viewer instead.
+    """
+    from core.translate_task import TRANSLATED_SUFFIX
+
+    folder = os.path.dirname(json_path) or "."
+    stem = os.path.splitext(os.path.basename(json_path))[0]
+    stems = [stem]
+    stripped = _RERUN_INDEX_RE.sub("", stem)
+    if stripped.endswith(TRANSLATED_SUFFIX):
+        stripped = _RERUN_INDEX_RE.sub("", stripped[: -len(TRANSLATED_SUFFIX)])
+    if stripped and stripped != stem:
+        stems.append(stripped)
+    try:
+        names = {n.casefold(): n for n in os.listdir(folder)}
+    except OSError:
+        return None
+    for candidate_stem in stems:
+        for ext in _MEDIA_EXTENSIONS:
+            real = names.get((candidate_stem + ext).casefold())
+            if real is not None and os.path.isfile(os.path.join(folder, real)):
+                return os.path.join(folder, real)
     return None
 
 
@@ -2315,6 +2343,7 @@ def open_viewer(
     json_path: Optional[str] = None,
     initial_seek_seconds: float | None = None,
     language: str | None = None,
+    media_path: str | None = None,
 ) -> None:
     """Open the viewer.
 
@@ -2322,8 +2351,12 @@ def open_viewer(
     ``initial_seek_seconds``, when given, seeks the media and selects
     the nearest segment on open — used by the search dialog's "Open at
     result" action. ``language`` is the transcript's language when the
-    caller knows it (``TranscriptViewer.language``).
+    caller knows it (``TranscriptViewer.language``). ``media_path`` is the
+    task's real source; when it is missing on disk the viewer looks for
+    media next to the JSON instead.
     """
+    if media_path and not os.path.isfile(media_path):
+        media_path = None
     if json_path is None:
         chosen = filedialog.askopenfilename(
             title="Open transcript JSON",
@@ -2340,4 +2373,7 @@ def open_viewer(
             parent=master,
         )
         return
-    TranscriptViewer(master, json_path, initial_seek_seconds=initial_seek_seconds, language=language)
+    TranscriptViewer(
+        master, json_path, media_path=media_path,
+        initial_seek_seconds=initial_seek_seconds, language=language,
+    )

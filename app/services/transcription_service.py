@@ -1695,6 +1695,7 @@ class TranscriptionService:
         try:
             from core import convert as _convert
             from core import stats as _stats
+            from core import translate_task as _translate
             # Prefer the worker-computed numbers from the "done" event —
             # they exist regardless of which output formats were selected.
             # 0 words falls through to the file-based path so an older
@@ -1707,7 +1708,15 @@ class TranscriptionService:
                 (p for p in paths if str(p).lower().endswith(".json")), ""
             )
             if not json_path and getattr(task, "file_path", ""):
-                cand = os.path.splitext(task.file_path)[0] + ".json"
+                # Same stem the worker wrote: a translate run's outputs
+                # carry ".en-translated" (core.transcriber._task_output_base).
+                cand_base = os.path.splitext(task.file_path)[0]
+                if (
+                    _translate.normalise_task(getattr(task, "whisper_task", None))
+                    == _translate.TASK_TRANSLATE
+                ):
+                    cand_base = _translate.translated_base(cand_base)
+                cand = cand_base + ".json"
                 if os.path.isfile(cand):
                     json_path = cand
             if json_path and os.path.isfile(json_path):
