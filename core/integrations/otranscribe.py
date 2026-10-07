@@ -171,7 +171,9 @@ def whisper_json_to_otr(json_path: str, media_filename: str = "") -> str:
     *json_path* and return the .otr JSON string. Same output schema as
     ``srt_to_otr``.
     """
-    with open(json_path, "r", encoding="utf-8") as f:
+    # utf-8-sig: a JSON saved by an editor that adds a BOM must load too
+    # (the two sibling readers already accept one).
+    with open(json_path, "r", encoding="utf-8-sig") as f:
         data = json.load(f)
     if not isinstance(data, list):
         raise ValueError(
@@ -218,14 +220,23 @@ class _OtrParser(HTMLParser):
         self._current_start = None  # type: float | None
         self._buffer: list[str] = []
         self._in_timestamp = False
+        # Text typed in oTranscribe without a timestamp (a paragraph of its
+        # own) has no start; it is kept with the previous cue, or at 0.0
+        # when nothing came before it.
+        self._untimed = False
 
     def _flush(self) -> None:
         if self._current_start is None:
             return
         body = "".join(self._buffer).strip().lstrip(NBSP + " \t").strip()
-        self.segments.append((self._current_start, body))
+        if self._untimed and self.segments and body:
+            start, prev = self.segments[-1]
+            self.segments[-1] = (start, f"{prev}\n{body}" if prev else body)
+        else:
+            self.segments.append((self._current_start, body))
         self._current_start = None
         self._buffer = []
+        self._untimed = False
 
     def handle_starttag(self, tag, attrs):
         if tag == "span":
@@ -251,8 +262,13 @@ class _OtrParser(HTMLParser):
         pass
 
     def handle_data(self, data):
-        if self._current_start is None or self._in_timestamp:
+        if self._in_timestamp:
             return
+        if self._current_start is None:
+            if not data.strip(NBSP + " \t\r\n"):
+                return
+            self._current_start = self.segments[-1][0] if self.segments else 0.0
+            self._untimed = True
         self._buffer.append(data)
 
     def finalize(self):

@@ -96,20 +96,11 @@ _SMTV_DOCX = "smtv_docx"
 # This is what UI format pickers should enumerate (see app.app._ask_convert_format).
 CONVERT_TARGETS: tuple[str, ...] = OUTPUT_FORMATS + (_SMTV_DOCX,)
 
-# Registry-key -> on-disk extension overrides for the default output path
-# (mirrors core.transcriber._FMT_EXTENSIONS). Most writer names already ARE
-# the extension a downstream tool expects; a couple need an override:
-#   * elan          -> eaf    (the registry key isn't the file extension)
-#   * inqscribe     -> inqscr (InqScribe's own extension; avoids colliding
-#                               with plain .txt, which has no timestamps)
-#   * express_scribe -> txt   (Express Scribe transcripts are plain .txt)
-#   * smtv_docx     -> docx   (the actual file type it produces)
-_EXT_OVERRIDES: dict[str, str] = {
-    "elan": "eaf",
-    "inqscribe": "inqscr",
-    "express_scribe": "txt",
-    _SMTV_DOCX: "docx",
-}
+# Registry-key -> on-disk extension overrides for the default output path:
+# the transcriber's own table (core.writers.FORMAT_EXTENSIONS), so a converted
+# file gets the same extension a transcription writes (elan -> .eaf,
+# inqscribe -> .inqscr, express_scribe -> .txt, smtv_docx -> .docx).
+_EXT_OVERRIDES: dict[str, str] = dict(_writers.FORMAT_EXTENSIONS)
 
 
 def output_extension_for(fmt: str) -> str:
@@ -668,7 +659,7 @@ def _prefix_suffix_overlap(prev: list[str], cur: list[str]) -> int:
 
 def convert_file(
     in_path: str, out_format: str, out_path: str | None = None,
-    *, segments: list[dict] | None = None,
+    *, segments: list[dict] | None = None, overwrite: bool = False,
 ) -> str:
     """Convert *in_path* to *out_format*, writing beside the input by default.
 
@@ -677,7 +668,11 @@ def convert_file(
     the path written. When *out_path* is None the output is written next to the
     input with the new extension; if that would overwrite the input itself
     (e.g. re-emitting an .srt as .srt in place) the path is suffixed with
-    ``.converted`` to avoid clobbering the source.
+    ``.converted`` to avoid clobbering the source. When that default target
+    already exists it is kept and the output goes to ``name (1).ext`` (the
+    first free name) unless *overwrite* is True; an explicit *out_path* is
+    always the caller's choice. The file is written to a temp sibling and
+    moved into place, so a failed write never leaves a truncated target.
 
     *segments*, when given, is used as-is instead of re-parsing *in_path* --
     lets a caller parse once (optionally running it through
@@ -695,11 +690,20 @@ def convert_file(
         )
 
     segments = segments if segments is not None else parse_to_segments(in_path)
+    if not segments:
+        # Emitting nothing would replace an existing target with an empty
+        # shell (an existing .vtt became the 7-byte "WEBVTT\n") and report
+        # success.
+        raise ConvertError(
+            f"{os.path.basename(in_path)} has no subtitle cues to convert."
+        )
 
     target = out_path or _default_out_path(in_path, fmt)
     if _same_file(target, in_path):
         base, ext = os.path.splitext(target)
         target = f"{base}.converted{ext}"
+    if out_path is None and not overwrite and os.path.exists(target):
+        target = _free_out_path(target)
 
     parent = os.path.dirname(os.path.abspath(target))
     if parent:
@@ -715,15 +719,36 @@ def convert_file(
         payload = smtv_docx_writer.write_bytes(
             segments, in_path, language="", work_title=Path(in_path).stem
         )
-        with open(target, "wb") as fb:
-            fb.write(payload)
+        _replace_atomically(target, payload)
         return target
 
-    body = _writers.get_writer(fmt)(segments, in_path)
-    # newline="\n" disables universal-newline translation so the writers' own
-    # '\n' line endings are written byte-for-byte (matching transcriber.py and
-    # _checkpoint.py). Without it, text mode rewrites '\n' to '\r\n' on Windows,
-    # diverging the output bytes of documented-stable formats (SRT, TSV) by OS.
-    with open(target, "w", encoding="utf-8", newline="\n") as f:
-        f.write(body)
+    # No media file is known here: the transcript's own name would land in
+    # the .otr "media" field, the ELAN media link and the Markdown title.
+    body = _writers.get_writer(fmt)(segments, "")
+    # Written byte-for-byte as UTF-8 with the writers' own '\n' line endings
+    # (matching transcriber.py and _checkpoint.py); text mode would turn
+    # them into '\r\n' on Windows, diverging documented-stable formats
+    # (SRT, TSV) by OS.
+    _replace_atomically(target, body.encode("utf-8"))
     return target
+
+
+def _free_out_path(path: str) -> str:
+    """``name (1).ext``, ``name (2).ext``, ... — the first name not on disk."""
+    root, ext = os.path.splitext(path)
+    n = 1
+    while os.path.exists(f"{root} ({n}){ext}"):
+        n += 1
+    return f"{root} ({n}){ext}"
+
+
+def _replace_atomically(target: str, payload: bytes) -> None:
+    """Write *payload* to a temp sibling of *target*, then move it into place."""
+    tmp = f"{target}.{os.getpid()}.part"
+    try:
+        with open(tmp, "wb") as fb:
+            fb.write(payload)
+        os.replace(tmp, target)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)

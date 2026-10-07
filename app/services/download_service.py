@@ -1918,7 +1918,12 @@ class DownloadService:
         convertible = set(_convert.CONVERT_TARGETS)
         written: list[str] = []
         skipped: list[str] = []
-        for fmt in wanted_formats:
+        # Formats named after their extension first, so "txt" keeps
+        # "name.txt" and "express_scribe" is the one renamed below.
+        for fmt in sorted(
+            wanted_formats,
+            key=lambda f: _convert.output_extension_for(f.lower()) != f.lower(),
+        ):
             fmt_lower = fmt.lower()
             if fmt_lower not in convertible:
                 # docx / pdf need extra context convert_file doesn't offer
@@ -1927,8 +1932,20 @@ class DownloadService:
                 # still gets produced.
                 skipped.append(fmt_lower)
                 continue
+            # txt and express_scribe both default to "name.txt": the second
+            # gets "name.express_scribe.txt", as in a transcription.
+            target = None
+            default = (
+                os.path.splitext(caption_path)[0]
+                + "." + _convert.output_extension_for(fmt_lower)
+            )
+            if os.path.normcase(default) in {os.path.normcase(w) for w in written}:
+                root, ext = os.path.splitext(default)
+                target = f"{root}.{fmt_lower}{ext}"
             try:
-                out_path = _convert.convert_file(caption_path, fmt_lower, segments=segments)
+                out_path = _convert.convert_file(
+                    caption_path, fmt_lower, target, segments=segments, overwrite=True
+                )
                 written.append(out_path)
             except (OSError, _convert.ConvertError) as e:
                 app.download_events.put(

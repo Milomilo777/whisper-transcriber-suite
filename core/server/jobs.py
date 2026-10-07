@@ -692,6 +692,16 @@ class JobManager:
                 # plain "docx" request distinct from "smtv_docx" when both
                 # are asked for (different on-disk files anyway).
                 ext_to_key.setdefault(ext, kl)
+            for key in job.formats:
+                kl = key.lower()
+                # txt + express_scribe: the plain "name.txt" is the txt
+                # output whatever the request order ("name.express_scribe.txt"
+                # is matched by its stem below). smtv_docx keeps its rule.
+                if (
+                    _FMT_EXTENSIONS.get(kl, kl).lower() == kl
+                    and ext_to_key.get(kl) != "smtv_docx"
+                ):
+                    ext_to_key[kl] = kl
             for p in written:
                 if not p:
                     continue
@@ -700,6 +710,17 @@ class JobManager:
                 # auto-chapters ``.chapters.json`` sidecar is not offered as
                 # the "json" download when json wasn't requested.
                 key = ext_to_key.get(ext)
+                # Two keys can share an extension (txt / express_scribe);
+                # the engine then writes the second as "name.<key>.<ext>".
+                stem_lower = os.path.splitext(os.path.basename(p))[0].lower()
+                for k in job.formats:
+                    kl = k.lower()
+                    if (
+                        stem_lower.endswith("." + kl)
+                        and _FMT_EXTENSIONS.get(kl, kl).lower() == ext
+                    ):
+                        key = kl
+                        break
                 if key and key not in seen_keys and os.path.isfile(p):
                     out.append((key, p))
                     seen_keys.add(key)

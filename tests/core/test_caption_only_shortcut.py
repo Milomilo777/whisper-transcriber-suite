@@ -23,6 +23,8 @@ import types
 import tkinter.messagebox  # noqa: F401  -- ensures tkinter.messagebox is a bound attribute to monkeypatch
 from queue import Queue
 
+import pytest
+
 from app.domain.tasks import VideoDownloadTask
 from app.services.download_service import DownloadService
 
@@ -400,3 +402,21 @@ def test_enqueue_caption_only_builds_correct_task_for_explicit_language(monkeypa
     assert task.caption_only is True
     assert task.caption_kind == "manual"
     assert task.subtitle_lang == "de"
+
+
+@pytest.mark.parametrize("formats", [["txt", "express_scribe"], ["express_scribe", "txt"]])
+def test_txt_and_express_scribe_captions_do_not_overwrite_each_other(
+    monkeypatch, tmp_path, formats
+):
+    """Both default to "video.en.txt"; Express Scribe goes to
+    "video.en.express_scribe.txt" in either order, as in a transcription."""
+    caption_path = tmp_path / "video.en.vtt"
+    caption_path.write_text(ROLLING_VTT, encoding="utf-8")
+    _popen_factory(monkeypatch, [f"Writing video subtitles to: {caption_path}"])
+    app = _app(output_formats=formats)
+    _svc(app)._run_caption_only_task(_task(tmp_path, caption_kind="manual"))
+
+    plain = (tmp_path / "video.en.txt").read_text(encoding="utf-8")
+    express = (tmp_path / "video.en.express_scribe.txt").read_text(encoding="utf-8")
+    assert not plain.lstrip().startswith("[")
+    assert express.lstrip().startswith("[00:00:")

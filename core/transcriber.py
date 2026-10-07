@@ -42,7 +42,13 @@ from .config import load_config
 from .model_manager import DownloadCancelled, ensure_model
 from .paths import bundled_binary
 from .task import TranscriptionTask
-from .writers import get_binary_writer, get_writer, is_binary, supported_formats
+from .writers import (
+    FORMAT_EXTENSIONS,
+    get_binary_writer,
+    get_writer,
+    is_binary,
+    supported_formats,
+)
 
 # Periodic checkpoint cadence. Writing after every segment is wasteful
 # on long files (1 fsync per ~5 s of audio); waiting until completion
@@ -917,16 +923,9 @@ def _indexed_path(path: str, index: int) -> str:
     return f"{root} ({index}){ext}"
 
 
-# Registry-key -> on-disk extension overrides. A format whose name is
-# not a valid file extension (or that a tool can't open under its raw
-# name) needs an entry here; everything else uses its own name.
-#   * json      -> json (historical: the key already equalled the ext,
-#                   listed for documentation symmetry)
-#   * smtv_docx -> docx (a ".smtv_docx" file is not a Word document)
-_FMT_EXTENSIONS: dict[str, str] = {
-    "json": "json",
-    "smtv_docx": "docx",
-}
+# Registry-key -> on-disk extension (core.writers.FORMAT_EXTENSIONS, shared
+# with core.convert so a transcript and a conversion use the same names).
+_FMT_EXTENSIONS: dict[str, str] = dict(FORMAT_EXTENSIONS)
 
 
 def _smtv_output_path(base: str, lang: str) -> str:
@@ -1011,7 +1010,8 @@ def _write_outputs(
     # only scalar keys, so the guard lives here, where the value is
     # actually used; a task-provided formats list is never reinterpreted.
     try:
-        requested_known: list[str] = [f for f in fmts if f in available]
+        # dict.fromkeys: a format listed twice is written once.
+        requested_known: list[str] = list(dict.fromkeys(f for f in fmts if f in available))
     except TypeError as e:
         raise RuntimeError(
             f"Invalid 'output_formats' value: {fmts!r} "
@@ -1046,6 +1046,27 @@ def _write_outputs(
                 template, base=base, ext=ext, lang=lang, speaker_count=speaker_count,
             )
         planned.append((fmt_name, rendered))
+    # Two formats can share an extension (txt and express_scribe both
+    # write .txt): the one whose key is not its extension is written as
+    # "name.<format>.txt" (after the shared index: "name (1).express_scribe.txt")
+    # so neither overwrites the other, whatever order they were listed in.
+    seen_paths: set[str] = set()
+    tagged: set[str] = set()
+    for fmt_name, rendered in sorted(
+        planned, key=lambda fp: _FMT_EXTENSIONS.get(fp[0], fp[0]) != fp[0]
+    ):
+        key = os.path.normcase(rendered)
+        if key in seen_paths:
+            tagged.add(fmt_name)
+        seen_paths.add(key)
+
+    def _final_path(fmt_name: str, rendered: str, index: int) -> str:
+        path = _indexed_path(rendered, index)
+        if fmt_name in tagged:
+            root, ext = os.path.splitext(path)
+            path = f"{root}.{fmt_name}{ext}"
+        return path
+
     # smtv_docx is excluded from the shared index: it is a fixed,
     # recognisable filename (see _smtv_output_path), not part of the
     # re-run-safety numbering the other formats share. Including it here
@@ -1062,13 +1083,16 @@ def _write_outputs(
     want_sidecar = bool(chapters)
     index = 0
     while index < 10000 and (
-        any(os.path.exists(_indexed_path(p, index)) for _, p in indexed_planned)
+        any(os.path.exists(_final_path(f, p, index)) for f, p in indexed_planned)
         or (want_sidecar and os.path.exists(_indexed_sidecar_path(base, index)))
     ):
         index += 1
 
     for fmt_name, rendered in planned:
-        path = rendered if fmt_name == "smtv_docx" else _indexed_path(rendered, index)
+        path = (
+            rendered if fmt_name == "smtv_docx"
+            else _final_path(fmt_name, rendered, index)
+        )
         # Honour template-supplied subdirectories. Defensive: only
         # makedirs when the dirname is non-empty and differs from the
         # source folder we're already writing into.

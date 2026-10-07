@@ -276,6 +276,17 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   SRT instead of the previous run's `name.srt`, **View transcript** plays the task's source media
   (the viewer also pairs `name (1).json`, `name.en-translated.json`, `.opus`, `.mov`, `.m4v`, `.avi`,
   `.wma` and `.ts`), and **Open folder** / "Saved N files in …" show the outputs' folder.
+- **oTranscribe export asks before replacing an `.otr`** that may hold your edits (replace, keep
+  both, or cancel) and writes atomically with LF line ends; importing an `.otr` keeps paragraphs
+  typed without a timestamp, and a JSON with a BOM exports too.
+- **ELAN, InqScribe and Express Scribe outputs get the extensions those tools open.** Transcriptions
+  now write `.eaf`, `.inqscr` and `.txt` (they wrote `.elan`, `.inqscribe` and `.express_scribe`),
+  the same names File → Convert uses. Existing `.elan` / `.inqscribe` files still convert. With
+  both TXT and Express Scribe selected, the second is `name.express_scribe.txt`.
+- **File → Convert never overwrites an existing file.** When the default target exists the output
+  goes to `name (1).ext`; the write is atomic, and a source with no cues is an error instead of an
+  empty file over the old one. Converted ELAN/oTranscribe/Markdown files no longer name the
+  transcript file as their media or title.
 - The word-count fallback of a translate run reads `name.en-translated.json`.
 - **The loop guard no longer deletes real repeated speech.** Three identical lines in a row used to
   be collapsed to one, so a prayer's "Amen." x4 or a chorus lost text with only a log line. Now only

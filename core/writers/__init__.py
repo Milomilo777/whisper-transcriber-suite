@@ -95,3 +95,25 @@ def is_binary(name: str) -> bool:
 
 def supported_formats() -> list[str]:
     return sorted(list(WRITERS.keys()) + list(BINARY_WRITERS.keys()))
+
+
+# Registry key -> on-disk extension, for the keys whose name is not the
+# extension the target tool opens. Every other format is written as
+# ``.<key>``. The one table both the transcriber and core.convert use.
+#   * elan           -> eaf    (ELAN opens .eaf)
+#   * inqscribe      -> inqscr (InqScribe's own extension; plain .txt has
+#                               no timestamps)
+#   * express_scribe -> txt    (Express Scribe transcripts are plain .txt)
+#   * smtv_docx      -> docx   (a ".smtv_docx" file is not a Word document)
+FORMAT_EXTENSIONS: dict[str, str] = {
+    "elan": "eaf",
+    "inqscribe": "inqscr",
+    "express_scribe": "txt",
+    "smtv_docx": "docx",
+}
+
+
+def extension_for(name: str) -> str:
+    """The on-disk extension (no dot) the format *name* is written with."""
+    key = name.lower()
+    return FORMAT_EXTENSIONS.get(key, key)
