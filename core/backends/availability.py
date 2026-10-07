@@ -127,14 +127,16 @@ class EngineStatus:
 
 
 def _faster_whisper_model_present(cfg: Mapping[str, Any]) -> bool:
-    """Mirror App._model_bytes_present without importing the heavy backend."""
-    try:
-        from pathlib import Path
+    """Mirror App._model_bytes_present without importing the heavy backend.
 
-        from core.hub import default_hub_folder, model_folder_for
+    Present means ``model.bin`` is there, not only the folder (a killed
+    download leaves the folder without it).
+    """
+    try:
+        from core.hub import default_hub_folder, model_folder_for, model_weights_present
 
         mp = str(cfg.get("model_path") or "").strip()
-        if mp and Path(mp).exists():
+        if mp and model_weights_present(mp):
             return True
         model_info = cfg.get("model") or {}
         name = ""
@@ -145,7 +147,7 @@ def _faster_whisper_model_present(cfg: Mapping[str, Any]) -> bool:
         if not name:
             name = "faster-whisper-large-v3"
         hub = str(cfg.get("hub_folder") or "").strip() or str(default_hub_folder())
-        return model_folder_for(hub, name).exists()
+        return model_weights_present(model_folder_for(hub, name))
     except Exception:  # noqa: BLE001
         return False
 

@@ -42,7 +42,13 @@ class ModelDownloadDialog(tk.Toplevel):
         self.title("Preparing Whisper model")
         self.resizable(False, False)
         self.transient(master)
-        self.grab_set()
+        try:
+            # X11 refuses a grab while the window is not yet viewable
+            # ("grab failed: window not viewable"); the dialog still works
+            # without it, so a refused grab must not abort the download.
+            self.grab_set()
+        except tk.TclError:
+            pass
         self.protocol("WM_DELETE_WINDOW", self.cancel)
 
         self.events: Queue = Queue()
@@ -54,6 +60,8 @@ class ModelDownloadDialog(tk.Toplevel):
         # under Program Files for a non-admin user). Carries the
         # offending directory so the poll handler can offer a re-pick.
         self.not_writable_dir: str | None = None
+        # "permission" or "missing" (the folder's drive is not there).
+        self.not_writable_reason = "permission"
         self.started = time.time()
 
         self.status_var = tk.StringVar(value="Starting model setup...")
@@ -110,6 +118,7 @@ class ModelDownloadDialog(tk.Toplevel):
         self.success = False
         self.error = None
         self.not_writable_dir = None
+        self.not_writable_reason = "permission"
         # A retry can be triggered right after the user hit Cancel (the
         # cancel raced the not-writable error out of ensure_model). Without
         # clearing the event, the retry worker sees a stale cancellation,
@@ -139,6 +148,7 @@ class ModelDownloadDialog(tk.Toplevel):
             self.success = False
         except ModelDestinationNotWritable as e:
             self.not_writable_dir = e.directory
+            self.not_writable_reason = getattr(e, "reason", "permission")
             self.success = False
         except PermissionError as e:
             # Bare permission error from anywhere in the download path
@@ -203,16 +213,23 @@ class ModelDownloadDialog(tk.Toplevel):
         the caller should retry the download), False otherwise. Always
         shows a clear, actionable message — never the raw OS string.
         """
-        retry = messagebox.askyesno(
-            "Model folder not writable",
-            (
+        if getattr(self, "not_writable_reason", "permission") == "missing":
+            title = "Model folder not available"
+            body = (
+                f"The model folder is not available:\n\n{directory}\n\n"
+                "Its drive may be unplugged or disconnected. Reconnect it "
+                "and try again, or choose a different folder.\n\n"
+                "Pick a different folder now?"
+            )
+        else:
+            title = "Model folder not writable"
+            body = (
                 f"Whisper could not write to:\n\n{directory}\n\n"
                 "It may need administrator rights, or you can choose a "
                 "different folder under your user profile.\n\n"
                 "Pick a different folder now?"
-            ),
-            parent=self,
-        )
+            )
+        retry = messagebox.askyesno(title, body, parent=self)
         if not retry:
             return False
 

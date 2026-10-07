@@ -203,6 +203,16 @@ This needs **Python**, installable from https://python.org (tick "Add to PATH" d
 - If you have an NVIDIA GPU: open Advanced → **Re-detect hardware…**. It picks CUDA when it can, and otherwise says why not — usually NVIDIA's cuBLAS library is missing (the graphics driver does not include it); the **Install GPU support** button installs it (~550 MB, one time). Speedup is 10×–20×. **Copy diagnostics** there gives a report to attach to a GitHub issue if it still fails.
 - Or use a smaller model (edit `config.json` at `%LOCALAPPDATA%\WhisperTranscriberSuite\config.json` by hand).
 
+### The model download stops or fails
+
+- Start the transcription again: the download continues where it stopped (the zip mirror and
+  huggingface.co both resume), it does not start from zero.
+- A model folder without `model.bin` is an unfinished download, not a model; the app offers to
+  download it again.
+- The error box says why it failed. "Not enough free disk space" names the space needed: free it
+  or choose another folder in **Advanced settings → Model folder**. "Could not reach huggingface.co"
+  means the computer is offline or the site is blocked on that network (check the proxy or VPN).
+
 ### Use an existing Whisper model from elsewhere
 
 If you've already downloaded the model on another machine or want to

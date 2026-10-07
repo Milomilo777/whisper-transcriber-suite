@@ -192,6 +192,19 @@ def download_default_model(
         except OSError:
             pass
         raise RuntimeError("LLM download cancelled")
+    # A server that closes the stream early ends read() with b"" as if
+    # the file were complete; promoting that .part would install a
+    # truncated model that is_model_present() (size > 100 MB) then
+    # accepts for good. Same check as core.backends.whisper_cpp.
+    if total and bytes_done != total:
+        try:
+            os.unlink(part)
+        except OSError:
+            pass
+        raise RuntimeError(
+            f"AI Layer model download truncated: got {bytes_done} of {total} "
+            "bytes. Check your connection and try again."
+        )
     os.replace(part, dest)
     if log:
         elapsed = time.time() - started

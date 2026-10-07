@@ -237,6 +237,24 @@ def model_folder_for(
     return hub / name
 
 
+def model_weights_present(model_dir: str | Path | None) -> bool:
+    """True when ``model_dir`` holds a non-empty ``model.bin``.
+
+    A folder alone is not an installed model: a killed download leaves
+    ``config.json`` / ``tokenizer.json`` next to an unfinished blob under
+    ``.cache``, and faster-whisper then fails with "Unable to open file
+    'model.bin'". Every "is the model installed?" gate uses this check so
+    the app offers the download instead.
+    """
+    if not model_dir:
+        return False
+    try:
+        weights = Path(str(model_dir)) / "model.bin"
+        return weights.is_file() and weights.stat().st_size > 0
+    except (OSError, ValueError):
+        return False
+
+
 def is_path_inside(child: str | Path, parent: str | Path) -> bool:
     """True when ``child`` is at or below ``parent`` in the filesystem.
 

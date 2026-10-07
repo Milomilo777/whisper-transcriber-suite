@@ -14,6 +14,7 @@ from urllib.parse import unquote, urlparse
 import requests
 
 from core import offline
+from core.hub import model_weights_present
 
 
 class DownloadCancelled(RuntimeError):
@@ -31,14 +32,45 @@ class ModelDestinationNotWritable(RuntimeError):
     raw OS error string.
 
     ``directory`` carries the offending path for the UI message.
+    ``reason`` is ``"permission"`` (no write access) or ``"missing"`` (the
+    folder's drive is not there: an unplugged USB disk, a disconnected
+    network share), so the UI can say which one it is.
     """
 
-    def __init__(self, directory: str | Path, message: str | None = None) -> None:
+    def __init__(
+        self,
+        directory: str | Path,
+        message: str | None = None,
+        reason: str = "permission",
+    ) -> None:
         self.directory = str(directory)
+        self.reason = reason
         super().__init__(
             message
             or f"Cannot write to the model folder: {self.directory}"
         )
+
+
+class InsufficientDiskSpace(RuntimeError):
+    """The model folder's disk has too little free space for the download.
+
+    Raised before a byte is written (and before unpacking a finished
+    archive, which is kept so the next try resumes from it), instead of a
+    raw "No space left on device" halfway through a multi-GB download.
+    """
+
+
+class HuggingFaceDownloadError(RuntimeError):
+    """The huggingface.co download failed; the text says why for the user."""
+
+
+class ManifestUnavailable(requests.RequestException):
+    """The ``.md5`` checksum list could not be read as a checksum list.
+
+    A captive portal or proxy can answer the URL with an HTML page and
+    HTTP 200. That is a network problem, not a broken model, so it is a
+    ``RequestException`` and takes the same path as an unreachable mirror.
+    """
 
 
 # OSError.errno values that mean "you don't have permission here".
@@ -53,6 +85,103 @@ def _is_permission_error(exc: OSError) -> bool:
     if isinstance(exc, PermissionError):
         return True
     return exc.errno in _PERMISSION_ERRNOS
+
+
+# ERROR_HANDLE_DISK_FULL (39) and ERROR_DISK_FULL (112): what Windows
+# reports when a write runs out of space, sometimes without errno ENOSPC.
+_DISK_FULL_WINERRORS = {39, 112}
+
+# Margin kept free on top of the bytes a download or unpacking needs.
+_FREE_SPACE_MARGIN = 64 * 1024 * 1024
+
+
+def _is_disk_full(exc: BaseException) -> bool:
+    return isinstance(exc, OSError) and (
+        exc.errno == errno.ENOSPC
+        or getattr(exc, "winerror", None) in _DISK_FULL_WINERRORS
+    )
+
+
+def _require_free_space(directory: Path, needed: int, what: str) -> None:
+    """Raise :class:`InsufficientDiskSpace` when ``directory``'s disk has
+    less than ``needed`` bytes (plus a margin) free.
+
+    A disk whose usage cannot be read skips the check: the write itself
+    still fails loudly if space really runs out.
+    """
+    try:
+        free = shutil.disk_usage(directory).free
+    except (OSError, ValueError):
+        return
+    if free >= needed + _FREE_SPACE_MARGIN:
+        return
+    raise InsufficientDiskSpace(
+        f"Not enough free disk space for {what} in {directory}: about "
+        f"{_fmt_bytes(needed + _FREE_SPACE_MARGIN)} is needed, "
+        f"{_fmt_bytes(free)} is free. Free up space on that drive, or choose "
+        "another model folder (Advanced settings > Model folder), then try again."
+    )
+
+
+def _cause_chain(exc: BaseException) -> Iterable[BaseException]:
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        yield current
+        current = current.__cause__ or current.__context__
+
+
+# Exception class names (matched along the MRO so subclasses count) that
+# mean "huggingface.co could not be reached". By name, because the
+# classes live in httpx / requests / huggingface_hub, which this module
+# does not import.
+_NETWORK_ERROR_NAMES = {
+    "ConnectError", "ConnectTimeout", "ReadTimeout", "ReadError",
+    "WriteError", "RemoteProtocolError", "ProxyError", "NetworkError",
+    "TimeoutException", "ConnectionError", "Timeout", "SSLError",
+    "LocalEntryNotFoundError", "OfflineModeIsEnabled", "TimeoutError",
+}
+# huggingface_hub errors for a repo the Hub refuses or does not have.
+_REPO_ERROR_NAMES = {
+    "RepositoryNotFoundError", "GatedRepoError", "RevisionNotFoundError",
+    "RemoteEntryNotFoundError", "DisabledRepoError",
+}
+
+
+def _class_names(exc: BaseException) -> set[str]:
+    return {cls.__name__ for cls in type(exc).__mro__}
+
+
+def _describe_download_error(exc: BaseException, folder: Path, source: str) -> str:
+    """One user-facing sentence for a failed download, with the raw error.
+
+    The download dialog shows this text, so it says what went wrong in
+    plain words and what to do; the raw exception follows in brackets for
+    a bug report.
+    """
+    raw = f"{type(exc).__name__}: {exc}".strip()
+    if len(raw) > 300:
+        raw = raw[:297] + "..."
+    chain = list(_cause_chain(exc))
+    if any(_is_disk_full(e) for e in chain):
+        return (
+            f"Not enough free disk space in {folder}. Free up space on that "
+            "drive, or choose another model folder (Advanced settings > Model folder), "
+            f"then try again. [{raw}]"
+        )
+    names: set[str] = set()
+    for e in chain:
+        names |= _class_names(e)
+    if names & _REPO_ERROR_NAMES:
+        return f"{source} does not offer this model to the app. [{raw}]"
+    if names & _NETWORK_ERROR_NAMES:
+        return (
+            f"Could not reach {source}: this computer is offline, or the site "
+            "is blocked on this network. Check the internet connection, "
+            f"proxy or VPN, then try again. [{raw}]"
+        )
+    return raw
 
 
 # Bound the download/verify retry loop. A permanently-bad mirror or a
@@ -526,6 +655,23 @@ def md5_file(path: str | Path, cancel_event: threading.Event | None = None) -> s
             h.update(chunk)
     return h.hexdigest()
 
+def _tree_size(path: Path) -> int:
+    """Bytes in the files under ``path`` (0 when it does not exist)."""
+    total = 0
+    try:
+        if path.is_file():
+            return path.stat().st_size
+        for item in path.rglob("*"):
+            try:
+                if item.is_file():
+                    total += item.stat().st_size
+            except OSError:
+                continue
+    except OSError:
+        return total
+    return total
+
+
 def _remove_path(path: str | Path) -> None:
     path=Path(path)
     if path.is_dir():
@@ -621,6 +767,16 @@ def _download_zip(
 
         content_length=int(r.headers.get("content-length") or 0)
         total=existing + content_length if content_length else 0
+        if content_length:
+            # The rest of the archive, plus about as much again for the
+            # unpacked model (CTranslate2 weights barely compress). A
+            # restart from zero ("wb") frees the old partial file first.
+            reclaimed = zip_path.stat().st_size if mode == "wb" and zip_path.exists() else 0
+            _require_free_space(
+                zip_path.parent,
+                max(0, content_length + total - reclaimed),
+                "the model download",
+            )
 
         try:
             zip_file=open(zip_path,mode)
@@ -672,7 +828,10 @@ def _verify_extracted_files(
     response.raise_for_status()
     entries=_parse_md5_manifest(response.text)
     if not entries:
-        raise RuntimeError("MD5 manifest does not contain any files")
+        raise ManifestUnavailable(
+            f"The checksum list at {md5_url} holds no checksums (a login "
+            "page or proxy may have answered instead)"
+        )
 
     cache_root=cache_dir.resolve()
     mismatches: list[tuple[str, str, str]] = []
@@ -829,8 +988,16 @@ def _download_via_huggingface(
     is the resolved ``model_path``, so the files land directly in the same
     flat folder (``model.bin`` + ``config.json`` ...) the mirror zip
     produced — the rest of the app keeps resolving the model unchanged.
-    Returns ``True`` on success, ``False`` on any failure (import error,
-    network/repo error, cancellation).
+
+    Files already in ``model_path`` are kept: huggingface_hub resumes its
+    unfinished ``.incomplete`` blobs under ``model_path/.cache`` and
+    re-checks every finished file against the Hub, so a retry continues a
+    killed multi-GB download instead of starting from zero.
+
+    Returns ``True`` on success and ``False`` when cancelled. A failure
+    raises :class:`HuggingFaceDownloadError` whose text tells the user what
+    went wrong (disk full, site unreachable, ...), or
+    :class:`ModelDestinationNotWritable` for a folder without write access.
     """
     if cancel_event and cancel_event.is_set():
         return False
@@ -839,14 +1006,18 @@ def _download_via_huggingface(
     if not ref:
         if status_cb:
             status_cb("HuggingFace fallback: could not resolve the model repo.")
-        return False
+        raise HuggingFaceDownloadError(
+            "the app could not work out which huggingface.co repo holds this model"
+        )
 
     try:
         from faster_whisper.utils import download_model
     except Exception as e:  # noqa: BLE001
         if status_cb:
             status_cb(f"HuggingFace fallback unavailable: {e}")
-        return False
+        raise HuggingFaceDownloadError(
+            f"the downloader is missing from this installation [{type(e).__name__}: {e}]"
+        ) from e
 
     if status_cb:
         status_cb(
@@ -865,7 +1036,13 @@ def _download_via_huggingface(
     except Exception as e:  # noqa: BLE001
         if status_cb:
             status_cb(f"HuggingFace download failed: {e}")
-        return False
+        if cancel_event and cancel_event.is_set():
+            return False
+        if isinstance(e, OSError) and _is_permission_error(e) and not _is_disk_full(e):
+            raise ModelDestinationNotWritable(model_path) from e
+        raise HuggingFaceDownloadError(
+            _describe_download_error(e, model_path.parent, "huggingface.co")
+        ) from e
 
     if cancel_event and cancel_event.is_set():
         return False
@@ -887,6 +1064,52 @@ def _offline_download_text(model: dict[str, Any]) -> str:
     return f"downloading the model {name}" if name else "downloading this model"
 
 
+def _hf_managed(model_path: Path) -> bool:
+    """True when huggingface_hub filled (or started filling) ``model_path``.
+
+    Its local-dir mode keeps per-file metadata and the unfinished
+    ``.incomplete`` blobs under ``model_path/.cache/huggingface``. Such a
+    folder is not in the zip mirror's layout, so the mirror's ``.md5`` list
+    must not judge it, and a retry must not delete what can be resumed.
+    """
+    return (model_path / ".cache" / "huggingface").is_dir()
+
+
+def _huggingface_failure(
+    model: dict[str, Any],
+    zip_url: str,
+    model_path: Path,
+    status_cb: Callable[[str], None] | None,
+    progress_cb: Callable[[dict[str, Any]], None] | None,
+    cancel_event: threading.Event | None,
+    hf_repo: str | None,
+) -> str | None:
+    """Run the huggingface.co download; ``None`` on success, else the
+    user-facing reason it failed. A cancellation raises
+    :class:`DownloadCancelled` (huggingface_hub cannot be interrupted, so
+    it is only observable once the call has returned)."""
+    try:
+        ok = _download_via_huggingface(
+            model.get("name", ""), zip_url, model_path,
+            status_cb, progress_cb, cancel_event,
+            hf_repo=hf_repo,
+        )
+    except HuggingFaceDownloadError as e:
+        if cancel_event and cancel_event.is_set():
+            raise DownloadCancelled("Model download cancelled") from e
+        return str(e)
+    if cancel_event and cancel_event.is_set():
+        raise DownloadCancelled("Model download cancelled")
+    if not ok:
+        return "the download did not finish"
+    if not model_weights_present(model_path):
+        return (
+            "the download finished but model.bin is missing or empty in "
+            f"{model_path}"
+        )
+    return None
+
+
 def ensure_model(
     config: dict[str, Any],
     status_cb: Callable[[str], None] | None = None,
@@ -905,6 +1128,16 @@ def ensure_model(
     except OSError as e:
         if _is_permission_error(e):
             raise ModelDestinationNotWritable(cache_dir) from e
+        if isinstance(e, FileNotFoundError):
+            # The folder's drive is not there (an unplugged USB disk, a
+            # disconnected network share): offer another folder rather
+            # than the raw "[WinError 3] The system cannot find the path".
+            raise ModelDestinationNotWritable(
+                cache_dir,
+                f"The model folder is not available: {cache_dir}. Its drive "
+                "may be unplugged or disconnected.",
+                reason="missing",
+            ) from e
         raise
 
     # Registry entries with NO smch.ir mirror have ``url == ""`` — there is
@@ -922,38 +1155,21 @@ def ensure_model(
         # next model load failed on the missing ``model.bin`` with no
         # in-app way to recover. CT2 repos always carry a top-level
         # ``model.bin`` (and ``model_downloaded()`` already keys off
-        # exactly that file), so require it and re-download otherwise.
-        if (model_path / "model.bin").exists():
+        # exactly that file), so require it and download otherwise.
+        if model_weights_present(model_path):
             if status_cb: status_cb("Model already installed")
             _notify(progress_cb, phase="installed", status="Model already installed", percent=100)
             return str(model_path)
 
-        # Before anything is deleted: offline, a partial folder stays as it is.
         offline.require_online(_offline_download_text(model))
-        _remove_path(model_path)
-        if not _download_via_huggingface(
-            model.get("name", ""), zip_url, model_path,
-            status_cb, progress_cb, cancel_event,
-            hf_repo=hf_repo,
-        ):
-            if cancel_event and cancel_event.is_set():
-                # huggingface_hub's own download cannot be interrupted,
-                # so a cancellation is only observable here, after it has
-                # returned. Report a clean cancellation rather than a
-                # scary "download failed" error for a download that may
-                # have completed.
-                raise DownloadCancelled("Model download cancelled")
+        # The partial folder is kept: the download resumes from it.
+        reason = _huggingface_failure(
+            model, zip_url, model_path, status_cb, progress_cb, cancel_event, hf_repo
+        )
+        if reason is not None:
             ref = _hf_model_ref(model.get("name", ""), zip_url, hf_repo) or "unknown"
             raise RuntimeError(
-                f"Model download failed: the HuggingFace fallback ({ref}) "
-                "was unable to provide the model (no mirror is configured "
-                "for this model)."
-            )
-
-        if not model_path.exists():
-            raise RuntimeError(
-                "Model download failed: the HuggingFace fallback reported "
-                f"success but the expected model folder is missing: {model_path}"
+                f"Model download from huggingface.co ({ref}) failed: {reason}"
             )
 
         if status_cb: status_cb("Model ready")
@@ -961,41 +1177,64 @@ def ensure_model(
         return str(model_path)
 
     zip_path=cache_dir / _zip_name_from_url(zip_url)
+    weights_present = model_weights_present(model_path)
 
     if model_path.exists() and offline.is_offline():
         # The model check fetches the .md5 manifest; offline the model on
         # disk is used as it is (the same as a failed manifest fetch below).
-        if status_cb: status_cb("Model already installed (offline mode: not checked).")
-        _notify(progress_cb, phase="installed", status="Model already installed", percent=100)
-        return str(model_path)
+        # A folder without model.bin is a killed download, not a model:
+        # offline it is left as it is and the download is refused.
+        if weights_present:
+            if status_cb: status_cb("Model already installed (offline mode: not checked).")
+            _notify(progress_cb, phase="installed", status="Model already installed", percent=100)
+            return str(model_path)
+        offline.require_online(_offline_download_text(model))
 
-    if model_path.exists():
+    if model_path.exists() and _hf_managed(model_path):
+        # Filled by the HuggingFace fallback, which checked every file
+        # against the Hub; the zip mirror's .md5 list describes another
+        # layout and would call it broken on every launch. Complete:
+        # use it. Incomplete: keep it for the fallback to resume.
+        if weights_present:
+            _remove_path(zip_path)
+            if status_cb: status_cb("Model already installed")
+            _notify(progress_cb, phase="installed", status="Model already installed", percent=100)
+            return str(model_path)
+    elif model_path.exists():
         if status_cb: status_cb("Model already installed. Verifying MD5...")
+        mismatches: list[tuple[str, str, str]] | None
         try:
             mismatches=_verify_extracted_files(cache_dir, md5_url, status_cb, progress_cb, cancel_event)
         except requests.RequestException as e:
             # The .md5 manifest could not be fetched (offline, mirror
-            # down, 404, ...). The model bytes are already on disk, and
-            # refusing to use them here would break the app's documented
-            # "fully offline after the first download" behaviour on
-            # every relaunch without a network. Treat verification as
-            # best-effort in that case; a genuinely corrupt model still
-            # fails loudly when the backend tries to load it.
+            # down, 404, a login page instead of the list, ...). The model
+            # bytes are already on disk, and refusing to use them here
+            # would break the app's documented "fully offline after the
+            # first download" behaviour on every relaunch without a
+            # network. Treat verification as best-effort in that case; a
+            # genuinely corrupt model still fails loudly when the backend
+            # tries to load it. Without model.bin it is not a model at
+            # all: fall through and download it.
+            if weights_present:
+                if status_cb:
+                    status_cb(f"Could not verify the installed model ({e}); using it as-is.")
+                _remove_path(zip_path)
+                _notify(progress_cb, phase="installed", status="Model already installed", percent=100)
+                return str(model_path)
             if status_cb:
-                status_cb(f"Could not verify the installed model ({e}); using it as-is.")
-            _remove_path(zip_path)
-            _notify(progress_cb, phase="installed", status="Model already installed", percent=100)
-            return str(model_path)
+                status_cb(f"Could not verify the model folder ({e}); model.bin is missing, downloading it.")
+            mismatches = None
 
-        if not mismatches:
+        if mismatches == []:
             _remove_path(zip_path)
             if status_cb: status_cb("Model already installed")
             _notify(progress_cb, phase="installed", status="Model already installed", percent=100)
             return str(model_path)
 
-        if status_cb: status_cb("Installed model MD5 mismatch. Restarting download from zero...")
-        _remove_path(zip_path)
-        _remove_path(model_path)
+        if mismatches:
+            if status_cb: status_cb("Installed model MD5 mismatch. Restarting download from zero...")
+            _remove_path(zip_path)
+            _remove_path(model_path)
 
     offline.require_online(_offline_download_text(model))
     mirror_error: BaseException | None = None
@@ -1047,8 +1286,18 @@ def ensure_model(
 
             if status_cb: status_cb("Extracting model...")
             _notify(progress_cb, phase="extract", status="Extracting model...", percent=100, detail="Unpacking downloaded archive")
-            _remove_path(model_path)
             with zipfile.ZipFile(zip_path,'r') as z:
+                # Unpacking a multi-GB archive onto a full disk fails
+                # halfway with a raw OSError; check first (counting the
+                # old folder that is replaced) and keep the finished
+                # archive and the folder so the next try only unpacks.
+                _require_free_space(
+                    cache_dir,
+                    max(0, sum(info.file_size for info in z.infolist())
+                        - _tree_size(model_path)),
+                    "unpacking the model",
+                )
+                _remove_path(model_path)
                 # Zip-slip guard: reject any member that would resolve OUTSIDE
                 # cache_dir (e.g. a tampered archive with "..\\.." entries)
                 # before extracting anything.
@@ -1101,14 +1350,16 @@ def ensure_model(
             )
 
         if last_mismatches:
-            sample = ", ".join(rel for _exp, _got, rel in last_mismatches[:5])
+            sample = ", ".join(rel for rel, _exp, _got in last_mismatches[:5])
             more = "" if len(last_mismatches) <= 5 else f" (+{len(last_mismatches) - 5} more)"
             raise RuntimeError(
                 f"Model download failed after {MAX_DOWNLOAD_ATTEMPTS} attempts: "
                 f"{len(last_mismatches)} file checksum(s) still mismatched "
                 f"[{sample}{more}]. The mirror may be serving a corrupt archive."
             )
-    except (DownloadCancelled, ModelDestinationNotWritable):
+    except (DownloadCancelled, ModelDestinationNotWritable, InsufficientDiskSpace):
+        # A full disk is not fixed by the other source: keep what is on
+        # disk and tell the user how much space is needed.
         raise
     except Exception as e:
         # The smch.ir mirror failed for ANY reason — missing zip (404),
@@ -1125,30 +1376,21 @@ def ensure_model(
         if status_cb:
             status_cb(f"Mirror download failed ({e}). Trying HuggingFace fallback...")
         _remove_path(zip_path)
-        _remove_path(model_path)
+        # model_path is kept: a partial HuggingFace download in it resumes,
+        # and huggingface_hub re-checks (or replaces) any other file.
 
-        if not _download_via_huggingface(
-            model.get("name", ""), zip_url, model_path,
-            status_cb, progress_cb, cancel_event,
-            hf_repo=hf_repo,
-        ):
-            if cancel_event and cancel_event.is_set():
-                # See the no-mirror branch above: hf_hub downloads are not
-                # interruptible, so a cancellation surfaces here only after
-                # the call returns. Report it as a cancellation, not as a
-                # failure of both sources.
-                raise DownloadCancelled("Model download cancelled") from mirror_error
+        try:
+            reason = _huggingface_failure(
+                model, zip_url, model_path, status_cb, progress_cb, cancel_event, hf_repo
+            )
+        except DownloadCancelled as cancelled:
+            raise cancelled from mirror_error
+        if reason is not None:
             raise RuntimeError(
-                "Model download failed: both the smch.ir mirror "
-                f"({mirror_error}) and the HuggingFace fallback "
-                f"({model_ref}) were unable to provide the model."
-            ) from mirror_error
-
-        if not model_path.exists():
-            raise RuntimeError(
-                "Model download failed: the HuggingFace fallback reported "
-                f"success for {model_ref!r} but the expected model folder is "
-                f"missing: {model_path}"
+                "Model download failed: both the smch.ir mirror ("
+                f"{_describe_download_error(mirror_error, cache_dir, 'the smch.ir mirror')}"
+                f") and huggingface.co ({model_ref}: {reason}) were unable "
+                "to provide the model."
             ) from mirror_error
 
         # HuggingFace's own download verifies blob hashes; the smch.ir

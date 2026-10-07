@@ -410,6 +410,20 @@ def load_existing_model(status_cb: Callable[[str], None] | None = None) -> bool:
             status_cb(MODEL_ERROR)
         return False
 
+    from .hub import model_weights_present
+    if not model_weights_present(model_path):
+        # A killed download leaves the folder without its weights;
+        # faster-whisper would only say "Unable to open file 'model.bin'".
+        MODEL_ERROR = (
+            f"The model in {model_path} is incomplete (model.bin is missing "
+            "or empty): its download did not finish. Download the model "
+            "again (start a transcription, or pick the model in Advanced "
+            "settings)."
+        )
+        if status_cb:
+            status_cb(MODEL_ERROR)
+        return False
+
     try:
         if status_cb:
             status_cb("Loading existing Whisper model...")

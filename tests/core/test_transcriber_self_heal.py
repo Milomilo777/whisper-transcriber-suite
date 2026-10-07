@@ -95,6 +95,8 @@ def test_load_existing_model_self_heals_and_stays_ready(
     """The full load path: requested cuda, falls back to cpu, MODEL_READY."""
     model_dir = tmp_path / "model"
     model_dir.mkdir()
+    # A loadable model folder holds its weights (the load refuses a bare folder).
+    (model_dir / "model.bin").write_bytes(b"weights")
     monkeypatch.setattr(transcriber, "WhisperModel", _FakeWhisperModel)
     monkeypatch.setattr(transcriber, "config", {
         "transcribe_backend": "faster_whisper",

@@ -260,6 +260,18 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A half-downloaded Whisper model no longer looks installed.** A model folder without its
+  `model.bin` (a killed download) now brings up the download prompt instead of failing in the
+  worker with "Unable to open file 'model.bin'", also when offline or when the mirror's checksum
+  list is unreachable; offline, such a folder is left as it is.
+- **Model downloads resume.** A retry keeps huggingface.co's unfinished files, so an interrupted
+  multi-GB download continues instead of starting from zero; a model that came from huggingface.co
+  is no longer checked against the zip mirror's checksum list on the next launch.
+- **Clear model download errors.** The error box now says why a download failed (not enough disk
+  space, huggingface.co unreachable or blocked, both sources' reasons), the free space is checked
+  before a zip download and before unpacking (a finished archive is kept), a model folder on a
+  missing drive offers another folder, and a login page answering the checksum list counts as a
+  network problem. The AI Layer model download refuses a truncated file.
 - **Never two speech models, never an orphan worker.** Transcribe no longer starts a second model
   worker while one is still loading (for a watched folder, crash resume or a download), and Cancel
   then Generate in Text to Voice waits until the cancelled voice worker is gone. When the app dies,

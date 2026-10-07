@@ -130,6 +130,8 @@ def test_installed_mirror_model_is_used_without_the_model_check(offline_on, tmp_
     monkeypatch.setattr(mm, "_verify_extracted_files", _boom)
     config = _model_config(tmp_path, mirror=True)
     Path(config["model_path"]).mkdir(parents=True)
+    # An installed model has its weights (a bare folder is a killed download).
+    (Path(config["model_path"]) / "model.bin").write_bytes(b"weights")
     statuses: list[str] = []
     assert mm.ensure_model(config, status_cb=statuses.append) == config["model_path"]
     assert any("offline" in s for s in statuses)

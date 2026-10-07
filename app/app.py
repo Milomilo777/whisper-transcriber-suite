@@ -3322,17 +3322,20 @@ class App(tk.Tk):
         """True when the Whisper model files are already on disk.
 
         Cheap probe used by the lazy-load enqueue gate to decide
-        whether to surface the model download dialog. Just checks
-        that the resolved model directory exists; the worker's
-        load step will surface any deeper corruption via a
-        ``startup_error`` event.
+        whether to surface the model download dialog. The resolved model
+        folder must hold its ``model.bin``: a folder alone can be a
+        killed download, which the worker then fails to load. Deeper
+        corruption still surfaces via the worker's ``startup_error``.
         """
         try:
-            from pathlib import Path
-            from core.hub import default_hub_folder, model_folder_for
+            from core.hub import (
+                default_hub_folder,
+                model_folder_for,
+                model_weights_present,
+            )
 
             mp = str(self.app_config.get("model_path") or "").strip()
-            if mp and Path(mp).exists():
+            if mp and model_weights_present(mp):
                 return True
 
             model_info = self.app_config.get("model") or {}
@@ -3348,7 +3351,7 @@ class App(tk.Tk):
             if not hub_folder:
                 hub_folder = str(default_hub_folder())
 
-            return model_folder_for(hub_folder, model_name).exists()
+            return model_weights_present(model_folder_for(hub_folder, model_name))
         except Exception:  # noqa: BLE001
             return False
 

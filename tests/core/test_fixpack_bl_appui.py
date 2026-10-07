@@ -368,6 +368,9 @@ def test_model_bytes_present_accepts_hub_folder_fallback(App, tmp_path):
     hub = tmp_path / "Cache" / "models"
     model_dir = model_folder_for(hub, "faster-whisper-large-v3")
     model_dir.mkdir(parents=True)
+    # The weights make it a model; a bare folder is a killed download
+    # (tests/core/test_model_download_robustness.py covers that case).
+    (model_dir / "model.bin").write_bytes(b"x")
     a.app_config = {
         "model_path": "",
         "hub_folder": str(hub),

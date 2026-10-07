@@ -585,6 +585,8 @@ def test_ensure_model_offline_uses_installed_model(tmp_path, monkeypatch):
     model_dir = cache_dir / model_dir_name
     model_dir.mkdir(parents=True)
     (model_dir / "a.bin").write_bytes(b"installed-bytes")
+    # Unverified, a folder counts as installed only with its weights.
+    (model_dir / "model.bin").write_bytes(b"weights")
 
     md5_url = "https://fake.test/model.md5"
     # The manifest endpoint cannot be reached at all.
@@ -627,7 +629,9 @@ def test_ensure_model_no_mirror_partial_install_is_not_installed(tmp_path, monke
     model_path, in-progress blobs sit under its .cache). The old
     ``any(iterdir())`` check reported such a folder as an installed model,
     so every later load failed on the missing model.bin with no in-app way
-    to recover. Require the CTranslate2 weights and re-download otherwise.
+    to recover. Require the CTranslate2 weights and download otherwise. The
+    partial files are kept: huggingface_hub re-checks them and resumes its
+    unfinished blobs (deleting them restarted a multi-GB download from zero).
     """
     entry = mm.MODEL_REGISTRY["deepdml-large-v3-turbo"]
     cache_dir = tmp_path / "cache"
@@ -650,9 +654,9 @@ def test_ensure_model_no_mirror_partial_install_is_not_installed(tmp_path, monke
                           cancel_event=None, hf_repo=None):
         calls.append(hf_repo or "")
         target = Path(target_model_path)
-        # The stale partial files must have been cleared before re-download.
-        assert not (target / "config.json").exists()
-        target.mkdir(parents=True)
+        # The partial files are handed to the download to resume from.
+        assert (target / "config.json").read_bytes() == b"{}"
+        target.mkdir(parents=True, exist_ok=True)
         (target / "model.bin").write_bytes(b"fresh-weights")
         return True
 
