@@ -21,21 +21,22 @@ REM   core\                     — transcription / download / paths modules
 REM   bin\                      — ffmpeg.exe, ffprobe.exe, yt-dlp.exe
 REM   gui.py                    — entry point (pythonw gui.py)
 
+REM
+REM The python-build-standalone release (version, URL, size, SHA-256) is
+REM pinned in platform\windows\build-deps.json, like the bin\ binaries;
+REM tools\fetch_windows_build_deps.py fetches bin\ and refuses any download
+REM that does not match its pin.
+
 set ROOT=%~dp0
 set BUILD=%ROOT%embed_build
-set PS=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe
-set PYBSD_VER=3.11.15
-set PYBSD_TAG=20260510
-set ASSET=cpython-%PYBSD_VER%+%PYBSD_TAG%-x86_64-pc-windows-msvc-install_only.tar.gz
-set URL=https://github.com/astral-sh/python-build-standalone/releases/download/%PYBSD_TAG%/%ASSET%
 
 if exist "%BUILD%" rmdir /S /Q "%BUILD%"
 mkdir "%BUILD%"
 
-echo [embed] downloading %ASSET%
-"%PS%" -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri '%URL%' -OutFile '%BUILD%\python.tar.gz'"
+echo [embed] downloading the pinned python-build-standalone tarball (SHA-256 checked)
+python "%ROOT%tools\fetch_windows_build_deps.py" --only python-build-standalone --out "%BUILD%\python.tar.gz"
 if errorlevel 1 (
-  echo [embed] download failed
+  echo [embed] download failed or did not match its pin
   exit /b 1
 )
 
@@ -91,6 +92,11 @@ if not exist "%ROOT%bin\deno.exe" (
     exit /b 9
   )
 )
+
+REM Report (not fail) when bin\ is not the pinned set, e.g. after a local
+REM "yt-dlp -U"; "python tools\fetch_windows_build_deps.py" restores it.
+python "%ROOT%tools\fetch_windows_build_deps.py" --check
+if errorlevel 1 echo [embed] WARNING: bin\ differs from platform\windows\build-deps.json
 
 echo [embed] copying source tree
 xcopy /E /I /Y "%ROOT%app" "%BUILD%\app" >nul

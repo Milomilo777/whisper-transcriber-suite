@@ -29,6 +29,9 @@ neither is published.
 (replace `X.Y.Z` with the current `core.__version__` / `MyAppVersion`)
 
 ```cmd
+:: 0. Fill bin\ with the pinned ffmpeg/ffprobe, yt-dlp, Deno and diarization models (SHA-256 checked)
+python tools\fetch_windows_build_deps.py
+
 :: 1. Build the embed tree (downloads Python, installs requirements.txt, copies app/core/bin)
 build_embed_installer.bat
 :: Output: embed_build\
@@ -67,10 +70,15 @@ pyinstaller --noconfirm --clean --distpath dist_onedir whisper_project_onedir.sp
 
 * Python 3.10+ on PATH (used to invoke PyInstaller and pip).
 * `pip install pyinstaller` in the working environment.
-* `bin\ffmpeg.exe`, `bin\ffprobe.exe`, `bin\yt-dlp.exe` placed in the
+* `bin\ffmpeg.exe`, `bin\ffprobe.exe`, `bin\yt-dlp.exe`, `bin\deno.exe`
+  and `bin\diarization\{segmentation,embedding}.onnx` in the
   git-ignored `bin\` folder — Method A and B bundle them via the
   spec's `('bin', 'bin')` data entry; Method C copies them with
-  `xcopy`.
+  `xcopy`. `python tools\fetch_windows_build_deps.py` downloads the
+  pinned versions listed in `platform\windows\build-deps.json` and
+  refuses any file whose size or SHA-256 differs; `--check` verifies an
+  existing `bin\` without downloading (`build_embed_installer.bat` runs
+  it and warns when `bin\` is not the pinned set).
 * Inno Setup 6 for Methods B and C. Install via `winget install
   JRSoftware.InnoSetup`. It lands at
   `%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe`.
@@ -129,7 +137,10 @@ The batch script:
 1. Downloads
    `cpython-3.11.15+20260510-x86_64-pc-windows-msvc-install_only.tar.gz`
    from
-   [python-build-standalone](https://github.com/astral-sh/python-build-standalone).
+   [python-build-standalone](https://github.com/astral-sh/python-build-standalone)
+   through `tools\fetch_windows_build_deps.py`, which stops the build
+   unless its size and SHA-256 match the entry in
+   `platform\windows\build-deps.json`.
    This is a full CPython install with `tkinter` and the Tcl/Tk
    runtime — python.org's "embeddable" zip is stripped of tkinter,
    so we cannot use it directly.
@@ -186,6 +197,70 @@ python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscribe
 `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` are the two files that get
 uploaded to a new GitHub release (see `docs/RELEASE_PROCESS.md`; the
 "Rebuild without bumping the version" section below is retired).
+
+**cuDNN.** Nothing downloads cuDNN separately. The `ctranslate2` wheel
+from PyPI carries its own `cudnn64_9.dll` (about 0.3 MB) inside
+`Lib\site-packages\ctranslate2\`, and Method C bundles that wheel as
+it is, locally and in CI. GPU users still need cuBLAS for CUDA 12,
+which the app installs on demand (see the GPU note in
+`requirements.txt`).
+
+## Method C in CI (GitHub Actions)
+
+`.github/workflows/windows-installer.yml` runs the steps above on a
+clean `windows-latest` runner. It starts on a push to `master` that
+touches a build file (`build_embed_installer.bat`, `installer_embed.iss`,
+`requirements.txt`, `platform/windows/build-deps.json`, the helper
+scripts below or the workflow itself) and by hand from the Actions tab
+("Run workflow"). It:
+
+1. fetches every third-party download from
+   `platform/windows/build-deps.json` — python-build-standalone,
+   ffmpeg/ffprobe, yt-dlp, Deno, the two diarization models and Inno
+   Setup 6.7.3 — at a fixed URL, checked against the recorded size and
+   a SHA-256 the upstream project publishes (release checksum file,
+   GitHub release asset digest or Hugging Face LFS id);
+2. runs `build_embed_installer.bat`, compiles `installer_embed.iss` and
+   zips the Portable build;
+3. writes a file manifest (`tools/build_manifest.py`: path, size and
+   SHA-256 of every file in `embed_build\` and `dist_installer\`) and the
+   exact PyPI package versions of the run (`site-packages.txt`);
+4. installs the installer silently on the runner, runs
+   `tools/smoke_windows_install.py` with the installed interpreter
+   (version, runtime imports, Tcl, bundled tools, diarization models,
+   `gui.py --help`) and uninstalls it again;
+5. uploads `windows-installer-<commit>` (installer + Portable ZIP) and
+   `windows-build-manifest-<commit>` as workflow artifacts, kept 7 days.
+
+It never creates a release or a tag and uses no secrets; the token has
+read access only. Publishing stays the manual step in
+`docs/RELEASE_PROCESS.md`, and the files are unsigned like the local
+build.
+
+Python packages are the one part that is not pinned:
+`requirements.txt` uses version ranges, so two builds on different days
+can bundle different package versions. `site-packages.txt` in the
+manifest artifact records what a run bundled.
+
+To compare a CI build with a local one, download the manifest artifact
+and run:
+
+```cmd
+python tools\build_manifest.py write embed_build local-embed.json
+python tools\build_manifest.py compare local-embed.json embed_build.json --strict bin/ --strict python/
+```
+
+`--strict` fails on any difference under those folders (they come from
+the pinned downloads); other areas are listed with their file and size
+changes, and the whole tree may change size by at most `--tolerance`
+(default 10 %).
+
+**Moving a pin to a newer version:** change the entry's `url`, `size`
+and `sha256` (and, for archives, each file's `member` and `sha256`) in
+`platform/windows/build-deps.json`, taking the hash from the upstream
+release (checksum file or the asset digest GitHub shows), then run
+`python tools\fetch_windows_build_deps.py --root <empty folder>`: it
+fails on any value that does not match the real download.
 
 ## Rebuild without bumping the version — RETIRED, do not use (2026-08-23)
 
@@ -334,7 +409,12 @@ why).
 | `build_embed_installer.bat` | Method C — builds `embed_build\` |
 | `installer_embed.iss` | Method C — wraps `embed_build\` into Setup-Standard |
 | `requirements.txt` | runtime deps installed into Method C's embed tree |
-| `bin\` | bundled `ffmpeg.exe`, `ffprobe.exe`, `yt-dlp.exe` (all methods) |
+| `bin\` | bundled `ffmpeg.exe`, `ffprobe.exe`, `yt-dlp.exe`, `deno.exe`, diarization models (all methods) |
+| `platform\windows\build-deps.json` | pinned URL, size and SHA-256 of every third-party download of Method C |
+| `tools\fetch_windows_build_deps.py` | downloads and verifies those pins into `bin\` (or one file with `--only`) |
+| `tools\build_manifest.py` | file manifest of a build tree, and a comparison of two manifests |
+| `tools\smoke_windows_install.py` | smoke test of an installed build (used by CI) |
+| `.github\workflows\windows-installer.yml` | Method C on a GitHub runner, outputs as workflow artifacts |
 
 ## Build outputs are gitignored
 

@@ -6,6 +6,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Windows installer built in CI.** A new workflow (`windows-installer.yml`) builds the installer
+  and the Portable ZIP from the committed tree, smoke-tests a silent install and keeps both as
+  workflow artifacts for 7 days; it never publishes a release. Every third-party download (Python,
+  ffmpeg, yt-dlp, Deno, diarization models, Inno Setup) is pinned with its published SHA-256 in
+  `platform/windows/build-deps.json`, and `build_embed_installer.bat` now verifies the Python
+  tarball too (see `docs/BUILD.md`).
 - **Gentle star invitation.** After 5 successful jobs and 7 days of use, one quiet bar asks once
   whether a GitHub star may help other people find the app (**Open GitHub page**, **Not now**,
   **Don't ask again**). At most twice ever, 30 days apart; never while a job runs or waits and never

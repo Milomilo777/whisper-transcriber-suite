@@ -1,0 +1,100 @@
+{
+  "about": "Third-party downloads of the Windows build (docs/BUILD.md, Method C), pinned by URL, byte size and SHA-256. Each sha256 is a hash the upstream project publishes (see hash_source). tools/fetch_windows_build_deps.py downloads them, refuses any mismatch and writes the files listed under 'files' (paths relative to the repository root). Entries without 'files' are raw downloads fetched with --only NAME --out FILE.",
+  "deps": [
+    {
+      "name": "python-build-standalone",
+      "version": "CPython 3.11.15, release 20260510, x86_64-pc-windows-msvc install_only",
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260510/cpython-3.11.15+20260510-x86_64-pc-windows-msvc-install_only.tar.gz",
+      "size": 48250088,
+      "sha256": "c0d6d9da1286640790c07f32c74516486c4ccd170a65952eebb3e125c34e6c67",
+      "hash_source": "SHA256SUMS in the release and the GitHub release asset digest",
+      "files": []
+    },
+    {
+      "name": "ffmpeg",
+      "version": "2026-05-06-git-f2e5eff3ff essentials build (gyan.dev)",
+      "url": "https://github.com/GyanD/codexffmpeg/releases/download/2026-05-06-git-f2e5eff3ff/ffmpeg-2026-05-06-git-f2e5eff3ff-essentials_build.zip",
+      "size": 109446254,
+      "sha256": "c37a931dd999049f3f768f5a6b961a4abee29175ff33c6133b0a2ece5105352a",
+      "hash_source": "GitHub release asset digest",
+      "files": [
+        {
+          "member": "ffmpeg-2026-05-06-git-f2e5eff3ff-essentials_build/bin/ffmpeg.exe",
+          "to": "bin/ffmpeg.exe",
+          "sha256": "75b9c61b9dc88975711392907a4b61a7c8a179542f791ce4480f827106bd4d0c"
+        },
+        {
+          "member": "ffmpeg-2026-05-06-git-f2e5eff3ff-essentials_build/bin/ffprobe.exe",
+          "to": "bin/ffprobe.exe",
+          "sha256": "eb0da8af8fa803b81e111aacc3d160b61d3ed3e686f15378db8708447ff9aecf"
+        }
+      ]
+    },
+    {
+      "name": "yt-dlp",
+      "version": "2026.08.19",
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe",
+      "size": 17840399,
+      "sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a",
+      "hash_source": "SHA2-256SUMS in the release and the GitHub release asset digest",
+      "files": [
+        {
+          "to": "bin/yt-dlp.exe",
+          "sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a"
+        }
+      ]
+    },
+    {
+      "name": "deno",
+      "version": "2.9.7",
+      "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-pc-windows-msvc.zip",
+      "size": 42630221,
+      "sha256": "a0c3101b4158d1dfb7d6a78a7bf0f3de80c96bb423c152beec8beb22786f2238",
+      "hash_source": "deno-x86_64-pc-windows-msvc.zip.sha256sum in the release and the GitHub release asset digest",
+      "files": [
+        {
+          "member": "deno.exe",
+          "to": "bin/deno.exe",
+          "sha256": "e020f3e232bd16e33768dee528e5983349c962952051ced0a5d58ad42f5d9b33"
+        }
+      ]
+    },
+    {
+      "name": "diarization-segmentation",
+      "version": "pyannote segmentation 3.0, sherpa-onnx ONNX export, revision 9403a6902bb58e3d5ae8c7e77c3422de279db2e0",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-pyannote-segmentation-3-0/resolve/9403a6902bb58e3d5ae8c7e77c3422de279db2e0/model.onnx",
+      "size": 5992913,
+      "sha256": "220ad67ca923bef2fa91f2390c786097bf305bceb5e261d4af67b38e938e1079",
+      "hash_source": "Hugging Face LFS object id (SHA-256)",
+      "files": [
+        {
+          "to": "bin/diarization/segmentation.onnx",
+          "sha256": "220ad67ca923bef2fa91f2390c786097bf305bceb5e261d4af67b38e938e1079"
+        }
+      ]
+    },
+    {
+      "name": "diarization-embedding",
+      "version": "3D-Speaker CAM++ English (VoxCeleb, 16 kHz), revision 0743f301363dec56491a490f6d6cbc9d67f9a3bf",
+      "url": "https://huggingface.co/csukuangfj/speaker-embedding-models/resolve/0743f301363dec56491a490f6d6cbc9d67f9a3bf/3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx",
+      "size": 29596978,
+      "sha256": "357a834f702b80161e5b981182c038e18553c1f2ca752ed6cec2052365d4129b",
+      "hash_source": "Hugging Face LFS object id (SHA-256)",
+      "files": [
+        {
+          "to": "bin/diarization/embedding.onnx",
+          "sha256": "357a834f702b80161e5b981182c038e18553c1f2ca752ed6cec2052365d4129b"
+        }
+      ]
+    },
+    {
+      "name": "inno-setup",
+      "version": "6.7.3",
+      "url": "https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe",
+      "size": 10592232,
+      "sha256": "9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732",
+      "hash_source": "GitHub release asset digest",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+name: Windows installer
+
+# Builds the Windows installer and the Portable ZIP from the committed tree on a clean runner,
+# the same way as docs/BUILD.md "Method C":
+#   * every third-party download (python-build-standalone, ffmpeg/ffprobe, yt-dlp, Deno, the two
+#     diarization models, Inno Setup) comes from platform/windows/build-deps.json at a pinned URL
+#     and must match the size and SHA-256 recorded there (tools/fetch_windows_build_deps.py);
+#   * the installer is installed silently on the runner, smoke-tested with the installed
+#     interpreter and uninstalled again;
+#   * the outputs are workflow artifacts kept for 7 days, plus a file manifest of the build.
+# It never creates a release or a tag and uses no secrets: publishing stays a manual step
+# (docs/RELEASE_PROCESS.md). Python packages come from PyPI per requirements.txt; the exact
+# versions of a run are in the manifest artifact (site-packages.txt).
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - build_embed_installer.bat
+      - installer_embed.iss
+      - requirements.txt
+      - platform/windows/build-deps.json
+      - tools/fetch_windows_build_deps.py
+      - tools/build_manifest.py
+      - tools/smoke_windows_install.py
+      - .github/workflows/windows-installer.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-installer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: installer + Portable ZIP
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # Only runs the helper scripts; the shipped interpreter is the pinned
+      # python-build-standalone release that build_embed_installer.bat unpacks.
+      - name: Set up Python for the build scripts
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: Read the app version
+        shell: pwsh
+        run: |
+          $m = Select-String -Path installer_embed.iss -Pattern '^#define MyAppVersion "([^"]+)"'
+          if (-not $m) { throw 'MyAppVersion not found in installer_embed.iss' }
+          $ver = $m.Matches[0].Groups[1].Value
+          "APP_VERSION=$ver" >> $env:GITHUB_ENV
+          Write-Host "version $ver"
+
+      # pwsh steps only fail on the last command's exit code, so every native
+      # call below checks $LASTEXITCODE itself.
+      - name: Fetch the pinned binaries into bin\
+        shell: pwsh
+        run: |
+          python tools/fetch_windows_build_deps.py
+          if ($LASTEXITCODE -ne 0) { throw 'fetch failed' }
+          python tools/fetch_windows_build_deps.py --check
+          if ($LASTEXITCODE -ne 0) { throw 'bin\ does not match the pins' }
+
+      - name: Install the pinned Inno Setup
+        shell: pwsh
+        run: |
+          $setup = Join-Path $env:RUNNER_TEMP 'innosetup.exe'
+          $dir = Join-Path $env:RUNNER_TEMP 'InnoSetup'
+          python tools/fetch_windows_build_deps.py --only inno-setup --out $setup
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup download failed' }
+          $p = Start-Process -FilePath $setup -Wait -PassThru -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/CURRENTUSER', "/DIR=$dir")
+          if ($p.ExitCode -ne 0) { throw "Inno Setup install exited $($p.ExitCode)" }
+          $iscc = Join-Path $dir 'ISCC.exe'
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe missing in $dir" }
+          "ISCC=$iscc" >> $env:GITHUB_ENV
+
+      - name: Build the embed tree (build_embed_installer.bat)
+        shell: cmd
+        run: call build_embed_installer.bat
+
+      - name: Compile the installer (installer_embed.iss)
+        shell: pwsh
+        run: |
+          & $env:ISCC /Qp installer_embed.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC exited $LASTEXITCODE" }
+
+      - name: Zip the Portable build
+        shell: pwsh
+        run: |
+          $zip = "dist_installer/WhisperTranscriberSuite-Portable-Windows-v$env:APP_VERSION"
+          python -c "import shutil, sys; shutil.make_archive(sys.argv[1], 'zip', 'embed_build')" $zip
+          if ($LASTEXITCODE -ne 0) { throw 'zip failed' }
+
+      - name: Write the build manifest
+        shell: pwsh
+        run: |
+          python tools/build_manifest.py write embed_build build-manifest/embed_build.json
+          if ($LASTEXITCODE -ne 0) { throw 'manifest of embed_build failed' }
+          python tools/build_manifest.py write dist_installer build-manifest/dist_installer.json
+          if ($LASTEXITCODE -ne 0) { throw 'manifest of dist_installer failed' }
+          & embed_build\python\python.exe -m pip list --path embed_build\Lib\site-packages --format freeze |
+            Out-File -Encoding utf8 build-manifest\site-packages.txt
+          if ($LASTEXITCODE -ne 0) { throw 'pip list failed' }
+          Get-ChildItem dist_installer | Format-Table Name, Length -AutoSize
+
+      - name: Smoke test (silent install, imports, bundled tools, uninstall)
+        shell: pwsh
+        run: |
+          $setup = "dist_installer\WhisperTranscriberSuite-Installer-Windows-v$env:APP_VERSION.exe"
+          $dir = Join-Path $env:RUNNER_TEMP 'wts-install'
+          $log = Join-Path $env:RUNNER_TEMP 'wts-install.log'
+          $p = Start-Process -FilePath $setup -Wait -PassThru -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=$dir", "/LOG=$log")
+          if ($p.ExitCode -ne 0) { Get-Content $log -Tail 40; throw "silent install exited $($p.ExitCode)" }
+          & (Join-Path $dir 'python\python.exe') tools\smoke_windows_install.py $dir $env:APP_VERSION
+          if ($LASTEXITCODE -ne 0) { throw "smoke test failed ($LASTEXITCODE)" }
+          $p = Start-Process -FilePath (Join-Path $dir 'unins000.exe') -Wait -PassThru -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART')
+          if ($p.ExitCode -ne 0) { throw "silent uninstall exited $($p.ExitCode)" }
+          for ($i = 0; $i -lt 60 -and (Test-Path (Join-Path $dir 'python')); $i++) { Start-Sleep 2 }
+          if (Test-Path (Join-Path $dir 'python')) { throw 'uninstall left the python folder behind' }
+          Write-Host 'uninstall removed the app files'
+
+      - name: Upload the installer and the Portable ZIP
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-installer-${{ github.sha }}
+          path: |
+            dist_installer/*.exe
+            dist_installer/*.zip
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload the build manifest
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-build-manifest-${{ github.sha }}
+          path: build-manifest/
+          retention-days: 7
+          if-no-files-found: warn

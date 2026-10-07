@@ -1,0 +1,340 @@
+"""Pinned Windows build downloads: the pin list, the fetch script, the build manifest tool and the
+CI workflow that builds the installer (.github/workflows/windows-installer.yml)."""
+from __future__ import annotations
+
+import copy
+import hashlib
+import importlib.util
+import io
+import json
+import re
+import sys
+import urllib.error
+import zipfile
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+WORKFLOW = ROOT / ".github" / "workflows" / "windows-installer.yml"
+BAT = ROOT / "build_embed_installer.bat"
+
+
+def _load(name: str):
+    spec = importlib.util.spec_from_file_location(name, ROOT / "tools" / f"{name}.py")
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+fetch = _load("fetch_windows_build_deps")
+manifest = _load("build_manifest")
+
+
+def _sha(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _dep(data: bytes, files: list[dict[str, Any]] | None = None, name: str = "tool") -> dict[str, Any]:
+    return {"name": name, "version": "1", "url": "https://example.invalid/tool.bin",
+            "size": len(data), "sha256": _sha(data),
+            "files": files if files is not None else [{"to": "bin/tool.exe", "sha256": _sha(data)}]}
+
+
+def _opener(data: bytes, calls: list[str] | None = None, fail_first: int = 0):
+    state = {"n": 0}
+
+    def opener(url: str, timeout: float):
+        state["n"] += 1
+        if calls is not None:
+            calls.append(url)
+        if state["n"] <= fail_first:
+            raise urllib.error.URLError("connection reset")
+        return io.BytesIO(data)
+    return opener
+
+
+def _zip(members: dict[str, bytes]) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        for name, data in members.items():
+            zf.writestr(name, data)
+    return buf.getvalue()
+
+
+# ------------------------------------------------------------------ the committed pin list
+
+def test_committed_pins_are_valid():
+    deps = fetch.load_pins()
+    assert fetch.validate(deps) == []
+
+
+def test_pins_cover_everything_the_build_bundles_or_runs():
+    deps = {d["name"]: d for d in fetch.load_pins()}
+    targets = {f["to"] for d in deps.values() for f in d["files"]}
+    assert targets == {
+        "bin/ffmpeg.exe", "bin/ffprobe.exe", "bin/yt-dlp.exe", "bin/deno.exe",
+        "bin/diarization/segmentation.onnx", "bin/diarization/embedding.onnx",
+    }
+    assert deps["python-build-standalone"]["files"] == []
+    assert deps["inno-setup"]["files"] == []
+    # core/diarization.py reads exactly these two model files.
+    diar = (ROOT / "core" / "diarization.py").read_text(encoding="utf-8")
+    assert 'SEGMENTATION_MODEL = "segmentation.onnx"' in diar
+    assert 'EMBEDDING_MODEL = "embedding.onnx"' in diar
+
+
+def test_every_url_is_a_fixed_version_on_a_known_host():
+    for dep in fetch.load_pins():
+        url = dep["url"]
+        assert re.match(r"^https://(github\.com|huggingface\.co)/", url), url
+        assert "/latest/" not in url and "/main/" not in url, url
+        if "huggingface.co" in url:
+            assert re.search(r"/resolve/[0-9a-f]{40}/", url), f"pin a revision: {url}"
+        else:
+            assert "/releases/download/" in url, url
+        assert dep["hash_source"].strip(), dep["name"]
+
+
+def test_bat_downloads_python_only_through_the_verified_fetch():
+    text = BAT.read_text(encoding="utf-8")
+    assert "fetch_windows_build_deps.py\" --only python-build-standalone --out" in text
+    assert "Invoke-WebRequest" not in text
+    assert "PYBSD_" not in text  # the version lives in the pin list only
+
+
+# ------------------------------------------------------------------ validate()
+
+@pytest.mark.parametrize("mutate,needle", [
+    (lambda d: d.update(url="http://example.invalid/x"), "https"),
+    (lambda d: d.update(sha256="AB" * 32), "lowercase hex"),
+    (lambda d: d.update(sha256="ab" * 31), "lowercase hex"),
+    (lambda d: d.update(size=True), "positive integer"),
+    (lambda d: d.update(size=0), "positive integer"),
+    (lambda d: d["files"][0].update(to="../outside.exe"), "bad target"),
+    (lambda d: d["files"][0].update(to="C:/abs.exe"), "bad target"),
+    (lambda d: d["files"][0].update(to="bin\\tool.exe"), "bad target"),
+    (lambda d: d["files"][0].update(sha256="0" * 64), "download itself"),
+    (lambda d: d["files"][0].update(member="../evil"), "bad archive member"),
+    (lambda d: d.update(files="bin/tool.exe"), "files must be a list"),
+])
+def test_validate_rejects_a_bad_entry(mutate, needle):
+    dep = _dep(b"payload")
+    mutate(dep)
+    errors = fetch.validate([dep])
+    assert any(needle in e for e in errors), errors
+
+
+def test_validate_rejects_duplicate_names_and_targets():
+    a = _dep(b"a")
+    b = copy.deepcopy(a)
+    errors = fetch.validate([a, b])
+    assert any("duplicate name" in e for e in errors)
+    b["name"] = "other"
+    b["files"][0]["to"] = "BIN/Tool.exe"  # same file on a case-insensitive disk
+    assert any("written twice" in e for e in fetch.validate([a, b]))
+
+
+# ------------------------------------------------------------------ download()
+
+def test_download_writes_a_matching_file(tmp_path):
+    data = b"x" * 3000
+    dest = tmp_path / "out" / "tool.bin"
+    fetch.download(_dep(data), dest, opener=_opener(data))
+    assert dest.read_bytes() == data
+    assert not (dest.parent / "tool.bin.part").exists()
+
+
+def test_download_refuses_a_wrong_hash_and_leaves_nothing(tmp_path):
+    dep = _dep(b"expected")
+    dest = tmp_path / "tool.bin"
+    with pytest.raises(fetch.FetchError, match="pinned"):
+        fetch.download(dep, dest, opener=_opener(b"tampered"))
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_download_stops_at_the_first_byte_past_the_pinned_size(tmp_path):
+    dep = _dep(b"short")
+    with pytest.raises(fetch.FetchError, match="larger than"):
+        fetch.download(dep, tmp_path / "t", opener=_opener(b"short but longer"))
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_download_retries_network_errors(tmp_path, monkeypatch):
+    monkeypatch.setattr(fetch.time, "sleep", lambda s: None)
+    data = b"payload"
+    calls: list[str] = []
+    fetch.download(_dep(data), tmp_path / "t", opener=_opener(data, calls, fail_first=2))
+    assert len(calls) == 3
+    with pytest.raises(fetch.FetchError, match="after 3 attempts"):
+        fetch.download(_dep(data), tmp_path / "u", opener=_opener(data, fail_first=5))
+    assert not (tmp_path / "u").exists()
+
+
+# ------------------------------------------------------------------ install() and check()
+
+def test_install_extracts_verified_members(tmp_path):
+    exe, dll = b"MZ exe bytes", b"MZ dll bytes"
+    archive = _zip({"pkg/bin/a.exe": exe, "pkg/bin/b.dll": dll, "pkg/readme.txt": b"x"})
+    dep = _dep(archive, files=[
+        {"member": "pkg/bin/a.exe", "to": "bin/a.exe", "sha256": _sha(exe)},
+        {"member": "pkg/bin/b.dll", "to": "bin/sub/b.dll", "sha256": _sha(dll)},
+    ])
+    assert fetch.install(dep, tmp_path, opener=_opener(archive)) == ["bin/a.exe", "bin/sub/b.dll"]
+    assert (tmp_path / "bin" / "a.exe").read_bytes() == exe
+    assert (tmp_path / "bin" / "sub" / "b.dll").read_bytes() == dll
+    assert sorted(p.name for p in tmp_path.rglob("*") if p.is_file()) == ["a.exe", "b.dll"]
+
+
+def test_install_writes_nothing_when_one_member_differs(tmp_path):
+    archive = _zip({"a.exe": b"good", "b.exe": b"evil"})
+    dep = _dep(archive, files=[
+        {"member": "a.exe", "to": "bin/a.exe", "sha256": _sha(b"good")},
+        {"member": "b.exe", "to": "bin/b.exe", "sha256": _sha(b"expected")},
+    ])
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "a.exe").write_bytes(b"old copy")
+    with pytest.raises(fetch.FetchError, match="bin/b.exe"):
+        fetch.install(dep, tmp_path, opener=_opener(archive))
+    assert (tmp_path / "bin" / "a.exe").read_bytes() == b"old copy"
+    assert not (tmp_path / "bin" / "b.exe").exists()
+
+
+def test_install_reports_a_missing_member(tmp_path):
+    archive = _zip({"other.exe": b"x"})
+    dep = _dep(archive, files=[{"member": "a.exe", "to": "bin/a.exe", "sha256": _sha(b"x")}])
+    with pytest.raises(fetch.FetchError, match="no member a.exe"):
+        fetch.install(dep, tmp_path, opener=_opener(archive))
+
+
+def test_install_skips_the_network_when_targets_already_match(tmp_path):
+    data = b"tool"
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "tool.exe").write_bytes(data)
+    calls: list[str] = []
+    assert fetch.install(_dep(data), tmp_path, opener=_opener(data, calls)) == []
+    assert calls == []
+
+
+def test_check_lists_missing_and_changed_files(tmp_path):
+    good, bad = _dep(b"good", name="good"), _dep(b"bad", name="bad")
+    good["files"][0]["to"] = "bin/good.exe"
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "good.exe").write_bytes(b"good")
+    assert fetch.check([good], tmp_path) == []
+    (tmp_path / "bin" / "good.exe").write_bytes(b"changed")
+    assert fetch.check([good, bad], tmp_path) == [
+        "differs from the pin: bin/good.exe", "missing: bin/tool.exe"]
+
+
+def test_main_check_and_only_exit_codes(tmp_path, capsys):
+    pins = tmp_path / "pins.json"
+    pins.write_text(json.dumps({"deps": [_dep(b"tool")]}), encoding="utf-8")
+    assert fetch.main(["--pins", str(pins), "--root", str(tmp_path), "--check"]) == 1
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "tool.exe").write_bytes(b"tool")
+    assert fetch.main(["--pins", str(pins), "--root", str(tmp_path), "--check"]) == 0
+    assert fetch.main(["--pins", str(pins), "--only", "nope", "--out", str(tmp_path / "x")]) == 1
+    with pytest.raises(SystemExit):
+        fetch.main(["--pins", str(pins), "--only", "tool"])
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps({"deps": [{**_dep(b"t"), "url": "http://x"}]}), encoding="utf-8")
+    assert fetch.main(["--pins", str(bad), "--check"]) == 1
+    assert "https" in capsys.readouterr().err
+
+
+# ------------------------------------------------------------------ build_manifest.py
+
+def _tree(root: Path, files: dict[str, bytes]) -> Path:
+    for rel, data in files.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(data)
+    return root
+
+
+def test_manifest_records_every_file(tmp_path):
+    tree = _tree(tmp_path / "embed_build", {"gui.py": b"print()", "bin/ffmpeg.exe": b"MZ"})
+    m = manifest.build(tree)
+    assert m["files"] == {
+        "bin/ffmpeg.exe": {"size": 2, "sha256": _sha(b"MZ")},
+        "gui.py": {"size": 7, "sha256": _sha(b"print()")},
+    }
+
+
+def test_manifest_compare_flags_strict_paths_and_size_drift(tmp_path):
+    base = {"bin/ffmpeg.exe": b"MZ" * 50, "Lib/site-packages/av/x.pyd": b"a" * 100,
+            "app/__pycache__/x.pyc": b"1"}
+    a = manifest.build(_tree(tmp_path / "a", base))
+    same = manifest.build(_tree(tmp_path / "same", {**base, "app/__pycache__/x.pyc": b"22"}))
+    lines, failures = manifest.compare(a, same, ["bin/"], 0.10)
+    assert failures == []
+    assert lines[0] == "A = a (2 files), B = same (2 files)"  # __pycache__ is not compared
+    assert len(lines) == 2 and lines[1].startswith("total bytes 200 -> 200 ")
+    changed = manifest.build(_tree(tmp_path / "b", {**base, "bin/ffmpeg.exe": b"MZ" * 49 + b"XY"}))
+    lines, failures = manifest.compare(a, changed, ["bin/"], 0.10)
+    assert failures == ["strict path differs: bin/ffmpeg.exe"]
+    assert any(line.startswith("bin: ") and "same size other bytes 1" in line for line in lines)
+    grown = manifest.build(_tree(tmp_path / "c", {**base, "Lib/site-packages/av/y.pyd": b"b" * 100}))
+    lines, failures = manifest.compare(a, grown, ["bin/"], 0.10)
+    assert failures and "total size" in failures[0]
+    assert any("only B: Lib/site-packages/av/y.pyd" in line for line in lines)
+
+
+@pytest.mark.parametrize("rel,expected", [
+    ("Lib/site-packages/av/__init__.py", "Lib/site-packages/av"),
+    ("Lib/site-packages/av-18.0.0.dist-info/RECORD", "Lib/site-packages/av"),
+    ("Lib/site-packages/av.libs/x.dll", "Lib/site-packages/av"),
+    ("Lib/site-packages/_sounddevice.py", "Lib/site-packages/_sounddevice"),
+    ("python/python.exe", "python"),
+    ("gui.py", "(top level)"),
+])
+def test_manifest_areas(rel, expected):
+    assert manifest.area(rel) == expected
+
+
+# ------------------------------------------------------------------ the workflow
+
+def _workflow() -> str:
+    return WORKFLOW.read_text(encoding="utf-8")
+
+
+def test_workflow_triggers_on_build_files_and_by_hand_only():
+    text = _workflow()
+    on = text.split("\non:\n", 1)[1].split("\npermissions:", 1)[0]
+    assert "branches: [master]" in on and "workflow_dispatch:" in on
+    assert "pull_request" not in on and "schedule" not in on
+    for path in ("build_embed_installer.bat", "installer_embed.iss", "requirements.txt",
+                 "platform/windows/build-deps.json", "tools/fetch_windows_build_deps.py",
+                 ".github/workflows/windows-installer.yml"):
+        assert f"      - {path}\n" in on, path
+
+
+def test_workflow_is_read_only_and_never_publishes():
+    text = _workflow()
+    assert "permissions:\n  contents: read\n" in text
+    assert "secrets." not in text
+    for banned in ("gh release", "action-gh-release", "git tag", "git push", "contents: write"):
+        assert banned not in text, banned
+    assert "retention-days: 7" in text
+    assert "persist-credentials: false" in text
+
+
+def test_workflow_actions_are_pinned_to_commits():
+    uses = re.findall(r"uses:\s*(\S+)", _workflow())
+    assert uses
+    for ref in uses:
+        assert re.fullmatch(r"[\w.-]+/[\w.-]+@[0-9a-f]{40}", ref), ref
+
+
+def test_workflow_builds_with_pinned_tools_and_smoke_tests_the_install():
+    text = _workflow()
+    assert "runs-on: windows-latest" in text
+    assert "python tools/fetch_windows_build_deps.py --only inno-setup" in text
+    assert "call build_embed_installer.bat" in text
+    assert "& $env:ISCC /Qp installer_embed.iss" in text
+    assert "'/VERYSILENT'" in text and "tools\\smoke_windows_install.py" in text
+    assert "unins000.exe" in text
