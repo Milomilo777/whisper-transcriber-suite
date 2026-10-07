@@ -640,10 +640,11 @@ def _loop_guard_restart(
 def _log_loop_guard_summary(
     stats: _loop_guard.LoopGuardStats, log_cb: Callable[[str], None] | None
 ) -> None:
-    if stats.restarts or stats.dropped:
+    if stats.restarts or stats.dropped or stats.marked:
         log(
             f"Loop guard: {stats.restarts} restart(s), "
-            f"{stats.dropped} repeated line(s) dropped.",
+            f"{stats.dropped} repeated line(s) dropped, "
+            f"{stats.marked} kept and marked for review.",
             log_cb,
         )
 
@@ -666,6 +667,35 @@ def _segment_to_dict(seg: Any, want_words: bool) -> dict[str, Any]:
             for w in words
         ]
     return payload
+
+
+def _guarded_segment_to_dict(
+    seg: Any, want_words: bool, stats: _loop_guard.LoopGuardStats
+) -> dict[str, Any]:
+    """:func:`_segment_to_dict` plus the loop guard's review mark, if any."""
+    payload = _segment_to_dict(seg, want_words)
+    reason = _loop_guard.take_mark(stats, seg)
+    if reason:
+        payload["suspect"] = True
+        payload["suspect_reason"] = reason
+    return payload
+
+
+def _note_no_speech(
+    task: Any, segments_data: list[dict[str, Any]], log_cb: Callable[[str], None] | None
+) -> None:
+    """Flag a finished run whose transcript holds no text at all.
+
+    The outputs are still written (empty); the flag travels in the worker's
+    "done" event so the result card and the history say so.
+    """
+    empty = not any(
+        str(d.get("text") or "").strip()
+        for d in segments_data if isinstance(d, dict)
+    )
+    task.no_speech = empty
+    if empty:
+        log("No speech recognised in this file; the output files are empty.", log_cb)
 
 
 def _record_transcript_stats(
@@ -2118,6 +2148,8 @@ def transcribe(
             ),
             on_event=lambda m: log(m, log_cb),
             stats=_guard_stats,
+            ticks=True,
+            cancelled=lambda: bool(task.cancelled),
         )
 
         segments_data: list[dict[str, Any]] = []
@@ -2155,13 +2187,20 @@ def transcribe(
                     min(100, max(0, int(((seg.end - _clip_start_s) / progress_span) * 100)))
                     if progress_span else 0
                 )
+                if isinstance(seg, _loop_guard.LoopGuardTick):
+                    # A dropped loop copy: cancel, pause and progress only.
+                    if progress_cb:
+                        progress_cb(percent)
+                    continue
                 msg = f"[{percent}%] {fmt(seg.start)} --> {fmt(seg.end)} | {(seg.text or '').strip()}"
                 log(msg, log_cb)
 
                 if progress_cb:
                     progress_cb(percent)
 
-                segments_data.append(_segment_to_dict(seg, want_words))
+                segments_data.append(
+                    _guarded_segment_to_dict(seg, want_words, _guard_stats)
+                )
                 segments_since_checkpoint += 1
 
                 now = time.time()
@@ -2183,6 +2222,19 @@ def transcribe(
                     )
                     last_checkpoint_time = now
                     segments_since_checkpoint = 0
+        except Exception:
+            # A decoder error mid-file: keep what was decoded since the last
+            # periodic checkpoint before the error reaches the worker.
+            if segments_data and clip is None and not task.cancelled:
+                _write_periodic_checkpoint(
+                    task,
+                    segments_data,
+                    float(segments_data[-1].get("end", 0.0)),
+                    detected_lang_so_far,
+                    lang_prob_so_far,
+                    log_cb,
+                )
+            raise
         finally:
             # The iterator may perform the real decode during iteration, so
             # remove the temporary inputs only after the loop is finished (or
@@ -2207,6 +2259,7 @@ def transcribe(
         if _handle_cancelled():
             return
 
+        _note_no_speech(task, segments_data, log_cb)
         written = _write_outputs(
             base,
             segments_data,
@@ -2419,6 +2472,7 @@ def _transcribe_via_alt_backend(
         log("Task cancelled", log_cb)
         return
 
+    _note_no_speech(task, segments_data, log_cb)
     written = _write_outputs(
         base,
         segments_data,
@@ -2806,6 +2860,9 @@ def resume_transcription(
         new_segments_iter: Any = None
         guard_stats = _loop_guard.LoopGuardStats()
         guard_tmp: list[str] = []
+        new_segments_data: list[dict[str, Any]] = []
+        last_checkpoint_time = time.time()
+        segments_since_checkpoint = 0
         try:
             assert MODEL is not None
             want_words = bool(config.get("word_timestamps", False))
@@ -2828,8 +2885,9 @@ def resume_transcription(
                     transcribe_slice, **transcribe_kwargs
                 )
             # Same repetition-loop guard as transcribe(), on the tail's own
-            # timeline (shifted below); the last checkpointed line seeds it so
-            # a loop that crosses the resume point is still seen.
+            # timeline (shifted below). The last checkpointed line seeds its
+            # text; its times are on the other timeline, so the first tail
+            # copy never counts as back to back with it.
             new_segments_iter = _loop_guard.guard_repeats(
                 new_segments_iter,
                 limit=_loop_guard.repeat_limit(config),
@@ -2842,6 +2900,8 @@ def resume_transcription(
                 ),
                 on_event=lambda m: log(m, log_cb),
                 stats=guard_stats,
+                ticks=True,
+                cancelled=lambda: bool(task.cancelled),
                 previous_text=(
                     str(prior_segments[-1].get("text", "") or "")
                     if prior_segments and isinstance(prior_segments[-1], dict)
@@ -2860,7 +2920,6 @@ def resume_transcription(
                 total_dur = get_duration(task.file_path)
             except Exception:  # noqa: BLE001
                 total_dur = 0.0
-            new_segments_data: list[dict[str, Any]] = []
 
             def _handle_resume_cancelled() -> bool:
                 if not task.cancelled:
@@ -2889,7 +2948,18 @@ def resume_transcription(
                 if _handle_resume_cancelled():
                     return True
 
-                d = _segment_to_dict(seg, want_words)
+                if isinstance(seg, _loop_guard.LoopGuardTick):
+                    # A dropped loop copy: cancel, pause and progress only.
+                    if progress_cb:
+                        if total_dur > 0.0:
+                            progress_cb(
+                                min(99, int((seg.end + last_end_time) / total_dur * 100))
+                            )
+                        else:
+                            progress_cb(99)
+                    continue
+
+                d = _guarded_segment_to_dict(seg, want_words, guard_stats)
                 d["start"] = float(d.get("start", 0.0)) + last_end_time
                 d["end"] = float(d.get("end", 0.0)) + last_end_time
                 if want_words and isinstance(d.get("words"), list):
@@ -2910,6 +2980,42 @@ def resume_transcription(
                         progress_cb(min(99, int(d["end"] / total_dur * 100)))
                     else:
                         progress_cb(99)
+
+                # Same periodic checkpoint as transcribe(), so a crash late
+                # in a long tail does not repeat the whole tail. The cursor
+                # is the merged list's last end; ``last_end_time`` stays the
+                # slice origin used for the shift above.
+                segments_since_checkpoint += 1
+                now = time.time()
+                if (
+                    segments_since_checkpoint >= _CHECKPOINT_EVERY_N_SEGMENTS
+                    or (now - last_checkpoint_time) >= _CHECKPOINT_EVERY_N_SECONDS
+                ):
+                    merged = prior_segments + new_segments_data
+                    _write_periodic_checkpoint(
+                        task,
+                        merged,
+                        float(merged[-1].get("end", last_end_time)),
+                        cp_language,
+                        cp_lang_prob,
+                        log_cb,
+                        periodic=True,
+                    )
+                    last_checkpoint_time = now
+                    segments_since_checkpoint = 0
+        except Exception:
+            # A decoder error mid-tail: keep what the tail decoded so far.
+            if new_segments_data and not task.cancelled:
+                merged = prior_segments + new_segments_data
+                _write_periodic_checkpoint(
+                    task,
+                    merged,
+                    float(merged[-1].get("end", last_end_time)),
+                    cp_language,
+                    cp_lang_prob,
+                    log_cb,
+                )
+            raise
         finally:
             # Always clean the slice file — the resume either
             # succeeded (final outputs written) or fell back, in both
@@ -2925,6 +3031,11 @@ def resume_transcription(
                     pass
             _log_loop_guard_summary(guard_stats, log_cb)
 
+        # A cancel that arrived with the last tail segment: keep the merged
+        # work and skip the post-pipeline (diarisation can take minutes).
+        if _handle_resume_cancelled():
+            return True
+
         final_segments = prior_segments + new_segments_data
         detected_lang = cp_language or str(getattr(info, "language", "") or "")
 
@@ -2939,6 +3050,7 @@ def resume_transcription(
             return True
 
         base = _task_output_base(task)
+        _note_no_speech(task, final_segments, log_cb)
         written = _write_outputs(
             base,
             final_segments,

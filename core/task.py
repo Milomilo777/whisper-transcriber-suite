@@ -85,3 +85,6 @@ class TranscriptionTask:
         # only) — that case used to record word_count=0.
         self.word_count: int = 0
         self.audio_duration: float = 0.0
+        # True when a finished run recognised no speech at all (the outputs
+        # are written but empty); the result card and history say so.
+        self.no_speech: bool = False

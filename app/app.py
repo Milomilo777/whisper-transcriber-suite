@@ -4747,6 +4747,12 @@ class App(tk.Tk):
             text=f"✓ {os.path.basename(task.file_path)}",
             font=("TkDefaultFont", 10, "bold"),
         ).pack(anchor="w")
+        if getattr(task, "no_speech", False):
+            ttk.Label(
+                self.last_result_body,
+                text="No speech was recognised in this file, so the output files are empty.",
+                foreground="#a60",
+            ).pack(anchor="w", pady=(2, 0))
         if existing:
             ttk.Label(
                 self.last_result_body,

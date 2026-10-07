@@ -264,6 +264,22 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **The loop guard no longer deletes real repeated speech.** Three identical lines in a row used to
+  be collapsed to one, so a prayer's "Amen." x4 or a chorus lost text with only a log line. Now only
+  back-to-back copies count (gap under 0.25 s, each under 5 s): runs of 3-7 such copies are kept and
+  marked `repeated-line` for review, and only 8 or more are treated as a decoder loop and dropped
+  to one line (that limit is by design; each dropped run is logged with its span).
+- **Cancel, pause and progress work while a loop is dropped**, and the guard never restarts a
+  decode once the job is cancelled; a cancelled run keeps its checkpoint at the last kept line.
+- **A resumed job saves checkpoints while it runs**, so a late crash no longer repeats the whole
+  remaining part, and a cancel on its last segment skips the post-processing. A decoder error in
+  the middle of a file saves the segments decoded since the last checkpoint before it is reported.
+- **"No speech recognised" is said** in the log, the Last Result card and the history record when a
+  file produces no text; the (empty) output files are still written.
+- **Interrupted checkpoint writes are cleaned up at startup.** The sweep looked for `*.json.tmp`
+  while the writer names its scratch `<key>.json.<random>.tmp`. A non-default `vad_window_s` or
+  `loop_guard_repeats` now joins the checkpoint fingerprint, so a changed setting cannot resume a
+  partial made with the old one.
 - **Two jobs waiting for one loading model no longer lose a worker.** A second caller (watched
   folder, crash resume) waiting for the same loading worker used to burn the full wait (2 min, 20
   on macOS) and then shut down the worker the other job was using; every waiter now wakes on

@@ -22,6 +22,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -41,6 +42,11 @@ SCHEMA_VERSION = 1
 # write the same way, so each failed write must stall the transcribe loop
 # only briefly (the caller also stops periodic writes after repeated failures).
 _REPLACE_RETRY_SECONDS = 1.0
+
+# Write scratch as write_checkpoint() names it: mkstemp(prefix="<sha1>.json.",
+# suffix=".tmp"). Anchored on the 40-hex key so an unrelated file such as
+# "report.json.notes.tmp" is never swept.
+_SCRATCH_NAME = re.compile(r"^[0-9a-f]{40}\.json\..+\.tmp$")
 
 # Keys from the runtime ``config`` dict that materially affect what
 # Whisper produces. A change in any of these between checkpoint write
@@ -121,6 +127,17 @@ def config_fingerprint(cfg: dict[str, Any], whisper_task: str = "transcribe") ->
             extracted[key] = cfg[key]
     if whisper_task == "translate":
         extracted["whisper_task"] = whisper_task
+    # The VAD window and the loop guard change which segments a run keeps.
+    # They join the hash only when their EFFECTIVE value is not the default,
+    # so every checkpoint written with defaults stays resumable.
+    from . import loop_guard, vad_window
+
+    window = vad_window.window_seconds(cfg)
+    if window != vad_window.DEFAULT_WINDOW_S:
+        extracted["vad_window_s"] = window
+    repeats = loop_guard.repeat_limit(cfg)
+    if repeats != loop_guard.DEFAULT_REPEATS:
+        extracted["loop_guard_repeats"] = repeats
     blob = json.dumps(extracted, sort_keys=True, default=str)
     return hashlib.sha1(blob.encode("utf-8")).hexdigest()
 
@@ -274,7 +291,9 @@ def sweep_partials(
     Removes (a) any ``*.slice.wav`` older than ``slice_max_age_minutes`` —
     a resume slice is disposable and a live resume holds a fresh one, so an
     older one is always an orphan from a killed worker; (b) checkpoint
-    ``*.json.tmp`` write scratch older than the same short window — a
+    write scratch (``<sha1>.json.<random>.tmp`` as :func:`write_checkpoint`
+    names it with ``mkstemp``, and the older fixed ``*.json.tmp``) older
+    than the same short window — a
     worker killed mid-write leaves one behind, and it would otherwise never
     be reclaimed (only ``*.json``/``*.slice.wav`` were swept before); and
     (c) checkpoint ``*.json`` older than ``max_age_days`` — a
@@ -300,7 +319,7 @@ def sweep_partials(
     for p in entries:
         try:
             name = p.name
-            if name.endswith(".json.tmp"):
+            if name.endswith(".json.tmp") or _SCRATCH_NAME.match(name):
                 # Scratch from an interrupted checkpoint write. Only ever
                 # visible for the duration of one json.dump + os.replace,
                 # so anything this old is a dead worker's leftover.

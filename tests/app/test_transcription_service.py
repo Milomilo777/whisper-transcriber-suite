@@ -380,6 +380,69 @@ def test_finish_task_persists_history_with_the_real_terminal_status(monkeypatch)
     assert task.status == "finished"
 
 
+@pytest.mark.parametrize("no_speech, note", [(True, "No speech recognised"), (False, "")])
+def test_finish_task_notes_a_run_without_speech_in_history(monkeypatch, no_speech, note):
+    """S01-5: an empty transcript finished like any other success; the
+    history row now says why it has no words."""
+    shown: list = []
+    app = SimpleNamespace(
+        app_config={}, update_overall_progress=lambda: None,
+        show_last_result=shown.append,
+    )
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    monkeypatch.setattr(svc, "_post_usage_stats", lambda *a, **k: None)
+    recorded: list = []
+    app.history = SimpleNamespace(
+        finish_transcription=lambda *a, **k: (recorded.append(k), True)[1]
+    )
+    task = SimpleNamespace(
+        status="running", cancelled=False, end_time=None, start_time=time.time(),
+        output_paths=["clip.srt"], file_path="clip.mp4", history_id=7,
+        source_download=None, detected_language="", no_speech=no_speech,
+    )
+
+    svc.finish_task({"task": task, "temporary": False}, keep_status=False)
+
+    assert recorded[0]["status"] == "finished"
+    assert recorded[0]["error"] == note
+    assert shown == [task]
+
+
+def test_done_event_carries_the_no_speech_flag_to_the_task(monkeypatch):
+    import queue
+
+    task = SimpleNamespace(
+        task_id="h1", history_id=1, status="running", cancelled=False,
+        output_paths=[], word_count=0, audio_duration=0.0, no_speech=False,
+    )
+
+    class _Proc:
+        pid = 111
+
+        def poll(self):
+            return None
+
+    q: "queue.Queue[dict]" = queue.Queue()
+    worker = {"id": 1, "process": _Proc(), "task": task, "ready": True,
+              "last_event_at": time.time(), "token": "", "temporary": False}
+    app = SimpleNamespace(
+        worker_events=q, workers=[worker], app_config={},
+        after=lambda *a, **k: None, log=lambda m: None,
+        update_overall_progress=lambda: None, refresh=lambda: None,
+        refresh_download_queue=lambda: None, model_status=lambda m: None,
+    )
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    finished: list = []
+    monkeypatch.setattr(svc, "finish_task", lambda w, keep_status=False: finished.append(w))
+    q.put({"event": "done", "task_id": "h1", "outputs": ["a.srt"], "word_count": 0,
+           "no_speech": True, "_worker_id": 1, "_pid": 111})
+
+    svc.poll()
+
+    assert finished == [worker]
+    assert task.no_speech is True
+
+
 def test_finish_task_persists_history_before_reporting_success(monkeypatch):
     """The ordering half of the same fix: history.finish_transcription
     must be called BEFORE show_last_result, so a durable-write failure

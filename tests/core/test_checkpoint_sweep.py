@@ -61,6 +61,54 @@ def test_sweep_partials_removes_stale_checkpoint_tmp(monkeypatch, tmp_path):
     assert removed == 1
 
 
+def test_sweep_partials_removes_scratch_named_as_the_writer_names_it(monkeypatch, tmp_path):
+    """The writer uses mkstemp, so its scratch is ``<sha1>.json.<random>.tmp``
+    and never matched the ``*.json.tmp`` rule above (S01-3)."""
+    import tempfile
+
+    monkeypatch.setattr(cp, "user_data_dir", lambda: tmp_path)
+    src = tmp_path / "a.wav"
+    src.write_bytes(b"x")
+    prefix = cp.checkpoint_path(str(src)).name + "."
+    now = time.time()
+    names = []
+    for _ in range(2):
+        fd, name = tempfile.mkstemp(dir=str(cp.partials_dir()), prefix=prefix, suffix=".tmp")
+        os.close(fd)
+        names.append(name)
+    os.utime(names[0], (now - 3600, now - 3600))
+    unrelated = cp.partials_dir() / "report.json.notes.tmp"
+    unrelated.write_text("keep", encoding="utf-8")
+    os.utime(unrelated, (now - 3600, now - 3600))
+
+    removed = cp.sweep_partials()
+
+    assert not os.path.exists(names[0]), "a killed writer's old scratch is reaped"
+    assert os.path.exists(names[1]), "a live writer's fresh scratch is kept"
+    assert unrelated.exists(), "a file that is not checkpoint scratch is kept"
+    assert removed == 1
+
+
+def test_fingerprint_changes_only_for_non_default_guard_and_window(monkeypatch):
+    base = {"vad_enabled": True, "whisper_model": "small"}
+    plain = cp.config_fingerprint(base)
+    import hashlib
+    import json
+
+    assert plain == hashlib.sha1(
+        json.dumps(base, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+    # Default values, in any spelling, keep every existing checkpoint valid.
+    for extra in ({"vad_window_s": 30}, {"vad_window_s": "30"}, {"vad_window_s": True},
+                  {"loop_guard_repeats": 3}, {"loop_guard_repeats": "3"},
+                  {"loop_guard_repeats": True}):
+        assert cp.config_fingerprint({**base, **extra}) == plain, extra
+    for extra in ({"vad_window_s": 0}, {"vad_window_s": 10},
+                  {"loop_guard_repeats": 0}, {"loop_guard_repeats": 5}):
+        assert cp.config_fingerprint({**base, **extra}) != plain, extra
+    assert cp.config_fingerprint({**base, "loop_guard_repeats": 5}) != \
+        cp.config_fingerprint({**base, "loop_guard_repeats": 6})
+
+
 def test_sweep_partials_never_raises_on_missing_dir(monkeypatch, tmp_path):
     missing = tmp_path / "does-not-exist"
     monkeypatch.setattr(cp, "partials_dir", lambda: missing)

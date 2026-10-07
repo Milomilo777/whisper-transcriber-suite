@@ -27,6 +27,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# History note for a finished run that recognised no speech (empty outputs).
+NO_SPEECH_NOTE = "No speech recognised"
+
 
 def task_correlation_id(t: Any) -> str:
     """Return the worker-protocol correlation id for a transcription task.
@@ -1166,6 +1169,7 @@ class TranscriptionService:
                                 )
                             except (TypeError, ValueError):
                                 pass
+                            worker["task"].no_speech = bool(event.get("no_speech"))
                             self.finish_task(worker)
                     else:
                         self.finish_task(worker)
@@ -1599,6 +1603,13 @@ class TranscriptionService:
                     duration_seconds=float(duration),
                     language=getattr(task, "detected_language", "") or "",
                     word_count=word_count,
+                    # A finished run with empty outputs keeps a note in the
+                    # row, so the record says why it has no words.
+                    error=(
+                        NO_SPEECH_NOTE
+                        if newly_finished and getattr(task, "no_speech", False)
+                        else ""
+                    ),
                 )
                 if not persisted:
                     # Surfaced, not swallowed: the transcript FILES are

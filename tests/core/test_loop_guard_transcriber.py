@@ -149,7 +149,7 @@ def test_loop_restarts_without_conditioning_and_pinned_language(t, monkeypatch, 
         (0, 5), (5, 6), (6.0, 10.0), (10.0, 15.0),
     ]
     assert not (tmp_path / "slice0.wav").exists()  # restart slice cleaned up
-    assert any("Loop guard: 3 identical lines" in m for m in logs)
+    assert any("Loop guard: 8 identical lines" in m for m in logs)
     assert any("1 restart(s), 0 repeated line(s) dropped" in m for m in logs)
 
 
@@ -160,7 +160,7 @@ def test_clipped_run_restarts_on_the_clip_timeline(t, monkeypatch, tmp_path):
     audio.write_bytes(b"\0" * 16)
     # times are relative to the clip slice (clip_start = 100)
     engine = Engine(
-        [Seg(0, 2, "intro"), *run_of("这个是", 2, 7)],
+        [Seg(0, 2, "intro"), *run_of("这个是", 2, 9)],
         [Seg(0, 3, "后面的话")],
     )
     slices, written = _wire(t, monkeypatch, tmp_path, engine)
@@ -245,18 +245,224 @@ def test_resume_tail_is_guarded_across_the_seam(t, monkeypatch, tmp_path):
         language="zh", language_probability=0.9, cfg_fingerprint=fp,
         last_end_time=100.0, segments=prior, checkpoint_time=time.time(),
     )
-    # The tail starts with two more "so good": with the checkpointed one
-    # that is a run of three across the resume point.
-    engine = Engine(run_of("so good", 0, 2) + [Seg(2, 3, "x")], [Seg(0, 2, "real")])
+    # The tail loops on the checkpointed line. Its first copy is never back
+    # to back with the checkpointed one (other timeline), so the loop is
+    # judged on the tail alone: 8 tight copies there restart the decode.
+    engine = Engine(run_of("so good", 0, 9) + [Seg(9, 10, "x")], [Seg(0, 2, "real")])
     slices, written = _wire(t, monkeypatch, tmp_path, engine)
 
     assert t.resume_transcription(task) is True
 
     tail_slice = str(tmp_path / "slice0.wav")
-    assert slices == [(str(audio), 100.0), (tail_slice, 0.0)]
+    assert slices == [(str(audio), 100.0), (tail_slice, 1.0)]
     assert engine.calls[1]["kwargs"]["condition_on_previous_text"] is False
     assert engine.calls[1]["kwargs"]["language"] == "zh"
     assert engine.calls[0]["vad_window"] == 30.0
     segs = written["segs"]
-    assert [s["text"] for s in segs] == ["a", "so good", "real"]
-    assert segs[2]["start"] == 100.0 and segs[2]["end"] == 102.0
+    assert [s["text"] for s in segs] == ["a", "so good", "so good", "real"]
+    assert segs[3]["start"] == 101.0 and segs[3]["end"] == 103.0
+
+
+# ---- C2.53: cancel during a drop, marks, resume checkpoints, no speech --------
+
+def test_cancel_during_a_long_drop_stops_the_decode(t, monkeypatch, tmp_path):
+    """S01-2: the guard used to eat a whole loop inside one next() call."""
+    from core import _checkpoint
+    from core.task import TranscriptionTask
+
+    audio = tmp_path / "lecture.wav"
+    audio.write_bytes(b"\0" * 16)
+    pulled: list[int] = []
+
+    def looping():
+        yield Seg(0, 1, "a")
+        for i in range(1000):
+            pulled.append(i)
+            yield Seg(1 + i, 2 + i, "so good")
+
+    class LoopEngine(Engine):
+        def transcribe(self, audio_path, **kwargs):
+            self.calls.append({"path": audio_path, "kwargs": dict(kwargs)})
+            return looping(), Info()
+
+    engine = LoopEngine()
+    _slices, written = _wire(t, monkeypatch, tmp_path, engine, batched=True)
+    task = TranscriptionTask(str(audio))
+    calls: list[int] = []
+
+    def progress(p: int) -> None:
+        calls.append(p)
+        if len(calls) == 20:
+            task.cancelled = True
+
+    t.transcribe(task, progress, lambda m: None)
+
+    assert len(pulled) < 100  # the decode was closed long before its end
+    assert written == {}  # a cancelled run writes no outputs
+    data = _checkpoint.load_checkpoint(str(audio))
+    assert data is not None
+    assert data["segment_count"] == len(data["segments"]) == 2
+    assert [s["text"] for s in data["segments"]] == ["a", "so good"]
+    assert data["last_end_time"] == 2.0  # the last KEPT row, not a tick
+
+
+def test_kept_tight_repeats_reach_the_output_marked(t, monkeypatch, tmp_path):
+    from core.task import TranscriptionTask
+
+    audio = tmp_path / "prayer.wav"
+    audio.write_bytes(b"\0" * 16)
+    amen = [Seg(round(2 + i * 0.35, 2), round(2.3 + i * 0.35, 2), "Amen.") for i in range(4)]
+    engine = Engine([Seg(0, 2, "Let us pray."), *amen, Seg(10, 12, "Go in peace.")])
+    _slices, written = _wire(t, monkeypatch, tmp_path, engine)
+
+    t.transcribe(TranscriptionTask(str(audio)), lambda p: None, lambda m: None)
+
+    segs = written["segs"]
+    assert [s["text"] for s in segs] == ["Let us pray.", *["Amen."] * 4, "Go in peace."]
+    assert [s.get("suspect_reason") for s in segs] == [
+        None, None, "repeated-line", "repeated-line", "repeated-line", None]
+    assert len(engine.calls) == 1  # no restart for a short streak
+
+
+def test_spaced_repeats_reach_the_output_unchanged(t, monkeypatch, tmp_path):
+    from core.task import TranscriptionTask
+
+    audio = tmp_path / "prayer.wav"
+    audio.write_bytes(b"\0" * 16)
+    amen = [Seg(3.0 * i, 3.0 * i + 2.5, "Amen.") for i in range(10)]
+    engine = Engine(amen)
+    _slices, written = _wire(t, monkeypatch, tmp_path, engine)
+
+    t.transcribe(TranscriptionTask(str(audio)), lambda p: None, lambda m: None)
+
+    assert [s["text"] for s in written["segs"]] == ["Amen."] * 10
+    assert not any(s.get("suspect") for s in written["segs"])
+    assert len(engine.calls) == 1
+
+
+def _write_prior_checkpoint(t, audio, prior, last_end):
+    from core import _checkpoint
+    from core.task import TranscriptionTask
+
+    task = TranscriptionTask(str(audio))
+    with t._runtime_overrides_scope(task):
+        fp = _checkpoint.config_fingerprint(t.config)
+        model_name = str(t.config.get("model", {}).get("name", "")) \
+            or str(t.config.get("whisper_model", ""))
+    _checkpoint.write_checkpoint(
+        str(audio), backend="faster_whisper", model_name=model_name,
+        language="zh", language_probability=0.9, cfg_fingerprint=fp,
+        last_end_time=last_end, segments=prior, checkpoint_time=time.time(),
+    )
+    return task
+
+
+def test_resumed_tail_writes_periodic_checkpoints(t, monkeypatch, tmp_path):
+    """S01-6: a late crash in the tail used to repeat the whole tail."""
+    audio = tmp_path / "lecture.wav"
+    audio.write_bytes(b"\0" * 16)
+    prior = [{"start": 0.0, "end": 100.0, "text": "first half"}]
+    task = _write_prior_checkpoint(t, audio, prior, 100.0)
+    engine = Engine([Seg(0, 5, "one"), Seg(5, 9, "two"), Seg(9, 12, "three")])
+    _wire(t, monkeypatch, tmp_path, engine)
+    monkeypatch.setattr(t, "_CHECKPOINT_EVERY_N_SEGMENTS", 2)
+    saved: list[tuple[list[str], float]] = []
+    real_write = t._write_periodic_checkpoint
+
+    def spy(task_, segs, last_end, *a, **k):
+        saved.append(([s["text"] for s in segs], last_end))
+        return real_write(task_, segs, last_end, *a, **k)
+
+    monkeypatch.setattr(t, "_write_periodic_checkpoint", spy)
+
+    assert t.resume_transcription(task) is True
+
+    assert saved == [(["first half", "one", "two"], 109.0)]
+
+
+def test_resume_cancel_on_the_last_segment_skips_the_post_pipeline(t, monkeypatch, tmp_path):
+    from core import _checkpoint
+
+    audio = tmp_path / "lecture.wav"
+    audio.write_bytes(b"\0" * 16)
+    prior = [{"start": 0.0, "end": 100.0, "text": "first half"}]
+    task = _write_prior_checkpoint(t, audio, prior, 100.0)
+    engine = Engine([Seg(0, 5, "one"), Seg(5, 9, "two")])
+    _slices, written = _wire(t, monkeypatch, tmp_path, engine)
+    post: list[int] = []
+    monkeypatch.setattr(t, "_run_post_pipeline", lambda *a, **k: post.append(1) or 0)
+    seen: list[int] = []
+
+    def progress(p: int) -> None:
+        seen.append(p)
+        if len(seen) == 2:
+            task.cancelled = True
+
+    assert t.resume_transcription(task, progress) is True
+
+    assert post == [] and written == {}
+    data = _checkpoint.load_checkpoint(str(audio))
+    assert data is not None
+    assert [s["text"] for s in data["segments"]] == ["first half", "one", "two"]
+    assert data["last_end_time"] == 109.0
+
+
+def test_decoder_error_mid_file_keeps_the_decoded_segments(t, monkeypatch, tmp_path):
+    from core import _checkpoint
+    from core.task import TranscriptionTask
+
+    audio = tmp_path / "lecture.wav"
+    audio.write_bytes(b"\0" * 16)
+
+    def broken():
+        yield Seg(0, 4, "one")
+        yield Seg(4, 8, "two")
+        raise RuntimeError("CUDA out of memory")
+
+    class BrokenEngine(Engine):
+        def transcribe(self, audio_path, **kwargs):
+            self.calls.append({"path": audio_path, "kwargs": dict(kwargs)})
+            return broken(), Info()
+
+    _wire(t, monkeypatch, tmp_path, BrokenEngine())
+
+    with pytest.raises(RuntimeError, match="out of memory"):
+        t.transcribe(TranscriptionTask(str(audio)), lambda p: None, lambda m: None)
+
+    data = _checkpoint.load_checkpoint(str(audio))
+    assert data is not None
+    assert [s["text"] for s in data["segments"]] == ["one", "two"]
+    assert data["last_end_time"] == 8.0
+
+
+@pytest.mark.parametrize("script", [[], [Seg(0, 3, ""), Seg(3, 5, "  ")]])
+def test_no_speech_is_said_and_outputs_are_still_written(t, monkeypatch, tmp_path, script):
+    """S01-5: an empty transcript used to finish like any other success."""
+    from core.task import TranscriptionTask
+
+    audio = tmp_path / "silence.wav"
+    audio.write_bytes(b"\0" * 16)
+    _slices, written = _wire(t, monkeypatch, tmp_path, Engine(script))
+    logs: list[str] = []
+    task = TranscriptionTask(str(audio))
+
+    t.transcribe(task, lambda p: None, logs.append)
+
+    assert "segs" in written  # the (empty) outputs are still written
+    assert task.no_speech is True
+    assert any("No speech recognised" in m for m in logs)
+
+
+def test_speech_clears_the_no_speech_flag(t, monkeypatch, tmp_path):
+    from core.task import TranscriptionTask
+
+    audio = tmp_path / "talk.wav"
+    audio.write_bytes(b"\0" * 16)
+    _wire(t, monkeypatch, tmp_path, Engine([Seg(0, 3, "hello")]))
+    logs: list[str] = []
+    task = TranscriptionTask(str(audio))
+
+    t.transcribe(task, lambda p: None, logs.append)
+
+    assert task.no_speech is False
+    assert not any("No speech recognised" in m for m in logs)

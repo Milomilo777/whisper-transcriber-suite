@@ -3,6 +3,10 @@
 Field report: a 62-minute lecture produced "so good" as 30 one-second
 segments in a row (and decoding slowed to ~0.12x real time); runs of 3-7
 identical lines also appeared with conditioning off, over music.
+
+These tests pass ``hard=limit`` so a tight run of ``limit`` copies is a loop;
+the default ``hard`` and the keep-and-mark band are covered in
+test_loop_guard_real_speech.py.
 """
 from __future__ import annotations
 
@@ -70,13 +74,13 @@ def test_repeat_limit_default_and_config_default():
 def test_short_repeats_pass_unchanged():
     items = segs("a", "okay", "okay", "b", "okay", "okay", "c")
     stats = LoopGuardStats()
-    assert texts(guard_repeats(items, limit=3, stats=stats)) == texts(items)
+    assert texts(guard_repeats(items, limit=3, hard=3, stats=stats)) == texts(items)
     assert stats == LoopGuardStats()
 
 
 def test_held_repeats_at_the_end_are_flushed():
     items = segs("a", "b", "b")
-    assert texts(guard_repeats(items, limit=3)) == ["a", "b", "b"]
+    assert texts(guard_repeats(items, limit=3, hard=3)) == ["a", "b", "b"]
 
 
 def test_guard_off_below_two_passes_everything():
@@ -86,7 +90,7 @@ def test_guard_off_below_two_passes_everything():
 
 def test_lines_without_letters_never_count_as_repeats():
     items = segs("♪", "♪", "♪", "♪")
-    assert texts(guard_repeats(items, limit=3)) == ["♪"] * 4
+    assert texts(guard_repeats(items, limit=3, hard=3)) == ["♪"] * 4
 
 
 # ---- restart --------------------------------------------------------------------
@@ -101,7 +105,7 @@ def test_loop_restarts_once_from_the_second_copy():
 
     events: list[str] = []
     stats = LoopGuardStats()
-    out = list(guard_repeats(looped, limit=3, restart=restart,
+    out = list(guard_repeats(looped, limit=3, hard=3, restart=restart,
                              on_event=events.append, stats=stats))
     assert calls == [2.0]  # start of the second "so good"
     assert texts(out) == ["intro", "so good", "real words", "more words"]
@@ -119,7 +123,7 @@ def test_loop_after_the_restart_is_dropped_not_restarted_again():
                          start=at))
 
     stats = LoopGuardStats()
-    out = list(guard_repeats(segs("a", *["so good"] * 4), limit=3,
+    out = list(guard_repeats(segs("a", *["so good"] * 4), limit=3, hard=3,
                              restart=restart, stats=stats))
     assert len(calls) == 1
     assert texts(out) == ["a", "so good", "next", "end"]
@@ -133,7 +137,7 @@ def test_failed_restart_falls_back_to_dropping():
 
     events: list[str] = []
     stats = LoopGuardStats()
-    out = list(guard_repeats(segs(*["x y"] * 6, "z"), limit=3, restart=restart,
+    out = list(guard_repeats(segs(*["x y"] * 6, "z"), limit=3, hard=3, restart=restart,
                              on_event=events.append, stats=stats))
     assert texts(out) == ["x y", "z"]
     assert stats.restarts == 0 and stats.dropped == 5
@@ -151,7 +155,7 @@ def test_replaced_and_final_iterators_are_closed():
 
     first = gen("first", segs(*["loop"] * 5))
     second = gen("second", segs("tail", start=1))
-    out = list(guard_repeats(first, limit=3, restart=lambda at: second))
+    out = list(guard_repeats(first, limit=3, hard=3, restart=lambda at: second))
     assert texts(out) == ["loop", "tail"]
     assert closed == ["first", "second"]
 
@@ -165,7 +169,7 @@ def test_closing_the_guard_closes_the_decoder():
         finally:
             closed.append(True)
 
-    guarded = guard_repeats(gen(), limit=3)
+    guarded = guard_repeats(gen(), limit=3, hard=3)
     assert next(guarded).text == "a"
     guarded.close()  # what a cancelled transcription does
     assert closed == [True]
@@ -176,20 +180,23 @@ def test_closing_the_guard_closes_the_decoder():
 def test_without_restart_runs_collapse_to_one_line():
     items = segs("a", *["这个是"] * 7, "b", *["so good"] * 3, "c")
     stats = LoopGuardStats()
-    out = list(guard_repeats(items, limit=3, stats=stats))
+    out = list(guard_repeats(items, limit=3, hard=3, stats=stats))
     assert texts(out) == ["a", "这个是", "b", "so good", "c"]
     assert stats.dropped == 6 + 2
 
 
 def test_a_short_repeat_after_a_dropped_run_is_kept():
     items = segs("x", "x", "x", "b", "b", "c")
-    assert texts(guard_repeats(items, limit=3)) == ["x", "b", "b", "c"]
+    assert texts(guard_repeats(items, limit=3, hard=3)) == ["x", "b", "b", "c"]
 
 
-def test_previous_text_seeds_the_guard_across_a_resume():
-    out = list(guard_repeats(segs("so good", "so good", "new"), limit=3,
+def test_previous_text_does_not_make_the_first_tail_copy_tight():
+    # The checkpointed line's times are on another timeline, so the first
+    # tail copy cannot be judged back to back with it (it used to be
+    # counted, which dropped both copies here: ["new"]).
+    out = list(guard_repeats(segs("so good", "so good", "new"), limit=3, hard=3,
                              previous_text="So good!"))
-    assert texts(out) == ["new"]
+    assert texts(out) == ["so good", "so good", "new"]
 
 
 # ---- invariants on random input (stdlib only) ----------------------------------
@@ -200,7 +207,7 @@ def test_random_streams_keep_order_and_never_hold_a_long_run(seed):
     words = ["a", "b", "so good", "Okay.", "okay", "♪"]
     items = segs(*[rng.choice(words) for _ in range(rng.randint(0, 60))])
     limit = rng.choice([2, 3, 4])
-    out = list(guard_repeats(items, limit=limit))
+    out = list(guard_repeats(items, limit=limit, hard=limit))
     # a subsequence of the input, in order, nothing invented
     pos = iter(items)
     assert all(any(o is s for s in pos) for o in out)

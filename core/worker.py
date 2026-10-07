@@ -909,6 +909,7 @@ def _main() -> int:
                 audio_duration=float(
                     getattr(task, "audio_duration", 0.0) or 0.0
                 ),
+                no_speech=bool(getattr(task, "no_speech", False)),
             )
         except Exception as e:  # noqa: BLE001
             if isinstance(e, OSError) and _parent_lost.is_set():
