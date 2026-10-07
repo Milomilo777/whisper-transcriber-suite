@@ -219,6 +219,46 @@ def test_restarted_copies_are_compared_with_the_anchor():
     assert stats.restarts == 1 and stats.dropped == 9
 
 
+def test_a_restart_that_finds_nothing_says_so():
+    events: list[str] = []
+    stats = LoopGuardStats()
+    items = spaced("so good", 10, start=30.0, dur=1.0, gap=0.0)
+    out = list(guard_repeats(items, limit=3, restart=lambda at: iter(()),
+                             stats=stats, on_event=events.append))
+    assert texts(out) == ["so good"] and stats.restarts == 1
+    assert "found no more speech" in events[-1] and "00:00:31" in events[-1]
+
+
+def test_a_restart_that_fails_while_decoding_is_reported_and_raised():
+    def failing(at: float):
+        yield Seg(at, at + 2, "real words")
+        raise RuntimeError("decoder died")
+
+    def dies_at_once(at: float):
+        raise RuntimeError("decoder died")
+        yield  # pragma: no cover - makes this a generator
+
+    for restart, kept in ((failing, ["so good", "real words"]), (dies_at_once, ["so good"])):
+        events: list[str] = []
+        out = []
+        items = spaced("so good", 10, dur=1.0, gap=0.0)
+        with pytest.raises(RuntimeError, match="decoder died"):
+            for seg in guard_repeats(items, limit=3, restart=restart, on_event=events.append):
+                out.append(seg)
+        assert texts(out) == kept
+        # only a failure before the restarted decode yields anything is
+        # blamed on the restart
+        assert any("failed (decoder died)" in e for e in events) == (restart is dies_at_once)
+
+
+def test_a_bad_config_value_warns_once(caplog):
+    loop_guard._WARNED_VALUES.discard(repr("lots"))
+    with caplog.at_level("WARNING", logger="core.loop_guard"):
+        for _ in range(5):
+            assert loop_guard.repeat_limit({"loop_guard_repeats": "lots"}) == 3
+    assert sum("not a whole number" in r.getMessage() for r in caplog.records) == 1
+
+
 def test_no_restart_once_the_task_is_cancelled():
     stats = LoopGuardStats()
     items = spaced("so good", 12, dur=1.0, gap=0.0)

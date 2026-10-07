@@ -54,6 +54,7 @@ TIGHT_GAP_MIN = -0.2
 TIGHT_GAP_MAX = 0.25
 TIGHT_MAX_DURATION = 5.0
 SUSPECT_REASON = "repeated-line"
+_WARNED_VALUES: set[str] = set()
 
 
 @dataclass
@@ -99,10 +100,13 @@ def repeat_limit(cfg: dict[str, Any]) -> int:
     try:
         value = int(raw)
     except (TypeError, ValueError, OverflowError):
-        logger.warning(
-            "loop_guard_repeats=%r is not a whole number; using %d",
-            raw, DEFAULT_REPEATS,
-        )
+        # Read again at every checkpoint (fingerprint): warn once per value.
+        if repr(raw) not in _WARNED_VALUES:
+            _WARNED_VALUES.add(repr(raw))
+            logger.warning(
+                "loop_guard_repeats=%r is not a whole number; using %d",
+                raw, DEFAULT_REPEATS,
+            )
         return DEFAULT_REPEATS
     return value if value >= 2 else 0
 
@@ -248,12 +252,29 @@ def guard_repeats(
     drop_count = 0
     drop_first = drop_last = 0.0
     can_restart = restart is not None
+    restart_at: float | None = None  # set until the restarted decode yields
     try:
         while True:
             try:
                 seg = next(it)
             except StopIteration:
+                if restart_at is not None:
+                    event(
+                        f"Loop guard: decoding again from {_fmt(restart_at)} "
+                        "found no more speech; the repeated lines were dropped."
+                    )
                 break
+            except Exception as e:
+                # The decoder is lazy: a restart that fails while decoding
+                # raises here. The first decode is already closed, so the
+                # error is reported, never turned into a silently short file.
+                if restart_at is not None:
+                    event(
+                        f"Loop guard: decoding again from {_fmt(restart_at)} "
+                        f"failed ({e})."
+                    )
+                raise
+            restart_at = None
             text = str(getattr(seg, "text", "") or "").strip()
             key = repeat_key(text)
             tight = (
@@ -297,6 +318,7 @@ def guard_repeats(
                         it = iter(new_segments)
                         held = []
                         stats.restarts += 1
+                        restart_at = at
                         # Restarted copies are compared with the anchor.
                         prev_copy = anchor
                         continue
