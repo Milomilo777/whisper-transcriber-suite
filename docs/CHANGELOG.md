@@ -383,7 +383,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   Project files may now only set per-file transcription choices (formats, prompt, voice detection,
   speakers, chapters and similar; list in `docs/CONFIG.md`). Engine, URL, API key, token, webhook,
   stats, AI, server, folder and model keys are ignored and logged once by name, so such a file can
-  no longer send audio, transcripts or your keys to another service.
+  no longer send audio, transcripts or your keys to another service. Numbers outside a sane range
+  (a 0-second chapter, a huge batch) are dropped too.
 
 ## [1.9.3] — 2026-09-27
 

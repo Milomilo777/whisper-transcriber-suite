@@ -163,6 +163,54 @@ def test_refusal_log_survives_hostile_key_names(tmp_path, caplog):
     assert len(message) < 4000
 
 
+@pytest.mark.parametrize("key,value", [
+    # Every segment a chapter: one paid LLM title call per segment.
+    ("chapter_min_seconds", 0), ("chapter_gap_seconds", -1),
+    ("batch_size", 10 ** 30), ("batch_size", 0), ("batch_size", True),
+    ("vad_threshold", 1.5), ("vad_threshold", True), ("vad_min_silence_ms", -5),
+    ("vad_speech_pad_ms", 10 ** 9), ("vad_window_s", 10 ** 9),
+    ("diarization_num_speakers", 1000), ("diarization_num_speakers", -7),
+    ("diarization_cluster_threshold", -0.1),
+])
+def test_out_of_range_numbers_are_dropped(tmp_path, key, value):
+    media = _write(tmp_path, {key: value})
+    assert load_project_overrides(str(media)) == {}
+
+
+def test_range_edges_are_kept(tmp_path):
+    edges = {"chapter_min_seconds": 10.0, "chapter_gap_seconds": 0.5,
+             "batch_size": 1, "vad_threshold": 0.0, "vad_min_silence_ms": 0,
+             "vad_window_s": 0, "diarization_num_speakers": -1,
+             "diarization_cluster_threshold": 2.0}
+    media = _write(tmp_path, edges)
+    assert load_project_overrides(str(media)) == edges
+
+
+def test_every_numeric_allowed_key_has_a_range():
+    for key in PROJECT_ALLOWED_KEYS:
+        default = DEFAULT_CONFIG.get(key, "none")
+        if isinstance(default, (int, float)) and not isinstance(default, bool):
+            lo, hi = cfg._PROJECT_KEY_RANGES[key]
+            assert lo <= default <= hi, key
+
+
+def test_huge_integer_literal_is_ignored_not_raised(tmp_path):
+    """Python refuses int literals over 4300 digits with a plain ValueError."""
+    (tmp_path / PROJECT_FILE_NAME).write_text(
+        '{"batch_size": ' + "9" * 5000 + "}", encoding="utf-8")
+    assert load_project_overrides(str(tmp_path)) == {}
+
+
+def test_refusal_memory_does_not_hold_the_key_names(tmp_path):
+    """The once-only log keeps a fixed-size marker per file, not the
+    (attacker-sized) list of refused names, for the life of the worker."""
+    media = _write(tmp_path, {("junk%05d" % i) * 20: 1 for i in range(2000)})
+    load_project_overrides(str(media))
+    assert len(cfg._REFUSED_OVERRIDES_LOGGED) == 1
+    for marker in cfg._REFUSED_OVERRIDES_LOGGED:
+        assert isinstance(marker, str) and len(marker) <= 64
+
+
 def test_project_file_cannot_send_transcripts_or_key_elsewhere(tmp_path):
     """The review repro: the user's own key must never meet another host."""
     media = _write(tmp_path, {

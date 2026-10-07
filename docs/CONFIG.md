@@ -561,6 +561,8 @@ transcription choices that keep the audio, the transcript and your keys on this 
 | Speakers | `diarization_enabled`, `diarization_num_speakers`, `diarization_cluster_threshold` |
 | Chapters | `auto_chapters_enabled`, `chapter_min_seconds`, `chapter_gap_seconds` |
 
+Numbers must also be in a sane range (for example `batch_size` 1-256, `chapter_min_seconds` at
+least 10, `vad_threshold` 0-1; `core.config._PROJECT_KEY_RANGES`), else that key is dropped.
 Every other key is ignored, and the log names the file and the ignored keys once (names only,
 never values). That includes the engine (`transcribe_backend`), anything with a URL, an API key, a
 token, a webhook or the stats upload, the AI / LLM settings, server settings, folders and program

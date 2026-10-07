@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import http.client
 import json
 import logging
@@ -1429,10 +1430,28 @@ PROJECT_ALLOWED_KEYS: frozenset[str] = frozenset({
 # type of this default.
 _PROJECT_ONLY_DEFAULTS: dict[str, Any] = {"alignment": "none"}
 
-# (project file, refused key names) pairs already logged. The loader runs
-# twice per transcribed file and once per file of a folder; one warning per
-# file and key set is enough.
-_REFUSED_OVERRIDES_LOGGED: set[tuple[str, frozenset[str]]] = set()
+# Inclusive bounds for the numeric project keys; a value outside (or a JSON
+# true/false) is dropped. Without them a project file could ask for a 10**30
+# batch (out of memory in the worker) or a 0-second chapter length, which
+# makes every segment a chapter and costs one AI title call per segment on
+# the user's own key.
+_PROJECT_KEY_RANGES: dict[str, tuple[float, float]] = {
+    "batch_size": (1, 256),
+    "vad_threshold": (0.0, 1.0),
+    "vad_min_silence_ms": (0, 60_000),
+    "vad_speech_pad_ms": (0, 10_000),
+    "vad_window_s": (0, 3_600),
+    "diarization_num_speakers": (-1, 100),
+    "diarization_cluster_threshold": (0.0, 2.0),
+    "chapter_min_seconds": (10.0, 86_400.0),
+    "chapter_gap_seconds": (0.5, 3_600.0),
+}
+
+# Digests of (project file, refused key names) already logged. The loader
+# runs twice per transcribed file and once per file of a folder; one warning
+# per file and key set is enough. A fixed-size digest, so a file with
+# thousands of junk keys is not kept in memory for the life of the worker.
+_REFUSED_OVERRIDES_LOGGED: set[str] = set()
 _REFUSED_OVERRIDES_LOCK = threading.Lock()
 _REFUSED_OVERRIDES_LOG_CAP = 1024
 
@@ -1482,9 +1501,11 @@ def load_project_overrides(start: str | Path) -> dict[str, Any]:
     try:
         with open(f, "r", encoding="utf-8") as fp:
             data = json.load(fp)
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError):
-        # RecursionError: a pathologically nested project file (legal JSON,
-        # absurd depth) — ignored like any other malformed file, never raised.
+    except (OSError, ValueError, RecursionError):
+        # ValueError covers UnicodeDecodeError, json.JSONDecodeError and an
+        # integer literal over Python's 4300-digit limit. RecursionError: a
+        # pathologically nested project file (legal JSON, absurd depth). All
+        # are ignored like any other malformed file, never raised.
         logger.warning("Could not read project overrides at %s", f)
         return {}
     if not isinstance(data, dict):
@@ -1562,6 +1583,16 @@ def _validate_overrides(
             "(expected %s); dropping.",
             source, key, type(value).__name__, type(default).__name__,
         )
+    for key, (low, high) in _PROJECT_KEY_RANGES.items():
+        if key not in cleaned:
+            continue
+        number = cleaned[key]
+        if isinstance(overrides[key], bool) or not low <= number <= high:
+            logger.warning(
+                "Project override at %s has %r = %s outside %s..%s; dropping.",
+                source, key, repr(overrides[key])[:40], low, high,
+            )
+            del cleaned[key]
     if refused:
         _log_refused_overrides(source, refused)
     return cleaned
@@ -1574,14 +1605,16 @@ def _log_refused_overrides(source: Path, refused: list[str]) -> None:
     from a file anyone could have written, so each is repr()-escaped (no
     raw newlines in the log) and clipped, and long lists are cut short.
     """
-    marker = (str(source), frozenset(refused))
+    names = sorted(set(refused))
+    marker = hashlib.sha256(
+        "\0".join([str(source), *names]).encode("utf-8", "surrogatepass")
+    ).hexdigest()
     with _REFUSED_OVERRIDES_LOCK:
         if marker in _REFUSED_OVERRIDES_LOGGED:
             return
         if len(_REFUSED_OVERRIDES_LOGGED) >= _REFUSED_OVERRIDES_LOG_CAP:
             _REFUSED_OVERRIDES_LOGGED.clear()
         _REFUSED_OVERRIDES_LOGGED.add(marker)
-    names = sorted(refused)
     shown = ", ".join(repr(name)[:60] for name in names[:20])
     if len(names) > 20:
         shown += f", and {len(names) - 20} more"
