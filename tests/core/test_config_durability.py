@@ -439,27 +439,73 @@ def test_two_processes_saving_disjoint_keys_keep_both(cfg_dir):
     assert disk["theme"] == "dark"
 
 
-def test_a_held_lock_delays_but_never_blocks_a_save(cfg_dir, monkeypatch, caplog):
-    _write(cfg_dir, {"theme": "dark"})
-    monkeypatch.setattr(cfgmod, "_LOCK_DEADLINE_SECONDS", 0.2)
+def _hold_lock(cfg_dir: Path, seconds: float = 60) -> subprocess.Popen[bytes]:
     holder = subprocess.Popen(
-        [sys.executable, "-c", _HOLDER, str(REPO), str(cfg_dir / "config.json.lock")],
+        [sys.executable, "-c", _HOLDER, str(REPO), str(cfg_dir / "config.json.lock"), str(seconds)],
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
     )
+    assert holder.stdout is not None
+    assert holder.stdout.readline().strip() == b"locked"
+    return holder
+
+
+def test_a_lock_held_past_the_deadline_refuses_and_writes_nothing(cfg_dir, monkeypatch, caplog):
+    """A01: a held lock is a live writer; saving past it lost its change."""
+    _write(cfg_dir, {"theme": "dark", "n": 1})
+    monkeypatch.setattr(cfgmod, "_LOCK_DEADLINE_SECONDS", 0.2)
+    monkeypatch.setattr(cfgmod, "_SAVE_LOCK_DEADLINE_SECONDS", 0.4)
+    cfg = cfgmod.load_config(fetch_online=False)
+    holder = _hold_lock(cfg_dir)
     try:
-        assert holder.stdout is not None
-        assert holder.stdout.readline().strip() == b"locked"
-        cfg = cfgmod.load_config(fetch_online=False)
         cfg["theme"] = "light"
         t0 = time.monotonic()
         with caplog.at_level("WARNING", logger="core.config"):
-            cfgmod.save_config(cfg)
+            with pytest.raises(cfgmod.ConfigBusyError):
+                cfgmod.save_config(cfg)
+            with pytest.raises(cfgmod.ConfigBusyError):
+                cfgmod.update_config(lambda d: d.__setitem__("n", 2))
         assert time.monotonic() - t0 < 5
-        assert _disk(cfg_dir)["theme"] == "light"
+        assert _disk(cfg_dir) == {"theme": "dark", "n": 1}
         assert any("lock" in r.getMessage().lower() for r in caplog.records)
     finally:
         holder.kill()
         holder.wait(timeout=30)
+    # The holder is gone (the OS dropped its lock): the retry lands, and the
+    # failed save left the baseline alone, so it still knows what changed.
+    monkeypatch.setattr(cfgmod, "_SAVE_LOCK_DEADLINE_SECONDS", 8.0)
+    cfgmod.save_config(cfg)
+    assert _disk(cfg_dir)["theme"] == "light"
+
+
+def test_a_lock_released_within_the_deadline_lets_the_save_land(cfg_dir):
+    _write(cfg_dir, {"theme": "dark"})
+    cfg = cfgmod.load_config(fetch_online=False)
+    holder = _hold_lock(cfg_dir, seconds=0.5)
+    try:
+        cfg["theme"] = "light"
+        cfgmod.save_config(cfg)
+        assert _disk(cfg_dir)["theme"] == "light"
+    finally:
+        holder.kill()
+        holder.wait(timeout=30)
+
+
+def test_an_unusable_lock_file_still_saves(cfg_dir, monkeypatch, caplog):
+    _write(cfg_dir, {"theme": "dark"})
+    cfg = cfgmod.load_config(fetch_online=False)
+    real = builtins.open
+
+    def no_lock_file(file, *args, **kwargs):  # noqa: ANN001, ANN002, ANN003
+        if str(file).endswith(".lock"):
+            raise PermissionError(13, "read-only folder", str(file))
+        return real(file, *args, **kwargs)
+
+    monkeypatch.setattr(cfgmod, "open", no_lock_file, raising=False)
+    cfg["theme"] = "light"
+    with caplog.at_level("WARNING", logger="core.config"):
+        cfgmod.save_config(cfg)
+    assert _disk(cfg_dir)["theme"] == "light"
+    assert any("without it" in r.getMessage() for r in caplog.records)
 
 
 _HOLDER = r"""
@@ -474,7 +520,7 @@ else:
     import fcntl
     fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
 print("locked", flush=True)
-time.sleep(60)
+time.sleep(float(sys.argv[3]))
 """
 
 

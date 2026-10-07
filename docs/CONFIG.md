@@ -20,30 +20,46 @@ reading and saving are built to never lose a setting (`core.config`):
 - **Saving writes only what changed.** `load_config()` returns a dict that remembers the values
   it was loaded with; `save_config()` writes the keys this process changed over the file as it
   is *now*, so the app's own copy (held from launch to exit) never reverts a value another
-  process saved meanwhile, such as the cloud minutes a worker records. A plain dict (a copy made
-  with `dict(...)`) is written whole, as before. Counters that several processes change go
-  through `core.config.update_config(fn)`: lock, read the file, change it, write it.
+  process saved meanwhile, such as the cloud minutes a worker records. Nested objects (`model`,
+  `voice_clone`) are compared field by field; lists are one value. `cfg.copy()` keeps the
+  load-time values; a plain dict (`dict(cfg)`, `{**cfg}`) is written whole, as before, with a
+  one-time warning in the log. Counters that several processes change go through
+  `core.config.update_config(fn)`: lock, read the file, change it, write it (`fn` must not load
+  or save the config itself).
 - **Writes are atomic and serialised.** A temporary file is written, flushed and moved over
-  `config.json`; other processes are kept out by `config.json.lock` next to it (waited for up to
-  2 s, then the save goes ahead and the wait is logged). On Windows a reader holding the file
+  `config.json`; other processes are kept out by `config.json.lock` next to it. A lock still held
+  is a live writer (the OS releases the lock of a process that dies), so `save_config` waits up to
+  8 s and `update_config` up to 2 s, then raises `ConfigBusyError` (a `ConfigSaveError`) and
+  writes nothing. Only a lock file that cannot be opened at all (a read-only folder) lets the
+  save go ahead without it, logged. The lock file is never deleted. On Windows a reader holding the file
   makes the move fail for a moment, so it is retried for up to 1 s. A save that still fails
   raises `ConfigSaveError`; **Advanced** then shows the error and stays open, and
   **File → Work offline** says so in the window.
-- **A backup is kept.** Every save first copies the current, valid file to `config.json.bak`.
+- **A backup is kept.** Every save first copies the current, valid file to `config.json.bak`
+  (through `config.json.bak.tmp`, so a cut-off copy never leaves a torn backup).
   A save that would write fewer than 40 % of the keys on disk is refused as data loss.
 - **A read error is not damage.** A file that cannot be opened for a moment (another process is
   replacing it, an antivirus scan) is retried for up to 1 s, then the last copy this process
   read is used; the file is never renamed for it. A save that cannot read the file refuses to
-  write blind (`ConfigSaveError`). A file saved by an editor in the Windows ANSI code page
+  write blind (`ConfigSaveError`), and while no last copy exists the privacy switches read
+  closed for that run (without saving that). UTF-8 with or without a BOM (PowerShell 5.1 writes
+  one) is read as UTF-8. A file saved by an editor in the Windows ANSI code page
   (cp1252) is read, and the next save writes it as UTF-8; a UTF-8 file with a broken byte counts
   as damaged instead, so its non-Latin text is never turned into mojibake.
-- **A damaged file falls back to its backup.** A file that is not a JSON object is moved to
-  `config.json.corrupt` and `config.json.bak` is put back in its place. With no usable backup the
-  app starts from the defaults, except for the privacy switches below.
+- **A damaged file falls back to its backup.** A file that is not a JSON object is copied to
+  `config.json.corrupt` (only if it is still the file found damaged) and `config.json.bak` is
+  written in its place, with the three privacy switches closed: the backup is the generation
+  before the last save and may predate turning Work offline on. If the damaged file cannot be
+  kept, it is not overwritten either and saves are refused. With no usable backup it is moved to
+  `config.json.corrupt` and the app starts from the defaults, privacy switches closed. A missing
+  `config.json` next to a `config.json.corrupt` that is not older than the backup (a repair cut
+  short, or an older version that wrote nothing back) is restored the same way; a backup newer
+  than the `.corrupt` means the file was deleted by hand after later saves, and the app starts
+  fresh with the switches closed.
 - **Privacy switches fail closed.** `work_offline`, `telemetry_opt_in` and `update_check_enabled`
   accept `true`/`false` (also as the words true/false, yes/no, on/off, 1/0); any other value
   reads as *offline*, *no usage statistics* and *no update check*. While a `config.json.corrupt`
-  exists without a usable `config.json.bak`, a switch missing from the file reads the same way
+  exists, a switch missing from the file reads the same way
   (the saved choice was lost), and the next save writes all three explicitly. Work offline then
   shows in the window title and the File menu, so it can be turned off again.
 

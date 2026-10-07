@@ -42,7 +42,7 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
     """Run a one-shot transcription from the command line."""
     import os
     import time
-    from core.config import load_config, save_config
+    from core.config import ConfigSaveError, load_config, save_config
     from core.task import TranscriptionTask
     from core import transcriber as _trans
 
@@ -69,7 +69,11 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
             cfg["whisper_model"] = model_slug
             cfg["model"] = entry
             cfg["model_path"] = ""
-            save_config(cfg)
+            try:
+                save_config(cfg)
+            except ConfigSaveError as e:
+                print(f"error: could not save the model choice: {e}", file=sys.stderr)
+                return 1
             cfg = load_config()
     formats = args.formats or cfg.get("output_formats") or ["srt", "json"]
     cfg["output_formats"] = formats

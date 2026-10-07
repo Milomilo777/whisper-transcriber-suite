@@ -276,6 +276,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   strings are understood, and a switch whose saved choice was lost with a damaged file stays
   closed in every process. Saving Advanced no longer reverts a File-menu Work offline change made
   while it was open.
+- **Settings survive more edge cases.** A `config.json` with a UTF-8 BOM is read; a settings save
+  that finds another process holding the lock waits up to 8 s and then reports a "busy" error
+  instead of writing over that process's change; nested objects merge field by field; a copy made
+  with `cfg.copy()` still saves only its changes; a damaged file is never overwritten when it
+  cannot be kept as `.corrupt`; `config.json.bak` is rotated atomically.
+- **A restore from the backup keeps the network off.** `config.json.bak` is the generation before
+  the last save, so it may predate turning Work offline on: any restore from it (and any read that
+  cannot know the saved choice) now turns Work offline on and usage statistics and the update
+  check off, and writes that back, until the user changes them again.
 - **The Help-menu update dot clears after a release is withdrawn.**
 - **An oversized `.whisperproject.json` is ignored** (over 1 MB) instead of being parsed on every
   job.

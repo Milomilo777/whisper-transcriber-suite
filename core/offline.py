@@ -107,8 +107,12 @@ _override: bool | None = None
 _last_saved = True
 # (st_ino, st_size, st_mtime_ns) of the file _last_saved came from: the
 # switch is asked on every socket connect, so an unchanged file is not
-# parsed again. st_ino changes on every atomic replace.
+# parsed again. st_ino changes on every atomic replace. An edit in place
+# within one file-time tick can keep the key, so a cached value is also
+# trusted for at most _CACHE_SECONDS.
 _cache_key: tuple[int, int, int] | None = None
+_cache_time = 0.0
+_CACHE_SECONDS = 1.5
 
 
 def set_offline(on: bool | None) -> None:
@@ -118,8 +122,9 @@ def set_offline(on: bool | None) -> None:
 
 
 def _saved_flag() -> bool:
-    global _last_saved, _cache_key
+    global _last_saved, _cache_key, _cache_time
     import os
+    import time
 
     from core import config as _config
 
@@ -131,7 +136,8 @@ def _saved_flag() -> bool:
         key = (-1, -1, -1)
     except OSError:
         return _last_saved
-    if key == _cache_key:
+    now = time.monotonic()
+    if key == _cache_key and now - _cache_time < _CACHE_SECONDS:
         return _last_saved
     data = _config.read_local_config_for_switches()
     if data is None:
@@ -139,6 +145,7 @@ def _saved_flag() -> bool:
         return _last_saved
     _last_saved = flag_from(data)
     _cache_key = key
+    _cache_time = now
     return _last_saved
 
 

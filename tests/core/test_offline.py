@@ -95,11 +95,13 @@ def test_a_damaged_config_without_a_backup_counts_as_on(isolated_config, body):
     assert offline.is_offline() is True
 
 
-def test_a_damaged_config_reads_the_switch_from_its_backup(isolated_config):
+def test_a_damaged_config_counts_as_on_even_with_a_backup(isolated_config):
+    # The .bak is the generation before the last save: it may predate turning
+    # Work offline on, so it is no evidence that the user wants the network.
     bak = isolated_config.with_name(isolated_config.name + ".bak")
     bak.write_text(json.dumps({"work_offline": False}), encoding="utf-8")
     isolated_config.write_text("{not json", encoding="utf-8")
-    assert offline.is_offline() is False
+    assert offline.is_offline() is True
 
 
 def test_a_transient_read_error_keeps_the_last_value(isolated_config, monkeypatch):
