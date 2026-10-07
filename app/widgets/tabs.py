@@ -1432,7 +1432,8 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
             "Leave blank for no password. If you set one, share it with the "
             "people you want to let in: they type it into the page's "
             "password box, or open the address with  ?token=YOURPASSWORD  "
-            "added (the page then removes it from the address bar)."
+            "added (letters and digits only; the page then removes it from "
+            "the address bar)."
         ),
         wraplength=560, justify="left", foreground="#888",
     ).pack(anchor="w", padx=(0, 0), pady=(4, 0))

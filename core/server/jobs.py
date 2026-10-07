@@ -833,15 +833,24 @@ _WIN_RESERVED_NAMES = frozenset(
 _MAX_UPLOAD_STEM = 100
 _MAX_UPLOAD_EXT = 16
 
-# An absolute path inside an error text: a Windows drive path or a POSIX path
-# with at least one directory. Directory names may hold spaces ("John Smith"),
-# the last component may not, so the match stops before ordinary prose. A
-# POSIX path must not follow a word character, ":" or "/" (URL paths).
+# An absolute path inside an error text: a Windows drive path, a UNC path or
+# a POSIX path with at least one directory. A directory name may hold inner
+# spaces ("John Smith") but may not start or end with one, and the last
+# component holds none, so the match stops before ordinary prose ("copy
+# /tmp/a to /tmp/b" is two paths). A POSIX path must not follow a word
+# character, ":" or "/" (URL paths).
 _ABS_PATH_RE = re.compile(
-    r"(?<![\w])[A-Za-z]:[\\/]+(?:[^\\/\s'\"<>|:*?][^\\/\r\n'\"<>|:*?]*[\\/]+)*"
+    r"(?<![\w])[A-Za-z]:[\\/]+"
+    r"(?:[^\\/\s'\"<>|:*?](?:[^\\/\r\n'\"<>|:*?]*[^\\/\s'\"<>|:*?])?[\\/]+)*"
     r"[^\\/\s'\"<>|:*?]*"
-    r"|(?<![\w.:/~\\-])/(?:[^/\s'\"<>|][^/\r\n'\"<>|]*/)+[^/\s'\"<>|]*"
+    r"|(?<![\w\\])\\{2,}[^\\/\s'\"<>|]+(?:\\+[^\\/\s'\"<>|]+)+"
+    r"|(?<![\w.:/~\\-])/"
+    r"(?:[^/\s'\"<>|](?:[^/\r\n'\"<>|]*[^/\s'\"<>|])?/)+[^/\s'\"<>|:]*"
 )
+
+# Longest error text redact_paths() looks at (the public text is cut to 500
+# characters afterwards anyway); keeps the regex work small on any input.
+_MAX_ERROR_SCAN = 2000
 
 
 def _last_path_part(path: str) -> str:
@@ -855,9 +864,11 @@ def redact_paths(text: str) -> str:
 
     Error texts reach web clients and the webhook; the full path would show
     the host's user name and folder layout. The file name alone stays, since
-    it is what the client sent or asked for.
+    it is what the client sent or asked for. Only the first
+    :data:`_MAX_ERROR_SCAN` characters are kept.
     """
-    return _ABS_PATH_RE.sub(lambda m: _last_path_part(m.group(0)), text)
+    return _ABS_PATH_RE.sub(lambda m: _last_path_part(m.group(0)),
+                            text[:_MAX_ERROR_SCAN])
 
 
 def _last_error_line(output: Any) -> str:
@@ -943,13 +954,17 @@ def _safe_filename(name: str) -> str:
     ).strip()
     cleaned = cleaned.lstrip(".") or ""
     stem, ext = os.path.splitext(cleaned)
-    cleaned = (stem[:_MAX_UPLOAD_STEM] + ext[:_MAX_UPLOAD_EXT]).rstrip(" .")
+    if len(ext) > _MAX_UPLOAD_EXT or " " in ext:
+        # Not a real extension ("notes.from the meeting"): keep it whole.
+        stem, ext = cleaned, ""
+    cleaned = (stem[:_MAX_UPLOAD_STEM] + ext).rstrip(" .")
     if not cleaned:
         return f"upload-{uuid.uuid4().hex[:8]}.bin"
     # Reserved-name guard: split off the extension and, if the stem is a
     # reserved device name, prefix an underscore so it becomes a real file.
+    # Windows ignores trailing spaces and dots there too ("CON .txt").
     stem, ext = os.path.splitext(cleaned)
-    if stem.upper() in _WIN_RESERVED_NAMES:
+    if stem.rstrip(" .").upper() in _WIN_RESERVED_NAMES:
         cleaned = "_" + cleaned
     return cleaned
 

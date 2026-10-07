@@ -340,7 +340,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--token", default=None,
         help="optional shared secret; clients must send it via the "
              "X-Auth-Token header or ?token= query (default: config "
-             "server_token, the app's Access password; --token \"\" "
+             "server_token, the app's Access password; --token= "
              "serves without one)",
     )
     sv.add_argument(

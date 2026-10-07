@@ -67,6 +67,7 @@ import os
 import re
 import socket
 import ssl
+import sys
 import time
 import urllib.parse
 from http import HTTPStatus
@@ -151,11 +152,21 @@ _HANDLER_TIMEOUT_S = 60.0
 # so a client that connects and never speaks TLS cannot hold anything up.
 _TLS_HANDSHAKE_TIMEOUT_S = 10.0
 
-# An early reject (401 / 403 / 404) reads at most this much of the declared
-# body to keep a keep-alive connection in sync; a larger body is not read at
-# all (the connection is closed), so an unauthenticated client cannot make
-# the server swallow a multi-GB upload before it hears "no".
-_EARLY_REJECT_DRAIN_BYTES = 64 * 1024
+# An early reject (401 / 403 / 404) still reads the declared body before it
+# answers: most clients send the whole body before they read a reply, and
+# closing on unread bytes resets the connection, so they would see a network
+# error instead of "auth required". The read is bounded so an unauthenticated
+# client cannot make the server swallow a multi-GB upload: never past the
+# upload cap, at most _EARLY_REJECT_DRAIN_S in total, and it stops as soon
+# as the client pauses for _EARLY_REJECT_IDLE_S (a client that only declared
+# a huge Content-Length gets its answer at once).
+_EARLY_REJECT_DRAIN_S = 10.0
+_EARLY_REJECT_IDLE_S = 2.0
+
+# Names that reach this computer directly although they are not IP literals,
+# and that no website can point at it: localhost, and the name Docker gives
+# the host to its containers (how Open WebUI in Docker reaches the server).
+_DIRECT_HOST_NAMES = frozenset({"localhost", "host.docker.internal"})
 
 
 # --- pure parsing helpers (unit-testable, no socket needed) ------------------
@@ -240,8 +251,12 @@ def token_ok(expected: str, header_token: str | None,
     return False
 
 
-# One ``key=value`` pair of a query string inside a logged request line.
-_QUERY_PAIR_RE = re.compile(r"([?&;])([^=&;\s'\"]+)=([^&;\s'\"]*)")
+# One ``key=value`` pair of a query string inside a logged request line. Like
+# ``parse_qs``, only ``&`` separates pairs, so a value runs to the next ``&``
+# or whitespace (``'`` and ``;`` belong to it). The key excludes ``?`` so a
+# request line made of thousands of ``?`` cannot make the regex backtrack
+# quadratically (every response line goes through it).
+_QUERY_PAIR_RE = re.compile(r"([?&])([^=&?\s]+)=([^&\s]*)")
 
 
 def redact_secrets(text: str) -> str:
@@ -250,7 +265,8 @@ def redact_secrets(text: str) -> str:
     The access token may travel as ``?token=`` (the page's download links
     carry it), and ``http.server`` logs the whole request line. The key is
     compared after percent-decoding because ``parse_qs`` decodes it too, so
-    ``?%74oken=`` authenticates just like ``?token=``.
+    ``?%74oken=`` authenticates just like ``?token=``. Linear in the length
+    of ``text``.
     """
     def _sub(m: re.Match[str]) -> str:
         if urllib.parse.unquote_plus(m.group(2)).strip().lower() == "token":
@@ -315,9 +331,9 @@ def host_allowed(host_header: str | None, own_names: frozenset[str]) -> bool:
     """DNS-rebinding guard: does ``Host`` name this machine directly?
 
     Accepted: any IP literal (a rebinding attack needs a DNS name the
-    attacker controls), ``localhost`` and this computer's own names. A
-    missing ``Host`` is accepted too: browsers always send one, so its
-    absence means a non-browser client.
+    attacker controls), ``localhost``, ``host.docker.internal`` and this
+    computer's own names. A missing ``Host`` is accepted too: browsers
+    always send one, so its absence means a non-browser client.
     """
     if host_header is None:
         return True
@@ -330,7 +346,7 @@ def host_allowed(host_header: str | None, own_names: frozenset[str]) -> bool:
         return True
     except ValueError:
         pass
-    return name == "localhost" or name in own_names
+    return name in _DIRECT_HOST_NAMES or name in own_names
 
 
 def origin_allowed(origin: str | None, host_header: str | None, *,
@@ -879,6 +895,20 @@ class JobHTTPServer(ThreadingHTTPServer):
         finally:
             self.shutdown_request(tls_sock)
 
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        """A client that hangs up mid-request is routine, not a crash.
+
+        socketserver prints a full traceback to stderr for every exception
+        out of a handler; a reset or timed-out connection gets one log line
+        instead. Anything else still goes to the default report.
+        """
+        exc = sys.exc_info()[1]
+        if isinstance(exc, (ConnectionError, TimeoutError, ssl.SSLError)):
+            logger.info("server: connection from %s ended early: %s",
+                        client_address[0] if client_address else "?", exc)
+            return
+        super().handle_error(request, client_address)
+
 
 class JobRequestHandler(BaseHTTPRequestHandler):
     """Typed request handler dispatching the small JSON API + static page."""
@@ -906,13 +936,21 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         return parse_route(self.command, self.path)
 
     def _browser_guard_problem(self) -> str:
-        """Why this request must be refused as a browser attack, or ""."""
+        """Why this request must be refused as a browser attack, or "".
+
+        Only without a token. A token is the gate on its own: no other web
+        page can learn it (the token is not a cookie a browser would attach
+        by itself), and a TLS-terminating reverse proxy forwards a foreign
+        Origin scheme and often its own Host name. Without a token, Host is
+        the only thing that tells a rebinding page's domain apart from this
+        machine, and Origin the only thing that tells another site's form
+        apart from the server's own page.
+        """
         srv = self._srv
+        if srv.token:
+            return ""
         host = self.headers.get("Host")
-        # With a token a rebinding page still cannot authenticate, and a
-        # reverse proxy may forward its own name; without one, Host is the
-        # only thing that tells the page's domain apart from this machine.
-        if not srv.token and not host_allowed(host, srv.own_names):
+        if not host_allowed(host, srv.own_names):
             return ("unknown Host header: open the server by its IP address, "
                     "localhost or this computer's name, or set an access "
                     "password")
@@ -1086,6 +1124,13 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        # No other site may frame the page (clickjacking: a hidden frame
+        # would let a visited page steer the user's clicks), and the
+        # address, which may still hold ?token=, is never sent as a referrer.
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Content-Security-Policy", "frame-ancestors 'none'")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(body)
 
@@ -1188,26 +1233,44 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         if length:
             self._drain_body(length)
 
-    def _drain_small_body(self) -> None:
-        """Before an early reject: read a small declared body, never a big one.
+    def _drain_for_reject(self) -> None:
+        """Before an early reject: discard the declared body, within bounds.
 
-        A small body is drained so the client reads the reply cleanly (the
-        historical 401-on-POST keep-alive desync). A body over
-        :data:`_EARLY_REJECT_DRAIN_BYTES` is left unread: the reply goes out
-        with Connection: close and the connection ends, instead of the server
-        swallowing a client's (possibly endless) upload before saying no.
+        Draining lets the client read the reply instead of a connection
+        reset (the historical 401-on-POST desync), but the work is bounded
+        (see :data:`_EARLY_REJECT_DRAIN_S`): a body over the upload cap is
+        never read, the whole drain stops after the time budget, and a pause
+        of :data:`_EARLY_REJECT_IDLE_S` ends it at once. The reply then goes
+        out with Connection: close either way.
         """
         length = self._declared_length()
-        if 0 < length <= _EARLY_REJECT_DRAIN_BYTES:
-            self._drain_body(length)
+        if length <= 0 or length > self._srv.max_upload_bytes:
+            return
+        # read1 returns after ONE socket read, so the budget is checked even
+        # against a client that trickles a byte at a time.
+        read = getattr(self.rfile, "read1", None) or self.rfile.read
+        deadline = time.monotonic() + _EARLY_REJECT_DRAIN_S
+        remaining = length
+        try:
+            while remaining > 0:
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    return
+                self.connection.settimeout(min(left, _EARLY_REJECT_IDLE_S))
+                buf = read(min(64 * 1024, remaining))
+                if not buf:
+                    return
+                remaining -= len(buf)
+        except OSError:  # incl. TimeoutError: the client paused or left
+            return
 
     def _reject_post_early(self, status: int, message: str) -> None:
         """Reject a POST before reading its body, keeping HTTP/1.1 in sync.
 
-        Drains a small declared body (see :meth:`_drain_small_body`), then
-        replies with Connection: close.
+        Drains the declared body within bounds (see
+        :meth:`_drain_for_reject`), then replies with Connection: close.
         """
-        self._drain_small_body()
+        self._drain_for_reject()
         self._send_error_json_close(status, message)
 
     def _reject_openai_post_early(
@@ -1220,7 +1283,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         code: str | None = None,
     ) -> None:
         """OpenAI-envelope twin of :meth:`_reject_post_early`."""
-        self._drain_small_body()
+        self._drain_for_reject()
         self._send_openai_error_close(
             status, message, err_type=err_type, param=param, code=code)
 

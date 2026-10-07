@@ -102,8 +102,9 @@ Notes:
   a "could not bind" error and exits with code 1.
 - `--token`, `--https` and `--webhook` fall back to the config keys
   `server_token` (the app's **Access password**), `server_https_enabled` and
-  `server_webhook_url` when the flag is not given. `--token ""` serves without
-  a password even when the app has one.
+  `server_webhook_url` when the flag is not given. `--token=` serves without
+  a password even when the app has one (write it with the `=`: Windows
+  PowerShell drops an empty `""` argument).
 - The server loads the Whisper model once at startup (the first start can
   take a while; large models need more than a minute on a CPU) and keeps it
   hot. It processes jobs **one at a time** (a single background worker).
@@ -248,7 +249,8 @@ AUDIO_STT_MODEL=whisper-1
 
 If Open WebUI runs in Docker, the container cannot reach the host's
 `127.0.0.1`. Start the server with `--lan` and use the computer's LAN address
-(or `host.docker.internal`) as `<host>`. Menu labels can differ between Open
+or `host.docker.internal` as `<host>`; any other host name needs a password
+(see [Browser protections](#browser-protections)). Menu labels can differ between Open
 WebUI versions. The `/v1` calls above were tested with `curl`; this page has
 not been run against a live Open WebUI.
 
@@ -342,8 +344,10 @@ log shows a query-string token as `token=[redacted]`.
 
 The page at `/` loads without a token; its API calls need one. Type it into
 the page's **Auth token** box, or open a link with it added, for example
-`http://192.168.1.42:8765/?token=mysecret`: the page moves the token into the
-box and removes it from the address bar and the browser history. It is kept
+`http://192.168.1.42:8765/?token=mysecret` (characters other than letters and
+digits must be percent-encoded there; the box takes the password as typed):
+the page moves the token into the box and removes it from the address bar and
+the browser history. It is kept
 for that browser tab only, so a reload still works. Download links on the page
 still carry `?token=` (a plain link cannot send a header).
 
@@ -449,8 +453,9 @@ Behaviour to know:
   with HTTPS a client gets 10 seconds to finish the TLS handshake (on its own
   connection, so a silent client cannot stall anyone else). A request refused
   before its body is read (wrong token, browser protections, unknown route)
-  reads at most 64 KB of that body; a bigger one is not read at all and the
-  connection is closed.
+  has its body read and discarded for at most 10 seconds, never past the
+  upload cap, and only while the client keeps sending (a 2-second pause ends
+  it), so the client still sees the answer; then the connection is closed.
 - **Busy port.** A second server cannot bind a port that is already in use
   (an exclusive bind on Windows); the command line reports the error.
 - **Supreme Master TV (SMTV) scraping is not reachable through this
@@ -464,22 +469,31 @@ Behaviour to know:
 ### Browser protections
 
 The server runs on the same computer as your web browser, so a web page you
-visit must not be able to use it behind your back. Three checks stop that
-(each answers `403`, or `415` for the content type):
+visit must not be able to use it behind your back. These checks stop that:
+
+- **JSON needs `Content-Type: application/json`** (else `415`). A web page
+  can send `text/plain` to another site without asking the browser first; it
+  cannot send `application/json` that way. This check is always on.
+- **No framing.** The page at `/` tells browsers that no other site may show
+  it inside a frame, so a visited page cannot steer your clicks on it.
+
+Without an access password, two more checks apply (each answers `403`):
 
 - **Other web origins are refused.** A browser request whose `Origin` header
   is not the server's own address (scheme, host and port), including
   `Origin: null`, is refused. Requests without an `Origin` header (curl,
   scripts, the OpenAI SDKs, Open WebUI's backend) are not affected.
-- **JSON needs `Content-Type: application/json`.** A web page can send
-  `text/plain` to another site without asking the browser first; it cannot
-  send `application/json` that way.
-- **Without a password, only direct addresses are served.** The `Host`
-  header must be an IP address (`127.0.0.1`, `192.168.1.42`, `[::1]`),
-  `localhost`, this computer's name or that name with `.local`. This stops
-  DNS rebinding, where a web page's own domain is pointed at your computer.
-  With a password set, any `Host` is accepted (a page still cannot learn the
-  password), so a reverse proxy that forwards its own name needs a password.
+- **Only direct addresses are served.** The `Host` header must be an IP
+  address (`127.0.0.1`, `192.168.1.42`, `[::1]`), `localhost`,
+  `host.docker.internal`, this computer's name or that name with `.local`.
+  This stops DNS rebinding, where a web page's own domain is pointed at your
+  computer. Other names (a router name such as `mypc.lan`, a Tailscale name)
+  get `403`: use the IP address, or set a password.
+
+With a password set, these two checks are off: no other page can learn the
+password, and the password is what keeps it out. That is also what makes a
+reverse proxy work (it forwards its own name and an `https://` origin to the
+plain-HTTP server), so put a password on a server behind one.
 
 ## Configuration
 

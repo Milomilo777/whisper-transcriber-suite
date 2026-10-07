@@ -363,21 +363,21 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Security
 
-- **Web pages can no longer drive the local web server.** It refuses requests from another web
-  origin, requires `Content-Type: application/json` for JSON job requests, and without an access
-  password answers only addresses that name this computer directly (IP address, `localhost`, its
-  name), which stops cross-site job submissions and DNS rebinding. A JSON body sent without that
-  header now gets 415.
+- **Web pages can no longer drive the local web server.** JSON job requests need
+  `Content-Type: application/json` (else 415), the page cannot be framed by another site, and
+  without an access password the server refuses requests from another web origin and answers
+  only addresses that name this computer directly (IP address, `localhost`,
+  `host.docker.internal`, its name), which stops cross-site job submissions and DNS rebinding.
 - **The access password stays out of logs and links.** A `?token=` value is logged as
   `token=[redacted]`; the browser page now accepts a link with `?token=` (it answered 401) and
   removes it from the address bar; `gui.py serve` uses the app's Access password unless `--token`
-  is given (`--token ""` serves without one). Webhook URLs are logged by origin only.
+  is given (`--token=` serves without one). Webhook URLs are logged by origin only.
 - **Server error messages no longer show paths on the server**, and an upload with a very long
   file name is saved under a shortened name instead of failing.
 - **A silent client can no longer freeze the server.** Idle connections close after 60 seconds,
   the HTTPS handshake runs on the client's own connection with a 10-second limit (one idle
-  connection used to stop every HTTPS request), an unauthenticated upload is refused without
-  being read, and on Windows a second server can no longer bind a port that is in use.
+  connection used to stop every HTTPS request), the body of a refused upload is read for at most
+  10 seconds, and on Windows a second server can no longer bind a port that is in use.
 
 ## [1.9.3] — 2026-09-27
 

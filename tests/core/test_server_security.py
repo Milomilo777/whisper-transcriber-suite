@@ -220,6 +220,7 @@ def test_foreign_host_is_refused_without_a_token(tmp_path):
 @pytest.mark.parametrize("host", [
     "127.0.0.1:{port}", "localhost:{port}", "LOCALHOST:{port}", "[::1]:{port}",
     "192.168.1.42:{port}", "10.0.0.5", "{name}:{port}", "{name}.local:{port}",
+    "host.docker.internal:{port}",
 ])
 def test_direct_host_names_are_accepted(tmp_path, host):
     name = socket.gethostname()
@@ -239,6 +240,37 @@ def test_a_token_replaces_the_host_check(tmp_path):
         status, _ = _request(srv, "GET", "/api/health", headers={
             **host, "X-Auth-Token": _SHARED})
         assert status == 200
+
+
+def test_reverse_proxy_post_with_a_token_is_accepted(tmp_path):
+    """A TLS-terminating proxy forwards its own Host and an https Origin to
+    the plain-HTTP server; with a token that must work for the page's POSTs."""
+    with _RunningServer(tmp_path, token=_SHARED,
+                        download_fn=lambda u, d: "") as srv:
+        headers = {"Content-Type": "application/json",
+                   "Host": "whisper.example.com",
+                   "Origin": "https://whisper.example.com"}
+        status, _ = _request(srv, "POST", "/api/jobs", _URL_JOB, headers)
+        assert status == 401
+        status, body = _request(srv, "POST", "/api/jobs", _URL_JOB, {
+            **headers, "X-Auth-Token": _SHARED})
+        assert status == 202, body
+
+
+def test_page_cannot_be_framed(tmp_path):
+    with _RunningServer(tmp_path) as srv:
+        conn = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=5)
+        try:
+            conn.request("GET", "/")
+            resp = conn.getresponse()
+            resp.read()
+            assert resp.status == 200
+            assert resp.getheader("X-Frame-Options") == "DENY"
+            assert "frame-ancestors 'none'" in resp.getheader(
+                "Content-Security-Policy", "")
+            assert resp.getheader("Referrer-Policy") == "no-referrer"
+        finally:
+            conn.close()
 
 
 def test_host_and_origin_helpers():
@@ -293,6 +325,23 @@ def test_redact_secrets_variants():
     assert "s3" not in redact_secrets("/r?%74oken=s3")
     assert redact_secrets("/r?tokens=keep") == "/r?tokens=keep"
     assert redact_secrets("no query here") == "no query here"
+    # parse_qs splits on "&" only: quotes and ";" belong to the value.
+    assert redact_secrets("GET /a?token=it's-x HTTP/1.1") == "GET /a?token=[redacted] HTTP/1.1"
+    assert redact_secrets("/a?token=a;b&fmt=srt") == "/a?token=[redacted]&fmt=srt"
+
+
+@pytest.mark.parametrize("line", [
+    "GET /api/jobs" + "?" * 50000 + " HTTP/1.1",
+    "GET /api/jobs" + "?a" * 30000 + " HTTP/1.1",
+    "GET /api/jobs?" + "&a" * 30000 + " HTTP/1.1",
+    "GET /api/jobs?" + "a" * 60000 + " HTTP/1.1",
+], ids=["question-marks", "question-a", "ampersand-a", "long-key"])
+def test_redact_secrets_is_linear_on_hostile_lines(line):
+    """Every response line is redacted: a crafted request line must not
+    stall the server (the first version backtracked quadratically)."""
+    t0 = time.perf_counter()
+    redact_secrets(line)
+    assert time.perf_counter() - t0 < 0.5
 
 
 # --- S11-8: the page reads ?token= once and drops it from the address --------
@@ -344,6 +393,14 @@ def test_long_upload_name_is_shortened_and_saved(tmp_path):
         assert name.endswith(".wav") and len(name) <= 120
 
 
+def test_safe_filename_reserved_names_and_dotted_names():
+    assert _safe_filename("CON .txt") == "_CON .txt"
+    assert _safe_filename("nul..wav").startswith("_")
+    assert _safe_filename("notes.from the long meeting") == "notes.from the long meeting"
+    assert _safe_filename("x." + "y" * 30) == "x." + "y" * 30
+    assert _safe_filename("x." + "y" * 300) == ("x." + "y" * 300)[:100]
+
+
 def test_safe_filename_caps_length_and_trailing_dots():
     assert _safe_filename("a" * 300 + ".wav") == "a" * 100 + ".wav"
     long_ext = _safe_filename("clip." + "x" * 50)
@@ -383,6 +440,27 @@ def test_public_error_text_and_redact_paths():
         "no such file: clip.wav")
     assert redact_paths("Unsupported URL: https://x.example/a/b") == (
         "Unsupported URL: https://x.example/a/b")
+    assert redact_paths("cannot copy /tmp/a.mp4 to /tmp/b.mp4: denied") == (
+        "cannot copy a.mp4 to b.mp4: denied")
+    assert redact_paths(r"copy C:\x\a.wav to D:\y\b.wav failed") == (
+        "copy a.wav to b.wav failed")
+    assert redact_paths(r"open C:\Users\John Smith\clip.wav") == "open clip.wav"
+    assert redact_paths("open /Users/John Smith/Movies/clip.mov") == "open clip.mov"
+    assert redact_paths(r"no access to \\fileserver\share\team\x.wav now") == (
+        "no access to x.wav now")
+
+
+@pytest.mark.parametrize("text", [
+    "/" + "a " * 100000,
+    "/a" * 100000,
+    "C:" + "/a b" * 50000,
+    "//" + "a" * 100000,
+], ids=["slash-spaces", "many-dirs", "drive-spaces", "double-slash"])
+def test_redact_paths_stays_fast(text):
+    t0 = time.perf_counter()
+    redact_paths(text)
+    public_error_text(RuntimeError(text))
+    assert time.perf_counter() - t0 < 0.5
 
 
 # --- S11-18: socket timeout; no drain before a 401 ---------------------------
@@ -404,7 +482,10 @@ def test_idle_client_is_disconnected(tmp_path, monkeypatch):
             s.close()
 
 
-def test_unauthenticated_huge_post_is_refused_without_reading_it(tmp_path):
+def test_unauthenticated_post_is_answered_when_the_client_pauses(tmp_path, monkeypatch):
+    """A client that only declares a huge body gets its 401 at once instead
+    of the server waiting for (and reading) the whole body first."""
+    monkeypatch.setattr(httpd, "_EARLY_REJECT_IDLE_S", 0.3)
     with _RunningServer(tmp_path, token=_SHARED) as srv:
         s = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
         try:
@@ -416,6 +497,63 @@ def test_unauthenticated_huge_post_is_refused_without_reading_it(tmp_path):
             assert head.startswith(b"HTTP/1.1 401"), head
         finally:
             s.close()
+
+
+def test_drain_before_a_reject_has_a_time_budget(tmp_path, monkeypatch):
+    """A client that trickles its body cannot hold the reject open."""
+    monkeypatch.setattr(httpd, "_EARLY_REJECT_DRAIN_S", 0.5)
+    monkeypatch.setattr(httpd, "_EARLY_REJECT_IDLE_S", 0.3)
+    with _RunningServer(tmp_path, token=_SHARED) as srv:
+        s = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
+        stop = threading.Event()
+
+        def _trickle():
+            # Small chunks without pauses: every read returns at once, so
+            # only the budget (not the 2 s idle stop) can end the drain.
+            try:
+                while not stop.is_set():
+                    s.sendall(b"x" * 1024)
+                    time.sleep(0.001)
+            except OSError:
+                pass
+
+        try:
+            s.sendall(
+                b"POST /api/jobs HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                b"Content-Type: multipart/form-data; boundary=B\r\n"
+                b"Content-Length: 104857600\r\n\r\n")
+            threading.Thread(target=_trickle, daemon=True).start()
+            t0 = time.time()
+            head = s.recv(200)
+            assert head.startswith(b"HTTP/1.1 401"), head
+            assert time.time() - t0 < 3
+        finally:
+            stop.set()
+            s.close()
+
+
+@pytest.mark.parametrize("size", [70 * 1024, 1024 * 1024, 8 * 1024 * 1024])
+def test_wrong_token_upload_still_sees_the_401(tmp_path, size):
+    """A client that sends the whole body before reading (http.client does)
+    gets the 401, not a connection reset."""
+    with _RunningServer(tmp_path, token=_SHARED) as srv:
+        for _ in range(3):
+            status, raw = _request(srv, "POST", "/api/jobs",
+                                   _multipart("clip.wav", bytes(size)), {
+                                       "Content-Type": "multipart/form-data; boundary=BOUND",
+                                       "X-Auth-Token": "wrong"})
+            assert status == 401, raw
+
+
+def test_a_client_hanging_up_is_logged_not_printed(tmp_path, capsys, caplog):
+    caplog.set_level(logging.INFO, logger="core.server.httpd")
+    with _RunningServer(tmp_path) as srv:
+        try:
+            raise ConnectionResetError(10054, "reset by peer")
+        except ConnectionResetError:
+            srv.server.handle_error(None, ("127.0.0.1", 1))
+    assert "Traceback" not in capsys.readouterr().err
+    assert any("ended early" in r.getMessage() for r in caplog.records)
 
 
 # --- S11-1: the TLS handshake cannot freeze the server -----------------------
