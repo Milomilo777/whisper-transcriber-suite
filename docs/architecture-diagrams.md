@@ -56,7 +56,7 @@ flowchart TB
     Outputs[("User folder · &lt;title&gt;.srt .vtt .tsv .txt .json .lrc .otr · .mp4 .mp3 .m4a")]
 
     subgraph Net ["External network"]
-        Mirror["smch.ir · model ZIP + MD5"]
+        Mirror["huggingface.co · Whisper models"]
         Sites["YouTube · 1000+ sites"]
         OTRWeb["otranscribe.com"]
         GH["github.com/yt-dlp releases"]

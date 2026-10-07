@@ -71,7 +71,7 @@ Write a new ADR every time a choice has a non-obvious justification that future-
 
 ## 0003 — Resumable MD5-verified ZIP for model distribution, not Hugging Face Hub
 
-**Status:** Accepted
+**Status:** Superseded by 0010
 **Date:** 2026-05-06
 
 **Context:** The model is ~3 GB. Users in Iran (the developer's geography) have unreliable, throttled, sometimes-blocked access to huggingface.co. `huggingface_hub.snapshot_download` requires reaching HF and authenticating gracefully with their CDN; in practice this fails for many users.
@@ -455,3 +455,31 @@ fixture in the first place.
   valuable end-to-end coverage (hallucination + auto-chapters + the full
   transcribe pipeline against real audio), not a test worth losing. It
   only needed a different execution context, not removal.
+
+---
+
+## 0010 — Models download only from the Hugging Face Hub
+
+**Status:** Accepted
+
+**Date:** 2026-10-08
+
+**Context:** ADR 0003 put four models on a zip mirror with an `.md5` manifest; every other
+model already came from the Hugging Face Hub, which also served as the mirror's fallback. The
+mirror path had its own failure modes: an entry with a `url` but no `md5` wiped a freshly
+unpacked model, and an MD5 mismatch deleted a working model before its replacement existed. A
+non-official server is also one more thing a user has to trust.
+
+**Decision:** Every model downloads from its `hf_repo` through `faster_whisper.download_model`
+(huggingface_hub). The `url`/`md5` keys are removed from the built-in catalog and the default
+config, and dropped from any catalog entry or old `config.json` that still holds them, so no
+source but the Hub is ever contacted. A model counts as installed when it has a non-empty
+`model.bin` and no unfinished `.incomplete` blob; an installed model is never deleted by
+`ensure_model`.
+
+**Consequences:**
+- One download path: resumable (huggingface_hub keeps `.incomplete` blobs) and checked file by
+  file against the Hub.
+- Networks that block huggingface.co cannot download a model from the app; a model can still be
+  placed by hand in the model folder.
+- Older app versions keep using the mirror files, so those files stay where they are.

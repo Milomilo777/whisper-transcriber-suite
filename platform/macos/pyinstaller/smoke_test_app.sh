@@ -61,7 +61,7 @@ from core import config as c
 entry = resolve_model_entry(sys.argv[1])
 p = c.config_path()
 cfg = json.load(open(p)) if os.path.exists(p) else {}
-cfg["model"] = {k: entry[k] for k in ("name", "url", "md5", "hf_repo")}
+cfg["model"] = {k: entry[k] for k in ("name", "hf_repo")}
 os.makedirs(os.path.dirname(p), exist_ok=True)
 json.dump(cfg, open(p, "w"), indent=2)
 print("model ready:", ensure_model(c.load_config(fetch_online=False), status_cb=print))

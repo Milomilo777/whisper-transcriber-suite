@@ -385,7 +385,7 @@ def test_network_table_says_what_work_offline_does_to_every_row():
     header, separator, body = rows[0], rows[1], rows[2:]
     assert header[-1] == "Blocked by Work offline"
     assert len(separator) == len(header)
-    assert len(body) >= 15  # parser control: the table has its rows
+    assert len(body) >= 14  # parser control: the table has its rows
     for row in body:
         assert len(row) == len(header), row[0]
         assert row[-1].startswith(("Yes", "Outbound only")), row[0]

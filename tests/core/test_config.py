@@ -346,7 +346,7 @@ def test_user_overrides_merge_with_defaults(isolated_dirs, monkeypatch):
     config = cfg.load_config()
     assert config["theme"] == "dark"
     assert config["model"]["name"] == "tiny"
-    assert config["model"]["url"] == cfg.DEFAULT_CONFIG["model"]["url"]
+    assert config["model"]["hf_repo"] == cfg.DEFAULT_CONFIG["model"]["hf_repo"]
 
 
 @pytest.mark.skipif(

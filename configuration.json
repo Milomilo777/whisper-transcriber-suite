@@ -4,8 +4,6 @@
       "label": "Tiny (English) — fastest, lowest accuracy (~0.075 GB)",
       "name": "faster-whisper-tiny.en",
       "hf_repo": "Systran/faster-whisper-tiny.en",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 0.075,
       "info": "~75 MB, English-only. The fastest and least accurate model — useful for quick drafts or very low-power hardware."
     },
@@ -13,8 +11,6 @@
       "label": "Tiny — fastest, lowest accuracy, multilingual (~0.075 GB)",
       "name": "faster-whisper-tiny",
       "hf_repo": "Systran/faster-whisper-tiny",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 0.075,
       "info": "~75 MB, multilingual. The fastest and least accurate model — useful for quick drafts or very low-power hardware."
     },
@@ -22,8 +18,6 @@
       "label": "Base (English) — very fast, low accuracy (~0.145 GB)",
       "name": "faster-whisper-base.en",
       "hf_repo": "Systran/faster-whisper-base.en",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 0.145,
       "info": "~145 MB, English-only. Very fast with modest accuracy — a step up from Tiny for short, low-stakes clips."
     },
@@ -31,8 +25,6 @@
       "label": "Base — very fast, low accuracy, multilingual (~0.145 GB)",
       "name": "faster-whisper-base",
       "hf_repo": "Systran/faster-whisper-base",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 0.145,
       "info": "~145 MB, multilingual. Very fast with modest accuracy — a step up from Tiny for short, low-stakes clips."
     },
@@ -40,8 +32,6 @@
       "label": "Small (English) — fast, moderate accuracy (~0.5 GB)",
       "name": "faster-whisper-small.en",
       "hf_repo": "Systran/faster-whisper-small.en",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 0.5,
       "info": "~500 MB, English-only. Good speed/accuracy balance for everyday English transcripts on modest hardware."
     },
@@ -49,8 +39,6 @@
       "label": "Small — fast, moderate accuracy, multilingual (~0.5 GB)",
       "name": "faster-whisper-small",
       "hf_repo": "Systran/faster-whisper-small",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 0.5,
       "info": "~500 MB, multilingual. Good speed/accuracy balance for everyday transcripts on modest hardware."
     },
@@ -58,8 +46,6 @@
       "label": "Medium (English) — slower, good accuracy (~1.5 GB)",
       "name": "faster-whisper-medium.en",
       "hf_repo": "Systran/faster-whisper-medium.en",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 1.5,
       "info": "~1.5 GB, English-only. Noticeably more accurate than Small at roughly half the speed."
     },
@@ -67,8 +53,6 @@
       "label": "Medium — slower, good accuracy, multilingual (~1.5 GB)",
       "name": "faster-whisper-medium",
       "hf_repo": "Systran/faster-whisper-medium",
-      "url": "https://smch.ir/models/models--Systran--faster-whisper-medium.zip",
-      "md5": "https://smch.ir/models/models--Systran--faster-whisper-medium.zip.md5",
       "approx_size_gb": 1.5,
       "info": "~1.5 GB, multilingual. Noticeably more accurate than Small at roughly half the speed."
     },
@@ -76,8 +60,6 @@
       "label": "Large v1 — older large model, multilingual (~3 GB)",
       "name": "faster-whisper-large-v1",
       "hf_repo": "Systran/faster-whisper-large-v1",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 3.0,
       "info": "~3 GB, multilingual. The original large model — kept for compatibility; Large v2/v3 are generally more accurate."
     },
@@ -85,8 +67,6 @@
       "label": "Large v2 — high accuracy, multilingual (~3 GB)",
       "name": "faster-whisper-large-v2",
       "hf_repo": "Systran/faster-whisper-large-v2",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 3.0,
       "info": "~3 GB, multilingual. High accuracy, slower than the Turbo models — superseded by Large v3 for most languages."
     },
@@ -94,8 +74,6 @@
       "label": "Large v3 — best accuracy (default, ~3 GB)",
       "name": "faster-whisper-large-v3",
       "hf_repo": "Systran/faster-whisper-large-v3",
-      "url": "https://smch.ir/models/models--Systran--faster-whisper-large-v3.zip",
-      "md5": "https://smch.ir/models/models--Systran--faster-whisper-large-v3.zip.md5",
       "approx_size_gb": 3.0,
       "info": "~3 GB, multilingual. The most accurate general-purpose model — slowest of the large models. Default choice."
     },
@@ -103,8 +81,6 @@
       "label": "Distil Small (English) — fast, English-only (~0.4 GB)",
       "name": "faster-distil-whisper-small.en",
       "hf_repo": "Systran/faster-distil-whisper-small.en",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 0.4,
       "info": "~400 MB, English-only. Distilled for speed — faster than Small with similar English accuracy."
     },
@@ -112,8 +88,6 @@
       "label": "Distil Medium (English) — fast, English-only (~0.8 GB)",
       "name": "faster-distil-whisper-medium.en",
       "hf_repo": "Systran/faster-distil-whisper-medium.en",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 0.8,
       "info": "~800 MB, English-only. Distilled for speed — faster than Medium with similar English accuracy."
     },
@@ -121,8 +95,6 @@
       "label": "Distil Large v2 — fast, English-only (~1.5 GB)",
       "name": "faster-distil-whisper-large-v2",
       "hf_repo": "Systran/faster-distil-whisper-large-v2",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 1.5,
       "info": "~1.5 GB, English-only. Distilled from Large v2 for ~5x speed with close to its English accuracy."
     },
@@ -130,8 +102,6 @@
       "label": "Distil Large v3 — fast, English-only (~1.5 GB)",
       "name": "faster-distil-whisper-large-v3",
       "hf_repo": "Systran/faster-distil-whisper-large-v3",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 1.5,
       "info": "~1.5 GB, English-only. Distilled from Large v3 for ~5x speed with close to its English accuracy."
     },
@@ -139,8 +109,6 @@
       "label": "Distil Large v3.5 — fastest English-only (~1.5 GB)",
       "name": "faster-distil-whisper-large-v3.5",
       "hf_repo": "distil-whisper/distil-large-v3.5-ct2",
-      "url": "https://smch.ir/models/models--Systran--faster-distil-whisper-large-v3.5.zip",
-      "md5": "https://smch.ir/models/models--Systran--faster-distil-whisper-large-v3.5.zip.md5",
       "approx_size_gb": 1.5,
       "info": "~1.5 GB, English-only. The newest distilled large model — fastest English-only option with accuracy close to Large v3."
     },
@@ -148,8 +116,6 @@
       "label": "Large v3 Turbo — ~5x faster, similar accuracy (~1.6 GB)",
       "name": "faster-whisper-large-v3-turbo",
       "hf_repo": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
-      "url": "https://smch.ir/models/models--Systran--faster-whisper-large-v3-turbo.zip",
-      "md5": "https://smch.ir/models/models--Systran--faster-whisper-large-v3-turbo.zip.md5",
       "approx_size_gb": 1.6,
       "info": "~1.6 GB, multilingual. ~5x faster than Large v3 with similar accuracy — a strong general-purpose default."
     },
@@ -157,8 +123,6 @@
       "label": "Large v3 Turbo (deepdml) — ~5x faster, multilingual (~1.6 GB)",
       "name": "faster-whisper-large-v3-turbo-deepdml",
       "hf_repo": "deepdml/faster-whisper-large-v3-turbo-ct2",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 1.6,
       "info": "~1.6 GB, multilingual. Community CT2 conversion of the Large v3 Turbo weights — ~5x faster than Large v3 with similar accuracy."
     }

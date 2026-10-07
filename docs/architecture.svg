@@ -245,9 +245,9 @@
     <text x="70" y="945" class="layer-label">External services  (network)</text>
 
     <rect x="70" y="960" width="320" height="60" rx="6" class="box box-external"/>
-    <text x="230" y="982" text-anchor="middle" class="box-label">smch.ir/models/...zip + .md5</text>
-    <text x="230" y="1000" text-anchor="middle" class="arrow-label">model ZIP, resumable Range, MD5 verify</text>
-    <text x="230" y="1014" text-anchor="middle" class="arrow-label">(robust on unreliable networks)</text>
+    <text x="230" y="982" text-anchor="middle" class="box-label">huggingface.co (Whisper models)</text>
+    <text x="230" y="1000" text-anchor="middle" class="arrow-label">resumable download, files checked</text>
+    <text x="230" y="1014" text-anchor="middle" class="arrow-label">against the Hub</text>
 
     <rect x="410" y="960" width="320" height="60" rx="6" class="box box-external"/>
     <text x="570" y="982" text-anchor="middle" class="box-label">YouTube · Vimeo · 1000+ sites</text>
@@ -294,9 +294,9 @@
     <!-- App ↔ config -->
     <path d="M 700 295 Q 765 295 800 540" class="arrow arrow-dashed" marker-end="url(#arr)"/>
 
-    <!-- model_manager → smch.ir -->
+    <!-- model_manager → huggingface.co -->
     <path d="M 317 742 Q 280 850 230 960" class="arrow arrow-dashed" marker-end="url(#arr)"/>
-    <text x="220" y="900" class="arrow-label">resumable ZIP fetch</text>
+    <text x="220" y="900" class="arrow-label">resumable model fetch</text>
 
     <!-- yt-dlp → YouTube -->
     <path d="M 1290 405 Q 800 750 570 960" class="arrow arrow-dashed" marker-end="url(#arr)"/>

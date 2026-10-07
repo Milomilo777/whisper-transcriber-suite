@@ -39,23 +39,21 @@ def test_list_models_returns_slug_label_pairs():
 def test_resolve_model_entry_returns_dict_shape():
     entry = mm.resolve_model_entry("large-v3")
     assert entry is not None
-    # Shape is a superset of DEFAULT_CONFIG["model"] (adds hf_repo) so
-    # callers can drop it straight into config["model"].
-    assert set(entry.keys()) == {"name", "url", "md5", "hf_repo"}
+    # Same shape as DEFAULT_CONFIG["model"] so callers can drop it straight
+    # into config["model"]; the retired mirror keys are gone.
+    assert set(entry.keys()) == {"name", "hf_repo"}
     assert entry["name"] == "faster-whisper-large-v3"
-    assert entry["url"].endswith(".zip")
-    assert entry["md5"].endswith(".md5")
     assert entry["hf_repo"] == "Systran/faster-whisper-large-v3"
 
 
-def test_resolve_model_entry_turbo_returns_distinct_urls():
+def test_resolve_model_entry_turbo_returns_distinct_repos():
     base = mm.resolve_model_entry("large-v3")
     turbo = mm.resolve_model_entry("large-v3-turbo")
     distil = mm.resolve_model_entry("distil-large-v3.5")
     assert base is not None and turbo is not None and distil is not None
-    assert base["url"] != turbo["url"]
-    assert base["url"] != distil["url"]
-    assert turbo["url"] != distil["url"]
+    assert base["hf_repo"] != turbo["hf_repo"]
+    assert base["hf_repo"] != distil["hf_repo"]
+    assert turbo["hf_repo"] != distil["hf_repo"]
     assert base["name"] != turbo["name"] != distil["name"]
 
 
@@ -66,16 +64,13 @@ def test_resolve_model_entry_unknown_slug_returns_none():
 
 @pytest.mark.parametrize("slug", list(mm.MODEL_REGISTRY.keys()))
 def test_every_registry_entry_has_required_fields(slug):
-    """v1.3.9: most entries have no smch.ir mirror (url/md5 == "") and
-    rely on hf_repo for download via faster-whisper's HF resolver. Every
-    entry must still resolve to *some* download source."""
+    """Every entry downloads from its hf_repo on the Hugging Face Hub; no
+    entry names another server (the zip mirror is retired)."""
     entry = mm.MODEL_REGISTRY[slug]
     assert "label" in entry and entry["label"]
     assert "name" in entry and entry["name"]
-    assert "url" in entry and (entry["url"] == "" or entry["url"].startswith("https://"))
-    assert "md5" in entry and (entry["md5"] == "" or entry["md5"].startswith("https://"))
     assert "hf_repo" in entry and entry["hf_repo"]
-    assert entry["url"] or entry["hf_repo"]
+    assert "url" not in entry and "md5" not in entry
     assert "approx_size_gb" in entry
     assert isinstance(entry["approx_size_gb"], (int, float))
 
@@ -115,8 +110,7 @@ def test_catalog_models_adds_online_model():
             "online-new": {
                 "label": "Online New (~2 GB)",
                 "name": "faster-whisper-online-new",
-                "url": "https://host/online-new.zip",
-                "md5": "https://host/online-new.zip.md5",
+                "hf_repo": "SomeOrg/faster-whisper-online-new",
                 "approx_size_gb": 2.0,
             }
         }
@@ -127,35 +121,36 @@ def test_catalog_models_adds_online_model():
     entry = mm.catalog_resolve_entry(config, "online-new")
     assert entry == {
         "name": "faster-whisper-online-new",
-        "url": "https://host/online-new.zip",
-        "md5": "https://host/online-new.zip.md5",
-        "hf_repo": "",
+        "hf_repo": "SomeOrg/faster-whisper-online-new",
     }
 
 
-def test_catalog_online_can_override_builtin_url():
-    """The online catalog may re-point a built-in slug's URL/MD5 (e.g. a new
-    mirror) without an app update."""
+def test_catalog_online_can_override_builtin_repo():
+    """The online catalog may re-point a built-in slug's hf_repo without an
+    app update, but never to a non-Hub server (url/md5 are dropped)."""
     config = {
         "model_catalog": {
             "large-v3": {
                 "url": "https://newmirror/large-v3.zip",
                 "md5": "https://newmirror/large-v3.zip.md5",
                 "name": "faster-whisper-large-v3",
+                "hf_repo": "SomeOrg/faster-whisper-large-v3",
             }
         }
     }
     entry = mm.catalog_resolve_entry(config, "large-v3")
-    assert entry is not None
-    assert entry["url"] == "https://newmirror/large-v3.zip"
+    assert entry == {
+        "name": "faster-whisper-large-v3",
+        "hf_repo": "SomeOrg/faster-whisper-large-v3",
+    }
 
 
 def test_catalog_ignores_malformed_online_entries():
-    """A malformed online entry (missing url/md5, or not a dict) is skipped;
+    """A malformed online entry (missing name/hf_repo, or not a dict) is skipped;
     the built-ins always survive a bad payload."""
     config = {
         "model_catalog": {
-            "broken": {"label": "no urls"},      # missing name/url/md5
+            "broken": {"label": "no source"},    # missing name/hf_repo
             "alsobad": "not-a-dict",              # not a dict
         }
     }
@@ -174,4 +169,4 @@ def test_medium_is_a_builtin_model():
     entry = mm.resolve_model_entry("medium")
     assert entry is not None
     assert entry["name"] == "faster-whisper-medium"
-    assert entry["url"].endswith(".zip")
+    assert entry["hf_repo"] == "Systran/faster-whisper-medium"

@@ -4,7 +4,7 @@ A snapshot of how the application is organized today, written for someone who ne
 
 ## One-paragraph summary
 
-A Tkinter desktop app that does two related jobs: download audio/video from any yt-dlp-supported site, and locally transcribe audio/video to SRT subtitles with `faster-whisper`. The model is hosted as a single ZIP on `smch.ir`, downloaded on first run, MD5-verified file-by-file, and cached on disk. Transcription work runs in long-lived subprocess "workers" so the model loads once and stays hot. Downloads run in worker threads inside the main process, driving `yt-dlp.exe` (a bundled binary) over `subprocess.Popen`. The UI talks to background work through `queue.Queue` instances polled from the Tk main loop.
+A Tkinter desktop app that does two related jobs: download audio/video from any yt-dlp-supported site, and locally transcribe audio/video to SRT subtitles with `faster-whisper`. The model downloads from the Hugging Face Hub on first use (resumable, each file checked against the Hub) and is cached on disk. Transcription work runs in long-lived subprocess "workers" so the model loads once and stays hot. Downloads run in worker threads inside the main process, driving `yt-dlp.exe` (a bundled binary) over `subprocess.Popen`. The UI talks to background work through `queue.Queue` instances polled from the Tk main loop.
 
 ## Process model
 
@@ -70,7 +70,7 @@ whisper_project_direct_download_v2/
 1. `App.__init__` reads `config.json` and renders the three tabs.
 2. `after(100, start_standby_worker)` spawns the first worker subprocess.
 3. The worker calls `load_existing_model` — opens the WhisperModel pointed to by `config["model_path"]`. If the folder exists, it tries to load; if it doesn't exist, the worker emits `startup_error`.
-4. On `startup_error`, the parent shuts the worker down, opens `ModelDownloadDialog`, and runs `ensure_model` (`model_manager.py`) which downloads the ZIP from `config["model"]["url"]`, verifies against `<url>.md5`, extracts, re-verifies, and only then starts a fresh worker.
+4. On `startup_error`, the parent shuts the worker down, opens `ModelDownloadDialog`, and runs `ensure_model` (`model_manager.py`) which downloads the model from `config["model"]["hf_repo"]` on the Hugging Face Hub into `model_path` (resuming a cut-off download), and only then starts a fresh worker.
 5. Once a worker emits `ready`, `worker_ready=True` and the UI unlocks job submission.
 
 ### Transcription
@@ -121,9 +121,8 @@ Cancel must always be safe to call multiple times and from the Tk main thread.
 ```json
 {
   "model": {
-    "name": "...",          // display name
-    "url":  "...",          // ZIP source for ensure_model
-    "md5":  "..."           // manifest URL (one md5+path per line)
+    "name": "...",          // model folder name, display name
+    "hf_repo": "..."        // Hugging Face repo ensure_model downloads from
   },
   "model_path": "...",       // absolute path where the model is extracted
   "device": "auto",          // "auto" | "cpu" | "cuda"

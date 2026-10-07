@@ -1,19 +1,16 @@
 """Model downloads: half-finished folders, resumable downloads, clear errors.
 
 Every test runs against local fakes (no real download): a fake
-``faster_whisper.utils.download_model``, ``responses`` for the mirror and
-monkeypatched disk-usage numbers.
+``faster_whisper.utils.download_model``, ``responses`` to prove no other
+server is contacted, and monkeypatched disk-usage numbers.
 """
 from __future__ import annotations
 
 import errno
-import hashlib
-import io
 import os
 import string
 import sys
 import types
-import zipfile
 from pathlib import Path
 
 import pytest
@@ -24,18 +21,17 @@ from core import offline
 from core.hub import model_folder_for, model_weights_present
 
 
-MIRROR_ENTRY = mm.MODEL_REGISTRY["large-v3"]
+LARGE_ENTRY = mm.MODEL_REGISTRY["large-v3"]
 HF_ONLY_ENTRY = mm.MODEL_REGISTRY["small"]
+# What a config.json saved before the zip mirror was retired still holds.
+RETIRED_URL = "https://smch.ir/models/models--Systran--faster-whisper-large-v3.zip"
 
 
-def _config(model_path: Path, entry: dict) -> dict:
-    return {
-        "model": {
-            "name": entry["name"], "url": entry["url"],
-            "md5": entry["md5"], "hf_repo": entry["hf_repo"],
-        },
-        "model_path": str(model_path),
-    }
+def _config(model_path: Path, entry: dict, *, retired_mirror: bool = False) -> dict:
+    model = {"name": entry["name"], "hf_repo": entry["hf_repo"]}
+    if retired_mirror:
+        model.update(url=RETIRED_URL, md5=RETIRED_URL + ".md5")
+    return {"model": model, "model_path": str(model_path)}
 
 
 def _partial_hf_folder(model_path: Path) -> Path:
@@ -66,6 +62,9 @@ def fake_hf(monkeypatch):
             raise state["raise"]
         out.mkdir(parents=True, exist_ok=True)
         (out / "model.bin").write_bytes(b"weights")
+        # huggingface_hub renames each finished blob into place.
+        for blob in out.rglob("*.incomplete"):
+            blob.unlink()
         return str(out)
 
     fake = types.ModuleType("faster_whisper.utils")
@@ -160,51 +159,53 @@ def test_hf_only_retry_keeps_the_partial_blobs(tmp_path, fake_hf):
 
 
 @responses.activate
-def test_mirror_fallback_keeps_the_partial_hf_blobs(tmp_path, fake_hf):
+def test_retired_mirror_url_in_an_old_config_is_never_fetched(tmp_path, fake_hf):
+    """C2.51b: models come only from the Hugging Face Hub, even when an old
+    config.json still names the retired zip mirror."""
     model_path = tmp_path / "cache" / "models--Systran--faster-whisper-large-v3"
     blob = _partial_hf_folder(model_path)
-    responses.add(responses.GET, MIRROR_ENTRY["url"], status=404)
-    result = mm.ensure_model(_config(model_path, MIRROR_ENTRY))
+    result = mm.ensure_model(_config(model_path, LARGE_ENTRY, retired_mirror=True))
     assert Path(result) == model_path
+    assert fake_hf["calls"] == [LARGE_ENTRY["hf_repo"]]
     assert fake_hf["seen_blobs"] == [[blob.name]]
-    # The manifest of the zip mirror is never checked against a folder the
-    # HuggingFace download owns.
-    assert all(".md5" not in c.request.url for c in responses.calls)
+    assert len(responses.calls) == 0
 
 
-@responses.activate
-def test_half_extracted_mirror_model_is_not_kept_for_the_fallback(tmp_path, monkeypatch):
-    """Review of dfcc857: a mirror unpack that died midway left a truncated
-    model.bin; with huggingface.co unreachable, huggingface_hub returns the
-    local files without error, so the broken model was reported ready."""
-    monkeypatch.setattr(offline, "is_offline", lambda *a, **k: False)
-    model_path = tmp_path / "cache" / "models--Systran--faster-whisper-large-v3"
-    model_path.parent.mkdir(parents=True)
-    good = b"w" * 300_000
-    zip_path = model_path.parent / mm._zip_name_from_url(MIRROR_ENTRY["url"])
-    zip_path.write_bytes(_zip_bytes(model_path.name, {"model.bin": good}))
-    responses.add(responses.GET, MIRROR_ENTRY["url"], status=416)
+def test_installed_model_with_an_unfinished_blob_resumes(tmp_path, fake_hf):
+    """model.bin alone is not the whole model: a download cut off while a
+    tokenizer / vocabulary file was still an ``.incomplete`` blob resumes."""
+    model_path = tmp_path / "cache" / f"models--Systran--{HF_ONLY_ENTRY['name']}"
+    blob = _partial_hf_folder(model_path)
+    (model_path / "model.bin").write_bytes(b"weights")
+    assert Path(mm.ensure_model(_config(model_path, HF_ONLY_ENTRY))) == model_path
+    assert fake_hf["seen_blobs"] == [[blob.name]]
+    assert not mm._hf_download_unfinished(model_path)
 
-    def _extract_dies_midway(self, path=None, members=None, pwd=None):
-        target = Path(path) / model_path.name
-        target.mkdir(parents=True, exist_ok=True)
-        (target / "model.bin").write_bytes(good[:1000])  # truncated
-        raise zipfile.BadZipFile("Bad CRC-32 for file 'model.bin'")
 
-    monkeypatch.setattr(zipfile.ZipFile, "extractall", _extract_dies_midway)
-    seen: list[bool] = []
+def test_failed_resume_keeps_and_uses_the_installed_model(tmp_path, fake_hf):
+    """An installed model is never deleted or refused because the resume of
+    a leftover blob failed (huggingface.co unreachable)."""
+    class ConnectError(Exception):
+        pass
 
-    def _hf_offline_returns_local(name, zip_url, target, status_cb=None,
-                                  progress_cb=None, cancel_event=None, hf_repo=None):
-        # What huggingface_hub does when the Hub is unreachable but files
-        # exist locally: return them without an error.
-        seen.append((Path(target) / "model.bin").exists())
-        return True
+    model_path = tmp_path / "cache" / f"models--Systran--{HF_ONLY_ENTRY['name']}"
+    _partial_hf_folder(model_path)
+    (model_path / "model.bin").write_bytes(b"weights")
+    fake_hf["raise"] = ConnectError("down")
+    statuses: list[str] = []
+    result = mm.ensure_model(_config(model_path, HF_ONLY_ENTRY), status_cb=statuses.append)
+    assert Path(result) == model_path
+    assert (model_path / "model.bin").read_bytes() == b"weights"
+    assert any("using the installed model" in m for m in statuses)
 
-    monkeypatch.setattr(mm, "_download_via_huggingface", _hf_offline_returns_local)
-    with pytest.raises(RuntimeError, match="(?i)did not complete"):
-        mm.ensure_model(_config(model_path, MIRROR_ENTRY))
-    assert seen == [False], "the half-unpacked mirror files must be removed first"
+
+def test_offline_installed_model_with_an_unfinished_blob_is_used(tmp_path, fake_hf, monkeypatch):
+    monkeypatch.setattr(offline, "is_offline", lambda *a, **k: True)
+    model_path = tmp_path / "cache" / f"models--Systran--{HF_ONLY_ENTRY['name']}"
+    _partial_hf_folder(model_path)
+    (model_path / "model.bin").write_bytes(b"weights")
+    assert Path(mm.ensure_model(_config(model_path, HF_ONLY_ENTRY))) == model_path
+    assert fake_hf["calls"] == []
 
 
 def test_unfinished_resume_does_not_claim_the_download_finished(tmp_path, fake_hf, monkeypatch):
@@ -276,15 +277,15 @@ def test_hf_network_block_is_named_in_the_error(tmp_path, fake_hf):
 
 
 @responses.activate
-def test_both_sources_failing_names_both_reasons(tmp_path, fake_hf):
+def test_hf_failure_with_a_retired_mirror_url_names_only_huggingface(tmp_path, fake_hf):
     model_path = tmp_path / "cache" / "models--Systran--faster-whisper-large-v3"
-    responses.add(responses.GET, MIRROR_ENTRY["url"], status=404)
     fake_hf["raise"] = OSError(errno.ENOSPC, "No space left on device")
     with pytest.raises(RuntimeError) as info:
-        mm.ensure_model(_config(model_path, MIRROR_ENTRY))
+        mm.ensure_model(_config(model_path, LARGE_ENTRY, retired_mirror=True))
     text = str(info.value)
-    assert "404" in text
     assert "disk space" in text.lower()
+    assert "smch" not in text and "mirror" not in text.lower()
+    assert len(responses.calls) == 0
 
 
 def test_hf_permission_error_offers_another_folder(tmp_path, fake_hf):
@@ -362,119 +363,70 @@ def test_download_dialog_names_the_reason(monkeypatch, reason, title, phrase):
     assert phrase in shown[0][1]
 
 
-# --- S02-8: an HTML answer for the .md5 list is a network problem ----------
+# --- C2.51b M1 / M2: an installed model is used as it is ----------------
 
 
 @responses.activate
-def test_installed_model_survives_a_captive_portal_manifest(tmp_path, monkeypatch):
-    monkeypatch.setattr(offline, "is_offline", lambda *a, **k: False)
+def test_installed_model_is_used_without_any_network_call(tmp_path, fake_hf):
+    """The retired mirror's checksum step deleted a healthy model on a
+    mismatch before a replacement existed (M2), and an entry with ``url``
+    but an empty ``md5`` wiped a fresh model (M1). Neither path exists now."""
     model_path = tmp_path / "cache" / "models--Systran--faster-whisper-large-v3"
     model_path.mkdir(parents=True)
     (model_path / "model.bin").write_bytes(b"weights")
-    responses.add(responses.GET, MIRROR_ENTRY["md5"], status=200,
-                  body="<html><body>Please log in to the wifi</body></html>")
+    cfg = _config(model_path, LARGE_ENTRY, retired_mirror=True)
+    cfg["model"]["md5"] = ""
     statuses: list[str] = []
-    result = mm.ensure_model(_config(model_path, MIRROR_ENTRY), status_cb=statuses.append)
+    result = mm.ensure_model(cfg, status_cb=statuses.append)
     assert Path(result) == model_path
     assert (model_path / "model.bin").read_bytes() == b"weights"
-    assert any("Could not verify" in s for s in statuses)
+    assert fake_hf["calls"] == []
+    assert len(responses.calls) == 0
+    assert statuses == ["Model already installed"]
 
 
-def test_manifest_without_checksums_is_a_request_exception(tmp_path, monkeypatch):
-    class _Resp:
-        text = "<html>login</html>"
-
-        def raise_for_status(self):
-            return None
-
-    monkeypatch.setattr(mm.requests, "get", lambda *a, **k: _Resp())
-    with pytest.raises(mm.requests.RequestException):
-        mm._verify_extracted_files(tmp_path, "https://fake.test/x.md5")
+# --- S02-9: offline + partial folder --------------------------------
 
 
-# --- S02-9: offline + partial mirror folder --------------------------------
-
-
-def test_offline_partial_mirror_folder_is_not_installed(tmp_path, monkeypatch):
+def test_offline_partial_folder_is_not_installed(tmp_path, monkeypatch):
     monkeypatch.setattr(offline, "is_offline", lambda *a, **k: True)
     model_path = tmp_path / "cache" / "models--Systran--faster-whisper-large-v3"
     model_path.mkdir(parents=True)
     (model_path / "config.json").write_text("{}")
     with pytest.raises(offline.OfflineModeError):
-        mm.ensure_model(_config(model_path, MIRROR_ENTRY))
+        mm.ensure_model(_config(model_path, LARGE_ENTRY))
     # Offline nothing is deleted.
     assert (model_path / "config.json").exists()
 
 
-def test_offline_installed_mirror_model_is_used(tmp_path, monkeypatch):
+def test_offline_installed_model_is_used(tmp_path, monkeypatch):
     monkeypatch.setattr(offline, "is_offline", lambda *a, **k: True)
     model_path = tmp_path / "cache" / "models--Systran--faster-whisper-large-v3"
     model_path.mkdir(parents=True)
     (model_path / "model.bin").write_bytes(b"weights")
-    assert Path(mm.ensure_model(_config(model_path, MIRROR_ENTRY))) == model_path
+    assert Path(mm.ensure_model(_config(model_path, LARGE_ENTRY))) == model_path
 
 
-@responses.activate
-def test_unverifiable_partial_folder_downloads_again(tmp_path, monkeypatch):
-    """Manifest unreachable (mirror down) + no model.bin: not 'installed'."""
-    from requests import ConnectionError as RequestsConnectionError
-
-    monkeypatch.setattr(offline, "is_offline", lambda *a, **k: False)
+def test_partial_folder_downloads_again(tmp_path, fake_hf):
+    """A folder without model.bin is not 'installed'; its files are kept."""
     model_path = tmp_path / "cache" / "models--Systran--faster-whisper-large-v3"
     model_path.mkdir(parents=True)
     (model_path / "config.json").write_text("{}")
-    responses.add(responses.GET, MIRROR_ENTRY["md5"], body=RequestsConnectionError("down"))
-    calls: list[str] = []
-
-    def _hf(name, zip_url, target, status_cb=None, progress_cb=None,
-            cancel_event=None, hf_repo=None):
-        calls.append(name)
-        Path(target).mkdir(parents=True, exist_ok=True)
-        (Path(target) / "model.bin").write_bytes(b"weights")
-        return True
-
-    def _zip_fails(*_a, **_k):
-        raise mm.requests.ConnectionError("mirror down")
-
-    monkeypatch.setattr(mm, "_download_zip", _zip_fails)
-    monkeypatch.setattr(mm, "_download_via_huggingface", _hf)
-    assert Path(mm.ensure_model(_config(model_path, MIRROR_ENTRY))) == model_path
-    assert calls == [MIRROR_ENTRY["name"]]
+    assert Path(mm.ensure_model(_config(model_path, LARGE_ENTRY))) == model_path
+    assert fake_hf["calls"] == [LARGE_ENTRY["hf_repo"]]
+    assert (model_path / "config.json").exists()
 
 
-# --- S02-10: a model from the HuggingFace fallback is not checked against
-# the zip mirror's manifest on the next launch -----------------------------
-
-
-@responses.activate
-def test_hf_installed_mirror_model_is_not_downloaded_again(tmp_path, monkeypatch):
-    monkeypatch.setattr(offline, "is_offline", lambda *a, **k: False)
+def test_installed_hf_model_is_not_downloaded_again(tmp_path, fake_hf):
     model_path = tmp_path / "cache" / "models--Systran--faster-whisper-large-v3"
     (model_path / ".cache" / "huggingface" / "download").mkdir(parents=True)
     (model_path / "model.bin").write_bytes(b"hf-weights")
-    # A manifest in the zip layout that does not match the HuggingFace files.
-    responses.add(responses.GET, MIRROR_ENTRY["md5"], status=200,
-                  body=f"{hashlib.md5(b'zip-weights').hexdigest()} "
-                       f"{model_path.name}/model.bin\n")
-
-    def _no_download(*_a, **_k):
-        raise AssertionError("an installed model must not be downloaded again")
-
-    monkeypatch.setattr(mm, "_download_zip", _no_download)
-    monkeypatch.setattr(mm, "_download_via_huggingface", _no_download)
-    assert Path(mm.ensure_model(_config(model_path, MIRROR_ENTRY))) == model_path
+    assert Path(mm.ensure_model(_config(model_path, LARGE_ENTRY))) == model_path
+    assert fake_hf["calls"] == []
     assert (model_path / "model.bin").read_bytes() == b"hf-weights"
 
 
-# --- S02-12: free disk space before the zip download and the unpacking ----
-
-
-def _zip_bytes(model_dir_name: str, files: dict[str, bytes]) -> bytes:
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-        for rel, data in files.items():
-            z.writestr(f"{model_dir_name}/{rel}", data)
-    return buf.getvalue()
+# --- S02-12: free disk space before the download ----------------------------
 
 
 def _fake_free(monkeypatch, free_bytes: int) -> None:
@@ -482,46 +434,25 @@ def _fake_free(monkeypatch, free_bytes: int) -> None:
     monkeypatch.setattr(mm.shutil, "disk_usage", lambda _p: usage)
 
 
-@responses.activate
-def test_no_zip_download_without_room_for_zip_and_unpacking(tmp_path, monkeypatch):
-    monkeypatch.setattr(offline, "is_offline", lambda *a, **k: False)
+def test_no_download_without_room_for_the_model(tmp_path, fake_hf, monkeypatch):
     model_path = tmp_path / "cache" / "models--Systran--faster-whisper-large-v3"
-    size = 3 * 1024 ** 3
-    responses.add(responses.GET, MIRROR_ENTRY["url"], status=200, body=b"",
-                  headers={"content-length": str(size)}, auto_calculate_content_length=False)
-    _fake_free(monkeypatch, size + 100 * 1024 ** 2)  # room for the zip, not the unpacking
-
-    def _no_hf(*_a, **_k):
-        raise AssertionError("no fallback download while the disk is full")
-
-    monkeypatch.setattr(mm, "_download_via_huggingface", _no_hf)
+    _fake_free(monkeypatch, 1024 ** 3)  # 1 GB free, the model is ~3 GB
     with pytest.raises(mm.InsufficientDiskSpace) as info:
-        mm.ensure_model(_config(model_path, MIRROR_ENTRY))
+        mm.ensure_model(_config(model_path, LARGE_ENTRY))
     text = str(info.value)
     assert "disk space" in text.lower()
     assert str(model_path.parent) in text
-    zip_path = model_path.parent / mm._zip_name_from_url(MIRROR_ENTRY["url"])
-    assert not zip_path.exists() or zip_path.stat().st_size == 0
+    assert fake_hf["calls"] == []
 
 
-@responses.activate
-def test_downloaded_zip_is_kept_when_unpacking_does_not_fit(tmp_path, monkeypatch):
-    monkeypatch.setattr(offline, "is_offline", lambda *a, **k: False)
-    model_path = tmp_path / "cache" / "models--Systran--faster-whisper-large-v3"
-    model_path.parent.mkdir(parents=True)
-    payload = b"w" * 50_000
-    zip_path = model_path.parent / mm._zip_name_from_url(MIRROR_ENTRY["url"])
-    zip_path.write_bytes(_zip_bytes(model_path.name, {"model.bin": payload}))
-    # The archive is already complete on disk: the server answers 416.
-    responses.add(responses.GET, MIRROR_ENTRY["url"], status=416)
-    _fake_free(monkeypatch, 10_000)  # less than the 50 KB to unpack
-
-    monkeypatch.setattr(mm, "_download_via_huggingface",
-                        lambda *a, **k: pytest.fail("no fallback while the disk is full"))
-    with pytest.raises(mm.InsufficientDiskSpace):
-        mm.ensure_model(_config(model_path, MIRROR_ENTRY))
-    assert zip_path.exists(), "the finished download must be kept for the next try"
-    assert not model_weights_present(model_path)
+def test_resumed_bytes_count_toward_the_free_space(tmp_path, fake_hf, monkeypatch):
+    model_path = tmp_path / "cache" / f"models--Systran--{HF_ONLY_ENTRY['name']}"
+    blob = _partial_hf_folder(model_path)
+    blob.write_bytes(b"0" * 400_000)
+    need = int(HF_ONLY_ENTRY["approx_size_gb"] * 1024 ** 3)
+    _fake_free(monkeypatch, need - 300_000 + mm._FREE_SPACE_MARGIN)
+    assert Path(mm.ensure_model(_config(model_path, HF_ONLY_ENTRY))) == model_path
+    assert fake_hf["calls"] == [HF_ONLY_ENTRY["hf_repo"]]
 
 
 def test_free_space_check_skips_when_the_disk_cannot_be_read(tmp_path, monkeypatch):

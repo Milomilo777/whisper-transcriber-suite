@@ -70,8 +70,6 @@ def _default_transcribe_backend() -> str:
 DEFAULT_CONFIG = {
     "model": {
         "name": "faster-whisper-large-v3",
-        "url": "https://smch.ir/models/models--Systran--faster-whisper-large-v3.zip",
-        "md5": "https://smch.ir/models/models--Systran--faster-whisper-large-v3.zip.md5",
         "hf_repo": "Systran/faster-whisper-large-v3",
     },
     "model_path": "",
@@ -423,10 +421,10 @@ DEFAULT_CONFIG = {
     # a valid JSON lives there, the app silently uses the built-in defaults.
     "config_url": "https://smch.ir/whisper/app_config.json",
     # Catalog of selectable Whisper models, in the same shape as
-    # core.model_manager.MODEL_REGISTRY (slug → {label, name, url, md5,
-    # hf_repo, approx_size_gb, info}). ``url``/``md5`` may be "" for a model
-    # with no smch.ir mirror — ``ensure_model`` then downloads straight from
-    # ``hf_repo``. Empty by default: the built-in MODEL_REGISTRY is the
+    # core.model_manager.MODEL_REGISTRY (slug → {label, name, hf_repo,
+    # approx_size_gb, info}). Models download only from ``hf_repo`` on the
+    # Hugging Face Hub; retired mirror keys (``url``/``md5``) in an entry are
+    # ignored. Empty by default: the built-in MODEL_REGISTRY is the
     # baseline. The ONLINE config can ADD/OVERRIDE entries here so new models
     # ship without an app update; a LOCAL override file can pin its own.
     "model_catalog": {},
@@ -1073,8 +1071,10 @@ _DISK_ONLY_KEYS: frozenset[str] = frozenset({"model_catalog", "config_url"})
 _SHIPPED_MODEL_CATALOG_DIGESTS: frozenset[str] = frozenset({
     # DEFAULT_CONFIG["model_catalog"] (every version since v1.3.8)
     "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-    # configuration.json, 18 models (2026-06-13 to now)
+    # configuration.json, 18 models (2026-06-13 to 2026-10-07)
     "c8a2673b27d8160b6ef8222d8627d93193ea768ce15a2946dd0d754e7e366c0b",
+    # configuration.json, 18 models without the retired mirror keys (2026-10-08)
+    "9e8cab6b7603cdc1ac5ffe661d98338796708bd99ebe74cd64f3b266ca9099a7",
 })
 
 

@@ -80,7 +80,7 @@ The merge itself is pure and testable: `core.config.merge_config_sources(hardcod
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `config_url` | string | `https://smch.ir/whisper/app_config.json` (placeholder — the maintainer sets the real URL) | URL of the online app-level config JSON. Fetched best-effort on startup; cached for offline fallback. Empty disables the online layer. A hand edit in `config.json` (e.g. a staging URL, or `""`) is honoured on load and kept by every save; the app itself never writes this key (the shipped URL is not stored). |
-| `model_catalog` | object | `{}` | Online/local-supplied catalog of selectable models, same shape as `core.model_manager.MODEL_REGISTRY` (`slug → {label, name, url, md5, hf_repo, approx_size_gb, info}`). `url`/`md5` may be `""` for a model with no smch.ir mirror — `ensure_model` then downloads straight from `hf_repo`. Overlaid on the built-in catalog so new models can ship without an app update. **Allowlisted** for the online layer. Never written from memory: a catalog hand-written into `config.json` is kept by every save, and the online one is not copied into the file, so a corrected online entry reaches every user. Older versions did copy it into the file; at load, a copy identical (as JSON) to a catalog a release shipped (`core.config._SHIPPED_MODEL_CATALOG_DIGESTS`) is removed once, the previous file kept as `config.json.bak`; a catalog with any edit is kept. |
+| `model_catalog` | object | `{}` | Online/local-supplied catalog of selectable models, same shape as `core.model_manager.MODEL_REGISTRY` (`slug → {label, name, hf_repo, approx_size_gb, info}`). Every model downloads from its `hf_repo`; `url`/`md5` keys (the retired zip mirror) are dropped. Overlaid on the built-in catalog so new models can ship without an app update. **Allowlisted** for the online layer. Never written from memory: a catalog hand-written into `config.json` is kept by every save, and the online one is not copied into the file, so a corrected online entry reaches every user. Older versions did copy it into the file; at load, a copy identical (as JSON) to a catalog a release shipped (`core.config._SHIPPED_MODEL_CATALOG_DIGESTS`) is removed once, the previous file kept as `config.json.bak`; a catalog with any edit is kept. |
 | `stats_url` | string | `https://smch.ir/stats/transcription_stats.php` | Usage-stats POST endpoint. The desktop app POSTs one row here per successfully finished transcription while `telemetry_opt_in` is true, which is the default — see **Usage statistics (P4-4)** below for every field. Empty or a non-http(s) URL = no POST. **Allowlisted** for the online layer so it can be set/changed remotely; like `config_url` it is not written to `config.json`. |
 | `latest_version` | string | `""` | Newest published version string (informational; complements the GitHub update check). **Allowlisted** for the online layer. |
 
@@ -108,8 +108,7 @@ Every outbound connection the app can make. Transcription with a local engine wo
 | Online app config | *Automatic*: at startup of the desktop app, the CLI and the server, and on the first transcription in each worker process (once per process) | `config_url`, default `https://smch.ir/whisper/app_config.json` | A plain GET | No switch. A hand-set `"config_url": ""` in `config.json` works until the app next saves its settings (see the `config_url` row above). | Yes: not fetched in any process; the last copy fetched before (on disk) still applies. |
 | Update check | *Automatic*: desktop app, a few seconds after launch, at most once a day (and once a day while it stays open); also **Help → Check for updates…** on demand | `https://api.github.com/repos/Milomilo777/whisper-transcriber-suite/releases/latest` | A plain GET | **Advanced → App behaviour → Don't check for updates** (`update_check_enabled: false`), or the environment variable `WTS_DISABLE_UPDATER=1`; the Help item still works. | Yes: no automatic check. **Help → Check for updates…** first offers to turn Work offline off. |
 | Usage statistics | *Automatic*: after each successfully finished transcription in the desktop app | `stats_url`, default `https://smch.ir/stats/transcription_stats.php` | A form POST with the fields listed under **Usage statistics (P4-4)** | Untick **Help → Send usage statistics** or the same checkbox in **Advanced → App behaviour** (`telemetry_opt_in: false`). | Yes: nothing is posted. |
-| Whisper model download | First transcription with a model that is not on disk (also after switching models) | The `smch.ir` mirror (zip + MD5 manifest) for `large-v3`, `large-v3-turbo`, `distil-large-v3.5` and `medium`; Hugging Face (`huggingface.co` and its download CDN) for every other model and as the fallback | GETs | Runs while the model is missing, or after the model check below finds a changed or missing file. | Yes: a missing model is not downloaded and the transcription fails with "Offline mode is on: downloading the model … needs the internet". A model already on disk is used. |
-| Model check | When `core.model_manager.ensure_model` runs for one of the four mirror models above while it is already on disk — when the Web / LAN server starts (`gui.py serve` or the **Web / LAN access** tab), and in the model dialog shown after an installed model failed to load. A normal desktop, CLI or Live transcription loads an on-disk model without this check. | The model's `.md5` manifest on `smch.ir` | A plain GET; the local files are hashed and compared with it. If a file is missing or differs, the model folder is deleted and the whole model downloads again (row above). | No switch. A failed request is ignored and the model is used as-is. | Yes: skipped; the model on disk is used as it is. |
+| Whisper model download | First transcription with a model that is not on disk (also after switching models) | Hugging Face (`huggingface.co` and its download CDN), for every model | GETs | Runs while the model is missing (no non-empty `model.bin`), or to resume a download that was cut off (an unfinished `.incomplete` file under the model folder's `.cache`). | Yes: a missing model is not downloaded and the transcription fails with "Offline mode is on: downloading the model … needs the internet". A model already on disk is used. |
 | Other models | First use of the feature: whisper.cpp engine, local AI Layer model, Kokoro text-to-voice, OmniVoice voice cloning, NVIDIA Parakeet, stable-ts word alignment, Demucs vocal separation | `huggingface.co` (whisper.cpp `ggml` model, Qwen2.5 GGUF, OmniVoice and Parakeet weights); `github.com` release assets (Kokoro); `openaipublic.azureedge.net` (the OpenAI Whisper checkpoint stable-ts aligns with); Demucs fetches its own weights | GETs | Only runs while that model is missing. | Yes: the app's own downloads (whisper.cpp, AI Layer, Kokoro) stop with the offline message. The libraries that fetch weights themselves (OmniVoice, Parakeet, stable-ts) are stopped by the network guard below, and Demucs gets a closed proxy, so only weights already on disk load. |
 | Optional components | First use of a feature whose Python packages are not bundled (`core.optional_deps.FEATURES`). stable-ts alignment asks first; the NVIDIA Parakeet and Google Cloud engines install when a job starts with them selected (Google Cloud also from its connection test in the Advanced dialog, see **Cloud engines**); voice cloning installs on its first use; the CUDA runtime from the Hardware wizard's button | PyPI (`pypi.org`, `files.pythonhosted.org`) via `pip install` | Standard pip requests | Do not select those engines or features; nothing installs while they stay unused. | Yes: nothing is installed; the log names the switch. |
 | Video downloads, captions | When the user downloads a URL or fetches its captions | The site of the URL and its media servers (YouTube: `www.youtube.com` plus `*.googlevideo.com`), or any other site yt-dlp supports | yt-dlp's requests to that site; a link pasted in **Download Videos** is looked up at once (formats, title, captions) | User action. | Yes: a pasted link is not looked up, **Download** and **Use captions instead** first offer to turn Work offline off, and a download queued earlier is refused. |
@@ -129,10 +128,9 @@ Opening a link (Help menu, About dialog, release page) hands the URL to the syst
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `model` | object | (see below) | The active model's source and verification info |
-| `model.name` | string | `"faster-whisper-large-v3"` | Display name in logs |
-| `model.url` | string | `https://smch.ir/models/...zip` | ZIP archive of the model |
-| `model.md5` | string | `<url>.md5` | URL of the per-file MD5 manifest |
+| `model` | object | (see below) | The active model: its folder name and its Hugging Face repo |
+| `model.name` | string | `"faster-whisper-large-v3"` | Model folder name (under `hub_folder`) and display name in logs |
+| `model.hf_repo` | string | `"Systran/faster-whisper-large-v3"` | Hugging Face repo the model downloads from. Models download only from the Hugging Face Hub; a `model.url` / `model.md5` pair left by an older version (the retired zip mirror) is ignored. |
 | `whisper_model` | string | `"large-v3"` | Slug of the selected model in the merged catalog (built-in `MODEL_REGISTRY` + online `model_catalog`). Set by the **Advanced > Whisper model** combo, which also rewrites `model` + `model_path` so the new model downloads on the next transcription. See the Models section below. |
 | `hub_folder` | string | `""` (first-run dialog) | Parent folder that holds the `models--Vendor--name` model directories. Empty triggers the first-run picker, which pre-fills `%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\models` — a per-user, always-writable location (never the Program Files install dir). **Finish** in the quick start window sets this default without showing the picker. |
 | `quick_start_enabled` | bool | `true` | Shows the quick start window (`app/dialogs/quick_start.py`) on the first launch of a new install: main spoken language, "Fast" or "Best quality", and the folder for downloaded videos and audio (`download_folder`; transcripts are saved next to their source file). The model comes from `core/language_defaults.py`; the size and time per minute of audio shown are estimates (`core.hardware.estimate_seconds_per_audio_minute`: the benchmark's CPU speed, or faster-whisper's published GPU figure when the model fits in the GPU's memory). The window makes no network call; the model downloads on the first transcription. `false` turns the window off. **No UI control.** |
@@ -194,22 +192,22 @@ The selectable model list shown in **Advanced > Whisper model** comes from the *
 | `tiny.en` / `tiny` | `faster-whisper-tiny[.en]` | `Systran/faster-whisper-tiny[.en]` | Fastest, lowest accuracy, ~0.075 GB. |
 | `base.en` / `base` | `faster-whisper-base[.en]` | `Systran/faster-whisper-base[.en]` | Very fast, low accuracy, ~0.145 GB. |
 | `small.en` / `small` | `faster-whisper-small[.en]` | `Systran/faster-whisper-small[.en]` | Fast, moderate accuracy, ~0.5 GB. |
-| `medium.en` / `medium` | `faster-whisper-medium[.en]` | `Systran/faster-whisper-medium[.en]` | Slower, good accuracy, ~1.5 GB. `medium` (no `.en`) has an smch.ir mirror; `medium.en` downloads from `hf_repo`. |
-| `large-v1` / `large-v2` / `large-v3` | `faster-whisper-large-v1/v2/v3` | `Systran/faster-whisper-large-v1/v2/v3` | ~3 GB. `large-v3` is the **default** and has an smch.ir mirror; v1/v2 download from `hf_repo`. |
+| `medium.en` / `medium` | `faster-whisper-medium[.en]` | `Systran/faster-whisper-medium[.en]` | Slower, good accuracy, ~1.5 GB. |
+| `large-v1` / `large-v2` / `large-v3` | `faster-whisper-large-v1/v2/v3` | `Systran/faster-whisper-large-v1/v2/v3` | ~3 GB. `large-v3` is the **default**. |
 | `distil-small.en` | `faster-distil-whisper-small.en` | `Systran/faster-distil-whisper-small.en` | Fast, English-only, ~0.4 GB. |
 | `distil-medium.en` | `faster-distil-whisper-medium.en` | `Systran/faster-distil-whisper-medium.en` | Fast, English-only, ~0.8 GB. |
 | `distil-large-v2` / `distil-large-v3` | `faster-distil-whisper-large-v2/v3` | `Systran/faster-distil-whisper-large-v2/v3` | Fast, English-only, ~1.5 GB. |
-| `distil-large-v3.5` | `faster-distil-whisper-large-v3.5` | `distil-whisper/distil-large-v3.5-ct2` | Fastest English-only, ~1.5 GB. Has an smch.ir mirror. |
-| `large-v3-turbo` | `faster-whisper-large-v3-turbo` | `mobiuslabsgmbh/faster-whisper-large-v3-turbo` | ~5× faster, similar accuracy, ~1.6 GB. Has an smch.ir mirror. |
+| `distil-large-v3.5` | `faster-distil-whisper-large-v3.5` | `distil-whisper/distil-large-v3.5-ct2` | Fastest English-only, ~1.5 GB. |
+| `large-v3-turbo` | `faster-whisper-large-v3-turbo` | `mobiuslabsgmbh/faster-whisper-large-v3-turbo` | ~5× faster, similar accuracy, ~1.6 GB. |
 | `deepdml-large-v3-turbo` | `faster-whisper-large-v3-turbo-deepdml` | `deepdml/faster-whisper-large-v3-turbo-ct2` | Community CT2 conversion of Large v3 Turbo, multilingual, ~1.6 GB. |
 
-Only `large-v3`, `large-v3-turbo`, `distil-large-v3.5`, and `medium` have an smch.ir mirror (`url`/`md5` non-empty). Every other entry has `url=""`/`md5=""` and `ensure_model` downloads it straight from `hf_repo` via `_download_via_huggingface` — the mirror attempt is skipped entirely for those.
+Every entry downloads from its `hf_repo` on the Hugging Face Hub (`ensure_model` → `_download_via_huggingface`), which resumes a cut-off download and checks each file against the Hub. The zip mirror older versions used is retired: `url`/`md5` keys in a catalog entry, including a hand-edited `model_catalog` pin in `config.json`, are dropped and never contacted.
 
 A bigger/denser model is slower — `large-v3` stays the default; the combo just lets the user pick. Switching the model triggers `ensure_model` for the new slug on the next load. The "?" button next to the picker shows the selected model's description and approximate size (`catalog_entry_info`).
 
-### HuggingFace fallback resolution (`hf_repo`)
+### Hugging Face repo resolution (`hf_repo`)
 
-Every registry/catalog entry carries an explicit `hf_repo` (`Org/Repo`), which `_hf_model_ref` prefers over faster-whisper's own short-id map or a guess parsed from the mirror zip name. This makes the fallback deterministic and correctly disambiguates models that would otherwise collide on the same faster-whisper short id — e.g. `deepdml-large-v3-turbo` and `large-v3-turbo` both map to faster-whisper's `large-v3-turbo` short id, but live under different HF orgs (`deepdml/...` vs `mobiuslabsgmbh/...`); `hf_repo` picks the right one for each.
+Every registry/catalog entry carries an explicit `hf_repo` (`Org/Repo`), which `_hf_model_ref` prefers over faster-whisper's own short-id map. This makes the download deterministic and correctly disambiguates models that would otherwise collide on the same faster-whisper short id — e.g. `deepdml-large-v3-turbo` and `large-v3-turbo` both map to faster-whisper's `large-v3-turbo` short id, but live under different HF orgs (`deepdml/...` vs `mobiuslabsgmbh/...`); `hf_repo` picks the right one for each.
 
 To add a model from the **online** config (no app update), put it under `model_catalog` in the hosted JSON (`configuration.json` at the repo root is the master copy):
 
@@ -220,8 +218,6 @@ To add a model from the **online** config (no app update), put it under `model_c
       "label": "My New Model (~2 GB)",
       "name": "faster-whisper-my-new-model",
       "hf_repo": "SomeOrg/faster-whisper-my-new-model",
-      "url": "",
-      "md5": "",
       "approx_size_gb": 2.0,
       "info": "~2 GB. One or two lines describing speed/accuracy/language coverage."
     }
@@ -571,8 +567,7 @@ When a new field is introduced, `load_config` will populate it with the default 
 {
   "model": {
     "name": "faster-whisper-large-v3",
-    "url": "https://smch.ir/models/models--Systran--faster-whisper-large-v3.zip",
-    "md5": "https://smch.ir/models/models--Systran--faster-whisper-large-v3.zip.md5"
+    "hf_repo": "Systran/faster-whisper-large-v3"
   },
   "hub_folder": "C:\\Users\\Owner\\AppData\\Local\\WhisperTranscriberSuite\\Cache\\models",
   "model_path": "",

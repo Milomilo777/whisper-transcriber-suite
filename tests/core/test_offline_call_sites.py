@@ -123,36 +123,32 @@ def _model_config(tmp_path: Path, *, mirror: bool) -> dict[str, Any]:
     }
 
 
-def test_installed_mirror_model_is_used_without_the_model_check(offline_on, tmp_path, monkeypatch):
+def test_installed_model_with_a_retired_mirror_url_is_used_offline(offline_on, tmp_path, monkeypatch):
     from core import model_manager as mm
 
-    monkeypatch.setattr(mm.requests, "get", _boom)
-    monkeypatch.setattr(mm, "_verify_extracted_files", _boom)
+    monkeypatch.setattr(mm, "_download_via_huggingface", _boom)
     config = _model_config(tmp_path, mirror=True)
     Path(config["model_path"]).mkdir(parents=True)
     # An installed model has its weights (a bare folder is a killed download).
     (Path(config["model_path"]) / "model.bin").write_bytes(b"weights")
-    statuses: list[str] = []
-    assert mm.ensure_model(config, status_cb=statuses.append) == config["model_path"]
-    assert any("offline" in s for s in statuses)
+    assert mm.ensure_model(config) == config["model_path"]
 
 
-def test_installed_mirror_model_is_checked_while_online(tmp_path, monkeypatch):
+def test_installed_model_is_used_online_without_a_network_check(tmp_path, monkeypatch):
+    """The retired zip mirror re-checked an installed model against its .md5
+    list on every ensure_model call; a Hub model on disk is used as it is."""
     from core import model_manager as mm
 
-    checked: list[object] = []
-    monkeypatch.setattr(mm, "_verify_extracted_files", lambda *a, **k: checked.append(a) or [])
+    monkeypatch.setattr(mm, "_download_via_huggingface", _boom)
     config = _model_config(tmp_path, mirror=True)
     Path(config["model_path"]).mkdir(parents=True)
-    mm.ensure_model(config)
-    assert len(checked) == 1
+    (Path(config["model_path"]) / "model.bin").write_bytes(b"weights")
+    assert mm.ensure_model(config) == config["model_path"]
 
 
-def test_missing_mirror_model_is_refused(offline_on, tmp_path, monkeypatch):
+def test_missing_model_with_a_retired_mirror_url_is_refused(offline_on, tmp_path, monkeypatch):
     from core import model_manager as mm
 
-    monkeypatch.setattr(mm.requests, "get", _boom)
-    monkeypatch.setattr(mm, "_download_zip", _boom)
     monkeypatch.setattr(mm, "_download_via_huggingface", _boom)
     with pytest.raises(offline.OfflineModeError, match="downloading the model faster-whisper-tiny"):
         mm.ensure_model(_model_config(tmp_path, mirror=True))
