@@ -1419,10 +1419,12 @@ class App(tk.Tk):
             save_config(self.app_config)
         except Exception as e:  # noqa: BLE001
             logger.exception("Failed to save the Work offline choice")
-            self.log(
+            text = (
                 f"Could not save the Work offline choice ({e}); a transcription "
                 "that starts a new worker follows the old setting."
             )
+            self.log(text)
+            notify(self, text, "warning")
         if on:
             self.log(
                 "Work offline: on. From now on the app starts no network "
@@ -5066,6 +5068,17 @@ class App(tk.Tk):
             return
 
         if not info.is_newer:
+            # A newer release seen earlier may have been withdrawn: remember
+            # the release that really is the latest, so the Help-menu dot and
+            # the bar stop pointing at the withdrawn one.
+            seen = str(self.app_config.get("update_latest_seen") or "")
+            if (
+                seen
+                and _updates.is_newer(seen, info.latest_tag)
+                and _updates.note_latest(self.app_config, info.latest_tag)
+            ):
+                self._save_update_prefs()
+                self._refresh_update_signs()
             if manual:
                 notify(
                     self,

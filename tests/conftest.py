@@ -198,6 +198,8 @@ def _work_offline_off(monkeypatch):
         yield
         return
     monkeypatch.setattr(_offline, "_override", False)
+    # The switch's file cache (stat key) must not leak between tests.
+    monkeypatch.setattr(_offline, "_cache_key", None)
     # Tests that run a real entry point (worker.main, gui.main) install the
     # socket backstop; remove it again so it never outlives that test.
     guard_was_installed = _offline.network_guard_installed()

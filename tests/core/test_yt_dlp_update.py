@@ -708,7 +708,12 @@ def test_the_old_switch_is_read_once_as_the_mode(config_dir, local, mode):
     cfg.save_config(loaded)
     on_disk = json.loads((config_dir / "config.json").read_text(encoding="utf-8"))
     assert "auto_update_yt_dlp" not in on_disk
-    assert on_disk["yt_dlp_update_mode"] == mode
+    if local:
+        # Read from the old switch: written explicitly.
+        assert on_disk["yt_dlp_update_mode"] == mode
+    else:
+        # Untouched default: a merged save no longer pins it.
+        assert "yt_dlp_update_mode" not in on_disk
     assert cfg.load_config(fetch_online=False)["yt_dlp_update_mode"] == mode
 
 

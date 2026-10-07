@@ -50,7 +50,9 @@ def test_message_names_the_action_and_the_switch():
 @pytest.mark.parametrize(
     ("value", "expected"),
     [(True, True), (False, False), (1, True), (0, False), (1.0, True), (0.0, False),
-     (math.nan, False), (math.inf, False), ("true", False), (None, False), ([1], False)],
+     ("true", True), ("false", False),
+     # Neither clearly on nor clearly off: fail closed (offline).
+     (math.nan, True), (math.inf, True), ("junk", True), (None, True), ([1], True)],
 )
 def test_flag_from_follows_the_loaders_coercion(value, expected):
     assert offline.flag_from({offline.CONFIG_KEY: value}) is expected
@@ -87,8 +89,16 @@ def test_the_file_is_read_on_every_call(isolated_config):
 
 
 @pytest.mark.parametrize("body", ["{not json", "[1, 2]", '"text"'])
-def test_an_unreadable_config_counts_as_off(isolated_config, body):
+def test_a_damaged_config_without_a_backup_counts_as_on(isolated_config, body):
+    # The saved choice is unknown: fail closed rather than go online.
     isolated_config.write_text(body, encoding="utf-8")
+    assert offline.is_offline() is True
+
+
+def test_a_damaged_config_reads_the_switch_from_its_backup(isolated_config):
+    bak = isolated_config.with_name(isolated_config.name + ".bak")
+    bak.write_text(json.dumps({"work_offline": False}), encoding="utf-8")
+    isolated_config.write_text("{not json", encoding="utf-8")
     assert offline.is_offline() is False
 
 

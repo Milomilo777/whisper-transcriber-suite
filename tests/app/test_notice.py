@@ -230,6 +230,7 @@ def test_manual_update_check_results_are_notices(no_boxes, monkeypatch):
     window = _Host()
     window.withdraw()
     window._closing = False  # type: ignore[attr-defined]
+    window.app_config = {}  # type: ignore[attr-defined]
     monkeypatch.setattr(app_mod, "_APP_VERSION", "1.9.3")
     try:
         info = u.UpdateInfo(

@@ -260,6 +260,25 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Settings are no longer lost or reverted.** A moment when `config.json` could not be opened
+  (another save in flight, an antivirus scan) used to rename the good file aside and reset every
+  setting; it is now retried and the file kept. A damaged file is replaced by its `.bak`, a file
+  saved in the Windows ANSI code page is read, and a refused save is retried and then reported
+  (Advanced stays open and shows the error).
+- **The app's own save no longer undoes other processes' changes.** Saving writes only the keys
+  the app changed over the current file, and counters go through one locked transaction, so the
+  cloud-minutes counters a worker records (and the free-tier warning that reads them) survive the
+  save after each job and at exit. The online model catalog is no longer copied into
+  `config.json`, so a corrected entry reaches every user; a hand-written `config_url` now survives
+  saves too.
+- **Privacy switches fail closed.** A damaged or hand-edited value of Work offline, usage
+  statistics or the update check now reads as offline / off instead of on, `"true"` and `"false"`
+  strings are understood, and a switch whose saved choice was lost with a damaged file stays
+  closed in every process. Saving Advanced no longer reverts a File-menu Work offline change made
+  while it was open.
+- **The Help-menu update dot clears after a release is withdrawn.**
+- **An oversized `.whisperproject.json` is ignored** (over 1 MB) instead of being parsed on every
+  job.
 - **A half-downloaded Whisper model no longer looks installed.** A model folder without its
   `model.bin` (a killed download) now brings up the download prompt instead of failing in the
   worker with "Unable to open file 'model.bin'", also when offline or when the mirror's checksum

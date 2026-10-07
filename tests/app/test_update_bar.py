@@ -402,3 +402,14 @@ def test_the_launch_check_follows_the_switch_and_the_environment(monkeypatch, co
     if runs:
         fake._run_update_check.assert_called_once_with(manual=False)
         assert saved[-1]["last_update_check"] == _TODAY.isoformat()
+
+
+def test_a_withdrawn_release_clears_the_help_dot(host):
+    host.app_config["update_latest_seen"] = "1.9.4"
+    host._refresh_update_signs()
+    assert "●" in _labels(host)[0]
+    # 1.9.4 was withdrawn: the check now finds 1.9.3, the running version.
+    host._on_update_result(_info("v1.9.3", newer=False), manual=False)
+    assert host.app_config["update_latest_seen"] == "1.9.3"
+    assert host.saved and host.saved[-1]["update_latest_seen"] == "1.9.3"
+    assert "●" not in _labels(host)[0]

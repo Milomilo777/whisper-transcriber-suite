@@ -28,7 +28,6 @@ user flips it.
 from __future__ import annotations
 
 import ipaddress
-import json
 import logging
 import math
 import socket
@@ -61,28 +60,55 @@ def message(what: str) -> str:
     )
 
 
-def flag_from(config: Mapping[str, Any]) -> bool:
-    """The switch as ``core.config.load_config`` would read it from ``config``.
+_TRUE_WORDS = frozenset({"true", "yes", "on", "1"})
+_FALSE_WORDS = frozenset({"false", "no", "off", "0"})
 
-    A bool is taken as is and a finite number by its truth (the loader's
-    bool coercion); anything else is the default, off.
+
+def coerce_flag(value: Any, unknown: bool) -> bool:
+    """Read an on/off setting; anything that is not clearly on or off is ``unknown``.
+
+    A bool is taken as is, a finite number by its truth and the words
+    true/false, yes/no, on/off, 1/0 (any case) by their meaning. The privacy
+    switches pass their closed value as ``unknown``, so a hand-edited or
+    damaged value never turns the network or usage statistics back on.
     """
-    value = config.get(CONFIG_KEY, False)
     if isinstance(value, bool):
         return value
     if isinstance(value, int):
         return value != 0
     if isinstance(value, float):
-        return math.isfinite(value) and value != 0
-    return False
+        return value != 0 if math.isfinite(value) else unknown
+    if isinstance(value, str):
+        word = value.strip().lower()
+        if word in _TRUE_WORDS:
+            return True
+        if word in _FALSE_WORDS:
+            return False
+    return unknown
+
+
+def flag_from(config: Mapping[str, Any]) -> bool:
+    """The switch as ``core.config.load_config`` would read it from ``config``.
+
+    A missing key is the shipped default, off; a value that is neither
+    clearly on nor clearly off is on (fail closed, see :func:`coerce_flag`).
+    """
+    if CONFIG_KEY not in config:
+        return False
+    return coerce_flag(config.get(CONFIG_KEY), True)
 
 
 # Set by the desktop app (and tests); None means "read config.json".
 _override: bool | None = None
 # The last value read from config.json: a transient read failure (the file
 # is being replaced by a save on Windows) keeps it instead of switching on
-# the network for that one call.
-_last_saved = False
+# the network for that one call. Unknown before the first good read, which
+# counts as on.
+_last_saved = True
+# (st_ino, st_size, st_mtime_ns) of the file _last_saved came from: the
+# switch is asked on every socket connect, so an unchanged file is not
+# parsed again. st_ino changes on every atomic replace.
+_cache_key: tuple[int, int, int] | None = None
 
 
 def set_offline(on: bool | None) -> None:
@@ -92,22 +118,27 @@ def set_offline(on: bool | None) -> None:
 
 
 def _saved_flag() -> bool:
-    global _last_saved
-    from core.config import config_path
+    global _last_saved, _cache_key
+    import os
 
+    from core import config as _config
+
+    path = _config.config_path()
     try:
-        with open(config_path(), encoding="utf-8") as f:
-            data = json.load(f)
+        st = os.stat(path)
+        key = (st.st_ino, st.st_size, st.st_mtime_ns)
     except FileNotFoundError:
-        _last_saved = False
-        return False
-    except (ValueError, RecursionError):
-        # Unreadable JSON: the app runs on its defaults, which are online.
-        _last_saved = False
-        return False
+        key = (-1, -1, -1)
     except OSError:
         return _last_saved
-    _last_saved = isinstance(data, dict) and flag_from(data)
+    if key == _cache_key:
+        return _last_saved
+    data = _config.read_local_config_for_switches()
+    if data is None:
+        # Unreadable right now (a save is replacing it): keep the last value.
+        return _last_saved
+    _last_saved = flag_from(data)
+    _cache_key = key
     return _last_saved
 
 

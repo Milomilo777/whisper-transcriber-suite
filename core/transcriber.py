@@ -2458,8 +2458,8 @@ def _accumulate_cloud_minutes(
 ) -> None:
     """Add ``duration_seconds`` to ``cloud_stt_minutes_used`` and persist.
 
-    Re-reads config from disk before writing so a concurrent worker /
-    UI save isn't clobbered, then updates the in-memory module config too
+    Changes config.json in one locked transaction (``update_config``) so a
+    concurrent worker / UI save isn't clobbered, then updates the in-memory module config too
     so a follow-up read in this process sees the new total. Best-effort:
     a persistence error is logged, never raised (it must not fail a
     successful transcription).
@@ -2468,12 +2468,21 @@ def _accumulate_cloud_minutes(
         return
     minutes = duration_seconds / 60.0
     try:
-        from .config import load_config as _load, save_config as _save
-        disk_cfg = _load()
-        prior = float(disk_cfg.get("cloud_stt_minutes_used") or 0.0)
-        new_total = round(prior + minutes, 4)
-        disk_cfg["cloud_stt_minutes_used"] = new_total
-        _save(disk_cfg)
+        from .config import update_config
+        totals: list[float] = []
+
+        def _add(disk_cfg: dict[str, Any]) -> None:
+            try:
+                prior = float(disk_cfg.get("cloud_stt_minutes_used") or 0.0)
+            except (TypeError, ValueError):
+                prior = 0.0
+            totals.append(round(prior + minutes, 4))
+            disk_cfg["cloud_stt_minutes_used"] = totals[-1]
+
+        # One locked read-modify-write of the file: the app's own save of
+        # its older copy cannot revert it, and two workers cannot lose one.
+        update_config(_add)
+        new_total = totals[-1]
         config["cloud_stt_minutes_used"] = new_total
         log(f"Cloud minutes used this file: {minutes:.2f} "
             f"(total {new_total:.1f}).", log_cb)

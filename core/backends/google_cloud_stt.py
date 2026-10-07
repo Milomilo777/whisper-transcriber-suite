@@ -1763,18 +1763,32 @@ class GoogleCloudSttBackend(Backend):
             minutes = max(0.0, float(billable_seconds or 0.0) / 60.0)
             if minutes <= 0:
                 return
-            from ..config import save_config
+            from ..config import update_config
             cfg = self._cfg()
-            prev = float(cfg.get("gcloud_stt_minutes_used") or 0.0)
-            prev_month = str(cfg.get("gcloud_stt_minutes_month") or "")
-            new_total, marker = accumulate_minutes(prev, prev_month, minutes)
-            cfg["gcloud_stt_minutes_used"] = round(new_total, 3)
-            cfg["gcloud_stt_minutes_month"] = marker
-            # When using a live config (the default), persist it so the UI
-            # reads the updated counter. When a test injects a config dict,
-            # we still update it in place but skip the disk write.
+            result: list[tuple[float, str]] = []
+
+            def _roll(target: dict[str, Any]) -> None:
+                try:
+                    prev = float(target.get("gcloud_stt_minutes_used") or 0.0)
+                except (TypeError, ValueError):
+                    prev = 0.0
+                prev_month = str(target.get("gcloud_stt_minutes_month") or "")
+                total, month = accumulate_minutes(prev, prev_month, minutes)
+                target["gcloud_stt_minutes_used"] = round(total, 3)
+                target["gcloud_stt_minutes_month"] = month
+                result.append((total, month))
+
+            # With a live config (the default) the counter is rolled on the
+            # file itself in one locked transaction, so the app's own save of
+            # an older copy cannot revert it. When a test injects a config
+            # dict, it is updated in place and nothing is written.
             if self._config is None:
-                save_config(cfg)
+                update_config(_roll)
+                cfg["gcloud_stt_minutes_used"] = round(result[-1][0], 3)
+                cfg["gcloud_stt_minutes_month"] = result[-1][1]
+            else:
+                _roll(cfg)
+            new_total, marker = result[-1]
             if log_cb:
                 log_cb(
                     f"Google Cloud STT minutes this month ({marker}): "

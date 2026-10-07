@@ -574,3 +574,39 @@ def test_save_writes_the_text_to_voice_limit_switch(monkeypatch) -> None:
     assert cfg[tts_plan.NO_LIMIT_KEY] is True
     adv.AdvancedDialog._save_and_close(_fake_dialog(_fake_app(cfg)))  # type: ignore[arg-type]
     assert cfg[tts_plan.NO_LIMIT_KEY] is False
+
+
+def test_save_keeps_a_switch_changed_elsewhere_while_open(monkeypatch) -> None:
+    """S09-7: File > Work offline toggled while Advanced is open survives its Save."""
+    from app.dialogs import advanced as adv
+
+    monkeypatch.setattr(adv, "save_config", lambda _cfg: None)
+    cfg = _base_cfg() | {"work_offline": False, "telemetry_opt_in": True, "update_check_enabled": True}
+    dlg = _fake_dialog(
+        _fake_app(cfg),
+        _work_offline=_V(False), _telemetry_opt_in=_V(False), _update_check_enabled=_V(True),
+        _switches_at_open={"work_offline": False, "telemetry_opt_in": True, "update_check_enabled": True},
+    )
+    cfg["work_offline"] = True  # the File menu, while the dialog is open
+    adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
+    assert cfg["work_offline"] is True  # not reverted by the stale checkbox
+    assert cfg["telemetry_opt_in"] is False  # changed in the dialog: written
+
+
+def test_a_failed_save_keeps_the_dialog_open_and_says_so(monkeypatch) -> None:
+    """S09-9: a save error is shown and the dialog is not closed as if saved."""
+    import tkinter.messagebox as mb
+
+    from app.dialogs import advanced as adv
+
+    def boom(_cfg):  # noqa: ANN001
+        raise OSError("disk full")
+
+    monkeypatch.setattr(adv, "save_config", boom)
+    shown: list[tuple] = []
+    monkeypatch.setattr(mb, "showerror", lambda *a, **k: shown.append(a))
+    closed: list[bool] = []
+    dlg = _fake_dialog(_fake_app(_base_cfg()), destroy=lambda: closed.append(True))
+    adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
+    assert shown and "disk full" in shown[0][1]
+    assert closed == []

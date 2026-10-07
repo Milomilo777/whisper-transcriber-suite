@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import copy
 import hashlib
 import http.client
@@ -11,9 +12,11 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable, Generator
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +27,14 @@ from core import offline
 # Module-level lock serialises concurrent save_config calls — on
 # Windows os.replace fails with PermissionError when another thread
 # is also mid-replace on the same path; the lock collapses the race.
-_SAVE_LOCK = threading.Lock()
+# Re-entrant so update_config() can call the shared writer under it.
+# Other processes (workers, the server, the CLI) are kept out by the
+# ``config.json.lock`` file lock taken inside it (_config_file_lock).
+_SAVE_LOCK = threading.RLock()
+
+
+class ConfigSaveError(OSError):
+    """config.json could not be written; the settings on disk are unchanged."""
 
 logger = logging.getLogger(__name__)
 
@@ -647,28 +657,7 @@ def _has_model_folders(hub: Path) -> bool:
 
 def _set_local_hub_folder(value: str) -> None:
     """Write only ``hub_folder`` into config.json, leaving every other key as-is."""
-    with _SAVE_LOCK:
-        path = config_path()
-        local: dict[str, Any] = {}
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                loaded = json.load(f)
-            if not isinstance(loaded, dict):
-                return
-            local = loaded
-        local["hub_folder"] = value
-        directory = os.path.dirname(path) or "."
-        fd, tmp = tempfile.mkstemp(dir=directory, suffix=".tmp")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(local, f, indent=2, ensure_ascii=False)
-            os.replace(tmp, path)
-        except BaseException:
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
-            raise
+    update_config(lambda local: local.__setitem__("hub_folder", value))
 
 
 def migrate_legacy_app_data() -> None:
@@ -1014,47 +1003,336 @@ def fetch_online_config(
     return {}
 
 
+# --- Reading and writing config.json safely ------------------------------------
+#
+# config.json is shared by the desktop app, its worker processes, the server
+# and the CLI. On Windows a file that another process has open (a reader, an
+# antivirus scan, a save's os.replace in flight) refuses to be opened or
+# replaced for a moment, so both directions retry briefly before giving up,
+# and a failure to READ is never taken for a damaged file. Writes from all
+# processes are serialised by a lock file next to config.json.
+
+#: How long a read of config.json retries a sharing error before giving up.
+_READ_RETRY_SECONDS = 1.0
+#: How long a save retries ``os.replace`` refused by a sharing error.
+_REPLACE_RETRY_SECONDS = 1.0
+#: How long a save waits for another process's ``config.json.lock``; after
+#: that it saves without the lock (and logs it) rather than blocking.
+_LOCK_DEADLINE_SECONDS = 2.0
+
+# Last config.json this process read in full: a read that keeps failing
+# returns it instead of the defaults.
+_LAST_GOOD: dict[str, Any] | None = None
+_LAST_GOOD_LOCK = threading.Lock()
+
+# Per-thread depth of _config_file_lock, so a nested writer (update_config
+# inside a save) does not wait on its own lock file.
+_FILE_LOCK_STATE = threading.local()
+
+#: The value each privacy switch falls back to when its saved value is
+#: unknown: offline, no usage statistics, no update check.
+_PRIVACY_CLOSED: dict[str, bool] = {
+    "work_offline": True,
+    "telemetry_opt_in": False,
+    "update_check_enabled": False,
+}
+
+#: Keys whose in-memory value is never written: the value on disk (a
+#: hand-written pin, the user's own ``config_url``) is kept as it is, and a
+#: key not on disk stays absent. ``model_catalog`` comes from the online
+#: config, which must keep reaching users who never pinned it.
+_DISK_ONLY_KEYS: frozenset[str] = frozenset({"model_catalog", "config_url"})
+
+
+def _remember_last_good(data: dict[str, Any]) -> None:
+    global _LAST_GOOD
+    with _LAST_GOOD_LOCK:
+        _LAST_GOOD = copy.deepcopy(data)
+
+
+def _forget_last_good() -> None:
+    """Drop the last-good memo (tests; a fresh process starts without one)."""
+    global _LAST_GOOD
+    with _LAST_GOOD_LOCK:
+        _LAST_GOOD = None
+
+
+def _parse_config_bytes(raw: bytes) -> dict[str, Any] | None:
+    """Parse config.json bytes; ``None`` when they are not a JSON object.
+
+    UTF-8 (with or without a BOM) first; a file saved by an editor in the
+    Windows ANSI code page (cp1252) is read too, and the next save writes it
+    back as UTF-8. Non-finite literals (Infinity, NaN) count as damage.
+    """
+    for encoding in ("utf-8-sig", "cp1252"):
+        try:
+            text = raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+        try:
+            data = json.loads(text, parse_constant=_reject_nonfinite)
+        except (ValueError, RecursionError):
+            return None
+        return data if isinstance(data, dict) else None
+    return None
+
+
+def _is_sharing_violation(e: OSError) -> bool:
+    # Windows: ERROR_ACCESS_DENIED (5), ERROR_SHARING_VIOLATION (32),
+    # ERROR_LOCK_VIOLATION (33); PermissionError covers EACCES elsewhere.
+    return isinstance(e, PermissionError) or getattr(e, "winerror", None) in (5, 32, 33)
+
+
+def _read_config_file(
+    path: str, *, retry_seconds: float,
+) -> tuple[str, dict[str, Any] | None]:
+    """Read a config file: ``("ok", dict)``, ``("missing", None)``,
+    ``("unreadable", None)`` (an OS error that outlasted the retries) or
+    ``("corrupt", None)`` (read, but not a JSON object)."""
+    deadline = time.monotonic() + retry_seconds
+    while True:
+        try:
+            with open(path, "rb") as f:
+                raw = f.read()
+            break
+        except FileNotFoundError:
+            return "missing", None
+        except OSError as e:
+            if time.monotonic() >= deadline:
+                logger.warning("Could not read %s: %s", path, e)
+                return "unreadable", None
+            time.sleep(0.05)
+    data = _parse_config_bytes(raw)
+    return ("ok", data) if data is not None else ("corrupt", None)
+
+
+def _replace_with_retry(src: str, dst: str) -> None:
+    """``os.replace`` that waits out a reader holding ``dst`` (Windows)."""
+    deadline = time.monotonic() + _REPLACE_RETRY_SECONDS
+    while True:
+        try:
+            os.replace(src, dst)
+            return
+        except OSError as e:
+            if not _is_sharing_violation(e) or time.monotonic() >= deadline:
+                raise ConfigSaveError(
+                    e.errno, f"Could not save the settings to {dst}: {e.strerror or e}",
+                ) from e
+            time.sleep(0.05)
+
+
+@contextlib.contextmanager
+def _config_file_lock(path: str) -> Generator[None, None, None]:
+    """Hold ``<path>.lock`` against writers in other processes.
+
+    Waits up to ``_LOCK_DEADLINE_SECONDS``; then (or when the lock file
+    cannot be used at all) the caller goes on without it and it is logged:
+    a stuck lock must never stop a save. Call with ``_SAVE_LOCK`` held.
+    """
+    depth = getattr(_FILE_LOCK_STATE, "depth", 0)
+    if depth:
+        _FILE_LOCK_STATE.depth = depth + 1
+        try:
+            yield
+        finally:
+            _FILE_LOCK_STATE.depth -= 1
+        return
+    fh = None
+    locked = False
+    try:
+        fh = open(path + ".lock", "a+b")
+        deadline = time.monotonic() + _LOCK_DEADLINE_SECONDS
+        while True:
+            try:
+                if sys.platform == "win32":
+                    import msvcrt
+                    fh.seek(0)
+                    msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                locked = True
+                break
+            except OSError:
+                if time.monotonic() >= deadline:
+                    logger.warning(
+                        "config.json.lock is held by another process; saving without it"
+                    )
+                    break
+                time.sleep(0.02)
+    except OSError as e:
+        logger.warning("Could not use config.json.lock (%s); saving without it", e)
+    _FILE_LOCK_STATE.depth = 1
+    try:
+        yield
+    finally:
+        _FILE_LOCK_STATE.depth = 0
+        if fh is not None:
+            if locked:
+                try:
+                    if sys.platform == "win32":
+                        import msvcrt
+                        fh.seek(0)
+                        msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+                    else:
+                        import fcntl
+                        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+                except OSError:
+                    pass
+            fh.close()
+
+
+def _write_disk_dict(path: str, data: dict[str, Any]) -> None:
+    """Write ``data`` to ``path`` atomically (temp file + fsync + replace).
+
+    Raises ConfigSaveError when the file cannot be replaced; the temp file
+    is removed on any failure. Call with ``_SAVE_LOCK`` held.
+    """
+    directory = os.path.dirname(path) or "."
+    fd, tmp_path = tempfile.mkstemp(prefix=".config-", suffix=".tmp", dir=directory)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        _replace_with_retry(tmp_path, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+    if os.path.abspath(path) == os.path.abspath(config_path()):
+        _remember_last_good(data)
+
+
+def _privacy_evidence_lost() -> bool:
+    """True when the saved privacy choices cannot be known.
+
+    A damaged config.json was moved aside (``.corrupt``) and there is no
+    usable ``.bak`` to take them from: a switch absent from the current file
+    is then read closed until the user saves a choice again.
+    """
+    path = config_path()
+    if not os.path.exists(path + ".corrupt"):
+        return False
+    status, _ = _read_config_file(path + ".bak", retry_seconds=0.0)
+    return status != "ok"
+
+
+def update_config(fn: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
+    """Change config.json in one transaction: lock, read the file, ``fn``, write.
+
+    For counters and other keys that several processes change (the cloud
+    minutes a worker records while the app runs): ``fn`` receives the dict
+    on disk, never a stale copy, and changes it in place. Returns the dict
+    written. Raises ConfigSaveError when the file cannot be read right now or
+    is damaged with no usable backup (writing would drop the other settings)
+    or cannot be replaced.
+    """
+    with _SAVE_LOCK:
+        path = config_path()
+        Path(os.path.dirname(path) or ".").mkdir(parents=True, exist_ok=True)
+        with _config_file_lock(path):
+            status, data = _read_config_file(path, retry_seconds=_READ_RETRY_SECONDS)
+            if status == "missing":
+                data = {}
+            elif status == "corrupt":
+                data = _read_local_config()  # moves it aside, restores the .bak
+                if not data:
+                    raise ConfigSaveError(
+                        0, f"{path} is damaged and has no usable backup; not changing it",
+                    )
+            elif status != "ok" or data is None:
+                raise ConfigSaveError(0, f"Could not read {path}; not changing it")
+            fn(data)
+            for key in _NON_PERSISTED_KEYS - _DISK_ONLY_KEYS:
+                data.pop(key, None)
+            _write_disk_dict(path, data)
+            return data
+
+
 def _read_local_config() -> dict[str, Any]:
     """Read the user's ``config.json`` and return it as a dict.
 
-    Returns ``{}`` when the file is missing (a fresh install) and on a
-    corrupt / non-object file (which is renamed aside to ``.corrupt`` so the
-    next launch starts clean). Never raises — a bad local file degrades to
-    "use the online + hard-coded layers", not a crashed launch.
+    Never raises — a bad local file degrades to "use the online + hard-coded
+    layers", not a crashed launch — and never throws good settings away:
+
+    * missing (a fresh install): ``{}``;
+    * unreadable for a moment (another process is replacing it, antivirus):
+      retried for ``_READ_RETRY_SECONDS``, then the last good copy this
+      process read, else ``{}``; the file is left alone;
+    * not valid JSON / not an object: the last saved state from
+      ``config.json.bak`` is put back and returned; the damaged file is kept
+      as ``config.json.corrupt``. Without a usable ``.bak``: ``{}``, and
+      load_config closes the privacy switches (see _privacy_evidence_lost).
     """
     path = config_path()
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            # parse_constant rejects the non-standard Infinity/-Infinity/NaN
-            # literals (which json.load accepts by default). A non-finite
-            # numeric poisons int()/float() coercion downstream (e.g.
-            # int(float('inf')) raises OverflowError on an int-typed key),
-            # so treat such a file as corrupt and revert to defaults.
-            loaded = json.load(f, parse_constant=_reject_nonfinite)
-    except FileNotFoundError:
+    status, data = _read_config_file(path, retry_seconds=_READ_RETRY_SECONDS)
+    if status == "ok" and data is not None:
+        _remember_last_good(data)
+        return data
+    if status == "missing":
         logger.warning("config.json not found at %s; using defaults", path)
         return {}
-    except (json.JSONDecodeError, UnicodeDecodeError, OSError, ValueError,
-            RecursionError) as e:
-        # UnicodeDecodeError is a ValueError that escapes the OSError
-        # branch (e.g. cp1252 bytes saved by an external editor); the
-        # original try/except missed it and crashed launch. ValueError
-        # also catches any other JSON parser-internal raises (including the
-        # non-finite-literal rejection above). RecursionError covers a
-        # pathologically nested file (legal JSON, absurd depth) that the
-        # C scanner refuses — also degraded to defaults, not a crash.
-        logger.error("Failed to read config.json (%s); using defaults", e)
+    if status == "unreadable":
+        with _LAST_GOOD_LOCK:
+            last = copy.deepcopy(_LAST_GOOD) if _LAST_GOOD is not None else None
+        logger.error(
+            "config.json at %s cannot be read right now; using %s",
+            path, "the last good copy" if last is not None else "defaults",
+        )
+        return last if last is not None else {}
+    # Damaged. Keep it for inspection, then fall back to the backup.
+    logger.error("config.json at %s is not a valid JSON object", path)
+    with _SAVE_LOCK, _config_file_lock(path):
+        # Another process may have repaired or replaced it meanwhile.
+        status, data = _read_config_file(path, retry_seconds=_READ_RETRY_SECONDS)
+        if status == "ok" and data is not None:
+            _remember_last_good(data)
+            return data
+        if status != "corrupt":
+            return {}
         try:
             os.replace(path, path + ".corrupt")
             logger.info("Moved corrupt config to %s.corrupt", path)
-        except OSError:
-            pass
-        return {}
+        except OSError as e:
+            logger.warning("Could not move the corrupt config aside: %s", e)
+        bak_status, bak = _read_config_file(path + ".bak", retry_seconds=0.0)
+        if bak_status != "ok" or bak is None:
+            return {}
+        try:
+            _write_disk_dict(path, bak)
+            logger.warning("Restored config.json from %s.bak", path)
+        except OSError as e:
+            logger.warning("Could not restore config.json from the backup: %s", e)
+        _remember_last_good(bak)
+        return bak
 
-    if not isinstance(loaded, dict):
-        logger.error("config.json is not a JSON object; using defaults")
-        return {}
-    return loaded
+
+def read_local_config_for_switches() -> dict[str, Any] | None:
+    """The local config as the privacy switches see it, without repairing anything.
+
+    For :mod:`core.offline`, which asks on every connection: no retry, no
+    rename. ``None`` = unreadable right now (keep the last value). A damaged
+    file reads as its ``.bak``; with no usable backup (or a missing file next
+    to a ``.corrupt`` and no ``.bak``) every privacy switch reads closed.
+    """
+    path = config_path()
+    status, data = _read_config_file(path, retry_seconds=0.0)
+    if status == "unreadable":
+        return None
+    if status == "ok" and data is not None:
+        if _privacy_evidence_lost():
+            return {**_PRIVACY_CLOSED, **data}
+        return data
+    if status == "corrupt":
+        bak_status, bak = _read_config_file(path + ".bak", retry_seconds=0.0)
+        if bak_status == "ok" and bak is not None:
+            return bak
+        return dict(_PRIVACY_CLOSED)
+    return dict(_PRIVACY_CLOSED) if _privacy_evidence_lost() else {}
 
 
 def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
@@ -1102,6 +1380,20 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
                 _ONLINE_MEMO[config_url] = online
 
     merged = merge_config_sources(DEFAULT_CONFIG, online, local)
+    # What the layers hold before the repairs and migrations below: save_config
+    # writes only keys that differ from this, so a repair is saved once and a
+    # key this process never touched is not written back over a newer value
+    # another process saved (see LoadedConfig).
+    baseline: dict[str, Any] = json.loads(json.dumps(merged))
+    # Privacy switches fail closed: a value that is neither clearly on nor
+    # clearly off reads as offline / no statistics / no update check, and so
+    # does a switch whose saved choice was lost with a damaged file.
+    evidence_lost = _privacy_evidence_lost()
+    for key, closed in _PRIVACY_CLOSED.items():
+        if key not in local and evidence_lost:
+            merged[key] = closed
+        elif key in merged:
+            merged[key] = offline.coerce_flag(merged[key], closed)
     # A config.json written before the quick start existed belongs to someone
     # who already uses the app: the window is only for a new install. So does
     # an unreadable one (renamed to ".corrupt"): Finish would otherwise reset a
@@ -1116,6 +1408,9 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     # local file (the online layer can set neither key).
     if "yt_dlp_update_mode" not in local and local.get("auto_update_yt_dlp") is True:
         merged["yt_dlp_update_mode"] = "auto"
+    if "yt_dlp_update_mode" not in local and "auto_update_yt_dlp" in local:
+        # The next save drops the old key; it must write the mode read from it.
+        baseline.pop("yt_dlp_update_mode", None)
     merged.pop("auto_update_yt_dlp", None)
     # Coerce / drop wrong-type values for keys that ship a default —
     # e.g. parallel_workers="many" survives the merge and downstream
@@ -1181,7 +1476,28 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
                 k, type(merged[k]).__name__, type(default).__name__, default,
             )
             merged[k] = json.loads(json.dumps(default))
-    return _apply_runtime_fallbacks(merged)
+    result = _apply_runtime_fallbacks(merged)
+    # The derived model_path and an unmounted download_folder cleared for
+    # this session are not changes to save (see the _persistable_* helpers).
+    for key in ("model_path", "download_folder"):
+        if key in result:
+            baseline[key] = copy.deepcopy(result[key])
+    return LoadedConfig(result, baseline)
+
+
+class LoadedConfig(dict[str, Any]):
+    """The dict ``load_config`` returns: it remembers what it was loaded with.
+
+    ``save_config`` then writes only the keys this dict changed since the load
+    (or since its last save) over the CURRENT file, so a long-lived copy (the
+    app's own, held from launch to exit) never reverts a key another process
+    saved meanwhile, e.g. the cloud minutes a worker records. A plain dict
+    (``dict(cfg)``) carries no baseline and is written whole, as before.
+    """
+
+    def __init__(self, data: Any = (), baseline: dict[str, Any] | None = None) -> None:
+        super().__init__(data)
+        self._config_baseline: dict[str, Any] | None = baseline
 
 
 def _persistable_model_path(config: dict[str, Any]) -> str:
@@ -1242,7 +1558,9 @@ def _persistable_model_path(config: dict[str, Any]) -> str:
     return raw
 
 
-def _persistable_download_folder(config: dict[str, Any]) -> str:
+def _persistable_download_folder(
+    config: dict[str, Any], on_disk: dict[str, Any] | None = None,
+) -> str:
     """Return the ``download_folder`` value that is safe to write to disk.
 
     ``_apply_runtime_fallbacks`` clears ``download_folder`` to "" in
@@ -1265,22 +1583,12 @@ def _persistable_download_folder(config: dict[str, Any]) -> str:
     current = _as_str(config.get("download_folder"))
     if current:
         return current
-    try:
-        with open(config_path(), "r", encoding="utf-8") as f:
-            # Mirror the non-finite guard used by _read_local_config /
-            # fetch_online_config: this re-reads the raw on-disk config
-            # directly, bypassing _read_local_config's guard, so without
-            # parse_constant an Infinity/-Infinity/NaN literal would be
-            # accepted here too — and a non-finite download_folder value
-            # then crashes the .strip() below (AttributeError, uncaught).
-            # Treat such a file as corrupt: _reject_nonfinite raises a
-            # ValueError, already handled by the except, so we fall back
-            # to the in-memory value.
-            on_disk = json.load(f, parse_constant=_reject_nonfinite)
-    except (OSError, ValueError):
-        return current
-    if not isinstance(on_disk, dict):
-        return current
+    if on_disk is None:
+        # The same tolerant read as everywhere else (non-finite literals,
+        # cp1252, a sharing error); anything unusable keeps the memory value.
+        status, on_disk = _read_config_file(config_path(), retry_seconds=_READ_RETRY_SECONDS)
+        if status != "ok" or on_disk is None:
+            return current
     prev = _as_str(on_disk.get("download_folder"))
     if prev and not _drive_is_mounted(prev):
         return prev
@@ -1296,7 +1604,6 @@ def _persistable_download_folder(config: dict[str, Any]) -> str:
 #: telemetry_opt_in is NOT listed: it is the user's own choice and is persisted
 #: when it departs from the default (see save_config).
 _NON_PERSISTED_KEYS: frozenset[str] = frozenset({
-    "config_url",
     "stats_url",
     "ffplay_downloads",
     "latest_version",
@@ -1310,83 +1617,132 @@ _NON_PERSISTED_KEYS: frozenset[str] = frozenset({
 })
 
 
+#: Keys worker processes change while the app runs (usage counters).
+WORKER_OWNED_KEYS: tuple[str, ...] = (
+    "cloud_stt_minutes_used",
+    "gcloud_stt_minutes_used",
+    "gcloud_stt_minutes_month",
+)
+
+
+def sync_from_disk(config: dict[str, Any], keys: tuple[str, ...] = WORKER_OWNED_KEYS) -> None:
+    """Copy ``keys`` from config.json into ``config``: values another process saved.
+
+    Also moves a LoadedConfig's baseline, so the next save does not count
+    them as this process's own changes. A file that cannot be read leaves
+    ``config`` as it is.
+    """
+    status, disk = _read_config_file(config_path(), retry_seconds=0.2)
+    if status != "ok" or disk is None:
+        return
+    baseline = config._config_baseline if isinstance(config, LoadedConfig) else None
+    for key in keys:
+        if key in disk:
+            config[key] = copy.deepcopy(disk[key])
+            if baseline is not None:
+                baseline[key] = copy.deepcopy(disk[key])
+
+
+def _changed_keys(config: dict[str, Any], baseline: dict[str, Any]) -> tuple[set[str], set[str]]:
+    """(keys set or changed, keys removed) in ``config`` since ``baseline``."""
+    changed = {k for k in config if k not in baseline or config[k] != baseline[k]}
+    removed = {k for k in baseline if k not in config}
+    return changed, removed
+
+
 def save_config(config: dict[str, Any]) -> None:
-    # Serialise concurrent saves through _SAVE_LOCK — without this,
-    # two threads racing to os.replace the same destination throw
-    # PermissionError on Windows (NTFS rename semantics differ from
-    # POSIX). Even though only one UI thread normally writes, the
-    # Advanced dialog + tray + debounced auto-save can overlap.
+    """Write ``config`` to config.json; raises ConfigSaveError when it cannot.
+
+    A dict from ``load_config`` (a LoadedConfig) writes only the keys it
+    changed since it was loaded or last saved, over the file as it is NOW;
+    a plain dict, or a file that is missing or cannot be read, writes the
+    whole dict as before. Either way the derived / online-only keys are left
+    out (see _NON_PERSISTED_KEYS, _DISK_ONLY_KEYS). Serialised against other
+    threads (_SAVE_LOCK; the Advanced dialog, the tray and debounced saves
+    can overlap) and other processes (config.json.lock).
+    """
     with _SAVE_LOCK:
         path = config_path()
         directory = os.path.dirname(path) or "."
         Path(directory).mkdir(parents=True, exist_ok=True)
-        # Don't persist an auto-derived model_path — it would harden
-        # into an explicit override that defeats hub_folder. See
-        # _persistable_model_path for the full rationale.
-        to_persist = dict(config)
-        to_persist["model_path"] = _persistable_model_path(config)
-        to_persist["download_folder"] = _persistable_download_folder(config)
-        for key in _NON_PERSISTED_KEYS:
-            to_persist.pop(key, None)
-        # Store the usage-stats choice only when it departs from the default:
-        # a user's OFF survives every save and reload, while an untouched
-        # default is not pinned into config.json, so a later change of the
-        # default still reaches users who never made a choice.
-        if (
-            "telemetry_opt_in" in to_persist
-            and to_persist["telemetry_opt_in"] == DEFAULT_CONFIG["telemetry_opt_in"]
-        ):
-            del to_persist["telemetry_opt_in"]
+        with _config_file_lock(path):
+            status, disk = _read_config_file(path, retry_seconds=_READ_RETRY_SECONDS)
+            on_disk = disk if status == "ok" else None
+            baseline = config._config_baseline if isinstance(config, LoadedConfig) else None
+            if baseline is not None and on_disk is not None:
+                changed, removed = _changed_keys(config, baseline)
+                to_persist = dict(on_disk)
+                for key in changed:
+                    to_persist[key] = config[key]
+                for key in removed:
+                    to_persist.pop(key, None)
+            else:
+                changed = set(config)
+                to_persist = dict(config)
+            # Don't persist an auto-derived model_path — it would harden
+            # into an explicit override that defeats hub_folder. See
+            # _persistable_model_path for the full rationale.
+            if "model_path" in changed:
+                to_persist["model_path"] = _persistable_model_path(config)
+            if "download_folder" in changed:
+                to_persist["download_folder"] = _persistable_download_folder(config, on_disk)
+            for key in _DISK_ONLY_KEYS:
+                if on_disk is not None and key in on_disk:
+                    to_persist[key] = on_disk[key]
+                else:
+                    to_persist.pop(key, None)
+            # The shipped config_url is not the user's own choice.
+            if to_persist.get("config_url") == DEFAULT_CONFIG["config_url"]:
+                del to_persist["config_url"]
+            for key in _NON_PERSISTED_KEYS:
+                to_persist.pop(key, None)
+            if os.path.exists(path + ".corrupt"):
+                # The saved privacy choices were lost with a damaged file:
+                # write every switch explicitly, so the next read does not
+                # depend on the default.
+                for key, closed in _PRIVACY_CLOSED.items():
+                    if key in config:
+                        to_persist[key] = offline.coerce_flag(config[key], closed)
+            elif (
+                "telemetry_opt_in" in to_persist
+                and to_persist["telemetry_opt_in"] == DEFAULT_CONFIG["telemetry_opt_in"]
+            ):
+                # Store the usage-stats choice only when it departs from the
+                # default: a user's OFF survives every save and reload, while
+                # an untouched default is not pinned into config.json, so a
+                # later change of the default still reaches users who never
+                # made a choice.
+                del to_persist["telemetry_opt_in"]
 
-        # Guard + backup (2026-08-15, after a real incident: config.json
-        # was found silently reduced from ~90 keys to 3 during ordinary
-        # use; the root cause was never pinned down despite a real,
-        # repeated investigation).
-        # Compares against what is CURRENTLY on disk, not a hardcoded
-        # key count, so a deliberately-small dict written to a fresh
-        # path (every test fixture in tests/core/test_config.py etc.)
-        # is unaffected — there is nothing on disk yet to shrink from.
-        try:
-            if os.path.exists(path):
-                with open(path, "r", encoding="utf-8") as f:
-                    existing = json.load(f)
-                if (
-                    isinstance(existing, dict)
-                    and len(existing) >= 10
-                    and len(to_persist) < len(existing) * 0.4
-                ):
+            # Guard + backup (2026-08-15, after a real incident: config.json
+            # was found silently reduced from ~90 keys to 3 during ordinary
+            # use; the root cause was never pinned down despite a real,
+            # repeated investigation). Compares against what is CURRENTLY on
+            # disk, not a hardcoded key count, so a deliberately-small dict
+            # written to a fresh path is unaffected.
+            if on_disk is not None:
+                if len(on_disk) >= 10 and len(to_persist) < len(on_disk) * 0.4:
                     logger.error(
                         "save_config() refused: new config has %d keys vs "
                         "%d currently on disk at %s -- this looks like "
-                        "data loss, not an intentional shrink. Not "
-                        "writing.",
-                        len(to_persist), len(existing), path,
+                        "data loss, not an intentional shrink. Not writing.",
+                        len(to_persist), len(on_disk), path,
                     )
-                    return
-                # Only reachable when the size looks reasonable: keep one
-                # rotating backup of the last good state before
-                # overwriting it. Best-effort -- never let a backup
-                # failure block the actual save.
-                shutil.copy2(path, path + ".bak")
-        except (OSError, json.JSONDecodeError, TypeError):
-            pass
-
-        fd, tmp_path = tempfile.mkstemp(
-            prefix=".config-", suffix=".tmp", dir=directory
-        )
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(to_persist, f, indent=2, ensure_ascii=False)
-                f.write("\n")
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(tmp_path, path)
-        except Exception:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
+                    raise ConfigSaveError(
+                        0,
+                        f"Refused to save {len(to_persist)} settings over "
+                        f"{len(on_disk)} in {path}; the file is unchanged",
+                    )
+                # Keep one rotating backup of the last good state (only a
+                # file that parsed, so a damaged one never replaces a good
+                # backup). Best-effort: a backup failure never blocks the save.
+                try:
+                    shutil.copy2(path, path + ".bak")
+                except OSError as e:
+                    logger.warning("Could not back up config.json: %s", e)
+            _write_disk_dict(path, to_persist)
+        if isinstance(config, LoadedConfig):
+            config._config_baseline = copy.deepcopy(dict(config))
 
 
 # Per-folder project overrides --------------------------------------------------
@@ -1454,6 +1810,9 @@ _PROJECT_KEY_RANGES: dict[str, tuple[float, float]] = {
 _REFUSED_OVERRIDES_LOGGED: set[str] = set()
 _REFUSED_OVERRIDES_LOCK = threading.Lock()
 _REFUSED_OVERRIDES_LOG_CAP = 1024
+#: A ``.whisperproject.json`` above this size is ignored without parsing it.
+MAX_PROJECT_FILE_BYTES = 1024 * 1024
+_OVERSIZED_PROJECT_FILES: set[str] = set()
 
 
 def find_project_file(start: str | Path) -> Path | None:
@@ -1497,6 +1856,24 @@ def load_project_overrides(start: str | Path) -> dict[str, Any]:
     """
     f = find_project_file(start)
     if f is None:
+        return {}
+    # The file can arrive inside a downloaded or shared folder: a huge one
+    # would be parsed whole on every job (20 MB took 14 s and 109 MB of
+    # memory). A real project file is a few hundred bytes.
+    try:
+        size = f.stat().st_size
+    except OSError:
+        size = 0
+    if size > MAX_PROJECT_FILE_BYTES:
+        with _REFUSED_OVERRIDES_LOCK:
+            first = str(f) not in _OVERSIZED_PROJECT_FILES
+            if first and len(_OVERSIZED_PROJECT_FILES) < _REFUSED_OVERRIDES_LOG_CAP:
+                _OVERSIZED_PROJECT_FILES.add(str(f))
+        if first:
+            logger.warning(
+                "Project overrides file %s is too large (%d bytes, limit %d); ignoring it",
+                f, size, MAX_PROJECT_FILE_BYTES,
+            )
         return {}
     try:
         with open(f, "r", encoding="utf-8") as fp:

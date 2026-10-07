@@ -23,7 +23,7 @@ from core.backends.availability import (
     format_engine_status,
 )
 from core import offline, subtitle_edit, tts_plan
-from core.config import DEFAULT_CONFIG, NOISY_AUDIO_PRESET, save_config
+from core.config import DEFAULT_CONFIG, NOISY_AUDIO_PRESET, save_config, sync_from_disk
 from core.model_manager import (
     DEFAULT_MODEL_SLUG,
     catalog_entry_info,
@@ -318,6 +318,14 @@ class AdvancedDialog(tk.Toplevel):
         self._update_check_enabled = tk.BooleanVar(
             value=bool(cfg.get("update_check_enabled", True))
         )
+        # _save_and_close writes a switch only when it changed here: File >
+        # Work offline (or another window) may change one while this dialog
+        # is open, and Save must not put the old value back.
+        self._switches_at_open = {
+            "telemetry_opt_in": bool(self._telemetry_opt_in.get()),
+            offline.CONFIG_KEY: bool(self._work_offline.get()),
+            "update_check_enabled": bool(self._update_check_enabled.get()),
+        }
         self._minimise_to_tray = tk.BooleanVar(
             value=bool(cfg.get("minimise_to_tray", False))
         )
@@ -1053,6 +1061,9 @@ class AdvancedDialog(tk.Toplevel):
         # No free-minutes figure here: the Gemini API's free tier is
         # rate-limited, not a monthly minute allowance (that 60 min/month
         # number is Google Cloud Speech-to-Text's, a different service).
+        # A worker process records the minutes in config.json; the app's copy
+        # in memory is from launch.
+        sync_from_disk(self.app.app_config)
         used = float(self.app.app_config.get("cloud_stt_minutes_used") or 0.0)
         ttk.Label(
             cloud,
@@ -2129,9 +2140,15 @@ class AdvancedDialog(tk.Toplevel):
                 )
             else:
                 self.app.log(f"Unknown model slug {new_slug!r}; keeping current model.")
-        cfg["telemetry_opt_in"] = bool(self._telemetry_opt_in.get())
-        cfg[offline.CONFIG_KEY] = bool(self._work_offline.get())
-        cfg["update_check_enabled"] = bool(self._update_check_enabled.get())
+        at_open = getattr(self, "_switches_at_open", {})
+        for key, var in (
+            ("telemetry_opt_in", self._telemetry_opt_in),
+            (offline.CONFIG_KEY, self._work_offline),
+            ("update_check_enabled", self._update_check_enabled),
+        ):
+            value = bool(var.get())
+            if at_open.get(key) != value:
+                cfg[key] = value
         cfg["minimise_to_tray"] = bool(self._minimise_to_tray.get())
         cfg[tts_plan.NO_LIMIT_KEY] = bool(self._tts_no_text_limit.get())
         cfg[subtitle_edit.CONFIG_KEY] = (self._subtitle_edit_path.get() or "").strip()
@@ -2146,7 +2163,18 @@ class AdvancedDialog(tk.Toplevel):
         try:
             save_config(cfg)
         except Exception as e:  # noqa: BLE001
+            # Stay open: closing would look like a successful save.
+            logger.exception("Failed to save settings")
             self.app.log(f"Failed to save settings: {e}")
+            from tkinter import messagebox
+            messagebox.showerror(
+                "Settings not saved",
+                f"The settings could not be saved:\n{e}\n\n"
+                "Close other programs that may be using the settings file, "
+                "then click Save again.",
+                parent=self,
+            )
+            return
         # Engine switch needs a fresh worker: the live worker snapshots
         # transcribe_backend at spawn and the dispatch prefers that stale
         # value, so rewriting cfg alone keeps the old engine running until the
@@ -2513,6 +2541,7 @@ class AdvancedDialog(tk.Toplevel):
             self._gcloud_usage_text.set(f"Usage unavailable: {e}")
             return
         cfg = self.app.app_config
+        sync_from_disk(cfg)  # the worker's counter, not the launch-time copy
         used = float(cfg.get("gcloud_stt_minutes_used") or 0.0)
         month_stored = str(cfg.get("gcloud_stt_minutes_month") or "")
         cap = int(cfg.get("gcloud_stt_free_minutes_cap") or 60)

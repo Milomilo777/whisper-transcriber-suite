@@ -457,10 +457,14 @@ def test_a_failed_save_is_reported_and_the_process_stays_offline(monkeypatch):
         raise OSError("disk full")
 
     monkeypatch.setattr(app_mod, "save_config", boom)
+    shown: list[tuple[str, str]] = []
+    monkeypatch.setattr(app_mod, "notify", lambda _w, text, kind="info": shown.append((text, kind)))
     stub = _app_stub({})
     App._set_work_offline(stub, True)  # type: ignore[arg-type]
     assert offline.is_offline() is True
     assert any("Could not save the Work offline choice (disk full)" in line for line in stub.logs)
+    # Shown in the window too, not only written to the log.
+    assert shown and "disk full" in shown[0][0] and shown[0][1] == "warning"
 
 
 def test_advanced_dialog_close_resyncs_the_menu_and_the_switch():
@@ -481,7 +485,7 @@ def test_advanced_dialog_saves_the_checkbox():
     from app.dialogs.advanced import AdvancedDialog
 
     src = inspect.getsource(AdvancedDialog)
-    assert "cfg[offline.CONFIG_KEY] = bool(self._work_offline.get())" in src
+    assert "(offline.CONFIG_KEY, self._work_offline)" in src
     assert 'text="Work offline (also in the File menu)"' in src
     assert "variable=self._work_offline" in src
 

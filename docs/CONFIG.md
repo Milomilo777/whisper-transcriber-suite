@@ -12,6 +12,39 @@ for the online layer to pick it up.
 
 The file is read once at startup and written when the user changes a persisted setting (download folder, subtitle preferences, theme, etc.). Manual edits take effect on next launch.
 
+### How the file is read and saved
+
+The desktop app, its worker processes, the HTTP server and the CLI share this one file, so
+reading and saving are built to never lose a setting (`core.config`):
+
+- **Saving writes only what changed.** `load_config()` returns a dict that remembers the values
+  it was loaded with; `save_config()` writes the keys this process changed over the file as it
+  is *now*, so the app's own copy (held from launch to exit) never reverts a value another
+  process saved meanwhile, such as the cloud minutes a worker records. A plain dict (a copy made
+  with `dict(...)`) is written whole, as before. Counters that several processes change go
+  through `core.config.update_config(fn)`: lock, read the file, change it, write it.
+- **Writes are atomic and serialised.** A temporary file is written, flushed and moved over
+  `config.json`; other processes are kept out by `config.json.lock` next to it (waited for up to
+  2 s, then the save goes ahead and the wait is logged). On Windows a reader holding the file
+  makes the move fail for a moment, so it is retried for up to 1 s. A save that still fails
+  raises `ConfigSaveError`; **Advanced** then shows the error and stays open, and
+  **File → Work offline** says so in the window.
+- **A backup is kept.** Every save first copies the current, valid file to `config.json.bak`.
+  A save that would write fewer than 40 % of the keys on disk is refused as data loss.
+- **A read error is not damage.** A file that cannot be opened for a moment (another process is
+  replacing it, an antivirus scan) is retried for up to 1 s, then the last copy this process
+  read is used; the file is never renamed for it. A file saved by an editor in the Windows ANSI
+  code page (cp1252) is read, and the next save writes it as UTF-8.
+- **A damaged file falls back to its backup.** A file that is not a JSON object is moved to
+  `config.json.corrupt` and `config.json.bak` is put back in its place. With no usable backup the
+  app starts from the defaults, except for the privacy switches below.
+- **Privacy switches fail closed.** `work_offline`, `telemetry_opt_in` and `update_check_enabled`
+  accept `true`/`false` (also as the words true/false, yes/no, on/off, 1/0); any other value
+  reads as *offline*, *no usage statistics* and *no update check*. While a `config.json.corrupt`
+  exists without a usable `config.json.bak`, a switch missing from the file reads the same way
+  (the saved choice was lost), and the next save writes all three explicitly. Work offline then
+  shows in the window title and the File menu, so it can be turned off again.
+
 ## Three-level merged configuration (P4-1)
 
 The effective config is merged from **three layers**, in priority order:
@@ -28,8 +61,8 @@ The merge itself is pure and testable: `core.config.merge_config_sources(hardcod
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `config_url` | string | `https://smch.ir/whisper/app_config.json` (placeholder — the maintainer sets the real URL) | URL of the online app-level config JSON. Fetched best-effort on startup; cached for offline fallback. Empty disables the online layer. A hand edit in `config.json` (e.g. a staging URL, or `""`) is honoured on load, but `save_config` drops this key, so the edit lasts only until the app next saves its settings. |
-| `model_catalog` | object | `{}` | Online/local-supplied catalog of selectable models, same shape as `core.model_manager.MODEL_REGISTRY` (`slug → {label, name, url, md5, hf_repo, approx_size_gb, info}`). `url`/`md5` may be `""` for a model with no smch.ir mirror — `ensure_model` then downloads straight from `hf_repo`. Overlaid on the built-in catalog so new models can ship without an app update. **Allowlisted** for the online layer. |
+| `config_url` | string | `https://smch.ir/whisper/app_config.json` (placeholder — the maintainer sets the real URL) | URL of the online app-level config JSON. Fetched best-effort on startup; cached for offline fallback. Empty disables the online layer. A hand edit in `config.json` (e.g. a staging URL, or `""`) is honoured on load and kept by every save; the app itself never writes this key (the shipped URL is not stored). |
+| `model_catalog` | object | `{}` | Online/local-supplied catalog of selectable models, same shape as `core.model_manager.MODEL_REGISTRY` (`slug → {label, name, url, md5, hf_repo, approx_size_gb, info}`). `url`/`md5` may be `""` for a model with no smch.ir mirror — `ensure_model` then downloads straight from `hf_repo`. Overlaid on the built-in catalog so new models can ship without an app update. **Allowlisted** for the online layer. Never written from memory: a catalog hand-written into `config.json` is kept by every save, and the online one is not copied into the file, so a corrected online entry reaches every user. |
 | `stats_url` | string | `https://smch.ir/stats/transcription_stats.php` | Usage-stats POST endpoint. The desktop app POSTs one row here per successfully finished transcription while `telemetry_opt_in` is true, which is the default — see **Usage statistics (P4-4)** below for every field. Empty or a non-http(s) URL = no POST. **Allowlisted** for the online layer so it can be set/changed remotely; like `config_url` it is not written to `config.json`. |
 | `latest_version` | string | `""` | Newest published version string (informational; complements the GitHub update check). **Allowlisted** for the online layer. |
 
@@ -95,7 +128,7 @@ Opening a link (Help menu, About dialog, release page) hands the URL to the syst
 | `download_subtitles_enabled` | bool | `false` | Last state of the subtitle checkbox on the Download Videos tab |
 | `download_subtitle_lang` | string | `"Automatic"` | Last-selected subtitle language (display name from `SUBTITLE_LANGUAGES`, not the code). |
 | `download_caption_choice` | string | `"ask"` | What a download does when "Transcribe after download" is on and the video already has subtitles in the chosen language: `"ask"` shows the question "Use the existing subtitles or transcribe?", `"captions"` always fetches only the subtitles, `"transcribe"` always downloads and transcribes. The question's "Don't ask again" sets it; Advanced → Downloads changes it back. |
-| `theme` | string | `"dark"` | `"light"` / `"dark"` / `"system"` — applied via `sv_ttk` (Phase 1.1). `"system"` falls back to `"dark"` if the optional `darkdetect` package is not installed. |
+| `theme` | string | `"light"` | `"light"` / `"dark"` / `"system"` — applied via `sv_ttk` (Phase 1.1). `"system"` falls back to `"dark"` if the optional `darkdetect` package is not installed. |
 | `log_level` | string | `"INFO"` | Python logging level for the file handler (Phase 1.3) |
 | `yt_dlp_update_mode` | string | `"ask"` | How the video downloader (yt-dlp) stays current (`core.yt_dlp_update`; **Advanced → Downloads (yt-dlp)**). `"ask"`: a download or format lookup that fails with HTTP 403, a signature or an extractor error shows a bar with **Update it**. `"auto"`: also updates before a download, at most once every 24 h. `"never"`: no bar and no update. An update runs yt-dlp's own `--update-to stable` on a copy in `<user cache>/tools/yt-dlp/` (first copied from the bundled binary; yt-dlp checks the download against the release's `SHA2-256SUMS`), never on the bundled binary and never while a download runs; the app then runs whichever of the two copies is newer, recorded in `tools/yt-dlp/state.json`. Not available in the macOS app (its yt-dlp is a folder build, which yt-dlp cannot update) or without a bundled binary. A config with the older `auto_update_yt_dlp: true` loads as `"auto"`; that key is no longer written. Local only. |
 | `last_yt_dlp_update_check` | string (ISO date) | `""` | UTC timestamp of the last automatic update check that ran to its end; `"auto"` waits 24 h after it. A timeout or a skipped check (a download was running) is not stamped. Local only. |
@@ -464,38 +497,51 @@ Not a config key — a **File → Convert transcript…** menu action backed by 
 |---|---|---|---|
 | `crash_reporting` | bool | `false` | Planned separate switch for Sentry crash reports (ROADMAP 1.8). Not read today: crash reports follow `telemetry_opt_in` + `$SENTRY_DSN` (see **Launch ping and crash reports**). |
 
-## Coming in Phase 2
+## Transcription and download options
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `models` | array of objects | (see ROADMAP 2.7) | List of available models with their URLs and active flag |
-| `active_model` | string | `"large-v3"` | Which entry in `models` is currently selected |
-| `vad_enabled` | bool | `true` | Voice Activity Detection on by default |
-| `vad_min_silence_ms` | int | `500` | |
-| `vad_threshold` | float | `0.5` | |
-| `word_timestamps` | bool | `false` | |
-| `initial_prompt` | string | `""` | |
-| `hotwords` | string | `""` | |
-| `task` | string | `"transcribe"` | `"transcribe"` / `"translate"` |
-| `output_formats` | array of strings | `["srt", "json"]` | Subset of `srt / vtt / tsv / json / txt / lrc` |
-| `presets_dir` | string | (platformdirs) | Where preset TOML files live |
-| `active_preset` | string | `null` | Currently applied preset name |
+| `vad_enabled` | bool | `true` | Voice Activity Detection (skip silence before transcribing). |
+| `vad_min_silence_ms` | int | `500` | Shortest silence (ms) that splits speech. |
+| `vad_threshold` | float | `0.5` | Speech probability above which audio counts as speech. |
+| `vad_speech_pad_ms` | int | `400` | Audio kept (ms) on each side of detected speech. |
+| `word_timestamps` | bool | `false` | Per-word timings in the JSON output. |
+| `initial_prompt` | string | `""` | Text given to the model before the audio (names, spelling). |
+| `hotwords` | string | `""` | Words the model should prefer. |
+| `output_formats` | array of strings | `["srt", "json"]` | Subset of `srt / vtt / tsv / json / txt / lrc / md`. |
+| `transcribe_backend` | string | `"faster_whisper"` | The transcription engine (Advanced settings). Cloud engines run only when chosen here, with the user's own credentials. |
+| `transcribe_language` | string | `"Auto"` | Spoken-language picker on the Transcribe tab (display name). Kept for older files; the picker itself is not saved. |
+| `hallucination_detect_enabled` | bool | `true` | Flags repeated or invented lines in the output. |
+| `auto_chapters_enabled` | bool | `true` | Adds chapters to the output after a transcription. |
+| `chapter_min_seconds` | float | `60.0` | Shortest chapter, in seconds. |
+| `chapter_gap_seconds` | float | `2.5` | Silence (s) that may start a new chapter. |
+| `diarization_enabled` | bool | `false` | Speaker labels (optional pyannote install). |
+| `diarization_num_speakers` | int | `-1` | Number of speakers; `-1` = detect. |
+| `diarization_cluster_threshold` | float | `0.5` | How alike two voices must be to count as one speaker. |
+| `voiceprint_enabled` | bool | `true` | Renames speaker labels to enrolled voices when diarization is on and voices are enrolled. |
+| `demucs_enabled` | bool | `false` | Separates the voice from music before transcribing (optional Demucs install). |
+| `demucs_cache_mb` | int | `2048` | Disk budget (MB) for separated audio kept for reuse. |
+| `live_model` | string | `"tiny"` | Model of the Live tab. |
+| `auto_transcribe_after_download` | bool | `false` | Transcribes each finished download. |
+| `cookies_from_browser` | string | `""` | Browser whose cookies yt-dlp uses (`"firefox"`, `"chrome"`, `"edge"`, `"brave"`, …); empty = none. |
+| `sponsorblock_categories` | array | `[]` | SponsorBlock segments to cut from downloads, e.g. `["sponsor", "intro", "outro"]`. |
+| `watched_folder` | string | `""` | Folder whose new media files are transcribed automatically. |
+| `watched_folder_enabled` | bool | `false` | Turns the watched folder on. |
+| `chime_on_complete` | bool | `true` | Plays a sound when a job finishes. |
+| `minimise_to_tray` | bool | `false` | Minimising hides the window to the tray. |
+| `window_geometry` | string | `""` | Last window size and position. |
+| `server_https_enabled` | bool | `false` | Web / LAN access tab: serve over HTTPS. |
+| `server_webhook_url` | string | `""` | Web / LAN access tab: URL told about finished jobs (skipped while Work offline is on). |
+| `voice_clone` | object | `{}` | Clone Your Voice tab: engine, mode and Kokoro voice. |
 
-## Coming in Phase 3
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `parallel_downloads` | int | `1` | Max concurrent yt-dlp downloads |
-| `sponsorblock_categories` | array | `[]` | E.g. `["sponsor", "intro", "outro"]` |
-| `cookies_from_browser` | string | `null` | `"firefox"` / `"chrome"` / `"edge"` / `"brave"` |
-| `extra_ytdlp_args` | string | `""` | Free-form args to append to every yt-dlp invocation |
-| `download_rate_limit` | string | `""` | E.g. `"5M"` for `--limit-rate 5M` |
+Not read by the app (planned only): `models`, `active_model`, `task`, `presets_dir`,
+`active_preset`, `parallel_downloads`, `extra_ytdlp_args`, `download_rate_limit`.
 
 ## Migration policy
 
 When a new field is introduced, `load_config` will populate it with the default if absent. Removing a field is a breaking change and bumps the minor version.
 
-`save_config` always writes the full known schema. Unknown fields read from `config.json` are preserved (forward-compat for downgrades).
+`save_config` writes the keys the app changed and keeps every other key already in `config.json`, including unknown ones (forward-compat for downgrades); a new install, or a save from a plain dict, writes the full known schema. Derived and online-only keys are never written (`_NON_PERSISTED_KEYS`, `_DISK_ONLY_KEYS`).
 
 ## Examples
 

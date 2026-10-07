@@ -63,15 +63,18 @@ def test_shrink_guard_refuses_drastic_reduction(isolated_dirs):
     full = dict(cfg.DEFAULT_CONFIG)
     cfg.save_config(full)  # first write: nothing on disk yet, always allowed
     on_disk_before = json.loads(Path(cfg.config_path()).read_text(encoding="utf-8"))
-    # Everything is written except the non-persisted app-level keys and the
-    # usage-stats choice, which is only stored when it departs from the
-    # default (full carries the default).
+    # Everything is written except the non-persisted app-level keys, the
+    # disk-only keys (never written from memory) and the usage-stats choice,
+    # which is only stored when it departs from the default (full carries
+    # the default).
     assert set(on_disk_before) == (
-        set(full) - cfg._NON_PERSISTED_KEYS - {"telemetry_opt_in"}
+        set(full) - cfg._NON_PERSISTED_KEYS - cfg._DISK_ONLY_KEYS - {"telemetry_opt_in"}
     )
 
     tiny = {"cpu_warning_shown": True, "model_path": "", "download_folder": ""}
-    cfg.save_config(tiny)  # must be refused -- looks like data loss, not intent
+    # Must be refused -- looks like data loss, not intent -- and say so.
+    with pytest.raises(cfg.ConfigSaveError):
+        cfg.save_config(tiny)
 
     on_disk_after = json.loads(Path(cfg.config_path()).read_text(encoding="utf-8"))
     assert on_disk_after == on_disk_before, "a drastic shrink must not overwrite the file"
