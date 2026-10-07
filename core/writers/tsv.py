@@ -1,9 +1,14 @@
-"""Tab-separated values writer (used by Audacity Labels and many editors)."""
+"""Tab-separated values writer: ``start<TAB>end<TAB>text`` with a header row.
+
+Times are integer MILLISECONDS (the layout OpenAI Whisper's ``.tsv``
+output uses), which spreadsheets and scripts read directly. This is not
+an Audacity label track: Audacity labels have no header and use seconds.
+"""
 from __future__ import annotations
 
 import math
 
-from .base import normalize_text
+from .base import coerce_seconds, normalize_text
 
 
 def _ms(value: object) -> int:
@@ -33,6 +38,10 @@ def write(segments: list[dict], audio_path: str = "") -> str:
     for seg in segments:
         text = normalize_text(seg.get("text", "")).replace("\t", " ")
         start_ms = _ms(seg.get("start", 0.0))
-        end_ms = _ms(seg.get("end", 0.0))
+        # A missing or unusable end falls back to the start and an earlier
+        # end is clamped to it, as in the subtitle writers (0 here made a
+        # negative-length row).
+        end_s = coerce_seconds(seg.get("end"), -1.0)
+        end_ms = max(_ms(end_s), start_ms) if end_s >= 0 else start_ms
         rows.append(f"{start_ms}\t{end_ms}\t{text}")
     return "\n".join(rows) + "\n"

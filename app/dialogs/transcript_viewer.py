@@ -50,6 +50,7 @@ from app.widgets import subtitle_edit as subtitle_edit_ui
 from app.widgets.notice import notify
 from app.widgets.tooltip import help_icon
 from core import subtitle_edit
+from core.writers.base import words_match_text
 
 
 logger = logging.getLogger(__name__)
@@ -481,6 +482,19 @@ def _try_load_vlc() -> tuple[Any, str]:
             "Reinstall the 64-bit VLC to enable embedded playback. The "
             "viewer still works in read-only mode."
         )
+
+
+def _set_segment_text(seg: dict[str, Any], text: str) -> None:
+    """Replace a segment's text and drop a word list it no longer matches.
+
+    The per-word list (karaoke timing, confidence colours) describes the
+    words as transcribed. After an edit it would spell the old wording, and
+    word-level exports would bring the corrected-away words back, so it is
+    removed unless it still spells the new text.
+    """
+    seg["text"] = text
+    if "words" in seg and not words_match_text(seg):
+        del seg["words"]
 
 
 def _strip_fillers(text: str, pattern: re.Pattern[str]) -> str:
@@ -1585,7 +1599,7 @@ class TranscriptViewer(tk.Toplevel):
             original = (seg.get("text") or "")
             cleaned = _strip_fillers(original, pattern)
             if cleaned != original.strip():
-                seg["text"] = cleaned
+                _set_segment_text(seg, cleaned)
                 changed += 1
         if changed:
             self._dirty = True
@@ -2300,7 +2314,7 @@ class FindReplaceDialog(tk.Toplevel):
         if new_text == text:
             self.find_next()
             return
-        seg["text"] = new_text
+        _set_segment_text(seg, new_text)
         self.viewer._dirty = True
         self.viewer._populate_listbox()
         self.find_next()
@@ -2316,7 +2330,7 @@ class FindReplaceDialog(tk.Toplevel):
             text = seg.get("text", "") or ""
             new_text = self._safe_replace(text, needle, replacement, case_sensitive)
             if new_text != text:
-                seg["text"] = new_text
+                _set_segment_text(seg, new_text)
                 count += 1
         if count:
             self.viewer._dirty = True

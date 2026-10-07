@@ -38,9 +38,12 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         # (e.g. a number) in "text"; ``(value or "").strip()`` raised
         # AttributeError on it and dropped the whole sidecar.
         raw_text = seg.get("text")
+        start = _safe_float(seg.get("start", 0.0))
+        # A missing (or unusable) end falls back to the start, as in every
+        # other writer; 0 made a negative-length segment.
         item: dict = {
-            "start": _safe_float(seg.get("start", 0.0)),
-            "end": _safe_float(seg.get("end", 0.0)),
+            "start": start,
+            "end": _safe_float(seg.get("end", start), start),
             "text": ("" if raw_text is None else str(raw_text)).strip(),
         }
         speaker = seg.get("speaker")

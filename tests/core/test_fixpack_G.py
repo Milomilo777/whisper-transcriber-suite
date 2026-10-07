@@ -79,7 +79,9 @@ def test_tsv_writer_clamps_inf_timestamp():
     line = body.strip().split("\n")[1]
     start_ms, end_ms, _ = line.split("\t")
     assert start_ms == "500"
-    assert end_ms == "0"
+    # Clamped to the start like the subtitle writers (0 made a
+    # negative-length row).
+    assert end_ms == "500"
 
 
 def test_tsv_writer_clamps_negative_timestamp():

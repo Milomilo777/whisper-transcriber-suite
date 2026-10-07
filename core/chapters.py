@@ -30,6 +30,7 @@ self-contained — it doesn't mutate the underlying segments.
 from __future__ import annotations
 
 import logging
+import math
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -71,10 +72,10 @@ def detect_chapter_boundaries(
         return []
     boundaries: list[ChapterBoundary] = []
     chapter_start_idx = 0
-    chapter_start = float(segments[0].get("start", 0.0))
+    chapter_start = _seconds(segments[0].get("start"), 0.0)
     for i in range(len(segments) - 1):
-        cur_end = float(segments[i].get("end", segments[i].get("start", 0.0)))
-        next_start = float(segments[i + 1].get("start", cur_end))
+        cur_end = _seg_end(segments[i])
+        next_start = _seconds(segments[i + 1].get("start"), cur_end)
         gap = next_start - cur_end
         duration = cur_end - chapter_start
         if gap >= gap_seconds and duration >= min_chapter_seconds:
@@ -87,8 +88,7 @@ def detect_chapter_boundaries(
             chapter_start_idx = i + 1
             chapter_start = next_start
     # Close the trailing chapter on the final segment.
-    last = segments[-1]
-    last_end = float(last.get("end", last.get("start", 0.0)))
+    last_end = _seg_end(segments[-1])
     boundaries.append(ChapterBoundary(
         start=chapter_start,
         end=last_end,
@@ -101,7 +101,53 @@ def detect_chapter_boundaries(
 # ---------------------------------------------------------------- titles
 
 
-_FIRST_SENTENCE_RE = re.compile(r"^[^.!?\n]+[.!?]?")
+# A sentence ends at ".", "!", "?" or the Arabic-script question mark
+# followed by whitespace or the end of the text, so "Version 2.0" and
+# "3.14" do not end it; the CJK full-width marks need no space after them.
+_SENTENCE_END_RE = re.compile(r"[.!?\u061f](?=\s|$)|[\u3002\uff01\uff1f]")
+_TERMINATORS = ".!?\u061f\u3002\uff01\uff1f\u2026"
+# Words ending in "." that are abbreviations, not a sentence end. Words
+# with an inner dot ("e.g", "U.S") count as abbreviations too.
+_ABBREVIATIONS = frozenset({
+    "mr", "mrs", "ms", "dr", "prof", "jr", "sr", "vs", "etc",
+    "mt", "ft", "inc", "ltd", "approx", "dept",
+})
+
+
+def _seconds(value: object, default: float) -> float:
+    """A finite float from a segment field; ``default`` for None / junk."""
+    try:
+        out = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError):
+        return default
+    return out if math.isfinite(out) else default
+
+
+def _seg_end(seg: dict[str, Any]) -> float:
+    start = _seconds(seg.get("start"), 0.0)
+    return _seconds(seg.get("end"), start)
+
+
+def _seg_text(seg: dict[str, Any]) -> str:
+    raw = seg.get("text")
+    return ("" if raw is None else str(raw)).strip()
+
+
+def _first_sentence(text: str) -> str:
+    for m in _SENTENCE_END_RE.finditer(text):
+        before = text[:m.start()]
+        if not before.strip().strip(_TERMINATORS).strip():
+            continue  # a leading "..." / "!!!" ends nothing yet
+        if m.group(0) == ".":
+            words = before.split()
+            last = words[-1].lower() if words else ""
+            # "Dr." / "e.g." / "U.S." / an initial ("J. Smith") go on;
+            # "I." is a word, not an initial.
+            if (last in _ABBREVIATIONS or "." in last
+                    or (len(last) == 1 and last.isalpha() and last != "i")):
+                continue
+        return text[:m.end()]
+    return text
 
 
 def heuristic_title(segments: list[dict[str, Any]], boundary: ChapterBoundary,
@@ -113,7 +159,7 @@ def heuristic_title(segments: list[dict[str, Any]], boundary: ChapterBoundary,
     for idx in range(boundary.segment_start, boundary.segment_end + 1):
         if idx >= len(segments):
             break
-        t = (segments[idx].get("text") or "").strip()
+        t = _seg_text(segments[idx])
         if t:
             text_parts.append(t)
             if len(" ".join(text_parts).split()) >= max_words * 2:
@@ -121,9 +167,8 @@ def heuristic_title(segments: list[dict[str, Any]], boundary: ChapterBoundary,
     combined = " ".join(text_parts).strip()
     if not combined:
         return "Chapter"
-    m = _FIRST_SENTENCE_RE.match(combined)
-    first = (m.group(0).strip() if m else combined).rstrip(".!? ")
-    words = first.split()
+    words = _first_sentence(combined).strip(_TERMINATORS + " \t\n").split()
+    first = " ".join(words)
     if len(words) > max_words:
         first = " ".join(words[:max_words]) + "…"
     return first or "Chapter"
@@ -169,7 +214,7 @@ def _slice_text(segments: list[dict[str, Any]], boundary: ChapterBoundary) -> st
     for idx in range(boundary.segment_start, boundary.segment_end + 1):
         if idx >= len(segments):
             break
-        t = (segments[idx].get("text") or "").strip()
+        t = _seg_text(segments[idx])
         if t:
             parts.append(t)
     return " ".join(parts)

@@ -113,11 +113,75 @@ def escape_cue_separator(text: str) -> str:
     SRT and WebVTT use ``-->`` as the cue-time separator on its own
     line; embedded occurrences in the cue payload confuse the parser
     (some treat the rest of the line as a malformed timecode). The
-    unicode arrow ``→`` reads identically and is safe.
+    unicode arrow ``→`` reads identically and is safe. Used by SRT only:
+    SubRip has no escape syntax, so this is the one deliberate text change
+    an SRT round trip makes. WebVTT escapes ``>`` instead
+    (:func:`escape_vtt_text`) and keeps the text exact.
     """
     if not text:
         return ""
     return text.replace("-->", "→")
+
+
+def karaoke_tokens(seg: dict) -> list[tuple[dict, str, bool]] | None:
+    """Align the segment's ``words`` with its ``text`` for karaoke output.
+
+    Returns ``(word, token, space_before)`` for every usable word, where
+    ``token`` is the word's normalised text and ``space_before`` says
+    whether the text has whitespace between this token and the previous
+    one; or None when the words do not spell the text.
+
+    The transcript viewer edits only ``text``; the per-word list it came
+    with keeps the old wording. Writers that render words (VTT/ASS karaoke)
+    must then fall back to ``text``, or the correction silently vanishes
+    from those formats. Any change of letters, digits or punctuation is
+    such an edit. A change of spacing only ("to day" -> "today") keeps the
+    words usable: the writer takes its spaces from ``text``, which also
+    keeps CJK text (words without spaces) unspaced.
+    """
+    words = seg.get("words") if isinstance(seg, dict) else None
+    if not isinstance(words, list) or not words:
+        return None
+    text = normalize_text(seg.get("text"))
+    pos = 0
+    out: list[tuple[dict, str, bool]] = []
+    for w in words:
+        if not isinstance(w, dict):
+            continue
+        token = normalize_text(w.get("word"))
+        if not token:
+            continue
+        space = pos < len(text) and text[pos] == " "
+        if space:
+            pos += 1
+        if not text.startswith(token, pos):
+            return None
+        out.append((w, token, space))
+        pos += len(token)
+    if not out or pos != len(text):
+        return None
+    return out
+
+
+def words_match_text(seg: dict) -> bool:
+    """True when the segment's ``words`` still spell its ``text``.
+
+    Only spacing may differ (see :func:`karaoke_tokens`).
+    """
+    return karaoke_tokens(seg) is not None
+
+
+def escape_vtt_text(text: str) -> str:
+    """Escape ``&``, ``<`` and ``>`` for a WebVTT cue payload.
+
+    WebVTT reads ``<`` as the start of a tag and ``&`` as the start of a
+    character reference, so raw ones break the cue in browsers and are
+    stripped by parsers. Escaping ``>`` as well also keeps a literal
+    ``-->`` out of the payload, which the spec forbids.
+    """
+    if not text:
+        return ""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def speaker_prefix(seg: dict) -> str:

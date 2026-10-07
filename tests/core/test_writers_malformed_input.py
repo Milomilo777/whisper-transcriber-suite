@@ -176,14 +176,15 @@ def test_coerce_seconds_accepts_strings_and_rejects_junk():
 def test_vtt_karaoke_skips_non_dict_word_entries():
     # Sibling of test_json_writer_skips_non_dict_words: a non-dict entry
     # inside "words" used to AttributeError on w.get() and abort the file.
+    # The usable words still spell the text, so karaoke is written.
     seg = {
         "start": 0.0,
         "end": 2.0,
-        "text": "hello world",
+        "text": "hi",
         "words": ["bad", 5, None, {"start": 0.0, "end": 1.0, "word": "hi"}],
     }
     body = vtt.write([seg])
-    assert "hi" in body
+    assert "<c>hi</c>" in body
 
 
 def test_vtt_karaoke_falls_back_when_all_words_non_dict():

@@ -12,6 +12,7 @@ Stdlib only (``xml.etree.ElementTree``).
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from .base import coerce_seconds, normalize_text, sanitize_for_xml, speaker_prefix
@@ -54,9 +55,11 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         "TIME_UNITS": "milliseconds",
     })
     if audio_path:
-        import os as _os
+        # as_uri() percent-encodes spaces, "#" and non-ASCII names and gives
+        # file:///C:/... on Windows and file:///home/... on POSIX (string
+        # concatenation produced file:////home/... with raw characters).
         ET.SubElement(header, "MEDIA_DESCRIPTOR", {
-            "MEDIA_URL": "file:///" + _os.path.abspath(audio_path).replace("\\", "/"),
+            "MEDIA_URL": Path(audio_path).resolve().as_uri(),
             "MIME_TYPE": "audio/x-wav",
         })
 
@@ -72,8 +75,9 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         text = sanitize_for_xml(speaker_prefix(seg) + normalize_text(seg.get("text", "")))
         if not text:
             continue
-        start_ms = _ms(coerce_seconds(seg.get("start")))
-        end_ms = _ms(coerce_seconds(seg.get("end"), start_ms))
+        start_s = coerce_seconds(seg.get("start"))
+        start_ms = _ms(start_s)
+        end_ms = _ms(coerce_seconds(seg.get("end"), start_s))
         if end_ms < start_ms:
             end_ms = start_ms
 

@@ -18,18 +18,25 @@ from .base import (
 
 def write(segments: list[dict], audio_path: str = "") -> str:
     out: list[str] = []
-    for i, seg in enumerate(segments, 1):
+    i = 0
+    for seg in segments:
         # escape_cue_separator: literal "-->" in the payload would
         # collide with SRT's own time-code separator and confuse
         # downstream parsers.
         text = escape_cue_separator(normalize_text(seg.get("text", "")))
+        if not text:
+            # An empty payload line ends the cue early in strict parsers
+            # and shows nothing; ASS and ELAN skip blank segments too.
+            continue
         text = speaker_prefix(seg) + text
         # coerce_seconds: a hand-edited / externally produced segment can
         # carry None / a non-numeric string / a non-finite time; the cue
         # must survive with a clamped timestamp rather than aborting the
-        # whole file. Missing "end" falls back to the start.
+        # whole file. Missing "end" falls back to the start, and an end
+        # before the start is clamped to it (as ASS does).
         start = coerce_seconds(seg.get("start"))
-        end = coerce_seconds(seg.get("end"), start)
+        end = max(coerce_seconds(seg.get("end"), start), start)
+        i += 1
         out.append(f"{i}")
         out.append(f"{fmt_srt_time(start)} --> {fmt_srt_time(end)}")
         out.append(text)

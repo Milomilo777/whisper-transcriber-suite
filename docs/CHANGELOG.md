@@ -264,6 +264,26 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Edits in the transcript viewer reach every subtitle format.** VTT and ASS wrote the
+  per-word karaoke list in preference to the text, so corrections made with Find & Replace or
+  filler removal vanished from those files and from Convert. The writers now use the text when
+  the words no longer spell it (spacing-only edits keep karaoke, with spaces taken from the
+  text, so CJK karaoke no longer gains spaces), and the viewer drops a stale word list on edit.
+- **Subtitle text survives a write and a read-back exactly.** VTT now escapes `&`, `<` and `>`
+  (text, words and speaker) and Convert decodes them; the SRT/VTT reader removes only known
+  formatting tags, so "a < b and c > d" is kept; ASS braces and backslashes (`C:\new`, a
+  literal `{\k5}`) and InqScribe text that looks like a timestamp now round-trip. Property tests
+  cover every writer/reader pair.
+- **Subtitle reader fixes.** A YouTube cue whose first line is a single space keeps its text,
+  timecodes without milliseconds are read, unreadable timing lines are counted in the log, UTF-16
+  and UTF-32 files are read and a legacy code page (Windows-1256) gets a clear message, and
+  OpenAI-style `{"segments": [...]}` JSON is accepted.
+- **Timing fixes in the writers.** ASS writes hours past 9 (long media no longer collapses onto
+  9:xx:xx); ELAN, JSON and TSV fall back to the start for a missing end (ELAN used milliseconds as
+  seconds); SRT and VTT skip blank cues and clamp an end before the start; a bilingual SRT cue
+  with an empty original keeps its translation; the ELAN media link is a valid `file:` URI.
+- **Chapter titles** no longer stop at "2.0", "Dr." or a leading "...", and chapters no longer
+  crash on a missing start time or non-text segment text.
 - **Burned-in Persian, Arabic and Chinese subtitles render correctly.** On Windows the burn now
   uses Tahoma for Arabic-script text and Microsoft YaHei for Chinese (the default font drew a
   missing-glyph box inside common Persian words and mixed Chinese glyph weights), and every

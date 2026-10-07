@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import math
 
-from .base import coerce_seconds, normalize_text
+from .base import coerce_seconds, karaoke_tokens, normalize_text
 
 #: Playback resolution the default style is designed against. Players
 #: scale relative to this, so stating it keeps the subtitle the same
@@ -69,7 +69,7 @@ _EVENTS_HEADER = (
 
 
 def fmt_ass_time(seconds: float) -> str:
-    """ASS ``H:MM:SS.cc`` — one hour digit, centisecond precision.
+    """ASS ``H:MM:SS.cc`` — unpadded hour, centisecond precision.
 
     Not ``fmt_srt_time``: ASS uses a single (unpadded) hour field and two
     decimal places, and a player that meets ``00:00:01,500`` here will
@@ -90,9 +90,9 @@ def fmt_ass_time(seconds: float) -> str:
     hours, rem = divmod(total_cs, 360_000)
     minutes, rem = divmod(rem, 6_000)
     sec, cs = divmod(rem, 100)
-    # ASS has no field wide enough for >9h; clamp rather than emit a
-    # 2-digit hour that shifts every following field for strict parsers.
-    hours = min(hours, 9)
+    # The spec shows one hour digit, but libass, ffmpeg and Aegisub read
+    # the hour as an integer of any width. Clamping to 9 (as this once
+    # did) moved every cue past ten hours onto 9:xx:xx, so write it all.
     return f"{hours:d}:{minutes:02d}:{sec:02d}.{cs:02d}"
 
 
@@ -130,11 +130,12 @@ def _karaoke_payload(seg: dict) -> str:
     between two words (a pause) is folded onto the front of the next word
     so the highlight does not run ahead of the voice.
     """
-    # A hand-edited / externally produced segment can carry a non-list in
-    # "words" (e.g. a string or number); iterating it raised TypeError and
-    # aborted the whole file. Only a non-empty list is usable.
-    words = seg.get("words")
-    if not isinstance(words, list) or not words:
+    # Only a word list that still spells the (possibly edited) text is
+    # usable: a segment whose text was edited after transcription keeps its
+    # old words, so the text is written instead. karaoke_tokens also skips
+    # non-dict entries and blank tokens from hand-edited JSON.
+    tokens = karaoke_tokens(seg)
+    if tokens is None:
         return escape_ass_text(normalize_text(seg.get("text", "")))
 
     seg_start = coerce_seconds(seg.get("start"))
@@ -142,14 +143,7 @@ def _karaoke_payload(seg: dict) -> str:
     parts: list[str] = []
     cursor = seg_start
     emitted = False
-    for w in words:
-        if not isinstance(w, dict):
-            continue
-        token = w.get("word")
-        token = "" if token is None else str(token)
-        token = token.strip()
-        if not token:
-            continue
+    for w, token, space_before in tokens:
         start = _coerce(w.get("start"), cursor)
         end = _coerce(w.get("end"), start)
         if end < start:
@@ -158,8 +152,9 @@ def _karaoke_payload(seg: dict) -> str:
         lead_cs = max(0, int(round((start - cursor) * 100)))
         dur_cs = max(1, int(round((end - start) * 100)))
         # Separate words with a real space BEFORE the tag, so the
-        # highlight boundary lands between words rather than inside one.
-        sep = " " if emitted else ""
+        # highlight boundary lands between words rather than inside one;
+        # only where the text has a space (CJK words carry none).
+        sep = " " if emitted and space_before else ""
         parts.append(f"{sep}{{\\k{lead_cs + dur_cs}}}{escape_ass_text(token)}")
         cursor = end
         emitted = True

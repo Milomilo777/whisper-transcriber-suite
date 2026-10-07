@@ -342,6 +342,65 @@ def test_find_replace_replace_all(tmp_path):
         root.destroy()
 
 
+def _worded(start: float, text: str) -> dict:
+    return {"start": start, "end": start + 1.0, "text": text,
+            "words": [{"start": start + 0.1 * i, "end": start + 0.1 * i + 0.1,
+                       "word": w, "probability": 0.9}
+                      for i, w in enumerate(text.split())]}
+
+
+def test_set_segment_text_drops_only_stale_words():
+    from app.dialogs.transcript_viewer import _set_segment_text
+
+    seg = _worded(0.0, "color of the sky")
+    _set_segment_text(seg, "colour of the sky")
+    assert seg["text"] == "colour of the sky" and "words" not in seg
+    seg = _worded(0.0, "color of the sky")
+    _set_segment_text(seg, "color  of the sky")  # spacing only
+    assert len(seg["words"]) == 4
+    plain = {"start": 0.0, "end": 1.0, "text": "a"}
+    _set_segment_text(plain, "b")
+    assert plain == {"start": 0.0, "end": 1.0, "text": "b"}
+
+
+def test_edits_in_the_viewer_drop_stale_words(tmp_path, monkeypatch):
+    """Replace and filler removal change only ``text``; the old per-word
+    list must go with it, or VTT/ASS exports bring the old words back."""
+    from app.dialogs import transcript_viewer as tv_mod
+    from app.dialogs.transcript_viewer import FindReplaceDialog, TranscriptViewer
+    from core.writers import vtt
+
+    segs = [_worded(0.0, "color of the sky"), _worded(1.0, "uh hello there"),
+            _worded(2.0, "different topic")]
+    p = tmp_path / "words.json"
+    p.write_text(json.dumps(segs), encoding="utf-8")
+    monkeypatch.setattr(tv_mod.messagebox, "showinfo", lambda *a, **kw: None)
+    monkeypatch.setattr(tv_mod.messagebox, "askyesno", lambda *a, **kw: True)
+
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        viewer = TranscriptViewer(root, str(p))
+        viewer.withdraw()
+        try:
+            dlg = FindReplaceDialog(viewer)
+            dlg.find_var.set("color")
+            dlg.replace_var.set("colour")
+            dlg.replace_all()
+            dlg.destroy()
+            viewer._remove_fillers()
+            assert "words" not in viewer.segments[0]
+            assert "words" not in viewer.segments[1]
+            assert len(viewer.segments[2]["words"]) == 2
+            out = vtt.write(viewer.segments)
+            assert "colour of the sky" in out and "<c>color</c>" not in out
+            assert "<c>uh</c>" not in out and "<c>different</c>" in out
+        finally:
+            viewer._on_close()
+    finally:
+        root.destroy()
+
+
 def test_find_replace_backreference_in_replacement_is_literal():
     """Replacement strings that look like regex backreferences
     (e.g. ``\\1``, ``\\g<0>``) must be inserted LITERALLY, not

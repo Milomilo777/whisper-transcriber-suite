@@ -50,7 +50,9 @@ the writer itself); Tk-free. The two public seams are pure and testable:
 """
 from __future__ import annotations
 
+import html
 import json
+import logging
 import os
 import re
 from pathlib import Path
@@ -59,6 +61,8 @@ from xml.etree import ElementTree as ET
 
 from . import writers as _writers
 from .integrations import otranscribe as _otr
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "ConvertError",
@@ -120,18 +124,29 @@ def output_extension_for(fmt: str) -> str:
 
 # HH:MM:SS,mmm or HH:MM:SS.mmm (SRT uses comma, VTT uses period); the hour
 # field is optional in WebVTT (MM:SS.mmm), so allow a 2- or 3-field clock.
+# The fraction is optional too: hand-made files write "00:00:01 --> ...",
+# and those cues used to be dropped without a word. A timing line starts
+# with the clock (WebVTT cue settings may follow the end time); fraction
+# digits past milliseconds are ignored.
 _CUE = re.compile(
-    r"(?:(\d+):)?(\d{1,2}):(\d{1,2})[,.](\d{1,3})\s*-->\s*"
-    r"(?:(\d+):)?(\d{1,2}):(\d{1,2})[,.](\d{1,3})"
+    r"\s*(?:(\d+):)?(\d{1,2}):(\d{1,2})(?:[,.](\d+))?\s*-->\s*"
+    r"(?:(\d+):)?(\d{1,2}):(\d{1,2})(?:[,.](\d+))?(?![\d:])"
 )
+# Invisible marks some editors leave in front of a timing line (a BOM in
+# the middle of a concatenated file, zero-width space, LRM / RLM).
+_LEADING_INVISIBLE = "".join(chr(c) for c in (0xFEFF, 0x200B, 0x200E, 0x200F))
+
+
+def _timing(line: str) -> re.Match[str] | None:
+    return _CUE.match(line.lstrip().lstrip(_LEADING_INVISIBLE))
 
 
 def _clock_to_seconds(
-    h: str | None, m: str, s: str, frac: str
+    h: str | None, m: str, s: str, frac: str | None
 ) -> float:
     hours = int(h) if h else 0
     # Right-pad the fractional part to milliseconds (".5" -> 500ms).
-    ms = int((frac + "000")[:3])
+    ms = int(((frac or "") + "000")[:3])
     return hours * 3600 + int(m) * 60 + int(s) + ms / 1000.0
 
 
@@ -149,6 +164,10 @@ def _parse_json(text: str, path: str) -> list[dict]:
         data = json.loads(text)
     except (ValueError, TypeError) as e:
         raise ConvertError(f"{path} is not valid JSON: {e}") from e
+    # OpenAI / Whisper "verbose_json" (and this app's HTTP API) wrap the
+    # list as {"text": ..., "segments": [...]}.
+    if isinstance(data, dict) and isinstance(data.get("segments"), list):
+        data = data["segments"]
     if not isinstance(data, list):
         raise ConvertError(
             f"{path} JSON must be a list of segments, got {type(data).__name__}"
@@ -190,36 +209,92 @@ def _parse_json(text: str, path: str) -> list[dict]:
     return segments
 
 
-def _parse_cue_format(text: str, path: str) -> list[dict]:
-    """Parse SRT or WebVTT — both are cue blocks separated by blank lines.
+# Markup that is styling, not words. Only these known tags are removed, so
+# text such as "if a < b and c > d" survives. WebVTT: class, italic, bold,
+# underline, voice, language and ruby spans plus karaoke timestamps
+# (<00:00:01.000>). SubRip: the HTML-like tags players understand.
+# Both also drop the HTML tags other tools put into subtitles (font, span,
+# strong, em); a <br> line break becomes a space first (_BR_TAG).
+_VTT_TAG = re.compile(
+    r"</?(?:c|i|b|u|v|lang|ruby|rt|font|span|strong|em)(?:\.[^\s<>]*)?(?:\s[^<>]*)?>"
+    r"|<(?:\d+:)?\d{1,2}:\d{2}[.,]\d{1,3}>",
+    re.IGNORECASE,
+)
+_SRT_TAG = re.compile(
+    r"</?(?:i|b|u|s|font|span|strong|em)(?:\s[^<>]*)?>", re.IGNORECASE
+)
+_BR_TAG = re.compile(r"<br\s*/?>", re.IGNORECASE)
+# A complete character reference (the trailing ";" is required, so a bare
+# "AT&T" stays as written).
+_VTT_ENTITY = re.compile(r"&(?:#\d+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);")
 
-    A cue is a block holding a ``-->`` timing line; everything after that line
-    (within the block) is the cue body. The leading sequence number (SRT) and
-    the ``WEBVTT`` header / ``NOTE`` / ``STYLE`` blocks (VTT) are skipped
-    because they contain no timing line.
+
+def _decode_vtt_entities(text: str) -> str:
+    """Decode ``&amp;`` / ``&lt;`` / ``&#8203;`` ... in a WebVTT payload."""
+    return _VTT_ENTITY.sub(lambda m: html.unescape(m.group(0)), text)
+
+
+def _parse_cue_format(text: str, path: str, *, vtt: bool = False) -> list[dict]:
+    """Parse SRT or WebVTT cues.
+
+    A cue starts at a timing line (``start --> end``) and its payload runs
+    to the next blank line or the next timing line. Whitespace-only lines
+    BEFORE the text are skipped, not treated as the end: YouTube's VTT puts
+    a single space on a cue's first payload line, and splitting there cut
+    the cue's text off its timing. A line holding only digits right before
+    the next timing line is that cue's SRT number, not text. Lines outside cues (the SRT number, the
+    ``WEBVTT`` header, ``NOTE`` / ``STYLE`` blocks, cue identifiers) are
+    skipped.
+
+    Only known styling tags are removed (see ``_SRT_TAG`` / ``_VTT_TAG``);
+    for WebVTT (*vtt*) character references are then decoded, the pair of
+    the VTT writer's escaping. SubRip has no escape syntax, so SRT text is
+    kept as written. A line that contains ``-->`` but is not a readable
+    timing line starts a cue that cannot be placed: it is skipped and
+    counted in a warning.
     """
-    norm = text.replace("\r\n", "\n").replace("\r", "\n").strip()
-    if not norm:
-        return []
+    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    tag_re = _VTT_TAG if vtt else _SRT_TAG
     segments: list[dict] = []
-    for block in re.split(r"\n\s*\n+", norm):
-        lines = [ln for ln in block.split("\n") if ln.strip() != ""]
-        ts_idx = next((i for i, ln in enumerate(lines) if "-->" in ln), None)
-        if ts_idx is None:
-            continue
-        m = _CUE.search(lines[ts_idx])
+    skipped = 0
+    i, n = 0, len(lines)
+    while i < n:
+        m = _timing(lines[i])
         if not m:
+            if "-->" in lines[i]:
+                skipped += 1
+                while i < n and lines[i].strip() != "":
+                    i += 1
+            i += 1
             continue
         g = m.groups()
         start = _clock_to_seconds(g[0], g[1], g[2], g[3])
         end = _clock_to_seconds(g[4], g[5], g[6], g[7])
-        # Strip WebVTT inline karaoke tags (<00:00:01.000><c>word</c>) down to
-        # plain text so the body is the spoken words, not markup.
-        body_lines = lines[ts_idx + 1:]
-        body = " ".join(ln.strip() for ln in body_lines)
-        body = re.sub(r"<[^>]+>", "", body).strip()
+        body_lines: list[str] = []
+        i += 1
+        while i < n and lines[i] != "":
+            if not lines[i].strip():
+                if body_lines:
+                    break  # a whitespace-only separator after the text
+                i += 1  # YouTube's " " before the text
+                continue
+            if _timing(lines[i]):
+                if body_lines and body_lines[-1].strip().isdigit():
+                    body_lines.pop()
+                break
+            body_lines.append(lines[i])
+            i += 1
+        body = _BR_TAG.sub(" ", " ".join(ln.strip() for ln in body_lines))
+        body = " ".join(tag_re.sub("", body).split())
+        if vtt:
+            body = _decode_vtt_entities(body).strip()
         if body:
             segments.append({"start": start, "end": end, "text": body})
+    if skipped:
+        logger.warning(
+            "%s: skipped %d cue(s) with an unreadable timing line",
+            os.path.basename(path), skipped,
+        )
     return segments
 
 
@@ -327,6 +402,32 @@ _INQSCRIBE_TS = re.compile(
 )
 
 
+def _backslashes_before(text: str, pos: int) -> int:
+    count = 0
+    while pos - count - 1 >= 0 and text[pos - count - 1] == "\\":
+        count += 1
+    return count
+
+
+def _unescape_inqscribe(body: str) -> str:
+    """Halve the backslash run in front of each literal timestamp.
+
+    Counted by hand rather than with a ``\\\\+`` regex group, which is
+    quadratic on a long run of backslashes.
+    """
+    out: list[str] = []
+    last = 0
+    for m in _INQSCRIBE_TS.finditer(body):
+        run = _backslashes_before(body, m.start())
+        if not run:
+            continue
+        out.append(body[last:m.start() - run])
+        out.append("\\" * (run // 2))
+        last = m.start()
+    out.append(body[last:])
+    return "".join(out)
+
+
 def _parse_inqscribe(text: str, path: str) -> list[dict]:
     """Parse InqScribe inline ``[hh:mm:ss.ff]`` (or ``[hh:mm:ss]``) timestamps.
 
@@ -335,8 +436,15 @@ def _parse_inqscribe(text: str, path: str) -> list[dict]:
     start plus a small default duration (no following cue to bound it).
     Text with no recognisable timestamp at all raises :class:`ConvertError`
     (matches the plain-TXT "output only" contract for un-timestamped text).
+
+    A timestamp behind an odd run of backslashes is literal text (the
+    writer's escape, see :mod:`core.writers.inqscribe`): it does not start
+    a segment, and the run is halved back to what the text held.
     """
-    matches = list(_INQSCRIBE_TS.finditer(text))
+    matches = [
+        m for m in _INQSCRIBE_TS.finditer(text)
+        if _backslashes_before(text, m.start()) % 2 == 0
+    ]
     if not matches:
         raise ConvertError(
             f"{path}: no [hh:mm:ss] timestamps found; cannot import as InqScribe."
@@ -351,7 +459,7 @@ def _parse_inqscribe(text: str, path: str) -> list[dict]:
         start = (int(h) if h else 0) * 3600 + int(mm) * 60 + int(ss) + cs / 100.0
         body_start = m.end()
         body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        body = " ".join(text[body_start:body_end].split())
+        body = _unescape_inqscribe(" ".join(text[body_start:body_end].split()))
         if not body:
             continue
         segments.append({"start": start, "text": body})
@@ -382,8 +490,6 @@ _EXT_TO_PARSE_FORMAT: dict[str, str] = {
 # is the payload, which is allowed to contain commas of its own.
 _ASS_DIALOGUE = re.compile(r"^\s*Dialogue\s*:\s*(.*)$", re.IGNORECASE)
 _ASS_TIME = re.compile(r"^(\d+):(\d{1,2}):(\d{1,2})[.,](\d{1,3})$")
-# ``{\k42}`` / ``{\an8\i1}`` — override blocks are styling, not content.
-_ASS_OVERRIDE = re.compile(r"\{[^}]*\}")
 
 
 def _ass_time_to_seconds(value: str) -> float | None:
@@ -404,15 +510,40 @@ def _strip_ass_markup(text: str) -> str:
     writes), unescapes the literal brace/backslash escapes, and turns
     ``\\N``/``\\n`` line breaks and ``\\h`` hard spaces back into
     ordinary whitespace.
+
+    One left-to-right pass, the exact inverse of
+    :func:`core.writers.ass.escape_ass_text`: running the replacements one
+    after another (strip ``{...}`` first, unescape later) read the escaped
+    brace in ``\\{\\\\k5\\}`` as the start of an override block, and turned
+    the escaped backslash of ``C:\\\\new`` into a line break.
     """
     if not text:
         return ""
-    out = _ASS_OVERRIDE.sub("", text)
-    out = re.sub(r"\\[Nn]", " ", out)
-    out = out.replace("\\h", " ")
-    out = out.replace("\\{", "{").replace("\\}", "}")
-    out = out.replace("\\\\", "\\")
-    return " ".join(out.split())
+    out: list[str] = []
+    i, n = 0, len(text)
+    while i < n:
+        ch = text[i]
+        if ch == "\\" and i + 1 < n:
+            nxt = text[i + 1]
+            if nxt in "\\{}":
+                out.append(nxt)
+                i += 2
+                continue
+            if nxt in "Nnh":
+                out.append(" ")
+                i += 2
+                continue
+            out.append(ch)
+            i += 1
+            continue
+        if ch == "{":
+            close = text.find("}", i + 1)
+            if close != -1:
+                i = close + 1
+                continue
+        out.append(ch)
+        i += 1
+    return " ".join("".join(out).split())
 
 
 def _looks_like_ass(sniff: str) -> bool:
@@ -533,6 +664,70 @@ def _detect_format(path: str, text: str | None) -> str:
     )
 
 
+def _utf16_without_bom(raw: bytes) -> str | None:
+    """``utf-16-le`` / ``utf-16-be`` when *raw* looks like BOM-less UTF-16.
+
+    Subtitle text is mostly ASCII digits, colons and spaces, which UTF-16
+    stores as one zero byte and one non-zero byte; the side the zeros sit
+    on gives the byte order.
+    """
+    sample = raw[:4096]
+    if len(sample) < 4 or b"\x00" not in sample:
+        return None
+    even_zeros = sample[0::2].count(0)
+    odd_zeros = sample[1::2].count(0)
+    half = len(sample) // 2
+    if odd_zeros > half * 0.3 and even_zeros < odd_zeros / 4:
+        return "utf-16-le"
+    if even_zeros > half * 0.3 and odd_zeros < even_zeros / 4:
+        return "utf-16-be"
+    return None
+
+
+def _decode_text(raw: bytes, path: str) -> str:
+    """Decode a transcript file: UTF-8 (BOM optional) or UTF-16.
+
+    Windows editors save "Unicode" subtitles as UTF-16 (often with a BOM),
+    which the plain UTF-8 read rejected with a byte-offset error. A legacy
+    code page (Windows-1256 for Persian / Arabic, Windows-1252, ...) cannot
+    be told apart reliably and is not guessed: the error says how to fix
+    the file instead.
+    """
+    if raw.startswith((b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff")):
+        encoding = "utf-32"
+    elif raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        encoding = "utf-16"
+    elif raw.startswith(b"\xef\xbb\xbf"):
+        encoding = "utf-8-sig"
+    else:
+        encoding = _utf16_without_bom(raw) or "utf-8"
+    name = os.path.basename(path)
+    try:
+        text = raw.decode(encoding)
+    except UnicodeDecodeError as e:
+        if encoding.startswith(("utf-16", "utf-32")):
+            raise ConvertError(
+                f"{name} looks like {encoding.upper()} text but could not "
+                f"be decoded: {e}"
+            ) from e
+        raise ConvertError(
+            f"{name} is not UTF-8 text. It was probably saved in an older "
+            "encoding such as Windows-1256 (Persian / Arabic) or "
+            "Windows-1252. Open it in a text or subtitle editor and save it "
+            "as UTF-8, then convert it again."
+        ) from e
+    if "\x00" in text:
+        # Valid UTF-8 never holds NUL in a text file; this is UTF-16/32
+        # without a byte-order mark that the sniff above could not place
+        # (little ASCII in it). Parsing it would silently find nothing.
+        raise ConvertError(
+            f"{name} contains NUL bytes: it is probably UTF-16 text without "
+            "a byte-order mark. Save it as UTF-8 (or UTF-16 with a BOM), "
+            "then convert it again."
+        )
+    return text
+
+
 def parse_to_segments(path: str) -> list[dict]:
     """Parse a transcript file into the universal segment list.
 
@@ -552,18 +747,18 @@ def parse_to_segments(path: str) -> list[dict]:
             raise ConvertError(f"Could not import .otr {path}: {e}") from e
 
     try:
-        # utf-8-sig tolerates a BOM written by external editors (matches the
-        # otranscribe / writers read paths).
-        with open(path, "r", encoding="utf-8-sig") as f:
-            text = f.read()
-    except (OSError, ValueError) as e:
+        with open(path, "rb") as fb:
+            raw = fb.read()
+    except OSError as e:
         raise ConvertError(f"Could not read {path}: {e}") from e
+    text = _decode_text(raw, path)
 
     fmt = _detect_format(path, text)
     if fmt == "json":
         return _parse_json(text, path)
     if fmt in ("srt", "vtt"):
-        return _parse_cue_format(text, path)
+        is_vtt = fmt == "vtt" or text.lstrip().upper().startswith("WEBVTT")
+        return _parse_cue_format(text, path, vtt=is_vtt)
     if fmt == "ass":
         return _parse_ass(text, path)
     if fmt == "tsv":

@@ -72,8 +72,10 @@ def test_ass_uses_a_single_hour_digit_and_centiseconds():
     assert len(rest.split(".")[-1]) == 2
 
 
-def test_hours_beyond_the_field_width_clamp():
-    assert ass.fmt_ass_time(11 * 3600).startswith("9:")
+def test_hours_beyond_nine_are_written_in_full():
+    # libass, ffmpeg and Aegisub read the hour as an integer of any width;
+    # clamping to 9 put every cue past ten hours at the wrong time.
+    assert ass.fmt_ass_time(11 * 3600) == "11:00:00.00"
 
 
 # ---------------------------------------------------------------- escaping

@@ -32,7 +32,9 @@ def write(
     entry per segment, in order (see
     :func:`core.llm.translate_segments`, which produces exactly that
     shape). A blank translation at a given index still emits the cue
-    with only the original line, rather than an empty second line.
+    with only the original line, rather than an empty second line; a
+    blank original emits the translation alone, and a cue with neither
+    is skipped.
     """
     if len(translations) != len(segments):
         raise ValueError(
@@ -40,19 +42,26 @@ def write(
             f"segments length ({len(segments)})"
         )
     out: list[str] = []
-    for i, (seg, translated) in enumerate(zip(segments, translations), 1):
+    i = 0
+    for seg, translated in zip(segments, translations):
         original = escape_cue_separator(normalize_text(seg.get("text", "")))
-        prefix = speaker_prefix(seg)
+        translated_line = escape_cue_separator(normalize_text(translated or ""))
+        # An empty first line would end the cue in every SRT parser and
+        # lose the translation, so write only the lines that have text,
+        # and skip a cue with neither.
+        lines = [ln for ln in (original, translated_line) if ln]
+        if not lines:
+            continue
+        lines[0] = speaker_prefix(seg) + lines[0]
         # The viewer loads hand-edited JSON verbatim and passes it here;
         # a malformed timestamp must clamp rather than abort the export
-        # (a missing "end" falls back to the start).
+        # (a missing "end" falls back to the start, an earlier end is
+        # clamped to the start).
         start = coerce_seconds(seg.get("start"))
-        end = coerce_seconds(seg.get("end"), start)
+        end = max(coerce_seconds(seg.get("end"), start), start)
+        i += 1
         out.append(f"{i}")
         out.append(f"{fmt_srt_time(start)} --> {fmt_srt_time(end)}")
-        out.append(prefix + original)
-        translated_line = escape_cue_separator(normalize_text(translated or ""))
-        if translated_line:
-            out.append(translated_line)
+        out.extend(lines)
         out.append("")
     return "\n".join(out)
