@@ -90,6 +90,10 @@ def _is_permission_error(exc: OSError) -> bool:
 # ERROR_HANDLE_DISK_FULL (39) and ERROR_DISK_FULL (112): what Windows
 # reports when a write runs out of space, sometimes without errno ENOSPC.
 _DISK_FULL_WINERRORS = {39, 112}
+# ERROR_SHARING_VIOLATION (32) and ERROR_LOCK_VIOLATION (33): another
+# program holds the file. Python raises them as PermissionError, but the
+# folder itself is writable, so they must not trigger "pick another folder".
+_FILE_IN_USE_WINERRORS = {32, 33}
 
 # Margin kept free on top of the bytes a download or unpacking needs.
 _FREE_SPACE_MARGIN = 64 * 1024 * 1024
@@ -990,9 +994,12 @@ def _download_via_huggingface(
     produced — the rest of the app keeps resolving the model unchanged.
 
     Files already in ``model_path`` are kept: huggingface_hub resumes its
-    unfinished ``.incomplete`` blobs under ``model_path/.cache`` and
-    re-checks every finished file against the Hub, so a retry continues a
-    killed multi-GB download instead of starting from zero.
+    unfinished ``.incomplete`` blobs under ``model_path/.cache`` and, while
+    the Hub is reachable, re-checks every finished file against it, so a
+    retry continues a killed multi-GB download instead of starting from
+    zero. When the Hub is unreachable it hands back the local files without
+    an error, so callers check ``model.bin`` afterwards and never pass it a
+    folder holding files from another source.
 
     Returns ``True`` on success and ``False`` when cancelled. A failure
     raises :class:`HuggingFaceDownloadError` whose text tells the user what
@@ -1038,6 +1045,12 @@ def _download_via_huggingface(
             status_cb(f"HuggingFace download failed: {e}")
         if cancel_event and cancel_event.is_set():
             return False
+        if getattr(e, "winerror", None) in _FILE_IN_USE_WINERRORS:
+            raise HuggingFaceDownloadError(
+                "a file in the model folder is in use by another program "
+                "(often an antivirus scan). Wait a moment, then try again. "
+                f"[{type(e).__name__}: {e}]"
+            ) from e
         if isinstance(e, OSError) and _is_permission_error(e) and not _is_disk_full(e):
             raise ModelDestinationNotWritable(model_path) from e
         raise HuggingFaceDownloadError(
@@ -1103,9 +1116,12 @@ def _huggingface_failure(
     if not ok:
         return "the download did not finish"
     if not model_weights_present(model_path):
+        # huggingface_hub returns without an error when the Hub cannot be
+        # reached but some files are already on disk.
         return (
-            "the download finished but model.bin is missing or empty in "
-            f"{model_path}"
+            f"the download did not complete (model.bin is missing or empty in "
+            f"{model_path}); huggingface.co may be unreachable. Check the "
+            "internet connection, proxy or VPN, then try again."
         )
     return None
 
@@ -1376,8 +1392,13 @@ def ensure_model(
         if status_cb:
             status_cb(f"Mirror download failed ({e}). Trying HuggingFace fallback...")
         _remove_path(zip_path)
-        # model_path is kept: a partial HuggingFace download in it resumes,
-        # and huggingface_hub re-checks (or replaces) any other file.
+        # A partial HuggingFace download is kept so it resumes. Anything
+        # else here is a mirror unpack that failed or did not verify: it
+        # goes, because huggingface_hub hands back local files unchecked
+        # when the Hub is unreachable, and a truncated model.bin would
+        # then pass as a finished model.
+        if not _hf_managed(model_path):
+            _remove_path(model_path)
 
         try:
             reason = _huggingface_failure(

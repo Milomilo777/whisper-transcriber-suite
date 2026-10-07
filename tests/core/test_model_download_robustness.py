@@ -172,6 +172,73 @@ def test_mirror_fallback_keeps_the_partial_hf_blobs(tmp_path, fake_hf):
     assert all(".md5" not in c.request.url for c in responses.calls)
 
 
+@responses.activate
+def test_half_extracted_mirror_model_is_not_kept_for_the_fallback(tmp_path, monkeypatch):
+    """Review of dfcc857: a mirror unpack that died midway left a truncated
+    model.bin; with huggingface.co unreachable, huggingface_hub returns the
+    local files without error, so the broken model was reported ready."""
+    monkeypatch.setattr(offline, "is_offline", lambda *a, **k: False)
+    model_path = tmp_path / "cache" / "models--Systran--faster-whisper-large-v3"
+    model_path.parent.mkdir(parents=True)
+    good = b"w" * 300_000
+    zip_path = model_path.parent / mm._zip_name_from_url(MIRROR_ENTRY["url"])
+    zip_path.write_bytes(_zip_bytes(model_path.name, {"model.bin": good}))
+    responses.add(responses.GET, MIRROR_ENTRY["url"], status=416)
+
+    def _extract_dies_midway(self, path=None, members=None, pwd=None):
+        target = Path(path) / model_path.name
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "model.bin").write_bytes(good[:1000])  # truncated
+        raise zipfile.BadZipFile("Bad CRC-32 for file 'model.bin'")
+
+    monkeypatch.setattr(zipfile.ZipFile, "extractall", _extract_dies_midway)
+    seen: list[bool] = []
+
+    def _hf_offline_returns_local(name, zip_url, target, status_cb=None,
+                                  progress_cb=None, cancel_event=None, hf_repo=None):
+        # What huggingface_hub does when the Hub is unreachable but files
+        # exist locally: return them without an error.
+        seen.append((Path(target) / "model.bin").exists())
+        return True
+
+    monkeypatch.setattr(mm, "_download_via_huggingface", _hf_offline_returns_local)
+    with pytest.raises(RuntimeError, match="(?i)did not complete"):
+        mm.ensure_model(_config(model_path, MIRROR_ENTRY))
+    assert seen == [False], "the half-unpacked mirror files must be removed first"
+
+
+def test_unfinished_resume_does_not_claim_the_download_finished(tmp_path, fake_hf, monkeypatch):
+    """Review of dfcc857: a resume with the Hub unreachable returns without
+    error and without model.bin; the message must not say 'finished'."""
+    model_path = tmp_path / "cache" / f"models--Systran--{HF_ONLY_ENTRY['name']}"
+    _partial_hf_folder(model_path)
+
+    def _returns_local(ref, output_dir=None, **_kw):
+        return str(output_dir)
+
+    monkeypatch.setattr(sys.modules["faster_whisper.utils"], "download_model", _returns_local)
+    with pytest.raises(RuntimeError) as info:
+        mm.ensure_model(_config(model_path, HF_ONLY_ENTRY))
+    text = str(info.value).lower()
+    assert "download finished" not in text
+    assert "did not complete" in text
+    assert "connection" in text
+
+
+def test_hf_file_in_use_is_not_a_folder_permission_problem(tmp_path, fake_hf):
+    """Review of dfcc857: a sharing violation (antivirus holding an
+    .incomplete file) is a PermissionError on Windows but not a folder
+    without write access; offering another folder would mislead."""
+    model_path = tmp_path / "cache" / f"models--Systran--{HF_ONLY_ENTRY['name']}"
+    err = PermissionError(errno.EACCES, "The process cannot access the file")
+    err.winerror = 32  # type: ignore[attr-defined]
+    fake_hf["raise"] = err
+    with pytest.raises(RuntimeError) as info:
+        mm.ensure_model(_config(model_path, HF_ONLY_ENTRY))
+    assert not isinstance(info.value, mm.ModelDestinationNotWritable)
+    assert "in use by another program" in str(info.value)
+
+
 # --- S02-6: the HuggingFace reason reaches the error box -------------------
 
 
@@ -362,6 +429,7 @@ def test_unverifiable_partial_folder_downloads_again(tmp_path, monkeypatch):
     def _hf(name, zip_url, target, status_cb=None, progress_cb=None,
             cancel_event=None, hf_repo=None):
         calls.append(name)
+        Path(target).mkdir(parents=True, exist_ok=True)
         (Path(target) / "model.bin").write_bytes(b"weights")
         return True
 
