@@ -161,14 +161,14 @@ def test_stop_does_not_wait_for_a_start_that_is_still_loading_the_model(monkeypa
     assert handle.urls() == []
 
 
-def test_a_second_start_while_the_first_is_loading_is_a_no_op(monkeypatch):
+def _slow_loading_handle(monkeypatch):
     import threading
 
     import core.server as server_mod
 
+    loads = []
     loading = threading.Event()
     release = threading.Event()
-    loads = []
 
     def _slow_model_load():
         loads.append(1)
@@ -177,16 +177,50 @@ def test_a_second_start_while_the_first_is_loading_is_a_no_op(monkeypatch):
 
     monkeypatch.setattr(server_mod, "_ensure_model_loaded", _slow_model_load)
     handle = ServerHandle(transcribe_fn=_writing_transcribe, load_model=True)
-    starter = threading.Thread(
+    return handle, loads, loading, release
+
+
+def _start_in_thread(handle):
+    import threading
+
+    thread = threading.Thread(
         target=lambda: handle.start("127.0.0.1", 0, auto_port=False), daemon=True)
-    starter.start()
+    thread.start()
+    return thread
+
+
+def test_a_second_start_waits_for_the_first_and_does_not_load_again(monkeypatch):
+    handle, loads, loading, release = _slow_loading_handle(monkeypatch)
+    first = _start_in_thread(handle)
     try:
         assert loading.wait(5)
-        handle.start("127.0.0.1", 0, auto_port=False)  # returns at once
+        second = _start_in_thread(handle)
+        second.join(0.3)
+        assert second.is_alive(), "the second start() returned before the server was up"
         release.set()
-        starter.join(10)
+        first.join(10)
+        second.join(10)
         assert loads == [1]
         assert handle.is_running()
+    finally:
+        release.set()
+        handle.stop()
+
+
+def test_a_start_after_a_stop_during_loading_still_starts(monkeypatch):
+    # stop() cancels the start that is loading; a start() requested after that stop must
+    # not be swallowed by the cancelled one.
+    handle, loads, loading, release = _slow_loading_handle(monkeypatch)
+    first = _start_in_thread(handle)
+    try:
+        assert loading.wait(5)
+        handle.stop(timeout=1.0)
+        second = _start_in_thread(handle)
+        release.set()
+        first.join(10)
+        second.join(10)
+        assert loads == [1, 1]
+        assert handle.is_running(), "the last request was start, so a server must run"
     finally:
         release.set()
         handle.stop()

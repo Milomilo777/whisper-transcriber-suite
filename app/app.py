@@ -1839,56 +1839,63 @@ class App(tk.Tk):
             self.withdraw()
         except tk.TclError:
             logger.debug("Could not hide the window before exit", exc_info=True)
-        if self._folder_watcher is not None:
-            try:
-                self._folder_watcher.stop()
-            except Exception:  # noqa: BLE001
-                pass
-        if self.tray is not None:
-            try:
-                self.tray.stop()
-            except Exception:  # noqa: BLE001
-                pass
-        for task in self.download_queue:
-            # Snapshot once (see cancel_download): a worker thread may null
-            # task.process between the test and the poll(), which would raise
-            # AttributeError mid-teardown.
-            proc = task.process
-            if proc is not None and proc.poll() is None:
-                # Tree-kill so yt-dlp's ffmpeg merge child dies too (a bare
-                # terminate() orphans it, holding the .part/output handle).
+        # The window is hidden now: whatever fails below, destroy() must
+        # still run, or the process lives on with no window to close.
+        try:
+            if self._folder_watcher is not None:
                 try:
-                    kill_process_tree(proc, force=False)
+                    self._folder_watcher.stop()
                 except Exception:  # noqa: BLE001
                     pass
-        # Stop the Live tab BEFORE the transcription workers: it owns its
-        # own worker subprocess plus a capture thread holding the audio
-        # device, and both would outlive the window otherwise.
-        try:
-            stop_live_session(self)
-        except Exception:  # noqa: BLE001
-            pass
-        # Same reasoning as the Live tab: its own worker subprocess (a
-        # separate, independent one -- see core.voice_clone_worker) plus
-        # any in-progress mic recording must not outlive the window.
-        try:
-            stop_voice_clone_worker(self)
-        except Exception:  # noqa: BLE001
-            pass
-        # Stop the in-process web / LAN server so its socket + worker
-        # thread don't linger after the window closes.
-        self._shutdown_server_on_exit()
-        self.transcription_service.stop_all()
-        # Close the history DB connection (and checkpoint its WAL) on a
-        # clean exit — the GUI never did, leaking the connection + the
-        # -wal/-shm sidecars until interpreter teardown. Mirrors gui.py.
-        history = getattr(self, "history", None)
-        if history is not None:
+            if self.tray is not None:
+                try:
+                    self.tray.stop()
+                except Exception:  # noqa: BLE001
+                    pass
+            for task in self.download_queue:
+                # Snapshot once (see cancel_download): a worker thread may null
+                # task.process between the test and the poll(), which would raise
+                # AttributeError mid-teardown.
+                proc = task.process
+                if proc is not None and proc.poll() is None:
+                    # Tree-kill so yt-dlp's ffmpeg merge child dies too (a bare
+                    # terminate() orphans it, holding the .part/output handle).
+                    try:
+                        kill_process_tree(proc, force=False)
+                    except Exception:  # noqa: BLE001
+                        pass
+            # Stop the Live tab BEFORE the transcription workers: it owns its
+            # own worker subprocess plus a capture thread holding the audio
+            # device, and both would outlive the window otherwise.
             try:
-                history.close()
+                stop_live_session(self)
             except Exception:  # noqa: BLE001
                 pass
-        self.destroy()
+            # Same reasoning as the Live tab: its own worker subprocess (a
+            # separate, independent one -- see core.voice_clone_worker) plus
+            # any in-progress mic recording must not outlive the window.
+            try:
+                stop_voice_clone_worker(self)
+            except Exception:  # noqa: BLE001
+                pass
+            # Stop the in-process web / LAN server so its socket + worker
+            # thread don't linger after the window closes.
+            self._shutdown_server_on_exit()
+            try:
+                self.transcription_service.stop_all()
+            except Exception:  # noqa: BLE001
+                logger.exception("Could not stop the transcription workers on exit")
+            # Close the history DB connection (and checkpoint its WAL) on a
+            # clean exit — the GUI never did, leaking the connection + the
+            # -wal/-shm sidecars until interpreter teardown. Mirrors gui.py.
+            history = getattr(self, "history", None)
+            if history is not None:
+                try:
+                    history.close()
+                except Exception:  # noqa: BLE001
+                    pass
+        finally:
+            self.destroy()
 
     def destroy(self) -> None:  # type: ignore[override]
         # Cancel every pending after() callback before tearing down the
@@ -1900,7 +1907,7 @@ class App(tk.Tk):
         cancel_pending_after_callbacks(self)
         try:
             super().destroy()
-        except tk.TclError:
+        except Exception:  # noqa: BLE001 - any failure here must still end mainloop
             # A half-finished teardown leaves the root alive, so mainloop()
             # would keep the process running with nothing left to close.
             logger.exception("Window teardown failed; ending the event loop anyway")
@@ -4329,6 +4336,10 @@ class App(tk.Tk):
                 # it actually bound.
                 handle.start(host, port, token, max_upload_mb=max_upload_mb,
                              https=https, webhook_url=webhook_url)
+                if not handle.is_running():
+                    # stop() cancelled the start (the app is exiting).
+                    logger.info("Web / LAN server start was cancelled")
+                    return
                 urls = handle.urls()
                 bound_port = handle.port
                 self.post_to_main(
@@ -6101,13 +6112,16 @@ class App(tk.Tk):
         """Route an error raised inside any Tk callback to the app log.
 
         Tk's default prints the traceback to stderr, which is None under
-        pythonw (the installed app), so such errors used to vanish.
+        pythonw (the installed app), so such errors used to vanish. The
+        same error raised again in a row (a failing after() loop re-arms
+        every 100 ms) is logged once with its traceback, not on every tick.
         """
-        logger.error("Unhandled error in a Tk callback", exc_info=(exc, val, tb))
         text = f"{exc.__name__}: {val}"
         if getattr(self, "_last_callback_error", "") == text:
+            logger.debug("Tk callback error repeated: %s", text)
             return
         self._last_callback_error = text
+        logger.error("Unhandled error in a Tk callback", exc_info=(exc, val, tb))
         try:
             self.log(f"Unexpected error: {text} (details are in the log file)")
         except Exception:  # noqa: BLE001 - the error is already in the log

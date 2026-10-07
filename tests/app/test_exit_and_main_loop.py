@@ -174,6 +174,8 @@ def test_tk_callback_errors_go_to_the_log_and_the_console(caplog: Any) -> None:
 
     assert "bad value in a button handler" in caplog.text
     assert "Traceback" in caplog.text
+    errors = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert len(errors) == 1, "a repeating error is logged once, not on every tick"
     assert len(shown) == 1, "the same error is shown once, not once per repeat"
     assert "bad value in a button handler" in shown[0]
 
@@ -214,12 +216,11 @@ def test_a_real_tk_callback_error_reaches_report_callback_exception(caplog: Any)
 # ------------------------------------------------------------- on_exit order
 
 
-def test_on_exit_hides_the_window_before_stopping_workers(monkeypatch: Any) -> None:
-    order: list[str] = []
+def _exit_self(order: list[str], monkeypatch: Any) -> types.SimpleNamespace:
     monkeypatch.setattr(app_module, "stop_live_session", lambda _app: order.append("live"))
     monkeypatch.setattr(app_module, "stop_voice_clone_worker",
                         lambda _app: order.append("voice"))
-    fake = types.SimpleNamespace(
+    return types.SimpleNamespace(
         _exit_from_tray=True,
         app_config={},
         tray=None,
@@ -236,8 +237,40 @@ def test_on_exit_hides_the_window_before_stopping_workers(monkeypatch: Any) -> N
         destroy=lambda: order.append("destroy"),
     )
 
+
+def test_on_exit_hides_the_window_before_stopping_workers(monkeypatch: Any) -> None:
+    order: list[str] = []
+    fake = _exit_self(order, monkeypatch)
+
     App.on_exit(fake)  # type: ignore[arg-type]
 
     assert order.index("geometry") < order.index("withdraw")
     assert order.index("withdraw") < min(order.index(s) for s in ("live", "voice", "server", "workers"))
+    assert order[-1] == "destroy"
+
+
+def test_on_exit_still_destroys_the_hidden_window_when_teardown_fails(
+    monkeypatch: Any, caplog: Any
+) -> None:
+    # Once the window is hidden, a failure while stopping workers used to skip destroy():
+    # no window, no tray icon, and a process that never ends.
+    order: list[str] = []
+    fake = _exit_self(order, monkeypatch)
+
+    def _stop_all_fails() -> None:
+        raise RuntimeError("can't start new thread")
+
+    def _server_fails() -> None:
+        raise RuntimeError("server stop failed")
+
+    fake.transcription_service.stop_all = _stop_all_fails
+    with caplog.at_level(logging.ERROR, logger="app.app"):
+        App.on_exit(fake)  # type: ignore[arg-type]
+    assert "can't start new thread" in caplog.text
+    assert order[-1] == "destroy"
+
+    order.clear()
+    fake._shutdown_server_on_exit = _server_fails
+    with pytest.raises(RuntimeError, match="server stop failed"):
+        App.on_exit(fake)  # type: ignore[arg-type]
     assert order[-1] == "destroy"

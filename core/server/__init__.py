@@ -241,6 +241,9 @@ class ServerHandle:
         self._download_fn = download_fn if download_fn is not None else _download_url
         self._load_model = load_model
         self._lock = threading.Lock()
+        # Signalled when a start() finishes, so a concurrent start() can wait
+        # for it without holding the lock through the model load.
+        self._start_done = threading.Condition(self._lock)
         self._manager: JobManager | None = None
         self._server: JobHTTPServer | None = None
         self._thread: threading.Thread | None = None
@@ -283,13 +286,15 @@ class ServerHandle:
         # The slow part (first-run model download, certificate generation)
         # runs WITHOUT the lock: holding it there blocked is_running() and
         # stop() — the app's exit path — until the download finished. A
-        # stop() meanwhile cancels this start; a second start() is a no-op.
-        with self._lock:
-            if self._starting or (
-                self._server is not None and self._thread is not None
-                and self._thread.is_alive()
-            ):
-                return  # already running or starting — idempotent guard
+        # stop() meanwhile cancels this start, which then returns without
+        # serving. A concurrent start() waits for this one, then starts
+        # itself only if this one was cancelled.
+        with self._start_done:
+            while self._starting:
+                self._start_done.wait()
+            if (self._server is not None and self._thread is not None
+                    and self._thread.is_alive()):
+                return  # already running — idempotent double-start guard
             self._starting = True
             self._start_cancelled = False
         try:
@@ -342,8 +347,9 @@ class ServerHandle:
                 server.server_close()
                 manager.stop()
         finally:
-            with self._lock:
+            with self._start_done:
                 self._starting = False
+                self._start_done.notify_all()
 
     def stop(self, *, timeout: float = 5.0) -> None:
         """Stop serving, close the socket, stop the worker (idempotent).
