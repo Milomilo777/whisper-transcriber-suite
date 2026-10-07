@@ -88,6 +88,12 @@ jobs:
         shell: cmd
         run: call build_embed_installer.bat
 
+      - name: Check the bundled binaries in embed_build\ against the pins
+        shell: pwsh
+        run: |
+          python tools/fetch_windows_build_deps.py --check --root embed_build
+          if ($LASTEXITCODE -ne 0) { throw 'embed_build\bin does not match the pins' }
+
       - name: Compile the installer (installer_embed.iss)
         shell: pwsh
         run: |
@@ -122,6 +128,8 @@ jobs:
           $p = Start-Process -FilePath $setup -Wait -PassThru -ArgumentList @(
             '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=$dir", "/LOG=$log")
           if ($p.ExitCode -ne 0) { Get-Content $log -Tail 40; throw "silent install exited $($p.ExitCode)" }
+          python tools/fetch_windows_build_deps.py --check --root $dir
+          if ($LASTEXITCODE -ne 0) { throw 'the installed bin\ does not match the pins' }
           & (Join-Path $dir 'python\python.exe') tools\smoke_windows_install.py $dir $env:APP_VERSION
           if ($LASTEXITCODE -ne 0) { throw "smoke test failed ($LASTEXITCODE)" }
           $p = Start-Process -FilePath (Join-Path $dir 'unins000.exe') -Wait -PassThru -ArgumentList @(

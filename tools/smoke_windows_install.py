@@ -3,7 +3,7 @@
   <install dir>\\python\\python.exe tools\\smoke_windows_install.py <install dir> <expected version>
 
 Checks that the app's own packages load from the install dir (not from a source checkout), the
-version matches, the bundled runtime stack imports, Tcl starts, the bundled tools run, the
+version matches, the bundled runtime stack imports, Tcl/Tk start, the bundled tools run, the
 diarization models are found, and `gui.py --help` exits 0. Prints one line per check and exits 1
 on the first failure. Used by .github/workflows/windows-installer.yml after a silent install.
 """
@@ -51,8 +51,12 @@ def main(argv: list[str]) -> int:
     ok("runtime stack and app packages import")
 
     import tkinter
-    tcl = tkinter.Tcl()
-    ok(f"Tcl {tcl.eval('info patchlevel')} starts")
+    root = tkinter.Tk()  # loads Tk too, not only Tcl (tkinter.Tcl() would pass without tk8.6)
+    root.withdraw()
+    root.update_idletasks()
+    versions = f"Tcl {root.eval('info patchlevel')}, Tk {root.eval('package require Tk')}"
+    root.destroy()
+    ok(f"{versions} start")
 
     tools = {
         "ffmpeg.exe": (["-version"], "ffmpeg version"),

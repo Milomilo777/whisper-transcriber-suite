@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import http.client
 import importlib.util
 import io
 import json
 import re
 import sys
 import urllib.error
+import urllib.request
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -104,6 +106,9 @@ def test_bat_downloads_python_only_through_the_verified_fetch():
     assert "fetch_windows_build_deps.py\" --only python-build-standalone --out" in text
     assert "Invoke-WebRequest" not in text
     assert "PYBSD_" not in text  # the version lives in the pin list only
+    # A missing bin\deno.exe is filled from the pin, not from the latest release.
+    assert "fetch_windows_build_deps.py\" --select deno" in text
+    assert "install_deno" not in text
 
 
 # ------------------------------------------------------------------ validate()
@@ -163,6 +168,64 @@ def test_download_stops_at_the_first_byte_past_the_pinned_size(tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
+class _Seq:
+    """Opener that answers each call with the next item: bytes, or an exception to raise
+    while the body is read."""
+
+    def __init__(self, *items):
+        self.items = list(items)
+        self.calls = 0
+
+    def __call__(self, url: str, timeout: float):
+        item = self.items[min(self.calls, len(self.items) - 1)]
+        self.calls += 1
+        if isinstance(item, BaseException):
+            exc = item
+
+            class _Broken(io.BytesIO):
+                def read(self, *a):
+                    raise exc
+            return _Broken()
+        return io.BytesIO(item)
+
+
+def test_download_retries_a_body_cut_short(tmp_path, monkeypatch):
+    monkeypatch.setattr(fetch.time, "sleep", lambda s: None)
+    data = b"0123456789" * 10
+    opener = _Seq(data[:40], data)
+    fetch.download(_dep(data), tmp_path / "t", opener=opener)
+    assert opener.calls == 2 and (tmp_path / "t").read_bytes() == data
+    with pytest.raises(fetch.FetchError, match="closed after 40 of 100 bytes"):
+        fetch.download(_dep(data), tmp_path / "u", opener=_Seq(data[:40]))
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["t"]
+
+
+def test_download_retries_an_incomplete_read(tmp_path, monkeypatch):
+    monkeypatch.setattr(fetch.time, "sleep", lambda s: None)
+    data = b"payload"
+    opener = _Seq(http.client.IncompleteRead(b"pay", 4), data)
+    fetch.download(_dep(data), tmp_path / "t", opener=opener)
+    assert opener.calls == 2
+
+
+def test_a_wrong_hash_is_not_retried(tmp_path):
+    opener = _Seq(b"tampered", b"expected")
+    with pytest.raises(fetch.FetchError, match="pinned"):
+        fetch.download(_dep(b"expected"), tmp_path / "t", opener=opener)
+    assert opener.calls == 1
+
+
+def test_redirects_to_plain_http_are_refused():
+    handler = fetch._HttpsOnlyRedirects()
+    req = urllib.request.Request("https://github.com/x")
+    with pytest.raises(urllib.error.URLError, match="non-https"):
+        handler.redirect_request(req, None, 302, "Found", {}, "http://cdn.example.invalid/x")
+    with pytest.raises(urllib.error.URLError, match="non-https"):
+        handler.redirect_request(req, None, 302, "Found", {}, "ftp://cdn.example.invalid/x")
+    new = handler.redirect_request(req, None, 302, "Found", {}, "https://cdn.example.invalid/x")
+    assert new is not None and new.full_url == "https://cdn.example.invalid/x"
+
+
 def test_download_retries_network_errors(tmp_path, monkeypatch):
     monkeypatch.setattr(fetch.time, "sleep", lambda s: None)
     data = b"payload"
@@ -217,6 +280,30 @@ def test_install_skips_the_network_when_targets_already_match(tmp_path):
     calls: list[str] = []
     assert fetch.install(_dep(data), tmp_path, opener=_opener(data, calls)) == []
     assert calls == []
+
+
+def test_install_replaces_a_file_that_differs_from_its_pin(tmp_path):
+    data = b"pinned build"
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "tool.exe").write_bytes(b"self-updated or tampered copy")
+    calls: list[str] = []
+    assert fetch.install(_dep(data), tmp_path, opener=_opener(data, calls)) == ["bin/tool.exe"]
+    assert calls and (tmp_path / "bin" / "tool.exe").read_bytes() == data
+
+
+def test_select_fills_only_the_named_entry(tmp_path, monkeypatch):
+    pins = tmp_path / "pins.json"
+    a, b = _dep(b"aaa", name="a"), _dep(b"bbb", name="b")
+    a["files"][0]["to"], b["files"][0]["to"] = "bin/a.exe", "bin/b.exe"
+    pins.write_text(json.dumps({"deps": [a, b]}), encoding="utf-8")
+    # main() calls install() without an opener; swap its default for a fake network.
+    monkeypatch.setattr(fetch.install, "__kwdefaults__", {"opener": _opener(b"bbb")})
+    assert fetch.main(["--pins", str(pins), "--root", str(tmp_path), "--select", "b"]) == 0
+    assert (tmp_path / "bin" / "b.exe").read_bytes() == b"bbb"
+    assert not (tmp_path / "bin" / "a.exe").exists()
+    assert fetch.main(["--pins", str(pins), "--root", str(tmp_path), "--check", "--select", "b"]) == 0
+    assert fetch.main(["--pins", str(pins), "--root", str(tmp_path), "--check"]) == 1
+    assert fetch.main(["--pins", str(pins), "--select", "nope", "--check"]) == 1
 
 
 def test_check_lists_missing_and_changed_files(tmp_path):
@@ -338,3 +425,6 @@ def test_workflow_builds_with_pinned_tools_and_smoke_tests_the_install():
     assert "& $env:ISCC /Qp installer_embed.iss" in text
     assert "'/VERYSILENT'" in text and "tools\\smoke_windows_install.py" in text
     assert "unins000.exe" in text
+    # The bytes that ship are checked against the pins, not only the downloads.
+    assert "fetch_windows_build_deps.py --check --root embed_build" in text
+    assert "fetch_windows_build_deps.py --check --root $dir" in text

@@ -8,6 +8,8 @@ are checked against their own recorded SHA-256 as well.
 Usage (standard library only, Python 3.10+):
   python tools/fetch_windows_build_deps.py                 fill bin/ (files already verified are kept)
   python tools/fetch_windows_build_deps.py --check         verify bin/ against the list, no network
+                                           [--root DIR]    ... or a built/installed tree
+                                           [--select NAME] ... limited to one entry (repeatable)
   python tools/fetch_windows_build_deps.py --only NAME --out FILE
                                                            one raw download, e.g. the Python tarball
                                                            (build_embed_installer.bat) or Inno Setup
@@ -18,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -111,14 +114,34 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
+class _HttpsOnlyRedirects(urllib.request.HTTPRedirectHandler):
+    """Follow redirects (GitHub and Hugging Face send downloads to a CDN), but only to https."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
+        if not newurl.lower().startswith("https://"):
+            raise urllib.error.URLError(f"refused a redirect to a non-https URL: {newurl}")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_OPENER = urllib.request.build_opener(_HttpsOnlyRedirects())
+
+
+class _Incomplete(OSError):
+    """The server closed the connection before the pinned size arrived (retried)."""
+
+
 def _default_opener(url: str, timeout: float) -> BinaryIO:
     req = urllib.request.Request(url, headers={"User-Agent": "wts-build-fetch/1"})
-    return urllib.request.urlopen(req, timeout=timeout)  # noqa: S310 (https only, checked above)
+    return _OPENER.open(req, timeout=timeout)
 
 
 def download(dep: dict[str, Any], dest: Path, *, opener: Opener = _default_opener,
              retries: int = 3, timeout: float = 120.0) -> None:
-    """Write dep's URL to dest; raise FetchError unless size and SHA-256 both match."""
+    """Write dep's URL to dest; raise FetchError unless size and SHA-256 both match.
+
+    Network errors and a body cut short are retried; a full-size body with the wrong hash
+    or a body larger than the pin fails at once.
+    """
     dest.parent.mkdir(parents=True, exist_ok=True)
     part = dest.with_name(dest.name + ".part")
     last_error: Exception | None = None
@@ -133,7 +156,9 @@ def download(dep: dict[str, Any], dest: Path, *, opener: Opener = _default_opene
                         raise FetchError(f"{dep['name']}: download is larger than {dep['size']} bytes")
                     h.update(block)
                     out.write(block)
-        except (urllib.error.URLError, OSError, TimeoutError) as exc:
+            if size < dep["size"]:
+                raise _Incomplete(f"connection closed after {size} of {dep['size']} bytes")
+        except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError) as exc:
             part.unlink(missing_ok=True)
             last_error = exc
             print(f"[fetch] {dep['name']}: attempt {attempt}/{retries} failed: {exc}", flush=True)
@@ -212,9 +237,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--check", action="store_true", help="verify the targets, download nothing")
     ap.add_argument("--only", metavar="NAME", help="download one entry as-is (needs --out)")
     ap.add_argument("--out", type=Path, help="output file for --only")
+    ap.add_argument("--select", metavar="NAME", action="append", default=[],
+                    help="fill or check only this entry (repeatable)")
     args = ap.parse_args(argv)
     try:
         deps = load_pins(args.pins)
+        unknown = set(args.select) - {d["name"] for d in deps}
+        if unknown:
+            raise FetchError(f"no entry named {', '.join(sorted(unknown))} in {args.pins}")
+        if args.select:
+            deps = [d for d in deps if d["name"] in args.select]
         if args.only:
             if args.out is None:
                 ap.error("--only needs --out")

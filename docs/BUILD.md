@@ -220,15 +220,16 @@ scripts below or the workflow itself) and by hand from the Actions tab
    Setup 6.7.3 — at a fixed URL, checked against the recorded size and
    a SHA-256 the upstream project publishes (release checksum file,
    GitHub release asset digest or Hugging Face LFS id);
-2. runs `build_embed_installer.bat`, compiles `installer_embed.iss` and
-   zips the Portable build;
+2. runs `build_embed_installer.bat`, checks `embed_build\bin\` against
+   the pins again (`--check --root embed_build`), compiles
+   `installer_embed.iss` and zips the Portable build;
 3. writes a file manifest (`tools/build_manifest.py`: path, size and
    SHA-256 of every file in `embed_build\` and `dist_installer\`) and the
    exact PyPI package versions of the run (`site-packages.txt`);
-4. installs the installer silently on the runner, runs
-   `tools/smoke_windows_install.py` with the installed interpreter
-   (version, runtime imports, Tcl, bundled tools, diarization models,
-   `gui.py --help`) and uninstalls it again;
+4. installs the installer silently on the runner, checks the installed
+   `bin\` against the pins, runs `tools/smoke_windows_install.py` with
+   the installed interpreter (version, runtime imports, Tcl/Tk, bundled
+   tools, diarization models, `gui.py --help`) and uninstalls it again;
 5. uploads `windows-installer-<commit>` (installer + Portable ZIP) and
    `windows-build-manifest-<commit>` as workflow artifacts, kept 7 days.
 
@@ -253,14 +254,20 @@ python tools\build_manifest.py compare local-embed.json embed_build.json --stric
 `--strict` fails on any difference under those folders (they come from
 the pinned downloads); other areas are listed with their file and size
 changes, and the whole tree may change size by at most `--tolerance`
-(default 10 %).
+(default 10 %). A local `bin\` filled by hand or by the older
+`tools\download_diarization_models.bat` also holds
+`diarization\segmentation.int8.onnx` and `diarization\segmentation.tar.bz2`,
+which the app never reads and the pins do not fetch, so `--strict bin/`
+lists them until `bin\` is refilled with `fetch_windows_build_deps.py`.
 
 **Moving a pin to a newer version:** change the entry's `url`, `size`
 and `sha256` (and, for archives, each file's `member` and `sha256`) in
 `platform/windows/build-deps.json`, taking the hash from the upstream
 release (checksum file or the asset digest GitHub shows), then run
 `python tools\fetch_windows_build_deps.py --root <empty folder>`: it
-fails on any value that does not match the real download.
+fails on any value that does not match the real download. Entries
+without `files` (the Python tarball, Inno Setup) are not part of that
+run; test them with `--only <name> --out <file>`.
 
 ## Rebuild without bumping the version — RETIRED, do not use (2026-08-23)
 

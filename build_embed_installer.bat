@@ -81,12 +81,10 @@ popd
 
 REM Deno for yt-dlp's YouTube JS challenges, next to yt-dlp so it needs no
 REM click in the Download tab (core.js_runtime.find_deno checks bin\ first).
-REM Official zip, SHA-256 verified by install_deno(); bin\deno.exe is gitignored.
+REM The pinned release zip from build-deps.json; bin\deno.exe is gitignored.
 if not exist "%ROOT%bin\deno.exe" (
-  echo [embed] fetching Deno into bin\
-  pushd "%ROOT%"
-  python -c "import shutil; from core.js_runtime import install_deno; shutil.copy2(install_deno(), r'bin\deno.exe')"
-  popd
+  echo [embed] fetching the pinned Deno into bin\
+  python "%ROOT%tools\fetch_windows_build_deps.py" --select deno
   if not exist "%ROOT%bin\deno.exe" (
     echo [embed] Deno fetch failed
     exit /b 9
