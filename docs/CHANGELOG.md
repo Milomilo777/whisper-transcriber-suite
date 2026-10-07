@@ -264,6 +264,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Burned-in Persian, Arabic and Chinese subtitles render correctly.** On Windows the burn now
+  uses Tahoma for Arabic-script text and Microsoft YaHei for Chinese (the default font drew a
+  missing-glyph box inside common Persian words and mixed Chinese glyph weights), and every
+  right-to-left line is wrapped in invisible RLM marks so a final "." "!" or "»" stays at the end.
+- **Burn subtitles never replaces its source.** Saving the burned video under the source video's
+  own name is refused instead of overwriting the original, and a temp folder whose path holds
+  `,` `;` `[` `]` or `'` no longer breaks the burn.
 - **The loop guard no longer deletes real repeated speech.** Three identical lines in a row used to
   be collapsed to one, so a prayer's "Amen." x4 or a chorus lost text with only a log line. Now only
   back-to-back copies count (gap under 0.25 s, each under 5 s): runs of 3-7 such copies are kept and
