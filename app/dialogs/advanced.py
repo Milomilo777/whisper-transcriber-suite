@@ -8,6 +8,7 @@ picked, so the default view stays short.
 """
 from __future__ import annotations
 
+import copy
 import logging
 import sys
 import tkinter as tk
@@ -2061,6 +2062,9 @@ class AdvancedDialog(tk.Toplevel):
 
     def _save_and_close(self) -> None:
         cfg = self.app.app_config
+        # A failed save puts these values back, so the dialog (left open)
+        # and a retry see exactly what they saw before this click.
+        before = copy.deepcopy(dict(cfg))
         cfg["vad_enabled"] = bool(self._vad_enabled.get())
         cfg["vad_min_silence_ms"] = int(self._vad_min_silence.get())
         cfg["vad_threshold"] = round(float(self._vad_threshold.get()), 2)
@@ -2163,7 +2167,11 @@ class AdvancedDialog(tk.Toplevel):
         try:
             save_config(cfg)
         except Exception as e:  # noqa: BLE001
-            # Stay open: closing would look like a successful save.
+            # Stay open: closing would look like a successful save. Undo the
+            # unsaved values in memory: a later save from elsewhere must not
+            # write them silently, and a retry must still see what changed.
+            cfg.clear()
+            cfg.update(before)
             logger.exception("Failed to save settings")
             self.app.log(f"Failed to save settings: {e}")
             from tkinter import messagebox

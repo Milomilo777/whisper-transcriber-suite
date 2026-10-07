@@ -610,3 +610,34 @@ def test_a_failed_save_keeps_the_dialog_open_and_says_so(monkeypatch) -> None:
     adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
     assert shown and "disk full" in shown[0][1]
     assert closed == []
+
+
+def test_a_retry_after_a_failed_save_still_applies_the_changes(monkeypatch) -> None:
+    """A failed save restores the values in memory, so the retry sees the change."""
+    import tkinter.messagebox as mb
+
+    from app.dialogs import advanced as adv
+
+    calls = {"save": 0, "stop": 0, "restart": 0}
+
+    def save(_cfg):  # noqa: ANN001
+        calls["save"] += 1
+        if calls["save"] == 1:
+            raise OSError("locked")
+
+    monkeypatch.setattr(adv, "save_config", save)
+    monkeypatch.setattr(mb, "showerror", lambda *a, **k: None)
+    cfg = _base_cfg() | {"watched_folder": "", "watched_folder_enabled": False}
+    app = _fake_app(cfg)
+    app.transcription_service = types.SimpleNamespace(
+        stop_all=lambda: calls.__setitem__("stop", calls["stop"] + 1))
+    app._confirm_backend_switch = lambda _d: True
+    app._restart_watched_folder = lambda: calls.__setitem__("restart", calls["restart"] + 1)
+    dlg = _fake_dialog(app, _backend_display=_V(adv.ENGINE_CHOICES[1][0]),
+                       _watched_folder=_V("C:/w"), _watched_folder_enabled=_V(True))
+    adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
+    assert cfg["transcribe_backend"] == "faster_whisper"  # unsaved change undone
+    assert cfg["watched_folder"] == ""
+    adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
+    assert calls == {"save": 2, "stop": 1, "restart": 1}
+    assert cfg["transcribe_backend"] != "faster_whisper"

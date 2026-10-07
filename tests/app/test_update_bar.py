@@ -413,3 +413,11 @@ def test_a_withdrawn_release_clears_the_help_dot(host):
     assert host.app_config["update_latest_seen"] == "1.9.3"
     assert host.saved and host.saved[-1]["update_latest_seen"] == "1.9.3"
     assert "●" not in _labels(host)[0]
+
+
+def test_a_withdrawn_release_closes_its_bar(host):
+    host._on_update_result(_info(), manual=False)
+    assert _bar_visible(host)
+    host._on_update_result(_info("v1.9.3", newer=False), manual=False)
+    assert not _bar_visible(host)
+    assert host._latest_update is None

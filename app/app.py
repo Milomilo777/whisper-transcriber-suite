@@ -5077,6 +5077,11 @@ class App(tk.Tk):
                 and _updates.is_newer(seen, info.latest_tag)
                 and _updates.note_latest(self.app_config, info.latest_tag)
             ):
+                # Nothing to update to any more: drop the withdrawn release
+                # and its bar, so no button acts on it.
+                self._latest_update = None
+                if self._update_bar is not None and self._update_bar.visible:
+                    self._hide_update_bar()
                 self._save_update_prefs()
                 self._refresh_update_signs()
             if manual:

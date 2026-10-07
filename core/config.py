@@ -1062,12 +1062,17 @@ def _parse_config_bytes(raw: bytes) -> dict[str, Any] | None:
 
     UTF-8 (with or without a BOM) first; a file saved by an editor in the
     Windows ANSI code page (cp1252) is read too, and the next save writes it
-    back as UTF-8. Non-finite literals (Infinity, NaN) count as damage.
+    back as UTF-8. Non-finite literals (Infinity, NaN) count as damage, and
+    so does a UTF-8 file with a stray invalid byte: read as cp1252 its
+    non-Latin text (Persian, for example) would turn into mojibake that the
+    next save makes permanent.
     """
     for encoding in ("utf-8-sig", "cp1252"):
         try:
             text = raw.decode(encoding)
         except UnicodeDecodeError:
+            if any(ord(ch) > 127 and ch != "�" for ch in raw.decode("utf-8", "replace")):
+                return None  # real UTF-8 text with damage, not an ANSI file
             continue
         try:
             data = json.loads(text, parse_constant=_reject_nonfinite)
@@ -1363,9 +1368,13 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
         else:
             config_url = str(DEFAULT_CONFIG["config_url"])
     online: dict[str, Any] = {}
+    # A switch whose saved choice was lost with a damaged file reads closed
+    # (see _privacy_evidence_lost), for the online fetch below too.
+    evidence_lost = _privacy_evidence_lost()
+    switch_view = {**_PRIVACY_CLOSED, **local} if evidence_lost else local
     # An empty ``local`` (no file, or a read that failed) asks core.offline to
     # read the file itself: it keeps its last value across a transient error.
-    if config_url and offline.is_offline(local or None):
+    if config_url and offline.is_offline(switch_view or None):
         # Work offline: no request at all; the last good copy still applies
         # (it is on disk), so the model catalog stays the same.
         online = fetch_online_config("")
@@ -1388,7 +1397,6 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     # Privacy switches fail closed: a value that is neither clearly on nor
     # clearly off reads as offline / no statistics / no update check, and so
     # does a switch whose saved choice was lost with a damaged file.
-    evidence_lost = _privacy_evidence_lost()
     for key, closed in _PRIVACY_CLOSED.items():
         if key not in local and evidence_lost:
             merged[key] = closed
@@ -1479,7 +1487,10 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     result = _apply_runtime_fallbacks(merged)
     # The derived model_path and an unmounted download_folder cleared for
     # this session are not changes to save (see the _persistable_* helpers).
-    for key in ("model_path", "download_folder"):
+    # Nor is a hub_folder derived from a legacy model_path: it is derived
+    # again on every load, and saving it would overwrite a folder another
+    # process saved meanwhile.
+    for key in ("model_path", "download_folder", "hub_folder"):
         if key in result:
             baseline[key] = copy.deepcopy(result[key])
     return LoadedConfig(result, baseline)
@@ -1667,6 +1678,16 @@ def save_config(config: dict[str, Any]) -> None:
         Path(directory).mkdir(parents=True, exist_ok=True)
         with _config_file_lock(path):
             status, disk = _read_config_file(path, retry_seconds=_READ_RETRY_SECONDS)
+            if status == "corrupt":
+                # Same repair as a load: keep the damaged file as .corrupt and
+                # put the .bak back, then merge over that.
+                _read_local_config()
+                status, disk = _read_config_file(path, retry_seconds=_READ_RETRY_SECONDS)
+            if status == "unreadable":
+                # Writing blind would replace settings this process cannot see.
+                raise ConfigSaveError(
+                    0, f"Could not read {path} to merge the settings; not saving",
+                )
             on_disk = disk if status == "ok" else None
             baseline = config._config_baseline if isinstance(config, LoadedConfig) else None
             if baseline is not None and on_disk is not None:
@@ -1698,10 +1719,12 @@ def save_config(config: dict[str, Any]) -> None:
                 to_persist.pop(key, None)
             if os.path.exists(path + ".corrupt"):
                 # The saved privacy choices were lost with a damaged file:
-                # write every switch explicitly, so the next read does not
-                # depend on the default.
+                # write every switch the file does not hold yet explicitly,
+                # so the next read does not depend on the default. A switch
+                # already in the file follows the normal merge, so a stale
+                # copy never reverts another process's choice.
                 for key, closed in _PRIVACY_CLOSED.items():
-                    if key in config:
+                    if key in config and (on_disk is None or key not in on_disk):
                         to_persist[key] = offline.coerce_flag(config[key], closed)
             elif (
                 "telemetry_opt_in" in to_persist

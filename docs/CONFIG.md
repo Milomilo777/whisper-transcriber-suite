@@ -33,8 +33,10 @@ reading and saving are built to never lose a setting (`core.config`):
   A save that would write fewer than 40 % of the keys on disk is refused as data loss.
 - **A read error is not damage.** A file that cannot be opened for a moment (another process is
   replacing it, an antivirus scan) is retried for up to 1 s, then the last copy this process
-  read is used; the file is never renamed for it. A file saved by an editor in the Windows ANSI
-  code page (cp1252) is read, and the next save writes it as UTF-8.
+  read is used; the file is never renamed for it. A save that cannot read the file refuses to
+  write blind (`ConfigSaveError`). A file saved by an editor in the Windows ANSI code page
+  (cp1252) is read, and the next save writes it as UTF-8; a UTF-8 file with a broken byte counts
+  as damaged instead, so its non-Latin text is never turned into mojibake.
 - **A damaged file falls back to its backup.** A file that is not a JSON object is moved to
   `config.json.corrupt` and `config.json.bak` is put back in its place. With no usable backup the
   app starts from the defaults, except for the privacy switches below.

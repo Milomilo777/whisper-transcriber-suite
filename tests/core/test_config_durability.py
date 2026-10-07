@@ -502,3 +502,83 @@ def test_small_project_file_still_applies(tmp_path):
     proj.mkdir()
     (proj / cfgmod.PROJECT_FILE_NAME).write_text('{"initial_prompt": "hi"}', encoding="utf-8")
     assert cfgmod.load_project_overrides(proj / "media.mp4") == {"initial_prompt": "hi"}
+
+
+# --- review of the first version ---------------------------------------------
+
+
+def test_with_corrupt_evidence_a_stale_save_keeps_another_process_switch(cfg_dir):
+    (cfg_dir / "config.json.corrupt").write_text("{", encoding="utf-8")
+    _write(cfg_dir, {"theme": "dark", "work_offline": False, "telemetry_opt_in": False,
+                     "update_check_enabled": True})
+    stale = cfgmod.load_config(fetch_online=False)
+    cfgmod.update_config(lambda d: d.__setitem__("work_offline", True))  # another process
+    stale["theme"] = "light"
+    cfgmod.save_config(stale)
+    disk = _disk(cfg_dir)
+    assert disk["work_offline"] is True and disk["theme"] == "light"
+
+
+def test_save_refuses_to_write_over_an_unreadable_file(cfg_dir, monkeypatch):
+    _write(cfg_dir, {"theme": "dark", "work_offline": True, "cloud_stt_minutes_used": 42.0})
+    cfg = cfgmod.load_config(fetch_online=False)
+    cfg["theme"] = "light"
+    monkeypatch.setattr(cfgmod, "_READ_RETRY_SECONDS", 0.05)
+    fake, _ = _flaky_open("config.json", 10_000)
+    monkeypatch.setattr(cfgmod, "open", fake, raising=False)
+    with pytest.raises(cfgmod.ConfigSaveError):
+        cfgmod.save_config(cfg)
+    monkeypatch.undo()
+    disk = _disk(cfg_dir)
+    assert disk["work_offline"] is True and disk["cloud_stt_minutes_used"] == 42.0
+
+
+def test_save_over_a_damaged_file_merges_onto_the_backup(cfg_dir):
+    _write(cfg_dir, {"theme": "dark", "work_offline": True})
+    cfg = cfgmod.load_config(fetch_online=False)
+    (cfg_dir / "config.json.bak").write_text(
+        json.dumps({"theme": "dark", "work_offline": True, "cloud_stt_minutes_used": 5.0}),
+        encoding="utf-8")
+    (cfg_dir / "config.json").write_text('{"theme": "da', encoding="utf-8")
+    cfg["theme"] = "light"
+    cfgmod.save_config(cfg)
+    disk = _disk(cfg_dir)
+    assert disk["theme"] == "light" and disk["work_offline"] is True
+    assert disk["cloud_stt_minutes_used"] == 5.0
+    assert (cfg_dir / "config.json.corrupt").exists()
+
+
+def test_lost_switches_also_skip_the_online_fetch(cfg_dir, monkeypatch):
+    (cfg_dir / "config.json.corrupt").write_text("{", encoding="utf-8")
+    _write(cfg_dir, {"theme": "dark"})
+    urls: list[str] = []
+    monkeypatch.setattr(cfgmod, "fetch_online_config", lambda url, **k: urls.append(url) or {})
+    cfgmod.refresh_online_config()
+    offline.set_offline(None)
+    try:
+        cfg = cfgmod.load_config()
+    finally:
+        offline.set_offline(False)
+        cfgmod.refresh_online_config()
+    assert cfg["work_offline"] is True
+    assert all(u == "" for u in urls)
+
+
+def test_a_derived_hub_folder_does_not_overwrite_a_saved_one(cfg_dir, tmp_path):
+    model = tmp_path / "hub" / "models--Systran--faster-whisper-small"
+    model.mkdir(parents=True)
+    _write(cfg_dir, {"theme": "dark", "model_path": str(model)})
+    stale = cfgmod.load_config(fetch_online=False)
+    assert stale["hub_folder"]  # derived from model_path at load
+    cfgmod.update_config(lambda d: d.__setitem__("hub_folder", "D:/picked"))
+    stale["theme"] = "light"
+    cfgmod.save_config(stale)
+    assert _disk(cfg_dir)["hub_folder"] == "D:/picked"
+
+
+def test_a_utf8_file_with_a_stray_byte_is_not_read_as_cp1252(cfg_dir):
+    persian = "\u0633\u0644\u0627\u0645"
+    good = json.dumps({"initial_prompt": persian}, ensure_ascii=False).encode("utf-8")
+    (cfg_dir / "config.json.bak").write_bytes(good)
+    (cfg_dir / "config.json").write_bytes(good[:-2] + b"\xff" + good[-2:])
+    assert cfgmod._read_local_config()["initial_prompt"] == persian
