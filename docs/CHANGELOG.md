@@ -303,12 +303,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Same model advice for 3-5 GB computers.** Quick start gave Medium to a computer with 3-5 GB of memory while "Best for this PC" called it weak and offered Small. Both now use one memory line (`_WEAK_RAM_GB`, 5 GB) and pick the safer Small below it.
 - **Chapters file no longer mistaken for the transcript.** With auto-chapters on and `json` not among the output formats, **View transcript**, **Save shareable page** and the word-count fallback opened `<name>.chapters.json` as if it were the transcript. They now share one lookup (`app/domain/task_outputs.py`) that skips the chapters sidecar and prefers the exact `<name>.json`.
 - **Hardware detection and model advice.** GPUs without efficient float16 (GTX 10-series) now get
   an NVIDIA CUDA (int8) tier in the Hardware wizard, so Apply no longer pins the CPU over the
   automatic CUDA pick. Applying the untouched list while an NVIDIA GPU is unusable saves nothing
   instead of pinning the CPU. Tiers of backends the app does not bundle can no longer be saved.
-  Quick start sizes "Best quality" to the computer's memory (a 4 GB PC gets Medium, not Large v3);
+  Quick start sizes "Best quality" to the computer's memory (a 4 GB PC gets Small, not Large v3);
   the advisor treats 8 GB laptops as capable, counts physical cores, treats unreadable memory or
   cores as weak instead of plentiful, follows a CPU setting in `config.json` or `hardware.json`, and
   no longer says "No usable NVIDIA GPU" on a Mac. Offline, both windows say so instead of promising a

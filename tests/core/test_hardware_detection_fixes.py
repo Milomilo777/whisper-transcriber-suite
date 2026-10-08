@@ -61,10 +61,12 @@ def test_a_gpu_with_only_float32_offers_no_gpu_tier():
 @pytest.mark.parametrize(
     "slug, ram, expected",
     [
-        ("large-v3", 3.9, "medium"),            # the 4 GB PC from the review
+        ("large-v3", 3.9, "small"),             # the 4 GB PC from the review (advice agrees)
         ("large-v3", 7.2, "large-v3"),          # an 8 GB laptop reports 7.0-7.4
         ("large-v3", 5.9, "large-v3-turbo"),
-        ("large-v3-turbo", 3.9, "medium"),
+        ("large-v3-turbo", 3.9, "small"),
+        ("medium", 4.9, "small"),               # under 5 GB: same line as the advisor
+        ("medium", 5.0, "medium"),
         ("large-v3", 2.0, "small"),
         ("large-v3", 0.0, "large-v3"),          # RAM unknown: no cap
         ("small", 1.0, "small"),
@@ -488,7 +490,7 @@ def test_quick_start_caps_the_model_before_the_hardware_check_finishes(monkeypat
 
     monkeypatch.setattr(hw, "system_ram_gb", lambda: 3.9)
     choice = qs.QuickStartChoice("fa", "best", "x", ram_gb=hw.system_ram_gb())
-    assert choice.model_slug == "medium"
+    assert choice.model_slug == "small"
 
 
 def test_a_reprobe_forgets_the_earlier_click():

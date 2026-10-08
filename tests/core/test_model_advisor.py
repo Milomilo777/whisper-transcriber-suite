@@ -43,6 +43,30 @@ def test_cpu_picks_for_a_modest_computer(ram_gb, cores):
     assert [p.slug for p in picks] == ["base", "small"]
 
 
+_RAM_GRID = [round(0.5 + 0.1 * i, 1) for i in range(0, 160)]  # 0.5 .. 16.4 GB
+
+
+@pytest.mark.parametrize("ram_gb", _RAM_GRID)
+def test_the_advisor_never_offers_a_model_the_ram_ladder_would_shrink(ram_gb):
+    """Quick start sizes its pick with fit_model_to_ram; the advisor must agree."""
+    for pick in hw.recommend_models(_CPU_ONLY, ram_gb=ram_gb, cpu_cores=8):
+        assert hw.fit_model_to_ram(pick.slug, ram_gb) == pick.slug
+
+
+@pytest.mark.parametrize("ram_gb", [3.0, 3.5, 3.9, 4.0, 4.9])
+@pytest.mark.parametrize("wanted", ["large-v3", "large-v3-turbo", "medium"])
+def test_3_to_5_gb_gets_the_same_model_from_quick_start_and_the_advisor(ram_gb, wanted):
+    """Both used to disagree: the advisor said small, Quick start's ladder said medium."""
+    accurate = hw.recommend_models(_CPU_ONLY, ram_gb=ram_gb, cpu_cores=8)[-1].slug
+    assert hw.fit_model_to_ram(wanted, ram_gb) == accurate == "small"
+
+
+def test_the_weak_ram_line_is_the_smallest_ram_the_big_models_need():
+    for slug in ("medium", "large-v3-turbo"):
+        assert hw.fit_model_to_ram(slug, hw._WEAK_RAM_GB) == slug
+        assert hw.fit_model_to_ram(slug, hw._WEAK_RAM_GB - 0.1) == "small"
+
+
 def test_unusable_gpu_is_advised_like_a_cpu():
     status = hw.CudaStatus(usable=False, gpu_present=True, memory_mb=8151, reason="cuBLAS missing")
     picks = hw.recommend_models(status, ram_gb=16, cpu_cores=8)
