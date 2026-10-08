@@ -596,7 +596,7 @@ def _failing_copy(monkeypatch):
     monkeypatch.setattr(J.shutil, "copy2", no_copy)
 
 
-def test_failed_archive_keeps_media_warns_and_protects_the_folder(
+def test_failed_archive_warns_and_protects_the_outputs_folder(
         tmp_path, monkeypatch):
     _failing_copy(monkeypatch)
     mgr = _manager(tmp_path, _srt_transcribe, max_jobs=1)
@@ -607,7 +607,8 @@ def test_failed_archive_keeps_media_warns_and_protects_the_folder(
         assert job.status == STATUS_FINISHED
         assert job.warning
         assert job.public_dict()["warning"] == job.warning
-        assert os.path.isfile(job.media_path)  # not deleted: nothing is safe
+        # The results are protected; the (large) input is expendable.
+        assert not os.path.exists(job.media_path)
         # The cap now evicts the finished job: its folder must survive.
         with mgr._lock:
             mgr._evict_locked()
@@ -696,3 +697,133 @@ def test_media_removal_is_retried_while_the_file_is_open(tmp_path, monkeypatch):
         mgr.stop()
     assert calls["n"] == 3
     assert not os.path.exists(job.media_path)
+
+
+# =============================================================================
+# Review round 3: the keep list
+# =============================================================================
+
+_PERSIAN_TITLE = "گزارش خبری بسیار طولانی امروز " * 3  # 90 characters
+
+
+def _persian_outputs(work_dir, count=9):
+    paths = []
+    for i in range(count):
+        p = os.path.join(work_dir, f"{_PERSIAN_TITLE}{i}.srt")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write("transcript")
+        paths.append(p)
+    return paths
+
+
+def test_keep_list_keeps_every_long_persian_name(tmp_path):
+    mgr = _manager(tmp_path)
+    with mgr._lock:
+        job = mgr._new_job("upload", ["srt"], "", "x.wav")
+    paths = _persian_outputs(job.work_dir)
+    mgr._write_keep_file(job, paths)
+    keep = os.path.join(job.work_dir, J._KEEP_FILE)
+    raw = open(keep, "rb").read()
+    names = sorted(os.path.basename(p) for p in paths)
+    # With ASCII escapes this list would be longer than the old read limit.
+    assert len(json.dumps(names)) > 4096
+    assert b"\\u" not in raw  # real UTF-8, not escapes
+    assert J._read_keep_list(keep) == names
+
+
+def test_purge_keeps_then_copies_long_persian_outputs(tmp_path, monkeypatch):
+    mgr = _manager(tmp_path)
+    with mgr._lock:
+        job = mgr._new_job("upload", ["srt"], "", "x.wav")
+    paths = _persian_outputs(job.work_dir)
+    mgr._write_keep_file(job, paths)
+    d = job.work_dir
+    job.status = STATUS_FINISHED  # a finished job's folder outlives stop()
+    mgr.stop()  # its folder now belongs to a stopped server
+    (tmp_path / "server_jobs" / job.job_id / J._JOB_DIR_MARKER).write_text(
+        json.dumps({"v": 1, "pid": _dead_pid(), "started": 1.0,
+                    "instance": "gone"}))
+    _age(d)
+    _failing_copy(monkeypatch)
+    m2 = _manager(tmp_path)
+    m2.start()
+    m2.stop()
+    assert all(os.path.isfile(p) for p in paths)  # copies failed: all kept
+    monkeypatch.undo()
+    m3 = _manager(tmp_path)
+    m3.start()
+    try:
+        assert not os.path.isdir(d)
+    finally:
+        m3.stop()
+    out = tmp_path / "server_outputs" / job.job_id[:12]
+    assert sorted(p.name for p in out.iterdir()) == sorted(
+        os.path.basename(p) for p in paths)
+
+
+@pytest.mark.parametrize("content", [
+    pytest.param(b'["a.srt", "b', id="cut-short"),
+    pytest.param(b'{"a": 1}', id="not-a-list"),
+    pytest.param(b"\xff\xfe\x00bad", id="not-utf8"),
+    pytest.param(b'["a.srt", "' + b"x" * (2 * 1024 * 1024) + b'"]',
+                 id="over-the-size-limit"),
+    pytest.param(b"", id="empty"),
+])
+def test_unreadable_keep_list_protects_the_whole_folder(tmp_path, content):
+    d = tmp_path / "server_jobs" / ("a" * 32)
+    d.mkdir(parents=True)
+    (d / J._JOB_DIR_MARKER).write_text(json.dumps(
+        {"v": 1, "pid": _dead_pid(), "started": 1.0, "instance": "gone"}))
+    (d / "a.srt").write_text("transcript", encoding="utf-8")
+    (d / J._KEEP_FILE).write_bytes(content)
+    _age(d)
+    mgr = _manager(tmp_path)
+    mgr.start()
+    try:
+        assert (d / "a.srt").read_text(encoding="utf-8") == "transcript"
+    finally:
+        mgr.stop()
+
+
+def test_keep_list_is_written_before_the_history_row(tmp_path, monkeypatch):
+    _failing_copy(monkeypatch)
+    seen = {}
+
+    class _Watch(JobManager):
+        def _finish_history(self, db, rid, job, *a, **k):
+            seen["keep"] = os.path.isfile(
+                os.path.join(job.work_dir, J._KEEP_FILE))
+            return super()._finish_history(db, rid, job, *a, **k)
+
+    mgr = _Watch(_srt_transcribe, jobs_root=str(tmp_path / "server_jobs"),
+                 record_history=False)
+    mgr.start()
+    try:
+        _wait_idle(mgr, mgr.submit_upload("a.wav", b"x", ["srt"]))
+    finally:
+        mgr.stop()
+    assert seen == {"keep": True}
+
+
+def test_failed_keep_list_write_logs_the_unsaved_names(
+        tmp_path, monkeypatch, caplog):
+    _failing_copy(monkeypatch)
+
+    class _BlockKeep(JobManager):
+        def _archive_outputs(self, job):
+            # A directory in the keep list's place makes its write fail.
+            os.makedirs(os.path.join(job.work_dir, J._KEEP_FILE),
+                        exist_ok=True)
+            return super()._archive_outputs(job)
+
+    mgr = _BlockKeep(_srt_transcribe, jobs_root=str(tmp_path / "server_jobs"),
+                     record_history=False)
+    mgr.start()
+    try:
+        with caplog.at_level("ERROR", logger="core.server.jobs"):
+            job = _wait_idle(mgr, mgr.submit_upload("a.wav", b"x", ["srt"]))
+    finally:
+        mgr.stop()
+    assert job.status == STATUS_FINISHED and job.warning
+    assert any("a.srt" in r.getMessage() and r.levelname == "ERROR"
+               for r in caplog.records)

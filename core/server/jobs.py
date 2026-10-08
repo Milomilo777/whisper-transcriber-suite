@@ -150,6 +150,7 @@ _START_TIME_TOLERANCE_S = 60.0
 _KEEP_FILE = ".wts-keep"
 # Removing the media of a finished job is retried this often (an engine or
 # ffmpeg child may still hold the file open for a moment on Windows).
+_KEEP_LIST_MAX_BYTES = 1024 * 1024
 _MEDIA_REMOVE_ATTEMPTS = 4
 _MEDIA_REMOVE_DELAY_S = 0.25
 _UNSAVED_WARNING = (
@@ -503,7 +504,8 @@ class JobManager:
         except OSError:
             return list(found.values())
         if _KEEP_FILE in names:
-            for name in _read_keep_list(os.path.join(work_dir, _KEEP_FILE)):
+            listed = _read_keep_list(os.path.join(work_dir, _KEEP_FILE))
+            for name in listed or []:
                 if name in names:
                     add(os.path.join(work_dir, name))
         if job is None:
@@ -523,6 +525,14 @@ class JobManager:
         dest_dir = os.path.join(
             self._outputs_root, os.path.basename(os.path.normpath(work_dir))[:12])
         saved = True
+        keep = os.path.join(work_dir, _KEEP_FILE)
+        if os.path.exists(keep) and _read_keep_list(keep) is None:
+            # The list of unsaved files cannot be trusted (cut short or
+            # damaged): unreadable never means "nothing to protect".
+            logger.error("server: the keep list of job folder %s is "
+                         "unreadable; the folder is kept",
+                         os.path.basename(work_dir))
+            saved = False
         for src in self._protected_files(work_dir, job):
             dest = os.path.join(dest_dir, os.path.basename(src))
             try:
@@ -538,15 +548,22 @@ class JobManager:
         return saved
 
     def _write_keep_file(self, job: Job, paths: list[str]) -> None:
-        """Record which files of the job folder still lack a durable copy."""
+        """Record which files of the job folder still lack a durable copy.
+
+        Written as real UTF-8 (not ``\\uXXXX`` escapes): Persian titles would
+        otherwise grow six-fold. If even this write fails, the names go to
+        the log at error level, the last trace of where the results are.
+        """
         names = sorted({os.path.basename(p) for p in paths})
         try:
             with open(os.path.join(job.work_dir, _KEEP_FILE), "w",
                       encoding="utf-8") as f:
-                json.dump(names, f)
+                json.dump(names, f, ensure_ascii=False)
         except OSError as e:
-            logger.error("server: could not write the keep list of job %s: %s",
-                         job.job_id, e)
+            logger.error(
+                "server: could not write the keep list of job %s (%s); "
+                "results without a copy in %s: %s",
+                job.job_id, e, job.work_dir, ", ".join(names))
 
     def stop(self, *, timeout: float = 5.0) -> None:
         """Signal the worker to exit, wait briefly, reclaim work_dirs.
@@ -945,7 +962,9 @@ class JobManager:
         Outputs are copied out of the temporary folder and the history row is
         written BEFORE the job reads as terminal (a client polling for
         "finished" may act on it at once, and a terminal job can be evicted),
-        then the server-owned input media is removed. Never raises: the
+        then the server-owned input media is removed (also when a copy
+        failed: the unsaved outputs are protected by the keep list and the
+        folder is then never deleted). Never raises: the
         status is always set, whatever a step above did.
         """
         job.settling = True
@@ -970,13 +989,13 @@ class JobManager:
         except Exception:  # noqa: BLE001
             logger.exception("server: could not write history for job %s",
                              job.job_id)
-        if not unsaved:
-            # Only once every result is safe elsewhere is the input expendable.
-            try:
-                self._drop_input_media(job)
-            except Exception:  # noqa: BLE001
-                logger.exception("server: could not remove the media of job %s",
-                                 job.job_id)
+        # The input is expendable even when a copy failed: the outputs are
+        # what matters, and they stay protected (keep list, folder kept).
+        try:
+            self._drop_input_media(job)
+        except Exception:  # noqa: BLE001
+            logger.exception("server: could not remove the media of job %s",
+                             job.job_id)
         self._set_status(job, status)
 
     def _drop_input_media(self, job: Job) -> None:
@@ -1638,14 +1657,23 @@ def _parse_marker(text: str) -> tuple[int, str, float] | None:
         return None
 
 
-def _read_keep_list(path: str) -> list[str]:
-    """The plain file names in a keep list (anything else is ignored)."""
+def _read_keep_list(path: str) -> list[str] | None:
+    """The plain file names in a keep list, or None if it cannot be trusted.
+
+    None (missing content, cut short, not UTF-8, not a list, over the size
+    limit) must be treated as "protect everything": a truncated list is not
+    an empty one. Individual entries that are not plain names are ignored.
+    """
     try:
-        data = json.loads(_read_text(path))
-    except (OSError, ValueError):
-        return []
+        with open(path, "rb") as f:
+            raw = f.read(_KEEP_LIST_MAX_BYTES + 1)
+        if len(raw) > _KEEP_LIST_MAX_BYTES:
+            return None
+        data = json.loads(raw.decode("utf-8"))
+    except (OSError, ValueError):  # UnicodeDecodeError is a ValueError
+        return None
     if not isinstance(data, list):
-        return []
+        return None
     return [n for n in data
             if isinstance(n, str) and n and os.path.basename(n) == n
             and n not in (".", "..", _JOB_DIR_MARKER, _KEEP_FILE)]
