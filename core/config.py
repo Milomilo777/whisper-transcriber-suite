@@ -264,6 +264,9 @@ DEFAULT_CONFIG = {
     # on CPU, main model on GPU) or "main" (same as whisper_model). See
     # core/live_model.py.
     "live_model": "tiny",
+    # Keep the Live tab's full-session recording (live-session.wav) after
+    # Stop. Off: it is deleted (100-350 MB per hour of listening).
+    "live_keep_recording": False,
     # v0.8 Phase 2 — Demucs vocal-separation pre-process (off by default;
     # heavy dep, large model). When True + demucs installed, transcribe
     # pipeline runs the input through Demucs first and feeds Whisper the

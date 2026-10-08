@@ -37,6 +37,7 @@ from app.widgets.notice import notify
 from app.widgets import subtitle_edit as subtitle_edit_ui
 from app.widgets.platform import open_folder as _open_folder_helper
 from app.widgets.live_tab import build_live_tab, stop_live_session
+from app.widgets.live_tab import save_before_exit as live_save_before_exit
 from app.widgets.smtv_tab import build_smtv_tab
 from app.widgets.voice_clone_tab import build_voice_clone_tab, stop_voice_clone_worker
 from app.widgets.tabs import (
@@ -1841,6 +1842,18 @@ class App(tk.Tk):
                 # teardown). The latch is otherwise only reset in __init__.
                 self._exit_from_tray = False
                 return
+
+        # The live transcript exists only in the Live tab's widget: offer
+        # to save it (Cancel, or cancelling the save dialog, keeps the app
+        # open; anything that arrives after this is autosaved at teardown).
+        try:
+            keep_open = not live_save_before_exit(self)
+        except Exception:  # noqa: BLE001
+            logger.exception("Live transcript exit check failed")
+            keep_open = False
+        if keep_open:
+            self._exit_from_tray = False
+            return
 
         # Confirmation passed (or there was nothing to confirm): flip the
         # closing flag so watcher events / stability-checks in flight

@@ -301,7 +301,20 @@ class Recorder:
             }
             if self.device_index is not None:
                 stream_kwargs["device"] = self.device_index
-            with sd.RawInputStream(**stream_kwargs) as stream:
+            try:
+                opened = sd.RawInputStream(**stream_kwargs)
+            except Exception as first:  # noqa: BLE001
+                # The picker lists every host API's entry for a device,
+                # and WASAPI/WDM-KS entries only open at the device's own
+                # rate. Retry once at that rate; the live engine resamples.
+                native = _device_default_rate(sd, self.device_index)
+                if not native or native == int(stream_kwargs["samplerate"]):
+                    raise
+                logger.info("Mic refused %s Hz (%s); opening at its native %s Hz",
+                            stream_kwargs["samplerate"], first, native)
+                stream_kwargs["samplerate"] = native
+                opened = sd.RawInputStream(**stream_kwargs)
+            with opened as stream:
                 # The requested rate is a hint; a fixed-rate device (or a
                 # future PortAudio that nearest-matches instead of
                 # raising) can silently open at a different rate. Read
@@ -430,6 +443,19 @@ class Recorder:
             wf.setsampwidth(SAMPLE_WIDTH_BYTES)
             wf.setframerate(self.sample_rate)
             wf.writeframes(b"".join(self._frames))
+
+
+def _device_default_rate(sd: Any, device_index: Optional[int]) -> int:
+    """The input device's default sample rate, or 0 when unknown."""
+    try:
+        if device_index is None:
+            info = sd.query_devices(kind="input")
+        else:
+            info = sd.query_devices(device_index)
+        return int(float(info["default_samplerate"]))
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not read the device's default rate", exc_info=True)
+        return 0
 
 
 def _downmix_to_mono_int16(data: bytes, channels: int) -> bytes:

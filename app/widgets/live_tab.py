@@ -20,9 +20,11 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
+import time
 import tkinter as tk
 from tkinter import filedialog, ttk
-from typing import Any
+from typing import Any, Callable
 
 from app.dpi import scaled
 from app.theme import script_fonts, tokens
@@ -37,25 +39,53 @@ _SOURCE_MIC = "Microphone"
 _SOURCE_SYSTEM = "System audio (what you hear)"
 
 # Keys that never modify text -- letting these through even while the
-# transcript is "read-only" keeps navigation, selection-extend, and the
-# Ctrl-combo shortcuts (checked via the modifier bit below) working.
+# transcript is "read-only" keeps navigation and selection-extend working
+# (Ctrl+arrow / Ctrl+Home too: the modifier does not matter for these).
+# Not Tab: the Text class binding inserts a tab character.
 _NAV_KEYSYMS = frozenset((
     "Left", "Right", "Up", "Down", "Home", "End", "Prior", "Next",
     "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R",
-    "Tab", "Escape",
+    "Meta_L", "Meta_R", "Super_L", "Super_R", "Escape",
 ))
+# With a copy modifier held, only these pass: copy (C, Insert) and select
+# all (A, slash). A blanket "any Ctrl combo" let Ctrl+V paste, Ctrl+X cut
+# and the Text class's Ctrl+H / Ctrl+D / Ctrl+K / Ctrl+T / Ctrl+O edits in.
+_COPY_KEYSYMS = frozenset(("c", "C", "a", "A", "Insert", "slash"))
 _CONTROL_MASK = 0x4  # Tk Event.state bit for the Control modifier
+# Command on macOS (Tk aqua reports it as Mod1). On Windows and X11 this
+# bit is Num Lock / Alt, so it only counts as a copy modifier on macOS.
+_COMMAND_MASK = 0x8
+# Text-changing virtual events (menus, Shift+Insert, Shift+Delete, ...).
+_EDIT_VIRTUAL_EVENTS = ("<<Paste>>", "<<PasteSelection>>", "<<Cut>>",
+                        "<<Clear>>", "<<Undo>>", "<<Redo>>")
 
 
-def _blocks_edit(keysym: str, state: "int | str") -> bool:
+# Windows virtual-key codes of A, C and Insert. With a non-Latin keyboard
+# layout (Persian, Russian, ...) Tk reports the layout's letter as the
+# keysym, so Ctrl+C is recognised by the physical key instead.
+_WIN_COPY_KEYCODES = frozenset((65, 67, 45))
+
+
+def _blocks_edit(keysym: str, state: "int | str",
+                 platform: str | None = None, keycode: int = 0) -> bool:
     """True if a keypress with this keysym/modifier-state should be
     swallowed to stop it from typing into a "read-only but selectable"
-    Text widget. Navigation keys and any Ctrl-combo (copy, select-all,
-    ...) pass through; everything else is blocked.
+    Text widget. Navigation keys, copy and select-all pass through
+    (Ctrl, or Command on macOS); everything else is blocked.
     """
-    if isinstance(state, int) and state & _CONTROL_MASK:
+    if keysym in _NAV_KEYSYMS:
         return False
-    return keysym not in _NAV_KEYSYMS
+    if isinstance(state, int):
+        plat = platform or sys.platform
+        mask = _CONTROL_MASK
+        if plat == "darwin":
+            mask |= _COMMAND_MASK
+        if state & mask:
+            if keysym in _COPY_KEYSYMS:
+                return False
+            if plat == "win32" and keycode in _WIN_COPY_KEYCODES:
+                return False
+    return True
 
 
 def _make_readonly_but_selectable(text: tk.Text) -> None:
@@ -67,9 +97,13 @@ def _make_readonly_but_selectable(text: tk.Text) -> None:
     ``_clear``) are unaffected; only user keystrokes are filtered.
     """
     def _filter_key(event: "tk.Event[tk.Text]") -> str | None:
-        return "break" if _blocks_edit(event.keysym, event.state) else None
+        keycode = event.keycode if isinstance(event.keycode, int) else 0
+        return "break" if _blocks_edit(event.keysym, event.state,
+                                       keycode=keycode) else None
 
     text.bind("<Key>", _filter_key)
+    for virtual in _EDIT_VIRTUAL_EVENTS:
+        text.bind(virtual, lambda _e: "break")
 
 
 _MODEL_AUTO = "Automatic (fast enough for this computer)"
@@ -215,6 +249,44 @@ def _download_finished(app: Any, slug: str, error: str | None) -> None:
     _refresh_model_status(app)
 
 
+def _on_keep_toggled(app: Any) -> None:
+    value = bool(app.live_keep_var.get())
+    if bool(app.app_config.get("live_keep_recording", False)) == value:
+        return
+    app.app_config["live_keep_recording"] = value
+    from core.config import save_config
+
+    try:
+        save_config(app.app_config)
+    except Exception:  # noqa: BLE001
+        logger.exception("Could not save the Live tab keep-audio choice")
+
+
+def _keep_recording(app: Any) -> bool:
+    try:
+        return bool(app.live_keep_var.get())
+    except Exception:  # noqa: BLE001
+        return bool(app.app_config.get("live_keep_recording", False))
+
+
+def _live_log(app: Any) -> Callable[[str], None]:
+    """A log callable that is safe from any thread.
+
+    The live worker's reader thread logs (language lock, worker output),
+    and ``app.log`` writes a Tk Text widget, which only the Tk thread may
+    touch.
+    """
+    threadsafe = getattr(app, "log_threadsafe", None)
+
+    def post(msg: str) -> None:
+        if callable(threadsafe):
+            threadsafe(msg)
+        else:
+            app.post_to_main(lambda: app.log(msg))
+
+    return post
+
+
 def _on_live_model_selected(app: Any) -> None:
     _refresh_model_status(app)
     value = _selected_live_value(app)
@@ -236,8 +308,12 @@ def build_live_tab(app: Any, parent: Any) -> None:
     app.live_session = None
     app.live_transcriber = None
     app.live_lines = []
+    #: len(live_lines) at the last save; more lines = unsaved text.
+    app._live_saved_count = 0
     app._live_poll_scheduled = False
     app._live_cancel_pending = False
+    app._live_stop_reason = ""
+    app._live_signal_hint = False
 
     app.live_source_var = tk.StringVar(value=_SOURCE_MIC)
     app.live_device_var = tk.StringVar(value="Default input device")
@@ -358,6 +434,20 @@ def build_live_tab(app: Any, parent: Any) -> None:
         ctl, text="Stop", command=lambda: _stop(app), state="disabled",
     )
     app.live_stop_btn.pack(side="left", padx=(8, 0))
+    app.live_keep_var = tk.BooleanVar(
+        value=bool(app.app_config.get("live_keep_recording", False))
+    )
+    app.live_keep_check = ttk.Checkbutton(
+        ctl, text="Keep the audio", variable=app.live_keep_var,
+        command=lambda: _on_keep_toggled(app),
+    )
+    app.live_keep_check.pack(side="left", padx=(16, 0))
+    help_icon(
+        ctl,
+        "Off: the session's audio recording is deleted when you stop "
+        "(it takes 100-350 MB per hour). On: it is kept, and the log says "
+        "where the file is.",
+    ).pack(side="left", padx=(4, 0))
     ttk.Label(ctl, textvariable=app.live_status_var, foreground="#666").pack(
         side="left", padx=(16, 0)
     )
@@ -508,11 +598,15 @@ def _start(app: Any) -> None:
 
     app.live_status_var.set("Loading the speech model…")
     app._live_cancel_pending = False
+    app._live_stop_reason = ""
+    app._live_signal_hint = False
     _set_running(app, True)
+    worker_log = _live_log(app)
 
     language = _selected_language_code(app)
     device_index = _selected_device_index(app) if mode == "mic" else None
     work_dir = _live.session_work_dir()
+    keep = _keep_recording(app)
     viz = getattr(app, "live_visualizer", None)
 
     def _meter(pcm: bytes, rate: int) -> None:
@@ -530,10 +624,11 @@ def _start(app: Any) -> None:
         from app.services.live_service import LiveTranscriber
 
         transcriber = None
+        session = None
         try:
             model_slug = _prepare_live_model(app, language)
             transcriber = LiveTranscriber(
-                app.entry_file, language=language, log=app.log,
+                app.entry_file, language=language, log=worker_log,
                 model_slug=model_slug,
             )
             transcriber.start()
@@ -543,11 +638,14 @@ def _start(app: Any) -> None:
                 mode=mode,
                 device_index=device_index,
                 language=language,
+                keep_recording=keep,
                 on_meter=_meter,
             )
             session.start()
         except Exception as e:  # noqa: BLE001
             logger.exception("Live session failed to start: %s", e)
+            if session is not None:
+                _finish_recording(session, False)  # the empty session folder
             if transcriber is not None:
                 try:
                     transcriber.stop()
@@ -623,6 +721,7 @@ def _started(app: Any, transcriber: Any, session: Any) -> None:
         app.live_transcriber = transcriber
         app.live_session = session
         app.log("Live transcription started then immediately stopped (cancelled during load).")
+        keep = _keep_recording(app)
 
         def worker() -> None:
             try:
@@ -633,7 +732,8 @@ def _started(app: Any, transcriber: Any, session: Any) -> None:
                 transcriber.stop()
             except Exception:  # noqa: BLE001
                 logger.exception("Stopping the live worker failed")
-            app.post_to_main(lambda: _stopped(app))
+            kept = _finish_recording(session, keep)
+            app.post_to_main(lambda: _stopped(app, kept))
 
         import threading
 
@@ -708,6 +808,7 @@ def _stop(app: Any) -> None:
     except Exception:  # noqa: BLE001
         logger.debug("Could not update live controls", exc_info=True)
     app.live_status_var.set("Microphone off — transcribing what was already said…")
+    keep = _keep_recording(app)
 
     def worker() -> None:
         try:
@@ -720,7 +821,8 @@ def _stop(app: Any) -> None:
                 transcriber.stop()
         except Exception as e:  # noqa: BLE001
             logger.exception("Stopping the live worker failed: %s", e)
-        app.post_to_main(lambda: _stopped(app))
+        kept = _finish_recording(session, keep)
+        app.post_to_main(lambda: _stopped(app, kept))
 
     import threading
 
@@ -757,7 +859,17 @@ def _discard_rest(app: Any, session: Any, transcriber: Any) -> None:
     threading.Thread(target=worker, name="live-discard", daemon=True).start()
 
 
-def _stopped(app: Any) -> None:
+def _finish_recording(session: Any, keep: bool) -> str:
+    """Delete the session's audio unless kept; returns the kept path."""
+    try:
+        session.keep_recording = keep
+        return str(session.finish_recording() or "")
+    except Exception:  # noqa: BLE001
+        logger.exception("Cleaning up the live recording failed")
+        return ""
+
+
+def _stopped(app: Any, kept: str = "") -> None:
     # Drain whatever the tail produced before dropping the session.
     _poll_once(app)
     app.live_session = None
@@ -768,8 +880,11 @@ def _stopped(app: Any) -> None:
     except Exception:  # noqa: BLE001
         logger.debug("Could not update live controls", exc_info=True)
     _set_running(app, False)
-    app.live_status_var.set("Stopped.")
+    reason = getattr(app, "_live_stop_reason", "")
+    app.live_status_var.set(f"Stopped: {reason}" if reason else "Stopped.")
     app.log("Live transcription stopped.")
+    if kept:
+        app.log(f"Live: the session audio was kept at {kept}")
     try:
         viz = getattr(app, "live_visualizer", None)
         if viz is not None:
@@ -787,13 +902,19 @@ def stop_live_session(app: Any) -> None:
             session.stop(timeout=3.0)
         except Exception:  # noqa: BLE001
             logger.exception("Live session teardown failed")
+        # Text the tail produced during that wait belongs in the transcript.
+        _poll_once(app)
     if transcriber is not None:
         try:
             transcriber.stop()
         except Exception:  # noqa: BLE001
             logger.exception("Live worker teardown failed")
+    if session is not None:
+        _finish_recording(session, _keep_recording(app))
     app.live_session = None
     app.live_transcriber = None
+    if not getattr(app, "_live_exit_discard", False):
+        autosave_unsaved_transcript(app)
     try:
         viz = getattr(app, "live_visualizer", None)
         if viz is not None:
@@ -814,9 +935,79 @@ def _schedule_poll(app: Any) -> None:
 
 def _poll(app: Any) -> None:
     app._live_poll_scheduled = False
-    _poll_once(app)
-    if app.live_session is not None and not getattr(app, "_closing", False):
-        _schedule_poll(app)
+    try:
+        _poll_once(app)
+        _check_health(app)
+    except Exception:  # noqa: BLE001
+        logger.exception("Live poll failed")
+    finally:
+        # Always re-arm: one bad event must not stop the transcript from
+        # updating for the rest of the session.
+        if app.live_session is not None and not getattr(app, "_closing", False):
+            _schedule_poll(app)
+
+
+_NO_AUDIO_HINT = ("Listening… no sound arrives from this device. "
+                  "Check that it is connected and selected.")
+_SILENT_HINT = ("Listening… the device sends only silence. Check that it is "
+                "not muted and that this app may use the microphone.")
+
+
+def _check_health(app: Any) -> None:
+    """Notice a dead microphone or worker while the tab says Listening."""
+    session = app.live_session
+    if session is None or getattr(app, "_live_draining", False):
+        return
+    reason = ""
+    try:
+        reason = str(session.capture_error() or "")
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not read the capture state", exc_info=True)
+    transcriber = getattr(app, "live_transcriber", None)
+    if not reason and transcriber is not None:
+        try:
+            if not transcriber.is_running():
+                reason = "The speech model process stopped unexpectedly."
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not read the worker state", exc_info=True)
+    if reason:
+        _fail_live(app, reason)
+        return
+    try:
+        state = str(session.input_signal_state())
+    except Exception:  # noqa: BLE001
+        state = "ok"
+    if state in ("no_audio", "silent"):
+        app._live_signal_hint = True
+        app.live_status_var.set(_NO_AUDIO_HINT if state == "no_audio" else _SILENT_HINT)
+    elif getattr(app, "_live_signal_hint", False):
+        app._live_signal_hint = False
+        app.live_status_var.set("Listening…")
+
+
+def _fail_live(app: Any, reason: str) -> None:
+    """Stop a session that can no longer work and say why, once.
+
+    Goes through the normal Stop path, so chunks already captured are
+    still transcribed and nothing in the transcript is lost.
+    """
+    if (getattr(app, "_live_stop_reason", "") or app.live_session is None
+            or getattr(app, "_closing", False)):
+        return  # already handled, or the app is exiting (teardown stops it)
+    app._live_stop_reason = reason
+    app.log(f"Live error: {reason}")
+    if getattr(app, "_live_draining", False):
+        return  # already stopping; _stopped shows the reason
+    _stop(app)
+    app.live_status_var.set(f"Stopped listening: {reason}")
+    # After the poll returns: a modal dialog inside the poll would hold
+    # the transcript updates until it is closed.
+    app.after(0, lambda: show_error(
+        app, "Live transcription stopped",
+        "Listening stopped because of a problem with the audio source or "
+        "the speech model. The text so far is kept.",
+        detail=reason,
+    ))
 
 
 def _poll_once(app: Any) -> None:
@@ -836,6 +1027,8 @@ def _poll_once(app: Any) -> None:
             app.log(f"Live: {ev.detail}")
         elif ev.kind == "error":
             app.log(f"Live error: {ev.detail}")
+        elif ev.kind == "fatal":
+            _fail_live(app, f"Transcription keeps failing: {ev.detail}")
         elif ev.kind == "state" and ev.detail == "started":
             app.live_status_var.set("Listening…")
     if getattr(app, "_live_draining", False):
@@ -879,12 +1072,24 @@ def _transcript_text(app: Any) -> str:
     return "\n".join(getattr(app, "live_lines", []) or []).strip()
 
 
-def _save(app: Any) -> None:
+def has_unsaved_transcript(app: Any) -> bool:
+    """True when the Live tab holds text added since the last save."""
+    lines = getattr(app, "live_lines", None) or []
+    return bool(_transcript_text(app)) and len(lines) > int(
+        getattr(app, "_live_saved_count", 0) or 0
+    )
+
+
+def _save(app: Any) -> bool:
+    """Ask for a file and save the transcript. True once it is on disk."""
     body = _transcript_text(app)
+    # Counted with the body, before the dialog: a running session can add
+    # lines while it is open, and those must stay "unsaved".
+    count = len(getattr(app, "live_lines", []) or [])
     if not body:
         show_error(app, "Nothing to save",
                    "The live transcript is empty.")
-        return
+        return False
     path = filedialog.asksaveasfilename(
         parent=app, title="Save live transcript",
         defaultextension=".txt",
@@ -892,15 +1097,87 @@ def _save(app: Any) -> None:
         initialfile="live-transcript.txt",
     )
     if not path:
-        return
+        return False
     try:
         with open(path, "w", encoding="utf-8") as fp:
             fp.write(body + "\n")
     except OSError as e:
         show_error(app, "Could not save the transcript",
                    f"Writing {os.path.basename(path)} failed.", detail=str(e))
-        return
+        return False
+    app._live_saved_count = count
     app.log(f"Live transcript saved to {path}")
+    return True
+
+
+def save_before_exit(app: Any) -> bool:
+    """Exit hook: offer to save unsaved live text. False = cancel the exit.
+
+    The transcript lives only in the widget, and closing the window or
+    the tray's Exit used to drop it without a word.
+    """
+    app._live_exit_discard = False
+    if not has_unsaved_transcript(app):
+        return True
+    from tkinter import messagebox
+
+    answer = messagebox.askyesnocancel(
+        "Unsaved live transcript",
+        "The Live tab has a transcript that was not saved.\n\n"
+        "Save it before exiting?",
+        parent=app,
+    )
+    if answer is None:
+        return False
+    if answer is False:
+        app._live_exit_discard = True
+        return True
+    return _save(app)
+
+
+def autosave_unsaved_transcript(app: Any) -> str:
+    """Write unsaved live text to a file without asking; returns its path.
+
+    The last line of defence at exit: lines that arrived after the exit
+    question (the tail of a running session) or an exit path that never
+    asked. Goes to the download folder when one is set, else to the
+    app's data folder, and the path is logged.
+    """
+    if not has_unsaved_transcript(app):
+        return ""
+    body = _transcript_text(app)
+    folder = str(app.app_config.get("download_folder") or "").strip()
+    if not folder or not os.path.isdir(folder):
+        from core.config import user_data_dir
+
+        folder = str(user_data_dir() / "live-transcripts")
+    stem = f"live-transcript-{time.strftime('%Y%m%d-%H%M%S')}"
+    path = ""
+    try:
+        os.makedirs(folder, exist_ok=True)
+        for n in range(1, 100):
+            candidate = os.path.join(folder, stem + (f"-{n}" if n > 1 else "") + ".txt")
+            try:
+                # "x": never overwrite a file that already has this name.
+                with open(candidate, "x", encoding="utf-8") as fp:
+                    fp.write(body + "\n")
+            except FileExistsError:
+                continue
+            path = candidate
+            break
+    except OSError:
+        logger.exception("Autosaving the live transcript failed")
+        return ""
+    if not path:
+        logger.error("Autosaving the live transcript failed: no free file name")
+        return ""
+    app._live_saved_count = len(getattr(app, "live_lines", []) or [])
+    logger.info("Live transcript autosaved to %s", path)
+    try:
+        app.log(f"Live transcript autosaved to {path}")
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not log the autosave", exc_info=True)
+    return path
 
 
 def _copy(app: Any) -> None:
@@ -916,6 +1193,7 @@ def _copy(app: Any) -> None:
 
 def _clear(app: Any) -> None:
     app.live_lines = []
+    app._live_saved_count = 0
     try:
         app.live_text.delete("1.0", "end")
     except Exception:  # noqa: BLE001

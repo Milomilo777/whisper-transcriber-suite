@@ -19,11 +19,21 @@ Implemented in `core/live.py` (engine, Tk-free),
 4. **Start listening**. The first start loads the speech model, which
    takes a while; the tab says so.
 5. Text appears a few seconds behind the speech (see *Latency* below).
-6. **Stop**, then **Save transcript…** or **Copy all**.
+6. **Stop**, then **Save transcript…** or **Copy all**. Closing the app
+   with an unsaved transcript asks whether to save it; text that is
+   still unsaved at teardown is written to the download folder (or the
+   app's data folder) and the log names the file.
 
-The whole session is also written to a WAV under the app's cache folder,
-so a live session is never *only* live — the audio survives if you want
-to re-transcribe it properly afterwards.
+The whole session is also written to a WAV under the app's cache folder
+while it runs. Tick **Keep the audio** to keep that file after Stop (the
+log names it), for example to re-transcribe it properly afterwards;
+otherwise it is deleted at Stop, since it takes 100-350 MB per hour.
+
+If the device fails (it cannot be opened, or it is unplugged), or the
+speech worker dies, the tab stops the session, says why, and still
+transcribes what was already captured. A microphone that delivers no
+sound, or only digital silence (muted, or the OS denied access), gets a
+hint in the status line.
 
 ## Requirements
 
@@ -45,6 +55,12 @@ Recorder (capture thread) --frames--> Segmenter --chunks-->
     bounded queue --worker thread--> live worker subprocess --> events
         --> Tk after() poll --> the transcript widget
 ```
+
+Every captured block is resampled to 16 kHz before the segmenter
+(`core.live.RateConverter`): system audio arrives at the output
+device's rate (44.1/48 kHz), and a microphone that refuses 16 kHz is
+reopened at its native rate. The visualizer and the session WAV keep the
+native rate.
 
 ### Chunks are cut at silence, not on a timer
 

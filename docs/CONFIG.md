@@ -538,6 +538,7 @@ Not a config key — a **File → Convert transcript…** menu action backed by 
 | `demucs_enabled` | bool | `false` | Separates the voice from music before transcribing (optional Demucs install). |
 | `demucs_cache_mb` | int | `2048` | Disk budget (MB) for separated audio kept for reuse. |
 | `live_model` | string | `"tiny"` | Model of the Live tab. |
+| `live_keep_recording` | bool | `false` | Keeps the Live tab's session recording after Stop; off = it is deleted. |
 | `auto_transcribe_after_download` | bool | `false` | Transcribes each finished download. |
 | `cookies_from_browser` | string | `""` | Browser whose cookies yt-dlp uses (`"firefox"`, `"chrome"`, `"edge"`, `"brave"`, …); empty = none. |
 | `sponsorblock_categories` | array | `[]` | SponsorBlock segments to cut from downloads, e.g. `["sponsor", "intro", "outro"]`. |

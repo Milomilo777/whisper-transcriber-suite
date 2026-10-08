@@ -264,6 +264,23 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Live tab says when the microphone or the speech model fails.** A microphone that cannot be
+  opened, is unplugged mid-session, or a speech worker that died used to leave "Listening…" over a
+  flat meter. The tab now stops the session (what was captured is still transcribed), shows the
+  reason, and hints when a microphone sends no sound or only digital silence.
+- **Live tab cuts system audio at the right places.** System audio (and a microphone that only
+  opens at its own rate) arrives at 44.1/48 kHz; it is now resampled to 16 kHz, so chunks are no
+  longer cut ~3x too short and their times are right. A device that refuses 16 kHz is reopened at
+  its native rate instead of failing.
+- **Live transcripts are not lost on exit, and session audio no longer fills the disk.** Closing
+  the app with an unsaved live transcript asks to save it, and anything still unsaved at teardown
+  is written to the download folder. The full-session recording is deleted at Stop unless **Keep
+  the audio** is ticked (`live_keep_recording`); a kept file's path is logged.
+- **Live tab robustness.** Stopping no longer blocks the window when the transcription queue is
+  full, a worker that fails every chunk ends the session after three failures, the worker's log
+  lines reach the console through the Tk thread, and two sessions started within one second no
+  longer share a folder. The read-only transcript now refuses paste, cut, Tab and the Ctrl editing
+  keys, and copy works with Command on macOS.
 - **Downloads with Persian, Arabic, Russian or CJK titles.** The bundled yt-dlp printed its file
   names in the Windows ANSI code page, so non-Latin characters vanished and the caption-only
   shortcut, the subtitle extras and the saved-file path pointed at no real file. Every yt-dlp call

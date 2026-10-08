@@ -579,3 +579,384 @@ def test_prepare_live_model_falls_back_when_download_fails(built, monkeypatch, t
     built.app_config.update(live_model="auto", hub_folder=str(tmp_path))
     assert live_tab._prepare_live_model(built, "fa") is None
     assert any("could not download" in m for m in built.logged)
+
+
+# ------------------------------------------- read-only transcript (L3/L4)
+
+
+@pytest.mark.parametrize(
+    ("keysym", "state", "platform", "expected"),
+    [
+        ("v", 4, "win32", True),       # Ctrl+V pastes -> blocked
+        ("x", 4, "win32", True),       # Ctrl+X cuts -> blocked
+        ("h", 4, "win32", True),       # Text class Ctrl+H deletes -> blocked
+        ("Tab", 0, "win32", True),     # inserts a tab character -> blocked
+        ("Insert", 1, "win32", True),  # Shift+Insert pastes -> blocked
+        ("Insert", 4, "win32", False), # Ctrl+Insert copies -> allowed
+        ("c", 8, "darwin", False),     # Command+C on macOS -> allowed
+        ("a", 8, "darwin", False),     # Command+A on macOS -> allowed
+        ("v", 8, "darwin", True),      # Command+V on macOS -> blocked
+        ("c", 8, "win32", True),       # 0x8 is Num Lock off macOS: no copy pass
+        ("Left", 4, "win32", False),   # Ctrl+Left word jump -> allowed
+    ],
+)
+def test_blocks_edit_per_platform(keysym, state, platform, expected):
+    assert live_tab._blocks_edit(keysym, state, platform) is expected
+
+
+@pytest.mark.parametrize(
+    ("keycode", "expected"),
+    [(67, False), (65, False), (45, False), (86, True), (88, True)],
+)
+def test_copy_works_with_a_non_latin_keyboard_layout(keycode, expected):
+    """A Persian layout reports the layout's letter as the keysym."""
+    assert live_tab._blocks_edit("Arabic_seen", 4, "win32", keycode) is expected
+    assert live_tab._blocks_edit("Arabic_seen", 0, "win32", keycode) is True
+
+
+def test_keys_and_paste_cannot_change_the_transcript(built, root):
+    text = built.live_text
+    live_tab._append_line(built, "kept line")
+    before = text.get("1.0", "end")
+    root.clipboard_clear()
+    root.clipboard_append("PASTED")
+    text.focus_force()
+    root.update()
+    for seq in ("<Tab>", "<Control-v>", "<Control-x>", "<Control-h>",
+                "<Control-d>", "<Control-k>", "<Control-o>", "<Control-t>",
+                "<BackSpace>", "<Delete>", "<Return>", "<Key-z>"):
+        text.event_generate(seq, when="now")
+    for virtual in ("<<Paste>>", "<<Cut>>", "<<Clear>>"):
+        text.event_generate(virtual, when="now")
+    root.update()
+    assert text.get("1.0", "end") == before
+
+
+# -------------------------------------------- dead mic / dead worker (S07-2)
+
+
+def _health_session(**overrides):
+    calls: list[str] = []
+    ns = types.SimpleNamespace(
+        calls=calls,
+        drain_events=lambda limit=64: [],
+        capture_error=lambda: "",
+        input_signal_state=lambda: "ok",
+        stop_capture=lambda: calls.append("capture"),
+        wait_drained=lambda timeout=None: True,
+        pending_chunks=lambda: 0,
+        finish_recording=lambda: calls.append("finish") or "",
+        keep_recording=False,
+    )
+    for key, value in overrides.items():
+        setattr(ns, key, value)
+    return ns
+
+
+def _listening(built, session, transcriber=None):
+    built.post_to_main = built.posted.append  # Tk-thread only, like the app
+    built.live_session = session
+    built.live_transcriber = transcriber or types.SimpleNamespace(
+        stop=lambda: None, is_running=lambda: True
+    )
+    built._live_stop_reason = ""
+    live_tab._set_running(built, True)
+    built.live_status_var.set("Listening…")
+
+
+def test_a_microphone_that_dies_is_shown_and_the_session_stops(built, root, monkeypatch):
+    shown: list = []
+    monkeypatch.setattr(live_tab, "show_error",
+                        lambda *a, **kw: shown.append(kw.get("detail", "")))
+    session = _health_session(capture_error=lambda: "Error querying device -1")
+    _listening(built, session)
+
+    live_tab._poll(built)
+    assert "Error querying device -1" in built.live_status_var.get()
+    _drain_posted(built, root, lambda: built.live_session is None)
+    assert built.live_session is None
+    assert shown == ["Error querying device -1"]
+    assert "capture" in session.calls, "captured audio was not drained"
+    assert built.live_status_var.get() == "Stopped: Error querying device -1"
+    assert str(built.live_start_btn.cget("state")) == "normal"
+
+
+def test_a_dead_worker_is_shown_and_the_session_stops(built, root, monkeypatch):
+    shown: list = []
+    monkeypatch.setattr(live_tab, "show_error",
+                        lambda *a, **kw: shown.append(kw.get("detail", "")))
+    _listening(built, _health_session(), types.SimpleNamespace(
+        stop=lambda: None, is_running=lambda: False))
+
+    live_tab._poll(built)
+    _drain_posted(built, root, lambda: built.live_session is None)
+    assert shown and "stopped unexpectedly" in shown[0]
+    assert built.live_status_var.get().startswith("Stopped: ")
+
+
+def test_a_fatal_event_stops_the_session_once(built, root, monkeypatch):
+    from core.live import LiveEvent
+
+    shown: list = []
+    monkeypatch.setattr(live_tab, "show_error",
+                        lambda *a, **kw: shown.append(kw.get("detail", "")))
+    events = [LiveEvent(kind="fatal", detail="worker gone"),
+              LiveEvent(kind="fatal", detail="worker gone")]
+    session = _health_session(drain_events=lambda limit=64: list(events))
+    _listening(built, session)
+
+    live_tab._poll(built)
+    _drain_posted(built, root, lambda: built.live_session is None)
+    assert len(shown) == 1 and "worker gone" in shown[0]
+    assert session.calls.count("capture") == 1
+
+
+def test_a_fatal_event_during_exit_starts_nothing(built, monkeypatch):
+    from core.live import LiveEvent
+
+    monkeypatch.setattr(live_tab, "show_error",
+                        lambda *a, **kw: pytest.fail("dialog during teardown"))
+    session = _health_session(
+        drain_events=lambda limit=64: [LiveEvent(kind="fatal", detail="x")])
+    _listening(built, session)
+    built._closing = True
+    live_tab._poll_once(built)
+    assert "capture" not in session.calls
+    assert built._live_stop_reason == ""
+    built.live_session = None
+
+
+def test_failed_start_removes_the_session_folder(built, root, monkeypatch, tmp_path):
+    import app.services.live_service as live_service
+    from core import live as _live
+
+    class FakeTranscriber:
+        def __init__(self, *a, **kw):
+            pass
+
+        def start(self):
+            pass
+
+        def transcribe_chunk(self, path):
+            return ""
+
+        def stop(self):
+            pass
+
+    finished: list = []
+
+    class FailingSession:
+        def __init__(self, **kw):
+            self.keep_recording = kw.get("keep_recording")
+
+        def start(self):
+            raise RuntimeError("device busy")
+
+        def finish_recording(self):
+            finished.append(self.keep_recording)
+            return ""
+
+    monkeypatch.setattr(live_service, "LiveTranscriber", FakeTranscriber)
+    monkeypatch.setattr(_live, "LiveSession", FailingSession)
+    monkeypatch.setattr(_live, "is_available", lambda mode="mic": True)
+    monkeypatch.setattr(live_tab, "_prepare_live_model", lambda app, lang: None)
+    monkeypatch.setattr(live_tab, "show_error", lambda *a, **kw: None)
+    built.post_to_main = built.posted.append
+    live_tab._start(built)
+    _drain_posted(built, root, lambda: finished and "Idle" in built.live_status_var.get())
+    assert finished == [False]
+
+
+def test_lines_added_during_the_save_dialog_stay_unsaved(built, tmp_path, monkeypatch):
+    out = tmp_path / "mine.txt"
+
+    def dialog(**kw):
+        live_tab._append_line(built, "arrived while the dialog was open")
+        return str(out)
+
+    monkeypatch.setattr(live_tab.filedialog, "asksaveasfilename", dialog)
+    live_tab._append_line(built, "line one")
+    assert live_tab._save(built) is True
+    assert out.read_text(encoding="utf-8").splitlines() == ["line one"]
+    assert live_tab.has_unsaved_transcript(built), "the late line would be lost at exit"
+
+
+def test_autosave_never_overwrites_and_picks_a_free_name(built, tmp_path, monkeypatch):
+    built.app_config["download_folder"] = str(tmp_path)
+    monkeypatch.setattr(live_tab.time, "strftime", lambda fmt: "20260101-000000")
+    taken = tmp_path / "live-transcript-20260101-000000.txt"
+    taken.write_text("older file", encoding="utf-8")
+    live_tab._append_line(built, "new text")
+    path = live_tab.autosave_unsaved_transcript(built)
+    assert path.endswith("live-transcript-20260101-000000-2.txt")
+    assert taken.read_text(encoding="utf-8") == "older file"
+
+
+def test_no_signal_hint_comes_and_goes(built):
+    state = {"value": "no_audio"}
+    _listening(built, _health_session(input_signal_state=lambda: state["value"]))
+    live_tab._check_health(built)
+    assert built.live_status_var.get() == live_tab._NO_AUDIO_HINT
+    state["value"] = "silent"
+    live_tab._check_health(built)
+    assert built.live_status_var.get() == live_tab._SILENT_HINT
+    state["value"] = "ok"
+    live_tab._check_health(built)
+    assert built.live_status_var.get() == "Listening…"
+    built.live_session = None
+
+
+def test_poll_rearms_even_when_a_step_raises(built, monkeypatch):
+    _listening(built, _health_session())
+
+    def boom(app):
+        raise RuntimeError("bad event")
+
+    monkeypatch.setattr(live_tab, "_poll_once", boom)
+    built._live_poll_scheduled = False
+    live_tab._poll(built)
+    assert built._live_poll_scheduled is True, "the transcript would freeze"
+    built.live_session = None
+
+
+# ------------------------------------------------ thread-safe log (S07-8)
+
+
+def test_live_worker_gets_a_thread_safe_log(built, root, monkeypatch):
+    import app.services.live_service as live_service
+    from core import live as _live
+
+    got: dict = {}
+
+    class FakeTranscriber:
+        def __init__(self, entry_file, *, language=None, log=None, model_slug=None):
+            got["log"] = log
+
+        def start(self):
+            pass
+
+        def transcribe_chunk(self, path):
+            return ""
+
+        def stop(self):
+            pass
+
+    class FakeSession:
+        def __init__(self, **kw):
+            got["keep"] = kw.get("keep_recording")
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr(live_service, "LiveTranscriber", FakeTranscriber)
+    monkeypatch.setattr(_live, "LiveSession", FakeSession)
+    monkeypatch.setattr(_live, "is_available", lambda mode="mic": True)
+    monkeypatch.setattr(live_tab, "_prepare_live_model", lambda app, lang: None)
+    built.post_to_main = built.posted.append
+    live_tab._start(built)
+    _drain_posted(built, root, lambda: "log" in got and built.live_session is not None)
+    assert got["log"] is not built.log
+    assert got["keep"] is False
+
+    worker = threading.Thread(target=lambda: got["log"]("from the reader thread"))
+    worker.start()
+    worker.join()
+    assert "from the reader thread" not in built.logged, "Tk touched off-thread"
+    _drain_posted(built, root, lambda: "from the reader thread" in built.logged)
+    assert "from the reader thread" in built.logged
+    built.live_session = None
+
+
+# ----------------------------------------------- the recording (S07-6)
+
+
+@pytest.mark.parametrize("keep", [False, True])
+def test_stop_applies_the_keep_audio_choice(built, root, keep):
+    kept_path = "C:/cache/live/x/live-session.wav"
+    session = _health_session()
+    session.finish_recording = lambda: kept_path if session.keep_recording else ""
+    _listening(built, session)
+    built.live_keep_var.set(keep)
+    live_tab._stop(built)
+    _drain_posted(built, root, lambda: built.live_session is None)
+    assert session.keep_recording is keep
+    assert any(kept_path in m for m in built.logged) is keep
+
+
+def test_keep_audio_choice_is_saved(built, monkeypatch):
+    saved: list = []
+    monkeypatch.setattr("core.config.save_config", lambda cfg: saved.append(dict(cfg)))
+    built.live_keep_var.set(True)
+    live_tab._on_keep_toggled(built)
+    assert built.app_config["live_keep_recording"] is True
+    assert saved and saved[-1]["live_keep_recording"] is True
+
+
+# --------------------------------------------- nothing lost on exit (S07-5)
+
+
+def test_exit_with_nothing_unsaved_asks_nothing(built, monkeypatch):
+    from tkinter import messagebox
+
+    monkeypatch.setattr(messagebox, "askyesnocancel",
+                        lambda *a, **kw: pytest.fail("asked without unsaved text"))
+    assert live_tab.save_before_exit(built) is True
+    live_tab._append_line(built, "said")
+    built._live_saved_count = 1
+    assert live_tab.save_before_exit(built) is True
+
+
+@pytest.mark.parametrize(
+    ("answer", "dialog_path", "exits"),
+    [(None, "", False), (False, "", True), (True, "", False), (True, "OUT", True)],
+)
+def test_exit_question_for_unsaved_text(built, monkeypatch, tmp_path,
+                                        answer, dialog_path, exits):
+    from tkinter import messagebox
+
+    out = tmp_path / "t.txt"
+    monkeypatch.setattr(messagebox, "askyesnocancel", lambda *a, **kw: answer)
+    monkeypatch.setattr(live_tab.filedialog, "asksaveasfilename",
+                        lambda **kw: str(out) if dialog_path else "")
+    live_tab._append_line(built, "hello there")
+    assert live_tab.save_before_exit(built) is exits
+    assert out.exists() is (dialog_path == "OUT")
+    assert built._live_exit_discard is (answer is False)
+
+
+def test_teardown_autosaves_unsaved_text_including_the_tail(built, tmp_path):
+    from core.live import LiveEvent
+
+    built.app_config["download_folder"] = str(tmp_path)
+    live_tab._append_line(built, "first line")
+    tail = [LiveEvent(kind="text", text="tail line")]
+    built.live_session = types.SimpleNamespace(
+        stop=lambda **kw: "",
+        drain_events=lambda limit=64: [tail.pop()] if tail else [],
+        finish_recording=lambda: "",
+    )
+    built.live_transcriber = types.SimpleNamespace(stop=lambda: None)
+    live_tab.stop_live_session(built)
+    files = list(tmp_path.glob("live-transcript-*.txt"))
+    assert len(files) == 1
+    assert files[0].read_text(encoding="utf-8").splitlines() == ["first line", "tail line"]
+    assert any(str(files[0]) in m for m in built.logged)
+
+
+def test_teardown_respects_a_no_to_saving(built, tmp_path):
+    built.app_config["download_folder"] = str(tmp_path)
+    live_tab._append_line(built, "throw away")
+    built._live_exit_discard = True
+    live_tab.stop_live_session(built)
+    assert not list(tmp_path.glob("live-transcript-*.txt"))
+
+
+def test_saved_text_is_not_autosaved_again(built, tmp_path, monkeypatch):
+    built.app_config["download_folder"] = str(tmp_path)
+    monkeypatch.setattr(live_tab.filedialog, "asksaveasfilename",
+                        lambda **kw: str(tmp_path / "mine.txt"))
+    live_tab._append_line(built, "saved by hand")
+    assert live_tab._save(built) is True
+    built._live_exit_discard = False
+    live_tab.stop_live_session(built)
+    assert not list(tmp_path.glob("live-transcript-*.txt"))
