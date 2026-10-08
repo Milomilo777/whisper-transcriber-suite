@@ -259,6 +259,26 @@ for _pkg in ('numpy', 'ctranslate2', 'scipy', 'av', 'onnxruntime'):
     except Exception:
         pass
 
+# Arabic-script shaping for the PDF writer (core/writers/pdf_bidi.py):
+# arabic-reshaper (pure Python) and python-bidi (a pure-Python algorithm
+# whose package __init__ also loads a compiled Rust extension). The writer
+# imports both lazily, so collect_all brings in the extension and every
+# submodule. collect_all only logs a warning for a missing package, and the
+# app would then quietly draw these scripts unjoined, so a missing package
+# stops the build here.
+import importlib.util
+_rtl_datas, _rtl_binaries, _rtl_hidden = [], [], []
+for _pkg in ('arabic_reshaper', 'bidi'):
+    if importlib.util.find_spec(_pkg) is None:
+        raise SystemExit(
+            f"{_pkg} is not installed: pip install -r requirements.txt "
+            "(the PDF writer needs arabic-reshaper and python-bidi)"
+        )
+    _d, _b, _h = collect_all(_pkg)
+    _rtl_datas += _d
+    _rtl_binaries += _b
+    _rtl_hidden += _h
+
 a = Analysis(
     [os.path.join(_REPO_ROOT, 'gui.py')],
     pathex=[_REPO_ROOT],
@@ -268,6 +288,7 @@ a = Analysis(
         *whisper_cpp_binaries,
         *alignment_binaries,
         *_gcloud_binaries,
+        *_rtl_binaries,
         *_npstack_binaries,
     ],
     datas=[
@@ -286,6 +307,7 @@ a = Analysis(
         *alignment_datas,
         *creds_datas,
         *_gcloud_datas,
+        *_rtl_datas,
         *_npstack_datas,
     ],
     hiddenimports=[
@@ -293,6 +315,7 @@ a = Analysis(
         *whisper_cpp_hidden,
         *alignment_hidden,
         *_gcloud_hidden,
+        *_rtl_hidden,
         *_npstack_hidden,
         'google.cloud.speech_v2',
         'google.cloud.storage',
@@ -411,10 +434,13 @@ a = Analysis(
         'core.writers.docx_writer',
         'core.writers.pdf_writer',
         'core.writers.pdf_fonts',
+        'core.writers.pdf_bidi',
         'core.writers.smtv_docx_writer',
         'core.writers.bilingual_srt',
         'docx',
         'reportlab',
+        'arabic_reshaper',
+        'bidi.algorithm',
         'sherpa_onnx',
         # (No pystray entry: app/widgets/tray.py deliberately disables the
         # tray on macOS because pystray's AppKit loop needs the main thread

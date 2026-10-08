@@ -32,6 +32,13 @@ Each ships its full license text in its `site-packages` folder.
 - **tokenizers / huggingface-hub** — Apache-2.0
 - **sherpa-onnx / onnxruntime** — Apache-2.0
 - **pywhispercpp** (whisper.cpp bindings) — MIT
+- **arabic-reshaper** — MIT (joins Arabic-script letters in PDF output)
+- **python-bidi** — LGPL-3.0-or-later, shipped unmodified as its own package and
+  imported at runtime (right-to-left line order in PDF output); its compiled
+  extension wraps the `unicode-bidi` Rust crate (MIT / Apache-2.0). Source:
+  https://github.com/MeirKriheli/python-bidi (also on PyPI). To use another
+  build, replace the `bidi` folder in the app's `site-packages`
+  (`python\Lib\site-packages\bidi` in the Windows installer and Portable ZIP).
 - **sv-ttk**, **tkinterdnd2**, **pystray**, **Pillow**, **requests**,
   **rich**, **typer**, **reportlab**, **python-docx**, **watchdog**,
   **python-vlc** — see each package's bundled LICENSE (MIT / BSD / Apache /

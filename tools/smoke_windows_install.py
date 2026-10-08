@@ -42,7 +42,8 @@ def main(argv: list[str]) -> int:
     ok(f"core {core.__version__} from {os.path.dirname(core.__file__)}")
 
     for name in ("faster_whisper", "ctranslate2", "av", "tokenizers", "sv_ttk", "tkinterdnd2",
-                 "platformdirs", "docx", "reportlab", "sherpa_onnx", "psutil",
+                 "platformdirs", "docx", "reportlab", "arabic_reshaper", "bidi.algorithm",
+                 "sherpa_onnx", "psutil",
                  "core.transcriber", "core.worker", "core.server", "app"):
         try:
             importlib.import_module(name)

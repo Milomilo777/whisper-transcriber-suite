@@ -6,7 +6,9 @@ Lays out:
     bold Speaker label
   - Auto-paginates on letter-sized pages with 0.75" margins
   - Text in any script is drawn with the OS's own fonts (see
-    ``pdf_fonts``); Arabic-script and Hebrew letters stay unshaped
+    ``pdf_fonts``); Arabic-script letters are joined and right-to-left
+    lines put in visual order when arabic-reshaper and python-bidi are
+    installed (see ``pdf_bidi``), else they stay unjoined
 
 Like the DOCX writer, PDFs are binary so this module exposes
 ``write_bytes`` and is registered in core.writers.__init__ under
@@ -19,7 +21,7 @@ import io
 import os
 from typing import Any
 
-from . import pdf_fonts
+from . import pdf_bidi, pdf_fonts
 from .base import coerce_seconds, fmt_srt_time, normalize_text
 
 
@@ -42,6 +44,8 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
     _require_reportlab()
     from reportlab.lib.pagesizes import letter  # type: ignore[import-not-found]
     from reportlab.lib.colors import HexColor  # type: ignore[import-not-found]
+    from reportlab.lib.enums import TA_RIGHT  # type: ignore[import-not-found]
+    from reportlab.pdfbase.pdfmetrics import stringWidth  # type: ignore[import-not-found]
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle  # type: ignore[import-not-found]
     from reportlab.lib.units import inch  # type: ignore[import-not-found]
     from reportlab.platypus import (  # type: ignore[import-not-found]
@@ -79,10 +83,52 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
             name="TitleText", parent=title_style, fontName=base.name
         )
         body_style.fontName = base.name
+    rtl_style = ParagraphStyle(name="BodyRTL", parent=body_style, alignment=TA_RIGHT)
+    by_name = {f.name: f for f in chain.fonts}
+    # The frame's text width (6 pt padding on each side), less a little
+    # slack so reportlab never re-wraps a line broken by pdf_bidi.
+    line_width = doc.width - 12 - 2
+
+    def measure(text: str, bold: bool, size: float) -> float:
+        total = 0.0
+        for name, chunk in chain.split_runs(text):
+            if not name:
+                face = "Helvetica-Bold" if bold else "Helvetica"
+            else:
+                face = by_name[name].bold_name if bold else name
+            total += stringWidth(chunk, face, size)
+        return total
+
+    def bidi_markup(prefix: str, body: str, size: float, bold_body: bool) -> tuple[str, bool] | None:
+        """Markup with pre-broken lines for text that needs shaping,
+        or None to take the plain path."""
+        if not pdf_bidi.needs_bidi(prefix + body):
+            return None
+        eng = pdf_bidi.engine()
+        if eng is None:
+            return None
+        lines, rtl = pdf_bidi.layout(
+            prefix, body, line_width,
+            lambda t, b: measure(t, b or bold_body, size), eng,
+        )
+        rows = []
+        for line in lines:
+            parts = []
+            for text, bold in line:
+                if bold or bold_body:
+                    parts.append(f"<b>{markup(text, bold=True)}</b>")
+                else:
+                    parts.append(markup(text))
+            rows.append("".join(parts))
+        return "<br/>".join(rows), rtl
 
     story: list[Any] = []
     title = os.path.basename(audio_path) if audio_path else "Transcript"
-    story.append(Paragraph(f"<b>{markup(title, bold=True)}</b>", title_style))
+    shaped_title = bidi_markup("", title, title_style.fontSize, True)
+    if shaped_title is not None:
+        story.append(Paragraph(shaped_title[0], title_style))
+    else:
+        story.append(Paragraph(f"<b>{markup(title, bold=True)}</b>", title_style))
     nonempty = [s for s in segments if normalize_text(s.get("text", ""))]
     if nonempty:
         last_end = coerce_seconds(nonempty[-1].get("end"))
@@ -105,7 +151,13 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
             str(raw_speaker).strip()
             if raw_speaker not in (None, "") else ""
         )
-        text = markup(normalize_text(seg.get("text", "")))
+        plain = normalize_text(seg.get("text", ""))
+        prefix = f"[{ts}] {speaker}:" if speaker else f"[{ts}]"
+        shaped = bidi_markup(prefix, plain, body_style.fontSize, False)
+        if shaped is not None:
+            story.append(Paragraph(shaped[0], rtl_style if shaped[1] else body_style))
+            continue
+        text = markup(plain)
         if speaker:
             line = f"<b>[{ts}] {markup(speaker, bold=True)}:</b> {text}"
         else:

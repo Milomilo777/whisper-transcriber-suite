@@ -12,14 +12,12 @@ a CJK fallback (a 20 MB ``.ttc``) is parsed only when a line needs it.
 Fonts reportlab cannot read (CFF/PostScript outlines, broken files) are
 skipped.
 
-Known limit: reportlab draws Arabic-script and Hebrew text unshaped and
-in logical order unless the optional ``uharfbuzz`` and ``rlbidi``
-packages are installed, which this app does not ship: every letter is a
-real glyph, but the letters are not joined and run left to right, so a
-reader that applies bidi on copy/extraction returns them reversed. DOCX
-output renders these scripts correctly. Invisible format characters
-(ZWNJ, ZWJ, direction marks) are left out of the PDF: without shaping
-they do nothing, and the fonts draw them as a visible bar.
+reportlab itself draws Arabic-script and Hebrew text unshaped and in
+logical order; ``pdf_bidi`` joins the letters and reorders right-to-left
+lines before they reach this module, when its optional packages are
+installed. Invisible format characters (ZWNJ, ZWJ, direction marks) are
+left out of the PDF: once text is shaped and reordered they have done
+their job, and the fonts draw them as a visible bar.
 """
 from __future__ import annotations
 

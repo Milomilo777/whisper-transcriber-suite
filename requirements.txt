@@ -47,6 +47,12 @@ platformdirs>=4.0.0
 # Output writers
 python-docx>=1.0
 reportlab>=4.0
+# Joined, right-to-left Persian/Arabic/Urdu text in PDF output
+# (core/writers/pdf_bidi.py). arabic-reshaper is MIT; python-bidi is
+# LGPL-3.0, used unmodified as a separate package. The PDF writer
+# still works without them, drawing those scripts unjoined.
+arabic-reshaper>=3.0
+python-bidi>=0.6
 
 # Speaker diarisation (sherpa-onnx + pyannote-3.0 ONNX). No HF
 # token required. Lazy-imported — absence disables the feature

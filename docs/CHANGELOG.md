@@ -279,8 +279,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the text was lost. It now draws each character with the first system font that has it (Arial,
   Microsoft YaHei, Yu Gothic, … on Windows; Arial Unicode, DejaVu, Noto, … elsewhere), nothing
   bundled; bold labels stay bold in every font, and zero-width joiners and direction marks no
-  longer show as bars. Arabic-script and Hebrew letters are still drawn unjoined and left to
-  right in PDF; use DOCX for those languages.
+  longer show as bars.
+- **PDF transcripts in Persian, Arabic and Urdu read right to left with joined letters.** The
+  PDF writer now shapes Arabic-script text with `arabic-reshaper` and orders right-to-left
+  lines with `python-bidi` (new dependencies), breaking lines itself so each line reorders on
+  its own; timestamps, numbers and Latin words keep their order and the timestamp sits at the
+  right. Without the two packages the PDF is still written, unjoined, with one log warning.
 - **Word transcripts in Persian, Arabic and Hebrew read right to left.** DOCX paragraphs whose
   text is mostly RTL letters now carry the Word bidi flag, RTL runs and a complex-script font,
   so they align right with punctuation on the correct side; bold timestamps stay bold there.

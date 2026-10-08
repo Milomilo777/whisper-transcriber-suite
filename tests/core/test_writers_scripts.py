@@ -10,6 +10,7 @@ from __future__ import annotations
 import io
 import json
 import re
+import unicodedata
 import zipfile
 from collections import Counter
 
@@ -62,16 +63,16 @@ def test_pdf_keeps_text_of_ltr_scripts(lang):
 
 @pytest.mark.parametrize("lang", ["fa", "ar", "he", "mixed"])
 def test_pdf_draws_every_rtl_letter(lang):
-    # Without the optional shaping/bidi packages reportlab draws RTL
-    # letters unjoined and left to right, so a reader re-orders them on
-    # extraction (see pdf_fonts). What must hold: every letter is a real
+    # With arabic-reshaper + python-bidi the letters are drawn as joined
+    # presentation forms (folded back by NFKC); without them, unjoined
+    # (see pdf_bidi). What must hold either way: every letter is a real
     # glyph that extracts as itself, never a placeholder.
     sample = SAMPLES[lang]
     _need_fonts(sample)
     data = pdf_writer.write_bytes(
         [{"start": 1.0, "end": 2.0, "text": sample}], "clip.mp4"
     )
-    extracted = Counter(_squash(_pdf_text(data)))
+    extracted = Counter(_squash(unicodedata.normalize("NFKC", _pdf_text(data))))
     assert not Counter(_squash(sample)) - extracted
     if lang == "mixed":
         text = _pdf_text(data)
@@ -86,7 +87,8 @@ def test_pdf_title_and_speaker_in_other_scripts():
         "گزارش.mp4",
     )
     text = _pdf_text(data)
-    assert not Counter("گزارش") - Counter(text)
+    # the title word, escaped: gaf, zain, alef, reh, sheen
+    assert not Counter("\u06af\u0632\u0627\u0631\u0634") - Counter(unicodedata.normalize("NFKC", text))
     assert "Алиса: hi" in text
 
 

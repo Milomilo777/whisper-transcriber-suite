@@ -39,6 +39,9 @@ dependencies = [
     "sherpa-onnx>=1.10",
     "python-vlc>=3.0",
     "reportlab>=4.0",
+    # Arabic-script shaping + bidi for PDF output (see requirements.txt).
+    "arabic-reshaper>=3.0",
+    "python-bidi>=0.6",
     "watchdog>=3.0",
     "pystray>=0.19",
     "Pillow>=10.0",

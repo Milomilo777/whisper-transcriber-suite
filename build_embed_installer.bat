@@ -140,10 +140,11 @@ echo [embed] writing sitecustomize.py to teach python where site-packages lives
 >> "%BUILD%\python\Lib\sitecustomize.py" echo     sys.path.insert(0, _site)
 
 echo [embed] sanity import check (full stack)
-REM docx + reportlab are bundled (NOT pruned) — they back the docx/pdf
+REM docx + reportlab (+ arabic_reshaper and bidi for Arabic-script PDF text)
+REM are bundled (NOT pruned) — they back the docx/pdf
 REM writers. Import them here so a future prune mistake fails the build
 REM loudly instead of silently re-introducing the docx-never-written bug.
-"%BUILD%\python\python.exe" -c "import faster_whisper, ctranslate2, sv_ttk, platformdirs, tkinter, docx, reportlab; print('embed_import_ok')"
+"%BUILD%\python\python.exe" -c "import faster_whisper, ctranslate2, sv_ttk, platformdirs, tkinter, docx, reportlab, arabic_reshaper, bidi.algorithm; print('embed_import_ok')"
 if errorlevel 1 (
   echo [embed] sanity import failed — bundle is incomplete
   exit /b 5
