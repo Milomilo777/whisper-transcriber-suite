@@ -90,3 +90,42 @@ def test_success_clears_marker(tmp_path, monkeypatch):
                         lambda req, timeout=0: _Resp(b'{"latest_version": "1"}'))
     assert cfg.fetch_online_config(URL, cache_path=cache) == {"latest_version": "1"}
     assert not marker.exists()
+
+
+def test_404_log_and_marker_do_not_hold_credentials(tmp_path, monkeypatch, caplog):
+    cache = tmp_path / "app_config_cache.json"
+    url = "https://alice:hunter2@host.example:8443/cfg.json?tok=LEAKME"
+    _count_calls(monkeypatch, _http_error(404))
+    with caplog.at_level(logging.DEBUG, logger="core.config"):
+        cfg.fetch_online_config(url, cache_path=cache)
+    text = caplog.text + cfg._online_missing_marker(cache).read_text(encoding="utf-8")
+    assert "hunter2" not in text and "LEAKME" not in text and "alice" not in text
+    assert "host.example:8443/cfg.json" in caplog.text
+    # still recognised as the same URL, and a different one is not
+    assert cfg._online_known_missing(cache, url)
+    assert not cfg._online_known_missing(cache, url + "x")
+
+
+def test_future_dated_marker_is_invalid(tmp_path, monkeypatch):
+    import os
+    import time
+    cache = tmp_path / "app_config_cache.json"
+    calls = _count_calls(monkeypatch, _http_error(404))
+    cfg.fetch_online_config(URL, cache_path=cache)
+    marker = cfg._online_missing_marker(cache)
+    future = time.time() + 3 * 365 * 86400
+    os.utime(marker, (future, future))
+    assert not cfg._online_known_missing(cache, URL)
+    cfg.fetch_online_config(URL, cache_path=cache)
+    assert len(calls) == 2
+
+
+def test_refresh_online_config_clears_the_marker(tmp_path, monkeypatch):
+    monkeypatch.setattr(cfg, "online_cache_path", lambda: tmp_path / "app_config_cache.json")
+    cache = cfg.online_cache_path()
+    _count_calls(monkeypatch, _http_error(404))
+    cfg.fetch_online_config(URL, cache_path=cache)
+    marker = cfg._online_missing_marker(cache)
+    assert marker.exists()
+    cfg.refresh_online_config()
+    assert not marker.exists()

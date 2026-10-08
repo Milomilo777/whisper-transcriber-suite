@@ -553,12 +553,33 @@ def _online_missing_marker(cache_path: Path) -> Path:
     return cache_path.with_name(cache_path.name + ".missing")
 
 
+def _url_digest(url: str) -> str:
+    """The marker holds a hash, never the URL (it may carry credentials)."""
+    return hashlib.sha256(url.encode("utf-8")).hexdigest()
+
+
+def _url_for_log(url: str) -> str:
+    """``host[:port]/path`` of ``url``: no user info, query or fragment."""
+    try:
+        parts = urllib.parse.urlsplit(url)
+        host = parts.hostname or ""
+        if ":" in host:
+            host = f"[{host}]"
+        port = f":{parts.port}" if parts.port else ""
+    except ValueError:
+        return "<invalid URL>"
+    return f"{host}{port}{parts.path}"
+
+
 def _online_known_missing(cache_path: Path, url: str) -> bool:
     marker = _online_missing_marker(cache_path)
     try:
-        if time.time() - marker.stat().st_mtime >= ONLINE_MISSING_RETRY_SECONDS:
+        age = time.time() - marker.stat().st_mtime
+        # A negative age (clock was ahead, restored backup) is an invalid
+        # marker, not "missing until then".
+        if not 0 <= age < ONLINE_MISSING_RETRY_SECONDS:
             return False
-        return marker.read_text(encoding="utf-8") == url
+        return marker.read_text(encoding="utf-8").strip() == _url_digest(url)
     except OSError:
         return False
 
@@ -580,6 +601,8 @@ def refresh_online_config() -> None:
     """Forget the in-process online-config memo so the next load re-fetches."""
     with _ONLINE_MEMO_LOCK:
         _ONLINE_MEMO.clear()
+    # An explicit re-check also ignores the "not published (404)" memory.
+    _forget_online_missing(online_cache_path())
 
 
 def _legacy_config_path() -> str:
@@ -965,7 +988,10 @@ def fetch_online_config(
         url = ""
 
     if url and _online_known_missing(cache_path, url):
-        logger.debug("Online config skipped: %s was missing (HTTP 404) recently", url)
+        logger.debug(
+            "Online config skipped: %s was missing (HTTP 404) recently",
+            _url_for_log(url),
+        )
         url = ""
 
     if url:
@@ -1028,14 +1054,14 @@ def fetch_online_config(
                 try:
                     cache_path.parent.mkdir(parents=True, exist_ok=True)
                     _online_missing_marker(cache_path).write_text(
-                        url, encoding="utf-8"
+                        _url_digest(url), encoding="utf-8"
                     )
                 except OSError:
                     pass
                 logger.info(
                     "Online config not published at %s (HTTP %s); using the "
                     "cache and built-in settings, not asking again for 24 h",
-                    urllib.parse.urlsplit(url).netloc + urllib.parse.urlsplit(url).path,
+                    _url_for_log(url),
                     e.code,
                 )
             else:

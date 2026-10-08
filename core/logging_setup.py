@@ -39,26 +39,59 @@ _configured = False
 # A signed download link (CDN policy / signature / key id) carries its secret
 # in the query string, and some third-party libraries log the full URL. Every
 # log handler formats through RedactingFormatter so none of it reaches a file.
-_URL_RE = re.compile(
-    r"(?P<scheme>https?://)(?:[^\s/@'\"<>]*@)?(?P<host>[^\s'\"<>?#/]*)"
-    r"(?P<path>[^\s'\"<>?#]*)(?P<tail>[?#][^\s'\"<>)\]]*)?",
-    re.IGNORECASE,
-)
+_URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
+_REDACTED_TAIL = "?<redacted>"
+_YOUTUBE_HOSTS = frozenset({"youtube.com", "www.youtube.com", "m.youtube.com"})
+_YOUTUBE_KEEP = ("v", "list")
+_PLAIN_ID_RE = re.compile(r"[A-Za-z0-9_-]+\Z")
 
 
-def _redact_match(m: "re.Match[str]") -> str:
-    tail = m.group("tail") or ""
-    mark = "?<redacted>" if tail.startswith("?") else ""
-    return f"{m.group('scheme')}{m.group('host')}{m.group('path')}{mark}"
+def _youtube_query(query: str) -> str:
+    """The ``v`` / ``list`` parameters of a YouTube query (plain ids only)."""
+    kept = []
+    for part in query.split("&"):
+        name, sep, value = part.partition("=")
+        if sep and name in _YOUTUBE_KEEP and _PLAIN_ID_RE.match(value):
+            kept.append(f"{name}={value}")
+    return ("?" + "&".join(kept)) if kept else _REDACTED_TAIL
+
+
+def _redact_url(token: str) -> str:
+    """One URL (everything up to whitespace) cut to scheme://host/path.
+
+    User info is stripped only from the authority (before the first ``/``,
+    ``?`` or ``#``); everything from the first ``?`` or ``#`` on is dropped,
+    whatever characters it holds. Idempotent.
+    """
+    scheme_end = token.index("//") + 2
+    scheme, rest = token[:scheme_end], token[scheme_end:]
+    cut = min((i for i in (rest.find(c) for c in "/?#") if i >= 0), default=len(rest))
+    authority, remainder = rest[:cut], rest[cut:]
+    authority = authority.rpartition("@")[2]
+    q = min((i for i in (remainder.find(c) for c in "?#") if i >= 0), default=-1)
+    if q < 0:
+        return f"{scheme}{authority}{remainder}"
+    path, tail = remainder[:q], remainder[q:]
+    if tail == _REDACTED_TAIL:
+        mark = _REDACTED_TAIL
+    elif tail.startswith("?"):
+        host = authority.lower().rpartition(":")[0] if authority.count(":") == 1 else authority.lower()
+        query = tail[1:].split("#", 1)[0]
+        mark = _youtube_query(query) if host in _YOUTUBE_HOSTS else _REDACTED_TAIL
+    else:
+        mark = ""  # a bare fragment
+    return f"{scheme}{authority}{path}{mark}"
 
 
 def redact_urls(text: str) -> str:
     """``text`` with every http(s) URL cut to scheme://host/path.
 
     User info, query string and fragment are dropped (a dropped query is
-    shown as ``?<redacted>``); text without such a URL is returned as is.
+    shown as ``?<redacted>``; a YouTube link keeps its ``v`` and ``list``
+    ids). A URL ends at the first whitespace, so nothing after a ``?``
+    survives. Applying it twice gives the same text.
     """
-    return _URL_RE.sub(_redact_match, text)
+    return _URL_RE.sub(lambda m: _redact_url(m.group(0)), text)
 
 
 class RedactingFormatter(logging.Formatter):
