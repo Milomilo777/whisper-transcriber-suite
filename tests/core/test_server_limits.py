@@ -71,9 +71,9 @@ def _wait_until(predicate, timeout=5.0):
 class _Server:
     """A JobHTTPServer with explicit constructor arguments."""
 
-    def __init__(self, tmp_path, **kw):
+    def __init__(self, tmp_path, transcribe_fn=_writing_transcribe, **kw):
         self.manager = JobManager(
-            _writing_transcribe, jobs_root=str(tmp_path / "jobs"),
+            transcribe_fn, jobs_root=str(tmp_path / "jobs"),
             record_history=False, max_queued=kw.pop("max_queued", 50))
         self.manager.start()
         self.server = JobHTTPServer(("127.0.0.1", 0), self.manager, **kw)
@@ -143,7 +143,6 @@ def test_the_default_cap_is_sane():
 
 def test_a_header_trickle_is_cut_off(tmp_path, monkeypatch):
     monkeypatch.setattr(httpd, "_HEADER_TOTAL_S", 0.6)
-    monkeypatch.setattr(httpd, "_WATCH_TICK_S", 0.05)
     srv = _Server(tmp_path, max_connections=4)
     try:
         s = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
@@ -172,8 +171,7 @@ def test_a_normal_request_still_works_with_the_deadlines(tmp_path):
 
 
 def test_an_upload_trickle_is_cut_off(tmp_path, monkeypatch):
-    monkeypatch.setattr(httpd, "_UPLOAD_BASE_S", 0.6)
-    monkeypatch.setattr(httpd, "_WATCH_TICK_S", 0.05)
+    monkeypatch.setattr(httpd, "_UPLOAD_STALL_S", 0.6)
     srv = _Server(tmp_path, max_connections=4)
     try:
         full = _multipart("clip.wav", b"x" * 5000)
@@ -391,7 +389,6 @@ def test_tls_header_trickle_is_cut_off(tmp_path, monkeypatch):
     import ssl
 
     monkeypatch.setattr(httpd, "_HEADER_TOTAL_S", 0.6)
-    monkeypatch.setattr(httpd, "_WATCH_TICK_S", 0.05)
     srv = _tls_server(tmp_path, monkeypatch, max_connections=4)
     try:
         ctx = ssl._create_unverified_context()
@@ -443,3 +440,283 @@ def test_queue_precheck_counts_queued_jobs_only(tmp_path, monkeypatch):
         server.shutdown()
         server.server_close()
         manager.stop()
+
+
+# --- round 2: synchronous /v1 waits, refusal reply, keep-alive, deadlines ---------
+
+def _blocking_server(tmp_path, **kw):
+    """A server whose transcriber blocks until ``gate`` is set."""
+    gate = threading.Event()
+
+    def slow(task, progress_cb=None, log_cb=None, language_cb=None):
+        gate.wait(20)
+        return _writing_transcribe(task, progress_cb, log_cb, language_cb)
+
+    srv = _Server(tmp_path, transcribe_fn=slow, **kw)
+    return srv, gate
+
+
+def _v1_request(port: int, name: str = "clip.wav") -> socket.socket:
+    body = _upload_body(model="whisper-1")
+    s = socket.create_connection(("127.0.0.1", port), timeout=5)
+    s.sendall(
+        b"POST /v1/audio/transcriptions HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+        b"Content-Type: multipart/form-data; boundary=BOUND\r\n"
+        + f"Content-Length: {len(body)}\r\n\r\n".encode() + body)
+    return s
+
+
+def test_v1_wait_ends_and_cancels_the_job_when_the_client_leaves(tmp_path):
+    srv, gate = _blocking_server(tmp_path)
+    try:
+        s = _v1_request(srv.port)
+        assert _wait_until(lambda: len(srv.manager.list()) == 1)
+        assert _wait_until(lambda: srv.server.active_connections() == 1)
+        job_id = srv.manager.list()[0]["job_id"]
+        s.close()  # the client gives up (a retry would start a new request)
+        job = srv.manager.get(job_id)
+        assert job is not None
+        assert _wait_until(lambda: job.cancelled, 5.0)
+        assert _wait_until(lambda: srv.server.active_connections() == 0, 5.0)
+    finally:
+        gate.set()
+        srv.close()
+
+
+def test_sync_v1_waits_are_capped_and_leave_slots_for_the_web_page(tmp_path):
+    srv, gate = _blocking_server(tmp_path, max_connections=6)
+    waiting = []
+    try:
+        # 6 slots -> at most 4 synchronous waiters.
+        for _ in range(4):
+            waiting.append(_v1_request(srv.port))
+        assert _wait_until(lambda: len(srv.manager.list()) == 4)
+        fifth = _v1_request(srv.port)
+        fifth.settimeout(5)
+        reply = b""
+        while True:  # read to the end of the reply (head and body)
+            part = fifth.recv(4096)
+            if not part:
+                break
+            reply += part
+        fifth.close()
+        assert reply.startswith(b"HTTP/1.1 503"), reply[:40]
+        assert b"waiting" in reply
+        # The page and the status route still work.
+        status, body = _request(srv, "GET", "/api/health")
+        assert status == 200, body
+        status, body = _request(srv, "GET", "/api/jobs")
+        assert status == 200, body
+    finally:
+        for s in waiting:
+            s.close()
+        gate.set()
+        srv.close()
+
+
+def test_a_surplus_client_in_the_middle_of_an_upload_still_sees_the_503(tmp_path):
+    srv = _Server(tmp_path, max_connections=1)
+    holder = socket.create_connection(("127.0.0.1", srv.port))
+    try:
+        assert _wait_until(lambda: srv.server.active_connections() == 1)
+        got = 0
+        for _ in range(5):
+            size = 3 * 1024 * 1024
+            c = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
+            c.sendall(
+                b"POST /api/jobs HTTP/1.1\r\nHost: x\r\n"
+                b"Content-Type: multipart/form-data; boundary=B\r\n"
+                + f"Content-Length: {size}\r\n\r\n".encode())
+            try:
+                c.sendall(b"x" * size)
+            except OSError:
+                pass
+            try:
+                if c.recv(4096).startswith(b"HTTP/1.1 503"):
+                    got += 1
+            except OSError:
+                pass
+            c.close()
+        assert got == 5
+    finally:
+        holder.close()
+        srv.close()
+
+
+def test_the_refusal_drain_is_bounded(tmp_path, monkeypatch):
+    monkeypatch.setattr(httpd, "_REFUSE_DRAIN_BYTES", 64 * 1024)
+    srv = _Server(tmp_path, max_connections=1)
+    holder = socket.create_connection(("127.0.0.1", srv.port))
+    try:
+        assert _wait_until(lambda: srv.server.active_connections() == 1)
+        c = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
+        c.sendall(b"POST /api/jobs HTTP/1.1\r\nHost: x\r\nContent-Length: 99999999\r\n\r\n")
+        assert c.recv(4096).startswith(b"HTTP/1.1 503")
+        try:
+            c.sendall(b"x" * (1024 * 1024))  # more than the drain takes
+        except OSError:
+            pass
+        assert _closed_by_server(c, 4.0)  # the refuser gave up and closed
+        c.close()
+    finally:
+        holder.close()
+        srv.close()
+
+
+def test_idle_keep_alive_clients_do_not_hold_slots(tmp_path, monkeypatch):
+    import http.client
+
+    monkeypatch.setattr(httpd, "_HEADER_TOTAL_S", 0.6)
+    srv = _Server(tmp_path, max_connections=4)
+    clients = []
+    try:
+        for _ in range(3):
+            c = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=5)
+            c.request("GET", "/api/health")
+            c.getresponse().read()
+            clients.append(c)  # kept open and idle, like a browser's
+        assert _wait_until(lambda: srv.server.active_connections() == 0, 3.0)
+        c5 = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=5)
+        c5.request("GET", "/api/health")
+        assert c5.getresponse().status == 200
+        c5.close()
+    finally:
+        for c in clients:
+            c.close()
+        srv.close()
+
+
+def test_a_crowded_server_ends_keep_alive_connections(tmp_path):
+    import http.client
+
+    srv = _Server(tmp_path, max_connections=4)
+    holders = []
+    try:
+        for _ in range(2):
+            s = socket.create_connection(("127.0.0.1", srv.port))
+            s.sendall(b"GET /api/he")
+            holders.append(s)
+        assert _wait_until(lambda: srv.server.active_connections() == 2)
+        c = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=5)
+        c.request("GET", "/api/health")  # the third connection: 3 of 4
+        r = c.getresponse()
+        r.read()
+        assert r.status == 200
+        assert (r.getheader("Connection") or "").lower() == "close"
+        c.close()
+    finally:
+        for s in holders:
+            s.close()
+        srv.close()
+
+
+def test_an_uncrowded_server_keeps_connections_alive(tmp_path):
+    import http.client
+
+    srv = _Server(tmp_path, max_connections=64)
+    try:
+        c = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=5)
+        c.request("GET", "/api/health")
+        r = c.getresponse()
+        r.read()
+        assert (r.getheader("Connection") or "").lower() != "close"
+        c.close()
+    finally:
+        srv.close()
+
+
+def test_the_reader_stops_a_silent_peer_at_its_deadline():
+    a, b = socket.socketpair()
+    try:
+        reader = httpd._DeadlineReader(a)
+        a.settimeout(30)  # the per-read timeout alone would wait 30 s
+        reader.deadline = time.monotonic() + 0.3
+        started = time.monotonic()
+        with pytest.raises(httpd._BudgetExceeded):
+            reader.readinto(bytearray(10))
+        assert time.monotonic() - started < 2.0
+        assert a.gettimeout() == 30  # the socket's own timeout is restored
+    finally:
+        a.close()
+        b.close()
+
+
+def test_the_reader_stops_a_trickle_at_its_deadline():
+    a, b = socket.socketpair()
+    stop = threading.Event()
+
+    def trickle():
+        while not stop.is_set():
+            try:
+                b.sendall(b"x")
+            except OSError:
+                return
+            time.sleep(0.05)
+
+    t = threading.Thread(target=trickle, daemon=True)
+    t.start()
+    try:
+        reader = httpd._DeadlineReader(a)
+        a.settimeout(30)
+        reader.deadline = time.monotonic() + 0.4
+        started = time.monotonic()
+        with pytest.raises(httpd._BudgetExceeded):
+            while True:  # bytes keep arriving, yet the budget still ends it
+                reader.readinto(bytearray(1))
+        assert time.monotonic() - started < 2.0
+    finally:
+        stop.set()
+        t.join(2)
+        a.close()
+        b.close()
+
+
+def test_the_reader_without_a_deadline_reads_normally():
+    a, b = socket.socketpair()
+    try:
+        reader = httpd._DeadlineReader(a)
+        b.sendall(b"hello")
+        buf = bytearray(10)
+        assert reader.readinto(buf) == 5 and bytes(buf[:5]) == b"hello"
+    finally:
+        a.close()
+        b.close()
+
+
+def test_a_slow_but_steady_upload_is_not_cut(tmp_path, monkeypatch):
+    monkeypatch.setattr(httpd, "_UPLOAD_STALL_S", 0.8)
+    srv = _Server(tmp_path)
+    try:
+        payload = b"x" * (3 * 64 * 1024)
+        full = _multipart("clip.wav", payload)
+        s = socket.create_connection(("127.0.0.1", srv.port), timeout=10)
+        s.sendall(
+            b"POST /api/jobs HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+            b"Content-Type: multipart/form-data; boundary=BOUND\r\n"
+            + f"Content-Length: {len(full)}\r\n\r\n".encode())
+        started = time.monotonic()
+        step = 64 * 1024
+        for i in range(0, len(full), step):
+            s.sendall(full[i:i + step])
+            time.sleep(0.5)  # each chunk arrives inside the window...
+        assert time.monotonic() - started > 1.2  # ...the whole takes longer
+        reply = s.recv(4096)
+        s.close()
+        assert reply.startswith(b"HTTP/1.1 202"), reply[:60]
+    finally:
+        srv.close()
+
+
+def test_a_clamped_option_is_logged(caplog):
+    import logging
+
+    with caplog.at_level(logging.INFO, logger=httpd.logger.name):
+        normalize_options({"vad_min_silence_ms": 10_000_000})
+    assert any("vad_min_silence_ms" in r.getMessage() for r in caplog.records)
+
+
+def test_the_page_explains_download_failures_and_the_header_download():
+    text = _page()
+    assert "wrong or missing password" in text
+    assert "no longer available" in text
+    assert "Save link as" in text  # the hint shown while a password is set

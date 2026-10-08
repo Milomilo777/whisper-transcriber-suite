@@ -175,6 +175,12 @@ Returns a one-entry list so clients can validate the backend:
 Multipart form, **synchronous**: the request stays open until the
 transcription is done (a long file means a long wait; set a generous client
 timeout). Jobs from this route join the same single queue as every other job.
+At most 32 such requests may wait at once (fewer on a server started with a
+small connection cap), so the web page and status calls always find a free
+connection; one more gets HTTP 503. If the client hangs up while it waits, the
+server notices within a moment and **cancels that job**: nobody is left to read
+the answer, and a client that retries would otherwise queue one job per attempt.
+Over HTTPS only a TCP-level close or reset is noticed this way.
 
 | Field | Required | Notes |
 |---|---|---|
@@ -351,8 +357,10 @@ the page moves the token into the box and removes it from the address bar and
 the browser history. It is kept
 for that browser tab only, so a reload still works. With a password set, a
 download link on the page fetches the file with the token in a header and saves
-it from memory, so the address never carries `?token=`; a browser without
-`fetch` and `Blob` falls back to the address form.
+it from memory, so the address never carries `?token=` (the page says that
+"Open in new tab" and "Save link as" cannot send the password, and a failed
+download names the reason: wrong password, file gone, or a server error); a
+browser without `fetch` and `Blob` falls back to the address form.
 
 `gui.py serve` uses the app's **Access password** (`server_token`) unless
 `--token` is given.
@@ -462,12 +470,22 @@ Behaviour to know:
 - **Bounded queue.** Total and queued job counts are capped; once full the
   server replies HTTP 503. A full queue is answered before an upload body is
   stored, so refused uploads do not fill the temp folder.
-- **Bounded connections.** At most 48 connections are served at once (one
-  thread each); a further client gets a quick HTTP 503 (over HTTPS the
-  connection is just closed). A client that trickles bytes is cut off after a
-  total time budget: 60 seconds for the request line and headers, 60 seconds
-  for a small JSON body, and for an upload 60 seconds plus the time at a floor
-  of 64 KB/s (at most 6 hours).
+- **Bounded connections.** At most 64 connections are served at once (one
+  thread each). A further client gets HTTP 503 with `Retry-After` from a small
+  separate refuser (at most 16 at a time, so it takes no normal slot): it sends
+  the reply, then reads and drops what the client is still uploading for up to
+  2 seconds or 16 MB, so the reply is not lost to a connection reset. A client
+  that sends more than that, or any client over HTTPS (no reply is possible
+  without a TLS handshake), sees the connection closed instead.
+  Once three quarters of the slots are in use, every reply ends its connection
+  (`Connection: close`), and an idle keep-alive connection is kept for at most
+  15 seconds, so browsers cannot hold the slots between requests.
+- **Time budgets.** A client that trickles bytes is cut off: 15 seconds to
+  send a request line and its headers (also the idle time of a keep-alive
+  connection) and 60 seconds for a small JSON body. An upload is cut only when
+  it stalls: every 64 KB that arrives earns another 60 seconds, so a slow but
+  steady upload of a big file is never cut; as a sanity bound the whole upload
+  may take at most its size at 16 KB/s (between 10 minutes and 6 hours).
 - **English-only models.** When the server's Whisper model is English-only
   (`tiny.en`, `small.en`, ...), a job or `/v1` request that names another
   language is refused with HTTP 400 and a message naming a multilingual model;

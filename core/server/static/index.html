@@ -477,7 +477,7 @@
     var saveAs = node.getAttribute("data-name") || "transcript";
     fetch(href, { headers: authHeaders() })
       .then(function (r) {
-        if (!r.ok) { throw new Error("HTTP " + r.status); }
+        if (!r.ok) { var bad = new Error("HTTP"); bad.status = r.status; throw bad; }
         return r.blob();
       })
       .then(function (blob) {
@@ -490,8 +490,25 @@
         document.body.removeChild(tmp);
         setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
       })
-      .catch(function () { window.alert("The download failed. Check the password and try again."); });
+      .catch(function (e) { window.alert(downloadFailure(e)); });
   });
+
+  // Say why a download failed, in words a person can act on.
+  function downloadFailure(e) {
+    var s = e && e.status;
+    if (s === 401) { return "The download was refused: wrong or missing password. Check the Auth token box."; }
+    if (s === 403) { return "The download was refused by the server's browser protections."; }
+    if (s === 404) { return "That file is no longer available (the job was removed or the server restarted)."; }
+    if (s) { return "The server answered HTTP " + s + " instead of the file."; }
+    return "Could not reach the server. Check the connection and try again.";
+  }
+
+  // With a password set a plain link cannot carry it, so say what still works.
+  function linksHint() {
+    if (!tokenVal()) { return ""; }
+    return '<p class="note">A password is set: click a file name to download it. ' +
+      '"Open in new tab" and "Save link as" cannot send the password and will be refused.</p>';
+  }
 
   function renderSubmit(jobId, j) {
     var html = "<p>Status: <b>" + j.status + "</b>" + (j.paused ? " (paused)" : "") + "</p>";
@@ -505,7 +522,7 @@
     if (j.outputs && j.outputs.length) {
       html += '<div class="links">';
       j.outputs.forEach(function (o) { html += downloadLink(jobId, o.fmt, o.name); });
-      html += "</div>";
+      html += "</div>" + linksHint();
       html += '<p class="note"><a data-open="' + jobId + '" class="openresult">View transcript →</a></p>';
     }
     setSubmitStatus(html);
@@ -622,7 +639,7 @@
     if (j.outputs && j.outputs.length) {
       html += '<div class="links">';
       j.outputs.forEach(function (o) { html += downloadLink(jobId, o.fmt, o.name); });
-      html += "</div>";
+      html += "</div>" + linksHint();
     } else {
       html += '<p class="note">No outputs yet.</p>';
     }
