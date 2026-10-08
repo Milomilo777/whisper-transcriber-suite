@@ -295,7 +295,9 @@ def record_measurement(
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump({"version": _STORE_VERSION, "entries": entries}, f,
                       indent=2, sort_keys=True)
-        os.replace(tmp, target)
+        # Windows refuses the replace while a reader holds the store open.
+        from .synthetic_audio import _replace_with_retry
+        _replace_with_retry(tmp, str(target))
     finally:
         try:
             os.remove(tmp)

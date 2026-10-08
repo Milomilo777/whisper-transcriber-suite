@@ -20,12 +20,14 @@ function from the caller (the tab wraps Kokoro or the OmniVoice worker).
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import logging
 import os
 import re
 import shutil
+import sys
 import tempfile
 import threading
 import time
@@ -33,7 +35,7 @@ import unicodedata
 import wave
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import IO, Callable, Generator
 
 from . import synthetic_audio, tts_plan
 
@@ -53,6 +55,13 @@ UNFINISHED_MAX_AGE_DAYS = 30.0
 PARTS_DIR = "output.parts"
 PROGRESS_FILE = "progress.json"
 OUTPUT_FILE = "output.wav"
+#: Written once the joined file is checked and on disk: the next Generate
+#: with the same text, voice and speed reuses output.wav instead of
+#: speaking everything again.
+FINISHED_FILE = "finished.json"
+LOCK_FILE = ".lock"
+#: A clone job's own copies of its reference clips (ref-1.wav, ...).
+REFERENCES_DIR = "references"
 _PROGRESS_VERSION = 1
 _COPY_FRAMES = 1 << 16
 _MAX_RIFF_BYTES = 0xFFFFFFFF
@@ -100,18 +109,44 @@ def _continues_cluster(ch: str) -> bool:
 
 def _joins_next(ch: str) -> bool:
     """True for a character that binds the NEXT one to it (a virama, which
-    forms a conjunct, or a zero-width joiner): no cut right after it."""
-    return ch == "\u200d" or unicodedata.combining(ch) == 9
+    forms a conjunct, a zero-width joiner, or a Thai/Lao leading vowel,
+    which is written before the consonant it is spoken after): no cut
+    right after it."""
+    return (ch == "\u200d" or unicodedata.combining(ch) == 9
+            or ch in _LEADING_VOWELS)
+
+
+# Thai and Lao vowels written before their consonant (Thai sara e, ae, o,
+# ai maimuan, ai maimalai; the same five in Lao): a syllable starts here.
+_LEADING_VOWELS = frozenset("\u0e40\u0e41\u0e42\u0e43\u0e44\u0ec0\u0ec1\u0ec2\u0ec3\u0ec4")
+# Thai and Lao vowels written after their consonant without being a
+# combining mark (sara a, sara aa, sara am, lakkhangyao; Lao a, aa, am):
+# a piece never starts with one.
+_FOLLOWING_VOWELS = frozenset("\u0e30\u0e32\u0e33\u0e45\u0eb0\u0eb2\u0eb3")
 
 
 def _hard_cut(rest: str, lead: int, limit: int) -> int:
-    """The last position in (lead, limit] to cut a run with no space at:
-    first one that splits no cluster or conjunct, else one that at least
-    starts no piece with a mark, else *limit* (nothing but marks)."""
-    for strict in (True, False):
-        for i in range(limit, lead, -1):
-            if not _continues_cluster(rest[i]) and not (strict and _joins_next(rest[i - 1])):
-                return i
+    """The last position in (lead, limit] to cut a run with no space at.
+
+    Thai and Lao are written without spaces between words, so the best cut
+    is right before a leading vowel in the second half of the window (a
+    syllable surely starts there). Next best splits no cluster, conjunct or
+    syllable; then one that at least starts no piece with a mark; else
+    *limit* (nothing but marks).
+    """
+    def clean(i: int) -> bool:
+        return (not _continues_cluster(rest[i]) and rest[i] not in _FOLLOWING_VOWELS
+                and not _joins_next(rest[i - 1]))
+
+    for i in range(limit, max(lead, limit - (limit - lead) // 2), -1):
+        if rest[i] in _LEADING_VOWELS and clean(i):
+            return i
+    for i in range(limit, lead, -1):
+        if clean(i):
+            return i
+    for i in range(limit, lead, -1):
+        if not _continues_cluster(rest[i]):
+            return i
     return limit
 
 
@@ -202,6 +237,78 @@ def _wav_frames(path: Path) -> "tuple[int, tuple[int, int, int]]":
         return w.getnframes(), (w.getnchannels(), w.getsampwidth(), w.getframerate())
 
 
+def _wav_complete(path: Path, frames: int) -> bool:
+    """True when the WAV at *path* says it holds *frames* frames and its
+    last frame is really on disk (a write lost to a crash or power cut
+    leaves the header claiming more than the file holds)."""
+    try:
+        with wave.open(str(path), "rb") as w:
+            if w.getnframes() != frames or frames <= 0:
+                return False
+            w.setpos(frames - 1)
+            return len(w.readframes(1)) == w.getnchannels() * w.getsampwidth()
+    except (OSError, EOFError, wave.Error):
+        return False
+
+
+def has_speech(text: str) -> bool:
+    """True when *text* holds a letter or digit: a piece of only
+    punctuation (a scene break such as ``***`` or ``---``) makes no sound,
+    and the engines fail on it with "produced no audio"."""
+    return any(ch.isalnum() for ch in text)
+
+
+def _fsync_file(path: "str | os.PathLike[str]") -> None:
+    with open(path, "rb+") as f:
+        os.fsync(f.fileno())
+
+
+class JobBusy(RuntimeError):
+    """Another app instance is speaking (or starting over) this job."""
+
+
+class _JobLock:
+    """An OS file lock on one job folder, released when its process ends
+    (a crash included), so a stale lock never blocks a job."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self._fh: "IO[bytes] | None" = None
+
+    def acquire(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        fh = open(self.path, "a+b")  # noqa: SIM115 - held open on purpose
+        try:
+            if sys.platform == "win32":
+                import msvcrt
+
+                fh.seek(0)
+                msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as e:
+            fh.close()
+            raise JobBusy("This text and voice are being spoken in another window of the "
+                          "app. Wait for it to finish, or cancel it there.") from e
+        self._fh = fh
+
+    def release(self) -> None:
+        fh, self._fh = self._fh, None
+        if fh is None:
+            return
+        try:
+            if sys.platform == "win32":
+                import msvcrt
+
+                fh.seek(0)
+                msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+        except OSError:
+            pass  # closing the file releases it anyway
+        fh.close()
+
+
 def _write_json_atomic(path: Path, data: object) -> None:
     fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
     try:
@@ -227,23 +334,78 @@ class Job:
         self.key = key
         self.engine = engine
         self.pieces = list(pieces)
+        #: Pieces with no letter or digit (scene breaks): never sent to the
+        #: engine, which would fail on them, and left out of the join.
+        self.silent = frozenset(i for i, p in enumerate(self.pieces) if not has_speech(p))
+        if len(self.silent) == len(self.pieces):
+            raise ValueError("The text has nothing to speak (no letters or digits).")
         self.folder = Path(root) / f"job-{key[:16]}"
         self.parts_dir = self.folder / PARTS_DIR
         self.progress_path = self.parts_dir / PROGRESS_FILE
         self.output_path = self.folder / OUTPUT_FILE
-        self.units = [tts_plan.speech_units(p) for p in self.pieces]
+        self.finished_path = self.folder / FINISHED_FILE
+        self.units = [0.0 if i in self.silent else tts_plan.speech_units(p)
+                      for i, p in enumerate(self.pieces)]
         self.done: dict[int, PieceDone] = {}
-        self._load()
+        #: True when an earlier run already joined and checked output.wav.
+        self.finished = False
+        self.finished_audio_seconds = 0.0
+        self._lock = _JobLock(self.folder / LOCK_FILE)
+        self._lock_depth = 0
+        if not self._load_finished():
+            self._load()
+
+    # ---------------------------------------------------------- lock
+
+    @contextlib.contextmanager
+    def claimed(self) -> Generator[None, None, None]:
+        """Hold this job for this app instance while the block runs; raises
+        :class:`JobBusy` when another instance holds it."""
+        if self._lock_depth == 0:
+            self._lock.acquire()
+        self._lock_depth += 1
+        try:
+            yield
+        finally:
+            self._lock_depth -= 1
+            if self._lock_depth == 0:
+                self._lock.release()
 
     # ---------------------------------------------------------- progress
 
     def piece_path(self, index: int) -> Path:
         return self.parts_dir / f"piece-{index + 1:04d}.wav"
 
+    def _piece_hashes(self) -> "list[str]":
+        return [_text_hash(p) for p in self.pieces]
+
+    def _load_finished(self) -> bool:
+        """True (and :attr:`finished` set) when an earlier run joined this
+        job and its output.wav is still there, whole."""
+        try:
+            data = json.loads(self.finished_path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return False
+        except (OSError, ValueError) as e:
+            logger.warning("Ignoring an unreadable job marker %s: %s", self.finished_path, e)
+            return False
+        try:
+            ok = (isinstance(data, dict) and data.get("version") == _PROGRESS_VERSION
+                  and data.get("key") == self.key
+                  and data.get("pieces") == self._piece_hashes()
+                  and _wav_complete(self.output_path, int(data["frames"])))
+            seconds = float(data["audio_seconds"]) if ok else 0.0
+        except (KeyError, TypeError, ValueError):
+            return False
+        if ok:
+            self.finished = True
+            self.finished_audio_seconds = seconds
+        return ok
+
     def _load(self) -> None:
         """Take over the finished pieces of an earlier run of this job. A
         piece counts only when the progress file lists it and its WAV file
-        is still there with the recorded length."""
+        is still there, whole, with the recorded length."""
         try:
             data = json.loads(self.progress_path.read_text(encoding="utf-8"))
         except FileNotFoundError:
@@ -253,7 +415,7 @@ class Job:
             return
         if (not isinstance(data, dict) or data.get("version") != _PROGRESS_VERSION
                 or data.get("key") != self.key
-                or data.get("pieces") != [_text_hash(p) for p in self.pieces]):
+                or data.get("pieces") != self._piece_hashes()):
             return
         done = data.get("done")
         if not isinstance(done, dict):
@@ -265,13 +427,9 @@ class Job:
                                 float(raw["compute_seconds"]))
             except (KeyError, TypeError, ValueError):
                 continue
-            if not 0 <= index < len(self.pieces) or rec.frames <= 0:
+            if not 0 <= index < len(self.pieces) or index in self.silent:
                 continue
-            try:
-                frames, _params = _wav_frames(self.piece_path(index))
-            except (OSError, EOFError, wave.Error):
-                continue
-            if frames == rec.frames:
+            if _wav_complete(self.piece_path(index), rec.frames):
                 self.done[index] = rec
 
     def _save(self) -> None:
@@ -280,7 +438,7 @@ class Job:
             "version": _PROGRESS_VERSION,
             "key": self.key,
             "engine": self.engine,
-            "pieces": [_text_hash(p) for p in self.pieces],
+            "pieces": self._piece_hashes(),
             "done": {str(i): {"frames": d.frames, "audio_seconds": d.audio_seconds,
                               "compute_seconds": d.compute_seconds}
                      for i, d in sorted(self.done.items())},
@@ -290,16 +448,27 @@ class Job:
     def record(self, index: int, compute_seconds: float) -> PieceDone:
         """Mark piece *index* as finished once its WAV file is on disk.
         Raises ``ValueError`` when the file holds no audio."""
-        frames, (_ch, _width, rate) = _wav_frames(self.piece_path(index))
+        path = self.piece_path(index)
+        frames, (_ch, _width, rate) = _wav_frames(path)
         if frames <= 0 or rate <= 0:
             raise ValueError(f"piece {index + 1} produced no audio")
+        # On disk before the progress file says so: a power cut must not
+        # leave a recorded piece that is only half written.
+        _fsync_file(path)
         rec = PieceDone(frames, frames / float(rate), max(0.0, float(compute_seconds)))
         self.done[index] = rec
         self._save()
         return rec
 
     def pending(self) -> "list[int]":
-        return [i for i in range(len(self.pieces)) if i not in self.done]
+        if self.finished:
+            return []
+        return [i for i in range(len(self.pieces))
+                if i not in self.done and i not in self.silent]
+
+    def spoken(self) -> "list[int]":
+        """The pieces that make sound, in order (the ones the join uses)."""
+        return [i for i in range(len(self.pieces)) if i not in self.silent]
 
     @property
     def done_units(self) -> float:
@@ -314,29 +483,76 @@ class Job:
         return sum(self.units)
 
     def discard(self) -> None:
-        """Forget the finished pieces (Start over)."""
-        self.done.clear()
-        shutil.rmtree(self.parts_dir, ignore_errors=True)
+        """Forget the finished pieces, or the finished file's marker (Start
+        over). Raises :class:`JobBusy` while another instance runs the job."""
+        with self.claimed():
+            self.done.clear()
+            self.finished = False
+            try:
+                self.finished_path.unlink()
+            except FileNotFoundError:
+                pass
+            shutil.rmtree(self.parts_dir, ignore_errors=True)
+
+    def keep_references(self, paths: "list[str]") -> "list[str]":
+        """Copy the reference clips of a clone job into its folder (once)
+        and return the copies, in order. The job key hashes the clips'
+        contents, so the copies stand for the same voice; a recorded clip's
+        scratch folder is swept after a week and the clip list is not saved
+        between sessions, so only these copies let the job continue later."""
+        dest = self.folder / REFERENCES_DIR
+        dest.mkdir(parents=True, exist_ok=True)
+        kept: list[str] = []
+        for n, src in enumerate(paths, 1):
+            target = dest / f"ref-{n}{Path(src).suffix.lower() or '.wav'}"
+            if os.path.abspath(src) != os.path.abspath(target) and not (
+                    target.is_file()
+                    and synthetic_audio.sha256_file(target) == synthetic_audio.sha256_file(src)):
+                fd, tmp = tempfile.mkstemp(prefix=".ref-", suffix=".tmp", dir=dest)
+                os.close(fd)
+                try:
+                    shutil.copyfile(src, tmp)
+                    _fsync_file(tmp)
+                    synthetic_audio._replace_with_retry(tmp, str(target))
+                finally:
+                    try:
+                        os.remove(tmp)
+                    except OSError:
+                        pass
+            kept.append(str(target))
+        return kept
+
+    def _drop(self, index: int) -> None:
+        """Forget piece *index* (damaged on disk) so the next run redoes it."""
+        self.done.pop(index, None)
+        try:
+            self._save()
+        except OSError:
+            logger.exception("Could not update the job progress file")
 
     # ---------------------------------------------------------- join
 
     def join(self) -> Path:
         """Join every piece into :attr:`output_path`, tag it as AI-generated,
         check its length, and only then remove the pieces. Raises when a
-        piece is missing or differs in format; the pieces stay on disk."""
+        piece is missing or differs in format; the pieces stay on disk. A
+        piece found damaged is forgotten, so the next run speaks it again
+        instead of failing here every time."""
         if self.pending():
             raise RuntimeError(f"{len(self.pending())} piece(s) are not finished yet")
         params = None
         total_frames = 0
-        for i in range(len(self.pieces)):
-            frames, p = _wav_frames(self.piece_path(i))
-            if frames != self.done[i].frames:
-                raise RuntimeError(f"piece {i + 1} changed on disk")
+        for i in self.spoken():
+            if not _wav_complete(self.piece_path(i), self.done[i].frames):
+                self._drop(i)
+                raise RuntimeError(f"piece {i + 1} changed on disk; press Generate again "
+                                   "to speak that piece again")
+            _frames, p = _wav_frames(self.piece_path(i))
             if params is None:
                 params = p
             elif p != params:
                 raise RuntimeError(f"piece {i + 1} has another audio format than piece 1")
-            total_frames += frames
+            total_frames += self.done[i].frames
         assert params is not None
         channels, width, rate = params
         for stale in (*self.folder.glob(".join-*.wav"), *self.folder.glob(".tag-*.tmp")):
@@ -354,7 +570,7 @@ class Job:
                 out.setnchannels(channels)
                 out.setsampwidth(width)
                 out.setframerate(rate)
-                for i in range(len(self.pieces)):
+                for i in self.spoken():
                     with wave.open(str(self.piece_path(i)), "rb") as src:
                         while True:
                             block = src.readframes(_COPY_FRAMES)
@@ -368,15 +584,23 @@ class Job:
             if synthetic_audio.read_info(tmp).get("ICMT") != synthetic_audio.AI_COMMENT:
                 raise RuntimeError("joined file lost its AI-generated tag")
             synthetic_audio._replace_with_retry(tmp, str(self.output_path))
-            with open(self.output_path, "rb+") as f:
-                os.fsync(f.fileno())  # on disk before the pieces go
+            _fsync_file(self.output_path)  # on disk before the pieces go
+            audio_seconds = total_frames / float(rate)
+            _write_json_atomic(self.finished_path, {
+                "version": _PROGRESS_VERSION, "key": self.key,
+                "pieces": self._piece_hashes(), "frames": total_frames,
+                "audio_seconds": audio_seconds,
+                "updated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            })
         except BaseException:
             try:
                 os.remove(tmp)
             except OSError:
                 pass
             raise
-        # The final file is complete and checked: the pieces can go.
+        # The final file is complete, checked and marked: the pieces can go.
+        self.finished = True
+        self.finished_audio_seconds = audio_seconds
         shutil.rmtree(self.parts_dir, ignore_errors=True)
         return self.output_path
 
@@ -392,6 +616,35 @@ def open_job(engine: str, text: str, voice: "dict[str, object]", speed: float,
 
 def is_unfinished_job_dir(folder: Path) -> bool:
     return (folder / PARTS_DIR / PROGRESS_FILE).is_file()
+
+
+def find_kept_references(engine: str, text: str, voice: "dict[str, object]", speed: float,
+                         root: "str | os.PathLike[str] | None" = None,
+                         ) -> "tuple[list[str], bool] | None":
+    """The reference clips a clone job for this exact *text*, voice
+    settings (*voice* without its ``references``) and *speed* kept in its
+    folder, and whether that job is finished; None when there is no such
+    job. Hashes only the few clips of each job folder that kept some."""
+    base = Path(root if root is not None else tts_plan.output_root())
+    for refs_dir in sorted(base.glob(f"job-*/{REFERENCES_DIR}")):
+        folder = refs_dir.parent
+        finished = (folder / FINISHED_FILE).is_file()
+        if not (finished or is_unfinished_job_dir(folder)):
+            continue
+        clips = []
+        for p in refs_dir.glob("ref-*"):
+            try:
+                clips.append((int(p.stem.split("-", 1)[1]), p))
+            except (IndexError, ValueError):
+                continue
+        clips.sort()
+        try:
+            identity = {**voice, "references": [synthetic_audio.sha256_file(p) for _n, p in clips]}
+        except OSError:
+            continue
+        if clips and folder.name == f"job-{job_key(engine, text, identity, speed)[:16]}":
+            return [str(p) for _n, p in clips], finished
+    return None
 
 
 # ------------------------------------------------------------------ running
@@ -454,7 +707,9 @@ def run(job: Job, speak: SpeakFn, *,
     Each piece is recorded in the progress file as soon as its WAV is on
     disk. Raises :class:`Cancelled` when *cancel_event* is set between
     pieces; any error from *speak* propagates. Either way the finished
-    pieces stay for the next run.
+    pieces stay for the next run. A job an earlier run already finished
+    returns its file at once. Raises :class:`JobBusy` when another app
+    instance runs the same job.
     """
     def is_cancelled() -> bool:
         return cancel_event is not None and cancel_event.is_set()
@@ -465,16 +720,24 @@ def run(job: Job, speak: SpeakFn, *,
         piece_units = job.units[index] if index is not None else 0.0
         total = job.total_units or 1.0
         on_progress(Progress(
-            pieces_done=len(job.done), pieces_total=len(job.pieces),
+            pieces_done=len(job.done), pieces_total=len(job.spoken()),
             fraction=min(1.0, (job.done_units + piece_units * frac) / total),
             seconds_left=seconds_left(job, piece_units, frac, elapsed, fallback_per_unit)))
 
+    if job.finished:  # joined by an earlier run: nothing to speak again
+        return RunResult(str(job.output_path), job.finished_audio_seconds, 0, 0.0, 0.0, 0.0)
+    with job.claimed():
+        return _run_claimed(job, speak, is_cancelled, report, clock)
+
+
+def _run_claimed(job: Job, speak: SpeakFn, is_cancelled: Callable[[], bool],
+                 report: Callable[..., None], clock: Callable[[], float]) -> RunResult:
     pieces_run = 0
     units_run = audio_run = compute_run = 0.0
     report()
     for index in job.pending():
         if is_cancelled():
-            raise Cancelled(f"{len(job.done)} of {len(job.pieces)} pieces finished")
+            raise Cancelled(f"{len(job.done)} of {len(job.spoken())} pieces finished")
         path = job.piece_path(index)
         path.parent.mkdir(parents=True, exist_ok=True)
         t0 = clock()
@@ -493,6 +756,6 @@ def run(job: Job, speak: SpeakFn, *,
         audio_run += rec.audio_seconds
         compute_run += rec.compute_seconds
         report()
-    total_audio = sum(d.audio_seconds for d in job.done.values())
     output = job.join()
-    return RunResult(str(output), total_audio, pieces_run, units_run, audio_run, compute_run)
+    return RunResult(str(output), job.finished_audio_seconds, pieces_run, units_run,
+                     audio_run, compute_run)

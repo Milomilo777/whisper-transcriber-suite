@@ -381,6 +381,8 @@ def test_measured_speed_is_stored_shown_and_reused(root, fakes, tmp_path):
     # The finished job (202 s of speech) replaces the short check.
     assert _stored(tmp_path)["kokoro/cpu"]["source"] == "run"
 
+    # Another text (the same one is a finished job, reused as it is).
+    app.vc_text.insert("end", " One more sentence.")
     app.vc_generate_btn.invoke()
     assert _confirm_shown(app) and fakes["measure"] == 1  # reused, not measured again
     assert _packed(app.vc_confirm_start_btn)
@@ -767,6 +769,13 @@ def test_designed_voice_over_one_pass_is_refused(root, fakes, no_dialogs):
     assert fakes["generate"] == []
 
 
+def _job_copy_of(root_dir: Any, ref: Any) -> str:
+    """The one job folder's copy of the reference clip *ref* (same bytes)."""
+    (copy,) = [p for p in root_dir.glob(f"job-*/{tts_job.REFERENCES_DIR}/ref-1.wav")]
+    assert copy.read_bytes() == ref.read_bytes()
+    return str(copy)
+
+
 def test_clone_long_text_goes_in_pieces_with_one_consent_record(root, fakes, monkeypatch,
                                                                 tmp_path):
     import json
@@ -786,7 +795,9 @@ def test_clone_long_text_goes_in_pieces_with_one_consent_record(root, fakes, mon
     app.vc_confirm_start_btn.invoke()
     pieces = [p.strip() for p in tts_job.split_text(LONG, tts_job.PIECE_CHARS["omnivoice"])]
     assert [c["text"] for c in fakes["generate"]] == pieces
-    assert all(c["consent_record"] is False and c["samples"] == [str(ref)]
+    # Every piece is spoken from the job's own copy of the clip (C2.62).
+    kept = _job_copy_of(tmp_path, ref)
+    assert all(c["consent_record"] is False and c["samples"] == [kept]
                for c in fakes["generate"])
     assert app.vc_status_var.get().startswith("Done")
     records = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
@@ -855,7 +866,8 @@ def test_clone_mode_flipped_on_the_confirm_step_still_clones(root, fakes, monkey
     vct._sync_engine(app)
     app.vc_confirm_start_btn.invoke()
     assert len(fakes["generate"]) > 1
-    assert all(c["samples"] == [str(ref)] and c["consent_accepted"] is True
+    kept = _job_copy_of(tmp_path, ref)
+    assert all(c["samples"] == [kept] and c["consent_accepted"] is True
                and c["instruct"] == "" for c in fakes["generate"])
     assert len(log.read_text(encoding="utf-8").splitlines()) == 1
 

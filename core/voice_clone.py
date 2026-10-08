@@ -72,10 +72,16 @@ def build_instruct(*parts: "str | None", whisper: bool = False) -> str:
 def session_work_dir() -> str:
     """Per-run scratch dir for recorded reference samples and generated
     output. Mirrors ``core.live.session_work_dir``'s convention."""
+    import tempfile
+
     from .config import user_cache_dir
 
-    base = user_cache_dir() / "voice_clone" / time.strftime("%Y%m%d-%H%M%S")
-    return str(base)
+    # A new folder for every call: two runs in the same second (two
+    # windows, or Record and Generate) never share one output.wav. The
+    # sweep below goes by the folder's age, not its name.
+    root = user_cache_dir() / "voice_clone"
+    root.mkdir(parents=True, exist_ok=True)
+    return tempfile.mkdtemp(prefix=time.strftime("%Y%m%d-%H%M%S") + "-", dir=root)
 
 
 #: Session scratch dirs (see session_work_dir above) older than this are
@@ -235,7 +241,7 @@ def trim_reference_sample(
     )
     os.close(fd)
     cmd = [ffmpeg, "-y", "-v", "error", "-i", path, "-t", str(max_seconds), "-c", "copy", tmp_out]
-    kwargs: dict = {"capture_output": True, "text": True, "timeout": 60}
+    kwargs: dict = {"capture_output": True, "text": True, "timeout": 60, **_UTF8}
     kwargs.update(_proc.new_session_kwargs())
     try:
         result = subprocess.run(cmd, **kwargs)
@@ -248,6 +254,14 @@ def trim_reference_sample(
         except OSError:
             pass
         raise
+
+
+#: ffmpeg writes UTF-8; the locale default (cp1252 on Windows) fails on
+#: the bytes of a Persian file name and loses the whole error text.
+_UTF8 = {"encoding": "utf-8", "errors": "replace"}
+
+#: OmniVoice's output rate when the model does not say (its README: 24 kHz).
+DEFAULT_SAMPLE_RATE = 24000
 
 
 @dataclass
@@ -380,9 +394,13 @@ def generate(
         else:
             audio = model.generate(text=text, **options)  # type: ignore[attr-defined]
         elapsed = time.time() - t0
+        rate = int(getattr(model, "sampling_rate", 0) or DEFAULT_SAMPLE_RATE)
+        if len(audio[0]) == 0:
+            # Never a 0-second file that the tab would report as done.
+            raise RuntimeError("OmniVoice produced no audio for this text.")
 
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-        sf.write(output_path, audio[0], 24000)
+        sf.write(output_path, audio[0], rate)
         synthetic_audio.tag_wav(output_path)
         warning = ""
         if reference_paths and consent_record:
@@ -399,7 +417,7 @@ def generate(
                 # would discard it, so report it as a warning instead.
                 logger.exception("Could not write the voice-clone consent record")
                 warning = f"The local consent record could not be saved: {e}"
-        audio_seconds = len(audio[0]) / 24000
+        audio_seconds = len(audio[0]) / rate
         logger.info(
             "voice_clone generate: %.2fs audio in %.1fs (RTF=%.2f)",
             audio_seconds, elapsed, elapsed / max(audio_seconds, 0.01),
@@ -432,7 +450,7 @@ def _concat_references(paths: "list[str]") -> str:
         cmd += ["-i", p]
     n = min(len(paths), MAX_REFERENCE_SAMPLES)
     cmd += ["-filter_complex", f"concat=n={n}:v=0:a=1", out_path]
-    kwargs: dict = {"capture_output": True, "text": True, "timeout": 60}
+    kwargs: dict = {"capture_output": True, "text": True, "timeout": 60, **_UTF8}
     kwargs.update(_proc.new_session_kwargs())
     try:
         result = subprocess.run(cmd, **kwargs)

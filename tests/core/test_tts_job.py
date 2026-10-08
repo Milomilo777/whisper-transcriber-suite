@@ -331,7 +331,9 @@ def test_join_removes_temp_files_a_killed_join_left(tmp_path, small_pieces):
     (job.folder / ".join-dead.wav").write_bytes(b"x" * 100)
     (job.folder / ".tag-dead.tmp").write_bytes(b"x" * 100)
     job.join()
-    assert sorted(p.name for p in job.folder.iterdir()) == [tts_job.OUTPUT_FILE]
+    # Only the joined file and its finished marker are left (no temp files).
+    assert sorted(p.name for p in job.folder.iterdir()) == [
+        tts_job.FINISHED_FILE, tts_job.OUTPUT_FILE]
 
 
 def test_join_before_all_pieces_are_done_raises(tmp_path, small_pieces):

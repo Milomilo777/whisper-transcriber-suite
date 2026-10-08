@@ -40,6 +40,7 @@ from typing import Any
 from app.dpi import px
 from app.theme import script_fonts
 from app.widgets.error_dialog import show_error
+from app.widgets.platform import open_with_default_app
 from app.widgets.tooltip import section_labelframe
 from app.theme import tokens
 from core import offline
@@ -119,6 +120,12 @@ def _sweep_scratch_dirs() -> None:
     sweep_old_session_dirs()
 
 
+def _start_sweep() -> None:
+    """The sweep deletes whole folders (up to gigabytes): never on the Tk thread."""
+    from core._threads import safe_thread
+    safe_thread(_sweep_scratch_dirs, name="voice-clone-sweep")
+
+
 def _combo(parent: Any, var: Any, values: "list[str]", width: int = 22) -> ttk.Combobox:
     return ttk.Combobox(parent, textvariable=var, values=values, state="readonly", width=width)
 
@@ -168,7 +175,7 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_confirm_var = tk.StringVar(value="")
 
     # Best-effort sweep of aged-out scratch dirs from earlier sessions.
-    app.after(2000, _sweep_scratch_dirs)
+    app.after(2000, _start_sweep)
 
     parent.columnconfigure(0, weight=1)
     parent.rowconfigure(2, weight=1)
@@ -217,11 +224,14 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_omni_frame.columnconfigure(0, weight=1)
     modes = ttk.Frame(app.vc_omni_frame)
     modes.grid(row=0, column=0, sticky="w", padx=8, pady=(6, 2))
+    app.vc_mode_radios = []
     for text, value in (("Clone my voice / a recording", _MODE_CLONE),
                         ("Design a voice", _MODE_DESIGN),
                         ("Let the model choose", _MODE_AUTO)):
-        ttk.Radiobutton(modes, text=text, value=value, variable=app.vc_mode_var,
-                        command=lambda: _sync_engine(app)).pack(side="left", padx=(0, 16))
+        radio = ttk.Radiobutton(modes, text=text, value=value, variable=app.vc_mode_var,
+                                command=lambda: _sync_engine(app))
+        radio.pack(side="left", padx=(0, 16))
+        app.vc_mode_radios.append(radio)
 
     app.vc_clone_frame = ttk.Frame(app.vc_omni_frame)
     app.vc_clone_frame.columnconfigure(0, weight=1)
@@ -234,16 +244,19 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
         command=lambda: _record_sample(app),
     )
     app.vc_record_btn.pack(side="left")
-    ttk.Button(ref_btns, text="Load audio file...",
-               command=lambda: _load_sample(app)).pack(side="left", padx=(8, 0))
-    ttk.Button(ref_btns, text="Remove selected",
-               command=lambda: _remove_sample(app)).pack(side="left", padx=(8, 0))
+    app.vc_load_btn = ttk.Button(ref_btns, text="Load audio file...",
+                                 command=lambda: _load_sample(app))
+    app.vc_load_btn.pack(side="left", padx=(8, 0))
+    app.vc_remove_btn = ttk.Button(ref_btns, text="Remove selected",
+                                   command=lambda: _remove_sample(app))
+    app.vc_remove_btn.pack(side="left", padx=(8, 0))
     app.vc_consent_check = ttk.Checkbutton(
         app.vc_clone_frame, text=_CONSENT_TICK_TEXT, variable=app.vc_consent_var,
         command=lambda: _sync_generate_state(app))
     app.vc_consent_check.grid(row=2, column=0, sticky="w", padx=8, pady=(0, 6))
 
     app.vc_design_frame = ttk.Frame(app.vc_omni_frame)
+    app.vc_design_widgets = []
     for col, (label, var, values) in enumerate((
         ("Gender", app.vc_gender_var, _vc.DESIGN_GENDERS),
         ("Age", app.vc_age_var, _vc.DESIGN_AGES),
@@ -251,11 +264,13 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
         ("Accent (English)", app.vc_accent_var, _vc.DESIGN_ACCENTS),
     )):
         ttk.Label(app.vc_design_frame, text=label).grid(row=0, column=col, sticky="w", padx=8)
-        _combo(app.vc_design_frame, var,
-               [_ANY] + [v[:1].upper() + v[1:] for v in values], 17,
-               ).grid(row=1, column=col, sticky="w", padx=8, pady=(0, 6))
-    ttk.Checkbutton(app.vc_design_frame, text="Whisper", variable=app.vc_whisper_var).grid(
-        row=1, column=4, sticky="w", padx=8, pady=(0, 6))
+        combo = _combo(app.vc_design_frame, var,
+                       [_ANY] + [v[:1].upper() + v[1:] for v in values], 17)
+        combo.grid(row=1, column=col, sticky="w", padx=8, pady=(0, 6))
+        app.vc_design_widgets.append(combo)
+    whisper = ttk.Checkbutton(app.vc_design_frame, text="Whisper", variable=app.vc_whisper_var)
+    whisper.grid(row=1, column=4, sticky="w", padx=8, pady=(0, 6))
+    app.vc_design_widgets.append(whisper)
 
     app.vc_auto_label = ttk.Label(
         app.vc_omni_frame, foreground=tokens.themed(tokens.TEXT_MUTED),
@@ -369,8 +384,6 @@ def _sync_engine(app: Any) -> None:
                  else f"not downloaded yet (~{tts_kokoro.APPROX_DOWNLOAD_MB} MB, "
                       "downloads on first use)")
         app.vc_engine_state.configure(text=f"Kokoro-82M (Apache-2.0), runs locally -- {state}.")
-        # The voice decides the language; OmniVoice's picker does not apply.
-        app.vc_lang_combo.configure(state="disabled")
     else:
         from core import voice_clone as _vc
 
@@ -388,9 +401,30 @@ def _sync_engine(app: Any) -> None:
         state = ("installed" if _vc.is_available()
                  else "not downloaded yet (~2 GB, downloads on first use)")
         app.vc_engine_state.configure(text=f"OmniVoice (Apache-2.0, k2-fsa), runs locally -- {state}.")
-        app.vc_lang_combo.configure(state="readonly")
+    _sync_lock(app)
     _sync_generate_state(app)
     _save_prefs(app)
+
+
+def _sync_lock(app: Any) -> None:
+    """The voice controls (clips, consent, mode, voice, language, design)
+    are locked while a job is planned, confirmed or running: the job is
+    spoken with the settings taken at Generate, so the controls must keep
+    showing them. Kokoro's voice decides the language, so OmniVoice's
+    language picker is off for Kokoro."""
+    locked = bool(app.vc_busy or app.vc_confirm_open)
+    plain = "disabled" if locked else "normal"
+    picker = "disabled" if locked else "readonly"
+    for widget in (app.vc_load_btn, app.vc_remove_btn, app.vc_consent_check,
+                   *app.vc_mode_radios):
+        widget.configure(state=plain)
+    for widget in app.vc_design_widgets:
+        widget.configure(state=picker if isinstance(widget, ttk.Combobox) else plain)
+    app.vc_voice_combo.configure(state=picker)
+    app.vc_lang_combo.configure(state="disabled" if _is_kokoro(app) else picker)
+    # A recording in progress keeps its own button off.
+    app.vc_record_btn.configure(
+        state="disabled" if locked or app.vc_recorder is not None else "normal")
 
 
 def _consent_required(app: Any) -> bool:
@@ -504,11 +538,20 @@ def _design_instruct(app: Any) -> str:
 
 
 def _language_code(app: Any) -> str:
+    """The picked language's codes as the language list holds them
+    ("zh-Hans,zh-CN" for Chinese); the font tagging reads them all."""
     name = app.vc_lang_var.get()
     if name == _AUTO_LANG:
         return ""
     from app.domain.languages import SUBTITLE_LANGUAGES as _LANGS
     return next((c for n, c in _LANGS if n == name), "")
+
+
+def _omni_language(app: Any) -> str:
+    """One plain language code for OmniVoice ("zh" for "zh-Hans,zh-CN"):
+    it takes a language, not the list of script and region variants."""
+    codes = _language_code(app)
+    return codes.split(",")[0].strip().split("-")[0].lower()
 
 
 # --------------------------------------------------------------- samples
@@ -677,6 +720,7 @@ def _set_busy(app: Any, busy: bool) -> None:
     app.vc_preview_btn.configure(state="disabled" if busy else "normal")
     app.vc_cancel_btn.configure(state="normal" if busy else "disabled")
     app.vc_engine_combo.configure(state="disabled" if busy else "readonly")
+    _sync_lock(app)
     if busy:
         app.vc_progress.configure(value=0)
 
@@ -709,6 +753,49 @@ def _omni_refused(app: Any) -> bool:
     return False
 
 
+def _kokoro_refused(app: Any, text: str) -> bool:
+    """True (and the reason shown) when the text is mostly in a script no
+    Kokoro voice reads: Kokoro would make no usable speech, after a 350 MB
+    download the first time."""
+    from core import tts_kokoro
+
+    script = tts_kokoro.unsupported_script(text)
+    if script is None:
+        return False
+    show_error(
+        app, "Kokoro has no voice for this text",
+        f"Most of this text is in the {script} script. Kokoro's voices speak "
+        f"{tts_kokoro.LANGUAGE_NAMES}. Choose OmniVoice under Model for this language.",
+    )
+    return True
+
+
+def _offer_kept_clips(app: Any, text: str, speed: float) -> bool:
+    """A clone with no clips in the list: when an earlier job for this exact
+    text kept its reference clips (``core.tts_job.Job.keep_references``),
+    put them back in the list for the user to tick, and return True (this
+    press only offers them). The list is not saved between sessions and a
+    recorded clip's scratch folder is swept, so this is how an unfinished
+    clone job continues after a restart."""
+    from core import tts_job
+
+    if app.vc_mode_var.get() != _MODE_CLONE or app.vc_samples:
+        return False
+    found = tts_job.find_kept_references(
+        "omnivoice", text, {"mode": _MODE_CLONE, "language": _omni_language(app)}, speed)
+    if found is None:
+        return False
+    clips, finished = found
+    app.vc_samples[:] = clips
+    _refresh_samples_listbox(app)
+    _reset_consent(app)
+    which = "finished" if finished else "unfinished"
+    app.vc_status_var.set(
+        f"The reference clips kept with the {which} job for this text are back in the "
+        "list: tick the permission box, then press Generate again.")
+    return True
+
+
 def _generate(app: Any) -> None:
     """Generate pressed: check the text, then plan the job off the Tk thread
     (the OmniVoice device check imports torch). A short job starts at once;
@@ -729,6 +816,11 @@ def _generate(app: Any) -> None:
         )
         return
     kokoro = _is_kokoro(app)
+    if kokoro and _kokoro_refused(app, text):
+        return
+    speed = float(app.vc_speed_var.get() or 1.0)
+    if not kokoro and _offer_kept_clips(app, text, speed):
+        return
     if not kokoro and _omni_refused(app):
         return
     if (not kokoro and app.vc_mode_var.get() != _MODE_CLONE
@@ -743,7 +835,6 @@ def _generate(app: Any) -> None:
         )
         return
     engine = "kokoro" if kokoro else "omnivoice"
-    speed = float(app.vc_speed_var.get() or 1.0)
     settings = _voice_settings(app, engine)
     voice = _job_voice(engine, settings)
     _set_busy(app, True)
@@ -779,7 +870,7 @@ def _voice_settings(app: Any, engine: str) -> "dict[str, Any]":
     return {"mode": mode,
             "samples": list(app.vc_samples) if mode == _MODE_CLONE else [],
             "instruct": _design_instruct(app) if mode == _MODE_DESIGN else "",
-            "language": _language_code(app),
+            "language": _omni_language(app),
             "consent": mode == _MODE_CLONE and bool(app.vc_consent_var.get())}
 
 
@@ -844,10 +935,24 @@ def _check_disk(plan: _JobPlan) -> None:
 
     need = None
     job = plan.job
-    if job is not None:
-        left = 1.0 - (job.done_units / job.total_units if job.total_units else 0.0)
-        need = tts_plan.piece_job_need_bytes(plan.estimate, left)
+    if _finished(plan):
+        need = 0  # the file is already there: nothing new to write
+    elif job is not None:
+        need = tts_plan.piece_job_need_bytes(plan.estimate, _left_share(plan))
     plan.disk = tts_plan.check_disk(plan.estimate, need_bytes=need)
+
+
+def _finished(plan: _JobPlan) -> bool:
+    """True when an earlier run already joined this job's file."""
+    return plan.job is not None and bool(plan.job.finished)
+
+
+def _left_share(plan: _JobPlan) -> float:
+    """Share of the job's speech still to speak (1.0 for a new job)."""
+    job = plan.job
+    if job is None or not job.total_units:
+        return 1.0
+    return max(0.0, 1.0 - job.done_units / job.total_units)
 
 
 def _too_big(plan: _JobPlan) -> bool:
@@ -869,7 +974,10 @@ def _on_plan(app: Any, plan: _JobPlan, cancel_event: threading.Event) -> None:
         _generate_cancelled(app)
         return
     app.vc_plan = plan
-    if tts_plan.needs_confirm(plan.estimate) or plan.resume_done or _too_big(plan):
+    # A job that cannot start (no disk space, too big) always gets the
+    # confirm step, which says why: it never starts on its own.
+    if (tts_plan.needs_confirm(plan.estimate) or plan.resume_done or _finished(plan)
+            or not _can_start(plan)):
         _show_confirm(app)
     else:
         _start(app)
@@ -879,6 +987,7 @@ def _can_measure(plan: _JobPlan) -> bool:
     """Only Kokoro has a measuring run (a few seconds); OmniVoice's first real
     job is its measurement (one pass takes over a minute on a CPU)."""
     return (plan.engine == "kokoro" and plan.installed and not plan.resume_done
+            and not _finished(plan)
             and plan.calibration is None and not plan.measure_failed)
 
 
@@ -903,21 +1012,32 @@ def _confirm_text(plan: _JobPlan) -> str:
                  "measures this computer")
     lines = []
     job = plan.job
-    if job is not None and plan.resume_done:
+    if job is not None and _finished(plan):
+        speech = tts_plan.format_duration_range(job.finished_audio_seconds,
+                                                job.finished_audio_seconds)
+        return (f"This text was already spoken with this voice and speed ({speech} of "
+                "speech, finished earlier). Use that file, or start over to speak it "
+                "again.")
+    resumed = job is not None and plan.resume_done
+    if job is not None and resumed:
         lines.append(
             f"Unfinished job found for this text and voice: {plan.resume_done} of "
-            f"{len(job.pieces)} pieces are done. Continue it, or start over.")
+            f"{len(job.spoken())} pieces are done. Continue it, or start over.")
+    # A continued job speaks only the pieces left: its time is their share.
+    head = f"Time left for the {len(job.pending())} unfinished pieces" if (
+        job is not None and resumed) else "Time"
+    share = _left_share(plan) if resumed else 1.0
     if est.time_high is None:
-        lines.append(f"Time: not known yet for this device; {first_run}.")
+        lines.append(f"{head}: not known yet for this device; {first_run}.")
     else:
-        span = tts_plan.format_duration_range(est.time_low, est.time_high)
+        span = tts_plan.format_duration_range(est.time_low * share, est.time_high * share)
         if est.measured:
-            lines.append(f"Time on this computer: {span} (measured on this computer).")
+            lines.append(f"{head} on this computer: {span} (measured on this computer).")
         elif _can_measure(plan):
-            lines.append(f"Time: {span} on a typical computer. Measure this computer's "
+            lines.append(f"{head}: {span} on a typical computer. Measure this computer's "
                          "speed first (about 10 seconds, done once) for its own range.")
         else:
-            lines.append(f"Time: {span}, estimated from a reference computer; {first_run}.")
+            lines.append(f"{head}: {span}, estimated from a reference computer; {first_run}.")
     lines.append(
         f"Speech: {tts_plan.format_duration_range(est.audio_low, est.audio_high)}. "
         f"File: {tts_plan.format_size_range(est.size_low, est.size_high)} (WAV).")
@@ -948,12 +1068,14 @@ def _show_confirm(app: Any) -> None:
     for btn in (app.vc_confirm_start_btn, app.vc_confirm_measure_btn,
                 app.vc_confirm_restart_btn):
         btn.pack_forget()
+    finished = _finished(plan)
     app.vc_confirm_start_btn.configure(
-        text="Continue the unfinished job" if plan.resume_done else "Start")
+        text="Use the finished file" if finished
+        else "Continue the unfinished job" if plan.resume_done else "Start")
     shown = app.vc_confirm_measure_btn if measure else app.vc_confirm_start_btn
     shown.pack(side="left", before=app.vc_confirm_cancel_btn)
-    shown.configure(state="normal" if _can_start(plan) else "disabled")
-    if plan.resume_done:
+    shown.configure(state="normal" if finished or _can_start(plan) else "disabled")
+    if plan.resume_done or finished:
         app.vc_confirm_restart_btn.pack(side="left", padx=(8, 0),
                                         before=app.vc_confirm_cancel_btn)
         app.vc_confirm_restart_btn.configure(
@@ -964,7 +1086,10 @@ def _show_confirm(app: Any) -> None:
     app.vc_text.configure(state="disabled")
     app.vc_speed_scale.state(["disabled"])
     app.vc_confirm_open = True
-    if _too_big(plan):
+    _sync_lock(app)
+    if _finished(plan):
+        app.vc_status_var.set("This text was already spoken with this voice.")
+    elif _too_big(plan):
         app.vc_status_var.set("This text is too long for one audio file.")
     elif not plan.disk.ok:
         app.vc_status_var.set("Not enough free disk space for this text.")
@@ -980,10 +1105,15 @@ def _close_confirm(app: Any) -> None:
     app.vc_speed_scale.state(["!disabled"])
     app.vc_confirm_open = False
     app.vc_measuring = False
+    _sync_lock(app)
 
 
 def _confirm_start(app: Any) -> None:
     plan = app.vc_plan
+    if app.vc_confirm_open and plan is not None and _finished(plan):
+        _close_confirm(app)
+        _use_finished(app, plan)
+        return
     if not app.vc_confirm_open or plan is None or not _can_start(plan):
         return
     # The panel may have been open for a while: check the space again.
@@ -995,24 +1125,42 @@ def _confirm_start(app: Any) -> None:
     _start(app)
 
 
+def _use_finished(app: Any, plan: _JobPlan) -> None:
+    """Show the file an earlier run of this job made; nothing is spoken."""
+    _finish(app)
+    app.vc_plan = None
+    app.vc_progress.configure(value=100)
+    app.vc_last_output = str(plan.job.output_path)
+    app.vc_play_btn.configure(state="normal")
+    app.vc_save_btn.configure(state="normal")
+    app.vc_status_var.set(
+        f"Done: {plan.job.finished_audio_seconds:.0f}s of speech, finished earlier for "
+        "this text and voice (nothing was spoken again).")
+
+
 def _confirm_restart(app: Any) -> None:
-    """Start over: forget the unfinished job's pieces, then start."""
+    """Start over: forget the unfinished job's pieces (or the finished
+    file's marker), then start."""
+    from core import tts_job, tts_plan
+
     plan = app.vc_plan
     if (not app.vc_confirm_open or plan is None or plan.job is None
-            or not plan.resume_done or not _can_start(plan)):
+            or not (plan.resume_done or _finished(plan))):
         return
-    from core import tts_plan
-
     # Check the space for the whole job first (the old pieces' space counts
     # as free once they are gone): never delete pieces for a job that then
     # cannot start.
     held = sum(p.stat().st_size for p in plan.job.parts_dir.glob("piece-*.wav"))
     need = tts_plan.piece_job_need_bytes(plan.estimate) - held
-    if not tts_plan.check_disk(plan.estimate, need_bytes=need).ok:
+    if _too_big(plan) or not tts_plan.check_disk(plan.estimate, need_bytes=need).ok:
         app.vc_status_var.set("Not enough free disk space to start over; the finished "
-                              "pieces are kept and Continue still works.")
+                              "work is kept.")
         return
-    plan.job.discard()
+    try:
+        plan.job.discard()
+    except tts_job.JobBusy as e:
+        app.vc_status_var.set(f"{e} The finished pieces are kept.")
+        return
     plan.resume_done = 0
     _confirm_start(app)
 
@@ -1169,7 +1317,7 @@ def _kept(plan: "_JobPlan | None") -> "tuple[int, int] | None":
     """(finished, total) pieces of a piece-by-piece job, else None."""
     if plan is None or plan.job is None:
         return None
-    return len(plan.job.done), len(plan.job.pieces)
+    return len(plan.job.done), len(plan.job.spoken())
 
 
 def _generate_kokoro(app: Any, text: str, play_when_done: bool = False) -> None:
@@ -1355,8 +1503,14 @@ def _run_omnivoice_job(app: Any, plan: _JobPlan, samples: "list[str]", consent: 
                        speed: float, cancel_event: threading.Event) -> "dict[str, Any]":
     """One worker call per piece (worker thread). The voice comes from the
     same reference clips in every piece; the consent record is written once,
-    for the joined file the user gets, not for each piece."""
+    for the joined file the user gets, not for each piece. The clips are
+    copied into the job's folder first and used from there, so a later run
+    (after a restart, or once the originals are moved or swept) continues
+    with exactly the same voice, and the consent record names files that
+    still exist."""
     from core import synthetic_audio, tts_plan, voice_clone
+
+    samples = plan.job.keep_references(samples)
 
     def speak(piece: str, path: str, _on_fraction: Any) -> float:
         est = tts_plan.estimate(piece, plan.engine, plan.device, plan.calibration, speed)
@@ -1504,7 +1658,7 @@ def _play(app: Any) -> None:
     if not path or not os.path.isfile(path):
         return
     try:
-        os.startfile(path)  # type: ignore[attr-defined]
+        open_with_default_app(path)
     except Exception as e:  # noqa: BLE001
         show_error(app, "Could not play the result", str(e))
 

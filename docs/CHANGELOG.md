@@ -264,6 +264,29 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Text to Voice: Play and Preview work on macOS and Linux.** They called a Windows-only
+  function; they now open the file with the system's default app on every OS.
+- **Text to Voice never redoes or loses finished work.** Generate on a finished long job offers
+  **Use the finished file** instead of speaking everything again and overwriting it; a continued
+  job shows the time for the pieces left; each piece is flushed to disk before it counts as done,
+  and a piece found cut short (power cut) is spoken again instead of failing every join. Two app
+  windows can no longer share one job: a lock file keeps **Start over** from deleting the other
+  window's pieces.
+- **A voice-clone job continues after a restart.** The job copies its reference clips into its
+  folder and speaks from them, so a recorded clip swept from the 7-day scratch folder no longer
+  strands the job; Generate with no clips puts the job's copies back in the list. The consent
+  record names those copies.
+- **Text to Voice splits and checks text better.** Thai and Lao without spaces are no longer cut
+  between a leading vowel and its consonant; a scene-break piece (`***`, `---`) is not sent to the
+  engine; Kokoro refuses a text mostly in a script none of its voices reads (Persian, Arabic,
+  Russian, Korean, Thai, ...) before its 350 MB download and points to OmniVoice; OmniVoice gets one
+  language code (`zh`, not `zh-Hans,zh-CN`).
+- **Text to Voice safety checks.** A job the disk cannot hold never starts, even when it is too
+  short for the confirm step; the voice controls (clips, consent tick, mode, voice, language) stay
+  locked while a job is confirmed or runs; an empty OmniVoice result is an error, not a 0-second
+  "Done"; OmniVoice's sample rate is read from the model; ffmpeg errors about a non-ASCII path stay
+  readable; two runs in the same second get their own scratch folders; the speed store is written
+  even while a reader holds it on Windows; the 7-day scratch sweep runs off the UI thread.
 - **English-only models no longer turn other languages into wrong English text without a word.**
   Pairing an English-only model (`*.en`, the distilled models) with another language or Auto now
   opens a dialog in the Live tab (on Start and when the language or model changes) and before the

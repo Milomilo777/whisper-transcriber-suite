@@ -82,6 +82,44 @@ VOICES: tuple[Voice, ...] = tuple(
 #: Kokoro's best-rated voice; the tab's default.
 DEFAULT_VOICE = "af_heart"
 
+#: The Unicode scripts each voice language reads (the first word of a
+#: character's Unicode name, after FULLWIDTH/HALFWIDTH).
+_LANG_SCRIPTS = {
+    "en-us": ("LATIN",), "en-gb": ("LATIN",), "es": ("LATIN",), "fr": ("LATIN",),
+    "it": ("LATIN",), "pt-br": ("LATIN",), "hi": ("DEVANAGARI",),
+    "ja": ("HIRAGANA", "KATAKANA", "KATAKANA-HIRAGANA", "CJK"), "zh": ("CJK",),
+}
+_READABLE_SCRIPTS = frozenset(s for v in VOICES for s in _LANG_SCRIPTS[v.lang_code])
+#: "US English, UK English, Spanish, ... and Chinese" for messages.
+LANGUAGE_NAMES = ", ".join(n for n, _c in list(_LANGS.values())[:-1]) + \
+    f" and {list(_LANGS.values())[-1][0]}"
+
+
+def _script_of(ch: str) -> str:
+    import unicodedata
+
+    words = unicodedata.name(ch, "").split()
+    if len(words) > 1 and words[0] in ("FULLWIDTH", "HALFWIDTH"):
+        return words[1]
+    return words[0] if words else ""
+
+
+def unsupported_script(text: str) -> "str | None":
+    """The main script of *text* (e.g. "Arabic", "Cyrillic", "Hangul",
+    "Thai") when fewer than half of its letters are in a script any Kokoro
+    voice reads; None when Kokoro can read it (or it has no letters)."""
+    counts: dict[str, int] = {}
+    for ch in text:
+        if ch.isalpha():
+            script = _script_of(ch)
+            counts[script] = counts.get(script, 0) + 1
+    total = sum(counts.values())
+    readable = sum(n for s, n in counts.items() if s in _READABLE_SCRIPTS)
+    if not total or readable * 2 >= total:
+        return None
+    main = max((s for s in counts if s not in _READABLE_SCRIPTS), key=lambda s: counts[s])
+    return main.title() if main else "unknown"
+
 
 def voice_by_key(key: str) -> Voice:
     return next((v for v in VOICES if v.key == key),

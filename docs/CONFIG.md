@@ -382,6 +382,8 @@ is written as its own WAV file, next to a small progress file:
 
 ```
 Cache\voice_clone\job-<id>\output.wav                     the final file
+Cache\voice_clone\job-<id>\finished.json                  written once output.wav is checked
+Cache\voice_clone\job-<id>\references\ref-1.wav ...       a clone job's copies of its clips
 Cache\voice_clone\job-<id>\output.parts\progress.json      which pieces are done
 Cache\voice_clone\job-<id>\output.parts\piece-0001.wav ... one file per finished piece
 ```
@@ -390,17 +392,28 @@ Cache\voice_clone\job-<id>\output.parts\piece-0001.wav ... one file per finished
 OmniVoice clone the language and the contents of the reference clips) and the
 speed. The status line shows the piece and the time left, from the speed
 measured on the pieces done so far. **Cancel** keeps the finished pieces, and
-so do a crash and a power cut (the piece in progress is redone). Pressing
-**Generate** again with the same text, voice and speed shows the confirm step
-with **Continue the unfinished job** (skips the finished pieces) and **Start
-over** (deletes them). The final file is joined only after the last piece,
-tagged as AI-generated and checked; then the pieces are deleted. The free-disk
-check of a piece-by-piece job counts the pieces still to write plus two copies
-of the whole file (the joined file and its tagged copy exist next to all the
-pieces for a moment). **Start over** deletes the pieces only when the disk has
-room for the whole job again. The voice, mode, clips and language are the ones
-set when **Generate** was pressed. A cloning job writes one consent record, for
-the joined file.
+so do a crash and a power cut (the piece in progress is redone; each piece is
+flushed to disk before it counts as done, and a piece found cut short is
+spoken again). Pressing **Generate** again with the same text, voice and speed
+shows the confirm step with **Continue the unfinished job** (skips the finished
+pieces; the time shown is for the pieces left) and **Start over** (deletes
+them). The final file is joined only after the last piece, tagged as
+AI-generated and checked; then `finished.json` is written and the pieces are
+deleted. **Generate** on a finished job offers **Use the finished file**
+(nothing is spoken again) or **Start over**. A piece with no letter or digit
+(a scene break such as `***`) is not sent to the engine. The free-disk check of
+a piece-by-piece job counts the pieces still to write plus two copies of the
+whole file (the joined file and its tagged copy exist next to all the pieces
+for a moment); a job the disk cannot hold never starts. **Start over** deletes
+the pieces only when the disk has room for the whole job again. The voice,
+mode, clips and language are the ones set when **Generate** was pressed, and
+the voice controls stay locked until the job ends. A cloning job copies its
+reference clips into its folder and speaks from those copies, so it can be
+continued after a restart: with no clips in the list, **Generate** for the same
+text puts the job's copies back in the list (tick the permission box again). A
+cloning job writes one consent record, for the joined file and the copied
+clips. Two app windows never run the same job at once (a lock file in the job
+folder); **Start over** is refused while the other window runs it.
 
 OmniVoice's voice design and own voice are never split: every pass picks a new
 voice, so the pieces would not sound like one speaker. Those two modes take up

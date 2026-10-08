@@ -2,11 +2,23 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 import tkinter as tk
 from tkinter import messagebox
 
 from app.widgets.error_dialog import show_error
+
+
+def open_with_default_app(path: str) -> None:
+    """Open the file *path* with the system's default app (Windows, macOS,
+    Linux) without waiting for it. Raises ``OSError`` when it cannot start."""
+    if sys.platform == "win32":
+        os.startfile(path)  # type: ignore[attr-defined]
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", path])
+    else:
+        subprocess.Popen(["xdg-open", path])
 
 
 def open_folder(folder: str, parent: "tk.Misc | None" = None) -> None:
