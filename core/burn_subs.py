@@ -25,6 +25,7 @@ import subprocess
 import tempfile
 import threading
 import time
+import unicodedata
 import uuid
 from typing import Any, Callable, NamedTuple
 
@@ -316,6 +317,7 @@ def release_reserved_path(path: str) -> None:
 _BURN_TEMP_PREFIX = ".burn-"
 _BURN_DIR_PREFIX = "burnsubs_"
 _BURN_TEMP_NAME_RE = re.compile(r"^\.burn-[a-z0-9_]{8}(\.[A-Za-z0-9]{1,8})?$")
+_BURN_TEMP_EXT_RE = re.compile(r"^\.[A-Za-z0-9]{1,8}$")
 _BURN_TEMP_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_"
 # The only file a burn puts into its work folder.
 _WORK_FOLDER_FILES = frozenset({"subs.srt"})
@@ -346,7 +348,10 @@ _produced: set[str] = set()
 
 
 def _output_key(path: str) -> str:
-    return os.path.normcase(os.path.realpath(path))
+    """One key per file, whatever the case rules and Unicode form of its name
+    (macOS HFS+ stores names decomposed: a Persian "U+0622" may come back as
+    U+0627 U+0653 where the app wrote U+0622)."""
+    return unicodedata.normalize("NFC", os.path.normcase(os.path.realpath(path)))
 
 
 def is_burn_temp(path: str) -> bool:
@@ -365,7 +370,12 @@ def _create_burn_temp(folder: str, ext: str) -> str:
     Created with the normal new-file permissions (the umask applies);
     ``tempfile.mkstemp`` would make it 0600 and the finished video would
     keep that mode, unlike every other output of the app.
+
+    *ext* is kept only when it is a plain ``.abc`` extension (the shape the
+    cleanup recognises); ffmpeg could not pick a muxer from any other anyway.
     """
+    if not _BURN_TEMP_EXT_RE.match(ext):
+        ext = ""
     while True:
         name = _BURN_TEMP_PREFIX + "".join(secrets.choice(_BURN_TEMP_CHARS) for _ in range(8)) + ext
         path = os.path.join(folder, name)
@@ -538,6 +548,20 @@ def _remove_leftovers(
     return removed
 
 
+def _vetted_leftovers(
+    tmp_dir: str, tmp_out: str, placeholder: str, *, strict_content: bool = True
+) -> list[str]:
+    """The paths ``_remove_leftovers`` would remove that still exist."""
+    found: list[str] = []
+    if _is_burn_partial(tmp_out):
+        found.append(tmp_out)
+    if _is_burn_work_folder(tmp_dir, strict_content=strict_content):
+        found.append(tmp_dir)
+    if _is_empty_reserved_name(placeholder):
+        found.append(placeholder)
+    return found
+
+
 def abandon_active_burns(patience: float = 5.0) -> int:
     """Stop every running burn and remove its leftovers (the app is closing).
 
@@ -639,7 +663,12 @@ def sweep_stale_burns() -> list[str]:
             value = record.get(key)
             return value if isinstance(value, str) else ""
 
-        removed += _remove_leftovers(_text("tmp_dir"), _text("tmp_out"), _text("placeholder"))
+        paths = (_text("tmp_dir"), _text("tmp_out"), _text("placeholder"))
+        removed += _remove_leftovers(*paths)
+        if _vetted_leftovers(*paths):
+            # Held open, or no permission: the record stays so the next start retries.
+            logger.warning("Burn leftovers of %s could not all be removed; keeping the journal", path)
+            continue
         try:
             os.unlink(path)
         except OSError:
@@ -906,6 +935,8 @@ def burn(
     tmp_out = ""
     try:
         font = _prepare_srt(srt_path, safe_srt_file)
+        if entry.abandoned.is_set() or _closing.is_set():
+            raise BurnCancelled("Subtitle burn cancelled")
         subtitle_filter = "subtitles=subs.srt"
         if font:
             subtitle_filter += f":force_style='FontName={font}'"

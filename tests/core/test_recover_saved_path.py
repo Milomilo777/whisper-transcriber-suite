@@ -16,10 +16,6 @@ from app.services.download_service import DownloadService
 from core import burn_subs
 
 
-@pytest.fixture(autouse=True)
-def _fresh_burn_records(monkeypatch):
-    monkeypatch.setattr(burn_subs, "_reserved", set())
-    monkeypatch.setattr(burn_subs, "_produced", set())
 
 
 def _svc() -> DownloadService:

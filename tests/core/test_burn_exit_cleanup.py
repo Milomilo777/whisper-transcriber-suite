@@ -30,16 +30,6 @@ time.sleep(120)
 
 
 @pytest.fixture(autouse=True)
-def _fresh_burn_state(monkeypatch):
-    """No closing flag, reservation or output left over from another test."""
-    monkeypatch.setattr(burn_subs, "_reserved", set())
-    monkeypatch.setattr(burn_subs, "_produced", set())
-    burn_subs._closing.clear()
-    yield
-    burn_subs._closing.clear()
-
-
-@pytest.fixture(autouse=True)
 def systmp(tmp_path, monkeypatch):
     """The folder tempfile.mkdtemp() uses, so work folders can be listed."""
     d = tmp_path / "systmp"
@@ -754,3 +744,78 @@ def test_a_reserved_placeholder_is_not_created_executable(tmp_path, monkeypatch)
     monkeypatch.setattr(burn_subs.os, "open", spy)
     burn_subs.reserve_output_path(str(tmp_path / "Talk-subbed.mp4"))
     assert modes == [0o666]
+
+
+# -- review round 3 ------------------------------------------------------------------------
+
+def test_closing_the_app_does_not_leak_into_the_next_test_part_one():
+    # Pair of tests: the closing flag is process-wide and one-way, and the
+    # autouse fixture in tests/conftest.py must reset it between tests.
+    burn_subs.abandon_active_burns()
+    assert burn_subs._closing.is_set()
+
+
+def test_closing_the_app_does_not_leak_into_the_next_test_part_two(tmp_path, monkeypatch):
+    assert not burn_subs._closing.is_set()
+    video, srt, out = _files(tmp_path)
+    monkeypatch.setattr(burn_subs, "_run_ffmpeg", lambda cmd, **kw: open(cmd[-1], "wb").write(b"x"))
+    burn_subs.burn(video, srt, out)
+    assert os.path.getsize(out) == 1
+
+
+def test_sweep_keeps_the_record_while_a_vetted_partial_cannot_be_removed(tmp_path, monkeypatch, _journal_in_tmp):
+    partial = tmp_path / ".burn-abcd1234.mp4"
+    partial.write_bytes(b"held open")
+    record = _record(_journal_in_tmp, pid=_dead_pid(), pid_started=1.0, tmp_dir="",
+                     tmp_out=str(partial), placeholder="")
+    real_unlink = os.unlink
+
+    def locked(path, *a, **k):
+        if os.path.basename(str(path)).startswith(".burn-"):
+            raise PermissionError(13, "held open", str(path))
+        return real_unlink(path, *a, **k)
+
+    monkeypatch.setattr(burn_subs.os, "unlink", locked)
+    assert burn_subs.sweep_stale_burns() == []
+    assert partial.exists() and record.exists()          # kept for the next start
+
+    monkeypatch.setattr(burn_subs.os, "unlink", real_unlink)
+    assert burn_subs.sweep_stale_burns() == [str(partial)]  # released: now it goes
+    assert not partial.exists() and not record.exists()
+
+
+@pytest.mark.parametrize("ext", [".mp4", ".MP4", "", ".mp4_old", ".verylongext", ".视频", ".a b", "mp4", "."])
+def test_every_burn_temp_the_module_writes_is_one_it_cleans_up(tmp_path, ext):
+    path = burn_subs._create_burn_temp(str(tmp_path), ext)
+    assert burn_subs._BURN_TEMP_NAME_RE.match(os.path.basename(path))
+    assert burn_subs._is_burn_partial(path)
+    assert burn_subs._remove_leftovers("", path, "") == [path]
+
+
+def test_the_output_key_is_the_same_for_composed_and_decomposed_names(tmp_path):
+    composed = str(tmp_path / "\u0622\u0645\u0627\u062f\u0647-subbed.mp4")
+    decomposed = str(tmp_path / "\u0627\u0653\u0645\u0627\u062f\u0647-subbed.mp4")
+    assert composed != decomposed
+    assert burn_subs._output_key(composed) == burn_subs._output_key(decomposed)
+    reserved = burn_subs.reserve_output_path(composed)
+    assert burn_subs.is_reserved(decomposed)
+    assert watcher.watch_skip_reason(decomposed)
+    assert burn_subs.is_reserved(reserved)
+
+
+def test_a_burn_that_notices_the_close_before_its_temp_exists_creates_nothing(tmp_path, monkeypatch, _journal_in_tmp):
+    video, srt, out = _files(tmp_path)
+    real_prepare = burn_subs._prepare_srt
+
+    def prepare_then_close(srt_path, safe):
+        font = real_prepare(srt_path, safe)
+        burn_subs.abandon_active_burns()      # the app closes right here
+        return font
+
+    monkeypatch.setattr(burn_subs, "_prepare_srt", prepare_then_close)
+    monkeypatch.setattr(burn_subs, "_create_burn_temp", lambda *a, **k: pytest.fail("temp created"))
+    monkeypatch.setattr(burn_subs, "_run_ffmpeg", lambda *a, **k: pytest.fail("ffmpeg started"))
+    with pytest.raises(burn_subs.BurnCancelled):
+        burn_subs.burn(video, srt, out)
+    assert sorted(os.listdir(os.path.dirname(out))) == ["clip.mp4", "clip.srt"]
+    assert not os.path.exists(_journal_in_tmp) or os.listdir(_journal_in_tmp) == []
