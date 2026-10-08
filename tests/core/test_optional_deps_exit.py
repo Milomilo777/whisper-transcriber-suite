@@ -137,6 +137,19 @@ def test_the_exit_waits_for_a_merge_in_progress_and_nothing_is_half_done(
     assert optional_deps.installs_merging() is False
 
 
+def test_an_install_queued_behind_the_exit_request_does_not_start_pip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _env(monkeypatch, tmp_path)
+    started: list[int] = []
+    monkeypatch.setattr(optional_deps.subprocess, "Popen",
+                        lambda *a, **k: started.append(1) or _HangingProc())
+    optional_deps.request_stop_installs()
+
+    assert optional_deps.install("alignment", timeout=60) is False
+    assert started == []
+
+
 def test_the_counters_reset_when_an_install_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     def _boom(*_a: Any, **_k: Any) -> bool:
         optional_deps._mark_merging()

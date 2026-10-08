@@ -443,6 +443,8 @@ def _install_impl(
         # cache (find_spec succeeds but the real import fails — e.g. a
         # grpcio .pyd built for another Python version) must be repaired,
         # not reported as already installed.
+        if _stop_requested.is_set():
+            return False  # the app is exiting: do not start another pip
         if not force and is_available(feature):
             return True
         final_target = extras_dir()
