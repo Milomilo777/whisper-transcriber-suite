@@ -884,7 +884,10 @@ class App(tk.Tk):
         # feature-availability checks (e.g. stable-ts alignment) see them.
         try:
             from core.optional_deps import activate as _activate_extras
+            from core.optional_deps import start_leftover_sweep as _sweep_extras
             _activate_extras()
+            # Undo what an install cut short by a crash or an exit left behind.
+            _sweep_extras()
         except Exception:  # noqa: BLE001
             pass
         self._install_icon()
@@ -3355,8 +3358,23 @@ class App(tk.Tk):
 
         self.after(200, _poll)
         self.wait_window(win)
-        if state["ok"]:
-            self.log(f"{friendly} installed.")
+        return self._finish_optional_install(bool(state["ok"]), friendly)
+
+    def _finish_optional_install(self, ok: bool, friendly: str) -> bool:
+        """What follows a finished install; quiet when the app is already closing.
+
+        An exit stops the install (``optional_deps.request_stop_installs``) and destroys the
+        window, so the install ends here with the Tk root gone: no log line, no worker
+        restart then.
+        """
+        if getattr(self, "_closing", False):
+            return ok
+        if ok:
+            try:
+                self.log(f"{friendly} installed.")
+            except tk.TclError:
+                logger.debug("The app closed before the install result was logged", exc_info=True)
+                return ok
             # A live worker activated its sys.path BEFORE this install, so
             # restart workers to pick up the new package on the next task.
             try:

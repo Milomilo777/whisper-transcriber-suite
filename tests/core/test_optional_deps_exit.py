@@ -214,3 +214,75 @@ def test_an_install_that_will_not_finish_does_not_block_the_exit(
 
     assert calls[-1] == "destroy"
     assert "still running" in caplog.text
+
+
+def test_a_declined_exit_leaves_installs_running(monkeypatch: pytest.MonkeyPatch) -> None:
+    """'No' on the queued-tasks question must not cancel anything for the rest of the session."""
+    calls: list[str] = []
+    _patch_teardown(monkeypatch, calls)
+    monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *_a, **_k: False)
+    fake = _exit_fake(calls)
+    fake.queue = [types.SimpleNamespace(status="running", process=None, history_id=1)]
+
+    App.on_exit(fake)  # type: ignore[arg-type]
+
+    assert not optional_deps._stop_requested.is_set()
+    assert calls == []
+
+
+def test_cancelling_the_unsaved_transcript_question_leaves_installs_running(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+    _patch_teardown(monkeypatch, calls)
+    monkeypatch.setattr(app_module, "live_save_before_exit", lambda _a: False)  # Cancel
+    fake = _exit_fake(calls)
+
+    App.on_exit(fake)  # type: ignore[arg-type]
+
+    assert not optional_deps._stop_requested.is_set()
+    assert calls == []
+
+
+# ------------------------------------------- the install caller after the window is gone
+
+
+def test_an_install_that_ends_because_of_the_exit_does_not_touch_the_closed_app() -> None:
+    import tkinter as tk
+
+    def _dead(*_a: Any) -> None:
+        raise tk.TclError("application has been destroyed")
+
+    stopped: list[int] = []
+    fake = types.SimpleNamespace(
+        _closing=True, log=_dead,
+        transcription_service=types.SimpleNamespace(stop_all=lambda: stopped.append(1)))
+
+    assert App._finish_optional_install(fake, False, "Alignment") is False  # type: ignore[arg-type]
+    assert App._finish_optional_install(fake, True, "Alignment") is True  # type: ignore[arg-type]
+    assert stopped == []  # no worker restart while the app is closing
+
+
+def test_a_normal_finished_install_still_logs_and_restarts_the_workers() -> None:
+    logs: list[str] = []
+    stopped: list[int] = []
+    fake = types.SimpleNamespace(
+        _closing=False, log=logs.append,
+        transcription_service=types.SimpleNamespace(stop_all=lambda: stopped.append(1)))
+
+    assert App._finish_optional_install(fake, True, "Alignment") is True  # type: ignore[arg-type]
+    assert logs == ["Alignment installed."] and stopped == [1]
+    assert App._finish_optional_install(fake, False, "Alignment") is False  # type: ignore[arg-type]
+
+
+def test_a_tcl_error_while_logging_after_the_install_is_swallowed() -> None:
+    import tkinter as tk
+
+    def _dead(*_a: Any) -> None:
+        raise tk.TclError("can't invoke text command")
+
+    fake = types.SimpleNamespace(
+        _closing=False, log=_dead,
+        transcription_service=types.SimpleNamespace(stop_all=lambda: None))
+
+    assert App._finish_optional_install(fake, True, "Alignment") is True  # type: ignore[arg-type]

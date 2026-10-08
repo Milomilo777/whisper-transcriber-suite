@@ -17,6 +17,7 @@ import importlib
 import importlib.util
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -325,6 +326,116 @@ def _merge_units(staging: str, final: str, *, top_level: bool = True) -> list[tu
 def extras_dir() -> str:
     """User-writable dir where on-demand packages are installed."""
     return os.path.join(str(user_cache_dir()), "pylibs")
+
+
+# What a cut install leaves behind: ``.<name>.bak-<pid>`` (the live package moved aside),
+# ``.<name>.merge-<pid>`` (the half-copied new one) and pip's ``pylibs-stage-*`` folder.
+_LEFTOVER_RE = re.compile(r"^\.(?P<name>.+)\.(?P<kind>bak|merge)-(?P<pid>\d+)$")
+_STAGE_PREFIX = "pylibs-stage-"
+#: Folders below the extras folder an install merges into (``google/cloud/speech``).
+_SWEEP_MAX_DEPTH = 3
+
+
+def _pid_alive(pid: int) -> bool:
+    """False only when no such process exists. Unknown (no psutil) counts as alive."""
+    try:
+        import psutil  # type: ignore[import-not-found] # noqa: PLC0415
+    except Exception:  # noqa: BLE001
+        return True
+    try:
+        return bool(psutil.pid_exists(pid))
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def _sweep_folder(folder: str, depth: int) -> tuple[int, int]:
+    """Handle the leftovers directly in *folder*, then those of its shared sub-folders."""
+    restored = removed = 0
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return 0, 0
+    for name in names:
+        path = os.path.join(folder, name)
+        match = _LEFTOVER_RE.match(name)
+        if match:
+            if _pid_alive(int(match.group("pid"))):
+                continue  # that install is still running
+            dest = os.path.join(folder, match.group("name"))
+            if match.group("kind") == "bak" and not os.path.lexists(dest):
+                # Cut between "move the live package aside" and "move the new one in".
+                try:
+                    os.replace(path, dest)
+                except OSError as e:
+                    logger.warning("Could not restore %s to %s: %s", path, dest, e)
+                else:
+                    restored += 1
+                    logger.info("Restored %s after an interrupted install", dest)
+                continue
+            _rm(path)
+            if not os.path.lexists(path):
+                removed += 1
+                logger.info("Removed %s left by an interrupted install", path)
+            continue
+        if (
+            depth < _SWEEP_MAX_DEPTH
+            and os.path.isdir(path)
+            and not os.path.islink(path)
+            and _is_shared_folder(path, top_level=(depth == 0))
+        ):
+            r, d = _sweep_folder(path, depth + 1)
+            restored += r
+            removed += d
+    return restored, removed
+
+
+def sweep_install_leftovers() -> tuple[int, int]:
+    """Clean up after an install that was cut short; returns ``(restored, removed)``.
+
+    A backup whose destination is missing is moved back; a backup whose destination exists, a
+    half-copied merge folder and stale ``pylibs-stage-*`` folders are removed. Only inside the
+    extras folder and its sibling staging folders, only for processes that no longer exist,
+    and only while no install anywhere holds the cross-process install lock. Never raises.
+    """
+    folder = extras_dir()
+    if not os.path.isdir(folder):
+        return 0, 0
+    try:
+        with _extras_file_lock(folder, None, 0.01, None) as got:
+            if not got:
+                return 0, 0  # an install is running right now
+            restored, removed = _sweep_folder(folder, 0)
+            parent = os.path.dirname(folder)
+            try:
+                siblings = os.listdir(parent)
+            except OSError:
+                siblings = []
+            for name in siblings:
+                path = os.path.join(parent, name)
+                if (
+                    name.startswith(_STAGE_PREFIX)
+                    and os.path.isdir(path)
+                    and not os.path.islink(path)
+                ):
+                    _rm(path)
+                    if not os.path.lexists(path):
+                        removed += 1
+                        logger.info("Removed stale staging folder %s", path)
+            return restored, removed
+    except Exception:  # noqa: BLE001 - a clean-up must never stop the app
+        logger.exception("Could not clean up after an interrupted install")
+        return 0, 0
+
+
+def start_leftover_sweep() -> None:
+    """Run :func:`sweep_install_leftovers` on a daemon thread (it can delete gigabytes)."""
+    def _run() -> None:
+        try:
+            sweep_install_leftovers()
+        except Exception:  # noqa: BLE001
+            logger.exception("Interrupted-install clean-up failed")
+
+    threading.Thread(target=_run, name="optdeps-sweep", daemon=True).start()
 
 
 def activate() -> None:

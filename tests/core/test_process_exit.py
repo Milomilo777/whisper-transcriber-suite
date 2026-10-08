@@ -221,3 +221,65 @@ def test_a_stuck_log_handler_cannot_hang_the_exit(monkeypatch: pytest.MonkeyPatc
 
     assert exits == [7]
     assert elapsed < 5.0  # not the 30 s the handler would have taken
+
+
+# ---------------------- a flush stuck on the stderr lock must not hang the exit itself
+
+_STUCK_STDERR_CHILD = textwrap.dedent(
+    """
+    import sys, threading, time
+    sys.path.insert(0, sys.argv[1])
+    from core import process_exit
+
+    class StuckStream:
+        # Like a text stream whose flush blocks on a full pipe: flush holds the stream's
+        # lock, so any other write to the same stream blocks behind it.
+        def __init__(self):
+            self._lock = threading.Lock()
+        def write(self, text):
+            with self._lock:
+                return len(text)
+        def flush(self):
+            with self._lock:
+                time.sleep(120)
+
+    sys.stderr = StuckStream()
+    process_exit.FLUSH_TIMEOUT_S = 0.5
+    process_exit.end_process(5)
+    """
+)
+
+
+def test_a_stuck_stderr_flush_does_not_hang_the_exit_message(tmp_path: Path) -> None:
+    script = tmp_path / "stuck.py"
+    script.write_text(_STUCK_STDERR_CHILD, encoding="utf-8")
+    started = time.monotonic()
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), str(_REPO)],
+            capture_output=True, timeout=30, check=False,
+        )
+    except subprocess.TimeoutExpired:
+        pytest.fail("end_process hung behind the stuck stream lock")
+
+    assert proc.returncode == 5
+    assert time.monotonic() - started < 20
+
+
+def test_the_timeout_message_never_blocks_the_exit(monkeypatch: pytest.MonkeyPatch) -> None:
+    release = threading.Event()
+    exits: list[int] = []
+    monkeypatch.setattr(process_exit, "_flush_everything", lambda: release.wait(30))
+    monkeypatch.setattr(process_exit, "FLUSH_TIMEOUT_S", 0.2)
+    monkeypatch.setattr(process_exit.os, "write", lambda *_a: release.wait(30))  # a full pipe
+    monkeypatch.setattr(process_exit, "_hard_exit", exits.append)
+
+    started = time.monotonic()
+    try:
+        process_exit.end_process(2)
+        elapsed = time.monotonic() - started
+    finally:
+        release.set()
+
+    assert exits == [2]
+    assert elapsed < 5.0

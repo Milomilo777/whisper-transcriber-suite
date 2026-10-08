@@ -68,6 +68,27 @@ def _flush_everything() -> None:
     _flush_streams()
 
 
+def _say_flush_timed_out() -> None:
+    """Best-effort note on file descriptor 2 that the flush was cut; never blocks the exit.
+
+    Not a Python stream and not the log: the stuck flush may hold a stream's lock (a
+    stderr pipe nobody reads), and a write to the same stream would wait behind it for
+    ever. Even ``os.write`` can block on a full pipe, so it runs on a daemon thread that
+    is waited for only a moment.
+    """
+    message = b"exit: the final flush did not finish in time; ending anyway" + bytes([10])
+
+    def _write() -> None:
+        try:
+            os.write(2, message)
+        except (OSError, ValueError):
+            pass
+
+    note = threading.Thread(target=_write, name="exit-note", daemon=True)
+    note.start()
+    note.join(0.2)
+
+
 def end_process(code: int = 0) -> None:
     """Flush Sentry, the logs and the standard streams, then end the process with *code*.
 
@@ -87,9 +108,5 @@ def end_process(code: int = 0) -> None:
     flusher.start()
     flusher.join(FLUSH_TIMEOUT_S)
     if flusher.is_alive():
-        # Not logged: the log handlers are what is stuck.
-        try:
-            sys.stderr.write("exit: the final flush did not finish in time; ending anyway\n")
-        except (OSError, ValueError, AttributeError):
-            pass
+        _say_flush_timed_out()
     _hard_exit(code)

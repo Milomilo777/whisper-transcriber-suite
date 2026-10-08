@@ -315,7 +315,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   lock, until the whole model had arrived. The process now ends right after the orderly shutdown
   (Sentry and logs flushed first, never waiting more than 3 s); an unfinished download resumes the
   next time. A package install in progress is stopped and its merge step is waited for (up to
-  30 s) so no half-moved package folder is left. Quitting also asks a running job to cancel before
+  30 s) so no half-moved package folder is left; if one is left anyway (a crash, a power cut), the
+  next start restores or removes it. Quitting also asks a running job to cancel before
   shutting its worker down, so the resume checkpoint is written (it was lost when the worker was
   killed after 5 s; the exit now allows up to 15 s), and a job that finishes during the exit,
   including one with no speech, is recorded as finished instead of being offered for resume again.
