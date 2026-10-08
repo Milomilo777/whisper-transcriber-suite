@@ -2423,6 +2423,55 @@ class TranscriptViewer(tk.Toplevel):
                 pass
         self.destroy()
 
+    def _bring_forward(self) -> None:
+        """Show this viewer in front, so a question about it is seen.
+
+        A viewer follows its parent window: while the app sits hidden in the tray, the
+        viewer is hidden with it, so the parent is shown first.
+        """
+        try:
+            parent = self.master
+            if isinstance(parent, (tk.Tk, tk.Toplevel)) and parent.state() == "withdrawn":
+                parent.deiconify()
+            self.deiconify()
+            self.lift()
+            self.focus_force()
+        except tk.TclError:
+            logger.debug("Could not bring the viewer forward", exc_info=True)
+
+    def _confirm_exit(self) -> bool:
+        """Ask what to do with this viewer's unsaved edits as the app exits.
+
+        True: go on exiting (saved, or discarded on purpose). False: stay open (the user
+        cancelled, or the save did not happen: the edits are still here to retry).
+        """
+        self._bring_forward()
+        answer = messagebox.askyesnocancel(
+            "Unsaved transcript edits",
+            f"{os.path.basename(self.json_path)} has edits that were not saved.\n\n"
+            "Yes: save them, then exit.\n"
+            "No: exit and discard them.\n"
+            "Cancel: stay in the app.",
+            parent=self,
+        )
+        if answer is None:
+            return False
+        if not answer:
+            return True
+        try:
+            self._save_changes()
+        except Exception as e:  # noqa: BLE001 - a save that blew up must not end in a discard
+            logger.exception("Saving %s on exit failed", self.json_path)
+            show_error(
+                self, "Save failed",
+                "Could not write your changes to the transcript file, so the app was not closed.",
+                detail=str(e),
+            )
+            return False
+        # Still dirty: the write failed (its error is on screen) or the user declined to
+        # overwrite a file changed on disk. Either way nothing was saved: do not exit.
+        return not self._dirty
+
     def destroy(self) -> None:
         # Also reached when the main window goes away with the viewer open.
         key = self._registry_key
@@ -2709,6 +2758,36 @@ class FindReplaceDialog(tk.Toplevel):
         except Exception:  # noqa: BLE001
             pass
         super().destroy()
+
+
+def confirm_unsaved_before_exit() -> bool:
+    """Exit hook: Save / Discard / Cancel for every viewer with unsaved edits.
+
+    False means the exit is cancelled (or a save failed) and the app stays as it is.
+    One question per viewer, each in front and naming its file: a combined list could not
+    say which transcript a Save or Discard applies to. Edits are never touched until the
+    user answers, so Cancel at a later viewer leaves an earlier one saved or still dirty,
+    as chosen. Nothing is asked when no viewer has unsaved edits.
+    """
+    for viewer in list(_OPEN_VIEWERS.values()):
+        try:
+            if viewer._closing or not viewer.winfo_exists() or not viewer._dirty:
+                continue
+        except tk.TclError:
+            continue  # the window is already gone
+        try:
+            if not viewer._confirm_exit():
+                return False
+        except tk.TclError:
+            # Closed while its question was open: its own close already asked about the
+            # edits. Still open: the question failed, so the edits must not be dropped.
+            logger.warning("Exit question for %s failed", viewer.json_path, exc_info=True)
+            try:
+                if viewer.winfo_exists():
+                    return False
+            except tk.TclError:
+                pass
+    return True
 
 
 def open_viewer(

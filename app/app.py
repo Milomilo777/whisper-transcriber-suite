@@ -20,6 +20,7 @@ from app.dialogs.advanced import AdvancedDialog
 from app.dialogs.model_download import ModelDownloadDialog
 from app.dialogs.quick_start import QuickStartChoice, QuickStartDialog, apply_choice, should_show
 from app.dialogs import share_page
+from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
 from app.domain.task_outputs import task_output_folder, task_srt_output
 from app.domain.tasks import TranscriptionTask, VideoDownloadTask
@@ -2038,15 +2039,29 @@ class App(tk.Tk):
                 self._exit_from_tray = False
                 return
 
-        # The live transcript exists only in the Live tab's widget: offer
-        # to save it (Cancel, or cancelling the save dialog, keeps the app
-        # open; anything that arrives after this is autosaved at teardown).
+        # Unsaved work is asked about after "exit anyway?" and before anything
+        # irreversible, in this order: transcript viewers with unsaved edits
+        # (Save / Discard / Cancel each; a Save must succeed), then the live
+        # transcript. Cancel at any of them keeps the app open untouched. The
+        # live question comes last because answering "No" there also marks its
+        # text as deliberately dropped (no autosave at teardown).
         self._exit_prompt_open = True
         try:
-            keep_open = not live_save_before_exit(self)
-        except Exception:  # noqa: BLE001
-            logger.exception("Live transcript exit check failed")
-            keep_open = False
+            try:
+                keep_open = not confirm_unsaved_viewers_before_exit()
+            except Exception:  # noqa: BLE001
+                # Edits are at stake: an unexpected failure keeps the app open.
+                logger.exception("Transcript viewer exit check failed")
+                keep_open = True
+            if not keep_open:
+                # The live transcript exists only in the Live tab's widget: offer
+                # to save it (Cancel, or cancelling the save dialog, keeps the app
+                # open; anything that arrives after this is autosaved at teardown).
+                try:
+                    keep_open = not live_save_before_exit(self)
+                except Exception:  # noqa: BLE001
+                    logger.exception("Live transcript exit check failed")
+                    keep_open = False
         finally:
             self._exit_prompt_open = False
         if keep_open:

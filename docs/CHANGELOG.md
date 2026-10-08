@@ -303,6 +303,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Unsaved viewer edits are no longer lost on exit.** Closing the app (close button, File > Exit,
+  Ctrl+Q, tray Exit, macOS Cmd+Q) while a transcript viewer holds unsaved edits now asks Save /
+  Discard / Cancel for each such viewer, before anything is stopped. Save uses the viewer's own
+  save and must succeed, otherwise the app stays open; minimise-to-tray never asks.
+
 - **Quitting during a job.** On macOS, Cmd+Q (and the app-menu and Dock Quit) now ask "Exit with queued
   tasks?" like Windows instead of dropping a running transcription. A confirmed exit is recorded as
   closed on purpose, so the next start offers to resume it as "interrupted when the app was closed"
