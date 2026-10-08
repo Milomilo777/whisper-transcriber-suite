@@ -19,6 +19,7 @@ import sv_ttk
 from app.dialogs.advanced import AdvancedDialog
 from app.dialogs.model_download import ModelDownloadDialog
 from app.dialogs.quick_start import QuickStartChoice, QuickStartDialog, apply_choice, should_show
+from app.dialogs import share_page
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
 from app.domain.task_outputs import task_output_folder, task_srt_output
 from app.domain.tasks import TranscriptionTask, VideoDownloadTask
@@ -1428,6 +1429,27 @@ class App(tk.Tk):
             )
         else:
             _open_transcript_viewer(self, None)
+
+    def _save_shareable_page_for(
+        self, file_path: str, json_path: str, language: str | None = None,
+    ) -> None:
+        """Last Result card: save the task's transcript JSON as a shareable web page,
+        linking the task's own source media."""
+        try:
+            segments = share_page.load_transcript(json_path)
+        except (OSError, ValueError) as e:
+            messagebox.showerror(
+                share_page.BUTTON_TEXT, f"Could not read {json_path}:\n{e}", parent=self
+            )
+            return
+        share_page.save_shareable_page(
+            self,
+            segments=segments,
+            media_path=file_path,
+            json_path=json_path,
+            chapters=share_page.load_chapters(json_path),
+            language=language,
+        )
 
     @staticmethod
     def _task_json_output(task: Any) -> str | None:
@@ -5052,6 +5074,12 @@ class App(tk.Tk):
             ttk.Button(
                 button_row, text="View transcript",
                 command=lambda jp=json_output: self.open_transcript_viewer_for(
+                    task.file_path, jp, task.language or task.detected_language
+                ),
+            ).pack(side="left", padx=(8, 0))
+            ttk.Button(
+                button_row, text=share_page.BUTTON_TEXT,
+                command=lambda jp=json_output: self._save_shareable_page_for(
                     task.file_path, jp, task.language or task.detected_language
                 ),
             ).pack(side="left", padx=(8, 0))

@@ -140,6 +140,9 @@ is needed.
   PDF, plus the oTranscribe, ELAN, InqScribe and Express Scribe formats. DOCX
   and PDF draw every script, and Persian, Arabic and Urdu read right to left
   with joined letters.
+- **Shareable web page:** save a finished transcript as one `.html` file that
+  works offline in any browser; click a word to hear it, search, jump to
+  chapters.
 - **Speaker labels** without a Hugging Face account, plus word timestamps and
   time-range clipping.
 - **Interrupted jobs resume** from their last checkpoint instead of starting

@@ -6,6 +6,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Shareable web page of a transcript.** The transcript viewer and the Last Result card have a
+  **Save shareable page** button that saves one `.html` file that opens in any browser with no
+  install and no internet connection: timestamps, speakers, chapters, a search box with
+  Previous/Next, and a click on a word (or a line) plays the media from there while the spoken
+  word is highlighted. The media is linked, not copied, so the page plays while it stays next to
+  the media file. A strict Content-Security-Policy allows no outside resource; the optional footer
+  link is the page's only web address (`core/writers/html_transcript.py`).
 - **Windows installer built in CI.** A new workflow (`windows-installer.yml`) builds the installer
   and the Portable ZIP from the committed tree, smoke-tests a silent install and keeps both as
   workflow artifacts for 7 days; it never publishes a release. Every third-party download (Python,

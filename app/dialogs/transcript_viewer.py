@@ -43,6 +43,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any, Optional
 
+from app.dialogs import share_page
 from app.dpi import px, scaled_size
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
@@ -763,6 +764,9 @@ class TranscriptViewer(tk.Toplevel):
         topbar.pack(fill="x", pady=(0, 4))
         ttk.Button(topbar, text="Open JSON folder", command=self._open_json_folder).pack(
             side="right"
+        )
+        ttk.Button(topbar, text=share_page.BUTTON_TEXT, command=self._save_shareable_page).pack(
+            side="right", padx=(0, 4)
         )
         if subtitle_edit.is_supported():
             ttk.Button(
@@ -1704,6 +1708,17 @@ class TranscriptViewer(tk.Toplevel):
                 self, "Open failed",
                 "Could not open the transcript's folder.", detail=str(e),
             )
+
+    def _save_shareable_page(self) -> None:
+        """Export what the list shows now (unsaved edits included) as a web page."""
+        share_page.save_shareable_page(
+            self,
+            segments=self.segments,
+            media_path=self.media_path,
+            json_path=self.json_path,
+            chapters=getattr(self, "chapters", None),
+            language=_language_code(self.language) or None,
+        )
 
     def _open_in_subtitle_edit(self) -> None:
         """Open the subtitle file next to this JSON in Subtitle Edit.
