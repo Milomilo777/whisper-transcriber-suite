@@ -432,14 +432,22 @@ Behaviour to know:
   the operating system's temp folder (`upload-*.part`, deleted right after);
   the media is then written to a per-job directory under the host's cache
   folder (`%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\server_jobs\<id>\`)
-  and the outputs are written beside it. While the server runs, the oldest
-  finished jobs' directories are removed as new jobs arrive. Directories of
-  finished jobs are **not** removed when the server stops, but the next start
-  deletes job folders of this version older than 6 hours (the job list is in
-  memory only, so nothing can reach them any more; folders left by older
-  versions are never deleted automatically). A finished job's outputs are also copied
-  to `server_outputs\` next to the cache folder for the history entry; delete
-  that folder yourself when you want them gone.
+  and the outputs are written beside it. When a job ends, its uploaded or
+  downloaded media is deleted from that directory (a file the server did not
+  store itself is never touched) and the outputs stay. While the server runs,
+  the oldest finished jobs' directories are removed as new jobs arrive.
+  Directories of finished jobs are **not** removed when the server stops, but
+  a later start deletes job folders of this version older than 6 hours whose
+  server is gone (the job list is in memory only, so nothing can reach them
+  any more). A folder whose server still runs, in this or another process
+  (for example the app's web access and `gui.py serve` at the same time), is
+  never deleted, and folders left by older versions are only deleted after 7
+  days. A job's outputs are also copied to `server_outputs\` next to the cache
+  folder before the job reads as finished; delete that folder yourself when
+  you want them gone. A job on a paid cloud engine that fails part-way keeps
+  the text of the finished chunks as an output named `partial_srt`
+  (`GET /api/jobs/<id>/result?fmt=partial_srt`); it is copied to
+  `server_outputs\` too and never deleted with the job folder.
 - **Upload size cap.** A single upload is capped (`--max-upload-mb`,
   default 512 MB, hard ceiling 4096 MB) and rejected with HTTP 413 before
   being buffered. An upload needs a `Content-Length` (chunked uploads get

@@ -43,6 +43,7 @@ import time
 import urllib.parse
 import urllib.request
 import uuid
+import weakref
 from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
@@ -129,8 +130,29 @@ _STALE_JOB_DIR_AGE_S = 6 * 60 * 60.0
 _JOB_DIR_NAME_RE = re.compile(r"^[0-9a-f]{32}$")
 # Written into every job folder this version creates. Folders without it come
 # from an older version, whose history rows may still point at their outputs,
-# so the purge never touches them.
+# so the purge never touches them. The file names its owner (a JSON object
+# with the server's process id, that process's start time and an instance id)
+# so one server never purges a folder another server still uses.
 _JOB_DIR_MARKER = ".wts-job"
+# A marker with no readable owner (written by an older build) is purged only
+# after this much longer idle time.
+_LEGACY_JOB_DIR_AGE_S = 7 * 24 * 60 * 60.0
+# Two start times this close (seconds) are the same process. Generous on
+# purpose: on Linux a process start time is derived from the boot time,
+# which moves when the system clock is stepped; a reused process id still
+# differs by far more (the owner lived for hours, the folder is hours old).
+_START_TIME_TOLERANCE_S = 60.0
+
+# What a cloud engine that died part-way leaves beside the media
+# (core.transcriber._save_partial_subtitles): paid text, never deleted.
+_PARTIAL_SUFFIX = ".partial.srt"
+# The output key under which a failed job offers that file for download.
+PARTIAL_OUTPUT_KEY = "partial_srt"
+
+# Every JobManager by instance id, so a marker can be matched to a manager
+# that is still running in THIS process. Weak: a dropped manager is gone.
+_MANAGERS: "weakref.WeakValueDictionary[str, JobManager]" = (
+    weakref.WeakValueDictionary())
 
 # A callable that delivers one outgoing webhook payload. Injected so tests
 # can capture deliveries without a network round-trip; the default is
@@ -316,6 +338,8 @@ class JobManager:
                 os.path.dirname(os.path.abspath(jobs_root)), "server_outputs")
         else:
             self._outputs_root = str(user_data_dir() / "server_outputs")
+        self._instance_id = uuid.uuid4().hex
+        _MANAGERS[self._instance_id] = self
         self._jobs: dict[str, Job] = {}
         self._order: list[str] = []
         self._queue: "queue.Queue[str]" = queue.Queue()
@@ -353,31 +377,92 @@ class JobManager:
 
         The job table lives in memory only, so after a restart nothing can
         reach the old ``<jobs_root>/<id>`` directories (uploads of up to
-        several GB). Only directories named like a job id, not in the table
-        and untouched for :data:`_STALE_JOB_DIR_AGE_S` go; finished outputs
-        a history row points at were copied to ``outputs_root`` already.
+        several GB). Only directories named like a job id, not in this
+        table, untouched for :data:`_STALE_JOB_DIR_AGE_S` and whose OWNER is
+        provably gone go; finished outputs a history row points at were
+        copied to ``outputs_root`` already. Servers in one or several
+        processes share the folder (the GUI's web access, ``gui.py serve``, a
+        second app window), so a job table that lacks a folder does not make
+        it an orphan: the marker names the owning server (see
+        :func:`_marker_owner_state`), and a live owner keeps its folders.
         """
         try:
             names = os.listdir(self._jobs_root)
         except OSError:
             return
-        cutoff = time.time() - _STALE_JOB_DIR_AGE_S
+        now = time.time()
         removed = 0
         for name in names:
             if name in self._jobs or not _JOB_DIR_NAME_RE.match(name):
                 continue
             path = os.path.join(self._jobs_root, name)
+            marker = os.path.join(path, _JOB_DIR_MARKER)
             try:
-                if (not os.path.isdir(path)
-                        or not os.path.isfile(os.path.join(path, _JOB_DIR_MARKER))
-                        or os.path.getmtime(path) > cutoff):
+                if not os.path.isdir(path) or not os.path.isfile(marker):
+                    continue
+                state = _marker_owner_state(_read_text(marker))
+                if state == "live":
+                    continue
+                limit = (_STALE_JOB_DIR_AGE_S if state == "gone"
+                         else _LEGACY_JOB_DIR_AGE_S)
+                if os.path.getmtime(path) > now - limit:
                     continue
             except OSError:
                 continue
-            _rmtree_quiet(path)
-            removed += 1
+            if self._discard_dir(path):
+                removed += 1
         if removed:
             logger.info("server: removed %d old job folder(s)", removed)
+
+    def _marker_text(self) -> str:
+        """The content of this server's job-folder marker (its identity)."""
+        return json.dumps({
+            "v": 1, "pid": os.getpid(),
+            "started": _process_start_time(os.getpid()),
+            "instance": self._instance_id,
+        })
+
+    def _discard_dir(self, work_dir: str) -> bool:
+        """Delete a job folder, unless it holds paid text not saved elsewhere.
+
+        Persist first: a ``*.partial.srt`` (what a cloud engine that died
+        part-way kept) is copied to ``outputs_root`` before the folder goes;
+        if that copy fails the folder stays and ``False`` is returned.
+        """
+        if not work_dir:
+            return True
+        if not self._save_partials(work_dir):
+            logger.warning(
+                "server: kept job folder %s: its partial subtitles could "
+                "not be copied", os.path.basename(work_dir))
+            return False
+        _rmtree_quiet(work_dir)
+        return True
+
+    def _save_partials(self, work_dir: str) -> bool:
+        """Make sure every ``*.partial.srt`` in ``work_dir`` has a durable copy."""
+        try:
+            names = os.listdir(work_dir)
+        except OSError:
+            return True  # no folder, nothing to lose
+        dest_dir = os.path.join(
+            self._outputs_root, os.path.basename(os.path.normpath(work_dir))[:12])
+        saved = True
+        for name in names:
+            if not name.lower().endswith(_PARTIAL_SUFFIX):
+                continue
+            src = os.path.join(work_dir, name)
+            dest = os.path.join(dest_dir, name)
+            try:
+                if (os.path.isfile(dest)
+                        and os.path.getsize(dest) == os.path.getsize(src)):
+                    continue
+                os.makedirs(dest_dir, exist_ok=True)
+                shutil.copy2(src, dest)
+            except OSError as e:
+                logger.warning("server: could not keep %s: %s", name, e)
+                saved = False
+        return saved
 
     def stop(self, *, timeout: float = 5.0) -> None:
         """Signal the worker to exit, wait briefly, reclaim work_dirs.
@@ -428,7 +513,7 @@ class JobManager:
                 self._set_status(job, STATUS_CANCELLED)
                 leftovers.append(job)
         for job in leftovers:
-            _rmtree_quiet(job.work_dir)
+            self._discard_dir(job.work_dir)
 
     # --- submission ----------------------------------------------------------
 
@@ -451,8 +536,9 @@ class JobManager:
         work_dir = os.path.join(self._jobs_root, job_id)
         os.makedirs(work_dir, exist_ok=True)
         try:
-            with open(os.path.join(work_dir, _JOB_DIR_MARKER), "w"):
-                pass
+            with open(os.path.join(work_dir, _JOB_DIR_MARKER), "w",
+                      encoding="utf-8") as f:
+                f.write(self._marker_text())
         except OSError:
             pass  # without the marker the folder is simply never purged
         job = Job(
@@ -524,7 +610,7 @@ class JobManager:
             if job_id in self._order:
                 self._order.remove(job_id)
         if job is not None:
-            _rmtree_quiet(job.work_dir)
+            self._discard_dir(job.work_dir)
 
     def submit_url(self, url: str, formats: list[str],
                    language: str = "", *,
@@ -573,7 +659,11 @@ class JobManager:
                 if f.lower() == want:
                     return p
             # Extension fallback: ?fmt=docx -> the smtv_docx file on disk.
-            for _f, p in job.outputs:
+            # A failed job's partial subtitles are only offered under their
+            # own key, never as the complete ?fmt=srt.
+            for f, p in job.outputs:
+                if f == PARTIAL_OUTPUT_KEY:
+                    continue
                 if os.path.splitext(p)[1].lstrip(".").lower() == want:
                     return p
         return None
@@ -646,7 +736,7 @@ class JobManager:
                 return  # nothing terminal to evict; the cap check will reject
             victim = self._jobs.pop(victim_id)
             self._order.remove(victim_id)
-            _rmtree_quiet(victim.work_dir)
+            self._discard_dir(victim.work_dir)
 
     # --- worker --------------------------------------------------------------
 
@@ -664,16 +754,19 @@ class JobManager:
             if job is None or job.cancelled:
                 if job is not None:
                     self._set_status(job, STATUS_CANCELLED)
-                    _rmtree_quiet(job.work_dir)
+                    self._discard_dir(job.work_dir)
                 continue
             self._run_one(job)
             # Path B reclaim: a job that ended CANCELLED (cancelled mid-run)
             # or ERROR (engine raised) owns no downloadable output, so its
             # work_dir is dead weight. FINISHED work_dirs are deliberately
             # kept — ``output_path`` serves client downloads straight out of
-            # them; ``_evict_locked`` reclaims those once the table fills.
+            # them; ``_evict_locked`` reclaims those once the table fills. An
+            # ERROR job that kept a partial subtitle file has it as an
+            # output, so its folder stays too; ``_discard_dir`` also saves
+            # any partial a cancelled job left before deleting.
             if job.status in (STATUS_CANCELLED, STATUS_ERROR) and not job.outputs:
-                _rmtree_quiet(job.work_dir)
+                self._discard_dir(job.work_dir)
 
     def _run_one(self, job: Job) -> None:
         history_db = None
@@ -723,15 +816,13 @@ class JobManager:
             job.detected_language = (
                 getattr(task, "detected_language", "") or job.language)
             if job.cancelled:
-                self._set_status(job, STATUS_CANCELLED)
+                self._settle(job, STATUS_CANCELLED, history_db, history_id,
+                             time.time() - started, job.detected_language)
             else:
                 job.outputs = self._collect_outputs(job, task)
                 job.progress = 100
-                self._set_status(job, STATUS_FINISHED)
-            self._finish_history(
-                history_db, history_id, job, time.time() - started,
-                job.detected_language,
-            )
+                self._settle(job, STATUS_FINISHED, history_db, history_id,
+                             time.time() - started, job.detected_language)
             self._fire_webhook(job)
         except DownloadCancelled:
             self._set_status(job, STATUS_CANCELLED)
@@ -740,12 +831,77 @@ class JobManager:
             # job.error reaches web clients and the webhook: no local paths
             # or command lines there. The local log and history keep it all.
             job.error = public_error_text(e)
-            self._set_status(job, STATUS_ERROR)
-            self._finish_history(
-                history_db, history_id, job, time.time() - started,
-                job.language, error=str(e),
-            )
+            # A paid cloud run that died part-way left its finished text in
+            # a partial subtitle file: offer it as the job's output.
+            partial = self._partial_file(job)
+            if partial:
+                job.outputs = [(PARTIAL_OUTPUT_KEY, partial)]
+            self._settle(job, STATUS_ERROR, history_db, history_id,
+                         time.time() - started, job.language, error=str(e))
             self._fire_webhook(job)
+
+    def _partial_file(self, job: Job) -> str:
+        """Path of the ``<media>.partial.srt`` a failed cloud run kept, or ""."""
+        if not job.media_path:
+            return ""
+        path = os.path.splitext(job.media_path)[0] + _PARTIAL_SUFFIX
+        return path if os.path.isfile(path) else ""
+
+    def _settle(self, job: Job, status: str, db: Any, rid: int | None,
+                duration_s: float, language: str, error: str = "") -> None:
+        """End a job: persist first, report second.
+
+        Outputs are copied out of the temporary folder and the history row is
+        written BEFORE the job reads as terminal (a client polling for
+        "finished" may act on it at once, and a terminal job can be evicted),
+        then the server-owned input media is removed. Never raises: the
+        status is always set, whatever a step above did.
+        """
+        try:
+            kept = self._archive_outputs(job)
+        except Exception:  # noqa: BLE001
+            logger.exception("server: could not archive outputs of job %s",
+                             job.job_id)
+            kept = [p for _fmt, p in job.outputs]
+        try:
+            self._finish_history(db, rid, job, duration_s, language,
+                                 error=error, status=status, output_paths=kept)
+        except Exception:  # noqa: BLE001
+            logger.exception("server: could not write history for job %s",
+                             job.job_id)
+        try:
+            self._drop_input_media(job)
+        except Exception:  # noqa: BLE001
+            logger.exception("server: could not remove the media of job %s",
+                             job.job_id)
+        self._set_status(job, status)
+
+    def _drop_input_media(self, job: Job) -> None:
+        """Delete the media the server itself stored for a finished job.
+
+        An upload or a download lives in the job's own folder and can be up
+        to several GB; without this it stays until cap eviction. A file
+        anywhere else (a download function that returned some other path)
+        is not the server's to delete. A file that cannot be removed (Windows
+        keeps an open file) is logged and left for the folder's removal.
+        """
+        if not job.media_path or not job.work_dir:
+            return
+        media = os.path.normcase(os.path.abspath(job.media_path))
+        work = os.path.normcase(os.path.abspath(job.work_dir))
+        root = os.path.normcase(os.path.abspath(self._jobs_root))
+        if os.path.dirname(media) != work or os.path.dirname(work) != root:
+            return
+        if any(os.path.normcase(os.path.abspath(p)) == media
+               for _fmt, p in job.outputs):
+            return
+        try:
+            os.remove(job.media_path)
+        except FileNotFoundError:
+            pass
+        except OSError as e:
+            logger.warning("server: could not remove the media of job %s: %s",
+                           job.job_id, e)
 
     def _write_override_file(self, job: Job) -> None:
         """Drop the job's validated options into ``work_dir/.whisperproject.json``.
@@ -963,7 +1119,10 @@ class JobManager:
 
     def _finish_history(self, db: Any, rid: int | None, job: Job,
                         duration_s: float, language: str,
-                        error: str = "") -> None:
+                        error: str = "", *, status: str | None = None,
+                        output_paths: list[str] | None = None) -> None:
+        """Close the job's history row (``status`` is the one it is about to
+        get: the job's own status is set only after this returns)."""
         if db is None or rid is None:
             return
         status_map = {
@@ -973,8 +1132,9 @@ class JobManager:
         }
         try:
             db.finish_transcription(
-                rid, status_map.get(job.status, "error"),
-                output_paths=self._archive_outputs(job),
+                rid, status_map.get(status or job.status, "error"),
+                output_paths=(output_paths if output_paths is not None
+                              else self._archive_outputs(job)),
                 duration_seconds=duration_s, language=language, error=error,
             )
         except Exception as e:  # noqa: BLE001
@@ -1324,6 +1484,59 @@ def _rmtree_quiet(path: str) -> None:
         shutil.rmtree(path, ignore_errors=True)
     except OSError:
         pass
+
+
+def _read_text(path: str) -> str:
+    """A small text file's content ("" if unreadable as UTF-8)."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read(4096)
+    except UnicodeDecodeError:
+        return ""
+
+
+def _process_start_time(pid: int) -> float:
+    """Start time (epoch seconds) of process ``pid``; 0.0 when unknown."""
+    try:
+        import psutil  # type: ignore[import-not-found] # noqa: PLC0415
+        return float(psutil.Process(pid).create_time())
+    except Exception:  # noqa: BLE001 - unknown is a valid answer
+        return 0.0
+
+
+def _marker_owner_state(text: str) -> str:
+    """Who owns a job folder, from its marker: "live", "gone" or "unknown".
+
+    "unknown" is a marker without a readable owner (an older build's empty
+    file). "gone" needs proof: the owning process no longer exists (or its
+    process id now belongs to a newer process), or it is this process and
+    that server is stopped or was dropped. Anything undecidable (no psutil, a
+    process that cannot be inspected) counts as "live": a folder is kept
+    rather than guessed away.
+    """
+    try:
+        data = json.loads(text)
+        pid = int(data["pid"])
+        instance = str(data["instance"])
+        started = float(data.get("started") or 0.0)
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return "unknown"
+    if pid == os.getpid():
+        owner = _MANAGERS.get(instance)
+        return "live" if owner is not None and not owner.stopped else "gone"
+    try:
+        import psutil  # type: ignore[import-not-found] # noqa: PLC0415
+    except ImportError:
+        return "live"
+    try:
+        current = float(psutil.Process(pid).create_time())
+    except psutil.NoSuchProcess:
+        return "gone"
+    except Exception:  # noqa: BLE001 - cannot inspect: never guess
+        return "live"
+    if started and abs(current - started) > _START_TIME_TOLERANCE_S:
+        return "gone"  # the process id was reused by a newer process
+    return "live"
 
 
 # --- outgoing webhooks -------------------------------------------------------

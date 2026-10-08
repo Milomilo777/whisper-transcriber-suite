@@ -303,6 +303,14 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Server jobs keep paid text and no longer lose files.** A web/API job on a paid cloud engine that
+  fails part-way now offers its finished text (`partial_srt`, also archived) instead of deleting it
+  with the job folder; outputs are archived and the history row written before a job reads
+  "finished"; a download that produced no file reports the size limit instead of "transcribing" the
+  folder marker; a second server (GUI web access, `gui.py serve`, another window) no longer purges
+  the first one's job folders (the marker names its owning process); a finished job's uploaded or
+  downloaded media is deleted once its outputs are saved.
+
 - **Hardware detection and model advice.** GPUs without efficient float16 (GTX 10-series) now get
   an NVIDIA CUDA (int8) tier in the Hardware wizard, so Apply no longer pins the CPU over the
   automatic CUDA pick. Applying the untouched list while an NVIDIA GPU is unusable saves nothing

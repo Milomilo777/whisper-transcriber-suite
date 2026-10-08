@@ -1,0 +1,467 @@
+"""Server job handling review findings (card C266-A1).
+
+1. a cloud job that fails part-way keeps its ``.partial.srt`` (paid text),
+2. a download that wrote no file never "transcribes" the folder marker,
+3. a second server never purges another live server's job folders,
+4. outputs are archived and the history row written BEFORE a job reads
+   "finished", and a finishing job cannot be evicted,
+5. a finished job's server-owned input media is deleted, a user's own file
+   never.
+
+Fakes only: no network, no real yt-dlp, no real engine.
+"""
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import time
+
+import pytest
+
+from core import server
+from core.backends.base import PartialResultError
+from core.server import jobs as J
+from core.server.jobs import (
+    STATUS_ERROR,
+    STATUS_FINISHED,
+    DownloadLimits,
+    JobManager,
+)
+
+
+def _manager(tmp_path, transcribe=None, **kw):
+    kw.setdefault("record_history", False)
+    return JobManager(transcribe or (lambda *a, **k: None),
+                      jobs_root=str(tmp_path / "server_jobs"), **kw)
+
+
+def _wait(mgr, job_id, timeout=10.0):
+    end = time.time() + timeout
+    while time.time() < end:
+        job = mgr.get(job_id)
+        if job is not None and job.status in (
+                STATUS_FINISHED, STATUS_ERROR, "cancelled"):
+            return job
+        time.sleep(0.02)
+    raise AssertionError("job did not finish")
+
+
+def _wait_idle(mgr, job_id, timeout=10.0):
+    """Terminal AND the worker has finished its clean-up for the job."""
+    job = _wait(mgr, job_id, timeout)
+    time.sleep(0.3)
+    return job
+
+
+def _partial_transcribe(task, progress_cb=None, log_cb=None, language_cb=None):
+    """What core.transcriber does when a paid cloud run dies part-way."""
+    path = os.path.splitext(task.file_path)[0] + ".partial.srt"
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("1\n00:00:00,000 --> 00:00:01,000\npaid text\n")
+    raise PartialResultError("cloud engine failed (chunks 1-3 were kept)",
+                             [{"start": 0.0, "end": 1.0, "text": "paid text"}])
+
+
+def _srt_transcribe(task, progress_cb=None, log_cb=None, language_cb=None):
+    out = os.path.splitext(task.file_path)[0] + ".srt"
+    with open(out, "w", encoding="utf-8") as f:
+        f.write("1")
+    task.output_paths = [out]
+
+
+# --- 1: a failed cloud job keeps its partial --------------------------------
+
+def test_failed_job_keeps_and_exposes_its_partial(tmp_path):
+    mgr = _manager(tmp_path, _partial_transcribe)
+    mgr.start()
+    try:
+        job_id = mgr.submit_upload("talk.wav", b"RIFF0000", ["srt"])
+        job = _wait_idle(mgr, job_id)
+    finally:
+        mgr.stop()
+    assert job.status == STATUS_ERROR
+    assert [k for k, _ in job.outputs] == [J.PARTIAL_OUTPUT_KEY]
+    path = mgr.output_path(job_id, J.PARTIAL_OUTPUT_KEY)
+    assert path and os.path.isfile(path)
+    with open(path, encoding="utf-8") as f:
+        assert "paid text" in f.read()
+    assert job.public_dict()["outputs"] == [
+        {"fmt": J.PARTIAL_OUTPUT_KEY, "name": "talk.partial.srt"}]
+    # A durable copy outside the temporary job folder.
+    kept = tmp_path / "server_outputs" / job_id[:12] / "talk.partial.srt"
+    assert kept.is_file()
+
+
+def test_partial_is_not_served_as_a_complete_srt(tmp_path):
+    mgr = _manager(tmp_path, _partial_transcribe)
+    mgr.start()
+    try:
+        job_id = mgr.submit_upload("talk.wav", b"RIFF0000", ["srt"])
+        _wait_idle(mgr, job_id)
+    finally:
+        mgr.stop()
+    assert mgr.output_path(job_id, "srt") is None
+
+
+def test_failed_job_without_partial_still_reclaims_its_folder(tmp_path):
+    def boom(task, *a, **k):
+        raise RuntimeError("engine down")
+
+    mgr = _manager(tmp_path, boom)
+    mgr.start()
+    try:
+        job_id = mgr.submit_upload("talk.wav", b"RIFF0000", ["srt"])
+        job = _wait_idle(mgr, job_id)
+    finally:
+        mgr.stop()
+    assert job.status == STATUS_ERROR and not job.outputs
+    assert not os.path.isdir(job.work_dir)
+
+
+def test_purge_rescues_a_partial_before_deleting_the_folder(tmp_path):
+    root = tmp_path / "server_jobs"
+    old = root / ("a" * 32)
+    old.mkdir(parents=True)
+    (old / "x.partial.srt").write_text("paid", encoding="utf-8")
+    (old / "x.wav").write_bytes(b"x")
+    (old / J._JOB_DIR_MARKER).write_text(
+        json.dumps({"v": 1, "pid": _dead_pid(), "started": 1.0,
+                    "instance": "gone"}))
+    long_ago = time.time() - 2 * J._STALE_JOB_DIR_AGE_S
+    os.utime(old, (long_ago, long_ago))
+    mgr = _manager(tmp_path)
+    mgr.start()
+    try:
+        assert not old.exists()
+        assert (tmp_path / "server_outputs" / ("a" * 12)
+                / "x.partial.srt").read_text(encoding="utf-8") == "paid"
+    finally:
+        mgr.stop()
+
+
+def test_purge_keeps_a_folder_whose_partial_cannot_be_copied(
+        tmp_path, monkeypatch):
+    root = tmp_path / "server_jobs"
+    old = root / ("a" * 32)
+    old.mkdir(parents=True)
+    (old / "x.partial.srt").write_text("paid", encoding="utf-8")
+    (old / J._JOB_DIR_MARKER).write_text(
+        json.dumps({"v": 1, "pid": _dead_pid(), "started": 1.0,
+                    "instance": "gone"}))
+    long_ago = time.time() - 2 * J._STALE_JOB_DIR_AGE_S
+    os.utime(old, (long_ago, long_ago))
+
+    def no_copy(*a, **k):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(J.shutil, "copy2", no_copy)
+    mgr = _manager(tmp_path)
+    mgr.start()
+    try:
+        assert (old / "x.partial.srt").read_text(encoding="utf-8") == "paid"
+    finally:
+        mgr.stop()
+
+
+def test_eviction_never_deletes_an_unsaved_partial(tmp_path, monkeypatch):
+    mgr = _manager(tmp_path, max_jobs=1)
+    with mgr._lock:
+        job = mgr._new_job("upload", ["srt"], "", "x.wav")
+    part = os.path.join(job.work_dir, "x.partial.srt")
+    with open(part, "w", encoding="utf-8") as f:
+        f.write("paid")
+    job.status = STATUS_ERROR
+
+    def no_copy(*a, **k):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(J.shutil, "copy2", no_copy)
+    with mgr._lock:
+        mgr._evict_locked()
+    assert mgr.get(job.job_id) is None
+    assert os.path.isfile(part)
+
+
+# --- 2: the marker is not media ---------------------------------------------
+
+class _FakePopen:
+    stdout_text = ""
+
+    def __init__(self, cmd, **kwargs):
+        self.pid = 4242
+        self.returncode = 0
+
+    def communicate(self, timeout=None):
+        return type(self).stdout_text, ""
+
+    def poll(self):
+        return None
+
+
+@pytest.fixture
+def fake_yt_dlp(monkeypatch):
+    monkeypatch.setattr(_FakePopen, "stdout_text", "")
+    monkeypatch.setattr(server.subprocess, "Popen", _FakePopen)
+    monkeypatch.setattr("core.js_runtime.yt_dlp_js_args", lambda _p=None: [])
+
+
+def test_download_with_no_file_never_picks_the_marker(tmp_path, fake_yt_dlp):
+    (tmp_path / J._JOB_DIR_MARKER).write_bytes(b"")
+    _FakePopen.stdout_text = (
+        "[download] File is larger than max-filesize. Aborting.\n")
+    limits = DownloadLimits(cancelled=lambda: False, max_bytes=10)
+    with pytest.raises(RuntimeError, match="download limit"):
+        server._download_url("https://example.com/v", str(tmp_path), limits)
+
+
+def test_download_with_no_file_and_no_limit_message(tmp_path, fake_yt_dlp):
+    (tmp_path / J._JOB_DIR_MARKER).write_bytes(b"")
+    with pytest.raises(RuntimeError, match="no file"):
+        server._download_url("https://example.com/v", str(tmp_path))
+
+
+def test_download_ignores_partial_empty_and_hidden_files(tmp_path, fake_yt_dlp):
+    (tmp_path / J._JOB_DIR_MARKER).write_bytes(b"")
+    (tmp_path / "clip.mp4.part").write_bytes(b"half")
+    (tmp_path / "clip.f137.mp4.part-Frag3").write_bytes(b"half")
+    (tmp_path / "clip.mp4.ytdl").write_bytes(b"{}")
+    (tmp_path / "empty.mp4").write_bytes(b"")
+    with pytest.raises(RuntimeError):
+        server._download_url("https://example.com/v", str(tmp_path))
+    real = tmp_path / "real.mp4"
+    real.write_bytes(b"media")
+    got = server._download_url("https://example.com/v", str(tmp_path))
+    assert os.path.basename(got) == "real.mp4"
+
+
+# --- 3: a second server never purges a live server's folders -----------------
+
+def _dead_pid() -> int:
+    proc = subprocess.Popen([sys.executable, "-c", "pass"])
+    proc.wait()
+    return proc.pid
+
+
+def _age(path, factor=2):
+    long_ago = time.time() - factor * J._STALE_JOB_DIR_AGE_S
+    os.utime(path, (long_ago, long_ago))
+
+
+def test_second_server_leaves_the_first_servers_jobs(tmp_path):
+    a = _manager(tmp_path)  # never started: a job just sits queued
+    job_id = a.submit_upload("lecture.wav", b"RIFF", ["srt"])
+    job = a.get(job_id)
+    _age(job.work_dir)
+    b = _manager(tmp_path)
+    b.start()
+    try:
+        assert os.path.isdir(job.work_dir)
+        assert os.path.isfile(job.media_path)
+    finally:
+        b.stop()
+
+
+def test_purge_leaves_a_folder_owned_by_a_live_other_process(tmp_path):
+    import psutil
+
+    root = tmp_path / "server_jobs"
+    d = root / ("a" * 32)
+    d.mkdir(parents=True)
+    parent = psutil.Process(os.getppid())
+    (d / J._JOB_DIR_MARKER).write_text(json.dumps(
+        {"v": 1, "pid": parent.pid, "started": parent.create_time(),
+         "instance": "other"}))
+    _age(d)
+    m = _manager(tmp_path)
+    m.start()
+    try:
+        assert d.exists()
+    finally:
+        m.stop()
+
+
+def test_purge_removes_a_folder_whose_pid_was_reused(tmp_path):
+    import psutil
+
+    root = tmp_path / "server_jobs"
+    d = root / ("a" * 32)
+    d.mkdir(parents=True)
+    parent = psutil.Process(os.getppid())
+    (d / J._JOB_DIR_MARKER).write_text(json.dumps(
+        {"v": 1, "pid": parent.pid, "started": parent.create_time() - 1000,
+         "instance": "other"}))
+    _age(d)
+    m = _manager(tmp_path)
+    m.start()
+    try:
+        assert not d.exists()
+    finally:
+        m.stop()
+
+
+def test_purge_removes_a_stopped_servers_old_folder_in_this_process(tmp_path):
+    a = _manager(tmp_path)
+    job_id = a.submit_upload("lecture.wav", b"RIFF", ["srt"])
+    job = a.get(job_id)
+    job.status = STATUS_FINISHED  # a finished job's folder outlives stop()
+    work_dir = job.work_dir
+    a.stop()
+    assert os.path.isdir(work_dir)
+    _age(work_dir)
+    b = _manager(tmp_path)
+    b.start()
+    try:
+        assert not os.path.isdir(work_dir)
+    finally:
+        b.stop()
+
+
+def test_purge_gives_an_ownerless_legacy_marker_a_long_grace(tmp_path):
+    root = tmp_path / "server_jobs"
+    young = root / ("a" * 32)
+    ancient = root / ("b" * 32)
+    for d in (young, ancient):
+        d.mkdir(parents=True)
+        (d / J._JOB_DIR_MARKER).write_bytes(b"")  # an older build's marker
+    _age(young)  # 12 h: past the plain limit, short of the legacy grace
+    _age(ancient, factor=J._LEGACY_JOB_DIR_AGE_S / J._STALE_JOB_DIR_AGE_S + 1)
+    m = _manager(tmp_path)
+    m.start()
+    try:
+        assert young.exists()
+        assert not ancient.exists()
+    finally:
+        m.stop()
+
+
+def test_new_job_marker_names_its_owner(tmp_path):
+    mgr = _manager(tmp_path)
+    with mgr._lock:
+        job = mgr._new_job("upload", ["srt"], "", "x.wav")
+    with open(os.path.join(job.work_dir, J._JOB_DIR_MARKER),
+              encoding="utf-8") as f:
+        data = json.load(f)
+    assert data["pid"] == os.getpid()
+    assert data["instance"] == mgr._instance_id
+
+
+# --- 4: persist first, then "finished"; a finishing job is not evictable -----
+
+def test_outputs_are_archived_and_history_written_before_finished(tmp_path):
+    events: list[str] = []
+
+    class _Watch(JobManager):
+        def _set_status(self, job, status):
+            if status == STATUS_FINISHED:
+                events.append("finished")
+            super()._set_status(job, status)
+
+        def _archive_outputs(self, job):
+            events.append("archive")
+            return super()._archive_outputs(job)
+
+        def _finish_history(self, *a, **k):
+            events.append("history")
+            return super()._finish_history(*a, **k)
+
+    mgr = _Watch(_srt_transcribe, jobs_root=str(tmp_path / "server_jobs"),
+                 record_history=False)
+    mgr.start()
+    try:
+        job_id = mgr.submit_upload("a.wav", b"x", ["srt"])
+        _wait_idle(mgr, job_id)
+    finally:
+        mgr.stop()
+    assert "finished" in events
+    assert events.index("archive") < events.index("finished")
+    assert events.index("history") < events.index("finished")
+    assert (tmp_path / "server_outputs" / job_id[:12] / "a.srt").is_file()
+
+
+def test_a_finishing_job_cannot_be_evicted(tmp_path):
+    seen: dict = {}
+
+    class _Evicting(JobManager):
+        def _archive_outputs(self, job):
+            with self._lock:
+                self._evict_locked()
+            seen["still_there"] = self.get(job.job_id) is job
+            seen["dir"] = os.path.isdir(job.work_dir)
+            return super()._archive_outputs(job)
+
+    mgr = _Evicting(_srt_transcribe, jobs_root=str(tmp_path / "server_jobs"),
+                    record_history=False, max_jobs=1)
+    mgr.start()
+    try:
+        job_id = mgr.submit_upload("a.wav", b"x", ["srt"])
+        job = _wait_idle(mgr, job_id)
+    finally:
+        mgr.stop()
+    assert seen == {"still_there": True, "dir": True}
+    assert job.status == STATUS_FINISHED
+    assert os.path.isfile(job.outputs[0][1])
+
+
+# --- 5: input media of a finished job -----------------------------------------
+
+def test_finished_upload_media_is_deleted_outputs_kept(tmp_path):
+    mgr = _manager(tmp_path, _srt_transcribe)
+    mgr.start()
+    try:
+        job_id = mgr.submit_upload("a.wav", b"x" * 100, ["srt"])
+        job = _wait_idle(mgr, job_id)
+    finally:
+        mgr.stop()
+    assert job.status == STATUS_FINISHED
+    assert not os.path.exists(job.media_path)
+    assert os.path.isfile(job.outputs[0][1])
+    assert mgr.output_path(job_id, "srt") == job.outputs[0][1]
+
+
+def test_downloaded_media_is_deleted_but_a_users_own_file_is_not(tmp_path):
+    own = tmp_path / "my own recording.wav"
+    own.write_bytes(b"precious")
+
+    def download_own(url, dest, limits):
+        return str(own)
+
+    def download_inside(url, dest, limits):
+        p = os.path.join(dest, "dl.wav")
+        with open(p, "wb") as f:
+            f.write(b"x")
+        return p
+
+    mgr = _manager(tmp_path, _srt_transcribe, download_fn=download_own)
+    mgr.start()
+    try:
+        j1 = _wait_idle(mgr, mgr.submit_url("http://192.0.2.10/a.wav", ["srt"]))
+        assert own.read_bytes() == b"precious"
+        mgr._download = download_inside
+        j2 = _wait_idle(mgr, mgr.submit_url("http://192.0.2.10/b.wav", ["srt"]))
+    finally:
+        mgr.stop()
+    assert j1.status == STATUS_FINISHED and j2.status == STATUS_FINISHED
+    assert own.exists()
+    assert not os.path.exists(j2.media_path)
+
+
+def test_media_delete_failure_does_not_fail_the_job(tmp_path, monkeypatch):
+    real_remove = os.remove
+
+    def locked(path, *a, **k):
+        if path.endswith("a.wav"):
+            raise PermissionError("in use")
+        return real_remove(path, *a, **k)
+
+    monkeypatch.setattr(J.os, "remove", locked)
+    mgr = _manager(tmp_path, _srt_transcribe)
+    mgr.start()
+    try:
+        job_id = mgr.submit_upload("a.wav", b"x", ["srt"])
+        job = _wait_idle(mgr, job_id)
+    finally:
+        mgr.stop()
+    assert job.status == STATUS_FINISHED
+    assert os.path.isfile(job.outputs[0][1])
