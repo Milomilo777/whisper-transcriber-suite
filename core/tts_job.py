@@ -360,9 +360,16 @@ class Job:
     @contextlib.contextmanager
     def claimed(self) -> Generator[None, None, None]:
         """Hold this job for this app instance while the block runs; raises
-        :class:`JobBusy` when another instance holds it."""
+        :class:`JobBusy` when another instance holds it. Taking the lock
+        reloads the job from disk: another window may have finished pieces
+        (or the whole job) since this one was opened."""
         if self._lock_depth == 0:
             self._lock.acquire()
+            try:
+                self._reload()
+            except BaseException:
+                self._lock.release()
+                raise
         self._lock_depth += 1
         try:
             yield
@@ -375,6 +382,13 @@ class Job:
 
     def piece_path(self, index: int) -> Path:
         return self.parts_dir / f"piece-{index + 1:04d}.wav"
+
+    def _reload(self) -> None:
+        self.done.clear()
+        self.finished = False
+        self.finished_audio_seconds = 0.0
+        if not self._load_finished():
+            self._load()
 
     def _piece_hashes(self) -> "list[str]":
         return [_text_hash(p) for p in self.pieces]
@@ -532,7 +546,7 @@ class Job:
 
     # ---------------------------------------------------------- join
 
-    def join(self) -> Path:
+    def join(self, on_joined: "Callable[[Path], None] | None" = None) -> Path:
         """Join every piece into :attr:`output_path`, tag it as AI-generated,
         check its length, and only then remove the pieces. Raises when a
         piece is missing or differs in format; the pieces stay on disk. A
@@ -585,6 +599,8 @@ class Job:
                 raise RuntimeError("joined file lost its AI-generated tag")
             synthetic_audio._replace_with_retry(tmp, str(self.output_path))
             _fsync_file(self.output_path)  # on disk before the pieces go
+            if on_joined is not None:
+                on_joined(self.output_path)
             audio_seconds = total_frames / float(rate)
             _write_json_atomic(self.finished_path, {
                 "version": _PROGRESS_VERSION, "key": self.key,
@@ -701,8 +717,11 @@ def run(job: Job, speak: SpeakFn, *,
         cancel_event: "threading.Event | None" = None,
         on_progress: "Callable[[Progress], None] | None" = None,
         fallback_per_unit: "float | None" = None,
-        clock: Callable[[], float] = time.monotonic) -> RunResult:
+        clock: Callable[[], float] = time.monotonic,
+        on_joined: "Callable[[Path], None] | None" = None) -> RunResult:
     """Speak every unfinished piece of *job*, then join the final file.
+    *on_joined* runs on the joined, checked file before the job is marked
+    finished (a cloning job writes its consent record there).
 
     Each piece is recorded in the progress file as soon as its WAV is on
     disk. Raises :class:`Cancelled` when *cancel_event* is set between
@@ -724,14 +743,16 @@ def run(job: Job, speak: SpeakFn, *,
             fraction=min(1.0, (job.done_units + piece_units * frac) / total),
             seconds_left=seconds_left(job, piece_units, frac, elapsed, fallback_per_unit)))
 
-    if job.finished:  # joined by an earlier run: nothing to speak again
-        return RunResult(str(job.output_path), job.finished_audio_seconds, 0, 0.0, 0.0, 0.0)
-    with job.claimed():
-        return _run_claimed(job, speak, is_cancelled, report, clock)
+    with job.claimed():  # reloads: another window may have done the work meanwhile
+        if job.finished:  # joined by an earlier run: nothing to speak again
+            return RunResult(str(job.output_path), job.finished_audio_seconds,
+                             0, 0.0, 0.0, 0.0)
+        return _run_claimed(job, speak, is_cancelled, report, clock, on_joined)
 
 
 def _run_claimed(job: Job, speak: SpeakFn, is_cancelled: Callable[[], bool],
-                 report: Callable[..., None], clock: Callable[[], float]) -> RunResult:
+                 report: Callable[..., None], clock: Callable[[], float],
+                 on_joined: "Callable[[Path], None] | None") -> RunResult:
     pieces_run = 0
     units_run = audio_run = compute_run = 0.0
     report()
@@ -756,6 +777,6 @@ def _run_claimed(job: Job, speak: SpeakFn, is_cancelled: Callable[[], bool],
         audio_run += rec.audio_seconds
         compute_run += rec.compute_seconds
         report()
-    output = job.join()
+    output = job.join(on_joined)
     return RunResult(str(output), job.finished_audio_seconds, pieces_run, units_run,
                      audio_run, compute_run)

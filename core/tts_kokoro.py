@@ -14,6 +14,7 @@ Tk-free; the tab calls :func:`generate` from a worker thread.
 """
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import re
@@ -95,6 +96,12 @@ LANGUAGE_NAMES = ", ".join(n for n, _c in list(_LANGS.values())[:-1]) + \
     f" and {list(_LANGS.values())[-1][0]}"
 
 
+#: Letters whose Unicode name names no script (ordinal indicators, the
+#: micro sign, the ideographic iteration mark, modifier letters): not counted.
+_NO_SCRIPT = frozenset({"FEMININE", "MASCULINE", "MICRO", "IDEOGRAPHIC", "MODIFIER", ""})
+
+
+@functools.lru_cache(maxsize=4096)
 def _script_of(ch: str) -> str:
     import unicodedata
 
@@ -112,13 +119,14 @@ def unsupported_script(text: str) -> "str | None":
     for ch in text:
         if ch.isalpha():
             script = _script_of(ch)
-            counts[script] = counts.get(script, 0) + 1
+            if script not in _NO_SCRIPT:
+                counts[script] = counts.get(script, 0) + 1
     total = sum(counts.values())
     readable = sum(n for s, n in counts.items() if s in _READABLE_SCRIPTS)
     if not total or readable * 2 >= total:
         return None
     main = max((s for s in counts if s not in _READABLE_SCRIPTS), key=lambda s: counts[s])
-    return main.title() if main else "unknown"
+    return main.title()
 
 
 def voice_by_key(key: str) -> Voice:

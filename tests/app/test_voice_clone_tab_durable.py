@@ -354,3 +354,49 @@ def test_start_over_is_refused_while_another_window_runs_the_job(root, fakes, mo
         assert plan.job.piece_path(0).is_file()
     assert _confirm_shown(app)
     app.vc_confirm_cancel_btn.invoke()
+
+
+# ------------------------------------------------ fresh review (C2.62)
+
+
+def test_a_recording_that_ends_during_the_confirm_step_keeps_record_off(root, fakes,
+                                                                        monkeypatch):
+    monkeypatch.setattr(vct, "_validate_and_add_sample", lambda *_a: None)
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_OMNI, LONG, mode=vct._MODE_DESIGN)
+    app.vc_recorder = types.SimpleNamespace(stop=lambda: "sample.wav")
+    app.vc_generate_btn.invoke()
+    assert _confirm_shown(app)
+    vct._finish_recording(app)
+    assert _disabled(app.vc_record_btn)
+    app.vc_confirm_cancel_btn.invoke()
+    assert not _disabled(app.vc_record_btn)
+
+
+def test_continue_while_another_window_runs_the_job_says_so(root, fakes, monkeypatch,
+                                                           no_dialogs):
+    from core import tts_kokoro
+
+    monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
+    _cancel_kokoro_after(monkeypatch, fakes, 1)
+    app = _build(root, fakes)
+    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _kokoro_job(app)
+    app.vc_confirm_start_btn.invoke()
+    monkeypatch.setattr(tts_kokoro, "generate", _plain_kokoro(fakes))
+    app.vc_generate_btn.invoke()
+    plan = app.vc_plan
+    spoken = len(fakes["kokoro"])
+    other = tts_job.Job(plan.job.folder.parent, plan.job.key, "kokoro", plan.job.pieces)
+    with other.claimed():
+        app.vc_confirm_start_btn.invoke()
+    assert len(fakes["kokoro"]) == spoken
+    assert [e[1] for e in no_dialogs] == ["Running in another window"]
+    assert app.vc_status_var.get().startswith("Not started:")
+    assert not app.vc_busy
+
+
+def test_letters_that_name_no_script_do_not_refuse_a_text():
+    from core import tts_kokoro
+
+    assert tts_kokoro.unsupported_script("1\u00ba 2\u00aa 3\u00b5 \u3005") is None

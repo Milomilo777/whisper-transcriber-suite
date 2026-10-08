@@ -679,7 +679,7 @@ def _tick_recording(app: Any, seconds_left: int) -> None:
 def _finish_recording(app: Any) -> None:
     recorder = app.vc_recorder
     app.vc_recorder = None
-    app.vc_record_btn.configure(state="normal")
+    _sync_lock(app)  # stays off when a job started while this was recording
     if recorder is None:
         return
     try:
@@ -1283,7 +1283,7 @@ def _left_text(seconds: "float | None") -> str:
 
 
 def _run_job(app: Any, plan: _JobPlan, speak: Any, cancel_event: threading.Event,
-             label: str) -> "dict[str, Any]":
+             label: str, on_joined: Any = None) -> "dict[str, Any]":
     """Speak the unfinished pieces of ``plan.job`` (worker thread) with the
     progress bar and the time left on the status line; returns the payload
     for :func:`_generate_done`. Raises like ``core.tts_job.run``."""
@@ -1306,7 +1306,8 @@ def _run_job(app: Any, plan: _JobPlan, speak: Any, cancel_event: threading.Event
         app.post_to_main(show)
 
     result = tts_job.run(job, speak, cancel_event=cancel_event,
-                         on_progress=on_progress, fallback_per_unit=fallback)
+                         on_progress=on_progress, fallback_per_unit=fallback,
+                         on_joined=on_joined)
     return {"output_path": result.output_path, "audio_seconds": result.audio_seconds,
             "elapsed_seconds": result.compute_seconds_run,
             "units_run": result.units_run, "audio_seconds_run": result.audio_seconds_run,
@@ -1373,7 +1374,8 @@ def _generate_kokoro(app: Any, text: str, play_when_done: bool = False) -> None:
             else:
                 logger.exception("Kokoro generation failed")
                 message = str(e)  # `e` is unbound once this block exits
-                app.post_to_main(lambda: _generate_failed(app, message, kept))
+                busy = _is_job_busy(e)
+                app.post_to_main(lambda: _generate_failed(app, message, kept, busy))
 
     from core._threads import safe_thread
     safe_thread(worker, name="kokoro-generate")
@@ -1492,7 +1494,8 @@ def _generate_omnivoice(app: Any, text: str) -> None:
                 # the `except ... as e` name when this block exits (PEP
                 # 3110), before post_to_main's queued lambda runs.
                 message = str(e)
-                app.post_to_main(lambda: _generate_failed(app, message, kept))
+                busy = _is_job_busy(e)
+                app.post_to_main(lambda: _generate_failed(app, message, kept, busy))
 
     from core._threads import safe_thread
     safe_thread(worker, name="voice-clone-generate")
@@ -1522,16 +1525,24 @@ def _run_omnivoice_job(app: Any, plan: _JobPlan, samples: "list[str]", consent: 
             timeout_s=(est.time_high or 0.0) * 3, consent_record=False)
         return float(result.get("elapsed_seconds") or 0.0)
 
-    payload = _run_job(app, plan, speak, cancel_event, "Generating:")
-    if samples:
+    warning: list[str] = []
+
+    def record_consent(output: Path) -> None:
+        # Before the job is marked finished: a crash here leaves the job
+        # unfinished, so the next run joins again and writes the record.
         try:
             synthetic_audio.append_consent_record(
-                payload["output_path"], samples[:voice_clone.MAX_REFERENCE_SAMPLES],
+                output, samples[:voice_clone.MAX_REFERENCE_SAMPLES],
                 consent_accepted=consent, engine="omnivoice")
         except OSError as e:
             # The joined file is finished and tagged; report, never discard it.
             logger.exception("Could not write the voice-clone consent record")
-            payload["warning"] = f"The local consent record could not be saved: {e}"
+            warning.append(f"The local consent record could not be saved: {e}")
+
+    payload = _run_job(app, plan, speak, cancel_event, "Generating:",
+                       on_joined=record_consent if samples else None)
+    if warning:
+        payload["warning"] = warning[0]
     return payload
 
 
@@ -1598,10 +1609,19 @@ def _kept_text(kept: "tuple[int, int] | None") -> str:
             "text and voice to continue.")
 
 
+def _is_job_busy(e: BaseException) -> bool:
+    from core import tts_job
+    return isinstance(e, tts_job.JobBusy)
+
+
 def _generate_failed(app: Any, message: str,
-                     kept: "tuple[int, int] | None" = None) -> None:
+                     kept: "tuple[int, int] | None" = None, busy: bool = False) -> None:
     _finish(app)
     app.vc_plan = None
+    if busy:  # another app window runs this job: nothing failed here
+        app.vc_status_var.set("Not started: " + message)
+        show_error(app, "Running in another window", message)
+        return
     app.vc_status_var.set("Failed." + _kept_text(kept))
     show_error(
         app, "Generation failed", message,

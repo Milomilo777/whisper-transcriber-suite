@@ -211,3 +211,56 @@ def test_thai_and_lao_are_never_cut_after_a_leading_vowel(text, lead, limit):
     assert [i for i, p in enumerate(pieces[:-1]) if p[-1] in lead] == []
     # Sara Am and the other following vowels stay with their syllable too.
     assert [p[:1] for p in pieces[1:] if p[0] in "\u0e30\u0e32\u0e33\u0e45\u0eb0\u0eb2\u0eb3"] == []
+
+
+# ------------------------------------------------ fresh review (C2.62)
+
+
+def test_a_window_opened_before_another_finished_the_job_speaks_nothing(tmp_path, small_pieces):
+    stale = _open(tmp_path)  # window B planned the job ...
+    tts_job.run(_open(tmp_path), FakeEngine())  # ... window A then finished it
+    out = stale.folder / tts_job.OUTPUT_FILE
+    stamp = out.stat().st_mtime_ns
+    engine = FakeEngine()
+    result = tts_job.run(stale, engine)
+    assert engine.spoken == [] and result.pieces_run == 0
+    assert out.stat().st_mtime_ns == stamp
+
+
+def test_a_window_opened_earlier_skips_pieces_another_finished_meanwhile(tmp_path, small_pieces):
+    stale = _open(tmp_path)
+    other = _open(tmp_path)
+    engine = FakeEngine()
+    for index in (0, 1):
+        engine(other.pieces[index].strip(), str(other.piece_path(index)), lambda _f: None)
+        other.record(index, 1.0)
+    engine2 = FakeEngine()
+    tts_job.run(stale, engine2)
+    assert engine2.spoken == [p.strip() for p in stale.pieces[2:]]
+
+
+def test_on_joined_runs_before_the_job_is_marked_finished(tmp_path, small_pieces):
+    job = _open(tmp_path)
+    seen: list = []
+
+    def on_joined(path: Path) -> None:
+        seen.append((path.is_file(), job.finished_path.exists()))
+
+    tts_job.run(job, FakeEngine(), on_joined=on_joined)
+    assert seen == [(True, False)]
+    assert _open(tmp_path).finished
+
+
+def test_a_failing_on_joined_leaves_the_job_unfinished_with_its_pieces(tmp_path, small_pieces):
+    job = _open(tmp_path)
+
+    def boom(_path: Path) -> None:
+        raise RuntimeError("crash while writing the consent record")
+
+    with pytest.raises(RuntimeError, match="consent record"):
+        tts_job.run(job, FakeEngine(), on_joined=boom)
+    again = _open(tmp_path)
+    assert not again.finished and again.pending() == []  # the next run only joins
+    engine = FakeEngine()
+    tts_job.run(again, engine)
+    assert engine.spoken == [] and _open(tmp_path).finished
