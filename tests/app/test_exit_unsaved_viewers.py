@@ -27,6 +27,7 @@ import pytest
 from app import app as app_module
 from app.app import App
 from app.dialogs import transcript_viewer as tv
+from app.widgets.tray import TrayController
 from core.transcriber import _write_outputs
 
 
@@ -498,3 +499,179 @@ def test_the_unsaved_prompt_text_is_plain_and_says_what_each_button_does(
     assert "talk.json" in text
     for word in ("Yes", "No", "Cancel"):
         assert word in text
+
+
+# ------------------------------------------------------------------ review follow-ups
+
+
+def _tray_on(app: App) -> list[int]:
+    """Minimise-to-tray on with a working tray; returns the list withdraw() appends to."""
+    withdrawn: list[int] = []
+    app.deiconify()
+    app.withdraw = lambda: withdrawn.append(1)  # type: ignore[method-assign]
+    app.app_config = {"minimise_to_tray": True}
+    app.tray = types.SimpleNamespace(is_supported=lambda: True)  # type: ignore[assignment]
+    return withdrawn
+
+
+def test_pressing_close_during_the_viewer_question_does_not_hide_the_app(
+    app: App, calls: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With minimise-to-tray on, X while a question is open must not withdraw its owner."""
+    _open_dirty(app, _make_json(tmp_path))
+    withdrawn = _tray_on(app)
+    app._exit_from_tray = True  # tray Exit opened the question
+    pressed: list[int] = []
+
+    def _ask(*_a: Any, **_k: Any) -> None:
+        app._exit_from_tray = False  # the window's X button
+        app.on_exit()
+        pressed.append(1)
+        return None
+
+    monkeypatch.setattr(tv.messagebox, "askyesnocancel", _ask)
+
+    app.on_exit()
+
+    assert pressed == [1] and withdrawn == [] and calls == []
+
+
+def test_close_still_minimises_to_the_tray_when_no_question_is_open(
+    app: App, calls: list[str], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    withdrawn = _tray_on(app)
+    app._exit_from_tray = False
+    app.on_exit()
+    assert withdrawn == [1] and calls == []
+
+
+def test_the_tray_hide_item_is_ignored_while_a_question_is_open() -> None:
+    hidden: list[int] = []
+    app_ns = types.SimpleNamespace(withdraw=lambda: hidden.append(1), _exit_prompt_open=True)
+    TrayController._hide_window(types.SimpleNamespace(app=app_ns))  # type: ignore[arg-type]
+    assert hidden == []
+    app_ns._exit_prompt_open = False
+    TrayController._hide_window(types.SimpleNamespace(app=app_ns))  # type: ignore[arg-type]
+    assert hidden == [1]
+
+
+def test_the_viewer_is_mapped_and_in_front_before_its_question(
+    app: App, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer = _open_dirty(app, _make_json(tmp_path))
+    order: list[str] = []
+    for name in ("deiconify", "lift", "update_idletasks"):
+        real = getattr(viewer, name)
+        setattr(viewer, name, lambda *a, _n=name, _r=real, **k: (order.append(_n), _r(*a, **k))[1])
+    monkeypatch.setattr(
+        tv.messagebox, "askyesnocancel", lambda *_a, **_k: order.append("ask") or None)
+
+    app.on_exit()
+
+    assert order.index("deiconify") < order.index("lift") < order.index("ask")
+    assert "update_idletasks" in order[order.index("lift"):order.index("ask")]
+
+
+def test_declining_the_overwrite_says_why_the_app_stays_open(
+    app: App, calls: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    json_path = _make_json(tmp_path)
+    _open_dirty(app, json_path)
+    _answer(monkeypatch, True)
+    Path(json_path).write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(tv.messagebox, "askyesno", lambda *_a, **_k: False)
+    notices: list[tuple[str, str]] = []
+    monkeypatch.setattr(tv, "notify", lambda _w, text, kind="info": notices.append((text, kind)))
+
+    app.on_exit()
+
+    assert calls == []
+    assert ("Not saved, so the app stays open.", "warning") in notices
+
+
+def test_a_failed_write_also_says_the_app_stays_open(
+    app: App, calls: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _open_dirty(app, _make_json(tmp_path))
+    _answer(monkeypatch, True)
+    monkeypatch.setattr(tv, "show_error", lambda *_a, **_k: None)
+    monkeypatch.setattr(tv.os, "replace", lambda *_a: (_ for _ in ()).throw(OSError("full")))
+    notices: list[str] = []
+    monkeypatch.setattr(tv, "notify", lambda _w, text, kind="info": notices.append(text))
+
+    app.on_exit()
+
+    assert calls == [] and "Not saved, so the app stays open." in notices
+
+
+def test_a_failing_sibling_update_after_a_good_write_does_not_stop_the_exit(
+    app: App, calls: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    json_path = _make_json(tmp_path)
+    viewer = _open_dirty(app, json_path, "Written first")
+    _answer(monkeypatch, True)
+    errors: list[str] = []
+    monkeypatch.setattr(tv, "show_error", lambda _w, title, *_a, **_k: errors.append(title))
+    notices: list[str] = []
+    monkeypatch.setattr(tv, "notify", lambda _w, text, kind="info": notices.append(text))
+
+    def _boom() -> Any:
+        raise RuntimeError("sibling bug")
+
+    viewer._update_siblings = _boom  # type: ignore[method-assign]
+
+    app.on_exit()
+
+    assert _text_on_disk(json_path) == "Written first"  # the transcript itself is saved
+    assert errors == []  # no "could not write your changes"
+    assert calls == ["stop_all", "settle", "destroy"]
+    assert any("saved" in n.lower() and "subtitle" in n.lower() for n in notices)
+
+
+def test_a_failing_notice_after_a_good_write_does_not_stop_the_exit(
+    app: App, calls: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    json_path = _make_json(tmp_path)
+    _open_dirty(app, json_path, "Written first")
+    _answer(monkeypatch, True)
+    errors: list[str] = []
+    monkeypatch.setattr(tv, "show_error", lambda _w, title, *_a, **_k: errors.append(title))
+
+    def _boom(*_a: Any, **_k: Any) -> None:
+        raise RuntimeError("toast bug")
+
+    monkeypatch.setattr(tv, "notify", _boom)
+
+    app.on_exit()
+
+    assert _text_on_disk(json_path) == "Written first"
+    assert errors == [] and calls == ["stop_all", "settle", "destroy"]
+
+
+def test_two_viewers_with_the_same_file_name_show_their_folders(
+    app: App, calls: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "one").mkdir()
+    (tmp_path / "two").mkdir()
+    _open_dirty(app, _make_json(tmp_path / "one", "talk"))
+    _open_dirty(app, _make_json(tmp_path / "two", "talk"))
+    asked = _answer(monkeypatch, False, False)
+
+    app.on_exit()
+
+    folders = sorted(q["message"] for q in asked)
+    assert "one" in folders[0] + folders[1] and "two" in folders[0] + folders[1]
+    for q in asked:
+        parent_dir = os.path.dirname(q["parent"].json_path)
+        assert parent_dir in q["message"]
+
+
+def test_a_unique_file_name_does_not_repeat_the_folder(
+    app: App, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _open_dirty(app, _make_json(tmp_path, "alpha"))
+    _open_dirty(app, _make_json(tmp_path, "beta"))
+    asked = _answer(monkeypatch, False, False)
+    app.on_exit()
+    for q in asked:
+        assert str(tmp_path) not in q["message"]

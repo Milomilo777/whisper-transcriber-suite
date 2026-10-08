@@ -1984,6 +1984,12 @@ class App(tk.Tk):
         self.on_exit()
 
     def on_exit(self) -> None:
+        # A second Cmd+Q / Ctrl+Q / close press while a question is open must
+        # neither stack another dialog nor, first of all, minimise to the tray:
+        # hiding the window would take the open question with it.
+        if getattr(self, "_exit_prompt_open", False):
+            return
+
         # Optional minimise-to-tray: when the user has enabled tray
         # support in the Advanced dialog and the tray icon is running,
         # the window's close (X) button hides the window instead of
@@ -2001,11 +2007,6 @@ class App(tk.Tk):
                 self.log("Window minimised to tray. Right-click the tray icon to exit.")
             except Exception:  # noqa: BLE001
                 pass
-            return
-
-        # A second Cmd+Q / Ctrl+Q while a question is open must not stack
-        # another dialog.
-        if getattr(self, "_exit_prompt_open", False):
             return
 
         active = [t for t in self.queue if t.status not in ("finished", "cancelled", "error")]
