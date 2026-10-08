@@ -3,8 +3,9 @@
   <install dir>\\python\\python.exe tools\\smoke_windows_install.py <install dir> <expected version>
 
 Checks that the app's own packages load from the install dir (not from a source checkout), the
-version matches, the bundled runtime stack imports, Tcl/Tk start, the bundled tools run, the
-diarization models are found, and `gui.py --help` exits 0. Prints one line per check and exits 1
+version matches, the bundled runtime stack and every app/core module import, the assets and the
+licence files are present, Tcl/Tk start, the bundled tools run, the diarization models are found,
+and `gui.py --help` exits 0. Also run on the Portable tree (embed_build). Prints one line per check and exits 1
 on the first failure. Used by .github/workflows/windows-installer.yml after a silent install.
 """
 from __future__ import annotations
@@ -13,6 +14,38 @@ import importlib
 import os
 import subprocess
 import sys
+
+# Third-party runtime stack, including the GUI-only dependencies that the
+# lazily imported app modules need (tray icon, folder watcher, microphone).
+RUNTIME_MODULES = (
+    "faster_whisper", "ctranslate2", "av", "tokenizers", "sv_ttk", "tkinterdnd2",
+    "platformdirs", "docx", "reportlab", "arabic_reshaper", "bidi.algorithm",
+    "sherpa_onnx", "psutil", "PIL.ImageTk", "pystray", "watchdog.observers", "sounddevice",
+)
+
+# Files the app opens at runtime: the window icon and the "Try it now" sample clip.
+REQUIRED_ASSETS = (
+    os.path.join("assets", "whisper.ico"),
+    os.path.join("assets", "whisper.png"),
+    os.path.join("assets", "sample_clip.mp3"),
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+)
+
+
+def app_modules(root: str) -> list[str]:
+    """Dotted names of every app.* / core.* module under ``root``, packages included."""
+    names = []
+    for top in ("app", "core"):
+        for dirpath, dirnames, filenames in os.walk(os.path.join(root, top)):
+            dirnames[:] = sorted(d for d in dirnames if d != "__pycache__")
+            rel = os.path.relpath(dirpath, root).replace(os.sep, ".")
+            for fn in sorted(filenames):
+                if fn == "__init__.py":
+                    names.append(rel)
+                elif fn.endswith(".py"):
+                    names.append(f"{rel}.{fn[:-3]}")
+    return sorted(names)
 
 
 def main(argv: list[str]) -> int:
@@ -41,15 +74,34 @@ def main(argv: list[str]) -> int:
         return fail(f"core.__version__ is {core.__version__}, expected {expected}")
     ok(f"core {core.__version__} from {os.path.dirname(core.__file__)}")
 
-    for name in ("faster_whisper", "ctranslate2", "av", "tokenizers", "sv_ttk", "tkinterdnd2",
-                 "platformdirs", "docx", "reportlab", "arabic_reshaper", "bidi.algorithm",
-                 "sherpa_onnx", "psutil",
-                 "core.transcriber", "core.worker", "core.server", "app"):
+    for name in RUNTIME_MODULES:
         try:
             importlib.import_module(name)
         except Exception as exc:  # report the exact import that broke, then stop
             return fail(f"import {name}: {type(exc).__name__}: {exc}")
-    ok("runtime stack and app packages import")
+    ok("runtime stack imports")
+
+    # `gui.py --help` below never loads the GUI (app is imported lazily), so a
+    # module with a missing dependency or an ImportError would pass. Import
+    # every module the build ships instead.
+    modules = app_modules(install)
+    if len(modules) < 50:
+        return fail(f"only {len(modules)} app/core modules found under {install}")
+    for name in modules:
+        try:
+            importlib.import_module(name)
+        except Exception as exc:
+            return fail(f"import {name}: {type(exc).__name__}: {exc}")
+    ok(f"all {len(modules)} app/core modules import")
+
+    missing = [rel for rel in REQUIRED_ASSETS if not os.path.isfile(os.path.join(install, rel))]
+    if missing:
+        return fail(f"assets missing: {missing}")
+    icons = os.path.join(install, "assets", "icons")
+    n_png = len([f for f in os.listdir(icons) if f.endswith(".png")])
+    if n_png < 10:
+        return fail(f"assets/icons holds only {n_png} PNG files")
+    ok(f"assets present ({len(REQUIRED_ASSETS)} files + {n_png} icons)")
 
     import tkinter
     root = tkinter.Tk()  # loads Tk too, not only Tcl (tkinter.Tcl() would pass without tk8.6)

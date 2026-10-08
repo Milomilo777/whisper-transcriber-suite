@@ -19,6 +19,7 @@ REM   Lib\site-packages\        — runtime deps from requirements.txt
 REM   app\                      — Tk UI package
 REM   core\                     — transcription / download / paths modules
 REM   bin\                      — ffmpeg.exe, ffprobe.exe, yt-dlp.exe
+REM   assets\                   — window icon, toolbar icons, sample clip
 REM   gui.py                    — entry point (pythonw gui.py)
 
 REM
@@ -101,6 +102,29 @@ xcopy /E /I /Y "%ROOT%app" "%BUILD%\app" >nul
 xcopy /E /I /Y "%ROOT%core" "%BUILD%\core" >nul
 xcopy /E /I /Y "%ROOT%bin" "%BUILD%\bin" >nul
 copy "%ROOT%gui.py" "%BUILD%\" >nul
+
+REM assets\ belongs to the tree itself, so the Portable ZIP (an archive of
+REM embed_build\) gets the window icon, the toolbar icons and the sample clip
+REM behind "Try it now", not only the installer. Same file set as before.
+echo [embed] copying assets
+mkdir "%BUILD%\assets\icons"
+for %%F in (whisper.ico whisper.png sample_clip.mp3) do copy /Y "%ROOT%assets\%%F" "%BUILD%\assets\" >nul
+xcopy /I /Y "%ROOT%assets\icons\*" "%BUILD%\assets\icons\" >nul
+for %%F in (whisper.ico whisper.png sample_clip.mp3 icons\README.txt icons\LICENSE-lucide.txt) do (
+  if not exist "%BUILD%\assets\%%F" (
+    echo [embed] ERROR: assets\%%F missing from embed tree
+    exit /b 1
+  )
+)
+
+REM The app's licence and the third-party notices travel with every build.
+for %%F in (LICENSE THIRD_PARTY_NOTICES.md) do (
+  copy /Y "%ROOT%%%F" "%BUILD%\" >nul
+  if not exist "%BUILD%\%%F" (
+    echo [embed] ERROR: %%F missing from embed tree
+    exit /b 1
+  )
+)
 
 REM NO credentials are bundled. Until 2026-08 this step copied a
 REM maintainer-owned Google Cloud service-account key into the build so cloud

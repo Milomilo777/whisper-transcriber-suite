@@ -35,7 +35,7 @@ The steps by hand:
 # 0. (optional) make an icon:  generate assets/whisper.icns from whisper.png
 #    e.g.  sips -s format icns assets/whisper.png --out assets/whisper.icns
 
-# 1. SELF-CONTAINED ffmpeg/ffprobe/ffplay + yt-dlp into ./bin (verified: no
+# 1. SELF-CONTAINED ffmpeg/ffprobe + yt-dlp + deno into ./bin (verified: no
 #    non-system dylibs). Do NOT copy Homebrew's ffmpeg — it links ~18
 #    Homebrew dylibs that PyInstaller does not bundle.
 bash platform/macos/pyinstaller/fetch_mac_binaries.sh          # host arch; also deno

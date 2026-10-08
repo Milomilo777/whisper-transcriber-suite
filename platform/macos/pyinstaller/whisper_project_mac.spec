@@ -13,7 +13,7 @@
 # Output: dist/Whisper Transcriber Suite.app  (then wrap into a .dmg via builddmg.command).
 #
 # Packaging prerequisites on the Mac (see ../pyinstaller/README.md):
-#   * put SELF-CONTAINED mac ffmpeg/ffprobe/ffplay + yt-dlp in ./bin — NOT the
+#   * put SELF-CONTAINED mac ffmpeg/ffprobe + yt-dlp + deno in ./bin — NOT the
 #     .exe ones and NOT Homebrew's (dylib-dependent) ffmpeg. Run
 #     platform/macos/pyinstaller/fetch_mac_binaries.sh to fetch + verify them.
 #   * optional: assets/whisper.icns for the Dock icon.
@@ -21,7 +21,7 @@
 # The app's core.paths.resource_base() returns sys._MEIPASS inside the frozen
 # .app bundle, which is where COLLECT lays out bin/ + the bundled data files —
 # no source changes needed. bundled_binary() drops the .exe suffix off Windows,
-# so it resolves bin/ffmpeg / bin/ffplay (no extension) on macOS.
+# so it resolves bin/ffmpeg / bin/ffprobe (no extension) on macOS.
 # pyright: reportMissingImports=false
 
 import os
@@ -86,7 +86,7 @@ import re as _re
 with open(os.path.join(_REPO_ROOT, 'core', '__init__.py'), encoding='utf-8') as _f:
     _VERSION = _re.search(r'__version__\s*=\s*"([^"]+)"', _f.read()).group(1)
 
-# bin/ helpers. ffmpeg/ffprobe/ffplay must be SELF-CONTAINED builds (only
+# bin/ helpers. ffmpeg/ffprobe must be SELF-CONTAINED builds (only
 # /usr/lib + /System dylibs, e.g. evermeet.cx) — PyInstaller does not bundle
 # the dylibs of executables it copies, so Homebrew's ffmpeg (18 dylibs under
 # /opt/homebrew) breaks on every Mac without that exact Homebrew install.
@@ -173,7 +173,11 @@ def _yt_dlp_new_enough(path):
 
 
 _tool_problems = []
-for _n in ('ffmpeg', 'ffprobe', 'ffplay', 'yt-dlp', 'deno'):
+# Speaker diarization models (core.diarization reads bin/diarization/*.onnx).
+for _n in ('segmentation.onnx', 'embedding.onnx'):
+    if not os.path.isfile(os.path.join(_BIN_DIR, 'diarization', _n)):
+        _tool_problems.append('diarization/%s missing' % _n)
+for _n in ('ffmpeg', 'ffprobe', 'yt-dlp', 'deno'):
     _p = os.path.join(_BIN_DIR, _n)
     if not os.path.isfile(_p):
         _tool_problems.append('%s missing' % _n)
@@ -211,13 +215,11 @@ if os.path.isdir(_BIN_DIR):
 _icns = os.path.join(_REPO_ROOT, 'assets', 'whisper.icns')
 _icon = _icns if os.path.isfile(_icns) else None
 
-# Optional Google Cloud service-account key (gitignored — only present in a
-# trusted local build tree, never in a source/CI checkout). Bundled under
-# creds/ so core.backends.google_cloud_stt.bundled_credentials_path() finds
-# it at <resource_base>/creds/gcloud_stt.json. Skipped cleanly when absent —
-# the cloud backend just falls back to user-supplied credentials.
-_creds_key = os.path.join(_REPO_ROOT, 'creds', 'gcloud_stt.json')
-creds_datas = [(_creds_key, 'creds')] if os.path.isfile(_creds_key) else []
+# NO credentials are bundled (same rule as the Windows specs and
+# build_embed_installer.bat; see SECURITY.md). Cloud STT uses the user's own
+# service-account JSON, picked in Advanced > Backend.
+# tests/core/test_health_invariants.py fails if a build input names a
+# credential file again.
 
 # google-cloud-speech + google-cloud-storage + grpcio are OPTIONAL — not in
 # requirements.txt, not installed by default (see the comment above the
@@ -294,6 +296,9 @@ a = Analysis(
     datas=[
         *bin_datas,
         (os.path.join(_REPO_ROOT, 'assets'), 'assets'),
+        # The app's licence and the third-party notices travel with the app.
+        (os.path.join(_REPO_ROOT, 'LICENSE'), '.'),
+        (os.path.join(_REPO_ROOT, 'THIRD_PARTY_NOTICES.md'), '.'),
         # Static page served by the optional LAN/web HTTP job server
         # (gui.py serve -> core.server). Ship it so the frozen build can
         # serve the browser UI.
@@ -305,7 +310,6 @@ a = Analysis(
         *_fw_datas,
         *whisper_cpp_datas,
         *alignment_datas,
-        *creds_datas,
         *_gcloud_datas,
         *_rtl_datas,
         *_npstack_datas,
@@ -359,7 +363,34 @@ a = Analysis(
         'app.widgets.tabs',
         'app.widgets.tray',
         'app.widgets.update_bar',
+        'app.dialogs.model_loading',
+        'app.dpi',
+        'app.services.voice_clone_service',
+        'app.theme',
+        'app.theme.icons',
+        'app.theme.tokens',
+        'app.widgets.audio_visualizer',
+        'app.widgets.error_dialog',
+        'app.widgets.notice',
+        'app.widgets.smtv_tab',
+        'app.widgets.tooltip',
+        'app.widgets.voice_clone_tab',
         'core',
+        'core._checkpoint',
+        'core._errors',
+        'core._gc_import_guard',
+        'core._liveness_tick',
+        'core._proc',
+        'core._threads',
+        'core.integrations',
+        'core.integrations.smtv_browse',
+        'core.live_model',
+        'core.optional_deps',
+        'core.server.tls',
+        'core.star_invite',
+        'core.tts_kokoro',
+        'core.voice_clone',
+        'core.voice_clone_worker',
         'core.alignment',
         'core.backends',
         'core.backends.base',
@@ -647,11 +678,11 @@ for _name in _POST_COPY_BINS:
 # core.paths.resource_base() resolves to dirname(sys.executable) at runtime,
 # i.e. Contents/MacOS/ -- so core.paths.bundled_binary() looks for every tool
 # under Contents/MacOS/bin/. But PyInstaller's macOS BUNDLE step physically
-# relocates ALL of a.binaries (ffmpeg/ffprobe/ffplay included, since they were
+# relocates ALL of a.binaries (ffmpeg/ffprobe included, since they were
 # collected as executable "binaries" not plain "datas") into
 # Contents/Frameworks/bin/ and leaves NOTHING behind at Contents/MacOS/bin/ --
 # there is no automatic symlink. So bundled_binary() found NONE of
-# ffmpeg/ffprobe/ffplay/yt-dlp at runtime; every one fell back to a bare
+# ffmpeg/ffprobe/yt-dlp at runtime; every one fell back to a bare
 # name via PATH lookup, which fails on a real user's Mac (verified directly:
 # simulating the frozen runtime against a real build, core.paths.bundled_binary
 # returned the bare string "ffmpeg", not a path). yt-dlp above additionally
@@ -659,16 +690,18 @@ for _name in _POST_COPY_BINS:
 # the top of this file) -- it's copied there by hand, same target directory.
 # Fix: mirror every entry actually present in Contents/Frameworks/bin/ as a
 # symlink of the same name under Contents/MacOS/bin/, so core.paths' runtime
-# lookup succeeds for ffmpeg/ffprobe/ffplay/yt-dlp alike.
+# lookup succeeds for ffmpeg/ffprobe/yt-dlp alike.
 if os.path.isdir(_app_bin):
     _macos_bin = os.path.join(_app_path, 'Contents', 'MacOS', 'bin')
     os.makedirs(_macos_bin, exist_ok=True)
     for _entry in sorted(os.listdir(_app_bin)):
         _target = os.path.join(_app_bin, _entry)
-        # The onedir yt-dlp folder is mirrored too: core.paths'
+        # Folders are mirrored too: the onedir yt-dlp folder, because core.paths'
         # clear_bundled_quarantine() walks Contents/MacOS/bin and must reach
-        # every file inside it, or Gatekeeper holds the first yt-dlp run.
-        _is_dir = _entry == _YTDLP_DIST
+        # every file inside it (or Gatekeeper holds the first yt-dlp run), and
+        # bin/diarization, which core.diarization looks up there (a data
+        # folder, so BUNDLE links it into Frameworks/bin from Resources).
+        _is_dir = os.path.isdir(_target)
         if not (_is_dir or os.path.isfile(_target)):
             continue
         _link = os.path.join(_macos_bin, _entry)

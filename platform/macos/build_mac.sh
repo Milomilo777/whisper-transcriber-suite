@@ -10,7 +10,7 @@
 #      /usr/bin/python3, whose Tk 8.5 breaks the GUI)
 #   2. build venv .buildenv with the slim requirements, --prefer-binary and
 #      constraints-macos.txt (on macOS 10.15 also the onnxruntime wheel fix)
-#   3. self-contained ffmpeg/ffprobe/ffplay + yt-dlp + deno into bin/
+#   3. self-contained ffmpeg/ffprobe + yt-dlp + deno + diarization models into bin/
 #   4. PyInstaller with platform/macos/pyinstaller/whisper_project_mac.spec
 #   5. verify_mac_bundle.sh + smoke_test_app.sh (real transcription, GUI
 #      launch, real download) -- skip the smoke test with --no-smoke

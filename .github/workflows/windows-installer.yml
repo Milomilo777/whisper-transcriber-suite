@@ -24,6 +24,11 @@ on:
       - tools/build_manifest.py
       - tools/smoke_windows_install.py
       - .github/workflows/windows-installer.yml
+      # What ships inside the build: a change here can break the install too.
+      - gui.py
+      - app/**
+      - core/**
+      - assets/**
   workflow_dispatch:
 
 permissions:
@@ -31,7 +36,9 @@ permissions:
 
 concurrency:
   group: windows-installer-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a running build (it may be a release candidate) when a later
+  # push arrives; GitHub keeps at most one newer run waiting behind it.
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -119,7 +126,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'pip list failed' }
           Get-ChildItem dist_installer | Format-Table Name, Length -AutoSize
 
-      - name: Smoke test (silent install, imports, bundled tools, uninstall)
+      # The Portable ZIP is an archive of embed_build\, so the same checks run on that tree
+      # (after the manifest, so the __pycache__ this writes is not listed there).
+      - name: Smoke test the Portable tree (embed_build)
+        shell: pwsh
+        run: |
+          & embed_build\python\python.exe tools\smoke_windows_install.py (Resolve-Path embed_build).Path $env:APP_VERSION
+          if ($LASTEXITCODE -ne 0) { throw "Portable smoke test failed ($LASTEXITCODE)" }
+
+      - name: Smoke test (silent install, imports, bundled tools, upgrade, uninstall)
         shell: pwsh
         run: |
           $setup = "dist_installer\WhisperTranscriberSuite-Installer-Windows-v$env:APP_VERSION.exe"
@@ -132,6 +147,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'the installed bin\ does not match the pins' }
           & (Join-Path $dir 'python\python.exe') tools\smoke_windows_install.py $dir $env:APP_VERSION
           if ($LASTEXITCODE -ne 0) { throw "smoke test failed ($LASTEXITCODE)" }
+          # Upgrade path: the same installer run over the installed copy must find it
+          # (by its real uninstall key), remove it after the wizard, then install again.
+          $log2 = Join-Path $env:RUNNER_TEMP 'wts-upgrade.log'
+          $p = Start-Process -FilePath $setup -Wait -PassThru -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=$dir", "/LOG=$log2")
+          if ($p.ExitCode -ne 0) { Get-Content $log2 -Tail 40; throw "upgrade install exited $($p.ExitCode)" }
+          if (-not (Select-String -Path $log2 -SimpleMatch 'Removed the previous version' -Quiet)) {
+            Get-Content $log2 -Tail 60; throw 'the upgrade did not remove the previous version first' }
+          & (Join-Path $dir 'python\python.exe') tools\smoke_windows_install.py $dir $env:APP_VERSION
+          if ($LASTEXITCODE -ne 0) { throw "smoke test after the upgrade failed ($LASTEXITCODE)" }
           $p = Start-Process -FilePath (Join-Path $dir 'unins000.exe') -Wait -PassThru -ArgumentList @(
             '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART')
           if ($p.ExitCode -ne 0) { throw "silent uninstall exited $($p.ExitCode)" }

@@ -64,7 +64,7 @@ v="$("$B/deno" --version 2>&1)" && echo "${v%%$'\n'*}" || { echo "deno FAILED: $
 
 # core.paths.bundled_binary() resolves tools via dirname(sys.executable)/bin,
 # i.e. Contents/MacOS/bin/ -- NOT the Contents/Frameworks/bin/ copies above.
-# PyInstaller symlinks ffmpeg/ffprobe/ffplay there automatically; yt-dlp is
+# PyInstaller symlinks ffmpeg/ffprobe there automatically; yt-dlp is
 # copied in post-BUNDLE by the spec and must get a matching symlink, or the
 # real app's downloads silently fall back to a missing "yt-dlp" on PATH
 # (the 2026-09-24 regression). Check the exact path the app actually uses.

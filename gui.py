@@ -460,6 +460,37 @@ def _activate_safe_mode() -> None:
               flush=True)
 
 
+# Named mutex that installer_embed.iss lists as AppMutex: Setup and the
+# uninstaller see it while the app (or its web server) runs and ask the user to
+# close it first, instead of replacing files a running copy still uses.
+APP_MUTEX_NAME = "WhisperTranscriberSuiteRunning"
+_app_mutex: list[int] | None = None
+
+
+def _hold_app_mutex() -> None:
+    """Create APP_MUTEX_NAME on Windows, in this session and in the Global
+    namespace (a copy running in another user session), and keep both until
+    this process exits."""
+    global _app_mutex
+    if sys.platform != "win32" or _app_mutex is not None:
+        return
+    import ctypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateMutexW.restype = ctypes.c_void_p
+    kernel32.CreateMutexW.argtypes = (ctypes.c_void_p, ctypes.c_int, ctypes.c_wchar_p)
+    handles = []
+    for name in (APP_MUTEX_NAME, "Global\\" + APP_MUTEX_NAME):
+        handle = kernel32.CreateMutexW(None, False, name)
+        if handle:
+            handles.append(handle)
+        else:
+            # Not fatal: Setup only loses its "close the app first" prompt.
+            print(f"[gui] could not create the {name} mutex "
+                  f"(error {ctypes.get_last_error()})", file=sys.stderr)
+    _app_mutex = handles  # never closed: Windows releases them when the process ends
+
+
 def main() -> int:
     # First, before anything reads argv: in a frozen (PyInstaller) build
     # multiprocessing re-launches this very executable for its helper
@@ -514,9 +545,11 @@ def main() -> int:
         return _cli_transcribe(args)
 
     if args.command == "serve":
+        _hold_app_mutex()
         return _cli_serve(args)
 
     # Default: launch the Tk app.
+    _hold_app_mutex()
     from app import run
     if open_paths:
         run(open_paths)

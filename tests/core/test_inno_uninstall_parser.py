@@ -220,7 +220,14 @@ def test_both_iss_files_reference_old_appid_for_migration():
         assert f"OldAppId = '{{{_OLD_APP_ID}}}'" in text, (
             f"{name} does not declare OldAppId = {_OLD_APP_ID}"
         )
-        assert "GetUninstallStringForAppId(OldAppId)" in text, (
+        # installer_embed.iss runs it through the checked RunOldUninstaller
+        # (after the wizard); the unshipped installer.iss still looks it up
+        # directly.
+        expected = {
+            "installer.iss": "GetUninstallStringForAppId(OldAppId)",
+            "installer_embed.iss": "RunOldUninstaller(OldAppId, ",
+        }[name]
+        assert expected in text, (
             f"{name} does not look up the old product's uninstaller by OldAppId"
         )
 

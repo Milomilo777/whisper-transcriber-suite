@@ -17,7 +17,7 @@
 ; OldAppId in [Code] below, which drives the one-time data migration
 ; from the predecessor product).
 AppId={{BD640ACA-1EDB-4F9F-890E-C2DC04221871}
-AppName=SMTV Whisper Transcriber Suite
+AppName=Whisper Transcriber Suite
 AppVersion=1.9.3
 AppPublisher=translation-robot
 AppPublisherURL=https://github.com/translation-robot

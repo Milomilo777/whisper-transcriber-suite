@@ -16,8 +16,9 @@ every Python package ships inside the distribution under
 | Component | Typical license | Notes |
 |---|---|---|
 | **CPython** (embeddable runtime) | PSF License Agreement | The `python\` folder in the distribution. |
-| **FFmpeg** (`ffmpeg.exe`, `ffprobe.exe`) | LGPL-2.1+ or GPL (depends on the build) | Used for audio/video decode, slicing, subtitle burn-in. Confirm the exact terms of the bundled build before redistributing; LGPL/GPL obligations (license text + source availability) apply. |
+| **FFmpeg** (`ffmpeg.exe`, `ffprobe.exe`) | GPL-3.0-or-later (the bundled builds are configured with `--enable-gpl --enable-version3` and include libx264/libx265) | Used for audio/video decode, slicing, subtitle burn-in. Windows: the gyan.dev "essentials" build pinned in `platform/windows/build-deps.json`; macOS: the evermeet.cx (Intel) and martin-riedl.de (Apple Silicon) static builds pinned in `platform/macos/pyinstaller/fetch_mac_binaries.sh`. GPL obligations (license text + source availability) apply. |
 | **yt-dlp** (`yt-dlp.exe`) | Unlicense (public domain) | Video downloads. |
+| **Deno** (`deno.exe`) | MIT | JavaScript runtime that yt-dlp uses for YouTube. |
 
 ## Bundled Python packages (selected)
 

@@ -13,3 +13,10 @@ onnxruntime==1.19.2
 # transcription ("open() got an unexpected keyword argument
 # 'metadata_errors'"; CI smoke test, 2026-09-30). Same pin as requirements.txt.
 av<19
+# numpy comes in through faster-whisper / ctranslate2 / onnxruntime. Unpinned,
+# each build took the newest release, whose wheels can carry a higher minimum
+# macOS than the rest of the bundle. 1.26.4 is the version the macOS test
+# workflows (macos-e2e, macos-compileall-script-test) install.
+numpy==1.26.4
+# The build tool itself, so two builds of the same commit bundle the same way.
+pyinstaller==6.22.3

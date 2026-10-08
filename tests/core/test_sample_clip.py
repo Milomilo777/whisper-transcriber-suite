@@ -96,4 +96,12 @@ def test_each_pyinstaller_spec_ships_the_clip_and_its_module(spec):
 @pytest.mark.parametrize("script", _INSTALLERS)
 def test_each_installer_names_the_clip(script):
     text = _read(script)
+    if script == "installer_embed.iss":
+        # The embed installer packs the whole embed_build tree, and
+        # build_embed_installer.bat copies the clip into it (so the Portable
+        # ZIP, an archive of the same tree, has it too).
+        assert 'Source: "embed_build\\*"' in text
+        bat = _read("build_embed_installer.bat")
+        assert "for %%F in (whisper.ico whisper.png " + sample_clip.SAMPLE_CLIP_NAME + ") do" in bat
+        return
     assert 'Source: "assets\\' + sample_clip.SAMPLE_CLIP_NAME + '"' in text

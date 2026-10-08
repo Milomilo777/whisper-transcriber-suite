@@ -39,6 +39,58 @@ def test_upgrade_removes_a_marker_left_by_an_older_install():
     assert 'Type: files; Name: "{app}\\no_tiling.flag"' in install_delete
 
 
+def _function(code: str, name: str) -> str:
+    match = re.search(r"(?ms)^(function|procedure) %s\b.*?^end;" % re.escape(name), code)
+    assert match, f"{name} missing from [Code]"
+    return match.group(0)
+
+
+def test_old_version_is_removed_only_after_the_wizard():
+    """A cancelled wizard must leave the installed version alone: the old
+    uninstaller runs from PrepareToInstall (after Install was clicked), never
+    from InitializeSetup (before the first page)."""
+    code = _section(_text(), "Code")
+    assert "function InitializeSetup" not in code
+    prepare = _function(code, "PrepareToInstall")
+    assert "RunOldUninstaller(ThisAppId()" in prepare
+    assert "RunOldUninstaller(OldAppId" in prepare
+    assert prepare.index("MigrateOldAppData()") < prepare.index("RunOldUninstaller(OldAppId")
+    # The only Exec of an uninstaller is the checked one.
+    assert code.count("Exec(") == 1 and "Exec(" in _function(code, "RunOldUninstaller")
+
+
+def test_upgrade_keeps_the_previous_folder_and_tasks():
+    setup = _section(_text(), "Setup")
+    assert re.search(r"(?m)^UsePreviousAppDir=yes$", setup)
+    assert re.search(r"(?m)^UsePreviousTasks=yes$", setup)
+
+
+def test_app_id_lookup_expands_the_doubled_brace():
+    """SetupSetting("AppId") is the raw "{{GUID}"; without ExpandConstant the
+    uninstall key name is wrong and an upgrade never finds the old version."""
+    code = _section(_text(), "Code")
+    assert "ExpandConstant('{#SetupSetting(\"AppId\")}')" in _function(code, "ThisAppId")
+    assert "GetUninstallStringForAppId(ThisAppId())" in _function(code, "GetUninstallString")
+    assert code.count('SetupSetting("AppId")') == 1
+
+
+def test_old_uninstaller_result_is_checked_and_awaited():
+    run = _function(_section(_text(), "Code"), "RunOldUninstaller")
+    assert "ewWaitUntilTerminated" in run
+    assert "if ResultCode <> 0 then" in run
+    # The uninstaller relaunches itself from a temp copy: wait for its key
+    # and its exe to disappear, bounded, and report a timeout.
+    assert "UninstallKeyExists(AnAppId)" in run and "FileExists(UninstString)" in run
+    assert "Sleep(500)" in run and "for i := 1 to 360 do" in run
+    assert "did not finish within 3 minutes" in run
+    # windows-installer.yml greps the setup log for this line after an upgrade.
+    assert "Log('Removed ' + What);" in run
+    assert "RunOldUninstaller(ThisAppId(), 'the previous version')" in _function(
+        _section(_text(), "Code"), "PrepareToInstall")
+    # A missing uninstaller (broken old install) does not block the install.
+    assert run.index("if not FileExists(UninstString) then") < run.index("Exec(")
+
+
 def test_clone_your_voice_task_and_marker_are_unchanged():
     text = _text()
     assert 'Name: "voiceclone"' in _section(text, "Tasks")

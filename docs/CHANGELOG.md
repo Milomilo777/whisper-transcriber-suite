@@ -153,6 +153,16 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Builds list every module and pin every download.** The three PyInstaller specs now carry
+  every `app.*` / `core.*` module (17 were missing on Windows, 27 on macOS), and a test built from
+  the module tree fails when one is left out. The macOS build pins ffmpeg (9.0.2), yt-dlp, Deno,
+  numpy and PyInstaller with SHA-256 checks instead of taking the latest release, fetches the two
+  speaker-diarization models like the Windows build, and no longer bundles the unused `ffplay`.
+- **Windows installer CI checks what users run.** The workflow imports every app and engine module
+  plus the GUI-only dependencies (Pillow's ImageTk, pystray, watchdog, sounddevice), checks the
+  assets and licence files, smoke-tests the Portable tree as well as the installed copy, runs when
+  `app/`, `core/`, `gui.py` or `assets/` change, and no longer cancels a running build. All GitHub
+  workflows use actions pinned to a commit and a read-only token by default.
 - **The voice-clone worker log shows how long the OmniVoice model load takes.** The worker's
   log now has a line when the load starts and one when the model is ready (total and import
   time), times the worker's own start-up imports, and names the process's CPU and I/O priority.
@@ -264,6 +274,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Portable ZIP has the sample clip and icons.** `build_embed_installer.bat` now puts `assets\`
+  (window icon, toolbar icons, the "Try it now" sample clip), `LICENSE` and
+  `THIRD_PARTY_NOTICES.md` into the build tree, so the Portable ZIP ships them too; the installer
+  takes them from the same tree.
+- **Upgrades keep your installer choices.** The installer removes the previous version only after
+  you click Install (cancelling leaves it in place), keeps its folder and options (desktop icon,
+  Explorer entry, voice cloning), waits until the old uninstaller has really finished and stops
+  with a message if it fails. The lookup of the previous version now uses the real uninstall key
+  name, and Setup asks you to close a running copy of the app first (copies from this version on).
 - **Server uploads and downloads.** A non-English upload name keeps its characters (it was saved
   as mojibake); an upload cut off before its declared length no longer becomes a job (HTTP 400,
   chunked uploads get 411); a refused body is discarded within a time limit, so a trickling client
@@ -672,6 +691,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Security
 
+- **No credential file can enter a build.** The macOS spec no longer bundles a Google Cloud key
+  file found in the build folder (the Windows builds had already dropped this), and a test fails
+  when any spec, the build script or an installer script names a credential file.
 - **Web pages can no longer drive the local web server.** JSON job requests need
   `Content-Type: application/json` (else 415), the page cannot be framed or loaded by another
   site, and without an access password the server refuses requests from another web origin and

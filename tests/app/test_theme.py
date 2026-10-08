@@ -167,5 +167,13 @@ def test_each_pyinstaller_spec_ships_the_whole_assets_folder(spec: str) -> None:
 
 @pytest.mark.parametrize("script", _INSTALLERS)
 def test_each_installer_copies_the_icon_folder(script: str) -> None:
+    if script == "installer_embed.iss":
+        # Packs the whole embed_build tree; build_embed_installer.bat copies
+        # assets\icons into it, so the Portable ZIP gets the icons too.
+        assert 'Source: "embed_build\\*"' in _read(script)
+        assert 'xcopy /I /Y "%ROOT%assets\\icons\\*" "%BUILD%\\assets\\icons\\"' in _read(
+            "build_embed_installer.bat"
+        )
+        return
     assert _ICON_SOURCE_LINE in _read(script)
 

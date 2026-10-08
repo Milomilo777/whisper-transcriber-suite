@@ -428,3 +428,84 @@ def test_workflow_builds_with_pinned_tools_and_smoke_tests_the_install():
     # The bytes that ship are checked against the pins, not only the downloads.
     assert "fetch_windows_build_deps.py --check --root embed_build" in text
     assert "fetch_windows_build_deps.py --check --root $dir" in text
+
+
+def test_workflow_runs_when_shipped_code_changes_and_never_cancels_a_build():
+    text = _workflow()
+    on = text.split("\non:\n", 1)[1].split("\npermissions:", 1)[0]
+    for path in ("gui.py", "app/**", "core/**", "assets/**", "tools/smoke_windows_install.py"):
+        assert f"      - {path}\n" in on, path
+    assert "cancel-in-progress: false" in text
+    assert "cancel-in-progress: true" not in text
+
+
+def test_workflow_smoke_tests_the_portable_tree_too():
+    text = _workflow()
+    assert r"tools\smoke_windows_install.py (Resolve-Path embed_build).Path" in text
+    # After the manifest (the smoke run writes __pycache__) and after the zip.
+    assert text.index("Write the build manifest") < text.index("Smoke test the Portable tree")
+    assert text.index("Zip the Portable build") < text.index("Smoke test the Portable tree")
+
+
+def test_workflow_tests_an_upgrade_over_the_installed_copy():
+    text = _workflow()
+    upgrade = text.index("$log2 = Join-Path $env:RUNNER_TEMP 'wts-upgrade.log'")
+    # Second silent install into the same folder, then the log must show that
+    # PrepareToInstall found and removed the first one, then the smoke test again.
+    assert "'Removed the previous version'" in text
+    assert text.index("unins000.exe") > upgrade
+    assert text.count(r"tools\smoke_windows_install.py $dir $env:APP_VERSION") == 2
+
+
+def test_every_workflow_pins_actions_and_starts_read_only():
+    for path in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+        text = path.read_text(encoding="utf-8")
+        for ref in re.findall(r"uses:\s*(\S+)", text):
+            assert re.fullmatch(r"[\w.-]+/[\w./-]+@[0-9a-f]{40}", ref), f"{path.name}: {ref}"
+        top = re.search(r"(?m)^permissions:\n((?:  .*\n)+)", text)
+        assert top, f"{path.name} has no top-level permissions"
+        if path.name != "site-data.yml":  # commits the refreshed site data
+            assert top.group(1) == "  contents: read\n", f"{path.name}: {top.group(1)!r}"
+
+
+# ------------------------------------------------------------------ Portable tree contents
+
+def test_bat_puts_assets_into_the_embed_tree_and_checks_them():
+    text = BAT.read_text(encoding="utf-8")
+    copy = text.index(r'copy /Y "%ROOT%assets\%%F" "%BUILD%\assets\" >nul')
+    assert "for %%F in (whisper.ico whisper.png sample_clip.mp3) do" in text
+    assert r'xcopy /I /Y "%ROOT%assets\icons\*" "%BUILD%\assets\icons\" >nul' in text
+    check = text.index(r"ERROR: assets\%%F missing from embed tree")
+    # Copied (and checked) before the tree is declared complete.
+    assert copy < check < text.index("build complete")
+    assert "for %%F in (LICENSE THIRD_PARTY_NOTICES.md) do (" in text
+    assert text.index(r"ERROR: %%F missing from embed tree") < text.index("build complete")
+
+
+def test_installer_takes_assets_from_the_embed_tree_only():
+    iss = (ROOT / "installer_embed.iss").read_text(encoding="utf-8")
+    sources = re.findall(r'(?m)^Source:\s*"([^"]+)"', iss)
+    assert sources == [r"embed_build\*"]
+
+
+smoke = _load("smoke_windows_install")
+
+
+def test_smoke_lists_every_module_of_the_tree(tmp_path):
+    for rel in ("app/__init__.py", "app/dpi.py", "app/theme/__init__.py", "app/theme/tokens.py",
+                "core/__init__.py", "core/server/tls.py", "core/server/__init__.py",
+                "core/__pycache__/x.py", "core/server/static/index.html"):
+        f = tmp_path / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text("", encoding="utf-8")
+    assert smoke.app_modules(str(tmp_path)) == [
+        "app", "app.dpi", "app.theme", "app.theme.tokens", "core", "core.server", "core.server.tls"]
+
+
+def test_smoke_covers_the_real_tree_and_the_gui_dependencies():
+    names = smoke.app_modules(str(ROOT))
+    assert "app.app" in names and "app.dpi" in names and "core.star_invite" in names
+    assert len(names) > 100
+    for dep in ("PIL.ImageTk", "pystray", "watchdog.observers", "sounddevice"):
+        assert dep in smoke.RUNTIME_MODULES
+    assert any(a.endswith("sample_clip.mp3") for a in smoke.REQUIRED_ASSETS)

@@ -12,6 +12,9 @@ on:
   push:
     branches: [macos-app-build]
 
+permissions:
+  contents: read
+
 jobs:
   build-app:
     name: Build + test macOS .app/.dmg (${{ matrix.arch }})
@@ -27,10 +30,10 @@ jobs:
             arch: x86_64
             suffix: x64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
 
@@ -51,7 +54,7 @@ jobs:
             -r requirements.slim.txt pyinstaller
           pip freeze | grep -iE '^(numpy|onnxruntime|ctranslate2|av|tokenizers|sherpa|faster|pyinstaller)'
 
-      # Self-contained ffmpeg/ffprobe/ffplay + yt-dlp. NOT Homebrew's ffmpeg:
+      # Self-contained ffmpeg/ffprobe + yt-dlp + deno. NOT Homebrew's ffmpeg:
       # it links ~18 dylibs under the Homebrew prefix that PyInstaller does
       # not bundle, and is built for the runner's own macOS (minos 15.0).
       - name: Fetch + verify self-contained bin/ tools
@@ -68,7 +71,7 @@ jobs:
 
       - name: Upload app logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: macos-logs-${{ matrix.arch }}
           path: ~/Library/Logs/WhisperTranscriberSuite/
@@ -84,7 +87,7 @@ jobs:
           bash platform/macos/pyinstaller/test_dmg.sh "dist/$out"
 
       - name: Upload .dmg
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: macos-dmg-${{ matrix.arch }}
           path: |

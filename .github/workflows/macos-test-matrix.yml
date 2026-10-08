@@ -14,6 +14,9 @@ on:
   push:
     branches: [macos-test]
 
+permissions:
+  contents: read
+
 jobs:
   matrix:
     name: ${{ matrix.os }} · py${{ matrix.python-version }}
@@ -24,8 +27,8 @@ jobs:
         os: [macos-15, macos-15-intel]
         python-version: ["3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -49,8 +52,8 @@ jobs:
     name: atomic per-file isolation + pyright (macos-15 / py3.12)
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
           cache: pip

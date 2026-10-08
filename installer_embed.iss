@@ -38,13 +38,20 @@ ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayName=Whisper Transcriber Suite
 UninstallDisplayIcon={app}\assets\whisper.ico
 SetupIconFile=assets\whisper.ico
+; An upgrade keeps the folder and the task choices of the installed version
+; (Inno's defaults, stated because PrepareToInstall relies on them).
+UsePreviousAppDir=yes
+UsePreviousTasks=yes
+; The app holds these mutexes while it runs (gui.py, _hold_app_mutex; the
+; Global one covers a copy in another user session); Setup and the
+; uninstaller ask the user to close it first. Versions up to 1.9.3 did not
+; create them.
+AppMutex=WhisperTranscriberSuiteRunning,Global\WhisperTranscriberSuiteRunning
 
 [Files]
+; embed_build\ already holds assets\ (icon, toolbar icons, sample clip), so
+; the installer and the Portable ZIP ship the same files.
 Source: "embed_build\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "assets\whisper.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
-Source: "assets\whisper.png"; DestDir: "{app}\assets"; Flags: ignoreversion
-Source: "assets\sample_clip.mp3"; DestDir: "{app}\assets"; Flags: ignoreversion
-Source: "assets\icons\*"; DestDir: "{app}\assets\icons"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Whisper Transcriber Suite {#MyAppVersion}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\gui.py"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\whisper.ico"
@@ -104,22 +111,87 @@ Type: files; Name: "{app}\no_tiling.flag"
 //  version's own uninstaller first (silently, before any new files are
 //  copied) removes that whole class of leftovers while keeping the
 //  one-click "no need to uninstall first" experience intact.
+//
+//  It runs in PrepareToInstall, after the user clicked Install: a
+//  cancelled wizard leaves the old version untouched. By then the
+//  wizard has read the previous folder and task choices from the old
+//  uninstall key (UsePreviousAppDir / UsePreviousTasks), so removing
+//  that key no longer resets them.
 // --------------------------------------------------------------------
+
+function UninstallKeyPath(AnAppId: String): String;
+begin
+  Result := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + AnAppId + '_is1';
+end;
 
 function GetUninstallStringForAppId(AnAppId: String): String;
 var
-  UninstPath, UninstString: String;
+  UninstString: String;
 begin
-  UninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + AnAppId + '_is1';
   UninstString := '';
-  if not RegQueryStringValue(HKLM, UninstPath, 'UninstallString', UninstString) then
-    RegQueryStringValue(HKLM32, UninstPath, 'UninstallString', UninstString);
+  if not RegQueryStringValue(HKLM, UninstallKeyPath(AnAppId), 'UninstallString', UninstString) then
+    RegQueryStringValue(HKLM32, UninstallKeyPath(AnAppId), 'UninstallString', UninstString);
   Result := UninstString;
+end;
+
+function UninstallKeyExists(AnAppId: String): Boolean;
+begin
+  Result := RegKeyExists(HKLM, UninstallKeyPath(AnAppId)) or
+            RegKeyExists(HKLM32, UninstallKeyPath(AnAppId));
+end;
+
+// The AppId as Windows stores it: SetupSetting returns the directive's raw
+// text with the doubled brace ("{{GUID}"); ExpandConstant turns it into
+// "{GUID}", the name of the real uninstall key.
+function ThisAppId(): String;
+begin
+  Result := ExpandConstant('{#SetupSetting("AppId")}');
 end;
 
 function GetUninstallString(): String;
 begin
-  Result := GetUninstallStringForAppId('{#SetupSetting("AppId")}');
+  Result := GetUninstallStringForAppId(ThisAppId());
+end;
+
+// Runs the uninstaller registered for AnAppId silently and returns '' when
+// it finished, else the reason (shown by PrepareToInstall, which then stops
+// before any file is copied). An Inno uninstaller relaunches itself from a
+// temp copy and the first process exits at once, so ewWaitUntilTerminated
+// alone returns while files are still being deleted: wait until the
+// uninstall key and the uninstaller itself are gone (at most 3 minutes).
+function RunOldUninstaller(AnAppId, What: String): String;
+var
+  UninstString: String;
+  ResultCode, i: Integer;
+begin
+  Result := '';
+  UninstString := RemoveQuotes(GetUninstallStringForAppId(AnAppId));
+  if UninstString = '' then
+    Exit;
+  if not FileExists(UninstString) then begin
+    // A broken old install (uninstaller deleted by hand): install over it.
+    Log('Uninstaller of ' + What + ' not found: ' + UninstString);
+    Exit;
+  end;
+  if not Exec(UninstString, '/SILENT /NORESTART /SUPPRESSMSGBOXES', '',
+              SW_HIDE, ewWaitUntilTerminated, ResultCode) then begin
+    Result := 'Setup could not start the uninstaller of ' + What + ': ' +
+              SysErrorMessage(ResultCode);
+    Exit;
+  end;
+  if ResultCode <> 0 then begin
+    Result := 'Removing ' + What + ' failed (exit code ' + IntToStr(ResultCode) + ').';
+    Exit;
+  end;
+  for i := 1 to 360 do begin
+    if not UninstallKeyExists(AnAppId) and not FileExists(UninstString) then begin
+      Log('Removed ' + What);
+      Exit;
+    end;
+    Sleep(500);
+  end;
+  Result := 'Removing ' + What + ' did not finish within 3 minutes. ' +
+            'Restart Windows and run Setup again.';
 end;
 
 // --------------------------------------------------------------------
@@ -141,10 +213,9 @@ const
 
 procedure MigrateOldAppData();
 var
-  OldDataDir, NewDataDir, UninstString: String;
+  OldDataDir, NewDataDir: String;
   DataFiles: TArrayOfString;
   i: Integer;
-  ResultCode: Integer;
 begin
   OldDataDir := ExpandConstant('{localappdata}\WhisperProject');
   NewDataDir := ExpandConstant('{localappdata}\WhisperTranscriberSuite');
@@ -178,37 +249,23 @@ begin
     end;
     Log('Migrated settings/history from ' + OldDataDir + ' to ' + NewDataDir);
   end;
-  UninstString := GetUninstallStringForAppId(OldAppId);
-  if UninstString = '' then
-    Exit;
-  UninstString := RemoveQuotes(UninstString);
-  if not Exec(UninstString, '/SILENT /NORESTART /SUPPRESSMSGBOXES', '',
-              SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-    Log('Could not run the old product''s uninstaller: ' + UninstString);
 end;
 
-function InitializeSetup(): Boolean;
-var
-  UninstString: String;
-  ResultCode: Integer;
+function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
-  Result := True;
   // Same-product upgrade (a newer Whisper Transcriber Suite over an
-  // older one) takes priority -- unchanged logic, now scoped to the
-  // new AppId. Only when there's no same-product predecessor do we
-  // check for the pre-rebrand "Whisper Project" product instead.
-  UninstString := GetUninstallString();
-  if UninstString <> '' then begin
-    UninstString := RemoveQuotes(UninstString);
-    // /SUPPRESSMSGBOXES auto-answers any Pascal MsgBox in the OLD
-    // uninstaller too; CurUninstallStepChanged below skips the hub-folder
-    // deletion prompt entirely when UninstallSilent() is true, so a model
-    // hub OUTSIDE the install dir survives this automatic step either way.
-    if not Exec(UninstString, '/SILENT /NORESTART /SUPPRESSMSGBOXES', '',
-                SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-      Log('Could not run the previous version''s uninstaller: ' + UninstString);
-  end else begin
+  // older one) takes priority. Only when there's no same-product
+  // predecessor do we check for the pre-rebrand "Whisper Project"
+  // product instead.
+  // /SUPPRESSMSGBOXES auto-answers any Pascal MsgBox in the OLD
+  // uninstaller too; CurUninstallStepChanged below skips the hub-folder
+  // deletion prompt entirely when UninstallSilent() is true, so a model
+  // hub OUTSIDE the install dir survives this automatic step either way.
+  if GetUninstallString() <> '' then
+    Result := RunOldUninstaller(ThisAppId(), 'the previous version')
+  else begin
     MigrateOldAppData();
+    Result := RunOldUninstaller(OldAppId, 'the old Whisper Project app');
   end;
 end;
 

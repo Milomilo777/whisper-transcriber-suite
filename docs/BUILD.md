@@ -211,8 +211,10 @@ which the app installs on demand (see the GPU note in
 clean `windows-latest` runner. It starts on a push to `master` that
 touches a build file (`build_embed_installer.bat`, `installer_embed.iss`,
 `requirements.txt`, `platform/windows/build-deps.json`, the helper
-scripts below or the workflow itself) and by hand from the Actions tab
-("Run workflow"). It:
+scripts below or the workflow itself) or what ships inside the build
+(`gui.py`, `app/`, `core/`, `assets/`), and by hand from the Actions tab
+("Run workflow"). A newer push waits for a running build instead of
+cancelling it. It:
 
 1. fetches every third-party download from
    `platform/windows/build-deps.json` — python-build-standalone,
@@ -226,10 +228,13 @@ scripts below or the workflow itself) and by hand from the Actions tab
 3. writes a file manifest (`tools/build_manifest.py`: path, size and
    SHA-256 of every file in `embed_build\` and `dist_installer\`) and the
    exact PyPI package versions of the run (`site-packages.txt`);
-4. installs the installer silently on the runner, checks the installed
+4. runs `tools/smoke_windows_install.py` on the Portable tree
+   (`embed_build\`), then installs the installer silently on the runner, checks the installed
    `bin\` against the pins, runs `tools/smoke_windows_install.py` with
-   the installed interpreter (version, runtime imports, Tcl/Tk, bundled
-   tools, diarization models, `gui.py --help`) and uninstalls it again;
+   the installed interpreter (version, runtime imports including the GUI
+   dependencies, an import of every `app.*` / `core.*` module, assets and
+   licence files, Tcl/Tk, bundled tools, diarization models,
+   `gui.py --help`) and uninstalls it again;
 5. uploads `windows-installer-<commit>` (installer + Portable ZIP) and
    `windows-build-manifest-<commit>` as workflow artifacts, kept 7 days.
 
