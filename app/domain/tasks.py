@@ -92,6 +92,7 @@ class VideoDownloadTask:
         # (app/services/subbed_video.py) while the row shows "burning".
         self.make_subbed_video: bool = make_subbed_video
         self.burn_progress: float = 0.0
+        self.chain_percent: float = 0.0
         self.burned_path: str | None = None
 
     def time_range_label(self) -> str | None:

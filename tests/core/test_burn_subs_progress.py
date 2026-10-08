@@ -19,6 +19,7 @@ from core import burn_subs
 from core.writers import srt as srt_writer
 
 _RLM = chr(0x200F)
+_WJ = chr(0x2060)
 
 # A stand-in for ffmpeg: writes part of the output, reports progress lines,
 # floods stderr, then exits with the given code or hangs.
@@ -47,7 +48,8 @@ def _files(tmp_path):
     return str(video), str(srt), str(tmp_path / "clip-subbed.mp4")
 
 
-def _use_fake(monkeypatch, *, steps=5, code=0, hang=False, flood=0, duration=10.0):
+def _use_fake(monkeypatch, *, steps=5, code=0, hang=False, flood=0, duration=10.0,
+              has_video=True, audio="aac"):
     real = burn_subs._run_ffmpeg
     seen: dict = {"procs": []}
 
@@ -68,7 +70,10 @@ def _use_fake(monkeypatch, *, steps=5, code=0, hang=False, flood=0, duration=10.
 
     monkeypatch.setattr(burn_subs, "_run_ffmpeg", run)
     monkeypatch.setattr(burn_subs, "bundled_binary", lambda name: "ffmpeg")
-    monkeypatch.setattr(burn_subs, "probe_duration", lambda path: duration)
+    monkeypatch.setattr(
+        burn_subs, "probe_media",
+        lambda path: burn_subs.MediaInfo(duration, has_video, audio),
+    )
     return seen
 
 
@@ -247,7 +252,10 @@ def _burned_texts(tmp_path, segments, prepare=None) -> list[str]:
     for seg, payload in zip(
         [s for s in segments if " ".join(str(s["text"]).split())], payloads
     ):
-        payload = payload.replace(_RLM, "")
+        # Undo the markup escape (core.burn_subs.escape_cue_text): the brace
+        # backslashes first, then the word joiners, then the RLM wrap.
+        payload = payload.replace("\\{", "{").replace("\\}", "}")
+        payload = payload.replace(_WJ, "").replace(_RLM, "")
         prefix = f"{seg['speaker']}: " if seg.get("speaker") else ""
         assert payload.startswith(prefix)
         texts.append(payload[len(prefix):].replace("\u2192", "-->"))
@@ -291,3 +299,13 @@ def test_round_trip_check_catches_a_broken_preparer(tmp_path):
     segments = [{"start": 0, "end": 1, "text": "\u0633\u0644\u0627\u0645 \u062f\u0646\u06cc\u0627"}]
     assert _burned_texts(tmp_path, segments) == _expected(segments)
     assert _burned_texts(tmp_path, segments, prepare=broken) != _expected(segments)
+
+
+def test_failed_run_never_reports_100(tmp_path, monkeypatch):
+    # ffmpeg prints "progress=end" on a failed run too.
+    _use_fake(monkeypatch, steps=3, code=1)
+    video, srt, out = _files(tmp_path)
+    got: list[float] = []
+    with pytest.raises(RuntimeError):
+        burn_subs.burn(video, srt, out, progress_cb=got.append, timeout=60)
+    assert got and max(got) < 100

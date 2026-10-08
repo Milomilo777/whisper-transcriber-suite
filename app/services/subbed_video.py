@@ -40,10 +40,41 @@ def chain_progress(status: str, stage_percent: float) -> float:
     return _DOWNLOAD_END * p / 100.0
 
 
+def rising_chain_progress(dl: Any, stage_percent: float) -> float:
+    """The row percent of a chained download, never lower than shown before
+    (yt-dlp reports the video and the audio stream each from 0 to 100)."""
+    if dl.status not in ("running", "transcribing", "burning", "finished"):
+        return float(dl.progress or 0)
+    value = max(float(getattr(dl, "chain_percent", 0.0) or 0.0),
+                chain_progress(dl.status, stage_percent))
+    dl.chain_percent = value
+    return value
+
+
 def subbed_output_path(media_path: str) -> str:
-    """``<stem>-subbed.mp4`` beside the media, or ``... (N).mp4`` if taken."""
+    """Reserve ``<stem>-subbed.mp4`` beside the media (``... (N).mp4`` if
+    taken) as an empty placeholder, so two chains of one title never share
+    a name; the burn replaces it, a failure removes it."""
     stem = os.path.splitext(media_path)[0]
-    return burn_subs.free_output_path(stem + SUBBED_SUFFIX + ".mp4")
+    return burn_subs.reserve_output_path(stem + SUBBED_SUFFIX + ".mp4")
+
+
+def has_no_video(path: str) -> bool:
+    """True only when ffprobe read *path* and found no video stream."""
+    return burn_subs.probe_media(path).has_video is False
+
+
+NO_VIDEO_ERROR = "The downloaded file has no video picture; no subtitled video was made."
+
+
+def refuse_without_video(app: Any, dl: Any, media: str) -> str:
+    """Before the transcription: the error text when the download has no
+    picture (the row is set to "error" and the log says why), else ""."""
+    if not has_no_video(media):
+        return ""
+    dl.status = "error"
+    app.log(f"Subtitled video not made: {NO_VIDEO_ERROR} The downloaded file is kept.")
+    return NO_VIDEO_ERROR
 
 
 def after_transcription(app: Any, dl: Any, tr: Any, finished: bool) -> None:
@@ -55,14 +86,14 @@ def after_transcription(app: Any, dl: Any, tr: Any, finished: bool) -> None:
     if not finished:
         status = "cancelled" if getattr(tr, "cancelled", False) else "error"
         reason = "was cancelled" if status == "cancelled" else "failed"
-        _end(app, dl, status, error=f"The transcription {reason}; no subtitled video was made.")
+        end_chain(app, dl, status, error=f"The transcription {reason}; no subtitled video was made.")
         return
     if getattr(tr, "no_speech", False):
-        _end(app, dl, "error", error="No speech was found; no subtitled video was made.")
+        end_chain(app, dl, "error", error="No speech was found; no subtitled video was made.")
         return
     srt = task_output_with_ext(tr, ".srt")
     if srt is None:
-        _end(app, dl, "error", error="The transcription wrote no .srt file; no subtitled video was made.")
+        end_chain(app, dl, "error", error="The transcription wrote no .srt file; no subtitled video was made.")
         return
     start_burn(app, dl, srt)
 
@@ -73,7 +104,7 @@ def start_burn(app: Any, dl: Any, srt_path: str) -> None:
 
     media = dl.saved_path
     if not media or not os.path.isfile(media):
-        _end(app, dl, "error", error="The downloaded file is gone; no subtitled video was made.")
+        end_chain(app, dl, "error", error="The downloaded file is gone; no subtitled video was made.")
         return
     out_path = subbed_output_path(media)
     dl.status = "burning"
@@ -101,20 +132,22 @@ def start_burn(app: Any, dl: Any, srt_path: str) -> None:
                 on_process=_on_process,
             )
         except burn_subs.BurnCancelled:
-            app.post_to_main(lambda: _end(app, dl, "cancelled"))
+            burn_subs.release_reserved_path(out_path)
+            app.post_to_main(lambda: end_chain(app, dl, "cancelled"))
         except Exception as e:  # noqa: BLE001 - reported on the row and in the log
+            burn_subs.release_reserved_path(out_path)
             logger.exception("Subtitle burn failed: file=%s out=%s", media, out_path)
             msg = f"Burning the subtitles failed: {e}"
-            app.post_to_main(lambda: _end(app, dl, "error", error=msg))
+            app.post_to_main(lambda: end_chain(app, dl, "error", error=msg))
         else:
-            app.post_to_main(lambda: _end(app, dl, "finished", burned=out_path))
+            app.post_to_main(lambda: end_chain(app, dl, "finished", burned=out_path))
         finally:
             dl.process = None
 
     safe_thread(_worker, name="burn-subs-chain")
 
 
-def _end(app: Any, dl: Any, status: str, *, error: str = "", burned: str = "") -> None:
+def end_chain(app: Any, dl: Any, status: str, *, error: str = "", burned: str = "") -> None:
     """Close the chained row: history first, then the row and the log."""
     media = getattr(dl, "saved_path", None)
     paths = [p for p in (media, burned) if p]

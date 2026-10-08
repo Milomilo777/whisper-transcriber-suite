@@ -17,8 +17,10 @@ The download row then goes through three stages, with one percent that only rise
 | transcribing | Whisper, with the Transcribe tab's settings (model, language, translation) | 40-85 |
 | burning | ffmpeg draws the SRT into a new video | 85-100 |
 
-The result is `<title>-subbed.mp4` next to the download. If that name is taken (an earlier run),
-the new file is `<title>-subbed (2).mp4`; an existing file is never replaced.
+The result is `<title>-subbed.mp4` next to the download. If that name is taken (an earlier run,
+or another job of the same title still burning), the new file is `<title>-subbed (2).mp4`; an
+existing file is never replaced. The name is reserved with an empty file the moment the burn
+starts, and that placeholder is removed again if no video is made.
 
 ## What is kept
 
@@ -26,7 +28,8 @@ the new file is `<title>-subbed (2).mp4`; an existing file is never replaced.
 - **Cancel** stops the stage that is running. During the burn it stops ffmpeg and removes only its
   half-written temp file (`.burn-*.mp4`).
 - A failed transcription or burn ends the row as `error` with the reason in the log; no partial
-  video is left behind. History records the downloaded file and, after a successful burn, the
+  video is left behind. A download that turns out to have no picture (an audio-only source) ends
+  as `error` right after the download, before any transcription. History records the downloaded file and, after a successful burn, the
   subtitled video too.
 
 ## Details
@@ -40,6 +43,13 @@ the new file is `<title>-subbed (2).mp4`; an existing file is never replaced.
 - Style: the classic look of the existing **Burn subtitles into video** action. On Windows,
   Persian and Arabic lines use Tahoma and Chinese uses Microsoft YaHei, and right-to-left lines
   keep their final punctuation on the correct side.
+- Text is drawn exactly as transcribed: braces, backslashes (`\N`) and HTML-like tags (`<i>`) in
+  the transcript are escaped, so libass does not read them as style commands.
+- The output is H.264 in 8-bit 4:2:0 with the MP4 index at the front, so phones, TVs and browsers
+  play it. The audio is copied when it is AAC, MP3, AC-3, E-AC-3 or ALAC, and re-encoded to AAC
+  otherwise (Opus, Vorbis, FLAC and PCM in MP4 play in few players).
+- When ffprobe cannot read the video's length, the burn shows no percent (the row stays at 85%
+  with a moving bar) until it ends.
 - The re-encode takes about 2x the video's length on an 8-thread CPU. The time limit is three
   times the video's length, at least one hour.
 - The download queue moves on to the next link while an earlier one transcribes or burns.

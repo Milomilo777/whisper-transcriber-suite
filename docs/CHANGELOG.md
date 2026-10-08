@@ -11,6 +11,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   then to ffmpeg, and the row shows `running`, `transcribing`, `burning` with one rising percent and a
   working Cancel. The download and the transcript are always kept, an existing `-subbed.mp4` is never
   replaced (`-subbed (2).mp4`), and a failure leaves no partial video (`docs/SUBTITLED_VIDEO.md`).
+  Braces, backslashes and `<i>`-style tags in a transcript are drawn as text instead of being read
+  as libass style commands, and the burned MP4 uses 8-bit H.264 with AAC audio when the source
+  audio would not play inside an MP4.
 - **Shareable web page of a transcript.** The transcript viewer and the Last Result card have a
   **Save shareable page** button that saves one `.html` file that opens in any browser with no
   install and no internet connection: timestamps, speakers, chapters, a search box with

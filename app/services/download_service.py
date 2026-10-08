@@ -2468,6 +2468,15 @@ class DownloadService:
             logger.exception("Could not record the download in history")
             task.history_id = 0
 
+    def _subbed_without_video(self, task: "VideoDownloadTask", saved_path: str) -> str:
+        """A "Make subtitled video" download with no picture: the row ends as
+        an error here, before a transcription that could not be used. Returns
+        the error text, or "" when the chain may go on."""
+        if not getattr(task, "make_subbed_video", False):
+            return ""
+        from app.services import subbed_video
+        return subbed_video.refuse_without_video(self.app, task, saved_path)
+
     def _finish_history(
         self, task: "VideoDownloadTask", status: str, output_paths: list[str],
         *, error: str = "",
@@ -2566,6 +2575,8 @@ class DownloadService:
 
     def _finish(self, task: "VideoDownloadTask", status: str, saved_path: str | None) -> None:
         app = self.app
+        # Set when a "Make subtitled video" download turns out to have no picture.
+        chain_error = ""
         # Stale-pause guard: a paused task that the user already resumed has
         # been re-dispatched (status running/waiting) and may even be the
         # current download again. The torn-down thread's late "paused" event
@@ -2685,6 +2696,7 @@ class DownloadService:
                 )
                 and saved_path
                 and not getattr(task, "caption_only", False)
+                and not (chain_error := self._subbed_without_video(task, saved_path))
             ):
                 try:
                     app.enqueue_transcription_from_download(
@@ -2699,7 +2711,10 @@ class DownloadService:
                 except Exception as e:  # noqa: BLE001
                     app.log(f"Auto-transcribe wiring failed: {e}")
         # Phase 3a — finalise the history row.
-        self._finish_history(task, status, [saved_path] if saved_path else [])
+        self._finish_history(
+            task, "error" if chain_error else status,
+            [saved_path] if saved_path else [], error=chain_error,
+        )
         if app.download_current is task:
             app.download_current = None
         self.process_queue()

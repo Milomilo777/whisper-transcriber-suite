@@ -3671,10 +3671,21 @@ class App(tk.Tk):
 
         def _on_timeout() -> None:
             self.log(f"Auto-transcribe skipped: model load timed out for {base} — {HEADLESS_READY_TIMEOUT_S} s")
-            if source_download is not None:
+            if source_download is None:
+                return
+            source_download.transcription_task = None
+            if getattr(source_download, "status", None) in ("cancelled", "error"):
+                pass  # the user's Cancel (or an error) stands
+            elif getattr(source_download, "make_subbed_video", False):
+                from app.services.subbed_video import end_chain
+                end_chain(
+                    self, source_download, "error",
+                    error="The Whisper model did not load in time; no subtitled video was made.",
+                )
+                return
+            else:
                 source_download.status = "finished"
-                source_download.transcription_task = None
-                self.refresh_download_queue()
+            self.refresh_download_queue()
 
         self._when_worker_ready(
             _enqueue,
@@ -3988,7 +3999,7 @@ class App(tk.Tk):
         m.tk_popup(e.x_root, e.y_root)
 
     def _bulk_download_menu(self, tasks: list[Any], e: tk.Event) -> None:
-        active = [t for t in tasks if t.status in ("waiting", "running")]
+        active = [t for t in tasks if t.status in ("waiting", "running", "transcribing", "burning")]
         terminal = [t for t in tasks if t.status in ("finished", "cancelled", "error")]
         if not active and not terminal:
             return
@@ -4424,9 +4435,25 @@ class App(tk.Tk):
         # still reaps a worker that wedges instead of honouring the cancel.
         if not self.transcription_service.send_control(t, "cancel"):
             self.log("Cancelled (task was not yet running on a worker).")
+            # No worker will report this task, so finish_task never runs:
+            # release the Download row that waits on it here.
+            self._release_waiting_download(t)
         else:
             self.log("Cancelling task; saving a resume checkpoint...")
         self.refresh()
+
+    def _release_waiting_download(self, t: TranscriptionTask) -> None:
+        dl = getattr(t, "source_download", None)
+        if dl is None or getattr(dl, "status", None) != "transcribing":
+            return
+        t.source_download = None
+        dl.transcription_task = None
+        if getattr(dl, "make_subbed_video", False):
+            from app.services.subbed_video import after_transcription
+            after_transcription(self, dl, t, False)
+            return
+        dl.status = "finished"
+        self.refresh_download_queue()
 
     def remove_task(self, t: TranscriptionTask) -> None:
         if t in self.queue:
@@ -4776,14 +4803,11 @@ class App(tk.Tk):
         # linked transcription's live progress (else it sits at 100%).
         tr = getattr(task, "transcription_task", None)
         if getattr(task, "make_subbed_video", False):
-            from app.services.subbed_video import chain_progress
-            if task.status == "transcribing":
-                return chain_progress("transcribing", tr.progress if tr is not None else 0)
-            if task.status == "burning":
-                return chain_progress("burning", getattr(task, "burn_progress", 0.0))
-            if task.status == "running":
-                return chain_progress("running", task.progress)
-            return task.progress
+            from app.services.subbed_video import rising_chain_progress
+            stage = tr.progress if task.status == "transcribing" and tr is not None else (
+                getattr(task, "burn_progress", 0.0) if task.status == "burning" else task.progress
+            )
+            return rising_chain_progress(task, stage)
         if task.status == "transcribing" and tr is not None:
             return tr.progress
         return task.progress

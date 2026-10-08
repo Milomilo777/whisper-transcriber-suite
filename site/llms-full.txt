@@ -149,6 +149,9 @@ is needed.
   over (default engine).
 - **Online videos:** download from any site [yt-dlp](https://github.com/yt-dlp/yt-dlp)
   supports and transcribe when the download finishes.
+- **Link to subtitled video:** one tick turns a link into `<title>-subbed.mp4`
+  with the subtitles burned in: download, transcribe and burn in one queued job
+  ([docs/SUBTITLED_VIDEO.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SUBTITLED_VIDEO.md)).
 - **Live:** transcribe a microphone, or the system audio on Windows, as it
   happens ([docs/LIVE.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/LIVE.md)).
 - **Batch queue and watched folder** for many files.

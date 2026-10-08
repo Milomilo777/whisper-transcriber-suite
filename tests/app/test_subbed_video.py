@@ -380,3 +380,54 @@ def test_audio_mode_is_refused_before_anything_downloads(tmp_path, monkeypatch):
 
     assert app.download_queue == []
     assert warned and "Audio and video" in warned[0][1]
+
+
+# -- review fixes ----------------------------------------------------------------
+
+def test_two_chains_of_one_title_get_two_names(tmp_path, media, monkeypatch):
+    first = subbed_video.subbed_output_path(media)
+    second = subbed_video.subbed_output_path(media)
+    assert first != second
+    assert os.path.basename(second) == "Talk [x]-subbed (2).mp4"
+
+
+def test_download_without_picture_ends_before_transcription(tmp_path, media, monkeypatch):
+    monkeypatch.setattr(burn_subs, "probe_media", lambda p: burn_subs.MediaInfo(5.0, False, "aac"))
+    app = _App()
+    svc = DownloadService(app)  # type: ignore[arg-type]
+    monkeypatch.setattr(svc, "_finish_history", app._finish_history)
+    task = _download_task()
+
+    svc._finish(task, "finished", saved_path=media)  # type: ignore[arg-type]
+
+    assert app.enqueued == []
+    assert task.status == "error"
+    assert app.history_rows == [("error", [media], subbed_video.NO_VIDEO_ERROR)]
+
+
+def test_row_percent_never_drops_while_streams_download():
+    dl = SimpleNamespace(status="running", progress=100, chain_percent=0.0)
+    assert subbed_video.rising_chain_progress(dl, 100) == 40.0
+    dl.progress = 5  # yt-dlp starts the audio stream at 0 again
+    assert subbed_video.rising_chain_progress(dl, 5) == 40.0
+    dl.status = "transcribing"
+    assert subbed_video.rising_chain_progress(dl, 0) == 40.0
+    assert subbed_video.rising_chain_progress(dl, 100) == 85.0
+    dl.status = "cancelled"
+    assert subbed_video.rising_chain_progress(dl, 0) == 5
+
+
+def test_cancelling_a_waiting_transcription_releases_the_chain_row(tmp_path, media, monkeypatch, sync_threads):
+    from app.app import App
+
+    monkeypatch.setattr(burn_subs, "burn", lambda *a, **k: pytest.fail("no burn"))
+    app, dl = _App(), _dl(media)
+    tr = _tr(cancelled=True, status="cancelled")
+    tr.source_download = dl
+    dl.transcription_task = tr
+
+    App._release_waiting_download(app, tr)  # type: ignore[arg-type]
+
+    assert dl.status == "cancelled"
+    assert tr.source_download is None and dl.transcription_task is None
+    assert app.history_rows[-1][:2] == ("cancelled", [media])

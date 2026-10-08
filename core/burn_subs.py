@@ -15,6 +15,7 @@ an AAC re-encode when it does not (e.g. an Opus track from a downloaded
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import shutil
@@ -22,7 +23,7 @@ import subprocess
 import tempfile
 import threading
 import time
-from typing import Any, Callable
+from typing import Any, Callable, NamedTuple
 
 from ._proc import kill_process_tree, new_session_kwargs
 from .paths import bundled_binary
@@ -48,6 +49,11 @@ def _container_rejected_audio(stderr_text: str) -> bool:
     """True when ffmpeg's stderr is the container/codec-incompatibility error."""
     s = (stderr_text or "").lower()
     return any(hint in s for hint in _CONTAINER_AUDIO_HINTS)
+
+
+# Audio codecs an MP4 carries that common players (phones, TVs, QuickTime)
+# play; anything else is re-encoded to AAC.
+_MP4_PLAYABLE_AUDIO = frozenset({"aac", "mp3", "ac3", "eac3", "alac"})
 
 
 def _extra_args_set_audio_codec(extra_args: list[str] | None) -> bool:
@@ -164,8 +170,16 @@ def burn_timeout(duration_s: float) -> float:
     return max(_MIN_TIMEOUT_S, _TIMEOUT_PER_MEDIA_SECOND * max(0.0, duration_s))
 
 
-def probe_duration(path: str) -> float:
-    """The media duration in seconds from ffprobe, or 0.0 when unknown."""
+class MediaInfo(NamedTuple):
+    """What ffprobe reported: ``has_video`` is None when the probe failed."""
+
+    duration: float
+    has_video: bool | None
+    audio_codec: str
+
+
+def probe_media(path: str) -> MediaInfo:
+    """Duration, video presence and first audio codec of *path* (one ffprobe)."""
     kwargs: dict[str, Any] = {
         "stdout": subprocess.PIPE,
         "stderr": subprocess.DEVNULL,
@@ -176,15 +190,35 @@ def probe_duration(path: str) -> float:
     try:
         r = subprocess.run(
             [bundled_binary("ffprobe"), "-v", "error",
-             "-show_entries", "format=duration",
-             "-of", "default=noprint_wrappers=1:nokey=1", path],
+             "-show_entries", "format=duration:stream=codec_type,codec_name",
+             "-of", "json", path],
             **kwargs,
         )
-        value = float((r.stdout or b"").decode("ascii", "replace").strip())
+        if r.returncode != 0:
+            raise ValueError(f"ffprobe exit {r.returncode}")
+        data = json.loads((r.stdout or b"").decode("utf-8", "replace"))
     except (OSError, ValueError, subprocess.SubprocessError) as e:
-        logger.warning("Subtitle burn: no duration for %s (%s)", path, e)
-        return 0.0
-    return value if value > 0 else 0.0
+        logger.warning("Subtitle burn: could not probe %s (%s)", path, e)
+        return MediaInfo(0.0, None, "")
+    streams = data.get("streams") or []
+    try:
+        duration = float((data.get("format") or {}).get("duration") or 0.0)
+    except (TypeError, ValueError):
+        duration = 0.0
+    audio = next(
+        (str(st.get("codec_name") or "") for st in streams if st.get("codec_type") == "audio"),
+        "",
+    )
+    return MediaInfo(
+        duration if duration > 0 else 0.0,
+        any(st.get("codec_type") == "video" for st in streams),
+        audio,
+    )
+
+
+def probe_duration(path: str) -> float:
+    """The media duration in seconds from ffprobe, or 0.0 when unknown."""
+    return probe_media(path).duration
 
 
 def free_output_path(path: str) -> str:
@@ -199,6 +233,33 @@ def free_output_path(path: str) -> str:
     while os.path.lexists(f"{stem} ({n}){ext}"):
         n += 1
     return f"{stem} ({n}){ext}"
+
+
+def reserve_output_path(path: str) -> str:
+    """Like ``free_output_path`` but creates the file empty (exclusive create),
+    so two jobs started at once never pick the same name. ``burn()`` then
+    replaces this placeholder; ``release_reserved_path`` removes it when no
+    video was made."""
+    stem, ext = os.path.splitext(path)
+    candidate, n = path, 2
+    while True:
+        try:
+            fd = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            candidate = f"{stem} ({n}){ext}"
+            n += 1
+            continue
+        os.close(fd)
+        return candidate
+
+
+def release_reserved_path(path: str) -> None:
+    """Remove a placeholder from ``reserve_output_path`` if it is still empty."""
+    try:
+        if os.path.isfile(path) and os.path.getsize(path) == 0:
+            os.unlink(path)
+    except OSError:
+        logger.warning("Could not remove the empty placeholder %s", path)
 
 
 def parse_progress_seconds(line: str) -> float | None:
@@ -259,13 +320,12 @@ def _run_ffmpeg(
             line = raw.decode("ascii", "replace")
             if progress_cb is None:
                 continue
-            if line.strip() == "progress=end":
-                pct = 100.0
-            else:
-                secs = parse_progress_seconds(line)
-                if secs is None or duration_s <= 0:
-                    continue
-                pct = min(99.0, 100.0 * secs / duration_s)
+            # "progress=end" also ends a FAILED run, so 100 is only reported
+            # after a zero exit (below).
+            secs = parse_progress_seconds(line)
+            if secs is None or duration_s <= 0:
+                continue
+            pct = min(99.0, 100.0 * secs / duration_s)
             if pct > last:
                 last = pct
                 progress_cb(pct)
@@ -304,6 +364,8 @@ def _run_ffmpeg(
         raise subprocess.CalledProcessError(
             proc.returncode, cmd, b"", bytes(stderr_tail)
         )
+    if progress_cb is not None:
+        progress_cb(100.0)
 
 
 def _same_path(a: str, b: str) -> bool:
@@ -316,8 +378,47 @@ def _same_path(a: str, b: str) -> bool:
     return os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b))
 
 
+_WJ = chr(0x2060)  # WORD JOINER: invisible, breaks a libass "\N"-style code
+_BACKSLASH = chr(92)
+_SRT_TIMING_ARROW = "-->"
+
+
+def escape_cue_text(line: str) -> str:
+    """Make one SRT cue line render as written, not as libass/ffmpeg markup.
+
+    ffmpeg turns SRT into ASS, so ``{...}`` is an override block (``{\\an8}``
+    moved a cue to the top, ``{x}`` vanished), ``\\N`` / ``\\n`` / ``\\h``
+    are a line break or a space, and ``<i>``/``<b>``/``<font>`` are HTML-like
+    tags. Braces get a backslash escape; a backslash and a ``<`` before a
+    letter or ``/`` get an invisible WORD JOINER after them. Undo: drop
+    ``\\`` before ``{``/``}`` first, then every U+2060.
+    """
+    out: list[str] = []
+    for i, ch in enumerate(line):
+        if ch in "{}":
+            out.append(_BACKSLASH + ch)
+        elif ch == _BACKSLASH:
+            out.append(ch + _WJ)
+        elif ch == "<" and (line[i + 1:i + 2].isalpha() or line[i + 1:i + 2] == "/"):
+            out.append(ch + _WJ)
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def escape_srt_markup(text: str) -> str:
+    """``escape_cue_text`` on every cue line; index and timing lines unchanged."""
+    lines = text.split("\n")
+    for n, line in enumerate(lines):
+        if _SRT_TIMING_ARROW in line or line.strip().isdigit():
+            continue
+        lines[n] = escape_cue_text(line)
+    return "\n".join(lines)
+
+
 def _prepare_srt(srt_path: str, safe_srt_file: str) -> str:
-    """Copy the SRT for ffmpeg with RTL lines wrapped; return its forced font.
+    """Copy the SRT for ffmpeg with markup escaped and RTL lines wrapped;
+    return its forced font.
 
     A file that is not UTF-8 is copied byte for byte (ffmpeg reads it as
     before) with no wrap and no forced font.
@@ -333,7 +434,7 @@ def _prepare_srt(srt_path: str, safe_srt_file: str) -> str:
         shutil.copyfile(srt_path, safe_srt_file)
         return ""
     with open(safe_srt_file, "w", encoding="utf-8", newline="") as f:
-        f.write(wrap_rtl_lines(text))
+        f.write(wrap_rtl_lines(escape_srt_markup(text)))
     return subtitle_font_for(text)
 
 
@@ -374,7 +475,13 @@ def burn(
                 f"The output file must differ from the source: {out_path}"
             )
     video_path = os.path.abspath(video_path)
-    duration_s = probe_duration(video_path)
+    info = probe_media(video_path)
+    if info.has_video is False:
+        raise ValueError(
+            "This file has no video picture to burn the subtitles into: "
+            f"{video_path}"
+        )
+    duration_s = info.duration
     if timeout is None:
         timeout = burn_timeout(duration_s)
 
@@ -411,6 +518,7 @@ def burn(
             dir=out_dir,
         )
         os.close(fd)
+        is_mp4 = os.path.splitext(out_path)[1].lower() in (".mp4", ".m4v", ".mov")
 
         def _cmd(audio_codec: str) -> list[str]:
             # -c:a first so caller-supplied extra_args keep their original
@@ -421,18 +529,31 @@ def burn(
                 "-i", video_path,
                 "-vf", subtitle_filter,
                 "-c:a", audio_codec,
+                # 8-bit 4:2:0 H.264 plays everywhere (a 10-bit or 4:4:4
+                # source otherwise gives a profile phones and TVs refuse).
+                "-pix_fmt", "yuv420p",
                 "-progress", "pipe:1",
                 "-nostats",
             ]
+            if is_mp4:
+                cmd += ["-movflags", "+faststart"]
             if extra_args:
                 cmd.extend(extra_args)
             cmd.append(tmp_out)
             return cmd
 
+        best = [-1.0]
+
+        def _rising(pct: float) -> None:
+            # The AAC retry is a second ffmpeg run starting at 0 again.
+            if progress_cb is not None and pct > best[0]:
+                best[0] = pct
+                progress_cb(pct)
+
         kwargs: dict[str, Any] = {
             "cwd": tmp_dir,
             "duration_s": duration_s,
-            "progress_cb": progress_cb,
+            "progress_cb": _rising if progress_cb is not None else None,
             "cancel_check": cancel_check,
             "on_process": on_process,
         }
@@ -445,7 +566,12 @@ def burn(
         # when the caller set its own audio codec, which we must not override.
         codecs = ["copy"]
         if not _extra_args_set_audio_codec(extra_args):
-            codecs.append("aac")
+            if is_mp4 and info.audio_codec and info.audio_codec not in _MP4_PLAYABLE_AUDIO:
+                # ffmpeg accepts Opus/Vorbis/FLAC/PCM in MP4, but most
+                # players do not play them there.
+                codecs = ["aac"]
+            else:
+                codecs.append("aac")
         for codec in codecs:
             if cancel_check is not None and cancel_check():
                 raise BurnCancelled("Subtitle burn cancelled")
