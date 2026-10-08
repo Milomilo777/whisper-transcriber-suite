@@ -37,7 +37,9 @@ is needed.
   recognises (the app's own interface is in English). Uses an NVIDIA GPU
   through CUDA when it can, otherwise the CPU.
 - **14 output formats:** SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and
-  PDF, plus the oTranscribe, ELAN, InqScribe and Express Scribe formats.
+  PDF, plus the oTranscribe, ELAN, InqScribe and Express Scribe formats. DOCX
+  and PDF draw every script, and Persian, Arabic and Urdu read right to left
+  with joined letters.
 - **Speaker labels** without a Hugging Face account, plus word timestamps and
   time-range clipping.
 - **Interrupted jobs resume** from their last checkpoint instead of starting
