@@ -44,6 +44,7 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any, Optional
 
 from app.dialogs import share_page
+from app import shortcuts
 from app.dpi import px, scaled_size
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
@@ -544,6 +545,42 @@ def _vlc_plugins_dir(d: str) -> str | None:
     return None
 
 
+def _vlc_missing_hint(platform: str) -> str:
+    """User-facing text for "libvlc could not be loaded".
+
+    Only Windows has the 32-bit/64-bit VLC mix-up (the app is 64-bit there);
+    macOS and Linux get platform-neutral wording.
+    """
+    if platform == "win32":
+        return (
+            "VLC media player isn't installed (or is the 32-bit build — "
+            "this app is 64-bit and needs the 64-bit VLC). Install the "
+            "64-bit VLC to enable embedded playback. The viewer still "
+            "works in read-only mode."
+        )
+    return (
+        "VLC media player isn't installed (or doesn't match this "
+        "computer's architecture). Install VLC to enable embedded "
+        "playback. The viewer still works in read-only mode."
+    )
+
+
+def _vlc_start_failed_hint(platform: str) -> str:
+    """User-facing text for "libvlc loaded but vlc.Instance() failed"."""
+    if platform == "win32":
+        return (
+            "VLC loaded but could not start (its plugins may be missing or "
+            "the architecture doesn't match — this app is 64-bit). "
+            "Reinstall the 64-bit VLC to enable embedded playback. The "
+            "viewer still works in read-only mode."
+        )
+    return (
+        "VLC loaded but could not start (its plugins may be missing or "
+        "the architecture doesn't match). Reinstall VLC to enable "
+        "embedded playback. The viewer still works in read-only mode."
+    )
+
+
 def _try_load_vlc() -> tuple[Any, str]:
     """Return ``(vlc_module_or_None, error_message)``.
 
@@ -575,12 +612,7 @@ def _try_load_vlc() -> tuple[Any, str]:
     except OSError:
         # libvlc.dll not loadable — either VLC isn't installed, or it's the
         # wrong architecture (this app is 64-bit, so it needs 64-bit VLC).
-        return None, (
-            "VLC media player isn't installed (or is the 32-bit build — "
-            "this app is 64-bit and needs the 64-bit VLC). Install the "
-            "64-bit VLC to enable embedded playback. The viewer still "
-            "works in read-only mode."
-        )
+        return None, _vlc_missing_hint(sys.platform)
     try:
         inst = vlc.Instance()
         if inst is None:
@@ -595,12 +627,7 @@ def _try_load_vlc() -> tuple[Any, str]:
             pass
         return vlc, ""
     except Exception:  # noqa: BLE001
-        return None, (
-            "VLC loaded but could not start (its plugins may be missing or "
-            "the architecture doesn't match — this app is 64-bit). "
-            "Reinstall the 64-bit VLC to enable embedded playback. The "
-            "viewer still works in read-only mode."
-        )
+        return None, _vlc_start_failed_hint(sys.platform)
 
 
 def _set_segment_text(seg: dict[str, Any], text: str) -> None:
@@ -731,10 +758,8 @@ class TranscriptViewer(tk.Toplevel):
             self._select_segment_near(initial_seek_seconds)
 
         # Find-and-replace shortcut.
-        self.bind("<Control-f>", lambda _e: self._open_find_replace())
-        self.bind("<Control-F>", lambda _e: self._open_find_replace())
-        self.bind("<Control-s>", lambda _e: self._save_changes())
-        self.bind("<Control-S>", lambda _e: self._save_changes())
+        shortcuts.bind_shortcut(self, "f", self._open_find_replace)
+        shortcuts.bind_shortcut(self, "s", self._save_changes)
 
         # Transport keyboard niceties — bound to THIS Toplevel only (not
         # bind_all) so they don't leak into the main app window. Left /
@@ -805,7 +830,7 @@ class TranscriptViewer(tk.Toplevel):
 
         # Edit tools group
         ttk.Separator(toolbar, orient="vertical").pack(side="left", padx=8, fill="y")
-        ttk.Button(toolbar, text="Find & Replace  (Ctrl+F)",
+        ttk.Button(toolbar, text=f"Find & Replace  ({shortcuts.accel_text('f')})",
                    command=self._open_find_replace).pack(side="left", padx=(0, 4))
         ttk.Button(toolbar, text="Remove fillers",
                    command=self._remove_fillers).pack(side="left", padx=(0, 4))
@@ -817,7 +842,7 @@ class TranscriptViewer(tk.Toplevel):
             "punctuation stays. Languages without a list are left alone. "
             "Review the segment list before saving (there is no undo).",
         ).pack(side="left", padx=(0, 4))
-        ttk.Button(toolbar, text="Save changes  (Ctrl+S)",
+        ttk.Button(toolbar, text=f"Save changes  ({shortcuts.accel_text('s')})",
                    command=self._save_changes).pack(side="left", padx=(0, 4))
 
         # Body: left = segment list, right = media controls
@@ -1834,7 +1859,7 @@ class TranscriptViewer(tk.Toplevel):
             self._populate_listbox()
             notify(
                 self,
-                f"Renamed {renamed} segment(s). Use Save changes (Ctrl+S) to write.",
+                f"Renamed {renamed} segment(s). Use Save changes ({shortcuts.accel_text('s')}) to write.",
                 "success",
             )
 
@@ -1874,7 +1899,7 @@ class TranscriptViewer(tk.Toplevel):
             self._populate_listbox()
         notify(
             self,
-            f"Fillers removed: updated {changed} segment(s). Use Save changes (Ctrl+S) to write.",
+            f"Fillers removed: updated {changed} segment(s). Use Save changes ({shortcuts.accel_text('s')}) to write.",
             "success" if changed else "info",
         )
 

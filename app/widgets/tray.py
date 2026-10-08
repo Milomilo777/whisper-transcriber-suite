@@ -18,6 +18,8 @@ import sys
 import threading
 from typing import TYPE_CHECKING, Any
 
+from app import shortcuts
+
 if TYPE_CHECKING:
     from app.app import App
 
@@ -139,7 +141,7 @@ class TrayController:
                                        default=True),
                 self._pystray.MenuItem("Hide", lambda _i, _e: self._post(self._hide_window)),
                 self._pystray.Menu.SEPARATOR,
-                self._pystray.MenuItem("Exit", lambda _i, _e: self._post(self._exit_app)),
+                self._pystray.MenuItem(shortcuts.quit_label(), lambda _i, _e: self._post(self._exit_app)),
             )
             self._icon = self._pystray.Icon(
                 "WhisperTranscriberSuite",
