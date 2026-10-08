@@ -1026,7 +1026,6 @@ class App(tk.Tk):
         # Ctrl+Q always exits — same convention as File→Exit.
         self.bind("<Control-q>", lambda _e: self._force_exit())
         self.bind("<Control-Q>", lambda _e: self._force_exit())
-        self._install_quit_handler()
 
         # Opt-in drag-and-drop on the main window. tkinterdnd2 is in
         # requirements.txt but the desktop app stays usable even if
@@ -1044,6 +1043,9 @@ class App(tk.Tk):
         # touching destroyed widgets. Keep watched_after_ids so
         # each path only schedules ONE stability-check ladder.
         self._closing = False
+        # Cmd+Q / app-menu Quit / Dock Quit (macOS) reach on_exit, which reads
+        # tray, _exit_from_tray and _closing: install only once they exist.
+        self._install_quit_handler()
         # Last error text per loop() step, so a step that keeps failing is
         # logged once instead of twice a second (see _log_loop_error).
         self._loop_errors: dict[str, str] = {}
@@ -2116,6 +2118,12 @@ class App(tk.Tk):
                 self.transcription_service.stop_all()
             except Exception:  # noqa: BLE001
                 logger.exception("Could not stop the transcription workers on exit")
+            # A job that finished inside the stop window has its outputs on disk:
+            # record it as finished so the next launch does not offer it again.
+            try:
+                self.transcription_service.settle_done_on_exit()
+            except Exception:  # noqa: BLE001
+                logger.exception("Could not record jobs that finished during exit")
             # Close the history DB connection (and checkpoint its WAL) on a
             # clean exit — the GUI never did, leaking the connection + the
             # -wal/-shm sidecars until interpreter teardown. Mirrors gui.py.

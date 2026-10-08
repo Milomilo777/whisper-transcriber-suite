@@ -313,7 +313,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   first-run model window, Live tab) runs on library threads that cannot be interrupted, and Python
   waited for them at exit: the window was gone but the process lived on, holding the single-instance
   lock, until the whole model had arrived. The process now ends right after the orderly shutdown
-  (logs flushed first); an unfinished download resumes the next time.
+  (logs flushed first); an unfinished download resumes the next time. Quitting also asks a running
+  job to cancel before shutting its worker down, so the resume checkpoint is written (it was lost
+  when the worker was killed after 5 s), and a job that finishes during the exit is recorded as
+  finished instead of being offered for resume again.
 
 - **Worker output pipe on Windows.** A closed pipe is `OSError(22)` there, not `BrokenPipeError`, so
   the quiet handling added for macOS did nothing; it now covers both when the stream is the
