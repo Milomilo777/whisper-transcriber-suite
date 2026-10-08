@@ -451,9 +451,63 @@
     // name derives from the uploaded / downloaded media filename, which a
     // non-Windows host can store with characters like "<" intact — escape
     // it like every other untrusted string that lands in innerHTML.
-    var href = "/api/jobs/" + jobId + "/result?fmt=" + encodeURIComponent(fmt) +
-      tokenQuery("&");
-    return '<a href="' + href + '" download>' + escapeHtml(name) + "</a>";
+    // The href never carries the password: a ?token= address lands in the
+    // browser history, the file's download-source mark and proxy logs. With a
+    // password set, the click handler below fetches the file with the
+    // X-Auth-Token header instead; without one the plain link just works.
+    var href = "/api/jobs/" + jobId + "/result?fmt=" + encodeURIComponent(fmt);
+    return '<a class="dl" href="' + escapeHtml(href) + '" data-name="' +
+      escapeHtml(name) + '" download>' + escapeHtml(name) + "</a>";
+  }
+
+  // Download a result with the password in a header and save it from a Blob.
+  document.addEventListener("click", function (ev) {
+    var node = ev.target;
+    while (node && node.nodeType === 1 && !(node.tagName === "A" && node.className === "dl")) {
+      node = node.parentNode;
+    }
+    if (!node || node.nodeType !== 1 || !tokenVal()) { return; }
+    var href = node.getAttribute("href");
+    if (!(window.fetch && window.Blob && window.URL && URL.createObjectURL)) {
+      // A browser that cannot do it: fall back to the address form.
+      node.setAttribute("href", href + tokenQuery("&"));
+      return;
+    }
+    ev.preventDefault();
+    var saveAs = node.getAttribute("data-name") || "transcript";
+    fetch(href, { headers: authHeaders() })
+      .then(function (r) {
+        if (!r.ok) { var bad = new Error("HTTP"); bad.status = r.status; throw bad; }
+        return r.blob();
+      })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var tmp = document.createElement("a");
+        tmp.href = url;
+        tmp.download = saveAs;
+        document.body.appendChild(tmp);
+        tmp.click();
+        document.body.removeChild(tmp);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+      })
+      .catch(function (e) { window.alert(downloadFailure(e)); });
+  });
+
+  // Say why a download failed, in words a person can act on.
+  function downloadFailure(e) {
+    var s = e && e.status;
+    if (s === 401) { return "The download was refused: wrong or missing password. Check the Auth token box."; }
+    if (s === 403) { return "The download was refused by the server's browser protections."; }
+    if (s === 404) { return "That file is no longer available (the job was removed or the server restarted)."; }
+    if (s) { return "The server answered HTTP " + s + " instead of the file."; }
+    return "Could not reach the server. Check the connection and try again.";
+  }
+
+  // With a password set a plain link cannot carry it, so say what still works.
+  function linksHint() {
+    if (!tokenVal()) { return ""; }
+    return '<p class="note">A password is set: click a file name to download it. ' +
+      '"Open in new tab" and "Save link as" cannot send the password and will be refused.</p>';
   }
 
   function renderSubmit(jobId, j) {
@@ -469,7 +523,7 @@
     if (j.outputs && j.outputs.length) {
       html += '<div class="links">';
       j.outputs.forEach(function (o) { html += downloadLink(jobId, o.fmt, o.name); });
-      html += "</div>";
+      html += "</div>" + linksHint();
       html += '<p class="note"><a data-open="' + jobId + '" class="openresult">View transcript →</a></p>';
     }
     setSubmitStatus(html);
@@ -586,7 +640,7 @@
     if (j.outputs && j.outputs.length) {
       html += '<div class="links">';
       j.outputs.forEach(function (o) { html += downloadLink(jobId, o.fmt, o.name); });
-      html += "</div>";
+      html += "</div>" + linksHint();
     } else {
       html += '<p class="note">No outputs yet.</p>';
     }

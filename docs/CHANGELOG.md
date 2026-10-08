@@ -343,6 +343,23 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   downloaded media is deleted once its outputs are saved. If saving fails (disk full) the job shows
   a warning and its folder is kept until the copy succeeds; Cancel is refused once a job is ending.
 
+- **The job server no longer starts a thread per connection without limit.** At most 64
+  connections are served at once (a surplus client gets a 503 it can actually read, even
+  mid-upload), idle keep-alive connections are dropped after 15 seconds, a client that trickles
+  bytes is cut off at a time budget (an upload only when it stalls), at most 32 synchronous `/v1`
+  requests may wait (a connection reset cancels the job; a closed or half-closed client keeps it), and a full job queue is answered
+  before the upload is written to disk.
+- **An English-only model no longer returns made-up English for a web request.** A web job or
+  `/v1` request that names another language while the server's Whisper model is English-only
+  (`tiny.en`, ...) is refused with a message naming a multilingual model.
+- **Web page download links no longer put the password in the address.** With a password set,
+  the page downloads through a header and saves the file from memory, and says why a download
+  failed; the address stays free of `?token=` (browser history, download source mark, proxy logs).
+- **Oversized web options are clamped instead of dropped.** `vad_min_silence_ms` and the speaker
+  count are limited to the same ranges the project file allows.
+- **A cloud run on a time range that failed part-way saved shifted subtitles.** The
+  `.partial.srt` kept after the failure now carries the original file's timestamps, like a finished
+  run, instead of times counted from the start of the range.
 - **Hardware detection and model advice.** GPUs without efficient float16 (GTX 10-series) now get
   an NVIDIA CUDA (int8) tier in the Hardware wizard, so Apply no longer pins the CPU over the
   automatic CUDA pick. Applying the untouched list while an NVIDIA GPU is unusable saves nothing

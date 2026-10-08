@@ -2458,6 +2458,10 @@ def _transcribe_via_alt_backend(
             # faster-whisper one), so keep the finished text as a plain
             # subtitle file next to the source, then report the failure.
             if partial.segments:
+                # The segments are relative to the slice of a clipped run:
+                # put them on the source's timeline like a finished run.
+                if is_clipped:
+                    _offset_segments(partial.segments, clip_start_s)
                 _save_partial_subtitles(task, partial.segments, log_cb)
             raise
         # Shift slice-relative timestamps back onto the original timeline.

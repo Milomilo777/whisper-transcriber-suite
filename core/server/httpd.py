@@ -61,26 +61,32 @@ Design constraints honoured here:
 from __future__ import annotations
 
 import hmac
+import contextlib
+import io
 import ipaddress
 import json
 import logging
 import math
 import os
 import re
+import select
 import socket
 import ssl
 import sys
+import threading
 import time
 import urllib.parse
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any, NamedTuple
+from typing import Any, Iterator, NamedTuple
 
 from core import __version__
+from core.config import _PROJECT_KEY_RANGES
 from core.server.jobs import (
     STATUS_CANCELLED,
     STATUS_ERROR,
     STATUS_FINISHED,
+    STATUS_QUEUED,
     Job,
     JobManager,
     QueueFull,
@@ -171,6 +177,50 @@ _EARLY_REJECT_IDLE_S = 2.0
 # a handler thread.
 _DISCARD_TOTAL_S = 30.0
 _DISCARD_IDLE_S = 5.0
+
+# One thread serves each connection, so the number of live connections is
+# capped: beyond it a new client gets a quick 503 (or, over TLS, a closed
+# socket) instead of one more thread.
+_MAX_CONNECTIONS = 64
+
+# Synchronous /v1 requests hold a handler thread (and a slot) until their job
+# ends, which can be hours behind a long queue. At most this many may wait at
+# once (and never more than two thirds of the connection cap), so the web page,
+# status polls and Cancel always find a free slot.
+_MAX_SYNC_WAITS = 32
+
+# A surplus connection is answered by a short-lived refuser thread (so the
+# accept thread never blocks): it sends the 503, then reads and drops what the
+# client is still uploading for at most this long / this many bytes, so the
+# reply is not lost to a connection reset. At most _MAX_REFUSERS run at once;
+# beyond that a surplus connection is simply closed.
+_REFUSE_DRAIN_S = 2.0
+_REFUSE_DRAIN_BYTES = 16 * 1024 * 1024
+_REFUSE_IDLE_S = 0.3
+_MAX_REFUSERS = 16
+
+# Total-time budgets. The per-read socket timeout (_HANDLER_TIMEOUT_S) restarts
+# with every received byte, so a client sending one byte every 50 s would hold
+# a thread for ever. The handler's own reader (_DeadlineReader) therefore
+# enforces a deadline for the phase it is in, inside every blocking read:
+#   * waiting for a request line + its headers: _HEADER_TOTAL_S. This is also
+#     how long an idle keep-alive connection is kept: a slot is held for the
+#     whole connection, so an idle one must not sit on it for a minute;
+#   * a small JSON body: _JSON_BODY_TOTAL_S;
+#   * an upload body: progress based. Every 64 KB chunk that arrives extends the
+#     deadline by _UPLOAD_STALL_S, so an honest slow uploader of a big file is
+#     never cut, a trickle is (64 KB per 60 s is about 1 KB/s). Only as a
+#     sanity bound, the whole upload may take at most its size at
+#     _UPLOAD_SANITY_RATE_BPS (but not less than _UPLOAD_MIN_TOTAL_S and not
+#     more than _UPLOAD_MAX_TOTAL_S).
+_UPLOAD_TOO_SLOW_MSG = ("upload too slow: no data arrived in time, "
+                        "or the whole upload took too long")
+_HEADER_TOTAL_S = 15.0
+_JSON_BODY_TOTAL_S = 60.0
+_UPLOAD_STALL_S = 60.0
+_UPLOAD_SANITY_RATE_BPS = 16 * 1024
+_UPLOAD_MIN_TOTAL_S = 600.0
+_UPLOAD_MAX_TOTAL_S = 6 * 3600.0
 
 # Names that reach this computer directly although they are not IP literals,
 # and that no website can point at it: localhost, and the name Docker gives
@@ -629,6 +679,46 @@ def normalize_language(raw: Any) -> str:
     return code if code in WEB_LANGUAGE_CODES else ""
 
 
+def english_only_problem(language: str) -> str | None:
+    """A client-facing message when the server's model cannot do ``language``.
+
+    An English-only Whisper model (``tiny.en``, ``small.en``, ...) turns speech
+    in any other language into made-up English text without an error, so a
+    request that names another language is refused up front. Auto-detect
+    (``""``) and ``"en"`` pass: English media is what such a model is for, and
+    a request that names no language is the normal shape of an OpenAI client.
+    Only the Faster-Whisper engine uses this model catalog; any other engine,
+    a custom model or a failed lookup returns ``None`` (never blocks).
+    """
+    if not language or language == "en":
+        return None
+    try:
+        from core import transcriber as _trans
+        from core.backends.availability import normalise_engine
+        from core.model_manager import (
+            DEFAULT_MODEL_SLUG,
+            is_english_only,
+            multilingual_counterpart,
+        )
+
+        cfg = _trans.config
+        if normalise_engine(cfg.get("transcribe_backend")) != "faster_whisper":
+            return None
+        slug = str(cfg.get("whisper_model") or DEFAULT_MODEL_SLUG).strip()
+        if is_english_only(cfg, slug) is not True:
+            return None
+        alt = multilingual_counterpart(cfg, slug)
+    except Exception:  # noqa: BLE001 - a guard must never block a request
+        logger.debug("server: English-only model check failed", exc_info=True)
+        return None
+    return (
+        f"The server's Whisper model '{slug}' understands English only, so it "
+        f"cannot transcribe language '{language}'. Send language=en, or ask "
+        f"the server's operator to switch to a multilingual model such as "
+        f"'{alt}'."
+    )
+
+
 # Per-job options the web may set. Each entry is (key, kind) where kind drives
 # the coercion in normalize_options. These mirror the desktop Advanced dialog /
 # Transcribe-tab keys and are written into the per-job .whisperproject.json so
@@ -692,6 +782,22 @@ def _coerce_int(value: Any) -> int | None:
     return int(f)
 
 
+def _clamp_int(key: str, number: int) -> int:
+    """Clamp ``number`` into the range the project-file loader accepts.
+
+    ``core.config`` drops a ``.whisperproject.json`` value outside
+    ``_PROJECT_KEY_RANGES``, which would silently turn a too-large web option
+    into "not set"; clamping keeps the request's intent at the nearest valid
+    value.
+    """
+    low, high = _PROJECT_KEY_RANGES.get(key, (number, number))
+    clamped = int(max(low, min(high, number)))
+    if clamped != number:
+        logger.info("server: option %s=%d is outside %d..%d; using %d",
+                    key, number, low, high, clamped)
+    return clamped
+
+
 def normalize_options(raw: Any) -> dict[str, Any]:
     """Whitelist + type-coerce a raw options blob into a validated dict.
 
@@ -717,14 +823,14 @@ def normalize_options(raw: Any) -> dict[str, Any]:
             coerced = None if f is None else max(0.0, min(1.0, f))
         elif kind == "int_nonneg":
             i = _coerce_int(value)
-            coerced = None if i is None else max(0, i)
+            coerced = None if i is None else _clamp_int(key, max(0, i))
         elif kind == "int_speakers":
             # -1 = auto-cluster (the engine's sentinel); otherwise >= 1.
             i = _coerce_int(value)
             if i is None:
                 coerced = None
             else:
-                coerced = -1 if i < 1 else i
+                coerced = -1 if i < 1 else _clamp_int(key, i)
         else:  # pragma: no cover - guarded by the static spec
             coerced = None
         if coerced is not None:
@@ -860,6 +966,61 @@ def build_openai_verbose_json(
 
 # --- the HTTP server ---------------------------------------------------------
 
+class _ClientGone(Exception):
+    """The client closed its connection while a synchronous request waited."""
+
+
+class _BudgetExceeded(TimeoutError):
+    """A read ran past the time budget of its phase."""
+
+
+class _DeadlineReader(io.RawIOBase):
+    """Raw socket reader whose reads stop at a deadline set by the handler.
+
+    A socket timeout restarts with every byte, so it cannot stop a client that
+    trickles data, and shutting the socket down from another thread does not
+    wake a read that waits in ``select`` on Windows. The deadline is therefore
+    enforced by the reading thread itself: each read waits at most until the
+    deadline (or the socket's own timeout, whichever is shorter) and raises
+    :class:`_BudgetExceeded` when it has passed. ``deadline`` is a
+    ``time.monotonic()`` value, or ``None`` for no budget.
+    """
+
+    def __init__(self, sock: Any) -> None:
+        super().__init__()
+        self._sock = sock
+        self.deadline: float | None = None
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer: Any) -> int:
+        sock = self._sock
+        deadline = self.deadline
+        current = sock.gettimeout()
+        changed = False
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise _BudgetExceeded("time budget used up")
+            want = remaining if current is None else min(current, remaining)
+            if want != current:
+                sock.settimeout(want)
+                changed = True
+        try:
+            return sock.recv_into(buffer)
+        except TimeoutError:
+            if deadline is not None and time.monotonic() >= deadline:
+                raise _BudgetExceeded("time budget used up") from None
+            raise
+        finally:
+            if changed:
+                try:
+                    sock.settimeout(current)
+                except OSError:
+                    pass  # the socket was closed under us
+
+
 class JobHTTPServer(ThreadingHTTPServer):
     """ThreadingHTTPServer carrying the shared JobManager + auth token."""
 
@@ -874,7 +1035,9 @@ class JobHTTPServer(ThreadingHTTPServer):
     def __init__(self, server_address: tuple[str, int],
                  manager: JobManager, *, token: str = "",
                  max_upload_mb: int = 512,
-                 ssl_context: ssl.SSLContext | None = None) -> None:
+                 ssl_context: ssl.SSLContext | None = None,
+                 max_connections: int = _MAX_CONNECTIONS,
+                 max_sync_waits: int | None = None) -> None:
         self.manager = manager
         self.token = token
         self.max_upload_bytes = (
@@ -886,7 +1049,136 @@ class JobHTTPServer(ThreadingHTTPServer):
         # timeout, so one idle TCP connection froze the whole server.
         self.ssl_context = ssl_context
         self.own_names = own_host_names()
+        self._max_connections = max(1, max_connections)
+        self._slots = threading.BoundedSemaphore(self._max_connections)
+        if max_sync_waits is None:
+            max_sync_waits = min(_MAX_SYNC_WAITS,
+                                 max(1, self._max_connections * 2 // 3))
+        self._max_sync_waits = max(1, max_sync_waits)
+        self._sync_waiting = 0
+        self._refuser_slots = threading.BoundedSemaphore(_MAX_REFUSERS)
+        self._active = 0
+        self._active_lock = threading.Lock()
+        self._last_busy_log = float("-inf")
         super().__init__(server_address, JobRequestHandler)
+
+    def active_connections(self) -> int:
+        """How many connections currently hold a handler thread."""
+        with self._active_lock:
+            return self._active
+
+    def sync_wait_full(self) -> bool:
+        """True when no more synchronous requests may wait for their job."""
+        with self._active_lock:
+            return self._sync_waiting >= self._max_sync_waits
+
+    def take_sync_wait(self) -> bool:
+        with self._active_lock:
+            if self._sync_waiting >= self._max_sync_waits:
+                return False
+            self._sync_waiting += 1
+            return True
+
+    def release_sync_wait(self) -> None:
+        with self._active_lock:
+            self._sync_waiting -= 1
+
+    def crowded(self) -> bool:
+        """True when three quarters of the connection slots are in use.
+
+        Then every reply ends its connection (``Connection: close``): a
+        keep-alive client would otherwise sit on a slot between requests.
+        """
+        return self.active_connections() >= max(
+            2, self._max_connections * 3 // 4)
+
+    def process_request(self, request: Any, client_address: Any) -> None:
+        """Start a handler thread, unless too many connections are open.
+
+        Runs on the single accept thread, so the refusal must never block.
+        """
+        if not self._slots.acquire(blocking=False):
+            self._refuse_busy(request, client_address)
+            return
+        with self._active_lock:
+            self._active += 1
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self._release_slot()
+            raise
+
+    def process_request_thread(self, request: Any, client_address: Any) -> None:
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._release_slot()
+
+    def _release_slot(self) -> None:
+        with self._active_lock:
+            self._active -= 1
+        self._slots.release()
+
+    def _refuse_busy(self, request: Any, client_address: Any) -> None:
+        """Answer a surplus connection with a short 503 and close it.
+
+        Over TLS no reply is possible without a handshake (which would run on
+        the accept thread), so the socket is just closed.
+        """
+        now = time.monotonic()
+        if now - self._last_busy_log >= 10.0:  # one line per 10 s, not per flood hit
+            self._last_busy_log = now
+            logger.info("server: %d connections open, refusing new ones "
+                        "(latest from %s)", self.active_connections(),
+                        client_address[0] if client_address else "?")
+        if (self.ssl_context is None
+                and self._refuser_slots.acquire(blocking=False)):
+            try:
+                threading.Thread(
+                    target=self._refuse_and_drain, args=(request,),
+                    name="http-refuse", daemon=True).start()
+                return
+            except BaseException:
+                self._refuser_slots.release()
+                self.shutdown_request(request)
+                raise
+        self.shutdown_request(request)
+
+    def _refuse_and_drain(self, request: Any) -> None:
+        """Send the 503, then swallow what the client is still sending.
+
+        Closing a socket that holds unread bytes makes the OS reset the
+        connection (Windows then drops the reply the client had not read yet),
+        so a client in the middle of an upload would never see the 503. The
+        drain is bounded in time and bytes, and uses no normal slot.
+        """
+        body = b'{"error": "server is busy; try again shortly"}'
+        head = (
+            "HTTP/1.1 503 Service Unavailable\r\n"
+            "Content-Type: application/json; charset=utf-8\r\n"
+            f"Content-Length: {len(body)}\r\n"
+            "Retry-After: 5\r\nConnection: close\r\n\r\n"
+        ).encode("ascii")
+        try:
+            request.settimeout(1.0)
+            request.sendall(head + body)
+            request.shutdown(socket.SHUT_WR)
+            deadline = time.monotonic() + _REFUSE_DRAIN_S
+            total = 0
+            while total < _REFUSE_DRAIN_BYTES:
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    break
+                request.settimeout(min(left, _REFUSE_IDLE_S))
+                chunk = request.recv(64 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+        except OSError:
+            pass  # includes the idle timeout: the client has nothing more
+        finally:
+            self.shutdown_request(request)
+            self._refuser_slots.release()
 
     def server_bind(self) -> None:
         exclusive = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
@@ -952,6 +1244,104 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         # The request line can carry ?token= (download links do).
         logger.info("%s - %s", self.address_string(),
                     redact_secrets(format % args))
+
+    # --- time budgets ---------------------------------------------------------
+
+    def setup(self) -> None:
+        super().setup()
+        # Replace the plain buffered reader by one that honours deadlines.
+        self._reader = _DeadlineReader(self.connection)
+        self.rfile = io.BufferedReader(self._reader)
+
+    def _set_deadline(self, seconds: float | None) -> None:
+        self._reader.deadline = (
+            None if seconds is None else time.monotonic() + seconds)
+
+    def log_error(self, format: str, *args: Any) -> None:  # noqa: A002
+        # An idle keep-alive connection that ends at its budget is routine.
+        if args and isinstance(args[0], _BudgetExceeded):
+            logger.debug("server: %s - connection ended at its time budget",
+                         self.address_string())
+            return
+        super().log_error(format, *args)
+
+    def handle_one_request(self) -> None:
+        """Serve one request; waiting for its request line + headers is budgeted."""
+        self._set_deadline(_HEADER_TOTAL_S)
+        try:
+            super().handle_one_request()
+        finally:
+            self._set_deadline(None)
+
+    def parse_request(self) -> bool:
+        try:
+            return super().parse_request()
+        finally:
+            # The headers are in: the handler sets its own body budget.
+            self._set_deadline(None)
+
+    # Status code of the response being written (0 before the first one).
+    _status_code = 0
+
+    def send_response_only(self, code: int, message: str | None = None) -> None:
+        # Covers the interim "100 Continue" too, which send_response() skips.
+        self._status_code = int(code)
+        super().send_response_only(code, message)
+
+    def end_headers(self) -> None:
+        # Only a final response may announce the end of the connection: on the
+        # interim 100 Continue it would switch keep-alive off for the real
+        # reply that follows. send_header() also sets close_connection for it.
+        if (self._status_code >= 200 and not self.close_connection
+                and self._srv.crowded()):
+            self.send_header("Connection", "close")
+        super().end_headers()
+
+    def _client_gone(self) -> bool:
+        """True when the connection was reset or has failed.
+
+        A FIN is deliberately NOT "gone": a client may half-close after it has
+        sent its whole request (HTTP/1.0 style) and still wait for the answer,
+        and cancelling a real person's transcription is worse than holding a
+        slot a little longer (the number of waiters is capped). A client that
+        really left makes the reply write fail harmlessly. So only a reset or a
+        socket error counts. The peek never consumes: pipelined (or, over TLS,
+        encrypted) bytes stay for the next request. It looks at the raw TCP
+        stream, so TLS needs no special case.
+        """
+        sock = self.connection
+        try:
+            readable, _w, _x = select.select([sock], [], [], 0)
+            if readable:
+                socket.socket.recv(sock, 1, socket.MSG_PEEK)
+        except (OSError, ValueError):
+            return True
+        return False
+
+    @contextlib.contextmanager
+    def _within(self, seconds: float) -> Iterator[None]:
+        """Reads inside the block must finish within ``seconds`` in all."""
+        self._set_deadline(seconds)
+        try:
+            yield
+        finally:
+            self._set_deadline(None)
+
+    def _queue_is_full(self) -> bool:
+        """Advisory: is the job queue at its cap right now?
+
+        Asked before a request body is read, so a refused upload never reaches
+        the disk. ``submit_*`` still decides authoritatively (the queue can
+        change between the two); a manager that does not expose its cap is
+        treated as having room.
+        """
+        manager = self._srv.manager
+        limit = getattr(manager, "_max_queued", None)
+        if not isinstance(limit, int):
+            return False
+        queued = sum(1 for row in manager.list()
+                     if row.get("status") == STATUS_QUEUED)
+        return queued >= limit
 
     # --- shared helpers ------------------------------------------------------
 
@@ -1372,7 +1762,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 f"upload exceeds {self._srv.max_upload_bytes // (1024 * 1024)} MB cap",
             )
             return None
-        return self.rfile.read(length) if length else b""
+        return self._read_exact(length)
 
     def _read_json_body(self) -> bytes | None:
         """Read a small JSON / control body, capped well below the upload cap.
@@ -1393,7 +1783,23 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 f"{_MAX_JSON_BODY_BYTES // (1024 * 1024)} MB cap",
             )
             return None
-        return self.rfile.read(length) if length else b""
+        return self._read_exact(length)
+
+    def _read_exact(self, length: int) -> bytes | None:
+        """Read a body of ``length`` bytes within the JSON-body time budget.
+
+        Returns ``None`` after sending a 408 when the budget ran out.
+        """
+        if not length:
+            return b""
+        try:
+            with self._within(_JSON_BODY_TOTAL_S):
+                return self.rfile.read(length)
+        except _BudgetExceeded:
+            self._send_error_json_close(
+                HTTPStatus.REQUEST_TIMEOUT,
+                "request body too slow: it did not arrive in time")
+            return None
 
     def _drain_body(self, length: int) -> None:
         """Read + discard ``length`` bytes from the request body.
@@ -1409,6 +1815,13 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         ctype = self.headers.get("Content-Type", "")
         boundary = parse_multipart_filename(ctype)
         if boundary:
+            if self._queue_is_full():
+                # Before the body is stored: N clients must not each write a
+                # full-size upload to the temp folder just to be told "full".
+                self._reject_post_early(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    "too many queued jobs; try again later")
+                return
             self._create_upload_job(boundary)
         else:
             self._create_url_job()
@@ -1461,17 +1874,33 @@ class JobRequestHandler(BaseHTTPRequestHandler):
 
         fd, tmp_path = tempfile.mkstemp(prefix="upload-", suffix=".part")
         written = 0
+        too_slow = False
+        sanity_end = time.monotonic() + min(
+            _UPLOAD_MAX_TOTAL_S,
+            max(_UPLOAD_MIN_TOTAL_S, length / _UPLOAD_SANITY_RATE_BPS))
         try:
             with os.fdopen(fd, "wb") as out:
                 remaining = length
                 chunk = 64 * 1024
-                while remaining > 0:
-                    buf = self.rfile.read(min(chunk, remaining))
-                    if not buf:
-                        break
-                    out.write(buf)
-                    written += len(buf)
-                    remaining -= len(buf)
+                try:
+                    while remaining > 0:
+                        left = sanity_end - time.monotonic()
+                        if left <= 0:
+                            too_slow = True
+                            break
+                        # Each chunk that arrives earns another stall window.
+                        self._set_deadline(min(_UPLOAD_STALL_S, left))
+                        buf = self.rfile.read(min(chunk, remaining))
+                        if not buf:
+                            break
+                        out.write(buf)
+                        written += len(buf)
+                        remaining -= len(buf)
+                finally:
+                    self._set_deadline(None)
+            if remaining > 0 and too_slow:
+                raise _UploadError(
+                    HTTPStatus.REQUEST_TIMEOUT, _UPLOAD_TOO_SLOW_MSG)
             if remaining > 0:
                 # The client left (or stalled past the socket timeout) before
                 # the declared length arrived: a partial file must not become
@@ -1485,6 +1914,13 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                     HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "upload too large")
             filename, file_start, file_end, fields = (
                 self._extract_upload_from_file(tmp_path, written, boundary))
+        except _BudgetExceeded as e:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise _UploadError(
+                HTTPStatus.REQUEST_TIMEOUT, _UPLOAD_TOO_SLOW_MSG) from e
         except OSError as e:
             try:
                 os.unlink(tmp_path)
@@ -1524,6 +1960,10 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 return
             formats = normalize_formats(upload.fields.get("formats"))
             language = normalize_language(upload.fields.get("language", ""))
+            problem = english_only_problem(language)
+            if problem:
+                self._send_error_json(HTTPStatus.BAD_REQUEST, problem)
+                return
             options, clip_start, clip_end = self._options_from(
                 upload.fields.get)
             try:
@@ -1682,6 +2122,10 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             return
         formats = normalize_formats(data.get("formats"))
         language = normalize_language(data.get("language", ""))
+        problem = english_only_problem(language)
+        if problem:
+            self._send_error_json(HTTPStatus.BAD_REQUEST, problem)
+            return
         options, clip_start, clip_end = self._options_from(data.get)
         try:
             job_id = manager.submit_url(
@@ -1732,13 +2176,39 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 "Expected multipart/form-data with a 'file' field.",
                 param="file")
             return
+        # A synchronous request waits for its job; the number of waiters is
+        # capped so they can never use every connection slot. The cap is
+        # checked before the body is read (so a refused upload is not stored)
+        # but a place is taken only once the whole upload is in: a slow upload
+        # must not occupy one while it is still sending.
+        if self._srv.sync_wait_full():
+            self._reject_openai_post_early(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                "too many transcriptions are waiting; try again later",
+                err_type="server_error")
+            return
+        if self._queue_is_full():
+            self._reject_openai_post_early(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                "too many queued jobs; try again later",
+                err_type="server_error")
+            return
         try:
             upload = self._receive_upload(boundary)
         except _UploadError as e:
             self._send_openai_error_close(e.status, e.message)
             return
         try:
-            self._openai_handle_upload(upload)
+            if not self._srv.take_sync_wait():
+                self._send_openai_error(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    "too many transcriptions are waiting; try again later",
+                    err_type="server_error")
+                return
+            try:
+                self._openai_handle_upload(upload)
+            finally:
+                self._srv.release_sync_wait()
         finally:
             try:
                 os.unlink(upload.tmp_path)
@@ -1773,6 +2243,11 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         # ``prompt`` / ``temperature`` / ``timestamp_granularities[]`` are
         # accepted but ignored — the engine's own settings decide those.
         language = normalize_language(fields.get("language", ""))
+        problem = english_only_problem(language)
+        if problem:
+            self._send_openai_error(
+                HTTPStatus.BAD_REQUEST, problem, param="language")
+            return
         manager = self._srv.manager
         try:
             job_id, media_path = manager.submit_upload_stream(
@@ -1804,7 +2279,10 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 HTTPStatus.INTERNAL_SERVER_ERROR, "job disappeared",
                 err_type="server_error")
             return
-        job = self._wait_for_job(job)
+        try:
+            job = self._wait_for_job(job)
+        except _ClientGone:
+            return
         if job is None:
             self._send_openai_error(
                 HTTPStatus.SERVICE_UNAVAILABLE, "server is shutting down",
@@ -1829,6 +2307,11 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         (in-process GUI stop / CLI shutdown) so the caller can answer 503
         instead of hanging forever. The Job object reference is kept rather
         than re-looking it up, so terminal-job eviction can't race us.
+
+        A client that hangs up while it waits is noticed within a poll: its
+        job is cancelled (nobody is left to read the answer, and a retrying
+        client would otherwise leave one waiting handler and one queued job
+        per attempt) and :class:`_ClientGone` ends the request.
         """
         manager = self._srv.manager
         while True:
@@ -1836,6 +2319,12 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 return job
             if manager.stopped:
                 return None
+            if self._client_gone():
+                logger.info("server: client left; cancelling job %s",
+                            job.job_id)
+                manager.cancel(job.job_id)
+                self.close_connection = True
+                raise _ClientGone()
             time.sleep(_OPENAI_POLL_INTERVAL_S)
 
     def _openai_send_result(self, job: Job, response_format: str) -> None:
