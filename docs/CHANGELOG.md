@@ -285,6 +285,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   lines with `python-bidi` (new dependencies), breaking lines itself so each line reorders on
   its own; timestamps, numbers and Latin words keep their order and the timestamp sits at the
   right. Without the two packages the PDF is still written, unjoined, with one log warning.
+  Zero-width joiners and bidi isolate marks are left out before shaping: with them the two
+  packages dropped or repeated letters, or failed and lost the whole PDF.
 - **Word transcripts in Persian, Arabic and Hebrew read right to left.** DOCX paragraphs whose
   text is mostly RTL letters now carry the Word bidi flag, RTL runs and a complex-script font,
   so they align right with punctuation on the correct side; bold timestamps stay bold there.

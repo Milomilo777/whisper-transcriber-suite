@@ -43,6 +43,11 @@ class Engine(NamedTuple):
     reorder: Callable[[str, str], str]  # (line, base "L"/"R") -> visual order
 
 
+# Invisible characters the two packages mishandle (never drawn: pdf_fonts
+# drops them): the zero-width joiner, and the isolates LRI, RLI, FSI, PDI.
+_NO_ZWJ = {0x200D: None}
+_NO_ISOLATES = dict.fromkeys(range(0x2066, 0x206A))
+
 _ENGINE: Engine | None = None
 _LOADED = False
 _LOCK = threading.Lock()
@@ -80,12 +85,21 @@ def _load() -> Engine | None:
         configuration={"delete_harakat": False, "support_ligatures": True}
     )
 
+    def reshape(text: str) -> str:
+        # arabic-reshaper 3.0.1 mishandles a ZWJ: with a lam-alef later in
+        # the text it drops or repeats letters (or raises IndexError), and
+        # it drops a mark that follows a ZWJ. A ZWJ is only a joining
+        # hint, so shape without it.
+        return reshaper.reshape(text.translate(_NO_ZWJ))
+
     def reorder(line: str, base: str) -> str:
-        out = get_display(line, base_dir=base)
+        # The pure-Python algorithm has no isolates (UAX #9 6.3+) and
+        # asserts on them; they are invisible and never drawn anyway.
+        out = get_display(line.translate(_NO_ISOLATES), base_dir=base)
         # str in, str out; the stub's StrOrBytes covers the bytes overload
         return out if isinstance(out, str) else out.decode("utf-8")
 
-    return Engine(reshape=reshaper.reshape, reorder=reorder)
+    return Engine(reshape=reshape, reorder=reorder)
 
 
 def needs_bidi(text: str) -> bool:

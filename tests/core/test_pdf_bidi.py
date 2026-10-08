@@ -264,9 +264,10 @@ def _real_engine() -> pdf_bidi.Engine:
 
 
 def _letters(text: str) -> Counter:
-    """Letters and digits after folding presentation forms back (NFKC)."""
+    """Letters, digits and combining marks (harakat) after folding
+    presentation forms back (NFKC)."""
     folded = unicodedata.normalize("NFKC", text)
-    return Counter(ch for ch in folded if unicodedata.category(ch)[0] in "LN")
+    return Counter(ch for ch in folded if unicodedata.category(ch)[0] in "LNM")
 
 
 def _is_presentation_form(ch: str) -> bool:
@@ -320,23 +321,68 @@ def test_real_engine_leaves_latin_unchanged():
         assert eng.reorder(eng.reshape(text), "L") == text
 
 
+MIXED_POOL = (
+    [chr(c) for c in range(0x0621, 0x064B)]  # Arabic letters
+    + ["\u067e", "\u0686", "\u0698", "\u06a9", "\u06af", "\u06cc", "\u06d2", "\u0679"]
+    + ["\u064e", "\u064f", "\u0650", "\u0651", "\u064b", "\u0652"]  # harakat
+    + ["\u200c", " ", " ", " ", "(", ")", ".", ",", "\u060c", "\u061f", ":", "-"]
+    + ["\u200d", "\u0640"]  # ZWJ, tatweel
+    + ["\u2066", "\u2067", "\u2068", "\u2069", "\u200f"]  # isolates, RLM
+    + list("abcXYZ0123456789")
+    + [chr(c) for c in range(0x06F0, 0x06FA)]
+)
+
+
 def test_real_engine_property_no_letter_lost_or_added():
     eng = _real_engine()
     rng = random.Random(5602)
-    pool = (
-        [chr(c) for c in range(0x0621, 0x064B)]  # Arabic letters
-        + ["\u067e", "\u0686", "\u0698", "\u06a9", "\u06af", "\u06cc", "\u06d2", "\u0679"]
-        + ["\u064e", "\u064f", "\u0650", "\u0651"]  # harakat
-        + ["\u200c", " ", " ", " ", "(", ")", ".", ",", "\u060c", "\u061f", ":", "-"]
-        + list("abcXYZ0123456789")
-        + [chr(c) for c in range(0x06F0, 0x06FA)]
-    )
     for _ in range(500):
-        text = "".join(rng.choice(pool) for _ in range(rng.randint(1, 60)))
+        text = "".join(rng.choice(MIXED_POOL) for _ in range(rng.randint(1, 60)))
         shaped = eng.reshape(text)
         for base in ("L", "R"):
             visual = eng.reorder(shaped, base)
             assert _letters(visual) == _letters(text), (text, base)
+
+
+def test_real_engine_property_latin_text_unchanged():
+    eng = _real_engine()
+    rng = random.Random(5603)
+    pool = list("abcxyzABCXYZ0123456789 .,;:!?'\"()[]{}<>-+/@#%&*") + list(
+        "\u00e9\u00fc\u00df\u00f1\u00c5"  # e-acute, u-umlaut, sharp s, n-tilde, A-ring
+    )
+    for _ in range(500):
+        text = "".join(rng.choice(pool) for _ in range(rng.randint(1, 60)))
+        assert not pdf_bidi.needs_bidi(text)
+        assert eng.reorder(eng.reshape(text), "L") == text, text
+
+
+def test_real_layout_property_no_letter_lost_across_lines():
+    eng = _real_engine()
+    rng = random.Random(5604)
+    for _ in range(300):
+        body = "".join(rng.choice(MIXED_POOL) for _ in range(rng.randint(1, 120)))
+        prefix = rng.choice(["", "[00:01] ", f"[01:02:03] {SALAM}:"])
+        width = rng.choice([60.0, 150.0, 400.0])
+        lines, _ = pdf_bidi.layout(prefix, body, width, _measure, eng)
+        out = "".join(_flat(line) for line in lines)
+        assert _letters(out) == _letters(prefix + body), (prefix, body, width)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        SALAM + " \u2067x\u2069 " + DONYA,  # RLI ... PDI: python-bidi asserts on isolates
+        "\u0645\u200d" + LA,  # ZWJ right before lam-alef: arabic-reshaper IndexError
+        "\u200d\u0644\u0623 " + SALAM,  # ZWJ before lam + hamza-alef at the start
+        "\u0628\u200d\u064e " + SALAM,  # fatha right after a ZWJ: the reshaper drops it
+    ],
+)
+def test_real_pdf_survives_zwj_and_isolates(text):
+    _real_engine()
+    fitz = pytest.importorskip("fitz")
+    data = pdf_writer.write_bytes([{"start": 0.0, "end": 1.0, "text": text}], "a.mp4")
+    out = "".join(page.get_text() for page in fitz.open(stream=data, filetype="pdf"))
+    assert not _letters(text) - _letters(out)
 
 
 def test_real_engine_keeps_marks_before_their_base_in_rtl():
