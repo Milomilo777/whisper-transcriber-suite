@@ -133,6 +133,22 @@ def program_dirs(env: Mapping[str, str] | None = None) -> list[str]:
     return dirs
 
 
+def configured_exe(
+    user_path: str, *, isfile: Callable[[str], bool] = os.path.isfile,
+) -> str | None:
+    """``SubtitleEdit.exe`` at the configured path (the exe or its folder), or None.
+
+    Quotes from "Copy as path" are dropped and ``%VARIABLES%`` expanded.
+    """
+    user_path = os.path.expandvars((user_path or "").strip().strip('"'))
+    if not user_path:
+        return None
+    for candidate in (user_path, os.path.join(user_path, EXE_NAME)):
+        if candidate.lower().endswith(".exe") and isfile(candidate):
+            return candidate
+    return None
+
+
 def find_subtitle_edit(
     user_path: str = "",
     *,
@@ -147,11 +163,9 @@ def find_subtitle_edit(
     """
     if not is_supported(platform):
         return None
-    user_path = (user_path or "").strip().strip('"')
-    if user_path:
-        for candidate in (user_path, os.path.join(user_path, EXE_NAME)):
-            if candidate.lower().endswith(".exe") and isfile(candidate):
-                return candidate
+    configured = configured_exe(user_path, isfile=isfile)
+    if configured is not None:
+        return configured
     try:
         registry_dirs = list(registry())
     except Exception:  # noqa: BLE001 - a registry hiccup must not hide the folder checks

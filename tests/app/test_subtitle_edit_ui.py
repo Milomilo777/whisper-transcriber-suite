@@ -48,6 +48,19 @@ def test_missing_program_and_a_no_opens_nothing(
     assert calls["open"] == []
 
 
+def test_a_wrong_configured_path_is_named_in_the_message(
+    monkeypatch: pytest.MonkeyPatch, calls: dict[str, list[Any]],
+) -> None:
+    monkeypatch.setattr(se, "find_subtitle_edit", lambda _p="": None)
+    ui.open_in_subtitle_edit(PARENT, {se.CONFIG_KEY: "D:\\Portable\\Typo.exe"}, "a.srt")
+    (title, message) = calls["ask"][0][:2]
+    assert "D:\\Portable\\Typo.exe" in message and "Advanced > App behaviour" in message
+    # Without a configured path the message says it is not installed.
+    calls["ask"].clear()
+    ui.open_in_subtitle_edit(PARENT, {}, "a.srt")
+    assert "was not found on this computer" in calls["ask"][0][1]
+
+
 def test_found_program_opens_the_subtitle_without_any_dialog(
     monkeypatch: pytest.MonkeyPatch, calls: dict[str, list[Any]],
 ) -> None:
@@ -162,6 +175,8 @@ def test_viewer_button_passes_none_when_no_subtitle_was_written(
 ) -> None:
     from app.dialogs import transcript_viewer as tv
 
+    # Subtitle Edit not installed: nothing is exported for it.
+    monkeypatch.setattr(se, "find_subtitle_edit", lambda *a, **k: None)
     root, viewer = _viewer_with_srt(tmp_path, make_srt=False)
     got: list[Any] = []
     monkeypatch.setattr(tv.subtitle_edit_ui, "open_in_subtitle_edit",

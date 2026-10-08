@@ -304,6 +304,7 @@ def test_viewer_rename_is_a_notice(viewer, monkeypatch):
 
 def test_viewer_remove_fillers_is_a_notice_after_its_question(viewer, monkeypatch):
     monkeypatch.setattr(messagebox, "askyesno", lambda *a, **k: True)
+    viewer.language = "en"  # fillers are removed only for a known language
     viewer._remove_fillers()
     text, _kind = _last_notice(viewer)
     assert text.startswith("Fillers removed: updated ")

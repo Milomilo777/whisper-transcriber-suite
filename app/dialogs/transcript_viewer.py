@@ -65,10 +65,124 @@ _MEDIA_EXTENSIONS = (
 # " (1)" that a re-run adds to every output name (core.transcriber._indexed_path).
 _RERUN_INDEX_RE = re.compile(r" \(\d+\)$")
 
-# Words considered "fillers" by the one-click cleanup tool. Conservative
-# — we don't strip "like" or "you know" because those frequently carry
-# semantic weight; tweak the list here if you want a stricter pass.
-_FILLER_WORDS = ("uh", "um", "uhm", "er", "erm", "eh", "ah", "mm", "mmm", "hm")
+# Words the one-click cleanup removes, per transcript language. A filler in
+# one language is a real word in another (English "er" is German "he",
+# Dutch "there", Danish "is"), so a language without a list gets no
+# cleanup at all. Conservative: no "like" / "you know", which often carry
+# meaning, and no "mhm" / "mm-hmm", which mean "yes".
+_FILLERS_BY_LANGUAGE: dict[str, tuple[str, ...]] = {
+    "en": ("uh", "um", "uhm", "umm", "er", "erm", "eh", "ah", "mm", "mmm", "hm", "hmm"),
+    "de": ("äh", "ähm", "öh", "öhm", "hm", "hmm"),
+    "nl": ("eh", "ehm", "uh", "uhm", "hm", "hmm"),
+    "fr": ("euh", "heu", "hum", "hm", "hmm"),
+    "es": ("eh", "ehm", "em", "mmm", "hmm"),
+    "it": ("eh", "ehm", "uhm", "mmm", "hmm"),
+    "pt": ("hum", "hmm", "ahn", "hã"),
+    "sv": ("eh", "öh", "öhm", "hmm"),
+    "da": ("øh", "øhm", "æh", "hmm"),
+    "no": ("eh", "øh", "øhm", "hmm"),
+    "pl": ("yyy", "eee", "hmm"),
+}
+_FILLERS_BY_LANGUAGE["nb"] = _FILLERS_BY_LANGUAGE["nn"] = _FILLERS_BY_LANGUAGE["no"]
+_FILLER_WORDS = _FILLERS_BY_LANGUAGE["en"]
+
+# Language names some callers carry instead of the ISO code.
+_LANGUAGE_NAMES = {
+    "english": "en", "german": "de", "dutch": "nl", "french": "fr", "spanish": "es",
+    "italian": "it", "portuguese": "pt", "swedish": "sv", "danish": "da",
+    "norwegian": "no", "polish": "pl",
+}
+
+
+def _language_code(language: str | None) -> str:
+    """``"en"`` from ``"en"``, ``"en-US"``, ``"en_GB"`` or ``"English"``; "" when unknown."""
+    if not isinstance(language, str):
+        return ""
+    value = language.strip().lower().replace("_", "-")
+    if not value or value == "auto":
+        return ""
+    return _LANGUAGE_NAMES.get(value, value.split("-")[0])
+
+
+def _filler_words_for(language: str | None) -> tuple[str, ...]:
+    """The filler list for ``language``; empty when unknown or not covered."""
+    return _FILLERS_BY_LANGUAGE.get(_language_code(language), ())
+
+
+def _seg_text(seg: dict[str, Any], key: str = "text") -> str:
+    """``seg[key]`` as a string for display and editing.
+
+    Transcript JSON can be hand-edited: a number there becomes its digits, and
+    anything else that is not a string (a list, a dict, ``null``) reads as "".
+    """
+    value = seg.get(key)
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return str(value)
+    return ""
+
+
+def _seg_words(seg: dict[str, Any]) -> list[Any]:
+    """``seg["words"]`` when it is a list, else an empty list."""
+    words = seg.get("words")
+    return words if isinstance(words, list) else []
+
+
+# Subtitle files next to the JSON that Save keeps in step with it (the ones
+# "Open in Subtitle Edit" picks first). Their writers ignore audio_path.
+_SIBLING_FORMATS = ("srt", "vtt", "ass")
+
+# One viewer per transcript file, keyed by _viewer_key(json_path): two
+# viewers on one JSON would each save their own copy, the last one winning.
+_OPEN_VIEWERS: dict[str, "TranscriptViewer"] = {}
+
+
+def _viewer_key(json_path: str) -> str:
+    try:
+        return os.path.normcase(os.path.realpath(json_path))
+    except (OSError, ValueError):
+        return os.path.normcase(os.path.abspath(json_path))
+
+
+def _file_stamp(path: str) -> tuple[int, int] | None:
+    """``(mtime_ns, size)`` of ``path``, or None when it cannot be read."""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (st.st_mtime_ns, st.st_size)
+
+
+def _read_text_normalized(path: str) -> str | None:
+    """The file as text with a BOM dropped and CRLF read as LF; None on failure."""
+    try:
+        with open(path, "rb") as fb:
+            raw = fb.read()
+        return raw.decode("utf-8-sig").replace("\r\n", "\n")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def _render_sibling(fmt: str, segments: list[dict[str, Any]]) -> str:
+    from core.writers import get_writer
+
+    return get_writer(fmt)(segments, "")
+
+
+def _write_text_atomically(path: str, text: str) -> None:
+    """Write ``text`` to a temp sibling of ``path``, then move it into place."""
+    part = f"{path}.{os.getpid()}.part"
+    try:
+        with open(part, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+        os.replace(part, path)
+    finally:
+        if os.path.exists(part):
+            try:
+                os.unlink(part)
+            except OSError:
+                pass
 
 
 def _find_media_next_to(json_path: str) -> str | None:
@@ -179,15 +293,19 @@ def _clamp_time_ms(current_ms: float, delta_ms: float, total_ms: float) -> int:
     return target
 
 
-def _filler_regex() -> re.Pattern[str]:
-    """Build a single regex that matches any filler with optional
-    trailing punctuation + one trailing space. Whole-word match,
-    case-insensitive. We deliberately do NOT eat the leading space:
-    swallowing it on "Hello, um, world" would collapse to
-    "Hello,world", losing the natural punctuation spacing. Instead
-    ``_strip_fillers`` post-processes any "  " or " ." artefacts."""
-    words = "|".join(re.escape(w) for w in _FILLER_WORDS)
-    return re.compile(rf"(?i)\b(?:{words})\b[,.!?]*\s?")
+def _filler_regex(words: tuple[str, ...] = _FILLER_WORDS) -> re.Pattern[str]:
+    """One regex for every filler in ``words`` plus the spaces before it.
+
+    Whole words only, case-insensitive: a hyphen or apostrophe counts as
+    part of the word, so "Mm-hmm" and "uh-huh" stay whole, and so does a
+    dot or "@" inside a name ("user@um.com", "um.mp3"). Punctuation after
+    the filler is NOT matched: "Hello um, world" keeps its comma
+    ("Hello, world"); ``_strip_fillers`` tidies doubled punctuation.
+    """
+    alternatives = "|".join(re.escape(w) for w in sorted(words, key=len, reverse=True))
+    return re.compile(
+        rf"(?i)\s*(?<![\w'’@./\\-])(?:{alternatives})(?![\w'’@/\\-]|\.\w)"
+    )
 
 
 def _seg_float(seg: dict[str, Any], key: str, default: float = 0.0) -> float:
@@ -308,7 +426,7 @@ def _segment_min_probability(seg: dict[str, Any]) -> float | None:
     :meth:`_load_segments`. Skip non-dict entries defensively, mirroring
     the :func:`_seg_float` coercion style.
     """
-    words = seg.get("words") or []
+    words = _seg_words(seg)
     probs: list[float] = []
     for w in words:
         if not isinstance(w, dict):
@@ -498,19 +616,27 @@ def _set_segment_text(seg: dict[str, Any], text: str) -> None:
 
 
 def _strip_fillers(text: str, pattern: re.Pattern[str]) -> str:
-    """Return ``text`` with filler words removed, internal whitespace
-    collapsed, and leading punctuation cleaned up. We also tidy up
-    space-before-punctuation artefacts like ``"Hello !"`` that come
-    from removing an inline filler with trailing ``!`` already
-    attached."""
+    """Return ``text`` with filler words removed and the punctuation around
+    them tidied: "Hello, um, world" -> "Hello, world", "Hello um. Bye" ->
+    "Hello. Bye", "Um, so" -> "so". Text without a filler comes back
+    unchanged apart from surrounding whitespace."""
     cleaned = pattern.sub("", text)
-    # Collapse double spaces and tidy leading punctuation.
+    if cleaned == text:
+        return text.strip()
+    # Brackets or quotes that held only the filler: "(um)", '"um,"'.
+    cleaned = re.sub(r"\(\s*[,;:]?\s*\)|\[\s*[,;:]?\s*\]", "", cleaned)
+    cleaned = re.sub(r"(^|\s)[\"“]\s*[,;:]?\s*[\"”](?=[\s,.!?]|$)", r"\1", cleaned)
+    # A comma left next to another mark: "Hello,, world", "Hello,.", "Bye., so"
+    cleaned = re.sub(r"([,;:])(?:\s*[,;:])+", r"\1", cleaned)
+    cleaned = re.sub(r"[,;:]\s*([.!?…])", r"\1", cleaned)
+    cleaned = re.sub(r"([.!?…])\s*[,;:]", r"\1", cleaned)
+    # A dash pair that framed the filler: "so - um - then" -> "so - then".
+    cleaned = re.sub(r"([-–—])(?:\s+[-–—])+(?=\s)", r"\1", cleaned)
+    # A quote or bracket that opened on the filler: '"Um, hello"' -> '"hello"'.
+    cleaned = re.sub(r"(^|\s)([\"“«(\[])\s*[,;:]\s*", r"\1\2", cleaned)
     cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
-    cleaned = re.sub(r"^[,.!?\s]+", "", cleaned)
-    # Remove the orphan space that lands BEFORE a punctuation mark
-    # when an inline filler with its trailing punctuation got eaten
-    # (e.g. "Hello um!" → "Hello !" → "Hello!").
-    cleaned = re.sub(r"\s+([,.!?])", r"\1", cleaned)
+    # A sentence that started with the filler: "Um, so" -> ", so" -> "so".
+    cleaned = re.sub(r"^[,;:.!?\s]+", "", cleaned)
     return cleaned
 
 
@@ -523,6 +649,9 @@ class TranscriptViewer(tk.Toplevel):
     # The transcript's language, when known (set in __init__; the class default keeps
     # partly built viewers working, as some tests make them).
     language: str | None = None
+    # (mtime_ns, size) of the JSON when it was loaded or last saved here.
+    _disk_stamp: tuple[int, int] | None = None
+    _registry_key: str | None = None
 
     def __init__(
         self,
@@ -548,6 +677,9 @@ class TranscriptViewer(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self.json_path = json_path
+        # Subtitle file next to the JSON -> its stamp, for the ones that still
+        # match the JSON (see _scan_siblings); Save rewrites only those.
+        self._synced_siblings: dict[str, tuple[int, int] | None] = {}
         self.media_path = media_path or _find_media_next_to(json_path)
         # The transcript's language when the opener knows it (a queue task); the JSON itself has
         # none. Picks the regional font for Han text without kana (app.theme.script_fonts);
@@ -612,6 +744,11 @@ class TranscriptViewer(tk.Toplevel):
         self.bind("<Right>", self._on_key_skip_fwd)
         self.bind("<space>", self._on_key_toggle_play)
 
+        # Registered last: a window that failed half-way is never the one
+        # open_viewer brings forward.
+        self._registry_key = _viewer_key(json_path)
+        _OPEN_VIEWERS[self._registry_key] = self
+
     # -- widgets ---------------------------------------------------------
 
     def _build_widgets(self) -> None:
@@ -644,10 +781,11 @@ class TranscriptViewer(tk.Toplevel):
                    command=self._remove_fillers).pack(side="left", padx=(0, 4))
         help_icon(
             topbar,
-            "Deletes standalone filler words (um, uh, er, …) from every "
-            "segment's text. Only whole filler words are removed, never "
-            "real content — review the segment list before saving if "
-            "unsure (there is no undo).",
+            "Deletes standalone filler words of the transcript's language "
+            "(English um, uh, er; German äh, ähm; French euh; …) from every "
+            "segment's text. Only whole filler words are removed and the "
+            "punctuation stays. Languages without a list are left alone. "
+            "Review the segment list before saving (there is no undo).",
         ).pack(side="left", padx=(0, 4))
         ttk.Button(topbar, text="Save changes  (Ctrl+S)",
                    command=self._save_changes).pack(side="left", padx=(0, 4))
@@ -869,7 +1007,7 @@ class TranscriptViewer(tk.Toplevel):
         path = self._chapters_path()
         if os.path.isfile(path):
             try:
-                with open(path, "r", encoding="utf-8") as f:
+                with open(path, "r", encoding="utf-8-sig") as f:
                     data = json.load(f)
                 if isinstance(data, list):
                     self.chapters = [c for c in data if isinstance(c, dict)]
@@ -963,9 +1101,9 @@ class TranscriptViewer(tk.Toplevel):
 
     def _full_transcript_text(self) -> str:
         return "\n".join(
-            (seg.get("text") or "").strip()
+            _seg_text(seg).strip()
             for seg in self.segments
-            if (seg.get("text") or "").strip()
+            if _seg_text(seg).strip()
         )
 
     def _app_config(self) -> dict[str, Any]:
@@ -1378,7 +1516,10 @@ class TranscriptViewer(tk.Toplevel):
 
     def _load_segments(self) -> None:
         try:
-            with open(self.json_path, "r", encoding="utf-8") as f:
+            self._disk_stamp = _file_stamp(self.json_path)
+            # utf-8-sig: a transcript re-saved by an editor that adds a BOM
+            # still loads.
+            with open(self.json_path, "r", encoding="utf-8-sig") as f:
                 payload = json.load(f)
             if not isinstance(payload, list):
                 # A transcript JSON is always a list of segment dicts. A dict
@@ -1410,6 +1551,31 @@ class TranscriptViewer(tk.Toplevel):
                 parent=self,
             )
             self.segments = []
+            return
+        self._scan_siblings()
+
+    def _scan_siblings(self) -> None:
+        """Note the subtitle files next to the JSON that it still produces.
+
+        Save rewrites only these. A file that differs from the JSON was
+        edited elsewhere (for example in Subtitle Edit), and overwriting it
+        would throw that work away.
+        """
+        synced: dict[str, tuple[int, int] | None] = {}
+        base = os.path.splitext(self.json_path)[0]
+        for fmt in _SIBLING_FORMATS:
+            path = f"{base}.{fmt}"
+            stamp = _file_stamp(path)
+            if stamp is None:
+                continue
+            try:
+                rendered = _render_sibling(fmt, self.segments)
+            except Exception:  # noqa: BLE001 - a writer bug must not block the viewer
+                logger.warning("Could not render %s for %s", fmt, self.json_path, exc_info=True)
+                continue
+            if _read_text_normalized(path) == rendered:
+                synced[path] = stamp
+        self._synced_siblings = synced
 
     def _populate_listbox(self) -> None:
         self.tree.delete(*self.tree.get_children())
@@ -1417,8 +1583,8 @@ class TranscriptViewer(tk.Toplevel):
         query = (self.search_var.get() if hasattr(self, "search_var") else "").strip().lower()
         active_idx = self._active_segment_idx
         for idx, seg in enumerate(self.segments):
-            text = (seg.get("text") or "").strip()
-            speaker = (seg.get("speaker") or "").strip()
+            text = _seg_text(seg).strip()
+            speaker = _seg_text(seg, "speaker").strip()
             if query and query not in text.lower() and query not in speaker.lower():
                 continue
             self.filtered_indices.append(idx)
@@ -1479,7 +1645,7 @@ class TranscriptViewer(tk.Toplevel):
         # Select the row so subsequent edit ops act on it.
         self.tree.selection_set(item)
         seg = self.segments[idx]
-        speaker = (seg.get("speaker") or "").strip()
+        speaker = _seg_text(seg, "speaker").strip()
         menu = tk.Menu(self, tearoff=0)
         if speaker:
             menu.add_command(
@@ -1492,7 +1658,7 @@ class TranscriptViewer(tk.Toplevel):
         )
         menu.add_command(
             label="Copy text", command=lambda: self._copy_to_clipboard(
-                (seg.get("text") or "").strip()
+                _seg_text(seg).strip()
             )
         )
         try:
@@ -1520,12 +1686,68 @@ class TranscriptViewer(tk.Toplevel):
             )
 
     def _open_in_subtitle_edit(self) -> None:
-        """Open the subtitle file written next to this JSON in Subtitle Edit."""
+        """Open the subtitle file next to this JSON in Subtitle Edit.
+
+        Subtitle Edit reads the file on disk, so unsaved edits are offered a
+        save first (Save also rewrites the subtitle files). A transcript with
+        no subtitle file yet gets an SRT written from the saved JSON.
+        """
+        if self._dirty:
+            answer = messagebox.askyesnocancel(
+                "Unsaved edits",
+                "Subtitle Edit opens the saved subtitle file. Save your edits "
+                "first so it shows them?\n\nYes: save, then open.\n"
+                "No: open the last saved version.",
+                parent=self,
+            )
+            if answer is None:
+                return
+            if answer:
+                self._save_changes()
+                if self._dirty:
+                    return
         subtitle_path = subtitle_edit.pick_subtitle_file(
             p for p in subtitle_edit.sibling_subtitle_candidates(self.json_path)
             if os.path.isfile(p)
         )
-        subtitle_edit_ui.open_in_subtitle_edit(self, self._app_config(), subtitle_path)
+        config = self._app_config()
+        if subtitle_path is None and subtitle_edit.find_subtitle_edit(
+            str(config.get(subtitle_edit.CONFIG_KEY) or "")
+        ) is not None:
+            subtitle_path = self._export_srt_for_subtitle_edit()
+        subtitle_edit_ui.open_in_subtitle_edit(self, config, subtitle_path)
+
+    def _segments_on_disk(self) -> list[dict[str, Any]] | None:
+        """The segments as saved in the JSON (the viewer's may hold unsaved edits)."""
+        if not self._dirty:
+            return self.segments
+        try:
+            with open(self.json_path, "r", encoding="utf-8-sig") as f:
+                payload = json.load(f)
+        except (OSError, ValueError):
+            return None
+        if not isinstance(payload, list):
+            return None
+        return [item for item in payload if isinstance(item, dict)]
+
+    def _export_srt_for_subtitle_edit(self) -> str | None:
+        """Write ``<json name>.srt`` from the saved transcript; its path, or None."""
+        segments = self._segments_on_disk()
+        if segments is None:
+            return None
+        path = os.path.splitext(self.json_path)[0] + ".srt"
+        try:
+            _write_text_atomically(path, _render_sibling("srt", segments))
+        except Exception as e:  # noqa: BLE001
+            show_error(
+                self, "Export failed",
+                "Could not write a subtitle file for Subtitle Edit.", detail=str(e),
+            )
+            return None
+        # It matches the saved JSON, so the next Save keeps it in step.
+        self._synced_siblings[path] = _file_stamp(path)
+        notify(self, f"Wrote {os.path.basename(path)} for Subtitle Edit.", "info")
+        return path
 
     def _open_in_system_player(self) -> None:
         if not self.media_path:
@@ -1569,7 +1791,7 @@ class TranscriptViewer(tk.Toplevel):
             return
         renamed = 0
         for seg in self.segments:
-            if (seg.get("speaker") or "").strip() == current:
+            if _seg_text(seg, "speaker").strip() == current:
                 seg["speaker"] = new_clean
                 renamed += 1
         if renamed:
@@ -1587,16 +1809,27 @@ class TranscriptViewer(tk.Toplevel):
         EditTimestampDialog(self, idx)
 
     def _remove_fillers(self) -> None:
+        words = _filler_words_for(self.language)
+        if not words:
+            notify(
+                self,
+                "Remove fillers needs the transcript's language, and it is unknown here."
+                if not _language_code(self.language) else
+                f"There is no filler list for the language '{self.language}', "
+                "so nothing was removed.",
+                "warning",
+            )
+            return
         if not messagebox.askyesno(
             "Remove fillers",
-            "Remove ‘uh’, ‘um’, ‘er’, ‘ah’, … from every segment?",
+            f"Remove these filler words from every segment?\n\n{', '.join(words)}",
             parent=self,
         ):
             return
-        pattern = _filler_regex()
+        pattern = _filler_regex(words)
         changed = 0
         for seg in self.segments:
-            original = (seg.get("text") or "")
+            original = _seg_text(seg)
             cleaned = _strip_fillers(original, pattern)
             if cleaned != original.strip():
                 _set_segment_text(seg, cleaned)
@@ -1613,6 +1846,15 @@ class TranscriptViewer(tk.Toplevel):
     def _save_changes(self) -> None:
         if not self._dirty:
             return
+        if self._disk_stamp is not None and _file_stamp(self.json_path) != self._disk_stamp:
+            if not messagebox.askyesno(
+                "Transcript changed on disk",
+                f"{os.path.basename(self.json_path)} was changed or removed by "
+                "something else after it was opened here.\n\n"
+                "Overwrite it with the version in this window?",
+                parent=self,
+            ):
+                return
         try:
             from core.writers import json_writer as _jw  # type: ignore[import-not-found]
             payload_s = _jw.write(self.segments, audio_path=self.media_path or "")
@@ -1637,12 +1879,54 @@ class TranscriptViewer(tk.Toplevel):
             )
             return
         self._dirty = False
-        notify(
-            self,
-            f"Saved {len(self.segments)} segment(s) → "
-            f"{os.path.basename(self.json_path)}",
-            "success",
-        )
+        self._disk_stamp = _file_stamp(self.json_path)
+        updated, kept, failed = self._update_siblings()
+        message = f"Saved {len(self.segments)} segment(s) → {os.path.basename(self.json_path)}"
+        if updated:
+            message += f", updated {', '.join(os.path.basename(p) for p in updated)}"
+        notify(self, message, "success")
+        if kept:
+            notify(
+                self,
+                f"Not updated: {', '.join(os.path.basename(p) for p in kept)} "
+                "(changed outside the viewer, so it was left as it is).",
+                "warning",
+            )
+        if failed:
+            notify(
+                self,
+                f"Could not update {', '.join(os.path.basename(p) for p in failed)}; "
+                "the details are in app.log.",
+                "warning",
+            )
+
+    def _update_siblings(self) -> tuple[list[str], list[str], list[str]]:
+        """Rewrite the subtitle files next to the JSON from the saved segments.
+
+        Only files that matched the JSON and have not changed since are
+        rewritten. Returns (updated, kept as they are, failed).
+        """
+        updated: list[str] = []
+        kept: list[str] = []
+        failed: list[str] = []
+        base = os.path.splitext(self.json_path)[0]
+        for fmt in _SIBLING_FORMATS:
+            path = f"{base}.{fmt}"
+            stamp = _file_stamp(path)
+            if stamp is None:
+                continue
+            if path not in self._synced_siblings or self._synced_siblings[path] != stamp:
+                kept.append(path)
+                continue
+            try:
+                _write_text_atomically(path, _render_sibling(fmt, self.segments))
+            except Exception:  # noqa: BLE001
+                logger.warning("Could not update %s", path, exc_info=True)
+                failed.append(path)
+                continue
+            self._synced_siblings[path] = _file_stamp(path)
+            updated.append(path)
+        return updated, kept, failed
 
     def _copy_to_clipboard(self, text: str) -> None:
         try:
@@ -1965,7 +2249,7 @@ class TranscriptViewer(tk.Toplevel):
         try:
             seg = self.segments[idx] if 0 <= idx < len(self.segments) else None
             if seg is not None:
-                self._words_lbl.configure(text=(seg.get("text") or "").strip())
+                self._words_lbl.configure(text=_seg_text(seg).strip())
         except Exception:  # noqa: BLE001
             pass
 
@@ -1988,7 +2272,7 @@ class TranscriptViewer(tk.Toplevel):
         # A font that draws the segment's script in full (tall marks,
         # conjuncts); only the font, so it never competes with the colours.
         font = script_fonts.tree_row_tags(
-            self.tree, str(seg.get("text") or ""), language=self.language,
+            self.tree, _seg_text(seg), language=self.language,
         )
         if seg.get("suspect"):
             return ("suspect",) + warn + conf + font
@@ -2026,9 +2310,9 @@ class TranscriptViewer(tk.Toplevel):
             self._set_active_segment(active_idx)
 
         seg = self.segments[active_idx]
-        words = seg.get("words") or []
+        words = _seg_words(seg)
         if not words:
-            self._words_lbl.configure(text=(seg.get("text") or "").strip())
+            self._words_lbl.configure(text=_seg_text(seg).strip())
             return
         # Find the active word inside the segment. Non-dict entries are
         # skipped for the same reason as in _segment_min_probability: a
@@ -2103,6 +2387,13 @@ class TranscriptViewer(tk.Toplevel):
             except Exception:  # noqa: BLE001
                 pass
         self.destroy()
+
+    def destroy(self) -> None:
+        # Also reached when the main window goes away with the viewer open.
+        key = self._registry_key
+        if key is not None and _OPEN_VIEWERS.get(key) is self:
+            del _OPEN_VIEWERS[key]
+        super().destroy()
 
 
 class EditTimestampDialog(tk.Toplevel):
@@ -2203,6 +2494,12 @@ class FindReplaceDialog(tk.Toplevel):
         self.replace_var = tk.StringVar()
         self.case_var = tk.BooleanVar(value=False)
         self.last_match_idx: int = -1
+        # Start of the selected match inside that segment's text.
+        self.last_match_pos: int = -1
+        # A new search word forgets the old match, so Replace never acts on
+        # a position found for the previous word.
+        self.find_var.trace_add("write", lambda *_: self._forget_match())
+        self.case_var.trace_add("write", lambda *_: self._forget_match())
 
         body = ttk.Frame(self, padding=10)
         body.pack(fill="both", expand=True)
@@ -2236,6 +2533,10 @@ class FindReplaceDialog(tk.Toplevel):
 
         body.columnconfigure(1, weight=1)
 
+    def _forget_match(self) -> None:
+        self.last_match_idx = -1
+        self.last_match_pos = -1
+
     def show(self) -> None:
         self.deiconify()
         self.lift()
@@ -2253,21 +2554,35 @@ class FindReplaceDialog(tk.Toplevel):
     def _match(self, haystack: str, needle: str) -> bool:
         if not needle:
             return False
-        if self.case_var.get():
-            return needle in haystack
-        return needle.lower() in haystack.lower()
+        return self._pattern(needle).search(haystack) is not None
+
+    def _pattern(self, needle: str) -> re.Pattern[str]:
+        return re.compile(re.escape(needle), 0 if self.case_var.get() else re.IGNORECASE)
 
     def find_next(self) -> bool:
+        """Select the next match: later in the same segment first, then the
+        following segments (wrapping round). Remembers the match's position
+        so Replace changes exactly that occurrence."""
         needle = self._needle()
         if not self._is_valid_needle(needle):
             return False
-        start = self.last_match_idx + 1
-        n = len(self.viewer.segments)
+        pattern = self._pattern(needle)
+        segments = self.viewer.segments
+        n = len(segments)
+        start_idx = 0
+        if 0 <= self.last_match_idx < n:
+            m = pattern.search(_seg_text(segments[self.last_match_idx]), self.last_match_pos + 1)
+            if m is not None:
+                self.last_match_pos = m.start()
+                self._reveal(self.last_match_idx)
+                return True
+            start_idx = self.last_match_idx + 1
         for offset in range(n):
-            idx = (start + offset) % n
-            seg = self.viewer.segments[idx]
-            if self._match(seg.get("text", "") or "", needle):
+            idx = (start_idx + offset) % n
+            m = pattern.search(_seg_text(segments[idx]))
+            if m is not None:
                 self.last_match_idx = idx
+                self.last_match_pos = m.start()
                 self._reveal(idx)
                 return True
         messagebox.showinfo("No match", f"'{needle}' not found.", parent=self)
@@ -2276,6 +2591,10 @@ class FindReplaceDialog(tk.Toplevel):
     def _reveal(self, idx: int) -> None:
         item = str(idx)
         try:
+            if not self.viewer.tree.exists(item):
+                # The search box hides this row: clear the filter so the
+                # match can be shown.
+                self.viewer.search_var.set("")
             self.viewer.tree.see(item)
             self.viewer.tree.selection_set(item)
             self.viewer.tree.focus(item)
@@ -2301,22 +2620,27 @@ class FindReplaceDialog(tk.Toplevel):
         )
 
     def replace_current(self) -> None:
+        """Replace the selected occurrence only, then select the next one."""
         needle = self._needle()
         if not self._is_valid_needle(needle):
             return
-        if self.last_match_idx < 0 or self.last_match_idx >= len(self.viewer.segments):
+        segments = self.viewer.segments
+        if self.last_match_idx < 0 or self.last_match_idx >= len(segments):
             if not self.find_next():
                 return
-        seg = self.viewer.segments[self.last_match_idx]
-        text = seg.get("text", "") or ""
-        replacement = self.replace_var.get() or ""
-        new_text = self._safe_replace(text, needle, replacement, self.case_var.get())
-        if new_text == text:
+        seg = segments[self.last_match_idx]
+        text = _seg_text(seg)
+        m = self._pattern(needle).match(text, max(0, self.last_match_pos))
+        if m is None:
+            # The text changed since the match was found: find it again.
             self.find_next()
             return
-        _set_segment_text(seg, new_text)
+        replacement = self.replace_var.get() or ""
+        _set_segment_text(seg, text[: m.start()] + replacement + text[m.end():])
         self.viewer._dirty = True
         self.viewer._populate_listbox()
+        # Continue after the inserted text, so it is not matched again.
+        self.last_match_pos = m.start() + len(replacement) - 1
         self.find_next()
 
     def replace_all(self) -> None:
@@ -2327,7 +2651,7 @@ class FindReplaceDialog(tk.Toplevel):
         case_sensitive = self.case_var.get()
         count = 0
         for seg in self.viewer.segments:
-            text = seg.get("text", "") or ""
+            text = _seg_text(seg)
             new_text = self._safe_replace(text, needle, replacement, case_sensitive)
             if new_text != text:
                 _set_segment_text(seg, new_text)
@@ -2358,8 +2682,8 @@ def open_viewer(
     initial_seek_seconds: float | None = None,
     language: str | None = None,
     media_path: str | None = None,
-) -> None:
-    """Open the viewer.
+) -> "TranscriptViewer | None":
+    """Open the viewer, or bring forward the one already showing this JSON.
 
     If ``json_path`` is None, prompt the user to pick one.
     ``initial_seek_seconds``, when given, seeks the media and selects
@@ -2367,7 +2691,8 @@ def open_viewer(
     result" action. ``language`` is the transcript's language when the
     caller knows it (``TranscriptViewer.language``). ``media_path`` is the
     task's real source; when it is missing on disk the viewer looks for
-    media next to the JSON instead.
+    media next to the JSON instead. Returns the viewer, or None when
+    nothing was opened.
     """
     if media_path and not os.path.isfile(media_path):
         media_path = None
@@ -2378,7 +2703,7 @@ def open_viewer(
             parent=master,
         )
         if not chosen:
-            return
+            return None
         json_path = chosen
     if not os.path.isfile(json_path):
         messagebox.showerror(
@@ -2386,8 +2711,26 @@ def open_viewer(
             f"That JSON file does not exist:\n{json_path}",
             parent=master,
         )
-        return
-    TranscriptViewer(
+        return None
+    key = _viewer_key(json_path)
+    existing = _OPEN_VIEWERS.get(key)
+    if existing is not None:
+        try:
+            alive = bool(existing.winfo_exists())
+        except tk.TclError:
+            alive = False
+        if alive:
+            if language and not existing.language:
+                existing.language = language
+            existing.deiconify()
+            existing.lift()
+            existing.focus_force()
+            if initial_seek_seconds is not None:
+                existing._seek_to(initial_seek_seconds)
+                existing._select_segment_near(initial_seek_seconds)
+            return existing
+        _OPEN_VIEWERS.pop(key, None)
+    return TranscriptViewer(
         master, json_path, media_path=media_path,
         initial_seek_seconds=initial_seek_seconds, language=language,
     )

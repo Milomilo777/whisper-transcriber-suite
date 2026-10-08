@@ -227,7 +227,7 @@ def test_viewer_remove_fillers_button(tmp_path):
     root = tk.Tk()
     root.withdraw()
     try:
-        viewer = TranscriptViewer(root, str(p))
+        viewer = TranscriptViewer(root, str(p), language="en")
         viewer.withdraw()
         try:
             from app.dialogs import transcript_viewer as tv_mod
@@ -380,7 +380,7 @@ def test_edits_in_the_viewer_drop_stale_words(tmp_path, monkeypatch):
     root = tk.Tk()
     root.withdraw()
     try:
-        viewer = TranscriptViewer(root, str(p))
+        viewer = TranscriptViewer(root, str(p), language="en")
         viewer.withdraw()
         try:
             dlg = FindReplaceDialog(viewer)

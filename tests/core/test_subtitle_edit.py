@@ -143,6 +143,18 @@ def test_quoted_user_path_is_unquoted() -> None:
     assert found == mine
 
 
+def test_environment_variables_in_the_user_path_are_expanded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SE_HOME_FOR_TEST", "D:\\Tools")
+    mine = os.path.join("D:\\Tools", "SubtitleEdit.exe")
+    pattern = "%SE_HOME_FOR_TEST%" if os.name == "nt" else "$SE_HOME_FOR_TEST"
+    found = se.find_subtitle_edit(
+        pattern, platform=WIN, registry=lambda: [], env={}, isfile=_files(mine),
+    )
+    assert found == mine
+
+
 # -- registry reading ----------------------------------------------------------------
 
 

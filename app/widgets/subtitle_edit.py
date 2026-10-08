@@ -27,16 +27,25 @@ def open_in_subtitle_edit(
     parent: tk.Misc, config: Mapping[str, Any] | None, subtitle_path: str | None,
 ) -> None:
     """Open ``subtitle_path`` in Subtitle Edit, or explain what is missing."""
-    exe = subtitle_edit.find_subtitle_edit(str((config or {}).get(subtitle_edit.CONFIG_KEY) or ""))
+    configured = str((config or {}).get(subtitle_edit.CONFIG_KEY) or "").strip()
+    exe = subtitle_edit.find_subtitle_edit(configured)
     if exe is None:
-        if messagebox.askyesno(
-            "Subtitle Edit not found",
-            "Subtitle Edit was not found on this computer.\n\n"
-            "It is a free subtitle editor. Open its official download page now?\n\n"
-            "If you already have a portable copy, choose SubtitleEdit.exe in "
-            "Advanced > App behaviour.",
-            parent=parent,
-        ):
+        if configured:
+            # Name the setting: otherwise a typo there looks like "not installed".
+            message = (
+                "The Subtitle Edit path chosen in Advanced > App behaviour does not "
+                f"lead to SubtitleEdit.exe:\n{configured}\n\n"
+                "Choose SubtitleEdit.exe there again. Open the official download "
+                "page now?"
+            )
+        else:
+            message = (
+                "Subtitle Edit was not found on this computer.\n\n"
+                "It is a free subtitle editor. Open its official download page now?\n\n"
+                "If you already have a portable copy, choose SubtitleEdit.exe in "
+                "Advanced > App behaviour."
+            )
+        if messagebox.askyesno("Subtitle Edit not found", message, parent=parent):
             webbrowser.open(subtitle_edit.DOWNLOAD_URL)
         return
     if not subtitle_path:
