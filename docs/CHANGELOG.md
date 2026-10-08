@@ -309,6 +309,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   rather than blaming a crash, and a worker whose app has gone logs one line instead of a
   `BrokenPipeError` traceback.
 
+- **Closing the window ends the app.** A model download started inside the app (web server start,
+  first-run model window, Live tab) runs on library threads that cannot be interrupted, and Python
+  waited for them at exit: the window was gone but the process lived on, holding the single-instance
+  lock, until the whole model had arrived. The process now ends right after the orderly shutdown
+  (logs flushed first); an unfinished download resumes the next time.
+
 - **Worker output pipe on Windows.** A closed pipe is `OSError(22)` there, not `BrokenPipeError`, so
   the quiet handling added for macOS did nothing; it now covers both when the stream is the
   worker's own stdout.
