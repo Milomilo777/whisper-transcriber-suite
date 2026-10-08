@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import tempfile
@@ -67,6 +68,8 @@ def _extra_args_set_audio_codec(extra_args: list[str] | None) -> bool:
 
 
 _RLM = chr(0x200F)  # RIGHT-TO-LEFT MARK
+_RLE = chr(0x202B)  # RIGHT-TO-LEFT EMBEDDING
+_PDF = chr(0x202C)  # POP DIRECTIONAL FORMATTING
 
 # Strong right-to-left letters: Hebrew, Arabic (+ Supplement / Extended-A),
 # Syriac, Thaana, NKo and the Arabic/Hebrew presentation forms.
@@ -107,24 +110,28 @@ def _has_rtl(line: str) -> bool:
 
 
 def wrap_rtl_lines(text: str) -> str:
-    """Wrap every line holding right-to-left letters in U+200F marks.
+    """Give every line holding right-to-left letters an RTL base direction.
 
-    libass lays out each subtitle line with a left-to-right base direction,
-    so a Persian/Arabic line's final "." "!" or "»" (neutral characters)
-    is drawn at the wrong end. A RIGHT-TO-LEFT MARK at both ends gives the
-    line an RTL context. The marks are invisible: removing every U+200F
-    gives back the input, and wrapping twice changes nothing. SRT index and
-    timing lines hold no RTL letters, so they pass through untouched.
+    libass lays out each subtitle line with a left-to-right base direction.
+    A Persian line that mixes Latin words and digits ("... 1.9.3 ... macOS
+    ...") then came out with its clauses in the wrong order, and a final "."
+    "!" or "»" (neutral characters) at the wrong end. The line is wrapped in
+    RIGHT-TO-LEFT EMBEDDING ... POP DIRECTIONAL FORMATTING (U+202B / U+202C,
+    which libass's fribidi honours, rendered and checked), with a RIGHT-TO-LEFT
+    MARK just inside each end. The marks are invisible: removing them gives
+    back the input, and wrapping twice changes nothing. SRT index and timing
+    lines hold no RTL letters, so they pass through untouched.
     """
     out: list[str] = []
     for line in text.split("\n"):
         # Keep a CR of a CRLF file outside the marks.
         body, cr = (line[:-1], "\r") if line.endswith("\r") else (line, "")
-        if _has_rtl(body):
+        if _has_rtl(body) and not (body.startswith(_RLE) and body.endswith(_PDF)):
             if not body.startswith(_RLM):
                 body = _RLM + body
             if not body.endswith(_RLM):
                 body = body + _RLM
+            body = _RLE + body + _PDF
         out.append(body + cr)
     return "\n".join(out)
 
@@ -240,26 +247,55 @@ def free_output_path(path: str) -> str:
     return f"{stem} ({n}){ext}"
 
 
+# Placeholders this run of the app reserved and has not yet released or
+# replaced. The set is filled BEFORE the file exists, so the watched folder's
+# create event (and a download's file recovery) can always tell the app's own
+# placeholder from a file the user put there, whatever its name or size.
+_reserved: set[str] = set()
+_reserved_lock = threading.Lock()
+
+
+def is_reserved(path: str) -> bool:
+    """True while *path* is a placeholder this run reserved for a burn."""
+    with _reserved_lock:
+        return _output_key(path) in _reserved
+
+
 def reserve_output_path(path: str) -> str:
     """Like ``free_output_path`` but creates the file empty (exclusive create),
     so two jobs started at once never pick the same name. ``burn()`` then
     replaces this placeholder; ``release_reserved_path`` removes it when no
-    video was made."""
+    video was made. The name is listed in ``is_reserved`` until then."""
     stem, ext = os.path.splitext(path)
     candidate, n = path, 2
     while True:
+        key = _output_key(candidate)
+        with _reserved_lock:
+            held_by_another_job = key in _reserved
+            _reserved.add(key)
         try:
-            fd = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            fd = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o666)
         except FileExistsError:
+            if not held_by_another_job:
+                with _reserved_lock:
+                    _reserved.discard(key)
             candidate = f"{stem} ({n}){ext}"
             n += 1
             continue
+        except BaseException:
+            if not held_by_another_job:
+                with _reserved_lock:
+                    _reserved.discard(key)
+            raise
         os.close(fd)
         return candidate
 
 
 def release_reserved_path(path: str) -> None:
-    """Remove a placeholder from ``reserve_output_path`` if it is still empty."""
+    """Remove a placeholder from ``reserve_output_path`` if it is still empty,
+    and stop listing it as reserved."""
+    with _reserved_lock:
+        _reserved.discard(_output_key(path))
     try:
         if os.path.isfile(path) and os.path.getsize(path) == 0:
             os.unlink(path)
@@ -279,9 +315,14 @@ def release_reserved_path(path: str) -> None:
 
 _BURN_TEMP_PREFIX = ".burn-"
 _BURN_DIR_PREFIX = "burnsubs_"
+_BURN_TEMP_NAME_RE = re.compile(r"^\.burn-[a-z0-9_]{8}(\.[A-Za-z0-9]{1,8})?$")
+_BURN_TEMP_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_"
+# The only file a burn puts into its work folder.
+_WORK_FOLDER_FILES = frozenset({"subs.srt"})
 # The stem of a chained download's result or placeholder: "<title>-subbed" or
 # "<title>-subbed (2)" (app/services/subbed_video.py).
 SUBBED_STEM_RE = re.compile(r"-subbed(?: \(\d+\))?$")
+_PLACEHOLDER_EXTS = (".mp4", ".m4v", ".mov", ".mkv", ".webm")
 
 
 class _ActiveBurn:
@@ -298,6 +339,8 @@ class _ActiveBurn:
 
 _active: list[_ActiveBurn] = []
 _active_lock = threading.Lock()
+# Set when the app closes: from then on no burn starts ffmpeg.
+_closing = threading.Event()
 # Outputs this run of the app wrote (see is_own_output).
 _produced: set[str] = set()
 
@@ -311,20 +354,27 @@ def is_burn_temp(path: str) -> bool:
     return os.path.basename(path).startswith(_BURN_TEMP_PREFIX)
 
 
-def is_empty_placeholder(path: str) -> bool:
-    """True for an empty ``<title>-subbed.mp4`` reserved by a chained download."""
-    stem = os.path.splitext(os.path.basename(path))[0]
-    if not SUBBED_STEM_RE.search(stem):
-        return False
-    try:
-        return os.path.getsize(path) == 0
-    except OSError:
-        return False
-
-
 def is_own_output(path: str) -> bool:
     """True when a burn of this run of the app wrote *path*."""
     return _output_key(path) in _produced
+
+
+def _create_burn_temp(folder: str, ext: str) -> str:
+    """Create the hidden ``.burn-<8 chars><ext>`` file the encode goes into.
+
+    Created with the normal new-file permissions (the umask applies);
+    ``tempfile.mkstemp`` would make it 0600 and the finished video would
+    keep that mode, unlike every other output of the app.
+    """
+    while True:
+        name = _BURN_TEMP_PREFIX + "".join(secrets.choice(_BURN_TEMP_CHARS) for _ in range(8)) + ext
+        path = os.path.join(folder, name)
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o666)
+        except FileExistsError:
+            continue
+        os.close(fd)
+        return path
 
 
 def _journal_dir() -> str:
@@ -374,6 +424,20 @@ def _journal_remove(entry: _ActiveBurn) -> None:
     entry.journal = ""
 
 
+def _entry_clean(entry: _ActiveBurn) -> bool:
+    """True when the burn's partial file and work folder are gone."""
+    return not (
+        (entry.tmp_out and os.path.lexists(entry.tmp_out))
+        or (entry.tmp_dir and os.path.lexists(entry.tmp_dir))
+    )
+
+
+def _journal_remove_if_clean(entry: _ActiveBurn) -> None:
+    """Drop the journal only when nothing it names is left to sweep later."""
+    if _entry_clean(entry):
+        _journal_remove(entry)
+
+
 def _retry_for(patience: float, attempt: Callable[[], bool]) -> None:
     """Call *attempt* until it returns True or *patience* seconds pass (a just
     killed ffmpeg on Windows still holds its output file for a moment)."""
@@ -382,18 +446,69 @@ def _retry_for(patience: float, attempt: Callable[[], bool]) -> None:
         time.sleep(0.1)
 
 
+def _is_link(path: str) -> bool:
+    """A symlink, or a Windows junction (rmtree/unlink would act on its target's name)."""
+    return os.path.islink(path) or bool(getattr(os.path, "isjunction", lambda p: False)(path))
+
+
+def _same_folder(a: str, b: str) -> bool:
+    return os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b))
+
+
+def _is_burn_partial(path: str) -> bool:
+    """A file this module's ``_create_burn_temp`` could have made, nothing else."""
+    return (
+        bool(path) and os.path.isabs(path) and bool(_BURN_TEMP_NAME_RE.match(os.path.basename(path)))
+        and not _is_link(path) and os.path.isfile(path)
+    )
+
+
+def _is_burn_work_folder(path: str, *, strict_content: bool) -> bool:
+    """A ``burnsubs_*`` folder directly in the system temp folder; with
+    *strict_content* it must also hold nothing but the burn's own SRT copy."""
+    if not path or not os.path.isabs(path):
+        return False
+    if not os.path.basename(path).startswith(_BURN_DIR_PREFIX):
+        return False
+    if _is_link(path) or not os.path.isdir(path):
+        return False
+    if not _same_folder(os.path.dirname(path), tempfile.gettempdir()):
+        return False
+    if strict_content:
+        try:
+            return set(os.listdir(path)) <= _WORK_FOLDER_FILES
+        except OSError:
+            return False
+    return True
+
+
+def _is_empty_reserved_name(path: str) -> bool:
+    """An empty ``<title>-subbed[ (N)].<video ext>`` file: what a chain reserves."""
+    if not path or not os.path.isabs(path) or _is_link(path) or not os.path.isfile(path):
+        return False
+    stem, ext = os.path.splitext(os.path.basename(path))
+    if ext.lower() not in _PLACEHOLDER_EXTS or not SUBBED_STEM_RE.search(stem):
+        return False
+    try:
+        return os.path.getsize(path) == 0
+    except OSError:
+        return False
+
+
 def _remove_leftovers(
-    tmp_dir: str, tmp_out: str, placeholder: str, *, patience: float = 0.0
+    tmp_dir: str, tmp_out: str, placeholder: str, *,
+    patience: float = 0.0, strict_content: bool = True,
 ) -> list[str]:
     """Remove a burn's own temp file, work folder and empty placeholder.
 
-    Each is checked first: the partial must carry the ``.burn-`` name, the
-    work folder the ``burnsubs_`` name, and the placeholder must still be
-    empty, so a file that is not provably this burn's is never touched.
-    Returns what was removed.
+    Every path is vetted first (see the ``_is_*`` helpers: the exact name
+    shape this module creates, an absolute path, not a link, the work folder
+    directly inside the system temp folder, the placeholder still empty), so
+    a path that is not provably this module's is never touched, whatever a
+    journal file claims. Returns what was removed.
     """
     removed: list[str] = []
-    if tmp_out and is_burn_temp(tmp_out) and os.path.isfile(tmp_out):
+    if _is_burn_partial(tmp_out):
         def _unlink() -> bool:
             try:
                 os.unlink(tmp_out)
@@ -408,7 +523,7 @@ def _remove_leftovers(
             removed.append(tmp_out)
         else:
             logger.warning("Could not remove the burn partial %s", tmp_out)
-    if tmp_dir and os.path.basename(tmp_dir).startswith(_BURN_DIR_PREFIX) and os.path.isdir(tmp_dir):
+    if _is_burn_work_folder(tmp_dir, strict_content=strict_content):
         def _rmtree() -> bool:
             shutil.rmtree(tmp_dir, ignore_errors=True)
             return not os.path.exists(tmp_dir)
@@ -416,7 +531,7 @@ def _remove_leftovers(
         _retry_for(patience, _rmtree)
         if not os.path.exists(tmp_dir):
             removed.append(tmp_dir)
-    if placeholder and os.path.isfile(placeholder) and os.path.getsize(placeholder) == 0:
+    if _is_empty_reserved_name(placeholder):
         release_reserved_path(placeholder)
         if not os.path.exists(placeholder):
             removed.append(placeholder)
@@ -426,24 +541,36 @@ def _remove_leftovers(
 def abandon_active_burns(patience: float = 5.0) -> int:
     """Stop every running burn and remove its leftovers (the app is closing).
 
-    ffmpeg is tree-killed and awaited, then only the files each burn created
-    are removed (see ``_remove_leftovers``); a finished output is never
-    touched. The burn's own thread then ends with ``BurnCancelled``.
-    Returns how many burns were stopped.
+    No burn starts ffmpeg after this call. Every ffmpeg tree is killed first,
+    then all are awaited together (one shared *patience*), and only the files
+    each burn created are removed (see ``_remove_leftovers``); a finished
+    output is never touched. A burn's journal stays while anything it names
+    still exists, or while its ffmpeg had not started yet (that burn's own
+    thread then stops and cleans up; if the process ends first, the next
+    start sweeps it). Returns how many burns were stopped.
     """
+    _closing.set()
     with _active_lock:
         entries = list(_active)
     for entry in entries:
         entry.abandoned.set()
-        proc = entry.proc
+        if entry.proc is not None:
+            kill_process_tree(entry.proc, force=True)
+    deadline = time.monotonic() + patience
+    for entry in entries:
+        proc = entry.proc  # read after abandoned was set: a late start kills itself
         if proc is not None:
             kill_process_tree(proc, force=True)
             try:
-                proc.wait(timeout=patience)
+                proc.wait(timeout=max(0.0, deadline - time.monotonic()))
             except Exception:  # noqa: BLE001 - already gone, or stuck: clean up anyway
                 pass
-        _remove_leftovers(entry.tmp_dir, entry.tmp_out, entry.placeholder, patience=patience)
-        _journal_remove(entry)
+        _remove_leftovers(
+            entry.tmp_dir, entry.tmp_out, entry.placeholder,
+            patience=max(0.5, deadline - time.monotonic()), strict_content=False,
+        )
+        if proc is not None:
+            _journal_remove_if_clean(entry)
     return len(entries)
 
 
@@ -478,9 +605,10 @@ def _record_owner_running(record: dict[str, Any]) -> bool:
 def sweep_stale_burns() -> list[str]:
     """At start: remove what a crashed or killed run left of its burns.
 
-    Works only from the journal the burns wrote, so a file is removed only
-    when a recorded burn of a dead process created it (see
-    ``_remove_leftovers`` for the per-file checks). Returns what was removed.
+    Works only from the journal the burns wrote, and trusts nothing in it:
+    ``_remove_leftovers`` re-checks every path (name shape, location, link,
+    contents, emptiness) before touching it, and a record is acted on only
+    when its writer is provably gone. Returns what was removed.
     """
     try:
         folder = _journal_dir()
@@ -506,10 +634,12 @@ def sweep_stale_burns() -> list[str]:
         else:
             if _record_owner_running(record):
                 continue
-        removed += _remove_leftovers(
-            str(record.get("tmp_dir") or ""), str(record.get("tmp_out") or ""),
-            str(record.get("placeholder") or ""),
-        )
+
+        def _text(key: str) -> str:
+            value = record.get(key)
+            return value if isinstance(value, str) else ""
+
+        removed += _remove_leftovers(_text("tmp_dir"), _text("tmp_out"), _text("placeholder"))
         try:
             os.unlink(path)
         except OSError:
@@ -713,9 +843,10 @@ def burn(
     ``progress_cb(percent)`` runs on a reader thread, rising to 100.
     ``cancel_check()`` is polled about ten times a second; True stops
     ffmpeg. ``on_process(popen)`` receives each ffmpeg process as it starts.
-    ``placeholder`` names an empty file the caller reserved for the output (``reserve_output_path``): if the app is
-    closed during the burn, it is removed with the burn's other leftovers.
-    While it runs the burn is listed for ``abandon_active_burns``.
+    ``placeholder`` names an empty file the caller reserved for the output
+    (``reserve_output_path``): if the app is closed during the burn, it is
+    removed with the burn's other leftovers. While it runs the burn is listed
+    for ``abandon_active_burns``, after which it stops and starts no ffmpeg.
 
     Raises:
         FileNotFoundError if the video or srt is missing.
@@ -735,6 +866,8 @@ def burn(
             raise ValueError(
                 f"The output file must differ from the source: {out_path}"
             )
+    if _closing.is_set():
+        raise BurnCancelled("The app is closing")
     video_path = os.path.abspath(video_path)
     info = probe_media(video_path)
     if info.has_video is False:
@@ -776,22 +909,25 @@ def burn(
         subtitle_filter = "subtitles=subs.srt"
         if font:
             subtitle_filter += f":force_style='FontName={font}'"
-        fd, tmp_out = tempfile.mkstemp(
-            prefix=_BURN_TEMP_PREFIX,
-            suffix=os.path.splitext(out_path)[1],
-            dir=out_dir,
-        )
-        os.close(fd)
+        tmp_out = _create_burn_temp(out_dir, os.path.splitext(out_path)[1])
         entry.tmp_out = tmp_out
         _journal_write(entry)
 
+        def _closing_now() -> bool:
+            return entry.abandoned.is_set() or _closing.is_set()
+
         def _on_process(proc: Any) -> None:
             entry.proc = proc
+            # abandon_active_burns sets the flag, then reads entry.proc: one
+            # of the two sides always sees the other, so an ffmpeg that starts
+            # while the app closes is killed here and never runs on.
+            if _closing_now():
+                kill_process_tree(proc, force=True)
             if on_process is not None:
                 on_process(proc)
 
         def _stop_requested() -> bool:
-            return entry.abandoned.is_set() or bool(cancel_check is not None and cancel_check())
+            return _closing_now() or bool(cancel_check is not None and cancel_check())
         is_mp4 = os.path.splitext(out_path)[1].lower() in (".mp4", ".m4v", ".mov")
 
         def _cmd(audio_codec: str) -> list[str]:
@@ -868,9 +1004,14 @@ def burn(
                 raise RuntimeError(
                     f"ffmpeg timed out burning subtitles after {timeout}s"
                 ) from e
+            except OSError:
+                # The app closing removed the work folder ffmpeg was about to start in.
+                if _closing_now():
+                    raise BurnCancelled("Subtitle burn cancelled")
+                raise
         # (Only the app closing stops here: a Cancel that lands after the
         # encode finished keeps the finished file, as the chain row expects.)
-        if entry.abandoned.is_set():
+        if _closing_now():
             raise BurnCancelled("Subtitle burn cancelled")
         # Known as the app's own output BEFORE it appears: the watched
         # folder's event for this rename must not outrun the record.
@@ -881,14 +1022,19 @@ def burn(
         except BaseException:
             _produced.discard(key)
             raise
+        with _reserved_lock:
+            _reserved.discard(key)  # the placeholder now holds the video
     finally:
         with _active_lock:
             if entry in _active:
                 _active.remove(entry)
-        _journal_remove(entry)
         shutil.rmtree(tmp_dir, ignore_errors=True)
         if tmp_out:
             try:
                 os.unlink(tmp_out)
-            except OSError:
+            except FileNotFoundError:
                 pass
+            except OSError:
+                logger.warning("Could not remove the burn partial %s", tmp_out)
+        # A partial that could not be removed stays in the journal for the next start.
+        _journal_remove_if_clean(entry)

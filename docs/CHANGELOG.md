@@ -304,12 +304,16 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Fixed
 
 - **Make subtitled video: wrong file, silent failure, leftovers.** A download whose file name yt-dlp
-  reported wrongly is no longer matched to another chain's hidden `.burn-*` temp, empty `-subbed`
-  placeholder or finished burn, and an unidentifiable file now ends the row with a reason. A folder
-  that refuses the `-subbed` file ends the row as an error with the reason and keeps the transcript
-  listed. Closing the app stops a running burn (chained or manual) and removes its partial, work
-  folder and empty placeholder; the next start removes what a crash left. The watched folder skips
-  these files, the macOS bundle check and the Windows install smoke test require ffmpeg's
+  reported wrongly is no longer matched to another chain's hidden `.burn-*` temp, reserved
+  `-subbed` placeholder or finished burn, and a folder with several equal candidates now ends the
+  row as an error with a reason instead of transcribing a guess. A folder that refuses the
+  `-subbed` file ends the row as an error with the reason and keeps the transcript listed. Closing
+  the app stops a running burn (chained or manual) before it can start ffmpeg and removes its
+  partial, work folder and empty placeholder; the next start removes what a crash left, from a
+  journal it re-checks path by path. The watched folder skips only the app's own burn files, never
+  a `-subbed` file the user copies in. A burned Persian line that mixes Latin words and digits
+  (`... 1.9.3 ... macOS ...`) keeps its clause order, burned videos get the normal file mode
+  (0644, not 0600), the macOS bundle check and the Windows install smoke test require ffmpeg's
   `subtitles` filter, and the picture check before the transcription waits at most 5 seconds.
 
 - **Hardware detection and model advice.** GPUs without efficient float16 (GTX 10-series) now get

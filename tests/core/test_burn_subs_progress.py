@@ -255,7 +255,7 @@ def _burned_texts(tmp_path, segments, prepare=None) -> list[str]:
         # Undo the markup escape (core.burn_subs.escape_cue_text): the brace
         # backslashes first, then the word joiners, then the RLM wrap.
         payload = payload.replace("\\{", "{").replace("\\}", "}")
-        payload = payload.replace(_WJ, "").replace(_RLM, "")
+        payload = payload.replace(_WJ, "").replace(_RLM, "").replace(chr(0x202B), "").replace(chr(0x202C), "")
         prefix = f"{seg['speaker']}: " if seg.get("speaker") else ""
         assert payload.startswith(prefix)
         texts.append(payload[len(prefix):].replace("\u2192", "-->"))
@@ -281,7 +281,7 @@ def _random_segments(rng: random.Random) -> list[dict]:
 @pytest.mark.parametrize("seed", range(150))
 def test_burned_text_equals_the_transcript(tmp_path, seed):
     """No loss, no reorder: the SRT ffmpeg reads holds the transcript text
-    once the documented decorations are removed (RLM marks, the speaker
+    once the documented decorations are removed (RLM/RLE/PDF marks, the speaker
     prefix, the SRT arrow for a literal "-->")."""
     rng = random.Random(seed)
     segments = _random_segments(rng)

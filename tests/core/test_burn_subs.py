@@ -247,6 +247,13 @@ def test_burn_aac_retry_failure_is_reported(tmp_path, monkeypatch):
 # --- same-file guard, graph-safe temp dir, RTL wrap + per-script font ------
 
 RLM = chr(0x200F)
+RLE = chr(0x202B)
+PDF = chr(0x202C)
+
+
+def _wrapped(body: str) -> str:
+    """What wrap_rtl_lines makes of one right-to-left line."""
+    return RLE + RLM + body + RLM + PDF
 
 
 def test_burn_refuses_to_write_over_the_source_video(tmp_path, monkeypatch):
@@ -320,7 +327,7 @@ def test_burn_wraps_persian_lines_and_forces_a_font_on_windows(tmp_path, monkeyp
     burn_subs.burn(video, str(srt), out)
     text = captured["srt"].decode("utf-8")
     assert text == (
-        "1\r\n00:00:00,000 --> 00:00:02,000\r\n" + RLM + "سلام دنیا!" + RLM + "\r\n"
+        "1\r\n00:00:00,000 --> 00:00:02,000\r\n" + _wrapped("سلام دنیا!") + "\r\n"
     )
     assert _vf_value(captured["cmd"]) == "subtitles=subs.srt:force_style='FontName=Tahoma'"
 
@@ -367,13 +374,27 @@ def test_subtitle_font_for_each_script(text, font):
 
 def test_wrap_rtl_lines_known_cases():
     w = burn_subs.wrap_rtl_lines
-    assert w("سلام.") == RLM + "سلام." + RLM
-    assert w("שלום!") == RLM + "שלום!" + RLM
+    assert w("سلام.") == _wrapped("سلام.")
+    assert w("שלום!") == _wrapped("שלום!")
     assert w("hello.") == "hello."
     assert w("1\n00:00:00,000 --> 00:00:01,000\nسلام\n") == (
-        "1\n00:00:00,000 --> 00:00:01,000\n" + RLM + "سلام" + RLM + "\n"
+        "1\n00:00:00,000 --> 00:00:01,000\n" + _wrapped("سلام") + "\n"
     )
-    assert w("a\r\nسلام\r\n") == "a\r\n" + RLM + "سلام" + RLM + "\r\n"
+    assert w("a\r\nسلام\r\n") == "a\r\n" + _wrapped("سلام") + "\r\n"
+
+
+def test_a_persian_line_with_latin_words_gets_an_rtl_embedding():
+    # libass starts every line left to right: "نسخه 1.9.3 برای macOS آماده شد!"
+    # came out with its clauses in the wrong order. The embedding (rendered and
+    # checked with the bundled ffmpeg) makes the base direction right to left.
+    line = "نسخه 1.9.3 برای macOS آماده شد!"
+    out = burn_subs.wrap_rtl_lines(line)
+    assert out == _wrapped(line)
+    assert out.startswith(RLE) and out.endswith(PDF)
+    # A mostly Latin line with one Persian word is a right-to-left line too, as before.
+    assert burn_subs.wrap_rtl_lines("macOS نسخه") == _wrapped("macOS نسخه")
+    # Pure Latin text and its punctuation are untouched.
+    assert burn_subs.wrap_rtl_lines("Hello, 1.9.3!") == "Hello, 1.9.3!"
 
 
 def test_wrap_rtl_lines_properties():
@@ -384,17 +405,24 @@ def test_wrap_rtl_lines_properties():
 
     rng = random.Random(20261008)
     alphabet = list("ab .!?»«،؟:") + ["سل", "ام", "דנ", "你好", "\r", "\n", "\n", RLM, "1", ","]
+    marks = (RLM, RLE, PDF)
     for _ in range(2000):
         text = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 25)))
         out = burn_subs.wrap_rtl_lines(text)
         # Removing the marks gives back the input with its own marks removed.
-        assert out.replace(RLM, "") == text.replace(RLM, "")
+        def bare(s: str) -> str:
+            for m in marks:
+                s = s.replace(m, "")
+            return s
+
+        assert bare(out) == bare(text)
         assert out.count("\n") == text.count("\n")
         assert out.count("\r") == text.count("\r")
         assert burn_subs.wrap_rtl_lines(out) == out
         for line in out.split("\n"):
             body = line[:-1] if line.endswith("\r") else line
             if burn_subs._has_rtl(body):
-                assert body.startswith(RLM) and body.endswith(RLM)
+                assert body.startswith(RLE + RLM) and body.endswith(RLM + PDF)
             else:
+                assert RLE not in body and PDF not in body
                 assert RLM not in body or RLM in text

@@ -2558,8 +2558,9 @@ class DownloadService:
 
         Candidates are media files in the target folder touched since the
         task started, minus what is never a download: hidden files, the
-        ``.burn-*`` temp and the ``<title>-subbed`` placeholder or result of a
-        subtitled-video chain burning in the same folder, and empty files.
+        ``.burn-*`` temp and the placeholder or result of a subtitled-video
+        chain of this run burning in the same folder (recorded by
+        ``core.burn_subs``, never matched by name), and empty files.
         One candidate wins; several are told apart by the expected title (the
         parsed name, else the task title), newest first. With several and no
         title match nothing is returned and ``ambiguous`` is True, so the
@@ -2582,16 +2583,13 @@ class DownloadService:
         except OSError:
             return None, False
         for name in names:
-            stem, ext = os.path.splitext(name)
-            if ext.lower() not in media_exts:
+            if os.path.splitext(name)[1].lower() not in media_exts:
                 continue
-            if (
-                name.startswith(".")
-                or burn_subs.SUBBED_STEM_RE.search(stem)
-                or is_download_intermediate(name)
-            ):
+            if name.startswith(".") or is_download_intermediate(name):
                 continue
             full = os.path.join(folder, name)
+            if burn_subs.is_reserved(full) or burn_subs.is_own_output(full):
+                continue
             try:
                 if not os.path.isfile(full):
                     continue
@@ -2710,17 +2708,18 @@ class DownloadService:
                         app.log(f"(recovered downloaded file: {os.path.basename(recovered)})")
                     saved_path = recovered
                 elif ambiguous:
-                    app.log(
-                        "Could not tell which file in the folder is this download "
-                        f"(several fit): {os.path.basename(saved_path or '')}"
+                    # The parsed name is not on disk and the folder holds
+                    # several candidates: end the row with a reason, record
+                    # no output and hand nothing to the transcription.
+                    chain_error = (
+                        "The download finished, but the file could not be told "
+                        "apart from others in the folder"
+                        + ("; no subtitled video was made." if getattr(task, "make_subbed_video", False) else ".")
                     )
-                    if getattr(task, "make_subbed_video", False):
-                        chain_error = (
-                            "Could not tell which downloaded file is this video; "
-                            "no subtitled video was made."
-                        )
-                        # The parsed name is not on disk: record no output.
-                        saved_path = None
+                    app.log(f"{chain_error} ({os.path.basename(saved_path or '')})")
+                    status = "error"
+                    task.status = "error"
+                    saved_path = None
             if saved_path:
                 task.saved_path = saved_path
                 # Friendly completion line — the user actually wants

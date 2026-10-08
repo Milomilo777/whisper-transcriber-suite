@@ -16,7 +16,7 @@ import re
 import threading
 from typing import Any, Callable
 
-from .burn_subs import is_burn_temp, is_empty_placeholder, is_own_output
+from .burn_subs import is_burn_temp, is_own_output, is_reserved
 
 logger = logging.getLogger(__name__)
 
@@ -80,14 +80,15 @@ def is_media_file(path: str) -> bool:
 def watch_skip_reason(path: str) -> str:
     """Why the watched folder ignores *path*, or "" when it is a new file.
 
-    The app's own subtitle-burn files are not new input: the empty
-    ``<title>-subbed.mp4`` a chained download reserves, and the video a burn
-    of this run wrote (it would otherwise be transcribed again when the
-    watched folder is also the download folder).
+    The app's own subtitle-burn files are not new input: the placeholder a
+    chained download reserved and the video a burn of this run wrote (it
+    would otherwise be transcribed again when the watched folder is also the
+    download folder). Only paths this run recorded are skipped, never a name
+    or a size: a ``lecture-subbed.mp4`` the user copies in is a new file.
     """
     if is_burn_temp(path):
         return "a subtitle burn's temporary file"
-    if is_empty_placeholder(path):
+    if is_reserved(path):
         return "the placeholder of a subtitled video being made"
     if is_own_output(path):
         return "a subtitled video this app just made"

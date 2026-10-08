@@ -10,7 +10,16 @@ import os
 import time
 import types
 
+import pytest
+
 from app.services.download_service import DownloadService
+from core import burn_subs
+
+
+@pytest.fixture(autouse=True)
+def _fresh_burn_records(monkeypatch):
+    monkeypatch.setattr(burn_subs, "_reserved", set())
+    monkeypatch.setattr(burn_subs, "_produced", set())
 
 
 def _svc() -> DownloadService:
@@ -71,27 +80,39 @@ def test_ignores_another_chains_burn_temp_and_placeholder(tmp_path):
     real.write_bytes(b"x" * 10)
     time.sleep(0.05)
     (tmp_path / ".burn-abc123.mp4").write_bytes(b"y" * 10)
-    (tmp_path / "A video-subbed.mp4").write_bytes(b"")
+    # A reserved placeholder is skipped even once ffmpeg has written into it.
+    placeholder = burn_subs.reserve_output_path(str(tmp_path / "A video-subbed.mp4"))
+    with open(placeholder, "wb") as f:
+        f.write(b"z" * 10)
     got = _svc()._recover_saved_path(
         _task(str(tmp_path), started - 1), str(tmp_path / "B video MISMATCH.mp4")
     )
     assert got == str(real)
 
 
-def test_ignores_finished_subbed_outputs_and_zero_byte_files(tmp_path):
+def test_ignores_this_runs_finished_burns_and_zero_byte_files(tmp_path, monkeypatch):
     real = tmp_path / "Talk.mp4"
     real.write_bytes(b"v")
     time.sleep(0.05)
-    (tmp_path / "Other-subbed.mp4").write_bytes(b"done burn")
-    (tmp_path / "Other-subbed (2).mp4").write_bytes(b"done burn")
+    for name in ("Other-subbed.mp4", "Other-subbed (2).mp4"):
+        (tmp_path / name).write_bytes(b"done burn")
+        burn_subs._produced.add(burn_subs._output_key(str(tmp_path / name)))
     (tmp_path / "empty.mkv").write_bytes(b"")
     (tmp_path / ".hidden.mp4").write_bytes(b"h")
     assert _svc()._recover_saved_path(_task(str(tmp_path), 0.0), None) == str(real)
 
 
+def test_a_real_title_that_ends_in_subbed_is_recoverable(tmp_path):
+    # Not this app's placeholder or output: excluded by record, never by name.
+    real = tmp_path / "Fansub-subbed.mp4"
+    real.write_bytes(b"v")
+    task = _titled(str(tmp_path), 0.0, "Fansub-subbed")
+    assert _svc()._recover_saved_path(task, str(tmp_path / "Fansub-subbed MISMATCH.mp4")) == str(real)
+
+
 def test_only_foreign_files_means_nothing_recovered(tmp_path):
     (tmp_path / ".burn-abc.mp4").write_bytes(b"y")
-    (tmp_path / "A-subbed.mp4").write_bytes(b"")
+    burn_subs.reserve_output_path(str(tmp_path / "A-subbed.mp4"))
     assert _svc()._recover_saved_path(_task(str(tmp_path), 0.0), None) is None
 
 
@@ -133,9 +154,10 @@ def test_finish_fails_a_chain_whose_file_cannot_be_identified(tmp_path):
         detected_language="en", history_id=0, caption_only=False, progress=0,
     )
     svc._finish(task, "finished", saved_path=str(tmp_path / "Three.mp4"))  # type: ignore[arg-type]
-    assert task.status != "transcribing"
+    assert task.status == "error"
     assert "ENQUEUED" not in app.logs
-    assert any("which file" in m for m in app.logs)
+    assert any("could not be told apart" in m for m in app.logs)
+    assert not any("Downloaded" in m for m in app.logs)
 
 
 def test_ignores_unmerged_yt_dlp_part_files(tmp_path):
@@ -166,5 +188,32 @@ def test_an_unidentifiable_chain_file_records_no_output(tmp_path):
     )
     svc._finish(task, "finished", saved_path=str(tmp_path / "Three.mp4"))  # type: ignore[arg-type]
     assert len(rows) == 1 and rows[0][:3] == (5, "error", [])
-    assert "which downloaded file" in rows[0][3]
+    assert "no subtitled video was made" in rows[0][3]
+    assert task.status == "error"
     assert not getattr(task, "saved_path", None)
+
+
+def test_an_unidentifiable_plain_download_is_not_transcribed(tmp_path):
+    # Auto-transcribe used to be handed a path that does not exist, after a
+    # "Downloaded: Three.mp4 (?)" line.
+    rows, logs = [], []
+    app = types.SimpleNamespace(
+        app_config={"auto_transcribe_after_download": True}, download_current=None,
+        log=logs.append,
+        history=types.SimpleNamespace(
+            finish_download=lambda row, **kw: rows.append((row, kw["status"], kw["output_paths"], kw["error"]))),
+        enqueue_transcription_from_download=lambda *a, **k: rows.append("ENQUEUED"),
+    )
+    svc = DownloadService(app)  # type: ignore[arg-type]
+    svc.process_queue = lambda: None  # type: ignore[method-assign]
+    (tmp_path / "One.mp4").write_bytes(b"1")
+    (tmp_path / "Two.mp4").write_bytes(b"2")
+    task = types.SimpleNamespace(
+        folder=str(tmp_path), start_time=0.0, title="Three", status="running",
+        make_subbed_video=False, cancelled=False, paused=False, end_time=None,
+        detected_language="en", history_id=6, caption_only=False, progress=0,
+    )
+    svc._finish(task, "finished", saved_path=str(tmp_path / "Three.mp4"))  # type: ignore[arg-type]
+    assert task.status == "error"
+    assert rows == [(6, "error", [], rows[0][3])] and "no subtitled video" not in rows[0][3]
+    assert not any("Downloaded" in m for m in logs)
