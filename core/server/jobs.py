@@ -1111,7 +1111,9 @@ def strip_url_secrets(url: str) -> str:
 
 def redact_urls_in_text(text: str) -> str:
     """Apply :func:`strip_url_secrets` to every http(s) URL inside ``text``."""
-    return _URL_IN_TEXT_RE.sub(lambda m: strip_url_secrets(m.group(0)), text)
+    from core.logging_setup import redact_urls
+
+    return redact_urls(text)
 
 
 def redact_url(url: str) -> str:

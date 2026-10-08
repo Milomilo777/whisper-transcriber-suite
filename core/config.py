@@ -542,6 +542,53 @@ def online_cache_path() -> Path:
     return user_cache_dir() / "app_config_cache.json"
 
 
+#: After an HTTP 404/410 from ``config_url`` (the file was never published)
+#: the fetch is skipped for this long, so every worker start does not repeat
+#: a request that cannot succeed and does not log the failure again.
+ONLINE_MISSING_RETRY_SECONDS = 24 * 3600
+
+
+def _online_missing_marker(cache_path: Path) -> Path:
+    """Marker file beside the cache that records a 404 for ``config_url``."""
+    return cache_path.with_name(cache_path.name + ".missing")
+
+
+def _url_digest(url: str) -> str:
+    """The marker holds a hash, never the URL (it may carry credentials)."""
+    return hashlib.sha256(url.encode("utf-8")).hexdigest()
+
+
+def _url_for_log(url: str) -> str:
+    """``host[:port]/path`` of ``url``: no user info, query or fragment."""
+    try:
+        parts = urllib.parse.urlsplit(url)
+        host = parts.hostname or ""
+        if ":" in host:
+            host = f"[{host}]"
+        port = f":{parts.port}" if parts.port else ""
+    except ValueError:
+        return "<invalid URL>"
+    return f"{host}{port}{parts.path}"
+
+
+def _online_known_missing(cache_path: Path, url: str) -> bool:
+    marker = _online_missing_marker(cache_path)
+    try:
+        age = time.time() - marker.stat().st_mtime
+        # A negative age (clock was ahead, restored backup) is an invalid
+        # marker, not "missing until then".
+        if not 0 <= age < ONLINE_MISSING_RETRY_SECONDS:
+            return False
+        return marker.read_text(encoding="utf-8").strip() == _url_digest(url)
+    except OSError:
+        return False
+
+
+def _forget_online_missing(cache_path: Path) -> None:
+    with contextlib.suppress(OSError):
+        _online_missing_marker(cache_path).unlink()
+
+
 # Process-lifetime memo of the fetched online config, so the many
 # ``load_config()`` callers in one process (worker import, backends,
 # dialogs) don't each pay a network round-trip / timeout. Keyed by URL.
@@ -554,6 +601,8 @@ def refresh_online_config() -> None:
     """Forget the in-process online-config memo so the next load re-fetches."""
     with _ONLINE_MEMO_LOCK:
         _ONLINE_MEMO.clear()
+    # An explicit re-check also ignores the "not published (404)" memory.
+    _forget_online_missing(online_cache_path())
 
 
 def _legacy_config_path() -> str:
@@ -938,6 +987,13 @@ def fetch_online_config(
         )
         url = ""
 
+    if url and _online_known_missing(cache_path, url):
+        logger.debug(
+            "Online config skipped: %s was missing (HTTP 404) recently",
+            _url_for_log(url),
+        )
+        url = ""
+
     if url:
         try:
             req = urllib.request.Request(
@@ -974,6 +1030,7 @@ def fetch_online_config(
                     )
                 except OSError as e:
                     logger.warning("Could not cache online config: %s", e)
+                _forget_online_missing(cache_path)
                 return data
             logger.warning("Online config at %s is not a JSON object", url)
         except (
@@ -991,9 +1048,26 @@ def fetch_online_config(
             # proxy, captive portal) — it must fall through to the cache
             # too, not crash launch. RecursionError covers a hostile
             # deeply-nested body under the size cap. Fall through to cache.
-            logger.info(
-                "Online config fetch failed (%s); using cache if available", e
-            )
+            if isinstance(e, urllib.error.HTTPError) and e.code in (404, 410):
+                # Never published at this URL: not an outage. Remember it
+                # so the next processes stay quiet and skip the request.
+                try:
+                    cache_path.parent.mkdir(parents=True, exist_ok=True)
+                    _online_missing_marker(cache_path).write_text(
+                        _url_digest(url), encoding="utf-8"
+                    )
+                except OSError:
+                    pass
+                logger.info(
+                    "Online config not published at %s (HTTP %s); using the "
+                    "cache and built-in settings, not asking again for 24 h",
+                    _url_for_log(url),
+                    e.code,
+                )
+            else:
+                logger.info(
+                    "Online config fetch failed (%s); using cache if available", e
+                )
 
     try:
         cached = json.loads(
