@@ -294,6 +294,7 @@ a = Analysis(
         'core.offline',
         'core.subtitle_edit',
         'core.paths',
+        'core.process_exit',
         'core.stats',
         'core.task',
         'core.transcriber',

@@ -21,3 +21,13 @@ def test_main_thread_queue_is_created_before_tabs_are_built():
     tabs_at = src.find("self._build_tabs()")
     assert queue_at != -1 and tabs_at != -1
     assert queue_at < tabs_at
+
+
+def test_quit_handler_is_installed_after_the_state_on_exit_reads():
+    """Cmd+Q can fire as soon as the command exists; on_exit reads these."""
+    src = inspect.getsource(App.__init__)
+    handler_at = src.find("self._install_quit_handler()")
+    assert handler_at != -1
+    for needed in ("self.tray = None", "self._exit_from_tray = False", "self._closing = False"):
+        at = src.find(needed)
+        assert at != -1 and at < handler_at, needed

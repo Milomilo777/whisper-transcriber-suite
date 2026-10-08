@@ -73,6 +73,13 @@ whisper_project_direct_download_v2/
 4. On `startup_error`, the parent shuts the worker down, opens `ModelDownloadDialog`, and runs `ensure_model` (`model_manager.py`) which downloads the model from `config["model"]["hf_repo"]` on the Hugging Face Hub into `model_path` (resuming a cut-off download), and only then starts a fresh worker.
 5. Once a worker emits `ready`, `worker_ready=True` and the UI unlocks job submission.
 
+### Exit
+
+1. `App.on_exit` (window close, File > Exit, Ctrl+Q, tray Exit, macOS Cmd+Q) asks about queued jobs, then marks this app's running history rows `interrupted` ("app closed").
+2. Running package installs are stopped and their merge step is awaited (`core.optional_deps.wait_until_idle`, up to 30 s). Then `stop_all(cancel_running=True)` sends each busy worker `cancel` (it writes the resume checkpoint) and then `shutdown`; stragglers are terminated after a 15 s grace (5 s for a worker with no job). The stop covers installs started by the app process only; installs run by a worker process (Google Cloud, NVIDIA engines) are not stopped by it. At the next start `core.optional_deps.sweep_install_leftovers` restores or removes what a cut install left (`.bak-<pid>`, `.merge-<pid>`, `pylibs-stage-*`) for processes that no longer exist.
+3. `settle_done_on_exit` finishes the rows of jobs whose `done` event (with non-empty output files) arrived during step 2; everything else stays `interrupted` and is offered for resume at the next start.
+4. The history database is closed, the window destroyed, `mainloop` returns, and `gui.py` ends the process with `core.process_exit.end_process` (Sentry and logs flushed with a 3 s cap, then `os._exit`), because a model download in this process runs on a library thread pool that Python would otherwise wait for.
+
 ### Transcription
 
 1. `App.add()` appends a `TranscriptionTask` to the module-global `queue` list.

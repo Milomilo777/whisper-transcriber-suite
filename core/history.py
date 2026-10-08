@@ -568,6 +568,30 @@ class HistoryDB:
             ).rowcount
         return int(n)
 
+    def mark_transcription_finished_after_exit(
+        self, row_id: int, output_paths: Iterable[str], duration_seconds: float,
+        word_count: int, error: str = "",
+    ) -> bool:
+        """Finish a row whose job completed while the app was exiting.
+
+        The exit had already moved the row to ``interrupted``; the worker then
+        finished and wrote its outputs, so the next launch must not offer to run
+        the file again. Touches only a row that is still open (``running``,
+        ``waiting`` or ``interrupted``), never a ``cancelled``/``finished`` one, and
+        leaves ``language`` as it was. Returns True iff a row was updated.
+        """
+        if int(row_id or 0) <= 0:
+            return False
+        with self._txn() as conn:
+            n = conn.execute(
+                "UPDATE transcriptions SET status='finished', finished_at=?, output_paths=?,"
+                " duration_seconds=?, word_count=?, error=?"
+                " WHERE id=? AND status IN ('running','waiting','interrupted')",
+                (int(time.time()), json.dumps(list(output_paths)), float(duration_seconds),
+                 int(word_count or 0), error, int(row_id)),
+            ).rowcount
+        return n == 1
+
     def dismiss_interrupted_transcriptions(self, row_ids: Iterable[int]) -> int:
         """Move the given interrupted transcription rows to ``cancelled``.
 

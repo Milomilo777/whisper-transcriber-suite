@@ -465,6 +465,8 @@ def _activate_safe_mode() -> None:
 # close it first, instead of replacing files a running copy still uses.
 APP_MUTEX_NAME = "WhisperTranscriberSuiteRunning"
 _app_mutex: list[int] | None = None
+#: Set once the GUI main loop has returned normally (see ``_script_main``).
+_gui_ran = False
 
 
 def _hold_app_mutex() -> None:
@@ -555,8 +557,28 @@ def main() -> int:
         run(open_paths)
     else:
         run()
+    global _gui_ran
+    _gui_ran = True
     return 0
 
 
+def _script_main() -> None:
+    """What ``python gui.py`` (and the frozen exe) runs; never returns.
+
+    After the window closed, ``App.on_exit`` has already stopped everything the app owns.
+    The process is then ended at once: a model download started in this process runs on a
+    library thread pool that cannot be interrupted, and Python would wait for it at
+    interpreter exit, leaving a window-less process that holds the single-instance
+    mutex. Only a normal return from the GUI gets here: a crash propagates, so the
+    excepthook installed by ``app.crash_report`` still sees it. The other modes
+    (worker, CLI, server) keep the ordinary interpreter exit.
+    """
+    code = main()
+    if _gui_ran:
+        from core.process_exit import end_process
+        end_process(code)
+    raise SystemExit(code)
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    _script_main()

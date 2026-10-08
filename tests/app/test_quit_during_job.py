@@ -110,7 +110,7 @@ def _exit_fake(history: Any, tasks: list[Any], calls: list[str]) -> types.Simple
         _save_window_geometry=lambda: None,
         _shutdown_server_on_exit=lambda: None,
         transcription_service=types.SimpleNamespace(
-            stop_all=lambda: calls.append("stop_all")),
+            stop_all=lambda **_k: calls.append("stop_all")),
     )
     return ns
 

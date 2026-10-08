@@ -1,6 +1,7 @@
 """The worker's output pipe closing (the app quit) is one quiet line, not a traceback."""
 from __future__ import annotations
 
+import errno
 import logging
 from typing import Any
 
@@ -123,3 +124,142 @@ def test_stdout_is_pointed_at_the_null_device_only_when_it_is_the_process_stdout
     monkeypatch.setattr(sys, "stdout", _FakeStdout(1))
     real()
     assert len(dup) == 1 and dup[0][1] == 1
+
+
+# ---------------------------------------------- Windows reports a closed pipe as EINVAL
+
+
+@pytest.mark.parametrize("err", [errno.EINVAL, errno.EPIPE])
+def test_a_plain_oserror_on_the_process_stdout_counts_as_the_app_leaving(
+    monkeypatch: pytest.MonkeyPatch, err: int,
+) -> None:
+    """Windows: writing to a pipe the app closed raises OSError(22, 'Invalid argument')."""
+    import sys
+
+    checks: list[str] = []
+    monkeypatch.setattr(worker, "_on_pipe_closed", checks.append)
+    monkeypatch.setattr(sys, "stdout", _FakeStdout(1))
+    _broken_print(monkeypatch, OSError(err, "pipe closed"))
+
+    worker.emit("log", message="a")
+    worker.emit("log", message="b")
+
+    assert checks == ["its output pipe is closed"]
+
+
+@pytest.mark.parametrize("fd", [7, -1])
+def test_the_same_errno_from_another_stream_is_a_real_error(
+    monkeypatch: pytest.MonkeyPatch, fd: int,
+) -> None:
+    import sys
+
+    monkeypatch.setattr(worker, "_on_pipe_closed", lambda _r: pytest.fail("not the app pipe"))
+    monkeypatch.setattr(sys, "stdout", _FakeStdout(fd))  # a captured stream / no descriptor
+    _broken_print(monkeypatch, OSError(errno.EINVAL, "Invalid argument"))
+
+    with pytest.raises(OSError):
+        worker.emit("log", message="a")
+
+
+@pytest.mark.parametrize("err", [errno.ENOSPC, errno.EBADF, errno.EACCES])
+def test_other_errnos_on_the_process_stdout_still_raise(
+    monkeypatch: pytest.MonkeyPatch, err: int,
+) -> None:
+    import sys
+
+    monkeypatch.setattr(worker, "_on_pipe_closed", lambda _r: pytest.fail("not a closed pipe"))
+    monkeypatch.setattr(sys, "stdout", _FakeStdout(1))
+    _broken_print(monkeypatch, OSError(err, "other"))
+
+    with pytest.raises(OSError):
+        worker.emit("log", message="a")
+
+
+# ------------------------------------- a spurious error on a live pipe must not mute stdout
+
+
+def _fail_n_times(monkeypatch: pytest.MonkeyPatch, n: int, exc: BaseException) -> list[str]:
+    printed: list[str] = []
+    left = [n]
+
+    def _print(line: str = "", *_a: Any, **_k: Any) -> None:
+        if left[0] > 0:
+            left[0] -= 1
+            raise exc
+        printed.append(line)
+
+    monkeypatch.setattr(worker, "print", _print, raising=False)
+    return printed
+
+
+def test_a_single_einval_on_a_live_pipe_neither_mutes_stdout_nor_cancels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sys
+
+    quiet: list[int] = []
+    checks: list[str] = []
+    monkeypatch.setattr(worker, "_quiet_stdout_for_exit", lambda: quiet.append(1))
+    monkeypatch.setattr(worker, "_on_pipe_closed", checks.append)
+    monkeypatch.setattr(sys, "stdout", _FakeStdout(1))
+    printed = _fail_n_times(monkeypatch, 1, OSError(errno.EINVAL, "Invalid argument"))
+
+    worker.emit("log", message="first")  # fails once, the re-probe gets through
+    worker.emit("done", file_path="a.wav", outputs=[])
+
+    assert quiet == [] and checks == []  # stdout still goes to the app
+    assert any('"done"' in line for line in printed)  # the later event was delivered
+    # and a later, real closure is still noticed:
+    _fail_n_times(monkeypatch, 99, OSError(errno.EINVAL, "Invalid argument"))
+    worker.emit("log", message="again")
+    assert quiet == [1] and checks == ["its output pipe is closed"]
+
+
+def test_two_failures_in_a_row_mean_the_pipe_is_dead(monkeypatch: pytest.MonkeyPatch) -> None:
+    import sys
+
+    quiet: list[int] = []
+    checks: list[str] = []
+    monkeypatch.setattr(worker, "_quiet_stdout_for_exit", lambda: quiet.append(1))
+    monkeypatch.setattr(worker, "_on_pipe_closed", checks.append)
+    monkeypatch.setattr(sys, "stdout", _FakeStdout(1))
+    _fail_n_times(monkeypatch, 99, OSError(errno.EINVAL, "Invalid argument"))
+
+    worker.emit("log", message="a")
+
+    assert quiet == [1] and checks == ["its output pipe is closed"]
+
+
+_CHILD = """
+import sys, time
+sys.path.insert(0, sys.argv[1])
+from core import worker
+marker = sys.argv[2]
+time.sleep(1.5)          # the parent closes its read end meanwhile
+worker.emit("log", message="after the app left")
+worker.emit("log", message="and again")
+open(marker, "w").write("survived")
+"""
+
+
+def test_a_real_closed_pipe_does_not_crash_the_worker_process(tmp_path: Any) -> None:
+    """The OS-specific error (EINVAL on Windows, EPIPE elsewhere) is absorbed for real."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[2]
+    marker = tmp_path / "marker.txt"
+    proc = subprocess.Popen(
+        [sys.executable, "-c", _CHILD, str(repo), str(marker)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
+    )
+    assert proc.stdout is not None
+    proc.stdout.close()  # the app quit: nobody reads the worker's stdout any more
+    assert proc.stderr is not None
+    err = proc.stderr.read()
+    proc.wait(timeout=60)
+
+    assert marker.exists(), err.decode("utf-8", "replace")
+    assert b"Traceback" not in err
+    assert b"Exception ignored" not in err  # nor a complaint at interpreter exit

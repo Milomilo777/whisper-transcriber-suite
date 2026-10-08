@@ -59,6 +59,7 @@ new field is required of anyone.
 """
 from __future__ import annotations
 
+import errno
 import json
 import logging
 import os
@@ -163,15 +164,60 @@ def _on_pipe_closed(reason: str) -> None:
 
 _output_pipe_reported = False
 
+#: ``errno`` values a write to a pipe whose reader has gone can fail with. POSIX
+#: reports EPIPE (``BrokenPipeError``); Windows reports ``OSError(22, 'Invalid
+#: argument')`` (EINVAL) for a pipe closed by the other end.
+_PIPE_CLOSED_ERRNOS = (errno.EPIPE, errno.EINVAL)
+
+
+def _stdout_is_process_fd1() -> bool:
+    try:
+        return sys.stdout.fileno() == 1
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
+def _is_output_pipe_closed(exc: OSError) -> bool:
+    """True when *exc* means the app is no longer reading the worker's stdout.
+
+    ``BrokenPipeError`` always counts. A plain ``OSError`` with EPIPE or EINVAL counts
+    only while ``sys.stdout`` really is the process's fd 1 (the pipe to the app); the
+    same errno from any other stream, or any other errno, is a real error.
+    """
+    if isinstance(exc, BrokenPipeError):
+        return True
+    return exc.errno in _PIPE_CLOSED_ERRNOS and _stdout_is_process_fd1()
+
+
+def _output_pipe_still_works() -> bool:
+    """Write one heartbeat line again: True when the app's pipe took it.
+
+    A write error that is not repeated (a spurious EINVAL on a live pipe) must not
+    point fd 1 at the null device, which would silently drop every later event,
+    ``done`` included. The line also flushes whatever the failed write left buffered.
+    """
+    try:
+        with _emit_lock:
+            print(json.dumps({"event": "heartbeat", "ts": time.time()}), flush=True)
+    except OSError:
+        return False
+    return True
+
 
 def _note_output_pipe_closed() -> None:
-    """First broken-pipe write of a session: one line, then confirm the app is
-    gone (which cancels the running task). Later events are dropped silently."""
+    """First failed stdout write of a session: re-probe once; if the pipe is really
+    dead, one line, then confirm the app is gone (which cancels the running task).
+    Later events are dropped silently."""
     global _output_pipe_reported
     with _state_lock:
         if _output_pipe_reported:
             return
         _output_pipe_reported = True
+    if _output_pipe_still_works():
+        with _state_lock:
+            _output_pipe_reported = False  # a later, real closure is reported again
+        logger.info("A write to the app's pipe failed once and then worked; carrying on")
+        return
     logger.warning("The app closed the worker's output pipe; dropping further events")
     _quiet_stdout_for_exit()
     _on_pipe_closed("its output pipe is closed")
@@ -495,11 +541,13 @@ def emit(event: str, **payload: Any) -> None:
     try:
         with _emit_lock:
             print(line, flush=True)
-    except BrokenPipeError:
+    except OSError as e:
         # The app closed its end of the pipe (it quit, or died). Nobody can
         # read this event, and raising would only turn every later log line
         # into a traceback while the task is being cancelled. Any other write
         # error is a real one and still propagates.
+        if not _is_output_pipe_closed(e):
+            raise
         _note_output_pipe_closed()
 
 

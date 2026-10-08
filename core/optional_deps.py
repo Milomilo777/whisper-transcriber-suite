@@ -17,6 +17,7 @@ import importlib
 import importlib.util
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -41,6 +42,47 @@ DEFAULT_INSTALL_TIMEOUT_S = 1800.0
 # package tree. The lock makes the second caller wait, then short-
 # circuit on the now-present package.
 _install_lock = threading.Lock()
+
+# App exit. ``request_stop_installs`` makes every running ``install()`` (whichever window
+# started it) stop pip like a Cancel, and ``wait_until_idle`` lets the caller wait until no
+# install is left in ``install()``: the merge phase (``os.replace`` + ``.bak`` moves) cannot
+# be interrupted and a process ended inside it could leave a ``.<name>.bak-<pid>`` and a
+# missing package.
+_stop_requested = threading.Event()
+_activity = threading.Condition()
+_active_installs = 0
+_merging_installs = 0
+_tls = threading.local()
+
+
+def request_stop_installs() -> None:
+    """Make every install, now and later in this process, stop like a Cancel."""
+    _stop_requested.set()
+
+
+def wait_until_idle(timeout: float) -> bool:
+    """Wait up to *timeout* seconds until no ``install()`` is running; True when idle."""
+    with _activity:
+        return _activity.wait_for(lambda: _active_installs == 0, timeout=max(0.0, timeout))
+
+
+def installs_merging() -> bool:
+    """True while an install is merging its staged tree into the extras folder."""
+    with _activity:
+        return _merging_installs > 0
+
+
+def _mark_merging() -> None:
+    """The calling install has left pip and is now merging / cleaning up (not stoppable)."""
+    global _merging_installs
+    with _activity:
+        if not getattr(_tls, "merging", False):
+            _tls.merging = True
+            _merging_installs += 1
+
+
+def _cancel_requested(cancel_event: "threading.Event | None") -> bool:
+    return _stop_requested.is_set() or (cancel_event is not None and cancel_event.is_set())
 
 # feature key -> (import name to probe, [pip packages to install])
 FEATURES: dict[str, tuple[str, list[str]]] = {
@@ -147,6 +189,7 @@ def _extras_file_lock(
     cancel_event: "threading.Event | None",
     timeout: float,
     log_cb: Callable[[str], None] | None,
+    strict: bool = False,
 ) -> Generator[str, None, None]:
     """Hold ``<folder>/.install.lock`` across processes.
 
@@ -159,7 +202,8 @@ def _extras_file_lock(
     same extras folder, and two merges of a shared package such as torch/
     could interleave. The OS drops the lock when its process dies, so a
     crashed install never leaves it held. A lock file that cannot be opened
-    or locked at all lets the install go on without it, logged.
+    or locked at all lets the install go on without it, logged; ``strict`` callers (the
+    start-up sweep, which deletes folders the lock protects) get ``""`` there instead.
     """
     from .config import _lock_is_contended
 
@@ -189,7 +233,7 @@ def _extras_file_lock(
         if not told and log_cb is not None:
             log_cb("Another Whisper window or worker is installing a package; waiting for it...")
         told = True
-        cancelled = cancel_event is not None and cancel_event.is_set()
+        cancelled = _cancel_requested(cancel_event)
         if cancelled or (deadline is not None and time.monotonic() > deadline):
             fh.close()
             if log_cb is not None:
@@ -201,6 +245,11 @@ def _extras_file_lock(
             yield ""
             return
         time.sleep(0.25)
+    if strict and not locked:
+        if fh is not None:
+            fh.close()
+        yield ""
+        return
     try:
         yield "waited" if told else "free"
     finally:
@@ -250,9 +299,13 @@ def _is_shared_folder(path: str, *, top_level: bool) -> bool:
     if not text.strip():
         # An empty __init__.py makes a folder shared only when it holds nothing
         # but sub-folders (nvidia/); one with modules is a real package.
+        try:
+            names = os.listdir(path)
+        except OSError:
+            return False  # unreadable: treat as a real package, never as shared
         return top_level and not any(
             name != "__init__.py" and os.path.isfile(os.path.join(path, name))
-            for name in os.listdir(path)
+            for name in names
         )
     return "extend_path" in text or "declare_namespace" in text
 
@@ -284,6 +337,140 @@ def _merge_units(staging: str, final: str, *, top_level: bool = True) -> list[tu
 def extras_dir() -> str:
     """User-writable dir where on-demand packages are installed."""
     return os.path.join(str(user_cache_dir()), "pylibs")
+
+
+# What a cut install leaves behind: ``.<name>.bak-<pid>`` (the live package moved aside),
+# ``.<name>.merge-<pid>`` (the half-copied new one) and pip's ``pylibs-stage-*`` folder.
+_LEFTOVER_RE = re.compile(r"^\.(?P<name>.+)\.(?P<kind>bak|merge)-(?P<pid>\d+)$")
+_STAGE_PREFIX = "pylibs-stage-"
+#: Folders below the extras folder an install merges into (``google/cloud/speech``).
+_SWEEP_MAX_DEPTH = 3
+
+
+def _is_reparse_point(path: str) -> bool:
+    """True for a symlink or a Windows junction / mount point: it leads out of the folder.
+
+    ``os.path.islink`` is False for a junction (``mklink /J``), which a user may have used to
+    move ``pylibs\nvidia`` to another drive; the sweep must never act through one.
+    """
+    try:
+        if os.path.islink(path):
+            return True
+        junction = getattr(os.path, "isjunction", None)  # Python 3.12+
+        if junction is not None and junction(path):
+            return True
+        attrs = getattr(os.lstat(path), "st_file_attributes", 0)  # Windows only
+        return bool(attrs & 0x400)  # FILE_ATTRIBUTE_REPARSE_POINT
+    except OSError:
+        return False
+
+
+def _pid_alive(pid: int) -> bool:
+    """False only when no such process exists. Unknown (no psutil) counts as alive."""
+    try:
+        import psutil  # type: ignore[import-not-found] # noqa: PLC0415
+    except Exception:  # noqa: BLE001
+        return True
+    try:
+        return bool(psutil.pid_exists(pid))
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def _sweep_folder(folder: str, depth: int) -> tuple[int, int]:
+    """Handle the leftovers directly in *folder*, then those of its shared sub-folders."""
+    restored = removed = 0
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return 0, 0
+    for name in names:
+        path = os.path.join(folder, name)
+        match = _LEFTOVER_RE.match(name)
+        if match:
+            if _is_reparse_point(path) or _pid_alive(int(match.group("pid"))):
+                continue  # a link is never ours to move; or that install is still running
+            dest = os.path.join(folder, match.group("name"))
+            if match.group("kind") == "bak" and not os.path.lexists(dest):
+                # Cut between "move the live package aside" and "move the new one in".
+                try:
+                    os.replace(path, dest)
+                except OSError as e:
+                    logger.warning("Could not restore %s to %s: %s", path, dest, e)
+                else:
+                    restored += 1
+                    logger.info("Restored %s after an interrupted install", dest)
+                continue
+            _rm(path)
+            if not os.path.lexists(path):
+                removed += 1
+                logger.info("Removed %s left by an interrupted install", path)
+            continue
+        if (
+            depth < _SWEEP_MAX_DEPTH
+            and os.path.isdir(path)
+            and not _is_reparse_point(path)
+            and _is_shared_folder(path, top_level=(depth == 0))
+        ):
+            r, d = _sweep_folder(path, depth + 1)
+            restored += r
+            removed += d
+    return restored, removed
+
+
+def sweep_install_leftovers() -> tuple[int, int]:
+    """Clean up after an install that was cut short; returns ``(restored, removed)``.
+
+    A backup whose destination is missing is moved back; a backup whose destination exists, a
+    half-copied merge folder and stale ``pylibs-stage-*`` folders are removed. Only inside the
+    extras folder and its sibling staging folders, only for processes that no longer exist,
+    and only while no install anywhere holds the cross-process install lock. Never raises.
+    """
+    folder = extras_dir()
+    if not os.path.isdir(folder):
+        return 0, 0
+    try:
+        with _extras_file_lock(folder, None, 0.01, None, strict=True) as got:
+            if not got:
+                return 0, 0  # an install is running, or the lock cannot be held: do nothing
+            restored, removed = _sweep_folder(folder, 0)
+            parent = os.path.dirname(folder)
+            try:
+                siblings = os.listdir(parent)
+            except OSError:
+                siblings = []
+            for name in siblings:
+                path = os.path.join(parent, name)
+                if (
+                    name.startswith(_STAGE_PREFIX)
+                    and os.path.isdir(path)
+                    and not _is_reparse_point(path)
+                ):
+                    _rm(path)
+                    if not os.path.lexists(path):
+                        removed += 1
+                        logger.info("Removed stale staging folder %s", path)
+            if restored or removed:
+                logger.warning(
+                    "An interrupted package install was cleaned up (%d restored, %d removed). "
+                    "If a feature that needs extra packages misbehaves, install it again from "
+                    "its tab to repair it.", restored, removed,
+                )
+            return restored, removed
+    except Exception:  # noqa: BLE001 - a clean-up must never stop the app
+        logger.exception("Could not clean up after an interrupted install")
+        return 0, 0
+
+
+def start_leftover_sweep() -> None:
+    """Run :func:`sweep_install_leftovers` on a daemon thread (it can delete gigabytes)."""
+    def _run() -> None:
+        try:
+            sweep_install_leftovers()
+        except Exception:  # noqa: BLE001
+            logger.exception("Interrupted-install clean-up failed")
+
+    threading.Thread(target=_run, name="optdeps-sweep", daemon=True).start()
 
 
 def activate() -> None:
@@ -342,6 +529,31 @@ def install(
     timeout: float = DEFAULT_INSTALL_TIMEOUT_S,
     force: bool = False,
 ) -> bool:
+    """pip-install the feature's packages into the user extras dir (see ``_install_impl``).
+
+    Also tells the app exit (``wait_until_idle``) that an install is running.
+    """
+    global _active_installs, _merging_installs
+    with _activity:
+        _active_installs += 1
+    try:
+        return _install_impl(feature, log_cb, cancel_event, timeout, force)
+    finally:
+        with _activity:
+            _active_installs -= 1
+            if getattr(_tls, "merging", False):
+                _tls.merging = False
+                _merging_installs -= 1
+            _activity.notify_all()
+
+
+def _install_impl(
+    feature: str,
+    log_cb: Callable[[str], None] | None = None,
+    cancel_event: "threading.Event | None" = None,
+    timeout: float = DEFAULT_INSTALL_TIMEOUT_S,
+    force: bool = False,
+) -> bool:
     """pip-install the feature's packages into the user extras dir.
 
     Streams pip output to ``log_cb``. Returns True only when the install
@@ -377,6 +589,8 @@ def install(
         # cache (find_spec succeeds but the real import fails — e.g. a
         # grpcio .pyd built for another Python version) must be repaired,
         # not reported as already installed.
+        if _stop_requested.is_set():
+            return False  # the app is exiting: do not start another pip
         if not force and is_available(feature):
             return True
         final_target = extras_dir()
@@ -443,7 +657,7 @@ def install(
                 break
             except subprocess.TimeoutExpired:
                 pass
-            if cancel_event is not None and cancel_event.is_set():
+            if _cancel_requested(cancel_event):
                 if log_cb:
                     log_cb("Install cancelled.")
                 aborted = True
@@ -455,6 +669,7 @@ def install(
                 break
 
         if aborted:
+            _mark_merging()  # the cleanup below must not be cut by an app exit
             # Reap the entire pip tree (build backend / downloader
             # grandchildren), not just the immediate pip process —
             # otherwise an orphan keeps the --target staging files open
@@ -474,6 +689,7 @@ def install(
             return False
 
         reader.join(timeout=5)
+        _mark_merging()  # from here on: merge / cleanup, which an app exit waits for
         if proc.returncode != 0:
             # Non-zero exit — discard the staging tree only; never touch
             # extras_dir (a sibling feature may already live there).

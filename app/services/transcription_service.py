@@ -710,14 +710,34 @@ class TranscriptionService:
         """
         self._stop_workers([worker])
 
-    def stop_all(self) -> None:
-        self._stop_workers(self.active_workers() + list(self._retiring))
+    def stop_all(self, cancel_running: bool = False) -> None:
+        """Stop every worker.
+
+        ``cancel_running`` (the app exit): a worker that is transcribing is
+        asked to cancel first. It handles ``shutdown`` only after the running
+        task returns, and only the cancel makes the transcriber write its
+        resume checkpoint; without it the grace below ran out and the worker
+        was killed, losing the work since the last periodic checkpoint. Only
+        the exit uses it: the cancelled task ends with a ``done`` event that a
+        live app would read as a finished run (the exit never polls it; see
+        :meth:`settle_done_on_exit`).
+        """
+        workers = self.active_workers() + list(self._retiring)
+        if cancel_running:
+            self._stop_workers(workers, cancel_running=True)
+        else:
+            self._stop_workers(workers)
 
     # stop_worker()'s step 2 and step 4 waits (seconds).
     STOP_GRACE_S: float = 5.0
     STOP_TERMINATE_S: float = 2.0
+    #: The step-2 wait on an app exit that sent a cancel: the window is already hidden, and a
+    #: job in its last diarisation / alignment step can still finish or checkpoint.
+    EXIT_CANCEL_GRACE_S: float = 15.0
 
-    def _stop_workers(self, workers: list[dict[str, Any]]) -> None:
+    def _stop_workers(
+        self, workers: list[dict[str, Any]], cancel_running: bool = False
+    ) -> None:
         """stop_worker()'s steps for several workers at once.
 
         Each step has one deadline shared by every worker, so N busy workers
@@ -733,10 +753,17 @@ class TranscriptionService:
         if not live:
             return
         shutdown_msg = json.dumps({"action": "shutdown"}) + "\n"
+        grace = self.STOP_GRACE_S
         for worker, _process in live:
-            self._send_shutdown_async(worker, shutdown_msg)
+            before: list[str] = []
+            if cancel_running:
+                cancel_msg = self._cancel_message_for_running(worker)
+                if cancel_msg:
+                    before.append(cancel_msg)
+                    grace = max(grace, self.EXIT_CANCEL_GRACE_S)
+            self._send_shutdown_async(worker, shutdown_msg, before)
 
-        stragglers = self._wait_for_exit(live, self.STOP_GRACE_S)
+        stragglers = self._wait_for_exit(live, grace)
         for worker, process in stragglers:
             logger.info("stop_worker: worker %s ignored shutdown; terminating",
                         worker.get("id", "?"))
@@ -753,17 +780,126 @@ class TranscriptionService:
             )
             kill_process_tree(process, force=True)
 
-    def _send_shutdown_async(self, worker: dict[str, Any], message: str) -> None:
+    @staticmethod
+    def _cancel_message_for_running(worker: dict[str, Any]) -> str:
+        """The cancel line for the task this worker is running ("" if none)."""
+        task = worker.get("task")
+        if task is None or getattr(task, "status", None) in ("finished", "cancelled", "error"):
+            return ""
+        return json.dumps({"action": "cancel", "task_id": task_correlation_id(task)}) + "\n"
+
+    def settle_done_on_exit(self, wait_s: float = 2.0) -> int:
+        """After :meth:`stop_all` on an app exit: finish the rows of jobs that completed.
+
+        The exit marks the running rows ``interrupted`` and stops the workers; one
+        that finishes inside that window has written its output files and sent
+        ``done``, but nobody polls events any more, so the row would stay
+        ``interrupted`` and the next launch would offer to transcribe the file again.
+        This reads the ``done`` events the stopped workers left (waiting at most
+        ``wait_s`` for their pipes to end) and finishes those rows.
+
+        Only a ``done`` whose outputs are all non-empty files counts. A run cancelled
+        by the exit also ends with ``done`` but lists no outputs and keeps its
+        checkpoint, so it stays ``interrupted`` for the resume offer. Returns the
+        number of rows finished; never raises.
+        """
+        app = self.app
+        history = getattr(app, "history", None)
+        if history is None:
+            return 0
+        by_worker: dict[Any, Any] = {}
+        for worker in list(app.workers):
+            task = worker.get("task")
+            if (task is not None and getattr(task, "history_id", 0)
+                    and getattr(task, "status", None) not in ("finished", "cancelled", "error")):
+                by_worker[worker.get("id")] = (worker, task)
+        if not by_worker:
+            return 0
+        import time as _time
+        done: dict[Any, dict[str, Any]] = {}
+        waiting = set(by_worker)
+        deadline = _time.monotonic() + wait_s
+        while waiting:
+            left = deadline - _time.monotonic()
+            if left <= 0:
+                break
+            try:
+                event = app.worker_events.get(timeout=min(left, 0.2))
+            except Empty:
+                continue
+            wid = event.get("_worker_id")
+            if wid not in by_worker:
+                continue
+            kind = event.get("event")
+            if kind == "done":
+                worker, _task = by_worker[wid]
+                if not self._is_stale_task_event(worker, event):
+                    done[wid] = event
+            elif kind == "worker_exit":
+                waiting.discard(wid)
+        settled = 0
+        for wid, event in done.items():
+            _worker, task = by_worker[wid]
+            try:
+                if self._settle_one_done(history, task, event):
+                    settled += 1
+            except Exception:  # noqa: BLE001 - the exit must go on
+                logger.exception("Could not record the finished job %r on exit",
+                                 getattr(task, "file_path", "?"))
+        return settled
+
+    def _settle_one_done(self, history: Any, task: Any, event: dict[str, Any]) -> bool:
+        outputs = event.get("outputs")
+        if not isinstance(outputs, list) or not outputs:
+            return False  # cancelled by the exit (or no files): the checkpoint is the record
+        paths = [str(p) for p in outputs]
+        # A run with no speech writes its files empty and says so; every file must exist
+        # either way, and otherwise be non-empty.
+        no_speech = bool(event.get("no_speech"))
+        try:
+            complete = all(os.path.getsize(p) > 0 or no_speech for p in paths)
+        except OSError:
+            complete = False
+        if not complete:
+            return False
+        task.output_paths = paths
+        try:
+            task.word_count = int(event.get("word_count") or 0)
+            task.audio_duration = float(event.get("audio_duration") or 0.0)
+        except (TypeError, ValueError):
+            pass
+        word_count, _duration = self._derive_transcript_stats(task)
+        import time as _time
+        started = getattr(task, "start_time", None)
+        elapsed = (_time.time() - started) if started else 0.0
+        ok = bool(history.mark_transcription_finished_after_exit(
+            int(task.history_id), paths, elapsed, word_count,
+            error=NO_SPEECH_NOTE if no_speech else "",
+        ))
+        if ok:
+            logger.info("Job finished while the app was closing; recorded as finished: %s",
+                        getattr(task, "file_path", "?"))
+        return ok
+
+    def _send_shutdown_async(
+        self, worker: dict[str, Any], message: str, before: list[str] | None = None
+    ) -> None:
+        """Write the shutdown line (after any ``before`` lines) off the Tk thread.
+
+        One thread writes them in order, so a cancel can never trail the
+        shutdown. A failed write is logged and does not stop the next line.
+        """
         worker_id = worker.get("id", "?")
 
         def _async_shutdown() -> None:
-            try:
-                self._locked_stdin_write(worker, message)
-            except Exception:
-                logger.debug(
-                    "stop_worker: stdin shutdown write failed for worker %s",
-                    worker_id, exc_info=True,
-                )
+            for line in [*(before or []), message]:
+                try:
+                    self._locked_stdin_write(worker, line)
+                except Exception:
+                    logger.debug(
+                        "stop_worker: stdin write failed for worker %s",
+                        worker_id, exc_info=True,
+                    )
         threading.Thread(
             target=_async_shutdown, name=f"shutdown-w{worker_id}", daemon=True,
         ).start()
