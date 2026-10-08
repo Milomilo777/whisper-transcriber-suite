@@ -212,3 +212,26 @@ def test_scale_factor_survives_a_broken_widget(monkeypatch):
             raise RuntimeError("no display")
 
     assert dpi.scale_factor(Broken()) == 1.0
+
+
+def test_an_unshown_dialog_measures_the_monitor_of_its_parent(monkeypatch):
+    seen: list[int] = []
+
+    class Win:
+        def __init__(self, hwnd, mapped, master=None):
+            self.hwnd, self.mapped, self.master = hwnd, mapped, master
+
+        def winfo_ismapped(self):
+            return self.mapped
+
+        def winfo_toplevel(self):
+            return self
+
+        def winfo_id(self):
+            seen.append(self.hwnd)
+            raise RuntimeError("stop here: only the window asked about is under test")
+
+    parent = Win(1, True)
+    assert dpi._windows_work_area(Win(2, False, master=parent)) is None
+    assert dpi._windows_work_area(Win(3, True, master=parent)) is None
+    assert seen == [1, 3]

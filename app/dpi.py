@@ -140,8 +140,15 @@ _MONITOR_DEFAULTTONEAREST = 2
 
 
 def _windows_work_area(widget: Any) -> tuple[int, int, int, int] | None:
-    """Work area (without the taskbar) of the monitor that holds ``widget``'s window."""
+    """Work area (without the taskbar) of the monitor that holds ``widget``'s window.
+
+    A dialog that is not shown yet sits on the primary monitor, so it asks about the window
+    that opened it: the dialog is meant for that monitor.
+    """
     try:
+        master = getattr(widget, "master", None)
+        if master is not None and not widget.winfo_ismapped():
+            widget = master.winfo_toplevel()
         hwnd = int(widget.winfo_id())
         user32 = ctypes.windll.user32  # type: ignore[attr-defined]
         user32.MonitorFromWindow.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
