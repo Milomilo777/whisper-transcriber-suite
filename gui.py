@@ -7,6 +7,10 @@
   python gui.py serve               → run the local-network HTTP job server
   python gui.py --help              → usage
 
+A media file passed on its own (dropped on the shortcut, or "Open with")
+opens the app with that file picked; macOS's ``-psn_...`` launch argument
+is ignored.
+
 The worker modes are invoked by the App spawning its own exe; do
 NOT remove or rename the ``--worker`` / ``--voice-clone-worker`` shapes
 — they're the spawn-contract every method of the deliverables uses.
@@ -285,6 +289,60 @@ def _port_number(value: str) -> int:
     return port
 
 
+# The subcommands _build_argparser defines; anything else in the first
+# position is a file to open in the app.
+_SUBCOMMANDS = ("transcribe", "serve")
+
+
+def _split_launch_args(argv: list[str]) -> tuple[list[str], list[str]]:
+    """``(arguments for the parser, files to open in the app)``.
+
+    Finder adds ``-psn_0_12345`` when it starts an app on older macOS, and
+    Windows passes a file dropped on the shortcut (or picked with "Open
+    with") as a bare argument. The strict parser rejected both and the app
+    exited with code 2 before any window appeared.
+    """
+    import os
+
+    args = [a for a in argv if not a.startswith("-psn_")]
+    # Only real paths: a mistyped subcommand ("transcibe") still gets the
+    # parser's usage error instead of a window that never exits.
+    if (
+        args and args[0] not in _SUBCOMMANDS
+        and all(not a.startswith("-") and os.path.exists(a) for a in args)
+    ):
+        return [], args
+    return args, []
+
+
+def _log_missing_stdio(command: str) -> str | None:
+    """Send output to a log file when there is no console (pythonw).
+
+    The Explorer "Transcribe with ..." menu entry runs the ``transcribe``
+    command under pythonw, where stdout and stderr are None: its progress
+    and errors went nowhere. Returns the log path, or None when the
+    console streams exist.
+    """
+    if sys.stdout is not None and sys.stderr is not None:
+        return None
+    import os
+    import time
+    from core.config import user_log_dir
+
+    path = os.path.join(user_log_dir(), f"cli-{command}.log")
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        stream = open(path, "a", encoding="utf-8", errors="replace", buffering=1)
+    except OSError:
+        return None  # no log folder: run without one, as before
+    if sys.stdout is None:
+        sys.stdout = stream
+    if sys.stderr is None:
+        sys.stderr = stream
+    print(f"--- {time.strftime('%Y-%m-%d %H:%M:%S')} {command} (process {os.getpid()})", file=stream)
+    return path
+
+
 def _build_argparser() -> argparse.ArgumentParser:
     from core.writers import supported_formats
 
@@ -446,7 +504,11 @@ def main() -> int:
         sys.argv = [a for a in sys.argv if a != "--safe-mode"]
 
     parser = _build_argparser()
-    args = parser.parse_args()
+    cli_args, open_paths = _split_launch_args(sys.argv[1:])
+    args = parser.parse_args(cli_args)
+
+    if args.command:
+        _log_missing_stdio(args.command)
 
     if args.command == "transcribe":
         return _cli_transcribe(args)
@@ -456,7 +518,10 @@ def main() -> int:
 
     # Default: launch the Tk app.
     from app import run
-    run()
+    if open_paths:
+        run(open_paths)
+    else:
+        run()
     return 0
 
 

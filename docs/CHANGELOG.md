@@ -264,6 +264,31 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Transcript viewer edits reach the subtitle files.** Save now also rewrites the SRT, VTT and
+  ASS next to the JSON, unless one was changed elsewhere (for example in Subtitle Edit), which is
+  left alone with a notice. **Open in Subtitle Edit** offers to save unsaved edits first and, when
+  only a JSON was written, creates the SRT for it.
+- **Transcript viewer never loses or mangles an edit.** Opening a transcript that is already open
+  brings its window forward instead of a second copy whose Save overwrote the first; Save asks
+  before overwriting a JSON changed by another program; **Replace** changes only the selected
+  occurrence; Find next shows a match hidden by the search filter; a transcript or chapter file
+  with a BOM, or a segment whose text, speaker or words are not text, no longer breaks the viewer.
+- **Remove fillers keeps real words.** Fillers are now listed per language (none for a language
+  without a list or an unknown one), matched as whole words, and the punctuation around them
+  stays: German "Er ist" and Danish "Han er" are untouched, "Mm-hmm" stays whole and
+  "Hello um, world" becomes "Hello, world".
+- **File input takes what Explorer and Finder hand over.** A path pasted with Explorer's "Copy as
+  path" (quoted), with spaces around it, or as a `file://` URI is accepted. A file dropped on the
+  shortcut opens the app with that file picked, and macOS's `-psn_` launch argument no longer
+  stops the app before its window appears; the Explorer "Transcribe with" command, which runs
+  without a console, writes its output to `cli-transcribe.log` in the log folder.
+- **Watched folder waits for finished files.** A new file is queued once its size and time stayed
+  unchanged at two checks in a row; macOS `._` sidecar files and yt-dlp part files
+  (`name.f137.mp4`, `name.temp.mp4`) are skipped, and a second event during the model load no
+  longer queues the file twice.
+- **Window opens on a connected monitor.** A saved position on a monitor that is no longer
+  attached (Windows) is replaced by the default centred size. A wrong Subtitle Edit path in
+  Advanced is now named in the "not found" message, and `%VARIABLES%` in it are expanded.
 - **Live tab says when the microphone or the speech model fails.** A microphone that cannot be
   opened, is unplugged mid-session, or a speech worker that died used to leave "Listening…" over a
   flat meter. The tab now stops the session (what was captured is still transcribed), shows the

@@ -114,6 +114,8 @@ def _drive(app: types.SimpleNamespace, raw: str) -> None:
         app.enqueued.extend(paths)
         return len(paths)
     app._bulk_enqueue = _bulk
+    # _on_drop splits the payload and hands the items to open_paths.
+    app.open_paths = lambda items, **kw: App.open_paths(app, items, **kw)  # type: ignore[arg-type]
     event = types.SimpleNamespace(data=raw)
     App._on_drop(app, event)  # type: ignore[arg-type]
 

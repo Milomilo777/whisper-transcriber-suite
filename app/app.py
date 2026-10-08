@@ -4,6 +4,7 @@ from __future__ import annotations
 import gc
 import logging
 import os
+import re
 import sys
 import threading
 import time
@@ -241,6 +242,96 @@ def _file_uri_to_path(uri: str) -> str:
         return path
     except Exception:  # noqa: BLE001
         return ""
+
+
+# Watched folder: a new file is queued once its size and modification time
+# stayed the same at _WATCH_STABLE_CHECKS checks in a row, _WATCH_CHECK_MS
+# apart. One unchanged pair 1.2 s apart let a copy that paused for a moment
+# through half-written. A file that stays empty is dropped after
+# _WATCH_EMPTY_CHECKS checks (about two minutes).
+_WATCH_CHECK_MS = 1200
+_WATCH_STABLE_CHECKS = 2
+_WATCH_EMPTY_CHECKS = 100
+
+
+def _file_signature(path: str) -> tuple[int, int] | None:
+    """``(size, mtime_ns)`` of ``path``, or None when it cannot be read."""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (st.st_size, st.st_mtime_ns)
+
+
+def _watch_stability_step(
+    prev: tuple[int, int], now: tuple[int, int], same_checks: int,
+) -> tuple[str, int]:
+    """One stability check of a watched file: ``(verdict, same_checks)``.
+
+    ``verdict`` is "ready" (queue it), "wait" (check again later) or
+    "empty" (still zero bytes after _WATCH_EMPTY_CHECKS checks: give up).
+    """
+    if now != prev:
+        return "wait", 0
+    same_checks += 1
+    if now[0] == 0:
+        return ("empty", same_checks) if same_checks >= _WATCH_EMPTY_CHECKS else ("wait", same_checks)
+    if same_checks >= _WATCH_STABLE_CHECKS:
+        return "ready", same_checks
+    return "wait", same_checks
+
+
+_GEOMETRY_RE = re.compile(r"^(\d+)x(\d+)([+-]-?\d+)([+-]-?\d+)$")
+
+
+def _saved_geometry_visible(geom: str, point_visible: Callable[[int, int], bool]) -> bool:
+    """False when a saved ``WxH+X+Y`` puts the title bar off every monitor.
+
+    The middle of the title bar is the point the user must be able to grab.
+    A geometry without a position (``WxH``) is always fine.
+    """
+    m = _GEOMETRY_RE.match(geom.strip())
+    if m is None:
+        return True
+    width = int(m.group(1))
+    x, y = int(m.group(3).replace("+", "", 1)), int(m.group(4).replace("+", "", 1))
+    return point_visible(x + width // 2, y + 10)
+
+
+def _point_on_a_monitor(x: int, y: int) -> bool:
+    """True when the screen point lies on a connected monitor.
+
+    Windows asks the system (MonitorFromPoint); elsewhere there is no cheap
+    check, so the window manager is trusted to place the window.
+    """
+    if sys.platform != "win32":
+        return True
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        user32 = ctypes.windll.user32  # type: ignore[attr-defined]
+        user32.MonitorFromPoint.restype = wintypes.HMONITOR
+        user32.MonitorFromPoint.argtypes = [wintypes.POINT, wintypes.DWORD]
+        monitor_defaulttonull = 0
+        return bool(user32.MonitorFromPoint(wintypes.POINT(x, y), monitor_defaulttonull))
+    except Exception:  # noqa: BLE001 - a failed check must not hide the window
+        return True
+
+
+def _clean_pasted_path(text: str) -> str:
+    """The path inside what a user pasted into the file field.
+
+    Explorer's "Copy as path" wraps the path in double quotes, a paste can
+    bring spaces or a line break along, and Linux file managers copy
+    ``file://`` URIs. URLs and plain paths come back stripped only.
+    """
+    cleaned = text.strip()
+    if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in "\"'":
+        cleaned = cleaned[1:-1].strip()
+    if cleaned.startswith("file://"):
+        cleaned = _file_uri_to_path(cleaned) or cleaned
+    return cleaned
 
 
 def _media_files_in_folder(folder: str) -> list[str]:
@@ -748,6 +839,9 @@ class App(tk.Tk):
         if (
             isinstance(saved_geom, str) and saved_geom.count("x") == 1
             and not saved_geom.startswith("960x640")
+            # Saved on a monitor that is gone (a laptop undocked): the window
+            # would open where nobody can see or reach it.
+            and _saved_geometry_visible(saved_geom, _point_on_a_monitor)
         ):
             try:
                 self.geometry(saved_geom)
@@ -913,6 +1007,9 @@ class App(tk.Tk):
         # True while the quick start window is open (see _on_start).
         self._quick_start_open = False
         self._watched_after_ids: dict[str, str] = {}
+        # Watched files waiting for the model to load before they are queued,
+        # so a second event for the same file meanwhile does not queue it twice.
+        self._watched_pending: set[str] = set()
         # Thread-safe queue drained on the Tk main thread by
         # _drain_watched_paths. watchdog fires callbacks from a
         # background thread; on Python 3.14 calling self.after()
@@ -3134,7 +3231,7 @@ class App(tk.Tk):
 
     # Adding tasks ------------------------------------------------------------
     def add(self) -> None:
-        text = self.fv.get().strip()
+        text = _clean_pasted_path(self.fv.get())
         if not text:
             self.log("Pick a file first — use the Browse button on the Transcribe tab.")
             return
@@ -3164,13 +3261,14 @@ class App(tk.Tk):
             return
         if not self._ensure_transcribe_ready():
             return
-        # Per-task language override + optional clip range.
-        task = TranscriptionTask(self.fv.get())
+        # Per-task language override + optional clip range. The cleaned path,
+        # never the raw field: quotes or a leading space would reach the worker.
+        task = TranscriptionTask(text)
         self._apply_task_options(task)
         self.queue.append(task)
         self.pb["value"] = 0
         self.nb.select(self.t2)
-        self.log(f"Queued: {os.path.basename(self.fv.get())}")
+        self.log(f"Queued: {os.path.basename(text)}")
         self.refresh()
 
     def try_sample_clip(self) -> None:
@@ -5571,12 +5669,14 @@ class App(tk.Tk):
             return
         if not os.path.isfile(path):
             return
-        try:
-            size1 = os.path.getsize(path)
-        except OSError:
+        first = _file_signature(path)
+        if first is None:
             return
 
         norm = os.path.normcase(os.path.abspath(path))
+        if norm in self._watched_pending:
+            # Already stable and waiting for the model to load.
+            return
         # Cancel any prior stability-check ladder for this path so
         # we don't double-enqueue under rapid event bursts.
         prior = self._watched_after_ids.pop(norm, None)
@@ -5586,58 +5686,79 @@ class App(tk.Tk):
             except Exception:  # noqa: BLE001
                 pass
 
-        def _check_stable_then_enqueue(prev_size: int) -> None:
+        def _schedule(prev: tuple[int, int], same_checks: int) -> None:
+            # Track the id so a later event can cancel us cleanly.
+            try:
+                aid = self.after(
+                    _WATCH_CHECK_MS, lambda: _check_stable_then_enqueue(prev, same_checks)
+                )
+                self._watched_after_ids[norm] = aid
+            except Exception:  # noqa: BLE001
+                pass
+
+        def _check_stable_then_enqueue(prev: tuple[int, int], same_checks: int) -> None:
             self._watched_after_ids.pop(norm, None)
             if self._closing:
                 return
-            try:
-                size_now = os.path.getsize(path)
-            except OSError:
+            now = _file_signature(path)
+            if now is None:
                 return
-            if size_now != prev_size:
-                # File still growing — re-schedule. Track the new id
-                # so a later event can cancel us cleanly.
-                try:
-                    aid = self.after(1200, lambda: _check_stable_then_enqueue(size_now))
-                    self._watched_after_ids[norm] = aid
-                except Exception:  # noqa: BLE001
-                    pass
+            verdict, same_checks = _watch_stability_step(prev, now, same_checks)
+            if verdict == "wait":
+                _schedule(now, same_checks)
                 return
-            # Don't re-enqueue a file we've already finished. Cheap
-            # dedup: skip if any queue entry references the same
-            # normalised path AND is not in a terminal state.
-            for existing in self.queue:
-                try:
-                    if (os.path.normcase(os.path.abspath(existing.file_path)) == norm
-                            and existing.status not in ("finished", "cancelled", "error")):
-                        return
-                except Exception:  # noqa: BLE001
-                    continue
+            base = os.path.basename(path)
+            if verdict == "empty":
+                self.log(f"Watched: skipped {base} — the file stayed empty.")
+                return
+            # Don't re-enqueue a file that is already waiting or running;
+            # a finished/cancelled/error row does not block a new copy.
+            if self._active_dup_in_queue(path):
+                return
             # Lazy model load without freezing the UI. The watched-folder
             # tick runs on the Tk main thread, so a synchronous wait for
             # the model would freeze the app; spawn + await the worker via
             # after()-polling instead and enqueue once it's ready.
-            base = os.path.basename(path)
+            self._watched_pending.add(norm)
+            stable = now
 
             def _do_enqueue() -> None:
+                self._watched_pending.discard(norm)
+                if self._closing or self._active_dup_in_queue(path):
+                    return
+                current = _file_signature(path)
+                if current is None:
+                    self.log(f"Watched: skipped {base} — it was moved or deleted.")
+                    return
+                if current != stable:
+                    # Written to again while the model loaded: wait until it
+                    # settles once more.
+                    self._enqueue_watched_file(path)
+                    return
                 task = TranscriptionTask(path)
                 self.queue.append(task)
                 self.refresh()
                 self.log(f"Watched: enqueued {base}")
 
-            self._when_worker_ready(
-                _do_enqueue,
-                on_timeout=lambda: self.log(
-                f"Watched: skipped {base} — model load timed out {HEADLESS_READY_TIMEOUT_S} s"
-                ),
-                loading_label=f"will transcribe {base} when ready.",
-            )
+            def _on_timeout() -> None:
+                self._watched_pending.discard(norm)
+                self.log(
+                    f"Watched: skipped {base} — model load timed out {HEADLESS_READY_TIMEOUT_S} s"
+                )
 
-        try:
-            aid = self.after(1200, lambda: _check_stable_then_enqueue(size1))
-            self._watched_after_ids[norm] = aid
-        except Exception:  # noqa: BLE001
-            pass
+            try:
+                self._when_worker_ready(
+                    _do_enqueue,
+                    on_timeout=_on_timeout,
+                    loading_label=f"will transcribe {base} when ready.",
+                )
+            except Exception:
+                # The worker could not start: a later event must not find the
+                # file still marked as waiting.
+                self._watched_pending.discard(norm)
+                raise
+
+        _schedule(first, 0)
 
     def _maybe_offer_crash_resume(self) -> None:
         """If history.db flagged any rows interrupted on launch, offer
@@ -5972,6 +6093,15 @@ class App(tk.Tk):
                 items = list(self.tk.splitlist(raw))
             except Exception:  # noqa: BLE001
                 items = [raw]
+        self.open_paths(items, empty_payload=not raw.strip())
+
+    def open_paths(self, items: list[str], *, empty_payload: bool = False) -> None:
+        """Handle dropped items, or files passed on the command line.
+
+        One file is picked in the Transcribe tab, several files (or a
+        folder's media files) are queued, a URL goes to the Download tab,
+        and anything unusable is reported in the log.
+        """
         paths: list[str] = []
         urls: list[str] = []
         folders: list[str] = []
@@ -6043,7 +6173,7 @@ class App(tk.Tk):
                 f"usable (e.g. {unsupported[0]}). Drop a media file, a "
                 f"folder of media files, or an http(s) URL."
             )
-        elif not paths and not urls and not folders and raw.strip():
+        elif not paths and not urls and not folders and not empty_payload:
             # A non-empty payload that produced nothing actionable — e.g.
             # an empty selection. Without this the drop is a silent no-op
             # and the user can't tell what went wrong.

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 from typing import Any, Callable
 
@@ -31,6 +32,19 @@ _MEDIA_EXTENSIONS = {
 # MPEG transport streams start every 188-byte packet with this sync byte.
 _TS_SYNC_BYTE = b"\x47"
 
+# yt-dlp downloads the video and audio of a merged format as "name.f137.mp4"
+# and "name.f251.webm" (format ids like 137, 251-drc, hls-1080p, dash-720p)
+# and post-processes into "name.temp.mp4"; the finished file arrives later
+# under its own name.
+_YTDLP_PART_RE = re.compile(
+    r"\.(?:f(?:\d{2,}(?:-[\w-]+)?|(?:hls|dash|http)-[\w-]+)|temp)\.[^.]+$", re.IGNORECASE
+)
+
+
+def is_download_intermediate(path: str) -> bool:
+    """True for a yt-dlp part file that is not the finished download."""
+    return bool(_YTDLP_PART_RE.search(os.path.basename(path)))
+
 
 def is_media_file(path: str) -> bool:
     """True when ``path``'s extension is one of the watched media types.
@@ -43,6 +57,10 @@ def is_media_file(path: str) -> bool:
     """
     ext = os.path.splitext(path)[1].lower()
     if ext not in _MEDIA_EXTENSIONS:
+        return False
+    if os.path.basename(path).startswith("._"):
+        # macOS AppleDouble metadata ("._clip.mp4") written next to every
+        # file copied to a FAT/exFAT/network drive: never media.
         return False
     if ext == ".ts":
         try:
@@ -130,6 +148,9 @@ class FolderWatcher:
                 if isinstance(path, bytes):
                     path = path.decode("utf-8", "replace")
                 if not path or not is_media_file(path):
+                    return
+                if is_download_intermediate(path):
+                    logger.info("Watched folder: skipped %s (a yt-dlp part file)", path)
                     return
                 try:
                     cb(path)

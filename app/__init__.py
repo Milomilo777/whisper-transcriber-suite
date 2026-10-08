@@ -23,8 +23,12 @@ if TYPE_CHECKING:
 __all__ = ["run", "App"]
 
 
-def run() -> None:
-    """Launch the Tk app. Used by ``gui.py`` and the frozen exe entry point."""
+def run(open_paths: list[str] | None = None) -> None:
+    """Launch the Tk app. Used by ``gui.py`` and the frozen exe entry point.
+
+    ``open_paths``: files from the command line (a file dropped on the
+    shortcut), handled like files dropped on the window.
+    """
     # Before the Tk root exists, or Windows stretches the window and blurs it.
     from .dpi import enable_dpi_awareness
     enable_dpi_awareness()
@@ -36,7 +40,11 @@ def run() -> None:
     from . import crash_report
     crash_report.install_excepthook()
     from .app import App
-    App().mainloop()
+    app = App()
+    if open_paths:
+        paths = list(open_paths)
+        app.after_idle(lambda: app.open_paths(paths))
+    app.mainloop()
 
 
 def __getattr__(name: str):
