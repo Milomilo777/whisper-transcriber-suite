@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import socket
 import subprocess
 import threading
@@ -65,6 +66,38 @@ def _real_transcribe(
     """
     from core import transcriber as _trans
     _trans.transcribe(task, progress_cb, log_cb, language_cb)
+
+
+# yt-dlp's unfinished files END in one of these: "x.f137.mp4.part",
+# "x.mp4.part-Frag12", "x.mp4.ytdl". Anchored: a title may contain
+# "Part-1" or ".tmp." and still be the media.
+_NOT_MEDIA_RE = re.compile(
+    r"\.(part(-Frag\d+)?|ytdl|temp|tmp)$", re.IGNORECASE)
+# yt-dlp's post-processing copy "x.temp.mp4" (replaced by "x.mp4" when done).
+_POST_TEMP_RE = re.compile(r"^(?P<stem>.+)\.temp(?P<ext>\.[^.]+)$",
+                           re.IGNORECASE)
+
+
+def _is_downloaded_media(dest_dir: str, name: str) -> bool:
+    """True for a finished, non-empty file that can be the downloaded media.
+
+    The job folder also holds the ``.wts-job`` marker (and later the
+    ``.whisperproject.json`` override); neither, a hidden file, an empty
+    file nor an unfinished download is media. A ``x.temp.mp4`` beside the
+    final ``x.mp4`` is yt-dlp's leftover; alone it may be a real title, so
+    it counts as media.
+    """
+    if name.startswith(".") or _NOT_MEDIA_RE.search(name):
+        return False
+    post = _POST_TEMP_RE.match(name)
+    if post and os.path.isfile(
+            os.path.join(dest_dir, post["stem"] + post["ext"])):
+        return False
+    path = os.path.join(dest_dir, name)
+    try:
+        return os.path.isfile(path) and os.path.getsize(path) > 0
+    except OSError:
+        return False
 
 
 def _download_url(url: str, dest_dir: str,
@@ -141,12 +174,17 @@ def _download_url(url: str, dest_dir: str,
         if process.returncode:
             raise subprocess.CalledProcessError(
                 process.returncode, command, stdout, stderr)
-    # Pick the newest file yt-dlp left in the dir.
+    # Pick the newest media file yt-dlp left in the dir.
     candidates = [
         os.path.join(dest_dir, n) for n in os.listdir(dest_dir)
-        if os.path.isfile(os.path.join(dest_dir, n))
+        if _is_downloaded_media(dest_dir, n)
     ]
     if not candidates:
+        # yt-dlp skips a file over --max-filesize and still exits 0.
+        if "max-filesize" in (stdout or "").lower():
+            raise RuntimeError(
+                "download produced no file: the file is larger than the "
+                "server's download limit")
         raise RuntimeError(
             "download produced no file"
             + (" (it may be larger than the server's download limit)"

@@ -128,13 +128,24 @@ def test_upload_job_runs_and_collects_outputs(tmp_path):
 
 
 def test_upload_writes_media_into_per_job_dir(tmp_path):
-    mgr = _make_manager(tmp_path, _writing_transcribe())
+    seen: dict[str, Any] = {}
+    inner = _writing_transcribe()
+
+    def transcribe(task, *args, **kwargs):
+        # The engine reads the media while it runs; the server removes it
+        # once the outputs are archived (see test_server_jobs_c266.py).
+        with open(task.file_path, "rb") as f:
+            seen["data"] = f.read()
+        seen["dir"] = os.path.dirname(task.file_path)
+        inner(task, *args, **kwargs)
+
+    mgr = _make_manager(tmp_path, transcribe)
     try:
         jid = mgr.submit_upload("a.mp4", b"DATA", ["srt"])
         job = _wait_terminal(mgr, jid)
         assert job is not None and job.status == STATUS_FINISHED
-        with open(job.media_path, "rb") as f:
-            assert f.read() == b"DATA"
+        assert seen["data"] == b"DATA"
+        assert seen["dir"] == job.work_dir
     finally:
         mgr.stop()
 

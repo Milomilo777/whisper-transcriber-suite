@@ -334,6 +334,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **"Minimise to system tray" says why it is off.** Where the tray cannot work (macOS, or pystray / Pillow missing) the option is greyed out with a one-line reason, and Save leaves the stored choice alone.
 - **No repeated "Online config fetch failed (404)" at every worker start.** The default `config_url` is not published yet; an HTTP 404/410 is now logged once at INFO and not retried for 24 hours (cache and built-in settings keep applying).
 - **Log lines no longer carry signed-URL secrets.** Every log handler now cuts http(s) URLs to scheme, host and path (query string, fragment and user info dropped), so a signed model-download link no longer lands in `app.log`.
+- **Server jobs keep paid text and no longer lose files.** A web/API job on a paid cloud engine that
+  fails part-way now offers its finished text (`partial_srt`, also archived) instead of deleting it
+  with the job folder; outputs are archived and the history row written before a job reads
+  "finished"; a download that produced no file reports the size limit instead of "transcribing" the
+  folder marker; a second server (GUI web access, `gui.py serve`, another window) no longer purges
+  the first one's job folders (the marker names its owning process); a finished job's uploaded or
+  downloaded media is deleted once its outputs are saved. If saving fails (disk full) the job shows
+  a warning and its folder is kept until the copy succeeds; Cancel is refused once a job is ending.
+
 - **Hardware detection and model advice.** GPUs without efficient float16 (GTX 10-series) now get
   an NVIDIA CUDA (int8) tier in the Hardware wizard, so Apply no longer pins the CPU over the
   automatic CUDA pick. Applying the untouched list while an NVIDIA GPU is unusable saves nothing

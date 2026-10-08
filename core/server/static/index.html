@@ -461,6 +461,7 @@
     html += '<div class="bar"><span style="width:' + (Number(j.progress) || 0) + '%"></span></div>';
     // j.error routinely embeds the submitted URL / filename — untrusted.
     if (j.status === "error") { html += '<p class="err">' + escapeHtml(j.error || "failed") + "</p>"; }
+    if (j.warning) { html += '<p class="err">' + escapeHtml(j.warning) + "</p>"; }
     if (j.status === "finished" || j.status === "error" || j.status === "cancelled") {
       clearInterval(submitPollTimer);
       startBtn.disabled = false;

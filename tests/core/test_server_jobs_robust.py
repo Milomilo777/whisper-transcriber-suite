@@ -4,8 +4,10 @@ Fakes only: no network, no real yt-dlp, no real engine.
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
+import sys
 import threading
 import time
 import types
@@ -115,6 +117,12 @@ def test_scan_skips_a_file_that_vanished(tmp_path, monkeypatch):
         "a.srt"]
 
 
+def _dead_pid() -> int:
+    proc = subprocess.Popen([sys.executable, "-c", "pass"])
+    proc.wait()
+    return proc.pid
+
+
 # --- item 3: purge and a durable history copy -------------------------------
 
 def test_start_removes_old_job_folders_only(tmp_path, monkeypatch):
@@ -128,7 +136,9 @@ def test_start_removes_old_job_folders_only(tmp_path, monkeypatch):
         d.mkdir()
         (d / "f.wav").write_bytes(b"x")
     for d in (old, young):
-        (d / J._JOB_DIR_MARKER).write_bytes(b"")
+        # Owner: a process that no longer exists (the folder is an orphan).
+        (d / J._JOB_DIR_MARKER).write_text(json.dumps(
+            {"v": 1, "pid": _dead_pid(), "started": 1.0, "instance": "gone"}))
     long_ago = time.time() - 2 * J._STALE_JOB_DIR_AGE_S
     for d in (old, other, legacy):
         os.utime(d, (long_ago, long_ago))
