@@ -28,7 +28,9 @@ import math
 import os
 import sqlite3
 import unicodedata
+from bisect import bisect_left
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -123,6 +125,15 @@ def _is_search_noise(ch: str) -> bool:
             or code == 0x0670 or 0x06D6 <= code <= 0x06ED)
 
 
+def _fold(text: str, casefold: bool) -> str:
+    s = unicodedata.normalize("NFD", unicodedata.normalize("NFKC", text))
+    s = "".join(ch for ch in s if not _is_search_noise(ch))
+    s = unicodedata.normalize("NFC", s).translate(_FOLD_TABLE)
+    if casefold:
+        s = s.casefold()
+    return unicodedata.normalize("NFKC", s)
+
+
 def normalize_search_text(text: str) -> str:
     """Fold *text* so that spelling variants compare equal.
 
@@ -130,10 +141,97 @@ def normalize_search_text(text: str) -> str:
     NFKC, accents and Arabic vowel marks removed, ZWNJ/tatweel removed,
     Arabic kaf/yeh as Persian, digits as ASCII, case folded.
     """
-    s = unicodedata.normalize("NFD", unicodedata.normalize("NFKC", text))
-    s = "".join(ch for ch in s if not _is_search_noise(ch))
-    s = unicodedata.normalize("NFC", s).translate(_FOLD_TABLE).casefold()
-    return unicodedata.normalize("NFKC", s)
+    return _fold(text, True)
+
+
+# ---- matching inside one text (transcript viewer search and Find/Replace) ----
+#
+# The same folding as normalize_search_text, but done one character at a time
+# so every folded character knows which characters of the ORIGINAL text it
+# came from. A match can then be mapped back to an exact span of the original,
+# which is what Replace rewrites: folding only decides what matches, it never
+# changes the text around it.
+
+
+@lru_cache(maxsize=4096)
+def _fold_char(ch: str, casefold: bool) -> str:
+    return _fold(ch, casefold)
+
+
+@lru_cache(maxsize=4096)
+def fold_with_spans(
+    text: str, casefold: bool = True
+) -> tuple[str, tuple[int, ...], tuple[int, ...]]:
+    """``(folded, starts, ends)``: ``text[starts[i]:ends[i]]`` produced ``folded[i]``.
+
+    Characters that fold to nothing (ZWNJ, tatweel, vowel marks) have no folded
+    character. A combining mark that follows a kept character is attached to its
+    span, so a match swallows the vowel marks of its last letter; a ZWNJ is not,
+    so "ketab" matches the start of "ketab" + ZWNJ + "ha" without taking the
+    half-space. ``casefold=False`` keeps Latin case (a "Match case" search).
+    """
+    out: list[str] = []
+    starts: list[int] = []
+    ends: list[int] = []
+    last_len = 0  # folded characters made by the last kept original character
+    for i, ch in enumerate(text):
+        folded = _fold_char(ch, casefold)
+        if folded:
+            out.append(folded)
+            starts.extend([i] * len(folded))
+            ends.extend([i + 1] * len(folded))
+            last_len = len(folded)
+        elif last_len and ends[-1] == i and unicodedata.category(ch) == "Mn":
+            ends[-last_len:] = [i + 1] * last_len
+    return "".join(out), tuple(starts), tuple(ends)
+
+
+def find_folded_span(
+    text: str, needle: str, start: int = 0, *, casefold: bool = True
+) -> tuple[int, int] | None:
+    """The first match of *needle* in *text* at or after original offset *start*.
+
+    Compares with the search folding (ZWNJ, Arabic kaf/yeh, digits, accents and,
+    unless ``casefold`` is False, case). Returns the ``(start, end)`` span of the
+    ORIGINAL text, or None; a needle that folds to nothing never matches.
+    """
+    wanted = "".join(_fold_char(ch, casefold) for ch in needle)
+    if not wanted:
+        return None
+    folded, starts, ends = fold_with_spans(text, casefold)
+    first = bisect_left(starts, max(0, start))
+    pos = folded.find(wanted, first)
+    if pos < 0:
+        return None
+    return starts[pos], ends[pos + len(wanted) - 1]
+
+
+def folded_contains(text: str, query: str, *, casefold: bool = True) -> bool:
+    """True when *query* occurs in *text* under the search folding."""
+    return find_folded_span(text, query, casefold=casefold) is not None
+
+
+def replace_folded(
+    text: str, needle: str, replacement: str, *, casefold: bool = True
+) -> tuple[str, int]:
+    """Replace every folded match of *needle* with *replacement*, literally.
+
+    Only the matched spans of *text* change; returns ``(new_text, count)``.
+    """
+    pieces: list[str] = []
+    last = pos = count = 0
+    while True:
+        span = find_folded_span(text, needle, pos, casefold=casefold)
+        if span is None:
+            break
+        pieces.append(text[last:span[0]])
+        pieces.append(replacement)
+        last = pos = span[1]
+        count += 1
+    if not count:
+        return text, 0
+    pieces.append(text[last:])
+    return "".join(pieces), count
 
 
 def _trigram_supported() -> bool:

@@ -51,17 +51,15 @@ from app.widgets import subtitle_edit as subtitle_edit_ui
 from app.widgets.notice import notify
 from app.widgets.tooltip import help_icon
 from core import subtitle_edit
+from core.media_types import MEDIA_EXTENSIONS
+from core.search import find_folded_span, folded_contains, replace_folded
 from core.writers.base import words_match_text
 
 
 logger = logging.getLogger(__name__)
 
 
-_MEDIA_EXTENSIONS = (
-    ".mp4", ".mp3", ".wav", ".m4a", ".mkv", ".webm", ".flac", ".ogg", ".aac",
-    ".opus", ".mov", ".m4v", ".avi", ".wma", ".ts", ".wmv", ".mka", ".oga",
-    ".mpg", ".mpeg", ".3gp",
-)
+_MEDIA_EXTENSIONS = MEDIA_EXTENSIONS
 
 # " (1)" that a re-run adds to every output name (core.transcriber._indexed_path).
 _RERUN_INDEX_RE = re.compile(r" \(\d+\)$")
@@ -1604,12 +1602,14 @@ class TranscriptViewer(tk.Toplevel):
     def _populate_listbox(self) -> None:
         self.tree.delete(*self.tree.get_children())
         self.filtered_indices = []
-        query = (self.search_var.get() if hasattr(self, "search_var") else "").strip().lower()
+        query = (self.search_var.get() if hasattr(self, "search_var") else "").strip()
         active_idx = self._active_segment_idx
         for idx, seg in enumerate(self.segments):
             text = _seg_text(seg).strip()
             speaker = _seg_text(seg, "speaker").strip()
-            if query and query not in text.lower() and query not in speaker.lower():
+            # Folded like the global search: a half-space, Arabic kaf/yeh,
+            # vowel marks, digit styles and case do not hide a match.
+            if query and not (folded_contains(text, query) or folded_contains(speaker, query)):
                 continue
             self.filtered_indices.append(idx)
             # Confidence colour, suspect / timing backgrounds and the script
@@ -2587,12 +2587,17 @@ class FindReplaceDialog(tk.Toplevel):
         return bool(needle) and bool(needle.strip())
 
     def _match(self, haystack: str, needle: str) -> bool:
-        if not needle:
-            return False
-        return self._pattern(needle).search(haystack) is not None
+        return self._search(haystack, needle) is not None
 
-    def _pattern(self, needle: str) -> re.Pattern[str]:
-        return re.compile(re.escape(needle), 0 if self.case_var.get() else re.IGNORECASE)
+    def _search(self, haystack: str, needle: str, start: int = 0) -> tuple[int, int] | None:
+        """The ``(start, end)`` span of the next match in the ORIGINAL text.
+
+        Matching folds Persian spelling like the global search (half-space,
+        Arabic kaf/yeh, vowel marks, digit styles); "Match case" keeps Latin
+        case. Replace rewrites the returned span, so the text around it is
+        never touched by the folding.
+        """
+        return find_folded_span(haystack, needle, start, casefold=not self.case_var.get())
 
     def find_next(self) -> bool:
         """Select the next match: later in the same segment first, then the
@@ -2601,23 +2606,24 @@ class FindReplaceDialog(tk.Toplevel):
         needle = self._needle()
         if not self._is_valid_needle(needle):
             return False
-        pattern = self._pattern(needle)
         segments = self.viewer.segments
         n = len(segments)
         start_idx = 0
         if 0 <= self.last_match_idx < n:
-            m = pattern.search(_seg_text(segments[self.last_match_idx]), self.last_match_pos + 1)
+            m = self._search(
+                _seg_text(segments[self.last_match_idx]), needle, self.last_match_pos + 1
+            )
             if m is not None:
-                self.last_match_pos = m.start()
+                self.last_match_pos = m[0]
                 self._reveal(self.last_match_idx)
                 return True
             start_idx = self.last_match_idx + 1
         for offset in range(n):
             idx = (start_idx + offset) % n
-            m = pattern.search(_seg_text(segments[idx]))
+            m = self._search(_seg_text(segments[idx]), needle)
             if m is not None:
                 self.last_match_idx = idx
-                self.last_match_pos = m.start()
+                self.last_match_pos = m[0]
                 self._reveal(idx)
                 return True
         messagebox.showinfo("No match", f"'{needle}' not found.", parent=self)
@@ -2640,19 +2646,15 @@ class FindReplaceDialog(tk.Toplevel):
     def _safe_replace(text: str, needle: str, replacement: str, case_sensitive: bool) -> str:
         """Replace ``needle`` with ``replacement`` literally.
 
-        Critical: we use a lambda over re.sub so backreferences in
-        ``replacement`` (``\\1``, ``\\g<name>``, ``\\\\``) are kept as
-        literal characters rather than parsed as regex syntax. The
-        previous implementation interpreted ``\\1`` as group-1 and
-        either crashed or silently mangled the segment text.
+        ``needle`` matches the way the global search does (half-space, Arabic
+        kaf/yeh, vowel marks); only the matched spans of ``text`` change.
+
+        The replacement is literal: backreferences in it (``\\1``,
+        ``\\g<name>``, ``\\\\``) are kept as plain characters, never parsed
+        as regex syntax (an earlier version read ``\\1`` as group 1 and
+        either crashed or mangled the segment text).
         """
-        if case_sensitive:
-            return text.replace(needle, replacement)
-        # Use lambda to avoid re.sub's parsing of \\1 / \\g<...> /
-        # \\\\ in the replacement string.
-        return re.sub(
-            re.escape(needle), lambda _m: replacement, text, flags=re.IGNORECASE
-        )
+        return replace_folded(text, needle, replacement, casefold=not case_sensitive)[0]
 
     def replace_current(self) -> None:
         """Replace the selected occurrence only, then select the next one."""
@@ -2665,17 +2667,18 @@ class FindReplaceDialog(tk.Toplevel):
                 return
         seg = segments[self.last_match_idx]
         text = _seg_text(seg)
-        m = self._pattern(needle).match(text, max(0, self.last_match_pos))
-        if m is None:
+        pos = max(0, self.last_match_pos)
+        m = self._search(text, needle, pos)
+        if m is None or m[0] != pos:
             # The text changed since the match was found: find it again.
             self.find_next()
             return
         replacement = self.replace_var.get() or ""
-        _set_segment_text(seg, text[: m.start()] + replacement + text[m.end():])
+        _set_segment_text(seg, text[: m[0]] + replacement + text[m[1]:])
         self.viewer._dirty = True
         self.viewer._populate_listbox()
         # Continue after the inserted text, so it is not matched again.
-        self.last_match_pos = m.start() + len(replacement) - 1
+        self.last_match_pos = m[0] + len(replacement) - 1
         self.find_next()
 
     def replace_all(self) -> None:
