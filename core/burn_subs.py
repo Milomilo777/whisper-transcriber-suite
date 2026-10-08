@@ -1,13 +1,12 @@
 """Burn an SRT into a video via ffmpeg.
 
-One pure function: ``burn(video_path, srt_path, out_path)``. Uses
-ffmpeg's ``subtitles`` filter which renders the SRT as a vector
-overlay on top of the video stream.
-
-This is a one-shot synchronous call; on large videos it can take a
-while. The caller (UI service) should run it in a background
-thread and surface progress via the existing ``download_events``
-or a similar queue.
+``burn(video_path, srt_path, out_path)`` uses ffmpeg's ``subtitles``
+filter, which renders the SRT as a vector overlay on top of the video
+stream. It blocks until ffmpeg ends; on large videos that takes a while,
+so callers run it on a background thread. Optional hooks report a real
+percent (ffmpeg ``-progress pipe:1`` against the probed duration), let the
+caller cancel, and hand over the ffmpeg process so an existing cancel path
+can tree-kill it.
 
 Video is encoded with ffmpeg's defaults (H.264) and the audio stream is
 copied when the output container accepts the source codec, falling back to
@@ -21,9 +20,11 @@ import os
 import shutil
 import subprocess
 import tempfile
-from typing import Any
+import threading
+import time
+from typing import Any, Callable
 
-from ._proc import new_session_kwargs
+from ._proc import kill_process_tree, new_session_kwargs
 from .paths import bundled_binary
 
 logger = logging.getLogger(__name__)
@@ -148,6 +149,163 @@ def subtitle_font_for(text: str, *, platform: str | None = None) -> str:
     return _WINDOWS_SCRIPT_FONTS.get(_dominant_script(text), "")
 
 
+class BurnCancelled(RuntimeError):
+    """The caller cancelled the burn; ffmpeg was stopped and nothing written."""
+
+
+# A 1080p re-encode measured 2.2x real time on an 8-thread PC; slower CPUs
+# need more, so the limit grows with the video and never drops below 1 h.
+_MIN_TIMEOUT_S = 3600.0
+_TIMEOUT_PER_MEDIA_SECOND = 3.0
+
+
+def burn_timeout(duration_s: float) -> float:
+    """The ffmpeg time limit for a video of *duration_s* seconds."""
+    return max(_MIN_TIMEOUT_S, _TIMEOUT_PER_MEDIA_SECOND * max(0.0, duration_s))
+
+
+def probe_duration(path: str) -> float:
+    """The media duration in seconds from ffprobe, or 0.0 when unknown."""
+    kwargs: dict[str, Any] = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.DEVNULL,
+        "stdin": subprocess.DEVNULL,
+        "timeout": 60,
+    }
+    kwargs.update(new_session_kwargs())
+    try:
+        r = subprocess.run(
+            [bundled_binary("ffprobe"), "-v", "error",
+             "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", path],
+            **kwargs,
+        )
+        value = float((r.stdout or b"").decode("ascii", "replace").strip())
+    except (OSError, ValueError, subprocess.SubprocessError) as e:
+        logger.warning("Subtitle burn: no duration for %s (%s)", path, e)
+        return 0.0
+    return value if value > 0 else 0.0
+
+
+def free_output_path(path: str) -> str:
+    """*path* when nothing is there, else the first free ``name (N).ext``.
+
+    An earlier result of the same video is never replaced silently.
+    """
+    if not os.path.lexists(path):
+        return path
+    stem, ext = os.path.splitext(path)
+    n = 2
+    while os.path.lexists(f"{stem} ({n}){ext}"):
+        n += 1
+    return f"{stem} ({n}){ext}"
+
+
+def parse_progress_seconds(line: str) -> float | None:
+    """Seconds encoded so far from one ffmpeg ``-progress`` line, else None.
+
+    ``out_time_us`` and (despite its name) ``out_time_ms`` both count
+    MICROseconds; ``N/A`` appears before the first frame.
+    """
+    key, sep, value = line.strip().partition("=")
+    if not sep or key not in ("out_time_us", "out_time_ms"):
+        return None
+    try:
+        return max(0, int(value)) / 1_000_000
+    except ValueError:
+        return None
+
+
+def _run_ffmpeg(
+    cmd: list[str],
+    *,
+    timeout: float,
+    duration_s: float = 0.0,
+    progress_cb: Callable[[float], None] | None = None,
+    cancel_check: Callable[[], bool] | None = None,
+    on_process: Callable[[Any], None] | None = None,
+    **popen_kwargs: Any,
+) -> None:
+    """Run ffmpeg like ``subprocess.run(check=True)``, with progress and cancel.
+
+    stdout carries the ``-progress`` lines; stderr is drained on its own
+    thread (an unread pipe stalls a long encode) and its tail goes into the
+    ``CalledProcessError`` on failure. A cancel or the time limit tree-kills
+    ffmpeg; a cancel raises ``BurnCancelled``.
+    """
+    proc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        stdin=subprocess.DEVNULL, **popen_kwargs,
+    )
+    if on_process is not None:
+        on_process(proc)
+    stderr_tail = bytearray()
+
+    err_stream = proc.stderr
+    out_stream = proc.stdout
+    assert err_stream is not None and out_stream is not None
+
+    def _drain_stderr() -> None:
+        while True:
+            chunk = err_stream.read(4096)
+            if not chunk:
+                return
+            stderr_tail.extend(chunk)
+            del stderr_tail[:-8192]
+
+    def _read_progress() -> None:
+        last = -1.0
+        for raw in out_stream:
+            line = raw.decode("ascii", "replace")
+            if progress_cb is None:
+                continue
+            if line.strip() == "progress=end":
+                pct = 100.0
+            else:
+                secs = parse_progress_seconds(line)
+                if secs is None or duration_s <= 0:
+                    continue
+                pct = min(99.0, 100.0 * secs / duration_s)
+            if pct > last:
+                last = pct
+                progress_cb(pct)
+
+    readers = [
+        threading.Thread(target=_drain_stderr, name="burn-stderr", daemon=True),
+        threading.Thread(target=_read_progress, name="burn-progress", daemon=True),
+    ]
+    for t in readers:
+        t.start()
+    deadline = time.monotonic() + timeout
+    cancelled = timed_out = False
+    while proc.poll() is None:
+        if cancel_check is not None and cancel_check():
+            cancelled = True
+        elif time.monotonic() >= deadline:
+            timed_out = True
+        if cancelled or timed_out:
+            kill_process_tree(proc, force=True)
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=10)
+            break
+        time.sleep(0.1)
+    for t in readers:
+        t.join(timeout=10)
+    # An outside kill (the queue's own Cancel) ends ffmpeg before this loop
+    # sees the flag, so ask once more.
+    if cancelled or (cancel_check is not None and cancel_check()):
+        raise BurnCancelled("Subtitle burn cancelled")
+    if timed_out:
+        raise subprocess.TimeoutExpired(cmd, timeout)
+    if proc.returncode != 0:
+        raise subprocess.CalledProcessError(
+            proc.returncode, cmd, b"", bytes(stderr_tail)
+        )
+
+
 def _same_path(a: str, b: str) -> bool:
     """True when *a* and *b* name the same file (works when *b* is not there yet)."""
     try:
@@ -185,14 +343,23 @@ def burn(
     out_path: str,
     *,
     extra_args: list[str] | None = None,
-    timeout: float = 3600.0,
+    timeout: float | None = None,
+    progress_cb: Callable[[float], None] | None = None,
+    cancel_check: Callable[[], bool] | None = None,
+    on_process: Callable[[Any], None] | None = None,
 ) -> None:
     """Write ``out_path`` with the SRT subtitles burned into the video.
+
+    ``timeout`` defaults to ``burn_timeout`` of the probed duration.
+    ``progress_cb(percent)`` runs on a reader thread, rising to 100.
+    ``cancel_check()`` is polled about ten times a second; True stops
+    ffmpeg. ``on_process(popen)`` receives each ffmpeg process as it starts.
 
     Raises:
         FileNotFoundError if the video or srt is missing.
         ValueError        if ``out_path`` is the video or the srt itself.
-        RuntimeError      if ffmpeg returns non-zero.
+        BurnCancelled     if ``cancel_check`` asked to stop.
+        RuntimeError      if ffmpeg returns non-zero or runs out of time.
     """
     if not os.path.isfile(video_path):
         raise FileNotFoundError(f"video not found: {video_path}")
@@ -207,6 +374,9 @@ def burn(
                 f"The output file must differ from the source: {out_path}"
             )
     video_path = os.path.abspath(video_path)
+    duration_s = probe_duration(video_path)
+    if timeout is None:
+        timeout = burn_timeout(duration_s)
 
     ffmpeg = bundled_binary("ffmpeg")
     # ffmpeg's `subtitles=` value is parsed as a libavfilter *filter graph*,
@@ -251,6 +421,8 @@ def burn(
                 "-i", video_path,
                 "-vf", subtitle_filter,
                 "-c:a", audio_codec,
+                "-progress", "pipe:1",
+                "-nostats",
             ]
             if extra_args:
                 cmd.extend(extra_args)
@@ -258,9 +430,11 @@ def burn(
             return cmd
 
         kwargs: dict[str, Any] = {
-            "stdout": subprocess.PIPE,
-            "stderr": subprocess.PIPE,
             "cwd": tmp_dir,
+            "duration_s": duration_s,
+            "progress_cb": progress_cb,
+            "cancel_check": cancel_check,
+            "on_process": on_process,
         }
         # CREATE_NO_WINDOW on Windows; start_new_session=True on POSIX so
         # kill_process_tree can killpg this ffmpeg's OWN group if needed.
@@ -273,8 +447,10 @@ def burn(
         if not _extra_args_set_audio_codec(extra_args):
             codecs.append("aac")
         for codec in codecs:
+            if cancel_check is not None and cancel_check():
+                raise BurnCancelled("Subtitle burn cancelled")
             try:
-                subprocess.run(_cmd(codec), check=True, timeout=timeout, **kwargs)
+                _run_ffmpeg(_cmd(codec), timeout=timeout, **kwargs)
                 break
             except subprocess.CalledProcessError as e:
                 msg = _stderr_tail(e)

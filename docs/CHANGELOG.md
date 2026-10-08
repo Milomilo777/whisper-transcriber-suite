@@ -6,6 +6,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Make subtitled video.** A new **Make subtitled video** choice on the Download Videos tab turns a
+  link into `<title>-subbed.mp4` with the subtitles burned in: the download hands off to Whisper and
+  then to ffmpeg, and the row shows `running`, `transcribing`, `burning` with one rising percent and a
+  working Cancel. The download and the transcript are always kept, an existing `-subbed.mp4` is never
+  replaced (`-subbed (2).mp4`), and a failure leaves no partial video (`docs/SUBTITLED_VIDEO.md`).
 - **Shareable web page of a transcript.** The transcript viewer and the Last Result card have a
   **Save shareable page** button that saves one `.html` file that opens in any browser with no
   install and no internet connection: timestamps, speakers, chapters, a search box with
@@ -160,6 +165,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Burn subtitles reports progress and can be stopped.** `core/burn_subs.burn()` now runs ffmpeg
+  with `-progress pipe:1` against the probed duration, drains stderr on its own thread, accepts a
+  cancel check and hands over the ffmpeg process; its time limit grows with the video (three times
+  its length, at least one hour) instead of a fixed hour.
 - **Builds list every module and pin every download.** The three PyInstaller specs now carry
   every `app.*` / `core.*` module (17 were missing on Windows, 27 on macOS), and a test built from
   the module tree fails when one is left out. The macOS build pins ffmpeg (9.0.2), yt-dlp, Deno,

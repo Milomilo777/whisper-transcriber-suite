@@ -147,6 +147,7 @@ STATUS_ICON = {
     "running":      "▶ ",
     "paused":       "⏸ ",
     "transcribing": "✍ ",
+    "burning":      "♨ ",
     "finished":     "✓ ",
     "error":        "✗ ",
     "cancelled":    "⊘ ",
@@ -266,7 +267,7 @@ def download_button_states_for_status(
 
     Single source of truth for the Download action bar (Phase 2). Pure (no
     Tk) so it is unit-testable without a Tk root. Mirrors download_menu_row:
-      * waiting / running / transcribing -> Cancel  (and Pause for a running
+      * waiting / running / transcribing / burning -> Cancel  (and Pause for a running
         non-SMTV download — yt-dlp can stop-and-continue; SMTV cannot)
       * running paused                   -> Resume, Cancel
       * terminal (finished/cancelled/error) -> Re-run, Remove (and Open when
@@ -276,7 +277,7 @@ def download_button_states_for_status(
     ``has_saved_file`` gates Open to a finished download with a real file.
     """
     states = {k: False for k in DOWNLOAD_ACTION_KEYS}
-    if status in ("waiting", "running", "transcribing"):
+    if status in ("waiting", "running", "transcribing", "burning"):
         states["cancel"] = True
         if status == "running" and not is_smtv:
             states["pause"] = True
@@ -1141,18 +1142,37 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.auto_transcribe_var = tk.BooleanVar(
         value=bool(app.app_config.get("auto_transcribe_after_download", False))
     )
+    # Both "after the download" choices share row 9.
+    after_frame = ttk.Frame(top)
+    after_frame.grid(row=9, column=1, columnspan=3, sticky="w", padx=(6, 0), pady=(4, 0))
     ttk.Checkbutton(
-        top,
+        after_frame,
         text="Transcribe after download",
         variable=app.auto_transcribe_var,
         command=app._save_auto_transcribe_pref,
-    ).grid(row=9, column=1, columnspan=2, sticky="w", padx=(6, 0), pady=(4, 0))
+    ).pack(side="left")
     help_icon(
-        top,
+        after_frame,
         "Automatically queues the downloaded file for transcription as "
         "soon as the download finishes, using the settings in the "
         "Transcribe tab.",
-    ).grid(row=9, column=3, sticky="w", padx=(6, 0), pady=(4, 0))
+    ).pack(side="left", padx=(6, 0))
+
+    # "Make subtitled video": per job, not saved (a re-encode can take as
+    # long as the video), see app/services/subbed_video.py.
+    app.make_subbed_video_var = tk.BooleanVar(value=False)
+    ttk.Checkbutton(
+        after_frame,
+        text="Make subtitled video",
+        variable=app.make_subbed_video_var,
+    ).pack(side="left", padx=(18, 0))
+    help_icon(
+        after_frame,
+        "Downloads the video, transcribes it with the Transcribe tab's "
+        "settings, then burns the subtitles into a new file named "
+        "<title>-subbed.mp4 next to the download. The download and the "
+        "transcript files are kept. Needs 'Audio and video'.",
+    ).pack(side="left", padx=(6, 0))
 
     # SMTV "all parts" toggle. Built always, shown only when an SMTV
     # episode with >=1 sibling parts is detected. format_service sets

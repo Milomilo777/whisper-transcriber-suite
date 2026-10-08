@@ -27,6 +27,19 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+def output_formats_for(task: Any, configured: Any) -> list[str]:
+    """The formats *task* writes: the current selection, plus ``srt`` when
+    a "Make subtitled video" download waits to burn this run's SRT."""
+    formats = list(configured or ["srt", "json"])
+    if (
+        getattr(getattr(task, "source_download", None), "make_subbed_video", False)
+        and "srt" not in formats
+    ):
+        formats.append("srt")
+    return formats
+
+
 # History note for a finished run that recognised no speech (empty outputs).
 NO_SPEECH_NOTE = "No speech recognised"
 
@@ -1408,8 +1421,8 @@ class TranscriptionService:
             # Stamp the CURRENT output-format selection onto the task so the
             # long-lived worker writes what the user has now (its import-time
             # config is stale). None-safe default mirrors core.config.
-            t.output_formats = list(
-                self.app.app_config.get("output_formats") or ["srt", "json"]
+            t.output_formats = output_formats_for(
+                t, self.app.app_config.get("output_formats")
             )
             command = transcribe_command(t)
             self._dispatch_command_async(worker, t, command)
@@ -1661,10 +1674,21 @@ class TranscriptionService:
         # Only restore a row still showing "transcribing" — never clobber a
         # download the user cancelled/removed while it was transcribing.
         if dl is not None and getattr(dl, "status", None) == "transcribing":
-            dl.status = "finished"
             dl.transcription_task = None
-            dl.progress = 100
             task.source_download = None
+            if getattr(dl, "make_subbed_video", False):
+                # "Make subtitled video": burn this run's SRT next, or close
+                # the row as error/cancelled (the files written so far stay).
+                from app.services import subbed_video
+                try:
+                    subbed_video.after_transcription(app, dl, task, newly_finished)
+                except Exception:  # noqa: BLE001 - the transcript is saved already
+                    logger.exception("Could not start the subtitle burn")
+                    dl.status = "error"
+                    app.log("Subtitled video not made: the burn could not start.")
+            else:
+                dl.status = "finished"
+                dl.progress = 100
             try:
                 app.refresh_download_queue()
             except Exception:  # noqa: BLE001

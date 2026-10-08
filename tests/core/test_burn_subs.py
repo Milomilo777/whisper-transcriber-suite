@@ -49,7 +49,7 @@ def _capture_cmd(monkeypatch):
         return subprocess.CompletedProcess(cmd, 0, b"", b"")
 
     monkeypatch.setattr(burn_subs, "bundled_binary", lambda name: "ffmpeg")
-    monkeypatch.setattr(burn_subs.subprocess, "run", fake_run)
+    monkeypatch.setattr(burn_subs, "_run_ffmpeg", fake_run)
     return captured
 
 
@@ -124,7 +124,7 @@ def test_burn_temp_dir_cleaned_up_on_ffmpeg_failure(tmp_path, monkeypatch):
         raise subprocess.CalledProcessError(1, cmd, b"", b"boom")
 
     monkeypatch.setattr(burn_subs, "bundled_binary", lambda name: "ffmpeg")
-    monkeypatch.setattr(burn_subs.subprocess, "run", fake_run)
+    monkeypatch.setattr(burn_subs, "_run_ffmpeg", fake_run)
     video, srt, out = _make_files(tmp_path)
 
     with pytest.raises(RuntimeError, match="ffmpeg failed to burn subtitles"):
@@ -168,7 +168,7 @@ def test_burn_failure_does_not_clobber_existing_output(tmp_path, monkeypatch):
         raise subprocess.CalledProcessError(1, cmd, b"", b"[error] conversion failed")
 
     monkeypatch.setattr(burn_subs, "bundled_binary", lambda name: "ffmpeg")
-    monkeypatch.setattr(burn_subs.subprocess, "run", fake_run)
+    monkeypatch.setattr(burn_subs, "_run_ffmpeg", fake_run)
 
     with pytest.raises(RuntimeError, match="ffmpeg failed to burn subtitles"):
         burn_subs.burn(video, srt, out)
@@ -192,7 +192,7 @@ def test_burn_retries_with_aac_when_container_rejects_audio(tmp_path, monkeypatc
         return subprocess.CompletedProcess(cmd, 0, b"", b"")
 
     monkeypatch.setattr(burn_subs, "bundled_binary", lambda name: "ffmpeg")
-    monkeypatch.setattr(burn_subs.subprocess, "run", fake_run)
+    monkeypatch.setattr(burn_subs, "_run_ffmpeg", fake_run)
 
     burn_subs.burn(video, srt, out)
 
@@ -214,7 +214,7 @@ def test_burn_container_failure_with_caller_codec_is_not_retried(
         raise subprocess.CalledProcessError(1, cmd, b"", _CONTAINER_ERR)
 
     monkeypatch.setattr(burn_subs, "bundled_binary", lambda name: "ffmpeg")
-    monkeypatch.setattr(burn_subs.subprocess, "run", fake_run)
+    monkeypatch.setattr(burn_subs, "_run_ffmpeg", fake_run)
 
     with pytest.raises(RuntimeError, match="ffmpeg failed to burn subtitles"):
         burn_subs.burn(video, srt, out, extra_args=["-c:a", "mp3"])
@@ -235,7 +235,7 @@ def test_burn_aac_retry_failure_is_reported(tmp_path, monkeypatch):
         raise subprocess.CalledProcessError(1, cmd, b"", _CONTAINER_ERR)
 
     monkeypatch.setattr(burn_subs, "bundled_binary", lambda name: "ffmpeg")
-    monkeypatch.setattr(burn_subs.subprocess, "run", fake_run)
+    monkeypatch.setattr(burn_subs, "_run_ffmpeg", fake_run)
 
     with pytest.raises(RuntimeError, match="ffmpeg failed to burn subtitles"):
         burn_subs.burn(video, srt, out)
@@ -305,7 +305,7 @@ def _capture_with_srt(monkeypatch):
         return subprocess.CompletedProcess(cmd, 0, b"", b"")
 
     monkeypatch.setattr(burn_subs, "bundled_binary", lambda name: "ffmpeg")
-    monkeypatch.setattr(burn_subs.subprocess, "run", fake_run)
+    monkeypatch.setattr(burn_subs, "_run_ffmpeg", fake_run)
     return captured
 
 

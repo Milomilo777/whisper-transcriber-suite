@@ -38,6 +38,16 @@ def _may_go_online(app: object, what: str) -> bool:
     return not offline.is_offline()
 
 
+def _make_subbed_video_requested(app: object) -> bool:
+    """True when the Download tab's "Make subtitled video" box is ticked."""
+    # The instance dict: getattr of a missing name on a Tk-less App recurses.
+    var = getattr(app, "__dict__", {}).get("make_subbed_video_var")
+    try:
+        return bool(var.get()) if var is not None else False
+    except Exception:  # noqa: BLE001 - a torn-down Tk variable
+        return False
+
+
 def _reap_process(proc: "subprocess.Popen | None") -> None:
     """Close a download process's stdout pipe and reap it. Never raises.
 
@@ -875,9 +885,20 @@ class DownloadService:
             )
             return
 
+        make_subbed = _make_subbed_video_requested(app)
+        if make_subbed and mode == "Audio":
+            messagebox.showwarning(
+                "Video needed",
+                "A subtitled video needs the picture. Choose "
+                "'Audio and video', or untick 'Make subtitled video'.",
+                parent=app,
+            )
+            return
+
         # A download that will be transcribed, of a video that already has
         # subtitles in the chosen language: offer the seconds-long shortcut.
-        choice = self._caption_choice()
+        # A subtitled video always runs Whisper, so it skips the offer.
+        choice = "" if make_subbed else self._caption_choice()
         if choice == "cancel":
             return
         if choice == "captions":
@@ -1076,6 +1097,7 @@ class DownloadService:
                 # later inspection see what the user asked for.
                 section_start=section_start,
                 section_end=section_end,
+                make_subbed_video=make_subbed,
             )
         ]
 
@@ -1089,6 +1111,7 @@ class DownloadService:
             # the parts join the queue when they are ready.
             self._enqueue_smtv_siblings_async(
                 smtv_episode,
+                make_subbed_video=make_subbed,
                 mode=mode,
                 video_label=video_label,
                 folder=folder,
@@ -1414,7 +1437,8 @@ class DownloadService:
             yt_dlp_update.end_download(run_key)
 
     def _enqueue_smtv_siblings_async(
-        self, episode: smtv_mod.SmtvEpisode, **kwargs: Any,
+        self, episode: smtv_mod.SmtvEpisode, *,
+        make_subbed_video: bool = False, **kwargs: Any,
     ) -> None:
         """Build the other parts' tasks on a worker thread, then queue them on
         the Tk thread (the main window stayed frozen while every part page
@@ -1431,6 +1455,7 @@ class DownloadService:
             if getattr(app, "_closing", False):
                 return
             for t in tasks:
+                t.make_subbed_video = make_subbed_video
                 app.download_queue.append(t)
             app.refresh_download_queue()
             self.process_queue()
@@ -2651,8 +2676,13 @@ class DownloadService:
                             app.bell()
                     except Exception:  # noqa: BLE001
                         pass
+            # "Make subtitled video" always transcribes: its SRT is what the
+            # burn stage needs (an SMTV article .txt has no timings).
             if (
-                app.app_config.get("auto_transcribe_after_download")
+                (
+                    app.app_config.get("auto_transcribe_after_download")
+                    or getattr(task, "make_subbed_video", False)
+                )
                 and saved_path
                 and not getattr(task, "caption_only", False)
             ):

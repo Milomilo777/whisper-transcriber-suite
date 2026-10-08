@@ -207,6 +207,7 @@ a = Analysis(
         'app.services.format_service',
         'app.services.integrations_service',
         'app.services.live_service',
+        'app.services.subbed_video',
         'app.services.transcription_service',
         'app.services.voice_clone_service',
         'app.widgets.console',

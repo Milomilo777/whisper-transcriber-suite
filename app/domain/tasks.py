@@ -26,6 +26,7 @@ class VideoDownloadTask:
         section_end: float | None = None,
         caption_only: bool = False,
         caption_kind: str = "",
+        make_subbed_video: bool = False,
     ) -> None:
         self.url = url
         self.folder = folder
@@ -86,6 +87,12 @@ class VideoDownloadTask:
         # "transcribing" + the live transcription progress (instead of
         # looking idle at 100%). Cleared when that transcription ends.
         self.transcription_task: Any = None
+        # "Make subtitled video": the download always hands off to a
+        # transcription, whose SRT is then burned into <title>-subbed.mp4
+        # (app/services/subbed_video.py) while the row shows "burning".
+        self.make_subbed_video: bool = make_subbed_video
+        self.burn_progress: float = 0.0
+        self.burned_path: str | None = None
 
     def time_range_label(self) -> str | None:
         """Short human-readable badge for the Queue row.

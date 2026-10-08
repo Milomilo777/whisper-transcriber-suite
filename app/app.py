@@ -724,6 +724,7 @@ class App(tk.Tk):
     subtitle_lang_combo: "ttk.Combobox"
     subtitle_status_var: tk.StringVar
     auto_transcribe_var: tk.BooleanVar
+    make_subbed_video_var: tk.BooleanVar
     # "Use captions instead" shortcut (built in tabs.build_download_tab;
     # shown/hidden by update_caption_shortcut_state based on what the most
     # recent format lookup found — see app.services.format_service).
@@ -3842,10 +3843,11 @@ class App(tk.Tk):
             task.status, is_smtv=_is_smtv_task(task), has_saved_file=has_file_dl
         )
         m = tk.Menu(self, tearoff=0)
-        if task.status in ("waiting", "running", "transcribing"):
+        if task.status in ("waiting", "running", "transcribing", "burning"):
             # "transcribing" = the download finished and handed off to an
             # auto-transcribe; Cancel here stops that linked task too
             # (cancel_download unlinks + cancels transcription_task).
+            # "burning" = the subtitled-video burn; Cancel kills its ffmpeg.
             if dstates["pause"]:
                 m.add_command(label="Pause", command=lambda: self.pause_download(task))
             m.add_command(label="Cancel", command=lambda: self.cancel_download(task))
@@ -4075,6 +4077,7 @@ class App(tk.Tk):
             # back to a full media download.
             caption_only=task.caption_only,
             caption_kind=task.caption_kind,
+            make_subbed_video=getattr(task, "make_subbed_video", False),
         )
         self.download_queue.append(copy)
         self.refresh_download_queue()
@@ -4772,6 +4775,15 @@ class App(tk.Tk):
         # While an auto-transcribe runs, the download row mirrors the
         # linked transcription's live progress (else it sits at 100%).
         tr = getattr(task, "transcription_task", None)
+        if getattr(task, "make_subbed_video", False):
+            from app.services.subbed_video import chain_progress
+            if task.status == "transcribing":
+                return chain_progress("transcribing", tr.progress if tr is not None else 0)
+            if task.status == "burning":
+                return chain_progress("burning", getattr(task, "burn_progress", 0.0))
+            if task.status == "running":
+                return chain_progress("running", task.progress)
+            return task.progress
         if task.status == "transcribing" and tr is not None:
             return tr.progress
         return task.progress
@@ -4782,7 +4794,7 @@ class App(tk.Tk):
         during the model load before the first segment)."""
         from app.widgets.tabs import marquee_cell, progress_cell
 
-        if status in ("running", "transcribing") and (progress or 0) <= 0:
+        if status in ("running", "transcribing", "burning") and (progress or 0) <= 0:
             return marquee_cell(getattr(self, "_anim_frame", 0), progress)
         return progress_cell(progress)
 
@@ -4793,7 +4805,7 @@ class App(tk.Tk):
         needs = any(
             t.status == "running" and (t.progress or 0) <= 0 for t in self.queue
         ) or any(
-            d.status in ("running", "transcribing")
+            d.status in ("running", "transcribing", "burning")
             and (self._download_row_progress(d) or 0) <= 0
             for d in self.download_queue
         )
@@ -4815,7 +4827,7 @@ class App(tk.Tk):
                 except tk.TclError:
                     pass
         for item_id, d in list(getattr(self, "download_row_map", {}).items()):
-            if d.status in ("running", "transcribing") and (self._download_row_progress(d) or 0) <= 0:
+            if d.status in ("running", "transcribing", "burning") and (self._download_row_progress(d) or 0) <= 0:
                 active = True
                 try:
                     self.download_tree.set(item_id, "progress", bar)
@@ -5483,7 +5495,7 @@ class App(tk.Tk):
         return any(
             t.status in ("running", "waiting") for t in self.queue
         ) or any(
-            d.status in ("running", "transcribing", "waiting")
+            d.status in ("running", "transcribing", "burning", "waiting")
             for d in self.download_queue
         )
 

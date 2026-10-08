@@ -27,6 +27,7 @@ fits into one of five buckets.
 - [CLOUD_STT_GOOGLE.md](CLOUD_STT_GOOGLE.md) — optional Google Cloud Speech-to-Text backend (service-account JSON, batch mode)
 - [SERVER.md](SERVER.md) — optional local-network / web server mode (`gui.py serve`)
 - [LIVE.md](LIVE.md) — the Live tab: microphone / system-audio transcription as it happens
+- [SUBTITLED_VIDEO.md](SUBTITLED_VIDEO.md) — "Make subtitled video": a link to `<title>-subbed.mp4` in one queued job (download, transcribe, burn)
 - [DENOISE.md](DENOISE.md) — optional adaptive audio denoise pre-process (ffmpeg-only, measures before it filters)
 - [SAMPLE_CLIP.md](SAMPLE_CLIP.md) — the bundled "Try it now" sample clip: source, licence, speaker credit
 - [COMPARISON.md](COMPARISON.md) — sourced comparison with similar apps
