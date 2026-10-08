@@ -303,6 +303,18 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **The job server no longer starts a thread per connection without limit.** At most 48
+  connections are served at once (a surplus client gets a quick 503), a client that trickles
+  bytes is cut off after a total time budget for its headers and for an upload body, and a full
+  job queue is answered before the upload is written to disk.
+- **An English-only model no longer returns made-up English for a web request.** A web job or
+  `/v1` request that names another language while the server's Whisper model is English-only
+  (`tiny.en`, ...) is refused with a message naming a multilingual model.
+- **Web page download links no longer put the password in the address.** With a password set,
+  the page downloads through a header and saves the file from memory; the address stays free of
+  `?token=` (browser history, download source mark, proxy logs).
+- **Oversized web options are clamped instead of dropped.** `vad_min_silence_ms` and the speaker
+  count are limited to the same ranges the project file allows.
 - **A cloud run on a time range that failed part-way saved shifted subtitles.** The
   `.partial.srt` kept after the failure now carries the original file's timestamps, like a finished
   run, instead of times counted from the start of the range.

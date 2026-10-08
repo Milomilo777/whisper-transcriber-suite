@@ -204,7 +204,7 @@ Errors use OpenAI's envelope:
 
 | Status | When |
 |---|---|
-| 400 | missing `file` or `model`, unsupported `response_format`, not multipart |
+| 400 | missing `file` or `model`, unsupported `response_format`, not multipart, or a `language` the server's English-only model cannot do (see [Security caveats](#security-caveats)) |
 | 401 | wrong or missing token (`code` is `invalid_api_key`) |
 | 403 | refused by the [browser protections](#browser-protections) (`code` is `forbidden`) |
 | 411 | upload without a `Content-Length` (chunked) |
@@ -349,8 +349,10 @@ the page's **Auth token** box, or open a link with it added, for example
 digits must be percent-encoded there; the box takes the password as typed):
 the page moves the token into the box and removes it from the address bar and
 the browser history. It is kept
-for that browser tab only, so a reload still works. Download links on the page
-still carry `?token=` (a plain link cannot send a header).
+for that browser tab only, so a reload still works. With a password set, a
+download link on the page fetches the file with the token in a header and saves
+it from memory, so the address never carries `?token=`; a browser without
+`fetch` and `Blob` falls back to the address form.
 
 `gui.py serve` uses the app's **Access password** (`server_token`) unless
 `--token` is given.
@@ -458,7 +460,22 @@ Behaviour to know:
   a URL can never be parsed as a yt-dlp flag. Private LAN addresses are
   allowed on purpose (fetching from a media server on the same network).
 - **Bounded queue.** Total and queued job counts are capped; once full the
-  server replies HTTP 503.
+  server replies HTTP 503. A full queue is answered before an upload body is
+  stored, so refused uploads do not fill the temp folder.
+- **Bounded connections.** At most 48 connections are served at once (one
+  thread each); a further client gets a quick HTTP 503 (over HTTPS the
+  connection is just closed). A client that trickles bytes is cut off after a
+  total time budget: 60 seconds for the request line and headers, 60 seconds
+  for a small JSON body, and for an upload 60 seconds plus the time at a floor
+  of 64 KB/s (at most 6 hours).
+- **English-only models.** When the server's Whisper model is English-only
+  (`tiny.en`, `small.en`, ...), a job or `/v1` request that names another
+  language is refused with HTTP 400 and a message naming a multilingual model;
+  such a model would otherwise return invented English. A request without a
+  language (auto-detect) or with `en` is accepted.
+- **Web options are clamped.** `vad_min_silence_ms` and
+  `diarization_num_speakers` above their limits (60000 ms, 100 speakers) are
+  set to the limit instead of being dropped.
 - **Timeouts.** A connection that sends nothing for 60 seconds is closed, and
   with HTTPS a client gets 10 seconds to finish the TLS handshake (on its own
   connection, so a silent client cannot stall anyone else). A request refused
