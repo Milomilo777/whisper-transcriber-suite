@@ -66,3 +66,11 @@ def test_setup_logging_handlers_use_redacting_formatter(tmp_path, monkeypatch):
             if h not in before:
                 root.removeHandler(h)
                 h.close()
+
+
+def test_download_error_text_has_no_signed_query(tmp_path):
+    from core.model_manager import _describe_download_error
+
+    text = _describe_download_error(RuntimeError(f"403 for url: {_SIGNED}"), tmp_path, "huggingface.co")
+    assert "Signature" not in text and "Policy" not in text
+    assert "cas-bridge.xethub.hf.co/xet-bridge-us/abc/def" in text

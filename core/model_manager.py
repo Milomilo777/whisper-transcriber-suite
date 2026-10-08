@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Callable, Generator, Iterable
 
 from core import offline
+from core.logging_setup import redact_urls
 from core.hub import model_weights_present
 
 
@@ -150,7 +151,8 @@ def _describe_download_error(exc: BaseException, folder: Path, source: str) -> s
     plain words and what to do; the raw exception follows in brackets for
     a bug report.
     """
-    raw = f"{type(exc).__name__}: {exc}".strip()
+    # A signed download link in the error text must not reach the dialog or logs.
+    raw = redact_urls(f"{type(exc).__name__}: {exc}".strip())
     if len(raw) > 300:
         raw = raw[:297] + "..."
     chain = list(_cause_chain(exc))
