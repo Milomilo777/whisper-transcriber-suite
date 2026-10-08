@@ -3267,6 +3267,8 @@ class App(tk.Tk):
         if not os.path.isfile(text):
             self.log(f"File not found — pick an existing file: {text}")
             return
+        if not self._confirm_english_only_model():
+            return
         if not self._ensure_transcribe_ready():
             return
         # Per-task language override + optional clip range. The cleaned path,
@@ -3384,6 +3386,126 @@ class App(tk.Tk):
             text = ""
         return f"{text}, " if text else ""
 
+    def _selected_transcribe_language(self) -> str | None:
+        """The Transcribe-tab language as a code, or None for auto-detect."""
+        lang_choice = getattr(self, "transcribe_lang_var", None)
+        if lang_choice is None:
+            return None
+        choice = lang_choice.get().strip()
+        if not choice or choice.lower() == "auto":
+            return None
+        from app.domain.languages import SUBTITLE_LANGUAGES
+        code = next((c for name, c in SUBTITLE_LANGUAGES if name == choice), "")
+        return code or None
+
+    def _confirm_english_only_model(self) -> bool:
+        """Before queueing: guide the user off an English-only model when the
+        language is not English (auto-detect included).
+
+        An English-only model turns other speech into wrong English text
+        without any error, so the same dialog as the Live tab offers the
+        model's multilingual twin. True when queueing may go ahead.
+        """
+        try:
+            if not self._engine_uses_whisper_model():
+                return True
+        except Exception:  # noqa: BLE001
+            return True
+        from core.model_manager import (
+            DEFAULT_MODEL_SLUG,
+            approx_download_size_text,
+            english_only_mismatch,
+            model_downloaded,
+            multilingual_counterpart,
+        )
+
+        language = self._selected_transcribe_language()
+        slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG).strip()
+        if not english_only_mismatch(self.app_config, slug, language):
+            return True
+        kept: set[tuple[str, str]] = self.__dict__.setdefault("_english_only_kept", set())
+        if (slug, language or "") in kept:
+            return True
+        if self.__dict__.get("_english_only_asking"):
+            return False  # a second drop while the question is open
+        from app.dialogs import english_only_model as dlg
+
+        alt = multilingual_counterpart(self.app_config, slug)
+        name = ""
+        lang_var = getattr(self, "transcribe_lang_var", None)
+        if language and lang_var is not None:
+            name = lang_var.get().strip()
+        prompt = dlg.EnglishOnlyPrompt(
+            model=slug, language=name, alternative=alt,
+            reason=(f"About the same size and speed, and it understands "
+                    f"{name or 'other languages'}."),
+            size_text=approx_download_size_text(self.app_config, alt),
+            downloaded=model_downloaded(self.app_config, alt),
+        )
+        self.__dict__["_english_only_asking"] = True
+        try:
+            choice = dlg.ask_english_only(self, prompt)
+        finally:
+            self.__dict__["_english_only_asking"] = False
+        if choice == dlg.CHOICE_SWITCH:
+            if self._switch_transcribe_model(alt):
+                return True
+            self.log("Not queued: the Whisper model was not changed.")
+            return False
+        if choice == dlg.CHOICE_KEEP:
+            kept.add((slug, language or ""))
+            return True
+        if choice == dlg.CHOICE_CHOOSE:
+            combo = _inst_attr(self, "transcribe_model_combo")
+            if combo is not None:
+                try:
+                    self.nb.select(self.t1)
+                    combo.focus_set()
+                    self.after(50, lambda: combo.event_generate("<Down>"))
+                except Exception:  # noqa: BLE001
+                    logger.debug("Could not open the model picker", exc_info=True)
+        self.log("Not queued: the Whisper model understands English only.")
+        return False
+
+    def _warn_english_only(self, language: str | None, name: str) -> None:
+        """Queueing nobody watches (watched folder, transcribe after download)
+        cannot ask, so an English-only model with another language is said
+        in the log instead."""
+        try:
+            if not self._engine_uses_whisper_model():
+                return
+            from core.model_manager import (
+                DEFAULT_MODEL_SLUG,
+                english_only_mismatch,
+                multilingual_counterpart,
+            )
+
+            slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG).strip()
+            if not english_only_mismatch(self.app_config, slug, language):
+                return
+            alt = multilingual_counterpart(self.app_config, slug)
+        except Exception:  # noqa: BLE001 -- a warning must never block queueing
+            logger.debug("English-only check failed", exc_info=True)
+            return
+        self.log(
+            f"Warning: {name} will be transcribed with the '{slug}' model, which "
+            "understands English only; speech in another language comes out as "
+            f"wrong English text. Pick '{alt}' or another multilingual model in "
+            "the Transcribe tab."
+        )
+
+    def _switch_transcribe_model(self, slug: str) -> bool:
+        """Point the Transcribe-tab picker at ``slug`` the way a user pick does."""
+        mvar = getattr(self, "transcribe_model_var", None)
+        label_to_slug = getattr(self, "_transcribe_model_label_to_slug", None) or {}
+        label = next((lbl for lbl, s in label_to_slug.items() if s == slug), None)
+        if mvar is None or label is None:
+            self.log(f"Could not switch to the '{slug}' model; pick it in the Model list.")
+            return False
+        mvar.set(label)
+        self._on_model_selected()
+        return str(self.app_config.get("whisper_model") or "") == slug
+
     def _apply_task_options(self, task: TranscriptionTask) -> None:
         """Apply the Transcribe-tab language + clip-range options to a task.
 
@@ -3394,17 +3516,9 @@ class App(tk.Tk):
         # Per-task language override. The picker shows "Auto" for the
         # default Whisper auto-detect; any other value is a language
         # name that maps to a known code via app.domain.languages.
-        lang_choice = getattr(self, "transcribe_lang_var", None)
-        if lang_choice is not None:
-            choice = lang_choice.get().strip()
-            if choice and choice.lower() != "auto":
-                from app.domain.languages import SUBTITLE_LANGUAGES
-                code = next(
-                    (c for name, c in SUBTITLE_LANGUAGES if name == choice),
-                    "",
-                )
-                if code:
-                    task.language = code
+        code = self._selected_transcribe_language()
+        if code:
+            task.language = code
         # "English translation" option: Whisper's own translate task, only
         # where the engine and model can do it (the checkbox is disabled
         # otherwise, and the worker refuses an unsupported combination).
@@ -3435,6 +3549,8 @@ class App(tk.Tk):
         """
         files = [p for p in paths if p and os.path.isfile(p)]
         if not files:
+            return 0
+        if not self._confirm_english_only_model():
             return 0
         if not self._ensure_transcribe_ready():
             return 0
@@ -3527,6 +3643,7 @@ class App(tk.Tk):
                 source_download.status = "transcribing"
                 self.refresh_download_queue()
             self.queue.append(task)
+            self._warn_english_only(language or None, base)
             self.refresh()
 
         def _on_timeout() -> None:
@@ -5747,6 +5864,7 @@ class App(tk.Tk):
                 self.queue.append(task)
                 self.refresh()
                 self.log(f"Watched: enqueued {base}")
+                self._warn_english_only(task.language, base)
 
             def _on_timeout() -> None:
                 self._watched_pending.discard(norm)

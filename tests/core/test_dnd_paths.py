@@ -226,6 +226,7 @@ def test_bulk_enqueue_gates_once_and_refreshes_once(monkeypatch):
         nb=_FakeNotebook(),
         t2="queue-tab",
         pb={"value": 99},
+        _confirm_english_only_model=lambda: True,
         _ensure_transcribe_ready=lambda: (calls.__setitem__("ready", calls["ready"] + 1), True)[1],
         _apply_task_options=lambda _t: calls.__setitem__("opts", calls["opts"] + 1),
         refresh=lambda: calls.__setitem__("refresh", calls["refresh"] + 1),
@@ -250,6 +251,7 @@ def test_bulk_enqueue_declined_gate_enqueues_nothing(monkeypatch):
         nb=_FakeNotebook(),
         t2="queue-tab",
         pb={"value": 0},
+        _confirm_english_only_model=lambda: True,
         _ensure_transcribe_ready=lambda: False,   # user declined the model download
         _apply_task_options=lambda _t: None,
         refresh=lambda: calls.__setitem__("refresh", calls["refresh"] + 1),
@@ -268,6 +270,7 @@ def test_bulk_enqueue_skips_missing_files(monkeypatch):
         nb=_FakeNotebook(),
         t2="queue-tab",
         pb={"value": 0},
+        _confirm_english_only_model=lambda: True,
         _ensure_transcribe_ready=lambda: True,
         _apply_task_options=lambda _t: None,
         refresh=lambda: None,

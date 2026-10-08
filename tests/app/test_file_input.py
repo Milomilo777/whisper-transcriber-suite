@@ -41,6 +41,7 @@ def _fake_app(**extra: Any) -> types.SimpleNamespace:
         fv=_Var(), log=logs.append, logs=logs, queue=[], pb={},
         nb=types.SimpleNamespace(select=lambda *_: None), t1="t1", t2="t2",
         _ensure_transcribe_ready=lambda: True, _apply_task_options=lambda t: None,
+        _confirm_english_only_model=lambda: True, _warn_english_only=lambda *a: None,
         refresh=lambda: None,
     )
     for key, value in extra.items():

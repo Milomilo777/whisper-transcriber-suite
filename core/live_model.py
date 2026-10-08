@@ -59,6 +59,40 @@ def resolve_live_slug(
     return choice
 
 
+def effective_live_slug(
+    config: dict[str, Any], language: str | None, device: str
+) -> str:
+    """Catalog slug the live worker will really run (the main model's for None)."""
+    from .model_manager import DEFAULT_MODEL_SLUG
+
+    slug = resolve_live_slug(config, language, device)
+    if slug:
+        return slug
+    return str(config.get("whisper_model") or DEFAULT_MODEL_SLUG).strip()
+
+
+def live_alternative(
+    config: dict[str, Any], language: str | None, device: str, slug: str
+) -> tuple[str, str]:
+    """``(live_model value, catalog slug)`` to use instead of English-only ``slug``.
+
+    On a CPU: :func:`recommended_cpu_slug`, the fastest model that is still
+    useful for ``language``. On a GPU: the main model when it is
+    multilingual (it is fast enough there), else ``slug``'s multilingual
+    twin.
+    """
+    from .model_manager import DEFAULT_MODEL_SLUG, is_english_only, multilingual_counterpart
+
+    if not device or device == "cpu":
+        pick = recommended_cpu_slug(language)
+        return pick, pick
+    main = str(config.get("whisper_model") or DEFAULT_MODEL_SLUG).strip()
+    if is_english_only(config, main) is False:
+        return LIVE_MAIN, main
+    pick = multilingual_counterpart(config, slug)
+    return pick, pick
+
+
 def live_model_config(config: dict[str, Any], slug: str) -> dict[str, Any] | None:
     """A copy of ``config`` pointed at ``slug`` (for ensure_model / the worker).
 

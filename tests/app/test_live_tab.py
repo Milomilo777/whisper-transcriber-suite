@@ -990,3 +990,197 @@ def test_theme_switch_recolours_the_model_picker(app, root, monkeypatch, tmp_pat
     live_tab.apply_theme(app)
     assert str(style.lookup(live_tab._MODEL_MISSING_STYLE, "foreground")) == tokens.TEXT_MISSING
     assert grey_entries() == {tokens.TEXT_MISSING}
+
+
+# ------------------------------- English-only model + another language (C2.59b)
+#
+# tiny.en with Persian turned Persian speech into made-up English lines
+# ("Ciao, ciao, ciao") with only a log warning. The tab now asks first.
+
+
+@pytest.fixture
+def ask(built, monkeypatch):
+    """Answer the English-only dialog with ``ask.answer``; record each prompt."""
+    from app.dialogs import english_only_model as dlg
+
+    monkeypatch.setattr(live_tab, "_live_device", lambda app: "cpu")
+    monkeypatch.setattr("core.config.save_config", lambda cfg: None)
+    prompts: list = []
+
+    def fake(master, prompt):
+        prompts.append(prompt)
+        return fake.answer
+
+    fake.answer = dlg.CHOICE_CANCEL
+    fake.prompts = prompts
+    monkeypatch.setattr(dlg, "ask_english_only", fake)
+    return fake
+
+
+def _pick(built, slug, language):
+    built.app_config["live_model"] = slug
+    label = next(lbl for lbl, v in live_tab._live_model_choices(built) if v == slug)
+    built.live_model_var.set(label)
+    built.live_lang_var.set(language)
+
+
+@pytest.mark.parametrize("slug,language,expected", [
+    ("tiny.en", "English", None),
+    ("tiny.en", "Persian", ("tiny.en", "small", "small", "cpu")),
+    ("tiny.en", "Auto", ("tiny.en", "small", "small", "cpu")),
+    ("distil-large-v3", "German", ("distil-large-v3", "small", "small", "cpu")),
+    ("small", "Persian", None),
+    ("auto", "Persian", None),       # Automatic picks a multilingual model on a CPU
+])
+def test_english_only_pair_decision(built, ask, slug, language, expected):
+    _pick(built, slug, language)
+    lang = live_tab._selected_language_code(built)
+    assert live_tab._english_only_pair(built, lang) == expected
+
+
+def test_main_model_counts_when_live_uses_it(built, ask):
+    built.app_config["whisper_model"] = "medium.en"
+    _pick(built, "main", "Persian")
+    assert live_tab._english_only_pair(built, "fa") == ("medium.en", "small", "small", "cpu")
+
+
+def test_automatic_on_a_gpu_with_an_english_only_main_model(built, ask, monkeypatch):
+    monkeypatch.setattr(live_tab, "_live_device", lambda app: "cuda")
+    built.app_config["whisper_model"] = "distil-large-v3"
+    _pick(built, "auto", "Persian")
+    assert live_tab._english_only_pair(built, "fa") == (
+        "distil-large-v3", "large-v3-turbo", "large-v3-turbo", "cuda",
+    )
+
+
+def test_fine_pair_never_asks(built, ask):
+    _pick(built, "tiny.en", "English")
+    assert live_tab._confirm_model_language(built, on_start=True) is True
+    _pick(built, "small", "Persian")
+    assert live_tab._confirm_model_language(built, on_start=True) is True
+    assert ask.prompts == []
+
+
+def test_prompt_names_the_problem_and_the_fix(built, ask):
+    _pick(built, "tiny.en", "Persian")
+    live_tab._confirm_model_language(built, on_start=True)
+    prompt = ask.prompts[0]
+    assert prompt.model == "tiny.en" and prompt.alternative == "small"
+    assert "Persian speech will come out as wrong English text" in prompt.problem()
+    assert "Persian" in prompt.reason
+    assert "500 MB" in prompt.recommendation() or "Already" in prompt.recommendation()
+
+
+def test_switch_changes_the_live_model_and_lets_start_go_on(built, ask):
+    from app.dialogs import english_only_model as dlg
+
+    ask.answer = dlg.CHOICE_SWITCH
+    _pick(built, "tiny.en", "Persian")
+    assert live_tab._confirm_model_language(built, on_start=True) is True
+    assert built.app_config["live_model"] == "small"
+    assert live_tab._selected_live_value(built) == "small"
+    assert len(ask.prompts) == 1  # the switch itself does not ask again
+
+
+def test_switch_on_a_change_downloads_a_missing_model(built, ask, monkeypatch, tmp_path):
+    from app.dialogs import english_only_model as dlg
+
+    built.app_config["hub_folder"] = str(tmp_path)  # nothing downloaded
+    fetched: list[str] = []
+    monkeypatch.setattr(live_tab, "_download_live_model",
+                        lambda app: fetched.append(live_tab._selected_live_value(app)))
+    ask.answer = dlg.CHOICE_SWITCH
+    _pick(built, "tiny.en", "Persian")
+    assert live_tab._confirm_model_language(built, on_start=False) is True
+    assert fetched == ["small"]
+
+
+def test_keep_is_remembered_for_the_session(built, ask):
+    from app.dialogs import english_only_model as dlg
+
+    ask.answer = dlg.CHOICE_KEEP
+    _pick(built, "tiny.en", "Persian")
+    assert live_tab._confirm_model_language(built, on_start=True) is True
+    assert built.app_config["live_model"] == "tiny.en"  # never switched silently
+    assert live_tab._confirm_model_language(built, on_start=True) is True
+    assert len(ask.prompts) == 1
+    built.live_lang_var.set("German")  # a different pair asks again
+    live_tab._confirm_model_language(built, on_start=True)
+    assert len(ask.prompts) == 2
+
+
+def test_cancel_stops_start_before_anything_runs(built, ask, monkeypatch):
+    from core import live as _live
+
+    monkeypatch.setattr(_live, "is_available", lambda mode="mic": True)
+    _pick(built, "tiny.en", "Persian")
+    live_tab._start(built)
+    assert len(ask.prompts) == 1
+    assert built.live_status_var.get() == "Idle."
+    assert str(built.live_start_btn.cget("state")) == "normal"
+    assert built.app_config["live_model"] == "tiny.en"
+
+
+def test_choose_another_opens_the_model_menu(built, ask, monkeypatch, root):
+    from app.dialogs import english_only_model as dlg
+
+    opened: list = []
+    monkeypatch.setattr(live_tab, "_open_model_menu", lambda app: opened.append(app))
+    ask.answer = dlg.CHOICE_CHOOSE
+    _pick(built, "tiny.en", "Persian")
+    assert live_tab._confirm_model_language(built, on_start=True) is False
+    deadline = time.time() + 2
+    while not opened and time.time() < deadline:
+        root.update()
+        time.sleep(0.02)
+    assert opened == [built]
+
+
+def test_changing_the_language_asks(built, ask, root):
+    _pick(built, "tiny.en", "English")
+    built.live_lang_var.set("Persian")
+    built.live_lang_combo.event_generate("<<ComboboxSelected>>")
+    root.update()
+    assert len(ask.prompts) == 1
+
+
+def test_changing_the_model_asks(built, ask):
+    _pick(built, "small", "Persian")
+    label = next(lbl for lbl, v in live_tab._live_model_choices(built) if v == "base.en")
+    built.live_model_var.set(label)
+    live_tab._on_live_model_selected(built)
+    assert [p.model for p in ask.prompts] == ["base.en"]
+
+
+def test_model_menu_marks_english_only_models(built):
+    labels = _menu_labels(built)
+    tiny_en = next(lbl for lbl in labels if lbl.startswith("Tiny (English)"))
+    assert "English-only" in tiny_en
+    tiny = next(lbl for lbl in labels if lbl.startswith("Tiny —"))
+    assert "English-only" not in tiny
+    distil = [lbl for lbl in labels if lbl.startswith("Distil")]
+    assert distil and all(lbl.count("English-only") == 1 for lbl in distil)
+
+
+def test_no_fallback_to_an_english_only_main_model(built, monkeypatch, tmp_path):
+    """Reviewer finding: a failed download of the switched-to model fell back
+    to the main model, which may itself be English-only."""
+    monkeypatch.setattr("core.hardware.detect_device_for", lambda cfg: ("cpu", "int8"))
+
+    def boom(cfg, *a, **kw):
+        raise OSError("offline")
+
+    monkeypatch.setattr("core.model_manager.ensure_model", boom)
+    built.app_config.update(live_model="small", whisper_model="small.en",
+                            hub_folder=str(tmp_path))
+    with pytest.raises(RuntimeError, match="understands English only"):
+        live_tab._prepare_live_model(built, "fa")
+    with pytest.raises(RuntimeError, match="understands English only"):
+        live_tab._prepare_live_model(built, None)
+    # English speech may still fall back to it.
+    assert live_tab._prepare_live_model(built, "en") is None
+    # So may an unknown live model, unless the language rules it out.
+    built.app_config["live_model"] = "no-such-model"
+    assert live_tab._prepare_live_model(built, "en") is None
+    with pytest.raises(RuntimeError, match="not in the model list"):
+        live_tab._prepare_live_model(built, "fa")

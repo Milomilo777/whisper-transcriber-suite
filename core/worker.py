@@ -577,7 +577,68 @@ def read_capped_lines(stream: Any, max_chars: int) -> Iterator[tuple[str, bool]]
             chunk = rest
 
 
+def _utf8_stdio() -> None:
+    """Write stdout and stderr as UTF-8, whatever the locale says.
+
+    Both parents (TranscriptionService and the Live tab's LiveTranscriber)
+    decode the worker's pipe as UTF-8, but a Python child writing to a pipe
+    on Windows defaults to the ANSI code page (cp1252): the log format's
+    em dash arrived as byte 0x97 and showed up as U+FFFD in the log panel.
+    The JSON protocol lines are ASCII, so UTF-8 changes nothing for them.
+    """
+    import codecs
+
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            if codecs.lookup(stream.encoding or "ascii").name != "utf-8":
+                reconfigure(encoding="utf-8", errors="backslashreplace")
+        except Exception:  # noqa: BLE001 -- a test double; keep its encoding
+            pass
+
+
+#: faster-whisper's warning for an English-only model given another language.
+_ENGLISH_ONLY_WARNING = "The current model is English-only"
+
+
+class _OnceFilter(logging.Filter):
+    """Let a record whose message starts with ``prefix`` through only once.
+
+    faster-whisper logs its English-only warning on every ``transcribe``
+    call; the Live tab transcribes a chunk every few seconds, so the same
+    line filled the log panel every ~4 s. One worker process serves one
+    live session, so once per process is once per session.
+    """
+
+    def __init__(self, prefix: str) -> None:
+        super().__init__()
+        self.prefix = prefix
+        self.seen = False
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            message = record.getMessage()
+        except Exception:  # noqa: BLE001 -- a broken record is not ours to judge
+            return True
+        if not message.startswith(self.prefix):
+            return True
+        if self.seen:
+            return False
+        self.seen = True
+        return True
+
+
+def _install_log_filters() -> None:
+    target = logging.getLogger("faster_whisper")
+    if not any(isinstance(f, _OnceFilter) for f in target.filters):
+        target.addFilter(_OnceFilter(_ENGLISH_ONLY_WARNING))
+
+
 def main() -> int:
+    _utf8_stdio()
+    _install_log_filters()
     # Work offline backstop for this process (Hugging Face / PyTorch Hub
     # downloads started by third-party code); inert while the switch is off.
     from core import offline

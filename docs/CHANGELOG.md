@@ -264,6 +264,18 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **English-only models no longer turn other languages into wrong English text without a word.**
+  Pairing an English-only model (`*.en`, the distilled models) with another language or Auto now
+  opens a dialog in the Live tab (on Start and when the language or model changes) and before the
+  Transcribe tab queues a file: it says what goes wrong and offers **Switch to <model>** (a
+  multilingual model, downloaded if needed), **Choose another model**, **Keep** or **Cancel**.
+  Unattended queueing (watched folder, transcribe after download) logs a warning instead, the Live
+  tab no longer falls back to an English-only main model for other speech, and its model menu
+  marks English-only entries.
+- **Worker log lines keep their non-ASCII characters.** The transcription worker writes its
+  output as UTF-8, so the log panel no longer shows a replacement character for the dash in
+  worker log lines, and faster-whisper's English-only warning appears once per worker instead of
+  once every live chunk.
 - **Text grows evenly at 125 % and 150 % display scaling.** Buttons, entries, tabs and list rows
   kept the theme's 14-pixel font while labels and text boxes grew; the theme fonts and the list
   row height now follow the display scale, and fixed widths, column widths and wrap lengths

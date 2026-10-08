@@ -335,6 +335,7 @@ def _app_double(**cfg: Any):
                          logs=[])
     ns.log = ns.logs.append
     ns._translate_unsupported_reason = lambda: App._translate_unsupported_reason(ns)
+    ns._selected_transcribe_language = lambda: App._selected_transcribe_language(ns)
     return ns
 
 

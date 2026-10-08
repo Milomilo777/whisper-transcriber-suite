@@ -159,15 +159,19 @@ def _rebuild_model_menu(app: Any) -> None:
     bold = tkfont.nametofont("TkMenuFont").copy()
     bold.configure(weight="bold")
     app._live_model_bold_font = bold  # keep a reference; Tk fonts are GC'd
+    from core.model_manager import is_english_only
+
     for label, value in _live_model_choices(app):
         kwargs: dict[str, Any] = {}
         shown = label
         if _is_catalog_slug(value):
+            if is_english_only(app.app_config, value) and "English-only" not in label:
+                shown = f"{label}   (English-only)"
             if _slug_downloaded(app, value):
                 kwargs["font"] = bold
             else:
                 kwargs["foreground"] = tokens.themed(_MISSING_FG)
-                shown = f"{label}   (not downloaded)"
+                shown = f"{shown}   (not downloaded)"
         menu.add_radiobutton(
             label=shown, value=label, variable=app.live_model_var,
             command=lambda: _on_live_model_selected(app), **kwargs,
@@ -321,6 +325,136 @@ def _on_live_model_selected(app: Any) -> None:
         save_config(app.app_config)
     except Exception:  # noqa: BLE001
         logger.exception("Could not save the Live tab model choice")
+    _confirm_model_language(app, on_start=False)
+
+
+# ------------------------------------------- English-only model guard
+
+
+def _live_device(app: Any) -> str:
+    try:
+        from core.hardware import detect_device_for
+
+        device, _ct = detect_device_for(app.app_config)
+        return str(device or "cpu")
+    except Exception:  # noqa: BLE001
+        return "cpu"
+
+
+def _english_only_pair(
+    app: Any, language: str | None
+) -> tuple[str, str, str, str] | None:
+    """``(model, alternative live_model value, alternative slug, device)`` when the
+    Live tab would run an English-only model on speech that may not be
+    English; None when the pair is fine or the user already kept it.
+
+    The device is only probed when it matters (Automatic, or a
+    recommendation to make), so a fine pair costs no CUDA probe.
+    """
+    from core import live_model as _lm
+    from core.model_manager import english_only_mismatch, is_english_only
+
+    if (language or "").strip().lower() == "en":
+        return None
+    config = app.app_config
+    choice = str(config.get("live_model") or _lm.LIVE_DEFAULT).strip()
+    if choice == _lm.LIVE_AUTO:
+        # Automatic picks a multilingual model for other languages on a
+        # CPU; only on a GPU does it run the main model, maybe English-only.
+        main = _lm.effective_live_slug(config, language, "cuda")
+        if is_english_only(config, main) is not True:
+            return None
+    device = _live_device(app) if choice == _lm.LIVE_AUTO else ""
+    slug = _lm.effective_live_slug(config, language, device or "cpu")
+    if not english_only_mismatch(config, slug, language):
+        return None
+    if (slug, language or "") in getattr(app, "_live_en_only_kept", set()):
+        return None
+    device = device or _live_device(app)
+    alt_value, alt_slug = _lm.live_alternative(config, language, device, slug)
+    return slug, alt_value, alt_slug, device
+
+
+def _english_only_prompt(
+    app: Any, slug: str, alt_value: str, alt_slug: str, device: str
+) -> Any:
+    from app.dialogs.english_only_model import EnglishOnlyPrompt
+    from core.live_model import LIVE_MAIN
+    from core.model_manager import approx_download_size_text
+
+    name = (app.live_lang_var.get() or "").strip()
+    language = "" if name.lower() == "auto" else name
+    understands = language or "other languages"
+    if alt_value == LIVE_MAIN:
+        reason = (f"It is the Transcribe tab's model: it understands {understands}, "
+                  "and your graphics card runs it fast enough for live text.")
+    elif device == "cpu":
+        reason = (f"It understands {understands} and still keeps up with live "
+                  "speech on this computer.")
+    else:
+        reason = f"About the same size and speed, and it understands {understands}."
+    return EnglishOnlyPrompt(
+        model=slug, language=language, alternative=alt_slug, reason=reason,
+        size_text=approx_download_size_text(app.app_config, alt_slug),
+        downloaded=_slug_downloaded(app, alt_slug),
+    )
+
+
+def _switch_live_model(app: Any, value: str) -> bool:
+    label = next((lbl for lbl, v in _live_model_choices(app) if v == value), None)
+    if label is None:
+        return False
+    app.live_model_var.set(label)
+    _on_live_model_selected(app)
+    return True
+
+
+def _open_model_menu(app: Any) -> None:
+    btn = app.live_model_btn
+    try:
+        app.live_model_menu.post(btn.winfo_rootx(), btn.winfo_rooty() + btn.winfo_height())
+    except tk.TclError:
+        logger.debug("Could not open the Live model menu", exc_info=True)
+
+
+def _confirm_model_language(app: Any, *, on_start: bool) -> bool:
+    """Guide the user away from an English-only model + another language.
+
+    Returns True when listening may go ahead (``on_start``), False when
+    the user cancelled or went to pick another model. Never switches
+    without asking: the dialog offers the switch, a free choice, or
+    keeping the model (remembered for this session).
+    """
+    if getattr(app, "_live_en_only_asking", False):
+        return False
+    language = _selected_language_code(app)
+    pair = _english_only_pair(app, language)
+    if pair is None:
+        return True
+    slug, alt_value, alt_slug, device = pair
+    from app.dialogs import english_only_model as dlg
+
+    prompt = _english_only_prompt(app, slug, alt_value, alt_slug, device)
+    app._live_en_only_asking = True
+    try:
+        choice = dlg.ask_english_only(app, prompt)
+    finally:
+        app._live_en_only_asking = False
+    if choice == dlg.CHOICE_SWITCH:
+        if not _switch_live_model(app, alt_value):
+            return False
+        app.log(f"Live: switched from '{slug}' (English only) to '{alt_slug}'.")
+        if not on_start and not _slug_downloaded(app, alt_slug) and alt_value == alt_slug:
+            _download_live_model(app)
+        return True
+    if choice == dlg.CHOICE_KEEP:
+        if not hasattr(app, "_live_en_only_kept"):
+            app._live_en_only_kept = set()
+        app._live_en_only_kept.add((slug, language or ""))
+        return True
+    if choice == dlg.CHOICE_CHOOSE:
+        app.after(50, lambda: _open_model_menu(app))
+    return False
 
 
 def build_live_tab(app: Any, parent: Any) -> None:
@@ -401,6 +535,10 @@ def build_live_tab(app: Any, parent: Any) -> None:
         values=["Auto"] + [name for name, code in _LANGS if code],
     )
     app.live_lang_combo.grid(row=2, column=1, sticky="w", padx=8, pady=6)
+    app.live_lang_combo.bind(
+        "<<ComboboxSelected>>",
+        lambda _e: _confirm_model_language(app, on_start=False),
+    )
     help_icon(
         src,
         "Naming the language is more reliable than auto-detect for live "
@@ -608,6 +746,8 @@ def _start(app: Any) -> None:
             detail=_live.availability_reason(mode),
         )
         return
+    if not _confirm_model_language(app, on_start=True):
+        return
 
     app.live_status_var.set("Loading the speech model…")
     app._live_cancel_pending = False
@@ -683,12 +823,31 @@ def _start(app: Any) -> None:
     threading.Thread(target=worker, name="live-start", daemon=True).start()
 
 
+def _check_main_fallback(app: Any, language: str | None, why: str) -> None:
+    """Refuse to fall back to an English-only main model for other speech.
+
+    The fallback keeps listening possible when the live model is missing,
+    but onto an English-only model it would bring back the silent wrong
+    English text the English-only dialog exists to prevent.
+    """
+    from core.model_manager import DEFAULT_MODEL_SLUG, english_only_mismatch
+
+    main = str(app.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG).strip()
+    if english_only_mismatch(app.app_config, main, language):
+        raise RuntimeError(
+            f"{why} The Transcribe tab's model ({main}) understands English only, "
+            "so it cannot stand in for it. Check the internet connection and press "
+            "Start again, or pick another model in the Model list."
+        )
+
+
 def _prepare_live_model(app: Any, language: str | None) -> str | None:
     """Pick the live model and download it if needed (worker thread).
 
     Returns the catalog slug for the live worker, or None to load the
     main model. A failed download falls back to the main model rather
-    than refusing to start.
+    than refusing to start, unless the main model understands English
+    only and the language is not English (then this raises).
     """
     from core import live_model as _lm
     from core.hardware import detect_device_for
@@ -702,6 +861,7 @@ def _prepare_live_model(app: Any, language: str | None) -> str | None:
         return None
     model_cfg = _lm.live_model_config(app.app_config, slug)
     if model_cfg is None:
+        _check_main_fallback(app, language, f"The live model '{slug}' is not in the model list.")
         app.post_to_main(lambda: app.log(
             f"Live: unknown model '{slug}'; using the Transcribe tab's model."
         ))
@@ -710,12 +870,19 @@ def _prepare_live_model(app: Any, language: str | None) -> str | None:
         app.post_to_main(lambda: app.live_status_var.set(
             f"Downloading the live model ({slug}) — one time only…"
         ))
+        def progress(payload: dict[str, Any]) -> None:
+            pct = payload.get("percent")
+            if isinstance(pct, int) and pct:
+                text = f"Downloading the live model ({slug}) — {pct}%, one time only…"
+                app.post_to_main(lambda: app.live_status_var.set(text))
+
         try:
             from core.model_manager import ensure_model
 
-            ensure_model(model_cfg)
+            ensure_model(model_cfg, progress_cb=progress)
         except Exception as e:  # noqa: BLE001
             logger.exception("Live model download failed")
+            _check_main_fallback(app, language, f"Could not download the '{slug}' model ({e}).")
             msg = f"Live: could not download '{slug}' ({e}); using the Transcribe tab's model."
             app.post_to_main(lambda: app.log(msg))
             return None

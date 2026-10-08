@@ -207,6 +207,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "label": "Tiny (English) — fastest, lowest accuracy (~0.075 GB)",
         "name": "faster-whisper-tiny.en",
         "hf_repo": "Systran/faster-whisper-tiny.en",
+        "english_only": True,
         "approx_size_gb": 0.075,
         "info": (
             "~75 MB, English-only. The fastest and least accurate model — "
@@ -227,6 +228,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "label": "Base (English) — very fast, low accuracy (~0.145 GB)",
         "name": "faster-whisper-base.en",
         "hf_repo": "Systran/faster-whisper-base.en",
+        "english_only": True,
         "approx_size_gb": 0.145,
         "info": (
             "~145 MB, English-only. Very fast with modest accuracy — a step "
@@ -247,6 +249,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "label": "Small (English) — fast, moderate accuracy (~0.5 GB)",
         "name": "faster-whisper-small.en",
         "hf_repo": "Systran/faster-whisper-small.en",
+        "english_only": True,
         "approx_size_gb": 0.5,
         "info": (
             "~500 MB, English-only. Good speed/accuracy balance for everyday "
@@ -267,6 +270,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "label": "Medium (English) — slower, good accuracy (~1.5 GB)",
         "name": "faster-whisper-medium.en",
         "hf_repo": "Systran/faster-whisper-medium.en",
+        "english_only": True,
         "approx_size_gb": 1.5,
         "info": (
             "~1.5 GB, English-only. Noticeably more accurate than Small at "
@@ -317,6 +321,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "label": "Distil Small (English) — fast, English-only (~0.4 GB)",
         "name": "faster-distil-whisper-small.en",
         "hf_repo": "Systran/faster-distil-whisper-small.en",
+        "english_only": True,
         "approx_size_gb": 0.4,
         "info": (
             "~400 MB, English-only. Distilled for speed — faster than Small "
@@ -327,6 +332,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "label": "Distil Medium (English) — fast, English-only (~0.8 GB)",
         "name": "faster-distil-whisper-medium.en",
         "hf_repo": "Systran/faster-distil-whisper-medium.en",
+        "english_only": True,
         "approx_size_gb": 0.8,
         "info": (
             "~800 MB, English-only. Distilled for speed — faster than "
@@ -337,6 +343,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "label": "Distil Large v2 — fast, English-only (~1.5 GB)",
         "name": "faster-distil-whisper-large-v2",
         "hf_repo": "Systran/faster-distil-whisper-large-v2",
+        "english_only": True,
         "approx_size_gb": 1.5,
         "info": (
             "~1.5 GB, English-only. Distilled from Large v2 for ~5x speed "
@@ -347,6 +354,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "label": "Distil Large v3 — fast, English-only (~1.5 GB)",
         "name": "faster-distil-whisper-large-v3",
         "hf_repo": "Systran/faster-distil-whisper-large-v3",
+        "english_only": True,
         "approx_size_gb": 1.5,
         "info": (
             "~1.5 GB, English-only. Distilled from Large v3 for ~5x speed "
@@ -357,6 +365,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "label": "Distil Large v3.5 — fastest English-only (~1.5 GB)",
         "name": "faster-distil-whisper-large-v3.5",
         "hf_repo": "distil-whisper/distil-large-v3.5-ct2",
+        "english_only": True,
         "approx_size_gb": 1.5,
         "info": (
             "~1.5 GB, English-only. The newest distilled large model — "
@@ -422,7 +431,7 @@ def _merged_catalog(config: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
 
     The online/local config may carry a ``model_catalog`` dict in the SAME
     shape as MODEL_REGISTRY (slug → {label, name, hf_repo, approx_size_gb,
-    info}). Each online slug is overlaid onto the built-in entry (or added
+    info, optional english_only}). Each online slug is overlaid onto the built-in entry (or added
     new), so the catalog can grow / be re-pointed without an app update. A
     malformed catalog (not a dict, or non-dict entries) is ignored
     entry-by-entry so a bad online payload never breaks the picker — the
@@ -546,6 +555,64 @@ def approx_download_size_text(config: dict[str, Any] | None, slug: str) -> str:
     if gb < 1:
         return f"about {max(10, int(round(gb * 1000, -1)))} MB"
     return f"about {gb:g} GB"
+
+
+def is_english_only(config: dict[str, Any] | None, slug: str) -> bool | None:
+    """True for an English-only catalog model, False for a multilingual one.
+
+    None when ``slug`` is not in the merged catalog (a custom model): the
+    app cannot know what such a model understands, so callers stay silent.
+    The catalog's ``english_only`` flag decides; an entry without the flag
+    (an online catalog addition) counts as English-only when its slug ends
+    in ``.en``, Whisper's naming for the English-only checkpoints.
+    """
+    key = str(slug or "").strip()
+    entry = _merged_catalog(config).get(key)
+    if entry is None:
+        return None
+    flag = entry.get("english_only")
+    if isinstance(flag, bool):
+        return flag
+    return key.endswith(".en")
+
+
+def english_only_mismatch(
+    config: dict[str, Any], slug: str, language: str | None
+) -> bool:
+    """True when English-only ``slug`` meets speech that may not be English.
+
+    ``language`` None is auto-detect: an English-only model cannot detect
+    anything, so non-English speech still comes out as wrong English text.
+    Custom models (not in the catalog) never match: their languages are
+    unknown.
+    """
+    if (language or "").strip().lower() == "en":
+        return False
+    return is_english_only(config, slug) is True
+
+
+def multilingual_counterpart(config: dict[str, Any] | None, slug: str) -> str:
+    """The multilingual catalog model closest to English-only ``slug``.
+
+    ``tiny.en`` -> ``tiny``, ``distil-small.en`` -> ``small``: the same size
+    and roughly the same speed. The distilled large models are picked for
+    speed, so they map to ``large-v3-turbo``, the fast multilingual large
+    model. Anything without a multilingual twin in the catalog gets
+    ``small``, the smallest model that is useful for languages other than
+    English (see ``core.live_model.recommended_cpu_slug``).
+    """
+    key = str(slug or "").strip()
+    candidates: list[str] = []
+    if key.startswith("distil-large"):
+        candidates.append("large-v3-turbo")
+    base = key[: -len(".en")] if key.endswith(".en") else key
+    if base.startswith("distil-"):
+        base = base[len("distil-"):]
+    candidates += [base, "small"]
+    for candidate in candidates:
+        if candidate != key and is_english_only(config, candidate) is False:
+            return candidate
+    return "small"
 
 
 def model_downloaded(config: dict[str, Any] | None, slug: str) -> bool:

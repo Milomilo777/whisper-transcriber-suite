@@ -69,6 +69,9 @@ class _FakeApp:
     def refresh(self) -> None:
         self.refreshed += 1
 
+    def _warn_english_only(self, language, name) -> None:
+        pass
+
     # Bind the real helper so these tests exercise the actual scheduling
     # logic that enqueue_transcription_from_download now delegates to.
     _when_worker_ready = App._when_worker_ready

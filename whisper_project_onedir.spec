@@ -183,6 +183,7 @@ a = Analysis(
         'app.theme.theme_colours',
         'app.dialogs.advanced',
         'app.dialogs.caption_choice',
+        'app.dialogs.english_only_model',
         'app.dialogs.hub_setup',
         'app.dialogs.model_download',
         'app.dialogs.statistics',
