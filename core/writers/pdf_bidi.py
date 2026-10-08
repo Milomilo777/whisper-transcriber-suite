@@ -81,7 +81,9 @@ def _load() -> Engine | None:
     )
 
     def reorder(line: str, base: str) -> str:
-        return get_display(line, base_dir=base)
+        out = get_display(line, base_dir=base)
+        # str in, str out; the stub's StrOrBytes covers the bytes overload
+        return out if isinstance(out, str) else out.decode("utf-8")
 
     return Engine(reshape=reshaper.reshape, reorder=reorder)
 

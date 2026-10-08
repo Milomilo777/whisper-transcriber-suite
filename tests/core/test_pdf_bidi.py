@@ -303,8 +303,9 @@ def test_real_engine_keeps_numbers_and_latin_left_to_right_in_an_rtl_line():
     assert "2024" in visual
     assert FA_1403 in visual
     assert "Google" in visual
-    # the first logical word sits at the right end
-    assert unicodedata.normalize("NFKC", visual[-len(SALAM):])[::-1] == SALAM
+    # the first logical word sits at the right end; reverse before NFKC because
+    # the lam-alef ligature is one visual glyph that folds to two letters
+    assert unicodedata.normalize("NFKC", visual[::-1]).startswith(SALAM + " ")
 
 
 def test_real_engine_mirrors_brackets_in_rtl():

@@ -198,7 +198,8 @@ def test_pdf_leaves_out_zero_width_characters():
     text = _pdf_text(data)
     assert "\u200c" not in text
     assert "ab" in text
-    assert not Counter("میخواهم") - Counter(text)
+    # shaping (when installed) emits presentation forms; NFKC folds them back
+    assert not Counter("میخواهم") - Counter(unicodedata.normalize("NFKC", text))
 
 
 def test_markup_escapes_and_tags_fallback_runs_only():
