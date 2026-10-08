@@ -175,6 +175,61 @@ def test_other_errnos_on_the_process_stdout_still_raise(
         worker.emit("log", message="a")
 
 
+# ------------------------------------- a spurious error on a live pipe must not mute stdout
+
+
+def _fail_n_times(monkeypatch: pytest.MonkeyPatch, n: int, exc: BaseException) -> list[str]:
+    printed: list[str] = []
+    left = [n]
+
+    def _print(line: str = "", *_a: Any, **_k: Any) -> None:
+        if left[0] > 0:
+            left[0] -= 1
+            raise exc
+        printed.append(line)
+
+    monkeypatch.setattr(worker, "print", _print, raising=False)
+    return printed
+
+
+def test_a_single_einval_on_a_live_pipe_neither_mutes_stdout_nor_cancels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sys
+
+    quiet: list[int] = []
+    checks: list[str] = []
+    monkeypatch.setattr(worker, "_quiet_stdout_for_exit", lambda: quiet.append(1))
+    monkeypatch.setattr(worker, "_on_pipe_closed", checks.append)
+    monkeypatch.setattr(sys, "stdout", _FakeStdout(1))
+    printed = _fail_n_times(monkeypatch, 1, OSError(errno.EINVAL, "Invalid argument"))
+
+    worker.emit("log", message="first")  # fails once, the re-probe gets through
+    worker.emit("done", file_path="a.wav", outputs=[])
+
+    assert quiet == [] and checks == []  # stdout still goes to the app
+    assert any('"done"' in line for line in printed)  # the later event was delivered
+    # and a later, real closure is still noticed:
+    _fail_n_times(monkeypatch, 99, OSError(errno.EINVAL, "Invalid argument"))
+    worker.emit("log", message="again")
+    assert quiet == [1] and checks == ["its output pipe is closed"]
+
+
+def test_two_failures_in_a_row_mean_the_pipe_is_dead(monkeypatch: pytest.MonkeyPatch) -> None:
+    import sys
+
+    quiet: list[int] = []
+    checks: list[str] = []
+    monkeypatch.setattr(worker, "_quiet_stdout_for_exit", lambda: quiet.append(1))
+    monkeypatch.setattr(worker, "_on_pipe_closed", checks.append)
+    monkeypatch.setattr(sys, "stdout", _FakeStdout(1))
+    _fail_n_times(monkeypatch, 99, OSError(errno.EINVAL, "Invalid argument"))
+
+    worker.emit("log", message="a")
+
+    assert quiet == [1] and checks == ["its output pipe is closed"]
+
+
 _CHILD = """
 import sys, time
 sys.path.insert(0, sys.argv[1])

@@ -8,8 +8,11 @@ cannot be interrupted) kept the process alive, window-less and holding the Windo
 ``AppMutex``, until the whole model was fetched. A killed download is safe: the next
 run resumes the ``.incomplete`` blobs (see ``core.model_manager``).
 
-All threads this app starts itself are daemon threads, and it registers no ``atexit``
-handlers of its own, so nothing it must save is left to run after this point.
+All threads this app starts itself are daemon threads and it registers no ``atexit``
+handlers of its own. The one background job that must not be cut is an on-demand package
+install (its merge phase); ``App.on_exit`` stops pip and waits for it before the window is
+destroyed (``core.optional_deps.wait_until_idle``), so nothing is left to run after this
+point except best-effort work such as a usage-stats POST.
 """
 from __future__ import annotations
 
@@ -19,6 +22,13 @@ import sys
 import threading
 
 logger = logging.getLogger(__name__)
+
+#: Longest the final flush (Sentry, log handlers, standard streams) may take before the
+#: process ends anyway: a stuck handler (a network log share, a blocked pipe) must not
+#: keep the window-less process alive.
+FLUSH_TIMEOUT_S = 3.0
+#: How long Sentry may take to send what it still holds.
+_SENTRY_FLUSH_S = 2
 
 
 def _hard_exit(code: int) -> None:
@@ -43,8 +53,26 @@ def _flush_streams() -> None:
             pass
 
 
+def _flush_everything() -> None:
+    """Sentry (if the app loaded it), then the log handlers, then the standard streams."""
+    sentry = sys.modules.get("sentry_sdk")
+    if sentry is not None:
+        try:
+            sentry.flush(timeout=_SENTRY_FLUSH_S)
+        except Exception:  # noqa: BLE001 - an unsent crash report must not block the exit
+            pass
+    try:
+        logging.shutdown()
+    except Exception:  # noqa: BLE001 - nothing may keep the process alive now
+        pass
+    _flush_streams()
+
+
 def end_process(code: int = 0) -> None:
-    """Flush the logs and the standard streams, then end the process with *code*.
+    """Flush Sentry, the logs and the standard streams, then end the process with *code*.
+
+    The flush runs on a daemon thread that is waited for at most ``FLUSH_TIMEOUT_S``: the
+    process ends then even if a handler is stuck.
 
     Call it only after the app's orderly teardown. Never use it to hide a crash: an
     exception must propagate so ``sys.excepthook`` (``app.crash_report``) sees it.
@@ -55,9 +83,13 @@ def end_process(code: int = 0) -> None:
             "Ending the process without waiting for %d background thread(s): %s",
             len(blockers), ", ".join(blockers),
         )
-    try:
-        logging.shutdown()
-    except Exception:  # noqa: BLE001 - nothing may keep the process alive now
-        pass
-    _flush_streams()
+    flusher = threading.Thread(target=_flush_everything, name="exit-flush", daemon=True)
+    flusher.start()
+    flusher.join(FLUSH_TIMEOUT_S)
+    if flusher.is_alive():
+        # Not logged: the log handlers are what is stuck.
+        try:
+            sys.stderr.write("exit: the final flush did not finish in time; ending anyway\n")
+        except (OSError, ValueError, AttributeError):
+            pass
     _hard_exit(code)

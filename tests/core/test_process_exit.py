@@ -13,6 +13,8 @@ from __future__ import annotations
 import subprocess
 import sys
 import textwrap
+import threading
+import types
 import time
 from pathlib import Path
 from typing import Any
@@ -158,3 +160,64 @@ def test_blocking_threads_lists_only_live_non_daemon_threads() -> None:
         release.set()
         keep.join()
         quiet.join()
+
+
+# ----------------------------------------------------- sentry flush and the stuck-handler guard
+
+
+def test_sentry_is_flushed_with_a_timeout_before_the_logs_close(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    order: list[str] = []
+    fake = types.SimpleNamespace(flush=lambda timeout=None: order.append(f"sentry{timeout}"))
+    monkeypatch.setitem(sys.modules, "sentry_sdk", fake)
+    monkeypatch.setattr(process_exit.logging, "shutdown", lambda: order.append("logging"))
+    monkeypatch.setattr(process_exit, "_flush_streams", lambda: order.append("streams"))
+    monkeypatch.setattr(process_exit, "_hard_exit", lambda code: order.append("exit"))
+
+    process_exit.end_process(0)
+
+    assert order == ["sentry2", "logging", "streams", "exit"]
+
+
+def test_sentry_is_not_imported_just_to_flush_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delitem(sys.modules, "sentry_sdk", raising=False)
+    exits: list[int] = []
+    monkeypatch.setattr(process_exit.logging, "shutdown", lambda: None)
+    monkeypatch.setattr(process_exit, "_hard_exit", exits.append)
+
+    process_exit.end_process(0)
+
+    assert "sentry_sdk" not in sys.modules and exits == [0]
+
+
+def test_a_failing_sentry_flush_does_not_stop_the_exit(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _boom(timeout: float | None = None) -> None:
+        raise RuntimeError("transport down")
+
+    monkeypatch.setitem(sys.modules, "sentry_sdk", types.SimpleNamespace(flush=_boom))
+    order: list[str] = []
+    monkeypatch.setattr(process_exit.logging, "shutdown", lambda: order.append("logging"))
+    monkeypatch.setattr(process_exit, "_hard_exit", lambda code: order.append("exit"))
+
+    process_exit.end_process(0)
+
+    assert order == ["logging", "exit"]
+
+
+def test_a_stuck_log_handler_cannot_hang_the_exit(monkeypatch: pytest.MonkeyPatch) -> None:
+    release = threading.Event()
+    exits: list[int] = []
+    monkeypatch.setattr(process_exit.logging, "shutdown", lambda: release.wait(30))
+    monkeypatch.setattr(process_exit, "FLUSH_TIMEOUT_S", 0.5)
+    monkeypatch.setattr(process_exit, "_hard_exit", exits.append)
+
+    started = time.monotonic()
+    try:
+        process_exit.end_process(7)
+        elapsed = time.monotonic() - started
+    finally:
+        release.set()
+
+    assert exits == [7]
+    assert elapsed < 5.0  # not the 30 s the handler would have taken

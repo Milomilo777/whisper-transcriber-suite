@@ -189,14 +189,35 @@ def _is_output_pipe_closed(exc: OSError) -> bool:
     return exc.errno in _PIPE_CLOSED_ERRNOS and _stdout_is_process_fd1()
 
 
+def _output_pipe_still_works() -> bool:
+    """Write one heartbeat line again: True when the app's pipe took it.
+
+    A write error that is not repeated (a spurious EINVAL on a live pipe) must not
+    point fd 1 at the null device, which would silently drop every later event,
+    ``done`` included. The line also flushes whatever the failed write left buffered.
+    """
+    try:
+        with _emit_lock:
+            print(json.dumps({"event": "heartbeat", "ts": time.time()}), flush=True)
+    except OSError:
+        return False
+    return True
+
+
 def _note_output_pipe_closed() -> None:
-    """First broken-pipe write of a session: one line, then confirm the app is
-    gone (which cancels the running task). Later events are dropped silently."""
+    """First failed stdout write of a session: re-probe once; if the pipe is really
+    dead, one line, then confirm the app is gone (which cancels the running task).
+    Later events are dropped silently."""
     global _output_pipe_reported
     with _state_lock:
         if _output_pipe_reported:
             return
         _output_pipe_reported = True
+    if _output_pipe_still_works():
+        with _state_lock:
+            _output_pipe_reported = False  # a later, real closure is reported again
+        logger.info("A write to the app's pipe failed once and then worked; carrying on")
+        return
     logger.warning("The app closed the worker's output pipe; dropping further events")
     _quiet_stdout_for_exit()
     _on_pipe_closed("its output pipe is closed")
