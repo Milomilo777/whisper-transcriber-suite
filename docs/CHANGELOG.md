@@ -303,6 +303,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **macOS shows Mac wording and shortcuts.** Menus, buttons and the What's-new list now show the Command key and work with it (Command-O, Command-F, Command-S, Command-Return); the File menu has no Exit item on macOS (the app menu owns Quit) and the queued-tasks prompt says Quit; About no longer calls the app a Windows app, and the VLC hint mentions 32/64-bit only on Windows. Windows and Linux keep Ctrl and "Exit" unchanged (`app/shortcuts.py`).
+
 - **Hardware detection and model advice.** GPUs without efficient float16 (GTX 10-series) now get
   an NVIDIA CUDA (int8) tier in the Hardware wizard, so Apply no longer pins the CPU over the
   automatic CUDA pick. Applying the untouched list while an NVIDIA GPU is unusable saves nothing

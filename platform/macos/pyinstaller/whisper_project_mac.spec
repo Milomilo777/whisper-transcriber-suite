@@ -367,6 +367,7 @@ a = Analysis(
         'app.widgets.update_bar',
         'app.dialogs.model_loading',
         'app.dpi',
+        'app.shortcuts',
         'app.services.voice_clone_service',
         'app.theme',
         'app.theme.icons',

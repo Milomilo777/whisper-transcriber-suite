@@ -20,6 +20,7 @@ from app.dialogs.advanced import AdvancedDialog
 from app.dialogs.model_download import ModelDownloadDialog
 from app.dialogs.quick_start import QuickStartChoice, QuickStartDialog, apply_choice, should_show
 from app.dialogs import share_page
+from app import shortcuts
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
 from app.domain.task_outputs import task_output_folder, task_srt_output
 from app.domain.tasks import TranscriptionTask, VideoDownloadTask
@@ -395,7 +396,7 @@ def build_about_sections() -> list[AboutSection]:
             ("Input", [
                 "Any audio or video file ffmpeg can read",
                 "Drag-and-drop one or many files onto the window",
-                "Browse… (Ctrl+O) for single or multi-select",
+                f"Browse… ({shortcuts.accel_text('o')}) for single or multi-select",
                 "Recent-files submenu (last 10 from history)",
             ]),
             ("Models", [
@@ -523,10 +524,10 @@ def build_about_sections() -> list[AboutSection]:
                 "Last-Result card → View transcript",
             ]),
             ("Editing", [
-                "Find / replace (Ctrl+F), case-insensitive default",
+                f"Find / replace ({shortcuts.accel_text('f')}), case-insensitive default",
                 "Speaker rename — rewrites every same-labelled segment",
                 "Remove fillers — strips uh/um/er… with whole-word regex",
-                "Atomic save (Ctrl+S)",
+                f"Atomic save ({shortcuts.accel_text('s')})",
             ]),
             ("Playback", [
                 "Embedded VLC when python-vlc + libvlc are installed",
@@ -590,14 +591,14 @@ def build_about_sections() -> list[AboutSection]:
         ]),
         ("Keyboard shortcuts", [
             ("Global", [
-                "Ctrl+O — Browse for files",
-                "Ctrl+Enter — Transcribe selected",
+                f"{shortcuts.accel_text('o')} — Browse for files",
+                f"{shortcuts.accel_text('Return')} — Transcribe selected",
                 "Esc — Cancel running job",
-                "Ctrl+Q — Exit (bypasses minimise-to-tray)",
+                f"{shortcuts.accel_text('q')} — {shortcuts.quit_label()} (bypasses minimise-to-tray)",
             ]),
             ("Viewer", [
-                "Ctrl+F — Find / replace",
-                "Ctrl+S — Save edits",
+                f"{shortcuts.accel_text('f')} — Find / replace",
+                f"{shortcuts.accel_text('s')} — Save edits",
             ]),
         ]),
         ("Privacy", [
@@ -982,13 +983,18 @@ class App(tk.Tk):
         #                     file picker
         #   Esc             → Cancel the currently-running task
         #   Ctrl+Q          → Quit (same as File → Exit)
-        self.bind("<Control-o>", lambda _e: self.browse())
-        self.bind("<Control-O>", lambda _e: self.browse())
-        self.bind("<Control-Return>", lambda _e: self.add())
+        # Ctrl on Windows/Linux, Command on macOS (app/shortcuts.py).
+        if not shortcuts.is_mac():
+            # On macOS the File menu's Browse item carries the Command-O
+            # accelerator itself; a second root bind could fire twice.
+            shortcuts.bind_shortcut(self, "o", self.browse)
+        shortcuts.bind_shortcut(self, "Return", self.add)
         self.bind("<Escape>", lambda _e: self._cancel_running())
-        # Ctrl+Q always exits — same convention as File→Exit.
-        self.bind("<Control-q>", lambda _e: self._force_exit())
-        self.bind("<Control-Q>", lambda _e: self._force_exit())
+        if not shortcuts.is_mac():
+            # Ctrl+Q always exits — same convention as File→Exit. On macOS
+            # Command-Q arrives through the native app-menu Quit instead
+            # (tk::mac::Quit, registered by the quit-routing fix).
+            shortcuts.bind_shortcut(self, "q", self._force_exit)
 
         # Opt-in drag-and-drop on the main window. tkinterdnd2 is in
         # requirements.txt but the desktop app stays usable even if
@@ -1172,7 +1178,7 @@ class App(tk.Tk):
     def _build_menu(self) -> None:
         m = tk.Menu(self)
         f = tk.Menu(m, tearoff=0)
-        f.add_command(label="Browse...                          Ctrl+O", command=self.browse)
+        f.add_command(**shortcuts.menu_item("Browse...", "o", gap=26), command=self.browse)
         # Recent files submenu — populated from history.db at menu-open
         # time so it always reflects the latest run. Skips when history
         # is None (SQLite init failed) and shows a single disabled
@@ -1193,12 +1199,14 @@ class App(tk.Tk):
             variable=self.work_offline_var,
             command=self._toggle_work_offline,
         )
-        f.add_separator()
-        # File→Exit bypasses the minimise-to-tray redirect. When the
-        # user explicitly clicks Exit they mean exit; the redirect is
-        # only for the window-close (X) button.
-        f.add_command(label="Exit                                  Ctrl+Q",
-                      command=self._force_exit)
+        if not shortcuts.is_mac():
+            f.add_separator()
+            # File→Exit bypasses the minimise-to-tray redirect. When the
+            # user explicitly clicks Exit they mean exit; the redirect is
+            # only for the window-close (X) button. macOS has no Exit item
+            # here: the app menu already carries "Quit <App>".
+            f.add_command(**shortcuts.menu_item("Exit", "q", gap=34),
+                          command=self._force_exit)
 
         v = tk.Menu(m, tearoff=0)
         for label, value in (("Light", "light"), ("Dark", "dark"), ("System", "system")):
@@ -1648,7 +1656,7 @@ class App(tk.Tk):
         ttk.Label(
             header,
             text=(
-                "A Windows desktop app that turns audio and video into "
+                "A desktop app that turns audio and video into "
                 "subtitles on your own computer. Powered by OpenAI "
                 "Whisper via faster-whisper. No account and no API key "
                 "needed."
@@ -1951,8 +1959,8 @@ class App(tk.Tk):
         ]
         if active or active_downloads:
             if not messagebox.askyesno(
-                "Exit with queued tasks",
-                "There are queued or running tasks. Exit anyway?",
+                f"{shortcuts.quit_label()} with queued tasks",
+                f"There are queued or running tasks. {shortcuts.quit_label()} anyway?",
                 parent=self,
             ):
                 # Declining must NOT freeze the app. _closing is the sole
@@ -6091,6 +6099,10 @@ class App(tk.Tk):
         return App._CLIPBOARD_VK.get(keycode)
 
     def _install_clipboard_keys(self) -> None:
+        if shortcuts.is_mac():
+            # Tk/aqua maps Command-C/V/X/A natively, and its keycodes are not
+            # the Windows virtual-key codes this handler dispatches on.
+            return
         virt = {"paste": "<<Paste>>", "copy": "<<Copy>>", "cut": "<<Cut>>"}
 
         def _on_ctrl_key(event: tk.Event) -> str | None:
