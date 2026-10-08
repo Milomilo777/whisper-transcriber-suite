@@ -446,9 +446,14 @@ def _tk_bytes(ch: str) -> int:
 _JOINS_NEXT = {0x200C, 0x200D, 0x0DCA, 0x17D2} | set(range(0x0E40, 0x0E45)) | set(range(0x0EC0, 0x0EC5))
 
 
+_SKIN_TONES = range(0x1F3FB, 0x1F400)   # emoji modifiers: category Sk, but part of the emoji
+
+
 def _cluster_boundary(text: str, i: int) -> bool:
     nxt, prev = text[i], text[i - 1]
     if unicodedata.category(nxt).startswith("M") or ord(nxt) in (0x200C, 0x200D):
+        return False
+    if ord(nxt) in _SKIN_TONES:
         return False
     return ord(prev) not in _JOINS_NEXT and "VIRAMA" not in unicodedata.name(prev, "")
 

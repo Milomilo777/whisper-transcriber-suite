@@ -279,6 +279,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   Edit" and the other buttons show their full labels at every scale.
 - **Chinese file names and lines keep the Chinese font** when they contain the katakana middle
   dot, the prolonged-sound mark or the other marks Chinese shares with kana.
+- **Typing in a long Clone Your Voice text stays smooth.** The script fonts are re-applied once
+  per pause instead of on every keystroke (about 0.3 s per key for 100k characters of Myanmar).
 - **Transcript viewer edits reach the subtitle files.** Save now also rewrites the SRT, VTT and
   ASS next to the JSON, unless one was changed elsewhere (for example in Subtitle Edit), which is
   left alone with a notice. **Open in Subtitle Edit** offers to save unsaved edits first and, when

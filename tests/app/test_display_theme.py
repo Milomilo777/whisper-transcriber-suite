@@ -305,3 +305,68 @@ def test_viewer_toolbars_fit_the_window(root, tmp_path, monkeypatch, factor) -> 
     finally:
         viewer._dirty = False
         viewer._on_close()
+
+
+# ------------------------------------------- Advanced: side column and window fit per scale
+
+@pytest.mark.parametrize("factor", [1.0, 1.25, 1.5])
+def test_advanced_nav_links_fit_and_window_stays_in_the_work_area(root, monkeypatch, tmp_path,
+                                                                   factor) -> None:
+    from app.dialogs import advanced as adv
+    from core.config import DEFAULT_CONFIG
+
+    monkeypatch.setattr(adv.AdvancedDialog, "grab_set", lambda self, *a, **k: None)
+    monkeypatch.setattr(sys, "platform", "win32")  # scale_factor follows tk scaling
+    work = (0, 0, 1920, 1040)
+    monkeypatch.setattr(dpi, "_windows_work_area", lambda _w: work)
+    _sv_ttk(root, "light")
+    _scale(root, factor)
+    script_fonts.scale_theme_fonts(root, factor)
+    dpi.remember_scale(root)
+    cfg = dict(DEFAULT_CONFIG)
+    cfg["hub_folder"] = str(tmp_path / "models")
+    root.app_config = cfg
+    root.log = lambda _m: None
+    placed: list[str] = []
+    monkeypatch.setattr(adv.AdvancedDialog, "geometry",
+                        lambda self, g=None: placed.append(g) if g else "1x1+0+0")
+    dlg = adv.AdvancedDialog(root)
+    try:
+        dlg.update_idletasks()
+        nav = dlg._nav_frame
+        width = int(nav.cget("width"))
+        for link in dlg._nav_links:
+            if link.winfo_class() == "TLabel":
+                assert link.winfo_reqwidth() <= width, link.cget("text")
+        w, h, x, y = map(int, re.match(r"(\d+)x(\d+)\+(\d+)\+(\d+)", placed[-1]).groups())
+        assert x + w <= work[2]
+        assert y + round(32 * factor) + h <= work[3]
+    finally:
+        dlg.destroy()
+
+
+# ------------------------------------------------------------- optional A2 / A7
+
+def test_a_skin_tone_stays_with_its_emoji() -> None:
+    waving, tone = chr(0x1F44B), chr(0x1F3FD)
+    line = "ab" + waving + tone + "cd"
+    assert script_fonts._cluster_boundary(line, line.index(tone)) is False
+    assert script_fonts._cluster_boundary(line, line.index("c")) is True
+
+
+def test_typing_retags_once_per_pause(root, monkeypatch) -> None:
+    import types
+
+    from app.widgets import voice_clone_tab as vct
+
+    calls: list[int] = []
+    monkeypatch.setattr(vct, "_retag_text", lambda _app: calls.append(1))
+    text = tk.Text(root)
+    app = types.SimpleNamespace(vc_text=text)
+    for _ in range(5):
+        vct._schedule_retag(app)
+    assert calls == []
+    root.after(vct._RETAG_DELAY_MS + 100, root.quit)
+    root.mainloop()
+    assert calls == [1]
+    assert app._vc_retag_after is None

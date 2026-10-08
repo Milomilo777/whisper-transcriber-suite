@@ -461,7 +461,27 @@ def _on_text_modified(app: Any) -> None:
     limit = _text_limit(app)
     app.vc_count_var.set(f"{n:,} characters" if limit is None
                          else f"{n:,} / {limit:,} characters")
-    _retag_text(app)
+    _schedule_retag(app)
+
+
+# Re-tagging the whole box takes about 0.3 s for 100k characters of Myanmar text, so while the
+# user types it runs once per pause rather than on every keystroke.
+_RETAG_DELAY_MS = 150
+
+
+def _schedule_retag(app: Any) -> None:
+    pending = getattr(app, "_vc_retag_after", None)
+    if pending is not None:
+        try:
+            app.vc_text.after_cancel(pending)
+        except Exception:  # noqa: BLE001 - already ran
+            pass
+
+    def _run() -> None:
+        app._vc_retag_after = None
+        _retag_text(app)
+
+    app._vc_retag_after = app.vc_text.after(_RETAG_DELAY_MS, _run)
 
 
 def _retag_text(app: Any) -> None:

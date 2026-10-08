@@ -39,7 +39,7 @@ from app.domain.cookies import (
     cookie_browser_label,
     cookie_browser_value,
 )
-from app.dpi import px, scaled
+from app.dpi import fit_size, px, scaled, work_area
 from app.theme import tokens
 from app.widgets.tooltip import (
     bind_tooltip,
@@ -349,24 +349,31 @@ class AdvancedDialog(tk.Toplevel):
 
         screen_w = self.winfo_screenwidth()
         screen_h = self.winfo_screenheight()
+        # The usable area: on Windows the monitor's work area, so the taskbar
+        # never covers Save/Cancel; elsewhere the whole screen.
+        area_x, area_y, area_w, area_h, _exact = work_area(self)
+        if area_w <= 0 or area_h <= 0:
+            area_x, area_y, area_w, area_h = 0, 0, screen_w, screen_h
 
         # Use most of the screen while leaving margins
-        width = int(screen_w * 0.75)
-        height = int(screen_h * 0.85)
+        width = int(area_w * 0.75)
+        height = int(area_h * 0.85)
 
         # Minimum sensible size
         width = max(width, scaled(self, 1100))
         height = max(height, scaled(self, 800))
 
-        # Never exceed screen bounds. On macOS the screen height still counts
-        # the menu bar and the Dock, and the title bar comes on top of the
-        # requested height -- with only 80 px spare, Save/Cancel ended up
-        # under the Dock on a 1280x800 screen.
-        width = min(width, screen_w - 80)
-        height = min(height, screen_h - (140 if sys.platform == "darwin" else 80))
+        # Never exceed the usable area (scaled margins for the title bar).
+        # On macOS the screen height still counts the menu bar and the Dock,
+        # and the title bar comes on top of the requested height -- with
+        # only 80 px spare, Save/Cancel ended up under the Dock on a
+        # 1280x800 screen.
+        width, height = fit_size(self, width, height)
+        if sys.platform == "darwin":
+            height = min(height, screen_h - 140)
 
-        x = (screen_w - width) // 2
-        y = (screen_h - height) // 2
+        x = area_x + max(0, (area_w - width) // 2)
+        y = area_y + max(0, (area_h - height - scaled(self, 32)) // 2)
         if sys.platform == "darwin":
             y = min(y, 30)  # just below the menu bar, clear of the Dock
 
@@ -409,7 +416,7 @@ class AdvancedDialog(tk.Toplevel):
         # section. The links are (re)built by _refresh_nav(), because the
         # set of visible sections follows the Engine picker (only the
         # picked engine's own setup section is shown).
-        nav = ttk.Frame(content_container, width=132)
+        nav = ttk.Frame(content_container, width=px(132))
         nav.pack(side="left", fill="y", padx=(0, 6))
         nav.pack_propagate(False)
         ttk.Label(
