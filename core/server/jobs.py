@@ -32,6 +32,7 @@ import inspect
 import ipaddress
 import json
 import logging
+import math
 import os
 import queue
 import re
@@ -143,6 +144,19 @@ _LEGACY_JOB_DIR_AGE_S = 7 * 24 * 60 * 60.0
 # differs by far more (the owner lived for hours, the folder is hours old).
 _START_TIME_TOLERANCE_S = 60.0
 
+# Written into a job folder whose outputs could not all be copied to
+# outputs_root (disk full): a JSON list of the file names still to save. A
+# folder holding it is deleted only after those files have a copy.
+_KEEP_FILE = ".wts-keep"
+# Removing the media of a finished job is retried this often (an engine or
+# ffmpeg child may still hold the file open for a moment on Windows).
+_MEDIA_REMOVE_ATTEMPTS = 4
+_MEDIA_REMOVE_DELAY_S = 0.25
+_UNSAVED_WARNING = (
+    "The results could not be copied to the server's output folder (is the "
+    "disk full?). Download them now; the server keeps this job's folder "
+    "until they are copied.")
+
 # What a cloud engine that died part-way leaves beside the media
 # (core.transcriber._save_partial_subtitles): paid text, never deleted.
 _PARTIAL_SUFFIX = ".partial.srt"
@@ -200,10 +214,14 @@ class Job:
     # ``work_dir/.whisperproject.json`` before transcribe so they take effect
     # for THIS job only via the audited per-folder override mechanism.
     options: dict[str, Any] = field(default_factory=dict)
+    # Set once the job is ending (outputs being saved): a cancel is refused.
+    settling: bool = False
+    # A visible problem that does not fail the job (outputs not archived).
+    warning: str = ""
 
     def public_dict(self) -> dict[str, Any]:
         """The JSON shape returned by ``GET /api/jobs/<id>``."""
-        return {
+        data: dict[str, Any] = {
             "job_id": self.job_id,
             "status": self.status,
             "progress": self.progress,
@@ -212,6 +230,9 @@ class Job:
             "outputs": [{"fmt": fmt, "name": os.path.basename(p)}
                         for fmt, p in self.outputs],
         }
+        if self.warning:
+            data["warning"] = self.warning
+        return data
 
     def list_dict(self) -> dict[str, Any]:
         """The compact JSON shape returned by ``GET /api/jobs`` (list)."""
@@ -409,6 +430,9 @@ class JobManager:
                     continue
             except OSError:
                 continue
+            except Exception:  # noqa: BLE001 - one odd folder never stops start
+                logger.exception("server: could not judge job folder %s", name)
+                continue
             if self._discard_dir(path):
                 removed += 1
         if removed:
@@ -422,37 +446,85 @@ class JobManager:
             "instance": self._instance_id,
         })
 
-    def _discard_dir(self, work_dir: str) -> bool:
-        """Delete a job folder, unless it holds paid text not saved elsewhere.
+    def _discard_dir(self, work_dir: str, job: Job | None = None) -> bool:
+        """Delete a job folder, unless it holds results not saved elsewhere.
 
-        Persist first: a ``*.partial.srt`` (what a cloud engine that died
-        part-way kept) is copied to ``outputs_root`` before the folder goes;
-        if that copy fails the folder stays and ``False`` is returned.
+        Persist first: the job's outputs and the engine's partial subtitles
+        (see :meth:`_protected_files`) are copied to ``outputs_root`` before
+        the folder goes; if a copy fails the folder stays and ``False`` is
+        returned. ``job`` is the job that owns the folder; the start-up
+        purge has none, and then only what the folder itself proves counts.
         """
         if not work_dir:
             return True
-        if not self._save_partials(work_dir):
+        if not self._save_protected(work_dir, job):
             logger.warning(
-                "server: kept job folder %s: its partial subtitles could "
-                "not be copied", os.path.basename(work_dir))
+                "server: kept job folder %s: its results could not be "
+                "copied", os.path.basename(work_dir))
+            if job is not None:
+                # The job is leaving the table: its input is of no use any
+                # more and can be gigabytes, whatever happens to the results.
+                self._drop_input_media(job)
             return False
         _rmtree_quiet(work_dir)
         return True
 
-    def _save_partials(self, work_dir: str) -> bool:
-        """Make sure every ``*.partial.srt`` in ``work_dir`` has a durable copy."""
+    def _protected_files(self, work_dir: str, job: Job | None) -> list[str]:
+        """Files of ``work_dir`` that must have a durable copy before it goes.
+
+        * the job's outputs and the engine's own ``<media>.partial.srt``
+          (never the media: a client may upload a file that ends in
+          ``.partial.srt``, and copying client data would let it fill the
+          output folder);
+        * the names in the folder's keep list (a failed archive wrote it);
+        * without a job (start-up purge), a ``X.partial.srt`` with a media
+          file ``X.<ext>`` beside it: a run that died before it could settle.
+          A lone ``big.partial.srt`` is a client's upload, not a partial.
+        """
+        work = os.path.normcase(os.path.abspath(work_dir))
+        media = (os.path.normcase(os.path.abspath(job.media_path))
+                 if job is not None and job.media_path else "")
+        found: dict[str, str] = {}
+
+        def add(path: str, *, is_output: bool = False) -> None:
+            if not path or not os.path.isfile(path):
+                return
+            key = os.path.normcase(os.path.abspath(path))
+            if os.path.dirname(key) != work or (key == media and not is_output):
+                return
+            found.setdefault(key, path)
+
+        if job is not None:
+            for _fmt, out in job.outputs:
+                add(out, is_output=True)
+            add(self._partial_file(job))
         try:
             names = os.listdir(work_dir)
         except OSError:
-            return True  # no folder, nothing to lose
+            return list(found.values())
+        if _KEEP_FILE in names:
+            for name in _read_keep_list(os.path.join(work_dir, _KEEP_FILE)):
+                if name in names:
+                    add(os.path.join(work_dir, name))
+        if job is None:
+            for name in names:
+                if not name.lower().endswith(_PARTIAL_SUFFIX):
+                    continue
+                stem = name[:-len(_PARTIAL_SUFFIX)]
+                if any(other != name and not other.startswith(".")
+                       and not other.lower().endswith(_PARTIAL_SUFFIX)
+                       and os.path.splitext(other)[0] == stem
+                       for other in names):
+                    add(os.path.join(work_dir, name))
+        return list(found.values())
+
+    def _save_protected(self, work_dir: str, job: Job | None) -> bool:
+        """Give every protected file of ``work_dir`` a copy; True if all have one."""
         dest_dir = os.path.join(
             self._outputs_root, os.path.basename(os.path.normpath(work_dir))[:12])
         saved = True
-        for name in names:
-            if not name.lower().endswith(_PARTIAL_SUFFIX):
-                continue
-            src = os.path.join(work_dir, name)
-            dest = os.path.join(dest_dir, name)
+        for src in self._protected_files(work_dir, job):
+            dest = os.path.join(dest_dir, os.path.basename(src))
             try:
                 if (os.path.isfile(dest)
                         and os.path.getsize(dest) == os.path.getsize(src)):
@@ -460,9 +532,21 @@ class JobManager:
                 os.makedirs(dest_dir, exist_ok=True)
                 shutil.copy2(src, dest)
             except OSError as e:
-                logger.warning("server: could not keep %s: %s", name, e)
+                logger.warning("server: could not keep %s: %s",
+                               os.path.basename(src), e)
                 saved = False
         return saved
+
+    def _write_keep_file(self, job: Job, paths: list[str]) -> None:
+        """Record which files of the job folder still lack a durable copy."""
+        names = sorted({os.path.basename(p) for p in paths})
+        try:
+            with open(os.path.join(job.work_dir, _KEEP_FILE), "w",
+                      encoding="utf-8") as f:
+                json.dump(names, f)
+        except OSError as e:
+            logger.error("server: could not write the keep list of job %s: %s",
+                         job.job_id, e)
 
     def stop(self, *, timeout: float = 5.0) -> None:
         """Signal the worker to exit, wait briefly, reclaim work_dirs.
@@ -513,7 +597,7 @@ class JobManager:
                 self._set_status(job, STATUS_CANCELLED)
                 leftovers.append(job)
         for job in leftovers:
-            self._discard_dir(job.work_dir)
+            self._discard_dir(job.work_dir, job)
 
     # --- submission ----------------------------------------------------------
 
@@ -610,7 +694,7 @@ class JobManager:
             if job_id in self._order:
                 self._order.remove(job_id)
         if job is not None:
-            self._discard_dir(job.work_dir)
+            self._discard_dir(job.work_dir, job)
 
     def submit_url(self, url: str, formats: list[str],
                    language: str = "", *,
@@ -686,7 +770,9 @@ class JobManager:
             job = self._jobs.get(job_id)
             if job is None:
                 return False
-            if job.status in _TERMINAL:
+            if job.status in _TERMINAL or job.settling:
+                # Ending jobs are past the point where a cancel can apply:
+                # the client must not see "cancelled" for a finished job.
                 return False
             job.cancelled = True
             # A paused job must un-pause so the engine's segment loop can see
@@ -736,7 +822,7 @@ class JobManager:
                 return  # nothing terminal to evict; the cap check will reject
             victim = self._jobs.pop(victim_id)
             self._order.remove(victim_id)
-            self._discard_dir(victim.work_dir)
+            self._discard_dir(victim.work_dir, victim)
 
     # --- worker --------------------------------------------------------------
 
@@ -754,7 +840,7 @@ class JobManager:
             if job is None or job.cancelled:
                 if job is not None:
                     self._set_status(job, STATUS_CANCELLED)
-                    self._discard_dir(job.work_dir)
+                    self._discard_dir(job.work_dir, job)
                 continue
             self._run_one(job)
             # Path B reclaim: a job that ended CANCELLED (cancelled mid-run)
@@ -766,7 +852,7 @@ class JobManager:
             # output, so its folder stays too; ``_discard_dir`` also saves
             # any partial a cancelled job left before deleting.
             if job.status in (STATUS_CANCELLED, STATUS_ERROR) and not job.outputs:
-                self._discard_dir(job.work_dir)
+                self._discard_dir(job.work_dir, job)
 
     def _run_one(self, job: Job) -> None:
         history_db = None
@@ -815,7 +901,10 @@ class JobManager:
             # (the OpenAI-compatible route) must never read the old value.
             job.detected_language = (
                 getattr(task, "detected_language", "") or job.language)
-            if job.cancelled:
+            with self._lock:
+                cancelled = job.cancelled
+                job.settling = True  # from here a cancel() is refused
+            if cancelled:
                 self._settle(job, STATUS_CANCELLED, history_db, history_id,
                              time.time() - started, job.detected_language)
             else:
@@ -831,6 +920,8 @@ class JobManager:
             # job.error reaches web clients and the webhook: no local paths
             # or command lines there. The local log and history keep it all.
             job.error = public_error_text(e)
+            with self._lock:
+                job.settling = True
             # A paid cloud run that died part-way left its finished text in
             # a partial subtitle file: offer it as the job's output.
             partial = self._partial_file(job)
@@ -857,23 +948,35 @@ class JobManager:
         then the server-owned input media is removed. Never raises: the
         status is always set, whatever a step above did.
         """
+        job.settling = True
         try:
             kept = self._archive_outputs(job)
         except Exception:  # noqa: BLE001
             logger.exception("server: could not archive outputs of job %s",
                              job.job_id)
             kept = [p for _fmt, p in job.outputs]
+        # A path still inside the job folder is a copy that failed.
+        work = os.path.normcase(os.path.abspath(job.work_dir))
+        unsaved = [p for p in kept
+                   if os.path.normcase(os.path.dirname(os.path.abspath(p))) == work]
+        if unsaved:
+            logger.error("server: %d result file(s) of job %s have no copy "
+                         "outside the job folder", len(unsaved), job.job_id)
+            job.warning = _UNSAVED_WARNING
+            self._write_keep_file(job, unsaved)
         try:
             self._finish_history(db, rid, job, duration_s, language,
                                  error=error, status=status, output_paths=kept)
         except Exception:  # noqa: BLE001
             logger.exception("server: could not write history for job %s",
                              job.job_id)
-        try:
-            self._drop_input_media(job)
-        except Exception:  # noqa: BLE001
-            logger.exception("server: could not remove the media of job %s",
-                             job.job_id)
+        if not unsaved:
+            # Only once every result is safe elsewhere is the input expendable.
+            try:
+                self._drop_input_media(job)
+            except Exception:  # noqa: BLE001
+                logger.exception("server: could not remove the media of job %s",
+                                 job.job_id)
         self._set_status(job, status)
 
     def _drop_input_media(self, job: Job) -> None:
@@ -895,13 +998,19 @@ class JobManager:
         if any(os.path.normcase(os.path.abspath(p)) == media
                for _fmt, p in job.outputs):
             return
-        try:
-            os.remove(job.media_path)
-        except FileNotFoundError:
-            pass
-        except OSError as e:
-            logger.warning("server: could not remove the media of job %s: %s",
-                           job.job_id, e)
+        for attempt in range(_MEDIA_REMOVE_ATTEMPTS):
+            try:
+                os.remove(job.media_path)
+                return
+            except FileNotFoundError:
+                return
+            except OSError as e:
+                if attempt + 1 == _MEDIA_REMOVE_ATTEMPTS:
+                    logger.warning(
+                        "server: could not remove the media of job %s: %s",
+                        job.job_id, e)
+                else:
+                    time.sleep(_MEDIA_REMOVE_DELAY_S)
 
     def _write_override_file(self, job: Job) -> None:
         """Drop the job's validated options into ``work_dir/.whisperproject.json``.
@@ -1504,6 +1613,44 @@ def _process_start_time(pid: int) -> float:
         return 0.0
 
 
+def _parse_marker(text: str) -> tuple[int, str, float] | None:
+    """``(pid, instance, start time)`` of a marker, or None if it is damaged.
+
+    Strict on purpose: a marker is a file in a shared folder, so anything that
+    is not exactly a small JSON object with a plausible process id means
+    "unknown owner" (the safe side), never an exception.
+    """
+    try:
+        data = json.loads(text)
+        if not isinstance(data, dict):
+            return None
+        pid = data["pid"]
+        instance = data["instance"]
+        started = data.get("started") or 0
+        if (isinstance(pid, bool) or not isinstance(pid, int)
+                or not 0 < pid < 2 ** 31 or not isinstance(instance, str)
+                or isinstance(started, bool)
+                or not isinstance(started, (int, float))):
+            return None
+        started = float(started)
+        return pid, instance, (started if math.isfinite(started) else 0.0)
+    except Exception:  # noqa: BLE001 - any damage means "unknown"
+        return None
+
+
+def _read_keep_list(path: str) -> list[str]:
+    """The plain file names in a keep list (anything else is ignored)."""
+    try:
+        data = json.loads(_read_text(path))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(data, list):
+        return []
+    return [n for n in data
+            if isinstance(n, str) and n and os.path.basename(n) == n
+            and n not in (".", "..", _JOB_DIR_MARKER, _KEEP_FILE)]
+
+
 def _marker_owner_state(text: str) -> str:
     """Who owns a job folder, from its marker: "live", "gone" or "unknown".
 
@@ -1514,13 +1661,10 @@ def _marker_owner_state(text: str) -> str:
     process that cannot be inspected) counts as "live": a folder is kept
     rather than guessed away.
     """
-    try:
-        data = json.loads(text)
-        pid = int(data["pid"])
-        instance = str(data["instance"])
-        started = float(data.get("started") or 0.0)
-    except (ValueError, KeyError, TypeError, AttributeError):
+    parsed = _parse_marker(text)
+    if parsed is None:
         return "unknown"
+    pid, instance, started = parsed
     if pid == os.getpid():
         owner = _MANAGERS.get(instance)
         return "live" if owner is not None and not owner.stopped else "gone"

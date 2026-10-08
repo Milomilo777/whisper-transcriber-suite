@@ -16,6 +16,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 
 import pytest
@@ -147,6 +148,7 @@ def test_purge_keeps_a_folder_whose_partial_cannot_be_copied(
     old = root / ("a" * 32)
     old.mkdir(parents=True)
     (old / "x.partial.srt").write_text("paid", encoding="utf-8")
+    (old / "x.wav").write_bytes(b"x")  # the media the partial belongs to
     (old / J._JOB_DIR_MARKER).write_text(
         json.dumps({"v": 1, "pid": _dead_pid(), "started": 1.0,
                     "instance": "gone"}))
@@ -172,6 +174,8 @@ def test_eviction_never_deletes_an_unsaved_partial(tmp_path, monkeypatch):
     part = os.path.join(job.work_dir, "x.partial.srt")
     with open(part, "w", encoding="utf-8") as f:
         f.write("paid")
+    job.media_path = os.path.join(job.work_dir, "x.wav")
+    job.outputs = [(J.PARTIAL_OUTPUT_KEY, part)]
     job.status = STATUS_ERROR
 
     def no_copy(*a, **k):
@@ -465,3 +469,230 @@ def test_media_delete_failure_does_not_fail_the_job(tmp_path, monkeypatch):
         mgr.stop()
     assert job.status == STATUS_FINISHED
     assert os.path.isfile(job.outputs[0][1])
+
+
+# =============================================================================
+# Review round 2
+# =============================================================================
+
+# --- F1: only a trailing yt-dlp suffix marks an unfinished file --------------
+
+@pytest.mark.parametrize("name", [
+    "Vlog.Part-1.mp4", "talk.part-2.mp3", "my.tmp.talk.mp4",
+    "Season.Temp-Edition.mkv", "x.temp.mp4",  # alone: may be a real title
+])
+def test_titles_that_contain_part_words_are_media(tmp_path, name):
+    (tmp_path / name).write_bytes(b"media")
+    assert server._is_downloaded_media(str(tmp_path), name)
+
+
+@pytest.mark.parametrize("name", [
+    "name.f137.mp4.part", "name.mp4.part-Frag12", "name.mp4.ytdl",
+    "NAME.MP4.PART", "a.tmp", "a.mp4.temp", ".wts-job", "empty.mp4",
+])
+def test_unfinished_yt_dlp_files_are_not_media(tmp_path, name):
+    (tmp_path / name).write_bytes(b"" if name == "empty.mp4" else b"half")
+    assert not server._is_downloaded_media(str(tmp_path), name)
+
+
+def test_post_processing_temp_file_is_not_media_beside_the_final_one(tmp_path):
+    (tmp_path / "x.temp.mp4").write_bytes(b"half")
+    (tmp_path / "x.mp4").write_bytes(b"done")
+    assert not server._is_downloaded_media(str(tmp_path), "x.temp.mp4")
+    assert server._is_downloaded_media(str(tmp_path), "x.mp4")
+
+
+# --- F2: only the engine's own partial is rescued -----------------------------
+
+def _outputs_files(tmp_path):
+    out = tmp_path / "server_outputs"
+    return [p for p in out.rglob("*") if p.is_file()] if out.exists() else []
+
+
+def test_uploaded_file_named_partial_is_never_copied_to_outputs(tmp_path):
+    def boom(task, *a, **k):
+        raise RuntimeError("bad media")
+
+    mgr = _manager(tmp_path, boom)
+    mgr.start()
+    try:
+        job_id = mgr.submit_upload("big.partial.srt", b"X" * 1000, ["srt"])
+        _wait_idle(mgr, job_id)
+    finally:
+        mgr.stop()
+    assert _outputs_files(tmp_path) == []
+
+
+def test_stop_and_discard_never_copy_an_uploaded_partial_named_file(tmp_path):
+    mgr = _manager(tmp_path)  # worker not started: jobs stay queued
+    queued = mgr.submit_upload("big.partial.srt", b"X" * 1000, ["srt"])
+    streamed, path = mgr.submit_upload_stream("other.partial.srt", ["srt"])
+    with open(path, "wb") as f:
+        f.write(b"Y" * 1000)
+    mgr.discard(streamed)  # an aborted streamed upload
+    mgr.cancel(queued)
+    mgr.stop()
+    assert _outputs_files(tmp_path) == []
+
+
+def test_purge_copies_only_a_partial_that_has_its_media(tmp_path):
+    root = tmp_path / "server_jobs"
+    owner = json.dumps({"v": 1, "pid": _dead_pid(), "started": 1.0,
+                        "instance": "gone"})
+    real = root / ("a" * 32)  # a run that died before the job could settle
+    upload = root / ("b" * 32)  # a client file that happens to end so
+    for d in (real, upload):
+        d.mkdir(parents=True)
+        (d / J._JOB_DIR_MARKER).write_text(owner)
+    (real / "talk.wav").write_bytes(b"x")
+    (real / "talk.partial.srt").write_text("paid", encoding="utf-8")
+    (upload / "big.partial.srt").write_bytes(b"X" * 1000)
+    for d in (real, upload):
+        _age(d)  # after the files are written: they touch the folder
+    mgr = _manager(tmp_path)
+    mgr.start()
+    try:
+        assert not real.exists() and not upload.exists()
+    finally:
+        mgr.stop()
+    assert [p.name for p in _outputs_files(tmp_path)] == ["talk.partial.srt"]
+
+
+# --- F3: a damaged marker never stops the server ------------------------------
+
+@pytest.mark.parametrize("text", [
+    '{"pid": 1e999, "instance": "x"}',
+    '{"pid": -5, "instance": "x"}',
+    '{"pid": 99999999999999999999, "instance": "x"}',
+    '{"pid": 0, "instance": "x"}',
+    '{"pid": "abc", "instance": "x"}',
+    '{"pid": 1, "instance": ["x"], "started": "soon"}',
+    '[]', '123', 'null', '{', '', '\x00\x01',
+])
+def test_damaged_marker_means_unknown_owner(text):
+    assert J._marker_owner_state(text) == "unknown"
+
+
+def test_start_survives_a_damaged_marker(tmp_path):
+    root = tmp_path / "server_jobs"
+    d = root / ("a" * 32)
+    d.mkdir(parents=True)
+    (d / J._JOB_DIR_MARKER).write_text('{"pid": 1e999, "instance": "x"}')
+    _age(d)
+    mgr = _manager(tmp_path)
+    mgr.start()  # must not raise
+    try:
+        assert d.exists()  # unknown owner: the long legacy grace applies
+    finally:
+        mgr.stop()
+
+
+# --- F4: a failed archive copy never loses the finished transcript -----------
+
+def _failing_copy(monkeypatch):
+    def no_copy(*a, **k):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(J.shutil, "copy2", no_copy)
+
+
+def test_failed_archive_keeps_media_warns_and_protects_the_folder(
+        tmp_path, monkeypatch):
+    _failing_copy(monkeypatch)
+    mgr = _manager(tmp_path, _srt_transcribe, max_jobs=1)
+    mgr.start()
+    try:
+        job_id = mgr.submit_upload("a.wav", b"RIFF", ["srt"])
+        job = _wait_idle(mgr, job_id)
+        assert job.status == STATUS_FINISHED
+        assert job.warning
+        assert job.public_dict()["warning"] == job.warning
+        assert os.path.isfile(job.media_path)  # not deleted: nothing is safe
+        # The cap now evicts the finished job: its folder must survive.
+        with mgr._lock:
+            mgr._evict_locked()
+        assert mgr.get(job_id) is None
+        assert os.path.isfile(job.outputs[0][1])
+        assert not os.path.exists(job.media_path)  # the input is let go now
+        monkeypatch.undo()  # disk space is back: the next clean-up copies
+        assert mgr._discard_dir(job.work_dir, job)
+    finally:
+        mgr.stop()
+    assert not os.path.isdir(job.work_dir)
+    kept = tmp_path / "server_outputs" / job_id[:12] / "a.srt"
+    assert kept.is_file()
+
+
+def test_purge_retries_a_failed_archive_from_the_keep_list(
+        tmp_path, monkeypatch):
+    root = tmp_path / "server_jobs"
+    d = root / ("a" * 32)
+    d.mkdir(parents=True)
+    (d / J._JOB_DIR_MARKER).write_text(json.dumps(
+        {"v": 1, "pid": _dead_pid(), "started": 1.0, "instance": "gone"}))
+    (d / "a.srt").write_text("transcript", encoding="utf-8")
+    (d / J._KEEP_FILE).write_text(json.dumps(["a.srt", "../evil.txt"]))
+    _age(d)
+    _failing_copy(monkeypatch)
+    mgr = _manager(tmp_path)
+    mgr.start()
+    mgr.stop()
+    assert (d / "a.srt").is_file()  # copy failed: folder kept
+    monkeypatch.undo()
+    mgr2 = _manager(tmp_path)
+    mgr2.start()
+    try:
+        assert not d.exists()
+    finally:
+        mgr2.stop()
+    assert (tmp_path / "server_outputs" / ("a" * 12) / "a.srt").read_text(
+        encoding="utf-8") == "transcript"
+    assert not (tmp_path / "server_outputs" / "evil.txt").exists()
+
+
+def test_cancel_is_refused_once_the_job_is_settling(tmp_path):
+    gate = threading.Event()
+    entered = threading.Event()
+
+    class _Slow(JobManager):
+        def _archive_outputs(self, job):
+            entered.set()
+            gate.wait(10)
+            return super()._archive_outputs(job)
+
+    mgr = _Slow(_srt_transcribe, jobs_root=str(tmp_path / "server_jobs"),
+                record_history=False)
+    mgr.start()
+    try:
+        job_id = mgr.submit_upload("a.wav", b"x", ["srt"])
+        assert entered.wait(10)
+        assert mgr.cancel(job_id) is False
+        gate.set()
+        job = _wait_idle(mgr, job_id)
+    finally:
+        gate.set()
+        mgr.stop()
+    assert job.status == STATUS_FINISHED and not job.cancelled
+
+
+def test_media_removal_is_retried_while_the_file_is_open(tmp_path, monkeypatch):
+    real_remove = os.remove
+    calls = {"n": 0}
+
+    def flaky(path, *a, **k):
+        if str(path).endswith("a.wav"):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise PermissionError("in use")
+        return real_remove(path, *a, **k)
+
+    monkeypatch.setattr(J.os, "remove", flaky)
+    mgr = _manager(tmp_path, _srt_transcribe)
+    mgr.start()
+    try:
+        job_id = mgr.submit_upload("a.wav", b"x", ["srt"])
+        job = _wait_idle(mgr, job_id)
+    finally:
+        mgr.stop()
+    assert calls["n"] == 3
+    assert not os.path.exists(job.media_path)

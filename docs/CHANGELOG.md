@@ -309,7 +309,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   "finished"; a download that produced no file reports the size limit instead of "transcribing" the
   folder marker; a second server (GUI web access, `gui.py serve`, another window) no longer purges
   the first one's job folders (the marker names its owning process); a finished job's uploaded or
-  downloaded media is deleted once its outputs are saved.
+  downloaded media is deleted once its outputs are saved. If saving fails (disk full) the job shows
+  a warning and its folder is kept until the copy succeeds; Cancel is refused once a job is ending.
 
 - **Hardware detection and model advice.** GPUs without efficient float16 (GTX 10-series) now get
   an NVIDIA CUDA (int8) tier in the Hardware wizard, so Apply no longer pins the CPU over the

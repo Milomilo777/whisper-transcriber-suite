@@ -68,8 +68,14 @@ def _real_transcribe(
     _trans.transcribe(task, progress_cb, log_cb, language_cb)
 
 
-# yt-dlp's unfinished files: "x.mp4.part", "x.mp4.part-Frag3", "x.mp4.ytdl".
-_NOT_MEDIA_RE = re.compile(r"\.(part|ytdl|temp|tmp)(-|$)", re.IGNORECASE)
+# yt-dlp's unfinished files END in one of these: "x.f137.mp4.part",
+# "x.mp4.part-Frag12", "x.mp4.ytdl". Anchored: a title may contain
+# "Part-1" or ".tmp." and still be the media.
+_NOT_MEDIA_RE = re.compile(
+    r"\.(part(-Frag\d+)?|ytdl|temp|tmp)$", re.IGNORECASE)
+# yt-dlp's post-processing copy "x.temp.mp4" (replaced by "x.mp4" when done).
+_POST_TEMP_RE = re.compile(r"^(?P<stem>.+)\.temp(?P<ext>\.[^.]+)$",
+                           re.IGNORECASE)
 
 
 def _is_downloaded_media(dest_dir: str, name: str) -> bool:
@@ -77,9 +83,15 @@ def _is_downloaded_media(dest_dir: str, name: str) -> bool:
 
     The job folder also holds the ``.wts-job`` marker (and later the
     ``.whisperproject.json`` override); neither, a hidden file, an empty
-    file nor an unfinished download is media.
+    file nor an unfinished download is media. A ``x.temp.mp4`` beside the
+    final ``x.mp4`` is yt-dlp's leftover; alone it may be a real title, so
+    it counts as media.
     """
     if name.startswith(".") or _NOT_MEDIA_RE.search(name):
+        return False
+    post = _POST_TEMP_RE.match(name)
+    if post and os.path.isfile(
+            os.path.join(dest_dir, post["stem"] + post["ext"])):
         return False
     path = os.path.join(dest_dir, name)
     try:

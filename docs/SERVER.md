@@ -447,7 +447,11 @@ Behaviour to know:
   you want them gone. A job on a paid cloud engine that fails part-way keeps
   the text of the finished chunks as an output named `partial_srt`
   (`GET /api/jobs/<id>/result?fmt=partial_srt`); it is copied to
-  `server_outputs\` too and never deleted with the job folder.
+  `server_outputs\` too and never deleted with the job folder. If a copy to
+  `server_outputs\` fails (for example the disk is full), the job still
+  finishes but carries a `warning` in `GET /api/jobs/<id>`, its media is
+  kept, and its folder is never deleted until the results have been copied
+  (a later start retries).
 - **Upload size cap.** A single upload is capped (`--max-upload-mb`,
   default 512 MB, hard ceiling 4096 MB) and rejected with HTTP 413 before
   being buffered. An upload needs a `Content-Length` (chunked uploads get
