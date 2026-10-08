@@ -64,6 +64,7 @@ def test_system_ram_is_read():
 def test_dialog_shows_the_picks_and_applies_one(monkeypatch, tmp_path):
     tk = pytest.importorskip("tkinter")
     monkeypatch.setattr(hw, "cuda_status", lambda: _gpu(8151))
+    monkeypatch.setattr(hw, "device_choice_from_hardware_file", lambda: None)  # not this PC's file
     monkeypatch.setattr(mm, "model_downloaded", lambda cfg, slug: slug == "large-v3-turbo")
 
     from app.dialogs.model_advisor import ModelAdvisorDialog
@@ -96,5 +97,72 @@ def test_dialog_shows_the_picks_and_applies_one(monkeypatch, tmp_path):
         assert "models run on the GPU" in dlg.summary_var.get()
         dlg._use("large-v3")
         assert applied == ["large-v3"]
+    finally:
+        root.destroy()
+
+
+def _open_dialog(monkeypatch, tmp_path, status, config):
+    """Open the dialog on a fake app and return it after the check finished."""
+    import time
+    import tkinter as tk
+
+    from app.dialogs.model_advisor import ModelAdvisorDialog
+
+    monkeypatch.setattr(hw, "cuda_status", lambda: status)
+    monkeypatch.setattr(hw, "device_choice_from_hardware_file", lambda: None)
+    monkeypatch.setattr(mm, "model_downloaded", lambda cfg, slug: False)
+    root = tk.Tk()
+    root.withdraw()
+
+    class _App:
+        app_config = {"hub_folder": str(tmp_path), **config}
+        transcribe_model_var = tk.StringVar(master=root, value="")
+
+    dlg = ModelAdvisorDialog(root, _App())  # type: ignore[arg-type]
+    dlg.withdraw()
+    dlg._thread.join(timeout=10)
+    deadline = time.time() + 5
+    while time.time() < deadline and not dlg.picks_frame.winfo_children():
+        dlg.update()
+        time.sleep(0.02)
+    return root, dlg
+
+
+def test_dialog_follows_a_cpu_setting_even_with_a_gpu(monkeypatch, tmp_path):
+    pytest.importorskip("tkinter")
+    root, dlg = _open_dialog(monkeypatch, tmp_path, _gpu(24576), {"device": "cpu"})
+    try:
+        assert "models run on the GPU" not in dlg.summary_var.get()
+        assert "CPU" in dlg.summary_var.get()
+        assert [c.cget("text") for c in dlg.picks_frame.winfo_children()] == ["Fastest", "Most accurate"]
+    finally:
+        root.destroy()
+
+
+def test_dialog_says_when_offline_instead_of_promising_a_download(monkeypatch, tmp_path):
+    pytest.importorskip("tkinter")
+    from core import offline
+
+    monkeypatch.setattr(offline, "is_offline", lambda *a, **k: True)
+    root, dlg = _open_dialog(monkeypatch, tmp_path, _gpu(8151), {})
+    try:
+        texts = " ".join(
+            str(w.cget("text")) for card in dlg.picks_frame.winfo_children()
+            for w in card.winfo_children() if "text" in w.keys()
+        )
+        assert "Work offline is on" in texts
+        assert "Downloads once on first use" not in texts
+    finally:
+        root.destroy()
+
+
+def test_dialog_explains_when_the_catalog_has_none_of_the_picks(monkeypatch, tmp_path):
+    pytest.importorskip("tkinter")
+    monkeypatch.setattr(mm, "catalog_models", lambda cfg: [("tiny", "Tiny")])
+    root, dlg = _open_dialog(monkeypatch, tmp_path, _gpu(8151), {})
+    try:
+        kids = dlg.picks_frame.winfo_children()
+        assert len(kids) == 1
+        assert "None of the recommended models" in str(kids[0].cget("text"))
     finally:
         root.destroy()

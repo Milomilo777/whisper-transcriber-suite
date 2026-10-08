@@ -261,6 +261,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Removed
 
+- **Hardware wizard benchmark.** The "Run 5 s benchmark" button is gone: it needed a model loaded
+  in the GUI process (only the optional local server has one), timed a silent clip, and could label
+  a speed with a tier it was not measured on. `hardware.json` keeps its `benchmark_rtf` field,
+  now always empty.
 - **Models download only from the Hugging Face Hub.** The zip mirror is retired: no catalog
   entry names it, and a `url`/`md5` left in an older `config.json` (including a hand-edited
   `model_catalog` pin) is ignored. An installed model is never deleted for a re-check, and a
@@ -274,6 +278,21 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Hardware detection and model advice.** GPUs without efficient float16 (GTX 10-series) now get
+  an NVIDIA CUDA (int8) tier in the Hardware wizard, so Apply no longer pins the CPU over the
+  automatic CUDA pick. Applying the untouched list while an NVIDIA GPU is unusable saves nothing
+  instead of pinning the CPU. Tiers of backends the app does not bundle can no longer be saved.
+  Quick start sizes "Best quality" to the computer's memory (a 4 GB PC gets Medium, not Large v3);
+  the advisor treats 8 GB laptops as capable, counts physical cores, treats unreadable memory or
+  cores as weak instead of plentiful, follows a CPU setting in `config.json` or `hardware.json`, and
+  no longer says "No usable NVIDIA GPU" on a Mac. Offline, both windows say so instead of promising a
+  download, and the GPU-support question (550 MB) is not asked while Work offline is on.
+  `python -m core.hardware` no longer fails on a redirected cp1252 console.
+- **Optional installs and the NVIDIA Parakeet engine.** Installing GPU support after torch no
+  longer deletes `nvidia/cudnn`: shared folders such as `nvidia/` are merged entry by entry. The
+  macOS app says the NVIDIA engine cannot download packages instead of announcing an install, the
+  engine list no longer shows it as ready when its package is missing, `cuda:1` picks the second
+  card, and cancelling while paused stops before another window is decoded.
 - **Portable ZIP has the sample clip and icons.** `build_embed_installer.bat` now puts `assets\`
   (window icon, toolbar icons, the "Try it now" sample clip), `LICENSE` and
   `THIRD_PARTY_NOTICES.md` into the build tree, so the Portable ZIP ships them too; the installer

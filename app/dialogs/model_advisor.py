@@ -9,7 +9,7 @@ never touches Tk (``after`` from another thread raises on Python 3.14).
 from __future__ import annotations
 
 import logging
-import os
+import sys
 import threading
 import tkinter as tk
 from tkinter import ttk
@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 from app.dpi import px
 from app.theme import tokens
 from core import hardware as _hw
+from core import offline
 
 if TYPE_CHECKING:
     from app.app import App
@@ -25,6 +26,37 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _TITLES = {"fastest": "Fastest", "accurate": "Most accurate"}
+
+
+def advisor_summary(
+    status: _hw.CudaStatus,
+    *,
+    cores: int,
+    ram_gb: float,
+    platform: str = sys.platform,
+    force_cpu: bool = False,
+) -> str:
+    """The sentence above the picks: which hardware the advice is for."""
+    cpu = f"{cores} CPU cores" if cores else "the CPU"
+    if ram_gb:
+        cpu += f", {ram_gb:.0f} GB memory"
+    if force_cpu:
+        return (
+            f"The settings run transcription on the CPU, so these are for {cpu}. "
+            "Advanced > Re-detect hardware changes that."
+        )
+    if status.usable:
+        mem = f", {status.memory_mb / 1024:.0f} GB" if status.memory_mb else ""
+        return f"{status.gpu_name or 'NVIDIA GPU'}{mem}: models run on the GPU."
+    if status.gpu_present:
+        return (
+            f"{status.gpu_name or 'Your NVIDIA GPU'} cannot be used yet, so "
+            f"these are for {cpu}. Advanced > Re-detect hardware explains "
+            "why and can fix it; then open this window again."
+        )
+    if platform == "darwin":
+        return f"This Mac runs models on {cpu}."
+    return f"No usable NVIDIA GPU, so models run on {cpu}."
 
 
 class ModelAdvisorDialog(tk.Toplevel):
@@ -57,11 +89,17 @@ class ModelAdvisorDialog(tk.Toplevel):
     def _check(self) -> None:
         try:
             status = _hw.cuda_status()
+            force_cpu = _hw.cpu_forced(self.app.app_config)
+            ram_gb = _hw.system_ram_gb()
+            cores = _hw.physical_cpu_cores()
             self._result["done"] = (
                 status,
-                _hw.recommend_models(status),
-                _hw.system_ram_gb(),
-                os.cpu_count() or 0,
+                _hw.recommend_models(
+                    status, ram_gb=ram_gb, cpu_cores=cores, force_cpu=force_cpu,
+                ),
+                ram_gb,
+                cores,
+                force_cpu,
             )
         except Exception as e:  # noqa: BLE001
             logger.exception("Model recommendation failed")
@@ -79,8 +117,8 @@ class ModelAdvisorDialog(tk.Toplevel):
         if "done" not in self._result:
             self.after(100, self._poll)
             return
-        status, picks, ram_gb, cores = self._result["done"]
-        self._show(status, picks, ram_gb, cores)
+        status, picks, ram_gb, cores, force_cpu = self._result["done"]
+        self._show(status, picks, ram_gb, cores, force_cpu)
 
     # ---------- result ----------------------------------------------------
 
@@ -90,24 +128,11 @@ class ModelAdvisorDialog(tk.Toplevel):
         picks: list[_hw.ModelPick],
         ram_gb: float,
         cores: int,
+        force_cpu: bool = False,
     ) -> None:
-        cpu = f"{cores} CPU cores" if cores else "the CPU"
-        if ram_gb:
-            cpu += f", {ram_gb:.0f} GB memory"
-        if status.usable:
-            mem = f", {status.memory_mb / 1024:.0f} GB" if status.memory_mb else ""
-            summary = (
-                f"{status.gpu_name or 'NVIDIA GPU'}{mem}: models run on the GPU."
-            )
-        elif status.gpu_present:
-            summary = (
-                f"{status.gpu_name or 'Your NVIDIA GPU'} cannot be used yet, so "
-                f"these are for {cpu}. Advanced > Re-detect hardware explains "
-                "why and can fix it; then open this window again."
-            )
-        else:
-            summary = f"No usable NVIDIA GPU, so models run on {cpu}."
-        self.summary_var.set(summary)
+        self.summary_var.set(
+            advisor_summary(status, cores=cores, ram_gb=ram_gb, force_cpu=force_cpu)
+        )
 
         from core.model_manager import (
             DEFAULT_MODEL_SLUG,
@@ -119,6 +144,7 @@ class ModelAdvisorDialog(tk.Toplevel):
         cfg = self.app.app_config
         labels = dict(catalog_models(cfg))
         current = str(cfg.get("whisper_model") or DEFAULT_MODEL_SLUG)
+        shown = 0
         for pick in picks:
             if pick.slug not in labels:
                 continue  # not in this catalog (e.g. a trimmed online catalog)
@@ -131,8 +157,14 @@ class ModelAdvisorDialog(tk.Toplevel):
             ttk.Label(card, text=pick.reason, wraplength=px(500), justify="left").pack(
                 anchor="w", pady=(2, 4),
             )
+            shown += 1
             if model_downloaded(cfg, pick.slug):
                 note = "Already downloaded."
+            elif offline.is_offline(cfg):
+                note = (
+                    "Not downloaded yet, and Work offline is on: turn it off "
+                    "to download this model."
+                )
             else:
                 size = approx_download_size_text(cfg, pick.slug)
                 note = f"Downloads once on first use ({size})." if size else "Downloads once on first use."
@@ -145,6 +177,14 @@ class ModelAdvisorDialog(tk.Toplevel):
             if pick.slug == current:
                 btn.configure(text="Current model")
                 btn.state(["disabled"])
+        if not shown:
+            ttk.Label(
+                self.picks_frame, wraplength=px(500), justify="left",
+                text=(
+                    "None of the recommended models is in this model list. "
+                    "Pick a model in the Transcribe tab instead."
+                ),
+            ).pack(anchor="w")
 
     def _use(self, slug: str) -> None:
         """Pick ``slug`` exactly as choosing it in the Transcribe tab does."""

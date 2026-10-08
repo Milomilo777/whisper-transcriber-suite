@@ -479,3 +479,36 @@ def test_update_check_waits_until_the_window_has_closed():
     app_mod.App._maybe_quiet_update_check(fake)  # type: ignore[arg-type]
     fake.after.assert_called_once_with(4000, fake._maybe_quiet_update_check)
     fake._run_update_check.assert_not_called()
+
+
+# ------------------------------------------------ hardware-aware picks (review fix 19)
+
+def test_best_quality_is_sized_for_a_4_gb_computer(tk_root, tmp_path):
+    """Best picked Large v3 (a 3 GB model) on a PC with 4 GB of memory."""
+    dialog, _results = _open(
+        tk_root, {"download_folder": str(tmp_path)}, probe=lambda: (_CPU, 4, 3.9),
+    )
+    best = dialog.mode_detail_vars["best"].get()
+    assert best.startswith("Medium")
+    assert "sized for this computer's 4 GB of memory" in best
+    dialog.mode_var.set("best")
+    dialog.finish()
+    assert _results[0].model_slug == "medium"
+
+
+def test_best_quality_keeps_large_v3_on_an_8_gb_laptop(tk_root, tmp_path):
+    dialog, _results = _open(
+        tk_root, {"download_folder": str(tmp_path)}, probe=lambda: (_CPU, 4, 7.2),
+    )
+    assert dialog.mode_detail_vars["best"].get().startswith("Large v3 ·")
+    dialog.skip()
+
+
+def test_a_forced_cpu_setting_gets_cpu_times_and_text(tk_root, tmp_path):
+    dialog, _results = _open(
+        tk_root, {"download_folder": str(tmp_path), "device": "cpu"},
+        probe=lambda: (_GPU, 4),
+    )
+    assert "run transcription on this computer's 4-core processor" in dialog.hardware_var.get()
+    assert "min" in dialog.mode_detail_vars["best"].get()  # the CPU time, not the GPU's
+    dialog.skip()

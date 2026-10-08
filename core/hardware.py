@@ -891,6 +891,16 @@ def _probe_cuda(status: CudaStatus | None = None) -> list[Tier]:
             compute_type="int8_float16",
             detail=gpu,
         ))
+    if "int8" in supported:
+        # GPUs without efficient float16 (GTX 10-series) report int8 only;
+        # detect_device_for() already picks it, so the wizard must offer it.
+        tiers.append(Tier(
+            slug="cuda_int8",
+            label=f"NVIDIA CUDA (int8) — {gpu}",
+            device="cuda",
+            compute_type="int8",
+            detail=gpu,
+        ))
     return tiers
 
 
@@ -1252,19 +1262,64 @@ def system_ram_gb() -> float:
         return 0.0
 
 
+def cpu_forced(config: dict[str, Any]) -> bool:
+    """True when the settings make the app run on the CPU whatever GPU exists.
+
+    That is ``device`` = ``cpu`` in the config, or ``device`` = ``auto`` with a
+    CPU choice saved by the Hardware wizard (``hardware.json``). An explicit
+    GPU setting wins over the file, as in :func:`detect_device_for`.
+    """
+    device = str(config.get("device") or "auto").strip().lower()
+    if device != "auto":
+        return device == "cpu"
+    try:
+        choice = device_choice_from_hardware_file()
+    except Exception:  # noqa: BLE001 -- a recommendation must never fail on a bad file
+        logger.exception("device_choice_from_hardware_file probe raised")
+        return False
+    return choice is not None and choice[0] == "cpu"
+
+
+# Physical memory (as the OS reports it: an 8 GB laptop shows 7.0-7.4) a model
+# needs to run on the CPU, int8, next to the OS and the app. Largest first;
+# anything not listed (tiny, base, small) runs everywhere.
+_MODEL_MIN_RAM_GB: dict[str, float] = {"large-v3": 6.5, "large-v3-turbo": 5.0, "medium": 3.0}
+_MODELS_BY_SIZE = ("large-v3", "large-v3-turbo", "medium", "small")
+# Below this a computer is advised the small models (the turbo model's need).
+_WEAK_RAM_GB = _MODEL_MIN_RAM_GB["large-v3-turbo"]
+
+
+def fit_model_to_ram(slug: str, ram_gb: float) -> str:
+    """``slug``, or the largest smaller model that fits ``ram_gb`` of memory.
+
+    ``ram_gb`` 0 means unknown: the model is kept. Models outside the size
+    ladder (tiny, base, small, anything custom) are returned unchanged.
+    """
+    if ram_gb <= 0 or slug not in _MODELS_BY_SIZE:
+        return slug
+    for candidate in _MODELS_BY_SIZE[_MODELS_BY_SIZE.index(slug):]:
+        if ram_gb >= _MODEL_MIN_RAM_GB.get(candidate, 0.0):
+            return candidate
+    return slug  # unreachable: "small" has no minimum
+
+
 def recommend_models(
     status: CudaStatus | None = None,
     *,
     ram_gb: float | None = None,
     cpu_cores: int | None = None,
+    force_cpu: bool = False,
 ) -> list[ModelPick]:
     """Fastest + most accurate Whisper model for this machine.
 
-    Uses the GPU's memory when CUDA is usable, else CPU cores and RAM. When
-    both picks are the same model, one "accurate" pick is returned.
+    Uses the GPU's memory when CUDA is usable, else CPU cores and RAM
+    (``force_cpu``: the settings pin the CPU, so the GPU is ignored). A core
+    count or RAM size that cannot be read counts as a weak computer, not a
+    strong one. When both picks are the same model, one "accurate" pick is
+    returned.
     """
     status = cuda_status() if status is None else status
-    if status.usable:
+    if status.usable and not force_cpu:
         vram_gb = status.memory_mb / 1024 if status.memory_mb else 0.0
         gpu = status.gpu_name or "your NVIDIA GPU"
         if vram_gb == 0.0 or vram_gb >= 7.5:
@@ -1296,9 +1351,10 @@ def recommend_models(
                 f"The largest model that fits comfortably in {vram_gb:.0f} GB.",
             )
     else:
-        cores = cpu_cores if cpu_cores is not None else (os.cpu_count() or 0)
+        # Physical cores: a 2-core / 4-thread laptop is not a 4-core computer.
+        cores = cpu_cores if cpu_cores is not None else physical_cpu_cores()
         ram = system_ram_gb() if ram_gb is None else ram_gb
-        weak = (0 < ram < 7.5) or (0 < cores < 4)
+        weak = ram < _WEAK_RAM_GB or cores < 4  # 0 = unreadable = weak
         if weak:
             fastest = ModelPick(
                 "fastest", "base",
@@ -1352,9 +1408,10 @@ _GPU_SECONDS_PER_AUDIO_SECOND_LARGE = 63.0 / (13 * 60)
 _GPU_MIN_MEMORY_GB = {"large-v3": 7.5, "large-v3-turbo": 3.5}
 
 
-def runs_on_gpu(slug: str, status: CudaStatus) -> bool:
-    """True when ``slug`` is expected to run on the usable NVIDIA GPU of ``status``."""
-    if not status.usable:
+def runs_on_gpu(slug: str, status: CudaStatus, *, force_cpu: bool = False) -> bool:
+    """True when ``slug`` is expected to run on the usable NVIDIA GPU of ``status``
+    (never when the settings pin the CPU)."""
+    if not status.usable or force_cpu:
         return False
     if not status.memory_mb:
         return True  # unknown size: assume it fits, as recommend_models does
@@ -1375,6 +1432,7 @@ def estimate_seconds_per_audio_minute(
     status: CudaStatus,
     *,
     physical_cores: int,
+    force_cpu: bool = False,
 ) -> float | None:
     """Rough decode time for one minute of audio with model ``slug`` on this computer.
 
@@ -1386,7 +1444,7 @@ def estimate_seconds_per_audio_minute(
     cpu = CPU_SECONDS_PER_AUDIO_SECOND.get(slug)
     if cpu is None:
         return None
-    if runs_on_gpu(slug, status):
+    if runs_on_gpu(slug, status, force_cpu=force_cpu):
         large = CPU_SECONDS_PER_AUDIO_SECOND["large-v3"]
         return 60.0 * _GPU_SECONDS_PER_AUDIO_SECOND_LARGE * cpu / large
     slowdown = 1.0
@@ -1485,5 +1543,17 @@ def diagnostics_report() -> str:
     return "\n".join(lines)
 
 
-if __name__ == "__main__":  # pragma: no cover - manual diagnostics entry point
+def main() -> None:
+    """Print :func:`diagnostics_report` as UTF-8, whatever the console's code page.
+
+    Redirected output on Windows defaults to cp1252, which cannot encode a
+    non-Latin user folder name that the report contains.
+    """
+    reconfigure: Any = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is not None:
+        reconfigure(encoding="utf-8", errors="replace")
     print(diagnostics_report())
+
+
+if __name__ == "__main__":  # pragma: no cover - manual diagnostics entry point
+    main()

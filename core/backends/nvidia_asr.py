@@ -89,6 +89,19 @@ def resolve_device(device_cfg: Any, cuda_available: bool) -> str:
     return d
 
 
+def device_index(device: str) -> int:
+    """Pipeline ``device`` argument for a device string: ``cuda`` -> 0, ``cuda:1`` -> 1
+    (the card the user chose), ``cpu`` -> -1. A bad index falls back to card 0."""
+    d = str(device).strip().lower()
+    if not d.startswith("cuda"):
+        return -1
+    _head, _sep, tail = d.partition(":")
+    try:
+        return max(int(tail), 0) if tail else 0
+    except ValueError:
+        return 0
+
+
 def resolve_dtype(dtype_cfg: Any, device: str) -> str:
     """Map the ``nvidia_asr_dtype`` config to ``"float16"`` / ``"float32"``.
 
@@ -283,7 +296,14 @@ class NvidiaAsrBackend(Backend):
         # Ensure transformers/torch/librosa are importable; install on demand
         # (mirrors the openai-whisper / google_cloud_stt on-demand pattern).
         if not _deps_available():
-            from .. import offline
+            from .. import offline, optional_deps
+            if not optional_deps.can_install():
+                # The macOS .app has no pip: say so instead of announcing an
+                # install that cannot run (and then advising "pip install").
+                self._error = optional_deps.FROZEN_INSTALL_MESSAGE
+                if status_cb:
+                    status_cb(self._error)
+                return False
             if offline.is_offline():
                 self._error = offline.message("installing the NVIDIA Parakeet engine")
                 if status_cb:
@@ -344,7 +364,7 @@ class NvidiaAsrBackend(Backend):
         # getattr avoids pyright's "float16 is not exported from torch" and is
         # robust if a future torch renames a dtype.
         torch_dtype = getattr(torch, dtype_name, None)
-        device_arg = 0 if self._device.startswith("cuda") else -1
+        device_arg = device_index(self._device)
 
         if status_cb:
             status_cb(
@@ -461,6 +481,10 @@ class NvidiaAsrBackend(Backend):
                 break
             while paused and paused() and not (cancelled and cancelled()):
                 time.sleep(0.2)
+            if cancelled and cancelled():  # cancelled while paused: no further window
+                if log_cb:
+                    log_cb("Task cancelled")
+                break
 
             audio = _decode_window(audio_path, chunk_start, chunk_end)
             # Unknown-length: a slice past EOF decodes to ~nothing -> stop.

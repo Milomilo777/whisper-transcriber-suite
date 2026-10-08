@@ -230,6 +230,52 @@ def _rm(path: str) -> None:
         pass
 
 
+def _is_shared_folder(path: str, *, top_level: bool) -> bool:
+    """True for a folder several installs add to: no ``__init__.py``, a
+    ``pkgutil`` namespace one, or (top level only) an empty one, as the NVIDIA
+    wheels ship in ``nvidia/``. A package below it (``nvidia/cublas``) is not
+    shared, even with an empty ``__init__.py``: it is replaced as a whole."""
+    if not os.path.isdir(path) or os.path.islink(path):
+        return False
+    init = os.path.join(path, "__init__.py")
+    if not os.path.exists(init):
+        return True
+    try:
+        if os.path.getsize(init) > 2048:
+            return False
+        with open(init, "r", encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    except OSError:
+        return False
+    if not text.strip():
+        return top_level
+    return "extend_path" in text or "declare_namespace" in text
+
+
+def _merge_units(staging: str, final: str, *, top_level: bool = True) -> list[tuple[str, str]]:
+    """``(source, destination)`` pairs that move a staged tree into ``final``.
+
+    A staged top-level entry replaces its destination as a whole (two versions
+    of one package must not mix). A shared folder (:func:`_is_shared_folder`)
+    present on both sides is merged child by child instead: replacing it whole
+    deleted what an earlier install put there (installing ``cuda_runtime``
+    after torch removed ``nvidia/cudnn``).
+    """
+    units: list[tuple[str, str]] = []
+    for name in sorted(os.listdir(staging)):
+        src = os.path.join(staging, name)
+        dst = os.path.join(final, name)
+        if (
+            os.path.isdir(src)
+            and _is_shared_folder(src, top_level=top_level)
+            and _is_shared_folder(dst, top_level=top_level)
+        ):
+            units.extend(_merge_units(src, dst, top_level=False))
+        else:
+            units.append((src, dst))
+    return units
+
+
 def extras_dir() -> str:
     """User-writable dir where on-demand packages are installed."""
     return os.path.join(str(user_cache_dir()), "pylibs")
@@ -445,14 +491,14 @@ def install(
             # The merge copies the staged tree once more.
             shutil.rmtree(staging, ignore_errors=True)
             return False
-        staged_names = os.listdir(staging)
-        # Snapshot the top-level names already present BEFORE this merge so
-        # rollback can tell apart entries THIS install creates from dirs a
-        # sibling feature already installed. 'alignment' and
-        # 'whisper_backend' both pull torch/numpy; if a later install's
-        # torch/ merge fails (e.g. a locked .pyd), the rollback must NOT
-        # delete the torch/numpy the already-installed feature still needs.
-        pre_existing = set(os.listdir(final_target))
+        units = _merge_units(staging, final_target)
+        # Remember which destinations THIS install creates (as opposed to
+        # replaces) so rollback can tell them apart from entries a sibling
+        # feature already installed. 'alignment' and 'whisper_backend' both
+        # pull torch/numpy; if a later install's torch/ merge fails (e.g. a
+        # locked .pyd), the rollback must NOT delete the torch/numpy the
+        # already-installed feature still needs.
+        created = [dst for _src, dst in units if not os.path.lexists(dst)]
         merged_ok = True
         merge_err: Exception | None = None
         # Backups of live dst entries displaced this iteration, keyed by the
@@ -462,11 +508,10 @@ def install(
         # disk-full) can be undone and never leaves a pre-existing shared
         # dir (e.g. torch/) destroyed with no restore path.
         backups: dict[str, str] = {}
-        for name in staged_names:
-            src = os.path.join(staging, name)
-            dst = os.path.join(final_target, name)
-            tmp = os.path.join(final_target, f".{name}.merge-{os.getpid()}")
-            bak = os.path.join(final_target, f".{name}.bak-{os.getpid()}")
+        for src, dst in units:
+            name = os.path.basename(dst)
+            tmp = os.path.join(os.path.dirname(dst), f".{name}.merge-{os.getpid()}")
+            bak = os.path.join(os.path.dirname(dst), f".{name}.bak-{os.getpid()}")
             try:
                 if os.path.exists(tmp):
                     _rm(tmp)
@@ -531,15 +576,13 @@ def install(
                         "A file of this package is in use, often by the app "
                         "itself. Close and reopen the app, then install again."
                     )
-            # Roll back: delete only the top-level entries THIS install
-            # newly created, so is_available() cannot observe a partial
-            # tree — but leave pre-existing shared dirs (e.g. torch/numpy a
-            # sibling feature already installed) untouched, or rolling back
-            # one feature's failed merge would silently break another.
-            for name in staged_names:
-                if name in pre_existing:
-                    continue
-                _rm(os.path.join(final_target, name))
+            # Roll back: delete only the entries THIS install newly created,
+            # so is_available() cannot observe a partial tree — but leave
+            # pre-existing shared dirs (e.g. torch/numpy a sibling feature
+            # already installed) untouched, or rolling back one feature's
+            # failed merge would silently break another.
+            for dst in created:
+                _rm(dst)
             shutil.rmtree(staging, ignore_errors=True)
             return False
         shutil.rmtree(staging, ignore_errors=True)

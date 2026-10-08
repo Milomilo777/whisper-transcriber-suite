@@ -19,7 +19,7 @@ import logging
 import os
 import threading
 import tkinter as tk
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Callable
@@ -35,7 +35,8 @@ logger = logging.getLogger(__name__)
 AUTO_LANGUAGE_LABEL = "Several languages / not sure"
 MODES = (("fast", "Fast"), ("best", "Best quality"))
 
-Probe = Callable[[], tuple[_hw.CudaStatus, int]]
+# (GPU status, physical cores) or (GPU status, physical cores, RAM in GB; 0 = unknown).
+Probe = Callable[[], "tuple[_hw.CudaStatus, int] | tuple[_hw.CudaStatus, int, float]"]
 
 
 def whisper_language_code(codes: str) -> str:
@@ -93,10 +94,12 @@ class QuickStartChoice:
     language: str  # Whisper code; "" = several languages / not sure
     mode: str  # "fast" or "best"
     output_folder: str
+    ram_gb: float = 0.0  # this computer's memory; 0 = unknown (no cap)
 
     @property
     def model_slug(self) -> str:
-        return recommended_model(self.language, self.mode)
+        """The language's measured pick, one size down when the memory is too small."""
+        return _hw.fit_model_to_ram(recommended_model(self.language, self.mode), self.ram_gb)
 
 
 def apply_choice(config: dict[str, Any], choice: QuickStartChoice | None) -> None:
@@ -123,8 +126,8 @@ def apply_choice(config: dict[str, Any], choice: QuickStartChoice | None) -> Non
         config["hub_folder"] = _hub.normalise_hub_path(str(_hub.default_hub_folder()))
 
 
-def _probe_hardware() -> tuple[_hw.CudaStatus, int]:
-    return _hw.cuda_status(), _hw.physical_cpu_cores()
+def _probe_hardware() -> tuple[_hw.CudaStatus, int, float]:
+    return _hw.cuda_status(), _hw.physical_cpu_cores(), _hw.system_ram_gb()
 
 
 class QuickStartDialog(tk.Toplevel):
@@ -168,6 +171,8 @@ class QuickStartDialog(tk.Toplevel):
         self._on_done = on_done
         self._closed = False
         self._hardware: tuple[_hw.CudaStatus, int] | None = None
+        self._ram_gb = 0.0
+        self._force_cpu = False
         self._result: dict[str, Any] = {}
 
         self._languages = language_options()
@@ -280,6 +285,7 @@ class QuickStartDialog(tk.Toplevel):
             language=self.language_code(),
             mode=self.mode_var.get(),
             output_folder=self.folder_var.get().strip(),
+            ram_gb=self._ram_gb,
         )
 
     def _refresh_details(self) -> None:
@@ -287,20 +293,30 @@ class QuickStartDialog(tk.Toplevel):
 
         language = self.language_code()
         for mode, _title in MODES:
-            slug = recommended_model(language, mode)
+            wanted = recommended_model(language, mode)
+            slug = _hw.fit_model_to_ram(wanted, self._ram_gb)
             parts = [short_model_name(self._config, slug)]
             size = approx_download_size_text(self._config, slug)
             if size:
                 parts.append(f"{size} download")
             if self._hardware is not None:
                 status, cores = self._hardware
-                seconds = _hw.estimate_seconds_per_audio_minute(slug, status, physical_cores=cores)
+                seconds = _hw.estimate_seconds_per_audio_minute(
+                    slug, status, physical_cores=cores, force_cpu=self._force_cpu,
+                )
                 if seconds is not None:
                     parts.append(f"{format_per_minute(seconds)} per minute of audio")
+            if slug != wanted:
+                parts.append(f"sized for this computer's {self._ram_gb:.0f} GB of memory")
             self.mode_detail_vars[mode].set(" · ".join(parts))
 
     def _hardware_text(self, status: _hw.CudaStatus, cores: int) -> str:
         where = f"{cores}-core processor" if cores else "processor"
+        if self._force_cpu:
+            return (
+                f"The settings run transcription on this computer's {where}, so the times "
+                "are for it (Advanced settings > Re-detect hardware changes that)."
+            )
         if status.usable:
             gpu = status.gpu_name or "your NVIDIA GPU"
             memory = f" ({status.memory_mb / 1024:.0f} GB)" if status.memory_mb else ""
@@ -324,6 +340,7 @@ class QuickStartDialog(tk.Toplevel):
 
     def _check(self, probe: Probe) -> None:
         try:
+            self._force_cpu = _hw.cpu_forced(self._config)
             self._result["done"] = probe()
         except Exception as e:  # noqa: BLE001
             logger.exception("Quick start hardware check failed")
@@ -339,7 +356,8 @@ class QuickStartDialog(tk.Toplevel):
         if "done" not in self._result:
             self._poll_id = self.after(100, self._poll)
             return
-        status, cores = self._result["done"]
+        status, cores, *rest = self._result["done"]
+        self._ram_gb = float(rest[0]) if rest else 0.0
         self._hardware = (status, cores)
         self.hardware_var.set(self._hardware_text(status, cores))
         self._refresh_details()
@@ -371,7 +389,7 @@ class QuickStartDialog(tk.Toplevel):
             # app's working folder.
             folder = os.path.abspath(os.path.expanduser(choice.output_folder))
             os.makedirs(folder, exist_ok=True)
-            choice = QuickStartChoice(choice.language, choice.mode, folder)
+            choice = replace(choice, output_folder=folder)
         except (OSError, ValueError) as e:  # ValueError: e.g. a NUL character
             messagebox.showwarning(
                 "Folder unavailable",

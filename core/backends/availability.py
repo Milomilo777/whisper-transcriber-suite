@@ -228,6 +228,33 @@ def _import_transformers() -> None:
         import transformers  # type: ignore  # noqa: F401
 
 
+def _nvidia_asr_missing_status() -> EngineStatus:
+    """transformers is absent: installable on first use, except in a frozen
+    build (the macOS .app) that has no pip."""
+    from .. import optional_deps
+
+    if not optional_deps.can_install():
+        return EngineStatus(
+            "nvidia_asr", False, optional_deps.FROZEN_INSTALL_MESSAGE, blocked=True,
+        )
+    return EngineStatus(
+        "nvidia_asr",
+        False,
+        "transformers + torch install on first use",
+    )
+
+
+def _nvidia_asr_light_status() -> EngineStatus:
+    """Cheap check for the always-on status line: the package is on disk (no import)."""
+    import importlib.util
+
+    try:
+        have = importlib.util.find_spec("transformers") is not None
+    except Exception:  # noqa: BLE001 -- find_spec can raise on broken installs
+        have = False
+    return EngineStatus("nvidia_asr", True, "") if have else _nvidia_asr_missing_status()
+
+
 def _nvidia_asr_status(cfg: Mapping[str, Any]) -> EngineStatus:
     # Local transformers backend: ready once the transformers package is
     # importable (it pulls torch). Both install on first use, so a fresh
@@ -248,11 +275,7 @@ def _nvidia_asr_status(cfg: Mapping[str, Any]) -> EngineStatus:
     except Exception:  # noqa: BLE001 — find_spec can raise on broken installs
         have = False
     if not have:
-        return EngineStatus(
-            "nvidia_asr",
-            False,
-            "transformers + torch install on first use",
-        )
+        return _nvidia_asr_missing_status()
     try:
         _import_transformers()
     except Exception as e:  # noqa: BLE001
@@ -325,6 +348,8 @@ def engine_status(value: Any, cfg: Mapping[str, Any], *, deep: bool = True) -> E
             return _cloud_stt_status(cfg)
         if engine == "faster_whisper":
             return _faster_whisper_status(cfg)
+        if engine == "nvidia_asr":
+            return _nvidia_asr_light_status()
         return EngineStatus(engine, True, "")
     probe = _PROBES.get(engine)
     return probe(cfg) if probe else EngineStatus(engine, True, "")

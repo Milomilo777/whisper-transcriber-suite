@@ -18,25 +18,20 @@ Layout:
   |  +------+---------------------------------+-------------+ |
   |  Selected tier: NVIDIA CUDA (float16)                     |
   |  (why an NVIDIA GPU cannot be used yet + how to fix it)   |
-  |  [ Re-probe ] [ Benchmark ] [ Copy diagnostics ]          |
+  |  [ Re-probe ] [ Copy diagnostics ]                        |
   |  [ Install GPU support ]  (only when that is the fix)     |
   |                                                           |
   |                    [ Cancel ] [ Save and use ]            |
   +----------------------------------------------------------+
 
-Benchmark is opt-in via a button — it loads the in-process whisper
-model on the chosen tier and measures wall time on a 5-second
-silent clip generated through bundled ffmpeg. Skipping the
-benchmark on first launch keeps the wizard snappy.
+There is no speed benchmark here: transcription runs in a worker
+process, so the GUI process has no loaded model to time, and a timing
+on a silent clip says nothing about the tier being saved.
 """
 from __future__ import annotations
 
 import logging
-import os
-import subprocess
-import tempfile
 import threading
-import time
 import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Callable, Optional
@@ -46,7 +41,6 @@ from app.theme import tokens
 from app.widgets.error_dialog import show_error
 from core import hardware as _hw
 from core import offline
-from core.paths import bundled_binary
 
 if TYPE_CHECKING:
     from app.app import App
@@ -54,8 +48,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-
-_BENCHMARK_SECONDS = 5
 
 # Tree iid of the informational "NVIDIA CUDA — needs setup" row; not a tier.
 _CUDA_INFO_ROW = "cuda_unusable"
@@ -86,7 +78,9 @@ class HardwareWizard(tk.Toplevel):
         self._cuda_status: _hw.CudaStatus | None = None
         self._busy: bool = False
         self._selected_idx: int = -1
-        self._benchmark_rtf: float | None = None
+        # True once the user clicked a tier; the pre-selected automatic pick
+        # is not a choice (see _save_and_close).
+        self._user_picked: bool = False
         # Generation token: each _reprobe bumps it; a result from a superseded
         # probe (stale token) is ignored.
         self._probe_seq: int = 0
@@ -141,11 +135,6 @@ class HardwareWizard(tk.Toplevel):
             anchor="w", pady=(6, 0)
         )
 
-        self.benchmark_var = tk.StringVar(value="")
-        ttk.Label(body, textvariable=self.benchmark_var, foreground=tokens.themed(tokens.SUCCESS_STRONG)).pack(
-            anchor="w"
-        )
-
         # Why a detected NVIDIA GPU cannot be used yet, and what fixes it
         # (core.hardware.cuda_status). Before this line existed the wizard
         # just listed "CPU" with no explanation (GitHub issue #7).
@@ -159,11 +148,6 @@ class HardwareWizard(tk.Toplevel):
         tools.pack(fill="x", pady=(8, 4))
         self.reprobe_btn = ttk.Button(tools, text="Re-probe", command=self._reprobe)
         self.reprobe_btn.pack(side="left")
-        self.bench_btn = ttk.Button(
-            tools, text=f"Run {_BENCHMARK_SECONDS} s benchmark",
-            command=self._run_benchmark,
-        )
-        self.bench_btn.pack(side="left", padx=(8, 0))
         self.diag_btn = ttk.Button(
             tools, text="Copy diagnostics", command=self._copy_diagnostics,
         )
@@ -303,13 +287,12 @@ class HardwareWizard(tk.Toplevel):
         )
 
     def _set_buttons_enabled(self, enabled: bool) -> None:
-        """Toggle Re-probe / Save / Benchmark while a probe is in flight."""
+        """Toggle Re-probe / Save / Install while a probe is in flight."""
         flag = "!disabled" if enabled else "disabled"
         self._busy = not enabled
         for btn in (
             getattr(self, "reprobe_btn", None),
             getattr(self, "save_btn", None),
-            getattr(self, "bench_btn", None),
             getattr(self, "install_btn", None),
         ):
             if btn is None:
@@ -318,6 +301,20 @@ class HardwareWizard(tk.Toplevel):
                 btn.state([flag])
             except tk.TclError:
                 pass
+        if enabled:
+            self._sync_save_button()
+
+    def _sync_save_button(self) -> None:
+        """Save is off for a tier whose backend is not bundled: such a choice
+        is ignored by the device pick, so saving it would only mislead."""
+        if self._busy:
+            return
+        idx = self._selected_idx
+        usable = 0 <= idx < len(self._tiers) and self._tiers[idx].backend == "faster_whisper"
+        try:
+            self.save_btn.state(["!disabled" if usable else "disabled"])
+        except tk.TclError:
+            pass
 
     def _refresh_tree(self) -> None:
         self.tree.delete(*self.tree.get_children())
@@ -398,6 +395,7 @@ class HardwareWizard(tk.Toplevel):
                 pass
         finally:
             self._selecting = False
+        self._sync_save_button()
 
     def _on_select(self, _event: tk.Event) -> None:
         # Ignore the <<TreeviewSelect>> we triggered ourselves from
@@ -414,12 +412,14 @@ class HardwareWizard(tk.Toplevel):
             if sel == _CUDA_INFO_ROW and self._cuda_status is not None:
                 self.status_var.set(self._cuda_status.summary())
             return
+        self._user_picked = True
         self._select_index(idx)
         if 0 <= idx < len(self._tiers):
             t = self._tiers[idx]
+            note = "" if t.backend == "faster_whisper" else " -- its backend is not bundled, so it cannot be saved"
             self.status_var.set(
                 f"Selected: {t.label}  "
-                f"(device={t.device}, compute_type={t.compute_type})"
+                f"(device={t.device}, compute_type={t.compute_type}){note}"
             )
 
     # ---------- diagnostics / GPU runtime install ----------------------
@@ -490,6 +490,9 @@ class HardwareWizard(tk.Toplevel):
             return
         from core import optional_deps
 
+        if offline.is_offline():
+            self.status_var.set(offline.message("installing GPU support"))
+            return
         if not messagebox.askyesno(
             "Install GPU support",
             "Your NVIDIA GPU needs NVIDIA's cuBLAS library, which the graphics "
@@ -543,137 +546,6 @@ class HardwareWizard(tk.Toplevel):
 
         self._run_in_background(_work, _done)
 
-    # ---------- benchmark ----------------------------------------------
-
-    def _run_benchmark(self) -> None:
-        """Time the in-process WhisperModel on a 5 s silent clip.
-
-        The model must already be loaded by the main app (transcriber
-        module global ``MODEL``). We re-use it as-is — re-loading on
-        a different device here would clobber the user's session.
-        """
-        if not (0 <= self._selected_idx < len(self._tiers)):
-            messagebox.showinfo(
-                "Pick a tier", "Select a tier in the table first.", parent=self
-            )
-            return
-        tier = self._tiers[self._selected_idx]
-        if tier.backend != "faster_whisper":
-            messagebox.showinfo(
-                "Benchmark unavailable",
-                "Benchmark only runs on the bundled faster_whisper backend; "
-                "the chosen tier needs a different backend.",
-                parent=self,
-            )
-            return
-        try:
-            from core import transcriber as _t
-        except Exception as e:  # noqa: BLE001
-            show_error(
-                self, "Benchmark failed",
-                "Could not load the transcription module needed to benchmark.",
-                detail=str(e),
-            )
-            return
-        if not _t.is_model_ready() or _t.MODEL is None:
-            messagebox.showinfo(
-                "Model not loaded",
-                "Load the Whisper model first by starting (and cancelling) "
-                "one transcription, then re-open this wizard.",
-                parent=self,
-            )
-            return
-
-        self.bench_btn.state(["disabled"])
-        self.benchmark_var.set(f"Benchmarking on a {_BENCHMARK_SECONDS} s silent clip…")
-        threading.Thread(
-            target=self._benchmark_worker, args=(tier,), daemon=True,
-        ).start()
-
-    def _benchmark_worker(self, tier: _hw.Tier) -> None:
-        rtf: float | None = None
-        err: str | None = None
-        try:
-            clip = self._make_silent_clip(_BENCHMARK_SECONDS)
-            try:
-                from core import transcriber as _t
-                start = time.time()
-                segments, _info = _t.MODEL.transcribe(clip, vad_filter=False)
-                # The faster-whisper generator is lazy; force materialise.
-                _ = list(segments)
-                wall = max(time.time() - start, 1e-6)
-                rtf = wall / float(_BENCHMARK_SECONDS)
-            finally:
-                try:
-                    os.unlink(clip)
-                except OSError:
-                    pass
-        except Exception as e:  # noqa: BLE001
-            err = str(e)
-        self._benchmark_rtf = rtf
-        # Bounce back to the Tk main thread via the App's main-thread
-        # queue. Calling self.after(0, ...) directly from this daemon
-        # thread raises RuntimeError on Python 3.14 (and is undefined
-        # behaviour on earlier 3.x).
-        if self.app is not None:
-            self.app.post_to_main(lambda: self._benchmark_done(tier, rtf, err))
-        else:
-            # No App reference (rare; only happens when the wizard is
-            # opened standalone, e.g. from a test). Fall back to the
-            # legacy after() hop — works on CPython 3.13 and earlier.
-            try:
-                self.after(0, lambda: self._benchmark_done(tier, rtf, err))
-            except Exception:  # noqa: BLE001
-                logger.exception("Benchmark done callback failed to schedule")
-
-    def _benchmark_done(self, tier: _hw.Tier, rtf: float | None, err: str | None) -> None:
-        try:
-            self.bench_btn.state(["!disabled"])
-        except tk.TclError:
-            return
-        if err is not None:
-            self.benchmark_var.set(f"Benchmark failed: {err}")
-            return
-        if rtf is None:
-            self.benchmark_var.set("Benchmark produced no result.")
-            return
-        speedup = (1.0 / rtf) if rtf > 0 else float("inf")
-        self.benchmark_var.set(
-            f"Benchmark on {tier.label}: RTF={rtf:.3f} ({speedup:.1f}× real-time)"
-        )
-
-    def _make_silent_clip(self, seconds: int) -> str:
-        """Render a temporary 16 kHz mono silent WAV via bundled ffmpeg."""
-        ffmpeg = bundled_binary("ffmpeg")
-        fd, out_path = tempfile.mkstemp(prefix="hw_bench_", suffix=".wav")
-        os.close(fd)
-        cmd = [
-            ffmpeg, "-y", "-f", "lavfi",
-            "-i", f"anullsrc=channel_layout=mono:sample_rate=16000",
-            "-t", str(int(seconds)),
-            "-acodec", "pcm_s16le",
-            out_path,
-        ]
-        kwargs: dict[str, object] = {
-            "stdout": subprocess.DEVNULL,
-            "stderr": subprocess.DEVNULL,
-            "timeout": 30,
-        }
-        if os.name == "nt":
-            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-        try:
-            subprocess.run(cmd, check=True, **kwargs)  # type: ignore[arg-type]
-        except Exception:
-            # mkstemp already created the output file; a failed ffmpeg run
-            # (bundled binary missing, bad args) would otherwise leave it
-            # behind on every benchmark attempt.
-            try:
-                os.unlink(out_path)
-            except OSError:
-                pass
-            raise
-        return out_path
-
     # ---------- save / close -------------------------------------------
 
     def _save_and_close(self) -> None:
@@ -683,8 +555,33 @@ class HardwareWizard(tk.Toplevel):
             )
             return
         tier = self._tiers[self._selected_idx]
+        if tier.backend != "faster_whisper":
+            messagebox.showinfo(
+                "Cannot be used yet",
+                f"{tier.label}\n\nThis needs a backend that is not bundled, so the "
+                "app would ignore it. Pick a tier marked ready.",
+                parent=self,
+            )
+            return
+        status = self._cuda_status
+        if (
+            not self._user_picked
+            and tier.device == "cpu"
+            and status is not None
+            and status.gpu_present
+        ):
+            # Nothing was chosen and the only reason for CPU is that the GPU is
+            # unusable right now. Saving "cpu" would pin it for good, so a later
+            # driver or runtime fix would never reach the automatic CUDA pick.
+            if self.app is not None:
+                self.app.log(
+                    "Hardware: no tier chosen and the NVIDIA GPU is not usable yet; "
+                    "nothing saved, the automatic pick stays in charge."
+                )
+            self._on_close()
+            return
         try:
-            path = _hw.save_hardware_choice(tier, benchmark_rtf=self._benchmark_rtf)
+            path = _hw.save_hardware_choice(tier)
         except Exception as e:  # noqa: BLE001
             show_error(
                 self, "Save failed",
