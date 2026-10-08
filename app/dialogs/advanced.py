@@ -41,6 +41,7 @@ from app.domain.cookies import (
 )
 from app.dpi import fit_size, px, scaled, work_area
 from app.theme import tokens
+from app.widgets import tray
 from app.widgets.tooltip import (
     bind_tooltip,
     collapsible_section,
@@ -1600,11 +1601,17 @@ class AdvancedDialog(tk.Toplevel):
             "the tray icon to bring the window back, or use its right-"
             "click menu to Exit for real.",
         ).pack(side="left")
-        if sys.platform == "darwin":
-            # System tray is unsupported on macOS (TrayController bails
-            # out for darwin); disable the checkbox so it can't be
-            # enabled and silently do nothing.
+        # Where the tray cannot work (macOS, or pystray / Pillow missing)
+        # the checkbox is disabled and says why, instead of offering a
+        # switch that would silently do nothing.
+        tray_reason = tray.unavailable_reason()
+        self._tray_supported = not tray_reason
+        if tray_reason:
             tray_check.state(["disabled"])
+            ttk.Label(
+                tray_row, text=tray_reason,
+                foreground=tokens.themed(tokens.TEXT_MUTED),
+            ).pack(side="left", padx=(8, 0))
         ttk.Checkbutton(
             misc, text="Send usage statistics (on by default; also in the Help menu)",
             variable=self._telemetry_opt_in,
@@ -2160,7 +2167,10 @@ class AdvancedDialog(tk.Toplevel):
             value = bool(var.get())
             if at_open.get(key) != value:
                 cfg[key] = value
-        cfg["minimise_to_tray"] = bool(self._minimise_to_tray.get())
+        if getattr(self, "_tray_supported", True):
+            # A disabled option keeps what config.json holds (it may be a
+            # copy from another machine) instead of overwriting it.
+            cfg["minimise_to_tray"] = bool(self._minimise_to_tray.get())
         cfg[tts_plan.NO_LIMIT_KEY] = bool(self._tts_no_text_limit.get())
         cfg[subtitle_edit.CONFIG_KEY] = (self._subtitle_edit_path.get() or "").strip()
         new_watched = (self._watched_folder.get() or "").strip()

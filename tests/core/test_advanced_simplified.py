@@ -641,3 +641,75 @@ def test_a_retry_after_a_failed_save_still_applies_the_changes(monkeypatch) -> N
     adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
     assert calls == {"save": 2, "stop": 1, "restart": 1}
     assert cfg["transcribe_backend"] != "faster_whisper"
+
+
+# ------------------------------------------------- minimise-to-tray option
+
+
+def test_tray_unavailable_reason_on_macos_and_without_libs(monkeypatch) -> None:
+    from app.widgets import tray
+
+    monkeypatch.setattr(tray.sys, "platform", "darwin")
+    assert "macOS" in tray.unavailable_reason()
+    monkeypatch.setattr(tray.sys, "platform", "win32")
+    monkeypatch.setattr(tray, "is_available", lambda: False)
+    monkeypatch.setattr(tray, "availability_reason", lambda: "Pillow Python package not installed")
+    assert tray.unavailable_reason() == "Pillow Python package not installed"
+    monkeypatch.setattr(tray, "is_available", lambda: True)
+    assert tray.unavailable_reason() == ""
+
+
+def _tray_check(dlg: Any) -> Any:
+    from tkinter import ttk
+
+    return next(
+        w for w in _all_widgets(dlg)
+        if isinstance(w, ttk.Checkbutton)
+        and str(w.cget("text")).startswith("Minimise to system tray")
+    )
+
+
+def _label_texts(dlg: Any) -> list[str]:
+    from tkinter import ttk
+
+    return [str(w.cget("text")) for w in _all_widgets(dlg) if isinstance(w, ttk.Label)]
+
+
+def test_tray_option_is_disabled_with_a_reason_when_the_tray_cannot_work(
+    make_dialog, monkeypatch,
+) -> None:
+    from app.widgets import tray
+
+    monkeypatch.setattr(tray, "unavailable_reason", lambda: "Not available on macOS.")
+    dlg = make_dialog()
+    assert _tray_check(dlg).instate(["disabled"])
+    assert "Not available on macOS." in _label_texts(dlg)
+
+
+def test_tray_option_stays_usable_when_the_tray_works(make_dialog, monkeypatch) -> None:
+    from app.widgets import tray
+
+    monkeypatch.setattr(tray, "unavailable_reason", lambda: "")
+    dlg = make_dialog()
+    assert not _tray_check(dlg).instate(["disabled"])
+
+
+def test_save_keeps_the_stored_tray_choice_when_the_option_is_disabled(monkeypatch) -> None:
+    from app.dialogs import advanced as adv
+
+    monkeypatch.setattr(adv, "save_config", lambda _cfg: None)
+    cfg = _base_cfg()
+    cfg["minimise_to_tray"] = True  # e.g. a config.json copied from Windows
+    dlg = _fake_dialog(_fake_app(cfg), _tray_supported=False)
+    adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
+    assert cfg["minimise_to_tray"] is True
+
+
+def test_save_writes_the_tray_choice_when_the_option_is_usable(monkeypatch) -> None:
+    from app.dialogs import advanced as adv
+
+    monkeypatch.setattr(adv, "save_config", lambda _cfg: None)
+    cfg = _base_cfg()
+    dlg = _fake_dialog(_fake_app(cfg), _tray_supported=True, _minimise_to_tray=_V(True))
+    adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
+    assert cfg["minimise_to_tray"] is True

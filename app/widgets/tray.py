@@ -52,6 +52,20 @@ def availability_reason() -> str:
     return ""
 
 
+def unavailable_reason() -> str:
+    """Short user-facing reason the tray cannot work here; "" when it can.
+
+    Mirrors ``TrayController._libs_available``: macOS never gets a tray
+    (pystray's AppKit loop needs the main thread that Tk owns), and every
+    platform needs pystray + Pillow.
+    """
+    if sys.platform == "darwin":
+        return "Not available on macOS: the app stays in the Dock instead."
+    if not is_available():
+        return availability_reason() or "The tray icon libraries are missing."
+    return ""
+
+
 def _build_icon_image(active: bool, size: int = 64) -> Any:
     """Render a flat-colour circle for the tray icon.
 
