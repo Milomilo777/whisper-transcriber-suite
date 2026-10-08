@@ -303,6 +303,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Quitting during a job.** On macOS, Cmd+Q (and the app-menu and Dock Quit) now ask "Exit with queued
+  tasks?" like Windows instead of dropping a running transcription. A confirmed exit is recorded as
+  closed on purpose, so the next start offers to resume it as "interrupted when the app was closed"
+  rather than blaming a crash, and a worker whose app has gone logs one line instead of a
+  `BrokenPipeError` traceback.
+
 - **Hardware detection and model advice.** GPUs without efficient float16 (GTX 10-series) now get
   an NVIDIA CUDA (int8) tier in the Hardware wizard, so Apply no longer pins the CPU over the
   automatic CUDA pick. Applying the untouched list while an NVIDIA GPU is unusable saves nothing

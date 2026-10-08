@@ -57,7 +57,7 @@ from core import offline, subtitle_edit
 from app.theme import script_fonts, theme_colours, tokens
 from core._proc import kill_process_tree
 from core.config import load_config, save_config
-from core.history import HistoryDB
+from core.history import EXIT_REASON, HistoryDB
 from core.hub import voice_clone_tab_enabled
 from core.logging_setup import get_ui_logger, open_log_folder, setup_logging
 from core.paths import bin_dir as _resource_bin_dir
@@ -132,6 +132,43 @@ def _inst_attr(obj: Any, name: str, default: Any = None) -> Any:
     "was this attribute actually assigned yet?".
     """
     return obj.__dict__.get(name, default)
+
+
+def _resume_prompt_text(rows: list[dict[str, Any]]) -> str:
+    """The resume offer's sentence, worded after why the jobs stopped.
+
+    Rows ended by a confirmed exit carry ``EXIT_REASON``; a crash leaves no
+    error text. All closed on purpose: say so (a quit is not a crash); mixed:
+    stay neutral.
+    """
+    n = len(rows)
+    closed = sum(1 for r in rows if (r.get("error") or "") == EXIT_REASON)
+    # Pluralise verb + noun together so the message reads
+    # correctly for both n=1 and n>1.
+    noun = "transcription" if n == 1 else "transcriptions"
+    verb = "was" if n == 1 else "were"
+    pronoun = "it" if n == 1 else "them"
+    if closed == n:
+        cause = "interrupted when the app was closed"
+    elif closed == 0:
+        cause = "interrupted by a previous crash"
+    else:
+        cause = "interrupted the last time the app ran"
+    return f"We found {n} {noun} that {verb} {cause}. Resume {pronoun} now?"
+
+
+def _record_exit_interruptions(history: Any, active: list[Any]) -> None:
+    """Mark this app's running transcription rows as ended by a confirmed exit."""
+    if history is None:
+        return
+    ids = [int(getattr(t, "history_id", 0) or 0) for t in active]
+    try:
+        n = history.mark_transcriptions_closed_by_user(ids)
+    except Exception:  # noqa: BLE001
+        logger.warning("Could not record the exit on the running jobs", exc_info=True)
+        return
+    if n:
+        logger.info("Exit confirmed with %d running transcription(s)", n)
 
 
 def _resolve_theme(name: str) -> str:
@@ -989,6 +1026,7 @@ class App(tk.Tk):
         # Ctrl+Q always exits — same convention as File→Exit.
         self.bind("<Control-q>", lambda _e: self._force_exit())
         self.bind("<Control-Q>", lambda _e: self._force_exit())
+        self._install_quit_handler()
 
         # Opt-in drag-and-drop on the main window. tkinterdnd2 is in
         # requirements.txt but the desktop app stays usable even if
@@ -1915,6 +1953,23 @@ class App(tk.Tk):
             logger.exception("Failed to save theme preference")
             self.log(f"Could not save theme setting: {e}")
 
+    def _install_quit_handler(self) -> None:
+        """macOS: send Cmd+Q, the app-menu Quit and the Dock Quit through the
+        same exit path as File -> Exit.
+
+        Tk's Aqua default for ``::tk::mac::Quit`` calls ``exit`` at once, so a
+        running transcription was dropped with no question (Windows asks via
+        ``on_exit``). Other windowing systems have no such command; Ctrl+Q and
+        the window's close button are bound separately.
+        """
+        try:
+            aqua = str(self.tk.call("tk", "windowingsystem")) == "aqua"
+        except tk.TclError:
+            logger.debug("Could not query the windowing system", exc_info=True)
+            return
+        if aqua:
+            self.createcommand("::tk::mac::Quit", self._force_exit)
+
     def _force_exit(self) -> None:
         """Bypass the minimise-to-tray redirect and exit immediately.
 
@@ -1945,16 +2000,26 @@ class App(tk.Tk):
                 pass
             return
 
+        # A second Cmd+Q / Ctrl+Q while a question is open must not stack
+        # another dialog.
+        if getattr(self, "_exit_prompt_open", False):
+            return
+
         active = [t for t in self.queue if t.status not in ("finished", "cancelled", "error")]
         active_downloads = [
             t for t in self.download_queue if t.status not in ("finished", "cancelled", "error")
         ]
         if active or active_downloads:
-            if not messagebox.askyesno(
-                "Exit with queued tasks",
-                "There are queued or running tasks. Exit anyway?",
-                parent=self,
-            ):
+            self._exit_prompt_open = True
+            try:
+                confirmed = messagebox.askyesno(
+                    "Exit with queued tasks",
+                    "There are queued or running tasks. Exit anyway?",
+                    parent=self,
+                )
+            finally:
+                self._exit_prompt_open = False
+            if not confirmed:
                 # Declining must NOT freeze the app. _closing is the sole
                 # gate that lets loop()/_drain_main_calls/_drain_watched_paths
                 # re-arm their after() callbacks; setting it before this
@@ -1974,11 +2039,14 @@ class App(tk.Tk):
         # The live transcript exists only in the Live tab's widget: offer
         # to save it (Cancel, or cancelling the save dialog, keeps the app
         # open; anything that arrives after this is autosaved at teardown).
+        self._exit_prompt_open = True
         try:
             keep_open = not live_save_before_exit(self)
         except Exception:  # noqa: BLE001
             logger.exception("Live transcript exit check failed")
             keep_open = False
+        finally:
+            self._exit_prompt_open = False
         if keep_open:
             self._exit_from_tray = False
             return
@@ -2040,6 +2108,10 @@ class App(tk.Tk):
             # Stop the in-process web / LAN server so its socket + worker
             # thread don't linger after the window closes.
             self._shutdown_server_on_exit()
+            # The user confirmed: record these jobs as closed on purpose, so the
+            # next launch does not call them a crash. Their rows are still
+            # 'running'; the resume offer and the checkpoint stay as they are.
+            _record_exit_interruptions(getattr(self, "history", None), active)
             try:
                 self.transcription_service.stop_all()
             except Exception:  # noqa: BLE001
@@ -5976,15 +6048,9 @@ class App(tk.Tk):
                 seen.add(p)
                 unique.append(r)
         n = len(unique)
-        # Pluralise verb + noun together so the message reads
-        # correctly for both n=1 and n>1.
-        noun = "transcription" if n == 1 else "transcriptions"
-        verb = "was" if n == 1 else "were"
-        pronoun = "it" if n == 1 else "them"
         if not messagebox.askyesno(
             "Resume interrupted transcriptions?",
-            f"We found {n} {noun} that {verb} interrupted by a "
-            f"previous crash. Resume {pronoun} now?",
+            _resume_prompt_text(unique),
             parent=self,
         ):
             # User declined — clear the interrupted flag on the rows we
