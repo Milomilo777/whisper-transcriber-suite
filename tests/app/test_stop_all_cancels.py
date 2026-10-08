@@ -175,3 +175,112 @@ def test_a_plain_stop_all_keeps_sending_only_the_shutdown(
     svc.stop_all()
 
     assert [m["action"] for _w, m in sent] == ["shutdown"]
+
+
+# ------------------------------------------------------------- the longer exit grace
+
+
+class _LateProc:
+    """A worker that needs ``exit_after`` seconds to finish its task and exit."""
+
+    def __init__(self, exit_after: float) -> None:
+        import time
+
+        self.pid = 5
+        self._end = time.monotonic() + exit_after
+        self.terminated = False
+
+    def poll(self) -> int | None:
+        import time
+
+        return 0 if (self.terminated or time.monotonic() >= self._end) else None
+
+    def wait(self, timeout: float | None = None) -> int:
+        import subprocess
+        import time
+
+        left = self._end - time.monotonic()
+        if self.terminated or left <= 0:
+            return 0
+        if timeout is not None and timeout < left:
+            time.sleep(timeout)
+            raise subprocess.TimeoutExpired("worker", timeout)
+        time.sleep(left)
+        return 0
+
+
+def _late_worker(task: Any, exit_after: float) -> tuple[dict[str, Any], _LateProc]:
+    proc = _LateProc(exit_after)
+    worker = _worker(task)
+    worker["process"] = proc
+    return worker, proc
+
+
+def _watch_terminate(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+    killed: list[Any] = []
+
+    def _kill(proc: _LateProc, force: bool = False) -> None:
+        killed.append(proc)
+        proc.terminated = True
+
+    monkeypatch.setattr(ts_mod, "kill_process_tree", _kill)
+    return killed
+
+
+def test_a_busy_worker_gets_the_longer_grace_on_exit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A job in its last diarisation / alignment step can still finish or checkpoint."""
+    svc, app = _service()
+    worker, proc = _late_worker(_Task(), exit_after=0.8)
+    app.workers.append(worker)
+    _capture(svc, monkeypatch)
+    killed = _watch_terminate(monkeypatch)
+    monkeypatch.setattr(TranscriptionService, "STOP_GRACE_S", 0.2)
+    monkeypatch.setattr(TranscriptionService, "EXIT_CANCEL_GRACE_S", 3.0)
+
+    svc.stop_all(cancel_running=True)
+
+    assert killed == []  # it left on its own inside the longer grace
+
+
+def test_the_longer_grace_is_still_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    import time
+
+    svc, app = _service()
+    worker, proc = _late_worker(_Task(), exit_after=60.0)
+    app.workers.append(worker)
+    _capture(svc, monkeypatch)
+    killed = _watch_terminate(monkeypatch)
+    monkeypatch.setattr(TranscriptionService, "STOP_GRACE_S", 0.2)
+    monkeypatch.setattr(TranscriptionService, "EXIT_CANCEL_GRACE_S", 0.6)
+    monkeypatch.setattr(TranscriptionService, "STOP_TERMINATE_S", 0.2)
+
+    started = time.monotonic()
+    svc.stop_all(cancel_running=True)
+
+    assert killed == [proc]  # terminated once the longer grace ran out
+    assert time.monotonic() - started < 3.0
+
+
+def test_other_stop_all_callers_and_idle_workers_keep_the_short_grace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    svc, app = _service()
+    busy, proc = _late_worker(_Task(), exit_after=0.8)
+    app.workers.append(busy)
+    _capture(svc, monkeypatch)
+    killed = _watch_terminate(monkeypatch)
+    monkeypatch.setattr(TranscriptionService, "STOP_GRACE_S", 0.2)
+    monkeypatch.setattr(TranscriptionService, "EXIT_CANCEL_GRACE_S", 3.0)
+    monkeypatch.setattr(TranscriptionService, "STOP_TERMINATE_S", 0.2)
+
+    svc.stop_all()  # the engine-switch caller: no cancel, so no longer grace
+
+    assert killed == [proc]
+
+    # An idle worker that ignores the shutdown is not waited for 15 s either.
+    app.workers.clear()
+    idle, idle_proc = _late_worker(None, exit_after=0.8)
+    app.workers.append(idle)
+    killed.clear()
+    svc.stop_all(cancel_running=True)
+    assert killed == [idle_proc]

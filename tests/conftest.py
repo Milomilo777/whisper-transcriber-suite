@@ -206,3 +206,17 @@ def _work_offline_off(monkeypatch):
     yield
     if not guard_was_installed:
         _offline.uninstall_network_guard()
+
+
+@pytest.fixture(autouse=True)
+def _reset_install_stop_flag():
+    """``App.on_exit`` asks every package install to stop for good (process-wide).
+
+    A test that runs the real exit path must not make the next test's install() cancel.
+    """
+    yield
+    try:
+        import core.optional_deps as _od
+    except Exception:  # noqa: BLE001 - an import failure here is unrelated
+        return
+    _od._stop_requested.clear()

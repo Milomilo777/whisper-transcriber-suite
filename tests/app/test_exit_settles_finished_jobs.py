@@ -21,7 +21,11 @@ import pytest
 
 from app import app as app_module
 from app.app import App
-from app.services.transcription_service import TranscriptionService, task_correlation_id
+from app.services.transcription_service import (
+    NO_SPEECH_NOTE,
+    TranscriptionService,
+    task_correlation_id,
+)
 from core.history import EXIT_REASON, HistoryDB
 
 
@@ -75,6 +79,41 @@ def test_a_job_finished_inside_the_stop_window_is_recorded_as_finished(tmp_path:
     assert row["word_count"] == 120
     assert row["language"] == "fa"  # the row's own language is not wiped
     assert row["finished_at"]
+
+
+def test_a_no_speech_run_with_empty_output_files_is_finished_with_its_note(
+    tmp_path: Path,
+) -> None:
+    """core.transcriber writes empty outputs for a file with no speech and says so."""
+    svc, app, db, rid, task = _setup(tmp_path)
+    empty = _write(tmp_path / "talk.srt", "")
+    app.worker_events.put(_done(task, [empty], no_speech=True, word_count=0))
+    app.worker_events.put(_exit())
+
+    assert svc.settle_done_on_exit(wait_s=2.0) == 1
+
+    row = _row(db, rid)
+    assert row["status"] == "finished" and row["error"] == NO_SPEECH_NOTE
+    assert row["output_paths"] == [empty]
+
+
+def test_no_speech_does_not_excuse_a_missing_output_file(tmp_path: Path) -> None:
+    svc, app, db, rid, task = _setup(tmp_path)
+    app.worker_events.put(_done(task, [str(tmp_path / "gone.srt")], no_speech=True))
+    app.worker_events.put(_exit())
+
+    assert svc.settle_done_on_exit(wait_s=2.0) == 0
+    assert _row(db, rid)["status"] == "interrupted"
+
+
+def test_an_empty_output_without_the_no_speech_flag_still_does_not_count(
+    tmp_path: Path,
+) -> None:
+    svc, app, db, rid, task = _setup(tmp_path)
+    app.worker_events.put(_done(task, [_write(tmp_path / "talk.srt", "")]))
+    app.worker_events.put(_exit())
+
+    assert svc.settle_done_on_exit(wait_s=2.0) == 0
 
 
 def test_a_cancelled_run_stays_interrupted_for_the_resume_offer(tmp_path: Path) -> None:

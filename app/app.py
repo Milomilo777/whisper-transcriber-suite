@@ -134,6 +134,27 @@ def _inst_attr(obj: Any, name: str, default: Any = None) -> Any:
     return obj.__dict__.get(name, default)
 
 
+#: How long an exit waits (window hidden) for a package install to leave its merge phase.
+INSTALL_EXIT_WAIT_S = 30.0
+
+
+def _stop_installs_on_exit() -> None:
+    """Stop on-demand package installs and wait (bounded) for the merge phase."""
+    try:
+        from core import optional_deps
+
+        optional_deps.request_stop_installs()
+        if not optional_deps.wait_until_idle(INSTALL_EXIT_WAIT_S):
+            logger.warning(
+                "A package install was still running %.0f s after the exit request%s; "
+                "ending anyway", INSTALL_EXIT_WAIT_S,
+                " (in its merge phase: a leftover .bak folder may remain in the "
+                "extras folder)" if optional_deps.installs_merging() else "",
+            )
+    except Exception:  # noqa: BLE001 - the exit must go on
+        logger.exception("Could not stop the package installs on exit")
+
+
 def _resume_prompt_text(rows: list[dict[str, Any]]) -> str:
     """The resume offer's sentence, worded after why the jobs stopped.
 
@@ -2107,6 +2128,10 @@ class App(tk.Tk):
                 stop_voice_clone_worker(self)
             except Exception:  # noqa: BLE001
                 pass
+            # A pip install (any window's) is stopped like a Cancel, then waited
+            # for: its merge phase cannot be interrupted, and the process ends
+            # right after this teardown.
+            _stop_installs_on_exit()
             # Stop the in-process web / LAN server so its socket + worker
             # thread don't linger after the window closes.
             self._shutdown_server_on_exit()

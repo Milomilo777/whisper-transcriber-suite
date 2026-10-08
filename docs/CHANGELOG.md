@@ -313,14 +313,16 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   first-run model window, Live tab) runs on library threads that cannot be interrupted, and Python
   waited for them at exit: the window was gone but the process lived on, holding the single-instance
   lock, until the whole model had arrived. The process now ends right after the orderly shutdown
-  (logs flushed first); an unfinished download resumes the next time. Quitting also asks a running
-  job to cancel before shutting its worker down, so the resume checkpoint is written (it was lost
-  when the worker was killed after 5 s), and a job that finishes during the exit is recorded as
-  finished instead of being offered for resume again.
+  (Sentry and logs flushed first, never waiting more than 3 s); an unfinished download resumes the
+  next time. A package install in progress is stopped and its merge step is waited for (up to
+  30 s) so no half-moved package folder is left. Quitting also asks a running job to cancel before
+  shutting its worker down, so the resume checkpoint is written (it was lost when the worker was
+  killed after 5 s; the exit now allows up to 15 s), and a job that finishes during the exit,
+  including one with no speech, is recorded as finished instead of being offered for resume again.
 
 - **Worker output pipe on Windows.** A closed pipe is `OSError(22)` there, not `BrokenPipeError`, so
   the quiet handling added for macOS did nothing; it now covers both when the stream is the
-  worker's own stdout.
+  worker's own stdout. A single failed write that works on retry no longer silences the worker.
 
 - **Hardware detection and model advice.** GPUs without efficient float16 (GTX 10-series) now get
   an NVIDIA CUDA (int8) tier in the Hardware wizard, so Apply no longer pins the CPU over the

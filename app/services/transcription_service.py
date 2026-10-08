@@ -722,13 +722,18 @@ class TranscriptionService:
         live app would read as a finished run (the exit never polls it; see
         :meth:`settle_done_on_exit`).
         """
-        self._stop_workers(
-            self.active_workers() + list(self._retiring), cancel_running=cancel_running,
-        )
+        workers = self.active_workers() + list(self._retiring)
+        if cancel_running:
+            self._stop_workers(workers, cancel_running=True)
+        else:
+            self._stop_workers(workers)
 
     # stop_worker()'s step 2 and step 4 waits (seconds).
     STOP_GRACE_S: float = 5.0
     STOP_TERMINATE_S: float = 2.0
+    #: The step-2 wait on an app exit that sent a cancel: the window is already hidden, and a
+    #: job in its last diarisation / alignment step can still finish or checkpoint.
+    EXIT_CANCEL_GRACE_S: float = 15.0
 
     def _stop_workers(
         self, workers: list[dict[str, Any]], cancel_running: bool = False
@@ -748,15 +753,17 @@ class TranscriptionService:
         if not live:
             return
         shutdown_msg = json.dumps({"action": "shutdown"}) + "\n"
+        grace = self.STOP_GRACE_S
         for worker, _process in live:
             before: list[str] = []
             if cancel_running:
                 cancel_msg = self._cancel_message_for_running(worker)
                 if cancel_msg:
                     before.append(cancel_msg)
+                    grace = max(grace, self.EXIT_CANCEL_GRACE_S)
             self._send_shutdown_async(worker, shutdown_msg, before)
 
-        stragglers = self._wait_for_exit(live, self.STOP_GRACE_S)
+        stragglers = self._wait_for_exit(live, grace)
         for worker, process in stragglers:
             logger.info("stop_worker: worker %s ignored shutdown; terminating",
                         worker.get("id", "?"))
@@ -846,8 +853,11 @@ class TranscriptionService:
         if not isinstance(outputs, list) or not outputs:
             return False  # cancelled by the exit (or no files): the checkpoint is the record
         paths = [str(p) for p in outputs]
+        # A run with no speech writes its files empty and says so; every file must exist
+        # either way, and otherwise be non-empty.
+        no_speech = bool(event.get("no_speech"))
         try:
-            complete = all(os.path.getsize(p) > 0 for p in paths)
+            complete = all(os.path.getsize(p) > 0 or no_speech for p in paths)
         except OSError:
             complete = False
         if not complete:
@@ -864,6 +874,7 @@ class TranscriptionService:
         elapsed = (_time.time() - started) if started else 0.0
         ok = bool(history.mark_transcription_finished_after_exit(
             int(task.history_id), paths, elapsed, word_count,
+            error=NO_SPEECH_NOTE if no_speech else "",
         ))
         if ok:
             logger.info("Job finished while the app was closing; recorded as finished: %s",

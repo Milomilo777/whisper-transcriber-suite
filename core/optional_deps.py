@@ -42,6 +42,47 @@ DEFAULT_INSTALL_TIMEOUT_S = 1800.0
 # circuit on the now-present package.
 _install_lock = threading.Lock()
 
+# App exit. ``request_stop_installs`` makes every running ``install()`` (whichever window
+# started it) stop pip like a Cancel, and ``wait_until_idle`` lets the caller wait until no
+# install is left in ``install()``: the merge phase (``os.replace`` + ``.bak`` moves) cannot
+# be interrupted and a process ended inside it could leave a ``.<name>.bak-<pid>`` and a
+# missing package.
+_stop_requested = threading.Event()
+_activity = threading.Condition()
+_active_installs = 0
+_merging_installs = 0
+_tls = threading.local()
+
+
+def request_stop_installs() -> None:
+    """Make every install, now and later in this process, stop like a Cancel."""
+    _stop_requested.set()
+
+
+def wait_until_idle(timeout: float) -> bool:
+    """Wait up to *timeout* seconds until no ``install()`` is running; True when idle."""
+    with _activity:
+        return _activity.wait_for(lambda: _active_installs == 0, timeout=max(0.0, timeout))
+
+
+def installs_merging() -> bool:
+    """True while an install is merging its staged tree into the extras folder."""
+    with _activity:
+        return _merging_installs > 0
+
+
+def _mark_merging() -> None:
+    """The calling install has left pip and is now merging / cleaning up (not stoppable)."""
+    global _merging_installs
+    with _activity:
+        if not getattr(_tls, "merging", False):
+            _tls.merging = True
+            _merging_installs += 1
+
+
+def _cancel_requested(cancel_event: "threading.Event | None") -> bool:
+    return _stop_requested.is_set() or (cancel_event is not None and cancel_event.is_set())
+
 # feature key -> (import name to probe, [pip packages to install])
 FEATURES: dict[str, tuple[str, list[str]]] = {
     "alignment": ("stable_whisper", ["stable-ts"]),      # pulls torch
@@ -189,7 +230,7 @@ def _extras_file_lock(
         if not told and log_cb is not None:
             log_cb("Another Whisper window or worker is installing a package; waiting for it...")
         told = True
-        cancelled = cancel_event is not None and cancel_event.is_set()
+        cancelled = _cancel_requested(cancel_event)
         if cancelled or (deadline is not None and time.monotonic() > deadline):
             fh.close()
             if log_cb is not None:
@@ -342,6 +383,31 @@ def install(
     timeout: float = DEFAULT_INSTALL_TIMEOUT_S,
     force: bool = False,
 ) -> bool:
+    """pip-install the feature's packages into the user extras dir (see ``_install_impl``).
+
+    Also tells the app exit (``wait_until_idle``) that an install is running.
+    """
+    global _active_installs, _merging_installs
+    with _activity:
+        _active_installs += 1
+    try:
+        return _install_impl(feature, log_cb, cancel_event, timeout, force)
+    finally:
+        with _activity:
+            _active_installs -= 1
+            if getattr(_tls, "merging", False):
+                _tls.merging = False
+                _merging_installs -= 1
+            _activity.notify_all()
+
+
+def _install_impl(
+    feature: str,
+    log_cb: Callable[[str], None] | None = None,
+    cancel_event: "threading.Event | None" = None,
+    timeout: float = DEFAULT_INSTALL_TIMEOUT_S,
+    force: bool = False,
+) -> bool:
     """pip-install the feature's packages into the user extras dir.
 
     Streams pip output to ``log_cb``. Returns True only when the install
@@ -443,7 +509,7 @@ def install(
                 break
             except subprocess.TimeoutExpired:
                 pass
-            if cancel_event is not None and cancel_event.is_set():
+            if _cancel_requested(cancel_event):
                 if log_cb:
                     log_cb("Install cancelled.")
                 aborted = True
@@ -455,6 +521,7 @@ def install(
                 break
 
         if aborted:
+            _mark_merging()  # the cleanup below must not be cut by an app exit
             # Reap the entire pip tree (build backend / downloader
             # grandchildren), not just the immediate pip process —
             # otherwise an orphan keeps the --target staging files open
@@ -474,6 +541,7 @@ def install(
             return False
 
         reader.join(timeout=5)
+        _mark_merging()  # from here on: merge / cleanup, which an app exit waits for
         if proc.returncode != 0:
             # Non-zero exit — discard the staging tree only; never touch
             # extras_dir (a sibling feature may already live there).
