@@ -633,7 +633,7 @@ def test_a_local_ai_server_still_works_while_offline(offline_on, monkeypatch):
         def __exit__(self, *exc):
             return False
 
-        def read(self):
+        def read(self, _limit=-1):
             return _json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode()
 
     def fake_urlopen(req, timeout=None):

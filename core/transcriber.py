@@ -2407,21 +2407,38 @@ def _transcribe_via_alt_backend(
         log_cb=log_cb,
     )
 
+    from .backends.base import PartialResultError
+
     try:
-        segments_data, lang_info = backend.transcribe_to_segments(
-            transcribe_path,
-            language=_normalize_language(getattr(task, "language", None)),
-            want_words=want_words,
-            vad_parameters=vad_params,
-            initial_prompt=config.get("initial_prompt") or None,
-            hotwords=config.get("hotwords") or None,
-            batch_size=int(config.get("batch_size", 16)),
-            progress_cb=progress_cb,
-            log_cb=log_cb,
-            cancelled=lambda: bool(task.cancelled),
-            paused=lambda: bool(task.paused),
-            duration=duration,
-        )
+        try:
+            segments_data, lang_info = backend.transcribe_to_segments(
+                transcribe_path,
+                language=_normalize_language(getattr(task, "language", None)),
+                want_words=want_words,
+                vad_parameters=vad_params,
+                initial_prompt=config.get("initial_prompt") or None,
+                hotwords=config.get("hotwords") or None,
+                batch_size=int(config.get("batch_size", 16)),
+                progress_cb=progress_cb,
+                log_cb=log_cb,
+                cancelled=lambda: bool(task.cancelled),
+                paused=lambda: bool(task.paused),
+                duration=duration,
+            )
+        except PartialResultError as partial:
+            # A paid cloud run died after some chunks: keep them as a resume
+            # checkpoint (never for a clipped run, whose checkpoint would be
+            # keyed to the whole file), then report the failure.
+            if partial.segments and not is_clipped:
+                _write_periodic_checkpoint(
+                    task,
+                    partial.segments,
+                    float(partial.segments[-1].get("end", 0.0)),
+                    str(partial.language or ""),
+                    0.0,
+                    log_cb,
+                )
+            raise
         # Shift slice-relative timestamps back onto the original timeline.
         if is_clipped:
             _offset_segments(segments_data, clip_start_s)

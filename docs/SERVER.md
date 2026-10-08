@@ -207,6 +207,7 @@ Errors use OpenAI's envelope:
 | 400 | missing `file` or `model`, unsupported `response_format`, not multipart |
 | 401 | wrong or missing token (`code` is `invalid_api_key`) |
 | 403 | refused by the [browser protections](#browser-protections) (`code` is `forbidden`) |
+| 411 | upload without a `Content-Length` (chunked) |
 | 413 | upload larger than the cap |
 | 500 | transcription failed or was cancelled |
 | 503 | job queue full, or the server is shutting down |
@@ -433,12 +434,20 @@ Behaviour to know:
   folder (`%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\server_jobs\<id>\`)
   and the outputs are written beside it. While the server runs, the oldest
   finished jobs' directories are removed as new jobs arrive. Directories of
-  finished jobs are **not** removed when the server stops (their outputs stay
-  downloadable until then), so delete that folder yourself when you want the
-  uploaded audio gone.
+  finished jobs are **not** removed when the server stops, but the next start
+  deletes job folders older than 6 hours (the job list is in memory only, so
+  nothing can reach them any more). A finished job's outputs are also copied
+  to `server_outputs\` next to the cache folder for the history entry; delete
+  that folder yourself when you want them gone.
 - **Upload size cap.** A single upload is capped (`--max-upload-mb`,
   default 512 MB, hard ceiling 4096 MB) and rejected with HTTP 413 before
-  being buffered.
+  being buffered. An upload needs a `Content-Length` (chunked uploads get
+  HTTP 411), and one that ends before that length (the client left) is
+  refused with HTTP 400 and creates no job. File names are read as UTF-8, as
+  browsers send them.
+- **Link downloads are bounded.** One URL job may download at most 4 GB and
+  run for 2 hours; Cancel stops a running download. The job list and the
+  webhook show a link's address without its query string and user info.
 - **URL safety.** Only `http`/`https` URLs are accepted (no `file://`), and
   a host that is, or resolves to, a loopback, link-local, unspecified,
   multicast or otherwise reserved address is refused. A name that fails to
@@ -456,6 +465,8 @@ Behaviour to know:
   has its body read and discarded for at most 10 seconds, never past the
   upload cap, and only while the client keeps sending (a 2-second pause ends
   it), so the client still sees the answer; then the connection is closed.
+  The same limits (30 seconds in all, a 5-second pause) apply to a body the
+  server is about to refuse as too large.
 - **Busy port.** A second server cannot bind a port that is already in use
   (an exclusive bind on Windows); the command line reports the error.
 - **Supreme Master TV (SMTV) scraping is not reachable through this

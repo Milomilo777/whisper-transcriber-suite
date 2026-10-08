@@ -165,6 +165,13 @@ _TLS_HANDSHAKE_TIMEOUT_S = 10.0
 _EARLY_REJECT_DRAIN_S = 10.0
 _EARLY_REJECT_IDLE_S = 2.0
 
+# Discarding a body we are about to refuse (413 for an over-cap upload or JSON
+# body) has the same two bounds: a total deadline and an idle limit, so a
+# client that declares a huge length and trickles one byte a second cannot pin
+# a handler thread.
+_DISCARD_TOTAL_S = 30.0
+_DISCARD_IDLE_S = 5.0
+
 # Names that reach this computer directly although they are not IP literals,
 # and that no website can point at it: localhost, and the name Docker gives
 # the host to its containers (how Open WebUI in Docker reaches the server).
@@ -422,7 +429,7 @@ def extract_upload(body: bytes, boundary: str) -> tuple[str, bytes,
         head_end = chunk.find(b"\r\n\r\n")
         if head_end == -1:
             continue
-        raw_headers = chunk[:head_end].decode("latin-1", "replace")
+        raw_headers = _decode_part_headers(chunk[:head_end])
         value = chunk[head_end + 4:]
         # Trailing CRLF before the next boundary.
         if value.endswith(b"\r\n"):
@@ -516,7 +523,7 @@ def scan_multipart_file(data: bytes, boundary: str) -> _UploadParts:
         head_end = data.find(b"\r\n\r\n", seg_start)
         if head_end == -1:
             break
-        raw_headers = data[seg_start:head_end].decode("latin-1", "replace")
+        raw_headers = _decode_part_headers(data[seg_start:head_end])
         body_start = head_end + 4
         # The body ends just before the next delimiter (with its leading CRLF).
         body_delim = data.find(delim, body_start)
@@ -541,6 +548,20 @@ def scan_multipart_file(data: bytes, boundary: str) -> _UploadParts:
             fields[name] = data[body_start:body_end].decode("utf-8", "replace")
         pos = next_pos
     return _UploadParts(filename, file_start, file_end, fields)
+
+
+def _decode_part_headers(raw: bytes) -> str:
+    """Decode a multipart part's header block: UTF-8 first, latin-1 fallback.
+
+    Browsers send the raw UTF-8 bytes of a file name in
+    ``filename="..."``; reading them as latin-1 turned a non-English name
+    into mojibake. Bytes that are not valid UTF-8 (an old client) still
+    decode, as latin-1, instead of failing the upload.
+    """
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("latin-1", "replace")
 
 
 def _header_param(raw_headers: str, key: str) -> str:
@@ -1266,23 +1287,33 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         length = self._declared_length()
         if length <= 0 or length > self._srv.max_upload_bytes:
             return
-        # read1 returns after ONE socket read, so the budget is checked even
-        # against a client that trickles a byte at a time.
+        self._discard_body(length, _EARLY_REJECT_DRAIN_S, _EARLY_REJECT_IDLE_S)
+
+    def _discard_body(self, length: int, total_s: float, idle_s: float) -> bool:
+        """Read and drop up to ``length`` body bytes within a time budget.
+
+        The one helper behind every "refuse but keep the connection readable"
+        path. Stops at the end of the body (True), when the client closes,
+        pauses for ``idle_s`` or runs past ``total_s`` in all (False). The
+        read is one socket read at a time (``read1``), so the deadline is
+        checked even against a client that sends a byte per second.
+        """
         read = getattr(self.rfile, "read1", None) or self.rfile.read
-        deadline = time.monotonic() + _EARLY_REJECT_DRAIN_S
+        deadline = time.monotonic() + total_s
         remaining = length
         try:
             while remaining > 0:
                 left = deadline - time.monotonic()
                 if left <= 0:
-                    return
-                self.connection.settimeout(min(left, _EARLY_REJECT_IDLE_S))
+                    return False
+                self.connection.settimeout(min(left, idle_s))
                 buf = read(min(64 * 1024, remaining))
                 if not buf:
-                    return
+                    return False
                 remaining -= len(buf)
+            return True
         except OSError:  # incl. TimeoutError: the client paused or left
-            return
+            return False
         finally:
             # The reply that follows is written with the normal timeout.
             try:
@@ -1362,22 +1393,14 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         return self.rfile.read(length) if length else b""
 
     def _drain_body(self, length: int) -> None:
-        """Read + discard ``length`` bytes from the request body in chunks.
+        """Read + discard ``length`` bytes from the request body.
 
         Used on the reject path so an oversized upload is consumed (never
         buffered whole) and the client can read our response instead of
-        hitting a mid-upload connection reset.
+        hitting a mid-upload connection reset. Bounded in time: see
+        :meth:`_discard_body`.
         """
-        remaining = length
-        chunk = 64 * 1024
-        try:
-            while remaining > 0:
-                buf = self.rfile.read(min(chunk, remaining))
-                if not buf:
-                    break
-                remaining -= len(buf)
-        except OSError:
-            pass
+        self._discard_body(length, _DISCARD_TOTAL_S, _DISCARD_IDLE_S)
 
     def _create_job(self) -> None:
         ctype = self.headers.get("Content-Type", "")
@@ -1417,6 +1440,13 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         """
         import tempfile
 
+        if ("chunked" in self.headers.get("Transfer-Encoding", "").lower()
+                or self.headers.get("Content-Length") is None):
+            # No length to check the body against (and no chunked reader).
+            raise _UploadError(
+                HTTPStatus.LENGTH_REQUIRED,
+                "send a Content-Length header; chunked uploads are not "
+                "supported")
         length = self._declared_length()
         if length > self._srv.max_upload_bytes:
             self._drain_body(length)
@@ -1439,6 +1469,13 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                     out.write(buf)
                     written += len(buf)
                     remaining -= len(buf)
+            if remaining > 0:
+                # The client left (or stalled past the socket timeout) before
+                # the declared length arrived: a partial file must not become
+                # a job.
+                raise _UploadError(
+                    HTTPStatus.BAD_REQUEST,
+                    "upload incomplete: the connection ended early")
             # Hard cap guard even when Content-Length lied about the size.
             if written > self._srv.max_upload_bytes:
                 raise _UploadError(

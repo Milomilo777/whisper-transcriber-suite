@@ -69,7 +69,12 @@ from typing import Any, Callable
 from .. import offline
 from .._liveness_tick import liveness_tick
 from ..config import load_config
-from .base import Backend, LanguageInfo
+from .base import (
+    Backend,
+    LanguageInfo,
+    PartialResultError,
+    call_with_retries,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -203,11 +208,17 @@ def build_generate_request(
     return url, body
 
 
-def build_prompt(language: str | None) -> str:
+# Longest vocabulary hint added to the prompt (characters): it is sent with
+# every chunk, so a pasted page must not inflate each paid request.
+_MAX_VOCAB_HINT_CHARS = 600
+
+
+def build_prompt(language: str | None, vocabulary: str | None = None) -> str:
     """Build the transcription prompt, optionally hinting a language.
 
     ``language`` is the already-normalised Whisper-style code (e.g.
-    ``"en"``, ``"fa"``) or None for auto-detect.
+    ``"en"``, ``"fa"``) or None for auto-detect. ``vocabulary`` is the
+    user's hotwords / initial prompt: names and terms to spell as given.
     """
     if language:
         hint = (
@@ -216,6 +227,12 @@ def build_prompt(language: str | None) -> str:
         )
     else:
         hint = ""
+    vocab = " ".join((vocabulary or "").split())[:_MAX_VOCAB_HINT_CHARS]
+    if vocab:
+        hint += (
+            "\nThese names and terms may be spoken; spell them exactly like "
+            f"this when you hear them: {vocab}"
+        )
     return _PROMPT_TEMPLATE.format(lang_hint=hint)
 
 
@@ -620,7 +637,9 @@ class CloudSttBackend(Backend):
                 self._error or "No Google API key set for the cloud backend."
             )
 
-        prompt = build_prompt(language)
+        vocabulary = ", ".join(
+            x.strip() for x in (hotwords, initial_prompt) if x and x.strip())
+        prompt = build_prompt(language, vocabulary)
 
         # Resolve a real duration before planning chunks. A 0 / unknown
         # duration used to collapse the whole file into ONE generateContent
@@ -724,8 +743,28 @@ class CloudSttBackend(Backend):
                                     f"after {idx} chunk(s)."
                                 )
                         break
-                with liveness_tick(log_cb, f"Cloud STT chunk {idx + 1}/{total}"):
-                    text = self._transcribe_one_chunk(flac_path, prompt, log_cb)
+                try:
+                    with liveness_tick(
+                        log_cb, f"Cloud STT chunk {idx + 1}/{total}"
+                    ):
+                        text = call_with_retries(
+                            lambda: self._transcribe_one_chunk(
+                                flac_path, prompt, log_cb),
+                            label=f"Cloud STT chunk {idx + 1}/{total}",
+                            cancelled=cancelled, log_cb=log_cb)
+                except Exception as e:  # noqa: BLE001
+                    if cancelled and cancelled():
+                        if log_cb:
+                            log_cb("Task cancelled")
+                        break
+                    if all_segments:
+                        # Keep what the finished chunks already cost: the
+                        # transcriber saves it as a resume checkpoint.
+                        raise PartialResultError(
+                            f"{e} (chunks 1-{idx} of {total} were kept; "
+                            "resume this file to continue from there)",
+                            all_segments, language or "") from e
+                    raise
             finally:
                 try:
                     os.unlink(flac_path)

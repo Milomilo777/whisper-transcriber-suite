@@ -24,10 +24,16 @@ import os
 import socket
 import subprocess
 import threading
+import time
 from typing import Any, Callable
 
 from core.server.httpd import JobHTTPServer
-from core.server.jobs import JobManager
+from core.server.jobs import (
+    DownloadCancelled,
+    DownloadLimits,
+    JobManager,
+    strip_url_secrets,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,20 +67,27 @@ def _real_transcribe(
     _trans.transcribe(task, progress_cb, log_cb, language_cb)
 
 
-def _download_url(url: str, dest_dir: str) -> str:
+def _download_url(url: str, dest_dir: str,
+                  limits: DownloadLimits | None = None) -> str:
     """Download an http(s) ``url`` into ``dest_dir`` via bundled yt-dlp.
 
     Returns the saved media path. Uses the same end-of-options ``--``
     injection guard the desktop download service uses so a URL that starts
     with ``-`` can never be parsed as a yt-dlp flag (e.g. ``--exec``).
+
+    ``limits`` (given by the job manager) bounds the run: the job's cancel
+    flag stops it, ``max_bytes`` caps the file and ``timeout_s`` the total
+    time, so one stalled or huge download cannot hold the single worker.
     """
-    from core._proc import new_session_kwargs
+    from core._proc import kill_process_tree, new_session_kwargs
     from core.paths import bin_dir
 
     from core import yt_dlp_update
     from core.js_runtime import yt_dlp_js_args
 
-    out_template = os.path.join(dest_dir, "%(title).200s.%(ext)s")
+    # Short title: the job folder plus this name plus the output suffixes
+    # must stay inside Windows' path limit.
+    out_template = os.path.join(dest_dir, "%(title).80s.%(ext)s")
     # Registered as a running download: an update of the user-writable
     # yt-dlp copy waits for it, and this waits for a running update.
     with yt_dlp_update.download_running():
@@ -89,23 +102,55 @@ def _download_url(url: str, dest_dir: str) -> str:
             # dropping non-Latin title characters from its output.
             "--encoding", "utf-8",
             "-o", out_template,
-            # End-of-options separator — URL is never treated as a flag.
-            "--",
-            url,
         ]
-        logger.info("server: downloading %s", url)
-        subprocess.run(
-            command, check=True, capture_output=True, text=True,
-            encoding="utf-8", errors="replace",
+        if limits is not None and limits.max_bytes > 0:
+            command += ["--max-filesize", str(limits.max_bytes)]
+        # End-of-options separator: the URL is never treated as a flag.
+        command += ["--", url]
+        logger.info("server: downloading %s", strip_url_secrets(url))
+        process = subprocess.Popen(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, encoding="utf-8", errors="replace",
             **new_session_kwargs(),
         )
+        started = time.monotonic()
+        while True:
+            try:
+                stdout, stderr = process.communicate(timeout=0.5)
+                break
+            except subprocess.TimeoutExpired:
+                pass
+            reason = ""
+            if limits is not None and limits.cancelled():
+                reason = "cancelled"
+            elif (limits is not None and limits.timeout_s > 0
+                  and time.monotonic() - started > limits.timeout_s):
+                reason = "timeout"
+            if reason:
+                kill_process_tree(process, force=True)
+                try:
+                    process.communicate(timeout=10)
+                except (subprocess.TimeoutExpired, OSError, ValueError):
+                    pass
+                if reason == "cancelled":
+                    raise DownloadCancelled()
+                minutes = int((limits.timeout_s if limits else 0) // 60)
+                raise TimeoutError(
+                    f"the download took longer than {minutes} minutes and "
+                    "was stopped")
+        if process.returncode:
+            raise subprocess.CalledProcessError(
+                process.returncode, command, stdout, stderr)
     # Pick the newest file yt-dlp left in the dir.
     candidates = [
         os.path.join(dest_dir, n) for n in os.listdir(dest_dir)
         if os.path.isfile(os.path.join(dest_dir, n))
     ]
     if not candidates:
-        raise RuntimeError("download produced no file")
+        raise RuntimeError(
+            "download produced no file"
+            + (" (it may be larger than the server's download limit)"
+               if limits is not None and limits.max_bytes > 0 else ""))
     candidates.sort(key=os.path.getmtime, reverse=True)
     return candidates[0]
 

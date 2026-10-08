@@ -74,7 +74,12 @@ from .. import offline
 from .._gc_import_guard import gc_disabled_import
 from .._liveness_tick import liveness_tick
 from ..config import load_config
-from .base import Backend, LanguageInfo
+from .base import (
+    Backend,
+    LanguageInfo,
+    PartialResultError,
+    call_with_retries,
+)
 # Shared pure seams from the Gemini backend (same cross-import convention as
 # nvidia_asr's use of plan_chunks/offset_segments): ffmpeg writes a full FLAC
 # container for a past-EOF slice, so the unknown-duration STANDARD path needs
@@ -1206,6 +1211,11 @@ class GoogleCloudSttBackend(Backend):
                     self._error or "Google Cloud STT backend not ready"
                 )
 
+        if log_cb and ((hotwords or "").strip() or (initial_prompt or "").strip()):
+            log_cb(
+                "Google Cloud STT does not use hotwords or the initial "
+                "prompt; they are ignored for this run."
+            )
         language_code = normalize_language_code(language)
         # Diarization needs word offsets to carry the speaker label.
         effective_words = bool(want_words) or self._diarization
@@ -1397,10 +1407,27 @@ class GoogleCloudSttBackend(Backend):
                         # Bounded RPC deadline: liveness_tick would otherwise
                         # keep the parent watchdog from killing a worker wedged
                         # on a half-open connection. timeout= caps the hang.
-                        response = client.recognize(
-                            request=request, timeout=self._recognize_timeout()
-                        )
+                        response = call_with_retries(
+                            lambda: client.recognize(
+                                request=request,
+                                timeout=self._recognize_timeout()),
+                            label=(
+                                f"Google Cloud STT chunk {idx + 1}/{total}"),
+                            cancelled=cancelled, log_cb=log_cb)
                 except Exception as e:  # noqa: BLE001
+                    if cancelled and cancelled():
+                        was_cancelled = True
+                        if log_cb:
+                            log_cb("Task cancelled")
+                        break
+                    if all_segments:
+                        # Keep what the finished chunks already cost: the
+                        # transcriber saves it as a resume checkpoint.
+                        raise PartialResultError(
+                            f"{classify_google_error(e)} (chunks 1-{idx} of "
+                            f"{total} were kept; resume this file to "
+                            "continue from there)",
+                            all_segments) from e
                     raise RuntimeError(classify_google_error(e)) from e
                 # This chunk was actually sent to Google — count its audio
                 # toward billing. When the duration is known, clamp the last

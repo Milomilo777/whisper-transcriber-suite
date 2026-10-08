@@ -1509,13 +1509,27 @@ class TranscriptViewer(tk.Toplevel):
             )
             return
         translated_count = sum(1 for t in translations if t)
+        # Segments that had text but came back empty (the provider kept
+        # refusing after its retries) are gaps, not empty cues.
+        missing = sum(
+            1 for seg, t in zip(segments, translations)
+            if (seg.get("text") or "").strip() and not t)
+        summary = (
+            f"Wrote {translated_count}/{len(translations)} translated "
+            f"segment(s) → {os.path.basename(out_path)}")
         # A long background job ends here and the user may be in another window, so
         # the result stays a dialog (a notice would be gone before it is seen).
+        if missing:
+            messagebox.showwarning(
+                "Bilingual subtitle saved with gaps",
+                f"{summary}\n\n{missing} segment(s) could not be translated "
+                "(the AI provider kept refusing or timed out) and are left "
+                "empty in the file. Run it again to fill them.",
+                parent=self,
+            )
+            return
         messagebox.showinfo(
-            "Bilingual subtitle saved",
-            f"Wrote {translated_count}/{len(translations)} translated "
-            f"segment(s) → {os.path.basename(out_path)}",
-            parent=self,
+            "Bilingual subtitle saved", summary, parent=self,
         )
 
     # -- loading ---------------------------------------------------------

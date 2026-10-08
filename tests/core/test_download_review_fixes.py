@@ -86,12 +86,20 @@ def test_server_download_asks_yt_dlp_for_utf8(monkeypatch, tmp_path):
 
     seen: dict = {}
 
-    def _run(cmd, **kwargs):
-        seen["cmd"], seen["kwargs"] = cmd, kwargs
-        (tmp_path / "\u0633\u0644\u0627\u0645.mp4").write_bytes(b"x")  # Persian title
-        return subprocess.CompletedProcess(cmd, 0, "", "")
+    class _Popen:
+        returncode = 0
 
-    monkeypatch.setattr(server.subprocess, "run", _run)
+        def __init__(self, cmd, **kwargs):
+            seen["cmd"], seen["kwargs"] = cmd, kwargs
+            self._write()
+
+        def communicate(self, timeout=None):
+            return "", ""
+
+        def _write(self):
+            (tmp_path / "\u0633\u0644\u0627\u0645.mp4").write_bytes(b"x")  # Persian title
+
+    monkeypatch.setattr(server.subprocess, "Popen", _Popen)
     monkeypatch.setattr("core.js_runtime.yt_dlp_js_args", lambda _p=None: [])
     out = server._download_url("https://example.com/v", str(tmp_path))
     assert _encoding_value(seen["cmd"]) == "utf-8"

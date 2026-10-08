@@ -352,7 +352,7 @@ class _FakeHTTPResponse:
     def __init__(self, body: bytes):
         self._body = body
 
-    def read(self) -> bytes:
+    def read(self, _limit: int = -1) -> bytes:
         return self._body
 
     def __enter__(self):

@@ -264,6 +264,22 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Server uploads and downloads.** A non-English upload name keeps its characters (it was saved
+  as mojibake); an upload cut off before its declared length no longer becomes a job (HTTP 400,
+  chunked uploads get 411); a refused body is discarded within a time limit, so a trickling client
+  cannot pin a connection. Job folders left by an earlier run are removed at start (older than
+  6 hours), history rows point at a kept copy of the outputs, a link download can be cancelled and
+  has a 4 GB / 2 hour limit, and the job list, webhook and error text no longer carry a link's
+  query string. `docx` and `smtv_docx` in one job both surface; the detected language is set
+  before a job reads as finished.
+- **Cloud engines keep what they already paid for.** A rate limit, server error or timeout is
+  retried with a growing wait (never a bad key), and a run that fails after some chunks saves
+  them as a resume checkpoint instead of discarding them. Gemini now receives hotwords and the
+  initial prompt in its prompt; Google Cloud says in the log that it ignores them.
+- **Remote AI provider.** Rate limits and timeouts are retried, a cut-short or non-UTF-8 reply
+  becomes a normal provider error, replies are size-capped, and a bilingual subtitle saved with
+  untranslated segments says how many. The model download uses a part file of its own, so two
+  downloads cannot overwrite each other.
 - **Text to Voice: Play and Preview work on macOS and Linux.** They called a Windows-only
   function; they now open the file with the system's default app on every OS.
 - **Text to Voice never redoes or loses finished work.** Generate on a finished long job offers

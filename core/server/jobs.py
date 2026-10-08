@@ -28,6 +28,7 @@ never the real model.
 """
 from __future__ import annotations
 
+import inspect
 import ipaddress
 import json
 import logging
@@ -46,7 +47,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
 from core import __version__, offline
-from core.config import PROJECT_FILE_NAME, user_cache_dir
+from core.config import PROJECT_FILE_NAME, user_cache_dir, user_data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,49 @@ class TranscribeFn(Protocol):
 
 # A callable that downloads an http(s) URL into ``dest_dir`` and returns the
 # saved media path. Injected so tests don't hit the network.
-DownloadFn = Callable[[str, str], str]
+DownloadFn = Callable[..., str]
+
+
+class DownloadCancelled(Exception):
+    """A URL download was stopped because its job was cancelled."""
+
+
+@dataclass(frozen=True)
+class DownloadLimits:
+    """What a download function must honour while it runs.
+
+    Passed as a third argument to download functions that accept one (a
+    two-argument ``fn(url, dest_dir)`` still works and gets no limits).
+    ``cancelled`` is polled; ``max_bytes`` / ``timeout_s`` of 0 mean no limit.
+    """
+
+    cancelled: Callable[[], bool]
+    max_bytes: int = 0
+    timeout_s: float = 0.0
+
+
+def _accepts_limits(fn: Callable[..., Any]) -> bool:
+    """True if ``fn`` can take a third positional ``limits`` argument."""
+    try:
+        params = list(inspect.signature(fn).parameters.values())
+    except (TypeError, ValueError):
+        return False
+    if any(p.kind is p.VAR_POSITIONAL for p in params):
+        return True
+    positional = [p for p in params
+                  if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
+    return len(positional) >= 3
+
+
+# Default bounds for one URL download: a server must not fill the disk or be
+# held by a stalled transfer for ever.
+_DEFAULT_MAX_DOWNLOAD_BYTES = 4 * 1024 * 1024 * 1024
+_DEFAULT_DOWNLOAD_TIMEOUT_S = 2 * 60 * 60.0
+
+# A job directory left by an earlier run (the job table is in memory only)
+# is deleted at start-up once it is this old.
+_STALE_JOB_DIR_AGE_S = 6 * 60 * 60.0
+_JOB_DIR_NAME_RE = re.compile(r"^[0-9a-f]{32}$")
 
 # A callable that delivers one outgoing webhook payload. Injected so tests
 # can capture deliveries without a network round-trip; the default is
@@ -152,10 +195,15 @@ class Job:
             "status": self.status,
             "progress": self.progress,
             "paused": self.paused,
-            "source": self.source,
+            "source": self.public_source(),
             "formats": list(self.formats),
             "created_at": self.created_at,
         }
+
+    def public_source(self) -> str:
+        """The source as shown to clients: a URL job loses its query and
+        user info (they often hold a token); an upload shows its file name."""
+        return strip_url_secrets(self.source) if self.kind == "url" else self.source
 
 
 class _ServerTask:
@@ -237,9 +285,14 @@ class JobManager:
         jobs_root: str | None = None,
         webhook_url: str = "",
         webhook_sender: WebhookFn | None = None,
+        outputs_root: str | None = None,
+        max_download_bytes: int = _DEFAULT_MAX_DOWNLOAD_BYTES,
+        download_timeout_s: float = _DEFAULT_DOWNLOAD_TIMEOUT_S,
     ) -> None:
         self._transcribe = transcribe_fn
         self._download = download_fn
+        self._max_download_bytes = max_download_bytes
+        self._download_timeout_s = download_timeout_s
         self._max_jobs = max_jobs
         self._max_queued = max_queued
         self._record_history = record_history
@@ -251,6 +304,15 @@ class JobManager:
             jobs_root if jobs_root is not None
             else str(user_cache_dir() / "server_jobs")
         )
+        # Finished outputs are copied here for the history row: the job
+        # directory above is temporary (cap eviction, start-up purge).
+        if outputs_root is not None:
+            self._outputs_root = outputs_root
+        elif jobs_root is not None:
+            self._outputs_root = os.path.join(
+                os.path.dirname(os.path.abspath(jobs_root)), "server_outputs")
+        else:
+            self._outputs_root = str(user_data_dir() / "server_outputs")
         self._jobs: dict[str, Job] = {}
         self._order: list[str] = []
         self._queue: "queue.Queue[str]" = queue.Queue()
@@ -276,11 +338,41 @@ class JobManager:
             if self._worker is not None and self._worker.is_alive():
                 return
             os.makedirs(self._jobs_root, exist_ok=True)
+            self._purge_stale_dirs_locked()
             self._stop.clear()
             self._worker = threading.Thread(
                 target=self._drain, name="server-job-worker", daemon=True
             )
             self._worker.start()
+
+    def _purge_stale_dirs_locked(self) -> None:
+        """Delete job directories an earlier run left behind.
+
+        The job table lives in memory only, so after a restart nothing can
+        reach the old ``<jobs_root>/<id>`` directories (uploads of up to
+        several GB). Only directories named like a job id, not in the table
+        and untouched for :data:`_STALE_JOB_DIR_AGE_S` go; finished outputs
+        a history row points at were copied to ``outputs_root`` already.
+        """
+        try:
+            names = os.listdir(self._jobs_root)
+        except OSError:
+            return
+        cutoff = time.time() - _STALE_JOB_DIR_AGE_S
+        removed = 0
+        for name in names:
+            if name in self._jobs or not _JOB_DIR_NAME_RE.match(name):
+                continue
+            path = os.path.join(self._jobs_root, name)
+            try:
+                if not os.path.isdir(path) or os.path.getmtime(path) > cutoff:
+                    continue
+            except OSError:
+                continue
+            _rmtree_quiet(path)
+            removed += 1
+        if removed:
+            logger.info("server: removed %d old job folder(s)", removed)
 
     def stop(self, *, timeout: float = 5.0) -> None:
         """Signal the worker to exit, wait briefly, reclaim work_dirs.
@@ -584,7 +676,15 @@ class JobManager:
                     raise RuntimeError("URL downloads are not configured")
                 # A job queued before Work offline was turned on.
                 offline.require_online("downloading this link")
-                job.media_path = self._download(job.source, job.work_dir)
+                if _accepts_limits(self._download):
+                    job.media_path = self._download(
+                        job.source, job.work_dir,
+                        DownloadLimits(
+                            cancelled=lambda: job.cancelled,
+                            max_bytes=self._max_download_bytes,
+                            timeout_s=self._download_timeout_s))
+                else:
+                    job.media_path = self._download(job.source, job.work_dir)
             if job.cancelled:
                 self._set_status(job, STATUS_CANCELLED)
                 return
@@ -608,19 +708,23 @@ class JobManager:
 
             self._transcribe(task, _progress, None, None)
 
+            # Set before the status flips: a client polling for "finished"
+            # (the OpenAI-compatible route) must never read the old value.
+            job.detected_language = (
+                getattr(task, "detected_language", "") or job.language)
             if job.cancelled:
                 self._set_status(job, STATUS_CANCELLED)
             else:
                 job.outputs = self._collect_outputs(job, task)
                 job.progress = 100
                 self._set_status(job, STATUS_FINISHED)
-            job.detected_language = (
-                getattr(task, "detected_language", "") or job.language)
             self._finish_history(
                 history_db, history_id, job, time.time() - started,
                 job.detected_language,
             )
             self._fire_webhook(job)
+        except DownloadCancelled:
+            self._set_status(job, STATUS_CANCELLED)
         except Exception as e:  # noqa: BLE001
             logger.exception("job %s failed", job.job_id)
             # job.error reaches web clients and the webhook: no local paths
@@ -721,6 +825,15 @@ class JobManager:
                     ):
                         key = kl
                         break
+                if key and key in seen_keys:
+                    # Two requested keys share this extension (docx and
+                    # smtv_docx): the engine writes them in request order, so
+                    # the next file belongs to the next unseen key.
+                    key = next(
+                        (k.lower() for k in job.formats
+                         if _FMT_EXTENSIONS.get(k.lower(), k.lower()).lower() == ext
+                         and k.lower() not in seen_keys),
+                        None)
                 if key and key not in seen_keys and os.path.isfile(p):
                     out.append((key, p))
                     seen_keys.add(key)
@@ -747,11 +860,17 @@ class JobManager:
                        if n.lower().endswith(ext) and n != media_name]
             if not matches:
                 continue
-            matches.sort(
-                key=lambda n: os.path.getmtime(os.path.join(job.work_dir, n)),
-                reverse=True,
-            )
-            out.append((fmt, os.path.join(job.work_dir, matches[0])))
+            dated: list[tuple[float, str]] = []
+            for n in matches:
+                try:
+                    dated.append(
+                        (os.path.getmtime(os.path.join(job.work_dir, n)), n))
+                except OSError:
+                    continue  # vanished since the listing
+            if not dated:
+                continue
+            dated.sort(reverse=True)
+            out.append((fmt, os.path.join(job.work_dir, dated[0][1])))
         return out
 
     def _set_status(self, job: Job, status: str) -> None:
@@ -809,6 +928,29 @@ class JobManager:
                            job.job_id, e)
             return None, None
 
+    def _archive_outputs(self, job: Job) -> list[str]:
+        """Copy a job's outputs out of its temporary directory; return paths.
+
+        The history row must not point into ``<jobs_root>/<id>``, which cap
+        eviction and the start-up purge delete. A copy that fails keeps the
+        original path (the row is then only as durable as before).
+        """
+        if not job.outputs:
+            return []
+        dest_dir = os.path.join(self._outputs_root, job.job_id[:12])
+        paths: list[str] = []
+        for _fmt, src in job.outputs:
+            try:
+                os.makedirs(dest_dir, exist_ok=True)
+                dest = os.path.join(dest_dir, os.path.basename(src))
+                shutil.copy2(src, dest)
+                paths.append(dest)
+            except OSError as e:
+                logger.warning("server: could not keep output %s of job %s: %s",
+                               os.path.basename(src), job.job_id, e)
+                paths.append(src)
+        return paths
+
     def _finish_history(self, db: Any, rid: int | None, job: Job,
                         duration_s: float, language: str,
                         error: str = "") -> None:
@@ -822,7 +964,7 @@ class JobManager:
         try:
             db.finish_transcription(
                 rid, status_map.get(job.status, "error"),
-                output_paths=[p for _, p in job.outputs],
+                output_paths=self._archive_outputs(job),
                 duration_seconds=duration_s, language=language, error=error,
             )
         except Exception as e:  # noqa: BLE001
@@ -931,7 +1073,35 @@ def public_error_text(exc: BaseException) -> str:
             text += f": {_last_path_part(str(exc.filename))}"
     else:
         text = str(exc) or type(exc).__name__
-    return redact_paths(text)[:500]
+    return redact_paths(redact_urls_in_text(text[:_MAX_ERROR_SCAN]))[:500]
+
+
+_URL_IN_TEXT_RE = re.compile(r"https?://[^\s'\"<>]+", re.IGNORECASE)
+
+
+def strip_url_secrets(url: str) -> str:
+    """``url`` without user info, query string and fragment.
+
+    Signed or token links carry their secret in those parts; the job list,
+    the webhook and error texts show ``scheme://host[:port]/path`` only.
+    A text that is not a URL is returned unchanged.
+    """
+    try:
+        split = urllib.parse.urlsplit(str(url or "").strip())
+        host = split.hostname or ""
+        port = split.port
+    except ValueError:
+        return "<invalid URL>"
+    if split.scheme not in ("http", "https") or not host:
+        return str(url or "")
+    if ":" in host:
+        host = f"[{host}]"
+    return f"{split.scheme}://{host}{f':{port}' if port else ''}{split.path}"
+
+
+def redact_urls_in_text(text: str) -> str:
+    """Apply :func:`strip_url_secrets` to every http(s) URL inside ``text``."""
+    return _URL_IN_TEXT_RE.sub(lambda m: strip_url_secrets(m.group(0)), text)
 
 
 def redact_url(url: str) -> str:
@@ -1185,7 +1355,7 @@ def webhook_payload(job: Job) -> dict[str, Any]:
                   else "job.error"),
         "job_id": job.job_id,
         "status": job.status,
-        "source": job.source,
+        "source": job.public_source(),
         "language": job.detected_language or job.language,
         "formats": list(job.formats),
         "outputs": [{"fmt": fmt, "name": os.path.basename(p)}

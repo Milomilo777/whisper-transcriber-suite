@@ -43,6 +43,7 @@ placeholder. No silent partial work.
 """
 from __future__ import annotations
 
+import http.client
 import json
 import logging
 import os
@@ -50,6 +51,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -123,6 +125,22 @@ def is_model_present(path: Path | None = None) -> bool:
         return False
 
 
+# A partial download older than this is an abandoned one (a crash); a younger
+# one may belong to a download running right now.
+_STALE_PART_AGE_S = 6 * 60 * 60.0
+
+
+def _remove_stale_parts(dest: Path) -> None:
+    """Delete abandoned ``<model>.gguf*.part`` files next to ``dest``."""
+    cutoff = time.time() - _STALE_PART_AGE_S
+    for part in dest.parent.glob(dest.name + "*.part"):
+        try:
+            if part.stat().st_mtime < cutoff:
+                part.unlink()
+        except OSError:
+            pass
+
+
 def download_default_model(
     *,
     log: Callable[[str], None] | None = None,
@@ -147,12 +165,11 @@ def download_default_model(
             log(f"LLM model already present at {dest}")
         return str(dest)
     offline.require_online("downloading the AI Layer model")
-    part = dest.with_suffix(dest.suffix + ".part")
-    if part.exists():
-        try:
-            part.unlink()
-        except OSError:
-            pass
+    # A name of its own per attempt: two downloads started at once (two
+    # windows) must not truncate each other's partial file.
+    part = dest.with_suffix(
+        dest.suffix + f".{os.getpid()}-{uuid.uuid4().hex[:8]}.part")
+    _remove_stale_parts(dest)
     if log:
         log(f"Downloading LLM model from {url} → {dest} (~1 GB)…")
     req = urllib.request.Request(url, headers={"User-Agent": "WhisperTranscriberSuite/0.8"})
@@ -559,6 +576,33 @@ class RemoteLLMError(RuntimeError):
     """Raised when a remote OpenAI-compatible endpoint call fails."""
 
 
+class _RetryableLLMError(RemoteLLMError):
+    """A failure worth another try (rate limit, server error, timeout)."""
+
+    def __init__(self, message: str, retry_after: float = 0.0) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
+# Waits before the 2nd, 3rd and 4th try of one request. A bilingual pass
+# makes one request per segment, so a rate limit must slow it down, not
+# silently blank the segments it hits.
+_RETRY_DELAYS_S = (2.0, 6.0, 15.0)
+_MAX_RETRY_AFTER_S = 30.0
+_RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
+# A chat reply is a few KB; this only stops a hostile or broken endpoint
+# from streaming for ever.
+_MAX_RESPONSE_BYTES = 16 * 1024 * 1024
+
+
+def _retry_after_seconds(headers: Any) -> float:
+    try:
+        value = float((headers.get("Retry-After") or "").strip())
+    except (AttributeError, TypeError, ValueError):
+        return 0.0
+    return max(0.0, min(value, _MAX_RETRY_AFTER_S))
+
+
 @dataclass
 class RemoteLLMConfig:
     """Connection details for a user-supplied OpenAI-compatible endpoint.
@@ -628,27 +672,57 @@ class RemoteLLMRunner:
             headers=headers,
             method="POST",
         )
+        raw = b""
+        for attempt in range(len(_RETRY_DELAYS_S) + 1):
+            try:
+                raw = self._post_once(url, req)
+                break
+            except _RetryableLLMError as e:
+                if attempt >= len(_RETRY_DELAYS_S):
+                    raise
+                delay = e.retry_after or _RETRY_DELAYS_S[attempt]
+                logger.info("remote LLM: %s; retrying in %.0f s", e, delay)
+                time.sleep(delay)
+        try:
+            data = json.loads(raw.decode("utf-8"))
+            return str(data["choices"][0]["message"]["content"] or "").strip()
+        except (json.JSONDecodeError, KeyError, IndexError, TypeError,
+                UnicodeDecodeError) as e:
+            raise RemoteLLMError(
+                f"{url} returned an unexpected response shape: {e}"
+            ) from e
+
+    def _post_once(self, url: str, req: urllib.request.Request) -> bytes:
+        """One HTTP attempt: the body, or a (maybe retryable) RemoteLLMError."""
         try:
             with urllib.request.urlopen(req, timeout=self.cfg.timeout) as resp:
-                raw = resp.read()
+                raw = resp.read(_MAX_RESPONSE_BYTES + 1)
         except urllib.error.HTTPError as e:
             body = ""
             try:
                 body = e.read().decode("utf-8", errors="replace")[:500]
             except Exception:  # noqa: BLE001
                 pass
-            raise RemoteLLMError(
-                f"{url} returned HTTP {e.code}: {body or e.reason}"
-            ) from e
+            message = f"{url} returned HTTP {e.code}: {body or e.reason}"
+            if e.code in _RETRYABLE_STATUS:
+                raise _RetryableLLMError(
+                    message, _retry_after_seconds(e.headers)) from e
+            raise RemoteLLMError(message) from e
         except urllib.error.URLError as e:
-            raise RemoteLLMError(f"Could not reach {url}: {e.reason}") from e
-        try:
-            data = json.loads(raw.decode("utf-8"))
-            return str(data["choices"][0]["message"]["content"] or "").strip()
-        except (json.JSONDecodeError, KeyError, IndexError, TypeError) as e:
-            raise RemoteLLMError(
-                f"{url} returned an unexpected response shape: {e}"
-            ) from e
+            message = f"Could not reach {url}: {e.reason}"
+            if isinstance(e.reason, (TimeoutError, ConnectionResetError,
+                                     ConnectionAbortedError)):
+                raise _RetryableLLMError(message) from e
+            raise RemoteLLMError(message) from e
+        except (TimeoutError, ConnectionError, http.client.HTTPException) as e:
+            # Raised while reading the body: a stalled or cut-short reply.
+            raise _RetryableLLMError(
+                f"{url} did not finish its reply ({type(e).__name__})") from e
+        except OSError as e:
+            raise RemoteLLMError(f"Could not reach {url}: {e}") from e
+        if len(raw) > _MAX_RESPONSE_BYTES:
+            raise RemoteLLMError(f"{url} sent a reply larger than expected")
+        return raw
 
     def summarise(self, transcript_text: str, *, max_bullets: int = 8) -> str:
         return self._chat(
@@ -727,6 +801,7 @@ def translate_segments(
     target_language: str = "English",
     progress_cb: Callable[[int, int], None] | None = None,
     cancel_event: threading.Event | None = None,
+    failed: list[int] | None = None,
 ) -> list[str]:
     """Translate each segment's text independently — one call per segment.
 
@@ -742,7 +817,10 @@ def translate_segments(
     otherwise-good pass (a remote provider refused by Work offline
     raises at once instead); ``progress_cb(done, total)`` (if given) is
     called after every segment, and ``cancel_event`` (if set)
-    short-circuits the remaining segments to ``""``.
+    short-circuits the remaining segments to ``""``. When ``failed`` is a
+    list, the index of every segment that had text but got no translation
+    (a provider error after its retries, or an empty reply) is appended, so
+    a gap can be told from a segment that was empty to begin with.
     """
     out: list[str] = []
     total = len(segments)
@@ -761,6 +839,8 @@ def translate_segments(
                         raise  # Work offline: every segment would fail the same way
                     logger.warning("translate_segments: segment %d failed: %s", i, e)
                     out.append("")
+                if not out[-1] and failed is not None:
+                    failed.append(i)
         if progress_cb is not None:
             try:
                 progress_cb(i + 1, total)
