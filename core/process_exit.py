@@ -84,8 +84,11 @@ def _say_flush_timed_out() -> None:
         except (OSError, ValueError):
             pass
 
-    note = threading.Thread(target=_write, name="exit-note", daemon=True)
-    note.start()
+    try:
+        note = threading.Thread(target=_write, name="exit-note", daemon=True)
+        note.start()
+    except RuntimeError:  # e.g. "can't start new thread": the note is optional, the exit is not
+        return
     note.join(0.2)
 
 

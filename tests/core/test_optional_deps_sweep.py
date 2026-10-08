@@ -193,3 +193,157 @@ def test_a_failing_sweep_never_raises_into_the_start_up(
     optional_deps.start_leftover_sweep()
 
     assert done.wait(10)
+
+
+# ------------------------------------- links: nothing outside the extras folder is touched
+
+
+def _make_link(link: Path, target: Path) -> bool:
+    """A directory link: a junction on Windows (no privilege needed), else a symlink."""
+    if sys.platform == "win32":
+        done = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)],
+                              capture_output=True, text=True)
+        return done.returncode == 0
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except OSError:
+        return False
+    return True
+
+
+def _outside(tmp_path: Path) -> Path:
+    outside = tmp_path / "OUTSIDE"
+    (outside / "precious").mkdir(parents=True)
+    (outside / "precious" / "data.txt").write_text("PRECIOUS", encoding="utf-8")
+    return outside
+
+
+def test_a_linked_shared_folder_is_not_entered(extras: Path, tmp_path: Path) -> None:
+    """`mklink /J pylibs\nvidia elsewhere`: leftover-named entries over there are not ours."""
+    outside = _outside(tmp_path)
+    _pkg(outside / f".cublas.bak-{DEAD}", "outside")
+    (outside / f".thing.merge-{DEAD}").mkdir()
+    if not _make_link(extras / "nvidia", outside):
+        pytest.skip("cannot create a directory link here")
+
+    assert optional_deps.sweep_install_leftovers() == (0, 0)
+
+    assert (outside / f".cublas.bak-{DEAD}" / "__init__.py").exists()  # not moved
+    assert (outside / f".thing.merge-{DEAD}").is_dir()  # not deleted
+    assert not (outside / "cublas").exists()
+    assert (outside / "precious" / "data.txt").read_text(encoding="utf-8") == "PRECIOUS"
+
+
+def test_a_leftover_named_link_is_left_alone(extras: Path, tmp_path: Path) -> None:
+    outside = _outside(tmp_path)
+    if not _make_link(extras / f".evil.bak-{DEAD}", outside):
+        pytest.skip("cannot create a directory link here")
+
+    assert optional_deps.sweep_install_leftovers() == (0, 0)
+
+    assert (outside / "precious" / "data.txt").read_text(encoding="utf-8") == "PRECIOUS"
+    assert not (extras / "evil").exists()
+
+
+def test_a_linked_staging_folder_is_left_alone(extras: Path, tmp_path: Path) -> None:
+    outside = _outside(tmp_path)
+    if not _make_link(extras.parent / "pylibs-stage-link", outside):
+        pytest.skip("cannot create a directory link here")
+
+    assert optional_deps.sweep_install_leftovers() == (0, 0)
+
+    assert (outside / "precious" / "data.txt").read_text(encoding="utf-8") == "PRECIOUS"
+
+
+def test_is_reparse_point_sees_junctions_symlinks_and_plain_folders(tmp_path: Path) -> None:
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    target = _outside(tmp_path)
+    link = tmp_path / "link"
+    assert optional_deps._is_reparse_point(str(plain)) is False
+    assert optional_deps._is_reparse_point(str(tmp_path / "missing")) is False
+    if _make_link(link, target):
+        assert optional_deps._is_reparse_point(str(link)) is True
+
+
+# --------------------------- the lock must really be held, or the sweep does nothing
+
+
+def test_a_lock_file_that_cannot_be_opened_stops_the_sweep(extras: Path) -> None:
+    """The install lock is the only protection of a running install's staging folder."""
+    (extras / ".install.lock").mkdir()  # opening it as a file fails
+    live_stage = _pkg(extras.parent / "pylibs-stage-LIVE" / "pkg")
+    _pkg(extras / f".torch.merge-{DEAD}")
+
+    assert optional_deps.sweep_install_leftovers() == (0, 0)
+
+    assert live_stage.is_dir() and (extras / f".torch.merge-{DEAD}").is_dir()
+
+
+def test_a_lock_that_cannot_be_taken_for_another_reason_stops_the_sweep(
+    extras: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    live_stage = _pkg(extras.parent / "pylibs-stage-LIVE" / "pkg")
+    monkeypatch.setattr("core.config._lock_is_contended", lambda _e: False)
+    if sys.platform == "win32":
+        import msvcrt
+
+        def _fail(*_a: Any) -> None:
+            raise OSError(5, "Access is denied")
+
+        monkeypatch.setattr(msvcrt, "locking", _fail)
+    else:
+        import fcntl
+
+        def _fail(*_a: Any) -> None:
+            raise OSError(5, "Input/output error")
+
+        monkeypatch.setattr(fcntl, "flock", _fail)
+
+    assert optional_deps.sweep_install_leftovers() == (0, 0)
+    assert live_stage.is_dir()
+
+
+def test_an_install_still_goes_ahead_without_a_usable_lock(
+    extras: Path,
+) -> None:
+    """Only the sweep is strict; install() keeps its documented 'install without it'."""
+    (extras / ".install.lock").mkdir()
+    with optional_deps._extras_file_lock(str(extras), None, 1.0, None) as got:
+        assert got == "free"
+
+
+# ------------------------------------------------------------------ small hardening
+
+
+def test_an_unreadable_folder_does_not_abort_the_whole_sweep(
+    extras: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (extras / "nvidia").mkdir()
+    _pkg(extras / f".torch.bak-{DEAD}", "original")
+    real = optional_deps.os.listdir
+
+    def _listdir(path: Any = ".") -> list[str]:
+        if str(path).endswith("nvidia"):
+            raise PermissionError(13, "denied")
+        return real(path)
+
+    monkeypatch.setattr(optional_deps.os, "listdir", _listdir)
+    # the empty-__init__ branch lists the folder: make nvidia look like one
+    (extras / "nvidia" / "__init__.py").write_text("", encoding="utf-8")
+
+    assert optional_deps.sweep_install_leftovers() == (1, 0)
+    assert (extras / "torch" / "__init__.py").exists()
+
+
+def test_a_cleaned_up_install_tells_the_user_how_to_repair(
+    extras: Path, caplog: pytest.LogCaptureFixture,
+) -> None:
+    import logging
+
+    _pkg(extras / f".torch.bak-{DEAD}", "original")
+    with caplog.at_level(logging.WARNING, logger="core.optional_deps"):
+        optional_deps.sweep_install_leftovers()
+
+    assert any("install" in r.getMessage() and "again" in r.getMessage()
+               for r in caplog.records if r.levelno >= logging.WARNING)

@@ -189,6 +189,7 @@ def _extras_file_lock(
     cancel_event: "threading.Event | None",
     timeout: float,
     log_cb: Callable[[str], None] | None,
+    strict: bool = False,
 ) -> Generator[str, None, None]:
     """Hold ``<folder>/.install.lock`` across processes.
 
@@ -201,7 +202,8 @@ def _extras_file_lock(
     same extras folder, and two merges of a shared package such as torch/
     could interleave. The OS drops the lock when its process dies, so a
     crashed install never leaves it held. A lock file that cannot be opened
-    or locked at all lets the install go on without it, logged.
+    or locked at all lets the install go on without it, logged; ``strict`` callers (the
+    start-up sweep, which deletes folders the lock protects) get ``""`` there instead.
     """
     from .config import _lock_is_contended
 
@@ -243,6 +245,11 @@ def _extras_file_lock(
             yield ""
             return
         time.sleep(0.25)
+    if strict and not locked:
+        if fh is not None:
+            fh.close()
+        yield ""
+        return
     try:
         yield "waited" if told else "free"
     finally:
@@ -292,9 +299,13 @@ def _is_shared_folder(path: str, *, top_level: bool) -> bool:
     if not text.strip():
         # An empty __init__.py makes a folder shared only when it holds nothing
         # but sub-folders (nvidia/); one with modules is a real package.
+        try:
+            names = os.listdir(path)
+        except OSError:
+            return False  # unreadable: treat as a real package, never as shared
         return top_level and not any(
             name != "__init__.py" and os.path.isfile(os.path.join(path, name))
-            for name in os.listdir(path)
+            for name in names
         )
     return "extend_path" in text or "declare_namespace" in text
 
@@ -336,6 +347,24 @@ _STAGE_PREFIX = "pylibs-stage-"
 _SWEEP_MAX_DEPTH = 3
 
 
+def _is_reparse_point(path: str) -> bool:
+    """True for a symlink or a Windows junction / mount point: it leads out of the folder.
+
+    ``os.path.islink`` is False for a junction (``mklink /J``), which a user may have used to
+    move ``pylibs\nvidia`` to another drive; the sweep must never act through one.
+    """
+    try:
+        if os.path.islink(path):
+            return True
+        junction = getattr(os.path, "isjunction", None)  # Python 3.12+
+        if junction is not None and junction(path):
+            return True
+        attrs = getattr(os.lstat(path), "st_file_attributes", 0)  # Windows only
+        return bool(attrs & 0x400)  # FILE_ATTRIBUTE_REPARSE_POINT
+    except OSError:
+        return False
+
+
 def _pid_alive(pid: int) -> bool:
     """False only when no such process exists. Unknown (no psutil) counts as alive."""
     try:
@@ -359,8 +388,8 @@ def _sweep_folder(folder: str, depth: int) -> tuple[int, int]:
         path = os.path.join(folder, name)
         match = _LEFTOVER_RE.match(name)
         if match:
-            if _pid_alive(int(match.group("pid"))):
-                continue  # that install is still running
+            if _is_reparse_point(path) or _pid_alive(int(match.group("pid"))):
+                continue  # a link is never ours to move; or that install is still running
             dest = os.path.join(folder, match.group("name"))
             if match.group("kind") == "bak" and not os.path.lexists(dest):
                 # Cut between "move the live package aside" and "move the new one in".
@@ -380,7 +409,7 @@ def _sweep_folder(folder: str, depth: int) -> tuple[int, int]:
         if (
             depth < _SWEEP_MAX_DEPTH
             and os.path.isdir(path)
-            and not os.path.islink(path)
+            and not _is_reparse_point(path)
             and _is_shared_folder(path, top_level=(depth == 0))
         ):
             r, d = _sweep_folder(path, depth + 1)
@@ -401,9 +430,9 @@ def sweep_install_leftovers() -> tuple[int, int]:
     if not os.path.isdir(folder):
         return 0, 0
     try:
-        with _extras_file_lock(folder, None, 0.01, None) as got:
+        with _extras_file_lock(folder, None, 0.01, None, strict=True) as got:
             if not got:
-                return 0, 0  # an install is running right now
+                return 0, 0  # an install is running, or the lock cannot be held: do nothing
             restored, removed = _sweep_folder(folder, 0)
             parent = os.path.dirname(folder)
             try:
@@ -415,12 +444,18 @@ def sweep_install_leftovers() -> tuple[int, int]:
                 if (
                     name.startswith(_STAGE_PREFIX)
                     and os.path.isdir(path)
-                    and not os.path.islink(path)
+                    and not _is_reparse_point(path)
                 ):
                     _rm(path)
                     if not os.path.lexists(path):
                         removed += 1
                         logger.info("Removed stale staging folder %s", path)
+            if restored or removed:
+                logger.warning(
+                    "An interrupted package install was cleaned up (%d restored, %d removed). "
+                    "If a feature that needs extra packages misbehaves, install it again from "
+                    "its tab to repair it.", restored, removed,
+                )
             return restored, removed
     except Exception:  # noqa: BLE001 - a clean-up must never stop the app
         logger.exception("Could not clean up after an interrupted install")
