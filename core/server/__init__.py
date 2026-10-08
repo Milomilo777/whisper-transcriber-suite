@@ -85,6 +85,9 @@ def _download_url(url: str, dest_dir: str) -> str:
             "--ffmpeg-location", bin_dir(),
             "--no-playlist",
             "--newline",
+            # The frozen yt-dlp.exe ignores PYTHONUTF8 and prints cp1252,
+            # dropping non-Latin title characters from its output.
+            "--encoding", "utf-8",
             "-o", out_template,
             # End-of-options separator — URL is never treated as a flag.
             "--",
@@ -93,6 +96,7 @@ def _download_url(url: str, dest_dir: str) -> str:
         logger.info("server: downloading %s", url)
         subprocess.run(
             command, check=True, capture_output=True, text=True,
+            encoding="utf-8", errors="replace",
             **new_session_kwargs(),
         )
     # Pick the newest file yt-dlp left in the dir.

@@ -23,6 +23,7 @@ from __future__ import annotations
 import html as _html
 import logging
 import os
+import http.client
 import re
 import urllib.error
 import urllib.parse
@@ -123,16 +124,33 @@ class SmtvEpisode:
 # ---------------------------------------------------------- public funcs ---
 
 
+# Invisible marks a link copied from a right-to-left page (or a chat app)
+# often carries at either end: zero-width space/joiners, LRM/RLM and the
+# Arabic letter mark, bidi embeddings and isolates, word joiner, BOM.
+# str.strip() keeps them, so the URL failed to parse as an SMTV link.
+_INVISIBLE_URL_CHARS = "\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff\u061c"
+_INVISIBLE_URL_RE = re.compile(f"[{_INVISIBLE_URL_CHARS}]")
+_URL_EDGE_CHARS = "".join(
+    c for c in map(chr, range(0x10000))
+    if c.isspace() or _INVISIBLE_URL_RE.match(c)
+)
+
+
+def clean_url(url: str) -> str:
+    """*url* without surrounding whitespace and invisible formatting marks."""
+    return (url or "").strip(_URL_EDGE_CHARS)
+
+
 def is_smtv_url(url: str) -> bool:
     """True for any URL on the suprememastertv.com host."""
-    return bool(url) and bool(SMTV_HOST_RE.match(url.strip()))
+    return bool(url) and bool(SMTV_HOST_RE.match(clean_url(url)))
 
 
 def parse_episode_id(url: str) -> tuple[str, str] | None:
     """Return ``(lang_prefix, vid)`` for an SMTV episode URL or None."""
     if not url:
         return None
-    m = SMTV_EPISODE_RE.match(url.strip())
+    m = SMTV_EPISODE_RE.match(clean_url(url))
     if not m:
         return None
     return m.group(1).lower(), m.group(2)
@@ -267,13 +285,22 @@ def _http_get(url: str, *, timeout: float) -> str:
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             charset = resp.headers.get_content_charset() or "utf-8"
-            return resp.read().decode(charset, errors="replace")
+            body = resp.read()
+        try:
+            return body.decode(charset, errors="replace")
+        except LookupError:
+            # A charset name Python does not know: the pages are UTF-8.
+            return body.decode("utf-8", errors="replace")
     except urllib.error.HTTPError as e:
         raise SmtvError(f"HTTP {e.code} fetching {url}: {e.reason}") from e
     except urllib.error.URLError as e:
         raise SmtvError(f"network error fetching {url}: {e.reason}") from e
     except TimeoutError as e:
         raise SmtvError(f"timeout fetching {url} after {timeout}s") from e
+    except http.client.HTTPException as e:
+        # IncompleteRead (the connection closed mid-body) and other
+        # protocol errors are not OSError subclasses.
+        raise SmtvError(f"network error fetching {url}: {e!r}") from e
     except (ConnectionResetError, OSError) as e:
         # The docstring promises callers only need one except clause.
         # ConnectionResetError / generic OSError used to escape past

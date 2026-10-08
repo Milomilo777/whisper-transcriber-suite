@@ -3944,6 +3944,9 @@ class App(tk.Tk):
                     self._suppress_scale_cb = False
 
     def cancel_download(self, task: VideoDownloadTask) -> None:
+        # Paused, or waiting to start again: no worker runs that would clean
+        # up after the cancel, so do its part (partial files, history row).
+        no_worker = task.status in ("paused", "waiting")
         task.cancelled = True
         # Clear any pause hold so the (now cancelled) task can't be mistaken
         # for resumable, and a stale torn-down "paused" event can't resurrect
@@ -3977,6 +3980,9 @@ class App(tk.Tk):
                 self.cancel(tr)
             except Exception:  # noqa: BLE001
                 pass
+        cancel_stopped = getattr(_inst_attr(self, "download_service"), "cancel_stopped", None)
+        if no_worker and callable(cancel_stopped):
+            cancel_stopped(task)
         self.refresh_download_queue()
 
     def remove_download(self, task: VideoDownloadTask) -> None:
@@ -5319,6 +5325,11 @@ class App(tk.Tk):
         if yt_dlp_update.update_mode(self.app_config) == yt_dlp_update.MODE_NEVER:
             return
         if not yt_dlp_update.can_self_update():
+            # No bar to offer; say once per launch what does help (a failed
+            # download's own message carries the same advice).
+            if not _inst_attr(self, "_yt_dlp_outdated_hint_shown") and yt_dlp_update.looks_outdated(reason):
+                self._yt_dlp_outdated_hint_shown = True
+                self.log("Note: " + yt_dlp_update.OUTDATED_HINT)
             return
         logger.info("Offering a yt-dlp update after: %s", reason)
         self._ensure_yt_dlp_bar().show_offer(

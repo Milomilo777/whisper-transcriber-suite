@@ -88,6 +88,21 @@ _OUTDATED_RE = re.compile(
     re.IGNORECASE,
 )
 
+# What yt-dlp's updater answers when this build cannot update itself although
+# it is a single file: a package-manager, pip or other unofficial build
+# (yt_dlp/update.py _NON_UPDATEABLE_REASONS). It only says so when a newer
+# release exists, so the answer is remembered in state.json (``unsupported``)
+# instead of starting the updater again before every download.
+_NON_UPDATEABLE_RE = re.compile(
+    r"auto-update is not supported"
+    r"|this executable cannot be updated"
+    r"|cannot update when running from source"
+    r"|installed yt-dlp (?:from a manual build|with a package manager|with pip)"
+    r"|unofficial build of yt-dlp"
+    r"|use that to update",
+    re.IGNORECASE,
+)
+
 _cond = threading.Condition()
 _running: set[object] = set()
 _updating = False
@@ -156,13 +171,29 @@ def can_self_update(bundled: str | None = None) -> bool:
 
     A bare name (no bundled binary; PATH lookup on Linux/macOS from source)
     gives nothing to copy. yt-dlp's folder builds (an executable next to an
-    ``_internal`` folder; the macOS app bundles one) refuse ``--update``.
+    ``_internal`` folder; the macOS app bundles one) refuse ``--update``, and
+    so do package-manager and other unofficial single-file builds, which
+    this module learns from the updater's answer and records.
     """
     path = bundled if bundled is not None else bundled_binary("yt-dlp")
     if not (os.path.isabs(path) and os.path.isfile(path)):
         return False
     real = os.path.realpath(path)
-    return not os.path.isdir(os.path.join(os.path.dirname(real), "_internal"))
+    if os.path.isdir(os.path.join(os.path.dirname(real), "_internal")):
+        return False
+    return not _marked_unsupported(load_state(), path)
+
+
+def _marked_unsupported(state: Mapping[str, Any], bundled: str) -> bool:
+    """True when yt-dlp's updater refused exactly this bundled binary before
+    (see ``_NON_UPDATEABLE_RE``); another binary (a new app version) is
+    tried again."""
+    rec = state.get("unsupported")
+    return (
+        isinstance(rec, dict)
+        and rec.get("path") == _norm(bundled)
+        and rec.get("fingerprint") == _fingerprint(bundled)
+    )
 
 
 def _fingerprint(path: str | Path) -> list[int] | None:
@@ -278,23 +309,51 @@ def refresh_state(*, version_of: VersionOf | None = None) -> dict[str, Any]:
     with _state_lock:
         previous = load_state()
         state: dict[str, Any] = {}
+        if isinstance(previous.get("unsupported"), dict):
+            state["unsupported"] = previous["unsupported"]
         bundled = bundled_binary("yt-dlp")
         if os.path.isabs(bundled) and os.path.isfile(bundled):
+            fingerprint = _fingerprint(bundled)
+            version = ask(bundled) or _known_version(
+                previous.get("bundled"), fingerprint, path=_norm(bundled),
+            )
             state["bundled"] = {
                 "path": _norm(bundled),
-                "fingerprint": _fingerprint(bundled),
-                "version": list(ask(bundled)),
+                "fingerprint": fingerprint,
+                "version": list(version),
             }
         cached = cached_path()
         fingerprint = _fingerprint(cached)
         if _rejected(previous, fingerprint):
             state["cached"] = {"fingerprint": fingerprint, "version": [], "rejected": True}
         elif fingerprint is not None:
+            # No carry-over here: a copy that does not answer is not used,
+            # the bundled one is the safe fallback.
             version = ask(str(cached))
             # An empty version = the copy did not answer --version: never used.
             state["cached"] = {"fingerprint": fingerprint, "version": list(version)}
         _save_state(state)
         return state
+
+
+def _known_version(
+    rec: object, fingerprint: list[int] | None, *, path: str | None = None,
+) -> tuple[int, ...]:
+    """The version recorded for exactly this file, or ().
+
+    For the bundled copy: a ``--version`` that fails once (a slow first
+    start, a virus scanner holding the file) must not overwrite a good
+    record of the same, unchanged file with ``[]``, which stuck until the
+    file changed and made a cached copy win by default. A changed file (a
+    new app version) is never given an old version.
+    """
+    if fingerprint is None or not isinstance(rec, dict):
+        return ()
+    if rec.get("fingerprint") != fingerprint or rec.get("rejected") is True:
+        return ()
+    if path is not None and rec.get("path") != path:
+        return ()
+    return _as_version(rec.get("version"))
 
 
 def refresh_state_if_stale(*, version_of: VersionOf | None = None) -> bool:
@@ -425,6 +484,19 @@ def _end_tree(proc: subprocess.Popen[Any]) -> None:
     kill_process_tree(proc, force=True)
 
 
+#: Advice for a failure an old yt-dlp causes when this copy of the app cannot
+#: update yt-dlp by itself (``can_self_update`` False).
+OUTDATED_HINT = (
+    "the video downloader in this app may be out of date and cannot update "
+    "itself here: install the newest version of this app and retry."
+)
+
+_UNSUPPORTED_TEXT = (
+    "This copy of the app cannot update its video downloader by itself; "
+    "a new app version brings a newer one."
+)
+
+
 def update_cached_copy(
     *,
     log: Callable[[str], None] | None = None,
@@ -441,10 +513,7 @@ def update_cached_copy(
     global _updating
     bundled = bundled_binary("yt-dlp")
     if not can_self_update(bundled):
-        return UpdateResult(
-            "unsupported",
-            message="This copy of the app cannot update its video downloader by itself.",
-        )
+        return UpdateResult("unsupported", message=_UNSUPPORTED_TEXT)
     if offline.is_offline():
         return UpdateResult("offline", message=offline.message("updating the video downloader"))
     with _cond:
@@ -563,6 +632,18 @@ def _update(
     for line in output.splitlines():
         if line.strip():
             log(line.strip())
+    if proc.returncode != 0 and _NON_UPDATEABLE_RE.search(output):
+        # This build can never update itself: remember it for this bundled
+        # binary, so no later download starts the updater again.
+        refresh_state(version_of=version_of)
+        with _state_lock:
+            state = load_state()
+            state["unsupported"] = {"path": _norm(bundled), "fingerprint": _fingerprint(bundled)}
+            _save_state(state)
+        return UpdateResult(
+            "unsupported", before=cached_v, completed=True,
+            message=_UNSUPPORTED_TEXT,
+        )
     if "skipping verification" in output.lower():
         # yt-dlp installs a build it could not check against SHA2-256SUMS
         # (the release lacked the line) and only refuses to restart into it.

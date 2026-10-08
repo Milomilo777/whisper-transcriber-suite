@@ -264,6 +264,29 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Downloads with Persian, Arabic, Russian or CJK titles.** The bundled yt-dlp printed its file
+  names in the Windows ANSI code page, so non-Latin characters vanished and the caption-only
+  shortcut, the subtitle extras and the saved-file path pointed at no real file. Every yt-dlp call
+  (Download tab and local server) now passes `--encoding utf-8`.
+- **Download history keeps the real outcome.** A failed download closes its history row with the
+  error text instead of showing "interrupted" on the next start; a paused and resumed download
+  stays one row; cancelling a paused download closes its row too.
+- **Cancel cleans up.** Cancelling a download removes its `.part`, `.ytdl` and fragment files and
+  unmerged video/audio streams from the download folder; pause still keeps them for resume.
+- **Subtitle language variants.** A subtitle language such as Portuguese, English or Spanish now
+  also fetches its regional tracks (`pt-BR`, `en-GB`, `es-419`), without pulling in YouTube's
+  machine translations; automatic captions in the subtitle extras (`.txt`, `.otr`, `.docx`) no
+  longer repeat every line.
+- **Out-of-date yt-dlp.** When this copy of the app cannot update yt-dlp itself (macOS app,
+  package-manager builds), a failure that an old yt-dlp causes now says to install the newest app.
+  A yt-dlp build whose updater refuses to update is remembered, so downloads no longer start the
+  updater every time, and a `--version` call that fails once is asked again instead of turning
+  off the YouTube helper until restart.
+- **Smaller download fixes.** Time-range downloads get their own file name (`… (clip
+  0.00.51-0.01.25).mp4`), so a re-run no longer reports the earlier full video; links with
+  invisible direction or zero-width marks at either end (copied from right-to-left pages) are
+  recognised; Supreme Master TV "Download all parts" looks the parts up without freezing the
+  window, and an unknown page charset or a cut-off page now gives the normal SMTV error.
 - **Transcript search finds Persian, Arabic and CJK words.** Chinese and Japanese words inside
   an unspaced sentence ("天气") are found through a trigram index, with a substring scan for
   one- and two-character words. Arabic kaf, yeh and alef maksura match the Persian kaf and yeh, a word typed without the ZWNJ

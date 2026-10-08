@@ -693,7 +693,10 @@ def test_switch_turned_on_during_the_subtitle_phase_stops_the_media_download(mon
 
     svc = ds.DownloadService(SimpleNamespace(download_events=Queue()))  # type: ignore[arg-type]
     monkeypatch.setattr(svc, "maybe_update_yt_dlp", lambda task: None)
-    monkeypatch.setattr(svc, "_subtitle_phase", lambda task: offline.set_offline(True) or False)
+    monkeypatch.setattr(
+        svc, "_subtitle_phase",
+        lambda task, run_generation=None: offline.set_offline(True) or False,
+    )
     monkeypatch.setattr(svc, "_media_phase", _boom)
     task = _media_task()
     svc._run_task(task)  # type: ignore[arg-type]

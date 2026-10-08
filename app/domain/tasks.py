@@ -77,6 +77,10 @@ class VideoDownloadTask:
         # Full path of the finished download (set by DownloadService._finish)
         # so the Download tab can offer a one-click "Open file".
         self.saved_path: str | None = None
+        # Files yt-dlp announced it was writing ("[download] Destination:",
+        # the merge target). A cancel removes their leftovers (.part, .ytdl,
+        # unmerged streams); a pause keeps them so a resume can continue.
+        self.partial_paths: list[str] = []
         # When auto-transcribe-after-download is on, the spawned
         # TranscriptionTask is linked here so the Download row can show
         # "transcribing" + the live transcription progress (instead of

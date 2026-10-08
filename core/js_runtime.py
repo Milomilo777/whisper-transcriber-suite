@@ -87,7 +87,7 @@ def yt_dlp_version(path: str | None = None) -> tuple[int, ...]:
     """Version of the yt-dlp the app runs, e.g. (2026, 8, 19); () if unknown.
 
     Asked once per binary (cached by path + modification time, so a
-    self-update is noticed). The first call runs ``yt-dlp --version`` --
+    self-update is noticed); a failed answer is not cached. The first call runs ``yt-dlp --version`` --
     about a second for the Windows exe -- so call it off the Tk thread.
     """
     import subprocess
@@ -117,7 +117,11 @@ def yt_dlp_version(path: str | None = None) -> tuple[int, ...]:
             version = tuple(int(g) for g in m.groups())
     except Exception:  # noqa: BLE001
         version = ()
-    _yt_dlp_version_cache[key] = version
+    # Only an answer is remembered: a failed or timed-out --version (a slow
+    # first start, a virus scanner holding the file) is asked again next
+    # time, instead of dropping --js-runtimes for the rest of the session.
+    if version:
+        _yt_dlp_version_cache[key] = version
     return version
 
 

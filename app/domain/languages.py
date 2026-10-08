@@ -142,6 +142,46 @@ def subtitle_lang_args(lang: str) -> str:
     return ",".join(_SUB_LANG_REGEX_METACHARS.sub(r"\\\1", c) for c in codes)
 
 
+# A bare language code ("pt", "en", "es") also stands for its regional tracks:
+# sites label captions "pt-BR", "en-GB" or "es-419", and yt-dlp full-matches
+# each --sub-langs entry, so a bare "pt" fetched nothing for a video whose only
+# track is "pt-BR". Only a region suffix (two letters or a three-digit UN M49
+# area) is added: "en-orig" and script variants such as "zh-Hans" stay out.
+# The region must be UPPER case even though yt-dlp matches case-blind (the
+# scoped (?-i:...) flag): YouTube names its machine translations of an
+# uploader track "<target>-<source>" in lower case ("en-ja", "pt-en"), and
+# those must not be pulled in (one per uploader track).
+_BARE_LANG_RE = re.compile(r"[a-z]{2,3}")
+_REGION_SUFFIX = r"(?:-(?-i:[A-Z]{2})|-[0-9]{3})?"
+
+
+def _lang_pattern(code: str) -> str:
+    if _BARE_LANG_RE.fullmatch(code):
+        return code + _REGION_SUFFIX
+    return _SUB_LANG_REGEX_METACHARS.sub(r"\\\1", code)
+
+
+def subtitle_lang_patterns(lang: str) -> str:
+    """The ``--sub-langs`` value for a comma-separated lang spec.
+
+    Like :func:`subtitle_lang_args` (every code literal, metacharacters
+    escaped), except that a bare code also matches its regional variants:
+    ``"pt"`` -> ``pt(?:-(?-i:[A-Z]{2})|-[0-9]{3})?`` covers pt-BR and pt-PT
+    but not the translation key ``pt-en``.
+    """
+    codes = [c.strip() for c in (lang or "").split(",") if c.strip()]
+    return ",".join(_lang_pattern(c) for c in codes)
+
+
+def lang_code_matches(wanted: str, code: str) -> bool:
+    """True when caption track *code* is what ``--sub-langs`` gets for *wanted*
+    (same rule as :func:`subtitle_lang_patterns`; yt-dlp matches case-blind)."""
+    wanted = (wanted or "").strip()
+    if not wanted:
+        return False
+    return re.fullmatch(_lang_pattern(wanted), code or "", re.IGNORECASE) is not None
+
+
 CAPTION_BAR_MAX_LANGUAGES = 6
 _AUTO_ORIGINAL_SUFFIX = "-orig"
 
@@ -240,4 +280,9 @@ def resolve_caption_kind(
         kind = caption_langs.get(code, "")
         if kind:
             return kind
+        # A regional track ("pt-BR" for "pt"), which the download fetches too.
+        # Uploader tracks first, as yt-dlp prefers them over automatic ones.
+        variants = [k for c, k in caption_langs.items() if lang_code_matches(code, c)]
+        if variants:
+            return "manual" if "manual" in variants else variants[0]
     return ""

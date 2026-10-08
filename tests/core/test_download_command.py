@@ -44,13 +44,17 @@ def _task(folder: str = "/tmp/out", url: str = "https://www.youtube.com/watch?v=
     )
 
 
+_REGION = "(?:-(?-i:[A-Z]{2})|-[0-9]{3})?"
+
+
 def test_build_subtitle_command_passes_lang_and_output():
     task = _task()
     cmd = build_subtitle_command(task, "en", yt_dlp_path="ytdlp.exe", bin_path="C:/bin")
     assert cmd[0] == "ytdlp.exe"
     assert "--ffmpeg-location" in cmd and cmd[cmd.index("--ffmpeg-location") + 1] == "C:/bin"
     assert "--write-auto-subs" in cmd and "--write-subs" in cmd
-    assert "--sub-langs" in cmd and cmd[cmd.index("--sub-langs") + 1] == "en"
+    # A bare code also takes its regional tracks (en-GB, en-US).
+    assert "--sub-langs" in cmd and cmd[cmd.index("--sub-langs") + 1] == "en" + _REGION
     assert "--no-playlist" in cmd
     assert cmd[-1] == task.url
 
@@ -58,7 +62,7 @@ def test_build_subtitle_command_passes_lang_and_output():
 def test_build_subtitle_command_normalizes_lang_list():
     task = _task()
     cmd = build_subtitle_command(task, " en , ja ", yt_dlp_path="ytdlp.exe", bin_path="C:/bin")
-    assert cmd[cmd.index("--sub-langs") + 1] == "en,ja"
+    assert cmd[cmd.index("--sub-langs") + 1] == f"en{_REGION},ja{_REGION}"
 
 
 def test_build_subtitle_command_escapes_regex_metachars():

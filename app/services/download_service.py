@@ -71,7 +71,7 @@ from app.domain.cookies import (
     cookies_from_browser_args,
     is_cookie_extraction_error,
 )
-from app.domain.languages import subtitle_lang_args
+from app.domain.languages import subtitle_lang_patterns
 from core import yt_dlp_update
 from core.config import save_config
 from core.integrations import smtv as smtv_mod
@@ -243,6 +243,22 @@ def _download_sections_arg(
     return f"*{start_str}-{end_str}"
 
 
+def _section_name_suffix(sections_arg: str | None) -> str:
+    """File-name tag for a time-range download, e.g. ``" (clip 0.00.51-0.01.25)"``.
+
+    Without it a range download got the same name as the full video: a
+    re-run in the same folder saw "has already been downloaded" and
+    reported the OLD full file as the slice. Colons are not allowed in
+    Windows file names, so they become dots.
+    """
+    if not sections_arg:
+        return ""
+    start, _sep, end = sections_arg.lstrip("*").partition("-")
+    start = start.replace(":", ".") or "0"
+    end = end.replace(":", ".") or "end"
+    return f" (clip {start}-{end})"
+
+
 def _time_range_badge(
     start: float | None, end: float | None
 ) -> str | None:
@@ -280,6 +296,14 @@ _cookies_from_browser_args = cookies_from_browser_args
 _is_cookie_extraction_error = is_cookie_extraction_error
 
 
+# The frozen yt-dlp.exe ignores PYTHONUTF8/PYTHONIOENCODING (_utf8_subprocess_env)
+# and prints in the ANSI code page (cp1252), so characters outside it -- a
+# Persian, Russian or CJK title -- became "?" or vanished from the
+# "Destination" and "Writing video subtitles to" lines, and the path read back
+# named no real file. yt-dlp's own --encoding sets its output encoding.
+_YT_DLP_UTF8_ARGS = ("--encoding", "utf-8")
+
+
 def build_subtitle_command(
     task: "VideoDownloadTask",
     lang: str,
@@ -290,11 +314,11 @@ def build_subtitle_command(
     js_runtime_args: list[str] | None = None,
 ) -> list[str]:
     output = os.path.join(task.folder, "%(title)s.%(ext)s")
-    sub_langs = subtitle_lang_args(lang)
+    sub_langs = subtitle_lang_patterns(lang)
     command = [yt_dlp_path]
     if bin_path:
         command += ["--ffmpeg-location", bin_path]
-    command += ["--newline"]
+    command += ["--newline", *_YT_DLP_UTF8_ARGS]
     command.extend(js_runtime_args or [])
     command.extend(_cookies_from_browser_args(cookies_from_browser))
     command.extend([
@@ -321,7 +345,7 @@ _CONVERTIBLE_SUB_EXTS = (".vtt", ".srt")
 
 
 def write_subtitle_extra_formats(
-    sub_path: str, *, language: str = "", work_title: str = "",
+    sub_path: str, *, language: str = "", work_title: str = "", dedupe: bool = False,
 ) -> list[str]:
     """Convert a downloaded ``.vtt``/``.srt`` subtitle into extra formats.
 
@@ -338,6 +362,10 @@ def write_subtitle_extra_formats(
     subtitle-download flow is unaffected. Returns ``[]`` for an
     unparseable / unsupported *sub_path* (e.g. not ``.vtt``/``.srt``, or no
     cues).
+
+    *dedupe*: the file is an automatic caption track, whose rolling window
+    repeats every line in the next cue; the extras get the cleaned text
+    (core.convert.dedupe_rolling_captions), as the caption-only shortcut does.
     """
     if os.path.splitext(sub_path)[1].lower() not in _CONVERTIBLE_SUB_EXTS:
         return []
@@ -349,6 +377,8 @@ def write_subtitle_extra_formats(
         segments = _convert.parse_to_segments(sub_path)
     except _convert.ConvertError:
         return []
+    if dedupe:
+        segments = _convert.dedupe_rolling_captions(segments)
     if not segments:
         return []
 
@@ -357,7 +387,9 @@ def write_subtitle_extra_formats(
 
     # Express Scribe .txt
     try:
-        out = _convert.convert_file(sub_path, "express_scribe", f"{base}.txt")
+        out = _convert.convert_file(
+            sub_path, "express_scribe", f"{base}.txt", segments=segments,
+        )
         written.append(out)
     except (OSError, _convert.ConvertError) as e:
         logger.warning("Express Scribe export for %s failed: %s", sub_path, e)
@@ -425,7 +457,12 @@ def build_download_command(
     cookies_from_browser: str | None = None,
     js_runtime_args: list[str] | None = None,
 ) -> list[str]:
-    output = os.path.join(task.folder, "%(title)s.%(ext)s")
+    sections_arg = _download_sections_arg(
+        getattr(task, "section_start", None), getattr(task, "section_end", None)
+    )
+    output = os.path.join(
+        task.folder, "%(title)s" + _section_name_suffix(sections_arg) + ".%(ext)s"
+    )
     command = [yt_dlp_path]
     if bin_path:
         command += ["--ffmpeg-location", bin_path]
@@ -433,7 +470,7 @@ def build_download_command(
     # "pause") picks up the existing .part fragment instead of restarting
     # from zero. yt-dlp continues by default for plain downloads, but being
     # explicit also covers the modes where it would otherwise overwrite.
-    command += ["--newline", "-c", "-o", output]
+    command += ["--newline", *_YT_DLP_UTF8_ARGS, "-c", "-o", output]
     # One video per task, like the format lookup: a link copied from inside
     # a playlist (watch?v=X&list=Y) would otherwise download the whole list.
     command.append("--no-playlist")
@@ -484,9 +521,6 @@ def build_download_command(
     # the user supplied a start and/or end in the Download tab fields
     # and the task carries the parsed values. yt-dlp accepts the same
     # ``*start-end`` shape regardless of audio-only vs muxed mode.
-    section_start = getattr(task, "section_start", None)
-    section_end = getattr(task, "section_end", None)
-    sections_arg = _download_sections_arg(section_start, section_end)
     if sections_arg is not None:
         command.extend(["--download-sections", sections_arg])
 
@@ -600,6 +634,52 @@ def select_saved_path(lines: "Iterable[str]") -> str | None:
             saved = path
             saved_is_final = saved_is_final or is_final
     return saved
+
+
+# A per-format stream of a video+audio download ("Title.f137.mp4",
+# "Title.fhls-720.mp4"): yt-dlp deletes it after the merge. Group 1 is the
+# merged file's name without its extension.
+_FORMAT_STREAM_RE = re.compile(r"^(.+)\.f[^.]+\.[^.]+$")
+
+
+def _remember_partial(task: Any, line: str, path: str) -> None:
+    """Note a file this run writes for
+    :meth:`DownloadService.remove_partial_files`: a "[download] Destination:"
+    target, or for a merge only the merger's temporary ``name.temp.ext``
+    (the merge target itself is the finished file)."""
+    s = line.strip()
+    if _MERGE_RE.match(s):
+        root, ext = os.path.splitext(path)
+        path = root + ".temp" + ext
+    elif not _DEST_RE.match(s):
+        return
+    paths = getattr(task, "partial_paths", None)
+    if isinstance(paths, list) and path not in paths:
+        paths.append(path)
+
+
+def partial_download_files(dest: str, announced: "Iterable[str]" = ()) -> list[str]:
+    """The leftovers of an unfinished download of *dest* that exist on disk:
+    ``dest.part``, ``dest.ytdl``, ``dest.part-Frag*``, a merger temp file
+    (``name.temp.ext``, recorded as such), and *dest* itself only when it
+    is one of two or more per-format streams of one merge (another
+    *announced* path is ``same-name.f<other id>.ext``). A file downloaded as
+    one piece is never listed, whatever its title looks like.
+    """
+    import glob
+
+    candidates = [dest + ".part", dest + ".ytdl"]
+    candidates += sorted(glob.glob(glob.escape(dest) + ".part-Frag*"))
+    if os.path.splitext(os.path.splitext(dest)[0])[1] == ".temp":
+        candidates.append(dest)
+    m = _FORMAT_STREAM_RE.match(os.path.basename(dest))
+    if m:
+        for other in announced:
+            o = _FORMAT_STREAM_RE.match(os.path.basename(other))
+            if other != dest and o and o.group(1) == m.group(1):
+                candidates.append(dest)
+                break
+    return [c for c in candidates if os.path.isfile(c)]
 
 
 # Service class wired into the App ------------------------------------------------
@@ -765,11 +845,11 @@ class DownloadService:
     def enqueue_from_form(self) -> None:
         """Read the download tab form, validate, build a task, and enqueue."""
         from tkinter import messagebox
-        from app.domain.languages import SUBTITLE_LANGUAGES
+        from app.domain.languages import SUBTITLE_LANGUAGES, resolve_caption_kind
         from app.domain.tasks import VideoDownloadTask
 
         app = self.app
-        url = app.download_url_var.get().strip()
+        url = smtv_mod.clean_url(app.download_url_var.get())
         folder = app.download_folder_var.get().strip()
         mode = app.download_mode_var.get()
         audio_label = app.audio_format_var.get()
@@ -984,6 +1064,13 @@ class DownloadService:
                 subtitles_enabled=False if is_smtv else subtitles_enabled,
                 subtitle_lang="" if is_smtv else sub_lang_code,
                 detected_language=app.current_video_language,
+                # "auto" makes the subtitle phase clean the rolling-caption
+                # repeats out of its extra formats.
+                caption_kind="" if is_smtv else resolve_caption_kind(
+                    # The instance dict: getattr on a Tk-less App recurses.
+                    getattr(app, "__dict__", {}).get("current_video_caption_langs") or {},
+                    sub_lang_code, fallback_lang=app.current_video_language or "",
+                ),
                 # SMTV ignores the slice at run-time but we still
                 # store the values so .time_range_label() and any
                 # later inspection see what the user asked for.
@@ -998,15 +1085,15 @@ class DownloadService:
             and bool(app.smtv_download_all_parts_var.get())
             and smtv_episode.siblings
         ):
-            tasks_to_enqueue.extend(
-                self._build_smtv_sibling_tasks(
-                    smtv_episode,
-                    mode=mode,
-                    video_label=video_label,
-                    folder=folder,
-                    format_label=format_label,
-                    output=output,
-                )
+            # One page fetch per part (up to 30 s each): off the Tk thread,
+            # the parts join the queue when they are ready.
+            self._enqueue_smtv_siblings_async(
+                smtv_episode,
+                mode=mode,
+                video_label=video_label,
+                folder=folder,
+                format_label=format_label,
+                output=output,
             )
 
         for t in tasks_to_enqueue:
@@ -1048,7 +1135,7 @@ class DownloadService:
         from app.domain.tasks import VideoDownloadTask
 
         app = self.app
-        url = app.download_url_var.get().strip()
+        url = smtv_mod.clean_url(app.download_url_var.get())
         folder = app.download_folder_var.get().strip()
         if not url:
             messagebox.showwarning("Missing URL", "Enter a URL first.", parent=app)
@@ -1170,15 +1257,7 @@ class DownloadService:
         task._run_generation = my_gen  # type: ignore[attr-defined]
 
         # Phase 3a — record start in history.
-        history = getattr(app, "history", None)
-        if history is not None:
-            try:
-                task.history_id = history.insert_download(
-                    url=task.url, title=task.title, folder=task.folder,
-                    format_label=task.format_label,
-                )
-            except Exception:  # noqa: BLE001
-                task.history_id = 0
+        self._start_history(task)
 
         def _superseded() -> bool:
             # A pause+resume re-uses the SAME task object and spawns a NEW
@@ -1288,6 +1367,8 @@ class DownloadService:
             if _superseded():
                 return
             if task.cancelled:
+                # A resumed task still has its earlier run's partial files.
+                self.remove_partial_files(task)
                 app.download_events.put(("done", task, "cancelled"))
                 return
             if getattr(task, "paused", False):
@@ -1296,7 +1377,7 @@ class DownloadService:
                 return
 
             if task.subtitles_enabled and not task.cancelled:
-                reported_cancel = self._subtitle_phase(task)
+                reported_cancel = self._subtitle_phase(task, run_generation=my_gen)
                 # Re-check after the subtitle phase: a pause during it only
                 # kills the subtitle process, and without this the media
                 # download would still run. A cancel landing after
@@ -1314,6 +1395,7 @@ class DownloadService:
                 if _superseded():
                     return
                 if task.cancelled:
+                    self.remove_partial_files(task)
                     if not reported_cancel:
                         app.download_events.put(("subtitle_status", task, "cancelled"))
                         app.download_events.put(("done", task, "cancelled"))
@@ -1331,6 +1413,35 @@ class DownloadService:
             _finalize_owned_process(task, my_gen)
             yt_dlp_update.end_download(run_key)
 
+    def _enqueue_smtv_siblings_async(
+        self, episode: smtv_mod.SmtvEpisode, **kwargs: Any,
+    ) -> None:
+        """Build the other parts' tasks on a worker thread, then queue them on
+        the Tk thread (the main window stayed frozen while every part page
+        was fetched)."""
+        from core._threads import safe_thread
+
+        app = self.app
+        app.download_events.put((
+            "log", None,
+            f"Supreme Master TV: looking up {len(episode.siblings)} more part(s)...",
+        ))
+
+        def _add(tasks: list["VideoDownloadTask"]) -> None:
+            if getattr(app, "_closing", False):
+                return
+            for t in tasks:
+                app.download_queue.append(t)
+            app.refresh_download_queue()
+            self.process_queue()
+
+        def _work() -> None:
+            tasks = self._build_smtv_sibling_tasks(episode, **kwargs)
+            if tasks:
+                app.post_to_main(lambda: _add(tasks))
+
+        safe_thread(_work, name="smtv-siblings")
+
     def _build_smtv_sibling_tasks(
         self,
         episode: smtv_mod.SmtvEpisode,
@@ -1343,9 +1454,9 @@ class DownloadService:
     ) -> list["VideoDownloadTask"]:
         """One VideoDownloadTask per sibling part.
 
-        Each sibling page is fetched in this thread (cheap — one HTTP
-        GET per part) so the per-task format_info carries the part-
-        specific CDN URLs. The current episode is NOT included; the
+        Each sibling page is fetched in this thread (one HTTP GET per part,
+        up to 30 s each: run it off the Tk thread) so the per-task
+        format_info carries the part-specific CDN URLs. The current episode is NOT included; the
         caller already enqueued it.
         """
         from app.domain.tasks import VideoDownloadTask
@@ -1744,7 +1855,7 @@ class DownloadService:
             )
         return wrote_files, no_subs_warning, sub_rc
 
-    def _subtitle_phase(self, task: "VideoDownloadTask") -> bool:
+    def _subtitle_phase(self, task: "VideoDownloadTask", run_generation: int | None = None) -> bool:
         """Fetch subtitles before the media download.
 
         Returns True when this call already reported a terminal cancel
@@ -1760,7 +1871,9 @@ class DownloadService:
 
         app.download_events.put(("subtitle_status", task, f"fetching subtitles ({sub_lang})..."))
         app.download_events.put(("log", task, f"--- Subtitle phase: requesting {sub_lang} ---"))
-        wrote_files, no_subs_warning, sub_rc = self._fetch_subtitles(task, sub_lang)
+        wrote_files, no_subs_warning, sub_rc = self._fetch_subtitles(
+            task, sub_lang, run_generation
+        )
         if task.cancelled:
             for partial in wrote_files:
                 try:
@@ -1789,11 +1902,17 @@ class DownloadService:
             # raises); failures are logged but don't affect the subtitle
             # phase's own success status.
             for sub_file in wrote_files:
+                if task.cancelled:
+                    # The caller reports the cancel; no more extras for it.
+                    break
                 try:
                     extras = write_subtitle_extra_formats(
                         sub_file,
                         language=sub_lang,
                         work_title=os.path.splitext(os.path.basename(sub_file))[0],
+                        # Only automatic tracks repeat lines; an uploader's
+                        # track is left exactly as written.
+                        dedupe=getattr(task, "caption_kind", "") == "auto",
                     )
                 except Exception as e:  # noqa: BLE001
                     app.download_events.put(
@@ -2059,6 +2178,7 @@ class DownloadService:
                 dest = parse_destination_line(line)
                 if dest is not None:
                     path, is_final = dest
+                    _remember_partial(task, line, path)
                     # A final (post-processed) path wins and locks; a plain
                     # per-stream fragment never overwrites a final one,
                     # because fragments are deleted during a merge.
@@ -2134,6 +2254,7 @@ class DownloadService:
                 return
 
         if task.cancelled:
+            self.remove_partial_files(task)
             app.download_events.put(("done", task, "cancelled"))
         elif getattr(task, "paused", False):
             # R2 stop-and-continue "pause": the process was tree-killed by
@@ -2189,6 +2310,13 @@ class DownloadService:
                         "your browser under 'Log-in cookies' in the Download "
                         "tab and retry."
                     )
+            elif (
+                yt_dlp_update.looks_outdated(reason)
+                and not yt_dlp_update.can_self_update()
+            ):
+                # No "Update it" bar here (the macOS app's yt-dlp cannot
+                # update itself), so say what does help.
+                msg += "  — " + yt_dlp_update.OUTDATED_HINT
             app.download_events.put(("error", task, msg))
             if yt_dlp_update.should_offer_update(reason):
                 self._offer_yt_dlp_update(reason)
@@ -2287,11 +2415,89 @@ class DownloadService:
                 except AttributeError:
                     pass
             app.log(payload)
+            # Close the history row too: left "running" it read
+            # "interrupted" on the next launch, with no error text.
+            self._finish_history(task, task.status, [], error=str(payload or ""))
             if app.download_current is task:
                 app.download_current = None
             self.process_queue()
         else:
             logger.warning("Unrecognized download event kind: %r", kind)
+
+    def _start_history(self, task: "VideoDownloadTask") -> None:
+        """Open the task's history row. A paused or retried task that already
+        has one continues in it, so one download is one row (every resume
+        used to add a row and leave the old one "paused")."""
+        history = getattr(self.app, "history", None)
+        if history is None:
+            return
+        try:
+            row = int(getattr(task, "history_id", 0) or 0)
+            if row and history.reopen_download(row):
+                return
+            task.history_id = history.insert_download(
+                url=task.url, title=task.title, folder=task.folder,
+                format_label=task.format_label,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("Could not record the download in history")
+            task.history_id = 0
+
+    def _finish_history(
+        self, task: "VideoDownloadTask", status: str, output_paths: list[str],
+        *, error: str = "",
+    ) -> None:
+        """Finalise the task's history row; one retry on a failure (a short
+        database lock), then an error in the log rather than a silent
+        "running" row that the next launch shows as "interrupted"."""
+        history = getattr(self.app, "history", None)
+        row = int(getattr(task, "history_id", 0) or 0)
+        if history is None or not row:
+            return
+        last: Exception | None = None
+        for _attempt in range(2):
+            try:
+                history.finish_download(
+                    row, status=status, output_paths=output_paths,
+                    detected_language=getattr(task, "detected_language", "") or "",
+                    error=error,
+                )
+                return
+            except Exception as e:  # noqa: BLE001
+                last = e
+        logger.error("history record update failed for download %s: %s", row, last)
+        self.app.log(f"history record update failed: {last}")
+
+    def remove_partial_files(self, task: "VideoDownloadTask") -> list[str]:
+        """Delete what a cancelled download left in the user's folder: the
+        ``.part`` / ``.ytdl`` / ``.part-Frag*`` files and unmerged streams
+        of the files yt-dlp announced. Only for a cancel: a pause keeps them
+        so a resume continues. Returns the removed paths."""
+        removed: list[str] = []
+        paths = list(getattr(task, "partial_paths", None) or [])
+        for dest in paths:
+            for leftover in partial_download_files(dest, paths):
+                try:
+                    os.unlink(leftover)
+                    removed.append(leftover)
+                except OSError as e:
+                    self.app.download_events.put(
+                        ("log", task, f"Could not remove the partial file {leftover}: {e}")
+                    )
+        try:
+            task.partial_paths = []
+        except AttributeError:
+            pass
+        for leftover in removed:
+            self.app.download_events.put(("log", task, f"Removed partial file: {leftover}"))
+        return removed
+
+    def cancel_stopped(self, task: "VideoDownloadTask") -> None:
+        """Cancel of a download no worker runs for (paused, or waiting after a
+        resume): remove its partial files and close its history row, which a
+        worker would otherwise do."""
+        self.remove_partial_files(task)
+        self._finish_history(task, "cancelled", [])
 
     def _recover_saved_path(self, task: "VideoDownloadTask", parsed: str | None) -> str | None:
         """Find the file a finished download actually produced on disk.
@@ -2463,17 +2669,7 @@ class DownloadService:
                 except Exception as e:  # noqa: BLE001
                     app.log(f"Auto-transcribe wiring failed: {e}")
         # Phase 3a — finalise the history row.
-        history = getattr(app, "history", None)
-        if history is not None and getattr(task, "history_id", 0):
-            try:
-                history.finish_download(
-                    task.history_id,
-                    status=status,
-                    output_paths=[saved_path] if saved_path else [],
-                    detected_language=task.detected_language or "",
-                )
-            except Exception as e:  # noqa: BLE001
-                app.log(f"history record update failed: {e}")
+        self._finish_history(task, status, [saved_path] if saved_path else [])
         if app.download_current is task:
             app.download_current = None
         self.process_queue()

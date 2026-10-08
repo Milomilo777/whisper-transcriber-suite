@@ -75,7 +75,7 @@ class FormatService:
         self.app.format_lookup_after = self.app.after(800, self.lookup_formats)
 
     def lookup_formats(self) -> None:
-        url = self.app.download_url_var.get().strip()
+        url = smtv_mod.clean_url(self.app.download_url_var.get())
         self.app.format_lookup_after = None
         self.app.audio_format_map = {}
         self.app.video_format_map = {}
@@ -323,7 +323,7 @@ class FormatService:
 
     def _handle_event(self, kind: str, url: str, payload: Any) -> None:
         app = self.app
-        if url != app.download_url_var.get().strip():
+        if url != smtv_mod.clean_url(app.download_url_var.get()):
             return
 
         if kind == "error":

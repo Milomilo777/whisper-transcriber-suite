@@ -415,6 +415,17 @@ class HistoryDB:
             )
             return int(cur.lastrowid or 0)
 
+    def reopen_download(self, row_id: int) -> bool:
+        """Mark an existing row running again (a paused or retried download
+        continues as the same job). Returns True iff the row exists."""
+        with self._txn() as conn:
+            cur = conn.execute(
+                "UPDATE downloads SET status='running', finished_at=NULL, error=''"
+                " WHERE id=?",
+                (row_id,),
+            )
+            return cur.rowcount == 1
+
     def finish_download(self, row_id: int, status: str,
                         output_paths: Iterable[str] = (),
                         detected_language: str = "",
