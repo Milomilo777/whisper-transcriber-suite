@@ -276,6 +276,9 @@ class TrayController:
             pass
 
     def _hide_window(self) -> None:
+        # The tray's Hide must not take an open exit question away with its window.
+        if getattr(self.app, "_exit_prompt_open", False):
+            return
         try:
             self.app.withdraw()
         except Exception:  # noqa: BLE001

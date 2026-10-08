@@ -49,7 +49,7 @@ from app.dpi import px, scaled_size
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
 from app.widgets import subtitle_edit as subtitle_edit_ui
-from app.widgets.notice import notify
+from app.widgets.notice import Kind, notify
 from app.widgets.tooltip import help_icon
 from core import subtitle_edit
 from core.writers.base import words_match_text
@@ -2448,6 +2448,81 @@ class TranscriptViewer(tk.Toplevel):
                 pass
         self.destroy()
 
+    def _bring_forward(self) -> None:
+        """Show this viewer in front, so a question about it is seen.
+
+        A viewer follows its parent window: while the app sits hidden in the tray, the
+        viewer is hidden with it, so the parent is shown first.
+        """
+        try:
+            parent = self.master
+            if isinstance(parent, (tk.Tk, tk.Toplevel)) and parent.state() == "withdrawn":
+                parent.deiconify()
+            self.deiconify()
+            self.lift()
+            self.focus_force()
+            # Map the window before a question is attached to it: macOS shows a
+            # message box as a sheet on a mapped window, and Windows stacks the
+            # box above it only once the window has its place.
+            self.update_idletasks()
+        except tk.TclError:
+            logger.debug("Could not bring the viewer forward", exc_info=True)
+
+    def _confirm_exit(self, show_folder: bool = False) -> bool:
+        """Ask what to do with this viewer's unsaved edits as the app exits.
+
+        True: go on exiting (saved, or discarded on purpose). False: stay open (the user
+        cancelled, or the save did not happen: the edits are still here to retry).
+        ``show_folder`` adds the folder, for two transcripts that share a file name.
+        """
+        self._bring_forward()
+        where = f"Folder: {os.path.dirname(self.json_path)}\n" if show_folder else ""
+        answer = messagebox.askyesnocancel(
+            "Unsaved transcript edits",
+            f"{os.path.basename(self.json_path)} has edits that were not saved.\n"
+            f"{where}\n"
+            "Yes: save them, then exit.\n"
+            "No: exit and discard them.\n"
+            "Cancel: stay in the app.",
+            parent=self,
+        )
+        if answer is None:
+            return False
+        if not answer:
+            return True
+        try:
+            self._save_changes()
+        except Exception as e:  # noqa: BLE001 - a save that blew up must not end in a discard
+            logger.exception("Saving %s on exit failed", self.json_path)
+            if not self._dirty:
+                # The JSON was written; only the work after it (the subtitle files next
+                # to it, the "saved" notice) failed. Nothing is lost: say so and go on.
+                self._notice_quietly(
+                    "Saved, but the subtitle files next to it could not be updated; "
+                    "the details are in app.log.",
+                    "warning",
+                )
+                return True
+            show_error(
+                self, "Save failed",
+                "Could not write your changes to the transcript file, so the app was not closed.",
+                detail=str(e),
+            )
+            return False
+        # Still dirty: the write failed (its error is on screen) or the user declined to
+        # overwrite a file changed on disk. Either way nothing was saved: do not exit.
+        if self._dirty:
+            self._notice_quietly("Not saved, so the app stays open.", "warning")
+            return False
+        return True
+
+    def _notice_quietly(self, text: str, kind: Kind) -> None:
+        """A notice that can never itself stop the exit."""
+        try:
+            notify(self, text, kind)
+        except Exception:  # noqa: BLE001
+            logger.warning("Could not show the notice: %s", text, exc_info=True)
+
     def destroy(self) -> None:
         # Also reached when the main window goes away with the viewer open.
         key = self._registry_key
@@ -2734,6 +2809,46 @@ class FindReplaceDialog(tk.Toplevel):
         except Exception:  # noqa: BLE001
             pass
         super().destroy()
+
+
+def _dirty_viewers() -> list["TranscriptViewer"]:
+    """The open viewers that hold unsaved edits, in the order they were opened."""
+    found: list[TranscriptViewer] = []
+    for viewer in list(_OPEN_VIEWERS.values()):
+        try:
+            if viewer._closing or not viewer.winfo_exists() or not viewer._dirty:
+                continue
+        except tk.TclError:
+            continue  # the window is already gone
+        found.append(viewer)
+    return found
+
+
+def confirm_unsaved_before_exit() -> bool:
+    """Exit hook: Save / Discard / Cancel for every viewer with unsaved edits.
+
+    False means the exit is cancelled (or a save failed) and the app stays as it is.
+    One question per viewer, each in front and naming its file: a combined list could not
+    say which transcript a Save or Discard applies to. Edits are never touched until the
+    user answers, so Cancel at a later viewer leaves an earlier one saved or still dirty,
+    as chosen. Nothing is asked when no viewer has unsaved edits.
+    """
+    names = [os.path.normcase(os.path.basename(v.json_path)) for v in _dirty_viewers()]
+    for viewer in _dirty_viewers():
+        show_folder = names.count(os.path.normcase(os.path.basename(viewer.json_path))) > 1
+        try:
+            if not viewer._confirm_exit(show_folder):
+                return False
+        except tk.TclError:
+            # Closed while its question was open: its own close already asked about the
+            # edits. Still open: the question failed, so the edits must not be dropped.
+            logger.warning("Exit question for %s failed", viewer.json_path, exc_info=True)
+            try:
+                if viewer.winfo_exists():
+                    return False
+            except tk.TclError:
+                pass
+    return True
 
 
 def open_viewer(
