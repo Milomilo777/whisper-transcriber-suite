@@ -182,7 +182,7 @@ def test_real_ffmpeg_burn_keeps_duration_and_video(tmp_path):
     srt = tmp_path / "clip [1].srt"
     srt.write_text(
         "1\n00:00:00,000 --> 00:00:02,500\n"
-        + "سلام دنیا. {x} \\N 你好\n",
+        + "\u0633\u0644\u0627\u0645 \u062f\u0646\u06cc\u0627. {x} \\N \u4f60\u597d\n",
         encoding="utf-8",
     )
     out = str(tmp_path / "clip [1]-subbed.mp4")
@@ -208,13 +208,13 @@ def test_real_ffmpeg_burn_keeps_duration_and_video(tmp_path):
 
 _ALPHABETS = [
     "abc xyz",
-    "سلام من کتاب یک.",
-    "مرحبا بكم، كيف الحال؟",
-    "你好世界。我们",
-    "\U0001F600\U0001F44D‍",
+    "\u0633\u0644\u0627\u0645 \u0645\u0646 \u06a9\u062a\u0627\u0628 \u06cc\u06a9.",
+    "\u0645\u0631\u062d\u0628\u0627 \u0628\u0643\u0645\u060c \u0643\u064a\u0641 \u0627\u0644\u062d\u0627\u0644\u061f",
+    "\u4f60\u597d\u4e16\u754c\u3002\u6211\u4eec",
+    "\U0001F600\U0001F44D\u200d",
     "{}\\{\\}\\N\\h",
-    "--> <i> & «» \"' ,;[]:",
-    "‌ 12 3.5%",
+    "--> <i> & \u00ab\u00bb \"' ,;[]:",
+    "\u200c 12 3.5%",
 ]
 
 
@@ -250,7 +250,7 @@ def _burned_texts(tmp_path, segments, prepare=None) -> list[str]:
         payload = payload.replace(_RLM, "")
         prefix = f"{seg['speaker']}: " if seg.get("speaker") else ""
         assert payload.startswith(prefix)
-        texts.append(payload[len(prefix):].replace("→", "-->"))
+        texts.append(payload[len(prefix):].replace("\u2192", "-->"))
     return texts
 
 
@@ -284,10 +284,10 @@ def test_round_trip_check_catches_a_broken_preparer(tmp_path):
     """Negative control: a preparer that drops one character must fail."""
     def broken(src, dst):
         text = open(src, encoding="utf-8").read()
-        text = burn_subs.wrap_rtl_lines(text).replace("ل", "", 1)
+        text = burn_subs.wrap_rtl_lines(text).replace("\u0644", "", 1)
         open(dst, "w", encoding="utf-8", newline="").write(text)
         return ""
 
-    segments = [{"start": 0, "end": 1, "text": "سلام دنیا"}]
+    segments = [{"start": 0, "end": 1, "text": "\u0633\u0644\u0627\u0645 \u062f\u0646\u06cc\u0627"}]
     assert _burned_texts(tmp_path, segments) == _expected(segments)
     assert _burned_texts(tmp_path, segments, prepare=broken) != _expected(segments)
