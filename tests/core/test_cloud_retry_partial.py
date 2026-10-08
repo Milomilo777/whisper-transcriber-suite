@@ -280,6 +280,39 @@ def test_transcriber_keeps_a_partial_result(monkeypatch, tmp_path):
     assert not [p for p in tmp_path.iterdir() if p.name.endswith(".part")]
 
 
+def test_clipped_partial_keeps_original_timeline(monkeypatch, tmp_path):
+    """A failure part-way through a CLIPPED cloud run writes the partial
+    subtitles on the original file's timeline, not the slice's."""
+    from core import transcriber as t
+
+    class _Backend:
+        def transcribe_to_segments(self, *a, **k):
+            # Slice-relative times: the clip starts at 100 s in the source.
+            raise PartialResultError(
+                "boom",
+                [{"start": 1.0, "end": 4.0, "text": "first",
+                  "words": [{"start": 1.0, "end": 2.0, "word": "first"}]}],
+                "en")
+
+    slice_wav = tmp_path / "slice.wav"
+    slice_wav.write_bytes(b"x")
+    monkeypatch.setattr(t, "_get_alt_backend", lambda name, log_cb: _Backend())
+    monkeypatch.setattr(t, "get_duration", lambda _p: 300.0)
+    monkeypatch.setattr(t, "require_audio_stream", lambda _p: None)
+    monkeypatch.setattr(t, "_maybe_denoise", lambda p, **k: (p, None))
+    monkeypatch.setattr(t._checkpoint, "partials_dir", lambda: str(tmp_path))
+    monkeypatch.setattr(t, "_slice_audio_from", lambda *a, **k: str(slice_wav))
+    task = types.SimpleNamespace(
+        file_path=str(tmp_path / "a.wav"), language=None, cancelled=False,
+        paused=False, clip_start=100.0, clip_end=200.0, checkpoint_failures=0)
+    with pytest.raises(PartialResultError):
+        t._transcribe_via_alt_backend("cloud", task, None, None, None)
+    text = (tmp_path / "a.partial.srt").read_text(encoding="utf-8")
+    assert "00:01:41,000 --> 00:01:44,000" in text
+    assert "00:00:01,000" not in text
+    assert not slice_wav.exists()  # the temp slice is still cleaned up
+
+
 # --- C7: hotwords / initial prompt are no longer silently ignored -----------
 
 def test_gemini_prompt_carries_the_vocabulary_hint():
