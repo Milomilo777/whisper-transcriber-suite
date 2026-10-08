@@ -440,6 +440,7 @@ def test_remote_llm_key_is_read_fresh_and_never_snapshotted(monkeypatch):
 
     monkeypatch.setattr(llm, "build_runner_from_config",
                         lambda cfg: seen.update(cfg) or None)
+    monkeypatch.setitem(tr.config, "ai_enabled", True)
     monkeypatch.setitem(tr.config, "llm_provider", "remote")
     monkeypatch.setitem(tr.config, "llm_remote_api_key", "dummy-credential-A")
     monkeypatch.setattr(

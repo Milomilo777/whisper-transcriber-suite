@@ -1502,7 +1502,10 @@ def _maybe_get_llm_runner() -> Any | None:
     try:
         from . import llm as _llm
         cfg = config
-        if str(config.get("llm_provider") or "local").strip().lower() == "remote":
+        if (
+            config.get("ai_enabled", False)
+            and str(config.get("llm_provider") or "local").strip().lower() == "remote"
+        ):
             # The API key is a secret, so it is not in the per-task snapshot
             # that crosses the worker pipe (core.task_settings.SECRET_KEYS):
             # read the current one from config.json, so a key the user
