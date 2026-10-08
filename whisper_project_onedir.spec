@@ -216,6 +216,7 @@ a = Analysis(
         'app.widgets.voice_clone_tab',
         'app.dialogs.model_loading',
         'app.dpi',
+        'app.shortcuts',
         'app.theme',
         'app.theme.icons',
         'app.theme.tokens',

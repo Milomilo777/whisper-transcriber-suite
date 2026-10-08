@@ -127,3 +127,135 @@ def test_vlc_hint_mentions_bitness_only_on_windows(monkeypatch):
             text = fn(plat)
             assert "32-bit" not in text and "64-bit" not in text
     assert "64-bit" in tv._vlc_start_failed_hint("win32")
+
+
+# ---------------------------------------------------------------------------
+# Call sites (real widgets), with shortcuts.is_mac patched
+# ---------------------------------------------------------------------------
+
+
+def _mac(monkeypatch, value: bool) -> None:
+    monkeypatch.setattr(shortcuts, "is_mac", lambda: value)
+
+
+def _walk(widget):
+    yield widget
+    for child in widget.winfo_children():
+        yield from _walk(child)
+
+
+@pytest.mark.parametrize("mac", [True, False])
+def test_transcript_viewer_binds_and_button_texts(monkeypatch, tmp_path, mac):
+    import json
+    import tkinter as tk
+    from tkinter import ttk
+
+    from app.dialogs import transcript_viewer as tv
+    from tests.core.test_transcript_viewer import SAMPLE_SEGMENTS
+
+    _mac(monkeypatch, mac)
+    monkeypatch.setattr(tv, "_try_load_vlc", lambda: (None, "no vlc in test"))
+    p = tmp_path / "demo.json"
+    p.write_text(json.dumps(SAMPLE_SEGMENTS), encoding="utf-8")
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        viewer = tv.TranscriptViewer(root, str(p))
+        viewer.withdraw()
+        try:
+            bound = set(viewer.bind())
+            # Tk normalises <Command-f> to <Mod1-Key-f>.
+            mod, other = ("Mod1", "Control") if mac else ("Control", "Mod1")
+            for k in ("f", "s"):
+                assert f"<{mod}-Key-{k}>" in bound
+                assert f"<{other}-Key-{k}>" not in bound
+            texts = [w.cget("text") for w in _walk(viewer) if isinstance(w, ttk.Button)]
+            find = next(t for t in texts if t.startswith("Find & Replace"))
+            save = next(t for t in texts if t.startswith("Save changes"))
+            if mac:
+                assert find.endswith(f"({CMD}F)") and save.endswith(f"({CMD}S)")
+            else:
+                assert find == "Find & Replace  (Ctrl+F)"
+                assert save == "Save changes  (Ctrl+S)"
+        finally:
+            viewer._on_close()
+    finally:
+        root.destroy()
+
+
+def _bare_app():
+    import tkinter as tk
+    from unittest.mock import MagicMock
+
+    from app.app import App
+
+    root = App.__new__(App)
+    tk.Tk.__init__(root)
+    root.withdraw()
+    root.theme_var = tk.StringVar(root, value="light")
+    root.app_config = {}
+    root.integrations_service = MagicMock()
+    return root
+
+
+def _file_menu_entries(root):
+    menu = root.nametowidget(root._menubar.entrycget(root._menubar.index("File"), "menu"))
+    out = []
+    for i in range(menu.index("end") + 1):
+        kind = menu.type(i)
+        if kind in ("command", "checkbutton", "cascade"):
+            out.append((menu.entrycget(i, "label"), menu.entrycget(i, "accelerator")
+                        if kind == "command" else ""))
+    return out
+
+
+@pytest.mark.parametrize("mac", [True, False])
+def test_file_menu_entries(monkeypatch, mac):
+    _mac(monkeypatch, mac)
+    root = _bare_app()
+    try:
+        root._build_menu()
+        entries = _file_menu_entries(root)
+        labels = [lbl for lbl, _ in entries]
+        if mac:
+            assert ("Browse...", "Command-O") in entries
+            assert not any(l in ("Exit", "Quit") for l in labels)
+            assert not any("Ctrl+" in l for l in labels)
+        else:
+            assert ("Browse...                          Ctrl+O", "") in entries
+            assert "Exit                                  Ctrl+Q" in labels
+    finally:
+        root.destroy()
+
+
+@pytest.mark.parametrize("mac", [True, False])
+def test_main_window_bindings_and_clipboard_hook(monkeypatch, mac):
+    root = _bare_app()
+    try:
+        _mac(monkeypatch, mac)
+        root._install_clipboard_keys()
+        assert bool(root.bind_all("<Control-KeyPress>")) is (not mac)
+    finally:
+        root.destroy()
+
+
+@pytest.mark.parametrize("mac,word", [(True, "Quit"), (False, "Exit")])
+def test_queued_tasks_prompt_wording(monkeypatch, mac, word):
+    import types
+
+    from app.app import App
+
+    seen: list[tuple] = []
+    monkeypatch.setattr(
+        "app.app.messagebox",
+        types.SimpleNamespace(askyesno=lambda *a, **k: seen.append(a) or False),
+    )
+    _mac(monkeypatch, mac)
+    app = types.SimpleNamespace(
+        _exit_from_tray=True, app_config={}, tray=None,
+        queue=[types.SimpleNamespace(status="running")], download_queue=[],
+    )
+    App.on_exit(app)  # type: ignore[arg-type]
+    title, text = seen[0]
+    assert title == f"{word} with queued tasks"
+    assert text.endswith(f"{word} anyway?")

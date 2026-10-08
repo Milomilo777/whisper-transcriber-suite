@@ -984,15 +984,17 @@ class App(tk.Tk):
         #   Esc             → Cancel the currently-running task
         #   Ctrl+Q          → Quit (same as File → Exit)
         # Ctrl on Windows/Linux, Command on macOS (app/shortcuts.py).
-        shortcuts.bind_shortcut(self, "o", self.browse)
+        if not shortcuts.is_mac():
+            # On macOS the File menu's Browse item carries the Command-O
+            # accelerator itself; a second root bind could fire twice.
+            shortcuts.bind_shortcut(self, "o", self.browse)
         shortcuts.bind_shortcut(self, "Return", self.add)
         self.bind("<Escape>", lambda _e: self._cancel_running())
-        # The quit shortcut always exits — same convention as File→Exit/Quit.
-        shortcuts.bind_shortcut(self, "q", self._force_exit)
-        if shortcuts.is_mac():
-            # The native app-menu "Quit <App>" (Command-Q) must take the same
-            # path, not Tk's default straight exit.
-            self.createcommand("tk::mac::Quit", self._force_exit)
+        if not shortcuts.is_mac():
+            # Ctrl+Q always exits — same convention as File→Exit. On macOS
+            # Command-Q arrives through the native app-menu Quit instead
+            # (tk::mac::Quit, registered by the quit-routing fix).
+            shortcuts.bind_shortcut(self, "q", self._force_exit)
 
         # Opt-in drag-and-drop on the main window. tkinterdnd2 is in
         # requirements.txt but the desktop app stays usable even if
@@ -1197,12 +1199,14 @@ class App(tk.Tk):
             variable=self.work_offline_var,
             command=self._toggle_work_offline,
         )
-        f.add_separator()
-        # File→Exit bypasses the minimise-to-tray redirect. When the
-        # user explicitly clicks Exit they mean exit; the redirect is
-        # only for the window-close (X) button.
-        f.add_command(**shortcuts.menu_item(shortcuts.quit_label(), "q", gap=34),
-                      command=self._force_exit)
+        if not shortcuts.is_mac():
+            f.add_separator()
+            # File→Exit bypasses the minimise-to-tray redirect. When the
+            # user explicitly clicks Exit they mean exit; the redirect is
+            # only for the window-close (X) button. macOS has no Exit item
+            # here: the app menu already carries "Quit <App>".
+            f.add_command(**shortcuts.menu_item("Exit", "q", gap=34),
+                          command=self._force_exit)
 
         v = tk.Menu(m, tearoff=0)
         for label, value in (("Light", "light"), ("Dark", "dark"), ("System", "system")):
@@ -1955,8 +1959,8 @@ class App(tk.Tk):
         ]
         if active or active_downloads:
             if not messagebox.askyesno(
-                "Exit with queued tasks",
-                "There are queued or running tasks. Exit anyway?",
+                f"{shortcuts.quit_label()} with queued tasks",
+                f"There are queued or running tasks. {shortcuts.quit_label()} anyway?",
                 parent=self,
             ):
                 # Declining must NOT freeze the app. _closing is the sole
