@@ -335,6 +335,26 @@ def test_a_viewer_that_is_closing_or_gone_is_not_asked(
     assert calls == ["stop_all", "settle", "destroy"]
 
 
+def test_a_viewer_hidden_with_the_tray_window_is_shown_for_its_question(
+    app: App, calls: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tray Exit while the app is hidden: the viewer follows its parent, so show both."""
+    viewer = _open_dirty(app, _make_json(tmp_path))
+    app.withdraw()
+    seen: list[str] = []
+
+    def _ask(*_a: Any, **_k: Any) -> None:
+        seen.append(app.state())  # what the user sees while the question is open
+        return None
+
+    monkeypatch.setattr(tv.messagebox, "askyesnocancel", _ask)
+
+    app.on_exit()
+
+    assert seen == ["normal"]
+    assert calls == [] and viewer.winfo_exists()
+
+
 # ------------------------------------------------------------------ several viewers
 
 
