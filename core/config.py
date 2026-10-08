@@ -542,6 +542,32 @@ def online_cache_path() -> Path:
     return user_cache_dir() / "app_config_cache.json"
 
 
+#: After an HTTP 404/410 from ``config_url`` (the file was never published)
+#: the fetch is skipped for this long, so every worker start does not repeat
+#: a request that cannot succeed and does not log the failure again.
+ONLINE_MISSING_RETRY_SECONDS = 24 * 3600
+
+
+def _online_missing_marker(cache_path: Path) -> Path:
+    """Marker file beside the cache that records a 404 for ``config_url``."""
+    return cache_path.with_name(cache_path.name + ".missing")
+
+
+def _online_known_missing(cache_path: Path, url: str) -> bool:
+    marker = _online_missing_marker(cache_path)
+    try:
+        if time.time() - marker.stat().st_mtime >= ONLINE_MISSING_RETRY_SECONDS:
+            return False
+        return marker.read_text(encoding="utf-8") == url
+    except OSError:
+        return False
+
+
+def _forget_online_missing(cache_path: Path) -> None:
+    with contextlib.suppress(OSError):
+        _online_missing_marker(cache_path).unlink()
+
+
 # Process-lifetime memo of the fetched online config, so the many
 # ``load_config()`` callers in one process (worker import, backends,
 # dialogs) don't each pay a network round-trip / timeout. Keyed by URL.
@@ -938,6 +964,10 @@ def fetch_online_config(
         )
         url = ""
 
+    if url and _online_known_missing(cache_path, url):
+        logger.debug("Online config skipped: %s was missing (HTTP 404) recently", url)
+        url = ""
+
     if url:
         try:
             req = urllib.request.Request(
@@ -974,6 +1004,7 @@ def fetch_online_config(
                     )
                 except OSError as e:
                     logger.warning("Could not cache online config: %s", e)
+                _forget_online_missing(cache_path)
                 return data
             logger.warning("Online config at %s is not a JSON object", url)
         except (
@@ -991,9 +1022,26 @@ def fetch_online_config(
             # proxy, captive portal) — it must fall through to the cache
             # too, not crash launch. RecursionError covers a hostile
             # deeply-nested body under the size cap. Fall through to cache.
-            logger.info(
-                "Online config fetch failed (%s); using cache if available", e
-            )
+            if isinstance(e, urllib.error.HTTPError) and e.code in (404, 410):
+                # Never published at this URL: not an outage. Remember it
+                # so the next processes stay quiet and skip the request.
+                try:
+                    cache_path.parent.mkdir(parents=True, exist_ok=True)
+                    _online_missing_marker(cache_path).write_text(
+                        url, encoding="utf-8"
+                    )
+                except OSError:
+                    pass
+                logger.info(
+                    "Online config not published at %s (HTTP %s); using the "
+                    "cache and built-in settings, not asking again for 24 h",
+                    urllib.parse.urlsplit(url).netloc + urllib.parse.urlsplit(url).path,
+                    e.code,
+                )
+            else:
+                logger.info(
+                    "Online config fetch failed (%s); using cache if available", e
+                )
 
     try:
         cached = json.loads(
