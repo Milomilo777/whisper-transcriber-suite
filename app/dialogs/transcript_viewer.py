@@ -2593,11 +2593,11 @@ class FindReplaceDialog(tk.Toplevel):
         """The ``(start, end)`` span of the next match in the ORIGINAL text.
 
         Matching folds Persian spelling like the global search (half-space,
-        Arabic kaf/yeh, vowel marks, digit styles); "Match case" keeps Latin
-        case. Replace rewrites the returned span, so the text around it is
-        never touched by the folding.
+        Arabic kaf/yeh, vowel marks, digit styles, case). "Match case" turns
+        every fold off: a plain, exact substring search. Replace rewrites the
+        returned span, so the text around it is never touched by the folding.
         """
-        return find_folded_span(haystack, needle, start, casefold=not self.case_var.get())
+        return find_folded_span(haystack, needle, start, exact=self.case_var.get())
 
     def find_next(self) -> bool:
         """Select the next match: later in the same segment first, then the
@@ -2647,14 +2647,15 @@ class FindReplaceDialog(tk.Toplevel):
         """Replace ``needle`` with ``replacement`` literally.
 
         ``needle`` matches the way the global search does (half-space, Arabic
-        kaf/yeh, vowel marks); only the matched spans of ``text`` change.
+        kaf/yeh, vowel marks) unless ``case_sensitive`` ("Match case") asks for
+        an exact match; only the matched spans of ``text`` change.
 
         The replacement is literal: backreferences in it (``\\1``,
         ``\\g<name>``, ``\\\\``) are kept as plain characters, never parsed
         as regex syntax (an earlier version read ``\\1`` as group 1 and
         either crashed or mangled the segment text).
         """
-        return replace_folded(text, needle, replacement, casefold=not case_sensitive)[0]
+        return replace_folded(text, needle, replacement, exact=case_sensitive)[0]
 
     def replace_current(self) -> None:
         """Replace the selected occurrence only, then select the next one."""

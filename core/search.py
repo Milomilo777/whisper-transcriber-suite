@@ -26,6 +26,7 @@ import json
 import logging
 import math
 import os
+import re
 import sqlite3
 import unicodedata
 from bisect import bisect_left
@@ -203,43 +204,94 @@ def fold_with_spans(
     return "".join(out), tuple(starts), tuple(ends)
 
 
+def _literal_span(text: str, needle: str, start: int, casefold: bool) -> tuple[int, int] | None:
+    """Plain substring search (case-insensitive when ``casefold``): no other folding."""
+    start = max(0, start)
+    if casefold:
+        m = re.compile(re.escape(needle), re.IGNORECASE).search(text, start)
+        return m.span() if m else None
+    i = text.find(needle, start)
+    return (i, i + len(needle)) if i >= 0 else None
+
+
+def _edged_by_noise(needle: str, casefold: bool) -> bool:
+    """True when the needle starts or ends with a character the folding drops.
+
+    A half-space, tatweel or vowel mark at the edge of what the user typed is
+    something they mean (the "mi-" prefix, a stray tatweel to delete). Folded
+    matching would drop it and widen the match, so such needles match literally.
+    Inside a needle these characters stay forgiving.
+    """
+    return not _fold_char(needle[0], casefold) or not _fold_char(needle[-1], casefold)
+
+
 def find_folded_span(
-    text: str, needle: str, start: int = 0, *, casefold: bool = True
+    text: str, needle: str, start: int = 0, *, casefold: bool = True, exact: bool = False
 ) -> tuple[int, int] | None:
     """The first match of *needle* in *text* at or after original offset *start*.
 
     Compares with the search folding (ZWNJ, Arabic kaf/yeh, digits, accents and,
     unless ``casefold`` is False, case). Returns the ``(start, end)`` span of the
-    ORIGINAL text, or None; a needle that folds to nothing never matches.
+    ORIGINAL text, or None. Matches are exact spans of the original:
+
+    * ``exact`` turns the folding off (a plain, case-sensitive substring search);
+    * a needle that starts or ends with a character the folding drops (ZWNJ,
+      tatweel, a vowel mark) matches literally, so a needle of only such
+      characters finds them;
+    * a match never starts or ends inside the expansion of one character
+      ("f" does not match half of the ligature U+FB01).
     """
+    if not needle:
+        return None
+    if exact:
+        return _literal_span(text, needle, start, False)
+    if _edged_by_noise(needle, casefold):
+        return _literal_span(text, needle, start, casefold)
     wanted = _folded_text(needle, casefold)
     if not wanted or wanted not in _folded_text(text, casefold):
         return None
     folded, starts, ends = fold_with_spans(text, casefold)
-    first = bisect_left(starts, max(0, start))
-    pos = folded.find(wanted, first)
-    if pos < 0:
-        return None
-    return starts[pos], ends[pos + len(wanted) - 1]
+    pos = folded.find(wanted, bisect_left(starts, max(0, start)))
+    while pos >= 0:
+        last = pos + len(wanted) - 1
+        if (pos == 0 or starts[pos - 1] != starts[pos]) and (
+            last == len(folded) - 1 or starts[last + 1] != starts[last]
+        ):
+            return starts[pos], ends[last]
+        pos = folded.find(wanted, pos + 1)
+    return None
 
 
-def folded_contains(text: str, query: str, *, casefold: bool = True) -> bool:
-    """True when *query* occurs in *text* under the search folding."""
+def folded_contains(
+    text: str, query: str, *, casefold: bool = True, exact: bool = False
+) -> bool:
+    """True when *query* occurs in *text* under the search folding.
+
+    Same needle rules as :func:`find_folded_span`, except that a hit inside a
+    character's expansion still counts (a filter only has to show the row).
+    """
+    if not query:
+        return False
+    if exact:
+        return query in text
+    if _edged_by_noise(query, casefold):
+        return _literal_span(text, query, 0, casefold) is not None
     wanted = _folded_text(query, casefold)
     return bool(wanted) and wanted in _folded_text(text, casefold)
 
 
 def replace_folded(
-    text: str, needle: str, replacement: str, *, casefold: bool = True
+    text: str, needle: str, replacement: str, *, casefold: bool = True, exact: bool = False
 ) -> tuple[str, int]:
-    """Replace every folded match of *needle* with *replacement*, literally.
+    """Replace every match of *needle* with *replacement*, literally.
 
     Only the matched spans of *text* change; returns ``(new_text, count)``.
+    Matching follows :func:`find_folded_span`.
     """
     pieces: list[str] = []
     last = pos = count = 0
     while True:
-        span = find_folded_span(text, needle, pos, casefold=casefold)
+        span = find_folded_span(text, needle, pos, casefold=casefold, exact=exact)
         if span is None:
             break
         pieces.append(text[last:span[0]])

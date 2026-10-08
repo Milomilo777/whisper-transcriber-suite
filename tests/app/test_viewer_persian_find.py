@@ -81,9 +81,10 @@ def test_case_sensitive_find_keeps_case_but_still_folds_persian():
     assert srch.find_folded_span(KETAB_AR, KETAB_FA, casefold=False) == (0, 4)
 
 
-def test_empty_or_noise_only_needles_never_match():
+def test_an_empty_needle_never_matches():
     assert srch.find_folded_span("abc", "") is None
-    assert srch.find_folded_span("a" + ZWNJ + "b", ZWNJ) is None
+    assert not srch.folded_contains("abc", "")
+    assert srch.replace_folded("abc", "", "x") == ("abc", 0)
 
 
 def test_replace_rewrites_only_the_matched_spans_of_the_original():
@@ -124,9 +125,10 @@ def test_folding_by_character_equals_folding_the_whole_text_for_persian():
 
 
 def test_random_texts_keep_the_matching_invariants():
-    """For any text and any substring needle: the span folds to the needle's fold, the
-    text outside the span is untouched by replace, and replace is idempotent for a
-    replacement that cannot match itself."""
+    """For any text and any substring needle: the span folds to the needle's fold (or,
+    for a needle edged by a dropped character, is that needle literally), the text before
+    the span is untouched by replace, and replace is idempotent for a replacement that
+    cannot match itself."""
     rng = random.Random(266)
     alphabet = ["a", "B", " ", ZWNJ, KAF_AR, KAF_FA, YEH_AR, YEH_FA, FATHA, "1", chr(0x0661),
                 _u("0628"), _u("0627"), "e", chr(0x301)]
@@ -136,13 +138,13 @@ def test_random_texts_keep_the_matching_invariants():
         j = rng.randint(i + 1, len(text))
         needle = text[i:j]
         folded_needle, _s, _e = srch.fold_with_spans(needle)
-        if not folded_needle:
-            assert srch.find_folded_span(text, needle) is None
-            continue
         span = srch.find_folded_span(text, needle)
         assert span is not None, (text, needle)
         s, e = span
-        assert srch.fold_with_spans(text[s:e])[0] == folded_needle
+        if not srch.fold_with_spans(needle[:1])[0] or not srch.fold_with_spans(needle[-1:])[0]:
+            assert text[s:e].casefold() == needle.casefold(), (text, needle)
+        else:
+            assert srch.fold_with_spans(text[s:e])[0] == folded_needle
         new, count = srch.replace_folded(text, needle, "#")
         assert count >= 1 and new.count("#") == count
         assert new[:s] == text[:s]
@@ -269,22 +271,171 @@ def test_replace_all_rewrites_the_original_spans_exactly(root, tmp_path, monkeyp
         _close(viewer)
 
 
-def test_match_case_still_separates_latin_case_but_folds_persian(root, tmp_path, monkeypatch):
+def test_match_case_is_an_exact_mode_with_no_folding(root, tmp_path, monkeypatch):
     monkeypatch.setattr(tv.messagebox, "showinfo", lambda *a, **k: None)
-    viewer = _viewer(root, tmp_path, ["Hello hello " + KETAB_AR])
+    viewer = _viewer(root, tmp_path, ["Hello hello " + KETAB_AR + " " + MIKHAHAM_ZWNJ])
     dlg = _dialog(viewer)
     try:
         dlg.case_var.set(True)
         dlg.find_var.set("hello")
         dlg.replace_var.set("X")
         dlg.replace_all()
-        assert viewer.segments[0]["text"] == "Hello X " + KETAB_AR
+        assert viewer.segments[0]["text"] == "Hello X " + KETAB_AR + " " + MIKHAHAM_ZWNJ
+        # Persian kaf and the half-space are literal now.
         dlg.find_var.set(KETAB_FA)
         dlg.replace_all()
-        assert viewer.segments[0]["text"] == "Hello X X"
+        dlg.find_var.set(MIKHAHAM_PLAIN)
+        dlg.replace_all()
+        assert viewer.segments[0]["text"] == "Hello X " + KETAB_AR + " " + MIKHAHAM_ZWNJ
+        dlg.find_var.set(KETAB_AR)
+        dlg.replace_all()
+        assert viewer.segments[0]["text"] == "Hello X X " + MIKHAHAM_ZWNJ
+        # Find next follows the same exact rule.
+        dlg.find_var.set(MIKHAHAM_PLAIN)
+        assert dlg.find_next() is False
+        dlg.find_var.set(MIKHAHAM_ZWNJ)
+        assert dlg.find_next() is True
+        # Switching Match case off brings the folding back.
+        dlg.case_var.set(False)
+        dlg.find_var.set(MIKHAHAM_PLAIN)
+        dlg.replace_var.set("WANT")
+        dlg.replace_all()
+        assert viewer.segments[0]["text"] == "Hello X X WANT"
     finally:
         dlg.destroy()
         _close(viewer)
+
+
+def test_the_dialog_keeps_an_edge_half_space_and_replaces_a_zwnj_only_needle(root, tmp_path, monkeypatch):
+    monkeypatch.setattr(tv.messagebox, "showinfo", lambda *a, **k: None)
+    mi = _u("0645 06CC")
+    z = _u("0632")
+    texts = [mi + ZWNJ + _u("0631 0648 0645") + " " + mi + ZWNJ + z + " " + mi + z, "a" + ZWNJ + "b"]
+    viewer = _viewer(root, tmp_path, texts)
+    dlg = _dialog(viewer)
+    try:
+        dlg.find_var.set(mi + ZWNJ)
+        dlg.replace_var.set("X")
+        dlg.replace_all()
+        assert viewer.segments[0]["text"] == "X" + _u("0631 0648 0645") + " X" + z + " " + mi + z
+        dlg.find_var.set(ZWNJ)
+        dlg.replace_var.set(" ")
+        dlg.replace_all()
+        assert viewer.segments[1]["text"] == "a b"
+    finally:
+        dlg.destroy()
+        _close(viewer)
+
+
+def test_search_box_with_only_a_zwnj_lists_the_rows_that_have_one(root, tmp_path):
+    viewer = _viewer(root, tmp_path, ["a" + ZWNJ + "b", "ab", KAF_AR + FATHA])
+    try:
+        viewer.search_var.set(ZWNJ)
+        assert viewer.filtered_indices == [0]
+        viewer.search_var.set(FATHA)
+        assert viewer.filtered_indices == [2]
+    finally:
+        _close(viewer)
+
+
+# --- needles made of (or edged by) characters that fold to nothing ---------------------
+
+
+def test_a_needle_of_only_foldable_away_characters_matches_literally():
+    assert srch.find_folded_span("a" + ZWNJ + "b", ZWNJ) == (1, 2)
+    assert srch.replace_folded("a" + ZWNJ + "b" + ZWNJ, ZWNJ, " ") == ("a b ", 2)
+    assert srch.replace_folded("ab", ZWNJ, " ") == ("ab", 0)
+    tatweel = chr(0x0640)
+    assert srch.replace_folded(KAF_AR + tatweel * 2 + _u("062A 0627 0628"), tatweel, "") == (
+        KAF_AR + _u("062A 0627 0628"), 2)
+    word = KAF_AR + FATHA + _u("062A") + FATHA
+    assert srch.replace_folded(word, FATHA, "") == (KAF_AR + _u("062A"), 2)
+    assert srch.replace_folded("e" + chr(0x301), chr(0x301), "!") == ("e!", 1)
+
+
+def test_an_edge_zwnj_is_part_of_the_match_not_dropped():
+    mi = _u("0645 06CC")
+    text = mi + ZWNJ + _u("0631 0648 0645") + " " + mi + ZWNJ + _u("0632") + " " + mi + _u("0632")
+    new, count = srch.replace_folded(text, mi + ZWNJ, "X")
+    assert count == 2
+    assert new == "X" + _u("0631 0648 0645") + " X" + _u("0632") + " " + mi + _u("0632")
+    # leading half-space: the suffix "-ha" only where the half-space really is
+    ha = _u("0647 0627")
+    two = KETAB_FA + ZWNJ + ha + " " + KETAB_FA + ha
+    assert srch.replace_folded(two, ZWNJ + ha, "#") == (KETAB_FA + "# " + KETAB_FA + ha, 1)
+
+
+def test_an_edge_noise_needle_still_ignores_case_unless_asked():
+    assert srch.find_folded_span("xA" + ZWNJ, "a" + ZWNJ) == (1, 3)
+    assert srch.find_folded_span("xA" + ZWNJ, "a" + ZWNJ, casefold=False) is None
+
+
+def test_the_filter_treats_such_needles_literally_too():
+    assert srch.folded_contains("a" + ZWNJ + "b", ZWNJ)
+    assert not srch.folded_contains("ab", ZWNJ)
+    assert srch.folded_contains(KAF_AR + FATHA, FATHA)
+    assert not srch.folded_contains(KAF_AR, FATHA)
+
+
+def test_zwnj_in_the_middle_of_a_needle_is_still_forgiving():
+    assert srch.find_folded_span("x " + MIKHAHAM_PLAIN, MIKHAHAM_ZWNJ) == (2, 2 + len(MIKHAHAM_PLAIN))
+
+
+# --- a match must not start or end inside an expanded character ------------------------
+
+FI = chr(0xFB01)  # the "fi" ligature
+LAM_ALEF = chr(0xFEFB)  # lam + alef ligature, common in PDF-pasted Persian
+SHARP_S = chr(0x00DF)
+ALLAH = chr(0xFDF2)
+
+
+def test_a_match_never_splits_a_compatibility_expansion():
+    assert srch.replace_folded(FI + "sh", "f", "g") == (FI + "sh", 0)
+    assert srch.replace_folded(FI + "sh", "i", "g") == (FI + "sh", 0)
+    assert srch.replace_folded(FI + "sh", "fi", "X") == ("Xsh", 1)
+    assert srch.replace_folded(FI + "sh", "sh", "Y") == (FI + "Y", 1)
+    assert srch.replace_folded(LAM_ALEF, _u("0627"), "x") == (LAM_ALEF, 0)
+    assert srch.replace_folded(LAM_ALEF, _u("0644"), "x") == (LAM_ALEF, 0)
+    assert srch.replace_folded(LAM_ALEF, _u("0644 0627"), "x") == ("x", 1)
+    assert srch.replace_folded("a" + SHARP_S + "b", "s", "x") == ("a" + SHARP_S + "b", 0)
+    assert srch.replace_folded("a" + SHARP_S + "b", "ss", "x") == ("axb", 1)
+    assert srch.replace_folded(ALLAH, _u("0627 0644"), "x") == (ALLAH, 0)
+    assert srch.find_folded_span(FI + "sh", "f") is None
+    # an unsplit match later in the same text is still found
+    assert srch.replace_folded(FI + " f", "f", "g") == (FI + " g", 1)
+
+
+def test_random_compat_texts_only_match_what_they_refold_to():
+    rng = random.Random(267)
+    alphabet = ["a", "f", "i", "s", " ", ZWNJ, FI, LAM_ALEF, SHARP_S, ALLAH, KAF_AR, KAF_FA,
+                _u("0644"), _u("0627"), FATHA]
+    seen = 0
+    for _ in range(800):
+        text = "".join(rng.choice(alphabet) for _ in range(rng.randint(1, 12)))
+        needle = "".join(rng.choice(alphabet) for _ in range(rng.randint(1, 3)))
+        span = srch.find_folded_span(text, needle)
+        if span is None:
+            continue
+        seen += 1
+        s, e = span
+        edge_noise = not srch.fold_with_spans(needle[:1])[0] or not srch.fold_with_spans(needle[-1:])[0]
+        if edge_noise:
+            assert text[s:e].casefold() == needle.casefold(), (text, needle, span)
+        else:
+            assert srch.fold_with_spans(text[s:e])[0] == srch.fold_with_spans(needle)[0], (text, needle, span)
+    assert seen > 50
+
+
+# --- exact mode ------------------------------------------------------------------------
+
+
+def test_exact_mode_is_a_plain_literal_search():
+    assert srch.find_folded_span("a" + KETAB_AR, KETAB_FA, exact=True) is None
+    assert srch.find_folded_span("a" + KETAB_AR, KETAB_AR, exact=True) == (1, 5)
+    assert srch.find_folded_span("Hello", "hello", exact=True) is None
+    assert srch.find_folded_span("x" + MIKHAHAM_ZWNJ, MIKHAHAM_PLAIN, exact=True) is None
+    assert srch.replace_folded("ab" + ZWNJ + "ab", "ab", "#", exact=True) == ("#" + ZWNJ + "#", 2)
+    assert srch.replace_folded(FI + "sh", "f", "g", exact=True) == (FI + "sh", 0)
 
 
 # --- the shared media list -------------------------------------------------------------
