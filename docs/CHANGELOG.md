@@ -309,6 +309,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   rather than blaming a crash, and a worker whose app has gone logs one line instead of a
   `BrokenPipeError` traceback.
 
+- **Worker output pipe on Windows.** A closed pipe is `OSError(22)` there, not `BrokenPipeError`, so
+  the quiet handling added for macOS did nothing; it now covers both when the stream is the
+  worker's own stdout.
+
 - **Hardware detection and model advice.** GPUs without efficient float16 (GTX 10-series) now get
   an NVIDIA CUDA (int8) tier in the Hardware wizard, so Apply no longer pins the CPU over the
   automatic CUDA pick. Applying the untouched list while an NVIDIA GPU is unusable saves nothing

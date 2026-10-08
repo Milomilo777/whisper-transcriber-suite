@@ -59,6 +59,7 @@ new field is required of anyone.
 """
 from __future__ import annotations
 
+import errno
 import json
 import logging
 import os
@@ -162,6 +163,30 @@ def _on_pipe_closed(reason: str) -> None:
 
 
 _output_pipe_reported = False
+
+#: ``errno`` values a write to a pipe whose reader has gone can fail with. POSIX
+#: reports EPIPE (``BrokenPipeError``); Windows reports ``OSError(22, 'Invalid
+#: argument')`` (EINVAL) for a pipe closed by the other end.
+_PIPE_CLOSED_ERRNOS = (errno.EPIPE, errno.EINVAL)
+
+
+def _stdout_is_process_fd1() -> bool:
+    try:
+        return sys.stdout.fileno() == 1
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
+def _is_output_pipe_closed(exc: OSError) -> bool:
+    """True when *exc* means the app is no longer reading the worker's stdout.
+
+    ``BrokenPipeError`` always counts. A plain ``OSError`` with EPIPE or EINVAL counts
+    only while ``sys.stdout`` really is the process's fd 1 (the pipe to the app); the
+    same errno from any other stream, or any other errno, is a real error.
+    """
+    if isinstance(exc, BrokenPipeError):
+        return True
+    return exc.errno in _PIPE_CLOSED_ERRNOS and _stdout_is_process_fd1()
 
 
 def _note_output_pipe_closed() -> None:
@@ -495,11 +520,13 @@ def emit(event: str, **payload: Any) -> None:
     try:
         with _emit_lock:
             print(line, flush=True)
-    except BrokenPipeError:
+    except OSError as e:
         # The app closed its end of the pipe (it quit, or died). Nobody can
         # read this event, and raising would only turn every later log line
         # into a traceback while the task is being cancelled. Any other write
         # error is a real one and still propagates.
+        if not _is_output_pipe_closed(e):
+            raise
         _note_output_pipe_closed()
 
 
