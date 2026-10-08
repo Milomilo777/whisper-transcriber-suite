@@ -528,20 +528,31 @@ def test_fingerprint_follows_the_tasks_settings_and_not_the_stale_config(
 # ---------------------------------------- completeness: nothing falls through
 
 
-def _config_keys_read(path: Path, names: tuple[str, ...] = ("config",)) -> set[str]:
-    """Literal keys read through ``<name>.get("k")`` / ``<name>["k"]``."""
+def _is_config_receiver(node: ast.AST, names: tuple[str, ...]) -> bool:
+    """``config`` / ``cfg`` / ``disk_cfg`` ... or a direct ``load_config(...)``."""
+    if isinstance(node, ast.Name):
+        return node.id in names
+    return (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            and node.func.id == "load_config")
+
+
+def _config_keys_read(
+    path: Path,
+    names: tuple[str, ...] = ("config", "runtime_cfg", "disk_cfg"),
+) -> set[str]:
+    """Literal keys read through ``<name>.get("k")`` / ``<name>["k"]`` /
+    ``load_config(...).get("k")``."""
     tree = ast.parse(path.read_text(encoding="utf-8"))
     keys: set[str] = set()
     for node in ast.walk(tree):
         if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
                 and node.func.attr == "get"
-                and isinstance(node.func.value, ast.Name)
-                and node.func.value.id in names
+                and _is_config_receiver(node.func.value, names)
                 and node.args and isinstance(node.args[0], ast.Constant)
                 and isinstance(node.args[0].value, str)):
             keys.add(node.args[0].value)
-        if (isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name)
-                and node.value.id in names
+        if (isinstance(node, ast.Subscript)
+                and _is_config_receiver(node.value, names)
                 and isinstance(node.slice, ast.Constant)
                 and isinstance(node.slice.value, str)):
             keys.add(node.slice.value)
@@ -559,10 +570,14 @@ def test_every_config_key_the_transcriber_reads_is_classified():
     # Helpers that receive the transcriber's whole ``config`` dict.
     for helper in ("vad_window.py", "loop_guard.py", "llm.py"):
         read |= _config_keys_read(root / "core" / helper, ("config", "cfg"))
+    # Modules the transcriber calls that read config.json themselves.
+    for helper in ("denoise.py", "separator.py"):
+        read |= _config_keys_read(root / "core" / helper, ())
     classified = (set(task_settings.PER_TASK_KEYS)
                   | set(task_settings.LOAD_TIME_KEYS)
                   | set(task_settings.OTHER_KEYS)
-                  | set(task_settings.SECRET_KEYS))
+                  | set(task_settings.SECRET_KEYS)
+                  | set(task_settings.FRESH_READ_KEYS))
     assert read - classified == set(), (
         f"unclassified config keys read by the transcriber: {sorted(read - classified)}")
     # the classes do not overlap
@@ -572,9 +587,13 @@ def test_every_config_key_the_transcriber_reads_is_classified():
 def test_key_scanner_positive_control(tmp_path):
     """The scanner finds both access styles (so an empty result means something)."""
     src = tmp_path / "m.py"
-    src.write_text('x = config.get("a_key")\ny = config["b_key"]\nz = other.get("c")\n',
-                   encoding="utf-8")
-    assert _config_keys_read(src) == {"a_key", "b_key"}
+    src.write_text(
+        'x = config.get("a_key")\ny = config["b_key"]\nz = other.get("c")\n'
+        'w = load_config().get("d_key")\nv = disk_cfg.get("e_key")\n'
+        'u = runtime_cfg["f_key"]\nt = load_config(fetch_online=False)["g_key"]\n',
+        encoding="utf-8")
+    assert _config_keys_read(src) == {
+        "a_key", "b_key", "d_key", "e_key", "f_key", "g_key"}
 
 
 def test_per_task_keys_exist_in_the_default_config():
@@ -585,3 +604,145 @@ def test_per_task_keys_exist_in_the_default_config():
     missing = [k for k in task_settings.PER_TASK_KEYS
                if k not in DEFAULT_CONFIG and k not in task_settings.FALLBACKS]
     assert missing == []
+
+
+# ----------------------------------------------- review follow-ups (round 2)
+
+_DUMMY = "dummy-value-A"  # neutral stand-in for a credential
+
+
+def _url(userinfo: str = "", query: str = "") -> str:
+    """Built from parts: the test source holds no credential-shaped URL."""
+    host = "host.example/v1"
+    return "https://" + (userinfo + "@" if userinfo else "") + host + (
+        "?" + query if query else "")
+
+
+def test_hand_edited_no_ui_keys_are_merged_from_disk_at_dispatch(monkeypatch):
+    """Keys without a UI control are edited in config.json by hand while the
+    app is open; the in-memory app config never sees that edit. Exactly those
+    keys are taken from disk when the snapshot is stamped; keys that have a
+    UI control keep the live in-memory value."""
+    from core import task_settings
+
+    on_disk = {
+        "batch_size": 8, "chapter_min_seconds": 30.0, "chapter_gap_seconds": 1.5,
+        "loop_guard_repeats": 4, "vad_window_s": 0,
+        "output_filename_template": "{base}-x.{ext}",
+        "diarization_enabled": True,  # UI key: the disk value must be ignored
+    }
+    monkeypatch.setattr(task_settings, "load_config", lambda **k: dict(on_disk))
+    live = {"batch_size": 16, "chapter_min_seconds": 60.0, "chapter_gap_seconds": 2.5,
+            "loop_guard_repeats": 3, "vad_window_s": 30,
+            "output_filename_template": "{base}.{ext}", "diarization_enabled": False}
+    task = TranscriptionTask("a.wav")
+    snap = task_settings.stamp(task, live)
+    assert snap is not None
+    for key in task_settings.NO_UI_KEYS:
+        assert snap[key] == on_disk[key], key
+    assert snap["diarization_enabled"] is False
+    assert set(task_settings.NO_UI_KEYS) == {
+        "chapter_min_seconds", "chapter_gap_seconds", "loop_guard_repeats",
+        "vad_window_s", "output_filename_template", "batch_size"}
+
+
+def test_unreadable_disk_config_falls_back_to_the_live_values(monkeypatch):
+    from core import task_settings
+
+    def boom(**kwargs):
+        raise OSError("locked")
+
+    monkeypatch.setattr(task_settings, "load_config", boom)
+    snap = task_settings.stamp(TranscriptionTask("a.wav"), {"batch_size": 16})
+    assert snap is not None and snap["batch_size"] == 16
+
+
+@pytest.mark.parametrize("url", [
+    _url(userinfo="alice:" + _DUMMY),
+    _url(query="token=" + _DUMMY),
+    _url(userinfo=_DUMMY),
+])
+def test_remote_base_url_with_credentials_stays_out_of_the_snapshot(url):
+    from core import task_settings
+
+    snap = task_settings.snapshot({"llm_remote_base_url": url, "ai_enabled": True})
+    assert "llm_remote_base_url" not in snap
+    assert _DUMMY not in json.dumps(snap)
+    clean = task_settings.snapshot({"llm_remote_base_url": _url()})
+    assert clean["llm_remote_base_url"] == _url()
+
+
+def test_credentialed_base_url_is_read_fresh_by_the_worker(monkeypatch):
+    seen: dict[str, Any] = {}
+    import core.llm as llm
+
+    monkeypatch.setattr(llm, "build_runner_from_config",
+                        lambda cfg: seen.update(cfg) or None)
+    monkeypatch.setitem(tr.config, "ai_enabled", True)
+    monkeypatch.setitem(tr.config, "llm_provider", "remote")
+    monkeypatch.setitem(tr.config, "llm_remote_base_url", "https://old.example/v1")
+    fresh_url = _url(userinfo="alice:" + _DUMMY)
+    monkeypatch.setattr(tr, "load_config", lambda *a, **k: {
+        "llm_remote_api_key": "dummy-credential-B",
+        "llm_remote_base_url": fresh_url})
+    tr._maybe_get_llm_runner()
+    assert seen["llm_remote_base_url"] == fresh_url
+
+    # A clean URL travels in the snapshot; the in-scope value is kept.
+    seen.clear()
+    monkeypatch.setattr(tr, "load_config", lambda *a, **k: {
+        "llm_remote_api_key": "", "llm_remote_base_url": "https://disk.example/v1"})
+    tr._maybe_get_llm_runner()
+    assert seen["llm_remote_base_url"] == "https://old.example/v1"
+
+
+def test_snapshot_converts_paths_and_warns_about_other_values(caplog):
+    from pathlib import PurePosixPath
+    from core import task_settings
+
+    with caplog.at_level("WARNING", logger="core.task_settings"):
+        snap = task_settings.snapshot({
+            "ai_model_path": PurePosixPath("/m/q.gguf"),
+            "hotwords": ["a", PurePosixPath("b")],
+            "initial_prompt": object(),
+        })
+    assert snap["ai_model_path"] == "/m/q.gguf"
+    assert snap["hotwords"] == ["a", "b"]
+    assert "initial_prompt" not in snap
+    assert any("initial_prompt" in r.getMessage() and "keeps" in r.getMessage()
+               for r in caplog.records)
+    json.dumps(snap)
+
+
+def test_resume_says_it_kept_the_original_settings(env, monkeypatch):
+    import core._checkpoint as cp
+
+    audio = env.tmp / "talk.wav"
+    audio.write_bytes(b"\0" * 16)
+    first = TranscriptionTask(str(audio))
+    first.task_settings = {"vad_enabled": False}
+    with tr._runtime_overrides_scope(first):
+        fp = cp.config_fingerprint(tr.config)
+        backend, model_name = tr._current_backend_and_model()
+    cp.write_checkpoint(
+        str(audio), backend=backend, model_name=model_name, language="en",
+        language_probability=0.9, cfg_fingerprint=fp, last_end_time=10.0,
+        segments=[{"start": 0.0, "end": 10.0, "text": "early"}], checkpoint_time=1.0)
+    slice_ = env.tmp / "slice.wav"
+    slice_.write_bytes(b"\0")
+    monkeypatch.setattr(tr, "_slice_audio_from", lambda *a, **k: str(slice_))
+    monkeypatch.setattr(tr, "_run_post_pipeline", lambda *a, **k: 0)
+    resumed = TranscriptionTask(str(audio))
+    resumed.task_settings = {"vad_enabled": False}
+    logs: list[str] = []
+    assert tr.resume_transcription(resumed, None, logs.append) is True
+    line = ("Resumed with the settings it started with; "
+            "use Re-run to apply new settings")
+    assert sum(line in m for m in logs) == 1
+
+    # A fresh (non-resume) run never prints it.
+    logs.clear()
+    fresh = TranscriptionTask(str(audio))
+    fresh.task_settings = {"vad_enabled": False}
+    tr.transcribe(fresh, None, logs.append)
+    assert not any(line in m for m in logs)

@@ -308,7 +308,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   options) had no effect until the app was restarted, because the long-lived worker kept the
   settings it started with. Each task now carries a snapshot of these options taken when it is
   dispatched, the worker applies it to that task only, and a resumed task keeps the options it
-  started with (`core/task_settings.py`).
+  started with (`core/task_settings.py`). Keys without a control in the app (for example
+  `batch_size`, `chapter_min_seconds`) are re-read from `config.json` for each task, so a hand edit
+  applies to the next file.
 
 - **Quitting during a job.** On macOS, Cmd+Q (and the app-menu and Dock Quit) now ask "Exit with queued
   tasks?" like Windows instead of dropping a running transcription. A confirmed exit is recorded as

@@ -29,7 +29,11 @@ from __future__ import annotations
 import copy
 import json
 import logging
+import os
 from typing import Any, Mapping
+from urllib.parse import urlsplit
+
+from .config import load_config
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +95,46 @@ OTHER_KEYS: tuple[str, ...] = (
 
 SECRET_KEYS: tuple[str, ...] = ("llm_remote_api_key",)
 
+# Keys no UI control edits: users change them by hand in config.json while
+# the app is open, which the in-memory app config never sees. They are merged
+# from disk when a task is stamped (the UI keys keep the live value).
+NO_UI_KEYS: tuple[str, ...] = (
+    "chapter_min_seconds",
+    "chapter_gap_seconds",
+    "loop_guard_repeats",
+    "vad_window_s",
+    "output_filename_template",
+    "batch_size",
+)
+
+# Read from config.json by the module that needs them, on every use: never
+# stale, so they need no snapshot.
+FRESH_READ_KEYS: tuple[str, ...] = ("denoise_cache_mb", "demucs_cache_mb")
+
+
+def url_has_credentials(url: Any) -> bool:
+    """True when ``url`` carries userinfo (``user:pw@host``) or a query string
+    (``?api-key=...``): either can hold a secret, so it never crosses the pipe
+    (the worker reads such a value fresh from config.json instead)."""
+    if not isinstance(url, str) or not url:
+        return False
+    try:
+        parts = urlsplit(url)
+        return bool(parts.query or "@" in parts.netloc)
+    except ValueError:
+        return True  # unparseable: treat as sensitive, do not send
+
+
+def _jsonable(value: Any) -> Any:
+    """``value`` with every path-like turned into ``str`` (lists/dicts too)."""
+    if isinstance(value, os.PathLike):
+        return os.fspath(value)
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _jsonable(v) for k, v in value.items()}
+    return value
+
 
 def snapshot(cfg: Mapping[str, Any]) -> dict[str, Any]:
     """The per-task options of ``cfg``, detached and JSON-safe.
@@ -107,13 +151,33 @@ def snapshot(cfg: Mapping[str, Any]) -> dict[str, Any]:
             value = FALLBACKS[key]
         else:
             continue
+        if key == "llm_remote_base_url" and url_has_credentials(value):
+            continue  # read fresh by the worker, like the API key
+        value = _jsonable(value)
         try:
             json.dumps(value)
         except (TypeError, ValueError):
-            logger.warning("task settings: %s is not JSON-serialisable; skipped", key)
+            logger.warning(
+                "task settings: %r (%s) cannot be sent to the worker; "
+                "the worker keeps its own value for it",
+                key, type(value).__name__,
+            )
             continue
         out[key] = copy.deepcopy(value)
     return out
+
+
+def _no_ui_from_disk() -> dict[str, Any]:
+    """Current on-disk values of ``NO_UI_KEYS`` (cheap read, no online fetch).
+
+    Empty when the file cannot be read: the live values then stand.
+    """
+    try:
+        disk = load_config(fetch_online=False)
+    except Exception as exc:  # noqa: BLE001 - never block a dispatch on this
+        logger.warning("task settings: config.json not re-read (%s)", exc)
+        return {}
+    return {key: disk[key] for key in NO_UI_KEYS if key in disk}
 
 
 def from_command(raw: Any) -> dict[str, Any] | None:
@@ -137,7 +201,7 @@ def stamp(task: Any, cfg: Mapping[str, Any]) -> dict[str, Any] | None:
     existing = getattr(task, "task_settings", None)
     if isinstance(existing, dict):
         return existing
-    snap = snapshot(cfg)
+    snap = snapshot({**cfg, **_no_ui_from_disk()})
     try:
         task.task_settings = snap
     except Exception:  # noqa: BLE001 - frozen/tuple-like task objects

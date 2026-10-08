@@ -1510,10 +1510,16 @@ def _maybe_get_llm_runner() -> Any | None:
             # that crosses the worker pipe (core.task_settings.SECRET_KEYS):
             # read the current one from config.json, so a key the user
             # replaced after this worker started is the one that gets used.
-            fresh = load_config(fetch_online=False).get("llm_remote_api_key")
+            disk = load_config(fetch_online=False)
+            fresh = disk.get("llm_remote_api_key")
             cfg = dict(config, llm_remote_api_key=(
                 fresh if fresh is not None else config.get("llm_remote_api_key") or ""
             ))
+            # A base URL that carries credentials (user:pw@host, ?api-key=)
+            # is kept out of the snapshot for the same reason.
+            disk_url = disk.get("llm_remote_base_url")
+            if _task_settings.url_has_credentials(disk_url):
+                cfg["llm_remote_base_url"] = disk_url
         return _llm.build_runner_from_config(cfg)
     except Exception:  # noqa: BLE001
         return None
@@ -2859,6 +2865,11 @@ def resume_transcription(
         log(
             f"Resume: continuing from {last_end_time:.2f}s "
             f"({len(prior_segments)} segment(s) already captured).",
+            log_cb,
+        )
+        log(
+            "Resumed with the settings it started with; "
+            "use Re-run to apply new settings",
             log_cb,
         )
 
