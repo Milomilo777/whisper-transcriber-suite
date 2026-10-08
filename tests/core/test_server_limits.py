@@ -15,6 +15,7 @@ Loopback sockets with ephemeral ports only; the transcriber is a fake.
 from __future__ import annotations
 
 import json
+import os
 import socket
 import threading
 import time
@@ -466,18 +467,176 @@ def _v1_request(port: int, name: str = "clip.wav") -> socket.socket:
     return s
 
 
-def test_v1_wait_ends_and_cancels_the_job_when_the_client_leaves(tmp_path):
+def _reset_close(sock: socket.socket) -> None:
+    """Close with an RST (what a crashed or killed client leaves behind)."""
+    import struct
+
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
+                    struct.pack("ii", 1, 0))
+    sock.close()
+
+
+def test_v1_wait_cancels_the_job_when_the_client_resets(tmp_path):
     srv, gate = _blocking_server(tmp_path)
     try:
         s = _v1_request(srv.port)
         assert _wait_until(lambda: len(srv.manager.list()) == 1)
         assert _wait_until(lambda: srv.server.active_connections() == 1)
         job_id = srv.manager.list()[0]["job_id"]
-        s.close()  # the client gives up (a retry would start a new request)
+        _reset_close(s)
         job = srv.manager.get(job_id)
         assert job is not None
         assert _wait_until(lambda: job.cancelled, 5.0)
         assert _wait_until(lambda: srv.server.active_connections() == 0, 5.0)
+    finally:
+        gate.set()
+        srv.close()
+
+
+def _json_transcribe(task, progress_cb=None, log_cb=None, language_cb=None):
+    base, _ = os.path.splitext(task.file_path)
+    path = f"{base}.json"
+    with open(path, "w", encoding="utf-8") as f:
+        f.write('[{"start": 0.0, "end": 1.0, "text": "hello"}]')
+    task.output_paths = [path]
+    if progress_cb:
+        progress_cb(100)
+
+
+def _read_all(sock: socket.socket, limit: float = 10.0) -> bytes:
+    sock.settimeout(limit)
+    out = b""
+    while True:
+        try:
+            part = sock.recv(65536)
+        except OSError:
+            break
+        if not part:
+            break
+        out += part
+    return out
+
+
+def test_v1_half_closed_client_keeps_its_job_and_gets_the_reply(tmp_path):
+    """HTTP/1.0 style: send everything, shut down the write side, read."""
+    gate = threading.Event()
+
+    def slow(task, progress_cb=None, log_cb=None, language_cb=None):
+        gate.wait(20)
+        return _json_transcribe(task, progress_cb, log_cb, language_cb)
+
+    srv = _Server(tmp_path, transcribe_fn=slow)
+    try:
+        body = _upload_body(model="whisper-1")
+        s = socket.create_connection(("127.0.0.1", srv.port), timeout=10)
+        s.sendall(
+            b"POST /v1/audio/transcriptions HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+            b"Connection: close\r\n"
+            b"Content-Type: multipart/form-data; boundary=BOUND\r\n"
+            + f"Content-Length: {len(body)}\r\n\r\n".encode() + body)
+        s.shutdown(socket.SHUT_WR)  # a FIN, not a reset
+        assert _wait_until(lambda: len(srv.manager.list()) == 1)
+        time.sleep(0.6)  # several polls with the FIN pending
+        job_id = srv.manager.list()[0]["job_id"]
+        job = srv.manager.get(job_id)
+        assert job is not None and not job.cancelled
+        gate.set()
+        reply = _read_all(s)
+        s.close()
+        assert reply.startswith(b"HTTP/1.1 200"), reply[:80]
+        assert b"hello" in reply
+    finally:
+        gate.set()
+        srv.close()
+
+
+def test_client_gone_helper_treats_only_a_reset_as_gone():
+    import struct
+    from types import SimpleNamespace
+
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    try:
+        def pair():
+            c = socket.create_connection(listener.getsockname())
+            srv_side, _ = listener.accept()
+            return c, srv_side
+
+        gone = lambda sock: JobRequestHandler._client_gone(  # noqa: E731
+            SimpleNamespace(connection=sock))  # type: ignore[arg-type]
+        # quiet connection
+        c, sv = pair()
+        assert gone(sv) is False
+        # pipelined bytes are seen but never consumed
+        c.sendall(b"GET /next")
+        time.sleep(0.2)
+        assert gone(sv) is False
+        sv.settimeout(2)
+        assert sv.recv(100) == b"GET /next"
+        # FIN: a half-close or a finished client, not "gone"
+        c.shutdown(socket.SHUT_WR)
+        time.sleep(0.2)
+        assert gone(sv) is False
+        c.close()
+        sv.close()
+        # RST: gone
+        c, sv = pair()
+        c.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
+                     struct.pack("ii", 1, 0))
+        c.close()
+        time.sleep(0.3)
+        assert gone(sv) is True
+        sv.close()
+    finally:
+        listener.close()
+
+
+def test_tls_v1_wait_cancels_on_a_reset_and_keeps_the_job_on_close(
+        tmp_path, monkeypatch):
+    import ssl
+
+    gate = threading.Event()
+
+    def slow(task, progress_cb=None, log_cb=None, language_cb=None):
+        gate.wait(20)
+        return _json_transcribe(task, progress_cb, log_cb, language_cb)
+
+    from core.server import tls
+
+    monkeypatch.setattr(tls, "cert_dir", lambda: tmp_path)
+    srv = _Server(tmp_path, transcribe_fn=slow,
+                  ssl_context=tls.build_server_ssl_context())
+    try:
+        ctx = ssl._create_unverified_context()
+        body = _upload_body(model="whisper-1")
+
+        def send(raw):
+            tl = ctx.wrap_socket(raw)
+            tl.sendall(
+                b"POST /v1/audio/transcriptions HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                b"Content-Type: multipart/form-data; boundary=BOUND\r\n"
+                + f"Content-Length: {len(body)}\r\n\r\n".encode() + body)
+            return tl
+
+        # 1. a clean close (close_notify + FIN) leaves the job alone
+        raw = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
+        tl = send(raw)
+        assert _wait_until(lambda: len(srv.manager.list()) == 1)
+        # (A real close() with unread TLS session tickets would send an RST.)
+        socket.socket.shutdown(tl, socket.SHUT_WR)  # FIN, as after close_notify
+        time.sleep(0.8)
+        first = srv.manager.get(srv.manager.list()[0]["job_id"])
+        assert first is not None and not first.cancelled
+        # 2. a reset cancels it
+        raw2 = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
+        tl2 = send(raw2)
+        assert _wait_until(lambda: len(srv.manager.list()) == 2)
+        second = [srv.manager.get(r["job_id"]) for r in srv.manager.list()
+                  if r["job_id"] != first.job_id][0]
+        assert second is not None
+        _reset_close(tl2)
+        assert _wait_until(lambda: second.cancelled, 5.0)
     finally:
         gate.set()
         srv.close()
@@ -524,7 +683,7 @@ def test_a_surplus_client_in_the_middle_of_an_upload_still_sees_the_503(tmp_path
             size = 3 * 1024 * 1024
             c = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
             c.sendall(
-                b"POST /api/jobs HTTP/1.1\r\nHost: x\r\n"
+                b"POST /api/jobs HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                 b"Content-Type: multipart/form-data; boundary=B\r\n"
                 + f"Content-Length: {size}\r\n\r\n".encode())
             try:
@@ -550,7 +709,7 @@ def test_the_refusal_drain_is_bounded(tmp_path, monkeypatch):
     try:
         assert _wait_until(lambda: srv.server.active_connections() == 1)
         c = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
-        c.sendall(b"POST /api/jobs HTTP/1.1\r\nHost: x\r\nContent-Length: 99999999\r\n\r\n")
+        c.sendall(b"POST /api/jobs HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 99999999\r\n\r\n")
         assert c.recv(4096).startswith(b"HTTP/1.1 503")
         try:
             c.sendall(b"x" * (1024 * 1024))  # more than the drain takes
@@ -720,3 +879,95 @@ def test_the_page_explains_download_failures_and_the_header_download():
     assert "wrong or missing password" in text
     assert "no longer available" in text
     assert "Save link as" in text  # the hint shown while a password is set
+
+
+# --- round 3: Expect: 100-continue, slot after upload, 408 -------------------------
+
+def test_expect_continue_when_crowded_gets_connection_close_on_the_final_reply_only(
+        tmp_path):
+    srv = _Server(tmp_path, max_connections=4)
+    holders = []
+    try:
+        for _ in range(2):
+            h = socket.create_connection(("127.0.0.1", srv.port))
+            h.sendall(b"GET /api/he")
+            holders.append(h)
+        assert _wait_until(lambda: srv.server.active_connections() == 2)
+        body = _multipart("clip.wav", b"abc")
+        s = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
+        s.sendall(
+            b"POST /api/jobs HTTP/1.1\r\nHost: 127.0.0.1\r\nExpect: 100-continue\r\n"
+            b"Content-Type: multipart/form-data; boundary=BOUND\r\n"
+            + f"Content-Length: {len(body)}\r\n\r\n".encode())
+        interim = s.recv(4096)
+        assert interim.startswith(b"HTTP/1.1 100"), interim
+        assert b"onnection" not in interim  # not on the interim reply
+        s.sendall(body)
+        final = _read_all(s, 5.0)
+        s.close()
+        head, _sep, payload = final.partition(b"\r\n\r\n")
+        assert head.startswith(b"HTTP/1.1 202"), head[:60]
+        assert b"connection: close" in head.lower()
+        assert b"job_id" in payload  # the reply arrived whole
+    finally:
+        for h in holders:
+            h.close()
+        srv.close()
+
+
+def test_slow_uploads_do_not_hold_sync_waiter_slots(tmp_path):
+    srv, gate = _blocking_server(tmp_path, max_connections=6)
+    partial = []
+    try:
+        body = _upload_body(model="whisper-1")
+        for _ in range(4):  # headers and half of the body, then silence
+            s = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
+            s.sendall(
+                b"POST /v1/audio/transcriptions HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                b"Content-Type: multipart/form-data; boundary=BOUND\r\n"
+                + f"Content-Length: {len(body)}\r\n\r\n".encode()
+                + body[:len(body) // 2])
+            partial.append(s)
+        assert _wait_until(lambda: srv.server.active_connections() == 4)
+        full = _v1_request(srv.port)  # a complete request still gets in
+        assert _wait_until(lambda: len(srv.manager.list()) == 1)
+        full.close()
+    finally:
+        for s in partial:
+            s.close()
+        gate.set()
+        srv.close()
+
+
+def test_a_stalled_upload_gets_a_408_with_a_clear_message(tmp_path, monkeypatch):
+    monkeypatch.setattr(httpd, "_UPLOAD_STALL_S", 0.5)
+    srv = _Server(tmp_path)
+    try:
+        full = _multipart("clip.wav", b"x" * 5000)
+        s = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
+        s.sendall(
+            b"POST /api/jobs HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+            b"Content-Type: multipart/form-data; boundary=BOUND\r\n"
+            + f"Content-Length: {len(full)}\r\n\r\n".encode() + full[:10])
+        reply = _read_all(s, 5.0)
+        s.close()
+        assert reply.startswith(b"HTTP/1.1 408"), reply[:60]
+        assert b"too slow" in reply
+    finally:
+        srv.close()
+
+
+def test_a_stalled_json_body_gets_a_408(tmp_path, monkeypatch):
+    monkeypatch.setattr(httpd, "_JSON_BODY_TOTAL_S", 1.0)
+    srv = _Server(tmp_path)
+    try:
+        s = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
+        s.sendall(
+            b"POST /api/jobs HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+            b"Content-Type: application/json\r\nContent-Length: 100\r\n\r\n"
+            b'{"url"')
+        reply = _read_all(s, 5.0)
+        s.close()
+        assert reply.startswith(b"HTTP/1.1 408"), reply[:60]
+    finally:
+        srv.close()

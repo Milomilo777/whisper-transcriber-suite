@@ -213,6 +213,8 @@ _MAX_REFUSERS = 16
 #     sanity bound, the whole upload may take at most its size at
 #     _UPLOAD_SANITY_RATE_BPS (but not less than _UPLOAD_MIN_TOTAL_S and not
 #     more than _UPLOAD_MAX_TOTAL_S).
+_UPLOAD_TOO_SLOW_MSG = ("upload too slow: no data arrived in time, "
+                        "or the whole upload took too long")
 _HEADER_TOTAL_S = 15.0
 _JSON_BODY_TOTAL_S = 60.0
 _UPLOAD_STALL_S = 60.0
@@ -1052,7 +1054,8 @@ class JobHTTPServer(ThreadingHTTPServer):
         if max_sync_waits is None:
             max_sync_waits = min(_MAX_SYNC_WAITS,
                                  max(1, self._max_connections * 2 // 3))
-        self._sync_slots = threading.BoundedSemaphore(max(1, max_sync_waits))
+        self._max_sync_waits = max(1, max_sync_waits)
+        self._sync_waiting = 0
         self._refuser_slots = threading.BoundedSemaphore(_MAX_REFUSERS)
         self._active = 0
         self._active_lock = threading.Lock()
@@ -1063,6 +1066,22 @@ class JobHTTPServer(ThreadingHTTPServer):
         """How many connections currently hold a handler thread."""
         with self._active_lock:
             return self._active
+
+    def sync_wait_full(self) -> bool:
+        """True when no more synchronous requests may wait for their job."""
+        with self._active_lock:
+            return self._sync_waiting >= self._max_sync_waits
+
+    def take_sync_wait(self) -> bool:
+        with self._active_lock:
+            if self._sync_waiting >= self._max_sync_waits:
+                return False
+            self._sync_waiting += 1
+            return True
+
+    def release_sync_wait(self) -> None:
+        with self._active_lock:
+            self._sync_waiting -= 1
 
     def crowded(self) -> bool:
         """True when three quarters of the connection slots are in use.
@@ -1261,28 +1280,43 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             # The headers are in: the handler sets its own body budget.
             self._set_deadline(None)
 
+    # Status code of the response being written (0 before the first one).
+    _status_code = 0
+
+    def send_response_only(self, code: int, message: str | None = None) -> None:
+        # Covers the interim "100 Continue" too, which send_response() skips.
+        self._status_code = int(code)
+        super().send_response_only(code, message)
+
     def end_headers(self) -> None:
-        if not self.close_connection and self._srv.crowded():
-            # send_header() also sets close_connection for this value.
+        # Only a final response may announce the end of the connection: on the
+        # interim 100 Continue it would switch keep-alive off for the real
+        # reply that follows. send_header() also sets close_connection for it.
+        if (self._status_code >= 200 and not self.close_connection
+                and self._srv.crowded()):
             self.send_header("Connection", "close")
         super().end_headers()
 
     def _client_gone(self) -> bool:
-        """True when the peer has closed (or reset) this connection.
+        """True when the connection was reset or has failed.
 
-        Looks without consuming: a readable socket whose peek returns no bytes
-        is a closed one; pipelined bytes are left for the next request. Over
-        TLS the peek sees the encrypted stream, so a close_notify still reads
-        as data and only a TCP-level close or reset is noticed.
+        A FIN is deliberately NOT "gone": a client may half-close after it has
+        sent its whole request (HTTP/1.0 style) and still wait for the answer,
+        and cancelling a real person's transcription is worse than holding a
+        slot a little longer (the number of waiters is capped). A client that
+        really left makes the reply write fail harmlessly. So only a reset or a
+        socket error counts. The peek never consumes: pipelined (or, over TLS,
+        encrypted) bytes stay for the next request. It looks at the raw TCP
+        stream, so TLS needs no special case.
         """
         sock = self.connection
         try:
             readable, _w, _x = select.select([sock], [], [], 0)
-            if not readable:
-                return False
-            return socket.socket.recv(sock, 1, socket.MSG_PEEK) == b""
+            if readable:
+                socket.socket.recv(sock, 1, socket.MSG_PEEK)
         except (OSError, ValueError):
             return True
+        return False
 
     @contextlib.contextmanager
     def _within(self, seconds: float) -> Iterator[None]:
@@ -1751,12 +1785,21 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             return None
         return self._read_exact(length)
 
-    def _read_exact(self, length: int) -> bytes:
-        """Read a body of ``length`` bytes within the JSON-body time budget."""
+    def _read_exact(self, length: int) -> bytes | None:
+        """Read a body of ``length`` bytes within the JSON-body time budget.
+
+        Returns ``None`` after sending a 408 when the budget ran out.
+        """
         if not length:
             return b""
-        with self._within(_JSON_BODY_TOTAL_S):
-            return self.rfile.read(length)
+        try:
+            with self._within(_JSON_BODY_TOTAL_S):
+                return self.rfile.read(length)
+        except _BudgetExceeded:
+            self._send_error_json_close(
+                HTTPStatus.REQUEST_TIMEOUT,
+                "request body too slow: it did not arrive in time")
+            return None
 
     def _drain_body(self, length: int) -> None:
         """Read + discard ``length`` bytes from the request body.
@@ -1831,6 +1874,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
 
         fd, tmp_path = tempfile.mkstemp(prefix="upload-", suffix=".part")
         written = 0
+        too_slow = False
         sanity_end = time.monotonic() + min(
             _UPLOAD_MAX_TOTAL_S,
             max(_UPLOAD_MIN_TOTAL_S, length / _UPLOAD_SANITY_RATE_BPS))
@@ -1842,6 +1886,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                     while remaining > 0:
                         left = sanity_end - time.monotonic()
                         if left <= 0:
+                            too_slow = True
                             break
                         # Each chunk that arrives earns another stall window.
                         self._set_deadline(min(_UPLOAD_STALL_S, left))
@@ -1853,6 +1898,9 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                         remaining -= len(buf)
                 finally:
                     self._set_deadline(None)
+            if remaining > 0 and too_slow:
+                raise _UploadError(
+                    HTTPStatus.REQUEST_TIMEOUT, _UPLOAD_TOO_SLOW_MSG)
             if remaining > 0:
                 # The client left (or stalled past the socket timeout) before
                 # the declared length arrived: a partial file must not become
@@ -1866,6 +1914,13 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                     HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "upload too large")
             filename, file_start, file_end, fields = (
                 self._extract_upload_from_file(tmp_path, written, boundary))
+        except _BudgetExceeded as e:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise _UploadError(
+                HTTPStatus.REQUEST_TIMEOUT, _UPLOAD_TOO_SLOW_MSG) from e
         except OSError as e:
             try:
                 os.unlink(tmp_path)
@@ -2122,19 +2177,16 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 param="file")
             return
         # A synchronous request waits for its job; the number of waiters is
-        # capped so they can never use every connection slot.
-        if not self._srv._sync_slots.acquire(blocking=False):
+        # capped so they can never use every connection slot. The cap is
+        # checked before the body is read (so a refused upload is not stored)
+        # but a place is taken only once the whole upload is in: a slow upload
+        # must not occupy one while it is still sending.
+        if self._srv.sync_wait_full():
             self._reject_openai_post_early(
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 "too many transcriptions are waiting; try again later",
                 err_type="server_error")
             return
-        try:
-            self._openai_transcribe_waiting(boundary)
-        finally:
-            self._srv._sync_slots.release()
-
-    def _openai_transcribe_waiting(self, boundary: str) -> None:
         if self._queue_is_full():
             self._reject_openai_post_early(
                 HTTPStatus.SERVICE_UNAVAILABLE,
@@ -2147,7 +2199,16 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             self._send_openai_error_close(e.status, e.message)
             return
         try:
-            self._openai_handle_upload(upload)
+            if not self._srv.take_sync_wait():
+                self._send_openai_error(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    "too many transcriptions are waiting; try again later",
+                    err_type="server_error")
+                return
+            try:
+                self._openai_handle_upload(upload)
+            finally:
+                self._srv.release_sync_wait()
         finally:
             try:
                 os.unlink(upload.tmp_path)

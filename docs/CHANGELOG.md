@@ -307,7 +307,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   connections are served at once (a surplus client gets a 503 it can actually read, even
   mid-upload), idle keep-alive connections are dropped after 15 seconds, a client that trickles
   bytes is cut off at a time budget (an upload only when it stalls), at most 32 synchronous `/v1`
-  requests may wait (a client that hangs up cancels its job), and a full job queue is answered
+  requests may wait (a connection reset cancels the job; a closed or half-closed client keeps it), and a full job queue is answered
   before the upload is written to disk.
 - **An English-only model no longer returns made-up English for a web request.** A web job or
   `/v1` request that names another language while the server's Whisper model is English-only

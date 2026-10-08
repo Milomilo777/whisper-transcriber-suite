@@ -177,10 +177,14 @@ transcription is done (a long file means a long wait; set a generous client
 timeout). Jobs from this route join the same single queue as every other job.
 At most 32 such requests may wait at once (fewer on a server started with a
 small connection cap), so the web page and status calls always find a free
-connection; one more gets HTTP 503. If the client hangs up while it waits, the
-server notices within a moment and **cancels that job**: nobody is left to read
-the answer, and a client that retries would otherwise queue one job per attempt.
-Over HTTPS only a TCP-level close or reset is noticed this way.
+connection; one more gets HTTP 503 (a place is taken only once the whole upload
+has arrived). If the connection is **reset** while the client waits (it crashed
+or was killed), the server notices within a moment and **cancels that job**:
+nobody is left to read the answer, and a client that retries would otherwise
+queue one job per attempt. Only a reset is noticed, over HTTP and HTTPS alike:
+a client that closed or half-closed its side (HTTP/1.0 style, or after
+`close_notify`) keeps its job, which runs to the end; sending the answer to a
+client that really left fails harmlessly.
 
 | Field | Required | Notes |
 |---|---|---|
@@ -484,8 +488,10 @@ Behaviour to know:
   send a request line and its headers (also the idle time of a keep-alive
   connection) and 60 seconds for a small JSON body. An upload is cut only when
   it stalls: every 64 KB that arrives earns another 60 seconds, so a slow but
-  steady upload of a big file is never cut; as a sanity bound the whole upload
-  may take at most its size at 16 KB/s (between 10 minutes and 6 hours).
+  steady upload of a big file is not cut by the stall rule. A sanity bound
+  still ends an upload that is slower than about 16 KB/s overall (its size at
+  16 KB/s, between 10 minutes and 6 hours). A cut upload or JSON body gets
+  HTTP 408 with a message saying it was too slow.
 - **English-only models.** When the server's Whisper model is English-only
   (`tiny.en`, `small.en`, ...), a job or `/v1` request that names another
   language is refused with HTTP 400 and a message naming a multilingual model;
