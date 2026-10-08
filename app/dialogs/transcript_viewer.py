@@ -856,6 +856,15 @@ class TranscriptViewer(tk.Toplevel):
         self.tree.configure(yscrollcommand=vsb.set)
         self.tree.grid(row=0, column=0, sticky="nsew")
         vsb.grid(row=0, column=1, sticky="ns")
+        # A list row is one line and cannot wrap, so a long segment is cut
+        # at the column edge. The selected segment is therefore also shown
+        # in full, wrapped, in a small read-only box under the list.
+        self._segment_detail = tk.Text(
+            left, wrap="word", height=3, state="disabled", relief="flat",
+            borderwidth=1, highlightthickness=1,
+        )
+        script_fonts.use_text_font(self._segment_detail)
+        self._segment_detail.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
         left.rowconfigure(0, weight=1)
         left.columnconfigure(0, weight=1)
         self.tree.bind("<<TreeviewSelect>>", self._on_segment_select)
@@ -1603,6 +1612,8 @@ class TranscriptViewer(tk.Toplevel):
 
     def _populate_listbox(self) -> None:
         self.tree.delete(*self.tree.get_children())
+        if hasattr(self, "_segment_detail"):
+            self._show_segment_detail("")
         self.filtered_indices = []
         query = (self.search_var.get() if hasattr(self, "search_var") else "").strip().lower()
         active_idx = self._active_segment_idx
@@ -1642,8 +1653,21 @@ class TranscriptViewer(tk.Toplevel):
         except ValueError:
             return
         seg = self.segments[idx]
+        self._show_segment_detail(_seg_text(seg).strip())
         self._seek_to(_seg_float(seg, "start"))
         self._set_active_segment(idx)
+
+    def _show_segment_detail(self, text: str) -> None:
+        """Show the whole text of the selected segment, wrapped ("" clears it)."""
+        box = self._segment_detail
+        try:
+            box.configure(state="normal")
+            box.delete("1.0", "end")
+            box.insert("1.0", text)
+            script_fonts.tag_script_lines(box, language=self.language)
+            box.configure(state="disabled")
+        except tk.TclError:
+            pass
 
     def _on_segment_double_click(self, _event: tk.Event) -> None:
         # Same as single-select but also start playback if paused.

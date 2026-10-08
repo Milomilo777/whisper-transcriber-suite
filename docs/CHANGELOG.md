@@ -303,6 +303,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Long transcript-viewer segments can be read in full.** A list row cannot wrap, so a long segment was cut at the column edge (on every platform); the selected segment now also appears wrapped in a read-only box under the list.
 - **"Minimise to system tray" says why it is off.** Where the tray cannot work (macOS, or pystray / Pillow missing) the option is greyed out with a one-line reason, and Save leaves the stored choice alone.
 - **No repeated "Online config fetch failed (404)" at every worker start.** The default `config_url` is not published yet; an HTTP 404/410 is now logged once at INFO and not retried for 24 hours (cache and built-in settings keep applying).
 - **Log lines no longer carry signed-URL secrets.** Every log handler now cuts http(s) URLs to scheme, host and path (query string, fragment and user info dropped), so a signed model-download link no longer lands in `app.log`.
