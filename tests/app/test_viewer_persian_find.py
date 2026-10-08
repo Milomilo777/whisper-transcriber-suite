@@ -107,6 +107,22 @@ def test_folded_contains_is_the_filter_the_search_box_uses():
     assert not srch.folded_contains("Hello", "bye")
 
 
+def test_the_ascii_fast_path_folds_exactly_like_the_full_pipeline():
+    import unicodedata
+
+    everything = "".join(chr(i) for i in range(128))
+    full = unicodedata.normalize("NFD", unicodedata.normalize("NFKC", everything))
+    full = "".join(ch for ch in full if not srch._is_search_noise(ch))
+    full = unicodedata.normalize("NFC", full).translate(srch._FOLD_TABLE)
+    assert srch.normalize_search_text(everything) == unicodedata.normalize("NFKC", full.casefold())
+    assert srch._fold(everything, False) == unicodedata.normalize("NFKC", full)
+
+
+def test_folding_by_character_equals_folding_the_whole_text_for_persian():
+    text = "x " + MIKHAHAM_ZWNJ + " " + KETAB_AR + FATHA + " " + _u("0661 0662") + " Ab"
+    assert srch.fold_with_spans(text)[0] == srch.normalize_search_text(text)
+
+
 def test_random_texts_keep_the_matching_invariants():
     """For any text and any substring needle: the span folds to the needle's fold, the
     text outside the span is untouched by replace, and replace is idempotent for a

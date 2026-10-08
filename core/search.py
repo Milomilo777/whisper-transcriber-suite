@@ -31,6 +31,7 @@ import unicodedata
 from bisect import bisect_left
 from dataclasses import dataclass
 from functools import lru_cache
+from itertools import repeat
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -126,6 +127,9 @@ def _is_search_noise(ch: str) -> bool:
 
 
 def _fold(text: str, casefold: bool) -> str:
+    if text.isascii():
+        # NFKC, the noise list and the fold table only touch non-ASCII text.
+        return text.casefold() if casefold else text
     s = unicodedata.normalize("NFD", unicodedata.normalize("NFKC", text))
     s = "".join(ch for ch in s if not _is_search_noise(ch))
     s = unicodedata.normalize("NFC", s).translate(_FOLD_TABLE)
@@ -158,7 +162,20 @@ def _fold_char(ch: str, casefold: bool) -> str:
     return _fold(ch, casefold)
 
 
-@lru_cache(maxsize=4096)
+def _folded_text(text: str, casefold: bool) -> str:
+    """``fold_with_spans(text)[0]`` without the spans: cheap enough for every row."""
+    if text.isascii():
+        return text.casefold() if casefold else text
+    return _folded_non_ascii(text, casefold)
+
+
+# Cached: the viewer's search box folds every segment again on each keystroke.
+@lru_cache(maxsize=16384)
+def _folded_non_ascii(text: str, casefold: bool) -> str:
+    return "".join(map(_fold_char, text, repeat(casefold)))
+
+
+@lru_cache(maxsize=512)
 def fold_with_spans(
     text: str, casefold: bool = True
 ) -> tuple[str, tuple[int, ...], tuple[int, ...]]:
@@ -195,8 +212,8 @@ def find_folded_span(
     unless ``casefold`` is False, case). Returns the ``(start, end)`` span of the
     ORIGINAL text, or None; a needle that folds to nothing never matches.
     """
-    wanted = "".join(_fold_char(ch, casefold) for ch in needle)
-    if not wanted:
+    wanted = _folded_text(needle, casefold)
+    if not wanted or wanted not in _folded_text(text, casefold):
         return None
     folded, starts, ends = fold_with_spans(text, casefold)
     first = bisect_left(starts, max(0, start))
@@ -208,7 +225,8 @@ def find_folded_span(
 
 def folded_contains(text: str, query: str, *, casefold: bool = True) -> bool:
     """True when *query* occurs in *text* under the search folding."""
-    return find_folded_span(text, query, casefold=casefold) is not None
+    wanted = _folded_text(query, casefold)
+    return bool(wanted) and wanted in _folded_text(text, casefold)
 
 
 def replace_folded(
