@@ -635,7 +635,7 @@ def model_downloaded(config: dict[str, Any] | None, slug: str) -> bool:
         hub_folder = (cfg.get("hub_folder") or "").strip() or str(
             default_hub_folder()
         )
-        return (model_folder_for(hub_folder, entry["name"]) / "model.bin").exists()
+        return model_weights_present(model_folder_for(hub_folder, entry["name"]))
     except Exception:  # noqa: BLE001
         return False
 
