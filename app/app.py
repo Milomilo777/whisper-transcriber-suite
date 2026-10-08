@@ -39,6 +39,7 @@ from app.widgets.notice import notify
 from app.widgets import subtitle_edit as subtitle_edit_ui
 from app.widgets.platform import open_folder as _open_folder_helper
 from app.widgets.live_tab import build_live_tab, stop_live_session
+from app.widgets.live_tab import apply_theme as live_tab_theme
 from app.widgets.live_tab import save_before_exit as live_save_before_exit
 from app.widgets.smtv_tab import build_smtv_tab
 from app.widgets.voice_clone_tab import build_voice_clone_tab, stop_voice_clone_worker
@@ -1877,6 +1878,8 @@ class App(tk.Tk):
         sv_ttk.set_theme(resolved)
         script_fonts.apply_theme_fonts(self)
         theme_colours.apply(self, resolved)
+        if hasattr(self, "live_model_menu"):
+            live_tab_theme(self)
         if hasattr(self, "txt") and self.txt is not None:
             apply_console_theme(self.txt, resolved)
         self.app_config["theme"] = name
@@ -3062,7 +3065,7 @@ class App(tk.Tk):
         """
         from app.widgets.tooltip import bind_tooltip
 
-        bind_tooltip(widget, lambda: self.device_badge_tip, wraplength=px(320))
+        bind_tooltip(widget, lambda: self.device_badge_tip, wraplength=320)
 
     def warn_cpu_once(self, downgraded: bool) -> None:
         """One-time modal + log warning that transcription is on CPU (slower).

@@ -176,6 +176,28 @@ def _rebuild_model_menu(app: Any) -> None:
             menu.add_separator()
 
 
+def _configure_model_styles(app: Any, widget: tk.Misc) -> None:
+    """The model picker's two styles. ttk styles belong to a theme, so this runs again after
+    every theme switch (``apply_theme``)."""
+    import tkinter.font as tkfont
+
+    style = ttk.Style(widget)
+    style.configure(_MODEL_MISSING_STYLE, foreground=tokens.themed(_MISSING_FG))
+    try:  # sv_ttk's body font, so the bold label matches the comboboxes
+        app._live_model_btn_font = tkfont.nametofont("SunValleyBodyFont").copy()
+    except tk.TclError:
+        app._live_model_btn_font = tkfont.nametofont("TkTextFont").copy()
+    app._live_model_btn_font.configure(weight="bold")
+    style.configure(_MODEL_READY_STYLE, font=app._live_model_btn_font)
+
+
+def apply_theme(app: Any) -> None:
+    """After a theme switch: the picker's styles for the new theme and its menu entries in the
+    new theme's colours (menu entries are not widgets, the theme walker does not reach them)."""
+    _configure_model_styles(app, app.live_model_btn)
+    _rebuild_model_menu(app)
+
+
 def _refresh_model_status(app: Any) -> None:
     """Grey the picker + show "Download" only for a model not on disk."""
     value = _selected_live_value(app)
@@ -387,16 +409,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
     ).grid(row=2, column=2, sticky="w", padx=(0, 8), pady=6)
 
     ttk.Label(src, text="Model:").grid(row=3, column=0, sticky="e", padx=8, pady=6)
-    style = ttk.Style(src)
-    style.configure(_MODEL_MISSING_STYLE, foreground=tokens.themed(_MISSING_FG))
-    import tkinter.font as tkfont
-
-    try:  # sv_ttk's body font, so the bold label matches the comboboxes
-        app._live_model_btn_font = tkfont.nametofont("SunValleyBodyFont").copy()
-    except tk.TclError:
-        app._live_model_btn_font = tkfont.nametofont("TkTextFont").copy()
-    app._live_model_btn_font.configure(weight="bold")
-    style.configure(_MODEL_READY_STYLE, font=app._live_model_btn_font)
+    _configure_model_styles(app, src)
     model_row = ttk.Frame(src)
     model_row.grid(row=3, column=1, sticky="ew", padx=8, pady=6)
     model_row.columnconfigure(0, weight=1)

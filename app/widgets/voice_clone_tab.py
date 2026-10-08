@@ -479,7 +479,10 @@ def _schedule_retag(app: Any) -> None:
 
     def _run() -> None:
         app._vc_retag_after = None
-        _retag_text(app)
+        try:
+            _retag_text(app)
+        except tk.TclError:
+            pass  # the text box was closed in the meantime
 
     app._vc_retag_after = app.vc_text.after(_RETAG_DELAY_MS, _run)
 

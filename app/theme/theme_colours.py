@@ -5,6 +5,10 @@ Treeview or Text tag's tint) stays what it was. ``apply`` records the new theme 
 ``tokens.themed`` and walks the widget tree once: every colour that is a light-theme token with a
 dark variant (``tokens.DARK_VARIANTS``), or such a variant, becomes the one of the new theme.
 Colours outside that table are left alone.
+
+Not reached: ttk styles (they belong to a theme; whoever configures a custom style with a themed
+colour configures it again after a switch, like ``live_tab.apply_theme``), menu entries, Canvas
+and Listbox items.
 """
 from __future__ import annotations
 

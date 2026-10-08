@@ -20,6 +20,8 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Callable
 
+from app.dpi import px
+
 _WRAP_MIN = 220
 _WINDOW_WRAP = 460
 
@@ -191,17 +193,17 @@ def show_whats_new(
     top, frame = _window(parent, f"What's new in {version}")
     if headline:
         ttk.Label(
-            frame, text=headline, wraplength=_WINDOW_WRAP, justify="left",
+            frame, text=headline, wraplength=px(_WINDOW_WRAP), justify="left",
             font=("TkDefaultFont", 10, "bold"),
         ).pack(anchor="w")
     for line in highlights:
         ttk.Label(
-            frame, text="• " + line, wraplength=_WINDOW_WRAP, justify="left",
+            frame, text="• " + line, wraplength=px(_WINDOW_WRAP), justify="left",
         ).pack(anchor="w", pady=(8, 0))
     if not headline and not highlights:
         ttk.Label(
             frame, text="This release has no short summary. The full notes have the details.",
-            wraplength=_WINDOW_WRAP, justify="left",
+            wraplength=px(_WINDOW_WRAP), justify="left",
         ).pack(anchor="w")
     buttons = ttk.Frame(frame)
     buttons.pack(fill="x", pady=(14, 0))
@@ -219,7 +221,7 @@ def show_update_command(parent: tk.Misc, *, version: str, command: str) -> tk.To
             f"Version {version} is available. This copy runs from the source code; "
             "to update it, close the app and run this command in a terminal:"
         ),
-        wraplength=_WINDOW_WRAP, justify="left",
+        wraplength=px(_WINDOW_WRAP), justify="left",
     ).pack(anchor="w")
     # The text is inserted, not bound to a StringVar: a variable owned only by
     # this function is garbage-collected on return and the field goes blank.

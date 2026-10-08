@@ -960,3 +960,33 @@ def test_saved_text_is_not_autosaved_again(built, tmp_path, monkeypatch):
     built._live_exit_discard = False
     live_tab.stop_live_session(built)
     assert not list(tmp_path.glob("live-transcript-*.txt"))
+
+
+def test_theme_switch_recolours_the_model_picker(app, root, monkeypatch, tmp_path):
+    """ttk styles belong to a theme and menu entries are not widgets: both are redone after a
+    theme switch (card C2.61 review)."""
+    sv_ttk = pytest.importorskip("sv_ttk")
+    from app.theme import tokens
+
+    monkeypatch.setattr(tokens, "_theme", "dark")
+    sv_ttk.set_theme("dark", root)
+    app.app_config["hub_folder"] = str(tmp_path)  # nothing downloaded: the grey entries
+    frame = ttk.Frame(root)
+    live_tab.build_live_tab(app, frame)
+    frame.pack()
+    root.update()
+    dark = tokens.DARK_VARIANTS[tokens.TEXT_MISSING]
+    style = ttk.Style(root)
+    assert str(style.lookup(live_tab._MODEL_MISSING_STYLE, "foreground")) == dark
+
+    def grey_entries() -> set[str]:
+        menu = app.live_model_menu
+        return {str(menu.entrycget(i, "foreground")) for i in range(menu.index("end") + 1)
+                if menu.type(i) == "radiobutton" and "not downloaded" in menu.entrycget(i, "label")}
+
+    assert grey_entries() == {dark}
+    sv_ttk.set_theme("light", root)
+    tokens.set_theme("light")
+    live_tab.apply_theme(app)
+    assert str(style.lookup(live_tab._MODEL_MISSING_STYLE, "foreground")) == tokens.TEXT_MISSING
+    assert grey_entries() == {tokens.TEXT_MISSING}

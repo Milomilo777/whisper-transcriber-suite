@@ -13,6 +13,7 @@ import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk
 from typing import Any, Callable, Union
+from app.dpi import px
 from app.theme import tokens
 
 TextOrGetter = Union[str, Callable[[], str]]
@@ -37,7 +38,8 @@ def bind_tooltip(
 
     *text* may be a plain string or a zero-arg callable returning the
     current text, for tooltips whose content changes at runtime (e.g. a
-    status badge). The popup is a borderless Toplevel, shown after a
+    status badge). *wraplength* is in pixels at 96 dpi; it grows with the
+    display scale. The popup is a borderless Toplevel, shown after a
     short grace delay, destroyed on <Leave> or on any click so it never
     lingers.
     """
@@ -87,7 +89,7 @@ def bind_tooltip(
             tk.Label(
                 tip, text=msg, justify="left",
                 background=_BG, foreground=_FG,
-                relief="solid", borderwidth=1, wraplength=wraplength,
+                relief="solid", borderwidth=1, wraplength=px(wraplength),
                 padx=6, pady=4,
             ).pack()
             tip.update_idletasks()

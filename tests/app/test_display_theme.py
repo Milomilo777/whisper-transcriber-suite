@@ -370,3 +370,17 @@ def test_typing_retags_once_per_pause(root, monkeypatch) -> None:
     root.mainloop()
     assert calls == [1]
     assert app._vc_retag_after is None
+
+
+def test_tooltip_wrap_grows_with_the_scale(root, monkeypatch) -> None:
+    from app.widgets import tooltip
+
+    monkeypatch.setattr(dpi, "_process_factor", 1.5)
+    label = ttk.Label(root, text="x")
+    tooltip.bind_tooltip(label, "some help", delay_ms=0)
+    label.event_generate("<Enter>")
+    root.update()
+    tips = [w for w in label.winfo_children() if w.winfo_class() == "Toplevel"]
+    assert tips, "the tooltip did not open"
+    inner = tips[-1].winfo_children()[0]
+    assert int(str(inner.cget("wraplength"))) == round(tooltip._WRAP * 1.5)
