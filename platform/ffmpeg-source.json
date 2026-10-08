@@ -1,0 +1,31 @@
+{
+  "about": "Corresponding source of the GPL FFmpeg builds the app bundles, pinned by URL, byte size and SHA-256 (same entry shape as platform/windows/build-deps.json, always with an empty 'files' list). tools/fetch_ffmpeg_source.py downloads each tarball, refuses any mismatch and names it for attaching to a GitHub release (docs/RELEASE_PROCESS.md, step 'Attach the FFmpeg source'). 'builds' says which bundled binaries the source belongs to.",
+  "deps": [
+    {
+      "name": "ffmpeg-source-windows",
+      "version": "FFmpeg git commit f2e5eff3ff2141479da980fc9474a8f8ecf768a8",
+      "url": "https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/f2e5eff3ff2141479da980fc9474a8f8ecf768a8",
+      "size": 17066713,
+      "sha256": "9d0bf85379b65b81107e5bcd756bd5676b4e839aa446e536eb0da18f61368d7d",
+      "hash_source": "computed from two identical downloads on 2026-10-09 (GitHub publishes no checksum for commit archives)",
+      "platform": "windows",
+      "builds": "Windows ffmpeg.exe and ffprobe.exe: gyan.dev essentials build 2026-05-06-git-f2e5eff3ff (platform/windows/build-deps.json)",
+      "builder_source_note": "https://github.com/GyanD/codexffmpeg/releases/tag/2026-05-06-git-f2e5eff3ff names the commit; library versions and links: https://www.gyan.dev/ffmpeg/builds/",
+      "asset_name": "WhisperTranscriberSuite-v{app_version}-source-ffmpeg-2026-05-06-git-f2e5eff3ff.tar.gz",
+      "files": []
+    },
+    {
+      "name": "ffmpeg-source-macos",
+      "version": "FFmpeg 9.0.2 release",
+      "url": "https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz",
+      "size": 12040788,
+      "sha256": "8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e",
+      "hash_source": "computed from the download; the detached signature https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz.asc verified Good against FFmpeg release signing key FCF9 86EA 15E6 E293 A564 4F10 B432 2F04 D676 58D8 on 2026-10-09",
+      "platform": "macos",
+      "builds": "macOS ffmpeg and ffprobe 9.0.2: evermeet.cx (x86_64) and ffmpeg.martin-riedl.de build 1789931890_9.0.2 (arm64) (platform/macos/pyinstaller/fetch_mac_binaries.sh)",
+      "builder_source_note": "evermeet.cx lists the library sources on https://evermeet.cx/ffmpeg/; martin-riedl.de publishes its build script at https://git.martin-riedl.de/ffmpeg/build-script and the library versions of each build in its versions.txt",
+      "asset_name": "WhisperTranscriberSuite-v{app_version}-source-ffmpeg-9.0.2.tar.xz",
+      "files": []
+    }
+  ]
+}

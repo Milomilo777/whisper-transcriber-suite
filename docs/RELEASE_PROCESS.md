@@ -205,6 +205,34 @@ Never force-push or move a published tag (`v1.0.3` and later; see
 AGENTS.md "Guardrails"). Needing to re-tag means something went
 wrong; investigate first.
 
+## Step 7b — Attach the FFmpeg source (GPL)
+
+The bundled FFmpeg builds are GPL-3.0, so every release carries a copy of their corresponding
+source next to its files (`THIRD_PARTY_NOTICES.md`, "FFmpeg corresponding source"). Before
+creating the release, fetch and verify the tarballs into a scratch folder outside the repo:
+
+```cmd
+python tools/fetch_ffmpeg_source.py --out C:\path\to\scratch --app-version X.Y.Z --platform windows
+python tools/fetch_ffmpeg_source.py --out C:\path\to\scratch --app-version X.Y.Z --check --platform windows
+```
+
+Use `--platform all` when the release ships macOS files too (a Windows-only release needs only
+the Windows tarball). The tool refuses any size or SHA-256 that differs from
+`platform/ffmpeg-source.json`. Attach the files when the release is created, together with the
+installer and the Portable ZIP, never afterwards (assets are never re-uploaded):
+
+| Ships | File |
+|---|---|
+| Windows | `WhisperTranscriberSuite-vX.Y.Z-source-ffmpeg-2026-05-06-git-f2e5eff3ff.tar.gz` |
+| macOS | `WhisperTranscriberSuite-vX.Y.Z-source-ffmpeg-9.0.2.tar.xz` |
+
+The names start with the release's own prefix, and `-source-` sorts after `-macOS-`, so these
+files list after the installer, the Portable ZIP and the disk images. When a pin in
+`build-deps.json` or `fetch_mac_binaries.sh` moves, move `platform/ffmpeg-source.json` and the
+notices table in the same commit (a test checks they agree). GitHub does not promise stable
+bytes for a commit archive; if the Windows download ever fails the hash check, re-download it,
+confirm the content with `git archive` of the same commit, and re-pin size and SHA-256.
+
 ## Step 8 — Distribute
 
 Upload to your private channel:

@@ -6,6 +6,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **FFmpeg source for the GPL builds.** `THIRD_PARTY_NOTICES.md` now names the exact corresponding
+  source of the bundled FFmpeg (Windows: the gyan.dev build's FFmpeg commit; macOS: the FFmpeg 9.0.2
+  release) and the builders' library lists. `tools/fetch_ffmpeg_source.py` downloads the pinned
+  tarballs (`platform/ffmpeg-source.json`, size and SHA-256 checked) under release-prefixed names,
+  and `docs/RELEASE_PROCESS.md` attaches them to every release.
+
 - **Make subtitled video.** A new **Make subtitled video** choice on the Download Videos tab turns a
   link into `<title>-subbed.mp4` with the subtitles burned in: the download hands off to Whisper and
   then to ffmpeg, and the row shows `running`, `transcribing`, `burning` with one rising percent and a

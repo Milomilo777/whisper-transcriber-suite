@@ -77,6 +77,10 @@ Latest release: **[releases page](https://github.com/Milomilo777/whisper-transcr
 
 Linux runs from source: [platform/linux/README.md](platform/linux/README.md).
 
+The bundled FFmpeg is a GPL build. Its corresponding source is attached to each release as
+`WhisperTranscriberSuite-vX.Y.Z-source-ffmpeg-*` files; the exact links are in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
 ffmpeg and yt-dlp are bundled. On first launch a quick start window picks
 the speech model for your language: Fast (Small, about 500 MB) or Best
 quality (up to about 3 GB); it downloads once, on first use. Plan for 8 GB

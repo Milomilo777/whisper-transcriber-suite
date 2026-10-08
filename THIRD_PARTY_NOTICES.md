@@ -16,9 +16,28 @@ every Python package ships inside the distribution under
 | Component | Typical license | Notes |
 |---|---|---|
 | **CPython** (embeddable runtime) | PSF License Agreement | The `python\` folder in the distribution. |
-| **FFmpeg** (`ffmpeg.exe`, `ffprobe.exe`) | GPL-3.0-or-later (the bundled builds are configured with `--enable-gpl --enable-version3` and include libx264/libx265) | Used for audio/video decode, slicing, subtitle burn-in. Windows: the gyan.dev "essentials" build pinned in `platform/windows/build-deps.json`; macOS: the evermeet.cx (Intel) and martin-riedl.de (Apple Silicon) static builds pinned in `platform/macos/pyinstaller/fetch_mac_binaries.sh`. GPL obligations (license text + source availability) apply. |
+| **FFmpeg** (`ffmpeg.exe`, `ffprobe.exe`) | GPL-3.0-or-later (the bundled builds are configured with `--enable-gpl --enable-version3` and include libx264/libx265) | Used for audio/video decode, slicing, subtitle burn-in. Windows: the gyan.dev "essentials" build pinned in `platform/windows/build-deps.json`; macOS: the evermeet.cx (Intel) and martin-riedl.de (Apple Silicon) static builds pinned in `platform/macos/pyinstaller/fetch_mac_binaries.sh`. GPL obligations (license text + source availability) apply; see "FFmpeg corresponding source" below. |
 | **yt-dlp** (`yt-dlp.exe`) | Unlicense (public domain) | Video downloads. |
 | **Deno** (`deno.exe`) | MIT | JavaScript runtime that yt-dlp uses for YouTube. |
+
+### FFmpeg corresponding source
+
+A copy of the corresponding source of each bundled FFmpeg build, byte for byte the files
+below, is attached to each GitHub release of this app that ships that build
+(file names `WhisperTranscriberSuite-vX.Y.Z-source-ffmpeg-*`), so the links cannot go
+stale. The pins (URL, size, SHA-256) are in `platform/ffmpeg-source.json`.
+
+| Bundled build | FFmpeg source | SHA-256 |
+|---|---|---|
+| Windows: gyan.dev essentials build `2026-05-06-git-f2e5eff3ff` | FFmpeg git commit `f2e5eff3ff2141479da980fc9474a8f8ecf768a8`: https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/f2e5eff3ff2141479da980fc9474a8f8ecf768a8 (the commit the build names at https://github.com/GyanD/codexffmpeg/releases/tag/2026-05-06-git-f2e5eff3ff) | `9d0bf85379b65b81107e5bcd756bd5676b4e839aa446e536eb0da18f61368d7d` |
+| macOS Intel: evermeet.cx FFmpeg 9.0.2 | FFmpeg 9.0.2 release: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz (signature: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz.asc) | `8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e` |
+| macOS Apple silicon: ffmpeg.martin-riedl.de build `1789931890_9.0.2` | the same FFmpeg 9.0.2 release tarball; build script: https://git.martin-riedl.de/ffmpeg/build-script | (as above) |
+
+The FFmpeg tarball is the source of FFmpeg itself. The static builds also link third-party
+libraries (for example x264 and x265); their projects publish those sources, and the
+builders list the libraries and versions: https://www.gyan.dev/ffmpeg/builds/ (Windows),
+https://evermeet.cx/ffmpeg/ (macOS Intel) and the `versions.txt` next to each build at
+https://ffmpeg.martin-riedl.de/ (macOS Apple silicon).
 
 ## Bundled Python packages (selected)
 
