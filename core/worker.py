@@ -161,6 +161,38 @@ def _on_pipe_closed(reason: str) -> None:
     threading.Thread(target=_confirm, name="worker-parent-check", daemon=True).start()
 
 
+_output_pipe_reported = False
+
+
+def _note_output_pipe_closed() -> None:
+    """First broken-pipe write of a session: one line, then confirm the app is
+    gone (which cancels the running task). Later events are dropped silently."""
+    global _output_pipe_reported
+    with _state_lock:
+        if _output_pipe_reported:
+            return
+        _output_pipe_reported = True
+    logger.warning("The app closed the worker's output pipe; dropping further events")
+    _quiet_stdout_for_exit()
+    _on_pipe_closed("its output pipe is closed")
+
+
+def _quiet_stdout_for_exit() -> None:
+    """Point fd 1 at the null device so the interpreter's final flush of the
+    unsent buffer cannot raise again (Python's documented recipe for a broken
+    stdout pipe). Only the real process stdout is touched, never a test's."""
+    try:
+        if sys.stdout.fileno() != 1:
+            return
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        try:
+            os.dup2(devnull, 1)
+        finally:
+            os.close(devnull)
+    except (OSError, ValueError, AttributeError):
+        logger.debug("Could not redirect stdout after the pipe closed", exc_info=True)
+
+
 def _mark_parent_lost(reason: str) -> None:
     """Cancel the in-flight task and arm the exit backstop (idempotent)."""
     global _parent_lost_timer
@@ -195,11 +227,12 @@ def _begin_session() -> None:
 
 def _end_session() -> None:
     """Disarm the backstop and clear the flags (main() entry and exit)."""
-    global _parent_lost_timer, _session_active
+    global _parent_lost_timer, _session_active, _output_pipe_reported
     with _state_lock:
         timer = _parent_lost_timer
         _parent_lost_timer = None
         _session_active = False
+        _output_pipe_reported = False
         _parent_lost.clear()
     if timer is not None:
         timer.cancel()
@@ -459,8 +492,15 @@ def emit(event: str, **payload: Any) -> None:
         )
         line = json.dumps(safe)
     # Atomic write+flush against other threads' emits (see _emit_lock).
-    with _emit_lock:
-        print(line, flush=True)
+    try:
+        with _emit_lock:
+            print(line, flush=True)
+    except BrokenPipeError:
+        # The app closed its end of the pipe (it quit, or died). Nobody can
+        # read this event, and raising would only turn every later log line
+        # into a traceback while the task is being cancelled. Any other write
+        # error is a real one and still propagates.
+        _note_output_pipe_closed()
 
 
 # Chunk size for the bounded stdin reader. Small enough that an overlong,

@@ -34,6 +34,11 @@ logger = logging.getLogger(__name__)
 # writers strictly queued (and stats()/list_* consistent with them).
 _WRITE_LOCK = threading.Lock()
 
+#: ``error`` text of a transcription row whose job the user ended by quitting
+#: the app (see ``HistoryDB.mark_transcriptions_closed_by_user``). A crash
+#: leaves no text there, which is how the resume offer tells the two apart.
+EXIT_REASON = "app closed"
+
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS downloads (
@@ -539,6 +544,29 @@ class HistoryDB:
         if not self.claim_instance_lock():
             return None
         return self.mark_interrupted()
+
+    def mark_transcriptions_closed_by_user(self, row_ids: Iterable[int]) -> int:
+        """Move the given still-running transcription rows to ``interrupted``
+        with :data:`EXIT_REASON`, for an app exit the user confirmed.
+
+        Left as ``running``, those rows would be swept to ``interrupted`` by
+        the next launch exactly like a crash, and the resume offer would
+        blame "a previous crash". Same status, so the resume scan still
+        offers them; only the ``error`` text differs. Rows already finished
+        (or not in *row_ids*, e.g. another app instance's) are untouched.
+        Returns rows touched.
+        """
+        ids = [int(i) for i in row_ids if int(i or 0) > 0]
+        if not ids:
+            return 0
+        placeholders = ",".join("?" for _ in ids)
+        with self._txn() as conn:
+            n = conn.execute(
+                "UPDATE transcriptions SET status='interrupted', error=? "
+                f"WHERE status IN ('running','waiting') AND id IN ({placeholders})",
+                [EXIT_REASON, *ids],
+            ).rowcount
+        return int(n)
 
     def dismiss_interrupted_transcriptions(self, row_ids: Iterable[int]) -> int:
         """Move the given interrupted transcription rows to ``cancelled``.
