@@ -1416,7 +1416,8 @@ class App(tk.Tk):
         recomputing ``splitext(file_path)[0] + '.json'`` would miss it and
         pop a confusing file picker even though a real transcript exists.
         Only when no known JSON is on disk do we fall back to recomputing the
-        beside-input name, and finally to the picker. ``language`` (the
+        beside-input name, and finally to an explanation that offers the
+        picker. ``language`` (the
         task's chosen or detected language) reaches the viewer for its
         per-script fonts; a file picked by hand gets none.
         """
@@ -1434,7 +1435,18 @@ class App(tk.Tk):
                 self, guessed, language=language, media_path=file_path
             )
         else:
-            _open_transcript_viewer(self, None)
+            # The viewer reads and saves .json files only; a run that wrote
+            # just srt/vtt/... (json not among the formats) has nothing to open.
+            # Say so, and still let the user pick a .json by hand.
+            if messagebox.askyesno(
+                "View transcript",
+                f"No transcript .json was saved for {os.path.basename(file_path)}: "
+                "the viewer opens .json files only. Turn on \"Whisper JSON\" in the "
+                "output formats to get one next time. "
+                "Choose a .json file yourself?",
+                parent=self,
+            ):
+                _open_transcript_viewer(self, None)
 
     def _save_shareable_page_for(
         self, file_path: str, json_path: str, language: str | None = None,

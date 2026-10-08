@@ -1284,12 +1284,15 @@ def cpu_forced(config: dict[str, Any]) -> bool:
 # needs to run on the CPU, int8, next to the OS and the app. Largest first;
 # anything not listed (tiny, base, small) runs everywhere.
 #
-# One line serves both callers: below _WEAK_RAM_GB neither the Quick start
-# window (fit_model_to_ram) nor the "Best for this PC" advice
+# One memory line serves both callers: below _WEAK_RAM_GB neither the Quick
+# start window (fit_model_to_ram) nor the "Best for this PC" advice
 # (recommend_models) goes above "small". Medium used to be allowed from
 # 3 GB here while the advice already called every computer under 5 GB weak,
 # so a 4 GB computer was told "small" in one place and "medium" in the other;
-# the safer of the two rules (small) now applies to both.
+# the safer of the two rules (small) now applies to both. The advice also
+# calls a computer with fewer than 4 physical cores weak: that is about
+# speed, not fit, so Quick start (which only sizes to memory) ignores it and a
+# 16 GB two-core computer can still get a large model there.
 _WEAK_RAM_GB = 5.0
 _MODEL_MIN_RAM_GB: dict[str, float] = {
     "large-v3": 6.5, "large-v3-turbo": _WEAK_RAM_GB, "medium": _WEAK_RAM_GB,

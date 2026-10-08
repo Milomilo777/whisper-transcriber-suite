@@ -127,6 +127,47 @@ def test_sample_result_with_srt_and_chapters_opens_the_srt_not_the_sidecar(tmp_p
     fake._open_file.assert_called_once_with(str(tmp_path / "talk.srt"))
 
 
+def _viewer_fake(monkeypatch, answer):
+    ask = MagicMock(return_value=answer)
+    monkeypatch.setattr(appmod.messagebox, "askyesno", ask)
+    opened = MagicMock()
+    monkeypatch.setattr(appmod, "_open_transcript_viewer", opened)
+    return ask, opened
+
+
+def test_queue_view_transcript_without_a_json_explains_instead_of_a_bare_picker(tmp_path, monkeypatch):
+    """srt-only run with chapters: the viewer reads .json only, so say why first."""
+    task = _srt_plus_chapters(tmp_path)
+    ask, opened = _viewer_fake(monkeypatch, False)
+    fake = SimpleNamespace(_task_json_output=appmod.App._task_json_output)
+    appmod.App.open_transcript_viewer_for(  # type: ignore[arg-type]
+        fake, task.file_path, appmod.App._task_json_output(task), "en"
+    )
+    ask.assert_called_once()
+    message = ask.call_args[0][1]
+    assert "talk.mp4" in message and ".json" in message and "Whisper JSON" in message
+    opened.assert_not_called()  # the answer was No: no picker either
+
+
+def test_queue_view_transcript_can_still_pick_a_json_by_hand(tmp_path, monkeypatch):
+    task = _srt_plus_chapters(tmp_path)
+    ask, opened = _viewer_fake(monkeypatch, True)
+    fake = SimpleNamespace()
+    appmod.App.open_transcript_viewer_for(fake, task.file_path, None)  # type: ignore[arg-type]
+    opened.assert_called_once_with(fake, None)
+
+
+def test_queue_view_transcript_with_a_json_opens_it_without_asking(tmp_path, monkeypatch):
+    task = _json_plus_chapters(tmp_path)
+    ask, opened = _viewer_fake(monkeypatch, False)
+    fake = SimpleNamespace()
+    appmod.App.open_transcript_viewer_for(  # type: ignore[arg-type]
+        fake, task.file_path, str(tmp_path / "talk.json"), "en"
+    )
+    ask.assert_not_called()
+    assert opened.call_args[0][1] == str(tmp_path / "talk.json")
+
+
 # --- site 2: the Last Result card's buttons --------------------------------
 
 
