@@ -266,6 +266,7 @@ class HardwareWizard(tk.Toplevel):
             return  # superseded by a newer probe
         self._tiers = tiers
         self._cuda_status = status
+        self._user_picked = False  # the list was rebuilt: the old click no longer counts
         self._refresh_tree()
         self._update_cuda_line()
         self._set_buttons_enabled(True)

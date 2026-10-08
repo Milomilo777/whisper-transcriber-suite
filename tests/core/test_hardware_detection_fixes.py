@@ -464,3 +464,48 @@ def test_a_failed_nested_merge_restores_what_it_displaced(monkeypatch, tmp_path)
     assert od.install("cuda_runtime", log_cb=lambda _m: None, force=True) is False
     assert (keep / "libcudnn.so.9").exists()
     assert not (extras / "nvidia" / "cublas").exists()
+
+
+# ------------------------------------------------------------ reviewer findings
+
+
+def test_a_package_with_an_empty_init_is_still_replaced_as_a_whole(tmp_path):
+    """typing_inspection-style packages have an empty __init__.py plus modules;
+    merging them file by file would keep removed modules of the old version."""
+    from core import optional_deps as od
+
+    staging, final = tmp_path / "stage", tmp_path / "final"
+    for root, extra in ((staging, "new.py"), (final, "old_removed.py")):
+        (root / "pkg").mkdir(parents=True)
+        (root / "pkg" / "__init__.py").write_bytes(b"")
+        (root / "pkg" / extra).write_bytes(b"x")
+    units = od._merge_units(str(staging), str(final))
+    assert units == [(str(staging / "pkg"), str(final / "pkg"))]
+
+
+def test_quick_start_caps_the_model_before_the_hardware_check_finishes(monkeypatch):
+    from app.dialogs import quick_start as qs
+
+    monkeypatch.setattr(hw, "system_ram_gb", lambda: 3.9)
+    choice = qs.QuickStartChoice("fa", "best", "x", ram_gb=hw.system_ram_gb())
+    assert choice.model_slug == "medium"
+
+
+def test_a_reprobe_forgets_the_earlier_click():
+    tk = pytest.importorskip("tkinter")
+    from app.widgets.hardware_wizard import HardwareWizard
+
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        wiz = HardwareWizard(root)
+        wiz.withdraw()
+        if wiz._probe_thread is not None:
+            wiz._probe_thread.join(timeout=10.0)
+        wiz._user_picked = True
+        status = hw.CudaStatus(usable=False, gpu_present=True)
+        wiz._reprobe_done(wiz._probe_seq, hw._probe_cpu(), status)
+        assert wiz._user_picked is False
+        wiz._on_close()
+    finally:
+        root.destroy()

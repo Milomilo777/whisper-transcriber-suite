@@ -171,7 +171,9 @@ class QuickStartDialog(tk.Toplevel):
         self._on_done = on_done
         self._closed = False
         self._hardware: tuple[_hw.CudaStatus, int] | None = None
-        self._ram_gb = 0.0
+        # Read at once (it is instant) so Finish before the slow GPU check ends
+        # still caps the model; an injected probe (tests) supplies its own.
+        self._ram_gb = _hw.system_ram_gb() if probe is None else 0.0
         self._force_cpu = False
         self._result: dict[str, Any] = {}
 
@@ -357,7 +359,8 @@ class QuickStartDialog(tk.Toplevel):
             self._poll_id = self.after(100, self._poll)
             return
         status, cores, *rest = self._result["done"]
-        self._ram_gb = float(rest[0]) if rest else 0.0
+        if rest:
+            self._ram_gb = float(rest[0])
         self._hardware = (status, cores)
         self.hardware_var.set(self._hardware_text(status, cores))
         self._refresh_details()

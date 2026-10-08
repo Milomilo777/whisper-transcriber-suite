@@ -248,7 +248,12 @@ def _is_shared_folder(path: str, *, top_level: bool) -> bool:
     except OSError:
         return False
     if not text.strip():
-        return top_level
+        # An empty __init__.py makes a folder shared only when it holds nothing
+        # but sub-folders (nvidia/); one with modules is a real package.
+        return top_level and not any(
+            name != "__init__.py" and os.path.isfile(os.path.join(path, name))
+            for name in os.listdir(path)
+        )
     return "extend_path" in text or "declare_namespace" in text
 
 
