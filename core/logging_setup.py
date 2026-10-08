@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import logging.handlers
+import re
 import sys
 import time
 from pathlib import Path
@@ -34,6 +35,38 @@ WORKER_LOG_MAX_AGE_DAYS = 14
 _WORKER_LOG_GLOBS = ("worker-*.log*", "voiceclone-worker-*.log*")
 
 _configured = False
+
+# A signed download link (CDN policy / signature / key id) carries its secret
+# in the query string, and some third-party libraries log the full URL. Every
+# log handler formats through RedactingFormatter so none of it reaches a file.
+_URL_RE = re.compile(
+    r"(?P<scheme>https?://)(?:[^\s/@'\"<>]*@)?(?P<host>[^\s'\"<>?#/]*)"
+    r"(?P<path>[^\s'\"<>?#]*)(?P<tail>[?#][^\s'\"<>)\]]*)?",
+    re.IGNORECASE,
+)
+
+
+def _redact_match(m: "re.Match[str]") -> str:
+    tail = m.group("tail") or ""
+    mark = "?<redacted>" if tail.startswith("?") else ""
+    return f"{m.group('scheme')}{m.group('host')}{m.group('path')}{mark}"
+
+
+def redact_urls(text: str) -> str:
+    """``text`` with every http(s) URL cut to scheme://host/path.
+
+    User info, query string and fragment are dropped (a dropped query is
+    shown as ``?<redacted>``); text without such a URL is returned as is.
+    """
+    return _URL_RE.sub(_redact_match, text)
+
+
+class RedactingFormatter(logging.Formatter):
+    """A Formatter whose whole output (message and traceback) is URL-redacted."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        return redact_urls(super().format(record))
+
 
 
 def _prune_worker_logs(log_dir: Path) -> None:
@@ -98,7 +131,7 @@ def setup_logging(level: str = "INFO", stream=None, filename: str | None = None)
     if _configured:
         return log_file
 
-    formatter = logging.Formatter(LOG_FORMAT)
+    formatter = RedactingFormatter(LOG_FORMAT)
 
     file_handler = logging.handlers.RotatingFileHandler(
         log_file,
