@@ -435,8 +435,9 @@ Behaviour to know:
   and the outputs are written beside it. While the server runs, the oldest
   finished jobs' directories are removed as new jobs arrive. Directories of
   finished jobs are **not** removed when the server stops, but the next start
-  deletes job folders older than 6 hours (the job list is in memory only, so
-  nothing can reach them any more). A finished job's outputs are also copied
+  deletes job folders of this version older than 6 hours (the job list is in
+  memory only, so nothing can reach them any more; folders left by older
+  versions are never deleted automatically). A finished job's outputs are also copied
   to `server_outputs\` next to the cache folder for the history entry; delete
   that folder yourself when you want them gone.
 - **Upload size cap.** A single upload is capped (`--max-upload-mb`,

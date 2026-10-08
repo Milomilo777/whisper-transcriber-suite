@@ -761,8 +761,8 @@ class CloudSttBackend(Backend):
                         # Keep what the finished chunks already cost: the
                         # transcriber saves it as a resume checkpoint.
                         raise PartialResultError(
-                            f"{e} (chunks 1-{idx} of {total} were kept; "
-                            "resume this file to continue from there)",
+                            f"{e} (chunks 1-{idx} of {total} were finished "
+                            "and kept as a partial subtitle file)",
                             all_segments, language or "") from e
                     raise
             finally:

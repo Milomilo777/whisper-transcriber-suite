@@ -123,18 +123,23 @@ def test_start_removes_old_job_folders_only(tmp_path, monkeypatch):
     old = root / ("a" * 32)
     young = root / ("b" * 32)
     other = root / "keep-me"
-    for d in (old, young, other):
+    legacy = root / ("c" * 32)  # an older version's folder: no marker file
+    for d in (old, young, other, legacy):
         d.mkdir()
         (d / "f.wav").write_bytes(b"x")
+    for d in (old, young):
+        (d / J._JOB_DIR_MARKER).write_bytes(b"")
     long_ago = time.time() - 2 * J._STALE_JOB_DIR_AGE_S
-    os.utime(old, (long_ago, long_ago))
-    os.utime(other, (long_ago, long_ago))
+    for d in (old, other, legacy):
+        os.utime(d, (long_ago, long_ago))
     mgr = _manager(tmp_path)
     mgr.start()
     try:
         assert not old.exists()
         assert young.exists()
         assert other.exists()  # not named like a job id: never touched
+        # History rows of an older version may point into it: kept.
+        assert legacy.exists()
     finally:
         mgr.stop()
 
@@ -357,3 +362,11 @@ def test_detected_language_is_set_before_the_status_flips(tmp_path):
     finally:
         mgr.stop()
     assert seen == ["fa"]
+
+
+def test_accepts_limits_only_for_a_limits_parameter():
+    assert J._accepts_limits(lambda url, dest, limits: "")
+    assert J._accepts_limits(lambda *a: "")
+    assert not J._accepts_limits(lambda url, dest: "")
+    # A third parameter of another meaning must not receive a DownloadLimits.
+    assert not J._accepts_limits(lambda url, dest, timeout=30: "")

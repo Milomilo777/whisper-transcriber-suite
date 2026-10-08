@@ -819,6 +819,33 @@ def _write_periodic_checkpoint(
             )
 
 
+def _save_partial_subtitles(
+    task: "TranscriptionTask",
+    segments: list[dict[str, Any]],
+    log_cb: Callable[[str], None] | None,
+) -> None:
+    """Write already-transcribed (paid-for) segments as ``<name>.partial.srt``.
+
+    Never raises: a failed write is logged and the original error still
+    reaches the caller.
+    """
+    path = os.path.splitext(task.file_path)[0] + ".partial.srt"
+    try:
+        text = get_writer("srt")(segments, task.file_path)
+        part = f"{path}.{os.getpid()}.part"
+        with open(part, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+        os.replace(part, path)
+        log(
+            f"Kept the {len(segments)} finished segment(s) in "
+            f"{os.path.basename(path)}.",
+            log_cb,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Could not save the partial subtitles: %s", e)
+        log(f"WARN: could not save the partial subtitles: {e}", log_cb)
+
+
 def has_resumable_checkpoint(source_path: str) -> bool:
     """Public helper for the UI: is there a partial on disk for this file?
 
@@ -2426,18 +2453,12 @@ def _transcribe_via_alt_backend(
                 duration=duration,
             )
         except PartialResultError as partial:
-            # A paid cloud run died after some chunks: keep them as a resume
-            # checkpoint (never for a clipped run, whose checkpoint would be
-            # keyed to the whole file), then report the failure.
-            if partial.segments and not is_clipped:
-                _write_periodic_checkpoint(
-                    task,
-                    partial.segments,
-                    float(partial.segments[-1].get("end", 0.0)),
-                    str(partial.language or ""),
-                    0.0,
-                    log_cb,
-                )
+            # A paid cloud run died after some chunks. Cloud engines cannot
+            # resume (and a checkpoint keyed to the source would overwrite a
+            # faster-whisper one), so keep the finished text as a plain
+            # subtitle file next to the source, then report the failure.
+            if partial.segments:
+                _save_partial_subtitles(task, partial.segments, log_cb)
             raise
         # Shift slice-relative timestamps back onto the original timeline.
         if is_clipped:

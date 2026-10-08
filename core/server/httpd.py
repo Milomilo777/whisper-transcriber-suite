@@ -1271,8 +1271,11 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         (or a stray Content-Length); draining keeps keep-alive in sync.
         """
         length = self._declared_length()
-        if length:
-            self._drain_body(length)
+        if length and not self._discard_body(
+                length, _DISCARD_TOTAL_S, _DISCARD_IDLE_S):
+            # Body bytes are still on the wire: they would be read as the
+            # next request line, so end this connection after the reply.
+            self.close_connection = True
 
     def _drain_for_reject(self) -> None:
         """Before an early reject: discard the declared body, within bounds.

@@ -140,3 +140,25 @@ def test_oversized_body_discard_has_a_total_deadline(tmp_path, monkeypatch):
         finally:
             stop.set()
             s.close()
+
+
+def test_unread_control_body_closes_the_connection(tmp_path, monkeypatch):
+    """A cancel POST whose declared body never arrives must not leave the
+    connection open for a desynchronised keep-alive."""
+    monkeypatch.setattr(httpd, "_DISCARD_TOTAL_S", 0.5)
+    monkeypatch.setattr(httpd, "_DISCARD_IDLE_S", 0.3)
+    with _RunningServer(tmp_path) as srv:
+        s = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
+        try:
+            s.sendall(
+                b"POST /api/jobs/" + b"0" * 32 + b"/cancel HTTP/1.1\r\n"
+                b"Host: 127.0.0.1\r\nContent-Length: 1000\r\n\r\nabc")
+            data = b""
+            while True:
+                chunk = s.recv(4096)
+                if not chunk:
+                    break
+                data += chunk
+            assert data.startswith(b"HTTP/1.1 404") or data.startswith(b"HTTP/1.1 200")
+        finally:
+            s.close()

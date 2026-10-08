@@ -445,6 +445,19 @@ def _ends_sentence(word_text: str) -> bool:
     return bool(stripped) and stripped[-1] in ".?!"
 
 
+# Scripts written without spaces between words: Google returns one "word" per
+# token there, and a space between tokens would corrupt the text.
+_NO_SPACE_LANGUAGES = frozenset(
+    {"zh", "cmn", "yue", "wuu", "ja", "th", "lo", "km", "my"})
+
+
+def uses_no_word_spaces(language_code: str | None) -> bool:
+    """True for a language (``ja-JP``, ``cmn-Hans-CN``, ``th``) whose words
+    are not separated by spaces. ``auto`` / unknown -> False."""
+    primary = (language_code or "").strip().lower().split("-")[0]
+    return primary in _NO_SPACE_LANGUAGES
+
+
 def group_words_into_phrases(
     words: list[dict[str, Any]],
     *,
@@ -452,6 +465,7 @@ def group_words_into_phrases(
     max_duration: float = PHRASE_MAX_SECONDS,
     want_words: bool = False,
     want_speaker: bool = False,
+    no_word_spaces: bool = False,
 ) -> list[dict[str, Any]]:
     """Group a flat word list into readable phrase segments. PURE / testable.
 
@@ -490,7 +504,8 @@ def group_words_into_phrases(
     def _flush() -> None:
         if not cur:
             return
-        text = " ".join(str(w.get("word", "")).strip() for w in cur).strip()
+        joiner = "" if no_word_spaces else " "
+        text = joiner.join(str(w.get("word", "")).strip() for w in cur).strip()
         seg_start = float(cur[0].get("start", 0.0) or 0.0)
         seg_end = max(float(w.get("end", 0.0) or 0.0) for w in cur)
         seg_end = max(seg_end, seg_start)
@@ -551,6 +566,7 @@ def parse_recognize_results(
     *,
     want_words: bool = False,
     want_speaker: bool = False,
+    no_word_spaces: bool = False,
 ) -> list[dict[str, Any]]:
     """Convert v2 ``response.results`` into Whisper-shaped segment dicts.
 
@@ -583,6 +599,7 @@ def parse_recognize_results(
             pending_words,
             want_words=want_words,
             want_speaker=want_speaker,
+            no_word_spaces=no_word_spaces,
         )
         for ph in phrases:
             segments.append(ph)
@@ -1425,8 +1442,8 @@ class GoogleCloudSttBackend(Backend):
                         # transcriber saves it as a resume checkpoint.
                         raise PartialResultError(
                             f"{classify_google_error(e)} (chunks 1-{idx} of "
-                            f"{total} were kept; resume this file to "
-                            "continue from there)",
+                            f"{total} were finished and kept as a partial "
+                            "subtitle file)",
                             all_segments) from e
                     raise RuntimeError(classify_google_error(e)) from e
                 # This chunk was actually sent to Google — count its audio
@@ -1453,6 +1470,7 @@ class GoogleCloudSttBackend(Backend):
                 getattr(response, "results", None),
                 want_words=want_words,
                 want_speaker=self._diarization,
+                no_word_spaces=uses_no_word_spaces(language_code),
             )
             if self._diarization:
                 # v2 speaker labels are only consistent within one recognize
@@ -1593,7 +1611,7 @@ class GoogleCloudSttBackend(Backend):
         self._last_billable_seconds = _seconds_for(audio_path, duration)
         self._last_was_cancelled = False
         segments = self._parse_batch_response(
-            response, gcs_uri, want_words
+            response, gcs_uri, want_words, language_code=language_code
         )
         if progress_cb:
             progress_cb(100)
@@ -1643,7 +1661,8 @@ class GoogleCloudSttBackend(Backend):
                 continue
 
     def _parse_batch_response(
-        self, response: Any, gcs_uri: str, want_words: bool
+        self, response: Any, gcs_uri: str, want_words: bool,
+        language_code: str = "",
     ) -> list[dict[str, Any]]:
         """Pull the inline transcript out of a BatchRecognizeResponse.
 
@@ -1710,6 +1729,7 @@ class GoogleCloudSttBackend(Backend):
             transcript.results,
             want_words=want_words,
             want_speaker=self._diarization,
+            no_word_spaces=uses_no_word_spaces(language_code),
         )
 
     # -- GCS upload / delete ----------------------------------------------

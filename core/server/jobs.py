@@ -114,9 +114,8 @@ def _accepts_limits(fn: Callable[..., Any]) -> bool:
         return False
     if any(p.kind is p.VAR_POSITIONAL for p in params):
         return True
-    positional = [p for p in params
-                  if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
-    return len(positional) >= 3
+    return any(p.name == "limits" and p.kind is not p.KEYWORD_ONLY
+               for p in params)
 
 
 # Default bounds for one URL download: a server must not fill the disk or be
@@ -128,6 +127,10 @@ _DEFAULT_DOWNLOAD_TIMEOUT_S = 2 * 60 * 60.0
 # is deleted at start-up once it is this old.
 _STALE_JOB_DIR_AGE_S = 6 * 60 * 60.0
 _JOB_DIR_NAME_RE = re.compile(r"^[0-9a-f]{32}$")
+# Written into every job folder this version creates. Folders without it come
+# from an older version, whose history rows may still point at their outputs,
+# so the purge never touches them.
+_JOB_DIR_MARKER = ".wts-job"
 
 # A callable that delivers one outgoing webhook payload. Injected so tests
 # can capture deliveries without a network round-trip; the default is
@@ -365,7 +368,9 @@ class JobManager:
                 continue
             path = os.path.join(self._jobs_root, name)
             try:
-                if not os.path.isdir(path) or os.path.getmtime(path) > cutoff:
+                if (not os.path.isdir(path)
+                        or not os.path.isfile(os.path.join(path, _JOB_DIR_MARKER))
+                        or os.path.getmtime(path) > cutoff):
                     continue
             except OSError:
                 continue
@@ -445,6 +450,11 @@ class JobManager:
         job_id = uuid.uuid4().hex
         work_dir = os.path.join(self._jobs_root, job_id)
         os.makedirs(work_dir, exist_ok=True)
+        try:
+            with open(os.path.join(work_dir, _JOB_DIR_MARKER), "w"):
+                pass
+        except OSError:
+            pass  # without the marker the folder is simply never purged
         job = Job(
             job_id=job_id, kind=kind, formats=list(formats),
             language=language, source=source, work_dir=work_dir,

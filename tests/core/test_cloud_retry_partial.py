@@ -250,17 +250,15 @@ def test_google_retries_a_quota_error(monkeypatch, tmp_path):
     assert len(segs) == 1
 
 
-# --- the transcriber saves the partial as a checkpoint -----------------------
+# --- the transcriber keeps the paid text as a partial subtitle file ----------
 
-def test_transcriber_checkpoints_a_partial_result(monkeypatch, tmp_path):
+def test_transcriber_keeps_a_partial_result(monkeypatch, tmp_path):
     from core import transcriber as t
 
-    saved = {}
+    def no_checkpoint(*a, **k):
+        raise AssertionError("cloud engines cannot resume: no checkpoint")
 
-    def fake_write(task, segments, last_end, lang, prob, log_cb, **kw):
-        saved.update(segments=list(segments), last_end=last_end, lang=lang)
-
-    monkeypatch.setattr(t, "_write_periodic_checkpoint", fake_write)
+    monkeypatch.setattr(t, "_write_periodic_checkpoint", no_checkpoint)
 
     class _Backend:
         def transcribe_to_segments(self, *a, **k):
@@ -276,9 +274,10 @@ def test_transcriber_checkpoints_a_partial_result(monkeypatch, tmp_path):
         paused=False, clip_start=None, clip_end=None, checkpoint_failures=0)
     with pytest.raises(PartialResultError):
         t._transcribe_via_alt_backend("cloud", task, None, None, None)
-    assert saved["segments"] == [{"start": 0.0, "end": 9.0, "text": "x"}]
-    assert saved["last_end"] == 9.0
-    assert saved["lang"] == "en"
+    kept = tmp_path / "a.partial.srt"
+    assert kept.is_file()
+    assert "x" in kept.read_text(encoding="utf-8")
+    assert not [p for p in tmp_path.iterdir() if p.name.endswith(".part")]
 
 
 # --- C7: hotwords / initial prompt are no longer silently ignored -----------
@@ -323,3 +322,24 @@ def test_google_says_it_ignores_hotwords(monkeypatch, tmp_path):
     backend.transcribe_to_segments(
         "/no/such.wav", duration=5.0, hotwords="Zorblax", log_cb=notes.append)
     assert any("hotwords" in n for n in notes)
+
+
+# --- optional: no spaces between words for zh / ja / th ----------------------
+
+def test_words_are_joined_without_spaces_for_unspaced_scripts():
+    from tests.core.test_google_cloud_stt import _word
+
+    words = [_word("ab", 0.0, 0.5), _word("cd", 0.5, 1.0)]
+    spaced = g.parse_recognize_results([_result("abcd", words=words)])
+    tight = g.parse_recognize_results(
+        [_result("abcd", words=words)], no_word_spaces=True)
+    assert spaced[0]["text"] == "ab cd"
+    assert tight[0]["text"] == "abcd"
+
+
+@pytest.mark.parametrize("code, want", [
+    ("ja-JP", True), ("cmn-Hans-CN", True), ("th", True), ("zh", True),
+    ("en-US", False), ("fa-IR", False), ("auto", False), ("", False),
+])
+def test_uses_no_word_spaces(code, want):
+    assert g.uses_no_word_spaces(code) is want
