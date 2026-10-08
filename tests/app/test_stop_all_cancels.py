@@ -2,8 +2,8 @@
 
 The worker handles ``shutdown`` only after the running ``transcribe`` returns, so a
 shutdown alone made it run on until the 5 s grace ended and then killed it, without the
-cancel that writes the resume checkpoint (up to ~20 s of work lost). ``stop_all()`` (the
-exit path) now sends ``cancel`` first for a worker with a live task; the worker saves the
+cancel that writes the resume checkpoint (up to ~20 s of work lost). ``stop_all(cancel_running=True)``
+(the exit path) now sends ``cancel`` first for a worker with a live task; the worker saves the
 checkpoint, ends the task, reads the queued ``shutdown`` and exits inside the same grace.
 """
 from __future__ import annotations
@@ -77,7 +77,7 @@ def test_stop_all_cancels_a_running_task_before_the_shutdown(
     app.workers.append(_worker(task))
     sent = _capture(svc, monkeypatch)
 
-    svc.stop_all()
+    svc.stop_all(cancel_running=True)
 
     assert sent == [
         (1, {"action": "cancel", "task_id": task_correlation_id(task)}),
@@ -92,7 +92,7 @@ def test_stop_all_sends_only_the_shutdown_to_an_idle_worker(
     app.workers.append(_worker(None))
     sent = _capture(svc, monkeypatch)
 
-    svc.stop_all()
+    svc.stop_all(cancel_running=True)
 
     assert sent == [(1, {"action": "shutdown"})]
 
@@ -107,7 +107,7 @@ def test_stop_all_does_not_cancel_a_task_that_already_ended(
     app.workers.append(_worker(task))
     sent = _capture(svc, monkeypatch)
 
-    svc.stop_all()
+    svc.stop_all(cancel_running=True)
 
     assert [m["action"] for _w, m in sent] == ["shutdown"]
 
@@ -119,7 +119,7 @@ def test_each_busy_worker_gets_its_own_cancel(monkeypatch: pytest.MonkeyPatch) -
     app.workers.extend([_worker(first, 1), _worker(second, 2)])
     sent = _capture(svc, monkeypatch)
 
-    svc.stop_all()
+    svc.stop_all(cancel_running=True)
 
     for wid, task in ((1, first), (2, second)):
         mine = [m for w, m in sent if w == wid]
@@ -144,7 +144,7 @@ def test_a_failing_cancel_write_still_lets_the_shutdown_through(
 
     monkeypatch.setattr(svc, "_locked_stdin_write", _write)
 
-    svc.stop_all()
+    svc.stop_all(cancel_running=True)
 
     assert seen == ["cancel", "shutdown"]
 
@@ -159,5 +159,19 @@ def test_stopping_one_worker_for_a_restart_keeps_the_plain_shutdown(
     sent = _capture(svc, monkeypatch)
 
     svc.stop_worker(worker)
+
+    assert [m["action"] for _w, m in sent] == ["shutdown"]
+
+
+def test_a_plain_stop_all_keeps_sending_only_the_shutdown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Engine switches and model changes stop workers with the app still running: the
+    cancelled task's ``done`` event would be read there as a finished run."""
+    svc, app = _service()
+    app.workers.append(_worker(_Task()))
+    sent = _capture(svc, monkeypatch)
+
+    svc.stop_all()
 
     assert [m["action"] for _w, m in sent] == ["shutdown"]

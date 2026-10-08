@@ -710,16 +710,21 @@ class TranscriptionService:
         """
         self._stop_workers([worker])
 
-    def stop_all(self) -> None:
-        """Stop every worker for an app exit (or an engine switch).
+    def stop_all(self, cancel_running: bool = False) -> None:
+        """Stop every worker.
 
-        A worker that is transcribing is asked to cancel first: it handles
-        ``shutdown`` only after the running task returns, and only the cancel
-        makes the transcriber write its resume checkpoint. Without it the
-        grace below ran out and the worker was killed, losing the work since
-        the last periodic checkpoint.
+        ``cancel_running`` (the app exit): a worker that is transcribing is
+        asked to cancel first. It handles ``shutdown`` only after the running
+        task returns, and only the cancel makes the transcriber write its
+        resume checkpoint; without it the grace below ran out and the worker
+        was killed, losing the work since the last periodic checkpoint. Only
+        the exit uses it: the cancelled task ends with a ``done`` event that a
+        live app would read as a finished run (the exit never polls it; see
+        :meth:`settle_done_on_exit`).
         """
-        self._stop_workers(self.active_workers() + list(self._retiring), cancel_running=True)
+        self._stop_workers(
+            self.active_workers() + list(self._retiring), cancel_running=cancel_running,
+        )
 
     # stop_worker()'s step 2 and step 4 waits (seconds).
     STOP_GRACE_S: float = 5.0

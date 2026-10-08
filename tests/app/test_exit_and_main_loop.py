@@ -233,7 +233,7 @@ def _exit_self(order: list[str], monkeypatch: Any) -> types.SimpleNamespace:
         withdraw=lambda: order.append("withdraw"),
         _shutdown_server_on_exit=lambda: order.append("server"),
         transcription_service=types.SimpleNamespace(
-            stop_all=lambda: order.append("workers")),
+            stop_all=lambda **_k: order.append("workers")),
         destroy=lambda: order.append("destroy"),
     )
 
@@ -257,7 +257,7 @@ def test_on_exit_still_destroys_the_hidden_window_when_teardown_fails(
     order: list[str] = []
     fake = _exit_self(order, monkeypatch)
 
-    def _stop_all_fails() -> None:
+    def _stop_all_fails(**_k: object) -> None:
         raise RuntimeError("can't start new thread")
 
     def _server_fails() -> None:

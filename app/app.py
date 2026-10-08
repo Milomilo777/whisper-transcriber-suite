@@ -2115,7 +2115,8 @@ class App(tk.Tk):
             # 'running'; the resume offer and the checkpoint stay as they are.
             _record_exit_interruptions(getattr(self, "history", None), active)
             try:
-                self.transcription_service.stop_all()
+                # Cancel first: the worker then saves its resume checkpoint.
+                self.transcription_service.stop_all(cancel_running=True)
             except Exception:  # noqa: BLE001
                 logger.exception("Could not stop the transcription workers on exit")
             # A job that finished inside the stop window has its outputs on disk:

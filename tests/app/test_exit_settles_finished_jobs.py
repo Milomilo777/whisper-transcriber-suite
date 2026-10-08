@@ -198,13 +198,15 @@ def test_on_exit_settles_after_stopping_the_workers_and_before_closing_the_histo
         withdraw=lambda: None, destroy=lambda: calls.append("destroy"),
         _save_window_geometry=lambda: None, _shutdown_server_on_exit=lambda: None,
         transcription_service=types.SimpleNamespace(
-            stop_all=lambda: calls.append("stop_all"),
+            stop_all=lambda **k: calls.append(f"stop_all{k}"),
             settle_done_on_exit=lambda: calls.append("settle") or 0),
     )
 
     App.on_exit(fake)  # type: ignore[arg-type]
 
-    assert calls == ["record", "stop_all", "settle", "close", "destroy"]
+    assert calls == [
+        "record", "stop_all{'cancel_running': True}", "settle", "close", "destroy",
+    ]
 
 
 def test_a_failing_settle_does_not_stop_the_exit(
@@ -224,7 +226,7 @@ def test_a_failing_settle_does_not_stop_the_exit(
         withdraw=lambda: None, destroy=lambda: calls.append("destroy"),
         _save_window_geometry=lambda: None, _shutdown_server_on_exit=lambda: None,
         transcription_service=types.SimpleNamespace(
-            stop_all=lambda: calls.append("stop_all"), settle_done_on_exit=_boom),
+            stop_all=lambda **_k: calls.append("stop_all"), settle_done_on_exit=_boom),
     )
 
     App.on_exit(fake)  # type: ignore[arg-type]
