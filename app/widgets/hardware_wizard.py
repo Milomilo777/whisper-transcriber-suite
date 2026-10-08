@@ -41,6 +41,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Callable, Optional
 
+from app.dpi import px
 from app.theme import tokens
 from app.widgets.error_dialog import show_error
 from core import hardware as _hw
@@ -127,21 +128,21 @@ class HardwareWizard(tk.Toplevel):
         self.tree.heading("pick", text="")
         self.tree.heading("label", text="Tier")
         self.tree.heading("note", text="Status")
-        self.tree.column("pick", width=40, anchor="center")
-        self.tree.column("label", width=480, anchor="w")
-        self.tree.column("note", width=140, anchor="w")
-        self.tree.tag_configure("supported", foreground=tokens.SUCCESS_STRONG)
-        self.tree.tag_configure("unsupported", foreground="#888")
+        self.tree.column("pick", width=px(40), anchor="center")
+        self.tree.column("label", width=px(480), anchor="w")
+        self.tree.column("note", width=px(140), anchor="w")
+        self.tree.tag_configure("supported", foreground=tokens.themed(tokens.SUCCESS_STRONG))
+        self.tree.tag_configure("unsupported", foreground=tokens.themed(tokens.TEXT_MISSING))
         self.tree.pack(fill="x")
         self.tree.bind("<<TreeviewSelect>>", self._on_select)
 
         self.status_var = tk.StringVar(value="Probing…")
-        ttk.Label(body, textvariable=self.status_var, foreground="#666").pack(
+        ttk.Label(body, textvariable=self.status_var, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
             anchor="w", pady=(6, 0)
         )
 
         self.benchmark_var = tk.StringVar(value="")
-        ttk.Label(body, textvariable=self.benchmark_var, foreground=tokens.SUCCESS_STRONG).pack(
+        ttk.Label(body, textvariable=self.benchmark_var, foreground=tokens.themed(tokens.SUCCESS_STRONG)).pack(
             anchor="w"
         )
 
@@ -150,8 +151,8 @@ class HardwareWizard(tk.Toplevel):
         # just listed "CPU" with no explanation (GitHub issue #7).
         self.cuda_var = tk.StringVar(value="")
         ttk.Label(
-            body, textvariable=self.cuda_var, foreground=tokens.WARNING_TEXT,
-            wraplength=640, justify="left",
+            body, textvariable=self.cuda_var, foreground=tokens.themed(tokens.WARNING_TEXT),
+            wraplength=px(640), justify="left",
         ).pack(anchor="w", pady=(4, 0))
 
         tools = ttk.Frame(body)

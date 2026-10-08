@@ -19,8 +19,9 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Any
 
-from app.dpi import scaled_size
+from app.dpi import px, scaled_size
 from app.theme import script_fonts
+from app.theme import tokens
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ class SearchDialog(tk.Toplevel):
         )
         self._reindex_btn.pack(side="left", padx=(12, 0))
         self.status_var = tk.StringVar(value="Indexing…")
-        ttk.Label(topbar, textvariable=self.status_var, foreground="#666").pack(
+        ttk.Label(topbar, textvariable=self.status_var, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
             side="right"
         )
 
@@ -93,9 +94,9 @@ class SearchDialog(tk.Toplevel):
         self.tree.heading("file", text="File")
         self.tree.heading("time", text="Time")
         self.tree.heading("text", text="Match")
-        self.tree.column("file", width=220, anchor="w")
-        self.tree.column("time", width=70, anchor="w")
-        self.tree.column("text", width=460)
+        self.tree.column("file", width=px(220), anchor="w")
+        self.tree.column("time", width=px(70), anchor="w")
+        self.tree.column("text", width=px(460))
         vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
         self.tree.grid(row=0, column=0, sticky="nsew")
@@ -113,7 +114,7 @@ class SearchDialog(tk.Toplevel):
             btns,
             text="Double-click a row, or select it and click Open, to jump "
                  "straight to that moment in the transcript viewer.",
-            foreground="#666",
+            foreground=tokens.themed(tokens.TEXT_MUTED),
         ).pack(side="left", padx=(10, 0))
 
     # -- thread-safe UI updates -------------------------------------------

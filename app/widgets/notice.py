@@ -61,7 +61,7 @@ class NoticeHost:
         self._expired_while_hovered = False
 
         self.frame = ttk.Frame(window, padding=(0, 0, 8, 0))
-        self._accent = tk.Frame(self.frame, width=4, bg=_ACCENT["info"])
+        self._accent = tk.Frame(self.frame, width=4, bg=tokens.themed(_ACCENT["info"]))
         self._accent.pack(side="left", fill="y")
         ttk.Separator(self.frame, orient="horizontal").place(x=0, y=0, relwidth=1)
         self._text = tk.StringVar(master=self.frame, value="")
@@ -128,7 +128,7 @@ class NoticeHost:
         text, kind = item
         self.current = item
         self._text.set(text)
-        self._accent.configure(bg=_ACCENT[kind])
+        self._accent.configure(bg=tokens.themed(_ACCENT[kind]))
         self._expired_while_hovered = False
         self.frame.place(relx=0.0, rely=1.0, anchor="sw", relwidth=1.0)
         self.frame.lift()  # above its siblings; lifting never moves the keyboard focus

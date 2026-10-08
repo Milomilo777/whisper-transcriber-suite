@@ -42,6 +42,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Optional
 
+from app.theme import tokens
 from core import hub as _hub
 from core.config import save_config
 
@@ -127,7 +128,7 @@ class HubSetupDialog(tk.Toplevel):
                 "Pick a different folder (e.g. an external drive) if you\n"
                 "want to keep the models somewhere with more space."
             ),
-            foreground="#666",
+            foreground=tokens.themed(tokens.TEXT_MUTED),
             justify="left",
         ).pack(anchor="w", pady=(0, 10))
 
@@ -144,7 +145,7 @@ class HubSetupDialog(tk.Toplevel):
         ttk.Label(
             body,
             text=f"Default if you accept: {default_path}",
-            foreground="#666",
+            foreground=tokens.themed(tokens.TEXT_MUTED),
         ).pack(anchor="w", pady=(0, 10))
 
         actions = ttk.Frame(body)

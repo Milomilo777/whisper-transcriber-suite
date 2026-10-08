@@ -145,7 +145,7 @@ def build_smtv_tab(app: Any, parent: Any) -> None:
 
     chips = ttk.Frame(parent, padding=(15, 2, 15, 6))
     chips.grid(row=2, column=0, sticky="ew")
-    ttk.Label(chips, text="Explore:", foreground=tokens.TEXT_MUTED).pack(side="left", padx=(0, 6))
+    ttk.Label(chips, text="Explore:", foreground=tokens.themed(tokens.TEXT_MUTED)).pack(side="left", padx=(0, 6))
     for label in _SHORTCUTS:
         ttk.Button(
             chips, text=label.split(":")[0], style="Toolbutton",
@@ -158,7 +158,7 @@ def build_smtv_tab(app: Any, parent: Any) -> None:
     body.columnconfigure(0, weight=1)
     body.rowconfigure(1, weight=1)
     state.status_var = tk.StringVar(value="")
-    ttk.Label(body, textvariable=state.status_var, foreground=tokens.TEXT_MUTED).grid(
+    ttk.Label(body, textvariable=state.status_var, foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
         row=0, column=0, sticky="w", pady=(0, 4)
     )
     canvas = tk.Canvas(body, highlightthickness=0, borderwidth=0)
@@ -443,9 +443,9 @@ class _TabState:
         if item.program:
             ttk.Label(meta, text=item.program, foreground=tokens.PROGRAM_ACCENT).pack(side=side)
             ttk.Label(meta, text="   ·   ", foreground=tokens.TEXT_SUBTLE).pack(side=side)
-        ttk.Label(meta, text=detail_line(item), foreground=tokens.TEXT_MUTED).pack(side=side)
+        ttk.Label(meta, text=detail_line(item), foreground=tokens.themed(tokens.TEXT_MUTED)).pack(side=side)
         abstract = ttk.Label(frame, text=shorten(item.abstract), wraplength=self._wrap,
-                             justify=justify, foreground=tokens.TEXT_MUTED)
+                             justify=justify, foreground=tokens.themed(tokens.TEXT_MUTED))
         abstract.grid(row=2, column=1, sticky=anchor)
         actions = ttk.Frame(frame)
         actions.grid(row=3, column=1, sticky=anchor, pady=(6, 0))

@@ -8,6 +8,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING
 
+from app.dpi import px
 from app.widgets.error_dialog import show_error
 from app.widgets.notice import notify
 
@@ -63,7 +64,7 @@ def show_statistics(app: "App") -> None:
             body, text=label, font=("TkDefaultFont", 9, "bold"),
         ).grid(row=i, column=0, sticky="ne", padx=(0, 14), pady=4)
         ttk.Label(
-            body, text=value, wraplength=280, justify="left",
+            body, text=value, wraplength=px(280), justify="left",
         ).grid(row=i, column=1, sticky="w", pady=4)
 
     ttk.Button(body, text="Close", command=top.destroy).grid(

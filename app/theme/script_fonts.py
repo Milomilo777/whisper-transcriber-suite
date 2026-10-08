@@ -50,6 +50,7 @@ from collections.abc import Collection
 from tkinter import font as tkfont
 from tkinter import ttk
 
+from app import dpi
 from app.theme import tokens
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,10 @@ _RANGES: tuple[tuple[int, int, str], ...] = (
     (0x20000, 0x323AF, "han"),     # CJK extensions B-H
 )
 _STARTS = [first for first, _last, _script in _RANGES]
+# Marks inside the kana blocks that Chinese text uses too (the katakana middle dot in names, the
+# prolonged-sound mark as a dash, the half-width forms and the voicing marks): they say nothing
+# about the language, so one of them must not turn a Chinese line into Japanese.
+_NEUTRAL_KANA = frozenset({0x309B, 0x309C, 0x30FB, 0x30FC, 0xFF70, 0xFF9E, 0xFF9F})
 # Tie-break when two scripts have as many characters: the one with the tallest marks first.
 _TIE_ORDER = ("myanmar", "sinhala", "indic", "khmer", "thai", "lao", "kana", "han")
 
@@ -103,6 +108,8 @@ def _on_windows() -> bool:
 def script_of(ch: str) -> str | None:
     """The script key of one character, or None for scripts the UI font draws well."""
     cp = ord(ch)
+    if cp in _NEUTRAL_KANA:
+        return None
     i = bisect.bisect_right(_STARTS, cp) - 1
     if i >= 0 and cp <= _RANGES[i][1]:
         return _RANGES[i][2]
@@ -114,7 +121,8 @@ def text_script(text: str) -> str | None:
 
     Latin, Cyrillic, Arabic and the other scripts the UI font already draws well are not counted,
     so ``interview_<Myanmar name>.mp4`` is Myanmar. Japanese mixes kana and kanji: any kana makes
-    the Han characters count as kana too. None when no character belongs to those scripts.
+    the Han characters count as kana too (marks Chinese shares with Japanese, ``_NEUTRAL_KANA``,
+    are not kana). None when no character belongs to those scripts.
     """
     counts = Counter(s for s in map(script_of, text) if s is not None)
     if not counts:
@@ -140,7 +148,10 @@ def font_key(text: str, language: str | None = None) -> str | None:
     """Key into ``tokens.FONT_FAMILIES_WINDOWS`` for the text, or None to keep the widget's font.
 
     Han characters without kana get the regional font of ``language`` (the transcript or caption
-    language); with an unknown language they keep the default fallback rather than a guess.
+    language); with an unknown language they keep the default fallback rather than a guess. Real
+    kana stays Japanese under any language (a Japanese title in a Chinese list); the marks Chinese
+    shares with kana do not count as kana (``_NEUTRAL_KANA``), so they leave the choice to the
+    language.
     """
     script = text_script(text)
     if script == "kana":
@@ -200,6 +211,14 @@ def fix_tree_font(root: tk.Misc) -> bool:
     style = ttk.Style(root)
     current = str(style.lookup("Treeview", "font"))
     if current == TREE_FONT:
+        # This theme kept the fixed font: it follows the body font's (scaled) size, and the
+        # rows must still fit its line.
+        if "SunValleyBodyFont" in root.tk.splitlist(root.tk.call("font", "names")):
+            size = root.tk.call("font", "configure", "SunValleyBodyFont", "-size")
+            root.tk.call("font", "configure", TREE_FONT, "-size", size)
+        line = _int(root.tk.call("font", "metrics", TREE_FONT, "-linespace"))
+        if _int(style.lookup("Treeview", "rowheight")) < line + _ROW_PAD:
+            style.configure("Treeview", rowheight=line + _ROW_PAD)
         return True
     try:
         base = tkfont.nametofont(current, root=root) if current else None
@@ -254,8 +273,52 @@ def _fitting_size(widget: tk.Misc, family: str, size: int, rowheight: int) -> in
     return None
 
 
+# sv_ttk's named fonts. sv.tcl creates them once, in pixels (negative sizes), so they do not grow
+# with the display scale the way point sizes do.
+_THEME_FONTS = (
+    "SunValleyCaptionFont", "SunValleyBodyFont", "SunValleyBodyStrongFont",
+    "SunValleyBodyLargeFont", "SunValleySubtitleFont", "SunValleyTitleFont",
+    "SunValleyTitleLargeFont", "SunValleyDisplayFont",
+)
+_BASE_SIZES = "wts_theme_font_base"   # Tcl array: each theme font's size as sv_ttk made it
+
+
+def scale_theme_fonts(root: tk.Misc, factor: float | None = None) -> bool:
+    """Grow sv_ttk's pixel-sized fonts with the display scale (125 %, 150 %, ...).
+
+    Every ttk widget (buttons, entries, tabs, tree rows) uses these fonts, while ``tk.Text``, the
+    labels and the tooltips use point sizes that Tk already scales; without this the ttk text
+    stayed 14 pixels at 150 % next to text 1.5 times as tall. The size sv_ttk gave each font is
+    kept in the interpreter, so calling this after every theme switch scales it only once. Point
+    sizes are left alone. Also gives the Treeview rows the height of the grown line, as sv_ttk
+    computes it (line + 3), since the theme measured the line before. True when a font changed.
+    """
+    factor = dpi.scale_factor(root) if factor is None else factor
+    names = set(root.tk.splitlist(root.tk.call("font", "names")))
+    changed = False
+    for name in _THEME_FONTS:
+        if name not in names:
+            continue
+        if not _int(root.tk.call("info", "exists", f"{_BASE_SIZES}({name})")):
+            root.tk.call("set", f"{_BASE_SIZES}({name})",
+                         root.tk.call("font", "configure", name, "-size"))
+        base = _int(root.tk.call("set", f"{_BASE_SIZES}({name})"))
+        if base >= 0:
+            continue  # points: Tk scales them already
+        size = min(-1, int(round(base * factor)))
+        if _int(root.tk.call("font", "configure", name, "-size")) != size:
+            root.tk.call("font", "configure", name, "-size", size)
+            changed = True
+    if "SunValleyBodyFont" in names:
+        style = ttk.Style(root)
+        line = _int(root.tk.call("font", "metrics", "SunValleyBodyFont", "-linespace"))
+        style.configure("Treeview", rowheight=line + _ROW_PAD)
+    return changed
+
+
 def apply_theme_fonts(root: tk.Misc) -> None:
-    """Call after every ``sv_ttk.set_theme``: the Treeview font fix plus the taller row styles.
+    """Call after every ``sv_ttk.set_theme``: the theme fonts at the display scale, the Treeview
+    font fix and the taller row styles.
 
     Setting a ttk style option makes Tk send <<ThemeChanged>> to every widget, and sv_ttk then
     resets each ttk.Entry / Combobox to its own font. So the row styles a script font may need
@@ -263,6 +326,7 @@ def apply_theme_fonts(root: tk.Misc) -> None:
     up here, together with the theme, and a tree only switches to one later
     (``tree_row_tags``), which changes no style.
     """
+    scale_theme_fonts(root)
     fix_tree_font(root)
     if not _on_windows():
         return

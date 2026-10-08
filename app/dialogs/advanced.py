@@ -39,7 +39,7 @@ from app.domain.cookies import (
     cookie_browser_label,
     cookie_browser_value,
 )
-from app.dpi import scaled
+from app.dpi import px, scaled
 from app.theme import tokens
 from app.widgets.tooltip import (
     bind_tooltip,
@@ -590,15 +590,15 @@ class AdvancedDialog(tk.Toplevel):
                 separator = ttk.Separator(nav, orient="horizontal")
                 separator.pack(fill="x", pady=(8, 4))
                 caption_label = ttk.Label(
-                    nav, text=caption, foreground="#888",
+                    nav, text=caption, foreground=tokens.themed(tokens.TEXT_MUTED),
                     font=("TkDefaultFont", 8),
                 )
                 caption_label.pack(anchor="w", pady=(0, 2))
                 self._nav_links += [separator, caption_label]
             muted = bool(getattr(frame, "muted", False))
             link = ttk.Label(
-                nav, text=label, foreground=tokens.TEXT_DISABLED if muted else tokens.LINK,
-                cursor="hand2", wraplength=122, justify="left",
+                nav, text=label, foreground=tokens.TEXT_DISABLED if muted else tokens.themed(tokens.LINK),
+                cursor="hand2", wraplength=px(122), justify="left",
             )
             link.pack(anchor="w", pady=2, fill="x")
             link.bind("<Button-1>", lambda _e, f=frame: _jump(f))
@@ -963,8 +963,8 @@ class AdvancedDialog(tk.Toplevel):
         self._engine_warning = ttk.Label(
             engine,
             textvariable=self._engine_warning_var,
-            foreground=tokens.WARNING_TEXT,
-            wraplength=560,
+            foreground=tokens.themed(tokens.WARNING_TEXT),
+            wraplength=px(560),
             justify="left",
         )
         self._engine_warning.grid(
@@ -1023,8 +1023,8 @@ class AdvancedDialog(tk.Toplevel):
                 "it for content you may send to a cloud service. The default "
                 "engines stay fully offline."
             ),
-            foreground=tokens.DANGER_TEXT,
-            wraplength=680,
+            foreground=tokens.themed(tokens.DANGER_TEXT),
+            wraplength=px(680),
             justify="left",
         ).grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=(4, 8))
         ttk.Label(cloud, text="Google API key").grid(
@@ -1039,14 +1039,14 @@ class AdvancedDialog(tk.Toplevel):
         ttk.Label(
             cloud,
             textvariable=self._cloud_test_result,
-            foreground="#666",
-            wraplength=680,
+            foreground=tokens.themed(tokens.TEXT_MUTED),
+            wraplength=px(680),
             justify="left",
         ).grid(row=2, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
         ttk.Label(
             cloud,
             text="Get a free key at aistudio.google.com (paste it above).",
-            foreground="#666",
+            foreground=tokens.themed(tokens.TEXT_MUTED),
         ).grid(row=3, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
         ttk.Label(cloud, text="Model").grid(
             row=4, column=0, sticky="w", padx=8, pady=4
@@ -1057,7 +1057,7 @@ class AdvancedDialog(tk.Toplevel):
         ttk.Label(
             cloud,
             text="Default: gemini-3.5-flash (a current Gemini audio model).",
-            foreground="#666",
+            foreground=tokens.themed(tokens.TEXT_MUTED),
         ).grid(row=4, column=2, sticky="w", padx=8, pady=4)
         # No free-minutes figure here: the Gemini API's free tier is
         # rate-limited, not a monthly minute allowance (that 60 min/month
@@ -1073,13 +1073,13 @@ class AdvancedDialog(tk.Toplevel):
                 "computer). Real usage and any charges are only visible in "
                 "Google's billing console:"
             ),
-            wraplength=680,
+            wraplength=px(680),
             justify="left",
         ).grid(row=5, column=0, columnspan=3, sticky="w", padx=8, pady=(8, 0))
         link = ttk.Label(
             cloud,
             text="https://console.cloud.google.com/billing",
-            foreground=tokens.LINK,
+            foreground=tokens.themed(tokens.LINK),
             cursor="hand2",
         )
         link.grid(row=6, column=0, columnspan=3, sticky="w", padx=8, pady=(0, 4))
@@ -1111,8 +1111,8 @@ class AdvancedDialog(tk.Toplevel):
                 "folder. (NVIDIA's exact Nemotron-3.5 .nemo checkpoint needs "
                 "the NeMo toolkit and is not loadable here.)"
             ),
-            foreground="#444",
-            wraplength=680,
+            foreground=tokens.themed(tokens.TEXT_MUTED),
+            wraplength=px(680),
             justify="left",
         ).grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=(4, 8))
         ttk.Label(nvidia, text="Model (HF id or local path)").grid(
@@ -1124,7 +1124,7 @@ class AdvancedDialog(tk.Toplevel):
         ttk.Label(
             nvidia,
             text="Default: nvidia/parakeet-tdt-0.6b-v3",
-            foreground="#666",
+            foreground=tokens.themed(tokens.TEXT_MUTED),
         ).grid(row=2, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
         ttk.Button(
             nvidia, text="Prepare Parakeet model now...",
@@ -1136,7 +1136,7 @@ class AdvancedDialog(tk.Toplevel):
                 "Installs transformers/torch/librosa and downloads the model "
                 "ahead of time, instead of waiting on the first transcription."
             ),
-            foreground="#666", wraplength=500, justify="left",
+            foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(500), justify="left",
         ).grid(row=3, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 8))
         nvidia.columnconfigure(1, weight=1)
         return nvidia
@@ -1163,7 +1163,7 @@ class AdvancedDialog(tk.Toplevel):
                 variable=self._format_vars[name],
             ).pack(side="left")
             help_icon(
-                cell, _FORMAT_HELP.get(name, ""), wraplength=280,
+                cell, _FORMAT_HELP.get(name, ""), wraplength=px(280),
             ).pack(side="left")
         return outputs
 
@@ -1195,7 +1195,7 @@ class AdvancedDialog(tk.Toplevel):
         # The three tuning sliders are expert knobs most people never touch;
         # they stay one click away instead of dominating the section.
         self._vad_tune_link = ttk.Label(
-            vad_row, text="▸ Fine-tune", foreground=tokens.LINK, cursor="hand2",
+            vad_row, text="▸ Fine-tune", foreground=tokens.themed(tokens.LINK), cursor="hand2",
         )
         self._vad_tune_link.pack(side="left", padx=(14, 0))
         self._vad_tune_link.bind("<Button-1>", lambda _e: self._toggle_vad_sliders())
@@ -1393,7 +1393,7 @@ class AdvancedDialog(tk.Toplevel):
         install_note = ttk.Label(
             ai,
             text="Downloads the offline model once (~1 GB); Local needs it before it works.",
-            foreground="#666",
+            foreground=tokens.themed(tokens.TEXT_MUTED),
         )
         install_note.grid(row=2, column=1, columnspan=2, sticky="w", padx=8, pady=4)
         self._llm_local_widgets: list[tk.Widget] = [install_btn, install_note]
@@ -1412,7 +1412,7 @@ class AdvancedDialog(tk.Toplevel):
         key_hint = ttk.Label(
             ai, text="For the real OpenAI API, get a key at platform.openai.com. "
                      "Leave blank for a local server that doesn't need one.",
-            foreground="#666", wraplength=420, justify="left",
+            foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(420), justify="left",
         )
         key_hint.grid(row=5, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
         model_label = ttk.Label(ai, text="Model")
@@ -1564,7 +1564,7 @@ class AdvancedDialog(tk.Toplevel):
                 "itself; a new app version brings a newer one."
             )
         ttk.Label(
-            parent, text=note, wraplength=560, justify="left", foreground="#666",
+            parent, text=note, wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
         ).grid(row=row + len(choices) + 1, column=0, columnspan=3, sticky="w", padx=24, pady=(0, 6))
 
     def _build_misc_section(self, body: ttk.Frame) -> ttk.LabelFrame:
@@ -1681,7 +1681,7 @@ class AdvancedDialog(tk.Toplevel):
                 "check off on this computer. " + note
             )
         ttk.Label(
-            parent, text=note, wraplength=560, justify="left", foreground="#666",
+            parent, text=note, wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
         ).pack(anchor="w", padx=24, pady=(0, 6))
 
     def _build_gcloud_frame(self, body) -> ttk.LabelFrame:
@@ -1720,7 +1720,7 @@ class AdvancedDialog(tk.Toplevel):
                 "$0.004/minute (~75% less than Standard's ~$0.016/minute) "
                 "and is usually ready within 24 hours."
             ),
-            wraplength=680,
+            wraplength=px(680),
             justify="left",
         ).grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=(4, 8))
 
@@ -1731,8 +1731,8 @@ class AdvancedDialog(tk.Toplevel):
         self._gcloud_path_label = ttk.Label(
             gc,
             text=self._gcloud_path_display(),
-            foreground="#666",
-            wraplength=560,
+            foreground=tokens.themed(tokens.TEXT_MUTED),
+            wraplength=px(560),
             justify="left",
         )
         self._gcloud_path_label.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
@@ -1753,8 +1753,8 @@ class AdvancedDialog(tk.Toplevel):
         ttk.Label(
             gc,
             textvariable=self._gcloud_test_result,
-            foreground="#666",
-            wraplength=680,
+            foreground=tokens.themed(tokens.TEXT_MUTED),
+            wraplength=px(680),
             justify="left",
         ).grid(row=3, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
 
@@ -1772,8 +1772,8 @@ class AdvancedDialog(tk.Toplevel):
                 "take up to ~24 hours and needs a Google Cloud Storage bucket "
                 "you own."
             ),
-            foreground="#666",
-            wraplength=680,
+            foreground=tokens.themed(tokens.TEXT_MUTED),
+            wraplength=px(680),
             justify="left",
         ).grid(row=5, column=0, columnspan=3, sticky="w", padx=8, pady=(0, 4))
         ttk.Label(gc, text="Cloud Storage bucket:").grid(
@@ -1812,18 +1812,18 @@ class AdvancedDialog(tk.Toplevel):
         ttk.Label(
             gc,
             textvariable=self._gcloud_usage_text,
-            wraplength=680,
+            wraplength=px(680),
             justify="left",
         ).grid(row=8, column=0, columnspan=3, sticky="w", padx=8, pady=(8, 0))
         ttk.Label(
             gc,
             text="(local estimate — see Google Cloud Console for the real figure)",
-            foreground="#666",
+            foreground=tokens.themed(tokens.TEXT_MUTED),
         ).grid(row=9, column=0, columnspan=3, sticky="w", padx=8, pady=(0, 2))
         usage_link = ttk.Label(
             gc,
             text="Open billing/usage console",
-            foreground=tokens.LINK,
+            foreground=tokens.themed(tokens.LINK),
             cursor="hand2",
         )
         usage_link.grid(row=10, column=0, columnspan=3, sticky="w", padx=8, pady=(0, 4))
@@ -1835,8 +1835,8 @@ class AdvancedDialog(tk.Toplevel):
         ttk.Label(
             gc,
             text="Cloud transcription uploads your audio to Google (it is not offline).",
-            foreground=tokens.DANGER_TEXT,
-            wraplength=680,
+            foreground=tokens.themed(tokens.DANGER_TEXT),
+            wraplength=px(680),
             justify="left",
         ).grid(row=11, column=0, columnspan=3, sticky="w", padx=8, pady=(4, 4))
 
@@ -1857,7 +1857,7 @@ class AdvancedDialog(tk.Toplevel):
         """
         row_label = ttk.Label(parent, text=label)
         row_label.grid(row=row, column=0, sticky="w", padx=8, pady=4)
-        scale = ttk.Scale(parent, from_=lo, to=hi, variable=var, orient="horizontal", length=240)
+        scale = ttk.Scale(parent, from_=lo, to=hi, variable=var, orient="horizontal", length=px(240))
         scale.grid(row=row, column=1, sticky="ew", padx=8, pady=4)
         echo_var = tk.StringVar(value=f"{float(var.get()):.2f}" if is_float else str(int(var.get())))
 
@@ -1892,7 +1892,7 @@ class AdvancedDialog(tk.Toplevel):
 
         ttk.Label(
             frame, text=info["label"], font=("", 10, "bold"),
-            wraplength=420, justify="left",
+            wraplength=px(420), justify="left",
         ).pack(anchor="w", pady=(0, 8))
 
         body = info["info"] or "No description available."
@@ -1901,7 +1901,7 @@ class AdvancedDialog(tk.Toplevel):
             body = f"{body}\n\nApprox. download size: ~{size_gb:g} GB"
 
         ttk.Label(
-            frame, text=body, wraplength=420, justify="left",
+            frame, text=body, wraplength=px(420), justify="left",
         ).pack(anchor="w")
 
         ttk.Button(frame, text="Close", command=top.destroy).pack(
@@ -2574,7 +2574,7 @@ class AdvancedDialog(tk.Toplevel):
                 "Follow these steps once. The links open the exact Google "
                 "Cloud console pages (screenshots are not embedded)."
             ),
-            wraplength=620,
+            wraplength=px(620),
             justify="left",
         ).pack(anchor="w", pady=(0, 10))
 
@@ -2582,12 +2582,12 @@ class AdvancedDialog(tk.Toplevel):
             row = ttk.Frame(frame)
             row.pack(fill="x", anchor="w", pady=2)
             ttk.Label(
-                row, text=text, wraplength=620, justify="left",
+                row, text=text, wraplength=px(620), justify="left",
             ).pack(anchor="w")
             if url:
                 link = ttk.Label(
-                    row, text=url, foreground=tokens.LINK, cursor="hand2",
-                    wraplength=620, justify="left",
+                    row, text=url, foreground=tokens.themed(tokens.LINK), cursor="hand2",
+                    wraplength=px(620), justify="left",
                 )
                 link.pack(anchor="w", padx=(16, 0))
                 link.bind("<Button-1>", lambda _e, u=url: self._open_url(u))
@@ -2595,9 +2595,9 @@ class AdvancedDialog(tk.Toplevel):
         guide = ttk.Label(
             frame,
             text=f"Official guide: {_GCLOUD_OFFICIAL_GUIDE}",
-            foreground=tokens.LINK,
+            foreground=tokens.themed(tokens.LINK),
             cursor="hand2",
-            wraplength=620,
+            wraplength=px(620),
             justify="left",
         )
         guide.pack(anchor="w", pady=(12, 0))

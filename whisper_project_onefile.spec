@@ -187,6 +187,7 @@ a = Analysis(
         'app.observability',
         'app.crash_report',
         'app.theme.script_fonts',
+        'app.theme.theme_colours',
         'app.dialogs.advanced',
         'app.dialogs.caption_choice',
         'app.dialogs.hub_setup',

@@ -10,6 +10,9 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 
+from app.dpi import px
+from app.theme import tokens
+
 CHOICE_ASK = "ask"
 CHOICE_CAPTIONS = "captions"
 CHOICE_TRANSCRIBE = "transcribe"
@@ -51,7 +54,7 @@ def ask_caption_choice(master: "tk.Misc", *, kind: str, language: str) -> tuple[
     if kind != "manual":
         note += " Automatic subtitles can be less accurate than a transcription."
     note += " Using the subtitles saves no video or audio file."
-    ttk.Label(body, text=note, foreground="#666", wraplength=440, justify="left").pack(
+    ttk.Label(body, text=note, foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(440), justify="left").pack(
         anchor="w", pady=(6, 10)
     )
     ttk.Checkbutton(body, text="Don't ask again", variable=dont_ask).pack(anchor="w")

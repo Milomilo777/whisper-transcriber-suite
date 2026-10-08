@@ -27,6 +27,9 @@ import sys
 import tkinter as tk
 from tkinter import ttk
 
+from app.dpi import px
+from app.theme import tokens
+
 
 def _compute_position(master: "tk.Misc", width: int, height: int) -> tuple[int, int]:
     """Return the top-left ``(x, y)`` for centring a ``width`` x ``height``
@@ -105,10 +108,10 @@ class ModelLoadingDialog(tk.Toplevel):
                 "The model loads once per session. "
                 "Subsequent transcriptions start instantly."
             ),
-            foreground="#666",
+            foreground=tokens.themed(tokens.TEXT_MUTED),
         ).grid(row=1, column=0, sticky="w", pady=(4, 10))
 
-        self.pb = ttk.Progressbar(body, length=420, mode="indeterminate")
+        self.pb = ttk.Progressbar(body, length=px(420), mode="indeterminate")
         self.pb.grid(row=2, column=0, sticky="ew", pady=(0, 12))
         # .start(N) ticks the indeterminate bar every N ms so the
         # user has visual confirmation the app isn't frozen.

@@ -43,7 +43,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any, Optional
 
-from app.dpi import scaled_size
+from app.dpi import px, scaled_size
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
 from app.widgets import subtitle_edit as subtitle_edit_ui
@@ -755,41 +755,12 @@ class TranscriptViewer(tk.Toplevel):
         outer = ttk.Frame(self, padding=8)
         outer.pack(fill="both", expand=True)
 
-        # Top bar: media file label + search box + edit tools
+        # Two bars, so every button keeps its full label at 100-150 % scaling (one bar cut
+        # "Open in Subtitle Edit" to "Oper" at 100 %). Top: the media file and the file
+        # actions; the right-hand buttons are packed first, so a long file name is what gives
+        # way. Second: search and the edit tools.
         topbar = ttk.Frame(outer)
-        topbar.pack(fill="x", pady=(0, 6))
-        media_label = (
-            f"Media: {os.path.basename(self.media_path)}"
-            if self.media_path
-            else "Media: (none found next to JSON)"
-        )
-        ttk.Label(topbar, text=media_label, foreground="#666").pack(side="left")
-
-        ttk.Label(topbar, text="Search:").pack(side="left", padx=(20, 4))
-        self.search_var = tk.StringVar()
-        self.search_var.trace_add("write", lambda *_: self._refilter())
-        ttk.Entry(topbar, textvariable=self.search_var, width=24).pack(side="left")
-        ttk.Button(topbar, text="Clear", command=lambda: self.search_var.set("")).pack(
-            side="left", padx=(4, 0)
-        )
-
-        # Edit tools group
-        ttk.Separator(topbar, orient="vertical").pack(side="left", padx=8, fill="y")
-        ttk.Button(topbar, text="Find & Replace  (Ctrl+F)",
-                   command=self._open_find_replace).pack(side="left", padx=(0, 4))
-        ttk.Button(topbar, text="Remove fillers",
-                   command=self._remove_fillers).pack(side="left", padx=(0, 4))
-        help_icon(
-            topbar,
-            "Deletes standalone filler words of the transcript's language "
-            "(English um, uh, er; German äh, ähm; French euh; …) from every "
-            "segment's text. Only whole filler words are removed and the "
-            "punctuation stays. Languages without a list are left alone. "
-            "Review the segment list before saving (there is no undo).",
-        ).pack(side="left", padx=(0, 4))
-        ttk.Button(topbar, text="Save changes  (Ctrl+S)",
-                   command=self._save_changes).pack(side="left", padx=(0, 4))
-
+        topbar.pack(fill="x", pady=(0, 4))
         ttk.Button(topbar, text="Open JSON folder", command=self._open_json_folder).pack(
             side="right"
         )
@@ -799,16 +770,51 @@ class TranscriptViewer(tk.Toplevel):
                 command=self._open_in_subtitle_edit,
             ).pack(side="right", padx=(0, 4))
             help_icon(topbar, subtitle_edit_ui.HELP_TEXT).pack(side="right", padx=(0, 4))
+        media_label = (
+            f"Media: {os.path.basename(self.media_path)}"
+            if self.media_path
+            else "Media: (none found next to JSON)"
+        )
+        ttk.Label(topbar, text=media_label, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
+            side="left"
+        )
+
+        toolbar = ttk.Frame(outer)
+        toolbar.pack(fill="x", pady=(0, 6))
         help_icon(
-            topbar,
+            toolbar,
             "Segment list colours: green/amber/red text is the model's "
-            "confidence (high/medium/low). A light-red row background "
+            "confidence (high/medium/low). A red row background "
             "means the hallucination detector flagged that segment as "
-            "suspect. A light-orange row background means its timing "
+            "suspect. An orange row background means its timing "
             "overlaps the previous segment or is under 1s (usually "
-            "after a manual 'Edit timestamp...' edit). Yellow "
+            "after a manual 'Edit timestamp...' edit). A yellow "
             "highlight marks the segment now playing.",
-        ).pack(side="right", padx=(0, 12))
+        ).pack(side="right")
+        ttk.Label(toolbar, text="Search:").pack(side="left", padx=(0, 4))
+        self.search_var = tk.StringVar()
+        self.search_var.trace_add("write", lambda *_: self._refilter())
+        ttk.Entry(toolbar, textvariable=self.search_var, width=24).pack(side="left")
+        ttk.Button(toolbar, text="Clear", command=lambda: self.search_var.set("")).pack(
+            side="left", padx=(4, 0)
+        )
+
+        # Edit tools group
+        ttk.Separator(toolbar, orient="vertical").pack(side="left", padx=8, fill="y")
+        ttk.Button(toolbar, text="Find & Replace  (Ctrl+F)",
+                   command=self._open_find_replace).pack(side="left", padx=(0, 4))
+        ttk.Button(toolbar, text="Remove fillers",
+                   command=self._remove_fillers).pack(side="left", padx=(0, 4))
+        help_icon(
+            toolbar,
+            "Deletes standalone filler words of the transcript's language "
+            "(English um, uh, er; German äh, ähm; French euh; …) from every "
+            "segment's text. Only whole filler words are removed and the "
+            "punctuation stays. Languages without a list are left alone. "
+            "Review the segment list before saving (there is no undo).",
+        ).pack(side="left", padx=(0, 4))
+        ttk.Button(toolbar, text="Save changes  (Ctrl+S)",
+                   command=self._save_changes).pack(side="left", padx=(0, 4))
 
         # Body: left = segment list, right = media controls
         body = ttk.PanedWindow(outer, orient="horizontal")
@@ -822,26 +828,26 @@ class TranscriptViewer(tk.Toplevel):
         self.tree.heading("time", text="Time")
         self.tree.heading("speaker", text="Speaker")
         self.tree.heading("text", text="Segment")
-        self.tree.column("time", width=80, anchor="w")
-        self.tree.column("speaker", width=110, anchor="w")
-        self.tree.column("text", width=620)
+        self.tree.column("time", width=px(80), anchor="w")
+        self.tree.column("speaker", width=px(110), anchor="w")
+        self.tree.column("text", width=px(620))
         # Confidence colour tags. The cell text becomes the colour;
         # background stays unchanged so the row's highlight tag
         # (for karaoke) layers cleanly on top.
-        self.tree.tag_configure("conf_high", foreground=tokens.SUCCESS_STRONG)     # green
-        self.tree.tag_configure("conf_med", foreground=tokens.WARNING_STRONG)      # amber
-        self.tree.tag_configure("conf_low", foreground=tokens.DANGER_STRONG)      # red
-        self.tree.tag_configure("active", background=tokens.ROW_ACTIVE)        # karaoke
+        self.tree.tag_configure("conf_high", foreground=tokens.themed(tokens.SUCCESS_STRONG))     # green
+        self.tree.tag_configure("conf_med", foreground=tokens.themed(tokens.WARNING_STRONG))      # amber
+        self.tree.tag_configure("conf_low", foreground=tokens.themed(tokens.DANGER_STRONG))      # red
+        self.tree.tag_configure("active", background=tokens.themed(tokens.ROW_ACTIVE))        # karaoke
         # v0.8 — segments the hallucination detector flagged as suspect.
         # Light-red background so the row stands out at a glance; the
         # confidence foreground colour layers on top normally.
-        self.tree.tag_configure("suspect", background=tokens.ROW_SUSPECT)
+        self.tree.tag_configure("suspect", background=tokens.themed(tokens.ROW_SUSPECT))
         # Light-orange background for a segment that overlaps the
         # previous one or is under 1s long — set after a manual
         # "Edit timestamp..." edit produces something odd. "suspect"
         # (hallucination) takes visual priority when both apply, since
         # tags earlier in the applied tuple win ties in ttk.Treeview.
-        self.tree.tag_configure("ts_warn", background=tokens.ROW_WARN)
+        self.tree.tag_configure("ts_warn", background=tokens.themed(tokens.ROW_WARN))
         vsb = ttk.Scrollbar(left, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
         self.tree.grid(row=0, column=0, sticky="nsew")
@@ -947,7 +953,7 @@ class TranscriptViewer(tk.Toplevel):
         # the current one highlighted. When the segment has no word
         # timestamps, falls back to the segment text.
         self._words_lbl = ttk.Label(
-            parent, text="", justify="left", wraplength=380, padding=(2, 4),
+            parent, text="", justify="left", wraplength=px(380), padding=(2, 4),
         )
         self._words_lbl.pack(anchor="w", fill="x", pady=(8, 0))
 
@@ -956,8 +962,8 @@ class TranscriptViewer(tk.Toplevel):
                 parent,
                 text=self.vlc_unavailable_reason
                 or "Embedded playback not available.",
-                foreground="#a44",
-                wraplength=360,
+                foreground=tokens.themed(tokens.DANGER_TEXT),
+                wraplength=px(360),
                 justify="left",
             )
             note.pack(anchor="w", pady=(8, 0))
@@ -1025,7 +1031,7 @@ class TranscriptViewer(tk.Toplevel):
                  "Turn on 'Generate auto-chapter markers' in Advanced "
                  "Settings' AI Layer section before transcribing to get "
                  "chapters here.",
-            foreground="#666", wraplength=360, justify="left",
+            foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(360), justify="left",
         )
         cols = ("time", "title")
         self._chapters_tree = ttk.Treeview(
@@ -1033,8 +1039,8 @@ class TranscriptViewer(tk.Toplevel):
         )
         self._chapters_tree.heading("time", text="Start")
         self._chapters_tree.heading("title", text="Title")
-        self._chapters_tree.column("time", width=70, anchor="w")
-        self._chapters_tree.column("title", width=280)
+        self._chapters_tree.column("time", width=px(70), anchor="w")
+        self._chapters_tree.column("title", width=px(280))
         self._chapters_tree.bind("<<TreeviewSelect>>", self._on_chapter_select)
         self._chapters_tree.bind("<Double-Button-1>", self._on_chapter_double_click)
         # Packed/unpacked by _populate_chapters_list depending on whether
@@ -1179,7 +1185,7 @@ class TranscriptViewer(tk.Toplevel):
         self._ai_status_var = tk.StringVar(value="")
         ttk.Label(
             parent, textvariable=self._ai_status_var,
-            foreground="#666", wraplength=380, justify="left",
+            foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(380), justify="left",
         ).pack(anchor="w", pady=(2, 8))
         self._refresh_ai_status()
 
@@ -1239,7 +1245,7 @@ class TranscriptViewer(tk.Toplevel):
         # Not packed here — only shown while a bilingual translate runs.
 
         self._ai_progress_var = tk.StringVar(value="")
-        ttk.Label(parent, textvariable=self._ai_progress_var, foreground="#666").pack(
+        ttk.Label(parent, textvariable=self._ai_progress_var, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
             anchor="w"
         )
 
@@ -2439,7 +2445,7 @@ class EditTimestampDialog(tk.Toplevel):
         )
 
         self.error_var = tk.StringVar(value="")
-        ttk.Label(body, textvariable=self.error_var, foreground=tokens.DANGER_STRONG).grid(
+        ttk.Label(body, textvariable=self.error_var, foreground=tokens.themed(tokens.DANGER_STRONG)).grid(
             row=2, column=0, columnspan=2, sticky="w", pady=(4, 0)
         )
 

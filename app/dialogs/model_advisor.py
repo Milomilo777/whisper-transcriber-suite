@@ -15,6 +15,8 @@ import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
+from app.dpi import px
+from app.theme import tokens
 from core import hardware as _hw
 
 if TYPE_CHECKING:
@@ -40,7 +42,7 @@ class ModelAdvisorDialog(tk.Toplevel):
         body.pack(fill="both", expand=True)
         self.summary_var = tk.StringVar(value="Checking this computer…")
         ttk.Label(
-            body, textvariable=self.summary_var, wraplength=520, justify="left",
+            body, textvariable=self.summary_var, wraplength=px(520), justify="left",
         ).pack(anchor="w", pady=(0, 10))
         self.picks_frame = ttk.Frame(body)
         self.picks_frame.pack(fill="x")
@@ -126,7 +128,7 @@ class ModelAdvisorDialog(tk.Toplevel):
             ttk.Label(
                 card, text=labels[pick.slug], font=("TkDefaultFont", 10, "bold"),
             ).pack(anchor="w")
-            ttk.Label(card, text=pick.reason, wraplength=500, justify="left").pack(
+            ttk.Label(card, text=pick.reason, wraplength=px(500), justify="left").pack(
                 anchor="w", pady=(2, 4),
             )
             if model_downloaded(cfg, pick.slug):
@@ -134,7 +136,7 @@ class ModelAdvisorDialog(tk.Toplevel):
             else:
                 size = approx_download_size_text(cfg, pick.slug)
                 note = f"Downloads once on first use ({size})." if size else "Downloads once on first use."
-            ttk.Label(card, text=note, foreground="#666").pack(anchor="w")
+            ttk.Label(card, text=note, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(anchor="w")
             btn = ttk.Button(
                 card, text="Use this model",
                 command=lambda slug=pick.slug: self._use(slug),

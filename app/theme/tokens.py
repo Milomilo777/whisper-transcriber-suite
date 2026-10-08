@@ -1,14 +1,16 @@
 """Design tokens: every colour, spacing step and type size the UI uses lives here.
 
 Widgets import a name from this module instead of writing a literal ``"#rrggbb"``, so a colour is
-changed in one place.  Colours that must follow the Light/Dark switch come as a ``(light, dark)``
-pair in ``LIGHT`` / ``DARK`` (read with ``palette(theme)``); the rest read the same on both themes
-and are plain module constants.
+changed in one place.  The module constants are the light-theme colours. Text, status and row
+colours that sv_ttk's dark panels would make unreadable have a dark variant in ``DARK_VARIANTS``:
+widgets read them through ``themed(tokens.X)``, and ``app.theme.theme_colours`` swaps the colours
+of existing widgets when the theme changes. The console colours come as a ``(light, dark)`` pair
+in ``LIGHT`` / ``DARK`` (read with ``palette(theme)``).
 """
 from __future__ import annotations
 
 # --------------------------------------------------------------- text and links
-LINK = "#1a73e8"           # clickable text
+LINK = "#1a66d9"           # clickable text (5.1:1 on the light panel)
 TEXT_DISABLED = "#a0a0a0"  # faint / unavailable text
 TEXT_MUTED = "#64748b"     # secondary captions
 TEXT_SUBTLE = "#94a3b8"    # separators and tertiary hints
@@ -61,6 +63,52 @@ DARK = {
 def palette(theme: str) -> dict[str, str]:
     """The colour table for a resolved theme name (``"light"`` or anything else = dark)."""
     return LIGHT if theme == "light" else DARK
+
+
+# ------------------------------------------------------ dark-theme variants
+# Light-theme colour -> the colour that replaces it on the dark theme. Text keeps at least
+# 4.5:1 (WCAG AA) on sv_ttk's dark panel (#1c1c1c) and on its raised fields (#2b2b2b); the row
+# tints are dark so the theme's light text (#fafafa) and the strong status colours stay readable
+# on them. No variant may equal a light colour, so a swap can always be undone.
+DARK_PANELS = ("#1c1c1c", "#2b2b2b")
+LIGHT_PANEL = "#fafafa"
+DARK_VARIANTS = {
+    LINK: "#6cb4ff",
+    TEXT_MUTED: "#a3adbb",
+    SUCCESS_TEXT: "#66bb6a",
+    WARNING_TEXT: "#ffb74d",
+    DANGER_TEXT: "#ff8a80",
+    DANGER_ICON: "#ff6b6b",
+    SUCCESS_STRONG: "#a5d6a7",
+    WARNING_STRONG: "#ffcc80",
+    DANGER_STRONG: "#f4a6a6",
+    TEXT_MISSING: "#a6a6a6",
+    CHIP_GPU: "#4caf50",
+    ROW_ACTIVE: "#4a4520",
+    ROW_SUSPECT: "#5a2a2a",
+    ROW_WARN: "#523d16",
+}
+ROW_TINTS = (ROW_ACTIVE, ROW_SUSPECT, ROW_WARN)
+LIGHT_VARIANTS = {dark: light for light, dark in DARK_VARIANTS.items()}
+
+_theme = "light"
+
+
+def set_theme(theme: str) -> None:
+    """Record the resolved theme (``"light"`` or ``"dark"``) that ``themed`` answers for."""
+    global _theme
+    _theme = "light" if theme == "light" else "dark"
+
+
+def current_theme() -> str:
+    return _theme
+
+
+def themed(colour: str, theme: str | None = None) -> str:
+    """``colour`` (a light-theme token) as the current (or the given) theme shows it."""
+    if (theme or _theme) == "light":
+        return LIGHT_VARIANTS.get(colour, colour)
+    return DARK_VARIANTS.get(colour, colour)
 
 
 # -------------------------------------------------------------- spacing scale

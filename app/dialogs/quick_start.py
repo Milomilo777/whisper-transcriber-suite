@@ -24,6 +24,8 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Callable
 
+from app.dpi import px
+from app.theme import tokens
 from core import hardware as _hw
 from core import hub as _hub
 from core.language_defaults import recommended_model
@@ -199,7 +201,7 @@ class QuickStartDialog(tk.Toplevel):
             body, text="Welcome! Three quick choices", font=("TkDefaultFont", 11, "bold"),
         ).pack(anchor="w")
         ttk.Label(
-            body, text="You can change each of them later.", foreground="#666",
+            body, text="You can change each of them later.", foreground=tokens.themed(tokens.TEXT_MUTED),
         ).pack(anchor="w", pady=(0, 12))
 
         ttk.Label(body, text="1. Main language you will transcribe").pack(anchor="w")
@@ -216,11 +218,11 @@ class QuickStartDialog(tk.Toplevel):
                 body, text=title, value=mode, variable=self.mode_var,
             ).pack(anchor="w", pady=(4, 0))
             ttk.Label(
-                body, textvariable=self.mode_detail_vars[mode], foreground="#666",
+                body, textvariable=self.mode_detail_vars[mode], foreground=tokens.themed(tokens.TEXT_MUTED),
             ).pack(anchor="w", padx=(24, 0))
         ttk.Label(
-            body, textvariable=self.hardware_var, foreground="#666",
-            wraplength=500, justify="left",
+            body, textvariable=self.hardware_var, foreground=tokens.themed(tokens.TEXT_MUTED),
+            wraplength=px(500), justify="left",
         ).pack(anchor="w", pady=(6, 12))
 
         ttk.Label(body, text="3. Save downloaded videos and audio in").pack(anchor="w")
@@ -239,7 +241,7 @@ class QuickStartDialog(tk.Toplevel):
                 "downloads the first time you transcribe and is kept in "
                 f"{hub} (Advanced settings > Model folder can move it)."
             ),
-            foreground="#666", wraplength=500, justify="left",
+            foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(500), justify="left",
         ).pack(anchor="w", pady=(0, 12))
 
         actions = ttk.Frame(body)

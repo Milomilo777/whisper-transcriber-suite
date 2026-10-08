@@ -57,9 +57,11 @@ def test_tall_window_is_filled_and_does_not_scroll(root):
 
 
 @pytest.mark.parametrize("screen, expected", [
-    ((1366, 768), "1320x678+23+30"),    # laptop: fits with a margin
-    ((1920, 1080), "1320x900+300+60"),  # desktop: the layout's full size
-    ((1024, 700), "984x640+20+20"),     # tiny: never below the 960x640 floor
+    ((1366, 768), "1320x678+23+19"),    # laptop: fits with a margin
+    ((1920, 1080), "1320x900+300+49"),  # desktop: the layout's full size
+    # tiny: fits the screen even below the 960x640 layout size (the pages scroll); the old
+    # floor put the bottom of the window under the taskbar (card C2.61, S10-4)
+    ((1024, 700), "984x610+20+19"),
 ])
 def test_first_run_window_fits_the_screen(monkeypatch, screen, expected):
     import types

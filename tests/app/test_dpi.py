@@ -132,18 +132,76 @@ def test_scale_factor_on_windows(monkeypatch, dpi_value, factor):
 def test_scale_factor_is_one_off_windows(monkeypatch):
     monkeypatch.setattr(sys, "platform", "linux")
     assert dpi.scale_factor(_Widget(192)) == 1.0
-    assert dpi.scaled_size(_Widget(192, screen=(800, 600)), 960, 640) == (960, 640)
+    # Not scaled, but still kept inside the screen (S10-5: a factor of 1.0 skipped the clamp,
+    # so a 1180x720 viewer was taller than a 768-pixel screen with its panels).
+    assert dpi.scaled_size(_Widget(192, screen=(1920, 1080)), 960, 640) == (960, 640)
+    assert dpi.scaled_size(_Widget(192, screen=(800, 600)), 960, 640) == (760, 510)
 
 
 def test_scaled_size_grows_with_the_display(monkeypatch):
     monkeypatch.setattr(sys, "platform", "win32")
-    assert dpi.scaled_size(_Widget(144), 960, 640) == (1440, 960)
+    # A screen with room to spare (the margins now scale too, so 1080 pixels would clamp).
+    assert dpi.scaled_size(_Widget(144, screen=(2560, 1440)), 960, 640) == (1440, 960)
 
 
 def test_scaled_size_stays_inside_a_small_screen(monkeypatch):
     monkeypatch.setattr(sys, "platform", "win32")
-    # A 1366x768 laptop at 125 %: 1200x800 would not fit.
-    assert dpi.scaled_size(_Widget(120, screen=(1366, 768)), 960, 640) == (1200, 678)
+    # A 1366x768 laptop at 125 %: 1200x800 would not fit. Without a work area the margins
+    # (40 x 90 at 96 dpi, for the taskbar and the title bar) scale too: 50 x 112.
+    assert dpi.scaled_size(_Widget(120, screen=(1366, 768)), 960, 640) == (1200, 656)
+
+
+def test_scaled_size_clamps_at_100_percent(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(dpi, "_windows_work_area", lambda _w: None)
+    # The viewer's 1180x720 on a 1366x768 laptop at 100 %.
+    assert dpi.scaled_size(_Widget(96, screen=(1366, 768)), 1180, 720) == (1180, 678)
+
+
+def test_scaled_size_uses_the_work_area(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    # 1920x1080 at 150 % with a 60-pixel taskbar at the bottom.
+    monkeypatch.setattr(dpi, "_windows_work_area", lambda _w: (0, 0, 1920, 1020))
+    w, h = dpi.scaled_size(_Widget(144), 1320, 900)
+    assert (w, h) == (1920 - 24, 1020 - 72)
+    assert dpi.work_area(_Widget(144)) == (0, 0, 1920, 1020, True)
+
+
+def test_scaled_size_never_shrinks_below_the_floor(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(dpi, "_windows_work_area", lambda _w: (0, 0, 300, 200))
+    assert dpi.scaled_size(_Widget(96), 960, 640) == (320, 240)
+    # A request under the floor stays as asked.
+    assert dpi.scaled_size(_Widget(96), 200, 100) == (200, 100)
+
+
+def test_work_area_reads_the_real_monitor():
+    """The Win32 path answers for a real window (Windows only)."""
+    if sys.platform != "win32":
+        pytest.skip("Windows only")
+    import tkinter as tk
+
+    try:
+        root = tk.Tk()
+    except tk.TclError:
+        pytest.skip("no display")
+    try:
+        root.withdraw()
+        x, y, w, h, exact = dpi.work_area(root)
+        assert exact is True
+        assert w > 0 and h > 0
+        assert h <= root.winfo_screenheight() and w <= root.winfo_screenwidth()
+    finally:
+        root.destroy()
+
+
+def test_px_uses_the_remembered_scale(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(dpi, "_process_factor", 1.0)
+    assert dpi.px(560) == 560
+    assert dpi.remember_scale(_Widget(144)) == 1.5
+    assert dpi.px(560) == 840
+    assert dpi.px(150) == 225
 
 
 def test_scale_factor_survives_a_broken_widget(monkeypatch):

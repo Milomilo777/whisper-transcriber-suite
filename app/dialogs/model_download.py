@@ -9,6 +9,7 @@ from queue import Empty, Queue
 from tkinter import messagebox, ttk
 from typing import Any
 
+from app.dpi import px
 from core.config import load_config, save_config
 from core.model_manager import (
     DownloadCancelled,
@@ -84,7 +85,7 @@ class ModelDownloadDialog(tk.Toplevel):
             row=1, column=0, columnspan=2, sticky="w", pady=(10, 4)
         )
 
-        self.pb = ttk.Progressbar(body, length=420, mode="determinate", maximum=100)
+        self.pb = ttk.Progressbar(body, length=px(420), mode="determinate", maximum=100)
         self.pb.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(0, 8))
 
         ttk.Label(body, textvariable=self.detail_var).grid(row=3, column=0, columnspan=2, sticky="w")

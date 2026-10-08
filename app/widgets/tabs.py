@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from app.domain.cookies import cookie_browser_choices, cookie_browser_label
 from app.domain.languages import SUBTITLE_LANGUAGES
+from app.dpi import px
 from app.theme import tokens
 from app.widgets.tooltip import bind_tooltip, help_icon, section_labelframe
 
@@ -412,14 +413,14 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Label(
         empty_state,
         text=EMPTY_STATE_LINK_HINT,
-        foreground="#888",
+        foreground=tokens.themed(tokens.TEXT_MUTED),
         anchor="center",
         justify="center",
     ).pack(fill="x", pady=(2, 0))
     ttk.Label(
         empty_state,
         text=EMPTY_STATE_FORMATS,
-        foreground="#888",
+        foreground=tokens.themed(tokens.TEXT_MUTED),
         anchor="center",
         justify="center",
     ).pack(fill="x", pady=(2, 12))
@@ -521,7 +522,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     engine_combo.bind("<<ComboboxSelected>>", lambda _e: app._on_engine_selected())
     app.engine_status_var = tk.StringVar(value="")
     app.engine_status_label = ttk.Label(
-        engine_row, textvariable=app.engine_status_var, foreground="#888",
+        engine_row, textvariable=app.engine_status_var, foreground=tokens.themed(tokens.TEXT_MUTED),
     )
     app.engine_status_label.pack(side="left")
     # Cheap readiness probe for the initial selection (no heavy import).
@@ -576,7 +577,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     model_combo.bind("<<ComboboxSelected>>", lambda _e: app._on_model_selected())
     app.model_status_var = tk.StringVar(value="")
     app.model_status_label = ttk.Label(
-        model_row, textvariable=app.model_status_var, foreground="#888",
+        model_row, textvariable=app.model_status_var, foreground=tokens.themed(tokens.TEXT_MUTED),
     )
     app.model_status_label.pack(side="left")
     # Cheap on-disk existence check only (no heavy import) — safe to run
@@ -765,7 +766,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     app.last_result_empty_label = ttk.Label(
         app.last_result_frame,
         textvariable=app.last_result_empty_var,
-        foreground="#888",
+        foreground=tokens.themed(tokens.TEXT_MUTED),
     )
     app.last_result_empty_label.pack(anchor="w")
     app.last_result_body = ttk.Frame(app.last_result_frame)
@@ -802,10 +803,10 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     }
     for c in cols:
         app.tree.heading(c, text=headings[c])
-    app.tree.column("language", width=140)
-    app.tree.column("progress", width=150, anchor="w")
-    app.tree.column("time", width=80, anchor="center")
-    app.tree.column("status", width=120)
+    app.tree.column("language", width=px(140))
+    app.tree.column("progress", width=px(150), anchor="w")
+    app.tree.column("time", width=px(80), anchor="center")
+    app.tree.column("status", width=px(120))
     _vsb = _AutoScrollbar(tree_frame, orient="vertical", command=app.tree.yview)
     app.tree.configure(yscrollcommand=_vsb.set)
     app.tree.grid(row=0, column=0, sticky="nsew")
@@ -817,11 +818,11 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
         value="Queue is empty.  Go to the Transcribe tab and pick a file to add one."
     )
     app.queue_empty_label = ttk.Label(
-        parent, textvariable=app.queue_empty_var, foreground="#888", anchor="center"
+        parent, textvariable=app.queue_empty_var, foreground=tokens.themed(tokens.TEXT_MUTED), anchor="center"
     )
     app.queue_empty_label.pack(fill="x", pady=(2, 0))
 
-    app.pb = ttk.Progressbar(parent, length=400)
+    app.pb = ttk.Progressbar(parent, length=px(400))
     app.pb.pack(fill="x", padx=10, pady=10)
 
     status_line = ttk.Frame(parent)
@@ -897,7 +898,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.caption_bar_var = tk.StringVar(value="")
     app.caption_bar_label = ttk.Label(
         url_cell, textvariable=app.caption_bar_var,
-        foreground="#2a7", wraplength=760, justify="left",
+        foreground=tokens.themed(tokens.SUCCESS_TEXT), wraplength=px(760), justify="left",
     )
     help_icon(
         top,
@@ -929,7 +930,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Label(
         cookies_row,
         text="use my browser's log-in — for Instagram, Facebook, TikTok stories, age-gated videos",
-        foreground="#666",
+        foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(side="left", padx=(10, 0))
     help_icon(
         top,
@@ -1053,13 +1054,13 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     # app.set_download_duration() with the real length (0 = live/unknown).
     trim_frame.columnconfigure(2, weight=1)
     app.download_start_scale = ttk.Scale(
-        trim_frame, from_=0.0, to=1.0, orient="horizontal", length=180,
+        trim_frame, from_=0.0, to=1.0, orient="horizontal", length=px(180),
         command=lambda v: app._on_download_scale("start", v),
     )
     app.download_start_scale.state(["disabled"])
     app.download_start_scale.grid(row=0, column=2, sticky="ew", padx=(8, 0))
     app.download_end_scale = ttk.Scale(
-        trim_frame, from_=0.0, to=1.0, orient="horizontal", length=180,
+        trim_frame, from_=0.0, to=1.0, orient="horizontal", length=px(180),
         command=lambda v: app._on_download_scale("end", v),
     )
     app.download_end_scale.state(["disabled"])
@@ -1067,10 +1068,10 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Label(
         trim_frame,
         text="format H:MM:SS — e.g. 0:00:51 to 0:01:25; leave at 0:00:00 for full video",
-        foreground="#888",
+        foreground=tokens.themed(tokens.TEXT_MUTED),
     ).grid(row=2, column=0, columnspan=3, sticky="w", pady=(4, 0))
     app.download_duration_var = tk.StringVar(value="")
-    ttk.Label(trim_frame, textvariable=app.download_duration_var, foreground="#888").grid(
+    ttk.Label(trim_frame, textvariable=app.download_duration_var, foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
         row=3, column=0, columnspan=3, sticky="w"
     )
 
@@ -1098,7 +1099,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     )
     app.subtitle_lang_combo.pack(side="left", padx=(10, 0))
     app.subtitle_status_var = tk.StringVar(value="")
-    ttk.Label(sub_frame, textvariable=app.subtitle_status_var, foreground="#666").pack(
+    ttk.Label(sub_frame, textvariable=app.subtitle_status_var, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
         side="left", padx=(10, 0)
     )
     help_icon(
@@ -1126,7 +1127,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Label(
         caption_shortcut_frame,
         textvariable=app.caption_shortcut_status_var,
-        foreground="#2a7", wraplength=460, justify="left",
+        foreground=tokens.themed(tokens.SUCCESS_TEXT), wraplength=px(460), justify="left",
     ).pack(side="left")
     app.caption_shortcut_button = ttk.Button(
         caption_shortcut_frame,
@@ -1190,7 +1191,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     # widened the whole form and squeezed out the helper button below.
     app.format_status_label = ttk.Label(
         status_frame, textvariable=app.format_status_var,
-        wraplength=820, justify="left",
+        wraplength=px(820), justify="left",
     )
     app.format_status_label.pack(side="left")
     # One-click install of Deno, the JavaScript runtime yt-dlp needs for
@@ -1235,12 +1236,12 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.download_tree = ttk.Treeview(bottom, columns=cols, show="headings", height=8)
     for c in cols:
         app.download_tree.heading(c, text=c)
-    app.download_tree.column("name", width=220)
-    app.download_tree.column("url", width=420)
-    app.download_tree.column("format", width=180)
-    app.download_tree.column("status", width=100)
-    app.download_tree.column("progress", width=150, anchor="w")
-    app.download_tree.column("time", width=80)
+    app.download_tree.column("name", width=px(220))
+    app.download_tree.column("url", width=px(420))
+    app.download_tree.column("format", width=px(180))
+    app.download_tree.column("status", width=px(100))
+    app.download_tree.column("progress", width=px(150), anchor="w")
+    app.download_tree.column("time", width=px(80))
     _dvsb = _AutoScrollbar(bottom, orient="vertical", command=app.download_tree.yview)
     app.download_tree.configure(yscrollcommand=_dvsb.set)
     app.download_tree.grid(row=0, column=0, sticky="nsew")
@@ -1296,7 +1297,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         dl_action_bar,
         text="(Pause stops the download but keeps the partial file; "
              "Resume continues it)",
-        foreground="#888",
+        foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(side="left", padx=(8, 0))
     app.download_tree.bind(
         "<<TreeviewSelect>>", lambda _e: app._update_download_action_bar()
@@ -1332,7 +1333,7 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
             "you start it, and there is nothing to install on the other "
             "devices."
         ),
-        wraplength=620, justify="left", foreground="#888",
+        wraplength=px(620), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", pady=(4, 12))
 
     # --- the one obvious control: Start / Stop -------------------------------
@@ -1359,7 +1360,7 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     # phone or another PC. Selectable so they can copy it.
     app.server_url_var = tk.StringVar(value="")
     url_label = ttk.Label(
-        frame, textvariable=app.server_url_var, foreground=tokens.LINK,
+        frame, textvariable=app.server_url_var, foreground=tokens.themed(tokens.LINK),
         justify="left",
     )
     url_label.pack(anchor="w", pady=(2, 12))
@@ -1394,7 +1395,7 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Label(
         port_row,
         text="(the number after the address; leave the default if unsure)",
-        foreground="#888",
+        foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(side="left", padx=(8, 0))
 
     # Share on local network.
@@ -1413,7 +1414,7 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
             "On: Windows may ask to allow it through the firewall — click "
             "Allow. Anyone on your network will be able to use it."
         ),
-        wraplength=560, justify="left", foreground="#888",
+        wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", padx=(22, 0), pady=(0, 8))
 
     # Optional access password (the --token mechanism).
@@ -1435,7 +1436,7 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
             "added (letters and digits only; the page then removes it from "
             "the address bar)."
         ),
-        wraplength=560, justify="left", foreground="#888",
+        wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", padx=(0, 0), pady=(4, 0))
 
     # HTTPS (self-signed certificate).
@@ -1454,7 +1455,7 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
             "the browser will warn that the certificate is not trusted the "
             "first time — that is expected; accept it once."
         ),
-        wraplength=560, justify="left", foreground="#888",
+        wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", padx=(22, 0), pady=(0, 8))
 
     # Completion webhook.
@@ -1476,7 +1477,7 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
             "summary to this URL each time a job finishes (or fails). "
             "Loopback and private cloud-metadata addresses are refused."
         ),
-        wraplength=560, justify="left", foreground="#888",
+        wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", padx=(0, 0), pady=(4, 0))
 
     # --- safety note ---------------------------------------------------------
@@ -1490,5 +1491,5 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
             "you turn it on it may need to download the speech model; jobs "
             "will wait for that."
         ),
-        wraplength=620, justify="left", foreground=tokens.WARNING_TEXT,
+        wraplength=px(620), justify="left", foreground=tokens.themed(tokens.WARNING_TEXT),
     ).pack(anchor="w", pady=(10, 0))

@@ -31,7 +31,8 @@ from app.services.transcription_service import (
     TranscriptionService,
 )
 from app.dialogs.statistics import show_statistics as _show_stats
-from app.dpi import scaled_size
+from app.dpi import px, remember_scale, scaled_size, work_area
+from app.dpi import scaled as dpi_scaled
 from app.widgets.console import apply_console_theme, build_console, insert_log_line
 from app.widgets.error_dialog import show_error
 from app.widgets.notice import notify
@@ -51,7 +52,7 @@ from app.widgets.tabs import (
 from app.widgets.tray import TrayController
 from core import __version__ as _APP_VERSION
 from core import offline, subtitle_edit
-from app.theme import script_fonts, tokens
+from app.theme import script_fonts, theme_colours, tokens
 from core._proc import kill_process_tree
 from core.config import load_config, save_config
 from core.history import HistoryDB
@@ -904,8 +905,11 @@ class App(tk.Tk):
         self._ui_logger = get_ui_logger()
         logger.info("App startup; theme=%s", self.app_config.get("theme", "dark"))
         self.theme_var = tk.StringVar(value=self.app_config.get("theme", "light"))
-        sv_ttk.set_theme(_resolve_theme(self.theme_var.get()))
+        start_theme = _resolve_theme(self.theme_var.get())
+        sv_ttk.set_theme(start_theme)
         script_fonts.apply_theme_fonts(self)
+        theme_colours.apply(self, start_theme)
+        remember_scale(self)
         self.parallel_workers = max(1, int(self.app_config.get("parallel_workers", 2)))
         self.next_worker_id = 1
         self.format_events: Queue = Queue(maxsize=2000)
@@ -1625,9 +1629,9 @@ class App(tk.Tk):
                 "Whisper via faster-whisper. No account and no API key "
                 "needed."
             ),
-            wraplength=640,
+            wraplength=px(640),
             justify="left",
-            foreground="#666",
+            foreground=tokens.themed(tokens.TEXT_MUTED),
         ).pack(anchor="w", pady=(4, 0))
         # Passive update sign: the newest version seen, unless skipped.
         from core import updates as _updates
@@ -1640,7 +1644,7 @@ class App(tk.Tk):
         # One quiet line: the repo page (never /stargazers, it has no Star button).
         from core import star_invite as _star
         star_line = ttk.Label(
-            header, text=_star.ABOUT_LINE, foreground=tokens.LINK, cursor="hand2",
+            header, text=_star.ABOUT_LINE, foreground=tokens.themed(tokens.LINK), cursor="hand2",
         )
         star_line.pack(anchor="w", pady=(4, 0))
         star_line.bind("<Button-1>", lambda _e: self._star_open_page())
@@ -1683,7 +1687,7 @@ class App(tk.Tk):
         import webbrowser
 
         text.tag_configure(
-            "link", foreground=tokens.LINK, underline=True,
+            "link", foreground=tokens.themed(tokens.LINK), underline=True,
             lmargin1=28, lmargin2=42, spacing1=1, spacing3=1,
         )
         text.insert("end", "Helpful links\n", "section")
@@ -1714,7 +1718,7 @@ class App(tk.Tk):
         credit = ttk.Label(
             footer,
             text="Created by translation-robot — github.com/translation-robot",
-            foreground=tokens.LINK, cursor="hand2",
+            foreground=tokens.themed(tokens.LINK), cursor="hand2",
         )
         credit.pack(side="left")
 
@@ -1833,7 +1837,7 @@ class App(tk.Tk):
         body.pack(fill="both", expand=True)
         ttk.Label(
             body, text=f"Source: {os.path.basename(in_path)}",
-            foreground="#888",
+            foreground=tokens.themed(tokens.TEXT_MUTED),
         ).pack(anchor="w", pady=(0, 8))
         ttk.Label(body, text="Convert to format:").pack(anchor="w")
         fmt_var = tk.StringVar(value=labels[default])
@@ -1872,6 +1876,7 @@ class App(tk.Tk):
         resolved = _resolve_theme(name)
         sv_ttk.set_theme(resolved)
         script_fonts.apply_theme_fonts(self)
+        theme_colours.apply(self, resolved)
         if hasattr(self, "txt") and self.txt is not None:
             apply_console_theme(self.txt, resolved)
         self.app_config["theme"] = name
@@ -2297,7 +2302,7 @@ class App(tk.Tk):
             lbl = getattr(self, "engine_status_label", None)
             if lbl is not None:
                 try:
-                    lbl.configure(foreground="#888")
+                    lbl.configure(foreground=tokens.themed(tokens.TEXT_MUTED))
                 except Exception:  # noqa: BLE001
                     pass
 
@@ -2355,7 +2360,7 @@ class App(tk.Tk):
             var.set(_eng.format_engine_status(st))
             lbl = getattr(self, "engine_status_label", None)
             if lbl is not None:
-                lbl.configure(foreground=tokens.SUCCESS_TEXT if st.ready else tokens.WARNING_TEXT)
+                lbl.configure(foreground=tokens.themed(tokens.SUCCESS_TEXT) if st.ready else tokens.themed(tokens.WARNING_TEXT))
         except Exception:  # noqa: BLE001 -- a status line must never raise
             logger.exception("Engine status fallback failed")
 
@@ -2515,9 +2520,9 @@ class App(tk.Tk):
             self._refresh_engine_picker_labels()
 
             if st.ready:
-                color = tokens.SUCCESS_TEXT
+                color = tokens.themed(tokens.SUCCESS_TEXT)
             else:
-                color = tokens.WARNING_TEXT
+                color = tokens.themed(tokens.WARNING_TEXT)
             var.set(_eng.format_engine_status(st))
             if lbl is not None:
                 try:
@@ -3021,7 +3026,7 @@ class App(tk.Tk):
         """
         self.device_badge_var.set(text)
         colour = {
-            "gpu": tokens.CHIP_GPU,            # green — running on the GPU
+            "gpu": tokens.themed(tokens.CHIP_GPU),            # green — running on the GPU
             "cpu": tokens.CHIP_CPU,            # amber — CPU (slower)
             "cpu_downgraded": tokens.CHIP_CPU,  # amber — GPU asked, fell back to CPU
         }.get(kind, "")
@@ -3057,7 +3062,7 @@ class App(tk.Tk):
         """
         from app.widgets.tooltip import bind_tooltip
 
-        bind_tooltip(widget, lambda: self.device_badge_tip, wraplength=320)
+        bind_tooltip(widget, lambda: self.device_badge_tip, wraplength=px(320))
 
     def warn_cpu_once(self, downgraded: bool) -> None:
         """One-time modal + log warning that transcription is on CPU (slower).
@@ -3169,7 +3174,7 @@ class App(tk.Tk):
                   "This happens once and can take a few minutes…"),
             justify="left",
         ).pack(padx=18, pady=(16, 8))
-        bar = ttk.Progressbar(win, mode="indeterminate", length=340)
+        bar = ttk.Progressbar(win, mode="indeterminate", length=px(340))
         bar.pack(padx=18, pady=(0, 12))
         bar.start(12)
         state = {"ok": False, "done": False}
@@ -4881,14 +4886,14 @@ class App(tk.Tk):
             ttk.Label(
                 self.last_result_body,
                 text="No speech was recognised in this file, so the output files are empty.",
-                foreground="#a60",
+                foreground=tokens.themed(tokens.WARNING_TEXT),
             ).pack(anchor="w", pady=(2, 0))
         if existing:
             ttk.Label(
                 self.last_result_body,
                 text=f"Saved {len(existing)} output file"
                      f"{'' if len(existing) == 1 else 's'} in {folder}",
-                foreground="#666",
+                foreground=tokens.themed(tokens.TEXT_MUTED),
             ).pack(anchor="w", pady=(2, 6))
 
             files_frame = ttk.Frame(self.last_result_body)
@@ -4908,7 +4913,7 @@ class App(tk.Tk):
             ttk.Label(
                 self.last_result_body,
                 text="(no output files were found on disk — re-run the task?)",
-                foreground="#a00",
+                foreground=tokens.themed(tokens.DANGER_TEXT),
             ).pack(anchor="w")
 
         button_row = ttk.Frame(self.last_result_body)
@@ -6210,17 +6215,21 @@ class App(tk.Tk):
 
     def _apply_default_geometry(self) -> None:
         """First-run window size: as large as the layout wants (1320x900),
-        shrunk to fit the screen with a margin, centred. On a small screen
-        (1366x768 laptops) Windows also maximises it."""
+        shrunk to fit the usable screen area (the work area of the monitor
+        on Windows, so the taskbar never covers the bottom), centred in it.
+        On a small screen (1366x768 laptops) Windows also maximises it."""
         try:
             sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
         except Exception:  # noqa: BLE001
             sw, sh = 1366, 768
-        min_w, min_h = scaled_size(self, 960, 640)
-        full_w, full_h = scaled_size(self, 1320, 900)
-        w = max(min_w, min(full_w, sw - 40))
-        h = max(min_h, min(full_h, sh - 90))
-        x, y = max(0, (sw - w) // 2), max(0, (sh - h) // 3)
+        w, h = scaled_size(self, 1320, 900)
+        ax, ay, aw, ah, _exact = work_area(self)
+        if aw <= 0 or ah <= 0:
+            ax, ay, aw, ah = 0, 0, sw, sh
+        # The title bar sits above the client area that geometry() places.
+        title = dpi_scaled(self, 32)
+        x = ax + max(0, (aw - w) // 2)
+        y = ay + max(0, (ah - h - title) // 3)
         try:
             self.geometry(f"{w}x{h}+{x}+{y}")
             if sys.platform == "win32" and (sw < 1440 or sh < 900):

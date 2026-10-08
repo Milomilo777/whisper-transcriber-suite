@@ -264,6 +264,21 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Text grows evenly at 125 % and 150 % display scaling.** Buttons, entries, tabs and list rows
+  kept the theme's 14-pixel font while labels and text boxes grew; the theme fonts and the list
+  row height now follow the display scale, and fixed widths, column widths and wrap lengths
+  scale with them.
+- **Dark theme is readable.** Status colours (confidence, warnings, links, hints) and the
+  transcript viewer's row tints get dark-theme variants with at least 4.5:1 contrast, and
+  switching the theme recolours open windows. The hard-coded grey hints now use the theme
+  tokens; the light-theme link colour also reaches 4.5:1.
+- **Windows fit the screen.** The first window, the transcript viewer and the other dialogs fit
+  the work area of their monitor (the taskbar no longer covers the bottom at 125/150 %) and are
+  kept inside the screen at 100 % too.
+- **Transcript viewer toolbar fits.** The tools are split into two rows, so "Open in Subtitle
+  Edit" and the other buttons show their full labels at every scale.
+- **Chinese file names and lines keep the Chinese font** when they contain the katakana middle
+  dot, the prolonged-sound mark or the other marks Chinese shares with kana.
 - **Transcript viewer edits reach the subtitle files.** Save now also rewrites the SRT, VTT and
   ASS next to the JSON, unless one was changed elsewhere (for example in Subtitle Edit), which is
   left alone with a notice. **Open in Subtitle Edit** offers to save unsaved edits first and, when

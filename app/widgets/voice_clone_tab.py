@@ -37,9 +37,11 @@ from pathlib import Path
 from tkinter import filedialog, ttk
 from typing import Any
 
+from app.dpi import px
 from app.theme import script_fonts
 from app.widgets.error_dialog import show_error
 from app.widgets.tooltip import section_labelframe
+from app.theme import tokens
 from core import offline
 
 logger = logging.getLogger(__name__)
@@ -186,7 +188,7 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_engine_combo = _combo(eng, app.vc_engine_var, [_ENGINE_KOKORO, _ENGINE_OMNI], 70)
     app.vc_engine_combo.grid(row=0, column=1, sticky="w", padx=8, pady=6)
     app.vc_engine_combo.bind("<<ComboboxSelected>>", lambda _e: _sync_engine(app))
-    app.vc_engine_state = ttk.Label(eng, foreground="#666")
+    app.vc_engine_state = ttk.Label(eng, foreground=tokens.themed(tokens.TEXT_MUTED))
     app.vc_engine_state.grid(row=1, column=1, sticky="w", padx=8, pady=(0, 6))
 
     # ── Voice ───────────────────────────────────────────────────────────
@@ -256,7 +258,7 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
         row=1, column=4, sticky="w", padx=8, pady=(0, 6))
 
     app.vc_auto_label = ttk.Label(
-        app.vc_omni_frame, foreground="#666",
+        app.vc_omni_frame, foreground=tokens.themed(tokens.TEXT_MUTED),
         text="OmniVoice picks a natural voice by itself -- no recording needed.")
 
     # ── Text ───────────────────────────────────────────────────────────
@@ -293,19 +295,19 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_lang_var.trace_add("write", lambda *_a: _retag_text(app))
     ttk.Label(opts, text="Speed:").pack(side="left")
     app.vc_speed_scale = ttk.Scale(
-        opts, from_=0.5, to=2.0, variable=app.vc_speed_var, length=140,
+        opts, from_=0.5, to=2.0, variable=app.vc_speed_var, length=px(140),
         command=lambda _v: app.vc_speed_label.configure(
             text=f"{app.vc_speed_var.get():.2f}x"))
     app.vc_speed_scale.pack(side="left", padx=6)
     app.vc_speed_label = ttk.Label(opts, text="1.00x", width=6)
     app.vc_speed_label.pack(side="left")
-    ttk.Label(opts, textvariable=app.vc_count_var, foreground="#666").pack(side="right")
+    ttk.Label(opts, textvariable=app.vc_count_var, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(side="right")
 
     # ── Confirm step (long texts only; hidden until a plan needs it) ────
     app.vc_confirm_frame = ttk.Labelframe(parent, text="Long text: check before starting")
     app.vc_confirm_frame.columnconfigure(0, weight=1)
     app.vc_confirm_label = ttk.Label(
-        app.vc_confirm_frame, textvariable=app.vc_confirm_var, justify="left", wraplength=760)
+        app.vc_confirm_frame, textvariable=app.vc_confirm_var, justify="left", wraplength=px(760))
     app.vc_confirm_label.grid(row=0, column=0, sticky="w", padx=8, pady=(6, 4))
     confirm_btns = ttk.Frame(app.vc_confirm_frame)
     confirm_btns.grid(row=1, column=0, sticky="w", padx=8, pady=(0, 8))
@@ -340,11 +342,11 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_save_btn = ttk.Button(
         out, text="Save As...", command=lambda: _save(app), state="disabled")
     app.vc_save_btn.grid(row=0, column=3, sticky="w", padx=(8, 0))
-    app.vc_progress = ttk.Progressbar(out, mode="determinate", maximum=100, length=180)
+    app.vc_progress = ttk.Progressbar(out, mode="determinate", maximum=100, length=px(180))
     app.vc_progress.grid(row=0, column=4, sticky="w", padx=(16, 0))
-    ttk.Label(parent, textvariable=app.vc_status_var, foreground="#666").grid(
+    ttk.Label(parent, textvariable=app.vc_status_var, foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
         row=5, column=0, sticky="w", padx=15, pady=(0, 2))
-    app.vc_rules_label = ttk.Label(parent, text=_RULES_TEXT, foreground="#666", wraplength=760)
+    app.vc_rules_label = ttk.Label(parent, text=_RULES_TEXT, foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(760))
     app.vc_rules_label.grid(row=6, column=0, sticky="w", padx=15, pady=(0, 12))
 
     _sync_engine(app)

@@ -8,10 +8,13 @@ written in code (window sizes, canvas heights) were chosen at 96 dpi; once the
 process is aware they must be multiplied by ``scale_factor``.
 
 macOS and Linux are untouched: the awareness call is Windows-only and
-``scale_factor`` is 1.0 elsewhere.
+``scale_factor`` is 1.0 elsewhere. Window sizes are kept inside the usable area of the
+monitor at every scale (``scaled_size``); on Windows that is the work area, which leaves out
+the taskbar.
 """
 from __future__ import annotations
 
+import ctypes
 import logging
 import sys
 from typing import Any
@@ -33,8 +36,6 @@ _awareness_result: str | None = None
 
 def _declare(windll: Any) -> str:
     """Try the awareness APIs from newest to oldest; return which one worked."""
-    import ctypes
-
     user32 = windll.user32
     try:
         set_context = user32.SetProcessDpiAwarenessContext
@@ -81,8 +82,6 @@ def enable_dpi_awareness(
         return "skipped"
     try:
         if windll is None:
-            import ctypes
-
             windll = ctypes.windll  # type: ignore[attr-defined]
         _awareness_result = _declare(windll)
     except Exception as exc:  # noqa: BLE001 - never block start-up on this
@@ -108,20 +107,104 @@ def scaled(widget: Any, pixels: int) -> int:
     return int(round(pixels * scale_factor(widget)))
 
 
-def scaled_size(
-    widget: Any, width: int, height: int, margin_w: int = 40, margin_h: int = 90
-) -> tuple[int, int]:
-    """Window size designed at 96 dpi, scaled and kept inside the screen.
+_process_factor = 1.0
 
-    The margins leave room for the title bar and the taskbar, so a size that
-    fitted a small screen at 100 % cannot grow past it at 150 %.
+
+def remember_scale(widget: Any) -> float:
+    """Store the display scale for ``px``; call once when the main window exists.
+
+    The process keeps the scale it started with (Tk does not follow a move to a monitor with
+    another scale, WM_DPICHANGED), so one factor serves every widget built later.
+    """
+    global _process_factor
+    _process_factor = scale_factor(widget)
+    return _process_factor
+
+
+def px(pixels: int) -> int:
+    """``pixels`` (designed at 96 dpi) at the scale ``remember_scale`` stored (1.0 before)."""
+    return int(round(pixels * _process_factor))
+
+
+class _Rect(ctypes.Structure):
+    _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
+                ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+
+
+class _MonitorInfo(ctypes.Structure):
+    _fields_ = [("cbSize", ctypes.c_ulong), ("rcMonitor", _Rect),
+                ("rcWork", _Rect), ("dwFlags", ctypes.c_ulong)]
+
+
+_MONITOR_DEFAULTTONEAREST = 2
+
+
+def _windows_work_area(widget: Any) -> tuple[int, int, int, int] | None:
+    """Work area (without the taskbar) of the monitor that holds ``widget``'s window."""
+    try:
+        hwnd = int(widget.winfo_id())
+        user32 = ctypes.windll.user32  # type: ignore[attr-defined]
+        user32.MonitorFromWindow.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+        user32.MonitorFromWindow.restype = ctypes.c_void_p
+        user32.GetMonitorInfoW.argtypes = [ctypes.c_void_p, ctypes.POINTER(_MonitorInfo)]
+        monitor = user32.MonitorFromWindow(ctypes.c_void_p(hwnd), _MONITOR_DEFAULTTONEAREST)
+        info = _MonitorInfo()
+        info.cbSize = ctypes.sizeof(_MonitorInfo)
+        if not monitor or not user32.GetMonitorInfoW(monitor, ctypes.byref(info)):
+            return None
+    except Exception:  # noqa: BLE001 - no window yet, a test stand-in, no user32
+        return None
+    work = info.rcWork
+    width, height = work.right - work.left, work.bottom - work.top
+    if width <= 0 or height <= 0:
+        return None
+    return work.left, work.top, width, height
+
+
+def work_area(widget: Any) -> tuple[int, int, int, int, bool]:
+    """``(x, y, width, height, exact)`` of the screen area a window of ``widget`` may use.
+
+    On Windows this is the work area of the widget's monitor (the taskbar excluded) and
+    ``exact`` is True; elsewhere, or when Windows cannot say, the whole screen at (0, 0)
+    with ``exact`` False (macOS menu bar and Dock, Linux panels are not known).
+    """
+    if sys.platform == "win32":
+        area = _windows_work_area(widget)
+        if area is not None:
+            return (*area, True)
+    try:
+        width, height = int(widget.winfo_screenwidth()), int(widget.winfo_screenheight())
+    except Exception:  # noqa: BLE001
+        width, height = 0, 0
+    return 0, 0, width, height, False
+
+
+# Room around a window inside the usable area, in pixels at 96 dpi: the title bar and the
+# frame when the work area is known, plus the taskbar / menu bar / Dock when only the screen is.
+_MARGIN_EXACT = (16, 48)
+_MARGIN_SCREEN = (40, 90)
+_MIN_SIZE = (320, 240)   # a fitted window never shrinks below this (if the request was larger)
+
+
+def fit_size(widget: Any, width: int, height: int) -> tuple[int, int]:
+    """Pixel size ``width`` x ``height`` (already scaled) kept inside the usable area."""
+    _x, _y, area_w, area_h, exact = work_area(widget)
+    if area_w <= 0 or area_h <= 0:
+        return width, height
+    factor = scale_factor(widget)
+    margin_w, margin_h = _MARGIN_EXACT if exact else _MARGIN_SCREEN
+    room_w = max(area_w - int(round(margin_w * factor)), 1)
+    room_h = max(area_h - int(round(margin_h * factor)), 1)
+    floor_w = min(width, int(round(_MIN_SIZE[0] * factor)))
+    floor_h = min(height, int(round(_MIN_SIZE[1] * factor)))
+    return max(min(width, room_w), floor_w), max(min(height, room_h), floor_h)
+
+
+def scaled_size(widget: Any, width: int, height: int) -> tuple[int, int]:
+    """Window size designed at 96 dpi, scaled and kept inside the usable screen area.
+
+    Clamped at every scale, 100 % included: a 1180x720 window does not fit a 1366x768 laptop
+    once the taskbar and the title bar take their share. The margins scale with the display.
     """
     factor = scale_factor(widget)
-    if factor <= 1.0:
-        return width, height
-    w, h = int(round(width * factor)), int(round(height * factor))
-    try:
-        sw, sh = widget.winfo_screenwidth(), widget.winfo_screenheight()
-    except Exception:  # noqa: BLE001
-        return w, h
-    return min(w, max(sw - margin_w, 1)), min(h, max(sh - margin_h, 1))
+    return fit_size(widget, int(round(width * factor)), int(round(height * factor)))

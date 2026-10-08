@@ -138,7 +138,7 @@ def help_icon(parent: tk.Misc, text: TextOrGetter, *, wraplength: int = _WRAP) -
 
     Pack/grid the returned Label next to a control or a section's title.
     """
-    icon = ttk.Label(parent, text=" ⓘ ", foreground=tokens.LINK)
+    icon = ttk.Label(parent, text=" ⓘ ", foreground=tokens.themed(tokens.LINK))
     # Bumped size + bold (2026-08-15): at the default label font size the
     # icon was the same weight as surrounding body text and easy to miss
     # entirely in a dense settings dialog -- confirmed by a real-mouse
@@ -203,7 +203,7 @@ def collapsible_section(
     outer = ttk.Frame(parent)
     header = ttk.Label(
         outer,
-        foreground=tokens.TEXT_DISABLED if muted else tokens.LINK,
+        foreground=tokens.TEXT_DISABLED if muted else tokens.themed(tokens.LINK),
         cursor="hand2",
         font=("TkDefaultFont", 9),
     )

@@ -166,7 +166,7 @@ def _rebuild_model_menu(app: Any) -> None:
             if _slug_downloaded(app, value):
                 kwargs["font"] = bold
             else:
-                kwargs["foreground"] = _MISSING_FG
+                kwargs["foreground"] = tokens.themed(_MISSING_FG)
                 shown = f"{label}   (not downloaded)"
         menu.add_radiobutton(
             label=shown, value=label, variable=app.live_model_var,
@@ -388,7 +388,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
 
     ttk.Label(src, text="Model:").grid(row=3, column=0, sticky="e", padx=8, pady=6)
     style = ttk.Style(src)
-    style.configure(_MODEL_MISSING_STYLE, foreground=_MISSING_FG)
+    style.configure(_MODEL_MISSING_STYLE, foreground=tokens.themed(_MISSING_FG))
     import tkinter.font as tkfont
 
     try:  # sv_ttk's body font, so the bold label matches the comboboxes
@@ -408,7 +408,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
         model_row, text="Download", command=lambda: _download_live_model(app),
     )
     app.live_model_dl_btn.grid(row=0, column=1, sticky="w", padx=(8, 0))
-    ttk.Label(model_row, textvariable=app.live_model_dl_var, foreground="#666").grid(
+    ttk.Label(model_row, textvariable=app.live_model_dl_var, foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
         row=1, column=0, columnspan=2, sticky="w"
     )
     _rebuild_model_menu(app)
@@ -448,7 +448,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
         "(it takes 100-350 MB per hour). On: it is kept, and the log says "
         "where the file is.",
     ).pack(side="left", padx=(4, 0))
-    ttk.Label(ctl, textvariable=app.live_status_var, foreground="#666").pack(
+    ttk.Label(ctl, textvariable=app.live_status_var, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
         side="left", padx=(16, 0)
     )
 
@@ -501,7 +501,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
         actions,
         text=("Uses its own copy of the speech model while listening, "
               "separate from the Transcribe queue."),
-        foreground="#666",
+        foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(side="right")
 
     _refresh_devices(app)
