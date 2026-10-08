@@ -303,6 +303,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Chapters file no longer mistaken for the transcript.** With auto-chapters on and `json` not among the output formats, **View transcript**, **Save shareable page** and the word-count fallback opened `<name>.chapters.json` as if it were the transcript. They now share one lookup (`app/domain/task_outputs.py`) that skips the chapters sidecar and prefers the exact `<name>.json`.
 - **Hardware detection and model advice.** GPUs without efficient float16 (GTX 10-series) now get
   an NVIDIA CUDA (int8) tier in the Hardware wizard, so Apply no longer pins the CPU over the
   automatic CUDA pick. Applying the untouched list while an NVIDIA GPU is unusable saves nothing

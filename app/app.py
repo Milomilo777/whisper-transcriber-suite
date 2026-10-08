@@ -21,7 +21,12 @@ from app.dialogs.model_download import ModelDownloadDialog
 from app.dialogs.quick_start import QuickStartChoice, QuickStartDialog, apply_choice, should_show
 from app.dialogs import share_page
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
-from app.domain.task_outputs import task_output_folder, task_srt_output
+from app.domain.task_outputs import (
+    pick_transcript_json,
+    task_output_folder,
+    task_srt_output,
+    task_transcript_json,
+)
 from app.domain.tasks import TranscriptionTask, VideoDownloadTask
 from app.observability import init_sentry, send_launch_ping_async
 from app.services.download_service import DownloadService
@@ -1454,16 +1459,14 @@ class App(tk.Tk):
 
     @staticmethod
     def _task_json_output(task: Any) -> str | None:
-        """Return the .json path the task actually wrote, if known.
+        """Return the transcript .json path the task actually wrote, if known.
 
-        Reads ``task.output_paths`` (the exact files the worker reported)
-        and returns the first .json entry — the source of truth for the
-        viewer, robust to templated/relocated output names.
+        Reads ``task.output_paths`` (the exact files the worker reported),
+        the source of truth for the viewer, robust to templated/relocated
+        output names. The auto-chapters ``.chapters.json`` sidecar is not a
+        transcript and is never returned (None when json was not an output).
         """
-        for p in getattr(task, "output_paths", None) or ():
-            if isinstance(p, str) and p.lower().endswith(".json"):
-                return p
-        return None
+        return task_transcript_json(task)
 
 
     def _open_recent(self, path: str) -> None:
@@ -5103,9 +5106,7 @@ class App(tk.Tk):
         # "View transcript" launches the in-app viewer with the JSON
         # next to the source media (or the file picker if no JSON
         # found). Discoverable single click into the new viewer.
-        json_output = next(
-            (p for p in existing if p.lower().endswith(".json")), None
-        )
+        json_output = pick_transcript_json(existing, task.file_path)
         if json_output is not None:
             ttk.Button(
                 button_row, text="View transcript",

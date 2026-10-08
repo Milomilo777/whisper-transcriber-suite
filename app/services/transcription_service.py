@@ -15,6 +15,7 @@ import threading
 from queue import Empty
 from typing import TYPE_CHECKING, Any
 
+from app.domain.task_outputs import is_sidecar_json, task_transcript_json
 from core._proc import kill_process_tree, new_session_kwargs
 from core.translate_task import TRANSLATED_SUFFIX
 
@@ -1728,9 +1729,8 @@ class TranscriptionService:
             if wc > 0:
                 return wc, float(getattr(task, "audio_duration", 0.0) or 0.0)
             paths = list(getattr(task, "output_paths", None) or [])
-            json_path = next(
-                (p for p in paths if str(p).lower().endswith(".json")), ""
-            )
+            # The transcript JSON, never the auto-chapters sidecar.
+            json_path = task_transcript_json(task, must_exist=True) or ""
             if not json_path and getattr(task, "file_path", ""):
                 # Same stem the worker wrote: a translate run's outputs
                 # carry ".en-translated" (core.transcriber._task_output_base).
@@ -1760,6 +1760,8 @@ class TranscriptionService:
                 ext = os.path.splitext(str(p))[1].lower().lstrip(".")
                 if ext not in parseable_exts or not os.path.isfile(p):
                     continue
+                if is_sidecar_json(str(p)):
+                    continue  # chapters, not a transcript
                 try:
                     segments = _convert.parse_to_segments(p)
                 except _convert.ConvertError:
