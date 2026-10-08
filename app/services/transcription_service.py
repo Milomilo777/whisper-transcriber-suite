@@ -15,6 +15,7 @@ import threading
 from queue import Empty
 from typing import TYPE_CHECKING, Any
 
+from core import task_settings
 from core._proc import kill_process_tree, new_session_kwargs
 from core.translate_task import TRANSLATED_SUFFIX
 
@@ -119,6 +120,11 @@ def transcribe_command(t: Any) -> dict[str, Any]:
         # at spawn time, so the user's saved docx/pdf/etc. selection must be
         # sent per task or it's silently ignored (the docx-never-written bug).
         "output_formats": getattr(t, "output_formats", None),
+        # Per-task options snapshot (core.task_settings): the worker's own
+        # config is frozen at spawn, so every option the user can change
+        # afterwards (speaker labels, VAD, word timestamps, chapters, ...)
+        # must ride the command or it is silently ignored.
+        "settings": getattr(t, "task_settings", None),
         # Correlation id (add-only protocol field): the worker echoes it on
         # the task's events and matches later cancel/pause/resume commands
         # against it. Optional for old workers — they ignore the extra key.
@@ -1560,6 +1566,10 @@ class TranscriptionService:
             t.output_formats = output_formats_for(
                 t, self.app.app_config.get("output_formats")
             )
+            # Same for every other per-task option: snapshot the live
+            # settings once, here, so this task runs with what the UI shows
+            # now and keeps it (a later resume reuses it).
+            task_settings.stamp(t, self.app.app_config)
             command = transcribe_command(t)
             self._dispatch_command_async(worker, t, command)
 

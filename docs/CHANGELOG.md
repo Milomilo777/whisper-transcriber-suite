@@ -303,6 +303,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Settings changed after the first transcription were ignored.** Unticking "Identify speakers"
+  (or changing VAD, word timestamps, chapters, noise reduction, the AI layer and the other per-file
+  options) had no effect until the app was restarted, because the long-lived worker kept the
+  settings it started with. Each task now carries a snapshot of these options taken when it is
+  dispatched, the worker applies it to that task only, and a resumed task keeps the options it
+  started with (`core/task_settings.py`).
+
 - **Quitting during a job.** On macOS, Cmd+Q (and the app-menu and Dock Quit) now ask "Exit with queued
   tasks?" like Windows instead of dropping a running transcription. A confirmed exit is recorded as
   closed on purpose, so the next start offers to resume it as "interrupted when the app was closed"

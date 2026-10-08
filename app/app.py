@@ -53,7 +53,7 @@ from app.widgets.tabs import (
 )
 from app.widgets.tray import TrayController
 from core import __version__ as _APP_VERSION
-from core import offline, subtitle_edit
+from core import offline, subtitle_edit, task_settings
 from app.theme import script_fonts, theme_colours, tokens
 from core._proc import kill_process_tree
 from core.config import load_config, save_config
@@ -4097,6 +4097,8 @@ class App(tk.Tk):
             nt.clip_start = getattr(t, "clip_start", None)
             nt.clip_end = getattr(t, "clip_end", None)
             nt.whisper_task = getattr(t, "whisper_task", "transcribe")
+            # Continue with the options the interrupted run started with.
+            task_settings.inherit(nt, t)
             nt.resume = True
             nt.cancelled = False
             self.queue.append(nt)
@@ -4191,6 +4193,8 @@ class App(tk.Tk):
         new_task.clip_start = getattr(task, "clip_start", None)
         new_task.clip_end = getattr(task, "clip_end", None)
         new_task.whisper_task = getattr(task, "whisper_task", "transcribe")
+        # Continue with the options the interrupted run started with.
+        task_settings.inherit(new_task, task)
         new_task.resume = True
         new_task.cancelled = False
         self.queue.append(new_task)
