@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import random
+import unicodedata
 from typing import Any
 
 import pytest
@@ -141,10 +142,11 @@ def test_random_texts_keep_the_matching_invariants():
         span = srch.find_folded_span(text, needle)
         assert span is not None, (text, needle)
         s, e = span
-        if not srch.fold_with_spans(needle[:1])[0] or not srch.fold_with_spans(needle[-1:])[0]:
-            assert text[s:e].casefold() == needle.casefold(), (text, needle)
-        else:
-            assert srch.fold_with_spans(text[s:e])[0] == folded_needle
+        assert srch.fold_with_spans(text[s:e])[0] == folded_needle, (text, needle, span)
+        prefix, core, suffix = srch._split_edges(unicodedata.normalize("NFC", needle), True)
+        assert text[s:e].startswith(prefix) and text[s:e].endswith(suffix), (text, needle, span)
+        if not core:
+            assert text[s:e].casefold() == needle.casefold(), (text, needle, span)
         new, count = srch.replace_folded(text, needle, "#")
         assert count >= 1 and new.count("#") == count
         assert new[:s] == text[:s]
@@ -379,6 +381,55 @@ def test_the_filter_treats_such_needles_literally_too():
 
 def test_zwnj_in_the_middle_of_a_needle_is_still_forgiving():
     assert srch.find_folded_span("x " + MIKHAHAM_PLAIN, MIKHAHAM_ZWNJ) == (2, 2 + len(MIKHAHAM_PLAIN))
+
+
+def test_an_edge_noise_needle_still_folds_its_core():
+    """The core of the needle folds as usual; only the edge characters are literal."""
+    ar_mi = _u("0645 064A") + ZWNJ  # Arabic yeh + half-space
+    assert srch.find_folded_span(_u("0645 06CC") + ZWNJ + _u("0631 0648 0645"), ar_mi) == (0, 3)
+    assert srch.find_folded_span(ZWNJ + KAF_FA, ZWNJ + KAF_AR) == (0, 2)
+    assert srch.find_folded_span(ZWNJ + _u("06F1 06F2"), ZWNJ + "12") == (0, 3)
+    assert srch.find_folded_span(KETAB_FA + FATHA, KETAB_AR + FATHA) == (0, 5)
+    # a mark that follows another mark is not adjacent to the letter: no match
+    assert srch.find_folded_span(KETAB_FA + chr(0x0651) + FATHA, KETAB_AR + FATHA) is None
+
+
+def test_an_nfd_paste_finds_precomposed_text():
+    nfd = "f" + "e" + chr(0x301)
+    assert srch.find_folded_span("caf" + chr(0xE9), nfd) == (2, 4)
+    assert srch.replace_folded("caf" + chr(0xE9) + " cafe", nfd, "X") == ("caX caX", 2)
+    # and the other way round
+    assert srch.find_folded_span("cafe" + chr(0x301), "caf" + chr(0xE9)) == (0, 5)
+
+
+def test_the_needle_as_typed_still_matches_when_nfc_would_change_it():
+    marks = chr(0x0323) + chr(0x0651)  # NFC reorders these two combining marks
+    assert srch.find_folded_span("a" + marks, marks) == (1, 3)
+    jamo = "".join(chr(c) for c in (0x1112, 0x1161, 0x11AB))  # decomposed Hangul
+    assert srch.find_folded_span(jamo, jamo[:2]) == (0, 2)
+    # a precomposed syllable in the text is found by its decomposed needle too
+    assert srch.find_folded_span(chr(0xD55C), jamo) == (0, 1)
+    assert srch.folded_contains(chr(0xD55C), jamo)  # the search-box filter agrees
+    assert srch.folded_contains("caf" + chr(0xE9), "fe" + chr(0x301))
+
+
+def test_a_suffix_may_follow_the_letters_own_hamza_mark():
+    alef_hamza = _u("0627 0654")  # alef + combining hamza, decomposed
+    assert srch.find_folded_span("e" + alef_hamza + ZWNJ + "e", _u("0627") + ZWNJ) == (1, 4)
+
+
+def test_edge_characters_must_be_literally_adjacent_to_the_core():
+    mi = _u("0645 06CC")
+    assert srch.find_folded_span(mi + " " + _u("0631"), mi + ZWNJ) is None
+    assert srch.find_folded_span(mi + _u("0632"), mi + ZWNJ) is None
+    ha = _u("0647 0627")
+    assert srch.find_folded_span(KETAB_FA + ha, ZWNJ + ha) is None
+    # the second occurrence is the adjacent one
+    assert srch.find_folded_span(mi + _u("0632") + " " + mi + ZWNJ, mi + ZWNJ) == (4, 7)
+    assert srch.find_folded_span("x" + mi + ZWNJ, mi + ZWNJ, 2) is None  # start inside the match
+    assert srch.replace_folded(ZWNJ + KAF_AR + " " + ZWNJ + KAF_FA, ZWNJ + KAF_FA, "#") == ("# #", 2)
+    assert srch.folded_contains(_u("0645 06CC") + ZWNJ, _u("0645 064A") + ZWNJ)
+    assert not srch.folded_contains(_u("0645 06CC 0632"), _u("0645 064A") + ZWNJ)
 
 
 # --- a match must not start or end inside an expanded character ------------------------

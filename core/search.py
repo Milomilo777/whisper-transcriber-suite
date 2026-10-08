@@ -214,15 +214,24 @@ def _literal_span(text: str, needle: str, start: int, casefold: bool) -> tuple[i
     return (i, i + len(needle)) if i >= 0 else None
 
 
-def _edged_by_noise(needle: str, casefold: bool) -> bool:
-    """True when the needle starts or ends with a character the folding drops.
+def _split_edges(needle: str, casefold: bool) -> tuple[str, str, str]:
+    """``(prefix, core, suffix)``: the needle's leading and trailing characters that
+    the folding drops, and what lies between them.
 
     A half-space, tatweel or vowel mark at the edge of what the user typed is
     something they mean (the "mi-" prefix, a stray tatweel to delete). Folded
-    matching would drop it and widen the match, so such needles match literally.
-    Inside a needle these characters stay forgiving.
+    matching would drop it and widen the match, so those characters must be
+    found literally next to the folded core. Inside the core they stay forgiving.
+    A needle of only such characters has an empty core.
     """
-    return not _fold_char(needle[0], casefold) or not _fold_char(needle[-1], casefold)
+    n = len(needle)
+    i = 0
+    while i < n and not _fold_char(needle[i], casefold):
+        i += 1
+    j = n
+    while j > i and not _fold_char(needle[j - 1], casefold):
+        j -= 1
+    return needle[:i], needle[i:j], needle[j:]
 
 
 def find_folded_span(
@@ -235,9 +244,11 @@ def find_folded_span(
     ORIGINAL text, or None. Matches are exact spans of the original:
 
     * ``exact`` turns the folding off (a plain, case-sensitive substring search);
-    * a needle that starts or ends with a character the folding drops (ZWNJ,
-      tatweel, a vowel mark) matches literally, so a needle of only such
-      characters finds them;
+    * a needle is tried as typed and precomposed (NFC), the leftmost hit wins, so an
+      NFD paste finds precomposed text;
+    * characters the folding drops (ZWNJ, tatweel, a vowel mark) at the start or
+      end of the needle are matched literally, right next to the folded core; a
+      needle of only such characters matches literally;
     * a match never starts or ends inside the expansion of one character
       ("f" does not match half of the ligature U+FB01).
     """
@@ -245,19 +256,42 @@ def find_folded_span(
         return None
     if exact:
         return _literal_span(text, needle, start, False)
-    if _edged_by_noise(needle, casefold):
+    # As typed, and precomposed (an NFD paste from macOS Find): the leftmost hit wins.
+    hits = [_find_spans(text, needle, start, casefold)]
+    composed = unicodedata.normalize("NFC", needle)
+    if composed != needle:
+        hits.append(_find_spans(text, composed, start, casefold))
+    return min((h for h in hits if h is not None), default=None)
+
+
+def _find_spans(
+    text: str, needle: str, start: int, casefold: bool
+) -> tuple[int, int] | None:
+    prefix, core, suffix = _split_edges(needle, casefold)
+    if not core:
         return _literal_span(text, needle, start, casefold)
-    wanted = _folded_text(needle, casefold)
+    wanted = _folded_text(core, casefold)
     if not wanted or wanted not in _folded_text(text, casefold):
         return None
     folded, starts, ends = fold_with_spans(text, casefold)
-    pos = folded.find(wanted, bisect_left(starts, max(0, start)))
+    start = max(0, start)
+    pos = folded.find(wanted, bisect_left(starts, start))
     while pos >= 0:
         last = pos + len(wanted) - 1
         if (pos == 0 or starts[pos - 1] != starts[pos]) and (
             last == len(folded) - 1 or starts[last + 1] != starts[last]
         ):
-            return starts[pos], ends[last]
+            first_char = starts[pos]
+            raw_end = starts[last] + 1  # the core's last letter, without its marks
+            begin = first_char - len(prefix)
+            if begin >= start and text.startswith(prefix, begin):
+                if not suffix:
+                    return begin, ends[last]
+                # The suffix follows the letter's own marks (a ZWNJ after "alef + hamza")
+                # or is one of them (a trailing fatha): take whichever really is there.
+                for after in dict.fromkeys((ends[last], raw_end)):
+                    if text.startswith(suffix, after):
+                        return begin, after + len(suffix)
         pos = folded.find(wanted, pos + 1)
     return None
 
@@ -267,17 +301,26 @@ def folded_contains(
 ) -> bool:
     """True when *query* occurs in *text* under the search folding.
 
-    Same needle rules as :func:`find_folded_span`, except that a hit inside a
-    character's expansion still counts (a filter only has to show the row).
+    Same needle rules as :func:`find_folded_span`, except that a plain query
+    (no dropped character at its edges) also counts a hit inside a character's
+    expansion: a filter only has to show the row, and it runs on every segment
+    at every keystroke, so it skips building spans.
     """
     if not query:
         return False
     if exact:
         return query in text
-    if _edged_by_noise(query, casefold):
-        return _literal_span(text, query, 0, casefold) is not None
-    wanted = _folded_text(query, casefold)
-    return bool(wanted) and wanted in _folded_text(text, casefold)
+    composed = unicodedata.normalize("NFC", query)
+    for variant in dict.fromkeys((query, composed)):
+        prefix, _core, suffix = _split_edges(variant, casefold)
+        if prefix or suffix:
+            if find_folded_span(text, variant, casefold=casefold) is not None:
+                return True
+            continue
+        wanted = _folded_text(variant, casefold)
+        if wanted and wanted in _folded_text(text, casefold):
+            return True
+    return False
 
 
 def replace_folded(
