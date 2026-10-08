@@ -59,9 +59,15 @@ def subbed_output_path(media_path: str) -> str:
     return burn_subs.reserve_output_path(stem + SUBBED_SUFFIX + ".mp4")
 
 
-def has_no_video(path: str) -> bool:
+# The check before the transcription runs on the Tk thread, so it is short;
+# an unanswered probe lets the chain go on and the burn itself refuses a file
+# without a picture (burn_subs.burn probes again, on its own thread).
+_QUICK_PROBE_S = 5.0
+
+
+def has_no_video(path: str, timeout: float = _QUICK_PROBE_S) -> bool:
     """True only when ffprobe read *path* and found no video stream."""
-    return burn_subs.probe_media(path).has_video is False
+    return burn_subs.probe_media(path, timeout=timeout).has_video is False
 
 
 NO_VIDEO_ERROR = "The downloaded file has no video picture; no subtitled video was made."
@@ -106,11 +112,15 @@ def start_burn(app: Any, dl: Any, srt_path: str) -> None:
     if not media or not os.path.isfile(media):
         end_chain(app, dl, "error", error="The downloaded file is gone; no subtitled video was made.")
         return
-    out_path = subbed_output_path(media)
-    dl.status = "burning"
-    dl.burn_progress = 0.0
-    app.log(f"-> Burning subtitles into {os.path.basename(out_path)}")
-    app.refresh_download_queue()
+    try:
+        out_path = subbed_output_path(media)
+    except OSError as e:
+        # A folder that refuses new files, a name the system cannot hold:
+        # the download and the transcript are already saved, so the row ends
+        # as an error with the reason instead of failing silently.
+        logger.warning("Subtitle burn: could not reserve the output name beside %s", media, exc_info=True)
+        end_chain(app, dl, "error", error=f"The subtitled video file could not be created: {e}")
+        return
     shown = [-1]
 
     def _progress(pct: float) -> None:
@@ -130,6 +140,7 @@ def start_burn(app: Any, dl: Any, srt_path: str) -> None:
                 progress_cb=_progress,
                 cancel_check=lambda: bool(getattr(dl, "cancelled", False)),
                 on_process=_on_process,
+                placeholder=out_path,
             )
         except burn_subs.BurnCancelled:
             burn_subs.release_reserved_path(out_path)
@@ -144,7 +155,31 @@ def start_burn(app: Any, dl: Any, srt_path: str) -> None:
         finally:
             dl.process = None
 
-    safe_thread(_worker, name="burn-subs-chain")
+    try:
+        dl.status = "burning"
+        dl.burn_progress = 0.0
+        app.log(f"-> Burning subtitles into {os.path.basename(out_path)}")
+        app.refresh_download_queue()
+        safe_thread(_worker, name="burn-subs-chain")
+    except Exception as e:  # noqa: BLE001 - the placeholder must not outlive a burn that never ran
+        burn_subs.release_reserved_path(out_path)
+        logger.exception("Subtitle burn: could not start the burn thread")
+        end_chain(app, dl, "error", error=f"The subtitle burn could not start: {e}")
+
+
+def fail_unstarted_burn(app: Any, dl: Any, exc: BaseException) -> None:
+    """``after_transcription`` raised: close the row as an error with a reason.
+
+    A burn that already started reports itself (its thread ends the chain), so
+    only a row that is not "burning" is closed here.
+    """
+    if getattr(dl, "status", "") == "burning":
+        return
+    try:
+        end_chain(app, dl, "error", error=f"The subtitle burn could not start: {exc}")
+    except Exception:  # noqa: BLE001 - last resort: the row must not stay "transcribing"
+        logger.exception("Could not close the chained row after a failed burn start")
+        dl.status = "error"
 
 
 def end_chain(app: Any, dl: Any, status: str, *, error: str = "", burned: str = "") -> None:

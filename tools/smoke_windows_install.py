@@ -33,6 +33,19 @@ REQUIRED_ASSETS = (
 )
 
 
+# Filters "Make subtitled video" and "Burn subtitles" call (libass).
+BURN_FILTERS = ("subtitles",)
+
+
+def ffmpeg_missing_filters(ffmpeg: str, wanted: tuple[str, ...]) -> list[str]:
+    """The names in *wanted* that ``ffmpeg -filters`` does not list."""
+    proc = subprocess.run([ffmpeg, "-hide_banner", "-filters"], capture_output=True,
+                          text=True, timeout=120)
+    listed = {parts[1] for parts in (ln.split() for ln in (proc.stdout or "").splitlines())
+              if len(parts) >= 3 and set(parts[0]) <= set(".TSC")}
+    return [name for name in wanted if name not in listed]
+
+
 def app_modules(root: str) -> list[str]:
     """Dotted names of every app.* / core.* module under ``root``, packages included."""
     names = []
@@ -124,6 +137,13 @@ def main(argv: list[str]) -> int:
         if proc.returncode != 0 or needle not in proc.stdout:
             return fail(f"{exe} {' '.join(args)} -> exit {proc.returncode}: {first}")
         ok(f"bin/{exe}: {first[0] if first else ''}")
+
+    # "Make subtitled video" and "Burn subtitles" need ffmpeg's subtitles filter
+    # (libass); a build without it fails only when a user burns subtitles.
+    missing = ffmpeg_missing_filters(os.path.join(install, "bin", "ffmpeg.exe"), BURN_FILTERS)
+    if missing:
+        return fail(f"bin/ffmpeg.exe lacks the {', '.join(missing)} filter (built without libass)")
+    ok(f"bin/ffmpeg.exe has the {', '.join(BURN_FILTERS)} filter")
 
     from core import diarization
     reason = diarization.availability_reason()

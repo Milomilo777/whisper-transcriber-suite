@@ -42,6 +42,13 @@ echo "LSMinimumSystemVersion: $plist_min"
 
 B="$APP/Contents/Frameworks/bin"
 v="$("$B/ffmpeg" -hide_banner -version 2>&1)" && echo "${v%%$'\n'*}" || { echo "ffmpeg FAILED: $v"; bad=$((bad + 1)); }
+# "Make subtitled video" and "Burn subtitles" run ffmpeg's `subtitles` filter
+# (libass). A build without it passes every other check here and then fails
+# only when a user burns subtitles. The list goes through a variable: with
+# pipefail, `grep -q` closing the pipe early would fail this check spuriously.
+filters="$("$B/ffmpeg" -hide_banner -filters 2>&1)"
+grep -q ' subtitles ' <<<"$filters" \
+  || { echo "ffmpeg has no 'subtitles' filter (built without libass): 'Make subtitled video' and 'Burn subtitles' would fail"; bad=$((bad + 1)); }
 # yt-dlp must be the self-contained yt-dlp_macos, run with the PATH an app
 # opened from Finder gets: the Python-script "yt-dlp" passes in a shell with a
 # venv python3 but fails in the app on Apple's python3 3.9 (needs 3.10+).

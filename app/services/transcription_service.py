@@ -1682,10 +1682,9 @@ class TranscriptionService:
                 from app.services import subbed_video
                 try:
                     subbed_video.after_transcription(app, dl, task, newly_finished)
-                except Exception:  # noqa: BLE001 - the transcript is saved already
+                except Exception as e:  # noqa: BLE001 - the transcript is saved already
                     logger.exception("Could not start the subtitle burn")
-                    dl.status = "error"
-                    app.log("Subtitled video not made: the burn could not start.")
+                    subbed_video.fail_unstarted_burn(app, dl, e)
             else:
                 dl.status = "finished"
                 dl.progress = 100
