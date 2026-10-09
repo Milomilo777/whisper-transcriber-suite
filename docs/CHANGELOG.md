@@ -8,7 +8,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **macOS native feel, part 2.** With the theme on System the Mac app follows Light/Dark live (an
   explicit Light or Dark still wins), the interface uses the macOS system font, and a finished transcription,
-  download or subtitle burn posts a macOS notification while the app is in the background, minimised or hidden (the existing
+  download, subtitle burn or failed subtitled-video chain posts a macOS notification while the app is in the background, minimised or hidden (the existing
   "Chime on completion" setting, now "Chime and notify on completion" on macOS; one per job, one
   summary per queue). Clicking the banner opens Script Editor, not the app. Windows and Linux are
   unchanged (`docs/MACOS_BUILD_NOTES.md`).

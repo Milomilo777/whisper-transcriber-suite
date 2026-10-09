@@ -203,4 +203,5 @@ def end_chain(app: Any, dl: Any, status: str, *, error: str = "", burned: str = 
         app.log(f"Subtitled video cancelled: {os.path.basename(media or '')} and its transcript are kept.")
     else:
         app.log(f"Subtitled video not made: {error} The downloaded file and any transcript are kept.")
+        desktop_alert.chain_failed(app, dl, error)
     app.refresh_download_queue()

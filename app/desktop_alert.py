@@ -24,8 +24,9 @@ The banner follows the chime's completion events, one banner per user job, on th
 a finished transcription (``job_done``), a finished download (``download_done``, only when no
 transcription follows it), a finished subtitle burn (``burn_done``: a manual burn, or the end of a
 "Make subtitled video" chain, whose transcription stage posts nothing). When the last transcription
-of a queue of two or more finishes, one summary replaces that job's own banner. Failures and
-cancellations post nothing (neither does the chime).
+of a queue of two or more finishes, one summary replaces that job's own banner. A chain that ends in
+an error posts one "Subtitled video not made" banner (``chain_failed``); other failures and
+cancellations post nothing.
 """
 from __future__ import annotations
 
@@ -299,6 +300,20 @@ def _notify_if_away(app: Any, text: str) -> None:
 def download_done(app: Any, saved_path: str) -> None:
     """A download finished and nothing (no transcription) follows it. Never raises."""
     _notify_if_away(app, f"Downloaded: {os.path.basename(str(saved_path))}")
+
+
+def chain_failed(app: Any, dl: Any, error: str) -> None:
+    """A "Make subtitled video" chain ended in an error (its transcription stage posted nothing, so
+    this is the job's only banner). Never raises."""
+    try:
+        name = os.path.basename(str(getattr(dl, "saved_path", "") or "")) or str(getattr(dl, "title", "") or "")
+        if str(error).startswith("No speech"):
+            text = f"Subtitled video not made, no speech was found: {name}"
+        else:
+            text = f"Subtitled video not made: {name}"
+        _notify_if_away(app, text)
+    except Exception:  # noqa: BLE001 - a notification must never break the chain's closing
+        logger.exception("Desktop notification failed")
 
 
 def burn_done(app: Any, out_path: str) -> None:

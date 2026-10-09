@@ -4720,6 +4720,7 @@ class App(tk.Tk):
             # No worker will report this task, so finish_task never runs:
             # release the Download row that waits on it here.
             self._release_waiting_download(t)
+            desktop_alert.job_ended(self, t)
         else:
             self.log("Cancelling task; saving a resume checkpoint...")
         self.refresh()

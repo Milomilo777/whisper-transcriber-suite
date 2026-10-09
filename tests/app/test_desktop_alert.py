@@ -717,3 +717,97 @@ def test_the_new_modules_are_hidden_imports_of_every_pyinstaller_spec(spec: str)
     text = (Path(__file__).resolve().parents[2] / spec).read_text(encoding="utf-8")
     for module in ("app.desktop_alert", "app.theme.system_fonts"):
         assert f"'{module}'," in text, f"{module} missing from {spec}"
+
+
+# ------------------------------------------- a chain that fails after its transcript says so
+
+def _failed_chain(error: str, **kw: Any) -> tuple[Any, Any]:
+    from app.services import subbed_video
+
+    dl = SimpleNamespace(status="burning", saved_path="/m/clip.mp4", burned_path=None, progress=0, **kw)
+    app = SimpleNamespace(download_service=None, log=lambda m: None, refresh_download_queue=lambda: None)
+    subbed_video.end_chain(app, dl, "error", error=error)
+    return app, dl
+
+
+def test_a_chain_that_ends_in_an_error_posts_one_banner(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[tuple[Any, Any, str]] = []
+    monkeypatch.setattr(da, "chain_failed", lambda app, dl, error: seen.append((app, dl, error)))
+    app, dl = _failed_chain("Burning the subtitles failed: disk full")
+    assert seen == [(app, dl, "Burning the subtitles failed: disk full")]
+
+
+def test_a_cancelled_chain_posts_no_failure_banner(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services import subbed_video
+
+    monkeypatch.setattr(da, "chain_failed", lambda *a: pytest.fail("a cancel is not a failure"))
+    dl = SimpleNamespace(status="burning", saved_path="/m/c.mp4", burned_path=None, progress=0)
+    app = SimpleNamespace(download_service=None, log=lambda m: None, refresh_download_queue=lambda: None)
+    subbed_video.end_chain(app, dl, "cancelled")
+
+
+def test_the_failure_banner_names_the_file(posted: list[tuple[str, str]]) -> None:
+    dl = SimpleNamespace(saved_path="/m/clip.mp4", title="T")
+    da.chain_failed(_app(), dl, "The transcription wrote no .srt file; no subtitled video was made.")
+    assert posted == [("Subtitled video not made: clip.mp4", da.APP_TITLE)]
+
+
+def test_the_failure_banner_says_when_no_speech_was_the_cause(posted: list[tuple[str, str]]) -> None:
+    dl = SimpleNamespace(saved_path="/m/clip.mp4", title="T")
+    da.chain_failed(_app(), dl, "No speech was found; no subtitled video was made.")
+    assert posted == [("Subtitled video not made, no speech was found: clip.mp4", da.APP_TITLE)]
+
+
+def test_the_failure_banner_falls_back_to_the_title_when_the_file_is_unknown(
+        posted: list[tuple[str, str]]) -> None:
+    da.chain_failed(_app(), SimpleNamespace(saved_path=None, title="Good news"), "x")
+    assert posted == [("Subtitled video not made: Good news", da.APP_TITLE)]
+
+
+def test_the_failure_banner_follows_the_same_rules_as_the_others(
+        monkeypatch: pytest.MonkeyPatch, posted: list[tuple[str, str]]) -> None:
+    dl = SimpleNamespace(saved_path="/m/x.mp4", title="T")
+    da.chain_failed(_app(focused=True), dl, "x")
+    da.chain_failed(_app(chime=False), dl, "x")
+    da.chain_failed(_app(aqua=False), dl, "x")
+    da.chain_failed(object(), object(), "x")
+    assert posted == []
+
+
+def test_the_failed_chain_end_never_raises_into_end_chain(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(da, "post_notification", lambda *a: (_ for _ in ()).throw(RuntimeError("boom")))
+    _failed_chain("x")        # end_chain returns normally
+
+
+def test_cancelling_a_waiting_task_resets_the_queue_count(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app import app as appmod
+    from core.task import TranscriptionTask
+
+    ended: list[Any] = []
+    monkeypatch.setattr(da, "job_ended", lambda app, task: ended.append(task))
+    task = TranscriptionTask("/m/a.mp4")
+    fake = SimpleNamespace(
+        transcription_service=SimpleNamespace(send_control=lambda t, a: False), log=lambda m: None,
+        _release_waiting_download=lambda t: None, refresh=lambda: None)
+    appmod.App.cancel(fake, task)  # type: ignore[arg-type]
+    assert ended == [task]
+
+
+# ------------------------------------------------------- off aqua nothing is started at all
+
+def test_the_end_of_job_download_burn_and_chain_hooks_are_no_ops_off_aqua(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    def forbidden(*a: Any, **k: Any) -> Any:
+        pytest.fail("a thread or process was started off macOS")
+
+    monkeypatch.setattr(da.threading, "Thread", forbidden)
+    monkeypatch.setattr(da.subprocess, "run", forbidden)
+    monkeypatch.setattr(da.subprocess, "Popen", forbidden)
+    for app in (_app(aqua=False), object()):
+        da.job_ended(app, _task())
+        da.download_done(app, "/m/a.mp4")
+        da.burn_done(app, "/m/a-subbed.mp4")
+        da.chain_failed(app, SimpleNamespace(saved_path="/m/a.mp4", title="T"), "x")
+        da.job_done(app, _task(), 1)
+    assert da._batch == {"count": 0, "last_end": None}
+    assert da._threads == []

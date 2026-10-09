@@ -440,7 +440,8 @@ PASS app_active: NSApp isActive=1 isHidden=0; wm state='normal'; focus -displayo
   subtitled video" chain, whose transcription stage posts nothing). When the last transcription of a
   queue of two or more finishes, one summary replaces that job's own banner; the count starts over when
   the queue goes idle. A job with no output files, or no recognised speech, says so instead of
-  "Done". Failures and cancellations post nothing. Click behaviour: the
+  "Done". A chain that ends in an error posts one "Subtitled video not made" banner (its transcription stage posted
+  nothing); other failures and cancellations post nothing. Click behaviour: the
   banner belongs to Script Editor (the host of `osascript`), so a click opens Script Editor and cannot
   bring this app forward; the app does not promise otherwise.
 - **When the app counts as "in the background".** Tk's focus alone is wrong: measured with the real app,
