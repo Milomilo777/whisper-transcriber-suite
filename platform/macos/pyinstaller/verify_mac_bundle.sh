@@ -92,5 +92,9 @@ plutil -lint "$APP/Contents/Info.plist" >/dev/null || { echo "Info.plist does no
 # document types (role Viewer, rank Alternate); app/mac_native.py handles them.
 /usr/libexec/PlistBuddy -c 'Print :CFBundleDocumentTypes:0:CFBundleTypeRole' "$APP/Contents/Info.plist" >/dev/null 2>&1 \
   || { echo "Info.plist lacks CFBundleDocumentTypes (no Finder Open With / Dock drops)"; bad=$((bad + 1)); }
+rank="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDocumentTypes:0:LSHandlerRank' "$APP/Contents/Info.plist" 2>/dev/null)"
+echo "CFBundleDocumentTypes[0] LSHandlerRank: $rank"
+[ "$rank" = "Alternate" ] \
+  || { echo "document types must be rank Alternate (the app must never become a default handler)"; bad=$((bad + 1)); }
 
 [ "$bad" = 0 ] && echo "OK: bundle is self-contained." || { echo "FAILED: $bad problem(s)" >&2; exit 1; }

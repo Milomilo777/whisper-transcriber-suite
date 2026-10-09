@@ -313,7 +313,7 @@ def test_files_opened_from_finder_wait_for_startup_then_go_through_open_paths(
     assert _pump(host, lambda: host.open_paths.called)  # type: ignore[attr-defined]
     # One hand-over, in the order macOS sent them: the same path as a drop.
     host.open_paths.assert_called_once_with(  # type: ignore[attr-defined]
-        ["/music/a b.mp3", "/music/c.mp4", "/music/d.wav"])
+        ["/music/a b.mp3", "/music/c.mp4", "/music/d.wav"], require_media=True)
     assert host._mac_pending_opens == []  # type: ignore[attr-defined]
 
 
@@ -324,7 +324,8 @@ def test_files_wait_while_the_quick_start_window_is_open(aqua: None, host: _Host
     assert not _pump(host, lambda: host.open_paths.called, seconds=0.3)  # type: ignore[attr-defined]
     host._quick_start_open = False
     assert _pump(host, lambda: host.open_paths.called)  # type: ignore[attr-defined]
-    host.open_paths.assert_called_once_with(["/music/a.mp3"])  # type: ignore[attr-defined]
+    host.open_paths.assert_called_once_with(  # type: ignore[attr-defined]
+        ["/music/a.mp3"], require_media=True)
 
 
 def test_files_wait_while_a_modal_window_holds_the_grab(aqua: None, host: _Host) -> None:
@@ -542,12 +543,65 @@ def platform_name(monkeypatch: pytest.MonkeyPatch) -> Callable[[str], None]:
 
 def test_reveal_label_says_reveal_in_finder_on_macos_only(platform_name: Callable[[str], None]) -> None:
     platform_name("darwin")
-    assert platform_mod.reveal_label("Open folder") == "Reveal in Finder"
-    assert platform_mod.reveal_label("Open log folder", "Log Folder") == "Reveal Log Folder in Finder"
+    assert platform_mod.reveal_label("Open JSON folder") == "Reveal in Finder"
     for other in ("win32", "linux"):
         platform_name(other)
-        assert platform_mod.reveal_label("Open folder") == "Open folder"
-        assert platform_mod.reveal_label("Open log folder", "Log Folder") == "Open log folder"
+        assert platform_mod.reveal_label("Open JSON folder") == "Open JSON folder"
+
+
+def test_folder_label_keeps_a_folder_wording_on_macos(platform_name: Callable[[str], None]) -> None:
+    platform_name("darwin")
+    assert platform_mod.folder_label("Open log folder", "Log Folder") == "Open Log Folder in Finder"
+    for other in ("win32", "linux"):
+        platform_name(other)
+        assert platform_mod.folder_label("Open log folder", "Log Folder") == "Open log folder"
+
+
+def test_folder_action_label_reveals_only_when_there_is_a_file_to_select(
+    platform_name: Callable[[str], None],
+) -> None:
+    platform_name("darwin")
+    assert platform_mod.folder_action_label("Open folder", "Output Folder", "/x/a.srt") == "Reveal in Finder"
+    assert platform_mod.folder_action_label("Open folder", "Output Folder", None) == "Open Output Folder in Finder"
+    platform_name("win32")
+    assert platform_mod.folder_action_label("Open folder", "Output Folder", "/x/a.srt") == "Open folder"
+    assert platform_mod.folder_action_label("Open folder", "Output Folder", None) == "Open folder"
+
+
+def test_open_r_failing_falls_back_to_opening_the_folder(
+    platform_name: Callable[[str], None], monkeypatch: pytest.MonkeyPatch, tmp_path: Any,
+) -> None:
+    platform_name("darwin")
+    out = tmp_path / "talk.srt"
+    out.write_text("1\n", encoding="utf-8")
+    calls: list[list[str]] = []
+
+    def run(cmd: list[str], **_k: Any) -> Any:
+        calls.append(cmd)
+        return types.SimpleNamespace(returncode=1 if cmd[1] == "-R" else 0)
+
+    monkeypatch.setattr(platform_mod.subprocess, "run", run)
+    platform_mod.open_folder(str(tmp_path), select=str(out))
+    assert calls == [["open", "-R", str(out)], ["open", str(tmp_path)]]
+
+
+def test_open_r_raising_falls_back_to_opening_the_folder(
+    platform_name: Callable[[str], None], monkeypatch: pytest.MonkeyPatch, tmp_path: Any,
+) -> None:
+    platform_name("darwin")
+    out = tmp_path / "talk.srt"
+    out.write_text("1\n", encoding="utf-8")
+    calls: list[list[str]] = []
+
+    def run(cmd: list[str], **_k: Any) -> Any:
+        calls.append(cmd)
+        if cmd[1] == "-R":
+            raise OSError("no open")
+        return types.SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(platform_mod.subprocess, "run", run)
+    platform_mod.open_folder(str(tmp_path), select=str(out))
+    assert calls[-1] == ["open", str(tmp_path)]
 
 
 def test_macos_reveals_the_file_inside_its_folder(
@@ -557,7 +611,9 @@ def test_macos_reveals_the_file_inside_its_folder(
     out = tmp_path / "talk.srt"
     out.write_text("1\n", encoding="utf-8")
     calls: list[list[str]] = []
-    monkeypatch.setattr(platform_mod.subprocess, "run", lambda cmd, **k: calls.append(cmd))
+    monkeypatch.setattr(
+        platform_mod.subprocess, "run",
+        lambda cmd, **k: calls.append(cmd) or types.SimpleNamespace(returncode=0))
     platform_mod.open_folder(str(tmp_path), select=str(out))
     assert calls == [["open", "-R", str(out)]]
 
@@ -624,12 +680,45 @@ def test_result_card_button_keeps_its_wording_on_windows_and_linux(
     assert "Open folder" in buttons and "Reveal in Finder" not in buttons
 
 
-def test_queue_context_menu_wording(platform_name: Callable[[str], None]) -> None:
+def test_result_card_with_nothing_to_select_says_open_folder_in_finder(
+    platform_name: Callable[[str], None], tk_root: tk.Tk, tmp_path: Any,
+) -> None:
+    from tests.app.test_transcript_json_pick import _buttons, _srt_plus_chapters
+    from tests.app.test_transcript_json_pick import _result_card as card
+
     platform_name("darwin")
-    assert app_mod.reveal_label("Open output folder") == "Reveal in Finder"
-    assert app_mod.reveal_label("Open download folder") == "Reveal in Finder"
-    platform_name("win32")
-    assert app_mod.reveal_label("Open output folder") == "Open output folder"
+    task = _srt_plus_chapters(tmp_path)
+    task.output_paths = []  # nothing was written that the card could select
+    (tmp_path / "talk.srt").unlink()
+    (tmp_path / "talk.chapters.json").unlink()
+    fake = card(tk_root, task)
+    buttons = _buttons(fake.last_result_body)
+    assert "Open Folder in Finder" in buttons and "Reveal in Finder" not in buttons
+    buttons["Open Folder in Finder"].invoke()
+    fake._open_folder.assert_called_once_with(str(tmp_path), select=None)
+
+
+def test_queue_and_download_menus_pick_their_wording_from_the_helper() -> None:
+    import inspect
+
+    queue_src = inspect.getsource(App.menu_row)
+    download_src = inspect.getsource(App.download_menu_row)
+    assert 'folder_action_label("Open output folder"' in queue_src
+    assert 'folder_action_label("Open download folder"' in download_src
+    assert "reveal_label(" not in queue_src + download_src
+
+
+def test_task_output_file_is_the_first_output_that_exists(tmp_path: Any) -> None:
+    from app.domain.task_outputs import task_output_file
+
+    real = tmp_path / "talk.srt"
+    real.write_text("1\n", encoding="utf-8")
+    task = types.SimpleNamespace(
+        file_path=str(tmp_path / "talk.mp4"), output_paths=[str(tmp_path / "gone.json"), str(real)])
+    assert task_output_file(task) == str(real)
+    task.output_paths = [str(tmp_path / "gone.json")]
+    assert task_output_file(task) is None
+    assert task_output_file(types.SimpleNamespace(file_path="x")) is None
 
 
 def test_help_menu_log_folder_item_is_worded_for_the_platform(
@@ -640,7 +729,7 @@ def test_help_menu_log_folder_item_is_worded_for_the_platform(
     root = _menu_host()
     try:
         root._build_menu()
-        assert "Reveal Log Folder in Finder" in _labels(root._help_menu)
+        assert "Open Log Folder in Finder" in _labels(root._help_menu)
         assert "Open log folder" not in _labels(root._help_menu)
     finally:
         root.destroy()
@@ -725,6 +814,225 @@ def test_a_viewer_still_opens_when_the_window_rejects_the_marks(
     try:
         viewer._dirty = True
         assert viewer._dirty is True
+    finally:
+        viewer._dirty = False
+        viewer._on_close()
+
+
+# --------------------------------------- readiness: native alerts and flags
+
+def test_files_wait_while_an_exit_question_is_open(aqua: None, host: _Host) -> None:
+    """The quit question is a native alert: it holds no Tk grab."""
+    host._exit_prompt_open = True
+    mac_native.install(host)
+    host.tk.call("::tk::mac::OpenDocument", "/music/a.mp3")
+    assert not _pump(host, lambda: host.open_paths.called, seconds=0.3)  # type: ignore[attr-defined]
+    host._exit_prompt_open = False
+    assert _pump(host, lambda: host.open_paths.called)  # type: ignore[attr-defined]
+
+
+def test_files_wait_while_the_model_folder_dialog_is_open(aqua: None, host: _Host) -> None:
+    host._hub_setup_open = True
+    mac_native.install(host)
+    host.tk.call("::tk::mac::OpenDocument", "/music/a.mp3")
+    assert not _pump(host, lambda: host.open_paths.called, seconds=0.3)  # type: ignore[attr-defined]
+    host._hub_setup_open = False
+    assert _pump(host, lambda: host.open_paths.called)  # type: ignore[attr-defined]
+
+
+def test_about_and_settings_beep_during_an_exit_question_or_the_model_folder_dialog(
+    aqua: None, host: _Host,
+) -> None:
+    mac_native.install(host)
+    for flag in ("_exit_prompt_open", "_hub_setup_open"):
+        setattr(host, flag, True)
+        host.tk.call("tkAboutDialog")
+        host.tk.call("::tk::mac::ShowPreferences")
+        setattr(host, flag, False)
+    host._show_about.assert_not_called()  # type: ignore[attr-defined]
+    host.open_advanced_dialog.assert_not_called()  # type: ignore[attr-defined]
+
+
+def _mapped(window: tk.Toplevel, monkeypatch: pytest.MonkeyPatch) -> tk.Toplevel:
+    """Pretend the window is on screen (the test root itself stays withdrawn)."""
+    monkeypatch.setattr(window, "winfo_viewable", lambda: 1)
+    return window
+
+
+def test_a_mapped_transient_window_counts_as_modal_even_without_a_grab(
+    aqua: None, host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Three dialogs swallow a failed grab_set; the window itself still blocks."""
+    dialog = tk.Toplevel(host)
+    dialog.transient(host)
+    _mapped(dialog, monkeypatch)
+    mac_native.install(host)
+    host.tk.call("tkAboutDialog")
+    host.tk.call("::tk::mac::OpenDocument", "/music/a.mp3")
+    assert not _pump(host, lambda: host.open_paths.called, seconds=0.3)  # type: ignore[attr-defined]
+    host._show_about.assert_not_called()  # type: ignore[attr-defined]
+    dialog.destroy()
+    assert _pump(host, lambda: host.open_paths.called)  # type: ignore[attr-defined]
+
+
+def test_windows_that_are_not_modal_do_not_block(
+    aqua: None, host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    hidden = tk.Toplevel(host)  # transient but not on screen
+    hidden.transient(host)
+    free = _mapped(tk.Toplevel(host), monkeypatch)  # on screen but not transient
+    flagged = tk.Toplevel(host)
+    flagged.transient(host)
+    flagged._non_modal = True  # type: ignore[attr-defined]
+    _mapped(flagged, monkeypatch)
+    assert mac_native._modal_open(host) is False
+    free.destroy()
+
+
+def test_transcript_viewers_are_not_modal(
+    host: _Host, monkeypatch: pytest.MonkeyPatch, tmp_path: Any,
+) -> None:
+    from app.dialogs.transcript_viewer import TranscriptViewer
+    from tests.app.test_viewer_edit_safety import _open, _write_outputs
+
+    assert TranscriptViewer._non_modal is True
+    viewer = _open(host, _write_outputs(tmp_path, ["json"]))
+    _mapped(viewer, monkeypatch)
+    try:
+        assert str(viewer.wm_transient())  # transient, like a modal dialog
+        assert mac_native._modal_open(host) is False
+    finally:
+        viewer._dirty = False
+        viewer._on_close()
+
+
+def test_hub_setup_flag_is_set_while_the_dialog_is_open_and_cleared_on_done(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.dialogs import hub_setup
+    from core import hub
+
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(hub, "is_hub_configured", lambda _c: False)
+    monkeypatch.setattr(
+        hub_setup, "ensure_hub_configured",
+        lambda _m, _c, on_done=None, **_k: captured.setdefault("on_done", on_done))
+    fake = types.SimpleNamespace(app_config={}, log=MagicMock(), _hub_setup_open=False)
+    App._ensure_hub_folder(fake)  # type: ignore[arg-type]
+    assert fake._hub_setup_open is True
+    monkeypatch.setattr(app_mod, "load_config", lambda: {})
+    captured["on_done"]("/models")
+    assert fake._hub_setup_open is False
+
+
+def test_hub_setup_flag_is_cleared_when_the_dialog_cannot_open(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.dialogs import hub_setup
+    from core import hub
+
+    def boom(*_a: Any, **_k: Any) -> None:
+        raise RuntimeError("no dialog")
+
+    monkeypatch.setattr(hub, "is_hub_configured", lambda _c: False)
+    monkeypatch.setattr(hub_setup, "ensure_hub_configured", boom)
+    fake = types.SimpleNamespace(app_config={}, log=MagicMock(), _hub_setup_open=False)
+    App._ensure_hub_folder(fake)  # type: ignore[arg-type]
+    assert fake._hub_setup_open is False
+
+
+def test_hub_flag_exists_before_the_first_event_loop_turn() -> None:
+    import inspect
+
+    src = inspect.getsource(App.__init__)
+    assert src.find("self._hub_setup_open = False") != -1
+    assert src.find("self._hub_setup_open = False") < src.find("mac_native.install(self)")
+
+
+# --------------------------------------- Finder files: the media check
+
+def _open_paths_host(tmp_path: Any) -> types.SimpleNamespace:
+    return types.SimpleNamespace(
+        fv=types.SimpleNamespace(set=MagicMock()), nb=MagicMock(), t1=object(),
+        log=MagicMock(), _bulk_enqueue=MagicMock(return_value=0))
+
+
+def test_a_non_media_file_from_finder_is_refused_with_the_drop_message(tmp_path: Any) -> None:
+    note = tmp_path / "notes.txt"
+    note.write_text("x", encoding="utf-8")
+    fake = _open_paths_host(tmp_path)
+    App.open_paths(fake, [str(note)], require_media=True)  # type: ignore[arg-type]
+    fake.fv.set.assert_not_called()
+    assert "Ignored 1 dropped item(s)" in fake.log.call_args[0][0]
+
+
+def test_a_media_file_from_finder_is_picked_like_a_drop(tmp_path: Any) -> None:
+    song = tmp_path / "song.mp3"
+    song.write_bytes(b"x")
+    fake = _open_paths_host(tmp_path)
+    App.open_paths(fake, [str(song)], require_media=True)  # type: ignore[arg-type]
+    fake.fv.set.assert_called_once_with(str(song))
+
+
+def test_only_the_media_files_of_a_mixed_finder_open_are_queued(tmp_path: Any) -> None:
+    a, b, note = tmp_path / "a.mp3", tmp_path / "b.mkv", tmp_path / "n.txt"
+    for f in (a, b, note):
+        f.write_bytes(b"x")
+    fake = _open_paths_host(tmp_path)
+    App.open_paths(fake, [str(a), str(note), str(b)], require_media=True)  # type: ignore[arg-type]
+    fake._bulk_enqueue.assert_called_once_with([str(a), str(b)])
+
+
+def test_a_dropped_file_on_windows_keeps_its_behaviour_without_the_media_check(tmp_path: Any) -> None:
+    """A drop (require_media off) still picks any existing file, as before."""
+    note = tmp_path / "notes.txt"
+    note.write_text("x", encoding="utf-8")
+    fake = _open_paths_host(tmp_path)
+    App.open_paths(fake, [str(note)])  # type: ignore[arg-type]
+    fake.fv.set.assert_called_once_with(str(note))
+
+
+# --------------------------------------- viewer: Open JSON folder
+
+def test_viewer_json_folder_button_says_reveal_in_finder_and_selects_the_json(
+    platform_name: Callable[[str], None], host: _Host, monkeypatch: pytest.MonkeyPatch, tmp_path: Any,
+) -> None:
+    from app.dialogs import transcript_viewer as tv
+    from tests.app.test_transcript_json_pick import _buttons
+    from tests.app.test_viewer_edit_safety import _open, _write_outputs
+
+    platform_name("darwin")
+    json_path = _write_outputs(tmp_path, ["json"])
+    viewer = _open(host, json_path)
+    try:
+        buttons = _buttons(viewer)
+        assert "Reveal in Finder" in buttons and "Open JSON folder" not in buttons
+        seen: list[Any] = []
+        monkeypatch.setattr(tv, "open_folder", lambda *a, **k: seen.append((a, k)))
+        buttons["Reveal in Finder"].invoke()
+        assert seen == [((str(tmp_path),), {"parent": viewer, "select": json_path})]
+    finally:
+        viewer._dirty = False
+        viewer._on_close()
+
+
+def test_viewer_json_folder_button_is_unchanged_on_windows_and_linux(
+    platform_name: Callable[[str], None], host: _Host, monkeypatch: pytest.MonkeyPatch, tmp_path: Any,
+) -> None:
+    from app.dialogs import transcript_viewer as tv
+    from tests.app.test_transcript_json_pick import _buttons
+    from tests.app.test_viewer_edit_safety import _open, _write_outputs
+
+    platform_name("linux")
+    viewer = _open(host, _write_outputs(tmp_path, ["json"]))
+    try:
+        buttons = _buttons(viewer)
+        assert "Open JSON folder" in buttons
+        opened: list[str] = []
+        monkeypatch.setattr(tv, "_os_open", opened.append)
+        monkeypatch.setattr(tv, "open_folder", lambda *a, **k: pytest.fail("not on this platform"))
+        buttons["Open JSON folder"].invoke()
+        assert opened == [str(tmp_path)]
     finally:
         viewer._dirty = False
         viewer._on_close()

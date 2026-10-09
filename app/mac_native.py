@@ -85,20 +85,47 @@ def _guarded(name: str, action: Callable[[], None]) -> Callable[..., None]:
 
 
 def _modal_open(app: Any) -> bool:
-    """True while a modal window holds the Tk grab (macOS menus still work then)."""
+    """True while a modal window is open (macOS menus still work then).
+
+    Two signals, because three dialogs swallow a failed ``grab_set`` and a
+    native alert holds no grab at all: the Tk grab, and any window of the app
+    that is on screen and transient (what every modal dialog here is). Windows
+    that set ``_non_modal`` (the transcript viewer) are transient too but stay
+    usable beside the main window.
+    """
     try:
-        return app.grab_current() is not None
+        if app.grab_current() is not None:
+            return True
     except (tk.TclError, KeyError):
+        pass
+    try:
+        children = app.winfo_children()
+    except (tk.TclError, AttributeError):
         return False
+    for child in children:
+        if not isinstance(child, tk.Toplevel) or getattr(child, "_non_modal", False):
+            continue
+        try:
+            if child.winfo_viewable() and str(child.wm_transient()):
+                return True
+        except tk.TclError:
+            continue
+    return False
+
+
+def _question_open(app: Any) -> bool:
+    """True while a question without a Tk grab is open: the quit question (a native
+    alert) or the first-run model folder dialog."""
+    return bool(getattr(app, "_exit_prompt_open", False) or getattr(app, "_hub_setup_open", False))
 
 
 def _cannot_open_dialog(app: Any) -> bool:
-    """True before the window is ready, or while a modal window is open.
+    """True before the window is ready, or while a modal window or question is open.
 
     Windows blocks the main window's buttons the same way; macOS menu items
     stay live, so the app menu's About and Settings check it themselves.
     """
-    return not getattr(app, "_start_ran", False) or _modal_open(app)
+    return not getattr(app, "_start_ran", False) or _question_open(app) or _modal_open(app)
 
 
 def show_about(app: Any) -> None:
@@ -155,6 +182,7 @@ def ready_for_documents(app: Any) -> bool:
     return (
         bool(getattr(app, "_start_ran", False))
         and not getattr(app, "_quick_start_open", False)
+        and not _question_open(app)
         and not _modal_open(app)
     )
 
@@ -169,7 +197,9 @@ def drain_pending(app: Any) -> None:
         return
     paths, app._mac_pending_opens = app._mac_pending_opens, []
     show_main_window(app)
-    app.open_paths(paths)
+    # Finder lists the app for any file type under "Open With": only audio and
+    # video is taken, the rest is reported like an unusable drop.
+    app.open_paths(paths, require_media=True)
 
 
 # ------------------------------------------------------------- Dock: reopen

@@ -40,15 +40,16 @@ import sys
 import tempfile
 import time
 import tkinter as tk
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 _results: list[tuple[str, str, str]] = []
 
 # The hooks app/mac_native.py relies on. The others (apple_menu, dock_menu) are
 # reported honestly but the app does not use them, so they do not fail the run.
 USED_BY_APP = (
-    "show_preferences", "about", "show_help", "open_document", "reopen_application",
-    "window_menu", "help_menu", "window_attributes",
+    "special_menus", "show_preferences", "show_preferences_createcommand", "about",
+    "show_help", "open_document", "reopen_application", "window_menu", "help_menu",
+    "window_attributes",
 )
 
 
@@ -378,56 +379,84 @@ def probe_window_attributes(root: tk.Tk, oc: _ObjC) -> None:
 
 # ----------------------------------------------------------------------- main
 
+def run_steps(steps: Sequence[tuple[str, Callable[[], None]]]) -> list[str]:
+    """Run every step; one that raises is reported as a FAIL under its own name.
+
+    Returns the names of the steps that raised: a broken check is never a pass.
+    """
+    crashed: list[str] = []
+    for name, step in steps:
+        try:
+            step()
+        except Exception as exc:  # noqa: BLE001 - reported, and the run fails below
+            crashed.append(name)
+            _report("FAIL", name, f"check raised {type(exc).__name__}: {exc}")
+    return crashed
+
+
+def exit_code(results: Sequence[tuple[str, str, str]], crashed: Sequence[str]) -> int:
+    """1 when a step raised or a hook the app uses failed, else 0."""
+    failed = {hook for status, hook, _detail in results if status == "FAIL"}
+    return 1 if crashed or failed & set(USED_BY_APP) else 0
+
+
 def main(argv: list[str]) -> int:
     hold = 0.0
     if "--hold" in argv:
         hold = float(argv[argv.index("--hold") + 1])
     root = tk.Tk()
-    root.title("Mac native probe")
-    root.geometry("360x120+80+80")
-    tk.Label(root, text="Mac native probe running").pack(padx=20, pady=30)
-    system = root.tk.call("tk", "windowingsystem")
-    print(f"python {sys.version.split()[0]}  platform {sys.platform}")
-    print(f"Tk patchlevel {root.tk.call('info', 'patchlevel')}  windowingsystem {system}")
-    if system != "aqua":
-        print("SKIP: not Aqua; nothing to probe")
-        root.destroy()
-        return 2
-    events: dict[str, list[Any]] = {k: [] for k in
-                                    ("prefs", "about", "open", "reopen", "apple_item", "help_item")}
-    menus_ok = build_probe_menubar(root)
-    root.update()
-    oc = _ObjC()
-    root.tk.eval("set ::probe_events {}")
-    # A background launch is not the active app, and Tk installs the app menu,
-    # Help menu and Apple-menu entries when its window becomes active.
-    oc.msg(oc.app(), "activateIgnoringOtherApps:", 1, argtypes=(ctypes.c_byte,))
-    root.lift()
-    _pump(root, 1.0)
-    steps: list[Callable[[], None]] = [
-        lambda: probe_menus_and_app_menu(root, oc, events) if menus_ok else None,
-        lambda: probe_preferences(root, oc, events),
-        lambda: probe_about(root, oc, events),
-        lambda: probe_show_help(root, oc),
-        lambda: probe_open_document(root, oc, events),
-        lambda: probe_reopen(root, oc, events),
-        lambda: probe_dock_menu(root, oc),
-        lambda: probe_window_attributes(root, oc),
-    ]
-    for step in steps:
+    try:
+        root.title("Mac native probe")
+        root.geometry("360x120+80+80")
+        tk.Label(root, text="Mac native probe running").pack(padx=20, pady=30)
+        system = root.tk.call("tk", "windowingsystem")
+        print(f"python {sys.version.split()[0]}  platform {sys.platform}")
+        print(f"Tk patchlevel {root.tk.call('info', 'patchlevel')}  windowingsystem {system}")
+        if system != "aqua":
+            print("SKIP: not Aqua; nothing to probe")
+            return 2
+        events: dict[str, list[Any]] = {k: [] for k in
+                                        ("prefs", "about", "open", "reopen", "apple_item", "help_item")}
+        crashed: list[str] = []
         try:
-            step()
-        except Exception as exc:  # noqa: BLE001 - a broken check is a FAIL, never a crash
-            _report("FAIL", getattr(step, "__name__", "step"), f"check raised {type(exc).__name__}: {exc}")
-    if hold:
-        _pump(root, hold)
-    root.destroy()
+            menus_ok = build_probe_menubar(root)
+            root.update()
+            oc = _ObjC()
+            root.tk.eval("set ::probe_events {}")
+            # A background launch is not the active app, and Tk installs the app menu,
+            # Help menu and Apple-menu entries when its window becomes active.
+            oc.msg(oc.app(), "activateIgnoringOtherApps:", 1, argtypes=(ctypes.c_byte,))
+            root.lift()
+            _pump(root, 1.0)
+        except Exception as exc:  # noqa: BLE001 - nothing can be probed without these
+            _report("FAIL", "setup", f"setup raised {type(exc).__name__}: {exc}")
+            print("SUMMARY: setup failed; hooks the app uses failing: all")
+            return 1
+        steps: list[tuple[str, Callable[[], None]]] = [
+            ("menus", lambda: probe_menus_and_app_menu(root, oc, events) if menus_ok else None),
+            ("show_preferences", lambda: probe_preferences(root, oc, events)),
+            ("about", lambda: probe_about(root, oc, events)),
+            ("show_help", lambda: probe_show_help(root, oc)),
+            ("open_document", lambda: probe_open_document(root, oc, events)),
+            ("reopen_application", lambda: probe_reopen(root, oc, events)),
+            ("dock_menu", lambda: probe_dock_menu(root, oc)),
+            ("window_attributes", lambda: probe_window_attributes(root, oc)),
+        ]
+        crashed = run_steps(steps)
+        if hold:
+            _pump(root, hold)
+    finally:
+        try:
+            root.destroy()
+        except tk.TclError:
+            pass
     fails = [h for s, h, _d in _results if s == "FAIL"]
     needed = [h for h in fails if h in USED_BY_APP]
     print(f"SUMMARY: {sum(1 for s, _h, _d in _results if s == 'PASS')} pass, {len(fails)} fail"
           + (f" ({', '.join(fails)})" if fails else "")
-          + f"; hooks the app uses failing: {', '.join(needed) or 'none'}")
-    return 1 if needed else 0
+          + f"; hooks the app uses failing: {', '.join(needed) or 'none'}"
+          + (f"; steps that raised: {', '.join(crashed)}" if crashed else ""))
+    return exit_code(_results, crashed)
 
 
 if __name__ == "__main__":

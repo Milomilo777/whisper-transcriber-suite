@@ -77,3 +77,11 @@ def task_output_folder(task: Any) -> str:
         if isinstance(p, str) and os.path.isfile(p):
             return os.path.dirname(os.path.abspath(p))
     return os.path.dirname(task.file_path) or "."
+
+
+def task_output_file(task: Any) -> str | None:
+    """The task's first output file that exists, else None (a file Reveal in Finder can select)."""
+    for p in getattr(task, "output_paths", None) or ():
+        if isinstance(p, str) and os.path.isfile(p):
+            return p
+    return None

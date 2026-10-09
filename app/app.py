@@ -25,6 +25,7 @@ from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
 from app.domain.task_outputs import (
     pick_transcript_json,
+    task_output_file,
     task_output_folder,
     task_srt_output,
     task_transcript_json,
@@ -46,7 +47,7 @@ from app.widgets.error_dialog import show_error
 from app.widgets.notice import notify
 from app.widgets import subtitle_edit as subtitle_edit_ui
 from app.widgets.platform import open_folder as _open_folder_helper
-from app.widgets.platform import reveal_label
+from app.widgets.platform import folder_action_label, folder_label, reveal_label
 from app.widgets.live_tab import build_live_tab, stop_live_session
 from app.widgets.live_tab import apply_theme as live_tab_theme
 from app.widgets.live_tab import save_before_exit as live_save_before_exit
@@ -639,7 +640,7 @@ def build_about_sections() -> list[AboutSection]:
                 "tells you; it never downloads or installs on its own",
                 "A newer version shows a quiet bar under the menu: What's "
                 "new, Download (the file for this kind of install), Later "
-                "(again in 3, 7, then 14 days, then only a dot on the Help "
+                "(again in 3, 7, then 14 days, then only a dot in the Help "
                 "menu) or Skip this version",
                 "Run it any time from Help → Check for updates…; turn the "
                 "daily check off in Advanced → App behaviour",
@@ -1045,6 +1046,7 @@ class App(tk.Tk):
         # into the app. Registered before the first event-loop turn so a file
         # that launched the app waits in a queue instead of being lost.
         self._start_ran = False
+        self._hub_setup_open = False
         mac_native.install(self)
         self._refresh_update_signs()
         self._build_tabs()
@@ -1248,17 +1250,22 @@ class App(tk.Tk):
             from app.dialogs.hub_setup import ensure_hub_configured
 
             def _hub_picked(path: str) -> None:
+                self._hub_setup_open = False
                 self.log(f"Model hub folder set to: {path}")
                 try:
                     self.app_config = load_config()
                 except Exception:  # noqa: BLE001
                     pass
 
+            # Open until on_done (Choose and Cancel both call it); the macOS
+            # file queue waits for it (mac_native.ready_for_documents).
+            self._hub_setup_open = True
             ensure_hub_configured(
                 self, self.app_config,
                 on_done=_hub_picked,
             )
         except Exception as e:  # noqa: BLE001
+            self._hub_setup_open = False
             logger.warning("Hub setup dialog failed: %s", e)
 
     # Menu --------------------------------------------------------------------
@@ -1339,15 +1346,15 @@ class App(tk.Tk):
         h.add_command(label="Open oTranscribe website...",
                       command=self.integrations_service.open_otranscribe)
         h.add_separator()
-        h.add_command(label=reveal_label("Open log folder", "Log Folder"),
+        h.add_command(label=folder_label("Open log folder", "Log Folder"),
                       command=self.open_log_folder)
         h.add_separator()
         # Manual update check — always runs (ignores the once-per-day
         # throttle the quiet launch check obeys) and DOES report the
         # "you're up to date" / "couldn't reach the server" cases, unlike
         # the silent launch check. Never downloads/installs anything.
-        # _refresh_update_signs adds a dot to this item and to "Help" while
-        # a newer version is known (the passive sign).
+        # _refresh_update_signs adds a dot to this item (and, off macOS, to the
+        # "Help" title) while a newer version is known (the passive sign).
         h.add_command(label=_CHECK_FOR_UPDATES_LABEL,
                       command=self._check_for_updates_manual)
         self._help_menu = h
@@ -4026,9 +4033,10 @@ class App(tk.Tk):
                         task.language or task.detected_language,
                     ),
                 )
+                out_file = task_output_file(task)
                 m.add_command(
-                    label=reveal_label("Open output folder"),
-                    command=lambda: self._open_folder(task_output_folder(task)),
+                    label=folder_action_label("Open output folder", "Output Folder", out_file),
+                    command=lambda: self._open_folder(task_output_folder(task), select=out_file),
                 )
                 m.add_separator()
             # Resume-from-cancellation: a "Resume" entry sits above "Re-run"
@@ -4111,9 +4119,10 @@ class App(tk.Tk):
                     label="Open file",
                     command=lambda p=saved: self._open_file(p),
                 )
+            reveal_target = saved if task.status == "finished" and saved and os.path.isfile(saved) else None
             m.add_command(
-                label=reveal_label("Open download folder"),
-                command=lambda: self._open_folder(task.folder),
+                label=folder_action_label("Open download folder", "Download Folder", reveal_target),
+                command=lambda: self._open_folder(task.folder, select=reveal_target),
             )
             m.add_command(label="Re-run", command=lambda: self._rerun_download(task))
             m.add_command(label="Remove", command=lambda: self.remove_download(task))
@@ -5340,7 +5349,9 @@ class App(tk.Tk):
         button_row = ttk.Frame(self.last_result_body)
         button_row.pack(anchor="w", pady=(8, 0))
         ttk.Button(
-            button_row, text=reveal_label("Open folder"),
+            button_row,
+            text=folder_action_label(
+                "Open folder", "Folder", existing[0] if existing else None),
             command=lambda: self._open_folder(
                 folder, select=existing[0] if existing else None),
         ).pack(side="left")
@@ -6016,7 +6027,10 @@ class App(tk.Tk):
         self._refresh_update_signs()
 
     def _refresh_update_signs(self) -> None:
-        """The passive signs: a dot on "Help" and on "Check for updates...".
+        """The passive signs: a dot in the Help menu, on "Check for updates...".
+
+        Off macOS the "Help" title carries a dot too; on macOS the title stays exactly
+        "Help" (macOS adds its search field only to that title).
 
         Shown while a newer, unskipped version is known (stored, no network)
         and automatic checks are on; cleared otherwise.
@@ -6530,13 +6544,22 @@ class App(tk.Tk):
                 items = [raw]
         self.open_paths(items, empty_payload=not raw.strip())
 
-    def open_paths(self, items: list[str], *, empty_payload: bool = False) -> None:
+    def open_paths(
+        self, items: list[str], *, empty_payload: bool = False, require_media: bool = False,
+    ) -> None:
         """Handle dropped items, or files passed on the command line.
+
+        ``require_media``: files that are not audio or video (``core.watcher.is_media_file``)
+        are reported like any unusable item instead of being picked. Off for drops and the
+        command line, which accept any existing file as before; macOS turns it on for files
+        Finder hands over ("Open With" lists the app for any file type).
 
         One file is picked in the Transcribe tab, several files (or a
         folder's media files) are queued, a URL goes to the Download tab,
         and anything unusable is reported in the log.
         """
+        from core.watcher import is_media_file
+
         paths: list[str] = []
         urls: list[str] = []
         folders: list[str] = []
@@ -6558,7 +6581,10 @@ class App(tk.Tk):
                 else:
                     unsupported.append(s)
             elif os.path.isfile(s):
-                paths.append(s)
+                if require_media and not is_media_file(s):
+                    unsupported.append(s)
+                else:
+                    paths.append(s)
             elif os.path.isdir(s):
                 folders.append(s)
             else:

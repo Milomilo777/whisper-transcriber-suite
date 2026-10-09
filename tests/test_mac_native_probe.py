@@ -78,3 +78,47 @@ def test_the_macos_workflow_runs_the_probe_as_a_non_blocking_extra_check() -> No
     assert "tools/mac_native_probe.py" in step
     assert "continue-on-error: true" in step  # a runner that is not an app bundle must not fail the build
     assert "timeout-minutes:" in step
+
+
+def test_a_step_that_raises_is_reported_under_its_own_name_and_fails_the_run(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    probe = _probe()
+    probe._results.clear()
+
+    def boom() -> None:
+        raise RuntimeError("objc went away")
+
+    crashed = probe.run_steps([("fine", lambda: None), ("show_help", boom)])
+    assert crashed == ["show_help"]
+    assert ("FAIL", "show_help", "check raised RuntimeError: objc went away") in probe._results
+    assert "<lambda>" not in capsys.readouterr().out
+    assert probe.exit_code(probe._results, crashed) == 1
+
+
+def test_exit_code_fails_for_hooks_the_app_uses_only() -> None:
+    probe = _probe()
+    assert probe.exit_code([("PASS", "about", "ok"), ("FAIL", "dock_menu", "no")], []) == 0
+    assert probe.exit_code([("FAIL", "apple_menu", "no")], []) == 0
+    for hook in ("special_menus", "about", "show_preferences_createcommand"):
+        assert probe.exit_code([("FAIL", hook, "no")], []) == 1, hook
+    assert probe.exit_code([], ["menus"]) == 1
+
+
+def test_main_names_every_step_creates_objc_in_the_guarded_block_and_always_destroys_the_root() -> None:
+    tree = ast.parse(PROBE.read_text(encoding="utf-8"))
+    main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
+    # the steps are (name, callable) pairs, never anonymous lambdas reported as "<lambda>"
+    steps = next(n for n in ast.walk(main) if isinstance(n, ast.AnnAssign)
+                 and isinstance(n.target, ast.Name) and n.target.id == "steps")
+    assert isinstance(steps.value, ast.List) and steps.value.elts
+    assert all(isinstance(e, ast.Tuple) and isinstance(e.elts[0], ast.Constant) for e in steps.value.elts)
+    # _ObjC() is built inside a try block
+    guarded = [t for t in ast.walk(main) if isinstance(t, ast.Try)
+               and any(isinstance(c, ast.Call) and getattr(c.func, "id", "") == "_ObjC"
+                       for stmt in t.body for c in ast.walk(stmt))]
+    assert guarded
+    # the root is destroyed in a finally block
+    assert any(isinstance(t, ast.Try) and any(
+        isinstance(c, ast.Call) and getattr(c.func, "attr", "") == "destroy"
+        for stmt in t.finalbody for c in ast.walk(stmt)) for t in ast.walk(main))

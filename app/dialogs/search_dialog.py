@@ -40,6 +40,9 @@ def _fmt_hms(seconds: float) -> str:
 class SearchDialog(tk.Toplevel):
     """Modal-ish (non-blocking) search window over every saved transcript."""
 
+    # Transient, but usable beside the main window (app/mac_native.py).
+    _non_modal = True
+
     def __init__(self, master: "tk.Tk | tk.Toplevel") -> None:
         super().__init__(master)
         self.title("Search transcripts")

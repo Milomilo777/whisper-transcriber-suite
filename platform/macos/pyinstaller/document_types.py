@@ -14,8 +14,9 @@ from __future__ import annotations
 
 from typing import Iterable
 
-# Extensions left out of the Finder declaration: ".ts" is TypeScript on a
-# developer's Mac far more often than an MPEG transport stream.
+# No explicit entry for ".ts": it is TypeScript on a developer's Mac far more
+# often than an MPEG transport stream. (public.movie may still list the app for
+# some .ts files; that is only "Open With", rank Alternate.)
 EXCLUDED_EXTENSIONS = frozenset({"ts"})
 
 # System types that already cover most audio and video (mp3, wav, m4a, aiff,

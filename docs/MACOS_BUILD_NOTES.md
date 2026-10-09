@@ -339,7 +339,7 @@ keystroke itself could not be sent through the VM's remote keyboard, so it is on
 The macOS app build workflow (`macos-app.yml`) also runs the probe on the Intel and Apple-silicon
 runners as an extra, non-blocking step (`continue-on-error`): a runner's Python may not be an app
 bundle, so a FAIL line there is information, not a build failure. It has not been run yet: the
-workflow is manual-dispatch only.
+workflow runs on manual dispatch and on a push to the `macos-app-build` branch.
 
 **Behaviour.**
 
@@ -351,25 +351,31 @@ workflow is manual-dispatch only.
   window.
 - Open files from Finder: never PyInstaller `argv_emulation` (it conflicts with Tk). The handler is
   registered before the first event-loop turn; files wait in a queue until the first-run windows and
-  any modal window are done, then go through `App.open_paths`: the same path, validation and
-  English-only model question as a drop on the window. The spec declares `CFBundleDocumentTypes`
+  any modal window or question are done (the Tk grab, a mapped transient window, the quit question,
+  the quick start and model folder windows; the transcript viewer and search window do not count),
+  then go through `App.open_paths`: the same path and English-only model question as a drop on the
+  window. Unlike a drop, Finder files must be audio or video (`core.watcher.is_media_file`), because
+  "Open With" can offer the app for any file; others get the drop's "Ignored ... item(s)" log line. The spec declares `CFBundleDocumentTypes`
   (`platform/macos/pyinstaller/document_types.py`, built from `core/media_types.py`): role Viewer, rank
-  Alternate, so Finder lists the app under "Open With" and never makes it the default app. `.ts` is left
-  out (TypeScript). `verify_mac_bundle.sh` and `test_dmg.sh` check the key in the built app. The
+  Alternate, so Finder lists the app under "Open With" and never makes it the default app. `.ts` gets no
+  explicit entry (TypeScript), but `public.movie` may still list the
+  app for some `.ts` files (rank Alternate, so only under "Open With"). `verify_mac_bundle.sh` and `test_dmg.sh` check the key in the built app. The
   source install (`install.command`) writes its own small Info.plist and declares no document types, so
   "Open With" is for the packaged app only.
 - Dock icon: a click while the window is minimised or hidden in the tray shows it again.
-- Wording: "Reveal in Finder" replaces "Open folder" / "Open output folder" / "Open download folder"
-  (and "Reveal Log Folder in Finder" in Help); where a file is known (a finished job's first output, a
-  burned video, a converted transcript) it is selected with `open -R`. There is no "Options" or
-  "Preferences" text in the app; the native item says "Settings…".
+- Wording: "Reveal in Finder" where a file is selected with `open -R` (a finished job's first
+  output, a burned video, a converted transcript, the viewer's JSON); where only a folder opens it says
+  "Open … Folder in Finder" (model folder, log folder, a row with nothing to select). If `open -R`
+  fails the folder is opened instead. There is no Options or Preferences window or menu item in the
+  app; the native item is the system's own wording ("Settings…" on macOS 13, "Preferences…" on 10.15).
 - Transcript viewer: the transcript file is the window's proxy icon and unsaved edits show the dot in
   the close button.
 
 **Manual checks on a Mac (the automated tests cannot see these).** From a built `.app` on macOS 13 and
 10.15:
 
-1. App menu shows "About Whisper Transcriber Suite" and "Settings…"; Command-comma opens Advanced
+1. App menu shows "About Whisper Transcriber Suite" and "Settings…" (macOS 13) or "Preferences…"
+   (10.15); Command-comma opens Advanced
    settings; About opens the full About dialog; Help has no second About.
 2. Window menu lists the open windows; Command-M minimises; Bring All to Front works. Help shows the
    search field and a Help item that opens the documentation page.
@@ -378,7 +384,8 @@ workflow is manual-dispatch only.
 4. Finder: right-click an `.mp3` > Open With lists the app (not as default); choose it with the app
    closed (it starts and fills the file picker) and open; drag three files onto the Dock icon (they are
    queued once the first-run windows are closed); on a fresh install nothing opens before the quick
-   start window is dismissed.
+   start and model folder windows are dismissed; a non-audio, non-video file chosen with Other... is
+   reported in the log and not picked.
 5. Minimise the window, click the Dock icon: it returns.
 6. Last Result card, queue and Help menu say "Reveal in Finder"; the button selects the output file.
 

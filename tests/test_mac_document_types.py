@@ -108,8 +108,12 @@ def test_every_media_extension_the_app_accepts_is_declared_except_ts() -> None:
     assert extensions <= accepted  # nothing invented
 
 
-def test_typescript_files_do_not_offer_the_app() -> None:
-    """.ts is TypeScript far more often than an MPEG transport stream."""
+def test_ts_has_no_explicit_extension_entry() -> None:
+    """.ts is TypeScript far more often than an MPEG transport stream.
+
+    Only the explicit extension list is checked: ``public.movie`` may still list the app
+    for some .ts files, at rank Alternate (Open With only).
+    """
     for entry in _spec_document_types():
         assert "ts" not in entry.get("CFBundleTypeExtensions", [])
 
@@ -141,4 +145,6 @@ def test_all_three_specs_list_the_new_module_as_a_hidden_import(spec: Path) -> N
 
 def test_the_bundle_checks_look_for_the_document_types() -> None:
     for script in ("verify_mac_bundle.sh", "test_dmg.sh"):
-        assert "CFBundleDocumentTypes" in (PYI / script).read_text(encoding="utf-8"), script
+        text = (PYI / script).read_text(encoding="utf-8")
+        assert "CFBundleDocumentTypes" in text, script
+        assert "LSHandlerRank" in text, script  # never the default app for a type

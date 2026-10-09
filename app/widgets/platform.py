@@ -21,16 +21,28 @@ def open_with_default_app(path: str) -> None:
         subprocess.Popen(["xdg-open", path])
 
 
-def reveal_label(default: str, what: str = "") -> str:
-    """The wording of an "open this folder" action: macOS says Reveal in Finder.
+def is_darwin() -> bool:
+    """True on macOS (the platform the Finder wording and ``open -R`` are for)."""
+    return sys.platform == "darwin"
 
-    ``default`` is returned unchanged everywhere else. ``what`` names the thing
-    on macOS when "Reveal in Finder" alone would be unclear (a menu that is not
-    about one selected item), for example ``"Log Folder"``.
+
+def reveal_label(default: str) -> str:
+    """Wording of an action that shows one file in the file manager.
+
+    macOS says "Reveal in Finder"; ``default`` is returned unchanged elsewhere.
+    Use it only where a file is selected (see :func:`open_folder`'s ``select``).
     """
-    if sys.platform != "darwin":
-        return default
-    return f"Reveal {what} in Finder" if what else "Reveal in Finder"
+    return "Reveal in Finder" if is_darwin() else default
+
+
+def folder_label(default: str, what: str = "Folder") -> str:
+    """Wording of an action that only opens a folder: "Open <what> in Finder" on macOS."""
+    return f"Open {what} in Finder" if is_darwin() else default
+
+
+def folder_action_label(default: str, what: str, target: "str | None") -> str:
+    """:func:`reveal_label` when ``target`` (a file to select) exists, else :func:`folder_label`."""
+    return reveal_label(default) if target else folder_label(default, what)
 
 
 def open_folder(
@@ -41,18 +53,20 @@ def open_folder(
     """Show ``folder`` in the file manager.
 
     ``select``: a file to highlight. Only macOS uses it (``open -R`` reveals the
-    file inside its folder, like Finder's own Reveal in Finder); Windows and
-    Linux open the folder exactly as before.
+    file inside its folder, like Finder's own Reveal in Finder; when that fails
+    the folder is opened instead); Windows and Linux open the folder exactly as
+    before.
     """
     if (
-        sys.platform == "darwin" and select and os.path.isfile(select)
+        is_darwin() and select and os.path.isfile(select)
         and folder and os.path.isdir(folder)
     ):
         try:
-            subprocess.run(["open", "-R", select], check=False)
-            return
+            if subprocess.run(["open", "-R", select], check=False).returncode == 0:
+                return
         except OSError:
-            pass  # fall through to opening the folder the usual way
+            pass
+        # `open -R` failed: open the folder the usual way below.
     if not folder or not os.path.isdir(folder):
         kwargs = {"parent": parent} if parent is not None else {}
         messagebox.showwarning(
