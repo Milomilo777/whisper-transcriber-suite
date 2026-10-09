@@ -55,15 +55,34 @@ def fmt_lrc_time(seconds: float) -> str:
     return f"[{minutes:02d}:{sec:02d}.{cs:02d}]"
 
 
+_LONE_SURROGATES: dict[int, str] = {cp: chr(0xFFFD) for cp in range(0xD800, 0xE000)}
+
+
+def replace_lone_surrogates(text: str) -> str:
+    """*text* with every lone surrogate half replaced by U+FFFD.
+
+    A Python str never holds a valid pair as two code points, so every half found
+    is a lone one. ``str.encode("utf-8")`` refuses it, which cost the whole
+    output file of every text format; a hand-edited JSON with an escaped half or a file
+    name Python could not decode is enough to bring one in. Pure-ASCII text
+    returns at once.
+    """
+    if text.isascii():
+        return text
+    return text.translate(_LONE_SURROGATES)
+
+
 def normalize_text(text: object) -> str:
     """Trim and collapse internal whitespace runs to a single space.
 
     Non-string values are coerced with ``str()`` first (``None``/missing
     becomes ""): a hand-edited JSON can put a number in ``text``, and the
     bare ``.split()`` this used to call raised AttributeError on it,
-    aborting the whole write for that format.
+    aborting the whole write for that format. Lone surrogates become U+FFFD
+    (:func:`replace_lone_surrogates`), so every writer built on this can
+    encode its output.
     """
-    return " ".join(("" if text is None else str(text)).split())
+    return " ".join(replace_lone_surrogates("" if text is None else str(text)).split())
 
 
 def coerce_seconds(value: object, default: float = 0.0) -> float:
@@ -207,7 +226,7 @@ def speaker_prefix(seg: dict) -> str:
         return ""
     # Collapse whitespace: a newline or tab in a hand-edited label would
     # split a line-based format (txt, lrc, tsv, srt) in two.
-    label = " ".join(str(raw).split())
+    label = " ".join(replace_lone_surrogates(str(raw)).split())
     return f"{label}: " if label else ""
 
 

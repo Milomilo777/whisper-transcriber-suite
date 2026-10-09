@@ -7,9 +7,9 @@ karaoke tools can re-render without re-running Whisper. Also preserves
 from __future__ import annotations
 
 import json
-
-
 import math
+
+from .base import replace_lone_surrogates
 
 
 def _safe_float(value: object, default: float = 0.0) -> float:
@@ -83,4 +83,8 @@ def write(segments: list[dict], audio_path: str = "") -> str:
     # output; we've already _safe_float-ed every numeric field above
     # so this can no longer raise in practice but guards against
     # future regressions.
-    return json.dumps(out, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
+    # A lone surrogate half (hand-edited JSON, a damaged name) cannot be
+    # written as UTF-8 and ensure_ascii=False passes it through. Replacing it
+    # in the finished text covers every field (text, speaker, flags, words).
+    body = json.dumps(out, indent=2, ensure_ascii=False, allow_nan=False)
+    return replace_lone_surrogates(body) + "\n"

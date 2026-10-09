@@ -22,7 +22,7 @@ import os
 from typing import Any
 
 from . import pdf_bidi, pdf_fonts
-from .base import coerce_seconds, fmt_srt_time, normalize_text
+from .base import coerce_seconds, fmt_srt_time, normalize_text, replace_lone_surrogates
 
 
 def _fmt_pdf_time(seconds: float) -> str:
@@ -61,7 +61,8 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
         rightMargin=0.75 * inch,
         topMargin=0.75 * inch,
         bottomMargin=0.75 * inch,
-        title=os.path.basename(audio_path) if audio_path else "Transcript",
+        title=(replace_lone_surrogates(os.path.basename(audio_path))
+               if audio_path else "Transcript"),
     )
 
     styles = getSampleStyleSheet()
@@ -123,7 +124,8 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
         return "<br/>".join(rows), rtl
 
     story: list[Any] = []
-    title = os.path.basename(audio_path) if audio_path else "Transcript"
+    title = (replace_lone_surrogates(os.path.basename(audio_path))
+             if audio_path else "Transcript")
     shaped_title = bidi_markup("", title, title_style.fontSize, True)
     if shaped_title is not None:
         story.append(Paragraph(shaped_title[0], title_style))
@@ -151,7 +153,7 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
         # not — used to crash with AttributeError on int.
         raw_speaker = seg.get("speaker")
         speaker = (
-            str(raw_speaker).strip()
+            replace_lone_surrogates(str(raw_speaker).strip())
             if raw_speaker not in (None, "") else ""
         )
         plain = normalize_text(seg.get("text", ""))

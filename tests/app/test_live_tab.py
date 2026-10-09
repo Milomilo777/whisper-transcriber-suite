@@ -792,6 +792,32 @@ def test_autosave_never_overwrites_and_picks_a_free_name(built, tmp_path, monkey
     assert taken.read_text(encoding="utf-8") == "older file"
 
 
+def test_autosave_keeps_text_that_holds_a_lone_surrogate(built, tmp_path):
+    """A lone surrogate cannot be encoded as UTF-8. The autosave used to delete its file
+    and return "", so the unsaved live transcript was lost; the bad character is
+    replaced and the rest of the text is written."""
+    built.app_config["download_folder"] = str(tmp_path)
+    live_tab._append_line(built, "before" + chr(0xD800) + "after")
+    live_tab._append_line(built, "second line")
+    path = live_tab.autosave_unsaved_transcript(built)
+    assert path, "the autosave must report the file it wrote"
+    text = open(path, encoding="utf-8").read()
+    assert text.splitlines() == ["before" + chr(0xFFFD) + "after", "second line"]
+
+
+def test_manual_save_keeps_text_that_holds_a_lone_surrogate(built, tmp_path, monkeypatch):
+    target = tmp_path / "mine.txt"
+    monkeypatch.setattr(live_tab.filedialog, "asksaveasfilename", lambda **kw: str(target))
+    live_tab._append_line(built, "x" + chr(0xDC80) + "y")
+    assert live_tab._save(built) is True
+    assert target.read_text(encoding="utf-8").strip() == "x" + chr(0xFFFD) + "y"
+
+
+def test_copy_text_has_no_lone_surrogate(built):
+    live_tab._append_line(built, "x" + chr(0xDC80) + "y")
+    assert live_tab._transcript_text(built) == "x" + chr(0xFFFD) + "y"
+
+
 def test_no_signal_hint_comes_and_goes(built):
     state = {"value": "no_audio"}
     _listening(built, _health_session(input_signal_state=lambda: state["value"]))
@@ -1233,10 +1259,10 @@ def test_exit_keeps_the_audio_when_the_transcript_could_not_be_saved(built, monk
     assert keep_flags == [True], "the audio is the only copy of the words left"
 
 
-def test_exit_with_an_unwritable_line_still_finishes_the_recording(built, tmp_path):
-    """A lone surrogate cannot be encoded as UTF-8: the autosave fails with a
-    UnicodeEncodeError, not an OSError. The recorder must still be finished (with the
-    audio kept: it is the only copy), the session cleared and no empty file left behind."""
+def test_exit_with_an_unwritable_line_saves_the_text_and_finishes_the_recording(built, tmp_path):
+    """A lone surrogate cannot be encoded as UTF-8. The exit autosave used to fail on it,
+    delete its file and force the audio to be kept; the character is now replaced, the
+    transcript is written in full and the recorder is finished as for any saved text."""
     built.app_config["download_folder"] = str(tmp_path)
     events: list[str] = []
     keep_flags: list[bool] = []
@@ -1246,9 +1272,12 @@ def test_exit_with_an_unwritable_line_still_finishes_the_recording(built, tmp_pa
     built._live_saved_count = 0
     live_tab.stop_live_session(built)
     assert events == ["audio"]
-    assert keep_flags == [True]
+    assert keep_flags == [False], "the words are saved, so the audio is not forced to stay"
     assert built.live_session is None
-    assert list(tmp_path.glob("live-transcript-*")) == []
+    files = list(tmp_path.glob("live-transcript-*.txt"))
+    assert len(files) == 1
+    assert files[0].read_text(encoding="utf-8").splitlines() == [
+        "ok line", "bad " + chr(0xFFFD) + " surrogate"]
 
 
 def test_exit_finishes_the_recording_when_the_autosave_raises(built, monkeypatch):

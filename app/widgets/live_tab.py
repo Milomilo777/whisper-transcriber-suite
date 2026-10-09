@@ -30,6 +30,7 @@ from app.dpi import scaled
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
 from app.widgets.tooltip import help_icon, section_labelframe
+from core.writers.base import replace_lone_surrogates
 
 logger = logging.getLogger(__name__)
 
@@ -1243,6 +1244,9 @@ def _poll_once(app: Any) -> None:
 def _append_line(app: Any, text: str) -> None:
     if not text:
         return
+    # A lone surrogate half cannot be written as UTF-8 (the saves and the exit
+    # autosave) and Tk may refuse it too: replace it where the text enters.
+    text = replace_lone_surrogates(text)
     app.live_lines.append(text)
     try:
         widget = app.live_text
@@ -1266,7 +1270,8 @@ def _append_line(app: Any, text: str) -> None:
 
 
 def _transcript_text(app: Any) -> str:
-    return "\n".join(getattr(app, "live_lines", []) or []).strip()
+    # Also replaced here: the lines are plain list entries anything can fill.
+    return replace_lone_surrogates("\n".join(getattr(app, "live_lines", []) or [])).strip()
 
 
 def has_unsaved_transcript(app: Any) -> bool:
@@ -1356,7 +1361,10 @@ def autosave_unsaved_transcript(app: Any) -> str:
             candidate = os.path.join(folder, stem + (f"-{n}" if n > 1 else "") + ".txt")
             try:
                 # "x": never overwrite a file that already has this name.
-                with open(candidate, "x", encoding="utf-8") as fp:
+                # errors="replace": the exit autosave is the last copy of the
+                # text, so an unencodable character becomes "?" and never
+                # costs the whole transcript.
+                with open(candidate, "x", encoding="utf-8", errors="replace") as fp:
                     fp.write(body + "\n")
             except FileExistsError:
                 continue

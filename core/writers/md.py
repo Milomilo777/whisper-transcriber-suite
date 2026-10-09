@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import os
 
-from .base import coerce_seconds, fmt_srt_time, normalize_text
+from .base import coerce_seconds, fmt_srt_time, normalize_text, replace_lone_surrogates
 
 
 def _fmt_md_time(seconds: float) -> str:
@@ -60,4 +60,5 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         else:
             lines.append(f"**{ts}** {text}")
         lines.append("")
-    return "\n".join(lines).rstrip() + "\n"
+    # The heading and speaker labels do not pass through normalize_text.
+    return replace_lone_surrogates("\n".join(lines)).rstrip() + "\n"

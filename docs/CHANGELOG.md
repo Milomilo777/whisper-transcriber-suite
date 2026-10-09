@@ -353,6 +353,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A broken character in a transcript no longer loses an export format or the unsaved Live text.** A
+  lone half of a character pair (from a hand-edited JSON or a damaged file name) made every text format
+  fail to save, and the Live tab's exit autosave deleted its file; the bad character is now replaced with
+  the standard replacement character and everything else is written.
 - **A transcript with a stray U+FFFE or U+FFFF character now exports to Word.** These two characters are
   not legal in the Word file format and made the whole export fail with "All strings must be XML
   compatible"; they are replaced with the standard replacement character, like a broken character half.

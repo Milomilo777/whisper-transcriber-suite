@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import math
 
-from .base import coerce_seconds, karaoke_tokens, normalize_text
+from .base import coerce_seconds, karaoke_tokens, normalize_text, replace_lone_surrogates
 
 #: Playback resolution the default style is designed against. Players
 #: scale relative to this, so stating it keeps the subtitle the same
@@ -118,7 +118,7 @@ def _speaker_name(seg: dict) -> str:
     raw = seg.get("speaker") if isinstance(seg, dict) else None
     if raw in (None, ""):
         return ""
-    return str(raw).strip().replace(",", ";")
+    return replace_lone_surrogates(str(raw).strip()).replace(",", ";")
 
 
 def _karaoke_payload(seg: dict) -> str:

@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import os
 
-from .base import coerce_seconds, fmt_lrc_time, labelled_text
+from .base import coerce_seconds, fmt_lrc_time, labelled_text, replace_lone_surrogates
 
 
 def write(segments: list[dict], audio_path: str = "") -> str:
     lines: list[str] = []
     if audio_path:
-        lines.append(f"[ti:{os.path.splitext(os.path.basename(audio_path))[0]}]")
+        title = os.path.splitext(os.path.basename(audio_path))[0]
+        lines.append(f"[ti:{replace_lone_surrogates(title)}]")
     for seg in segments:
         # coerce_seconds: clamp a malformed start (None / non-numeric /
         # non-finite) instead of aborting the whole .lrc.
