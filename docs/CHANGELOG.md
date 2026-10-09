@@ -350,6 +350,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   now gets no stdin as well, so the same ten-minute hang cannot come back through the
   diarization, voice-clone or noise-reduction ffmpeg, and a test checks every such call. The
   optional-feature installer also tells pip not to prompt, so a private-index login fails cleanly.
+- **The idle app no longer keeps a Mac busy.** The 500 ms queue refresh rewrote the empty-state
+  headline on every round even when its text had not changed, and each write repainted the window;
+  an idle app used about 40% of a core on macOS and now uses under 2%. The text is written only when it changes.
+  The Transcription Queue tab had the same problem (about 36% of a core): the 500 ms refresh re-packed
+  the empty-queue label, rebuilt the row list and re-set the action buttons every round. It now touches
+  each only when it changed.
 - **Resuming a job and time ranges no longer stall for ten minutes.** The ffmpeg that cuts the
   audio slice inherited the worker's command pipe as its stdin and, on Windows, hung at the end of
   the slice until its 600-second timeout; a resume then started over from the beginning. It now

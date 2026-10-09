@@ -120,6 +120,32 @@ def cancel_pending_after_callbacks(root: tk.Misc) -> None:
             logger.debug("after() callback %s already gone", cb_id, exc_info=True)
 
 
+def _set_enabled(button: "ttk.Button", enabled: bool) -> None:
+    """Enable or disable a ttk button, touching it only when its state changes.
+
+    The action bars are recomputed every 500 ms; on a visible tab each ``state()`` call
+    repaints the button even when nothing changed (part of the idle CPU load on macOS).
+    """
+    if button.instate(["disabled"]) == enabled:
+        button.state(["!disabled"] if enabled else ["disabled"])
+
+
+def _same_rows(
+    shown: "list[tuple[Any, tuple[str, ...], tuple[str, ...]]] | None",
+    rows: "list[tuple[Any, tuple[str, ...], tuple[str, ...]]]",
+) -> bool:
+    """True when ``rows`` (task, cell texts, tags) equal what the Queue tree shows.
+
+    Tasks are compared by identity, never by ``==``: a task object that replaced another
+    with identical text must still rebuild the tree so ``row_map`` points at the new one.
+    """
+    if shown is None or len(shown) != len(rows):
+        return False
+    return all(
+        a[0] is b[0] and a[1] == b[1] and a[2] == b[2] for a, b in zip(shown, rows)
+    )
+
+
 def _iids_for_tasks(
     row_map: dict[str, Any], tasks: "list[Any]"
 ) -> list[str]:
@@ -4793,10 +4819,7 @@ class App(tk.Tk):
                 if v:
                     merged[k] = True
         for key, btn in buttons.items():
-            if merged.get(key):
-                btn.state(["!disabled"])
-            else:
-                btn.state(["disabled"])
+            _set_enabled(btn, bool(merged.get(key)))
 
     def pause(self, t: TranscriptionTask) -> None:
         # Only a task actually running on a worker can be paused.
@@ -4927,10 +4950,7 @@ class App(tk.Tk):
                 if v:
                     merged[k] = True
         for key, btn in buttons.items():
-            if merged.get(key):
-                btn.state(["!disabled"])
-            else:
-                btn.state(["disabled"])
+            _set_enabled(btn, bool(merged.get(key)))
 
     def queue_status_cell_click(self, event: tk.Event) -> None:
         """Single-click on a running/paused row's Status or Progress cell
@@ -5279,40 +5299,60 @@ class App(tk.Tk):
         # action bar unusable. We restore the selection onto the new iids so
         # it survives the rebuild.
         prev_selected = self._selected_tasks()
-        self.tree.delete(*self.tree.get_children())
-        self.row_map = {}
+        # The keyboard-focus row is lost the same way: Up/Down would restart from the top.
+        prev_focused = self.row_map.get(self.tree.focus())
+        rows: list[tuple[Any, tuple[str, ...], tuple[str, ...]]] = []
         for t in self.queue:
             lang = getattr(t, "detected_language", "") or ""
             prob = getattr(t, "language_probability", None)
             lang_str = f"{lang} ({prob * 100:.0f}%)" if (lang and isinstance(prob, (int, float))) else lang
             name = os.path.basename(t.file_path)
-            item_id = self.tree.insert(
-                "",
-                "end",
-                values=(
-                    ltr_base(name),
-                    status_label(t.status),
-                    self._row_progress_text(t.status, t.progress),
-                    speed_cell(t),
-                    lang_str,
-                    self.fmt_time(t),
-                ),
-                tags=script_fonts.tree_row_tags(self.tree, name, language=t.language or lang),
+            values = (
+                ltr_base(name),
+                status_label(t.status),
+                self._row_progress_text(t.status, t.progress),
+                speed_cell(t),
+                lang_str,
+                self.fmt_time(t),
             )
-            self.row_map[item_id] = t
-        # Re-select the same task objects on their new iids (no-op when the
-        # selection was empty or its tasks left the queue).
-        restore = _iids_for_tasks(self.row_map, prev_selected)
-        if restore:
-            self.tree.selection_set(restore)
+            tags = script_fonts.tree_row_tags(self.tree, name, language=t.language or lang)
+            rows.append((t, values, tuple(tags)))
+        # Rebuild only when a row, its text or its tags changed. delete()+insert() on a
+        # visible Treeview repaints it, so doing it every 500 ms kept an idle Queue tab
+        # busy (about 36% of a core on macOS, measured). ``_queue_rows_sig`` is what the
+        # tree currently shows; the child count guards against the tree having been emptied.
+        if (
+            not _same_rows(getattr(self, "_queue_rows_sig", None), rows)
+            or len(self.tree.get_children()) != len(rows)
+        ):
+            self.tree.delete(*self.tree.get_children())
+            self.row_map = {}
+            for t, values, tags in rows:
+                item_id = self.tree.insert("", "end", values=values, tags=tags)
+                self.row_map[item_id] = t
+            self._queue_rows_sig = rows
+            # Re-select the same task objects on their new iids (no-op when the
+            # selection was empty or its tasks left the queue).
+            restore = _iids_for_tasks(self.row_map, prev_selected)
+            if restore:
+                self.tree.selection_set(restore)
+            if prev_focused is not None:
+                focus_iids = _iids_for_tasks(self.row_map, [prev_focused])
+                if focus_iids:
+                    self.tree.focus(focus_iids[0])
         # Empty-state hint visibility — show when the queue is empty,
         # hide once there is at least one task. Kept here (rather than
         # in tabs.py) because refresh is the choke point for queue
         # changes, so the placeholder can't drift out of sync.
         if hasattr(self, "queue_empty_label"):
+            # Change the geometry only when the label's visibility changes: re-packing an
+            # already packed widget every 500 ms made an idle Queue tab repaint all the
+            # time (about 36% of a core on macOS, measured).
+            shown = bool(self.queue_empty_label.winfo_manager())
             if self.queue:
-                self.queue_empty_label.pack_forget()
-            else:
+                if shown:
+                    self.queue_empty_label.pack_forget()
+            elif not shown:
                 self.queue_empty_label.pack(fill="x", pady=(2, 0))
         sync_transcribe_empty_state(self)
         # Reflect work-in-progress in the window title so users with

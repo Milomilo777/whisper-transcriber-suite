@@ -85,6 +85,11 @@ class _FakeTree:
     def selection_set(self, iids):
         self._sel = tuple(iids)
 
+    def focus(self, iid=None):
+        if iid is not None:
+            self._focus = iid
+        return getattr(self, "_focus", "")
+
 
 def _fake_refresh_app(queue):
     tree = _FakeTree()
