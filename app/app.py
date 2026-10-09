@@ -20,11 +20,12 @@ from app.dialogs.advanced import AdvancedDialog
 from app.dialogs.model_download import ModelDownloadDialog
 from app.dialogs.quick_start import QuickStartChoice, QuickStartDialog, apply_choice, should_show
 from app.dialogs import share_page
-from app import shortcuts
+from app import mac_native, shortcuts
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
 from app.domain.task_outputs import (
     pick_transcript_json,
+    task_output_file,
     task_output_folder,
     task_srt_output,
     task_transcript_json,
@@ -46,6 +47,7 @@ from app.widgets.error_dialog import show_error
 from app.widgets.notice import notify
 from app.widgets import subtitle_edit as subtitle_edit_ui
 from app.widgets.platform import open_folder as _open_folder_helper
+from app.widgets.platform import folder_action_label, folder_label, reveal_label
 from app.widgets.live_tab import build_live_tab, stop_live_session
 from app.widgets.live_tab import apply_theme as live_tab_theme
 from app.widgets.live_tab import save_before_exit as live_save_before_exit
@@ -633,7 +635,7 @@ def build_about_sections() -> list[AboutSection]:
                 "tells you; it never downloads or installs on its own",
                 "A newer version shows a quiet bar under the menu: What's "
                 "new, Download (the file for this kind of install), Later "
-                "(again in 3, 7, then 14 days, then only a dot on the Help "
+                "(again in 3, 7, then 14 days, then only a dot in the Help "
                 "menu) or Skip this version",
                 "Run it any time from Help → Check for updates…; turn the "
                 "daily check off in Advanced → App behaviour",
@@ -1040,6 +1042,12 @@ class App(tk.Tk):
         self._star_stamp_first_run()
 
         self._build_menu()
+        # macOS: the app menu, Finder "Open With" and the Dock icon call back
+        # into the app. Registered before the first event-loop turn so a file
+        # that launched the app waits in a queue instead of being lost.
+        self._start_ran = False
+        self._hub_setup_open = False
+        mac_native.install(self)
         self._refresh_update_signs()
         self._build_tabs()
         self.txt = build_console(self, theme=_resolve_theme(self.theme_var.get()))
@@ -1185,6 +1193,9 @@ class App(tk.Tk):
         # A new install first gets the quick start window (language, Fast or
         # Best quality, output folder). Finish also settles the model folder;
         # Skip falls through to the hub-setup dialog, as before.
+        # Both first-run windows are created below, in this one call; files
+        # macOS handed over earlier (mac_native) may now wait for them.
+        self._start_ran = True
         if should_show(self.app_config):
             try:
                 self._quick_start_open = True
@@ -1239,21 +1250,30 @@ class App(tk.Tk):
             from app.dialogs.hub_setup import ensure_hub_configured
 
             def _hub_picked(path: str) -> None:
+                self._hub_setup_open = False
                 self.log(f"Model hub folder set to: {path}")
                 try:
                     self.app_config = load_config()
                 except Exception:  # noqa: BLE001
                     pass
 
+            # Open until on_done (Choose and Cancel both call it); the macOS
+            # file queue waits for it (mac_native.ready_for_documents).
+            self._hub_setup_open = True
             ensure_hub_configured(
                 self, self.app_config,
                 on_done=_hub_picked,
             )
         except Exception as e:  # noqa: BLE001
+            self._hub_setup_open = False
             logger.warning("Hub setup dialog failed: %s", e)
 
     # Menu --------------------------------------------------------------------
     def _build_menu(self) -> None:
+        # Tk's macOS (Aqua) port gives the app menu, the Window menu and the
+        # Help menu their native form (app/mac_native.py); Windows and Linux
+        # build the menu bar exactly as before.
+        aqua = mac_native.is_aqua(self)
         m = tk.Menu(self)
         f = tk.Menu(m, tearoff=0)
         f.add_command(**shortcuts.menu_item("Browse...", "o", gap=26), command=self.browse)
@@ -1285,6 +1305,14 @@ class App(tk.Tk):
             # here: the app menu already carries "Quit <App>".
             f.add_command(**shortcuts.menu_item("Exit", "q", gap=34),
                           command=self._force_exit)
+        if aqua:
+            # Command-W closes the front secondary window (viewer, dialog) with
+            # its own close handler; it never closes the main window.
+            f.add_separator()
+            f.add_command(
+                **shortcuts.menu_item("Close Window", "w"),
+                command=lambda: mac_native.close_front_window(self),
+            )
 
         v = tk.Menu(m, tearoff=0)
         for label, value in (("Light", "light"), ("Dark", "dark"), ("System", "system")):
@@ -1302,7 +1330,7 @@ class App(tk.Tk):
             command=self._save_chime_pref,
         )
 
-        h = tk.Menu(m, tearoff=0)
+        h = tk.Menu(m, tearoff=0, **mac_native.help_menu_kwargs(self))
         h.add_command(label="Open transcript viewer...", command=self._open_transcript_viewer_picker)
         h.add_command(label="Search transcripts...", command=self._open_search_dialog)
         h.add_separator()
@@ -1318,14 +1346,15 @@ class App(tk.Tk):
         h.add_command(label="Open oTranscribe website...",
                       command=self.integrations_service.open_otranscribe)
         h.add_separator()
-        h.add_command(label="Open log folder", command=self.open_log_folder)
+        h.add_command(label=folder_label("Open log folder", "Log Folder"),
+                      command=self.open_log_folder)
         h.add_separator()
         # Manual update check — always runs (ignores the once-per-day
         # throttle the quiet launch check obeys) and DOES report the
         # "you're up to date" / "couldn't reach the server" cases, unlike
         # the silent launch check. Never downloads/installs anything.
-        # _refresh_update_signs adds a dot to this item and to "Help" while
-        # a newer version is known (the passive sign).
+        # _refresh_update_signs adds a dot to this item (and, off macOS, to the
+        # "Help" title) while a newer version is known (the passive sign).
         h.add_command(label=_CHECK_FOR_UPDATES_LABEL,
                       command=self._check_for_updates_manual)
         self._help_menu = h
@@ -1344,10 +1373,20 @@ class App(tk.Tk):
             command=self._save_telemetry_pref,
         )
         # About is the last Help item (the usual place), one click from Help.
-        h.add_separator()
-        h.add_command(label=_ABOUT_MENU_LABEL, command=self._show_about)
+        # On macOS it lives in the app menu instead ("About <App>", wired to
+        # tkAboutDialog by mac_native.install), so Help does not repeat it.
+        if not aqua:
+            h.add_separator()
+            h.add_command(label=_ABOUT_MENU_LABEL, command=self._show_about)
         m.add_cascade(label="File", menu=f)
         m.add_cascade(label="View", menu=v)
+        if aqua:
+            # The standard Window menu: Minimize, Zoom, Bring All to Front and
+            # the list of open windows are added by macOS itself.
+            m.add_cascade(
+                label="Window",
+                menu=tk.Menu(m, tearoff=0, **mac_native.window_menu_kwargs(self)),
+            )
         m.add_cascade(label=_HELP_MENU_LABEL, menu=h)
         self._menubar = m
         self._help_cascade_index = m.index("end")
@@ -1470,7 +1509,7 @@ class App(tk.Tk):
                     self.bell()
             except Exception:  # noqa: BLE001
                 pass
-        self._open_folder(os.path.dirname(out_path) or ".")
+        self._open_folder(os.path.dirname(out_path) or ".", select=out_path)
 
     def _burn_subs_failed(self, msg: str) -> None:
         self.log(f"Burn-subs failed: {msg}")
@@ -1932,11 +1971,12 @@ class App(tk.Tk):
         self.log(f"Converted {os.path.basename(in_path)} -> {out_path}")
         if messagebox.askyesno(
             "Convert transcript",
-            f"Wrote:\n{out_path}\n\nOpen its folder?",
+            f"Wrote:\n{out_path}\n\n"
+            + ("Reveal it in Finder?" if shortcuts.is_mac() else "Open its folder?"),
             parent=self,
         ):
             try:
-                _open_folder_helper(os.path.dirname(out_path) or ".")
+                _open_folder_helper(os.path.dirname(out_path) or ".", select=out_path)
             except Exception as e:  # noqa: BLE001
                 self.log(f"Could not open output folder: {e}")
 
@@ -4022,9 +4062,10 @@ class App(tk.Tk):
                         task.language or task.detected_language,
                     ),
                 )
+                out_file = task_output_file(task)
                 m.add_command(
-                    label="Open output folder",
-                    command=lambda: self._open_folder(task_output_folder(task)),
+                    label=folder_action_label("Open output folder", "Output Folder", out_file),
+                    command=lambda: self._open_folder(task_output_folder(task), select=out_file),
                 )
                 m.add_separator()
             # Resume-from-cancellation: a "Resume" entry sits above "Re-run"
@@ -4107,9 +4148,10 @@ class App(tk.Tk):
                     label="Open file",
                     command=lambda p=saved: self._open_file(p),
                 )
+            reveal_target = saved if task.status == "finished" and saved and os.path.isfile(saved) else None
             m.add_command(
-                label="Open download folder",
-                command=lambda: self._open_folder(task.folder),
+                label=folder_action_label("Open download folder", "Download Folder", reveal_target),
+                command=lambda: self._open_folder(task.folder, select=reveal_target),
             )
             m.add_command(label="Re-run", command=lambda: self._rerun_download(task))
             m.add_command(label="Remove", command=lambda: self.remove_download(task))
@@ -4251,8 +4293,8 @@ class App(tk.Tk):
                           command=lambda ts=terminal: self._bulk_apply(ts, self.remove_download))
         m.tk_popup(e.x_root, e.y_root)
 
-    def _open_folder(self, folder: str) -> None:
-        _open_folder_helper(folder, parent=self)
+    def _open_folder(self, folder: str, select: str | None = None) -> None:
+        _open_folder_helper(folder, parent=self, select=select)
 
     def _rerun_task(self, task: TranscriptionTask) -> None:
         # Right-click re-run is an interactive action: show the
@@ -5336,8 +5378,11 @@ class App(tk.Tk):
         button_row = ttk.Frame(self.last_result_body)
         button_row.pack(anchor="w", pady=(8, 0))
         ttk.Button(
-            button_row, text="Open folder",
-            command=lambda: self._open_folder(folder),
+            button_row,
+            text=folder_action_label(
+                "Open folder", "Folder", existing[0] if existing else None),
+            command=lambda: self._open_folder(
+                folder, select=existing[0] if existing else None),
         ).pack(side="left")
         # "View transcript" launches the in-app viewer with the JSON
         # next to the source media (or the file picker if no JSON
@@ -6011,7 +6056,10 @@ class App(tk.Tk):
         self._refresh_update_signs()
 
     def _refresh_update_signs(self) -> None:
-        """The passive signs: a dot on "Help" and on "Check for updates...".
+        """The passive signs: a dot in the Help menu, on "Check for updates...".
+
+        Off macOS the "Help" title carries a dot too; on macOS the title stays exactly
+        "Help" (macOS adds its search field only to that title).
 
         Shown while a newer, unskipped version is known (stored, no network)
         and automatic checks are on; cleared otherwise.
@@ -6028,7 +6076,11 @@ class App(tk.Tk):
                 item_label = f"{_CHECK_FOR_UPDATES_LABEL}  ● {version} available"
             else:
                 help_label, item_label = _HELP_MENU_LABEL, _CHECK_FOR_UPDATES_LABEL
-            menubar.entryconfigure(self._help_cascade_index, label=help_label)
+            if not mac_native.is_aqua(self):
+                # On macOS the Help title must stay exactly "Help": macOS adds
+                # its search field only to a menu with that title, so the dot
+                # stays on the "Check for updates" item alone.
+                menubar.entryconfigure(self._help_cascade_index, label=help_label)
             help_menu.entryconfigure(self._check_updates_index, label=item_label)
         except Exception:  # noqa: BLE001
             logger.debug("Could not refresh the update signs", exc_info=True)
@@ -6521,13 +6573,22 @@ class App(tk.Tk):
                 items = [raw]
         self.open_paths(items, empty_payload=not raw.strip())
 
-    def open_paths(self, items: list[str], *, empty_payload: bool = False) -> None:
+    def open_paths(
+        self, items: list[str], *, empty_payload: bool = False, require_media: bool = False,
+    ) -> None:
         """Handle dropped items, or files passed on the command line.
+
+        ``require_media``: files that are not audio or video (``core.watcher.is_media_file``)
+        are reported like any unusable item instead of being picked. Off for drops and the
+        command line, which accept any existing file as before; macOS turns it on for files
+        Finder hands over ("Open With" lists the app for any file type).
 
         One file is picked in the Transcribe tab, several files (or a
         folder's media files) are queued, a URL goes to the Download tab,
         and anything unusable is reported in the log.
         """
+        from core.watcher import is_media_file
+
         paths: list[str] = []
         urls: list[str] = []
         folders: list[str] = []
@@ -6549,7 +6610,10 @@ class App(tk.Tk):
                 else:
                     unsupported.append(s)
             elif os.path.isfile(s):
-                paths.append(s)
+                if require_media and not is_media_file(s):
+                    unsupported.append(s)
+                else:
+                    paths.append(s)
             elif os.path.isdir(s):
                 folders.append(s)
             else:
@@ -6684,7 +6748,7 @@ class App(tk.Tk):
         task = self.row_map.get(item)
         if not task or task.status != "finished":
             return
-        self._open_folder(os.path.dirname(task.file_path) or ".")
+        self._open_folder(os.path.dirname(task.file_path) or ".", select=task.file_path)
 
     def log(self, msg: str) -> None:
         self._ui_logger.info(msg)

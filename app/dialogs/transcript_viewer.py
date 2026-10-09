@@ -44,12 +44,13 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any, Optional
 
 from app.dialogs import share_page
-from app import shortcuts
+from app import mac_native, shortcuts
 from app.dpi import px, scaled_size
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
 from app.widgets import subtitle_edit as subtitle_edit_ui
 from app.widgets.notice import Kind, notify
+from app.widgets.platform import is_darwin, open_folder, reveal_label
 from app.widgets.tooltip import help_icon
 from core import subtitle_edit
 from core.media_types import MEDIA_EXTENSIONS
@@ -675,9 +676,23 @@ class TranscriptViewer(tk.Toplevel):
     # The transcript's language, when known (set in __init__; the class default keeps
     # partly built viewers working, as some tests make them).
     language: str | None = None
+    # Transient like a dialog, but usable beside the main window: the macOS file
+    # queue and the About/Settings items do not treat it as a modal (app/mac_native.py).
+    _non_modal = True
     # (mtime_ns, size) of the JSON when it was loaded or last saved here.
     _disk_stamp: tuple[int, int] | None = None
     _registry_key: str | None = None
+
+    @property
+    def _dirty(self) -> bool:
+        """True while the list holds edits that are not saved to the JSON."""
+        return bool(self.__dict__.get("_dirty_flag", False))
+
+    @_dirty.setter
+    def _dirty(self, value: bool) -> None:
+        self.__dict__["_dirty_flag"] = bool(value)
+        # macOS: the dot in the close button; a no-op on Windows and Linux.
+        mac_native.set_modified(self, bool(value))
 
     def __init__(
         self,
@@ -703,6 +718,8 @@ class TranscriptViewer(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self.json_path = json_path
+        # macOS: the transcript file as the window's proxy icon in the title bar.
+        mac_native.set_title_path(self, json_path)
         # Subtitle file next to the JSON -> its stamp, for the ones that still
         # match the JSON (see _scan_siblings); Save rewrites only those.
         self._synced_siblings: dict[str, tuple[int, int] | None] = {}
@@ -785,7 +802,9 @@ class TranscriptViewer(tk.Toplevel):
         # way. Second: search and the edit tools.
         topbar = ttk.Frame(outer)
         topbar.pack(fill="x", pady=(0, 4))
-        ttk.Button(topbar, text="Open JSON folder", command=self._open_json_folder).pack(
+        ttk.Button(
+            topbar, text=reveal_label("Open JSON folder"), command=self._open_json_folder,
+        ).pack(
             side="right"
         )
         ttk.Button(topbar, text=share_page.BUTTON_TEXT, command=self._save_shareable_page).pack(
@@ -1727,7 +1746,11 @@ class TranscriptViewer(tk.Toplevel):
     def _open_json_folder(self) -> None:
         folder = os.path.dirname(self.json_path) or "."
         try:
-            _os_open(folder)
+            if is_darwin():
+                # Reveal in Finder: the JSON is selected inside its folder.
+                open_folder(folder, parent=self, select=self.json_path)
+            else:
+                _os_open(folder)
         except Exception as e:  # noqa: BLE001
             show_error(
                 self, "Open failed",

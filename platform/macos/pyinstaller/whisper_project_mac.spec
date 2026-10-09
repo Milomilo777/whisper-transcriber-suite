@@ -86,6 +86,24 @@ import re as _re
 with open(os.path.join(_REPO_ROOT, 'core', '__init__.py'), encoding='utf-8') as _f:
     _VERSION = _re.search(r'__version__\s*=\s*"([^"]+)"', _f.read()).group(1)
 
+# Finder "Open With" and Dock-icon drops: CFBundleDocumentTypes for the media
+# extensions the app accepts (core/media_types.py, the single list), role
+# Viewer and rank Alternate so the app never becomes anyone's default. Both
+# files are loaded by path: this spec cannot import the repo's packages.
+import importlib.util as _ilu
+
+
+def _load_by_path(name, *parts):
+    _s = _ilu.spec_from_file_location(name, os.path.join(_REPO_ROOT, *parts))
+    _m = _ilu.module_from_spec(_s)
+    _s.loader.exec_module(_m)
+    return _m
+
+
+_DOCUMENT_TYPES = _load_by_path(
+    '_wts_document_types', 'platform', 'macos', 'pyinstaller', 'document_types.py',
+).document_types(_load_by_path('_wts_media_types', 'core', 'media_types.py').MEDIA_EXTENSIONS)
+
 # bin/ helpers. ffmpeg/ffprobe must be SELF-CONTAINED builds (only
 # /usr/lib + /System dylibs, e.g. evermeet.cx) — PyInstaller does not bundle
 # the dylibs of executables it copies, so Homebrew's ffmpeg (18 dylibs under
@@ -371,6 +389,7 @@ a = Analysis(
         'app.dialogs.model_loading',
         'app.dpi',
         'app.shortcuts',
+        'app.mac_native',
         'app.services.voice_clone_service',
         'app.theme',
         'app.theme.icons',
@@ -613,6 +632,9 @@ app = BUNDLE(
         'CFBundleShortVersionString': _VERSION,
         'CFBundlePackageType': 'APPL',
         'NSHighResolutionCapable': True,
+        # Audio and video the app can open from Finder ("Open With", a drop on
+        # the Dock icon); handled by ::tk::mac::OpenDocument in app/mac_native.py.
+        'CFBundleDocumentTypes': _DOCUMENT_TYPES,
         # macOS 10.14+ (TCC) terminates an app that opens the microphone
         # without this key; the Live tab records through sounddevice. No
         # earlier build had it (found 2026-10-01), so the .app could never

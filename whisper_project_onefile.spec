@@ -227,6 +227,7 @@ a = Analysis(
         'app.dialogs.model_loading',
         'app.dpi',
         'app.shortcuts',
+        'app.mac_native',
         'app.theme',
         'app.theme.icons',
         'app.theme.tokens',

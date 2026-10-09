@@ -21,7 +21,52 @@ def open_with_default_app(path: str) -> None:
         subprocess.Popen(["xdg-open", path])
 
 
-def open_folder(folder: str, parent: "tk.Misc | None" = None) -> None:
+def is_darwin() -> bool:
+    """True on macOS (the platform the Finder wording and ``open -R`` are for)."""
+    return sys.platform == "darwin"
+
+
+def reveal_label(default: str) -> str:
+    """Wording of an action that shows one file in the file manager.
+
+    macOS says "Reveal in Finder"; ``default`` is returned unchanged elsewhere.
+    Use it only where a file is selected (see :func:`open_folder`'s ``select``).
+    """
+    return "Reveal in Finder" if is_darwin() else default
+
+
+def folder_label(default: str, what: str = "Folder") -> str:
+    """Wording of an action that only opens a folder: "Open <what> in Finder" on macOS."""
+    return f"Open {what} in Finder" if is_darwin() else default
+
+
+def folder_action_label(default: str, what: str, target: "str | None") -> str:
+    """:func:`reveal_label` when ``target`` (a file to select) exists, else :func:`folder_label`."""
+    return reveal_label(default) if target else folder_label(default, what)
+
+
+def open_folder(
+    folder: str,
+    parent: "tk.Misc | None" = None,
+    select: "str | None" = None,
+) -> None:
+    """Show ``folder`` in the file manager.
+
+    ``select``: a file to highlight. Only macOS uses it (``open -R`` reveals the
+    file inside its folder, like Finder's own Reveal in Finder; when that fails
+    the folder is opened instead); Windows and Linux open the folder exactly as
+    before.
+    """
+    if (
+        is_darwin() and select and os.path.isfile(select)
+        and folder and os.path.isdir(folder)
+    ):
+        try:
+            if subprocess.run(["open", "-R", select], check=False).returncode == 0:
+                return
+        except OSError:
+            pass
+        # `open -R` failed: open the folder the usual way below.
     if not folder or not os.path.isdir(folder):
         kwargs = {"parent": parent} if parent is not None else {}
         messagebox.showwarning(
@@ -34,10 +79,8 @@ def open_folder(folder: str, parent: "tk.Misc | None" = None) -> None:
         if os.name == "nt":
             os.startfile(folder)  # type: ignore[attr-defined]
         elif sys.platform == "darwin":
-            import subprocess
             subprocess.run(["open", folder], check=False)
         else:
-            import subprocess
             subprocess.run(["xdg-open", folder], check=False)
     except Exception as e:  # noqa: BLE001
         # show_error needs a real Tk/Toplevel to attach to and to read

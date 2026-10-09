@@ -6,6 +6,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **macOS native feel.** The Mac app has an app menu with About and Settings (Command-comma), the
+  standard Window menu, a Help menu with the system search field, Command-W for secondary windows,
+  and "Reveal in Finder". Files from Finder ("Open With", a drop on the Dock icon) wait until
+  start-up is done and then open like a drop on the window, a Dock click shows a hidden window, and
+  the transcript viewer shows its file as the proxy icon and the unsaved-edits dot. Windows and Linux
+  are unchanged; the hooks are the ones `tools/mac_native_probe.py` proved (`docs/MACOS_BUILD_NOTES.md`).
 - **Work offline, made visible.** While Work offline is on, a line at the bottom of the window
   says whether the app or a process it started has a TCP connection to another computer open
   (checked about every 10 seconds, never "clean" without a successful check) and counts refused
