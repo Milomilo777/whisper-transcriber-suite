@@ -362,6 +362,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the next jobs still run; the notification is logged and dropped.
 - **A large upload stays byte-exact when a long text field follows the file.** The server could keep
   the two line-break bytes in front of the closing boundary in the saved media.
+- **The engine row agrees with the model row after Quick start.** Finishing Quick start left
+  "Model not downloaded yet" next to "Downloaded" until Advanced settings was opened; the engine
+  status is now probed again once the choices are saved.
 - **The AI provider address and the launch-ping address accept only http(s).** A `file://` or
   `ftp://` value in either setting is refused with a message instead of being opened.
 - **The Windows installer and Portable ZIP start on a PC without the Visual C++ Redistributable.**

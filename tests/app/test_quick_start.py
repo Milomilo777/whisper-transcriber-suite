@@ -439,7 +439,8 @@ def _fake_app(monkeypatch, tmp_path):
         app_config={"quick_start_done": False, "hub_folder": "", "whisper_model": "large-v3",
                     "download_folder": ""},
         _quick_start_open=True, _ensure_hub_folder=MagicMock(),
-        _refresh_model_selector=MagicMock(), log=MagicMock(),
+        _refresh_model_selector=MagicMock(), _refresh_engine_selector=MagicMock(),
+        log=MagicMock(),
         download_folder_var=MagicMock(),
     )
     return app_mod, fake, saved
@@ -466,6 +467,26 @@ def test_app_finish_saves_before_updating_the_widgets(monkeypatch, tmp_path):
     assert saved[-1]["whisper_model"] == "small" and saved[-1]["quick_start_done"] is True
     fake.download_folder_var.set.assert_called_once_with(str(tmp_path))
     fake._ensure_hub_folder.assert_not_called()
+
+
+def test_app_finish_refreshes_the_engine_status_line(monkeypatch, tmp_path):
+    """The engine row was probed before the window set the model folder, so it kept
+    "Model not downloaded yet" next to a "Downloaded" model row."""
+    app_mod, fake, saved = _fake_app(monkeypatch, tmp_path)
+    order: list = []
+    fake._refresh_model_selector.side_effect = lambda: order.append("model")
+    fake._refresh_engine_selector.side_effect = lambda: order.append("engine")
+    monkeypatch.setattr(app_mod, "save_config", lambda c: (order.append("save"), saved.append(dict(c))))
+    app_mod.App._on_quick_start_done(  # type: ignore[arg-type]
+        fake, qs.QuickStartChoice("fa", "fast", str(tmp_path)),
+    )
+    assert order == ["save", "model", "engine"]
+
+
+def test_app_skip_does_not_touch_the_engine_status_line(monkeypatch, tmp_path):
+    app_mod, fake, _saved = _fake_app(monkeypatch, tmp_path)
+    app_mod.App._on_quick_start_done(fake, None)  # type: ignore[arg-type]
+    fake._refresh_engine_selector.assert_not_called()
 
 
 def test_update_check_waits_until_the_window_has_closed():

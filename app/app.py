@@ -1419,6 +1419,9 @@ class App(tk.Tk):
         if var is not None:
             var.set(self.app_config.get("download_folder", ""))
         self._refresh_model_selector()
+        # The engine row was probed at start-up, before the model folder existed;
+        # re-probe it (and drop the cached verdicts) so it agrees with the model row.
+        self._refresh_engine_selector()
         self.log(
             f"Quick start: model {self.app_config.get('whisper_model')}, downloads go to "
             f"{self.app_config.get('download_folder')}. The model downloads on the first "
