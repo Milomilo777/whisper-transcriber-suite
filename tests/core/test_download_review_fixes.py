@@ -236,6 +236,9 @@ def ytu_env(tmp_path, monkeypatch):
     monkeypatch.setattr(ytu, "bundled_binary", lambda _n: str(bundled))
     monkeypatch.setattr(ytu, "user_cache_dir", lambda: tmp_path / "cache")
     monkeypatch.setattr(ytu.offline, "is_offline", lambda: False)
+    # These tests are about copying a single-file build; on a Mac can_self_update() is also
+    # true when yt-dlp's folder build may be installed (bootstrap_possible).
+    monkeypatch.setattr(ytu, "bootstrap_possible", lambda: False)
     ytu._running.clear()
     ytu._updating = False
     return bundled

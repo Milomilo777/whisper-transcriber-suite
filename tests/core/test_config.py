@@ -14,6 +14,14 @@ import pytest
 from core import config as cfg
 
 
+@pytest.fixture(autouse=True)
+def _no_last_good_config():
+    """load_config falls back to the last config this process read; start each test without one."""
+    cfg._forget_last_good()
+    yield
+    cfg._forget_last_good()
+
+
 @pytest.fixture
 def isolated_dirs(tmp_path, monkeypatch):
     """Redirect every platformdirs lookup at a tmp_path subfolder."""

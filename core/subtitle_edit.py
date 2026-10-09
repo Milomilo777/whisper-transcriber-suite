@@ -14,6 +14,7 @@ injectable so the tests run without Subtitle Edit installed.
 """
 from __future__ import annotations
 
+import ntpath
 import os
 import subprocess
 import sys
@@ -115,7 +116,8 @@ def _folder_from_registry_value(raw: str, value_name: str) -> str:
         lowered = text.lower()
         cut = lowered.find(".exe")
         text = text[: cut + 4] if cut != -1 else text
-        return os.path.dirname(text)
+        # A registry value is always a Windows path, whatever platform parses it.
+        return ntpath.dirname(text)
     return text
 
 

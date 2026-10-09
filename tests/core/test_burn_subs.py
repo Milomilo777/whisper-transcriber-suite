@@ -334,10 +334,12 @@ def test_burn_wraps_persian_lines_and_forces_a_font_on_windows(tmp_path, monkeyp
 
 def test_burn_latin_srt_is_copied_unchanged_without_a_font(tmp_path, monkeypatch):
     captured = _capture_with_srt(monkeypatch)
-    monkeypatch.setattr(burn_subs.os, "name", "nt")
     video, srt, out = _make_files(tmp_path)
+    # Read before os.name is faked: on POSIX Path() then builds a WindowsPath and raises.
+    original = Path(srt).read_bytes()
+    monkeypatch.setattr(burn_subs.os, "name", "nt")
     burn_subs.burn(video, srt, out)
-    assert captured["srt"] == Path(srt).read_bytes()
+    assert captured["srt"] == original
     assert _vf_value(captured["cmd"]) == "subtitles=subs.srt"
 
 

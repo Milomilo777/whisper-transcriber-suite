@@ -337,6 +337,8 @@ def test_an_unwritable_cache_is_a_failure_not_an_exception(env, monkeypatch):
 
 def test_unsupported_without_a_single_file_bundled_build(monkeypatch, tmp_path):
     monkeypatch.setattr(ytu, "user_cache_dir", lambda: tmp_path / "cache")
+    # On a Mac the folder build may be installed instead (bootstrap_possible); not this rule.
+    monkeypatch.setattr(ytu, "bootstrap_possible", lambda: False)
     # A bare name: no bundled yt-dlp to copy (PATH lookup).
     monkeypatch.setattr(ytu, "bundled_binary", lambda name: name)
     assert ytu.can_self_update() is False

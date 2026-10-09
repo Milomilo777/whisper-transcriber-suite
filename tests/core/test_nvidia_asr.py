@@ -350,13 +350,33 @@ def test_availability_deep_not_ready_on_version_clash(monkeypatch):
     assert "dependency clash" in st.detail.lower()
 
 
-def test_availability_shallow_is_ready_at_startup():
-    # The cheap startup path does no heavy import: a local self-provisioning
+def _pretend_transformers(monkeypatch, present: bool):
+    import importlib.util
+
+    real = importlib.util.find_spec
+    monkeypatch.setattr(
+        importlib.util, "find_spec",
+        lambda name, *a, **k: (object() if present else None) if name == "transformers" else real(name, *a, **k),
+    )
+
+
+def test_availability_shallow_is_ready_at_startup(monkeypatch):
+    # The cheap startup path does no heavy import: with the package on disk the
     # engine reports ready (a run surfaces any real gap), like faster-whisper.
+    # Whether transformers is installed depends on the machine, so it is faked.
     from core.backends import availability
 
+    _pretend_transformers(monkeypatch, True)
     st = availability.engine_status("nvidia_asr", {}, deep=False)
     assert st.ready is True
+
+
+def test_availability_shallow_without_the_package_is_not_ready(monkeypatch):
+    from core.backends import availability
+
+    _pretend_transformers(monkeypatch, False)
+    st = availability.engine_status("nvidia_asr", {}, deep=False)
+    assert st.ready is False and st.detail
 
 
 # ---------------------------------------------------------------- registry sync

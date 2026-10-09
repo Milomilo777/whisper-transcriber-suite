@@ -219,13 +219,15 @@ def test_foreign_host_is_refused_without_a_token(tmp_path):
 
 @pytest.mark.parametrize("host", [
     "127.0.0.1:{port}", "localhost:{port}", "LOCALHOST:{port}", "[::1]:{port}",
-    "192.168.1.42:{port}", "10.0.0.5", "{name}:{port}", "{name}.local:{port}",
+    "192.168.1.42:{port}", "10.0.0.5", "{name}:{port}", "{short}.local:{port}",
     "host.docker.internal:{port}",
 ])
 def test_direct_host_names_are_accepted(tmp_path, host):
     name = socket.gethostname()
+    # A Mac's host name already ends in ".local"; the mDNS form is the short name plus ".local".
+    short = name[:-len(".local")] if name.lower().endswith(".local") else name
     with _RunningServer(tmp_path) as srv:
-        value = host.format(port=srv.port, name=name)
+        value = host.format(port=srv.port, name=name, short=short)
         status, _ = _request(srv, "GET", "/api/health", headers={"Host": value})
         assert status == 200, value
 
