@@ -483,3 +483,32 @@ source but the Hub is ever contacted. A model counts as installed when it has a 
 - Networks that block huggingface.co cannot download a model from the app; a model can still be
   placed by hand in the model folder.
 - Older app versions keep using the mirror files, so those files stay where they are.
+
+## 0011 — Windows frame theming through ctypes DWM calls; "System" theme by a slow registry check
+
+**Status:** Accepted
+
+**Date:** 2026-10-09
+
+**Context:** The Light/Dark theme restyled the Tk widgets, but the title bar and border are drawn
+by Windows and stayed light. "System" asked the optional `darkdetect` package, which no Windows
+bundle contains, so it always meant Dark there. Prior art read first: pywinstyles (DWM attribute
+numbers and colour order; no Windows build checks) and darkdetect (the `AppsUseLightTheme`
+registry value; its change listener blocks a thread in `RegNotifyChangeKeyValue`).
+
+**Decision:** `app/theme/win_chrome.py` calls `DwmSetWindowAttribute` through `ctypes` (no new
+dependency, no COM): the dark flag (20, then 19 if refused) on every window, the caption, border
+and text colours on Windows 11 (build 22000+) only, a frame redraw on Windows 10. Every call is
+wrapped; `native_window_theme` / `WTS_NO_NATIVE_CHROME` switch it all off. `app/theme/
+system_appearance.py` holds one back-end per OS behind `is_dark()` / `subscribe()`; the Windows
+back-end reads the registry value every 2 s on the Tk thread, only while the mode is "System".
+
+**Consequences:**
+- A theme flip in Windows Settings reaches the app within 2 s, with no thread to stop and no
+  window-procedure hook next to Tk. A real-time `WM_SETTINGCHANGE` hook was not taken: it means
+  replacing Tk's window procedure.
+- A dialog shown for the first time may paint its title bar light for one frame before the
+  `<Map>` handler runs.
+- Windows' own message boxes and file dialogs keep the system title bar.
+- macOS and Linux behave as before (`darkdetect` once, no watching); the macOS back-end plugs
+  into `get_backend`.
