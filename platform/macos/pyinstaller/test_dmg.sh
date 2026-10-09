@@ -39,7 +39,7 @@ cp -R "$MNT/$NAME.app" "$DEST/" || { echo "FAIL copying the app out of the dmg";
 APP="$DEST/$NAME.app"
 PL="$APP/Contents/Info.plist"
 if plutil -lint "$PL" >/dev/null; then echo "OK   Info.plist parses"; else echo "FAIL Info.plist does not parse"; fail=1; fi
-for k in CFBundleIdentifier CFBundleShortVersionString LSMinimumSystemVersion NSMicrophoneUsageDescription; do
+for k in CFBundleIdentifier CFBundleShortVersionString LSMinimumSystemVersion NSMicrophoneUsageDescription CFBundleDocumentTypes:0:CFBundleTypeRole; do
   v="$(/usr/libexec/PlistBuddy -c "Print :$k" "$PL" 2>/dev/null)"
   if [ -n "$v" ]; then echo "     $k = $v"; else echo "FAIL Info.plist lacks $k"; fail=1; fi
 done

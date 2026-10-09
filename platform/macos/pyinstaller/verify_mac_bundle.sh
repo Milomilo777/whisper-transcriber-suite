@@ -88,5 +88,9 @@ plutil -lint "$APP/Contents/Info.plist" >/dev/null || { echo "Info.plist does no
 # key; the Live tab records through sounddevice. The spec sets it.
 /usr/libexec/PlistBuddy -c 'Print :NSMicrophoneUsageDescription' "$APP/Contents/Info.plist" >/dev/null 2>&1 \
   || { echo "Info.plist lacks NSMicrophoneUsageDescription (the Live tab would be killed by TCC)"; bad=$((bad + 1)); }
+# Finder "Open With" / Dock-icon drops: the spec declares the audio and video
+# document types (role Viewer, rank Alternate); app/mac_native.py handles them.
+/usr/libexec/PlistBuddy -c 'Print :CFBundleDocumentTypes:0:CFBundleTypeRole' "$APP/Contents/Info.plist" >/dev/null 2>&1 \
+  || { echo "Info.plist lacks CFBundleDocumentTypes (no Finder Open With / Dock drops)"; bad=$((bad + 1)); }
 
 [ "$bad" = 0 ] && echo "OK: bundle is self-contained." || { echo "FAILED: $bad problem(s)" >&2; exit 1; }
