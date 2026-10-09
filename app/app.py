@@ -6909,6 +6909,8 @@ class App(tk.Tk):
                 local = _file_uri_to_path(s)
                 if local and os.path.isfile(local):
                     paths.append(local)
+                elif local and os.path.isdir(local):
+                    folders.append(local)
                 else:
                     unsupported.append(s)
             elif os.path.isfile(s):

@@ -343,6 +343,20 @@ def test_drop_file_uri_resolves_to_local_path(App, monkeypatch):
     assert a.nb.selected == a.t1
 
 
+def test_drop_file_uri_of_a_folder_queues_its_media_files(App, tmp_path):
+    # File managers that hand over file:// URIs send a folder the same way: it
+    # must be expanded like a plain folder path, not reported as unusable.
+    folder = tmp_path / "dropped folder"
+    folder.mkdir()
+    (folder / "a.mp4").write_bytes(b"x")
+    (folder / "b.mp3").write_bytes(b"x")
+    (folder / "notes.txt").write_bytes(b"x")
+    a = _drop_app(App)
+    App.open_paths(a, [folder.as_uri()])
+    assert sorted(os.path.basename(p) for p in a.enqueued) == ["a.mp4", "b.mp3"]
+    assert not any("Ignored" in m for m in a.logs)
+
+
 # --- _file_uri_to_path -------------------------------------------------------
 
 @pytest.mark.skipif(

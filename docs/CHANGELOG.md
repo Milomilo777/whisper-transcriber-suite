@@ -353,6 +353,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A folder dropped as a `file://` address is queued like any other dropped folder.** It was reported
+  as an unusable item.
 - **A late Cancel no longer turns a finished download into a cancelled one.** Cancelling a download
   that had ended in the meantime (the Esc question left open, an old menu) also cancelled its transcription.
 - **Bilingual subtitles for a non-Latin target language no longer overwrite each other.** The file name
