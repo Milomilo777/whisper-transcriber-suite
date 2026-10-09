@@ -118,7 +118,10 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
 
     nonempty = [s for s in segments if normalize_text(s.get("text", ""))]
     if nonempty:
-        last_end = coerce_seconds(nonempty[-1].get("end"))
+        # A last segment without an end time counts up to its start.
+        last_end = coerce_seconds(
+            nonempty[-1].get("end"), coerce_seconds(nonempty[-1].get("start"))
+        )
         duration = _fmt_doc_time(last_end)
         document.add_paragraph(
             f"{len(nonempty)} segment(s) · {duration} total",

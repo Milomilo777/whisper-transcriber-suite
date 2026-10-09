@@ -1,8 +1,10 @@
 """Tests for ``core.writers`` — every writer takes the same fixture."""
 from __future__ import annotations
 
+import io
 import json
 import os
+import zipfile
 
 import pytest
 
@@ -709,3 +711,18 @@ def test_smtv_output_path_uses_team_filename():
     # Unknown language keeps the template's literal "..." placeholder.
     name2 = os.path.basename(tr._smtv_output_path("Clip", ""))
     assert name2.startswith("Clip -Transcription in ... – Translation in English")
+
+
+def test_docx_and_pdf_total_time_uses_the_start_when_the_last_end_is_missing():
+    # No "end" on the last segment (an imported transcript): the header total
+    # falls back to its start instead of 00:00:00.
+    fitz = pytest.importorskip("fitz")
+    segments = [
+        {"start": 0.0, "end": 1.0, "text": "first"},
+        {"start": 3600.0, "text": "last, no end"},
+    ]
+    doc_xml = zipfile.ZipFile(io.BytesIO(
+        get_binary_writer("docx")(segments, "a.wav"))).read("word/document.xml").decode("utf-8")
+    assert "01:00:00 total" in doc_xml
+    pdf = fitz.open(stream=get_binary_writer("pdf")(segments, "a.wav"), filetype="pdf")
+    assert "01:00:00 total" in "".join(page.get_text() for page in pdf)
