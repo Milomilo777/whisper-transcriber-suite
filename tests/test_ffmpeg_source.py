@@ -62,16 +62,37 @@ def test_committed_pins_are_valid_and_cover_both_platforms():
     assert all(d["url"].startswith("https://") for d in deps)
 
 
-def test_windows_pin_names_the_commit_of_the_pinned_windows_build():
-    windows = next(d for d in src.load_pins() if d["platform"] == "windows")
-    build = next(d for d in json.loads(
+def _windows_build() -> dict[str, Any]:
+    return next(d for d in json.loads(
         (ROOT / "platform" / "windows" / "build-deps.json").read_text(encoding="utf-8"))["deps"]
         if d["name"] == "ffmpeg")
-    short = re.search(r"git-([0-9a-f]{10})", build["version"])
+
+
+def test_windows_pin_names_the_source_of_the_pinned_windows_build():
+    windows = next(d for d in src.load_pins() if d["platform"] == "windows")
+    build = _windows_build()
+    release = re.match(r"([0-9]+\.[0-9]+(?:\.[0-9]+)?) ", build["version"])
+    if release:
+        # A gyan.dev release build is the upstream release: the source is the release tarball.
+        version = release.group(1)
+        assert windows["url"] == f"https://ffmpeg.org/releases/ffmpeg-{version}.tar.xz"
+        assert f"FFmpeg {version} " in windows["version"]
+        assert f"-source-ffmpeg-{version}." in windows["asset_name"]
+        assert f"/{version}/ffmpeg-{version}-" in build["url"]
+        return
+    short = re.search(r"git-([0-9a-f]{10})", build["version"])  # a gyan.dev git build
     assert short, build["version"]
     assert short.group(1) in windows["version"]
     assert short.group(1) in windows["url"]
     assert short.group(1) in windows["asset_name"]
+
+
+def test_windows_ffmpeg_pin_is_not_older_than_the_security_fixed_release():
+    # FFmpeg 9.0 / 9.0.2 carry the fixes for CVE-2026-8461, -30998, -30999, -66038, -70629 and
+    # -70631; the 2026-05-06 git build that was pinned before predates them.
+    release = re.match(r"([0-9]+)\.([0-9]+)(?:\.([0-9]+))? ", _windows_build()["version"])
+    assert release, "pin the Windows FFmpeg to a numbered release, not an old git snapshot"
+    assert tuple(int(x or 0) for x in release.groups()) >= (9, 0, 2)
 
 
 def test_macos_pin_matches_the_version_of_the_pinned_mac_binaries():
@@ -94,13 +115,31 @@ def test_validator_rejects_a_pin_list_missing_a_platform(tmp_path):
         src.load_pins(pins)
 
 
-def test_validator_rejects_a_duplicate_asset_name(tmp_path):
+def test_validator_rejects_a_duplicate_asset_name_for_different_files(tmp_path):
     deps = copy.deepcopy(src.load_pins())
     deps[1]["asset_name"] = deps[0]["asset_name"]
+    deps[1]["sha256"] = "0" * 64
     pins = tmp_path / "pins.json"
     pins.write_text(json.dumps({"deps": deps}), encoding="utf-8")
     with pytest.raises(src.FetchError, match="used twice"):
         src.load_pins(pins)
+
+
+def test_two_platforms_may_share_one_identical_tarball(tmp_path):
+    data = b"one official release tarball"
+    windows, macos = _dep(data, "windows", "w"), _dep(data, "macos", "m")
+    pins = tmp_path / "pins.json"
+    pins.write_text(json.dumps({"deps": [windows, macos]}), encoding="utf-8")
+    deps = src.load_pins(pins)
+    out = tmp_path / "out"
+    out.mkdir()
+    calls: list[str] = []
+    paths = src.fetch(deps, out, "2.0.0", opener=_opener(data, calls))
+    assert paths[0] == paths[1] and calls == ["https://example.invalid/ffmpeg.tar"]  # fetched once
+    assert _no_leftovers(out) == ["App-v2.0.0-source-ffmpeg-1.tar"]
+    assert src.check(deps, out, "2.0.0") == []
+    (out / paths[0].name).unlink()
+    assert src.check(deps, out, "2.0.0") == ["missing: App-v2.0.0-source-ffmpeg-1.tar"]  # reported once
 
 
 @pytest.mark.parametrize("bad", ["../escape-{app_version}.tar", "noversion.tar", "a b-{app_version}.tar",

@@ -12,21 +12,21 @@
     },
     {
       "name": "ffmpeg",
-      "version": "2026-05-06-git-f2e5eff3ff essentials build (gyan.dev)",
-      "url": "https://github.com/GyanD/codexffmpeg/releases/download/2026-05-06-git-f2e5eff3ff/ffmpeg-2026-05-06-git-f2e5eff3ff-essentials_build.zip",
-      "size": 109446254,
-      "sha256": "c37a931dd999049f3f768f5a6b961a4abee29175ff33c6133b0a2ece5105352a",
-      "hash_source": "GitHub release asset digest",
+      "version": "9.0.2 essentials build (gyan.dev)",
+      "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.zip",
+      "size": 114768076,
+      "sha256": "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba",
+      "hash_source": "GitHub release asset digest; identical to gyan.dev's published ffmpeg-release-essentials.zip.sha256 and to a download hashed on 2026-10-09",
       "files": [
         {
-          "member": "ffmpeg-2026-05-06-git-f2e5eff3ff-essentials_build/bin/ffmpeg.exe",
+          "member": "ffmpeg-9.0.2-essentials_build/bin/ffmpeg.exe",
           "to": "bin/ffmpeg.exe",
-          "sha256": "75b9c61b9dc88975711392907a4b61a7c8a179542f791ce4480f827106bd4d0c"
+          "sha256": "3256173f3f8bffd7df12227c68adf68025edb1832273a9530688a7bb1ed8edec"
         },
         {
-          "member": "ffmpeg-2026-05-06-git-f2e5eff3ff-essentials_build/bin/ffprobe.exe",
+          "member": "ffmpeg-9.0.2-essentials_build/bin/ffprobe.exe",
           "to": "bin/ffprobe.exe",
-          "sha256": "eb0da8af8fa803b81e111aacc3d160b61d3ed3e686f15378db8708447ff9aecf"
+          "sha256": "f0d36ecbbdd3bcfac3efa078c96c7271c2e68b3810595552ac3b7f17e9a65c52"
         }
       ]
     },

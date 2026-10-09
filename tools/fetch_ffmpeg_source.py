@@ -41,7 +41,7 @@ def load_pins(path: Path = PINS) -> list[dict[str, Any]]:
         deps = json.load(fh)["deps"]
     errors = _fetch.validate(deps)
     seen_platforms: set[str] = set()
-    asset_names: set[str] = set()
+    asset_names: dict[str, tuple[Any, Any, Any]] = {}
     for dep in deps:
         where = f"entry {dep.get('name')}"
         if dep.get("files") != []:
@@ -54,10 +54,12 @@ def load_pins(path: Path = PINS) -> list[dict[str, Any]]:
         if not isinstance(template, str) or "{app_version}" not in template \
                 or not _NAME.fullmatch(template.replace("{app_version}", "0.0.0")):
             errors.append(f"{where}: asset_name must be a plain file name containing {{app_version}}")
-        elif template in asset_names:
-            errors.append(f"{where}: asset_name {template} is used twice")
         else:
-            asset_names.add(template)
+            # Two platforms may attach the very same tarball (Windows and macOS both ship an
+            # official FFmpeg release): a shared name is fine only for an identical file.
+            file_id = (dep.get("url"), dep.get("size"), dep.get("sha256"))
+            if asset_names.setdefault(template, file_id) != file_id:
+                errors.append(f"{where}: asset_name {template} is used twice")
     if seen_platforms != set(PLATFORMS):
         errors.append("the pin list must cover every platform: " + ", ".join(PLATFORMS))
     if errors:
@@ -100,8 +102,12 @@ def fetch(deps: list[dict[str, Any]], out: Path, app_version: str, *,
 def check(deps: list[dict[str, Any]], out: Path, app_version: str) -> list[str]:
     """Problems with the files in out; empty when every tarball is present and matches its pin."""
     problems = []
+    seen: set[Path] = set()
     for dep in deps:
         target = out / asset_name(dep, app_version)
+        if target in seen:  # two platforms sharing one identical tarball
+            continue
+        seen.add(target)
         if not target.is_file():
             problems.append(f"missing: {target.name}")
         elif not _verified(target, dep):

@@ -29,7 +29,7 @@ stale. The pins (URL, size, SHA-256) are in `platform/ffmpeg-source.json`.
 
 | Bundled build | FFmpeg source | SHA-256 |
 |---|---|---|
-| Windows: gyan.dev essentials build `2026-05-06-git-f2e5eff3ff` | FFmpeg git commit `f2e5eff3ff2141479da980fc9474a8f8ecf768a8`: https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/f2e5eff3ff2141479da980fc9474a8f8ecf768a8 (the commit the build names at https://github.com/GyanD/codexffmpeg/releases/tag/2026-05-06-git-f2e5eff3ff) | `9d0bf85379b65b81107e5bcd756bd5676b4e839aa446e536eb0da18f61368d7d` |
+| Windows: gyan.dev essentials build `9.0.2` | FFmpeg 9.0.2 release: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz (signature: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz.asc). The build names commit `946fcce07b` (https://github.com/GyanD/codexffmpeg/releases/tag/9.0.2), which is the commit of the release tag `n9.0.2`. | `8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e` |
 | macOS Intel: evermeet.cx FFmpeg 9.0.2 | FFmpeg 9.0.2 release: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz (signature: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz.asc) | `8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e` |
 | macOS Apple silicon: ffmpeg.martin-riedl.de build `1789931890_9.0.2` | the same FFmpeg 9.0.2 release tarball; build script: https://git.martin-riedl.de/ffmpeg/build-script | (as above) |
 

@@ -914,6 +914,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Security
 
+- **The Windows build bundles FFmpeg 9.0.2.** The pinned FFmpeg (a 2026-05-06 snapshot) lacked the
+  fixes for six published FFmpeg vulnerabilities (CVE-2026-8461, -30998, -30999, -66038, -70629,
+  -70631), which matter because the app decodes files and streams it did not create. The pin in
+  `platform/windows/build-deps.json` and the source offer in `platform/ffmpeg-source.json` now name
+  the gyan.dev 9.0.2 essentials build (same GPL configuration) and the official 9.0.2 source.
 - **No credential file can enter a build.** The macOS spec no longer bundles a Google Cloud key
   file found in the build folder (the Windows builds had already dropped this), and a test fails
   when any spec, the build script or an installer script names a credential file.

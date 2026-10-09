@@ -223,8 +223,7 @@ installer and the Portable ZIP, never afterwards (assets are never re-uploaded):
 
 | Ships | File |
 |---|---|
-| Windows | `WhisperTranscriberSuite-vX.Y.Z-source-ffmpeg-2026-05-06-git-f2e5eff3ff.tar.gz` |
-| macOS | `WhisperTranscriberSuite-vX.Y.Z-source-ffmpeg-9.0.2.tar.xz` |
+| Windows and macOS | `WhisperTranscriberSuite-vX.Y.Z-source-ffmpeg-9.0.2.tar.xz` (both builds are FFmpeg 9.0.2: one file, attached once) |
 
 The names start with the release's own prefix, and `-source-` sorts after `-macOS-`, so these
 files list after the installer, the Portable ZIP and the disk images. When a pin in
