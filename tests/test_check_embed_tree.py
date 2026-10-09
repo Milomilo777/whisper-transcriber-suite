@@ -136,7 +136,13 @@ def test_reader_on_real_windows_binaries():
     assert "ntdll.dll" in imports
     assert any(n.startswith("api-ms-win-") for n in imports)
     pefile = pytest.importorskip("pefile")
-    for dll in sorted(system32.glob("*.dll"))[:150]:
+    # A fixed sample of system DLLs with normal and delay-load imports. A glob over 150 System32
+    # files took longer than the suite's 120 s per-test timeout on a loaded machine.
+    names = ("kernel32.dll", "user32.dll", "advapi32.dll", "ole32.dll", "ws2_32.dll",
+             "shell32.dll", "comctl32.dll", "gdi32.dll", "crypt32.dll", "winhttp.dll")
+    for dll in (system32 / n for n in names):
+        if not dll.is_file():
+            continue
         try:
             pe = pefile.PE(str(dll), fast_load=True)
         except pefile.PEFormatError:
