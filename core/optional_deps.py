@@ -610,6 +610,8 @@ def _install_impl(
         staging = tempfile.mkdtemp(prefix="pylibs-stage-", dir=parent)
         cmd = [
             sys.executable, "-m", "pip", "install",
+            # No stdin: a private-index login prompt fails cleanly instead of EOFError.
+            "--no-input",
             "--target", staging, "--upgrade",
             *(["--force-reinstall", "--no-cache-dir"] if force else []),
             *pkgs,

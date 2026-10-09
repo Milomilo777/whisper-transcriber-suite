@@ -242,7 +242,7 @@ def trim_reference_sample(
     os.close(fd)
     cmd = [ffmpeg, "-y", "-v", "error", "-i", path, "-t", str(max_seconds), "-c", "copy", tmp_out]
     kwargs: dict = {
-        "stdin": subprocess.DEVNULL, "capture_output": True, "text": True, "timeout": 60, **_UTF8,
+        **_UTF8, "stdin": subprocess.DEVNULL, "capture_output": True, "text": True, "timeout": 60,
     }
     kwargs.update(_proc.new_session_kwargs())
     try:
@@ -453,7 +453,7 @@ def _concat_references(paths: "list[str]") -> str:
     n = min(len(paths), MAX_REFERENCE_SAMPLES)
     cmd += ["-filter_complex", f"concat=n={n}:v=0:a=1", out_path]
     kwargs: dict = {
-        "stdin": subprocess.DEVNULL, "capture_output": True, "text": True, "timeout": 60, **_UTF8,
+        **_UTF8, "stdin": subprocess.DEVNULL, "capture_output": True, "text": True, "timeout": 60,
     }
     kwargs.update(_proc.new_session_kwargs())
     try:
