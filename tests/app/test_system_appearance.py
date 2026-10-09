@@ -1,7 +1,8 @@
 """The "System" theme: Windows registry back-end, fallbacks, live watching (card C2.75).
 
-The registry and darkdetect are faked, so the file runs on every OS. macOS and Linux keep the
-earlier behaviour (darkdetect once, no watching): the last tests pin that.
+The registry and darkdetect are faked, so the file runs on every OS. Linux keeps the earlier
+behaviour (darkdetect once, no watching): the last tests pin that. macOS has its own back-end,
+tested in ``test_system_appearance_mac.py``.
 """
 from __future__ import annotations
 
@@ -168,10 +169,10 @@ def test_windows_system_theme_needs_no_darkdetect(monkeypatch) -> None:
 
 def test_get_backend_by_platform() -> None:
     assert isinstance(sa.get_backend("win32"), sa.WindowsBackend)
-    for other in ("darwin", "linux"):
-        backend = sa.get_backend(other)
-        assert isinstance(backend, sa.DarkdetectBackend)
-        assert backend.live is False
+    backend = sa.get_backend("linux")
+    assert isinstance(backend, sa.DarkdetectBackend)
+    assert backend.live is False
+    assert isinstance(sa.get_backend("darwin"), sa.MacBackend)  # its own file: test_system_appearance_mac
 
 
 # ------------------------------------------- macOS / Linux: unchanged behaviour (pinned)
@@ -186,13 +187,13 @@ def test_darkdetect_no_answer_is_light_as_before(monkeypatch) -> None:
     """The old code ran ``(darkdetect.theme() or "")``: None meant light, not "unknown"."""
     monkeypatch.setitem(sys.modules, "darkdetect", SimpleNamespace(theme=lambda: None))
     assert sa.DarkdetectBackend().is_dark() is False
-    assert sa.resolve_theme("system", sa.get_backend("darwin")) == "light"
+    assert sa.resolve_theme("system", sa.DarkdetectBackend()) == "light"
 
 
 def test_missing_darkdetect_falls_back_to_dark_and_says_so(monkeypatch, caplog) -> None:
     monkeypatch.setitem(sys.modules, "darkdetect", None)
     with caplog.at_level(logging.WARNING, logger=sa.logger.name):
-        assert sa.resolve_theme("system", sa.get_backend("darwin")) == "dark"
+        assert sa.resolve_theme("system", sa.DarkdetectBackend()) == "dark"
         assert sa.resolve_theme("system", sa.get_backend("linux")) == "dark"
     messages = [r.getMessage() for r in caplog.records]
     assert sum("darkdetect is not installed" in m for m in messages) == 1
@@ -208,7 +209,7 @@ def test_darkdetect_that_raises_falls_back_to_dark(monkeypatch) -> None:
 
 def test_off_windows_nothing_is_watched() -> None:
     root = FakeRoot()
-    watcher = sa.SystemThemeWatcher(root, lambda: None, backend=sa.get_backend("darwin"))
+    watcher = sa.SystemThemeWatcher(root, lambda: None, backend=sa.get_backend("linux"))
     watcher.start()
     assert not watcher.running
     assert root.pending == {}

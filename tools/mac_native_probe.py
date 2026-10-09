@@ -4,7 +4,7 @@
 Run it on a Mac with the Python and Tk the app is built with, from a Terminal
 or a desktop session (Aqua needs a window server)::
 
-    python tools/mac_native_probe.py [--hold SECONDS]
+    python tools/mac_native_probe.py [--hold SECONDS] [--flip-appearance]
 
 It prints the Tk patch level, then one line per hook::
 
@@ -29,6 +29,12 @@ and ``tkMacOSXMenu.c``):
 * special menus ``.window``, ``.help`` and ``.apple`` on the menu bar.
 * a Dock menu (the application delegate's ``applicationDockMenu:``).
 * ``wm attributes -modified`` and ``-titlepath``.
+* system appearance (card C2.73): ``tk::unsupported::MacWindowStyle isdark``, the
+  ``<<LightAqua>>`` / ``<<DarkAqua>>`` virtual events (``<<TkSystemAppearanceChanged>>`` is
+  bound too and reported, not assumed), and the system font names Tk reports. The events can only
+  be proved by flipping the real Light/Dark setting, which changes the person's desktop, so that
+  part runs only with ``--flip-appearance``; it restores the original setting in a ``finally``
+  step and prints both values.
 """
 from __future__ import annotations
 
@@ -49,7 +55,7 @@ _results: list[tuple[str, str, str]] = []
 USED_BY_APP = (
     "special_menus", "show_preferences", "show_preferences_createcommand", "about",
     "show_help", "open_document", "reopen_application", "window_menu", "help_menu",
-    "window_attributes",
+    "window_attributes", "appearance_isdark", "appearance_events", "system_font_name",
 )
 
 
@@ -377,6 +383,145 @@ def probe_window_attributes(root: tk.Tk, oc: _ObjC) -> None:
         root.wm_attributes("-titlepath", "")
 
 
+# ------------------------------------------------------------------ appearance
+
+APPEARANCE_EVENTS = ("<<LightAqua>>", "<<DarkAqua>>", "<<TkSystemAppearanceChanged>>")
+_DARK_MODE_GET = 'tell application "System Events" to tell appearance preferences to get dark mode'
+_DARK_MODE_SET = 'tell application "System Events" to tell appearance preferences to set dark mode to {}'
+SYSTEM_FONT_CANDIDATES = (".AppleSystemUIFont", "SF Pro", "SF Pro Text", "Helvetica Neue",
+                          "Segoe UI Variable Text")
+TK_FONT_NAMES = ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont", "TkCaptionFont",
+                 "TkSmallCaptionFont", "TkIconFont", "TkTooltipFont", "TkFixedFont")
+# One character per script the app draws in its own font on Windows (script_fonts.py).
+SCRIPT_SAMPLES = (
+    ("persian", chr(0x645)), ("arabic", chr(0x639)), ("hebrew", chr(0x5D0)),
+    ("han", chr(0x6F22)), ("hiragana", chr(0x3042)), ("hangul", chr(0xD55C)),
+    ("thai", chr(0xE01)), ("devanagari", chr(0x915)), ("sinhala", chr(0xD9A)),
+    ("myanmar", chr(0x1000)),
+)
+
+
+def _osascript(script: str) -> str:
+    run = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=30)
+    if run.returncode != 0:
+        raise OSError(f"osascript failed: {run.stderr.strip()}")
+    return run.stdout.strip()
+
+
+def system_dark_mode() -> bool | None:
+    """The real Light/Dark setting as System Events reports it (None: unreadable)."""
+    try:
+        return {"true": True, "false": False}.get(_osascript(_DARK_MODE_GET))
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def set_system_dark_mode(dark: bool) -> None:
+    _osascript(_DARK_MODE_SET.format("true" if dark else "false"))
+
+
+def tk_isdark(root: tk.Tk) -> bool:
+    """Tk's own answer for the main window (``MacWindowStyle isdark``)."""
+    return bool(int(str(root.tk.call("tk::unsupported::MacWindowStyle", "isdark", "."))))
+
+
+def effective_appearance_name(oc: _ObjC) -> str:
+    """``[NSApp effectiveAppearance].name``: the independent oracle for the check above."""
+    appearance = oc.msg(oc.app(), "effectiveAppearance")
+    return oc.string(oc.msg(appearance, "name")) if appearance else ""
+
+
+def probe_appearance_static(root: tk.Tk, oc: _ObjC) -> None:
+    _report("INFO", "tk_patchlevel", str(root.tk.call("info", "patchlevel")))
+    try:
+        dark = tk_isdark(root)
+    except (tk.TclError, ValueError) as exc:
+        _report("FAIL", "appearance_isdark", f"tk::unsupported::MacWindowStyle isdark raised {exc}")
+        return
+    name = effective_appearance_name(oc)
+    native_dark = "dark" in name.lower()
+    _report("PASS" if dark == native_dark else "FAIL", "appearance_isdark",
+            f"isdark={int(dark)}; NSApp effectiveAppearance={name!r} "
+            f"({'agrees' if dark == native_dark else 'DISAGREES'})")
+    system = system_dark_mode()
+    _report("INFO", "appearance_system_setting", f"System Events dark mode={system}")
+
+
+def probe_appearance_events(root: tk.Tk, oc: _ObjC, flip: bool) -> None:
+    """Flip the real Light/Dark setting both ways and record which virtual events Tk sends."""
+    seen: list[tuple[str, bool]] = []
+    for sequence in APPEARANCE_EVENTS:
+        root.bind(sequence, lambda _e, s=sequence: seen.append((s, tk_isdark(root))), add="+")
+    if not flip:
+        _report("INFO", "appearance_events",
+                "not run: needs --flip-appearance (it changes the Mac's Light/Dark setting)")
+        return
+    original = system_dark_mode()
+    if original is None:
+        _report("FAIL", "appearance_events", "cannot read the Light/Dark setting (System Events)")
+        return
+    _report("INFO", "appearance_original", f"dark mode={original}")
+    outcomes: list[str] = []
+    ok = True
+    try:
+        for target in (not original, original):
+            seen.clear()
+            set_system_dark_mode(target)
+            wanted = "<<DarkAqua>>" if target else "<<LightAqua>>"
+            _pump(root, 8.0, lambda: any(s == wanted for s, _d in seen))
+            _pump(root, 0.5)
+            fired = [s for s, _d in seen]
+            dark_at_event = [d for s, d in seen if s == wanted]
+            good = wanted in fired and all(d == target for d in dark_at_event)
+            ok = ok and good
+            outcomes.append(f"set dark={target}: events={fired or 'none'}, "
+                            f"isdark at event={dark_at_event or 'n/a'}, isdark now={int(tk_isdark(root))}")
+    finally:
+        try:
+            if system_dark_mode() != original:
+                set_system_dark_mode(original)
+        except (OSError, subprocess.SubprocessError) as exc:
+            _report("FAIL", "appearance_restore",
+                    f"COULD NOT restore dark mode={original}: {exc}")
+        final = system_dark_mode()
+        _report("PASS" if final == original else "FAIL", "appearance_restore",
+                f"original dark mode={original}, final dark mode={final}")
+    _report("PASS" if ok else "FAIL", "appearance_events", "; ".join(outcomes))
+
+
+def _actual(root: tk.Tk, spec: str, *options: str) -> str:
+    return " ".join(str(x) for x in root.tk.splitlist(
+        root.tk.call("font", "actual", spec, "-displayof", ".", *options)))
+
+
+def probe_system_fonts(root: tk.Tk) -> None:
+    families = {str(f) for f in root.tk.splitlist(root.tk.call("font", "families"))}
+    _report("INFO", "font_families_count", str(len(families)))
+    for candidate in SYSTEM_FONT_CANDIDATES:
+        listed = candidate in families
+        try:
+            actual = _actual(root, f"{{{candidate}}} 13", "-family")
+        except tk.TclError as exc:
+            actual = f"raised {exc}"
+        _report("INFO", "font_candidate",
+                f"{candidate!r}: in `font families`={listed}; a font asked for it draws as {actual!r}")
+    for name in TK_FONT_NAMES:
+        _report("INFO", "font_named", f"{name}: {_actual(root, name)}")
+    default_family = _actual(root, "TkDefaultFont", "-family")
+    system_family = _actual(root, "{.AppleSystemUIFont} 13", "-family")
+    _report("PASS" if system_family == ".AppleSystemUIFont" else "FAIL", "system_font_name",
+            f"a font asked for '.AppleSystemUIFont' really is {system_family!r}; "
+            f"TkDefaultFont is {default_family!r}")
+    for script, char in SCRIPT_SAMPLES:
+        try:
+            ui = _actual(root, "{.AppleSystemUIFont} 13", "-family", "--", char)
+            default = _actual(root, "TkDefaultFont", "-family", "--", char)
+        except tk.TclError as exc:
+            ui = default = f"raised {exc}"
+        _report("INFO", "font_script", f"{script} U+{ord(char):04X}: system font -> {ui!r}; "
+                                       f"TkDefaultFont -> {default!r}")
+
+
 # ----------------------------------------------------------------------- main
 
 def run_steps(steps: Sequence[tuple[str, Callable[[], None]]]) -> list[str]:
@@ -402,6 +547,7 @@ def exit_code(results: Sequence[tuple[str, str, str]], crashed: Sequence[str]) -
 
 def main(argv: list[str]) -> int:
     hold = 0.0
+    flip = "--flip-appearance" in argv
     if "--hold" in argv:
         hold = float(argv[argv.index("--hold") + 1])
     root = tk.Tk()
@@ -441,6 +587,9 @@ def main(argv: list[str]) -> int:
             ("reopen_application", lambda: probe_reopen(root, oc, events)),
             ("dock_menu", lambda: probe_dock_menu(root, oc)),
             ("window_attributes", lambda: probe_window_attributes(root, oc)),
+            ("appearance_isdark", lambda: probe_appearance_static(root, oc)),
+            ("appearance_events", lambda: probe_appearance_events(root, oc, flip)),
+            ("system_fonts", lambda: probe_system_fonts(root)),
         ]
         crashed = run_steps(steps)
         if hold:

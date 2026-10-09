@@ -3,10 +3,10 @@
 ``resolve_theme("system")`` answers "light" or "dark" from the OS; ``SystemThemeWatcher`` calls a
 function on the Tk thread when the OS choice changes, so the "System" theme mode follows the OS
 live. One back-end per OS sits behind a small interface (``Backend``): ``is_dark()`` and
-``subscribe(callback, root)``. Windows (this module, ``WindowsBackend``) reads the per-user
-"Choose your default app mode" value; the macOS back-end is a later card and plugs in at
-``get_backend``. Every other system keeps the earlier behaviour: the optional ``darkdetect``
-package decides, and nothing watches for changes.
+``subscribe(callback, root)``. Windows (``WindowsBackend``) reads the per-user "Choose your
+default app mode" value; macOS (``MacBackend``) asks Tk and listens for its appearance events.
+Every other system keeps the earlier behaviour: the optional ``darkdetect`` package decides, and
+nothing watches for changes.
 
 Prior art, read before writing this:
 
@@ -19,6 +19,12 @@ Prior art, read before writing this:
   of one registry value is simpler and has no thread to leak.
 * A ``WM_SETTINGCHANGE`` ("ImmersiveColorSet") hook would need to replace Tk's window procedure.
   Not adopted: that is fragile next to Tk and tkdnd, which already own it.
+* macOS: Tk 8.6.16 answers ``tk::unsupported::MacWindowStyle isdark .`` and sends the
+  ``<<LightAqua>>`` / ``<<DarkAqua>>`` virtual events to the main window when the user flips
+  System Settings > Appearance (proved on macOS 13 by ``tools/mac_native_probe.py
+  --flip-appearance``; ``<<TkSystemAppearanceChanged>>`` did NOT fire there and is not used). The
+  events arrive on the Tk thread, so no timer and no listener thread are needed; darkdetect's
+  ``theme()`` read stays only as the answer when Tk cannot be asked.
 
 ``darkdetect`` was never in the Windows bundles (it is an optional extra), so on Windows the old
 code always answered "dark" for "System". The registry read has no dependency.
@@ -30,6 +36,8 @@ import sys
 import tkinter as tk
 from collections.abc import Callable
 from typing import Any, Protocol
+
+from app import mac_native
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +75,26 @@ class Backend(Protocol):
         ...
 
 
+def _deliver(now: bool, state: dict[str, Any], callback: Callable[[], None]) -> None:
+    """Tell ``callback`` that the choice became ``now``; remember it only once that worked."""
+    if now != state["pending"]:
+        state["pending"], state["attempts"] = now, 0
+    state["attempts"] += 1
+    try:
+        callback()
+    except Exception:  # noqa: BLE001 - a failing handler must not end the watch
+        if state["attempts"] == 1:
+            logger.exception("System theme change handler failed")
+        else:
+            logger.debug("System theme change handler failed again", exc_info=True)
+        if state["attempts"] >= MAX_CALLBACK_ATTEMPTS:
+            logger.warning("System theme change handler failed %d times: giving up on this change",
+                           state["attempts"])
+            state["last"] = now
+        return
+    state["last"] = now
+
+
 # ----------------------------------------------------------------------------- Windows
 
 class WindowsBackend:
@@ -99,25 +127,7 @@ class WindowsBackend:
             _warn_once("windows-value", "Unexpected Windows app theme value: %r", value)
             return None
 
-    @staticmethod
-    def _deliver(now: bool, state: dict[str, Any], callback: Callable[[], None]) -> None:
-        """Tell ``callback`` that the choice became ``now``; remember it only once that worked."""
-        if now != state["pending"]:
-            state["pending"], state["attempts"] = now, 0
-        state["attempts"] += 1
-        try:
-            callback()
-        except Exception:  # noqa: BLE001 - a failing handler must not end the watch
-            if state["attempts"] == 1:
-                logger.exception("System theme change handler failed")
-            else:
-                logger.debug("System theme change handler failed again", exc_info=True)
-            if state["attempts"] >= MAX_CALLBACK_ATTEMPTS:
-                logger.warning("System theme change handler failed %d times: giving up on this change",
-                               state["attempts"])
-                state["last"] = now
-            return
-        state["last"] = now
+    _deliver = staticmethod(_deliver)
 
     def subscribe(self, callback: Callable[[], None], root: tk.Misc) -> Callable[[], None]:
         state: dict[str, Any] = {"last": self.is_dark(), "after": None, "stopped": False,
@@ -157,10 +167,106 @@ class WindowsBackend:
         return cancel
 
 
-# --------------------------------------------------------------- everything else (unchanged)
+# ----------------------------------------------------------------------------------- macOS
+
+# The two virtual events Tk sends to the main window when the Light/Dark setting flips.
+MAC_APPEARANCE_EVENTS = ("<<LightAqua>>", "<<DarkAqua>>")
+
+
+class MacBackend:
+    """macOS: Tk's own ``isdark`` answer, and the Light/Dark events Tk sends on a flip.
+
+    Without a window to ask (or on a Tk that cannot tell) the answer is the earlier one: the
+    optional ``darkdetect`` package, which is how a build without it kept "dark". ``root`` is the
+    Tk root to ask; ``None`` means the process's default root (``is_dark`` before the app has one
+    is the darkdetect answer).
+    """
+
+    live = True
+
+    def __init__(self, root: tk.Misc | None = None, retry_ms: int = POLL_MS) -> None:
+        self._root = root
+        self._retry_ms = retry_ms
+
+    def _ask_tk(self, root: tk.Misc) -> bool | None:
+        if not mac_native.is_aqua(root):
+            return None
+        try:
+            raw = str(root.tk.call("tk::unsupported::MacWindowStyle", "isdark", str(root))).lower()
+        except tk.TclError as exc:
+            _warn_once("mac-isdark", "Tk could not tell the macOS appearance: %s", exc)
+            return None
+        if raw in ("1", "true"):
+            return True
+        if raw in ("0", "false"):
+            return False
+        _warn_once("mac-isdark-value", "Unexpected macOS appearance value from Tk: %r", raw)
+        return None
+
+    def _answer(self, root: tk.Misc | None) -> bool | None:
+        answer = self._ask_tk(root) if root is not None else None
+        if answer is None:
+            return DarkdetectBackend().is_dark()
+        return answer
+
+    def is_dark(self) -> bool | None:
+        return self._answer(self._root or getattr(tk, "_default_root", None))
+
+    def subscribe(self, callback: Callable[[], None], root: tk.Misc) -> Callable[[], None]:
+        state: dict[str, Any] = {"last": self._answer(root), "after": None, "stopped": False,
+                                 "pending": None, "attempts": 0}
+        bound: dict[str, str] = {}
+
+        def clear_timer() -> None:
+            handle, state["after"] = state["after"], None
+            if handle is not None:
+                try:
+                    root.after_cancel(handle)
+                except tk.TclError:
+                    pass
+
+        def check(_event: object = None) -> None:
+            clear_timer()
+            if state["stopped"]:
+                return
+            now: bool | None = None
+            try:
+                now = self._answer(root)
+                if now is not None and now != state["last"]:
+                    _deliver(now, state, callback)
+            except Exception:  # noqa: BLE001 - nothing may end the watch
+                logger.exception("System theme check failed")
+            if state["stopped"] or now is None or now == state["last"]:
+                return
+            # The handler failed and is not given up on yet: look again shortly.
+            try:
+                state["after"] = root.after(self._retry_ms, check)
+            except tk.TclError:
+                state["stopped"] = True  # the window is gone
+
+        def cancel() -> None:
+            state["stopped"] = True
+            clear_timer()
+            for sequence, funcid in list(bound.items()):
+                try:
+                    root.unbind(sequence, funcid)
+                except tk.TclError:
+                    pass
+            bound.clear()
+
+        for sequence in MAC_APPEARANCE_EVENTS:
+            try:
+                bound[sequence] = root.bind(sequence, check, add="+")
+            except tk.TclError:
+                state["stopped"] = True  # the window is gone
+                break
+        return cancel
+
+
+# --------------------------------------------------------------- everything else (unchanged: Linux)
 
 class DarkdetectBackend:
-    """macOS and Linux for now: the optional ``darkdetect`` package, read on demand, no watching.
+    """Linux (and macOS when Tk cannot answer): the optional ``darkdetect`` package, no watching.
 
     Same answers as the code it replaces: "Dark" is dark, anything else the package returns
     (including None) is light, and a missing or failing package is unknown (dark, logged once).
@@ -205,9 +311,11 @@ def _warn_once(key: str, message: str, *args: object) -> None:
 
 def get_backend(platform: str | None = None) -> Backend:
     """The back-end for ``platform`` (default: this system)."""
-    if (platform or sys.platform) == "win32":
+    chosen = platform or sys.platform
+    if chosen == "win32":
         return WindowsBackend()
-    # The macOS back-end is added here by its own card.
+    if chosen == "darwin":
+        return MacBackend()
     return DarkdetectBackend()
 
 
