@@ -493,9 +493,10 @@ def _merged_catalog(config: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
         _gb = base.get("approx_size_gb")
         try:
             # JSON "Infinity" / "NaN" parse as floats; a huge JSON integer
-            # makes isfinite() raise OverflowError.
+            # makes isfinite() raise OverflowError. A size below zero is
+            # as meaningless as a non-finite one ("~-5 GB" in the popup).
             usable = (not isinstance(_gb, bool) and isinstance(_gb, (int, float))
-                      and math.isfinite(_gb))
+                      and math.isfinite(_gb) and _gb > 0)
         except OverflowError:
             usable = False
         if not usable:

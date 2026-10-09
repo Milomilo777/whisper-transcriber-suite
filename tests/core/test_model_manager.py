@@ -377,6 +377,16 @@ def test_a_non_finite_catalog_size_means_unknown_not_a_crash(size):
     assert mm._approx_model_bytes(sane, name) == 2 * 1024 ** 3
 
 
+@pytest.mark.parametrize("size", [-5, -0.5, 0, -1e300])
+def test_a_negative_catalog_size_is_shown_as_unknown(size):
+    """A size below zero is meaningless: the info popup said "~-5 GB"."""
+    entry = {"name": "faster-whisper-odd-model", "hf_repo": "Systran/faster-whisper-odd-model",
+             "approx_size_gb": size}
+    info = mm.catalog_entry_info({"model_catalog": {"odd": entry}}, "odd")
+    assert info is not None and info["approx_size_gb"] == 0.0
+    assert f"{info['approx_size_gb']:g}" == "0"
+
+
 def test_merged_catalog_coerces_hostile_display_field_types():
     """A compromised/MITM'd online catalog entry with wrong-typed display
     fields must not crash the Advanced dialog's info popup: ``_show_model_info``
