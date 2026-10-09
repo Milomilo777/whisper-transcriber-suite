@@ -94,14 +94,22 @@ _XML_ILLEGAL_CHARS = "".join(
     chr(c) for c in list(range(0x00, 0x09)) + [0x0B, 0x0C]
     + list(range(0x0E, 0x20)) + [0x7F]
 )
-_XML_TRANSLATE = str.maketrans({c: None for c in _XML_ILLEGAL_CHARS})
+_XML_TRANSLATE: dict[int, str | None] = {
+    **{ord(c): None for c in _XML_ILLEGAL_CHARS},
+    # A lone surrogate is not a legal XML character either, and lxml cannot
+    # encode it (UnicodeEncodeError on save). A Python str never holds a
+    # valid pair as two code points, so every one found here is a lone half.
+    **{cp: chr(0xFFFD) for cp in range(0xD800, 0xE000)},
+}
 
 
 def sanitize_for_xml(text: str) -> str:
-    """Strip XML 1.0-illegal control characters from ``text``.
+    """Strip XML 1.0-illegal control characters from ``text`` and replace
+    lone surrogates with U+FFFD.
 
     Used by the DOCX writer (python-docx raises ValueError on these
-    bytes) and by any writer that round-trips through an XML layer.
+    bytes, and lxml cannot encode a surrogate) and by any writer that
+    round-trips through an XML layer.
     """
     if not text:
         return ""
