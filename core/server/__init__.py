@@ -147,34 +147,42 @@ def _download_url(url: str, dest_dir: str,
             text=True, encoding="utf-8", errors="replace",
             **new_session_kwargs(),
         )
-        started = time.monotonic()
-        while True:
-            try:
-                stdout, stderr = process.communicate(timeout=0.5)
-                break
-            except subprocess.TimeoutExpired:
-                pass
-            reason = ""
-            if limits is not None and limits.cancelled():
-                reason = "cancelled"
-            elif (limits is not None and limits.timeout_s > 0
-                  and time.monotonic() - started > limits.timeout_s):
-                reason = "timeout"
-            if reason:
+        try:
+            started = time.monotonic()
+            while True:
+                try:
+                    stdout, stderr = process.communicate(timeout=0.5)
+                    break
+                except subprocess.TimeoutExpired:
+                    pass
+                reason = ""
+                if limits is not None and limits.cancelled():
+                    reason = "cancelled"
+                elif (limits is not None and limits.timeout_s > 0
+                      and time.monotonic() - started > limits.timeout_s):
+                    reason = "timeout"
+                if reason:
+                    kill_process_tree(process, force=True)
+                    try:
+                        process.communicate(timeout=10)
+                    except (subprocess.TimeoutExpired, OSError, ValueError):
+                        pass
+                    if reason == "cancelled":
+                        raise DownloadCancelled()
+                    minutes = int((limits.timeout_s if limits else 0) // 60)
+                    raise TimeoutError(
+                        f"the download took longer than {minutes} minutes and "
+                        "was stopped")
+            if process.returncode:
+                raise subprocess.CalledProcessError(
+                    process.returncode, command, stdout, stderr)
+        finally:
+            if process.returncode is None:  # still running: an exception left it behind
                 kill_process_tree(process, force=True)
                 try:
                     process.communicate(timeout=10)
                 except (subprocess.TimeoutExpired, OSError, ValueError):
                     pass
-                if reason == "cancelled":
-                    raise DownloadCancelled()
-                minutes = int((limits.timeout_s if limits else 0) // 60)
-                raise TimeoutError(
-                    f"the download took longer than {minutes} minutes and "
-                    "was stopped")
-        if process.returncode:
-            raise subprocess.CalledProcessError(
-                process.returncode, command, stdout, stderr)
     # Pick the newest media file yt-dlp left in the dir.
     candidates = [
         os.path.join(dest_dir, n) for n in os.listdir(dest_dir)

@@ -353,6 +353,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A URL job in the local API no longer leaves yt-dlp running when its wait is interrupted.** The download process is now stopped whenever the wait ends early.
 - **A broken character in a transcript no longer loses an export format or the unsaved Live text.** A
   lone half of a character pair (from a hand-edited JSON or a damaged file name) made every text format
   fail to save, and the Live tab's exit autosave deleted its file; the bad character is now replaced with
