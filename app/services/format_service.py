@@ -185,9 +185,10 @@ class FormatService:
                     # it -- same fallback as the download service.
                     r = _probe([])
                 if r.returncode:
-                    raise RuntimeError(
-                        (r.stderr or r.stdout or "yt-dlp could not read this URL").strip()
-                    )
+                    # Strip before choosing: a stderr of only blank lines must
+                    # not hide the stdout text or the fallback.
+                    reason = (r.stderr or "").strip() or (r.stdout or "").strip()
+                    raise RuntimeError(reason or "yt-dlp could not read this URL")
                 info = json.loads(r.stdout)
                 # Some extractors / a captive-portal or proxy body can decode
                 # to a non-object (null / list / number). The poll() handler
@@ -363,8 +364,9 @@ class FormatService:
         app.current_video_title = payload.get("title", "")
         lang = payload.get("language") or ""
         if not lang:
-            auto_caps = payload.get("automatic_captions") or {}
-            lang = next(iter(auto_caps.keys()), "") if auto_caps else ""
+            # Same guard as caption_lang_map: anything but an object is no list of languages.
+            auto_caps = payload.get("automatic_captions")
+            lang = next(iter(auto_caps), "") if isinstance(auto_caps, dict) else ""
         app.current_video_language = lang
         app.current_video_caption_langs = caption_lang_map(payload)
 

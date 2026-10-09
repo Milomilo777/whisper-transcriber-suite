@@ -353,6 +353,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A failed format lookup always shows a reason, and odd caption data no longer blocks the formats.**
+  A yt-dlp error with only blank lines on stderr showed an empty message; a non-object
+  `automatic_captions` value raised an error in the format list.
 - **The server keeps working when it cannot start a webhook thread.** A finished job stays finished and
   the next jobs still run; the notification is logged and dropped.
 - **A large upload stays byte-exact when a long text field follows the file.** The server could keep
