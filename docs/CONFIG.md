@@ -559,7 +559,7 @@ Not a config key — a **File → Convert transcript…** menu action backed by 
 | `sponsorblock_categories` | array | `[]` | SponsorBlock segments to cut from downloads, e.g. `["sponsor", "intro", "outro"]`. |
 | `watched_folder` | string | `""` | Folder whose new media files are transcribed automatically. |
 | `watched_folder_enabled` | bool | `false` | Turns the watched folder on. |
-| `chime_on_complete` | bool | `true` | View → Chime on completion. Plays a sound when a job finishes; on Windows it also blinks the taskbar button three times when the window is not in front (`native_taskbar`, above). |
+| `chime_on_complete` | bool | `true` | View → Chime on completion (on macOS the item reads "Chime and notify on completion"). Plays a sound when a job finishes; on Windows it also blinks the taskbar button three times when the window is not in front (`native_taskbar`, above); on macOS it also posts a notification while the app is in the background, minimised or hidden (a finished transcription, download or subtitle burn, or a subtitled-video chain that failed). |
 | `minimise_to_tray` | bool | `false` | Minimising hides the window to the tray. |
 | `window_geometry` | string | `""` | Last window size and position. |
 | `server_https_enabled` | bool | `false` | Web / LAN access tab: serve over HTTPS. |
