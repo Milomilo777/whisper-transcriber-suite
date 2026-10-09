@@ -418,6 +418,19 @@ def test_command_w_runs_the_secondary_windows_own_close_handler(
     assert win.winfo_exists()  # the handler decides (the user may have kept the window)
 
 
+def test_command_w_runs_a_close_handler_that_is_a_tcl_script(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Tk's own dialogs register a multi-word script, not one command name.
+    win, _entry = _window_with_focus(host, monkeypatch)
+    host.tk.call("wm", "protocol", win, "WM_DELETE_WINDOW", "set ::wts_cmd_w_script_ran yes")
+    try:
+        assert mac_native.close_front_window(host) is True
+        assert host.tk.globalgetvar("wts_cmd_w_script_ran") == "yes"
+    finally:
+        host.tk.call("unset", "-nocomplain", "::wts_cmd_w_script_ran")
+
+
 def test_command_w_destroys_a_window_that_has_no_close_handler(
     host: _Host, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

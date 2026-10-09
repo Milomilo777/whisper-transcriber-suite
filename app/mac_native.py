@@ -360,7 +360,9 @@ def close_front_window(app: Any) -> bool:
     try:
         handler = str(app.tk.call("wm", "protocol", path, "WM_DELETE_WINDOW"))
         if handler:
-            app.tk.call(handler)
+            # The handler is a Tcl script (Tk's own dialogs set a multi-word
+            # one), so it is evaluated; call() would treat it as one command name.
+            app.tk.eval(handler)
         else:
             app.nametowidget(path).destroy()
     except (tk.TclError, KeyError):

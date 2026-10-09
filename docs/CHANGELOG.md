@@ -366,6 +366,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   as an unusable item.
 - **A late Cancel no longer turns a finished download into a cancelled one.** Cancelling a download
   that had ended in the meantime (the Esc question left open, an old menu) also cancelled its transcription.
+- **Command-W closes a Mac window whose close action is a Tcl script.** Such a window (Tk's own
+  dialogs set one) stayed open without any message.
 - **Closing the app during a live session can no longer lose both the words and the audio.** The
   session recording was deleted before the unsaved transcript was written; the transcript is saved
   first now, and if that fails the recording is kept and its location is logged.
