@@ -999,18 +999,25 @@ class _DeadlineReader(io.RawIOBase):
         deadline = self.deadline
         current = sock.gettimeout()
         changed = False
+        # True when the deadline, not the socket's own timeout, ends this read.
+        deadline_binds = False
         if deadline is not None:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise _BudgetExceeded("time budget used up")
-            want = remaining if current is None else min(current, remaining)
+            deadline_binds = current is None or remaining <= current
+            want = remaining if deadline_binds else current
             if want != current:
                 sock.settimeout(want)
                 changed = True
         try:
             return sock.recv_into(buffer)
         except TimeoutError:
-            if deadline is not None and time.monotonic() >= deadline:
+            # The socket's timer can fire a little before time.monotonic()
+            # reaches the deadline (coarse clocks, select rounding), so a
+            # timeout of our own making must not depend on re-reading it.
+            if deadline is not None and (
+                    deadline_binds or time.monotonic() >= deadline):
                 raise _BudgetExceeded("time budget used up") from None
             raise
         finally:
