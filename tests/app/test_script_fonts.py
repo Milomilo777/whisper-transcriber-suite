@@ -472,9 +472,14 @@ def test_lists_with_more_columns_give_han_no_font(windows: set[str], root: tk.Tk
     assert script_fonts.tree_row_tags(queue, "interview_සිංහල.mp4") == ("script-font-Nirmala_UI",)
 
 
-def test_tree_rows_change_no_style_once_the_theme_is_prepared(windows: set[str], root: tk.Tk) -> None:
+def test_tree_rows_change_no_style_once_the_theme_is_prepared(
+        windows: set[str], root: tk.Tk, monkeypatch: pytest.MonkeyPatch) -> None:
     # Setting a ttk style option sends <<ThemeChanged>> to every widget, and sv_ttk then resets
     # each Entry / Combobox font: rows that need taller lines must only switch the tree's style.
+    # The script fonts are taller than Segoe UI by construction: a machine without them (Linux,
+    # macOS) draws every family in one fallback face, so the line heights are pinned here.
+    monkeypatch.setattr(script_fonts, "_linespace",
+                        lambda _w, family, _size: 18 if family == "Segoe UI" else 60)
     style = ttk.Style(root)
     style.configure("Treeview", rowheight=10)
     entry = ttk.Entry(root)
