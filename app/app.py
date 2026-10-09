@@ -76,6 +76,7 @@ from core.hub import voice_clone_tab_enabled
 from core.logging_setup import get_ui_logger, open_log_folder, setup_logging
 from core.paths import bin_dir as _resource_bin_dir
 from core.paths import bundled_binary as _bundled_binary
+from core.paths import same_file as _same_file
 from core.speed_meter import speed_cell, task_summary_line
 from core.watcher import FolderWatcher
 
@@ -4431,13 +4432,9 @@ class App(tk.Tk):
         a same-path task is still pending; a finished/cancelled/error row
         does not block a fresh re-run.
         """
-        try:
-            norm = os.path.normcase(os.path.abspath(file_path))
-        except Exception:  # noqa: BLE001
-            return False
         for existing in self.queue:
             try:
-                if (os.path.normcase(os.path.abspath(existing.file_path)) == norm
+                if (_same_file(os.path.abspath(existing.file_path), os.path.abspath(file_path))
                         and getattr(existing, "status", "")
                         not in ("finished", "cancelled", "error")):
                     return True

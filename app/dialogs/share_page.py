@@ -17,6 +17,7 @@ from typing import Any
 from app.dpi import px
 from app.theme import tokens
 from app.widgets.platform import open_async
+from core.paths import same_file
 from core.writers import html_transcript
 
 BUTTON_TEXT = "Save shareable page"
@@ -165,8 +166,8 @@ def save_shareable_page(
     if not path:
         return None
     # "All files" lets any name through: never replace the transcript or the media.
-    sources = {os.path.normcase(os.path.abspath(p)) for p in (json_path, media) if p}
-    if os.path.normcase(os.path.abspath(path)) in sources:
+    # Ask the filesystem (os.path.normcase folds no case on macOS, whose volumes do).
+    if any(same_file(path, p) for p in (json_path, media) if p):
         messagebox.showerror(BUTTON_TEXT, "Choose another file name: this one is the "
                              "transcript or media file itself.",
                              parent=master)  # type: ignore[arg-type]

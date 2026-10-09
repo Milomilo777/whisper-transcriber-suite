@@ -28,6 +28,31 @@ def resource_base() -> str:
     return str(Path(__file__).resolve().parent.parent)
 
 
+def path_key(path: str) -> str:
+    """One dict/set key per file name, whatever case the caller spelled it in.
+
+    ``os.path.normcase`` folds case only on Windows, but macOS volumes (APFS, the
+    default) ignore case too, so ``T.JSON`` and ``t.json`` are one file there. Linux stays
+    case-sensitive. Prefer :func:`same_file` when both paths exist.
+    """
+    key = os.path.normcase(os.path.realpath(path))
+    return key.casefold() if sys.platform in ("win32", "darwin") else key
+
+
+def same_file(a: str, b: str) -> bool:
+    """True when *a* and *b* name the same file (``b`` may not exist yet).
+
+    ``os.path.samefile`` asks the filesystem, so it is right on case-insensitive volumes
+    whatever the platform; the :func:`path_key` compare covers a name not on disk.
+    """
+    try:
+        if os.path.exists(a) and os.path.exists(b):
+            return os.path.samefile(a, b)
+    except OSError:
+        pass
+    return path_key(a) == path_key(b)
+
+
 def bin_dir() -> str:
     return os.path.join(resource_base(), "bin")
 

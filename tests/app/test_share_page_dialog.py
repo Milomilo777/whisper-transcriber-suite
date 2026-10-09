@@ -191,3 +191,27 @@ def test_never_saves_over_the_transcript_or_media(tk_root, tmp_path, monkeypatch
                                   json_path=str(json_path)) is None
     assert errors and json_path.read_text(encoding="utf-8") == "[]"
     assert media.read_bytes() == b"audio"
+
+
+@pytest.mark.parametrize("which", ["json", "media"])
+def test_the_overwrite_guard_does_not_rely_on_normcase(tk_root, tmp_path, monkeypatch, which):
+    """macOS folds no case in os.path.normcase yet its volumes ignore case: ask the filesystem."""
+    import os
+    import posixpath
+
+    json_path = tmp_path / "t.json"
+    json_path.write_text("[]", encoding="utf-8")
+    media = tmp_path / "t.mp3"
+    media.write_bytes(b"audio")
+    target = json_path if which == "json" else media
+    if not (tmp_path / "T.JSON").exists():
+        pytest.skip("case-sensitive volume: a case variant is another file")
+    monkeypatch.setattr(os.path, "normcase", posixpath.normcase)
+    monkeypatch.setattr(sp.filedialog, "asksaveasfilename", lambda **_k: str(target).upper())
+    errors: list[str] = []
+    monkeypatch.setattr(sp.messagebox, "showerror", lambda *a, **_k: errors.append(a[1]))
+    _act(tk_root, "Save…")
+    assert sp.save_shareable_page(tk_root, segments=SEGS, media_path=str(media),
+                                  json_path=str(json_path)) is None
+    assert errors and json_path.read_text(encoding="utf-8") == "[]"
+    assert media.read_bytes() == b"audio"

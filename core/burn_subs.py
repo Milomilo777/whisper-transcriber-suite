@@ -30,7 +30,7 @@ import uuid
 from typing import Any, Callable, NamedTuple
 
 from ._proc import kill_process_tree, new_session_kwargs
-from .paths import bundled_binary
+from .paths import bundled_binary, path_key, same_file
 
 logger = logging.getLogger(__name__)
 
@@ -351,7 +351,7 @@ def _output_key(path: str) -> str:
     """One key per file, whatever the case rules and Unicode form of its name
     (macOS HFS+ stores names decomposed: a Persian "U+0622" may come back as
     U+0627 U+0653 where the app wrote U+0622)."""
-    return unicodedata.normalize("NFC", os.path.normcase(os.path.realpath(path)))
+    return unicodedata.normalize("NFC", path_key(path))
 
 
 def is_burn_temp(path: str) -> bool:
@@ -462,7 +462,7 @@ def _is_link(path: str) -> bool:
 
 
 def _same_folder(a: str, b: str) -> bool:
-    return os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b))
+    return same_file(a, b)
 
 
 def _is_burn_partial(path: str) -> bool:

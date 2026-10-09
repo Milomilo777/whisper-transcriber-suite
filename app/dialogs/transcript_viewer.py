@@ -56,6 +56,7 @@ from app.widgets.platform import (
 from app.widgets.tooltip import help_icon
 from core import subtitle_edit
 from core.media_types import MEDIA_EXTENSIONS
+from core.paths import path_key
 from core.search import find_folded_span, folded_contains, replace_folded
 from core.writers.base import words_match_text
 
@@ -152,8 +153,9 @@ def _bilingual_lang_slug(lang: str) -> str:
 
 
 def _viewer_key(json_path: str) -> str:
+    # One viewer per file: macOS volumes ignore case like Windows ones, which normcase alone misses.
     try:
-        return os.path.normcase(os.path.realpath(json_path))
+        return path_key(json_path)
     except (OSError, ValueError):
         return os.path.normcase(os.path.abspath(json_path))
 

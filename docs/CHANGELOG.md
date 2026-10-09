@@ -353,6 +353,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Save shareable page can no longer overwrite the transcript or media on a Mac.** The check that
+  refuses those two files compared names with a case rule that only Windows applies, so on a Mac
+  volume `T.JSON` passed as a new name and replaced `t.json`. It now asks the filesystem; the same
+  fix covers one transcript window per file, the Re-run duplicate check and subtitle-burn output names.
 - **The installer build no longer depends on the PC's Windows code page when it checks `gui.py`.**
   A non-ASCII character that the code page cannot decode failed the check.
 - **Uninstalling and answering Yes to deleting the models folder removes only the models.** The question
