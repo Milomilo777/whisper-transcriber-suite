@@ -99,7 +99,7 @@ def _cache_key(audio_path: str, model: str) -> str:
         token = f"{audio_path}|{st.st_size}|{int(st.st_mtime)}|{model}"
     except OSError:
         token = f"{audio_path}|missing|{model}"
-    return hashlib.sha1(token.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha1(token.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
 
 
 def cache_dir() -> Path:

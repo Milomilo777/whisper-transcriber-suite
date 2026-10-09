@@ -77,6 +77,39 @@ def test_kill_tree_windows_taskkill_args(monkeypatch):
     assert "/F" in captured["args"]  # hard kill includes /F
 
 
+class _Done:
+    def __init__(self, returncode):
+        self.returncode = returncode
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows taskkill path")
+@pytest.mark.parametrize("force", [False, True])
+def test_kill_tree_windows_failed_forced_taskkill_signals_the_parent(
+    monkeypatch, force
+):
+    """A forced taskkill that reports failure (access denied, tree partly
+    alive) must not count as success: the last-resort parent signal runs."""
+    monkeypatch.setattr(
+        _proc.subprocess, "run", lambda args, **kw: _Done(1)
+    )
+    p = _FakeProc(pid=777)
+    _proc.kill_process_tree(p, force=force)
+    assert p.killed or p.terminated
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows taskkill path")
+def test_kill_tree_windows_successful_escalation_leaves_the_parent_alone(
+    monkeypatch
+):
+    codes = iter([1, 0])  # graceful fails, forced succeeds
+    monkeypatch.setattr(
+        _proc.subprocess, "run", lambda args, **kw: _Done(next(codes))
+    )
+    p = _FakeProc(pid=778)
+    _proc.kill_process_tree(p, force=False)
+    assert not p.killed and not p.terminated
+
+
 @pytest.mark.skipif(os.name == "nt", reason="POSIX killpg path")
 def test_kill_tree_posix_uses_killpg(monkeypatch):
     seen: dict = {}

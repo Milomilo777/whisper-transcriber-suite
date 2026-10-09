@@ -108,22 +108,31 @@ def kill_process_tree(
                 timeout=timeout,
             )
             rc = getattr(result, "returncode", 0)
-            if force or not isinstance(rc, int) or rc == 0:
+            if not isinstance(rc, int) or rc == 0:
                 return
-            # Graceful taskkill could not terminate the tree — escalate to /F.
+            if not force:
+                # Graceful taskkill could not terminate the tree — escalate to /F.
+                logger.debug(
+                    "graceful taskkill for pid %s returned %s; escalating to /F",
+                    pid, rc,
+                )
+                result = subprocess.run(
+                    ["taskkill", "/PID", str(pid), "/T", "/F"],
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                    timeout=timeout,
+                )
+                rc = getattr(result, "returncode", 0)
+                if not isinstance(rc, int) or rc == 0:
+                    return
+            # The forced kill reported failure too: fall through to the
+            # parent-only signal below instead of treating it as done.
             logger.debug(
-                "graceful taskkill for pid %s returned %s; escalating to /F",
+                "forced taskkill for pid %s returned %s; signalling parent",
                 pid, rc,
             )
-            subprocess.run(
-                ["taskkill", "/PID", str(pid), "/T", "/F"],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                timeout=timeout,
-            )
-            return
         except Exception:  # noqa: BLE001
             logger.debug("taskkill tree failed for pid %s; signalling parent",
                          pid, exc_info=True)

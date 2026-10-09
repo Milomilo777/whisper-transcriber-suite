@@ -345,6 +345,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Stopping a helper process on Windows no longer gives up silently.** When the forced
+  `taskkill` of a worker or download tree reports a failure, the app now also signals the
+  process itself instead of treating the kill as done.
 - **No helper program can take over the app's command pipe any more.** Every other child
   process the app starts (ffprobe, ffmpeg, yt-dlp, Deno, pip, Demucs, `open` / `xdg-open`)
   now gets no stdin as well, so the same ten-minute hang cannot come back through the
