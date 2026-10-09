@@ -350,6 +350,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   tracebacks keep their own lines), and the macOS helper hook
   runs only the exact multiprocessing command it was written for. The Linux installer fetches
   ffmpeg over HTTPS only, and two form fields and a graphics page got a label or a title.
+- **No banner while you are looking at the Mac app.** The finished-job notification no longer
+  appears when the app is in front and its window is on screen, even if no control has the keyboard
+  focus (for example right after clicking a tab); it still appears when another app is in front or
+  the window is minimised or hidden.
 - **Stopping a helper process on Windows no longer gives up silently.** When the forced
   `taskkill` of a worker or download tree reports a failure, the app now also signals the
   process itself instead of treating the kill as done.

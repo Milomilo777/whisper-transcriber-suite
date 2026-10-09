@@ -18,7 +18,8 @@ click bring its window forward, and nothing here promises that. No pyobjc and no
 The existing "Chime on completion" setting (View menu, ``chime_on_complete``) is the only
 completion-cue setting there is, so it also switches this notification off; no second option.
 A notification is posted only while the person is not looking at the app (see
-``window_has_focus``): a person looking at the window already sees the result card.
+``window_has_focus``: the app is active and its window is on screen): a person looking at the
+window already sees the result card.
 
 The banner follows the chime's completion events, one banner per user job, on the job's last stage:
 a finished transcription (``job_done``), a finished download (``download_done``, only when no
@@ -182,13 +183,16 @@ def _ns_app_active() -> bool | None:
 
 
 def window_has_focus(app: Any) -> bool:
-    """True when the person is looking at the app: it is the active app, its main window is on
-    screen and Tk has a focus widget.
+    """True when the person is looking at the app: it is the active app (``[NSApp isActive]``) and
+    its main window is on screen (mapped, not minimised or hidden).
 
-    Each test alone misses a case (macOS 13, measured): a minimised main window leaves the app
-    active with a focus widget; another app in front or Cmd+H leaves a focus widget while the app is
-    inactive. A Tk or an NSApp that cannot answer counts as "no focus" (logged once for NSApp): an
-    extra banner is harmless, a missing one is not.
+    Tk's own keyboard focus is deliberately NOT consulted: it is wrong both ways on macOS 13 /
+    Tk 8.6.16 (measured). With another app in front or after Cmd+H it still names a widget while
+    the app is inactive; with the app in front and the person having just clicked a tab, no widget
+    holds the focus (``focus_displayof()`` is None), which used to post a banner over a window the
+    person was looking at. A minimised main window leaves the app active, so the window state is
+    checked as well. A window or an NSApp that cannot answer counts as "not looking" (logged once
+    for NSApp): an extra banner is harmless, a missing one is not.
     """
     try:
         if str(app.state()) in ("iconic", "withdrawn"):
@@ -198,10 +202,12 @@ def window_has_focus(app: Any) -> bool:
     except AttributeError:
         pass
     try:
-        if app.focus_displayof() is None:
+        if not app.winfo_ismapped():
             return False
-    except (tk.TclError, AttributeError):
+    except tk.TclError:
         return False
+    except AttributeError:
+        pass
     active = _ns_app_active()
     if active is None:
         global _nsapp_unknown_logged

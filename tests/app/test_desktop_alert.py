@@ -30,24 +30,34 @@ def _task(path: str = "/media/talk.mp4", *, start: float | None = 100.0, end: fl
     return SimpleNamespace(file_path=path, start_time=start, end_time=end, status=status, **extra)
 
 
+#: What ``[NSApp isActive]`` answers in the current test; ``_app(focused=...)`` sets it.
+_NSAPP: dict[str, bool | None] = {"active": False}
+
+
 def _app(*, aqua: bool = True, focused: bool = False, queue: list[Any] | None = None,
          chime: bool | None = True, config_chime: bool = True, closing: bool = False,
-         state: str = "normal") -> Any:
+         state: str = "normal", mapped: bool = True, tk_focus: bool = False) -> Any:
+    """An App double. ``focused`` = the app is the frontmost one (NSApp active); ``tk_focus`` = Tk
+    still names a focus widget. The measured defect case is ``focused=True`` with no Tk focus (the
+    person just clicked a tab: no widget has the keyboard focus)."""
+    _NSAPP["active"] = focused
+
     def focus_displayof() -> Any:
-        return object() if focused else None
+        return object() if tk_focus else None
 
     var = None if chime is None else SimpleNamespace(get=lambda: chime)
     return SimpleNamespace(
         tk=SimpleNamespace(call=lambda *a: "aqua" if aqua else "win32"),
         queue=[] if queue is None else queue, chime_on_complete_var=var,
         app_config={"chime_on_complete": config_chime}, _closing=closing,
-        focus_displayof=focus_displayof, state=lambda: state)
+        focus_displayof=focus_displayof, state=lambda: state, winfo_ismapped=lambda: mapped)
 
 
 @pytest.fixture(autouse=True)
-def _nsapp_is_active(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Without a Mac there is no NSApp: the default answer is "the app is the active one"."""
-    monkeypatch.setattr(da, "_ns_app_active", lambda: True)
+def _nsapp_answer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Without a Mac there is no NSApp: the answer comes from ``_NSAPP`` (default: not active)."""
+    _NSAPP["active"] = False
+    monkeypatch.setattr(da, "_ns_app_active", lambda: _NSAPP["active"])
 
 
 @pytest.fixture
@@ -300,6 +310,7 @@ def test_without_the_menu_variable_the_saved_setting_decides(posted: list[tuple[
 def test_other_systems_are_left_completely_alone(posted: list[tuple[str, str]]) -> None:
     app = _app(aqua=False)
     app.focus_displayof = lambda: pytest.fail("the focus must not even be asked off macOS")
+    app.winfo_ismapped = lambda: pytest.fail("the window must not even be asked off macOS")
     da.job_done(app, _task(), 2)
     assert posted == []
 
@@ -315,12 +326,17 @@ def test_a_broken_app_double_never_raises(posted: list[tuple[str, str]]) -> None
     assert posted == []
 
 
-def test_an_unreadable_focus_counts_as_unfocused(posted: list[tuple[str, str]]) -> None:
-    app = _app()
+def test_an_unreadable_tk_focus_does_not_matter(posted: list[tuple[str, str]]) -> None:
+    # The Tk focus is not asked at all: it is wrong both ways on macOS 13 (see window_has_focus).
+    app = _app(focused=False)
 
     def boom() -> Any:
         raise tk.TclError("application has been destroyed")
 
+    app.focus_displayof = boom
+    da.job_done(app, _task(), 1)
+    assert len(posted) == 1
+    app = _app(focused=True)
     app.focus_displayof = boom
     da.job_done(app, _task(), 1)
     assert len(posted) == 1
@@ -382,7 +398,7 @@ def test_a_summary_is_skipped_when_a_window_is_focused_but_the_count_resets(
     b.status = "finished"
     da.job_done(app, b, 1)
     assert posted == []
-    app.focus_displayof = lambda: None
+    _NSAPP["active"] = False                  # the person switched to another app
     c = _task("/m/c.mp4", start=5, end=6)
     app.queue.append(c)
     da.job_done(app, c, 1)
@@ -402,48 +418,46 @@ def test_paused_jobs_do_not_hold_the_summary_back(posted: list[tuple[str, str]])
 
 # ---------------------------------------------------------------- what "focused" means
 
-def test_a_minimised_main_window_counts_as_not_focused(posted: list[tuple[str, str]]) -> None:
-    # macOS 13: iconic leaves the app active AND a focus widget; nobody can see the result card.
-    da.job_done(_app(focused=True, state="iconic"), _task(), 1)
-    assert len(posted) == 1
-
-
-def test_a_withdrawn_main_window_counts_as_not_focused(posted: list[tuple[str, str]]) -> None:
-    da.job_done(_app(focused=True, state="withdrawn"), _task(), 1)
-    assert len(posted) == 1
-
-
-def test_an_inactive_app_with_a_leftover_tk_focus_counts_as_not_focused(
-        monkeypatch: pytest.MonkeyPatch, posted: list[tuple[str, str]]) -> None:
-    # macOS 13: another app in front, or Cmd+H, leaves focus_displayof naming a widget.
-    monkeypatch.setattr(da, "_ns_app_active", lambda: False)
-    da.job_done(_app(focused=True), _task(), 1)
-    assert len(posted) == 1
-
-
-def test_when_nsapp_cannot_be_asked_the_app_counts_as_not_focused_and_says_so_once(
-        monkeypatch: pytest.MonkeyPatch, posted: list[tuple[str, str]],
-        caplog: pytest.LogCaptureFixture) -> None:
-    # The measured case (Finder or Cmd+H in front) leaves a Tk focus widget: an unknown NSApp
-    # answer must not fall back to trusting it.
-    monkeypatch.setattr(da, "_ns_app_active", lambda: None)
-    with caplog.at_level(logging.INFO, logger=da.logger.name):
-        da.job_done(_app(focused=True), _task(), 1)
-        da.job_done(_app(focused=True), _task(), 1)
-        da.job_done(_app(focused=False), _task(), 1)
-    assert len(posted) == 3
-    assert sum("NSApp" in r.getMessage() for r in caplog.records) == 1
-
-
-def test_an_app_double_without_a_window_state_is_judged_by_focus_alone(
+def test_the_front_app_with_no_tk_focus_widget_gets_no_banner(
         posted: list[tuple[str, str]]) -> None:
-    app = _app(focused=True)
-    del app.state
+    # The macOS 13 re-test: the person had just clicked the Queue tab, so no Tk widget had the
+    # keyboard focus (focus_displayof() is None) while the app was frontmost and the window
+    # on screen. A banner there is noise: the result card is in front of them.
+    app = _app(focused=True, tk_focus=False)
+    assert app.focus_displayof() is None
     da.job_done(app, _task(), 1)
     assert posted == []
 
 
-def test_an_unreadable_window_state_counts_as_not_focused(posted: list[tuple[str, str]]) -> None:
+def test_the_front_app_with_a_tk_focus_widget_gets_no_banner(posted: list[tuple[str, str]]) -> None:
+    da.job_done(_app(focused=True, tk_focus=True), _task(), 1)
+    assert posted == []
+
+
+def test_an_inactive_app_gets_a_banner_with_or_without_a_tk_focus_widget(
+        posted: list[tuple[str, str]]) -> None:
+    # macOS 13: another app in front, or Cmd+H, leaves focus_displayof naming a widget.
+    da.job_done(_app(focused=False, tk_focus=True), _task(), 1)
+    da.job_done(_app(focused=False, tk_focus=False), _task(), 1)
+    assert len(posted) == 2
+
+
+@pytest.mark.parametrize("state", ["iconic", "withdrawn"])
+def test_a_minimised_or_hidden_main_window_gets_a_banner_even_when_the_app_is_active(
+        state: str, posted: list[tuple[str, str]]) -> None:
+    # macOS 13: iconic leaves the app active; nobody can see the result card.
+    da.job_done(_app(focused=True, tk_focus=True, state=state), _task(), 1)
+    assert len(posted) == 1
+
+
+def test_an_unmapped_main_window_gets_a_banner_even_when_the_app_is_active(
+        posted: list[tuple[str, str]]) -> None:
+    da.job_done(_app(focused=True, mapped=False), _task(), 1)
+    assert len(posted) == 1
+
+
+def test_an_unreadable_window_state_counts_as_in_the_background(
+        posted: list[tuple[str, str]]) -> None:
     app = _app(focused=True)
 
     def boom() -> str:
@@ -452,6 +466,32 @@ def test_an_unreadable_window_state_counts_as_not_focused(posted: list[tuple[str
     app.state = boom
     da.job_done(app, _task(), 1)
     assert len(posted) == 1
+    app = _app(focused=True)
+    app.winfo_ismapped = boom                # type: ignore[assignment]
+    da.job_done(app, _task(), 1)
+    assert len(posted) == 2
+
+
+def test_an_app_double_without_window_queries_is_judged_by_nsapp_alone(
+        posted: list[tuple[str, str]]) -> None:
+    app = _app(focused=True)
+    del app.state, app.winfo_ismapped
+    da.job_done(app, _task(), 1)
+    assert posted == []
+
+
+def test_when_nsapp_cannot_be_asked_the_app_counts_as_in_the_background_and_says_so_once(
+        monkeypatch: pytest.MonkeyPatch, posted: list[tuple[str, str]],
+        caplog: pytest.LogCaptureFixture) -> None:
+    # Unknown stays "background": a banner too many is harmless, a lost one is not. The Tk
+    # focus is no replacement (the measured Finder / Cmd+H case leaves a focus widget).
+    monkeypatch.setattr(da, "_ns_app_active", lambda: None)
+    with caplog.at_level(logging.INFO, logger=da.logger.name):
+        da.job_done(_app(tk_focus=True), _task(), 1)
+        da.job_done(_app(tk_focus=True), _task(), 1)
+        da.job_done(_app(tk_focus=False), _task(), 1)
+    assert len(posted) == 3
+    assert sum("NSApp" in r.getMessage() for r in caplog.records) == 1
 
 
 def test_nsapp_is_not_asked_off_macOS(monkeypatch: pytest.MonkeyPatch) -> None:

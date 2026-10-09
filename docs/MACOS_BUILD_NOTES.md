@@ -466,13 +466,16 @@ PASS app_active: NSApp isActive=1 isHidden=0; wm state='normal'; focus -displayo
   | Situation | `focus -displayof` | `wm state` | `NSApp isActive` | Notification |
   |---|---|---|---|---|
   | window in front | the window | normal | 1 | no |
+  | window in front, just clicked a tab | none | normal | 1 | no |
   | main window minimised | the window | iconic | 1 | yes |
   | Cmd+H (hidden) | the window | normal | 0 | yes |
   | another app in front | a widget (or none) | normal | 0 | yes |
 
-  The app therefore posts unless the main window is on screen, Tk has a focus widget and
-  `[NSApp isActive]` (read with `ctypes`, like the probe) is true; if NSApp cannot be asked the app counts
-  as being in the background (logged once). In the VM each row behaved as
+  The app therefore does not post when `[NSApp isActive]` (read with `ctypes`, like the probe) is true and the
+  main window is mapped and not iconic or withdrawn; Tk's focus is not consulted (a re-test on macOS 13 showed
+  a banner over the front window when the person had just clicked a tab and no widget held the focus). If
+  NSApp cannot be asked the app counts as being in the background (logged once): a banner too many is harmless,
+  a missing one is not. In the VM each row behaved as
   the last column says, and with the chime setting off nothing was posted.
 
 Manual checks on a Mac (macOS 13 done in the VM; 10.15 still to do): flip System Settings >
