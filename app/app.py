@@ -2361,6 +2361,7 @@ class App(tk.Tk):
                     f"{shortcuts.quit_label()} with queued tasks",
                     f"There are queued or running tasks. {shortcuts.quit_label()} anyway?",
                     parent=self,
+                    default="no",
                 )
             finally:
                 self._exit_prompt_open = False
@@ -2740,6 +2741,7 @@ class App(tk.Tk):
                 f"lost.\n\n{question}"
             ),
             parent=parent or self,
+            default="no",
         )
 
     def _on_engine_selected(self) -> None:
@@ -6974,6 +6976,7 @@ class App(tk.Tk):
                     "Cancel transcription?",
                     f"A transcription is running ({os.path.basename(t.file_path)}). Cancel it?",
                     parent=self,
+                    default="no",
                 ):
                     self.cancel(t)
                 return
@@ -6983,6 +6986,7 @@ class App(tk.Tk):
                     "Cancel download?",
                     "A download is running. Cancel it?",
                     parent=self,
+                    default="no",
                 ):
                     self.cancel_download(d)
                 return

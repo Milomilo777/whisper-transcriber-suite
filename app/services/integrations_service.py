@@ -76,6 +76,7 @@ class IntegrationsService:
                 "your oTranscribe edits.\n\nYes: replace it\n"
                 "No: keep it and save a new file\nCancel: do nothing",
                 parent=self.app,
+                default="cancel",
             )
             if choice is None:
                 return

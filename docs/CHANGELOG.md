@@ -362,6 +362,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the next jobs still run; the notification is logged and dropped.
 - **A large upload stays byte-exact when a long text field follows the file.** The server could keep
   the two line-break bytes in front of the closing boundary in the saved media.
+- **Destructive confirmations default to the safe answer.** Quitting with jobs running, stopping
+  running jobs to switch the engine or model, cancelling a transcription or download, closing a viewer
+  with unsaved edits, overwriting a transcript changed on disk and replacing an `.otr` file now select
+  No (or Cancel), so pressing Return no longer does the destructive thing.
 - **No warning for the last heartbeats of a finished parallel worker.** After parallel jobs end, the
   retired worker's final heartbeats and exit notice are logged at debug level; an unmatched event that
   can carry a result (such as `done`) still warns.

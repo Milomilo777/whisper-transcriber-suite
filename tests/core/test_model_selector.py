@@ -274,9 +274,11 @@ def test_model_switch_asks_before_stopping_a_running_transcription(App, monkeypa
                   whisper_model="large-v3")
     a.transcription_service = _Svc(busy=True)
     asked: list[str] = []
+    defaults: list[object] = []
 
-    def _ask(title, _msg, parent=None):
+    def _ask(title, _msg, parent=None, **kwargs):
         asked.append(title)
+        defaults.append(kwargs.get("default"))
         return answer
 
     monkeypatch.setattr("tkinter.messagebox.askyesno", _ask)
@@ -286,6 +288,7 @@ def test_model_switch_asks_before_stopping_a_running_transcription(App, monkeypa
     App._on_model_selected(a)
 
     assert asked == ["Change the Whisper model?"]
+    assert defaults == ["no"]  # Return must not stop the running transcription
     if answer:
         assert a.app_config["whisper_model"] == "tiny"
         assert a.transcription_service.stop_all_calls == 1

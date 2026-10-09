@@ -2009,6 +2009,7 @@ class TranscriptViewer(tk.Toplevel):
                 "something else after it was opened here.\n\n"
                 "Overwrite it with the version in this window?",
                 parent=self,
+                default="no",
             ):
                 return
         try:
@@ -2606,6 +2607,7 @@ class TranscriptViewer(tk.Toplevel):
                 "Discard changes?",
                 "There are unsaved transcript edits. Close anyway?",
                 parent=self,
+                default="no",
             ):
                 return
         # Set the closing flag FIRST so any after()-loop tick in
