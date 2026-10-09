@@ -39,11 +39,12 @@ import re
 import subprocess
 import sys
 import threading
+import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
-from typing import Any, Optional
+from typing import Any, Callable, Collection, Optional
 
-from app.dialogs import share_page
+from app.dialogs import share_page, viewer_exports
 from app import mac_native, shortcuts
 from app.dpi import px, scaled_size
 from app.theme import script_fonts, tokens
@@ -130,13 +131,12 @@ def _seg_words(seg: dict[str, Any]) -> list[Any]:
     return words if isinstance(words, list) else []
 
 
-# Subtitle files next to the JSON that Save keeps in step with it (the ones
-# "Open in Subtitle Edit" picks first). Their writers ignore audio_path.
-_SIBLING_FORMATS = ("srt", "vtt", "ass")
-
 # One viewer per transcript file, keyed by _viewer_key(json_path): two
 # viewers on one JSON would each save their own copy, the last one winning.
 _OPEN_VIEWERS: dict[str, "TranscriptViewer"] = {}
+# Viewers whose export rebuild is (or was) running, kept even after the window is closed:
+# the app's exit waits for them (finish_exports_before_exit).
+_EXPORTING: list["TranscriptViewer"] = []
 
 
 def _viewer_key(json_path: str) -> str:
@@ -146,23 +146,7 @@ def _viewer_key(json_path: str) -> str:
         return os.path.normcase(os.path.abspath(json_path))
 
 
-def _file_stamp(path: str) -> tuple[int, int] | None:
-    """``(mtime_ns, size)`` of ``path``, or None when it cannot be read."""
-    try:
-        st = os.stat(path)
-    except OSError:
-        return None
-    return (st.st_mtime_ns, st.st_size)
-
-
-def _read_text_normalized(path: str) -> str | None:
-    """The file as text with a BOM dropped and CRLF read as LF; None on failure."""
-    try:
-        with open(path, "rb") as fb:
-            raw = fb.read()
-        return raw.decode("utf-8-sig").replace("\r\n", "\n")
-    except (OSError, UnicodeDecodeError):
-        return None
+_file_stamp = viewer_exports.file_stamp
 
 
 def _render_sibling(fmt: str, segments: list[dict[str, Any]]) -> str:
@@ -173,17 +157,7 @@ def _render_sibling(fmt: str, segments: list[dict[str, Any]]) -> str:
 
 def _write_text_atomically(path: str, text: str) -> None:
     """Write ``text`` to a temp sibling of ``path``, then move it into place."""
-    part = f"{path}.{os.getpid()}.part"
-    try:
-        with open(part, "w", encoding="utf-8", newline="\n") as f:
-            f.write(text)
-        os.replace(part, path)
-    finally:
-        if os.path.exists(part):
-            try:
-                os.unlink(part)
-            except OSError:
-                pass
+    viewer_exports.write_atomically(path, text.encode("utf-8"))
 
 
 def _find_media_next_to(json_path: str) -> str | None:
@@ -720,9 +694,32 @@ class TranscriptViewer(tk.Toplevel):
         self.json_path = json_path
         # macOS: the transcript file as the window's proxy icon in the title bar.
         mac_native.set_title_path(self, json_path)
-        # Subtitle file next to the JSON -> its stamp, for the ones that still
+        # Export next to the JSON -> its stamp, for the ones that still
         # match the JSON (see _scan_siblings); Save rewrites only those.
         self._synced_siblings: dict[str, tuple[int, int] | None] = {}
+        # The same files -> (writer key, audio_path) that rebuilds each one exactly.
+        self._sibling_plan: dict[str, tuple[str, str]] = {}
+        # Exports that could not be read or rebuilt for the comparison.
+        self._sibling_unchecked: set[str] = set()
+        # The scan and the rebuilds run in worker threads (a Word build of a long
+        # transcript takes tens of seconds); the events and the lock are how they hand
+        # over. Nothing in a worker touches a widget.
+        self._scan_fast_done = threading.Event()  # the quick exports are checked
+        self._scan_fast_done.set()
+        self._scan_done = threading.Event()  # ... and the Word file too
+        self._scan_done.set()
+        self._scan_generation = 0
+        self._scan_start: Any = None  # starts the scan thread; None once started
+        self._export_lock = threading.Lock()
+        self._export_pending: str | None = None  # the JSON text of the newest Save
+        self._export_running = False
+        self._export_idle = threading.Event()
+        self._export_idle.set()
+        self._export_fast_done = threading.Event()
+        self._export_fast_done.set()
+        self._export_reports: list[viewer_exports.ExportReport] = []
+        self._export_remaining: set[str] = set()  # files of the running job not yet dealt with
+        self._export_poll_id: str | None = None
         self.media_path = media_path or _find_media_next_to(json_path)
         # The transcript's language when the opener knows it (a queue task); the JSON itself has
         # none. Picks the regional font for Han text without kana (app.theme.script_fonts);
@@ -1586,7 +1583,8 @@ class TranscriptViewer(tk.Toplevel):
             # utf-8-sig: a transcript re-saved by an editor that adds a BOM
             # still loads.
             with open(self.json_path, "r", encoding="utf-8-sig") as f:
-                payload = json.load(f)
+                opened_text = f.read()
+            payload = json.loads(opened_text)
             if not isinstance(payload, list):
                 # A transcript JSON is always a list of segment dicts. A dict
                 # root almost always means the user picked the wrong file
@@ -1618,30 +1616,63 @@ class TranscriptViewer(tk.Toplevel):
             )
             self.segments = []
             return
-        self._scan_siblings()
+        self._scan_siblings(opened_text)
 
-    def _scan_siblings(self) -> None:
-        """Note the subtitle files next to the JSON that it still produces.
+    def _scan_siblings(self, opened_text: str) -> None:
+        """Note, in a worker thread, the exports next to the JSON that it still produces.
 
         Save rewrites only these. A file that differs from the JSON was
-        edited elsewhere (for example in Subtitle Edit), and overwriting it
-        would throw that work away.
+        edited elsewhere (for example in Subtitle Edit or Word), and
+        overwriting it would throw that work away. The scan works from the JSON text
+        as it was read, so the edits made meanwhile cannot leak into it, and the window
+        never waits for a long Word build.
         """
-        synced: dict[str, tuple[int, int] | None] = {}
-        base = os.path.splitext(self.json_path)[0]
-        for fmt in _SIBLING_FORMATS:
-            path = f"{base}.{fmt}"
-            stamp = _file_stamp(path)
-            if stamp is None:
-                continue
+        self._scan_generation += 1
+        generation = self._scan_generation
+        media_path = self.media_path
+        json_path = self.json_path
+        if not viewer_exports.exports_exist(json_path):
+            self._scan_fast_done.set()
+            self._scan_done.set()
+            self._scan_start = None
+            return
+        self._scan_fast_done.clear()
+        self._scan_done.clear()
+
+        def work() -> None:
+            result = viewer_exports.ScanResult(
+                self._synced_siblings, self._sibling_plan, self._sibling_unchecked
+            )
             try:
-                rendered = _render_sibling(fmt, self.segments)
-            except Exception:  # noqa: BLE001 - a writer bug must not block the viewer
-                logger.warning("Could not render %s for %s", fmt, self.json_path, exc_info=True)
-                continue
-            if _read_text_normalized(path) == rendered:
-                synced[path] = stamp
-        self._synced_siblings = synced
+                with viewer_exports.responsive_threads():
+                    segments = viewer_exports.segments_from_json(opened_text)
+                    # The quick files first: Subtitle Edit and a fast Save need only those.
+                    viewer_exports.scan_exports(
+                        json_path, segments, media_path, result, slow=False)
+                    if generation == self._scan_generation:
+                        self._scan_fast_done.set()
+                    viewer_exports.scan_exports(
+                        json_path, segments, media_path, result, slow=True)
+            except Exception:  # noqa: BLE001 - a scan bug must not end in a lost Save
+                logger.warning("Could not check the exports of %s", json_path, exc_info=True)
+            finally:
+                if generation == self._scan_generation:
+                    self._scan_fast_done.set()
+                    self._scan_done.set()
+
+        # Started once the window is built (a busy thread slows every Tk call the window
+        # makes while it fills its list); anything that needs the result starts it at once.
+        self._scan_start = lambda: threading.Thread(
+            target=work, name="viewer-export-scan", daemon=True).start()
+        try:
+            self.after(100, self._start_scan)
+        except tk.TclError:
+            self._start_scan()
+
+    def _start_scan(self) -> None:
+        start, self._scan_start = self._scan_start, None
+        if start is not None:
+            start()
 
     def _populate_listbox(self) -> None:
         self.tree.delete(*self.tree.get_children())
@@ -1789,6 +1820,9 @@ class TranscriptViewer(tk.Toplevel):
                 self._save_changes()
                 if self._dirty:
                     return
+                # Subtitle Edit reads the subtitle file: let the quick rebuild finish
+                # (a long Word build is not waited for).
+                self._wait_for_subtitle_files()
         subtitle_path = subtitle_edit.pick_subtitle_file(
             p for p in subtitle_edit.sibling_subtitle_candidates(self.json_path)
             if os.path.isfile(p)
@@ -1828,7 +1862,10 @@ class TranscriptViewer(tk.Toplevel):
             )
             return None
         # It matches the saved JSON, so the next Save keeps it in step.
+        self._wait_for_subtitle_files()  # the open-time scan must not overwrite this entry
         self._synced_siblings[path] = _file_stamp(path)
+        self._sibling_plan[path] = ("srt", "")
+        self._sibling_unchecked.discard(path)
         notify(self, f"Wrote {os.path.basename(path)} for Subtitle Edit.", "info")
         return path
 
@@ -1963,53 +2000,148 @@ class TranscriptViewer(tk.Toplevel):
             return
         self._dirty = False
         self._disk_stamp = _file_stamp(self.json_path)
-        updated, kept, failed = self._update_siblings()
-        message = f"Saved {len(self.segments)} segment(s) → {os.path.basename(self.json_path)}"
-        if updated:
-            message += f", updated {', '.join(os.path.basename(p) for p in updated)}"
-        notify(self, message, "success")
-        if kept:
-            notify(
-                self,
-                f"Not updated: {', '.join(os.path.basename(p) for p in kept)} "
-                "(changed outside the viewer, so it was left as it is).",
-                "warning",
-            )
-        if failed:
-            notify(
-                self,
-                f"Could not update {', '.join(os.path.basename(p) for p in failed)}; "
-                "the details are in app.log.",
-                "warning",
-            )
+        notify(
+            self,
+            f"Saved {len(self.segments)} segment(s) → {os.path.basename(self.json_path)}",
+            "success",
+        )
+        # The JSON is on disk: only now the other exports follow, off the UI thread.
+        self._queue_exports(payload_s)
 
-    def _update_siblings(self) -> tuple[list[str], list[str], list[str]]:
-        """Rewrite the subtitle files next to the JSON from the saved segments.
+    def _queue_exports(self, saved_json_text: str) -> None:
+        """Rebuild the exports next to the JSON from the text just saved, in a worker.
 
-        Only files that matched the JSON and have not changed since are
-        rewritten. Returns (updated, kept as they are, failed).
+        A newer Save replaces one still waiting (only the last text matters); the worker
+        reports when it is done (``_poll_exports``) and the window shows a busy cursor.
         """
-        updated: list[str] = []
-        kept: list[str] = []
-        failed: list[str] = []
-        base = os.path.splitext(self.json_path)[0]
-        for fmt in _SIBLING_FORMATS:
-            path = f"{base}.{fmt}"
-            stamp = _file_stamp(path)
-            if stamp is None:
-                continue
-            if path not in self._synced_siblings or self._synced_siblings[path] != stamp:
-                kept.append(path)
-                continue
+        if not viewer_exports.exports_exist(self.json_path):
+            return
+        self._start_scan()
+        names = [p for p, _f in viewer_exports.sibling_files(self.json_path)]
+        with self._export_lock:
+            # Registered and listed before the thread exists: an exit that gives up early
+            # can still name every file that was waiting.
+            if self not in _EXPORTING:
+                _EXPORTING.append(self)
+            self._export_remaining.update(names)
+            self._export_pending = saved_json_text
+            self._export_fast_done.clear()
+            start = not self._export_running
+            if start:
+                self._export_running = True
+                self._export_idle.clear()
+        if start:
+            threading.Thread(target=self._export_worker, name="viewer-export-update").start()
+        self._set_busy(True)
+        self._schedule_export_poll()
+
+    def _export_worker(self) -> None:
+        """Worker thread: rebuild for each queued Save in turn (no widget access here)."""
+        finished = False
+        try:
+            finished = self._export_loop()
+        finally:
+            if not finished:
+                # The loop died (a bug inside its own error handling): never leave the
+                # exit waiting for a worker that is gone.
+                logger.error("The export worker of %s stopped unexpectedly", self.json_path)
+                with self._export_lock:
+                    self._export_running = False
+                    self._export_pending = None
+                    self._export_fast_done.set()
+                    self._export_idle.set()
+                    if self in _EXPORTING:
+                        _EXPORTING.remove(self)
+
+    def _export_loop(self) -> bool:
+        while True:
+            with self._export_lock:
+                text = self._export_pending
+                self._export_pending = None
+                if text is None:
+                    self._export_running = False
+                    self._export_fast_done.set()
+                    self._export_idle.set()
+                    self._export_remaining.clear()
+                    if self in _EXPORTING:
+                        _EXPORTING.remove(self)  # nothing left to wait for at exit
+                    return True
             try:
-                _write_text_atomically(path, _render_sibling(fmt, self.segments))
-            except Exception:  # noqa: BLE001
-                logger.warning("Could not update %s", path, exc_info=True)
-                failed.append(path)
-                continue
-            self._synced_siblings[path] = _file_stamp(path)
-            updated.append(path)
-        return updated, kept, failed
+                self._scan_fast_done.wait()
+                segments = viewer_exports.segments_from_json(text)
+                scan = viewer_exports.ScanResult(
+                    self._synced_siblings, self._sibling_plan, self._sibling_unchecked
+                )
+                with viewer_exports.responsive_threads():
+                    report = viewer_exports.update_exports(
+                        self.json_path, segments, scan, self._mark_export_fast_done,
+                        self._wait_for_scan, self._export_remaining.discard,
+                    )
+            except Exception:  # noqa: BLE001 - never leave a Save without a report
+                logger.exception("Updating the exports of %s failed", self.json_path)
+                report = viewer_exports.ExportReport(
+                    failed=[p for p, _f in viewer_exports.sibling_files(self.json_path)]
+                )
+            with self._export_lock:
+                self._export_reports.append(report)
+
+    def _mark_export_fast_done(self) -> None:
+        """The running job's quick files are written: say so unless a newer Save is waiting
+        (its files are the ones the waiters need)."""
+        with self._export_lock:
+            if self._export_pending is None:
+                self._export_fast_done.set()
+
+    def _schedule_export_poll(self) -> None:
+        if self._export_poll_id is not None or self._closing:
+            return
+        try:
+            self._export_poll_id = self.after(150, self._poll_exports)
+        except tk.TclError:
+            self._export_poll_id = None
+
+    def _poll_exports(self) -> None:
+        self._export_poll_id = None
+        if self._closing:
+            return
+        # Idle is read BEFORE the reports are taken: a worker that finishes in between
+        # leaves a report this round did not deliver, and the next round must run for it.
+        idle = self._export_idle.is_set()
+        self._deliver_export_reports()
+        if idle:
+            self._set_busy(False)
+        else:
+            self._schedule_export_poll()
+
+    def _deliver_export_reports(self) -> None:
+        with self._export_lock:
+            reports, self._export_reports = self._export_reports, []
+        for report in reports:
+            for text, kind in viewer_exports.report_notices(report, self.json_path):
+                notify(self, text, kind)  # type: ignore[arg-type]
+
+    def _set_busy(self, busy: bool) -> None:
+        try:
+            self.configure(cursor="watch" if busy else "")
+        except tk.TclError:
+            pass
+
+    def _finish_exports(self, timeout: float | None = None) -> None:
+        """Wait for the exports of the last Save and show their notices (tests, Subtitle Edit)."""
+        self._start_scan()
+        self._scan_done.wait(timeout)
+        self._export_idle.wait(timeout)
+        self._deliver_export_reports()
+        self._set_busy(False)
+
+    def _wait_for_scan(self) -> None:
+        self._scan_done.wait()
+
+    def _wait_for_subtitle_files(self, timeout: float = 60.0) -> None:
+        """Wait until the quick exports (subtitles included) of the last Save are written."""
+        self._start_scan()
+        self._scan_fast_done.wait(timeout)
+        self._export_fast_done.wait(timeout)
 
     def _copy_to_clipboard(self, text: str) -> None:
         try:
@@ -2537,6 +2669,9 @@ class TranscriptViewer(tk.Toplevel):
         if self._dirty:
             self._notice_quietly("Not saved, so the app stays open.", "warning")
             return False
+        # The JSON is on disk. The quick exports (subtitle files) land before the app goes;
+        # a long Word build is waited for, within a limit, by finish_exports_before_exit.
+        self._wait_for_subtitle_files()
         return True
 
     def _notice_quietly(self, text: str, kind: Kind) -> None:
@@ -2548,6 +2683,13 @@ class TranscriptViewer(tk.Toplevel):
 
     def destroy(self) -> None:
         # Also reached when the main window goes away with the viewer open.
+        poll_id = getattr(self, "_export_poll_id", None)
+        if poll_id is not None:
+            try:
+                self.after_cancel(poll_id)
+            except Exception:  # noqa: BLE001
+                pass
+            self._export_poll_id = None
         key = self._registry_key
         if key is not None and _OPEN_VIEWERS.get(key) is self:
             del _OPEN_VIEWERS[key]
@@ -2851,17 +2993,24 @@ def _dirty_viewers() -> list["TranscriptViewer"]:
     return found
 
 
-def confirm_unsaved_before_exit() -> bool:
+def dirty_viewers() -> list["TranscriptViewer"]:
+    """The open viewers that hold unsaved edits (for the app's exit)."""
+    return _dirty_viewers()
+
+
+def confirm_unsaved_before_exit(skip: "Collection[TranscriptViewer]" = ()) -> bool:
     """Exit hook: Save / Discard / Cancel for every viewer with unsaved edits.
 
     False means the exit is cancelled (or a save failed) and the app stays as it is.
     One question per viewer, each in front and naming its file: a combined list could not
     say which transcript a Save or Discard applies to. Edits are never touched until the
     user answers, so Cancel at a later viewer leaves an earlier one saved or still dirty,
-    as chosen. Nothing is asked when no viewer has unsaved edits.
+    as chosen. Nothing is asked when no viewer has unsaved edits. ``skip`` lists viewers
+    already decided (discarded on purpose), which are not asked again.
     """
-    names = [os.path.normcase(os.path.basename(v.json_path)) for v in _dirty_viewers()]
-    for viewer in _dirty_viewers():
+    dirty = [v for v in _dirty_viewers() if v not in skip]
+    names = [os.path.normcase(os.path.basename(v.json_path)) for v in dirty]
+    for viewer in dirty:
         show_folder = names.count(os.path.normcase(os.path.basename(viewer.json_path))) > 1
         try:
             if not viewer._confirm_exit(show_folder):
@@ -2876,6 +3025,49 @@ def confirm_unsaved_before_exit() -> bool:
             except tk.TclError:
                 pass
     return True
+
+
+EXIT_EXPORT_WAIT_S = 30.0
+
+
+def finish_exports_before_exit(
+    timeout: float = EXIT_EXPORT_WAIT_S,
+    on_wait: "Callable[[int], None] | None" = None,
+    pump: "Callable[[], None] | None" = None,
+) -> list[str]:
+    """Exit hook: let the export rebuilds of every open viewer finish, within ``timeout``.
+
+    The process ends with ``os._exit`` right after the app's teardown, which kills the
+    worker threads, so a Word file still being rebuilt would keep its old text without a
+    word (a viewer closed meanwhile counts too). The transcripts are already saved: this only
+    waits (up to ``timeout`` seconds in all, never for ever), calling ``on_wait(viewers still working)`` and ``pump()`` (the
+    window's event loop, so it does not look frozen) every 100 ms. Returns the exports
+    that were NOT rebuilt when the time ran out (also logged), empty when all finished.
+    """
+    deadline = time.monotonic() + timeout
+    viewers = [v for v in _EXPORTING if not v._export_idle.is_set()]
+    while viewers:
+        viewers = [v for v in viewers if not v._export_idle.is_set()]
+        if not viewers or time.monotonic() >= deadline:
+            break
+        if on_wait is not None:
+            on_wait(len(viewers))
+        if pump is not None:
+            try:
+                pump()
+            except tk.TclError:
+                pump = None
+        time.sleep(0.1)
+    left: list[str] = []
+    for viewer in viewers:
+        left.extend(sorted(viewer._export_remaining))
+    _EXPORTING[:] = [v for v in _EXPORTING if not v._export_idle.is_set()]
+    if left:
+        logger.warning(
+            "Exiting before these exports were rebuilt (they keep the old text): %s",
+            ", ".join(left),
+        )
+    return left
 
 
 def open_viewer(

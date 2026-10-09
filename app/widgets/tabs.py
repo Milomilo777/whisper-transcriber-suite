@@ -9,7 +9,7 @@ from __future__ import annotations
 import sys
 import tkinter as tk
 from tkinter import ttk
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from app.domain.cookies import cookie_browser_choices, cookie_browser_label
 from app.domain.languages import SUBTITLE_LANGUAGES
@@ -137,6 +137,82 @@ def fit_or_scroll(page: tk.Misc) -> ttk.Frame:
     for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
         root.bind(seq, _on_wheel, add="+")
     return inner
+
+
+# Rows of the Last result file list shown before the list scrolls: a run with many
+# output formats must not push the drop zone and the log off the window.
+LAST_RESULT_MAX_ROWS = 4
+
+
+def capped_rows(
+    parent: ttk.Frame,
+    count: int,
+    fill_rows: "Callable[[ttk.Frame], None]",
+    max_rows: int = LAST_RESULT_MAX_ROWS,
+) -> None:
+    """Fill ``parent`` with ``count`` equal rows, scrolling after ``max_rows`` of them.
+
+    ``fill_rows(frame)`` packs the rows into ``frame``. Up to ``max_rows`` rows they go
+    straight into ``parent`` (nothing changes); beyond that they sit in a scrolled area
+    exactly ``max_rows`` rows high, so the block's height stays the same for 5 files or 500.
+    The wheel over the list scrolls the list; Tab to a button inside scrolls it into view.
+    """
+    if count <= max_rows:
+        fill_rows(parent)
+        return
+    canvas = tk.Canvas(parent, highlightthickness=0, borderwidth=0)
+    vsb = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=vsb.set)
+    vsb.pack(side="right", fill="y")
+    canvas.pack(side="left", fill="x", expand=True)
+    inner = ttk.Frame(canvas)
+    window = canvas.create_window((0, 0), window=inner, anchor="nw")
+    fill_rows(inner)
+    inner.update_idletasks()
+    row_h = max(1, inner.winfo_reqheight() // count)
+    canvas.configure(
+        height=row_h * max_rows, yscrollincrement=row_h,
+        scrollregion=(0, 0, 1, inner.winfo_reqheight()),
+    )
+    canvas.bind(
+        "<Configure>", lambda e: canvas.itemconfigure(window, width=e.width), add="+"
+    )
+
+    def _wheel(event: tk.Event) -> str:
+        if getattr(event, "num", None) == 4:
+            step = -1
+        elif getattr(event, "num", None) == 5:
+            step = 1
+        else:
+            divisor = 1 if sys.platform == "darwin" else 120
+            step = int(-1 * (event.delta / divisor)) or (-1 if event.delta > 0 else 1)
+        canvas.yview_scroll(step, "units")
+        return "break"  # the page around the card must not scroll as well
+
+    def _see(widget: tk.Misc) -> None:
+        try:
+            top = widget.winfo_rooty() - inner.winfo_rooty()
+            bottom = top + widget.winfo_height()
+            total = max(1, inner.winfo_height())
+            shown = canvas.winfo_height()
+            first = canvas.canvasy(0)
+            if top < first:
+                canvas.yview_moveto(top / total)
+            elif bottom > first + shown:
+                canvas.yview_moveto((bottom - shown) / total)
+        except tk.TclError:
+            pass
+
+    def _wire(widget: tk.Misc) -> None:
+        for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+            widget.bind(seq, _wheel, add="+")
+        widget.bind("<FocusIn>", lambda _e, w=widget: _see(w), add="+")
+        for child in widget.winfo_children():
+            _wire(child)
+
+    for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+        canvas.bind(seq, _wheel, add="+")
+    _wire(inner)
 
 
 # Glanceable status icons for both Treeviews. Plain Unicode so they

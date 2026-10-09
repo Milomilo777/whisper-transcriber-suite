@@ -57,6 +57,7 @@ def _write_outputs(tmp_path, formats: list[str]) -> str:
 def _open(root, json_path: str, **kwargs: Any) -> tv.TranscriptViewer:
     viewer = tv.TranscriptViewer(root, json_path, **kwargs)
     viewer.withdraw()
+    viewer._finish_exports()  # the open-time check of the exports runs in a worker
     return viewer
 
 
@@ -164,6 +165,7 @@ def test_save_rewrites_the_matching_subtitle_files(root, tmp_path, notices) -> N
         assert len(viewer._synced_siblings) == 3
         _edit_first_segment(viewer, "Edited in the viewer")
         viewer._save_changes()
+        viewer._finish_exports()
         for ext in ("srt", "vtt", "ass"):
             body = _read(str(tmp_path / f"talk.{ext}"))
             assert "Edited in the viewer" in body and "Hello world" not in body
@@ -171,6 +173,7 @@ def test_save_rewrites_the_matching_subtitle_files(root, tmp_path, notices) -> N
         # A second save keeps them in step too.
         _edit_first_segment(viewer, "Edited twice")
         viewer._save_changes()
+        viewer._finish_exports()
         assert "Edited twice" in _read(str(tmp_path / "talk.srt"))
     finally:
         _close(viewer)
@@ -188,6 +191,7 @@ def test_save_leaves_a_subtitle_file_edited_elsewhere_alone(root, tmp_path, noti
         os.utime(srt, ns=(os.stat(srt).st_atime_ns, os.stat(srt).st_mtime_ns + 5_000_000))
         _edit_first_segment(viewer, "Edited in the viewer")
         viewer._save_changes()
+        viewer._finish_exports()
         assert _read(srt) == hand_edit
         assert "Edited in the viewer" in _read(str(tmp_path / "talk.vtt"))
         assert any(kind == "warning" and "talk.srt" in text for text, kind in notices)
@@ -206,6 +210,7 @@ def test_subtitle_file_that_differs_at_load_is_not_rewritten(root, tmp_path, not
         assert viewer._synced_siblings == {}
         _edit_first_segment(viewer, "Viewer edit")
         viewer._save_changes()
+        viewer._finish_exports()
         assert _read(srt) == hand_edit
     finally:
         _close(viewer)
@@ -287,6 +292,7 @@ def test_json_only_output_gets_an_srt_for_subtitle_edit(root, tmp_path, notices,
         assert "Hello world" in _read(srt) and "Unsaved edit" not in _read(srt)
         # The export matches the JSON, so the next Save keeps it in step.
         viewer._save_changes()
+        viewer._finish_exports()
         assert "Unsaved edit" in _read(srt)
     finally:
         _close(viewer)
@@ -369,6 +375,7 @@ def test_save_asks_before_overwriting_a_file_changed_on_disk(
         monkeypatch.setattr(tv.messagebox, "askyesno", lambda *a, **k: asked.append(a) or overwrite)
         _edit_first_segment(viewer, "Viewer edit")
         viewer._save_changes()
+        viewer._finish_exports()
         assert len(asked) == 1
         assert ("Viewer edit" in _read(json_path)) is overwrite
         assert viewer._dirty is (not overwrite)
@@ -384,6 +391,7 @@ def test_save_without_outside_change_does_not_ask(root, tmp_path, notices, monke
         for text in ("First save", "Second save"):
             _edit_first_segment(viewer, text)
             viewer._save_changes()
+            viewer._finish_exports()
             assert text in _read(json_path)
     finally:
         _close(viewer)

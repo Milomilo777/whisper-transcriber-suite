@@ -203,6 +203,7 @@ a = Analysis(
         'app.dialogs.transcript_viewer',
         'app.dialogs.search_dialog',
         'app.dialogs.share_page',
+        'app.dialogs.viewer_exports',
         'app.dialogs.model_advisor',
         'app.dialogs.quick_start',
         'app.domain.cookies',

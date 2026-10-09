@@ -366,6 +366,20 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **The idle app no longer keeps a Mac busy.** The 500 ms queue refresh rewrote the empty-state
   headline on every round even when its text had not changed, and each write repainted the window;
   an idle app used about 40% of a core on macOS and now uses under 2%. The text is written only when it changes.
+- **Transcript viewer Save keeps every export in step.** Save rewrote only the SRT, VTT and ASS, so
+  the TXT, Markdown, Word and the other exports kept the old text without a word. It now rebuilds
+  each text and Word export that still matches the transcript it came from, with the same writers
+  and the same title as the transcription. The check at open and the rebuild after Save run in
+  worker threads (a Word file of 20,000 segments froze the window for 18 s each time); the JSON is
+  written first. A file edited elsewhere (any Word part), a link, a file that changed while it was
+  rebuilt, a PDF, the SMTV document and a file whose writer failed are named in a notice, say that
+  they still hold the old text, and are left as they are; bilingual subtitles and the chapters
+  file are named as not rebuilt.
+  Quitting the app waits up to 30 seconds for a rebuild in progress, then names what was not rebuilt.
+- **A long Last result list no longer squeezes the window.** With many output files the Last result
+  card grew until the drop zone was cut off and the log pane shrank to one line. The file list now
+  scrolls after four rows, and the Transcribe tab scrolls like the other tall tabs when the window
+  is shorter than it.
 - **Work offline: UDP and name-lookup gaps closed.** The network guard now also refuses UDP
   datagrams sent to another computer (`sendto` / `sendmsg`), the `gethostbyname`,
   `gethostbyaddr` and `getnameinfo` lookups and calls made on `_socket` directly, through a

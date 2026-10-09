@@ -105,6 +105,21 @@ def _reset_burn_process_state():
 
 
 @pytest.fixture(autouse=True)
+def _reset_viewer_export_registry():
+    """Forget the transcript viewers whose export rebuild an earlier test started.
+
+    ``finish_exports_before_exit`` waits for every viewer in this process-wide list; a
+    viewer left over from another test must not make the next exit test wait for it.
+    """
+    yield
+    import sys
+
+    module = sys.modules.get("app.dialogs.transcript_viewer")
+    if module is not None:
+        module._EXPORTING.clear()
+
+
+@pytest.fixture(autouse=True)
 def _isolate_transcriber_globals():
     """Snapshot core.transcriber module globals; restore them after the test."""
     try:
