@@ -482,3 +482,16 @@ def test_the_last_result_card_calls_the_hook_and_keeps_the_tray_toast(monkeypatc
 
 def test_aqua_probe_is_the_one_the_module_uses(monkeypatch: pytest.MonkeyPatch) -> None:
     assert da.mac_native is mac_native
+
+
+# ------------------------------------------------- packaging: the new modules join every spec
+
+@pytest.mark.parametrize("spec", [
+    "whisper_project_onefile.spec", "whisper_project_onedir.spec",
+    "platform/macos/pyinstaller/whisper_project_mac.spec"])
+def test_the_new_modules_are_hidden_imports_of_every_pyinstaller_spec(spec: str) -> None:
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[2] / spec).read_text(encoding="utf-8")
+    for module in ("app.desktop_alert", "app.theme.system_fonts"):
+        assert f"'{module}'," in text, f"{module} missing from {spec}"
