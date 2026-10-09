@@ -1449,6 +1449,9 @@ class App(tk.Tk):
                     self.app_config = load_config()
                 except Exception:  # noqa: BLE001
                     pass
+                # The model rows were worked out before this folder was chosen.
+                self._refresh_model_selector()
+                self._refresh_engine_selector()
 
             # Open until on_done (Choose and Cancel both call it); the macOS
             # file queue waits for it (mac_native.ready_for_documents).

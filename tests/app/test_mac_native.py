@@ -1378,7 +1378,10 @@ def test_hub_setup_flag_is_set_while_the_dialog_is_open_and_cleared_on_done(
     monkeypatch.setattr(
         hub_setup, "ensure_hub_configured",
         lambda _m, _c, on_done=None, **_k: captured.setdefault("on_done", on_done))
-    fake = types.SimpleNamespace(app_config={}, log=MagicMock(), _hub_setup_open=False)
+    fake = types.SimpleNamespace(
+        app_config={}, log=MagicMock(), _hub_setup_open=False,
+        _refresh_model_selector=MagicMock(), _refresh_engine_selector=MagicMock(),
+    )
     App._ensure_hub_folder(fake)  # type: ignore[arg-type]
     assert fake._hub_setup_open is True
     monkeypatch.setattr(app_mod, "load_config", lambda: {})

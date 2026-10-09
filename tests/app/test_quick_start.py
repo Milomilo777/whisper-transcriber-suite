@@ -533,3 +533,29 @@ def test_a_forced_cpu_setting_gets_cpu_times_and_text(tk_root, tmp_path):
     assert "run transcription on this computer's 4-core processor" in dialog.hardware_var.get()
     assert "min" in dialog.mode_detail_vars["best"].get()  # the CPU time, not the GPU's
     dialog.skip()
+
+
+def test_choosing_the_model_folder_after_skip_refreshes_the_status_rows(monkeypatch):
+    """Skip leads to the model folder picker; the engine and model rows were worked out before it."""
+    import app.app as app_mod
+    from app.dialogs import hub_setup
+    from core import hub as _hub
+
+    captured: dict = {}
+    monkeypatch.setattr(_hub, "is_hub_configured", lambda _cfg: False)
+    monkeypatch.setattr(
+        hub_setup, "ensure_hub_configured",
+        lambda _app, _cfg, on_done: captured.update(done=on_done),
+    )
+    monkeypatch.setattr(app_mod, "load_config", lambda: {"hub_folder": "chosen"})
+    fake = SimpleNamespace(
+        app_config={}, log=MagicMock(), _hub_setup_open=False,
+        _refresh_model_selector=MagicMock(), _refresh_engine_selector=MagicMock(),
+    )
+    app_mod.App._ensure_hub_folder(fake)  # type: ignore[arg-type]
+    assert fake._hub_setup_open is True
+    captured["done"]("chosen")
+    assert fake._hub_setup_open is False
+    assert fake.app_config == {"hub_folder": "chosen"}
+    fake._refresh_model_selector.assert_called_once()
+    fake._refresh_engine_selector.assert_called_once()
