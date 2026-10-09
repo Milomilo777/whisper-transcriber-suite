@@ -16,9 +16,9 @@ def open_with_default_app(path: str) -> None:
     if sys.platform == "win32":
         os.startfile(path)  # type: ignore[attr-defined]
     elif sys.platform == "darwin":
-        subprocess.Popen(["open", path])
+        subprocess.Popen(["open", path], stdin=subprocess.DEVNULL)
     else:
-        subprocess.Popen(["xdg-open", path])
+        subprocess.Popen(["xdg-open", path], stdin=subprocess.DEVNULL)
 
 
 def is_darwin() -> bool:
@@ -62,7 +62,9 @@ def open_folder(
         and folder and os.path.isdir(folder)
     ):
         try:
-            if subprocess.run(["open", "-R", select], check=False).returncode == 0:
+            if subprocess.run(
+                ["open", "-R", select], stdin=subprocess.DEVNULL, check=False
+            ).returncode == 0:
                 return
         except OSError:
             pass
@@ -79,9 +81,9 @@ def open_folder(
         if os.name == "nt":
             os.startfile(folder)  # type: ignore[attr-defined]
         elif sys.platform == "darwin":
-            subprocess.run(["open", folder], check=False)
+            subprocess.run(["open", folder], stdin=subprocess.DEVNULL, check=False)
         else:
-            subprocess.run(["xdg-open", folder], check=False)
+            subprocess.run(["xdg-open", folder], stdin=subprocess.DEVNULL, check=False)
     except Exception as e:  # noqa: BLE001
         # show_error needs a real Tk/Toplevel to attach to and to read
         # geometry from; open_folder's own signature allows a looser

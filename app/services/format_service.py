@@ -159,6 +159,7 @@ class FormatService:
             return subprocess.run(
                 cmd,
                 cwd=os.path.dirname(os.path.abspath(self.app.entry_file)),
+                stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
                 encoding="utf-8",

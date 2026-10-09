@@ -1820,6 +1820,7 @@ class DownloadService:
         proc = subprocess.Popen(
             self.build_subtitle_command(task, sub_lang, force_no_cookies=force_no_cookies),
             cwd=os.path.dirname(os.path.abspath(app.entry_file)),
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -2178,6 +2179,7 @@ class DownloadService:
         proc = subprocess.Popen(
             command,
             cwd=os.path.dirname(os.path.abspath(app.entry_file)),
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,

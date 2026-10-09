@@ -1104,6 +1104,7 @@ def probe_flac_slice(path: str) -> bool | None:
     from ..paths import bundled_binary
 
     kwargs: dict[str, Any] = {
+        "stdin": subprocess.DEVNULL,
         "capture_output": True,
         "text": True,
         "encoding": "utf-8",
@@ -1165,6 +1166,7 @@ def ffprobe_is_usable() -> bool:
     from ..paths import bundled_binary
 
     kwargs: dict[str, Any] = {
+        "stdin": subprocess.DEVNULL,
         "capture_output": True,
         "text": True,
         "encoding": "utf-8",
@@ -1215,6 +1217,7 @@ def _encode_chunk_flac(
     cmd += ["-ac", "1", "-ar", "16000", "-c:a", "flac", out_path]
 
     kwargs: dict[str, Any] = {
+        "stdin": subprocess.DEVNULL,
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "check": True,

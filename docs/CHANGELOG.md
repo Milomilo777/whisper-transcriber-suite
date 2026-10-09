@@ -340,6 +340,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **No helper program can take over the app's command pipe any more.** Every other child
+  process the app starts (ffprobe, ffmpeg, yt-dlp, Deno, pip, Demucs, `open` / `xdg-open`)
+  now gets no stdin as well, so the same ten-minute hang cannot come back through the
+  diarization, voice-clone or noise-reduction ffmpeg, and a test checks every such call. The
+  optional-feature installer also tells pip not to prompt, so a private-index login fails cleanly.
 - **Resuming a job and time ranges no longer stall for ten minutes.** The ffmpeg that cuts the
   audio slice inherited the worker's command pipe as its stdin and, on Windows, hung at the end of
   the slice until its 600-second timeout; a resume then started over from the beginning. It now

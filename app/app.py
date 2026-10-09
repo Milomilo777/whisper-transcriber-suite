@@ -5483,10 +5483,10 @@ class App(tk.Tk):
                 os.startfile(path)  # type: ignore[attr-defined]
             elif sys.platform == "darwin":
                 import subprocess
-                subprocess.run(["open", path], check=False)
+                subprocess.run(["open", path], stdin=subprocess.DEVNULL, check=False)
             else:
                 import subprocess
-                subprocess.run(["xdg-open", path], check=False)
+                subprocess.run(["xdg-open", path], stdin=subprocess.DEVNULL, check=False)
         except Exception as e:  # noqa: BLE001
             show_error(
                 self, "Open failed",

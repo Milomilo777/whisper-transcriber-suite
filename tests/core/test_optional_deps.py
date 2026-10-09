@@ -171,12 +171,17 @@ def test_merge_is_refused_when_the_staged_tree_does_not_fit(monkeypatch, tmp_pat
     def _popen(cmd, **_k):
         staging = cmd[cmd.index("--target") + 1]
         staged["path"] = staging
+        staged["cmd"], staged["kwargs"] = cmd, _k
         return _FinishedProc(staging)
 
     monkeypatch.setattr(optional_deps.subprocess, "Popen", _popen)
     lines: list[str] = []
     assert optional_deps.install("alignment", log_cb=lines.append) is False
     assert any("Not enough free disk space" in line for line in lines)
+    # pip gets no stdin, and --no-input so a private-index login prompt fails
+    # cleanly instead of raising EOFError.
+    assert "--no-input" in staged["cmd"]
+    assert staged["kwargs"]["stdin"] is optional_deps.subprocess.DEVNULL
     assert not os.path.exists(staged["path"])
     assert not (final / "bigpkg").exists()
 

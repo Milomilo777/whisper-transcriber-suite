@@ -629,7 +629,11 @@ def _decode_window(audio_path: str, start_seconds: float, end_seconds: float) ->
         "-f", "s16le", "-acodec", "pcm_s16le", "pipe:1",
     ]
 
-    kwargs: dict[str, Any] = {"stdout": subprocess.PIPE, "stderr": subprocess.PIPE}
+    kwargs: dict[str, Any] = {
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+    }
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
     try:

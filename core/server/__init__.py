@@ -142,7 +142,8 @@ def _download_url(url: str, dest_dir: str,
         command += ["--", url]
         logger.info("server: downloading %s", strip_url_secrets(url))
         process = subprocess.Popen(
-            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            command, stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8", errors="replace",
             **new_session_kwargs(),
         )

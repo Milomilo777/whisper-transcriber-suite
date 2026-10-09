@@ -108,7 +108,9 @@ def yt_dlp_version(path: str | None = None) -> tuple[int, ...]:
         # takes ~25 s while dyld validates its files once (the old onefile
         # build paid that on every run; the onedir one then starts in ~0.5 s).
         # A timeout here drops --js-runtimes and YouTube loses its Deno.
-        kwargs: dict[str, object] = {"capture_output": True, "text": True, "timeout": 120}
+        kwargs: dict[str, object] = {
+            "stdin": subprocess.DEVNULL, "capture_output": True, "text": True, "timeout": 120,
+        }
         if sys.platform == "win32":
             kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         res = subprocess.run([resolved, "--version"], **kwargs)  # type: ignore[call-overload]
@@ -314,7 +316,9 @@ def deno_version(path: str | None = None) -> str:
     if not exe:
         return ""
     try:
-        kwargs: dict[str, object] = {"capture_output": True, "text": True, "timeout": 20}
+        kwargs: dict[str, object] = {
+            "stdin": subprocess.DEVNULL, "capture_output": True, "text": True, "timeout": 20,
+        }
         if sys.platform == "win32":
             kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         res = subprocess.run([exe, "--version"], **kwargs)  # type: ignore[call-overload]

@@ -452,6 +452,8 @@ def run_killing_tree(
     if capture_output:
         kwargs["stdout"] = subprocess.PIPE
         kwargs["stderr"] = subprocess.PIPE
+    # Never the caller's stdin (a worker's command pipe) unless the caller says so.
+    kwargs.setdefault("stdin", subprocess.DEVNULL)
     with subprocess.Popen(cmd, **{**new_session_kwargs(), **kwargs}) as proc:
         try:
             out, err = proc.communicate(timeout=timeout)
