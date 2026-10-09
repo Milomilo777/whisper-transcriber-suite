@@ -28,7 +28,9 @@ def write(segments: list[dict], audio_path: str = "") -> str:
             # An empty payload line ends the cue early in strict parsers
             # and shows nothing; ASS and ELAN skip blank segments too.
             continue
-        text = speaker_prefix(seg) + text
+        # The label is hand-editable too: escape it like the payload, or a
+        # "-->" in it adds a second separator to the cue.
+        text = escape_cue_separator(speaker_prefix(seg)) + text
         # coerce_seconds: a hand-edited / externally produced segment can
         # carry None / a non-numeric string / a non-finite time; the cue
         # must survive with a clamped timestamp rather than aborting the

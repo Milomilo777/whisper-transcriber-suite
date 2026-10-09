@@ -52,7 +52,7 @@ def write(
         lines = [ln for ln in (original, translated_line) if ln]
         if not lines:
             continue
-        lines[0] = speaker_prefix(seg) + lines[0]
+        lines[0] = escape_cue_separator(speaker_prefix(seg)) + lines[0]
         # The viewer loads hand-edited JSON verbatim and passes it here;
         # a malformed timestamp must clamp rather than abort the export
         # (a missing "end" falls back to the start, an earlier end is

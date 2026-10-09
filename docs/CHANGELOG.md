@@ -384,6 +384,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Changing the Whisper model in Settings no longer stops a running transcription without asking, or
   before the choice is saved.** It now asks like an engine switch does and restarts the worker only
   after the save worked; a failed save (also from "Download now") puts the previous model back.
+- **A speaker name containing `-->` no longer breaks an SRT cue.** The name is now escaped like the cue text in the SRT and bilingual SRT files, as WebVTT already did.
 - **A damaged "online config not published" marker file no longer aborts the settings load.** A marker that is not valid UTF-8 is treated as absent and the online config is simply asked for again.
 - **A transcript with a broken character no longer stops the Word or ELAN export.** A lone surrogate in the text, a speaker name or the title made the file fail to save; it is now replaced with the Unicode replacement character (U+FFFD).
 - **The API server keeps only the file name of an uploaded Windows path on macOS and Linux.** A client
