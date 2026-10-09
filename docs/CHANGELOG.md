@@ -353,6 +353,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A transcript with a stray U+FFFE or U+FFFF character now exports to Word.** These two characters are
+  not legal in the Word file format and made the whole export fail with "All strings must be XML
+  compatible"; they are replaced with the standard replacement character, like a broken character half.
 - **Two different file names no longer count as one file.** On Windows and macOS a transcript name with
   the German sharp s was treated as the same file as its "ss" spelling, so the transcript viewer raised
   the wrong window and the share page refused a legitimate name. Only case differences are folded now.

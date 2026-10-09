@@ -99,13 +99,15 @@ _XML_TRANSLATE: dict[int, str | None] = {
     # A lone surrogate is not a legal XML character either, and lxml cannot
     # encode it (UnicodeEncodeError on save). A Python str never holds a
     # valid pair as two code points, so every one found here is a lone half.
-    **{cp: chr(0xFFFD) for cp in range(0xD800, 0xE000)},
+    # U+FFFE and U+FFFF are XML non-characters: lxml refuses them ("All
+    # strings must be XML compatible"), so they are replaced the same way.
+    **{cp: chr(0xFFFD) for cp in (*range(0xD800, 0xE000), 0xFFFE, 0xFFFF)},
 }
 
 
 def sanitize_for_xml(text: str) -> str:
     """Strip XML 1.0-illegal control characters from ``text`` and replace
-    lone surrogates with U+FFFD.
+    lone surrogates and the non-characters U+FFFE / U+FFFF with U+FFFD.
 
     Used by the DOCX writer (python-docx raises ValueError on these
     bytes, and lxml cannot encode a surrogate) and by any writer that

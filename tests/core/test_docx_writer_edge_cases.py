@@ -72,3 +72,22 @@ def test_elan_output_with_a_lone_surrogate_encodes_as_utf8():
     out = elan.write(segments, "audio.mp4")
     assert f"hello{_REPLACEMENT}" in out
     out.encode("utf-8")  # raised UnicodeEncodeError before
+
+
+@pytest.mark.parametrize("code", [0xFFFE, 0xFFFF])
+def test_sanitize_replaces_the_two_xml_non_characters(code):
+    """U+FFFE and U+FFFF are not legal XML characters (lxml: "All strings must be XML
+    compatible"); they become U+FFFD like a lone surrogate."""
+    assert base.sanitize_for_xml(f"a{chr(code)}b") == f"a{_REPLACEMENT}b"
+
+
+@pytest.mark.parametrize("code", [0xFFFE, 0xFFFF])
+def test_text_with_an_xml_non_character_is_exported(code):
+    segments = [{"start": 0.0, "end": 1.0, "text": f"hello{chr(code)}world"}]
+    texts = _paragraph_texts(docx_writer.write_bytes(segments, "audio.mp4"))
+    assert any(f"hello{_REPLACEMENT}world" in t for t in texts)
+
+
+def test_elan_output_with_an_xml_non_character_is_well_formed():
+    segments = [{"start": 0.0, "end": 1.0, "text": f"hello{chr(0xFFFF)}"}]
+    assert f"hello{_REPLACEMENT}" in elan.write(segments, "audio.mp4")
