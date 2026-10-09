@@ -30,6 +30,9 @@ Guards (a wrong vtable call is an access violation that no ``try`` can catch, so
 * an HRESULT failure is retried, and five failures in a row switch the integration off for the
   session; every native failure is logged once and never reaches the user.
 
+Limit: the queues are looked at about every 500 ms, so a job that starts and ends inside one
+round (under half a second) may not flash.
+
 Nothing here runs off Windows, and importing this module is safe everywhere (``ctypes.wintypes``
 and the DLLs are only touched when a Windows window asks for them).
 
@@ -826,12 +829,15 @@ def _download_finished_for_user(item: Any, previous: str | None) -> bool:
     The auto-transcribe hand-off sets the row to "finished" when the linked transcription ends
     however it ended (finished, failed, cancelled, model-load timeout), so ``transcribing`` ->
     ``finished`` says nothing: a successful transcription is reported by its own queue task.
-    A subtitled-video row is done only after its burn.
+    A subtitled-video row is done only after its burn: it reaches "finished" only through
+    ``subbed_video.end_chain("finished")`` from the burn thread (a failed or cancelled
+    transcription or burn ends it "error"/"cancelled"), so "burning" or, when the whole burn
+    fit inside one round, "transcribing" before it both mean a good chain.
     """
     if previous is None:
         return False
     if getattr(item, "make_subbed_video", False):
-        return previous == "burning"
+        return previous in ("burning", "transcribing")
     return previous in ("waiting", "running", "paused")
 
 

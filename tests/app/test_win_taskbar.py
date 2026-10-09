@@ -1319,3 +1319,48 @@ def test_the_window_hook_lets_go_of_its_callback_and_is_replaced_not_stacked() -
         if native is not None:
             native.close()
         root.destroy()
+
+
+def test_a_chain_whose_burn_is_shorter_than_one_round_still_flashes_once(tb, monkeypatch) -> None:
+    """transcribing -> (burning) -> finished inside one 500 ms round: a very short clip."""
+    app = LifecycleApp()
+    dl, tr = _real_tasks(app, subbed=True)
+    _start(app, dl, tr, tb)
+    _finish_transcription(app, tr, "finished", monkeypatch)
+    assert dl.status == "burning"
+    dl.status = "finished"                        # end_chain("finished") before the next round
+    wt.sync(app, now=3.0)
+    assert _flashes(tb) == 1
+
+
+@pytest.mark.parametrize("end", ["error", "cancelled"])
+def test_a_chain_that_fails_inside_one_round_still_does_not_flash(tb, monkeypatch, end) -> None:
+    app = LifecycleApp()
+    dl, tr = _real_tasks(app, subbed=True)
+    _start(app, dl, tr, tb)
+    _finish_transcription(app, tr, "finished", monkeypatch)
+    dl.status = end
+    wt.sync(app, now=3.0)
+    assert _flashes(tb) == 0
+
+
+def test_a_chain_whose_transcription_fails_never_flashes(tb, monkeypatch) -> None:
+    app = LifecycleApp()
+    dl, tr = _real_tasks(app, subbed=True)
+    _start(app, dl, tr, tb)
+    _finish_transcription(app, tr, "error", monkeypatch)
+    assert dl.status == "error"
+    wt.sync(app, now=3.0)
+    assert _flashes(tb) == 0
+
+
+def test_a_chain_row_that_ends_finished_without_a_burn_does_not_flash(tb) -> None:
+    """"Auto-transcribe wiring failed": the download finished but no subtitled video was made."""
+    app = LifecycleApp()
+    dl, _ = _real_tasks(app, subbed=True, linked=False)
+    app.queue.clear()
+    wt.sync(app, now=1.0)
+    tb.native.foreground = False
+    dl.status = "finished"                        # running -> finished, nothing handed off
+    wt.sync(app, now=2.0)
+    assert _flashes(tb) == 0
