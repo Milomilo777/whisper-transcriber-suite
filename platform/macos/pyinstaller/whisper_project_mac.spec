@@ -437,6 +437,7 @@ a = Analysis(
         'core.history',
         'core.hub',
         'core.logging_setup',
+        'core.media_types',
         'core.model_manager',
         'core.offline',
         'core.subtitle_edit',
