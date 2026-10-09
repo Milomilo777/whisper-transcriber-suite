@@ -2560,6 +2560,9 @@ class App(tk.Tk):
         # cancel must not delete other widgets' commands (see the helper).
         cancel_pending_after_callbacks(self)
         try:
+            state = getattr(self, "smtv_state", None)
+            if state is not None and hasattr(state, "destroy"):
+                state.destroy()
             super().destroy()
         except Exception:  # noqa: BLE001 - any failure here must still end mainloop
             # A half-finished teardown leaves the root alive, so mainloop()

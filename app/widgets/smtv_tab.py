@@ -31,6 +31,7 @@ from typing import Any
 
 from app.dpi import scale_factor, scaled
 from app.theme import system_fonts, tokens
+from core._threads import safe_thread
 
 logger = logging.getLogger(__name__)
 
@@ -293,6 +294,10 @@ class _TabState:
         self._placeholder: tk.PhotoImage | None = None
         self._rtl = False
         self._wrap = 600
+        self._audio_after_id: str | None = None
+
+    def destroy(self) -> None:
+        self._pool.shutdown(wait=False)
 
     # -- queries --------------------------------------------------------
 
@@ -357,7 +362,7 @@ class _TabState:
                 msg = str(e)
                 self.app.post_to_main(lambda: self._on_error(gen, msg))
 
-        threading.Thread(target=work, name="smtv-search", daemon=True).start()
+        safe_thread(work, name="smtv-search")
 
     def _on_page(self, gen: int, result: Any) -> None:
         if gen != self._generation:
@@ -582,7 +587,9 @@ class _TabState:
             return
         if tries > 0:
             try:
-                app.after(500, lambda: self._prefer_audio_when_available(url, tries - 1))
+                if getattr(self, "_audio_after_id", None) is not None:
+                    app.after_cancel(self._audio_after_id)
+                self._audio_after_id = app.after(500, lambda: self._prefer_audio_when_available(url, tries - 1))
             except Exception:  # noqa: BLE001
                 pass
 
