@@ -182,9 +182,11 @@ def test_darkdetect_backend_maps_the_package_answer(monkeypatch, answer, dark) -
     assert sa.DarkdetectBackend().is_dark() is dark
 
 
-def test_darkdetect_backend_no_answer_is_none(monkeypatch) -> None:
+def test_darkdetect_no_answer_is_light_as_before(monkeypatch) -> None:
+    """The old code ran ``(darkdetect.theme() or "")``: None meant light, not "unknown"."""
     monkeypatch.setitem(sys.modules, "darkdetect", SimpleNamespace(theme=lambda: None))
-    assert sa.DarkdetectBackend().is_dark() is None
+    assert sa.DarkdetectBackend().is_dark() is False
+    assert sa.resolve_theme("system", sa.get_backend("darwin")) == "light"
 
 
 def test_missing_darkdetect_falls_back_to_dark_and_says_so(monkeypatch, caplog) -> None:
@@ -343,6 +345,57 @@ def test_the_real_tk_after_loop_follows_a_change(monkeypatch) -> None:
         root.destroy()
 
 
+def test_a_failed_restyle_is_retried_a_few_times_then_dropped(monkeypatch, caplog) -> None:
+    root, attempts = FakeRoot(), []
+    backend = _watch(monkeypatch, [False] + [True] * 20)
+
+    def failing() -> None:
+        attempts.append(1)
+        raise RuntimeError("restyle failed")
+
+    backend.subscribe(failing, root)
+    with caplog.at_level(logging.DEBUG, logger=sa.logger.name):
+        for _ in range(10):
+            root.fire()
+    assert len(attempts) == sa.MAX_CALLBACK_ATTEMPTS == 3     # retried, but no storm
+    assert len(root.pending) == 1                              # still watching
+    errors = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert len(errors) == 1 and "handler failed" in errors[0].getMessage()   # once per value ...
+    assert sum("giving up" in r.getMessage() for r in caplog.records) == 1   # ... and the end
+
+
+def test_a_callback_that_fails_once_is_retried_on_the_next_tick(monkeypatch) -> None:
+    root, outcomes = FakeRoot(), [RuntimeError("once"), None]
+    backend = _watch(monkeypatch, [False, True, True, True])
+
+    def flaky() -> None:
+        outcome = outcomes.pop(0)
+        if outcome is not None:
+            raise outcome
+
+    seen: list[int] = []
+    backend.subscribe(lambda: (flaky(), seen.append(1)), root)
+    root.fire()   # change seen, restyle fails
+    root.fire()   # retried, succeeds
+    root.fire()   # same value: nothing more
+    assert seen == [1]
+    assert outcomes == []
+
+
+def test_a_new_value_resets_the_attempt_count(monkeypatch) -> None:
+    root, attempts = FakeRoot(), []
+    backend = _watch(monkeypatch, [False, True, True, True, True, False, False, False, False])
+
+    def failing() -> None:
+        attempts.append(1)
+        raise RuntimeError("x")
+
+    backend.subscribe(failing, root)
+    for _ in range(8):
+        root.fire()
+    assert len(attempts) == 6    # 3 for True, then 3 for the flip back to False
+
+
 # --------------------------------------------------------- app wiring (no full App)
 
 def _app_double(mode: str, restyles: list[str], watch: Any = None) -> Any:
@@ -363,6 +416,29 @@ def test_app_restyles_on_an_os_change_in_system_mode(monkeypatch) -> None:
     seen: list[str] = []
     _app_double("system", seen)._on_system_theme_change()
     assert seen == ["system"]
+
+
+def test_app_ignores_an_os_change_while_closing(monkeypatch) -> None:
+    from app import app as app_module
+
+    monkeypatch.setattr(app_module.system_appearance, "get_backend", lambda *a, **k: FakeBackend(False))
+    monkeypatch.setattr(tokens, "_theme", "dark")
+    seen: list[str] = []
+    double = _app_double("system", seen)
+    double._closing = True
+    app_module.App._on_system_theme_change(double)
+    assert seen == []
+
+
+def test_exit_stops_the_watcher_only_at_the_point_of_no_return() -> None:
+    import inspect
+    from app.app import App
+
+    src = inspect.getsource(App.on_exit)
+    stop = src.find("theme_watch.stop()")
+    closing = src.find("self._closing = True")
+    assert 0 < closing < stop            # after the exit is confirmed, not before a "No"
+    assert src.find("_sync_system_theme_watch") == -1 or src.find("_sync_system_theme_watch") > closing
 
 
 def test_app_does_nothing_when_the_theme_is_already_right(monkeypatch) -> None:

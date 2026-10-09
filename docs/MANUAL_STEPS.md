@@ -76,7 +76,7 @@ If the path is unreachable on startup, the new fallback in Phase 0 will substitu
 
 ## E. If you want to switch theme
 
-`View → Theme → Light / Dark / System` from the menubar. The setting persists in `config.json` (`theme` key).
+`View → Theme → Light / Dark / System` from the menubar. The setting persists in `config.json` (`theme` key). On Windows, System follows the Windows "default app mode" setting and switches while the app is open, and the title bars of the window and its dialogs follow the theme (Windows' own message boxes and file dialogs keep the system title bar).
 
 ---
 

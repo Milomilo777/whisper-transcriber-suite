@@ -34,6 +34,7 @@ from __future__ import annotations
 import ctypes
 import logging
 import os
+import platform
 import sys
 import tkinter as tk
 from typing import Any
@@ -71,10 +72,20 @@ _theme = "light"
 _native_cache: Any = None
 
 
-def set_enabled(enabled: bool) -> None:
+def _as_switch(value: object) -> bool:
+    """A config value as on/off: ``"false"``, ``"0"``, ``"no"``, ``"off"`` and ``""`` are off
+    (a hand-edited string must not count as true); None means "not set" = on."""
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() not in ("", "0", "false", "no", "off")
+    return bool(value)
+
+
+def set_enabled(enabled: object) -> None:
     """The config switch (``native_window_theme``); the environment variable is read live."""
     global _config_enabled
-    _config_enabled = bool(enabled)
+    _config_enabled = _as_switch(enabled)
 
 
 def env_disabled() -> bool:
@@ -93,8 +104,50 @@ def enabled(platform: str | None = None) -> bool:
     return _config_enabled and not env_disabled()
 
 
+def _rtl_build() -> int | None:
+    """The true build number from ``ntdll.RtlGetVersion`` (None when it cannot be asked).
+
+    Unlike ``sys.getwindowsversion()`` this does not depend on the exe's manifest: a program
+    without a Windows 10 manifest is told 6.2 / build 9200, which would turn the Windows 11
+    colours and the Windows 10 redraw off.
+    """
+    from ctypes import wintypes
+
+    class _OsVersionInfo(ctypes.Structure):
+        _fields_ = [
+            ("dwOSVersionInfoSize", wintypes.ULONG), ("dwMajorVersion", wintypes.ULONG),
+            ("dwMinorVersion", wintypes.ULONG), ("dwBuildNumber", wintypes.ULONG),
+            ("dwPlatformId", wintypes.ULONG), ("szCSDVersion", wintypes.WCHAR * 128),
+        ]
+
+    ntdll = ctypes.WinDLL("ntdll")  # type: ignore[attr-defined]
+    ntdll.RtlGetVersion.argtypes = [ctypes.POINTER(_OsVersionInfo)]
+    ntdll.RtlGetVersion.restype = ctypes.c_long
+    info = _OsVersionInfo()
+    info.dwOSVersionInfoSize = ctypes.sizeof(info)
+    if ntdll.RtlGetVersion(ctypes.byref(info)) != 0:   # STATUS_SUCCESS
+        return None
+    return int(info.dwBuildNumber) or None
+
+
 def windows_build() -> int:
-    """The Windows build number (19045 = Windows 10 22H2, 22000+ = Windows 11); 0 off Windows."""
+    """The Windows build number (19045 = Windows 10 22H2, 22000+ = Windows 11); 0 if unknown.
+
+    Asked from ntdll, then ``platform.version()`` ("10.0.19045"), then ``sys.getwindowsversion``
+    (which is manifest-dependent and only the last resort).
+    """
+    try:
+        build = _rtl_build()
+        if build:
+            return build
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        parts = platform.version().split(".")
+        if len(parts) >= 3 and parts[2].isdigit():
+            return int(parts[2])
+    except Exception:  # noqa: BLE001
+        pass
     getter = getattr(sys, "getwindowsversion", None)
     if getter is None:
         return 0

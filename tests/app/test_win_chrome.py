@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import sys
 import tkinter as tk
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -252,7 +253,59 @@ def test_the_config_default_is_on_and_a_bool() -> None:
 def test_the_app_reads_the_config_key() -> None:
     from pathlib import Path
     text = (Path(__file__).resolve().parents[2] / "app" / "app.py").read_text(encoding="utf-8")
-    assert 'win_chrome.set_enabled(bool(self.app_config.get("native_window_theme", True)))' in text
+    assert 'win_chrome.set_enabled(self.app_config.get("native_window_theme", True))' in text
+
+
+@pytest.mark.parametrize("value, expected", [
+    (True, True), (False, False), (None, True), (1, True), (0, False),
+    ("true", True), ("True", True), ("yes", True), ("on", True), ("1", True),
+    ("false", False), ("False", False), (" FALSE ", False), ("0", False), ("no", False),
+    ("off", False), ("", False),
+])
+def test_the_config_value_is_coerced_not_just_truthy(value, expected) -> None:
+    """A hand-edited ``"native_window_theme": "false"`` must switch it off."""
+    wc.set_enabled(value)
+    assert wc._config_enabled is expected
+
+
+# ------------------------------------------------------------------ the Windows build
+
+def test_the_build_comes_from_ntdll_not_the_manifest(monkeypatch) -> None:
+    """sys.getwindowsversion() says 9200 for an exe without a manifest; RtlGetVersion does not."""
+    monkeypatch.setattr(wc, "_rtl_build", lambda: 22631)
+    monkeypatch.setattr(sys, "getwindowsversion", lambda: SimpleNamespace(build=9200), raising=False)
+    assert wc.windows_build() == 22631
+
+
+def test_the_build_falls_back_to_platform_version(monkeypatch) -> None:
+    monkeypatch.setattr(wc, "_rtl_build", lambda: None)
+    monkeypatch.setattr(wc.platform, "version", lambda: "10.0.19045")
+    monkeypatch.setattr(sys, "getwindowsversion", lambda: SimpleNamespace(build=9200), raising=False)
+    assert wc.windows_build() == 19045
+
+
+def test_the_build_last_resort_is_getwindowsversion(monkeypatch) -> None:
+    monkeypatch.setattr(wc, "_rtl_build", lambda: None)
+    monkeypatch.setattr(wc.platform, "version", lambda: "weird")
+    monkeypatch.setattr(sys, "getwindowsversion", lambda: SimpleNamespace(build=19041), raising=False)
+    assert wc.windows_build() == 19041
+
+
+def test_a_build_lookup_that_raises_gives_zero(monkeypatch) -> None:
+    def boom() -> int:
+        raise OSError("ntdll")
+
+    monkeypatch.setattr(wc, "_rtl_build", boom)
+    monkeypatch.setattr(wc.platform, "version", boom)
+    monkeypatch.delattr(sys, "getwindowsversion", raising=False)
+    assert wc.windows_build() == 0
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="real ntdll")
+def test_the_real_ntdll_build_matches_this_windows() -> None:
+    build = wc._rtl_build()
+    assert isinstance(build, int) and build >= 10240
+    assert str(build) == wc.platform.version().split(".")[2]
 
 
 # ------------------------------------------- real Tk windows with the native layer faked

@@ -6,13 +6,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
-- **Windows title bars follow the theme.** On Windows the title bar of the main window and of every
-  dialog turns dark with the Dark theme (and light with Light) instead of staying light, and on
-  Windows 11 the caption, border and text colours match the app panels too. It is a plain
-  `DwmSetWindowAttribute` call through `ctypes` (`app/theme/win_chrome.py`); a failure is ignored.
-  Windows' own message boxes and file dialogs keep the system title bar. The config key
-  `native_window_theme` (or the environment variable `WTS_NO_NATIVE_CHROME=1`) turns it off.
-  macOS and Linux are unchanged.
+- **Windows title bars follow the theme.** The title bar of the main window and of every dialog
+  turns dark with the Dark theme instead of staying light, and on Windows 11 the caption and border
+  match the app panels too. Windows' own message boxes and file dialogs keep the system title bar;
+  `native_window_theme` in `config.json` (or `WTS_NO_NATIVE_CHROME=1`) turns it off.
 - **"System" theme follows Windows live.** With the theme set to System, the app reads the Windows
   "default app mode" setting and switches when it changes while the app is open (checked every
   2 seconds, only in System mode; nothing is saved). Light and Dark still win over Windows.

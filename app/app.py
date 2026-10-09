@@ -975,7 +975,7 @@ class App(tk.Tk):
         sv_ttk.set_theme(start_theme)
         script_fonts.apply_theme_fonts(self)
         theme_colours.apply(self, start_theme)
-        win_chrome.set_enabled(bool(self.app_config.get("native_window_theme", True)))
+        win_chrome.set_enabled(self.app_config.get("native_window_theme", True))
         win_chrome.install(self, start_theme)
         self._system_theme_watch = system_appearance.SystemThemeWatcher(
             self, self._on_system_theme_change)
@@ -2017,6 +2017,8 @@ class App(tk.Tk):
 
     def _on_system_theme_change(self) -> None:
         """The OS switched light/dark: follow it when the mode is "system" (nothing is saved)."""
+        if getattr(self, "_closing", False):
+            return
         name = self.theme_var.get()
         if name != "system" or _resolve_theme(name) == tokens.current_theme():
             return
@@ -2153,6 +2155,10 @@ class App(tk.Tk):
         # closing flag so watcher events / stability-checks in flight
         # short-circuit before touching destroyed widgets.
         self._closing = True
+        # No restyle of windows that are about to be destroyed (getattr: the exit tests use stand-ins).
+        theme_watch = getattr(self, "_system_theme_watch", None)
+        if theme_watch is not None:
+            theme_watch.stop()
         # Persist window size + position so the next launch reopens at
         # the same shape. Runs *before* terminating subprocesses so it
         # never sees a broken state.

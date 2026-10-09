@@ -39,6 +39,10 @@ POLL_MS = 2000
 _PERSONALIZE_KEY = r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
 _APPS_USE_LIGHT = "AppsUseLightTheme"
 
+# A change whose handler fails (a restyle error) is retried on the next ticks, this many times in
+# all, then dropped until the value changes again: a bug must not become a restyle every 2 s.
+MAX_CALLBACK_ATTEMPTS = 3
+
 # What "System" resolves to when the OS cannot be asked: the long-standing answer, kept so a
 # machine where detection is unavailable looks as it always did (and the reason is logged once).
 UNKNOWN_FALLBACK = "dark"
@@ -95,8 +99,29 @@ class WindowsBackend:
             _warn_once("windows-value", "Unexpected Windows app theme value: %r", value)
             return None
 
+    @staticmethod
+    def _deliver(now: bool, state: dict[str, Any], callback: Callable[[], None]) -> None:
+        """Tell ``callback`` that the choice became ``now``; remember it only once that worked."""
+        if now != state["pending"]:
+            state["pending"], state["attempts"] = now, 0
+        state["attempts"] += 1
+        try:
+            callback()
+        except Exception:  # noqa: BLE001 - a failing handler must not end the watch
+            if state["attempts"] == 1:
+                logger.exception("System theme change handler failed")
+            else:
+                logger.debug("System theme change handler failed again", exc_info=True)
+            if state["attempts"] >= MAX_CALLBACK_ATTEMPTS:
+                logger.warning("System theme change handler failed %d times: giving up on this change",
+                               state["attempts"])
+                state["last"] = now
+            return
+        state["last"] = now
+
     def subscribe(self, callback: Callable[[], None], root: tk.Misc) -> Callable[[], None]:
-        state: dict[str, Any] = {"last": self.is_dark(), "after": None, "stopped": False}
+        state: dict[str, Any] = {"last": self.is_dark(), "after": None, "stopped": False,
+                                 "pending": None, "attempts": 0}
 
         def tick() -> None:
             state["after"] = None
@@ -105,10 +130,9 @@ class WindowsBackend:
             try:
                 now = self.is_dark()
                 if now is not None and now != state["last"]:
-                    state["last"] = now
-                    callback()
-            except Exception:  # noqa: BLE001 - a failing callback must not end the watch
-                logger.exception("System theme change handler failed")
+                    self._deliver(now, state, callback)
+            except Exception:  # noqa: BLE001 - nothing may end the watch
+                logger.exception("System theme check failed")
             if state["stopped"]:
                 return
             try:
@@ -136,7 +160,11 @@ class WindowsBackend:
 # --------------------------------------------------------------- everything else (unchanged)
 
 class DarkdetectBackend:
-    """macOS and Linux for now: the optional ``darkdetect`` package, read on demand, no watching."""
+    """macOS and Linux for now: the optional ``darkdetect`` package, read on demand, no watching.
+
+    Same answers as the code it replaces: "Dark" is dark, anything else the package returns
+    (including None) is light, and a missing or failing package is unknown (dark, logged once).
+    """
 
     live = False
 
@@ -154,9 +182,8 @@ class DarkdetectBackend:
         except Exception as exc:  # noqa: BLE001 - detection must never stop the app
             _warn_once("darkdetect-failed", "darkdetect could not read the theme: %s", exc)
             return None
-        if answer is None:
-            return None
-        return str(answer).lower() == "dark"
+        # As before: no answer (None) counted as light.
+        return str(answer or "").lower() == "dark"
 
     def subscribe(self, callback: Callable[[], None], root: tk.Misc) -> Callable[[], None]:
         return _no_op
