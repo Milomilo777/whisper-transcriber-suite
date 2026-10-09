@@ -68,6 +68,9 @@ PIPELINE_CHUNK_LENGTH_S = 30
 #: when the model DOES return word timestamps).
 MAX_SEGMENT_SECONDS = 10.0
 TARGET_SR = 16000
+
+#: Upper bound for one ffmpeg decode of an audio window, as in the cloud backends.
+DECODE_TIMEOUT_S = 1800.0
 #: A past-EOF window decodes to ~no audio; fewer than this many samples = EOF.
 #: 1024 samples = 64 ms at 16 kHz; a real window is hundreds of thousands+.
 _EMPTY_PCM_SAMPLES = 1024
@@ -633,11 +636,18 @@ def _decode_window(audio_path: str, start_seconds: float, end_seconds: float) ->
         "stdin": subprocess.DEVNULL,
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
+        "timeout": DECODE_TIMEOUT_S,
     }
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
     try:
         proc = subprocess.run(cmd, **kwargs)
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(
+            "ffmpeg timed out preparing this file for the NVIDIA Parakeet "
+            "backend (the source file may be on a slow or disconnected "
+            "drive). Check the file location and try again."
+        ) from e
     except (FileNotFoundError, OSError) as e:
         raise RuntimeError(
             "ffmpeg is required to prepare audio for the NVIDIA Parakeet "

@@ -392,3 +392,40 @@ def test_availability_and_advanced_nvidia_asr_in_sync():
     advanced = importlib.import_module("app.dialogs.advanced")
     values = set(advanced._BACKEND_LABEL_TO_VALUE.values())
     assert "nvidia_asr" in values
+
+
+# ---------------------------------------------------------------- ffmpeg decode bound
+
+
+def _fake_ffmpeg(monkeypatch, runner):
+    import core.paths as paths
+
+    monkeypatch.setattr(paths, "bundled_binary", lambda name: "ffmpeg")
+    monkeypatch.setattr(na.subprocess, "run", runner)
+
+
+def test_decode_window_bounds_the_ffmpeg_call(monkeypatch):
+    # A source on a disconnected network drive can block ffmpeg forever; the
+    # cloud backends bound the same step, and so must this one.
+    pytest.importorskip("numpy")
+    seen: dict = {}
+
+    def run(cmd, **kwargs):
+        seen.update(kwargs)
+        return type("P", (), {"returncode": 0, "stdout": b"\x00\x00" * 8, "stderr": b""})()
+
+    _fake_ffmpeg(monkeypatch, run)
+    audio = na._decode_window("clip.wav", 0.0, 30.0)
+    assert audio.size == 8
+    assert isinstance(seen.get("timeout"), (int, float)) and seen["timeout"] > 0
+
+
+def test_decode_window_timeout_is_a_clear_error(monkeypatch):
+    pytest.importorskip("numpy")
+
+    def run(cmd, **kwargs):
+        raise na.subprocess.TimeoutExpired(cmd, kwargs.get("timeout"))
+
+    _fake_ffmpeg(monkeypatch, run)
+    with pytest.raises(RuntimeError, match="timed out"):
+        na._decode_window("clip.wav", 0.0, 30.0)
