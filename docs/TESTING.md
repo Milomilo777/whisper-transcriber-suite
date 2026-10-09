@@ -25,8 +25,12 @@ at a glance whether the project is still green.
 
 - Python 3.11+ on PATH.
 - `pip install -r requirements.txt`
-- `pip install pyright pytest` (dev tools used by `run_tests.bat`); add `hypothesis` for the
-  property-based tests, which are skipped without it.
+- `pip install pyright pytest pytest-timeout responses hypothesis` (the dev tools `run_tests.bat`
+  uses; the `dev` extra in `pyproject.toml` lists the same set plus `pytest-cov` for coverage runs).
+  `pytest-timeout` is required: `pyproject.toml` passes `--timeout` to every run, so pytest stops
+  with an unrecognised-argument error without it. `responses` is imported by the model download
+  tests. `hypothesis` is the only optional one: the property-based tests skip themselves without
+  it. `platformdirs`, which `tests/conftest.py` imports, comes with `requirements.txt`.
 
 ## What the test files are
 
