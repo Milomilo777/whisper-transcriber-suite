@@ -130,5 +130,5 @@ pywhispercpp>=1.4
 #       pip install nvidia-cublas-cu12
 #   which the app's Advanced > Re-detect hardware > "Install GPU support"
 #   button installs on demand (core/optional_deps.py "cuda_runtime").
-# * darkdetect is optional; sv-ttk falls back to dark when missing.
+# * darkdetect is optional and only used on macOS/Linux ("System" theme); Windows reads its own setting.
 # * For dev / test deps see pyproject.toml [project.optional-dependencies.dev].

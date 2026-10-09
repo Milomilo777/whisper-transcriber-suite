@@ -61,7 +61,7 @@ from app.widgets.tabs import (
 from app.widgets.tray import TrayController
 from core import __version__ as _APP_VERSION
 from core import offline, subtitle_edit, task_settings
-from app.theme import script_fonts, theme_colours, tokens
+from app.theme import script_fonts, system_appearance, theme_colours, tokens, win_chrome
 from core._proc import kill_process_tree
 from core.config import load_config, save_config
 from core.history import EXIT_REASON, HistoryDB
@@ -200,13 +200,8 @@ def _record_exit_interruptions(history: Any, active: list[Any]) -> None:
 
 
 def _resolve_theme(name: str) -> str:
-    if name == "system":
-        try:
-            import darkdetect  # type: ignore[import-not-found]
-            return "dark" if (darkdetect.theme() or "").lower() == "dark" else "light"
-        except Exception:  # noqa: BLE001
-            return "dark"
-    return name if name in ("light", "dark") else "dark"
+    """"light" / "dark" for a saved choice; "system" asks the OS (app.theme.system_appearance)."""
+    return system_appearance.resolve_theme(name)
 
 
 def _resolve_entry_file() -> str:
@@ -980,6 +975,11 @@ class App(tk.Tk):
         sv_ttk.set_theme(start_theme)
         script_fonts.apply_theme_fonts(self)
         theme_colours.apply(self, start_theme)
+        win_chrome.set_enabled(bool(self.app_config.get("native_window_theme", True)))
+        win_chrome.install(self, start_theme)
+        self._system_theme_watch = system_appearance.SystemThemeWatcher(
+            self, self._on_system_theme_change)
+        self._sync_system_theme_watch(self.theme_var.get())
         remember_scale(self)
         self.parallel_workers = max(1, int(self.app_config.get("parallel_workers", 2)))
         self.next_worker_id = 1
@@ -1993,16 +1993,39 @@ class App(tk.Tk):
         path = open_log_folder()
         logger.info("Opened log folder: %s", path)
 
-    def apply_theme(self) -> None:
-        name = self.theme_var.get()
+    def _restyle(self, name: str) -> None:
+        """Draw the app, its open dialogs and (Windows) their title bars in theme ``name``."""
         resolved = _resolve_theme(name)
         sv_ttk.set_theme(resolved)
         script_fonts.apply_theme_fonts(self)
         theme_colours.apply(self, resolved)
+        win_chrome.apply_all(self, resolved)
         if hasattr(self, "live_model_menu"):
             live_tab_theme(self)
         if hasattr(self, "txt") and self.txt is not None:
             apply_console_theme(self.txt, resolved)
+
+    def _sync_system_theme_watch(self, name: str) -> None:
+        """Watch the OS light/dark choice only while the theme mode is "system"."""
+        watch = getattr(self, "_system_theme_watch", None)
+        if watch is None:
+            return
+        if name == "system":
+            watch.start()
+        else:
+            watch.stop()
+
+    def _on_system_theme_change(self) -> None:
+        """The OS switched light/dark: follow it when the mode is "system" (nothing is saved)."""
+        name = self.theme_var.get()
+        if name != "system" or _resolve_theme(name) == tokens.current_theme():
+            return
+        self._restyle(name)
+
+    def apply_theme(self) -> None:
+        name = self.theme_var.get()
+        self._restyle(name)
+        self._sync_system_theme_watch(name)
         self.app_config["theme"] = name
         # Guard the save like every other pref handler (Audit B1 / FB-01): a
         # disk/permissions failure inside this Tk callback must not raise out

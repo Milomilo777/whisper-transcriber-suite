@@ -6,6 +6,16 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Windows title bars follow the theme.** On Windows the title bar of the main window and of every
+  dialog turns dark with the Dark theme (and light with Light) instead of staying light, and on
+  Windows 11 the caption, border and text colours match the app panels too. It is a plain
+  `DwmSetWindowAttribute` call through `ctypes` (`app/theme/win_chrome.py`); a failure is ignored.
+  Windows' own message boxes and file dialogs keep the system title bar. The config key
+  `native_window_theme` (or the environment variable `WTS_NO_NATIVE_CHROME=1`) turns it off.
+  macOS and Linux are unchanged.
+- **"System" theme follows Windows live.** With the theme set to System, the app reads the Windows
+  "default app mode" setting and switches when it changes while the app is open (checked every
+  2 seconds, only in System mode; nothing is saved). Light and Dark still win over Windows.
 - **FFmpeg source for the GPL builds.** `THIRD_PARTY_NOTICES.md` now names the exact corresponding
   source of the bundled FFmpeg (Windows: the gyan.dev build's FFmpeg commit; macOS: the FFmpeg 9.0.2
   release) and the builders' library lists. `tools/fetch_ffmpeg_source.py` downloads the pinned
@@ -303,6 +313,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **"System" theme on Windows no longer always means Dark.** It needed the optional `darkdetect`
+  package, which the Windows builds do not contain, so the answer was always Dark. Windows now reads
+  its own setting (`app/theme/system_appearance.py`); macOS and Linux still use `darkdetect`, and
+  a missing package is now logged instead of silent.
 - **macOS shows Mac wording and shortcuts.** Menus, buttons and the What's-new list now show the Command key and work with it (Command-O, Command-F, Command-S, Command-Return); the File menu has no Exit item on macOS (the app menu owns Quit) and the queued-tasks prompt says Quit; About no longer calls the app a Windows app, and the VLC hint mentions 32/64-bit only on Windows. Windows and Linux keep Ctrl and "Exit" unchanged (`app/shortcuts.py`).
 - **Unsaved viewer edits are no longer lost on exit.** Closing the app (close button, File > Exit,
   Ctrl+Q, tray Exit, macOS Cmd+Q) while a transcript viewer holds unsaved edits now asks Save /
