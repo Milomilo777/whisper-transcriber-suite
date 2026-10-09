@@ -322,8 +322,8 @@ def sync_transcribe_empty_state(app: "App") -> None:
         bool(getattr(app, "_dnd_ready", False)), bool(app.transcribe_has_sample)
     )
     # App.refresh() calls this every 500 ms. Writing the unchanged text still fires the
-    # label's variable trace and redraws it, which keeps the window busy on macOS (aqua
-    # repaints the whole window layer: about 38% of a core while idle). Write on change only.
+    # label's variable trace and redraws it, which kept an idle window busy on macOS (about
+    # 38% of a core, measured). Write on change only.
     if app.transcribe_empty_headline_var.get() != headline:
         app.transcribe_empty_headline_var.set(headline)
     if app.queue:
