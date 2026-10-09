@@ -707,7 +707,9 @@ def reindex_all_history(
                         paths = json.loads(paths)
                     except json.JSONDecodeError:
                         paths = []
-                for p in paths or []:
+                if not isinstance(paths, (list, tuple)):
+                    paths = []  # a damaged cell parsed to a bare scalar
+                for p in paths:
                     if isinstance(p, str) and p.lower().endswith(".json") and os.path.isfile(p):
                         try:
                             total += index_file(p, conn=db_conn, embedder=embedder)

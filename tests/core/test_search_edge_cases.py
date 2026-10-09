@@ -142,3 +142,29 @@ def test_reindex_skips_a_history_row_with_unparseable_output_paths(
 
     assert sm.reindex_all_history() == 1
     assert len(sm.search("hello")) == 1
+
+
+@pytest.mark.parametrize("damaged", [True, 123, 1.5, {"a": 1}])
+def test_reindex_skips_a_history_row_whose_output_paths_is_not_a_list(
+    tmp_path, monkeypatch, damaged
+):
+    """A damaged database cell parses to a bare JSON scalar; that one row
+    must not abort the walk over every later transcript."""
+    good = tmp_path / "good.json"
+    _write(good, [_segment("hello there")])
+
+    class _FakeHistory:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def list_transcriptions(self, limit: int = 200):
+            return [{"output_paths": damaged}, {"output_paths": [str(good)]}]
+
+    monkeypatch.setattr("core.history.HistoryDB", _FakeHistory)
+    monkeypatch.setattr(sm, "user_data_dir", lambda: tmp_path)
+
+    assert sm.reindex_all_history() == 1
+    assert len(sm.search("hello")) == 1
