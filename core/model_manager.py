@@ -491,8 +491,14 @@ def _merged_catalog(config: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
         if not isinstance(base.get("info"), str):
             base["info"] = ""
         _gb = base.get("approx_size_gb")
-        if (isinstance(_gb, bool) or not isinstance(_gb, (int, float))
-                or not math.isfinite(_gb)):  # JSON "Infinity" / "NaN" parse as floats
+        try:
+            # JSON "Infinity" / "NaN" parse as floats; a huge JSON integer
+            # makes isfinite() raise OverflowError.
+            usable = (not isinstance(_gb, bool) and isinstance(_gb, (int, float))
+                      and math.isfinite(_gb))
+        except OverflowError:
+            usable = False
+        if not usable:
             base["approx_size_gb"] = 0.0
         merged[slug] = base
     return merged
@@ -552,9 +558,10 @@ def approx_download_size_text(config: dict[str, Any] | None, slug: str) -> str:
     info = catalog_entry_info(config, slug)
     try:
         gb = float((info or {}).get("approx_size_gb") or 0.0)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         gb = 0.0
-    if gb <= 0:
+    # not finite: an "Infinity" / NaN in a hand-edited or online catalog
+    if not math.isfinite(gb) or gb <= 0:
         return ""
     if gb < 1:
         return f"about {max(10, int(round(gb * 1000, -1)))} MB"
@@ -744,10 +751,14 @@ def _approx_model_bytes(config: dict[str, Any], name: str) -> int:
     for entry in _merged_catalog(config).values():
         if entry.get("name") == name:
             gb = entry.get("approx_size_gb") or 0.0
-            if isinstance(gb, (int, float)) and not isinstance(gb, bool) and gb > 0:
-                size = gb * 1024 ** 3
-                # A value like 1e308 is finite, but its byte count is not.
-                return int(size) if math.isfinite(size) else 0
+            if isinstance(gb, (int, float)) and not isinstance(gb, bool):
+                try:
+                    # OverflowError: an integer too large for a float, or a
+                    # finite size like 1e308 whose byte count is not finite.
+                    if math.isfinite(gb) and gb > 0:
+                        return int(gb * 1024 ** 3)
+                except OverflowError:
+                    pass
     return 0
 
 
