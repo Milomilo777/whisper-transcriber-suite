@@ -336,6 +336,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **macOS: the title bar follows an explicit Light or Dark theme.** With Dark chosen on a Light Mac
+  (or Light on a Dark Mac) the title bars of the main window and every dialog kept the system
+  colour. Each window now takes the theme's appearance; System still follows the Mac. Native alerts
+  and file dialogs keep the system look. `native_window_theme` (or `WTS_NO_NATIVE_CHROME=1`) turns it off.
 - **macOS: File > Close Window works after a dialog was closed.** In the transcript viewer it did
   nothing once the Find dialog and an alert had been closed, because Tk reports no focus then even
   though the viewer is the front window. It now acts on the window macOS calls the key window (asked

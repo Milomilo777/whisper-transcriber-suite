@@ -63,7 +63,9 @@ from app.widgets.tabs import (
 from app.widgets.tray import TrayController
 from core import __version__ as _APP_VERSION
 from core import offline, subtitle_edit, task_settings
-from app.theme import script_fonts, system_appearance, theme_colours, tokens, win_chrome, win_taskbar
+from app.theme import (
+    mac_appearance, script_fonts, system_appearance, theme_colours, tokens, win_chrome, win_taskbar,
+)
 from core._proc import kill_process_tree
 from core.config import load_config, save_config
 from core.history import EXIT_REASON, HistoryDB
@@ -973,6 +975,10 @@ class App(tk.Tk):
         self._ui_logger = get_ui_logger()
         logger.info("App startup; theme=%s", self.app_config.get("theme", "dark"))
         self.theme_var = tk.StringVar(value=self.app_config.get("theme", "light"))
+        # macOS: pin each window's title bar to the theme mode BEFORE it is resolved ("System" must
+        # be set back to auto first: Tk's isdark answer comes from the window's own appearance).
+        mac_appearance.set_enabled(self.app_config.get("native_window_theme", True))
+        mac_appearance.install(self, self.theme_var.get())
         start_theme = _resolve_theme(self.theme_var.get())
         sv_ttk.set_theme(start_theme)
         script_fonts.apply_theme_fonts(self)
@@ -2060,6 +2066,7 @@ class App(tk.Tk):
 
     def _restyle(self, name: str) -> None:
         """Draw the app, its open dialogs and (Windows) their title bars in theme ``name``."""
+        mac_appearance.apply_all(self, name)
         resolved = _resolve_theme(name)
         sv_ttk.set_theme(resolved)
         script_fonts.apply_theme_fonts(self)
