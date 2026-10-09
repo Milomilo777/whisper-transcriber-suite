@@ -589,7 +589,9 @@ def _online_known_missing(cache_path: Path, url: str) -> bool:
         if not 0 <= age < ONLINE_MISSING_RETRY_SECONDS:
             return False
         return marker.read_text(encoding="utf-8").strip() == _url_digest(url)
-    except OSError:
+    except (OSError, ValueError):
+        # ValueError: UnicodeDecodeError from a damaged marker; it counts as
+        # a missing one, so the fetch is simply tried again.
         return False
 
 
