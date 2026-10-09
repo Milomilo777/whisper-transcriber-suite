@@ -336,6 +336,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Transcript viewer Save keeps every export in step.** Save rewrote only the SRT, VTT and ASS, so
+  the TXT, Markdown, Word and the other exports kept the old text without a word. It now rebuilds
+  each text and Word export that still matches the transcript it came from, with the same writers
+  and the same title as the transcription. A file edited elsewhere, a PDF (it cannot be rebuilt
+  faithfully) and a file whose writer failed are named in a notice and left as they are.
 - **Work offline: UDP and name-lookup gaps closed.** The network guard now also refuses UDP
   datagrams sent to another computer (`sendto` / `sendmsg`), the `gethostbyname`,
   `gethostbyaddr` and `getnameinfo` lookups and calls made on `_socket` directly, through a

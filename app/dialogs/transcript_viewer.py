@@ -31,6 +31,7 @@ to any common audio/video extension that lives next to the JSON.
 """
 from __future__ import annotations
 
+import io
 import json
 import logging
 import math
@@ -40,8 +41,12 @@ import subprocess
 import sys
 import threading
 import tkinter as tk
+import zipfile
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any, Optional
+from urllib.parse import urlsplit
+from urllib.request import url2pathname
+from xml.sax.saxutils import unescape as xml_unescape
 
 from app.dialogs import share_page
 from app import mac_native, shortcuts
@@ -130,9 +135,20 @@ def _seg_words(seg: dict[str, Any]) -> list[Any]:
     return words if isinstance(words, list) else []
 
 
-# Subtitle files next to the JSON that Save keeps in step with it (the ones
-# "Open in Subtitle Edit" picks first). Their writers ignore audio_path.
-_SIBLING_FORMATS = ("srt", "vtt", "ass")
+# Exports next to the JSON that Save keeps in step with it: (writer key, file
+# suffix). Both "txt" and "express_scribe" write a plain ".txt" (the second also
+# as "name.express_scribe.txt"), so a ".txt" is tried against each writer.
+_SIBLING_FILES: tuple[tuple[str, str], ...] = (
+    ("srt", ".srt"), ("vtt", ".vtt"), ("ass", ".ass"),
+    ("txt", ".txt"), ("express_scribe", ".txt"), ("express_scribe", ".express_scribe.txt"),
+    ("md", ".md"), ("tsv", ".tsv"), ("lrc", ".lrc"), ("otr", ".otr"),
+    ("elan", ".eaf"), ("inqscribe", ".inqscr"), ("docx", ".docx"),
+)
+# Writers whose output names the media file; the rest ignore audio_path.
+_WRITERS_USING_AUDIO_PATH = frozenset({"md", "lrc", "otr", "elan", "docx"})
+# Exports that exist but cannot be checked against the transcript or rebuilt
+# faithfully here (a PDF embeds fonts, dates and ids): Save names them.
+_UNREBUILDABLE_SUFFIXES = (".pdf",)
 
 # One viewer per transcript file, keyed by _viewer_key(json_path): two
 # viewers on one JSON would each save their own copy, the last one winning.
@@ -155,13 +171,11 @@ def _file_stamp(path: str) -> tuple[int, int] | None:
     return (st.st_mtime_ns, st.st_size)
 
 
-def _read_text_normalized(path: str) -> str | None:
-    """The file as text with a BOM dropped and CRLF read as LF; None on failure."""
+def _read_bytes(path: str) -> bytes | None:
     try:
         with open(path, "rb") as fb:
-            raw = fb.read()
-        return raw.decode("utf-8-sig").replace("\r\n", "\n")
-    except (OSError, UnicodeDecodeError):
+            return fb.read()
+    except OSError:
         return None
 
 
@@ -171,12 +185,98 @@ def _render_sibling(fmt: str, segments: list[dict[str, Any]]) -> str:
     return get_writer(fmt)(segments, "")
 
 
+def _render_sibling_bytes(fmt: str, segments: list[dict[str, Any]], audio_path: str) -> bytes:
+    """The export ``fmt`` as the transcription's own writer produces it."""
+    from core.writers import get_binary_writer, get_writer, is_binary
+
+    if is_binary(fmt):
+        return get_binary_writer(fmt)(segments, audio_path)
+    return get_writer(fmt)(segments, audio_path).encode("utf-8")
+
+
+def _sibling_signature(fmt: str, raw: bytes) -> bytes | str | None:
+    """What makes two copies of an export "the same transcript"; None when unreadable.
+
+    Text: the content with a BOM dropped and CRLF read as LF. Word: the document body
+    (the zip around it carries a save time, so its bytes differ on every build).
+    """
+    try:
+        if fmt == "docx":
+            with zipfile.ZipFile(io.BytesIO(raw)) as z:
+                return z.read("word/document.xml")
+        return raw.decode("utf-8-sig").replace("\r\n", "\n")
+    except (zipfile.BadZipFile, KeyError, UnicodeDecodeError, OSError):
+        return None
+
+
+def _title_in_export(fmt: str, raw: bytes) -> str | None:
+    """The media name an export was headed with, when the media file is gone.
+
+    Markdown and Word start with the media's file name, LRC carries its stem in
+    ``[ti:...]``, OTR its name and ELAN its path; Save must keep that rather than
+    reword it to "Transcript" or drop it.
+    """
+    try:
+        if fmt == "md":
+            first = raw.decode("utf-8-sig").split("\n", 1)[0].rstrip("\r")
+            return first[2:] if first.startswith("# ") and len(first) > 2 else None
+        if fmt == "docx":
+            with zipfile.ZipFile(io.BytesIO(raw)) as z:
+                xml = z.read("word/document.xml").decode("utf-8")
+            found = re.search(r"<w:t(?:\s[^>]*)?>([^<]+)</w:t>", xml)
+            return xml_unescape(found.group(1)) if found else None
+        if fmt == "lrc":
+            first = raw.decode("utf-8-sig").split("\n", 1)[0].rstrip("\r")
+            found = re.fullmatch(r"\[ti:(.+)\]", first)
+            # The writer keeps the file name without its extension: give it one to drop.
+            return f"{found.group(1)}.media" if found else None
+        if fmt == "otr":
+            media = json.loads(raw.decode("utf-8-sig")).get("media")
+            return media if isinstance(media, str) and media else None
+        if fmt == "elan":
+            found = re.search(r'MEDIA_URL="([^"]+)"', raw.decode("utf-8"))
+            if found is None:
+                return None
+            # The writer saved Path.resolve().as_uri(): undo the file:// URI.
+            return url2pathname(urlsplit(xml_unescape(found.group(1))).path)
+    except (zipfile.BadZipFile, KeyError, ValueError, OSError, AttributeError):
+        return None
+    return None
+
+
+def _audio_path_candidates(fmt: str, raw: bytes, media_path: str | None) -> list[str]:
+    """The ``audio_path`` values to try when rebuilding ``fmt``, best guess first."""
+    if fmt not in _WRITERS_USING_AUDIO_PATH:
+        return [""]
+    found: list[str] = []
+    for candidate in (media_path, _title_in_export(fmt, raw), ""):
+        if candidate is not None and candidate not in found:
+            found.append(candidate)
+    return found
+
+
+def _sibling_files(json_path: str) -> list[tuple[str, list[str]]]:
+    """Existing exports next to the JSON as (path, writer keys that can make it)."""
+    base = os.path.splitext(json_path)[0]
+    by_path: dict[str, list[str]] = {}
+    for fmt, suffix in _SIBLING_FILES:
+        path = f"{base}{suffix}"
+        if os.path.isfile(path):
+            by_path.setdefault(path, []).append(fmt)
+    return list(by_path.items())
+
+
 def _write_text_atomically(path: str, text: str) -> None:
     """Write ``text`` to a temp sibling of ``path``, then move it into place."""
+    _write_atomically(path, text.encode("utf-8"))
+
+
+def _write_atomically(path: str, data: bytes) -> None:
+    """Write ``data`` to a temp sibling of ``path``, then move it into place."""
     part = f"{path}.{os.getpid()}.part"
     try:
-        with open(part, "w", encoding="utf-8", newline="\n") as f:
-            f.write(text)
+        with open(part, "wb") as f:
+            f.write(data)
         os.replace(part, path)
     finally:
         if os.path.exists(part):
@@ -720,9 +820,11 @@ class TranscriptViewer(tk.Toplevel):
         self.json_path = json_path
         # macOS: the transcript file as the window's proxy icon in the title bar.
         mac_native.set_title_path(self, json_path)
-        # Subtitle file next to the JSON -> its stamp, for the ones that still
+        # Export next to the JSON -> its stamp, for the ones that still
         # match the JSON (see _scan_siblings); Save rewrites only those.
         self._synced_siblings: dict[str, tuple[int, int] | None] = {}
+        # The same files -> (writer key, audio_path) that rebuilds each one exactly.
+        self._sibling_plan: dict[str, tuple[str, str]] = {}
         self.media_path = media_path or _find_media_next_to(json_path)
         # The transcript's language when the opener knows it (a queue task); the JSON itself has
         # none. Picks the regional font for Han text without kana (app.theme.script_fonts);
@@ -1621,27 +1723,42 @@ class TranscriptViewer(tk.Toplevel):
         self._scan_siblings()
 
     def _scan_siblings(self) -> None:
-        """Note the subtitle files next to the JSON that it still produces.
+        """Note the exports next to the JSON that it still produces.
 
         Save rewrites only these. A file that differs from the JSON was
-        edited elsewhere (for example in Subtitle Edit), and overwriting it
-        would throw that work away.
+        edited elsewhere (for example in Subtitle Edit or Word), and
+        overwriting it would throw that work away.
         """
         synced: dict[str, tuple[int, int] | None] = {}
-        base = os.path.splitext(self.json_path)[0]
-        for fmt in _SIBLING_FORMATS:
-            path = f"{base}.{fmt}"
+        plan: dict[str, tuple[str, str]] = {}
+        for path, formats in _sibling_files(self.json_path):
             stamp = _file_stamp(path)
-            if stamp is None:
+            raw = _read_bytes(path)
+            if stamp is None or raw is None:
                 continue
+            for fmt in formats:
+                audio_path = self._matching_audio_path(fmt, raw)
+                if audio_path is not None:
+                    synced[path] = stamp
+                    plan[path] = (fmt, audio_path)
+                    break
+        self._synced_siblings = synced
+        self._sibling_plan = plan
+
+    def _matching_audio_path(self, fmt: str, raw: bytes) -> str | None:
+        """The ``audio_path`` with which writer ``fmt`` rebuilds ``raw`` exactly, else None."""
+        wanted = _sibling_signature(fmt, raw)
+        if wanted is None:
+            return None
+        for audio_path in _audio_path_candidates(fmt, raw, self.media_path):
             try:
-                rendered = _render_sibling(fmt, self.segments)
+                rendered = _render_sibling_bytes(fmt, self.segments, audio_path)
             except Exception:  # noqa: BLE001 - a writer bug must not block the viewer
                 logger.warning("Could not render %s for %s", fmt, self.json_path, exc_info=True)
-                continue
-            if _read_text_normalized(path) == rendered:
-                synced[path] = stamp
-        self._synced_siblings = synced
+                return None
+            if _sibling_signature(fmt, rendered) == wanted:
+                return audio_path
+        return None
 
     def _populate_listbox(self) -> None:
         self.tree.delete(*self.tree.get_children())
@@ -1829,6 +1946,7 @@ class TranscriptViewer(tk.Toplevel):
             return None
         # It matches the saved JSON, so the next Save keeps it in step.
         self._synced_siblings[path] = _file_stamp(path)
+        self._sibling_plan[path] = ("srt", "")
         notify(self, f"Wrote {os.path.basename(path)} for Subtitle Edit.", "info")
         return path
 
@@ -1972,7 +2090,8 @@ class TranscriptViewer(tk.Toplevel):
             notify(
                 self,
                 f"Not updated: {', '.join(os.path.basename(p) for p in kept)} "
-                "(changed outside the viewer, so it was left as it is).",
+                "(changed outside the viewer or a format it cannot rebuild, so "
+                "they still hold the old text; export them again if you need it).",
                 "warning",
             )
         if failed:
@@ -1984,31 +2103,38 @@ class TranscriptViewer(tk.Toplevel):
             )
 
     def _update_siblings(self) -> tuple[list[str], list[str], list[str]]:
-        """Rewrite the subtitle files next to the JSON from the saved segments.
+        """Rewrite the exports next to the JSON from the saved segments.
 
-        Only files that matched the JSON and have not changed since are
-        rewritten. Returns (updated, kept as they are, failed).
+        Every text and Word export goes through the writer the transcription used.
+        Only a file that matched the JSON when it was opened (or last written here)
+        and has not changed since is rewritten. Returns (updated, not updated and
+        left as it is, failed): a file edited elsewhere, a PDF and a file whose
+        writer failed are named, never skipped quietly.
         """
         updated: list[str] = []
         kept: list[str] = []
         failed: list[str] = []
         base = os.path.splitext(self.json_path)[0]
-        for fmt in _SIBLING_FORMATS:
-            path = f"{base}.{fmt}"
+        for path, _formats in _sibling_files(self.json_path):
             stamp = _file_stamp(path)
+            plan = self._sibling_plan.get(path)
             if stamp is None:
                 continue
-            if path not in self._synced_siblings or self._synced_siblings[path] != stamp:
+            if plan is None or self._synced_siblings.get(path) != stamp:
                 kept.append(path)
                 continue
+            fmt, audio_path = plan
             try:
-                _write_text_atomically(path, _render_sibling(fmt, self.segments))
-            except Exception:  # noqa: BLE001
+                _write_atomically(path, _render_sibling_bytes(fmt, self.segments, audio_path))
+            except Exception:  # noqa: BLE001 - one broken writer must not stop the others
                 logger.warning("Could not update %s", path, exc_info=True)
                 failed.append(path)
                 continue
             self._synced_siblings[path] = _file_stamp(path)
             updated.append(path)
+        for suffix in _UNREBUILDABLE_SUFFIXES:
+            if os.path.isfile(f"{base}{suffix}"):
+                kept.append(f"{base}{suffix}")
         return updated, kept, failed
 
     def _copy_to_clipboard(self, text: str) -> None:
