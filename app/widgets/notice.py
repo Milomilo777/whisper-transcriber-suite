@@ -18,6 +18,7 @@ because windows already use it for "cancel" and "close".
 from __future__ import annotations
 
 import logging
+import sys
 import tkinter as tk
 from collections import deque
 from tkinter import ttk
@@ -32,6 +33,7 @@ BASE_MS = 4000
 PER_CHAR_MS = 40
 MAX_MS = 9000
 LEAVE_GRACE_MS = 1500  # how long a notice lingers after the pointer leaves it
+REPAINT_MS = 60  # macOS: re-place a new notice this long after showing it
 DISMISS_SEQUENCE = "<Control-period>"
 
 Kind = Literal["info", "success", "warning"]
@@ -57,6 +59,7 @@ class NoticeHost:
         self.pending: Deque[tuple[str, Kind]] = deque()
         self.current: tuple[str, Kind] | None = None
         self._after_id: str | None = None
+        self._repaint_id: str | None = None
         self._hovered = False
         self._expired_while_hovered = False
 
@@ -133,6 +136,28 @@ class NoticeHost:
         self.frame.place(relx=0.0, rely=1.0, anchor="sw", relwidth=1.0)
         self.frame.lift()  # above its siblings; lifting never moves the keyboard focus
         self._arm_timer(duration_ms(text))
+        if sys.platform == "darwin":
+            # Tk/aqua often leaves a freshly placed frame as a blank strip until
+            # something repaints it; placing it again once it is mapped does.
+            self._cancel_repaint()
+            self._repaint_id = self.window.after(REPAINT_MS, self._repaint)
+
+    def _repaint(self) -> None:
+        self._repaint_id = None
+        if self.current is None:
+            return
+        self.frame.place_forget()
+        self.frame.place(relx=0.0, rely=1.0, anchor="sw", relwidth=1.0)
+        self.frame.lift()
+        self.frame.update_idletasks()
+
+    def _cancel_repaint(self) -> None:
+        if self._repaint_id is not None:
+            try:
+                self.window.after_cancel(self._repaint_id)
+            except tk.TclError:
+                logger.debug("notice repaint already gone", exc_info=True)
+            self._repaint_id = None
 
     def _rewrap(self, event: "tk.Event[tk.Misc]") -> None:
         room = int(event.width) - self.close_button.winfo_reqwidth() - 40
@@ -154,6 +179,7 @@ class NoticeHost:
     def _on_destroy(self, event: "tk.Event[tk.Misc]") -> None:
         if event.widget is self.frame:
             self._cancel_timer()
+            self._cancel_repaint()
 
     def _on_timeout(self) -> None:
         self._after_id = None

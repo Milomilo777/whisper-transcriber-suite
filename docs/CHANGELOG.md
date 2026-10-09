@@ -353,6 +353,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **On macOS, quiet notices no longer appear as an empty bar** at the bottom of the window.
 - **Closing the app now also stops the SMTV tab's background search workers**, and a crash in an SMTV search is written to the log instead of vanishing.
 - **An interrupted yt-dlp self-update or version check no longer leaves yt-dlp running.** Its process tree is now ended before the error is passed on.
 - **A URL job in the local API no longer leaves yt-dlp running when its wait is interrupted.** The download process is now stopped whenever the wait ends early.
