@@ -346,7 +346,10 @@ def _closing_app(order):
         _save_window_geometry=lambda: order.append("geometry"),
         withdraw=lambda: None,
         _shutdown_server_on_exit=lambda: order.append("server"),
-        transcription_service=types.SimpleNamespace(stop_all=lambda: order.append("workers")),
+        transcription_service=types.SimpleNamespace(
+            stop_all=lambda **_k: order.append("workers"),
+            settle_done_on_exit=lambda: order.append("settle") or 0,
+        ),
         destroy=lambda: order.append("destroy"),
     )
 
