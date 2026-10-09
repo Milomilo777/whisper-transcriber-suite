@@ -42,6 +42,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import http.client
+import io
 import json
 import logging
 import os
@@ -104,6 +105,10 @@ TRUSTED_HOSTS = frozenset({
 MACOS_MIN = (10, 15)
 #: After a verified download did not start (twice), how long that macOS is left alone.
 REFUSAL_DAYS = 30
+#: How long the folder an update replaced stays (a lookup that started from it keeps its files).
+RETIRED_GRACE = timedelta(hours=1)
+#: Held while the macOS install or its clean-up runs (one app instance at a time).
+LOCK_NAME = "update.lock"
 #: What the macOS zip weighs (53,923,637 bytes in release 2026.08.19); shown on the bar.
 DOWNLOAD_MB_MACOS = 54
 #: Far above the real size; a longer answer is not the zip.
@@ -115,14 +120,13 @@ ONEDIR_MAX_UNPACKED_BYTES = 600 * 1024 * 1024
 BOOTSTRAP_TIMEOUT_S = 600
 _SOCKET_TIMEOUT_S = 30
 _CHECKSUMS_MAX_BYTES = 256 * 1024
-_CHUNK_BYTES = 256 * 1024
+_PIECE_BYTES = 64 * 1024
 _USER_AGENT = "WhisperTranscriberSuite-yt-dlp-download"
 # ``/yt-dlp/yt-dlp/releases/download/<tag>/<file>``: the tag GitHub resolved
 # "latest" to, so the checksum list and the file come from one release.
-_RELEASE_TAG_RE = re.compile(r"^/yt-dlp/yt-dlp/releases/download/([0-9A-Za-z._-]{1,64})/")
+_RELEASE_TAG_RE = re.compile(r"^/yt-dlp/yt-dlp/releases/download/(\d+(?:\.\d+)*)/")
 _ONEDIR_DIR_RE = re.compile(r"onedir-[0-9A-Za-z._-]{1,80}")
 _ONEDIR_ANY_RE = re.compile(r"onedir-[0-9A-Za-z._-]+")
-_DOWNLOAD_LEFTOVER_RE = re.compile(r"yt-dlp\.[A-Za-z0-9_]+\.download")
 
 AUTO_INTERVAL = timedelta(hours=24)
 #: Roughly what one update downloads (the Windows yt-dlp.exe); shown on the bar.
@@ -441,6 +445,8 @@ def refresh_state(*, version_of: VersionOf | None = None) -> dict[str, Any]:
         for key in ("unsupported", "bootstrap_refused", "onedir"):
             if isinstance(previous.get(key), dict):
                 state[key] = previous[key]
+        if isinstance(previous.get("onedir_retired"), list):
+            state["onedir_retired"] = previous["onedir_retired"]
         bundled = bundled_binary("yt-dlp")
         if os.path.isabs(bundled) and os.path.isfile(bundled):
             fingerprint = _fingerprint(bundled)
@@ -493,6 +499,7 @@ def refresh_state_if_stale(*, version_of: VersionOf | None = None) -> bool:
     with _cond:
         if _updating:
             return False
+    prune_old_installs()
     cached = cached_path()
     fingerprint = _fingerprint(cached)
     if fingerprint is None:
@@ -922,10 +929,21 @@ def _network_failure(exc: BaseException) -> _BootstrapFailed:
     return _BootstrapFailed("The internet connection is not working, or GitHub cannot be reached.")
 
 
-def _open_release(url: str) -> tuple[Any, _TrustedRedirects]:
+def _time_left(deadline: float) -> float:
+    """Seconds until ``deadline`` (a ``time.monotonic`` value); raises when it has passed."""
+    left = deadline - time.monotonic()
+    if left <= 0:
+        raise _BootstrapFailed("The download timed out.")
+    return left
+
+
+def _open_release(url: str, deadline: float) -> tuple[Any, _TrustedRedirects]:
     """GET ``url`` (a trusted address) and return the open answer plus the
-    redirects followed. The system proxy settings apply, as for any urllib call."""
+    redirects followed. The system proxy settings apply, as for any urllib call.
+    Connecting and each wait for data end at the socket timeout or, if sooner,
+    at ``deadline``."""
     _check_release_url(url)
+    timeout = min(_SOCKET_TIMEOUT_S, _time_left(deadline))
     redirects = _TrustedRedirects()
     handlers: list[Any] = [redirects]
     context = _ssl_context()
@@ -934,14 +952,18 @@ def _open_release(url: str) -> tuple[Any, _TrustedRedirects]:
     opener = urllib.request.build_opener(*handlers)
     request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
     try:
-        return opener.open(request, timeout=_SOCKET_TIMEOUT_S), redirects
+        return opener.open(request, timeout=timeout), redirects
     except (OSError, http.client.HTTPException) as e:
         raise _network_failure(e) from e
 
 
-def _read(resp: Any, size: int) -> bytes:
+def _read_piece(resp: Any) -> bytes:
+    """Whatever the connection has next (at most 64 KiB; waits only for the first
+    byte), so the caller checks its deadline between pieces. ``read(n)`` would
+    keep waiting until n bytes arrived, however slowly."""
+    read = getattr(resp, "read1", None) or resp.read
     try:
-        return resp.read(size)
+        return read(_PIECE_BYTES)
     except (OSError, http.client.HTTPException) as e:
         raise _network_failure(e) from e
 
@@ -976,15 +998,21 @@ def _expected_hash(checksums: str, name: str) -> str:
     )
 
 
-def _fetch_checksum(asset: str) -> tuple[str, str]:
+def _fetch_checksum(asset: str, deadline: float) -> tuple[str, str]:
     """(release tag, expected SHA-256 of ``asset``) of the latest stable release."""
-    resp, redirects = _open_release(RELEASE_LATEST_URL + CHECKSUMS_ASSET)
+    resp, redirects = _open_release(RELEASE_LATEST_URL + CHECKSUMS_ASSET, deadline)
+    raw = bytearray()
     with resp:
-        raw = _read(resp, _CHECKSUMS_MAX_BYTES + 1)
-    if len(raw) > _CHECKSUMS_MAX_BYTES:
-        raise _BootstrapFailed("The checksum list is larger than expected, so it was not used.")
+        while True:
+            _time_left(deadline)
+            piece = _read_piece(resp)
+            if not piece:
+                break
+            raw += piece
+            if len(raw) > _CHECKSUMS_MAX_BYTES:
+                raise _BootstrapFailed("The checksum list is larger than expected, so it was not used.")
     tag = _release_tag(redirects.seen)
-    return tag, _expected_hash(raw.decode("utf-8", errors="replace"), asset)
+    return tag, _expected_hash(bytes(raw).decode("utf-8", errors="replace"), asset)
 
 
 def _too_big() -> _BootstrapFailed:
@@ -993,8 +1021,8 @@ def _too_big() -> _BootstrapFailed:
 
 def _download_checked(url: str, out: IO[bytes], expected: str, deadline: float) -> None:
     """Write ``url`` to ``out`` and raise unless it is complete and its SHA-256
-    is ``expected``. The caller removes the file on any exception."""
-    resp, _redirects = _open_release(url)
+    is ``expected``, all before ``deadline``."""
+    resp, _redirects = _open_release(url, deadline)
     digest = hashlib.sha256()
     received = 0
     with resp:
@@ -1005,9 +1033,8 @@ def _download_checked(url: str, out: IO[bytes], expected: str, deadline: float) 
         if length is not None and length > BOOTSTRAP_MAX_BYTES:
             raise _too_big()
         while True:
-            if time.monotonic() > deadline:
-                raise _BootstrapFailed("The download timed out.")
-            chunk = _read(resp, _CHUNK_BYTES)
+            _time_left(deadline)
+            chunk = _read_piece(resp)
             if not chunk:
                 break
             received += len(chunk)
@@ -1115,17 +1142,19 @@ def _plan_extraction(z: zipfile.ZipFile, root: str) -> list[tuple[zipfile.ZipInf
     return plan
 
 
-def _extract_onedir(zip_path: Path, dest: Path) -> None:
-    """Unpack the release zip into the empty folder ``dest``.
+def _extract_onedir(source: Path | IO[bytes], dest: Path) -> None:
+    """Unpack the release zip (a path or the hashed bytes) into the empty folder ``dest``.
 
     Everything is checked first (``_plan_extraction``); files keep the
-    permission bits of the archive (without setuid/setgid/sticky), links are
-    created last and must still resolve inside ``dest``. The caller removes
+    permission bits of the archive (owner rwx, group/other rx at most: no
+    setuid/setgid/sticky, nothing writable by others); links are created last
+    and every one of them must still resolve inside ``dest`` once all exist.
+    The caller removes
     ``dest`` when this raises.
     """
     root = os.path.abspath(dest)
     try:
-        with zipfile.ZipFile(zip_path) as z:
+        with zipfile.ZipFile(source) as z:
             plan = _plan_extraction(z, root)
             for _info, path, kind, _target in plan:
                 if kind == "dir":
@@ -1137,7 +1166,7 @@ def _extract_onedir(zip_path: Path, dest: Path) -> None:
                 os.makedirs(os.path.dirname(path), exist_ok=True)
                 with z.open(info) as src, open(path, "xb") as out:
                     shutil.copyfileobj(src, out)
-                mode = (info.external_attr >> 16) & 0o777
+                mode = (info.external_attr >> 16) & 0o755
                 os.chmod(path, (mode or 0o644) | 0o600)
             real_root = os.path.realpath(root)
             for _info, path, kind, target in plan:
@@ -1145,8 +1174,10 @@ def _extract_onedir(zip_path: Path, dest: Path) -> None:
                     continue
                 os.makedirs(os.path.dirname(path), exist_ok=True)
                 os.symlink(target, path)
-                if os.path.commonpath([real_root, os.path.realpath(path)]) != real_root:
-                    raise _unsafe()  # e.g. a chain of links that leads out
+            for _info, path, kind, _target in plan:
+                # After all exist: a later link can retarget an earlier one.
+                if kind == "link" and os.path.commonpath([real_root, os.path.realpath(path)]) != real_root:
+                    raise _unsafe()
     except (zipfile.BadZipFile, NotImplementedError, RuntimeError, EOFError, zlib.error) as e:
         raise _BootstrapFailed("The download is not a valid archive, so it was not installed.") from e
 
@@ -1154,30 +1185,104 @@ def _extract_onedir(zip_path: Path, dest: Path) -> None:
 # --- the install ----------------------------------------------------------------
 
 
-def _prune_onedirs(keep: str) -> None:
-    """Remove every installed folder but ``keep``, and leftovers of an install
-    that was interrupted (an unfinished ``.part`` folder or ``.download`` file
-    is left alone for an hour, in case another process is installing)."""
-    folder = cached_dir()
+def _try_lock(handle: IO[bytes]) -> bool:
+    """Take the exclusive lock on ``handle`` without waiting; False when another
+    process holds it. Only a POSIX system (the Mac) locks; elsewhere the install
+    route is never used."""
+    if sys.platform == "win32":
+        return True
+    import fcntl  # noqa: PLC0415
+
     try:
-        entries = list(folder.iterdir())
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return False
+    return True
+
+
+@contextlib.contextmanager
+def _install_lock() -> Generator[bool, None, None]:
+    """Hold ``update.lock`` in the cache folder: one install or clean-up at a
+    time across app instances. Yields False when another process holds it."""
+    folder = cached_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    with open(folder / LOCK_NAME, "a+b") as handle:
+        yield _try_lock(handle)  # closing the file releases the lock
+
+
+def _parse_time(value: object) -> datetime | None:
+    try:
+        moment = datetime.fromisoformat(str(value))
+    except (ValueError, TypeError):
+        return None
+    return moment if moment.tzinfo is not None else None
+
+
+def _prune_onedirs(keep: str) -> None:
+    """Remove the installed folders other than ``keep`` once they are old
+    enough. Call with the install lock held.
+
+    A folder the install replaced is "retired" in ``state.json`` and stays for
+    ``RETIRED_GRACE``, so a format lookup that started from it keeps its files.
+    Any other stray folder (an interrupted install's ``.part``, a folder no
+    record names) goes when its own age passes the same grace, which also
+    protects the install itself if ``state.json`` is briefly unreadable.
+    """
+    try:
+        entries = list(cached_dir().iterdir())
     except OSError:
         return
-    now = time.time()
+    now = now_utc()
+    retired: dict[str, Any] = {}
+    for rec in load_state().get("onedir_retired") or []:
+        if isinstance(rec, dict) and isinstance(rec.get("dir"), str):
+            retired[rec["dir"]] = rec.get("at")
     for entry in entries:
         name = entry.name
         try:
-            if entry.is_symlink():
+            if entry.is_symlink() or not entry.is_dir() or not _ONEDIR_ANY_RE.fullmatch(name) or name == keep:
                 continue
-            young = now - entry.stat().st_mtime < 3600
-            if entry.is_dir() and _ONEDIR_ANY_RE.fullmatch(name) and name != keep:
-                if name.endswith(".part") and young:
-                    continue
-                shutil.rmtree(entry)
-            elif entry.is_file() and _DOWNLOAD_LEFTOVER_RE.fullmatch(name) and not young:
-                entry.unlink()
+            since = _parse_time(retired[name]) if name in retired else None
+            if since is None:
+                since = datetime.fromtimestamp(entry.stat().st_mtime, timezone.utc)
+            if now - since < RETIRED_GRACE:
+                continue
+            shutil.rmtree(entry)
+            retired.pop(name, None)
         except OSError:
-            logger.warning("Could not remove the old yt-dlp leftover %s", entry, exc_info=True)
+            logger.warning("Could not remove the old yt-dlp folder %s", entry, exc_info=True)
+    remaining = [
+        {"dir": d, "at": a} for d, a in retired.items() if d != keep and (cached_dir() / d).is_dir()
+    ]
+    try:
+        with _state_lock:
+            state = load_state()
+            if (state.get("onedir_retired") or []) != remaining:
+                if remaining:
+                    state["onedir_retired"] = remaining
+                else:
+                    state.pop("onedir_retired", None)
+                _save_state(state)
+    except OSError:
+        logger.warning("Could not record the retired yt-dlp folders", exc_info=True)
+
+
+def prune_old_installs() -> None:
+    """Remove retired macOS folders whose grace has passed. Off the Tk thread;
+    does nothing off macOS, during an update or while another process holds the
+    install lock."""
+    if not _is_macos():
+        return
+    with _cond:
+        if _updating:
+            return
+    try:
+        with _install_lock() as got:
+            if got:
+                rec = _installed_onedir(load_state())
+                _prune_onedirs(rec["dir"] if rec else "")
+    except OSError:
+        logger.warning("Could not clean up the old yt-dlp folders", exc_info=True)
 
 
 def _remove_tree(path: Path | None) -> None:
@@ -1189,26 +1294,44 @@ def _install_onedir(
     bundled: str, log: Callable[[str], None], version_of: VersionOf,
 ) -> UpdateResult:
     """Install the latest stable release's ``yt-dlp_macos.zip`` (first install
-    and update are the same steps).
+    and update are the same steps), holding the install lock so two app
+    instances never install or clean up at the same time."""
+    try:
+        with _install_lock() as got:
+            if not got:
+                return UpdateResult(
+                    "busy",
+                    message="Another copy of the app is updating the video downloader right now. "
+                    "Try again in a minute.",
+                )
+            return _install_locked(bundled, log, version_of)
+    except OSError as e:  # the lock file itself
+        return UpdateResult("failed", message=f"Could not save the video downloader: {e}")
+
+
+def _install_locked(
+    bundled: str, log: Callable[[str], None], version_of: VersionOf,
+) -> UpdateResult:
+    """The install proper, with the install lock held.
 
     The checksum list comes first (its redirect names the tag); nothing more is
     fetched when that tag is not newer than the installed folder and the
-    bundled copy. Otherwise that tag's zip goes to a temporary file, is
-    checked (host, size, time, length, SHA-256), unpacked safely into a
-    ``.part`` folder and started with ``--version`` (asked twice). Only then
-    does the folder get its final name, ``state.json`` points at it, and the old
-    folder is removed. Any failure removes everything this call made and leaves
-    the previous install, or the bundled copy, in use.
+    bundled copy. Otherwise that tag's zip is read into memory under one
+    deadline for the whole call (host, size, length and SHA-256 checked, and
+    the very bytes that were hashed are what gets unpacked), unpacked safely
+    into a ``.part`` folder and started with ``--version`` (asked twice). Only
+    then does the folder get its final name and ``state.json`` point at it; the
+    old folder is retired (removed after ``RETIRED_GRACE``). Any failure removes
+    everything this call made and leaves the previous install, or the bundled
+    copy, in use.
     """
     deadline = time.monotonic() + BOOTSTRAP_TIMEOUT_S
     folder = cached_dir()
-    zip_tmp: Path | None = None
     part: Path | None = None
     final: Path | None = None
     switched = False
     try:
-        folder.mkdir(parents=True, exist_ok=True)
-        tag, expected = _fetch_checksum(BOOTSTRAP_ASSET)
+        tag, expected = _fetch_checksum(BOOTSTRAP_ASSET, deadline)
         previous = _installed_onedir(load_state())
         _prune_onedirs(previous["dir"] if previous else "")
         installed_v: tuple[int, ...] = ()
@@ -1223,12 +1346,11 @@ def _install_onedir(
             if tag else RELEASE_LATEST_URL + BOOTSTRAP_ASSET
         )
         log(f"Downloading yt-dlp {tag or '(latest)'} ({BOOTSTRAP_ASSET}, about {DOWNLOAD_MB_MACOS} MB)")
-        fd, name = tempfile.mkstemp(prefix="yt-dlp.", suffix=".download", dir=str(folder))
-        zip_tmp = Path(name)
-        with os.fdopen(fd, "wb") as out:
-            _download_checked(url, out, expected, deadline)
+        archive = io.BytesIO()
+        _download_checked(url, archive, expected, deadline)
         part = Path(tempfile.mkdtemp(prefix="onedir-", suffix=".part", dir=str(folder)))
-        _extract_onedir(zip_tmp, part)
+        _extract_onedir(archive, part)
+        archive.close()
         program = part / ONEDIR_EXE
         program.chmod(0o755)
         # Asked twice: the first start of new files can be very slow and time
@@ -1245,7 +1367,13 @@ def _install_onedir(
         part = None
         with _state_lock:  # the switch: only now does state.json name the new folder
             state = load_state()
+            retired_before = [r for r in (state.get("onedir_retired") or []) if isinstance(r, dict)]
+            retired = list(retired_before)
+            if previous is not None:
+                retired.append({"dir": previous["dir"], "at": now_utc().isoformat()})
             state["onedir"] = {"dir": final.name, "tag": tag, "sha256": expected}
+            if retired:
+                state["onedir_retired"] = retired
             state.pop("cached", None)
             _save_state(state)
         switched = True
@@ -1257,6 +1385,10 @@ def _install_onedir(
                     state["onedir"] = previous
                 else:
                     state.pop("onedir", None)
+                if retired_before:
+                    state["onedir_retired"] = retired_before
+                else:
+                    state.pop("onedir_retired", None)
                 state.pop("cached", None)
                 _save_state(state)
             switched = False
@@ -1272,9 +1404,6 @@ def _install_onedir(
     except OSError as e:
         return UpdateResult("failed", message=f"Could not save the video downloader: {e}")
     finally:
-        if zip_tmp is not None:
-            with contextlib.suppress(OSError):
-                zip_tmp.unlink()
         _remove_tree(part)
         if not switched:
             _remove_tree(final)

@@ -302,20 +302,30 @@ steps; yt-dlp's `--update-to` is not used on macOS:
    names the release tag and the line for exactly `yt-dlp_macos.zip` gives the expected SHA-256.
    Nothing more is fetched when that tag is not newer than both the installed folder
    (`state.json`, `onedir.tag`) and the bundled copy ("already the newest").
-2. Download that tag's `yt-dlp_macos.zip` (universal; 53,923,637 bytes in 2026.08.19) to a temporary
-   file in `<user cache>/tools/yt-dlp/`. Only https to `github.com`,
-   `objects.githubusercontent.com` and `release-assets.githubusercontent.com` is followed; the size
-   is capped, the time limited and the length compared with `Content-Length`.
-3. Compare the SHA-256. Only then unpack, after every entry has been checked: no absolute or
+2. Download that tag's `yt-dlp_macos.zip` (universal; 53,923,637 bytes in 2026.08.19) into memory.
+   Only https to `github.com`, `objects.githubusercontent.com` and
+   `release-assets.githubusercontent.com` is followed; the size is capped and the length compared
+   with `Content-Length`. One 10-minute deadline covers the whole install (checksum list included):
+   data is read in pieces of at most 64 KiB and the deadline checked between them, so a connection
+   that trickles bytes is cut off too.
+3. Compare the SHA-256. Only then unpack those same bytes (nothing is read again from disk), after
+   every entry has been checked: no absolute or
    drive path, backslash or `..`, no repeated name, no device/pipe/socket entry, links only when
    they stay inside the folder and nothing is written through a link, at most 3000 entries and
    600 MB (the real zip has 162 entries, 130 MB, no links), and `yt-dlp_macos` must be a regular
-   file at the top. Files keep the zip's permission bits (without setuid/setgid/sticky).
+   file at the top. Files keep the zip's permission bits, limited to owner rwx and group/other rx.
+   Once all links exist, every one of them is checked again to still resolve inside the folder.
 4. Run `yt-dlp_macos --version` in the `.part` folder (asked twice, since a new file's first start
    can be slow). Then rename the folder to `onedir-<tag>-<id>`, write `state.json`
-   (`onedir`: folder, tag, checksum) and only then remove the old folder. Any failure deletes the
-   temporary files and the `.part` folder and leaves the previous install, or the bundled copy, in
-   use. The app runs the newer of the two (`resolve_yt_dlp_path`).
+   (`onedir`: folder, tag, checksum). The old folder is "retired" (`onedir_retired`) and removed an
+   hour later, by the next install or by the clean-up a few seconds after the app starts, so a format
+   lookup that started from it keeps its files. Any failure deletes the `.part` folder and leaves the
+   previous install, or the bundled copy, in use. The app runs the newer of the two
+   (`resolve_yt_dlp_path`).
+
+An exclusive `flock` on `<user cache>/tools/yt-dlp/update.lock` covers the install and the clean-up,
+so two app instances never prune each other's folders; the second one is told "another copy of the
+app is updating the video downloader".
 
 Minimum macOS: yt-dlp's README lists `yt-dlp_macos` as "Universal MacOS (10.15+) standalone
 executable" and the zip as "Unpackaged MacOS (10.15+) executable (no auto-update)"; the latest

@@ -86,6 +86,17 @@ def _zip_bytes(entries: list[tuple[str, bytes, int]]) -> bytes:
     return buf.getvalue()
 
 
+class _Trickle(io.BytesIO):
+    """An answer that delivers one byte per call, as a stalled connection does.
+    ``read(n)`` would wait for n bytes, so using it is a failure."""
+
+    def read(self, *_a, **_k):  # type: ignore[override]
+        raise AssertionError("read(n) keeps waiting for n bytes; the code must use read1")
+
+    def read1(self, _size=-1):  # type: ignore[override]
+        return super().read(1)
+
+
 class FakeGithub:
     """Answers the release URLs the way GitHub does: 302 hops, then the file."""
 
@@ -145,7 +156,8 @@ class FakeGithub:
             reason = "OK" if status == 200 else "Error"
             length = route.get("content_length")
             headers["Content-Length"] = str(len(body) if length is None else length)
-        resp = urllib.response.addinfourl(io.BytesIO(body), headers, url, status)
+        fp = _Trickle(body) if route and route.get("trickle") else io.BytesIO(body)
+        resp = urllib.response.addinfourl(fp, headers, url, status)
         resp.msg = reason  # type: ignore[attr-defined]
         return resp
 
@@ -198,7 +210,8 @@ def _tools(mac) -> Path:
 
 def _cache_files(mac) -> list[str]:
     folder = _tools(mac)
-    return sorted(p.name for p in folder.iterdir()) if folder.exists() else []
+    names = sorted(p.name for p in folder.iterdir()) if folder.exists() else []
+    return [n for n in names if n != ytu.LOCK_NAME]  # the lock file is always there
 
 
 def _installed(mac) -> list[str]:
@@ -273,7 +286,7 @@ def test_the_onedir_record_survives_a_refresh(mac, github):
 
 # ------------------------------------------------------------- update = reinstall
 
-def test_a_newer_release_replaces_the_old_folder(mac, github):
+def test_a_newer_release_replaces_the_old_folder_after_a_grace_period(mac, github, monkeypatch):
     github.publish(_NEW)
     _update()
     old = _installed(mac)[0]
@@ -283,11 +296,34 @@ def test_a_newer_release_replaces_the_old_folder(mac, github):
 
     assert result.status == "updated" and result.after == (2026, 10, 30)
     assert result.before == (2026, 9, 27)
-    folders = _installed(mac)
-    assert len(folders) == 1 and folders[0] != old and folders[0].startswith(f"onedir-{_NEWER}")
+    new = ytu.load_state()["onedir"]["dir"]
+    assert new != old and new.startswith(f"onedir-{_NEWER}")
     assert _active_exe(mac).read_bytes() == _binary(_NEWER)
     assert ytu.resolve_yt_dlp_path() == str(_active_exe(mac))
-    assert _cache_files(mac) == sorted(["state.json", folders[0]])
+    # A lookup that started from the old folder keeps its files for a while.
+    assert sorted(_installed(mac)) == sorted([old, new])
+    assert [r["dir"] for r in ytu.load_state()["onedir_retired"]] == [old]
+
+    later = ytu.now_utc() + ytu.RETIRED_GRACE + ytu.timedelta(minutes=1)
+    monkeypatch.setattr(ytu, "now_utc", lambda: later)
+    ytu.refresh_state_if_stale(version_of=_version_of)  # what the app does a few seconds after it starts
+
+    assert _installed(mac) == [new]
+    assert "onedir_retired" not in ytu.load_state()
+    assert _cache_files(mac) == sorted(["state.json", new])
+    assert ytu.resolve_yt_dlp_path() == str(_active_exe(mac))
+
+
+def test_the_old_folder_survives_until_its_grace_has_passed(mac, github, monkeypatch):
+    github.publish(_NEW)
+    _update()
+    old = _installed(mac)[0]
+    github.publish(_NEWER)
+    _update()
+    just_before = ytu.now_utc() + ytu.RETIRED_GRACE - ytu.timedelta(minutes=1)
+    monkeypatch.setattr(ytu, "now_utc", lambda: just_before)
+    ytu.prune_old_installs()
+    assert old in _installed(mac)
 
 
 def test_a_release_that_is_not_newer_downloads_nothing(mac, github):
@@ -335,33 +371,35 @@ def test_a_broken_install_is_replaced(mac, github):
     result = _update()
 
     assert result.status == "updated"
-    assert len(_installed(mac)) == 1
+    assert _active_exe(mac) != broken  # a new folder; the damaged one is retired
     assert _active_exe(mac).read_bytes() == _binary(_NEW)
+    assert ytu.resolve_yt_dlp_path() == str(_active_exe(mac))
 
 
-def test_leftovers_of_an_interrupted_install_are_cleaned_up(mac, github):
-    tools = _tools(mac)
-    (tools / "onedir-2026.01.01-dead").mkdir(parents=True)
-    (tools / "onedir-2026.01.01-dead" / "yt-dlp_macos").write_bytes(b"x")
-    stale = tools / "yt-dlp.abc.download"
-    stale.write_bytes(b"half")
-    two_days_ago = stale.stat().st_mtime - 2 * 86400
-    os.utime(stale, (two_days_ago, two_days_ago))
+def _stray(mac, name: str, *, age_days: float) -> Path:
+    folder = _tools(mac) / name
+    folder.mkdir(parents=True)
+    (folder / "yt-dlp_macos").write_bytes(b"x")
+    then = folder.stat().st_mtime - age_days * 86400
+    os.utime(folder, (then, then))
+    return folder
+
+
+def test_old_leftovers_of_an_interrupted_install_are_cleaned_up(mac, github):
+    _stray(mac, "onedir-2026.01.01-dead", age_days=2)
+    _stray(mac, "onedir-2026.01.01-half.part", age_days=2)
     github.publish(_NEW)
     _update()
     assert _cache_files(mac) == sorted(["state.json", *_installed(mac)])
     assert len(_installed(mac)) == 1
 
 
-def test_a_fresh_unfinished_download_is_left_for_another_process(mac, github):
-    tools = _tools(mac)
-    tools.mkdir(parents=True)
-    (tools / "yt-dlp.abc.download").write_bytes(b"half")
-    (tools / "onedir-2026.01.01-xyz.part").mkdir()
+def test_a_fresh_stray_folder_is_left_alone(mac, github):
+    # E.g. a folder no record names yet, or one made a minute ago: not ours to remove.
+    _stray(mac, "onedir-2026.01.01-fresh", age_days=0)
     github.publish(_NEW)
     _update()
-    assert "yt-dlp.abc.download" in _cache_files(mac)
-    assert "onedir-2026.01.01-xyz.part" in _cache_files(mac)
+    assert "onedir-2026.01.01-fresh" in _installed(mac)
 
 
 def test_yt_dlps_own_updater_is_never_used_on_a_mac(mac, github):
@@ -427,7 +465,7 @@ def test_the_old_folder_stays_until_the_state_points_at_the_new_one(mac, github,
     _update()
     assert set(old_folder) <= set(seen["folders_at_switch"])  # type: ignore[arg-type]
     assert len(seen["folders_at_switch"]) == 2  # type: ignore[arg-type]
-    assert len(_installed(mac)) == 1
+    assert len(_installed(mac)) == 2  # still: the old one is only retired
 
 
 # ----------------------------------------------------------- fail closed: bytes
@@ -949,3 +987,259 @@ def test_the_fallback_hint_names_the_app_download_page():
 
     assert "install the newest version of this app" in ytu.OUTDATED_HINT
     assert RELEASES_PAGE_URL in ytu.OUTDATED_HINT
+
+
+# ------------------------------------------- one deadline for the whole install
+
+@pytest.fixture
+def clock(monkeypatch):
+    """A clock that moves one second per look, and a 20 s limit for the install."""
+    ticks = {"now": 1000.0}
+
+    def _monotonic():
+        ticks["now"] += 1.0
+        return ticks["now"]
+
+    monkeypatch.setattr(ytu, "time", SimpleNamespace(monotonic=_monotonic, time=ytu.time.time))
+    monkeypatch.setattr(ytu, "BOOTSTRAP_TIMEOUT_S", 20)
+    return ticks
+
+
+def test_a_zip_that_trickles_in_is_cut_off_at_the_deadline(mac, github, clock):
+    github.publish(_NEW)
+    github.routes[_CDN.format(name="zip")]["trickle"] = True  # one byte per read, as a stalled link does
+
+    result = _update()
+
+    assert result.status == "failed" and "timed out" in result.message
+    assert result.completed is False
+    assert _cache_files(mac) == []
+
+
+def test_a_checksum_list_that_trickles_in_is_cut_off_too(mac, github, clock):
+    github.publish(_NEW)
+    github.routes[_CDN.format(name="sums")]["trickle"] = True
+
+    result = _update()
+
+    assert result.status == "failed" and "timed out" in result.message
+    assert github.zip_requests() == []
+
+
+def test_connecting_is_given_only_the_time_that_is_left(mac, github, monkeypatch):
+    seen: list[float] = []
+    real_open = urllib.request.OpenerDirector.open
+
+    def _open(self, fullurl, data=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
+        seen.append(timeout)
+        return real_open(self, fullurl, data, timeout)
+
+    monkeypatch.setattr(urllib.request.OpenerDirector, "open", _open)
+    monkeypatch.setattr(ytu, "BOOTSTRAP_TIMEOUT_S", 5)
+    github.publish(_NEW)
+    assert _update().status == "updated"
+    assert seen and all(0 < t <= 5 for t in seen)  # never the full 30 s socket timeout
+
+
+def test_the_whole_install_shares_one_deadline(mac, github, monkeypatch):
+    seen: list[float] = []
+    real = ytu._download_checked
+
+    def _spy(url, out, expected, deadline):
+        seen.append(deadline)
+        return real(url, out, expected, deadline)
+
+    monkeypatch.setattr(ytu, "_download_checked", _spy)
+    real_fetch = ytu._fetch_checksum
+
+    def _spy_fetch(asset, deadline):
+        seen.append(deadline)
+        return real_fetch(asset, deadline)
+
+    monkeypatch.setattr(ytu, "_fetch_checksum", _spy_fetch)
+    github.publish(_NEW)
+    _update()
+    assert len(seen) == 2 and seen[0] == seen[1]
+
+
+# ------------------------------------------------------ one install at a time
+
+def test_a_second_app_instance_is_told_to_wait_and_touches_nothing(mac, github, monkeypatch):
+    _stray(mac, "onedir-2026.01.01-other", age_days=3)  # would be removed by an install
+    monkeypatch.setattr(ytu, "_try_lock", lambda _handle: False)
+    github.publish(_NEW)
+
+    result = _update()
+
+    assert result.status == "busy"
+    assert "Another copy of the app" in result.message
+    assert github.requested == []
+    assert "onedir-2026.01.01-other" in _installed(mac)
+    assert ytu._updating is False
+
+
+def test_the_start_up_clean_up_waits_for_the_other_instance_too(mac, github, monkeypatch):
+    github.publish(_NEW)
+    _update()
+    old = _installed(mac)[0]
+    github.publish(_NEWER)
+    _update()
+    later = ytu.now_utc() + ytu.RETIRED_GRACE + ytu.timedelta(minutes=1)
+    monkeypatch.setattr(ytu, "now_utc", lambda: later)
+    monkeypatch.setattr(ytu, "_try_lock", lambda _handle: False)
+    ytu.prune_old_installs()
+    assert old in _installed(mac)
+
+
+def test_the_lock_is_released_after_every_install(mac, github, monkeypatch):
+    held: list[bool] = []
+    real = ytu._install_lock
+
+    @ytu.contextlib.contextmanager
+    def _watch():
+        with real() as got:
+            held.append(got)
+            yield got
+
+    monkeypatch.setattr(ytu, "_install_lock", _watch)
+    github.publish(_NEW, sums_hash="0" * 64)
+    assert _update().status == "failed"  # a failed install
+    github.publish(_NEW)
+    assert _update().status == "updated"  # and the next one still gets the lock
+    assert held == [True, True]
+
+
+def test_the_clean_up_does_nothing_off_a_mac(tmp_path, monkeypatch):
+    monkeypatch.setattr(ytu, "_is_macos", lambda: False)
+    monkeypatch.setattr(ytu, "user_cache_dir", lambda: tmp_path / "cache")
+    ytu.prune_old_installs()
+    assert not (tmp_path / "cache").exists()
+
+
+def test_other_systems_never_make_a_lock_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(ytu, "_is_macos", lambda: False)
+    monkeypatch.setattr(ytu, "user_cache_dir", lambda: tmp_path / "cache")
+    monkeypatch.setattr(ytu.offline, "is_offline", lambda: False)
+    exe = tmp_path / "install" / "yt-dlp.exe"
+    exe.parent.mkdir()
+    exe.write_bytes(_binary(_OLD))
+    monkeypatch.setattr(ytu, "bundled_binary", lambda _n: str(exe))
+    ytu.update_cached_copy(version_of=_version_of, run=lambda *a, **k: SimpleNamespace(
+        returncode=0, stdout="up to date", stderr=""))
+    assert not (tmp_path / "cache" / "tools" / "yt-dlp" / ytu.LOCK_NAME).exists()
+
+
+def test_two_handles_cannot_hold_the_real_lock_at_once(tmp_path):
+    pytest.importorskip("fcntl")  # POSIX only: this is the macOS code path
+    path = tmp_path / "lock"
+    with open(path, "a+b") as first, open(path, "a+b") as second:
+        assert ytu._try_lock(first) is True
+        assert ytu._try_lock(second) is False
+    with open(path, "a+b") as third:
+        assert ytu._try_lock(third) is True  # closing the first released it
+
+
+# --------------------------------------------- links are re-checked once all exist
+
+def test_a_later_link_that_retargets_an_earlier_one_is_refused(mac, github, monkeypatch):
+    """x/y/s -> t/.. is inside while t does not exist; x/y/t -> ../.. then makes s resolve above."""
+    made: list[str] = []
+    monkeypatch.setattr(os, "symlink", lambda target, path, *a, **k: made.append(Path(path).name))
+    real_realpath = os.path.realpath
+
+    def _realpath(path, *a, **k):
+        if Path(path).name == "s" and len(made) == 2:  # both links exist now: s leads out
+            return str(mac.tmp.parent / "outside")
+        return real_realpath(path, *a, **k)
+
+    monkeypatch.setattr(ytu.os.path, "realpath", _realpath)
+    github.publish(_NEW, entries=[
+        *_entries(_NEW), ("x/y/s", b"t/..", _LINK | 0o777), ("x/y/t", b"../..", _LINK | 0o777),
+    ])
+    result = _update()
+    assert result.status == "failed" and "unsafe" in result.message
+    assert made == ["s", "t"]  # each passed its own check when it was made
+    assert _cache_files(mac) == []
+
+
+@_posix_only  # Windows makes file links for targets that do not exist yet, so chains behave differently
+def test_a_real_link_chain_that_leads_out_is_refused(tmp_path):
+    zip_path = tmp_path / "x.zip"
+    zip_path.write_bytes(_zip_bytes([
+        *_entries(_NEW), ("x/y/s", b"t/..", _LINK | 0o777), ("x/y/t", b"../..", _LINK | 0o777),
+    ]))
+    dest = tmp_path / "out"
+    dest.mkdir()
+    try:
+        probe = tmp_path / "probe"
+        os.symlink(".", probe)
+    except (OSError, NotImplementedError):
+        pytest.skip("this system cannot create symbolic links")
+    with pytest.raises(ytu._BootstrapFailed) as caught:
+        ytu._extract_onedir(zip_path, dest)
+    assert "unsafe" in caught.value.message
+
+
+@_posix_only
+def test_a_real_link_inside_the_folder_is_made(tmp_path):
+    zip_path = tmp_path / "x.zip"
+    zip_path.write_bytes(_zip_bytes([*_entries(_NEW), ("_internal/Current", b"lib.dylib", _LINK | 0o755)]))
+    dest = tmp_path / "out"
+    dest.mkdir()
+    try:
+        os.symlink(".", tmp_path / "probe")
+    except (OSError, NotImplementedError):
+        pytest.skip("this system cannot create symbolic links")
+    ytu._extract_onedir(zip_path, dest)
+    assert (dest / "_internal" / "Current").is_symlink()
+    assert (dest / "_internal" / "Current").read_bytes() == b"library"
+
+
+# ------------------------------------------------------- what is checked is what is used
+
+def test_the_unpacked_bytes_are_the_hashed_bytes_not_a_file_read_again(mac, github, monkeypatch):
+    github.publish(_NEW)
+    sources: list[object] = []
+    real = ytu._extract_onedir
+
+    def _spy(source, dest):
+        sources.append(source)
+        assert not any(n.endswith(".download") or n.endswith(".zip") for n in _cache_files(mac))
+        return real(source, dest)
+
+    monkeypatch.setattr(ytu, "_extract_onedir", _spy)
+    assert _update().status == "updated"
+    assert len(sources) == 1 and isinstance(sources[0], io.BytesIO)
+
+
+# ------------------------------------------------------------ tag and modes
+
+@pytest.mark.parametrize("path,tag", [
+    ("/yt-dlp/yt-dlp/releases/download/2026.08.19/SHA2-256SUMS", "2026.08.19"),
+    ("/yt-dlp/yt-dlp/releases/download/2026.8.19.123456/x", "2026.8.19.123456"),
+    ("/yt-dlp/yt-dlp/releases/download/2026/x", "2026"),
+    ("/yt-dlp/yt-dlp/releases/download/../x", ""),
+    ("/yt-dlp/yt-dlp/releases/download/./x", ""),
+    ("/yt-dlp/yt-dlp/releases/download/.../x", ""),
+    ("/yt-dlp/yt-dlp/releases/download/2026..08/x", ""),
+    ("/yt-dlp/yt-dlp/releases/download/2026.08./x", ""),
+    ("/yt-dlp/yt-dlp/releases/download/nightly/x", ""),
+    ("/yt-dlp/yt-dlp/releases/download/a-b/x", ""),
+])
+def test_only_a_dotted_number_is_taken_for_a_release_tag(path, tag):
+    assert ytu._release_tag([f"https://github.com{path}"]) == tag
+
+
+def test_group_and_other_never_get_write_permission(tmp_path, monkeypatch):
+    asked: dict[str, int] = {}
+    real = os.chmod
+    monkeypatch.setattr(ytu.os, "chmod", lambda p, m, *a, **k: (asked.__setitem__(Path(p).name, m), real(p, m, *a, **k))[1])
+    zip_path = tmp_path / "x.zip"
+    zip_path.write_bytes(_zip_bytes([
+        *_entries(_NEW), ("_internal/wide", b"x", _FILE | 0o777), ("_internal/rw", b"x", _FILE | 0o666),
+        ("_internal/sticky", b"x", _FILE | 0o1777),
+    ]))
+    dest = tmp_path / "out"
+    dest.mkdir()
+    ytu._extract_onedir(zip_path, dest)
+    assert asked["wide"] == 0o755 and asked["rw"] == 0o644 and asked["sticky"] == 0o755
