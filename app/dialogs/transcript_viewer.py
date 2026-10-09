@@ -1721,9 +1721,30 @@ class TranscriptViewer(tk.Toplevel):
                 values=(_fmt_hms(_seg_float(seg, "start")), speaker, text),
                 tags=tags,
             )
+        self._refresh_caption()
 
     def _refilter(self) -> None:
         self._populate_listbox()
+
+    def _refresh_caption(self) -> None:
+        """Redraw the caption under the player from the active segment as it is now.
+
+        The caption (``_words_lbl``) is set when a segment becomes the active one, so a Find &
+        Replace, Remove fillers or a timestamp edit left the old wording there ("fox" after the
+        segment said "cat") until the playhead moved to another segment.
+        """
+        label = getattr(self, "_words_lbl", None)
+        if label is None:
+            return  # the list is filled before the player pane exists
+        idx = self._active_segment_idx
+        if idx is not None and not 0 <= idx < len(self.segments):
+            idx = self._active_segment_idx = None
+        # The edited words list may differ: let the next playhead tick rebuild the highlight.
+        self._active_word_idx = None
+        try:
+            label.configure(text="" if idx is None else _seg_text(self.segments[idx]).strip())
+        except tk.TclError:
+            pass  # the window is closing
 
     # -- callbacks -------------------------------------------------------
 

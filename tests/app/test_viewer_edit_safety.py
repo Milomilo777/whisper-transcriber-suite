@@ -501,3 +501,68 @@ def test_find_next_shows_a_row_hidden_by_the_search_filter(root, tmp_path, monke
     finally:
         dlg.destroy()
         _close(viewer)
+
+
+# --- The caption under the player follows edits ------------------------------------------
+
+
+def _caption(viewer: tv.TranscriptViewer) -> str:
+    return str(viewer._words_lbl.cget("text"))
+
+
+def test_replace_all_refreshes_the_caption_of_the_active_segment(root, tmp_path, monkeypatch) -> None:
+    """The caption kept "fox" after Replace all had changed the segment to "cat"."""
+    monkeypatch.setattr(tv.messagebox, "showinfo", lambda *a, **k: None)
+    viewer, dlg = _dialog(root, tmp_path, ["Hello there", "The quick brown fox jumps"])
+    try:
+        viewer._set_active_segment(1)
+        assert _caption(viewer) == "The quick brown fox jumps"
+        dlg.find_var.set("fox")
+        dlg.replace_var.set("cat")
+        dlg.replace_all()
+        assert viewer.segments[1]["text"] == "The quick brown cat jumps"
+        assert _caption(viewer) == "The quick brown cat jumps"
+    finally:
+        dlg.destroy()
+        _close(viewer)
+
+
+def test_replace_one_refreshes_the_caption(root, tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(tv.messagebox, "showinfo", lambda *a, **k: None)
+    viewer, dlg = _dialog(root, tmp_path, ["The quick brown fox"])
+    try:
+        viewer._set_active_segment(0)
+        dlg.find_var.set("fox")
+        dlg.replace_var.set("cat")
+        assert dlg.find_next()
+        dlg.replace_current()
+        assert _caption(viewer) == "The quick brown cat"
+    finally:
+        dlg.destroy()
+        _close(viewer)
+
+
+def test_remove_fillers_refreshes_the_caption(root, tmp_path, monkeypatch, notices) -> None:
+    monkeypatch.setattr(tv.messagebox, "askyesno", lambda *a, **k: True)
+    path = tmp_path / "f.json"
+    path.write_text(json.dumps([{"start": 0, "end": 2, "text": "Well, um, hello"}]), encoding="utf-8")
+    viewer = _open(root, str(path), language="en")
+    try:
+        viewer._set_active_segment(0)
+        assert _caption(viewer) == "Well, um, hello"
+        viewer._remove_fillers()
+        assert _caption(viewer) == viewer.segments[0]["text"] != "Well, um, hello"
+    finally:
+        _close(viewer)
+
+
+def test_the_caption_is_cleared_when_no_segment_is_active(root, tmp_path) -> None:
+    viewer, dlg = _dialog(root, tmp_path, ["one", "two"])
+    try:
+        viewer._set_active_segment(1)
+        viewer._active_segment_idx = 5  # out of range, e.g. after the list changed
+        viewer._populate_listbox()
+        assert viewer._active_segment_idx is None and _caption(viewer) == ""
+    finally:
+        dlg.destroy()
+        _close(viewer)

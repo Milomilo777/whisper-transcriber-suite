@@ -362,6 +362,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the next jobs still run; the notification is logged and dropped.
 - **A large upload stays byte-exact when a long text field follows the file.** The server could keep
   the two line-break bytes in front of the closing boundary in the saved media.
+- **The caption under the viewer's player follows edits.** After Find & Replace, Remove fillers or a
+  timestamp edit it kept the old wording ("fox" for a segment that now says "cat") until the playhead
+  moved to another segment.
 - **The transcript viewer opens inside a small Mac screen.** On a 1280x800 Mac it was placed at the
   system's offset and ran past the right edge and under the Dock. It now opens centred over the main
   window, and windows sized to the screen keep room for the menu bar, title bar and Dock there
