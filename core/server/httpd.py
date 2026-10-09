@@ -2067,9 +2067,14 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                         file_end = size
                 else:
                     end = tail_start + idx
-                    # Strip the CRLF that precedes the boundary line.
-                    if tail[idx - 2:idx] == b"\r\n":
-                        end -= 2
+                    # Strip the CRLF that precedes the boundary line. It lies
+                    # before the window when the boundary starts in the first
+                    # two bytes of it (a negative slice would read the wrong
+                    # bytes), so read it from the file itself.
+                    if end - 2 >= file_start:
+                        f.seek(end - 2)
+                        if f.read(2) == b"\r\n":
+                            end -= 2
                     # Only adopt the tail's end when the head scan left file_end
                     # pinned at the window edge; an end already resolved inside
                     # the head window is authoritative and must not move.
