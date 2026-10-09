@@ -653,7 +653,12 @@ def _strip_fillers(text: str, pattern: re.Pattern[str]) -> str:
     cleaned = re.sub(r"(^|\s)([\"“«(\[])\s*[,;:]\s*", r"\1\2", cleaned)
     cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
     # A sentence that started with the filler: "Um, so" -> ", so" -> "so".
+    # Marks the text itself opens with ("... um, well") are not the filler's
+    # leftovers: they stay.
+    lead = re.match(r"\s*([.!?…]+)(\s?)", text)
     cleaned = re.sub(r"^[,;:.!?\s]+", "", cleaned)
+    if lead and cleaned:
+        cleaned = lead.group(1) + lead.group(2) + cleaned
     return cleaned
 
 

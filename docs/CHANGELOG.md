@@ -365,6 +365,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   refuses those two files compared names with a case rule that only Windows applies, so on a Mac
   volume `T.JSON` passed as a new name and replaced `t.json`. It now asks the filesystem; the same
   fix covers one transcript window per file, the Re-run duplicate check and subtitle-burn output names.
+- **"Remove fillers" keeps the marks a segment opens with.** A segment such as `... um, well` or
+  `...and then um we go` lost its leading `...` (and `?!`) because the cleanup of punctuation left
+  by the filler also stripped the original opening marks.
 - **Changing the Whisper model in Settings no longer stops a running transcription without asking, or
   before the choice is saved.** It now asks like an engine switch does and restarts the worker only
   after the save worked; a failed save (also from "Download now") puts the previous model back.

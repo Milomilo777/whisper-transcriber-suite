@@ -112,6 +112,11 @@ def test_fillers_keep_real_words(language: str, text: str) -> None:
     ("en", 'Hello, "um," world', "Hello, world"),
     ("en", '"yes", "um, no"', '"yes", "no"'),
     ("en", '"yes", "um"', '"yes",'),
+    # Marks the text itself opens with stay; only marks the filler exposed go.
+    ("en", "... um, well", "... well"),
+    ("en", "...and then um we go", "...and then we go"),
+    ("en", "?! um what", "?! what"),
+    ("en", "Um. So", "So"),
 ])
 def test_fillers_are_removed_with_punctuation_kept(language: str, text: str, expected: str) -> None:
     pattern = tv._filler_regex(tv._filler_words_for(language))
