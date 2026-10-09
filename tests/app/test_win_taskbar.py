@@ -50,7 +50,7 @@ class FakeNative:
 
     def _do(self, name: str, *args: Any) -> int:
         self.calls.append((name, *args))
-        if self.marker is not None and name in ("co_initialize", "create", "set_progress_state"):
+        if self.marker is not None and name in ("co_initialize", "create", "state", "value", "overlay"):
             self.marker_seen.append(self.marker.exists())
         if name in self.raises:
             raise self.raises[name]
@@ -300,6 +300,7 @@ def test_off_windows_sync_does_nothing(tb, monkeypatch) -> None:
     ([task("waiting"), task("waiting")], [], False, wt.Snapshot(wt.TBPF_NOPROGRESS, 0, 2)),
     ([task("finished"), task("cancelled"), task("error")], [], False, wt.Snapshot()),
     ([task("running", 20)], [], True, wt.Snapshot(wt.TBPF_ERROR, 20, 1)),
+    ([task("running", 0)], [], True, wt.Snapshot(wt.TBPF_ERROR, 100, 1)),
     ([task("error")], [], True, wt.Snapshot(wt.TBPF_ERROR, 100, 0)),
     ([task("paused", 70)], [], True, wt.Snapshot(wt.TBPF_ERROR, 70, 1)),
     ([task("running", 150)], [], False, wt.Snapshot(wt.TBPF_NORMAL, 100, 1)),
@@ -391,11 +392,11 @@ def test_the_first_job_sets_up_com_then_shows_state_value_and_badge(tb) -> None:
     n = tb.native
     assert n.names() == [
         "top_window", "co_initialize", "create", "watch",
-        "state", "value", "overlay",                      # the plain-call smoke test
+        "value", "state", "overlay",                      # the plain-call smoke test
         "state", "value", "overlay"]                      # the real update
     assert n.calls[0] == ("top_window", 77)
     smoke, real = n.calls[4:7], n.calls[7:]
-    assert smoke == [("state", HWND, wt.TBPF_NOPROGRESS), ("value", HWND, 0, 100),
+    assert smoke == [("value", HWND, 0, 100), ("state", HWND, wt.TBPF_NOPROGRESS),
                      ("overlay", HWND, None, "")]
     assert real == [("state", HWND, wt.TBPF_NORMAL), ("value", HWND, 40, 100),
                     ("overlay", HWND, "1", "1 job")]
@@ -413,6 +414,22 @@ def test_the_marker_stays_while_the_first_update_has_not_happened(tb) -> None:
     with pytest.raises(Crash):
         wt.sync(root, now=1.0)
     assert tb.marker.exists()
+
+
+def test_a_python_error_before_the_first_update_is_not_a_crash(tb, monkeypatch) -> None:
+    """Only a crash may leave the marker; an exception the code catches must not."""
+    real = wt.summarize
+    seen = {"n": 0}
+
+    def flaky(*args, **kwargs):
+        seen["n"] += 1
+        if seen["n"] == 2:           # the second call is the one after the set-up
+            raise RuntimeError("bug in the snapshot")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(wt, "summarize", flaky)
+    wt.sync(make_root([task("running", 1)]), now=1.0)    # must not raise
+    assert not tb.marker.exists()
 
 
 def test_a_crash_during_com_setup_disables_the_next_start(tb, caplog) -> None:
@@ -814,6 +831,14 @@ def test_shutdown_releases_once_and_nothing_restarts_after_it(tb) -> None:
     tb.native.calls.clear()
     wt.sync(root, now=9.0)
     assert tb.native.calls == []
+
+
+def test_shutdown_never_raises_so_the_window_can_always_close(tb, monkeypatch) -> None:
+    def boom() -> None:
+        raise OSError("release failed")
+
+    monkeypatch.setattr(wt, "_release", boom)
+    wt.shutdown()                      # must not raise
 
 
 def test_shutdown_before_any_job_is_harmless(tb) -> None:

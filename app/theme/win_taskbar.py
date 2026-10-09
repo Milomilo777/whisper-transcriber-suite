@@ -271,8 +271,8 @@ def summarize(queue: Iterable[Any], downloads: Iterable[Any], *, error: bool = F
             continue
         badge += 1
     if error:
-        value = _average(running or paused) if (running or paused) else 100
-        return Snapshot(TBPF_ERROR, value, badge)
+        # A red bar needs a visible length: a failed job with nothing else running shows it full.
+        return Snapshot(TBPF_ERROR, _average(running or paused) or 100, badge)
     if running:
         value = _average(running)
         return Snapshot(TBPF_NORMAL if value > 0 else TBPF_INDETERMINATE, value, badge)
@@ -742,9 +742,10 @@ def _activate(root: Any) -> "_Controller | None":
         except Exception as exc:  # noqa: BLE001 - only the Explorer-restart recovery is lost
             _note_failure("watch", "Taskbar button hook not installed: %s", exc)
         # First use of the plain calls while the marker exists; the badge icon follows in the
-        # first real update.
-        for hr in (native.set_progress_state(hwnd, TBPF_NOPROGRESS),
-                   native.set_progress_value(hwnd, 0, 100),
+        # first real update. The value goes first: SetProgressValue can switch a cleared button
+        # to a (green, empty) bar, so the state call that clears it comes after.
+        for hr in (native.set_progress_value(hwnd, 0, 100),
+                   native.set_progress_state(hwnd, TBPF_NOPROGRESS),
                    native.set_overlay(hwnd, None, "")):
             if hr < 0:
                 raise ComError(f"first taskbar call refused (HRESULT {hr & 0xFFFFFFFF:#x})")
@@ -881,6 +882,8 @@ def sync(root: Any, *, now: float | None = None) -> None:
             _failed_round(ctl, "taskbar calls refused")
     except Exception as exc:  # noqa: BLE001 - the taskbar must never break the queue refresh
         _note_failure("sync", "Taskbar update failed: %s", exc)
+        if _ctl is not None:
+            _ctl.clear_marker()   # a Python error is not a crash; only a crash keeps the marker
 
 
 def _give_up(reason: str) -> None:
@@ -906,7 +909,10 @@ def shutdown() -> None:
     """Final clean-up before the window is destroyed; the integration cannot restart after it."""
     global _closed
     _closed = True
-    _release()
+    try:
+        _release()
+    except Exception as exc:  # noqa: BLE001 - closing the window must always go on
+        logger.warning("Taskbar clean-up failed: %s", exc)
 
 
 def reset_for_tests() -> None:
