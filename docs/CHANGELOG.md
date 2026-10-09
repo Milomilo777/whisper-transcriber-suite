@@ -336,6 +336,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **macOS: the About window opens over the middle of the main window** instead of off to one side.
 - **macOS: the title bar follows an explicit Light or Dark theme.** With Dark chosen on a Light Mac
   (or Light on a Dark Mac) the title bars of the main window and every dialog kept the system
   colour. Each window now takes the theme's appearance; System still follows the Mac. Native alerts

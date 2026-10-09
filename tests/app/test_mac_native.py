@@ -645,6 +645,114 @@ def test_the_key_window_is_unknown_when_the_objc_runtime_is_missing(
     assert mac_native.key_window_title() is None
 
 
+# ---------------------------------------------------------------- About dialog placement
+
+class _Shown:
+    """A main window (or screen) with a position and a size, recording ``geometry`` calls."""
+
+    def __init__(self, x: int, y: int, w: int, h: int, *, viewable: bool = True,
+                 screen: tuple[int, int] = (1440, 900), system: str = "aqua") -> None:
+        self.tk = types.SimpleNamespace(call=lambda *a: system)
+        self._box, self._viewable, self._screen = (x, y, w, h), viewable, screen
+        self.geometries: list[str] = []
+
+    def winfo_toplevel(self) -> "_Shown":
+        return self
+
+    def winfo_viewable(self) -> bool:
+        return self._viewable
+
+    def winfo_rootx(self) -> int:
+        return self._box[0]
+
+    def winfo_rooty(self) -> int:
+        return self._box[1]
+
+    def winfo_width(self) -> int:
+        return self._box[2]
+
+    def winfo_height(self) -> int:
+        return self._box[3]
+
+    def winfo_screenwidth(self) -> int:
+        return self._screen[0]
+
+    def winfo_screenheight(self) -> int:
+        return self._screen[1]
+
+    def geometry(self, value: str) -> None:
+        self.geometries.append(value)
+
+
+def test_the_about_dialog_is_centred_over_the_main_window_on_aqua() -> None:
+    main, dialog = _Shown(100, 60, 1000, 800), _Shown(0, 0, 0, 0)
+    mac_native.centre_over(dialog, main, 680, 620)
+    assert dialog.geometries == ["+260+150"]
+
+
+def test_a_centred_window_stays_on_the_screen_below_the_menu_bar() -> None:
+    dialog = _Shown(0, 0, 0, 0)
+    mac_native.centre_over(dialog, _Shown(1300, 700, 300, 150), 680, 620)
+    assert dialog.geometries == ["+760+280"]          # right/bottom edge clamped to the screen
+    dialog = _Shown(0, 0, 0, 0)
+    mac_native.centre_over(dialog, _Shown(-400, 0, 200, 100), 680, 620)
+    assert dialog.geometries == ["+0+28"]             # never left of the screen or under the menu bar
+
+
+@pytest.mark.parametrize("system", ["win32", "x11"])
+def test_a_window_is_left_where_the_system_puts_it_elsewhere(system: str) -> None:
+    dialog = _Shown(0, 0, 0, 0, system=system)
+    mac_native.centre_over(dialog, _Shown(100, 60, 1000, 800), 680, 620)
+    assert dialog.geometries == []
+
+
+def test_a_window_is_not_centred_over_a_hidden_main_window() -> None:
+    dialog = _Shown(0, 0, 0, 0)
+    mac_native.centre_over(dialog, _Shown(100, 60, 1000, 800, viewable=False), 680, 620)
+    assert dialog.geometries == []
+
+
+def _open_about(host: _Host, monkeypatch: pytest.MonkeyPatch) -> tk.Toplevel:
+    host.app_config = {}  # type: ignore[attr-defined]
+    host._star_open_page = lambda: None  # type: ignore[attr-defined]
+    monkeypatch.setattr(host, "winfo_viewable", lambda: True)
+    monkeypatch.setattr(host, "winfo_rootx", lambda: 100)
+    monkeypatch.setattr(host, "winfo_rooty", lambda: 60)
+    monkeypatch.setattr(host, "winfo_width", lambda: 1000)
+    monkeypatch.setattr(host, "winfo_height", lambda: 800)
+    before = set(host.winfo_children())
+    App._show_about(host)  # type: ignore[arg-type]  # duck-typed host
+    (dlg,) = set(host.winfo_children()) - before
+    host.update_idletasks()
+    return dlg  # type: ignore[return-value]
+
+
+def _geometry(dlg: tk.Toplevel) -> tuple[int, int, int, int]:
+    import re
+
+    m = re.fullmatch(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", dlg.wm_geometry())
+    assert m, dlg.wm_geometry()
+    return tuple(int(g) for g in m.groups())  # type: ignore[return-value]
+
+
+def test_the_apps_about_dialog_opens_centred_on_aqua(
+    host: _Host, aqua: None, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dlg = _open_about(host, monkeypatch)
+    w, h = app_mod.scaled_size(dlg, 680, 620)
+    _w, _h, x, y = _geometry(dlg)   # not on screen yet: its size still reads 1x1
+    assert (x, y) == (100 + (1000 - w) // 2, 60 + (800 - h) // 2)
+
+
+def test_the_apps_about_dialog_is_not_placed_by_the_app_elsewhere(
+    host: _Host, not_aqua: str, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dlg = _open_about(host, monkeypatch)
+    w, h = app_mod.scaled_size(dlg, 680, 620)
+    _w, _h, x, y = _geometry(dlg)
+    assert (x, y) != (100 + (1000 - w) // 2, 60 + (800 - h) // 2)
+
+
 # ------------------------------------------------------- window marks, viewer
 
 class _Win:

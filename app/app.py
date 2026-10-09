@@ -1802,7 +1802,9 @@ class App(tk.Tk):
         dlg = tk.Toplevel(self)
         dlg.title("About Whisper Transcriber Suite")
         dlg.transient(self)
-        dlg.geometry("%dx%d" % scaled_size(dlg, 680, 620))
+        about_w, about_h = scaled_size(dlg, 680, 620)
+        dlg.geometry("%dx%d" % (about_w, about_h))
+        mac_native.centre_over(dlg, self, about_w, about_h)
         dlg.minsize(*scaled_size(dlg, 560, 480))
 
         header = ttk.Frame(dlg, padding=(16, 14, 16, 8))

@@ -322,6 +322,33 @@ def close_front_window(app: Any) -> bool:
     return True
 
 
+# ---------------------------------------------------------------- placement
+
+# The menu bar and title bar: a window is never placed above this (Tk's y is the top of the frame).
+_MENU_BAR_PX = 28
+
+
+def centre_over(window: Any, master: Any, width: int, height: int) -> None:
+    """Aqua: put ``window`` (about to be ``width`` x ``height``) in the middle of ``master``.
+
+    macOS opens a new Tk window wherever it likes, which left the About dialog off to one side
+    of the main window. Kept on screen; does nothing off Aqua or while ``master`` is not shown.
+    """
+    if not is_aqua(window):
+        return
+    try:
+        top = master.winfo_toplevel()
+        if not top.winfo_viewable():
+            return
+        x = top.winfo_rootx() + (top.winfo_width() - width) // 2
+        y = top.winfo_rooty() + (top.winfo_height() - height) // 2
+        x = max(0, min(x, window.winfo_screenwidth() - width))
+        y = max(_MENU_BAR_PX, min(y, window.winfo_screenheight() - height))
+        window.geometry(f"+{x}+{y}")
+    except tk.TclError:
+        logger.debug("Window not centred", exc_info=True)
+
+
 # -------------------------------------------------------------- window marks
 
 def set_title_path(window: Any, path: str) -> None:
