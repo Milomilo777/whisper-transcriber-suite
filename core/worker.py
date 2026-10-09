@@ -25,7 +25,10 @@ Events emitted:
 Commands accepted on stdin (one JSON object per line):
   - ``{"action": "shutdown"}``
   - ``{"action": "transcribe", "file_path": "...", "language": "...",
-     "task_id": "<optional>"}``
+     "task_id": "<optional>", "settings": {<optional per-task options>}}``
+    ``settings`` (add-only) is the parent's snapshot of the options that can
+    change while this worker lives (``core.task_settings.PER_TASK_KEYS``); it
+    applies to that one task, absent = this worker's own config.
   - ``{"action": "cancel", "task_id": "<optional>"}``
   - ``{"action": "pause",  "task_id": "<optional>"}``
   - ``{"action": "resume", "task_id": "<optional>"}``
@@ -70,6 +73,7 @@ import time
 from collections import deque
 from typing import Any, Callable, Iterator, cast
 
+from . import task_settings
 from ._proc import parent_identity, wait_parent_gone
 from .config import load_config
 from .logging_setup import setup_logging, worker_log_filename
@@ -1005,6 +1009,10 @@ def _main() -> int:
             task.whisper_task = normalise_task(command.get("whisper_task"))
             # Per-task output formats (worker's config snapshot is stale).
             task.output_formats = command.get("output_formats")
+            # Per-task options the user may have changed since this worker
+            # started (speaker labels, VAD, ...). Applied for this task only
+            # by transcriber._runtime_overrides_scope; None = older parent.
+            task.task_settings = task_settings.from_command(command.get("settings"))
             # A clipped run must NOT resume: the checkpoint is keyed to the
             # whole file with no clip marker, so resuming would transcribe
             # past clip_end. Clips are short — re-transcribe the slice fresh.

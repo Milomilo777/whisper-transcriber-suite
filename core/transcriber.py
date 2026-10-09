@@ -35,6 +35,7 @@ except ImportError:  # pragma: no cover
 
 from . import _checkpoint
 from . import loop_guard as _loop_guard
+from . import task_settings as _task_settings
 from . import translate_task as _translate
 from . import vad_window as _vad_window
 from ._proc import new_session_kwargs
@@ -1500,7 +1501,26 @@ def _maybe_get_llm_runner() -> Any | None:
     """
     try:
         from . import llm as _llm
-        return _llm.build_runner_from_config(config)
+        cfg = config
+        if (
+            config.get("ai_enabled", False)
+            and str(config.get("llm_provider") or "local").strip().lower() == "remote"
+        ):
+            # The API key is a secret, so it is not in the per-task snapshot
+            # that crosses the worker pipe (core.task_settings.SECRET_KEYS):
+            # read the current one from config.json, so a key the user
+            # replaced after this worker started is the one that gets used.
+            disk = load_config(fetch_online=False)
+            fresh = disk.get("llm_remote_api_key")
+            cfg = dict(config, llm_remote_api_key=(
+                fresh if fresh is not None else config.get("llm_remote_api_key") or ""
+            ))
+            # A base URL that carries credentials (user:pw@host, ?api-key=)
+            # is kept out of the snapshot for the same reason.
+            disk_url = disk.get("llm_remote_base_url")
+            if _task_settings.url_has_credentials(disk_url):
+                cfg["llm_remote_base_url"] = disk_url
+        return _llm.build_runner_from_config(cfg)
     except Exception:  # noqa: BLE001
         return None
 
@@ -1769,7 +1789,21 @@ def _runtime_overrides_scope(
         # Track the override's own keys AND the diarisation/alignment keys
         # _apply_runtime_overrides unconditionally fills — both must be
         # restored on exit or they leak into the next file (audit P2-29).
-        keys_to_track = set(overrides) | {k for k, _ in _RUNTIME_OVERRIDE_DEFAULTS}
+        # The task's own settings snapshot (taken by the app when the task
+        # was dispatched; see core.task_settings) is the base layer for this
+        # task: it replaces the worker's start-up copy of the per-task
+        # options, and a project file below still wins over it. Its keys are
+        # restored on exit like any override, so a finished task never leaks
+        # its options into the next one.
+        task_layer = _task_settings.from_command(
+            getattr(task, "task_settings", None)
+        ) or {}
+
+        keys_to_track = (
+            set(overrides)
+            | {k for k, _ in _RUNTIME_OVERRIDE_DEFAULTS}
+            | set(task_layer)
+        )
         for key in keys_to_track:
             if key in config:
                 value = config[key]
@@ -1783,6 +1817,7 @@ def _runtime_overrides_scope(
             else:
                 added_keys.add(key)
 
+        config.update(copy.deepcopy(task_layer))
         runtime_cfg = _apply_runtime_overrides(task)
         yield runtime_cfg
     finally:
@@ -2834,6 +2869,11 @@ def resume_transcription(
         log(
             f"Resume: continuing from {last_end_time:.2f}s "
             f"({len(prior_segments)} segment(s) already captured).",
+            log_cb,
+        )
+        log(
+            "Resumed with the settings it started with; "
+            "use Re-run to apply new settings",
             log_cb,
         )
 

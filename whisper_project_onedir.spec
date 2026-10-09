@@ -276,6 +276,7 @@ a = Analysis(
         'core.js_runtime',
         'core.loop_guard',
         'core.translate_task',
+        'core.task_settings',
         'core.history',
         'core.hub',
         'core.logging_setup',

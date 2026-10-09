@@ -67,6 +67,13 @@ class TranscriptionTask:
         # config snapshot would otherwise be stale (the docx-never-written
         # bug). None = fall back to the worker's config default.
         self.output_formats: list[str] | None = None
+        # Snapshot of the per-task options (core.task_settings.PER_TASK_KEYS)
+        # stamped at dispatch from the live app config and sent with the
+        # command; the long-lived worker applies it for this task only, so a
+        # setting changed after the worker started still reaches the next
+        # task. A resumed task inherits its original snapshot. None = the
+        # worker's own config applies (older parents, tools).
+        self.task_settings: dict[str, Any] | None = None
         # The actual files written by the last (re)transcribe, as
         # reported by the worker in its "done" event. The UI uses these
         # for the history record + the "Last result" card instead of

@@ -308,6 +308,14 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   Ctrl+Q, tray Exit, macOS Cmd+Q) while a transcript viewer holds unsaved edits now asks Save /
   Discard / Cancel for each such viewer, before anything is stopped. Save uses the viewer's own
   save and must succeed, otherwise the app stays open; minimise-to-tray never asks.
+- **Settings changed after the first transcription were ignored.** Unticking "Identify speakers"
+  (or changing VAD, word timestamps, chapters, noise reduction, the AI layer and the other per-file
+  options) had no effect until the app was restarted, because the long-lived worker kept the
+  settings it started with. Each task now carries a snapshot of these options taken when it is
+  dispatched, the worker applies it to that task only, and a resumed task keeps the options it
+  started with (`core/task_settings.py`). Keys without a control in the app (for example
+  `batch_size`, `chapter_min_seconds`) are re-read from `config.json` for each task, so a hand edit
+  applies to the next file.
 
 - **Quitting during a job.** On macOS, Cmd+Q (and the app-menu and Dock Quit) now ask "Exit with queued
   tasks?" like Windows instead of dropping a running transcription. A confirmed exit is recorded as

@@ -61,8 +61,16 @@ def test_command_has_exactly_the_expected_keys():
     cmd = transcribe_command(_task())
     assert set(cmd) == {
         "action", "file_path", "language", "resume", "clip_start", "clip_end",
-        "output_formats", "task_id", "whisper_task",
+        "output_formats", "task_id", "whisper_task", "settings",
     }
+
+
+def test_command_carries_the_task_settings_snapshot():
+    # Options changed after the worker spawned (speaker labels, VAD, ...) only
+    # reach it through this field; absent = the worker's own config applies.
+    snap = {"diarization_enabled": False, "vad_enabled": True}
+    assert transcribe_command(_task(task_settings=snap))["settings"] == snap
+    assert transcribe_command(_task())["settings"] is None
 
 
 def test_command_carries_a_stable_task_id_from_history():
