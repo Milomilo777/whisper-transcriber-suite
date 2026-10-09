@@ -106,9 +106,15 @@ def source_key(source_path: str) -> str:
     different key and the resume silently fell back to a full re-run.
     On case-sensitive POSIX, ``normcase`` is a no-op, so two genuinely
     distinct files differing only in case keep distinct keys.
+
+    ``surrogatepass`` keeps a path with lone surrogates (an unpaired UTF-16
+    unit on Windows, an undecodable name byte on POSIX) from raising; for
+    every other path the encoded bytes, and so the key, are unchanged.
     """
     norm = os.path.normcase(os.path.abspath(source_path))
-    return hashlib.sha1(norm.encode("utf-8"), usedforsecurity=False).hexdigest()
+    return hashlib.sha1(
+        norm.encode("utf-8", "surrogatepass"), usedforsecurity=False
+    ).hexdigest()
 
 
 def checkpoint_path(source_path: str) -> Path:
