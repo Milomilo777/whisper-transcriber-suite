@@ -19,6 +19,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   "Chime on completion" setting, now "Chime and notify on completion" on macOS; one per job, one
   summary per queue). Clicking the banner opens Script Editor, not the app. Windows and Linux are
   unchanged (`docs/MACOS_BUILD_NOTES.md`).
+- **Speed and time left.** The Queue tab shows how fast each transcription runs and roughly how
+  long is left (`about 4.8x, 6 min left`), and the result card says e.g. "42 min of audio
+  transcribed in 3 min 40 s (11.5x) with small on CPU". The speed comes from segment end times on a clock that
+  stops while paused; the history records speed, model and device. Rules in `docs/SPEED_METER.md`.
 - **macOS native feel.** The Mac app has an app menu with About and Settings (Command-comma), the
   standard Window menu, a Help menu with the system search field, Command-W for secondary windows,
   and "Reveal in Finder". Files from Finder ("Open With", a drop on the Dock icon) wait until
@@ -207,6 +211,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Update notice: major releases and a monthly reminder.** A release whose first version number is
+  higher (2.x to 3.0) is announced as "Version 3.0 is here: a major new release", and What's new
+  lists up to five highlights instead of three. After Later's 3, 7 and 14 days the bar comes back
+  every 30 days instead of going quiet for good; Skip this version still silences that version, and
+  the bar now waits until no transcription or download is queued or running.
 - **Burn subtitles reports progress and can be stopped.** `core/burn_subs.burn()` now runs ffmpeg
   with `-progress pipe:1` against the probed duration, drains stderr on its own thread, accepts a
   cancel check and hands over the ffmpeg process; its time limit grows with the video (three times
@@ -342,6 +351,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   The Transcription Queue tab had the same problem (about 36% of a core): the 500 ms refresh re-packed
   the empty-queue label, rebuilt the row list and re-set the action buttons every round. It now touches
   each only when it changed.
+- **Resuming a job and time ranges no longer stall for ten minutes.** The ffmpeg that cuts the
+  audio slice inherited the worker's command pipe as its stdin and, on Windows, hung at the end of
+  the slice until its 600-second timeout; a resume then started over from the beginning. It now
+  gets no stdin and finishes in about a second.
 - **Work offline: UDP and name-lookup gaps closed.** The network guard now also refuses UDP
   datagrams sent to another computer (`sendto` / `sendmsg`), the `gethostbyname`,
   `gethostbyaddr` and `getnameinfo` lookups and calls made on `_socket` directly, through a

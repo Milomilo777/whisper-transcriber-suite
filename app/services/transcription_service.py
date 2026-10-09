@@ -19,6 +19,7 @@ from app import desktop_alert
 from app.domain.task_outputs import is_sidecar_json, task_transcript_json
 from core import task_settings
 from core._proc import kill_process_tree, new_session_kwargs
+from core.speed_meter import apply_final_speed, apply_live_speed, reset_speed
 from core.translate_task import TRANSLATED_SUFFIX
 
 if TYPE_CHECKING:
@@ -1277,6 +1278,7 @@ class TranscriptionService:
                         else:
                             p = event.get("percent", 0)
                             worker["task"].progress = p
+                            apply_live_speed(worker["task"], event)
                             app.update_overall_progress()
                             # Mirror progress onto the Download row when this task
                             # was auto-spawned from a download (it shows
@@ -1327,6 +1329,7 @@ class TranscriptionService:
                             except (TypeError, ValueError):
                                 pass
                             worker["task"].no_speech = bool(event.get("no_speech"))
+                            apply_final_speed(worker["task"], event)
                             self.finish_task(worker)
                     else:
                         self.finish_task(worker)
@@ -1551,6 +1554,8 @@ class TranscriptionService:
             worker["task"] = t
             t.status = "running"
             t.progress = 0
+            # A re-run starts a fresh speed meter; never show the last run's.
+            reset_speed(t)
             t.start_time = _time.time()
             # Clear any prior end_time (re-run path) so the freshly-
             # restarted task counter doesn't immediately freeze.
@@ -1771,6 +1776,14 @@ class TranscriptionService:
                         if newly_finished and getattr(task, "no_speech", False)
                         else ""
                     ),
+                    # How fast the run went, with what model on what device
+                    # (worker-reported; 0 / "" when not measured).
+                    speed_x=float(getattr(task, "speed_x", 0.0) or 0.0)
+                    if newly_finished else 0.0,
+                    device=str(getattr(task, "speed_device", "") or "")
+                    if newly_finished else "",
+                    model=str(getattr(task, "speed_model", "") or "")
+                    if newly_finished else "",
                 )
                 if not persisted:
                     # Surfaced, not swallowed: the transcript FILES are

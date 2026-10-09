@@ -34,7 +34,8 @@ _PAGE = "https://github.com/o/r/releases/tag/v1.9.4"
 _BORROWED = (
     "_on_update_result", "_save_update_prefs", "_show_update_bar", "_hide_update_bar",
     "_update_whats_new", "_update_download", "_update_later", "_update_skip",
-    "_refresh_update_signs", "_apply_update_setting",
+    "_refresh_update_signs", "_apply_update_setting", "_jobs_active", "_retry_update_bar",
+    "_book_update_bar_retry",
 )
 
 
@@ -86,6 +87,8 @@ def host(monkeypatch, boxes):
     root._update_bar = None  # type: ignore[attr-defined]
     root._latest_update = None  # type: ignore[attr-defined]
     root._update_bar_shown_this_launch = False  # type: ignore[attr-defined]
+    root.queue = []  # type: ignore[attr-defined]
+    root.download_queue = []  # type: ignore[attr-defined]
     root.logs = []  # type: ignore[attr-defined]
     root.log = root.logs.append  # type: ignore[attr-defined]
     root.saved = saved  # type: ignore[attr-defined]
@@ -237,13 +240,115 @@ def test_later_hides_the_bar_and_snoozes_three_days(host):
     assert _labels(host)[0] == "Help ●"  # the passive sign stays
 
 
-def test_the_fourth_later_leaves_only_the_passive_signs(host):
+def test_the_fourth_later_reminds_again_in_a_month(host):
     host.app_config.update(update_latest_seen="1.9.4", update_snooze_count=3)
     host._on_update_result(_info(), manual=True)
     host._update_bar.buttons["later"].invoke()
     assert host.app_config["update_snooze_count"] == 4
-    assert "No more reminders about version 1.9.4" in host.logs[-1]
-    assert u.notice_level(host.app_config, "1.9.3", _TODAY + timedelta(days=60)) == u.NOTICE_PASSIVE
+    assert host.app_config["update_snooze_until"] == "2026-11-05"
+    assert "Update reminder for version 1.9.4 again on 2026-11-05" in host.logs[-1]
+    assert "once a month" in host.logs[-1]
+    assert u.notice_level(host.app_config, "1.9.3", _TODAY + timedelta(days=29)) == u.NOTICE_PASSIVE
+    assert u.notice_level(host.app_config, "1.9.3", _TODAY + timedelta(days=30)) == u.NOTICE_BAR
+
+
+# ------------------------------------------------------------ a major release
+
+_MAJOR_HIGHLIGHTS = ("One.", "Two.", "Three.", "Four.", "Five.")
+
+
+def _major_info() -> u.UpdateInfo:
+    return u.UpdateInfo(
+        latest_tag="v3.0.0", html_url=_PAGE, is_newer=True,
+        headline="A new look and a faster engine.", highlights=_MAJOR_HIGHLIGHTS,
+        assets=tuple(a.replace("1.9.4", "3.0.0") for a in _ASSETS),
+    )
+
+
+def test_a_major_release_is_announced_as_such(host):
+    host._on_update_result(_major_info(), manual=False)
+    assert host._update_bar.text_var.get() == (
+        "Version 3.0 is here: a major new release (you have 1.9.3).  A new look and a faster engine."
+    )
+    host._update_bar.buttons["whats_new"].invoke()
+    window = host._whats_new_window
+    texts = [w.cget("text") for w in _descendants(window) if isinstance(w, ttk.Label)]
+    assert [t for t in texts if t.startswith("• ")] == [f"• {h}" for h in _MAJOR_HIGHLIGHTS]
+
+
+def test_a_minor_release_keeps_the_plain_text(host):
+    host._on_update_result(_info(), manual=False)
+    assert host._update_bar.text_var.get().startswith("Version 1.9.4 is available (you have 1.9.3).")
+
+
+# ------------------------------------------------------------ never while a job runs
+
+def _busy(host) -> None:
+    host.queue.append(SimpleNamespace(status="running"))
+
+
+def test_no_bar_while_a_job_runs_then_it_shows_when_the_jobs_are_done(host, monkeypatch):
+    booked: list[int] = []
+    monkeypatch.setattr(host, "after", lambda ms, fn=None, *a: booked.append(ms) or "after#1")
+    _busy(host)
+    host._on_update_result(_info(), manual=False)
+    assert not _bar_visible(host)
+    assert host.app_config["update_latest_seen"] == "1.9.4"  # remembered all the same
+    assert _labels(host)[0] == "Help ●"  # the passive sign is not a nag
+    assert booked == [app_mod._UPDATE_BAR_RETRY_MS]
+    host._on_update_result(_info(), manual=False)  # the next daily check: one retry only
+    assert booked == [app_mod._UPDATE_BAR_RETRY_MS]
+    host._retry_update_bar()  # still busy: ask again later
+    assert not _bar_visible(host)
+    assert booked == [app_mod._UPDATE_BAR_RETRY_MS] * 2
+    host.queue.clear()
+    host.download_queue.append(SimpleNamespace(status="transcribing"))
+    host._retry_update_bar()
+    assert not _bar_visible(host)
+    host.download_queue.clear()
+    host._retry_update_bar()
+    assert _bar_visible(host)
+    assert host._update_bar_shown_this_launch
+    assert len(booked) == 3  # nothing booked once the bar is up
+    host._hide_update_bar()
+    host._retry_update_bar()  # a stray retry never shows it twice in one launch
+    assert not _bar_visible(host)
+
+
+@pytest.mark.parametrize("change", ["disabled", "env", "offline", "skipped", "snoozed", "closing"])
+def test_a_pending_bar_rechecks_the_rules_before_it_shows(host, monkeypatch, change):
+    monkeypatch.setattr(host, "after", lambda *a, **k: "after#1")
+    _busy(host)
+    host._on_update_result(_info(), manual=False)
+    host.queue.clear()
+    if change == "disabled":
+        host.app_config["update_check_enabled"] = False
+    elif change == "env":
+        monkeypatch.setenv(u.DISABLE_ENV_VAR, "1")
+    elif change == "offline":
+        monkeypatch.setattr(app_mod.offline, "is_offline", lambda: True)
+    elif change == "skipped":
+        u.skip_version(host.app_config, "1.9.4")
+    elif change == "snoozed":
+        u.snooze(host.app_config, _TODAY)
+    else:
+        host._closing = True
+    host._retry_update_bar()
+    assert not _bar_visible(host)
+
+
+def test_a_manual_check_shows_the_bar_even_while_a_job_runs(host):
+    _busy(host)
+    host._on_update_result(_info(), manual=True)
+    assert _bar_visible(host)
+
+
+def test_a_bar_already_on_screen_is_refreshed_while_a_job_runs(host):
+    host._on_update_result(_info(), manual=False)
+    _busy(host)
+    host._on_update_result(_info("v1.9.5", assets=tuple(a.replace("1.9.4", "1.9.5") for a in _ASSETS)),
+                           manual=False)
+    assert host._update_bar.text_var.get().startswith("Version 1.9.5 is available")
 
 
 def test_skip_hides_the_bar_and_the_signs(host):

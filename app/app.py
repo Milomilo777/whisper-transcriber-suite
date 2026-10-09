@@ -71,6 +71,7 @@ from core.hub import voice_clone_tab_enabled
 from core.logging_setup import get_ui_logger, open_log_folder, setup_logging
 from core.paths import bin_dir as _resource_bin_dir
 from core.paths import bundled_binary as _bundled_binary
+from core.speed_meter import speed_cell, task_summary_line
 from core.watcher import FolderWatcher
 
 logger = logging.getLogger(__name__)
@@ -83,6 +84,9 @@ _WORK_OFFLINE_LABEL = "Work offline"
 # An app left open keeps checking about once a day (the date throttle in
 # _maybe_quiet_update_check still applies).
 _UPDATE_RECHECK_MS = 24 * 60 * 60 * 1000
+# A launch check that finds a release while a job runs keeps the bar back and
+# looks again this often until the queue is idle (_retry_update_bar).
+_UPDATE_BAR_RETRY_MS = 2 * 60 * 1000
 
 
 def _today() -> date:
@@ -120,6 +124,22 @@ def _set_enabled(button: "ttk.Button", enabled: bool) -> None:
     """
     if button.instate(["disabled"]) == enabled:
         button.state(["!disabled"] if enabled else ["disabled"])
+
+
+def _same_rows(
+    shown: "list[tuple[Any, tuple[str, ...], tuple[str, ...]]] | None",
+    rows: "list[tuple[Any, tuple[str, ...], tuple[str, ...]]]",
+) -> bool:
+    """True when ``rows`` (task, cell texts, tags) equal what the Queue tree shows.
+
+    Tasks are compared by identity, never by ``==``: a task object that replaced another
+    with identical text must still rebuild the tree so ``row_map`` points at the new one.
+    """
+    if shown is None or len(shown) != len(rows):
+        return False
+    return all(
+        a[0] is b[0] and a[1] == b[1] and a[2] == b[2] for a, b in zip(shown, rows)
+    )
 
 
 def _iids_for_tasks(
@@ -645,8 +665,8 @@ def build_about_sections() -> list[AboutSection]:
                 "tells you; it never downloads or installs on its own",
                 "A newer version shows a quiet bar under the menu: What's "
                 "new, Download (the file for this kind of install), Later "
-                "(again in 3, 7, then 14 days, then only a dot in the Help "
-                "menu) or Skip this version",
+                "(again in 3, 7, then 14 days, then about once a month; "
+                "never while a job runs) or Skip this version",
                 "Run it any time from Help → Check for updates…; turn the "
                 "daily check off in Advanced → App behaviour",
                 "When you install the newer Setup it upgrades in place over "
@@ -1041,6 +1061,8 @@ class App(tk.Tk):
         self._latest_update: Any = None
         self._whats_new_window: Any = None
         self._update_bar_shown_this_launch = False
+        # The timer of a bar held back while a job runs (_retry_update_bar).
+        self._update_bar_retry_id: Any = None
         # "The video downloader may be out of date" bar (core.yt_dlp_update):
         # offered after a download or format lookup fails the way an
         # outdated yt-dlp fails; "Not now" keeps it away for this launch.
@@ -4826,7 +4848,7 @@ class App(tk.Tk):
         if self.tree.identify_region(event.x, event.y) != "cell":
             return
         col = self.tree.identify_column(event.x)
-        # columns are ("file","status","progress","language","time")
+        # columns are ("file","status","progress","speed","language","time")
         # -> status is #2, progress is #3.
         if col not in ("#2", "#3"):
             return
@@ -5163,6 +5185,8 @@ class App(tk.Tk):
         # action bar unusable. We restore the selection onto the new iids so
         # it survives the rebuild.
         prev_selected = self._selected_tasks()
+        # The keyboard-focus row is lost the same way: Up/Down would restart from the top.
+        prev_focused = self.row_map.get(self.tree.focus())
         rows: list[tuple[Any, tuple[str, ...], tuple[str, ...]]] = []
         for t in self.queue:
             lang = getattr(t, "detected_language", "") or ""
@@ -5173,6 +5197,7 @@ class App(tk.Tk):
                 name,
                 status_label(t.status),
                 self._row_progress_text(t.status, t.progress),
+                speed_cell(t),
                 lang_str,
                 self.fmt_time(t),
             )
@@ -5182,9 +5207,8 @@ class App(tk.Tk):
         # visible Treeview repaints it, so doing it every 500 ms kept an idle Queue tab
         # busy (about 36% of a core on macOS, measured). ``_queue_rows_sig`` is what the
         # tree currently shows; the child count guards against the tree having been emptied.
-        signature = tuple(rows)
         if (
-            signature != getattr(self, "_queue_rows_sig", None)
+            not _same_rows(getattr(self, "_queue_rows_sig", None), rows)
             or len(self.tree.get_children()) != len(rows)
         ):
             self.tree.delete(*self.tree.get_children())
@@ -5192,12 +5216,16 @@ class App(tk.Tk):
             for t, values, tags in rows:
                 item_id = self.tree.insert("", "end", values=values, tags=tags)
                 self.row_map[item_id] = t
-            self._queue_rows_sig = signature
+            self._queue_rows_sig = rows
             # Re-select the same task objects on their new iids (no-op when the
             # selection was empty or its tasks left the queue).
             restore = _iids_for_tasks(self.row_map, prev_selected)
             if restore:
                 self.tree.selection_set(restore)
+            if prev_focused is not None:
+                focus_iids = _iids_for_tasks(self.row_map, [prev_focused])
+                if focus_iids:
+                    self.tree.focus(focus_iids[0])
         # Empty-state hint visibility — show when the queue is empty,
         # hide once there is at least one task. Kept here (rather than
         # in tabs.py) because refresh is the choke point for queue
@@ -5365,6 +5393,13 @@ class App(tk.Tk):
             text=f"✓ {os.path.basename(task.file_path)}",
             font=("TkDefaultFont", 10, "bold"),
         ).pack(anchor="w")
+        speed_line = task_summary_line(task)
+        if speed_line:
+            ttk.Label(
+                self.last_result_body,
+                text=speed_line,
+                foreground=tokens.themed(tokens.TEXT_MUTED),
+            ).pack(anchor="w", pady=(2, 0))
         if getattr(task, "no_speech", False):
             ttk.Label(
                 self.last_result_body,
@@ -5770,7 +5805,12 @@ class App(tk.Tk):
             if level == _updates.NOTICE_BAR and (
                 bar_visible or not self._update_bar_shown_this_launch
             ):
-                self._show_update_bar(info)
+                if bar_visible or not self._jobs_active():
+                    self._show_update_bar(info)
+                else:
+                    # Never while a transcription or download runs: the bar
+                    # waits for an idle queue (the Help-menu dot shows now).
+                    self._book_update_bar_retry()
         self._refresh_update_signs()
 
     # Update notice: bar, buttons and passive signs ----------------------------
@@ -5809,6 +5849,35 @@ class App(tk.Tk):
     def _hide_update_bar(self) -> None:
         if self._update_bar is not None:
             self._update_bar.hide()
+
+    def _book_update_bar_retry(self) -> None:
+        """Look again for an idle queue later (one timer at a time)."""
+        if _inst_attr(self, "_update_bar_retry_id") is not None:
+            return
+        self._update_bar_retry_id = self.after(_UPDATE_BAR_RETRY_MS, self._retry_update_bar)
+
+    def _retry_update_bar(self) -> None:
+        """Show the bar a running job held back, once no job is queued or running.
+
+        Every rule is checked again, because the user may have turned the check
+        off, gone offline, skipped or snoozed the version (Help menu) or seen
+        the bar through a manual check in the meantime.
+        """
+        self._update_bar_retry_id = None
+        if self._closing or self._update_bar_shown_this_launch:
+            return
+        info = self._latest_update
+        if info is None:
+            return
+        from core import updates as _updates
+        if not _updates.automatic_check_enabled(self.app_config) or offline.is_offline():
+            return
+        if _updates.notice_level(self.app_config, _APP_VERSION, _today()) != _updates.NOTICE_BAR:
+            return
+        if self._jobs_active():
+            self._book_update_bar_retry()
+            return
+        self._show_update_bar(info)
 
     # Gentle star invitation (core.star_invite) -------------------------------
     def _star_save(self) -> None:
@@ -6043,7 +6112,7 @@ class App(tk.Tk):
         self._hide_update_bar()
 
     def _update_later(self) -> None:
-        """"Later": hide the bar for 3, 7, then 14 days, then only the passive signs."""
+        """"Later": hide the bar for 3, 7, then 14 days, then 30 days each time."""
         info = self._latest_update
         from core import updates as _updates
         until = _updates.snooze(self.app_config, _today())
@@ -6051,13 +6120,10 @@ class App(tk.Tk):
         self._hide_update_bar()
         self._refresh_update_signs()
         version = _updates.version_label(info.latest_tag) if info is not None else "the new version"
-        if until is None:
-            self.log(
-                f"No more reminders about version {version}; Help → Check for updates "
-                "still shows it."
-            )
-        else:
-            self.log(f"Update reminder for version {version} again on {until.isoformat()}.")
+        message = f"Update reminder for version {version} again on {until.isoformat()}"
+        if _updates.is_monthly_reminder(self.app_config):
+            message += " (about once a month from now on; Skip this version stops it)"
+        self.log(message + ".")
 
     def _update_skip(self) -> None:
         """"Skip this version": silent until a newer version appears."""

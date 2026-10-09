@@ -95,3 +95,19 @@ class TranscriptionTask:
         # True when a finished run recognised no speech at all (the outputs
         # are written but empty); the result card and history say so.
         self.no_speech: bool = False
+        # Speed meter (core.speed_meter). ``live_*`` are the smoothed speed
+        # (x real time) and time left while the decode runs, None until
+        # there is enough data; carried on the worker's "progress" events.
+        # The rest is the finished run's overall average and what it
+        # covered, carried on "done" and stored in the history row.
+        self.live_speed_x: float | None = None
+        self.live_eta_s: float | None = None
+        self.speed_x: float = 0.0
+        self.speed_audio_s: float = 0.0
+        self.speed_seconds: float = 0.0
+        self.speed_resumed: bool = False
+        self.speed_model: str = ""
+        self.speed_device: str = ""
+        # False for engines that return all segments at once (no live speed;
+        # the queue row says the speed comes at the end).
+        self.speed_live: bool = True

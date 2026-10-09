@@ -787,13 +787,15 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
         "Every transcription job you start is tracked here. Use the "
         "buttons below the list (or right-click a row) to pause, resume, "
         "cancel, re-run, or remove it; double-click a finished row to "
-        "open its output folder.",
+        "open its output folder. Speed: 4.8x means 4.8 seconds of audio "
+        "were transcribed per second of work; below 1x is slower than the "
+        "recording plays. The time left is a rough estimate.",
     ).pack(side="left")
     ttk.Button(top_row, text="Clear completed", command=app.clear_completed).pack(
         side="right"
     )
 
-    cols = ("file", "status", "progress", "language", "time")
+    cols = ("file", "status", "progress", "speed", "language", "time")
     tree_frame = ttk.Frame(parent)
     tree_frame.pack(fill="both", expand=True, padx=10)
     tree_frame.rowconfigure(0, weight=1)
@@ -803,6 +805,7 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
         "file": "File",
         "status": "Status",
         "progress": "Progress",
+        "speed": "Speed and time left",
         "language": "Language",
         "time": "Elapsed",
     }
@@ -810,6 +813,7 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
         app.tree.heading(c, text=headings[c])
     app.tree.column("language", width=px(140))
     app.tree.column("progress", width=px(150), anchor="w")
+    app.tree.column("speed", width=px(190), anchor="w")
     app.tree.column("time", width=px(80), anchor="center")
     app.tree.column("status", width=px(120))
     _vsb = _AutoScrollbar(tree_frame, orient="vertical", command=app.tree.yview)

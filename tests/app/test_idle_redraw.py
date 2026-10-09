@@ -73,7 +73,7 @@ def bare_app(monkeypatch: pytest.MonkeyPatch) -> Any:
     root = App.__new__(App)
     tk.Tk.__init__(root)
     root.withdraw()
-    tree = ttk.Treeview(root, columns=("file", "status", "progress", "language", "time"))
+    tree = ttk.Treeview(root, columns=("file", "status", "progress", "speed", "language", "time"))
     tree.pack()
     drop_zone = ttk.LabelFrame(root)
     drop_zone.pack()
@@ -240,3 +240,66 @@ def test_refresh_rebuilds_after_the_tree_was_emptied_behind_its_back(bare_app: A
 
     assert len(bare_app.tree.get_children()) == 1
     assert list(bare_app.row_map.values()) == bare_app.queue
+
+
+def test_replacing_a_task_by_an_identical_looking_one_rebuilds_and_remaps(bare_app: Any) -> None:
+    bare_app.fmt_time = lambda _t: "0:01"
+    old_task = _finished_task("a.mp4")
+    bare_app.queue.append(old_task)
+    bare_app.refresh()
+
+    new_task = _finished_task("a.mp4")  # same text in every cell, a different object
+    bare_app.queue[0] = new_task
+    bare_app.refresh()
+
+    (iid,) = bare_app.tree.get_children()
+    assert bare_app.row_map[iid] is new_task
+
+
+def test_a_change_of_only_the_row_tags_rebuilds(
+    bare_app: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bare_app.fmt_time = lambda _t: "0:01"
+    bare_app.queue.append(_finished_task("a.mp4"))
+    tags = [("tag_a",)]
+    monkeypatch.setattr(
+        "app.app.script_fonts.tree_row_tags", lambda *_a, **_k: tags[0]
+    )
+    bare_app.refresh()
+    (iid,) = bare_app.tree.get_children()
+    assert tuple(bare_app.tree.item(iid, "tags")) == ("tag_a",)
+
+    tags[0] = ("tag_b",)  # e.g. the script font became available; the text is unchanged
+    bare_app.refresh()
+
+    (iid,) = bare_app.tree.get_children()
+    assert tuple(bare_app.tree.item(iid, "tags")) == ("tag_b",)
+
+
+def test_keyboard_focus_stays_on_the_same_task_across_a_rebuild(bare_app: Any) -> None:
+    bare_app.fmt_time = lambda _t: "0:01"
+    first, second, third = (_finished_task(n) for n in ("a.mp4", "b.mp4", "c.mp4"))
+    bare_app.queue.extend([first, second, third])
+    bare_app.refresh()
+    ids = bare_app.tree.get_children()
+    bare_app.tree.focus(ids[1])
+
+    second.status = "error"  # forces a rebuild
+    bare_app.refresh()
+
+    focused = bare_app.tree.focus()
+    assert focused and bare_app.row_map[focused] is second
+
+
+def test_focus_is_left_alone_when_the_focused_task_leaves_the_queue(bare_app: Any) -> None:
+    bare_app.fmt_time = lambda _t: "0:01"
+    first, second = _finished_task("a.mp4"), _finished_task("b.mp4")
+    bare_app.queue.extend([first, second])
+    bare_app.refresh()
+    bare_app.tree.focus(bare_app.tree.get_children()[1])
+
+    bare_app.queue.remove(second)
+    bare_app.refresh()
+
+    focused = bare_app.tree.focus()
+    assert focused == "" or bare_app.row_map[focused] is first

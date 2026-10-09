@@ -304,6 +304,7 @@ a = Analysis(
         'core.subtitle_edit',
         'core.paths',
         'core.process_exit',
+        'core.speed_meter',
         'core.stats',
         'core.task',
         'core.transcriber',
