@@ -31,6 +31,7 @@ to any common audio/video extension that lives next to the JSON.
 """
 from __future__ import annotations
 
+import glob
 import io
 import json
 import logging
@@ -147,7 +148,8 @@ _SIBLING_FILES: tuple[tuple[str, str], ...] = (
 # Writers whose output names the media file; the rest ignore audio_path.
 _WRITERS_USING_AUDIO_PATH = frozenset({"md", "lrc", "otr", "elan", "docx"})
 # Exports that exist but cannot be checked against the transcript or rebuilt
-# faithfully here (a PDF embeds fonts, dates and ids): Save names them.
+# faithfully here (a PDF embeds fonts, dates and ids; the SMTV team document needs
+# the language and work title): Save names them.
 _UNREBUILDABLE_SUFFIXES = (".pdf",)
 
 # One viewer per transcript file, keyed by _viewer_key(json_path): two
@@ -248,11 +250,13 @@ def _audio_path_candidates(fmt: str, raw: bytes, media_path: str | None) -> list
     """The ``audio_path`` values to try when rebuilding ``fmt``, best guess first."""
     if fmt not in _WRITERS_USING_AUDIO_PATH:
         return [""]
-    found: list[str] = []
-    for candidate in (media_path, _title_in_export(fmt, raw), ""):
-        if candidate is not None and candidate not in found:
-            found.append(candidate)
-    return found
+    # The file says what it was made with; rebuilding once with that is enough (a Word
+    # build of a long transcript takes seconds). Without a readable title: the media file
+    # next to the JSON, then none.
+    title = _title_in_export(fmt, raw)
+    if title is not None:
+        return [title]
+    return [media_path, ""] if media_path else [""]
 
 
 def _sibling_files(json_path: str) -> list[tuple[str, list[str]]]:
@@ -264,6 +268,16 @@ def _sibling_files(json_path: str) -> list[tuple[str, list[str]]]:
         if os.path.isfile(path):
             by_path.setdefault(path, []).append(fmt)
     return list(by_path.items())
+
+
+def _unrebuildable_files(json_path: str) -> list[str]:
+    """Exports next to the JSON that Save cannot rebuild: PDF and the SMTV team document."""
+    base = os.path.splitext(json_path)[0]
+    found = [f"{base}{suffix}" for suffix in _UNREBUILDABLE_SUFFIXES if os.path.isfile(f"{base}{suffix}")]
+    # "<name> -Transcription in <language> – Translation in English.docx": it needs the
+    # language and the work title, which the transcript JSON does not hold.
+    found.extend(sorted(glob.glob(glob.escape(base) + " -Transcription in*.docx")))
+    return found
 
 
 def _write_text_atomically(path: str, text: str) -> None:
@@ -2114,7 +2128,6 @@ class TranscriptViewer(tk.Toplevel):
         updated: list[str] = []
         kept: list[str] = []
         failed: list[str] = []
-        base = os.path.splitext(self.json_path)[0]
         for path, _formats in _sibling_files(self.json_path):
             stamp = _file_stamp(path)
             plan = self._sibling_plan.get(path)
@@ -2132,9 +2145,7 @@ class TranscriptViewer(tk.Toplevel):
                 continue
             self._synced_siblings[path] = _file_stamp(path)
             updated.append(path)
-        for suffix in _UNREBUILDABLE_SUFFIXES:
-            if os.path.isfile(f"{base}{suffix}"):
-                kept.append(f"{base}{suffix}")
+        kept.extend(_unrebuildable_files(self.json_path))
         return updated, kept, failed
 
     def _copy_to_clipboard(self, text: str) -> None:

@@ -289,3 +289,35 @@ def test_persian_text_round_trips_into_every_format(root, tmp_path, notices) -> 
             assert json.load(f)[0]["text"] == "سلام دنیا"
     finally:
         _close(viewer)
+
+
+def test_smtv_team_document_is_named_not_touched(root, tmp_path, notices) -> None:
+    json_path = _write_outputs(tmp_path, ["srt", "json"])
+    smtv = tmp_path / "talk -Transcription in English – Translation in English.docx"
+    smtv.write_bytes(b"PK team template")
+    viewer = _open(root, json_path)
+    try:
+        _edit(viewer)
+        viewer._save_changes()
+        assert smtv.read_bytes() == b"PK team template"
+        assert any(kind == "warning" and smtv.name in text for text, kind in notices)
+    finally:
+        _close(viewer)
+
+
+def test_opening_builds_a_word_file_only_once(root, tmp_path, notices, monkeypatch) -> None:
+    """A Word build of a long transcript takes seconds: the scan must not repeat it."""
+    json_path = _write_outputs(tmp_path, ["docx", "json"])
+    real = writers.BINARY_WRITERS["docx"]
+    calls: list[str] = []
+
+    def counting(segments, audio_path=""):
+        calls.append(audio_path)
+        return real(segments, audio_path)
+
+    monkeypatch.setitem(writers.BINARY_WRITERS, "docx", counting)
+    viewer = _open(root, json_path)
+    try:
+        assert calls == ["talk.mp4"]
+    finally:
+        _close(viewer)
