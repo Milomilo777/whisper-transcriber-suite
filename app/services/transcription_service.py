@@ -31,6 +31,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Worker events that carry no result: a copy arriving after its worker left app.workers is
+# expected (see _poll_once) and is only logged at debug level.
+_LATE_EVENTS = frozenset({"heartbeat", "worker_exit"})
+
 
 def output_formats_for(task: Any, configured: Any) -> list[str]:
     """The formats *task* writes: the current selection, plus ``srt`` when
@@ -1185,6 +1189,18 @@ class TranscriptionService:
                 # A log line is the difference between recoverable-and-
                 # visible and invisible data loss (contrast
                 # control_unmatched, which was already logged).
+                if event_type in _LATE_EVENTS:
+                    # Not data loss: a retired worker (the extra one a parallel
+                    # batch used) is removed from app.workers before its process
+                    # has stopped, and its reader thread still queues the last
+                    # heartbeats and the worker_exit. Neither carries a result
+                    # and nothing waits for a worker that is no longer tracked.
+                    logger.debug(
+                        "Ignoring late %r event from a worker that is no longer "
+                        "tracked (worker_id=%r pid=%r)",
+                        event_type, event.get("_worker_id"), event.get("_pid"),
+                    )
+                    continue
                 logger.warning(
                     "Dropping unroutable worker event %r (no matching "
                     "worker for worker_id=%r pid=%r token=%r)",

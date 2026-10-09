@@ -362,6 +362,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the next jobs still run; the notification is logged and dropped.
 - **A large upload stays byte-exact when a long text field follows the file.** The server could keep
   the two line-break bytes in front of the closing boundary in the saved media.
+- **No warning for the last heartbeats of a finished parallel worker.** After parallel jobs end, the
+  retired worker's final heartbeats and exit notice are logged at debug level; an unmatched event that
+  can carry a result (such as `done`) still warns.
 - **The caption under the viewer's player follows edits.** After Find & Replace, Remove fillers or a
   timestamp edit it kept the old wording ("fox" for a segment that now says "cat") until the playhead
   moved to another segment.

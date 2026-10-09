@@ -481,3 +481,53 @@ def test_finish_task_skips_usage_stats_post_for_a_cancelled_task(monkeypatch):
     svc.finish_task(worker, keep_status=False)
 
     assert posted == [], "a user-cancelled task has no real transcript to report"
+
+
+# ---------------------------------------------------------------- unroutable worker events
+
+
+def _service_with_events(events: list[dict]) -> TranscriptionService:
+    import queue
+
+    q: "queue.Queue[dict]" = queue.Queue()
+    for event in events:
+        q.put(event)
+    app = SimpleNamespace(
+        worker_events=q, workers=[], app_config={}, after=lambda *a, **k: None,
+        log=lambda m: None, update_overall_progress=lambda: None,
+        refresh=lambda: None, refresh_download_queue=lambda: None,
+        model_status=lambda m: None,
+    )
+    return TranscriptionService(app)  # type: ignore[arg-type]
+
+
+def test_late_heartbeat_and_exit_of_a_retired_worker_are_not_warnings(caplog):
+    """After parallel jobs end the extra worker is retired (removed, then stopped); its reader
+    thread still queues the last heartbeats and its worker_exit. They carry no result, so they
+    are logged quietly (the app.log of a real pass showed three warnings per run)."""
+    import logging
+
+    gone = {"_worker_id": 2, "_pid": 1469, "_token": "retired-token"}
+    svc = _service_with_events([
+        {"event": "heartbeat", **gone}, {"event": "heartbeat", **gone},
+        {"event": "worker_exit", "return_code": 0, **gone},
+    ])
+    with caplog.at_level(logging.DEBUG, logger="app.services.transcription_service"):
+        svc.poll()
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
+    assert sum("late" in r.getMessage().lower() for r in caplog.records) == 3
+
+
+@pytest.mark.parametrize("event", ["done", "error", "progress", "ready"])
+def test_an_unroutable_event_that_can_carry_a_result_still_warns(caplog, event):
+    """A "done" with no worker to take it is possible data loss: keep it loud."""
+    import logging
+
+    svc = _service_with_events([
+        {"event": event, "_worker_id": 2, "_pid": 1469, "_token": "retired-token"},
+    ])
+    with caplog.at_level(logging.DEBUG, logger="app.services.transcription_service"):
+        svc.poll()
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1 and "Dropping unroutable worker event" in warnings[0].getMessage()
+    assert repr(event) in warnings[0].getMessage()
