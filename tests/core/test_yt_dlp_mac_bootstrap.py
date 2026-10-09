@@ -1243,3 +1243,49 @@ def test_group_and_other_never_get_write_permission(tmp_path, monkeypatch):
     dest.mkdir()
     ytu._extract_onedir(zip_path, dest)
     assert asked["wide"] == 0o755 and asked["rw"] == 0o644 and asked["sticky"] == 0o755
+
+
+# ----------------------------------- the download functions ask Work offline themselves
+
+def test_the_core_download_functions_refuse_when_offline(mac, github, monkeypatch):
+    monkeypatch.setattr(ytu.offline, "is_offline", lambda: True)
+    github.publish(_NEW)
+    deadline = ytu.time.monotonic() + 60
+    for call in (
+        lambda: ytu._open_release(ytu.RELEASE_LATEST_URL + ytu.CHECKSUMS_ASSET, deadline),
+        lambda: ytu._fetch_checksum(ytu.BOOTSTRAP_ASSET, deadline),
+        lambda: ytu._download_checked(_TAGGED.format(tag=_NEW) + _ZIP, io.BytesIO(), "0" * 64, deadline),
+    ):
+        with pytest.raises(ytu._BootstrapFailed) as caught:
+            call()
+        assert caught.value.status == "offline"
+        assert "Offline mode is on" in caught.value.message
+    assert github.requested == []
+
+
+def test_the_install_itself_returns_the_offline_result_without_the_ui_check(mac, github, monkeypatch):
+    monkeypatch.setattr(ytu.offline, "is_offline", lambda: True)
+    github.publish(_NEW)
+    result = ytu._install_onedir(str(mac.bundled), lambda _m: None, _version_of)  # not via update_cached_copy
+    assert result.status == "offline" and result.completed is False
+    assert "Offline mode is on" in ytu.result_text(result)
+    assert github.requested == []
+    assert _cache_files(mac) == []
+
+
+def test_work_offline_switched_on_during_the_install_stops_the_download(mac, github, monkeypatch):
+    github.publish(_NEW)
+    state = {"offline": False}
+    monkeypatch.setattr(ytu.offline, "is_offline", lambda: state["offline"])
+    real = ytu._fetch_checksum
+
+    def _then_offline(asset, deadline):
+        out = real(asset, deadline)
+        state["offline"] = True  # the person switches Work offline on after the checksum list
+        return out
+
+    monkeypatch.setattr(ytu, "_fetch_checksum", _then_offline)
+    result = _update()
+    assert result.status == "offline"
+    assert github.zip_requests() == []
+    assert _cache_files(mac) == []

@@ -849,10 +849,11 @@ class _BootstrapFailed(Exception):
     bar. ``completed``: the answer is final (a wrong checksum, a file that does
     not start), so the automatic mode does not try again for 24 h."""
 
-    def __init__(self, message: str, *, completed: bool = False) -> None:
+    def __init__(self, message: str, *, completed: bool = False, status: str = "failed") -> None:
         super().__init__(message)
         self.message = message
         self.completed = completed
+        self.status = status  # "offline" when Work offline refused the request
 
 
 def _check_release_url(url: str) -> None:
@@ -942,6 +943,8 @@ def _open_release(url: str, deadline: float) -> tuple[Any, _TrustedRedirects]:
     redirects followed. The system proxy settings apply, as for any urllib call.
     Connecting and each wait for data end at the socket timeout or, if sooner,
     at ``deadline``."""
+    if offline.is_offline():  # every network request asks first, whoever calls it
+        raise _BootstrapFailed(offline.refused("updating the video downloader"), status="offline")
     _check_release_url(url)
     timeout = min(_SOCKET_TIMEOUT_S, _time_left(deadline))
     redirects = _TrustedRedirects()
@@ -1400,7 +1403,7 @@ def _install_locked(
         log(f"Installed yt-dlp {version_label(after)} in {final}")
         return UpdateResult("updated", before=have, after=after, completed=True)
     except _BootstrapFailed as e:
-        return UpdateResult("failed", message=e.message, completed=e.completed)
+        return UpdateResult(e.status, message=e.message, completed=e.completed)
     except OSError as e:
         return UpdateResult("failed", message=f"Could not save the video downloader: {e}")
     finally:
