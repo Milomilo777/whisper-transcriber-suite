@@ -384,6 +384,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Changing the Whisper model in Settings no longer stops a running transcription without asking, or
   before the choice is saved.** It now asks like an engine switch does and restarts the worker only
   after the save worked; a failed save (also from "Download now") puts the previous model back.
+- **The API server keeps only the file name of an uploaded Windows path on macOS and Linux.** A client
+  that sent `C:\Users\me\clip.wav` as the file name got the folders glued onto the name
+  (`CUsersmeclip.wav`); it is now saved as `clip.wav`, as on Windows.
 - **A file name with an unpaired surrogate no longer breaks the resume-checkpoint lookup.** The
   checkpoint key now encodes such a path instead of raising, so the lookup answers "no checkpoint"
   and the job carries on.

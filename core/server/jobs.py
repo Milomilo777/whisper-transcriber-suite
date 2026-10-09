@@ -1449,7 +1449,10 @@ def _safe_filename(name: str) -> str:
     upload. Trailing dots and spaces go too: Windows drops them silently, so
     the file on disk would not match the recorded name.
     """
-    base = os.path.basename(name or "").strip()
+    # A client may send its whole Windows path ("C:\\Users\\me\\clip.wav"); on
+    # POSIX ``os.path.basename`` does not split at a backslash, so the
+    # separators would just be stripped below and the folders glued to the name.
+    base = os.path.basename((name or "").replace("\\", "/")).strip()
     # Drop anything that isn't a tame filename character; keep dots,
     # dashes, underscores, spaces, and alphanumerics.
     cleaned = "".join(
