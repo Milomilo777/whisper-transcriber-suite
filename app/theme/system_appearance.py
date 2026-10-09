@@ -31,6 +31,7 @@ code always answered "dark" for "System". The registry read has no dependency.
 """
 from __future__ import annotations
 
+import importlib
 import logging
 import sys
 import tkinter as tk
@@ -107,7 +108,8 @@ class WindowsBackend:
 
     def is_dark(self) -> bool | None:
         try:
-            import winreg  # type: ignore[import-not-found,unused-ignore]
+            # By name: the type stubs declare winreg's API on Windows only.
+            winreg: Any = importlib.import_module("winreg")
         except ImportError:
             return None
         # Adapted from darkdetect (https://github.com/albertosottile/darkdetect) — the registry key

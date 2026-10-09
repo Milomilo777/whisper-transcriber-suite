@@ -14,11 +14,13 @@ injectable so the tests run without Subtitle Edit installed.
 """
 from __future__ import annotations
 
+import importlib
 import ntpath
 import os
 import subprocess
 import sys
 from collections.abc import Callable, Iterable, Mapping, Sequence
+from typing import Any
 
 #: Config key holding the path to ``SubtitleEdit.exe`` ("" = auto-detect).
 CONFIG_KEY = "subtitle_edit_path"
@@ -66,7 +68,9 @@ def registry_install_dirs() -> list[str]:
     Returns [] when the registry is not available (not Windows).
     """
     try:
-        import winreg
+        # Loaded by name: the type stubs declare winreg's API on Windows only, and the
+        # tests put a stand-in module in sys.modules.
+        winreg: Any = importlib.import_module("winreg")
     except ImportError:
         return []
     dirs: list[str] = []
