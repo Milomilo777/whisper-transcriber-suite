@@ -906,6 +906,12 @@ def test_transcript_viewers_are_not_modal(
         viewer._on_close()
 
 
+def test_the_search_window_is_not_modal() -> None:
+    from app.dialogs.search_dialog import SearchDialog
+
+    assert SearchDialog._non_modal is True
+
+
 def test_hub_setup_flag_is_set_while_the_dialog_is_open_and_cleared_on_done(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
