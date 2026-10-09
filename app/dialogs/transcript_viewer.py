@@ -42,7 +42,7 @@ import threading
 import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Collection, Optional
 
 from app.dialogs import share_page, viewer_exports
 from app import mac_native, shortcuts
@@ -2017,10 +2017,13 @@ class TranscriptViewer(tk.Toplevel):
         if not viewer_exports.exports_exist(self.json_path):
             return
         self._start_scan()
-        _EXPORTING[:] = [v for v in _EXPORTING if v is self or not v._export_idle.is_set()]
-        if self not in _EXPORTING:
-            _EXPORTING.append(self)
+        names = [p for p, _f in viewer_exports.sibling_files(self.json_path)]
         with self._export_lock:
+            # Registered and listed before the thread exists: an exit that gives up early
+            # can still name every file that was waiting.
+            if self not in _EXPORTING:
+                _EXPORTING.append(self)
+            self._export_remaining.update(names)
             self._export_pending = saved_json_text
             self._export_fast_done.clear()
             start = not self._export_running
@@ -2034,6 +2037,23 @@ class TranscriptViewer(tk.Toplevel):
 
     def _export_worker(self) -> None:
         """Worker thread: rebuild for each queued Save in turn (no widget access here)."""
+        finished = False
+        try:
+            finished = self._export_loop()
+        finally:
+            if not finished:
+                # The loop died (a bug inside its own error handling): never leave the
+                # exit waiting for a worker that is gone.
+                logger.error("The export worker of %s stopped unexpectedly", self.json_path)
+                with self._export_lock:
+                    self._export_running = False
+                    self._export_pending = None
+                    self._export_fast_done.set()
+                    self._export_idle.set()
+                    if self in _EXPORTING:
+                        _EXPORTING.remove(self)
+
+    def _export_loop(self) -> bool:
         while True:
             with self._export_lock:
                 text = self._export_pending
@@ -2042,16 +2062,16 @@ class TranscriptViewer(tk.Toplevel):
                     self._export_running = False
                     self._export_fast_done.set()
                     self._export_idle.set()
-                    return
+                    self._export_remaining.clear()
+                    if self in _EXPORTING:
+                        _EXPORTING.remove(self)  # nothing left to wait for at exit
+                    return True
             try:
                 self._scan_fast_done.wait()
                 segments = viewer_exports.segments_from_json(text)
                 scan = viewer_exports.ScanResult(
                     self._synced_siblings, self._sibling_plan, self._sibling_unchecked
                 )
-                self._export_remaining = {
-                    p for p, _f in viewer_exports.sibling_files(self.json_path)
-                }
                 with viewer_exports.responsive_threads():
                     report = viewer_exports.update_exports(
                         self.json_path, segments, scan, self._mark_export_fast_done,
@@ -2973,17 +2993,24 @@ def _dirty_viewers() -> list["TranscriptViewer"]:
     return found
 
 
-def confirm_unsaved_before_exit() -> bool:
+def dirty_viewers() -> list["TranscriptViewer"]:
+    """The open viewers that hold unsaved edits (for the app's exit)."""
+    return _dirty_viewers()
+
+
+def confirm_unsaved_before_exit(skip: "Collection[TranscriptViewer]" = ()) -> bool:
     """Exit hook: Save / Discard / Cancel for every viewer with unsaved edits.
 
     False means the exit is cancelled (or a save failed) and the app stays as it is.
     One question per viewer, each in front and naming its file: a combined list could not
     say which transcript a Save or Discard applies to. Edits are never touched until the
     user answers, so Cancel at a later viewer leaves an earlier one saved or still dirty,
-    as chosen. Nothing is asked when no viewer has unsaved edits.
+    as chosen. Nothing is asked when no viewer has unsaved edits. ``skip`` lists viewers
+    already decided (discarded on purpose), which are not asked again.
     """
-    names = [os.path.normcase(os.path.basename(v.json_path)) for v in _dirty_viewers()]
-    for viewer in _dirty_viewers():
+    dirty = [v for v in _dirty_viewers() if v not in skip]
+    names = [os.path.normcase(os.path.basename(v.json_path)) for v in dirty]
+    for viewer in dirty:
         show_folder = names.count(os.path.normcase(os.path.basename(viewer.json_path))) > 1
         try:
             if not viewer._confirm_exit(show_folder):

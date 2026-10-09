@@ -709,3 +709,96 @@ def test_exit_waits_for_the_word_rebuild_of_a_saved_viewer_left_open(
     assert calls[-1] == "destroy" and viewer._export_idle.is_set()
     body = zipfile.ZipFile(Path(json_path).with_suffix(".docx")).read("word/document.xml")
     assert b"Saved while quitting" in body
+
+
+def _viewer_with_a_running_word_rebuild(app: App, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    import time
+
+    import core.writers as writers
+
+    written = _write_outputs(
+        str(tmp_path / "talk"), _segments(), str(tmp_path / "talk.mp4"), ["json", "srt", "docx"]
+    )
+    json_path = next(p for p in written if p.endswith(".json"))
+    viewer = tv.TranscriptViewer(app, json_path)
+    viewer.withdraw()
+    viewer._finish_exports()
+    real = writers.BINARY_WRITERS["docx"]
+
+    def slow(segments, audio_path=""):
+        time.sleep(1.2)
+        return real(segments, audio_path)
+
+    monkeypatch.setitem(writers.BINARY_WRITERS, "docx", slow)
+    viewer.segments[0]["text"] = "Saved while quitting"
+    viewer._dirty = True
+    viewer._save_changes()
+    assert not viewer._export_idle.is_set()
+    return viewer, json_path
+
+
+def _watch_the_wait(app: App, viewer: tv.TranscriptViewer, started: list[str], seen: dict[str, Any]):
+    """During the wait: look at the modal, run one queue-pump tick, then type into the viewer."""
+    app.refresh = lambda: None  # type: ignore[method-assign]
+    app._loop_errors = {}
+    app.transcription_service.dispatch_waiting = lambda: started.append("dispatch")  # type: ignore[attr-defined]
+    app.download_service = types.SimpleNamespace(process_queue=lambda: started.append("downloads"))  # type: ignore[assignment]
+    real_update = app.update
+
+    def pump() -> None:
+        real_update()
+        if "grab" in seen:
+            return
+        grab = app.grab_current()
+        seen["grab"] = grab is not None and grab is not app
+        seen["flag"] = getattr(app, "_exit_waiting", False)
+        app.loop()  # the 500 ms queue pump fires while the exit waits
+        seen["started_during"] = list(started)
+        viewer.segments[0]["text"] = "typed during the wait"  # an edit that slipped through
+        viewer._dirty = True
+
+    app.update = pump  # type: ignore[method-assign]
+
+
+def test_the_exit_wait_is_modal_starts_no_jobs_and_saves_what_arrives_meanwhile(
+    app: App, calls: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, json_path = _viewer_with_a_running_word_rebuild(app, tmp_path, monkeypatch)
+    _answer(monkeypatch, True)  # the second question: Save
+    started: list[str] = []
+    seen: dict[str, Any] = {}
+    _watch_the_wait(app, viewer, started, seen)
+
+    app.on_exit()
+
+    assert seen["grab"] is True  # a modal window held the grab
+    assert seen["flag"] is True and seen["started_during"] == []  # no job started while waiting
+    assert _text_on_disk(json_path) == "typed during the wait"  # saved, not dropped
+    assert calls[-1] == "destroy" and not app._exit_waiting
+    app._closing = True
+
+
+def test_an_edit_made_during_the_wait_can_still_cancel_the_exit(
+    app: App, calls: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, json_path = _viewer_with_a_running_word_rebuild(app, tmp_path, monkeypatch)
+    _answer(monkeypatch, None)  # Cancel
+    _watch_the_wait(app, viewer, [], {})
+
+    app.on_exit()
+
+    assert "destroy" not in calls and viewer._dirty  # the app stays, the edit is still there
+    assert _text_on_disk(json_path) == "Saved while quitting"
+    app._closing = True
+
+
+def test_the_queue_pump_runs_normally_when_no_exit_wait_is_on(app: App) -> None:
+    started: list[str] = []
+    app.refresh = lambda: None  # type: ignore[method-assign]
+    app._loop_errors = {}
+    app.transcription_service.dispatch_waiting = lambda: started.append("dispatch")  # type: ignore[attr-defined]
+    app.download_service = types.SimpleNamespace(process_queue=lambda: started.append("downloads"))  # type: ignore[assignment]
+    app._exit_waiting = False
+    app.loop()
+    assert started == ["dispatch", "downloads"]
+    app._closing = True

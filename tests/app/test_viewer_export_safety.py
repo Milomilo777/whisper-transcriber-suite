@@ -10,6 +10,7 @@ from __future__ import annotations
 import io
 import os
 import shutil
+import threading
 import time
 import zipfile
 from typing import Any
@@ -607,5 +608,57 @@ def test_a_word_file_with_a_damaged_stream_is_reported_as_unreadable(
         assert "talk.docx" in warning and "could not be read or checked" in warning
         assert "does not match" not in warning
         assert docx.read_bytes() == before
+    finally:
+        _close(viewer)
+
+
+def test_a_timeout_before_the_worker_started_still_names_every_waiting_file(
+    root, tmp_path, notices, monkeypatch
+) -> None:
+    json_path = _make(tmp_path, ["srt", "txt", "json"], count=20)
+    _slow_writer(monkeypatch, "txt", 1.0)  # the open-time check sits in this writer
+    viewer = _open(root, json_path, wait=False)
+    try:
+        viewer._start_scan()
+        _edit(viewer)
+        viewer._save_changes()  # the worker is still waiting for the check
+        left = tv.finish_exports_before_exit(timeout=0.2)
+        assert sorted(os.path.basename(p) for p in left) == ["talk.srt", "talk.txt"]
+    finally:
+        _close(viewer)
+
+
+@pytest.mark.filterwarnings("ignore::pytest.PytestUnhandledThreadExceptionWarning")
+def test_a_dying_worker_never_leaves_the_exit_waiting(root, tmp_path, notices, monkeypatch) -> None:
+    json_path = _make(tmp_path, ["srt", "json"], count=20)
+    viewer = _open(root, json_path)
+    real_files = ve.sibling_files
+
+    def explode_in_the_worker(path):
+        if threading.current_thread().name == "viewer-export-update":
+            raise RuntimeError("disk gone")
+        return real_files(path)
+
+    monkeypatch.setattr(ve, "sibling_files", explode_in_the_worker)
+    monkeypatch.setattr(ve, "update_exports", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("bug")))
+    try:
+        _edit(viewer)
+        viewer._save_changes()
+        assert viewer._export_idle.wait(5)  # idle is set even though the error handler failed
+        assert viewer not in tv._EXPORTING
+        assert tv.finish_exports_before_exit(timeout=5) == []
+    finally:
+        monkeypatch.undo()
+        _close(viewer)
+
+
+def test_a_finished_viewer_leaves_the_exit_registry(root, tmp_path, notices) -> None:
+    json_path = _make(tmp_path, ["srt", "json"])
+    viewer = _open(root, json_path)
+    try:
+        _edit(viewer)
+        viewer._save_changes()
+        viewer._finish_exports()
+        assert viewer not in tv._EXPORTING and not viewer._export_remaining
     finally:
         _close(viewer)

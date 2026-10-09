@@ -22,6 +22,7 @@ from app.dialogs.quick_start import QuickStartChoice, QuickStartDialog, apply_ch
 from app.dialogs import share_page
 from app import desktop_alert, mac_native, shortcuts
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
+from app.dialogs.transcript_viewer import dirty_viewers as _dirty_viewers_now
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
 from app.domain.task_outputs import (
     pick_transcript_json,
@@ -723,26 +724,76 @@ def _finish_viewer_exports(app: Any) -> None:
     """
     from app.dialogs.transcript_viewer import finish_exports_before_exit
 
-    base = getattr(app, "_base_title", "Whisper Transcriber Suite")
-    set_title = getattr(app, "title", None)
+    dialog: tk.Toplevel | None = None
 
     def _say(_working: int) -> None:
-        if set_title is not None:
-            set_title(f"{base} — finishing exports before closing…")
+        nonlocal dialog
+        if dialog is None and isinstance(app, tk.Misc):
+            dialog = _open_exit_wait_dialog(app)
 
     app._exit_prompt_open = True  # a second close press must not stack another exit
+    # While waiting, the queue pump starts nothing new (loop()); results that finish are
+    # still collected and saved by their own pollers.
+    app._exit_waiting = True
     try:
         left = finish_exports_before_exit(on_wait=_say, pump=getattr(app, "update", None))
     except Exception:  # noqa: BLE001 - the transcripts are saved: never block the exit
         logger.exception("Waiting for the viewers' exports failed")
         left = []
     finally:
+        app._exit_waiting = False
         app._exit_prompt_open = False
+        if dialog is not None:
+            try:
+                dialog.grab_release()
+                dialog.destroy()
+            except tk.TclError:
+                pass
     if left:
         app.log(
             "Closed before these exports were rebuilt; they keep the old text: "
             + ", ".join(os.path.basename(p) for p in left)
         )
+
+
+def _open_exit_wait_dialog(app: tk.Misc) -> tk.Toplevel | None:
+    """A small modal "Finishing exports before closing" window; None if it cannot be made.
+
+    The grab keeps clicks and keys away from the transcript viewers and the main window while
+    the exports finish (a viewer typed into now would lose its edits at the exit). It stands
+    on its own, centred on the screen, so it is also seen when the app was hidden in the tray.
+    """
+    try:
+        dlg = tk.Toplevel(app)
+        dlg.title("Whisper Transcriber Suite")
+        dlg.resizable(False, False)
+        dlg.protocol("WM_DELETE_WINDOW", lambda: None)  # it closes itself
+        body = ttk.Frame(dlg, padding=20)
+        body.pack(fill="both", expand=True)
+        ttk.Label(body, text="Finishing exports before closing…",
+                  font=("TkDefaultFont", 11, "bold")).pack(anchor="w")
+        ttk.Label(
+            body, justify="left", wraplength=360,
+            text="Your transcripts are saved. The other files next to them are being "
+                 "updated with the same text; the app closes as soon as they are done.",
+        ).pack(anchor="w", pady=(6, 10))
+        bar = ttk.Progressbar(body, mode="indeterminate", length=320)
+        bar.pack(fill="x")
+        bar.start(20)
+        dlg.update_idletasks()
+        x = max(0, (dlg.winfo_screenwidth() - dlg.winfo_reqwidth()) // 2)
+        y = max(0, (dlg.winfo_screenheight() - dlg.winfo_reqheight()) // 3)
+        dlg.geometry(f"+{x}+{y}")
+        try:
+            dlg.attributes("-topmost", True)
+        except tk.TclError:
+            pass
+        dlg.update()
+        dlg.grab_set()
+        return dlg
+    except tk.TclError:
+        logger.warning("Could not show the exit wait window", exc_info=True)
+        return None
 
 
 class App(tk.Tk):
@@ -1120,6 +1171,7 @@ class App(tk.Tk):
         # touching destroyed widgets. Keep watched_after_ids so
         # each path only schedules ONE stability-check ladder.
         self._closing = False
+        self._exit_waiting = False  # True while on_exit waits for viewer exports (loop() starts nothing)
         # Cmd+Q / app-menu Quit / Dock Quit (macOS) reach on_exit, which reads
         # tray, _exit_from_tray and _closing: install only once they exist.
         self._install_quit_handler()
@@ -2249,7 +2301,22 @@ class App(tk.Tk):
         # The process ends right after the teardown below and kills worker threads, so a
         # transcript viewer's export rebuild (a Word file can take tens of seconds) is
         # waited for first, within a limit, with the window still showing why.
+        decided = list(_dirty_viewers_now())  # kept dirty on purpose (Discard), not asked again
         _finish_viewer_exports(self)
+        # Nothing could be typed into a viewer meanwhile (the wait window holds the grab),
+        # but whatever became dirty anyway is asked about now, never dropped by the exit.
+        self._exit_prompt_open = True
+        try:
+            try:
+                if not confirm_unsaved_viewers_before_exit(decided):  # asks only if one is dirty
+                    self._exit_from_tray = False
+                    return
+            except Exception:  # noqa: BLE001 - edits are at stake: stay open
+                logger.exception("Transcript viewer exit check failed")
+                self._exit_from_tray = False
+                return
+        finally:
+            self._exit_prompt_open = False
 
         # Confirmation passed (or there was nothing to confirm): flip the
         # closing flag so watcher events / stability-checks in flight
@@ -6834,6 +6901,9 @@ class App(tk.Tk):
             ("dispatch", self.transcription_service.dispatch_waiting),
             ("downloads", self.download_service.process_queue),
         )
+        if getattr(self, "_exit_waiting", False):
+            # The app is finishing viewer exports before it closes: no job may start now.
+            steps = steps[:1]
         try:
             # One failing step (e.g. Popen blocked by an antivirus inside
             # start_worker) must not skip the others or stop the pump.
