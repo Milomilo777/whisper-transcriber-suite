@@ -327,7 +327,8 @@ def sync_transcribe_empty_state(app: "App") -> None:
     if app.transcribe_empty_headline_var.get() != headline:
         app.transcribe_empty_headline_var.set(headline)
     if app.queue:
-        frame.pack_forget()
+        if frame.winfo_manager():
+            frame.pack_forget()
     elif not frame.winfo_manager():
         frame.pack(fill="x", before=app.transcribe_browse_row)
 
