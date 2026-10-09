@@ -363,6 +363,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   though the viewer is the front window. It now acts on the window macOS calls the key window (asked
   from AppKit) and still never on the main window.
 - **macOS: Persian and Arabic file names read left to right in the queues and the Last result card.** Tk on macOS takes the line direction from the first strong letter, so "name.wav" was drawn as "wav.name" and the bullet or check mark jumped to the right end; the queue and download rows and the result card now start such strings with an invisible left-to-right mark, as Tk does on Windows (`app/theme/bidi_display.py`). Transcript lines are unchanged, and Windows and Linux are unaffected.
+- **The idle app no longer keeps a Mac busy.** The 500 ms queue refresh rewrote the empty-state
+  headline on every round even when its text had not changed, and each write repainted the window;
+  an idle app used about 40% of a core on macOS and now uses under 2%. The text is written only when it changes.
 - **Work offline: UDP and name-lookup gaps closed.** The network guard now also refuses UDP
   datagrams sent to another computer (`sendto` / `sendmsg`), the `gethostbyname`,
   `gethostbyaddr` and `getnameinfo` lookups and calls made on `_socket` directly, through a
