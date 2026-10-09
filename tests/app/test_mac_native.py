@@ -1594,3 +1594,14 @@ def test_viewer_json_folder_button_is_unchanged_on_windows_and_linux(
     finally:
         viewer._dirty = False
         viewer._on_close()
+
+def test_open_document_calls_a_moment_apart_arrive_as_one_batch(aqua: None, host: _Host) -> None:
+    """Finder sends a three-file Open With as two calls about 0.2 s apart (macOS 13)."""
+    mac_native.install(host)
+    host.tk.call("::tk::mac::OpenDocument", "/music/a.mp3", "/music/b.mp3")
+    assert not _pump(host, lambda: host.open_paths.called, seconds=0.2)  # type: ignore[attr-defined]
+    host.tk.call("::tk::mac::OpenDocument", "/music/c.mp3")
+    assert _pump(host, lambda: host.open_paths.called)  # type: ignore[attr-defined]
+    host.open_paths.assert_called_once_with(  # type: ignore[attr-defined]
+        ["/music/a.mp3", "/music/b.mp3", "/music/c.mp3"], require_media=True)
+    assert len(host.tk.splitlist(host.tk.call("after", "info"))) == 0

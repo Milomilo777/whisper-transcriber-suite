@@ -39,6 +39,7 @@ HELP_MENU_NAME = "help"
 
 # How often a queued Finder file checks whether the app can take it yet.
 DRAIN_POLL_MS = 400
+OPEN_BATCH_MS = 350  # quiet time that ends one Finder open batch
 
 #: Wording on macOS for the actions that open a folder in the file manager.
 REVEAL_LABEL = "Reveal in Finder"
@@ -165,7 +166,24 @@ def queue_documents(app: Any, paths: list[str]) -> None:
     if not paths:
         return
     app._mac_pending_opens.extend(paths)
-    schedule_drain(app)
+    # Finder hands a multi-file "Open With" to Tk as several OpenDocument calls
+    # a fraction of a second apart: wait for a quiet moment so they arrive in
+    # the queue as one batch (otherwise only the last call's files end up
+    # selected). Each new call restarts the wait.
+    cancel_drain(app)
+    schedule_drain(app, OPEN_BATCH_MS)
+
+
+def cancel_drain(app: Any) -> None:
+    """Drop a scheduled drain, if any (a new one is scheduled right after)."""
+    after_id = getattr(app, "_mac_drain_after_id", None)
+    app._mac_drain_after_id = None
+    app._mac_drain_scheduled = False
+    if after_id is not None:
+        try:
+            app.after_cancel(after_id)
+        except tk.TclError:
+            logger.debug("macOS open drain already gone", exc_info=True)
 
 
 def schedule_drain(app: Any, delay_ms: int = 0) -> None:
@@ -174,7 +192,7 @@ def schedule_drain(app: Any, delay_ms: int = 0) -> None:
         return
     app._mac_drain_scheduled = True
     try:
-        app.after(delay_ms, lambda: drain_pending(app))
+        app._mac_drain_after_id = app.after(delay_ms, lambda: drain_pending(app))
     except tk.TclError:
         app._mac_drain_scheduled = False
 
@@ -194,6 +212,7 @@ def ready_for_documents(app: Any) -> bool:
 def drain_pending(app: Any) -> None:
     """Open the queued files, or look again shortly while the app is busy."""
     app._mac_drain_scheduled = False
+    app._mac_drain_after_id = None
     if getattr(app, "_closing", False) or not app._mac_pending_opens:
         return
     if not ready_for_documents(app):
