@@ -101,7 +101,7 @@ def redact_urls(text: str) -> str:
 _LINE_BREAKS = {
     ord("\n"): "\\n", ord("\r"): "\\r", ord("\x0b"): "\\x0b",
     ord("\x0c"): "\\x0c", ord("\x85"): "\\x85",
-    ord(" "): "\\u2028", ord(" "): "\\u2029",
+    ord("\u2028"): "\\u2028", ord("\u2029"): "\\u2029",
 }
 
 

@@ -36,7 +36,7 @@ def _format(msg: str, *args: object, exc: bool = False) -> str:
 
 @pytest.mark.parametrize(
     "separator",
-    ["\n", "\r", "\r\n", "\x0b", "\x0c", "\x85", " ", " "],
+    ["\n", "\r", "\r\n", "\x0b", "\x0c", "\x85", "\u2028", "\u2029"],
     ids=["lf", "cr", "crlf", "vt", "ff", "nel", "ls", "ps"],
 )
 def test_a_line_break_in_an_argument_does_not_start_a_new_line(separator):
