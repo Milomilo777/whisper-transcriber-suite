@@ -198,6 +198,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Update notice: major releases and a monthly reminder.** A release whose first version number is
+  higher (2.x to 3.0) is announced as "Version 3.0 is here: a major new release", and What's new
+  lists up to five highlights instead of three. After Later's 3, 7 and 14 days the bar comes back
+  every 30 days instead of going quiet for good; Skip this version still silences that version, and
+  the bar now waits until no transcription or download is queued or running.
 - **Burn subtitles reports progress and can be stopped.** `core/burn_subs.burn()` now runs ffmpeg
   with `-progress pipe:1` against the probed duration, drains stderr on its own thread, accepts a
   cancel check and hands over the ffmpeg process; its time limit grows with the video (three times

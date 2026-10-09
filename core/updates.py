@@ -16,8 +16,8 @@ Behaviour contract (deliberately conservative — this must never nag):
   * The version comparison is tolerant of a leading ``v`` and of odd
     or pre-release tags (e.g. ``v1.4.0-rc1``); it never raises on a
     malformed tag, it just compares the numeric dotted prefix.
-  * The notice rules (Later = snooze 3 / 7 / 14 days, then only passive
-    signs; Skip this version = silent until a newer one) are pure
+  * The notice rules (Later = snooze 3 / 7 / 14 days, then about once a
+    month; Skip this version = silent until a newer one) are pure
     functions over the config dict, so they are testable without Tk.
     Their keys are local-only: the online config can never set them
     (``core.config.LOCAL_ONLY_KEYS``).
@@ -160,6 +160,14 @@ def is_newer(remote: str, local: str) -> bool:
     return r_padded > l_padded
 
 
+def is_major_jump(remote: str, local: str) -> bool:
+    """True when ``remote``'s first version number is higher than ``local``'s
+    (``2.4.1`` -> ``3.0.0``). An unreadable version on either side is never a jump."""
+    r = _version_tuple(remote)
+    l = _version_tuple(local)
+    return bool(r) and bool(l) and r[0] > l[0]
+
+
 def latest_release_api_url(owner: str, repo: str) -> str:
     """Build the GitHub REST URL for a repo's latest published release."""
     return f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
@@ -220,7 +228,9 @@ def parse_release(text: str) -> ReleaseDetails:
         tag=tag.strip(),
         html_url=html_url.strip(),
         headline=release_headline(body),
-        highlights=release_highlights(body),
+        highlights=release_highlights(
+            body, count=MAJOR_HIGHLIGHT_COUNT, max_chars=MAJOR_HIGHLIGHTS_MAX_CHARS,
+        ),
         assets=tuple(names),
     )
 
@@ -229,11 +239,15 @@ def parse_release(text: str) -> ReleaseDetails:
 # The published release notes start with a "# <name> vX.Y.Z" title, a
 # one-paragraph intro and the "## Download" table, then "## Highlights" bullets
 # (docs/RELEASE_PROCESS.md, step 3). The bar shows the intro's first sentence;
-# "What's new" shows the first three highlights as plain text.
+# "What's new" shows the first three highlights as plain text, or five for a
+# major release (:func:`notice_highlights`). Both budgets give each highlight
+# the same 200 characters, so the first three are the same either way.
 
 _HEADLINE_MAX_CHARS = 160
 _HIGHLIGHT_COUNT = 3
 _HIGHLIGHTS_MAX_CHARS = 600
+MAJOR_HIGHLIGHT_COUNT = 5
+MAJOR_HIGHLIGHTS_MAX_CHARS = 1000
 # Only the start of the body is read: the excerpt lives there.
 _MAX_BODY_CHARS = 20_000
 # "## Highlights", "## ✨ Highlights", "## What's new", "## What’s new".
@@ -326,12 +340,17 @@ def release_headline(body: str) -> str:
     return _clip(first, _HEADLINE_MAX_CHARS)
 
 
-def release_highlights(body: str) -> tuple[str, ...]:
-    """The first three top-level bullets of the "Highlights" section, as plain text.
+def release_highlights(
+    body: str,
+    *,
+    count: int = _HIGHLIGHT_COUNT,
+    max_chars: int = _HIGHLIGHTS_MAX_CHARS,
+) -> tuple[str, ...]:
+    """The first ``count`` top-level bullets of the "Highlights" section, as plain text.
 
     A bullet's indented continuation lines belong to it; nested bullets and
     lines of a following section do not. Each bullet keeps whole sentences
-    up to a third of the 600-character budget. No such section gives ``()``.
+    up to its share of the ``max_chars`` budget. No such section gives ``()``.
     """
     lines = _body_lines(body)
     in_section = False
@@ -355,15 +374,22 @@ def release_highlights(body: str) -> tuple[str, ...]:
             items[-1].append(line)
         else:
             closed = True
-    per_item = _HIGHLIGHTS_MAX_CHARS // _HIGHLIGHT_COUNT
+    per_item = max_chars // count
     out: list[str] = []
     for parts in items:
         text = _plain_text(" ".join(parts))
         if text:
             out.append(_clip_sentences(text, per_item))
-        if len(out) == _HIGHLIGHT_COUNT:
+        if len(out) == count:
             break
     return tuple(out)
+
+
+def notice_highlights(highlights: tuple[str, ...], tag: str, local_version: str) -> tuple[str, ...]:
+    """The highlights "What's new" lists: five for a major release, else three."""
+    if is_major_jump(tag, local_version):
+        return highlights[:MAJOR_HIGHLIGHT_COUNT]
+    return highlights[:_HIGHLIGHT_COUNT]
 
 
 # --- Kind of install and the matching download -------------------------------
@@ -481,8 +507,11 @@ def update_command(app_dir: Path, *, sys_platform: str | None = None) -> str:
 # --- Notice rules (pure; the keys are local-only, see core.config) -----------
 
 #: Days the bar stays away after the 1st, 2nd and 3rd "Later" for one version.
-#: After the 4th "Later" only the passive signs remain (Help menu dot, About line).
 SNOOZE_LADDER_DAYS: tuple[int, ...] = (3, 7, 14)
+#: After the ladder, every further "Later" keeps the bar away this long, so a
+#: user who keeps ignoring a version hears about it about once a month (the
+#: Help menu dot and the About line stay all the time).
+REMIND_EVERY_DAYS = 30
 
 NOTICE_BAR = "bar"
 NOTICE_PASSIVE = "passive"
@@ -555,20 +584,35 @@ def stop_skipping(config: MutableMapping[str, Any]) -> None:
     config["update_skipped_version"] = ""
 
 
-def snooze(config: MutableMapping[str, Any], today: date) -> date | None:
-    """"Later": the next step of the 3 / 7 / 14 day ladder.
+def snooze_days(count: int) -> int:
+    """Days the ``count``-th "Later" keeps the bar away: 3, 7, 14, then 30 each time.
 
-    Returns the day the bar may come back, or ``None`` once the ladder is
-    used up (from then on only the passive signs remain for this version).
+    A count below 1 (a hand-edited config) gets the shortest step.
+    """
+    if count < 1:
+        return SNOOZE_LADDER_DAYS[0]
+    if count <= len(SNOOZE_LADDER_DAYS):
+        return SNOOZE_LADDER_DAYS[count - 1]
+    return REMIND_EVERY_DAYS
+
+
+def snooze(config: MutableMapping[str, Any], today: date) -> date:
+    """"Later": the next step of the 3 / 7 / 14 day ladder, then every 30 days.
+
+    Returns the day the bar may come back. The count stops one past the
+    ladder: from there every "Later" is the monthly reminder.
     """
     count = max(0, _as_int(config.get("update_snooze_count"))) + 1
+    count = min(count, len(SNOOZE_LADDER_DAYS) + 1)
     config["update_snooze_count"] = count
-    if count > len(SNOOZE_LADDER_DAYS):
-        config["update_snooze_until"] = ""
-        return None
-    until = today + timedelta(days=SNOOZE_LADDER_DAYS[count - 1])
+    until = today + timedelta(days=snooze_days(count))
     config["update_snooze_until"] = until.isoformat()
     return until
+
+
+def is_monthly_reminder(config: Mapping[str, Any]) -> bool:
+    """True once the 3 / 7 / 14 day ladder is used up for the version seen."""
+    return _as_int(config.get("update_snooze_count")) > len(SNOOZE_LADDER_DAYS)
 
 
 def _snoozed(config: Mapping[str, Any], today: date) -> bool:
@@ -576,23 +620,23 @@ def _snoozed(config: Mapping[str, Any], today: date) -> bool:
         until = date.fromisoformat(str(config.get("update_snooze_until") or ""))
     except ValueError:
         return False
-    # A date further out than the longest step (a clock that was wrong when
+    # A date further out than the step that set it (a clock that was wrong when
     # Later was clicked) must not hide the bar for months.
-    return today < until <= today + timedelta(days=max(SNOOZE_LADDER_DAYS))
+    step = snooze_days(_as_int(config.get("update_snooze_count")))
+    return today < until <= today + timedelta(days=step)
 
 
 def notice_level(config: Mapping[str, Any], local_version: str, today: date) -> str:
     """How loudly to tell the user about the newest version seen.
 
-    :data:`NOTICE_BAR` (the bar may show), :data:`NOTICE_PASSIVE` (snoozed or
-    the ladder is used up: Help menu dot and About line only) or
-    :data:`NOTICE_NONE` (up to date, nothing seen, or this version skipped).
+    :data:`NOTICE_BAR` (the bar may show), :data:`NOTICE_PASSIVE` (snoozed:
+    Help menu dot and About line only) or :data:`NOTICE_NONE` (up to date,
+    nothing seen, or this version skipped). After the ladder the bar comes
+    back once each monthly snooze has run out.
     """
     latest = str(config.get("update_latest_seen") or "")
     if not latest or not is_newer(latest, local_version) or is_skipped(config, latest):
         return NOTICE_NONE
-    if _as_int(config.get("update_snooze_count")) > len(SNOOZE_LADDER_DAYS):
-        return NOTICE_PASSIVE
     if _snoozed(config, today):
         return NOTICE_PASSIVE
     return NOTICE_BAR
@@ -616,12 +660,27 @@ def passive_sign_version(
     return version_label(latest)
 
 
+def _short_label(tag: str) -> str:
+    """``v3.0.0`` -> ``3.0``, ``v3.1.0`` -> ``3.1``, ``v3`` -> ``3.0``; ``3.0.2``
+    and odd tags stay whole."""
+    label = version_label(tag)
+    if re.fullmatch(r"\d+", label):
+        return f"{label}.0"
+    if not re.fullmatch(r"\d+(\.\d+)+", label):
+        return label
+    parts = label.split(".")
+    while len(parts) > 2 and parts[-1] == "0":
+        parts.pop()
+    return ".".join(parts)
+
+
 def bar_text(tag: str, local_version: str, headline: str) -> str:
-    """The one line the update bar shows."""
-    text = (
-        f"Version {version_label(tag)} is available "
-        f"(you have {version_label(local_version)})."
-    )
+    """The one line the update bar shows; a major release says so."""
+    you_have = f"(you have {version_label(local_version)})."
+    if is_major_jump(tag, local_version):
+        text = f"Version {_short_label(tag)} is here: a major new release {you_have}"
+    else:
+        text = f"Version {version_label(tag)} is available {you_have}"
     return f"{text}  {headline}" if headline else text
 
 
@@ -679,6 +738,6 @@ def check_for_update(timeout: int = _DEFAULT_TIMEOUT_S) -> UpdateInfo | None:
         html_url=details.html_url,
         is_newer=is_newer(details.tag, local_version),
         headline=details.headline,
-        highlights=details.highlights,
+        highlights=notice_highlights(details.highlights, details.tag, local_version),
         assets=details.assets,
     )

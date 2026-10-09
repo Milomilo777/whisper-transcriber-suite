@@ -38,7 +38,7 @@ Faster model loading, a calmer update notice, and **fixes** for
   - a nested detail that is not a highlight of its own
 - **Quiet update bar** instead of a dialog: `What's new`, Download, Later.
 * Third highlight with a [link](https://example.org/x).
-- Fourth highlight, never shown.
+- Fourth highlight, shown only for a major release.
 
 ## Fixes
 
@@ -149,11 +149,24 @@ def test_no_highlights_section_gives_no_highlights() -> None:
     assert u.release_highlights("# Title\n\nIntro.\n\n## Fixes\n\n- a fix\n") == ()
 
 
+def test_a_major_release_gets_five_highlights_within_1000_characters() -> None:
+    long_bullets = "\n".join(f"- {'x' * 50} " * 8 for _ in range(7))
+    highlights = u.release_highlights(
+        "## Highlights\n\n" + long_bullets,
+        count=u.MAJOR_HIGHLIGHT_COUNT, max_chars=u.MAJOR_HIGHLIGHTS_MAX_CHARS,
+    )
+    assert len(highlights) == 5
+    assert sum(len(h) for h in highlights) <= 1000
+    # The first three are exactly what a minor release shows.
+    assert highlights[:3] == u.release_highlights("## Highlights\n\n" + long_bullets)
+
+
 def test_parse_release_reads_excerpt_and_only_uploaded_assets() -> None:
     details = u.parse_release(_release_json())
     assert details.tag == "v1.9.4"
     assert details.headline.startswith("Faster model loading")
-    assert len(details.highlights) == 3
+    # Up to five: the notice keeps three of them unless the release is a major jump.
+    assert len(details.highlights) == 4
     assert details.assets == (
         "WhisperTranscriberSuite-Installer-Windows-v1.9.4.exe",
         "WhisperTranscriberSuite-Portable-Windows-v1.9.4.zip",
@@ -167,8 +180,15 @@ def test_odd_body_or_assets_only_empty_the_details(extra: dict) -> None:
     assert details.headline == "" and details.highlights == () and details.assets == ()
 
 
-def test_check_for_update_carries_the_details(monkeypatch: pytest.MonkeyPatch) -> None:
-    body = _release_json(tag_name="v999.0.0").encode("utf-8")
+@pytest.mark.parametrize(("tag", "count"), [("v999.0.0", 4), (None, 3)])
+def test_check_for_update_carries_the_details(
+    monkeypatch: pytest.MonkeyPatch, tag: str | None, count: int,
+) -> None:
+    from core import __version__ as local_version
+    if tag is None:  # the next minor version of this build
+        major, minor = u._version_tuple(local_version)[:2]
+        tag = f"v{major}.{minor + 1}.0"
+    body = _release_json(tag_name=tag).encode("utf-8")
 
     class _Resp:
         def __enter__(self) -> "_Resp":
@@ -183,7 +203,7 @@ def test_check_for_update_carries_the_details(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(u.urllib.request, "urlopen", lambda *_a, **_k: _Resp())
     info = u.check_for_update(timeout=1)
     assert info is not None and info.is_newer
-    assert info.headline.startswith("Faster") and len(info.highlights) == 3
+    assert info.headline.startswith("Faster") and len(info.highlights) == count
     assert len(info.assets) == 2
 
 
@@ -297,20 +317,31 @@ def test_a_new_version_shows_the_bar() -> None:
     assert u.notice_level(_seen(), "1.9.3", _TODAY) == u.NOTICE_BAR
 
 
-def test_later_snoozes_3_then_7_then_14_days_then_only_passive_signs() -> None:
+def test_later_snoozes_3_then_7_then_14_days_then_once_a_month() -> None:
     config = _seen()
     day = _TODAY
-    for step in (3, 7, 14):
+    for step in (3, 7, 14, 30, 30, 30):
         until = u.snooze(config, day)
-        assert until is not None and until == day + timedelta(days=step)
+        assert until == day + timedelta(days=step)
         assert u.notice_level(config, "1.9.3", day) == u.NOTICE_PASSIVE
         assert u.notice_level(config, "1.9.3", until - timedelta(days=1)) == u.NOTICE_PASSIVE
         assert u.notice_level(config, "1.9.3", until) == u.NOTICE_BAR
+        assert u.passive_sign_version(config, "1.9.3", environ={}) == "1.9.4"
         day = until
-    assert u.snooze(config, day) is None
-    for later in (0, 1, 30, 400):
-        assert u.notice_level(config, "1.9.3", day + timedelta(days=later)) == u.NOTICE_PASSIVE
-    assert u.passive_sign_version(config, "1.9.3", environ={}) == "1.9.4"
+    assert u.REMIND_EVERY_DAYS == 30
+
+
+def test_the_monthly_reminder_comes_back_after_a_long_absence() -> None:
+    # The ladder ran out, then the app was not opened for a year.
+    config = _seen(update_snooze_count=4, update_snooze_until="2026-11-05")
+    assert u.notice_level(config, "1.9.3", date(2027, 10, 6)) == u.NOTICE_BAR
+
+
+def test_the_snooze_count_stops_growing_after_the_ladder() -> None:
+    config = _seen()
+    for _ in range(50):
+        u.snooze(config, _TODAY)
+    assert config["update_snooze_count"] == len(u.SNOOZE_LADDER_DAYS) + 1
 
 
 def test_a_snooze_date_from_a_wrong_clock_does_not_hide_the_bar_for_months() -> None:
@@ -318,6 +349,45 @@ def test_a_snooze_date_from_a_wrong_clock_does_not_hide_the_bar_for_months() -> 
     assert u.notice_level(config, "1.9.3", _TODAY) == u.NOTICE_BAR
     config["update_snooze_until"] = "not a date"
     assert u.notice_level(config, "1.9.3", _TODAY) == u.NOTICE_BAR
+
+
+@pytest.mark.parametrize(
+    ("count", "days_ahead", "level"),
+    [
+        (1, 3, u.NOTICE_PASSIVE), (1, 4, u.NOTICE_BAR),  # a step never hides longer than itself
+        (2, 7, u.NOTICE_PASSIVE), (2, 8, u.NOTICE_BAR),
+        (3, 14, u.NOTICE_PASSIVE), (3, 15, u.NOTICE_BAR),
+        (4, 30, u.NOTICE_PASSIVE), (4, 31, u.NOTICE_BAR),  # the monthly reminder: 30 days
+        (9, 30, u.NOTICE_PASSIVE), (9, 400, u.NOTICE_BAR),
+        (0, 2, u.NOTICE_PASSIVE), (0, 4, u.NOTICE_BAR),  # an odd count: the shortest step
+    ],
+)
+def test_the_clock_skew_guard_follows_the_step(count: int, days_ahead: int, level: str) -> None:
+    config = _seen(
+        update_snooze_count=count,
+        update_snooze_until=(_TODAY + timedelta(days=days_ahead)).isoformat(),
+    )
+    assert u.notice_level(config, "1.9.3", _TODAY) == level
+
+
+def test_skip_still_silences_a_version_in_the_monthly_phase() -> None:
+    config = _seen()
+    for _ in range(5):
+        u.snooze(config, _TODAY)
+    u.skip_version(config, "1.9.4")
+    assert u.notice_level(config, "1.9.3", _TODAY + timedelta(days=400)) == u.NOTICE_NONE
+    assert u.note_latest(config, "1.9.5") is True
+    assert u.notice_level(config, "1.9.3", _TODAY) == u.NOTICE_BAR
+
+
+def test_a_newer_version_restarts_the_ladder_from_the_monthly_phase() -> None:
+    config = _seen()
+    for _ in range(6):
+        u.snooze(config, _TODAY)
+    assert u.note_latest(config, "v1.9.5") is True
+    assert config["update_snooze_count"] == 0 and config["update_snooze_until"] == ""
+    assert u.notice_level(config, "1.9.3", _TODAY) == u.NOTICE_BAR
+    assert u.snooze(config, _TODAY) == _TODAY + timedelta(days=3)
 
 
 def test_skip_is_silent_for_that_version() -> None:
@@ -395,6 +465,44 @@ def test_bar_text() -> None:
         "Version 1.9.4 is available (you have 1.9.3).  Faster."
     )
     assert u.bar_text("v1.9.4", "v1.9.3", "") == "Version 1.9.4 is available (you have 1.9.3)."
+    assert u.bar_text("v2.1.0", "2.0.3", "") == "Version 2.1.0 is available (you have 2.0.3)."
+
+
+@pytest.mark.parametrize(
+    ("tag", "local", "text"),
+    [
+        ("v3.0.0", "2.4.1", "Version 3.0 is here: a major new release (you have 2.4.1)."),
+        ("3.0", "v2.9.9", "Version 3.0 is here: a major new release (you have 2.9.9)."),
+        ("v3.1.0", "2.4.1", "Version 3.1 is here: a major new release (you have 2.4.1)."),
+        ("v3.0.2", "2.4.1", "Version 3.0.2 is here: a major new release (you have 2.4.1)."),
+        ("v10.0.0", "9.12.0", "Version 10.0 is here: a major new release (you have 9.12.0)."),
+        ("v3", "2.4.1", "Version 3.0 is here: a major new release (you have 2.4.1)."),
+        ("v3.0.0-rc1", "2.4.1", "Version 3.0.0-rc1 is here: a major new release (you have 2.4.1)."),
+    ],
+)
+def test_bar_text_of_a_major_release(tag: str, local: str, text: str) -> None:
+    assert u.bar_text(tag, local, "") == text
+    assert u.bar_text(tag, local, "Faster.") == f"{text}  Faster."
+
+
+@pytest.mark.parametrize(
+    ("remote", "local", "major"),
+    [
+        ("v3.0.0", "2.4.1", True), ("3", "2.9", True), ("v10.0.0", "9.99.99", True),
+        ("v2.1.0", "2.0.0", False), ("v2.0.1", "2.0.0", False), ("v2.0.0", "2.0.0", False),
+        ("v2.0.0", "3.0.0", False), ("garbage", "2.0.0", False), ("v3.0.0", "", False),
+        ("v3.0.0", "garbage", False),
+    ],
+)
+def test_is_major_jump(remote: str, local: str, major: bool) -> None:
+    assert u.is_major_jump(remote, local) is major
+
+
+def test_notice_highlights_keep_three_for_a_minor_release_and_five_for_a_major_one() -> None:
+    five = ("a", "b", "c", "d", "e")
+    assert u.notice_highlights(five, "v2.1.0", "2.0.0") == ("a", "b", "c")
+    assert u.notice_highlights(five, "v3.0.0", "2.0.0") == five
+    assert u.notice_highlights(five + ("f",), "v3.0.0", "2.0.0") == five
 
 
 # ------------------------------------------------------------ config keys
