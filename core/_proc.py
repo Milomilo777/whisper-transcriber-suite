@@ -60,6 +60,26 @@ def _wait_for_exit(process: Any, timeout: float) -> bool:
         _time.sleep(0.05)
 
 
+def _wait_for_group_exit(pgid: int, timeout: float) -> bool:
+    """Poll until no process is left in group ``pgid`` or ``timeout`` elapses.
+
+    True once the group is empty (or cannot be probed: a member of another
+    user cannot be signalled by us either), False on timeout. Never raises.
+    """
+    import time as _time
+
+    killpg: Any = getattr(os, "killpg")  # POSIX only; this runs on POSIX
+    deadline = _time.monotonic() + max(0.0, timeout)
+    while True:
+        try:
+            killpg(pgid, 0)  # signal 0 only tests that the group exists
+        except OSError:
+            return True
+        if _time.monotonic() >= deadline:
+            return False
+        _time.sleep(0.05)
+
+
 def kill_process_tree(
     process: Any, *, force: bool = False, timeout: float = 5.0
 ) -> None:
@@ -170,8 +190,15 @@ def kill_process_tree(
                     # ffmpeg / demucs) can ignore it and survive, holding
                     # the source/output handle open. Mirror the Windows
                     # graceful->/F escalation: give the group up to
-                    # ``timeout`` to exit, then SIGKILL the group.
-                    if _wait_for_exit(process, timeout):
+                    # ``timeout`` to exit, then SIGKILL the group. The
+                    # parent exiting is not enough: its children may have
+                    # outlived it, so the whole group must be gone.
+                    import time as _time
+
+                    started = _time.monotonic()
+                    if _wait_for_exit(process, timeout) and _wait_for_group_exit(
+                        pgid, timeout - (_time.monotonic() - started)
+                    ):
                         return
                     logger.debug(
                         "graceful SIGTERM for pid %s did not exit within "

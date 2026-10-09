@@ -117,11 +117,13 @@ def test_posix_graceful_no_sigkill_when_group_exits(monkeypatch):
     the graceful terminate is honoured."""
     _force_posix(monkeypatch)
     sigs: list = []
-    monkeypatch.setattr(
-        _proc.os, "killpg",
-        lambda pgid, sig: sigs.append((pgid, sig)),
-        raising=False,
-    )
+
+    def killpg(pgid, sig):
+        if sig == 0:  # the group probe: nobody is left in it
+            raise ProcessLookupError
+        sigs.append((pgid, sig))
+
+    monkeypatch.setattr(_proc.os, "killpg", killpg, raising=False)
     proc = _GracefulProc(pid=777, exit_after_polls=1)
     _proc.kill_process_tree(proc, force=False, timeout=2.0)
 
@@ -130,6 +132,24 @@ def test_posix_graceful_no_sigkill_when_group_exits(monkeypatch):
         f"only SIGTERM expected once the group exits, got {sent!r}"
     )
     assert _FAKE_SIGKILL not in sent
+
+
+def test_posix_graceful_escalates_when_only_the_parent_exited(monkeypatch):
+    """The parent honours SIGTERM but a child in its group ignores it: the
+    group must still get SIGKILL (the pre-fix code returned as soon as the
+    parent was gone and orphaned the child)."""
+    _force_posix(monkeypatch)
+    sigs: list = []
+
+    def killpg(pgid, sig):
+        sigs.append((pgid, sig))  # signal 0 succeeds: the group is not empty
+
+    monkeypatch.setattr(_proc.os, "killpg", killpg, raising=False)
+    proc = _GracefulProc(pid=888, exit_after_polls=1)
+    _proc.kill_process_tree(proc, force=False, timeout=0.2)
+
+    sent = [sig for _pgid, sig in sigs if sig != 0]
+    assert sent == [signal.SIGTERM, _FAKE_SIGKILL]
 
 
 def test_posix_force_sends_sigkill_once(monkeypatch):
