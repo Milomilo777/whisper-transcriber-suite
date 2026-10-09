@@ -336,6 +336,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **The idle app no longer keeps a Mac busy.** The 500 ms queue refresh rewrote the empty-state
+  headline on every round even when its text had not changed, and each write repainted the window;
+  an idle app used about 40% of a core on macOS and now uses under 2%. The text is written only when it changes.
 - **Work offline: UDP and name-lookup gaps closed.** The network guard now also refuses UDP
   datagrams sent to another computer (`sendto` / `sendmsg`), the `gethostbyname`,
   `gethostbyaddr` and `getnameinfo` lookups and calls made on `_socket` directly, through a

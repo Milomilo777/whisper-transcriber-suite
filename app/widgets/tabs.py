@@ -318,11 +318,14 @@ def sync_transcribe_empty_state(app: "App") -> None:
     frame = getattr(app, "transcribe_empty_state", None)
     if frame is None:
         return
-    app.transcribe_empty_headline_var.set(
-        empty_state_headline(
-            bool(getattr(app, "_dnd_ready", False)), bool(app.transcribe_has_sample)
-        )
+    headline = empty_state_headline(
+        bool(getattr(app, "_dnd_ready", False)), bool(app.transcribe_has_sample)
     )
+    # App.refresh() calls this every 500 ms. Writing the unchanged text still fires the
+    # label's variable trace and redraws it, which keeps the window busy on macOS (aqua
+    # repaints the whole window layer: about 38% of a core while idle). Write on change only.
+    if app.transcribe_empty_headline_var.get() != headline:
+        app.transcribe_empty_headline_var.set(headline)
     if app.queue:
         frame.pack_forget()
     elif not frame.winfo_manager():
