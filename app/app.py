@@ -1509,6 +1509,7 @@ class App(tk.Tk):
                     self.bell()
             except Exception:  # noqa: BLE001
                 pass
+        desktop_alert.burn_done(self, out_path)
         self._open_folder(os.path.dirname(out_path) or ".", select=out_path)
 
     def _burn_subs_failed(self, msg: str) -> None:

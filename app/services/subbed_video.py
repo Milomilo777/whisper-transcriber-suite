@@ -16,6 +16,7 @@ import logging
 import os
 from typing import Any
 
+from app import desktop_alert
 from app.domain.task_outputs import task_output_with_ext
 from core import burn_subs
 
@@ -197,6 +198,7 @@ def end_chain(app: Any, dl: Any, status: str, *, error: str = "", burned: str = 
     if status == "finished":
         dl.progress = 100
         app.log(f"✓ Subtitled video: {burned}")
+        desktop_alert.burn_done(app, burned)
     elif status == "cancelled":
         app.log(f"Subtitled video cancelled: {os.path.basename(media or '')} and its transcript are kept.")
     else:

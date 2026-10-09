@@ -18,8 +18,14 @@ click bring its window forward, and nothing here promises that. No pyobjc and no
 The existing "Chime on completion" setting (View menu, ``chime_on_complete``) is the only
 completion-cue setting there is, so it also switches this notification off; no second option.
 A notification is posted only while the person is not looking at the app (see
-``window_has_focus``): a person looking at the window already sees the result card. One per finished job; when
-the last job of a queue of two or more finishes, one summary replaces that job's own notification.
+``window_has_focus``): a person looking at the window already sees the result card.
+
+The banner follows the chime's completion events, one banner per user job, on the job's last stage:
+a finished transcription (``job_done``), a finished download (``download_done``, only when no
+transcription follows it), a finished subtitle burn (``burn_done``: a manual burn, or the end of a
+"Make subtitled video" chain, whose transcription stage posts nothing). When the last transcription
+of a queue of two or more finishes, one summary replaces that job's own banner. Failures and
+cancellations post nothing (neither does the chime).
 """
 from __future__ import annotations
 
@@ -68,13 +74,15 @@ _SURROGATE = re.compile(r"[\ud800-\udfff]")
 _batch: dict[str, Any] = {"count": 0, "last_end": None}
 _threads: list[threading.Thread] = []
 _missing_logged = False
+_nsapp_unknown_logged = False
 
 
 def reset_for_tests() -> None:
-    global _missing_logged
+    global _missing_logged, _nsapp_unknown_logged
     _batch.update(count=0, last_end=None)
     _threads.clear()
     _missing_logged = False
+    _nsapp_unknown_logged = False
 
 
 def join_pending_for_tests(timeout: float = 5.0) -> None:
@@ -178,7 +186,8 @@ def window_has_focus(app: Any) -> bool:
 
     Each test alone misses a case (macOS 13, measured): a minimised main window leaves the app
     active with a focus widget; another app in front or Cmd+H leaves a focus widget while the app is
-    inactive. A Tk that cannot answer counts as "no focus": an extra banner is harmless.
+    inactive. A Tk or an NSApp that cannot answer counts as "no focus" (logged once for NSApp): an
+    extra banner is harmless, a missing one is not.
     """
     try:
         if str(app.state()) in ("iconic", "withdrawn"):
@@ -192,7 +201,15 @@ def window_has_focus(app: Any) -> bool:
             return False
     except (tk.TclError, AttributeError):
         return False
-    return _ns_app_active() is not False
+    active = _ns_app_active()
+    if active is None:
+        global _nsapp_unknown_logged
+        if not _nsapp_unknown_logged:
+            _nsapp_unknown_logged = True
+            logger.info("Desktop notification: cannot ask NSApp whether the app is active; "
+                        "the app counts as being in the background")
+        return False
+    return active
 
 
 def _cue_enabled(app: Any) -> bool:
@@ -226,10 +243,21 @@ def _count_this_job(task: Any, queue_busy: bool) -> int:
     return total
 
 
+def _enabled(app: Any) -> bool:
+    """macOS, not shutting down, and the completion-cue setting is on."""
+    return mac_native.is_aqua(app) and not getattr(app, "_closing", False) and _cue_enabled(app)
+
+
+def _burn_follows(task: Any) -> bool:
+    """True for the transcription stage of a "Make subtitled video" chain: the burn is its last
+    stage and posts the banner."""
+    return bool(getattr(getattr(task, "source_download", None), "make_subbed_video", False))
+
+
 def job_done(app: Any, task: Any, output_count: int) -> None:
     """A transcription job finished: notify the desktop (macOS, app in the background). Never raises."""
     try:
-        if not mac_native.is_aqua(app) or getattr(app, "_closing", False) or not _cue_enabled(app):
+        if not _enabled(app) or _burn_follows(task):
             return
         busy = _pending(app, task)
         total = _count_this_job(task, busy)
@@ -239,10 +267,43 @@ def job_done(app: Any, task: Any, output_count: int) -> None:
             post_notification(f"Queue done: {total} files transcribed", APP_TITLE)
             return
         name = os.path.basename(str(getattr(task, "file_path", "")))
-        post_notification(
-            f"Done: {name} ({output_count} output file{'' if output_count == 1 else 's'})", APP_TITLE)
+        if getattr(task, "no_speech", False):
+            text = f"Finished, but no speech was recognised: {name}"
+        elif output_count == 0:
+            text = f"Finished, but no output files were found: {name}"
+        else:
+            text = f"Done: {name} ({output_count} output file{'' if output_count == 1 else 's'})"
+        post_notification(text, APP_TITLE)
     except Exception:  # noqa: BLE001 - a notification must never break the result card
         logger.exception("Desktop notification failed")
+
+
+def job_ended(app: Any, task: Any) -> None:
+    """A transcription job ended in any way (done, failed, cancelled): when nothing else waits or
+    runs the queue is idle, so the finished-jobs count of that queue run starts over. Never raises."""
+    try:
+        if mac_native.is_aqua(app) and not _pending(app, task):
+            _batch.update(count=0, last_end=None)
+    except Exception:  # noqa: BLE001
+        logger.debug("Desktop notification: could not reset the queue count", exc_info=True)
+
+
+def _notify_if_away(app: Any, text: str) -> None:
+    try:
+        if _enabled(app) and not window_has_focus(app):
+            post_notification(text, APP_TITLE)
+    except Exception:  # noqa: BLE001 - a notification must never break the completion code
+        logger.exception("Desktop notification failed")
+
+
+def download_done(app: Any, saved_path: str) -> None:
+    """A download finished and nothing (no transcription) follows it. Never raises."""
+    _notify_if_away(app, f"Downloaded: {os.path.basename(str(saved_path))}")
+
+
+def burn_done(app: Any, out_path: str) -> None:
+    """A subtitle burn finished (the last stage of a chained download, or a manual burn)."""
+    _notify_if_away(app, f"Subtitled video ready: {os.path.basename(str(out_path))}")
 
 
 def chime_menu_label(widget: Any) -> str:

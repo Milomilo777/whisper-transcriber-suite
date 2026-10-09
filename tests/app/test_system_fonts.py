@@ -222,3 +222,33 @@ def test_real_sv_ttk_fonts_are_switched_on_aqua_and_untouched_elsewhere(
         assert family == system_fonts.SYSTEM_UI_FAMILY
         assert size == before[name][1]
         assert weight == ("bold" if "Semibold" in before[name][0] else "normal")
+
+
+# ----------------------------- the real call sites (smtv hero, audio meter) with aqua forced
+
+def _text_fonts(canvas: tk.Canvas) -> list[str]:
+    return [str(canvas.itemcget(item, "font")) for item in canvas.find_all() if canvas.type(item) == "text"]
+
+
+@pytest.mark.parametrize(("is_aqua", "expect_system"), [(True, True), (False, False)])
+def test_smtv_hero_and_audio_meter_use_the_system_font_only_on_aqua(
+        monkeypatch: pytest.MonkeyPatch, themed_root: tk.Tk, is_aqua: bool, expect_system: bool) -> None:
+    pytest.importorskip("PIL.ImageTk")
+    from app.widgets import audio_visualizer, smtv_tab
+
+    monkeypatch.setattr(mac_native, "is_aqua", lambda _w: is_aqua)
+    state = smtv_tab._TabState(SimpleNamespace())
+    try:
+        hero = smtv_tab._build_hero(SimpleNamespace(), state, themed_root)
+        state.redraw_hero()
+        hero_fonts = _text_fonts(hero)
+        viz = audio_visualizer.AudioVisualizer(tk.Frame(themed_root))
+        viz.frame.pack()
+        themed_root.update()
+        meter_fonts = _text_fonts(viz.canvas)
+    finally:
+        state._pool.shutdown(wait=False)
+    assert len(hero_fonts) == 3 and meter_fonts
+    for font in hero_fonts + meter_fonts:
+        assert (system_fonts.SYSTEM_UI_FAMILY in font) is expect_system, font
+        assert ("Segoe" in font) is not expect_system, font

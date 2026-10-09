@@ -434,8 +434,13 @@ PASS app_active: NSApp isActive=1 isHidden=0; wm state='normal'; focus -displayo
   `osascript -e 'on run argv' -e 'display notification (item 1 of argv) with title (item 2 of argv)' -e 'end run' -- TEXT TITLE`.
   23 awkward strings (quotes, backslashes, new lines, a leading `-`, `--`, `-e`, Persian with a
   zero-width non-joiner, emoji, 3000 characters, an attempted `do shell script`) came back from
-  `osascript` byte for byte and none ran as code. One notification per finished job; when the last
-  job of a queue of two or more finishes, one summary replaces that job's own. Click behaviour: the
+  `osascript` byte for byte and none ran as code. It follows the chime's completion events, one banner
+  per user job on its last stage: a finished transcription, a finished download (only when no
+  transcription follows it) and a finished subtitle burn (a manual burn, or the end of a "Make
+  subtitled video" chain, whose transcription stage posts nothing). When the last transcription of a
+  queue of two or more finishes, one summary replaces that job's own banner; the count starts over when
+  the queue goes idle. A job with no output files, or no recognised speech, says so instead of
+  "Done". Failures and cancellations post nothing. Click behaviour: the
   banner belongs to Script Editor (the host of `osascript`), so a click opens Script Editor and cannot
   bring this app forward; the app does not promise otherwise.
 - **When the app counts as "in the background".** Tk's focus alone is wrong: measured with the real app,
@@ -450,7 +455,8 @@ PASS app_active: NSApp isActive=1 isHidden=0; wm state='normal'; focus -displayo
   | another app in front | a widget (or none) | normal | 0 | yes |
 
   The app therefore posts unless the main window is on screen, Tk has a focus widget and
-  `[NSApp isActive]` (read with `ctypes`, like the probe) is not false. In the VM each row behaved as
+  `[NSApp isActive]` (read with `ctypes`, like the probe) is true; if NSApp cannot be asked the app counts
+  as being in the background (logged once). In the VM each row behaved as
   the last column says, and with the chime setting off nothing was posted.
 
 Manual checks on a Mac (macOS 13 done in the VM; 10.15 still to do): flip System Settings >

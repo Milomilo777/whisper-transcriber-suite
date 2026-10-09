@@ -44,8 +44,8 @@ _THEME_FONTS: dict[str, bool] = {
 def apply(root: Any) -> bool:
     """Give sv_ttk's named fonts the system family on macOS; True when a font changed.
 
-    Safe to call after every theme switch: a font already right is left alone. A no-op, without a
-    single Tcl call, where Tk is not Aqua.
+    Safe to call after every theme switch: a font already right is left alone. Where Tk is not Aqua it
+    is a no-op: one ``tk windowingsystem`` query and no font call.
     """
     if not mac_native.is_aqua(root):
         return False

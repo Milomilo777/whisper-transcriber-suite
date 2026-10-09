@@ -26,8 +26,8 @@ _REAL_NS_APP_ACTIVE = da._ns_app_active   # before the autouse stub replaces it
 
 
 def _task(path: str = "/media/talk.mp4", *, start: float | None = 100.0, end: float | None = 160.0,
-          status: str = "finished") -> Any:
-    return SimpleNamespace(file_path=path, start_time=start, end_time=end, status=status)
+          status: str = "finished", **extra: Any) -> Any:
+    return SimpleNamespace(file_path=path, start_time=start, end_time=end, status=status, **extra)
 
 
 def _app(*, aqua: bool = True, focused: bool = False, queue: list[Any] | None = None,
@@ -393,13 +393,18 @@ def test_an_inactive_app_with_a_leftover_tk_focus_counts_as_not_focused(
     assert len(posted) == 1
 
 
-def test_when_nsapp_cannot_be_asked_the_tk_focus_decides(
-        monkeypatch: pytest.MonkeyPatch, posted: list[tuple[str, str]]) -> None:
+def test_when_nsapp_cannot_be_asked_the_app_counts_as_not_focused_and_says_so_once(
+        monkeypatch: pytest.MonkeyPatch, posted: list[tuple[str, str]],
+        caplog: pytest.LogCaptureFixture) -> None:
+    # The measured case (Finder or Cmd+H in front) leaves a Tk focus widget: an unknown NSApp
+    # answer must not fall back to trusting it.
     monkeypatch.setattr(da, "_ns_app_active", lambda: None)
-    da.job_done(_app(focused=True), _task(), 1)
-    assert posted == []
-    da.job_done(_app(focused=False), _task(), 1)
-    assert len(posted) == 1
+    with caplog.at_level(logging.INFO, logger=da.logger.name):
+        da.job_done(_app(focused=True), _task(), 1)
+        da.job_done(_app(focused=True), _task(), 1)
+        da.job_done(_app(focused=False), _task(), 1)
+    assert len(posted) == 3
+    assert sum("NSApp" in r.getMessage() for r in caplog.records) == 1
 
 
 def test_an_app_double_without_a_window_state_is_judged_by_focus_alone(
@@ -434,6 +439,223 @@ def test_nsapp_answer_failures_are_none_not_exceptions(monkeypatch: pytest.Monke
     assert da._ns_app_active() is None
     monkeypatch.setattr(da.ctypes.util, "find_library", lambda name: "/nonexistent/libobjc.dylib")
     assert da._ns_app_active() is None          # the library cannot be loaded: None, not OSError
+
+
+# -------------------------------------------------- wording when nothing was written
+
+def test_a_job_with_no_output_files_is_not_called_done(posted: list[tuple[str, str]]) -> None:
+    da.job_done(_app(), _task("/m/a.mp4"), 0)
+    assert posted == [("Finished, but no output files were found: a.mp4", da.APP_TITLE)]
+
+
+def test_a_job_that_recognised_no_speech_says_so(posted: list[tuple[str, str]]) -> None:
+    da.job_done(_app(), _task("/m/a.mp4", no_speech=True), 3)
+    assert posted == [("Finished, but no speech was recognised: a.mp4", da.APP_TITLE)]
+    da.job_done(_app(), _task("/m/b.mp4", no_speech=True), 0)
+    assert posted[-1][0] == "Finished, but no speech was recognised: b.mp4"
+
+
+# ---------------------------- the same completion events as the chime, one banner per user job
+
+def _chain(subbed: bool) -> Any:
+    return SimpleNamespace(make_subbed_video=subbed)
+
+
+def test_the_transcription_inside_a_subtitled_video_chain_posts_nothing(
+        posted: list[tuple[str, str]]) -> None:
+    da.job_done(_app(), _task("/m/talk.mp4", source_download=_chain(True)), 2)
+    assert posted == []                    # the burn's end is that job's last stage
+
+
+def test_a_chained_transcription_is_not_counted_in_the_queue_summary(
+        posted: list[tuple[str, str]]) -> None:
+    chained = _task("/m/c.mp4", start=1, end=2, source_download=_chain(True))
+    a, b = _task("/m/a.mp4", start=3, end=4), _task("/m/b.mp4", start=5, end=6)
+    app = _app(queue=[chained, a, b])
+    b.status = "waiting"
+    da.job_done(app, chained, 1)
+    da.job_done(app, a, 1)
+    b.status = "finished"
+    da.job_done(app, b, 1)
+    assert posted[-1][0] == "Queue done: 2 files transcribed"
+
+
+def test_a_plain_auto_transcription_after_a_download_still_posts(posted: list[tuple[str, str]]) -> None:
+    da.job_done(_app(), _task("/m/talk.mp4", source_download=_chain(False)), 1)
+    assert len(posted) == 1
+
+
+def test_a_finished_download_posts_one_banner(posted: list[tuple[str, str]]) -> None:
+    da.download_done(_app(), "/media/clip.mp4")
+    assert posted == [("Downloaded: clip.mp4", da.APP_TITLE)]
+
+
+def test_a_finished_burn_posts_one_banner(posted: list[tuple[str, str]]) -> None:
+    da.burn_done(_app(), "/media/clip-subbed.mp4")
+    assert posted == [("Subtitled video ready: clip-subbed.mp4", da.APP_TITLE)]
+
+
+@pytest.mark.parametrize("hook_name", ["download_done", "burn_done"])
+def test_download_and_burn_banners_follow_the_same_rules_as_the_job_banner(
+        hook_name: str, monkeypatch: pytest.MonkeyPatch, posted: list[tuple[str, str]]) -> None:
+    hook = getattr(da, hook_name)
+    hook(_app(focused=True), "/m/x.mp4")
+    hook(_app(chime=False), "/m/x.mp4")
+    hook(_app(aqua=False), "/m/x.mp4")
+    hook(_app(closing=True), "/m/x.mp4")
+    hook(object(), "/m/x.mp4")
+    assert posted == []
+    monkeypatch.setattr(da, "_ns_app_active", lambda: False)
+    hook(_app(focused=True), "/m/x.mp4")        # another app in front
+    assert len(posted) == 1
+
+
+def test_a_download_or_burn_does_not_touch_the_queue_count(posted: list[tuple[str, str]]) -> None:
+    a, b = _task("/m/a.mp4", start=1, end=2), _task("/m/b.mp4", start=3, end=4)
+    app = _app(queue=[a, b])
+    b.status = "waiting"
+    da.job_done(app, a, 1)
+    da.download_done(app, "/m/d.mp4")
+    da.burn_done(app, "/m/d-subbed.mp4")
+    b.status = "finished"
+    da.job_done(app, b, 1)
+    assert posted[-1][0] == "Queue done: 2 files transcribed"
+
+
+def _download_task() -> Any:
+    return SimpleNamespace(
+        url="https://x", folder="/tmp", format_label="mp4", format_info={}, title="T",
+        subtitles_enabled=False, subtitle_lang="", detected_language="en", process=None,
+        status="running", progress=0, start_time=0.0, end_time=None, cancelled=False,
+        paused=False, history_id=0, caption_only=False, make_subbed_video=False)
+
+
+class _DownloadApp:
+    def __init__(self, auto: bool) -> None:
+        self.app_config = {"auto_transcribe_after_download": auto}
+        self.download_queue: list[Any] = []
+        self.download_current = None
+        self.history = None
+        self.enqueued: list[Any] = []
+        self.logs: list[str] = []
+        self.download_service = SimpleNamespace(_finish_history=lambda *a, **k: None)
+
+    def log(self, msg: str) -> None:
+        self.logs.append(msg)
+
+    def refresh_download_queue(self) -> None:
+        pass
+
+    def enqueue_transcription_from_download(self, path: str, language: str, source_download: Any = None) -> None:
+        self.enqueued.append(path)
+
+
+def _finish_download(monkeypatch: pytest.MonkeyPatch, tmp_path: Any, *, auto: bool,
+                     status: str = "finished", saved: bool = True) -> tuple[list[str], Any]:
+    from app.services.download_service import DownloadService
+
+    media = tmp_path / "clip.mp4"
+    media.write_bytes(b"v")
+    seen: list[str] = []
+    monkeypatch.setattr(da, "download_done", lambda app, path: seen.append(path))
+    app = _DownloadApp(auto)
+    svc = DownloadService(app)  # type: ignore[arg-type]
+    monkeypatch.setattr(svc, "process_queue", lambda: None)
+    task = _download_task()
+    svc._finish(task, status, saved_path=str(media) if saved else None)  # type: ignore[arg-type]
+    return seen, task
+
+
+def test_a_download_that_ends_there_posts_its_banner(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
+    seen, _task_ = _finish_download(monkeypatch, tmp_path, auto=False)
+    assert seen == [str(tmp_path / "clip.mp4")]
+
+
+def test_a_download_that_hands_off_to_transcription_posts_no_banner_yet(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
+    seen, task = _finish_download(monkeypatch, tmp_path, auto=True)
+    assert task.status == "transcribing"
+    assert seen == []                       # the transcription's end is the last stage
+
+
+def test_a_failed_download_posts_no_banner(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
+    seen, _t = _finish_download(monkeypatch, tmp_path, auto=False, status="error", saved=False)
+    assert seen == []
+
+
+def test_a_chain_that_ends_finished_posts_the_burn_banner(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services import subbed_video
+
+    seen: list[str] = []
+    monkeypatch.setattr(da, "burn_done", lambda app, path: seen.append(path))
+    dl = SimpleNamespace(status="burning", saved_path="/m/clip.mp4", burned_path=None, progress=0)
+    app = SimpleNamespace(download_service=None, log=lambda m: None, refresh_download_queue=lambda: None)
+    subbed_video.end_chain(app, dl, "finished", burned="/m/clip-subbed.mp4")
+    assert seen == ["/m/clip-subbed.mp4"]
+    seen.clear()
+    subbed_video.end_chain(app, SimpleNamespace(status="burning", saved_path="/m/c.mp4", burned_path=None,
+                                                progress=0), "error", error="x")
+    assert seen == []
+
+
+def test_the_manual_burn_posts_its_banner(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app import app as appmod
+
+    seen: list[str] = []
+    monkeypatch.setattr(da, "burn_done", lambda app, path: seen.append(path))
+    fake = SimpleNamespace(log=lambda m: None, chime_on_complete_var=None, _open_folder=lambda *a, **k: None)
+    appmod.App._burn_subs_done(fake, "/m/clip-subbed.mp4")  # type: ignore[arg-type]
+    assert seen == ["/m/clip-subbed.mp4"]
+
+
+# ---------------------------------------------- the queue count resets when the queue goes idle
+
+def test_a_failed_last_job_does_not_carry_the_count_into_the_next_batch(
+        posted: list[tuple[str, str]]) -> None:
+    a, b = _task("/m/a.mp4", start=1, end=2), _task("/m/b.mp4", start=3, end=4, status="running")
+    app = _app(queue=[a, b])
+    da.job_done(app, a, 1)                       # b is running: counted, own banner
+    b.status = "error"                           # b fails: nothing is waiting or running now
+    da.job_ended(app, b)
+    c = _task("/m/c.mp4", start=5, end=6)        # a later batch, started within the gap
+    app.queue.append(c)
+    da.job_done(app, c, 1)
+    assert posted[-1][0] == "Done: c.mp4 (1 output file)"
+
+
+def test_job_ended_keeps_the_count_while_other_jobs_wait_or_run(posted: list[tuple[str, str]]) -> None:
+    a, b, c = (_task(f"/m/{n}.mp4", start=i, end=i + 0.5) for i, n in enumerate("abc", 1))
+    app = _app(queue=[a, b, c])
+    b.status, c.status = "running", "waiting"
+    da.job_done(app, a, 1)
+    da.job_ended(app, b)                         # b ended in an error, c still waits
+    b.status, c.status = "error", "finished"
+    da.job_done(app, c, 1)
+    assert posted[-1][0] == "Queue done: 2 files transcribed"     # a and c finished, b failed
+
+
+def test_job_ended_never_raises() -> None:
+    da.job_ended(object(), None)
+    da.job_ended(SimpleNamespace(queue=None), _task())
+
+
+def test_finish_task_tells_the_alert_module_for_every_ending(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services.transcription_service import TranscriptionService
+
+    ended: list[Any] = []
+    monkeypatch.setattr(da, "job_ended", lambda app, task: ended.append(task))
+    app = SimpleNamespace(history=None, app_config={}, queue=[], update_overall_progress=lambda: None,
+                          log=lambda m: None, show_last_result=lambda t: None,
+                          note_job_success=lambda: None)
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    monkeypatch.setattr(svc, "_post_usage_stats", lambda *a, **k: None)
+    for status, keep in (("running", False), ("error", True), ("cancelled", True)):
+        task = SimpleNamespace(status=status, cancelled=status == "cancelled", end_time=None,
+                               start_time=1.0, output_paths=[], file_path="a.mp4", history_id=0,
+                               source_download=None, no_speech=False)
+        svc.finish_task({"task": task, "temporary": False}, keep_status=keep)
+        assert ended[-1] is task
+    assert len(ended) == 3
 
 
 # ------------------------------------------------------------------- menu wording

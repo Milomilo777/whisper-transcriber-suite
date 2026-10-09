@@ -85,6 +85,7 @@ from collections.abc import Iterable
 from queue import Empty
 from typing import TYPE_CHECKING, Any
 
+from app import desktop_alert
 from app.domain.cookies import (
     COOKIE_BROWSERS,
     COOKIE_EXTRACTION_ERROR_RE,
@@ -2773,6 +2774,10 @@ class DownloadService:
                     app.log(f"-> Now transcribing: {os.path.basename(saved_path)}")
                 except Exception as e:  # noqa: BLE001
                     app.log(f"Auto-transcribe wiring failed: {e}")
+            # macOS banner, like the chime above, but only when no transcription follows: that
+            # stage (or the burn after it) is the job's last and posts the banner.
+            if saved_path and task.status != "transcribing":
+                desktop_alert.download_done(app, saved_path)
         # Phase 3a — finalise the history row.
         self._finish_history(
             task, "error" if chain_error else status,
