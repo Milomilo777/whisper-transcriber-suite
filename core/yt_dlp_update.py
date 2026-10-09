@@ -692,10 +692,17 @@ def _seed(bundled: str, target: Path) -> None:
     with contextlib.suppress(OSError):  # a build rejected earlier (_discard_copy)
         target.with_name(target.name + ".rejected").unlink()
     tmp = target.with_name(target.name + ".copy")
-    shutil.copyfile(bundled, tmp)
-    if os.name != "nt":
-        tmp.chmod(tmp.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-    os.replace(tmp, target)
+    try:
+        shutil.copyfile(bundled, tmp)
+        if os.name != "nt":
+            tmp.chmod(tmp.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        os.replace(tmp, target)
+    except BaseException:
+        # A failed copy or rename (disk full, the target in use) must not
+        # leave an extra yt-dlp-sized file in the cache folder.
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        raise
     _forget_cached_record()
 
 
