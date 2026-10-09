@@ -263,6 +263,29 @@ def test_detect_device_for_ignores_torch_when_ctranslate2_cannot_use_the_gpu(mon
     assert hw.detect_device_for({"device": "auto", "compute_type": "int8"}) == ("cpu", "int8")
 
 
+@pytest.mark.parametrize("config", [
+    {"compute_type": "int8"},
+    {"device": None, "compute_type": "int8"},
+    {"device": "", "compute_type": "int8"},
+    {"device": "  AUTO ", "compute_type": "int8"},
+])
+def test_detect_device_for_treats_a_missing_or_blank_device_as_auto(monkeypatch, config):
+    """A config without a usable "device" value means auto, not CPU/blank:
+    a hand-edited ``"device": ""`` used to reach the engine as an empty name."""
+    monkeypatch.setattr(hw, "device_choice_from_hardware_file", lambda: None)
+    monkeypatch.setattr(hw, "cuda_status", lambda: hw.CudaStatus(
+        usable=True, gpu_present=True, compute_types=("float16",),
+    ))
+    assert hw.detect_device_for(config) == ("cuda", "float16")
+
+
+def test_detect_device_for_normalises_an_explicit_device(monkeypatch):
+    monkeypatch.setattr(hw, "cuda_status", lambda: hw.CudaStatus(
+        usable=True, gpu_present=True, compute_types=("float16",),
+    ))
+    assert hw.detect_device_for({"device": "CPU", "compute_type": "int8"}) == ("cpu", "int8")
+
+
 # ---------- hardware.json written by the old (blind) probe --------------------------
 
 

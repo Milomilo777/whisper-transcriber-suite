@@ -1189,8 +1189,10 @@ def detect_device_for(config: dict[str, Any]) -> tuple[str, str]:
     more: the engine is CTranslate2, and a torch that sees the GPU says
     nothing about whether CTranslate2 can use it.
     """
-    if config.get("device") != "auto":
-        dev = config.get("device", "cpu")
+    # A missing, null or blank "device" means auto (as in the wizard helper
+    # below), not an empty engine name.
+    dev = str(config.get("device") or "auto").strip().lower()
+    if dev != "auto":
         ct = config.get("compute_type", "int8")
         logger.info(
             "device_choice device=%s compute_type=%s source=config", dev, ct
