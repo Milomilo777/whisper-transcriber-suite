@@ -174,3 +174,24 @@ def test_no_timerange_uses_whole_file_unchanged(transcriber, monkeypatch, tmp_pa
     assert flags["sliced"] is False
     assert rec["audio_path"] == str(audio)
     assert "clip_timestamps" not in rec["kwargs"]
+
+
+def test_slice_ffmpeg_never_inherits_the_worker_stdin(transcriber, monkeypatch, tmp_path):
+    # In the worker, stdin is the app's command pipe with a reader thread
+    # blocked on it; an ffmpeg that inherits it hung at the end of the slice
+    # (reproduced on Windows) until the 600 s timeout, so resumes and time
+    # ranges stalled for ten minutes and then fell back to a full run.
+    import subprocess
+
+    t = transcriber
+    seen: dict = {}
+
+    def fake_run(cmd, **kwargs):
+        seen.update(kwargs)
+        return subprocess.CompletedProcess(cmd, 0, b"", b"")
+
+    monkeypatch.setattr(t.subprocess, "run", fake_run)
+    src = tmp_path / "talk.wav"
+    src.write_bytes(b"\0" * 16)
+    t._slice_audio_from(str(src), 12.0, tmp_path / "partials")
+    assert seen.get("stdin") is subprocess.DEVNULL

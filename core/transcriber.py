@@ -2759,7 +2759,16 @@ def _slice_audio_from(
         "-y",
         str(slice_path),
     ]
-    kwargs: dict[str, Any] = {"stdout": subprocess.PIPE, "stderr": subprocess.PIPE}
+    # stdin=DEVNULL: inside the worker, stdin is the command pipe from the
+    # app and a reader thread blocks on it. An ffmpeg that inherits it hangs
+    # at the end of the slice on Windows (it polls stdin for key presses)
+    # until the 600 s timeout, so every resume and time range stalled for
+    # ten minutes and then fell back to a full run.
+    kwargs: dict[str, Any] = {
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+    }
     # CREATE_NO_WINDOW on Windows; start_new_session=True on POSIX so
     # kill_process_tree can killpg this ffmpeg's OWN group if needed.
     kwargs.update(new_session_kwargs())

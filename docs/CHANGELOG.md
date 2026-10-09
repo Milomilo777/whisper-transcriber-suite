@@ -323,6 +323,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Resuming a job and time ranges no longer stall for ten minutes.** The ffmpeg that cuts the
+  audio slice inherited the worker's command pipe as its stdin and, on Windows, hung at the end of
+  the slice until its 600-second timeout; a resume then started over from the beginning. It now
+  gets no stdin and finishes in about a second.
 - **Work offline: UDP and name-lookup gaps closed.** The network guard now also refuses UDP
   datagrams sent to another computer (`sendto` / `sendmsg`), the `gethostbyname`,
   `gethostbyaddr` and `getnameinfo` lookups and calls made on `_socket` directly, through a
