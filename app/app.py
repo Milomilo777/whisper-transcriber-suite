@@ -1057,6 +1057,10 @@ class App(tk.Tk):
 
     def __init__(self) -> None:
         super().__init__()
+        if sys.platform == "darwin":
+            # A blinking insert cursor costs 35-50% CPU in Tk/aqua while a text
+            # box has the focus (measured on macOS 13); a steady caret does not.
+            self.option_add("*Text.insertOffTime", 0)
         # Window-title base carries the version so the user can always see
         # which build is running (title bar / taskbar / Alt-Tab).
         self._base_title = f"Whisper Transcriber Suite v{_APP_VERSION}"
