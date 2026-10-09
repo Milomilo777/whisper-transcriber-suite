@@ -1,6 +1,6 @@
 """Edge cases for the transcript search index (``core.search``).
 
-Covers query words that look like FTS5 operators, a very long token, text
+Covers query words that look like FTS5 operators, a very long word, text
 with bidi control characters, transcript files of the wrong shape or that
 turn unparseable, and a history row whose ``output_paths`` is not valid
 JSON. Hermetic: a throw-away index database under ``tmp_path``.
@@ -48,10 +48,10 @@ def test_operator_words_in_a_query_are_ordinary_words(tmp_path, conn):
     assert [h.text for h in hits] == ["tom said match OR here"]
 
 
-def test_a_very_long_token_is_indexed_and_found(tmp_path, conn):
-    token = "a" * 10000
-    _index(conn, tmp_path / "t.json", token)
-    assert len(sm.search(token, conn=conn)) == 1
+def test_a_very_long_word_is_indexed_and_found(tmp_path, conn):
+    long_word = "a" * 10000
+    _index(conn, tmp_path / "t.json", long_word)
+    assert len(sm.search(long_word, conn=conn)) == 1
 
 
 # --- bidi control characters -------------------------------------------------
