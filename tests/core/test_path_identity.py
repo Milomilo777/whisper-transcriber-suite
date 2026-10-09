@@ -6,7 +6,9 @@ POSIX to show the helpers do not depend on it.
 """
 from __future__ import annotations
 
+import os
 import posixpath
+import sys
 
 import pytest
 
@@ -88,3 +90,45 @@ def test_one_transcript_viewer_key_per_file_on_macos(monkeypatch, posix_normcase
 
     monkeypatch.setattr(paths.sys, "platform", "darwin")
     assert tv._viewer_key("/Media/Talk.json") == tv._viewer_key("/media/TALK.json")
+
+# --- the samefile branch: names that differ but reach one file on disk ----------
+
+def test_same_file_sees_a_hard_link_as_the_same_file(tmp_path):
+    """Only the filesystem knows two hard-linked names are one file; the key compare
+    cannot (the spellings differ), so this fails when the samefile branch is gone."""
+    target = tmp_path / "talk.json"
+    target.write_text("[]", encoding="utf-8")
+    link = tmp_path / "linked-copy.json"
+    try:
+        os.link(target, link)
+    except (OSError, NotImplementedError, AttributeError) as e:
+        pytest.skip(f"hard links are not available here: {e}")
+    assert paths.path_key(str(target)) != paths.path_key(str(link))
+    assert paths.same_file(str(target), str(link))
+    assert paths.same_file(str(link), str(target))
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need a privilege on Windows")
+def test_same_file_sees_a_symlink_as_the_same_file(tmp_path):
+    target = tmp_path / "talk.json"
+    target.write_text("[]", encoding="utf-8")
+    link = tmp_path / "alias.json"
+    os.symlink(target, link)
+    assert paths.same_file(str(target), str(link))
+    assert not paths.same_file(str(link), str(tmp_path / "other.json"))
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="8.3 short names are a Windows feature")
+def test_same_file_sees_an_8_3_short_name_as_the_long_name(tmp_path):
+    import ctypes
+
+    target = tmp_path / "a long transcript name.json"
+    target.write_text("[]", encoding="utf-8")
+    buf = ctypes.create_unicode_buffer(1024)
+    size = ctypes.windll.kernel32.GetShortPathNameW(str(target), buf, len(buf))  # type: ignore[attr-defined]
+    short = buf.value
+    if not size or short.lower() == str(target).lower():
+        pytest.skip("8.3 short names are disabled on this volume")
+    assert paths.same_file(str(target), short)
+    assert paths.same_file(short, str(target))
+    assert not paths.same_file(short, str(tmp_path / "another transcript name.json"))
