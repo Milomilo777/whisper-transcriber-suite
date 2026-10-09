@@ -25,7 +25,8 @@ at a glance whether the project is still green.
 
 - Python 3.11+ on PATH.
 - `pip install -r requirements.txt`
-- `pip install pyright pytest` (dev tools used by `run_tests.bat`).
+- `pip install pyright pytest` (dev tools used by `run_tests.bat`); add `hypothesis` for the
+  property-based tests, which are skipped without it.
 
 ## What the test files are
 

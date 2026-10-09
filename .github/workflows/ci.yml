@@ -70,7 +70,7 @@ jobs:
           # per-test --timeout set in pyproject.toml's addopts — a
           # hung test fails with a thread dump instead of the whole
           # job riding out GitHub's multi-hour default timeout.
-          pip install pytest pytest-cov pytest-timeout pyright responses
+          pip install pytest pytest-cov pytest-timeout pyright responses hypothesis
 
       # Ubuntu apt-python3 doesn't ship tkinter by default; the
       # Tk-touching unit tests (after-callback cancellation, the

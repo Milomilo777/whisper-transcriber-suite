@@ -108,6 +108,8 @@ def _run(argv: list[str]) -> None:
         logger.warning("Desktop notification: osascript did not finish in %d s", OSASCRIPT_TIMEOUT_S)
     except OSError as exc:
         logger.warning("Desktop notification could not start osascript: %s", exc)
+    except Exception:  # noqa: BLE001 - a worker thread has no caller to receive it
+        logger.exception("Desktop notification failed unexpectedly")
     else:
         if done.returncode != 0:
             detail = (done.stderr or b"").decode("utf-8", "replace").strip()

@@ -189,7 +189,7 @@ def test_subprocess_is_started_without_a_shell_and_with_a_timeout(monkeypatch: p
 
 @pytest.mark.parametrize("failure", [
     FileNotFoundError("no osascript"), subprocess.TimeoutExpired("osascript", 15), OSError("denied"),
-    PermissionError("nope"),
+    PermissionError("nope"), ValueError("embedded null byte"),
 ])
 def test_a_failing_osascript_is_logged_not_raised(monkeypatch: pytest.MonkeyPatch, tmp_path: Any,
                                                   caplog: pytest.LogCaptureFixture, failure: Exception) -> None:
