@@ -177,6 +177,24 @@ def test_history_finish_that_fails_twice_is_logged():
     assert logged == ["history record update failed: database is locked"]
 
 
+def test_history_finish_failure_is_logged_through_the_thread_safe_logger():
+    # The subtitle-burn thread records its finished row too; the log line for a
+    # failed write must not touch the Tk log widget from that thread.
+    plain: list[str] = []
+    safe: list[str] = []
+
+    class _H:
+        def finish_download(self, *_a, **_k):
+            raise RuntimeError("database is locked")
+
+    task = _task()
+    task.history_id = 7
+    app = SimpleNamespace(history=_H(), log=plain.append, log_threadsafe=safe.append)
+    DownloadService(app)._finish_history(task, "finished", [])  # type: ignore[arg-type]
+    assert plain == []
+    assert safe == ["history record update failed: database is locked"]
+
+
 # --------------------------------------------- S04-3 stale yt-dlp, no updater
 
 def _failing_media_phase(monkeypatch, reason: str, can_update: bool) -> str:

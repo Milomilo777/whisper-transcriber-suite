@@ -2523,7 +2523,10 @@ class DownloadService:
             except Exception as e:  # noqa: BLE001
                 last = e
         logger.error("history record update failed for download %s: %s", row, last)
-        self.app.log(f"history record update failed: {last}")
+        # The subtitle-burn thread calls this too: log through the thread-safe
+        # path when the app has one (the plain log writes a Tk widget).
+        log = getattr(self.app, "log_threadsafe", None) or self.app.log
+        log(f"history record update failed: {last}")
 
     def remove_partial_files(self, task: "VideoDownloadTask") -> list[str]:
         """Delete what a cancelled download left in the user's folder: the
