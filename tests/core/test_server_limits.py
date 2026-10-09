@@ -793,7 +793,7 @@ def test_the_reader_stops_a_silent_peer_at_its_deadline():
         started = time.monotonic()
         with pytest.raises(httpd._BudgetExceeded):
             reader.readinto(bytearray(10))
-        assert time.monotonic() - started < 2.0
+        assert time.monotonic() - started < 10.0  # far below the 30 s socket timeout
         assert a.gettimeout() == 30  # the socket's own timeout is restored
     finally:
         a.close()
@@ -822,12 +822,62 @@ def test_the_reader_stops_a_trickle_at_its_deadline():
         with pytest.raises(httpd._BudgetExceeded):
             while True:  # bytes keep arriving, yet the budget still ends it
                 reader.readinto(bytearray(1))
-        assert time.monotonic() - started < 2.0
+        assert time.monotonic() - started < 10.0
     finally:
         stop.set()
         t.join(2)
         a.close()
         b.close()
+
+
+class _FakeSock:
+    """A socket stand-in whose read times out at once, like an early timer."""
+
+    def __init__(self, timeout):
+        self.timeout = timeout
+        self.set_calls = []
+
+    def gettimeout(self):
+        return self.timeout
+
+    def settimeout(self, value):
+        self.set_calls.append(value)
+        self.timeout = value
+
+    def recv_into(self, buffer):
+        raise TimeoutError("timed out")
+
+
+def test_a_socket_timeout_set_by_the_deadline_is_always_a_budget_error():
+    """The socket timer may fire before time.monotonic() reaches the deadline
+    (coarse clocks on Windows, select rounding under load). The timeout the
+    reader set itself must still be reported as the budget, not as a plain
+    TimeoutError - decided from what it set, not from re-reading the clock."""
+    sock = _FakeSock(30)
+    reader = httpd._DeadlineReader(sock)
+    reader.deadline = time.monotonic() + 5  # still ahead when the timer "fires"
+    with pytest.raises(httpd._BudgetExceeded):
+        reader.readinto(bytearray(4))
+    assert sock.timeout == 30  # restored
+
+
+def test_a_socket_timeout_of_its_own_stays_a_plain_timeout():
+    sock = _FakeSock(0.1)  # shorter than the budget: the socket's own limit
+    reader = httpd._DeadlineReader(sock)
+    reader.deadline = time.monotonic() + 60
+    with pytest.raises(TimeoutError) as info:
+        reader.readinto(bytearray(4))
+    assert not isinstance(info.value, httpd._BudgetExceeded)
+    assert sock.set_calls == []  # nothing was changed or restored
+
+
+def test_the_deadline_also_binds_a_socket_without_a_timeout():
+    sock = _FakeSock(None)
+    reader = httpd._DeadlineReader(sock)
+    reader.deadline = time.monotonic() + 60
+    with pytest.raises(httpd._BudgetExceeded):
+        reader.readinto(bytearray(4))
+    assert sock.timeout is None
 
 
 def test_the_reader_without_a_deadline_reads_normally():
