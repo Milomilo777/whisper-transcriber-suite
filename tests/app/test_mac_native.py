@@ -547,10 +547,141 @@ def test_command_w_with_two_windows_of_one_title_takes_the_front_one(
 def test_command_w_does_nothing_when_the_key_window_is_not_one_of_ours(
     host: _Host, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """A native panel is key (no title matches) and Tk has no focus in a secondary window."""
     viewer, _find = _two_windows(host)
     viewer.protocol("WM_DELETE_WINDOW", lambda: pytest.fail("a native panel is the key window"))
-    _front(monkeypatch, host, "Open", [viewer, host], focus=tk.Entry(viewer))
+    _front(monkeypatch, host, "Open", [viewer, host], focus=None)
     assert mac_native.close_front_window(host) is False
+    _front(monkeypatch, host, "Open", [viewer, host], focus=tk.Entry(host))   # focus in the main window
+    assert mac_native.close_front_window(host) is False
+
+
+def test_an_unmatched_key_title_falls_back_to_the_secondary_window_tk_has_focus_in(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The title can differ in a way no normalisation fixes (changed after open): the original
+    "Close Window does nothing" must not come back while Tk still knows the focused window."""
+    viewer, _find = _two_windows(host)
+    asked: list[str] = []
+    viewer.protocol("WM_DELETE_WINDOW", lambda: asked.append("viewer"))
+    _front(monkeypatch, host, "A title no window has", [viewer, host], focus=tk.Entry(viewer))
+    assert mac_native.close_front_window(host) is True
+    assert asked == ["viewer"]
+
+
+def _nfd(text: str) -> str:
+    import unicodedata
+
+    decomposed = unicodedata.normalize("NFD", text)
+    assert decomposed != text      # the sample really differs between the two forms
+    return decomposed
+
+
+@pytest.mark.parametrize("tk_form, key_form", [("nfc", "nfd"), ("nfd", "nfc")])
+def test_command_w_matches_a_title_in_another_unicode_form(
+    host: _Host, monkeypatch: pytest.MonkeyPatch, tk_form: str, key_form: str,
+) -> None:
+    """AppKit and Tk may hand back the same Persian title composed differently (alef-madda is
+    one code point or alef + madda)."""
+    composed = "آزمون — نمونه صدا.json"
+    forms = {"nfc": composed, "nfd": _nfd(composed)}
+    viewer = tk.Toplevel(host)
+    viewer.title(forms[tk_form])
+    asked: list[str] = []
+    viewer.protocol("WM_DELETE_WINDOW", lambda: asked.append("viewer"))
+    _front(monkeypatch, host, forms[key_form], [viewer, host], focus=None)
+    assert mac_native.close_front_window(host) is True
+    assert asked == ["viewer"]
+
+
+def test_command_w_ignores_blank_edges_of_a_title(host: _Host, monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer = tk.Toplevel(host)
+    viewer.title("Transcript - talk.json")
+    _front(monkeypatch, host, "  Transcript - talk.json \n", [viewer, host], focus=None)
+    assert mac_native.close_front_window(host) is True
+    assert not viewer.winfo_exists()
+
+
+def test_command_w_matches_a_title_with_a_non_bmp_character(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer = tk.Toplevel(host)
+    viewer.title("Talk \U0001F3A4 notes.json")
+    _front(monkeypatch, host, "Talk \U0001F3A4 notes.json", [viewer, host], focus=None)
+    assert mac_native.close_front_window(host) is True
+    assert not viewer.winfo_exists()
+
+
+# --- a modal dialog's grab: only that dialog (or a window of its own) may be closed
+
+def _grab(monkeypatch: pytest.MonkeyPatch, root: _Host, holder: tk.Misc | None) -> list[int]:
+    monkeypatch.setattr(root, "grab_current", lambda: holder)
+    bells: list[int] = []
+    monkeypatch.setattr(root, "bell", lambda *a, **k: bells.append(1))
+    return bells
+
+
+def test_command_w_leaves_other_windows_alone_while_a_dialog_holds_the_grab(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, find = _two_windows(host)
+    dialog = tk.Toplevel(host)
+    viewer.protocol("WM_DELETE_WINDOW", lambda: pytest.fail("a modal dialog holds the grab"))
+    bells = _grab(monkeypatch, host, tk.Entry(dialog))   # the grab holder is a widget in the dialog
+    _front(monkeypatch, host, "Transcript - talk.json", [viewer, dialog, host])
+    assert mac_native.close_front_window(host) is False
+    assert bells == [1] and viewer.winfo_exists() and find.winfo_exists()
+
+
+def test_command_w_closes_the_dialog_that_holds_the_grab(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dialog = tk.Toplevel(host)
+    dialog.title("Modal question")
+    bells = _grab(monkeypatch, host, dialog)
+    _front(monkeypatch, host, "Modal question", [dialog, host])
+    assert mac_native.close_front_window(host) is True
+    assert not dialog.winfo_exists() and bells == []
+
+
+def test_command_w_closes_a_window_opened_by_the_dialog_that_holds_the_grab(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dialog = tk.Toplevel(host)
+    child = tk.Toplevel(dialog)
+    child.title("Opened from the dialog")
+    _grab(monkeypatch, host, dialog)
+    _front(monkeypatch, host, "Opened from the dialog", [child, dialog, host])
+    assert mac_native.close_front_window(host) is True
+    assert not child.winfo_exists() and dialog.winfo_exists()
+
+
+def test_a_sibling_whose_name_starts_like_the_grab_window_is_not_part_of_it(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``.!toplevel1`` and ``.!toplevel10`` are different windows (prefix tests need a dot)."""
+    wins = [tk.Toplevel(host) for _ in range(10)]
+    first, tenth = wins[0], wins[9]
+    assert str(tenth).startswith(str(first))
+    tenth.title("Tenth")
+    tenth.protocol("WM_DELETE_WINDOW", lambda: pytest.fail("not a descendant of the grab window"))
+    bells = _grab(monkeypatch, host, first)
+    _front(monkeypatch, host, "Tenth", [tenth, first, host])
+    assert mac_native.close_front_window(host) is False
+    assert bells == [1]
+
+
+def test_a_grab_that_cannot_be_read_does_not_stop_command_w(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, _find = _two_windows(host)
+
+    def broken() -> None:
+        raise tk.TclError("no grab")
+
+    monkeypatch.setattr(host, "grab_current", broken)
+    _front(monkeypatch, host, "Transcript - talk.json", [viewer, host])
+    assert mac_native.close_front_window(host) is True
 
 
 def test_command_w_matches_a_persian_title(host: _Host, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -692,13 +823,28 @@ def test_the_about_dialog_is_centred_over_the_main_window_on_aqua() -> None:
     assert dialog.geometries == ["+260+150"]
 
 
-def test_a_centred_window_stays_on_the_screen_below_the_menu_bar() -> None:
+def test_a_centred_window_on_the_main_screen_stays_on_it_below_the_menu_bar() -> None:
     dialog = _Shown(0, 0, 0, 0)
-    mac_native.centre_over(dialog, _Shown(1300, 700, 300, 150), 680, 620)
+    mac_native.centre_over(dialog, _Shown(1100, 600, 300, 250), 680, 620)
     assert dialog.geometries == ["+760+280"]          # right/bottom edge clamped to the screen
     dialog = _Shown(0, 0, 0, 0)
-    mac_native.centre_over(dialog, _Shown(-400, 0, 200, 100), 680, 620)
+    mac_native.centre_over(dialog, _Shown(0, 0, 200, 100), 680, 620)
     assert dialog.geometries == ["+0+28"]             # never left of the screen or under the menu bar
+
+
+@pytest.mark.parametrize("box, expected", [
+    ((-1500, 100, 1000, 800), "+-1340+190"),      # a monitor left of the main one
+    ((1600, 50, 1000, 800), "+1760+140"),         # right of it, beyond its width
+    ((100, -1000, 1000, 800), "+260+-910"),       # above it
+    ((-300, 200, 1000, 800), "+-140+290"),        # straddling the left edge: still its own window
+])
+def test_a_window_is_centred_on_a_main_window_that_lies_off_the_main_screen(
+    box: tuple[int, int, int, int], expected: str,
+) -> None:
+    """Tk accepts negative coordinates (a monitor left of or above the main one): no clamp."""
+    dialog = _Shown(0, 0, 0, 0)
+    mac_native.centre_over(dialog, _Shown(*box), 680, 620)
+    assert dialog.geometries == [expected]
 
 
 @pytest.mark.parametrize("system", ["win32", "x11"])

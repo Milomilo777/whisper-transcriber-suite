@@ -349,8 +349,10 @@ workflow runs on manual dispatch and on a push to the `macos-app-build` branch.
   field. **File > Close Window** (Command-W) closes the front secondary window by running its own
   close handler, so the transcript viewer still asks about unsaved edits. It never closes the main
   window. "Front" is AppKit's key window (`[NSApp keyWindow]` through `ctypes`), matched to a Tk
-  window by title (the front-most one when titles repeat); Tk's focus decides only when AppKit
-  cannot be asked. Measured on macOS 13.7.8 / Tk 8.6.16: after the viewer's Find dialog and an alert
+  window by title (compared composed and trimmed; the front-most one when titles repeat). A title that
+  matches nothing closes only a secondary window Tk reports as focused, never the main window or a
+  native panel; Tk's focus decides alone when AppKit cannot be asked. While a modal dialog holds the
+  Tk grab only that dialog (or a window opened from it) closes, any other window gets a beep. Measured on macOS 13.7.8 / Tk 8.6.16: after the viewer's Find dialog and an alert
   were closed, `focus_get()` returned `None` while the viewer was still the key window, so a
   focus-based Close Window silently did nothing; `wm stackorder .` stayed correct (lowest first).
 - Title bars follow the theme (`app/theme/mac_appearance.py`). Tk 8.6.16's

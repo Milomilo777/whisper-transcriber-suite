@@ -28,6 +28,7 @@ import ctypes.util
 import logging
 import sys
 import tkinter as tk
+import unicodedata
 from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
@@ -274,41 +275,87 @@ def _window_title(app: Any, path: str) -> str | None:
         return None
 
 
+def _normal_title(title: str) -> str:
+    """A window title as one comparable string: composed (NFC) and without blank edges.
+
+    AppKit and Tk can hand back the same title with its characters composed differently
+    (a Persian alef-madda as one code point or as alef + madda).
+    """
+    return unicodedata.normalize("NFC", title).strip()
+
+
+def _focused_toplevel(app: Any) -> str | None:
+    """Path name of the window that holds Tk's keyboard focus; None when Tk reports none."""
+    try:
+        focus = app.focus_get()
+    except (tk.TclError, KeyError):
+        return None
+    if focus is None:
+        return None
+    try:
+        return str(focus.winfo_toplevel())
+    except tk.TclError:
+        return None
+
+
 def _front_window_path(app: Any) -> str | None:
     """Path name of the window Command-W acts on; ``.`` or None when there is none to close.
 
     The front window is the one macOS keeps as its key window. Tk's own focus is not a reliable
     stand-in: after a dialog or an alert of the window was closed Tk can report no focus at all
     while that window is still the key one (the same gap ``desktop_alert`` found for an inactive
-    app). So AppKit is asked first, and its key window is matched to a Tk window by title, the
-    front-most one when several share it. When AppKit cannot be asked, Tk's focus decides, and
-    with no focus the front window in the stacking order.
+    app). So AppKit is asked first, and its key window is matched to a Tk window by title (compared
+    composed and trimmed), the front-most one when several share it. A title that still matches
+    no window is a native panel, or a title Tk and AppKit disagree on: then only a secondary window
+    that Tk itself reports as focused is closed, so the original silent no-op cannot come back.
+    When AppKit cannot be asked, Tk's focus decides, and with no focus the front window in the
+    stacking order.
     """
     stack = _stack_front_first(app)
     title = key_window_title()
     if title is not None:
+        wanted = _normal_title(title)
         for path in stack:
-            if _window_title(app, path) == title:
+            candidate = _window_title(app, path)
+            if candidate is not None and _normal_title(candidate) == wanted:
                 return path
-        return None   # the key window is not a window of ours (a native panel)
-    try:
-        focus = app.focus_get()
-    except (tk.TclError, KeyError):
-        focus = None
-    if focus is not None:
-        return str(focus.winfo_toplevel())
+        logger.debug("No Tk window has the key window's title %r", title)
+        return _focused_toplevel(app)
+    focused = _focused_toplevel(app)
+    if focused is not None:
+        return focused
     return stack[0] if stack else None
+
+
+def _grab_forbids(app: Any, path: str) -> bool:
+    """True while a modal dialog holds the Tk grab and ``path`` is not that dialog or a window
+    opened from it (Windows keeps the other windows blocked the same way)."""
+    try:
+        holder = app.grab_current()
+        grab = str(holder.winfo_toplevel()) if holder is not None else None
+    except (tk.TclError, KeyError):
+        return False
+    if grab is None or grab == str(app):
+        return False
+    return not (path == grab or path.startswith(grab + "."))
 
 
 def close_front_window(app: Any) -> bool:
     """Command-W: close the front window, never the main one.
 
     Runs the window's own ``WM_DELETE_WINDOW`` handler, so a viewer with unsaved
-    edits still asks first. A window without a handler is destroyed. Returns True
-    when a secondary window was asked to close.
+    edits still asks first. A window without a handler is destroyed. While a modal
+    dialog holds the grab only that dialog (or a window opened from it) closes; any
+    other window gets a beep. Returns True when a secondary window was asked to close.
     """
     path = _front_window_path(app)
     if path is None or path == str(app):
+        return False
+    if _grab_forbids(app, path):
+        try:
+            app.bell()
+        except tk.TclError:
+            pass
         return False
     try:
         handler = str(app.tk.call("wm", "protocol", path, "WM_DELETE_WINDOW"))
@@ -332,7 +379,8 @@ def centre_over(window: Any, master: Any, width: int, height: int) -> None:
     """Aqua: put ``window`` (about to be ``width`` x ``height``) in the middle of ``master``.
 
     macOS opens a new Tk window wherever it likes, which left the About dialog off to one side
-    of the main window. Kept on screen; does nothing off Aqua or while ``master`` is not shown.
+    of the main window. On the main screen it is kept on screen; over a main window on another
+    monitor it is simply centred there. Does nothing off Aqua or while ``master`` is not shown.
     """
     if not is_aqua(window):
         return
@@ -340,10 +388,17 @@ def centre_over(window: Any, master: Any, width: int, height: int) -> None:
         top = master.winfo_toplevel()
         if not top.winfo_viewable():
             return
-        x = top.winfo_rootx() + (top.winfo_width() - width) // 2
-        y = top.winfo_rooty() + (top.winfo_height() - height) // 2
-        x = max(0, min(x, window.winfo_screenwidth() - width))
-        y = max(_MENU_BAR_PX, min(y, window.winfo_screenheight() - height))
+        left, up = top.winfo_rootx(), top.winfo_rooty()
+        across, down = top.winfo_width(), top.winfo_height()
+        x = left + (across - width) // 2
+        y = up + (down - height) // 2
+        screen_w, screen_h = window.winfo_screenwidth(), window.winfo_screenheight()
+        # Tk's screen size is the main screen's. Keep the window on it only when the main window
+        # is on it too; on a monitor left of, above or right of the main screen the coordinates
+        # lie outside it (negative is valid: "+-800+40") and a clamp would send the window away.
+        if left >= 0 and up >= 0 and left + across <= screen_w and up + down <= screen_h:
+            x = max(0, min(x, screen_w - width))
+            y = max(_MENU_BAR_PX, min(y, screen_h - height))
         window.geometry(f"+{x}+{y}")
     except tk.TclError:
         logger.debug("Window not centred", exc_info=True)
