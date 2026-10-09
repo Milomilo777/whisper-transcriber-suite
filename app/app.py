@@ -2514,7 +2514,16 @@ class App(tk.Tk):
             # The user confirmed: record these jobs as closed on purpose, so the
             # next launch does not call them a crash. Their rows are still
             # 'running'; the resume offer and the checkpoint stay as they are.
-            _record_exit_interruptions(getattr(self, "history", None), active)
+            # The prompts above pump the event loop, so a job (a watched folder's
+            # file) may have started since `active` was taken: it is stopped by
+            # this exit too.
+            started_meanwhile = [
+                t for t in self.queue
+                if t.status not in ("finished", "cancelled", "error")
+                and not any(t is known for known in active)
+            ]
+            _record_exit_interruptions(
+                getattr(self, "history", None), active + started_meanwhile)
             try:
                 # Cancel first: the worker then saves its resume checkpoint.
                 self.transcription_service.stop_all(cancel_running=True)

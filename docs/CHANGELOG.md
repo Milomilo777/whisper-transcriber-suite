@@ -353,6 +353,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A job that starts while the exit questions are open is recorded as closed on purpose.** The next
+  launch no longer calls it a crash.
 - **A folder dropped as a `file://` address is queued like any other dropped folder.** It was reported
   as an unusable item.
 - **A late Cancel no longer turns a finished download into a cancelled one.** Cancelling a download

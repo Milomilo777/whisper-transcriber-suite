@@ -248,6 +248,43 @@ def test_on_exit_settles_after_stopping_the_workers_and_before_closing_the_histo
     ]
 
 
+def test_a_job_started_during_the_exit_prompts_is_recorded_as_closed_on_purpose(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The question about unsaved viewers pumps the event loop, so a watched
+    # folder can start a job after on_exit took its first look at the queue.
+    # That job is stopped by the same exit, so it is recorded like the others.
+    monkeypatch.setattr(app_module, "live_save_before_exit", lambda _a: True)
+    monkeypatch.setattr(app_module, "stop_live_session", lambda _a: None)
+    monkeypatch.setattr(app_module, "stop_voice_clone_worker", lambda _a: None)
+    monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *_a, **_k: True)
+    recorded: list[list[int]] = []
+    history = types.SimpleNamespace(
+        mark_transcriptions_closed_by_user=lambda ids: recorded.append(list(ids)) or 1,
+        close=lambda: None,
+    )
+    queue = [types.SimpleNamespace(status="running", process=None, history_id=5)]
+
+    def _prompt(*_a: Any, **_k: Any) -> bool:
+        if len(queue) == 1:
+            queue.append(types.SimpleNamespace(status="running", process=None, history_id=7))
+        return True
+
+    monkeypatch.setattr(app_module, "confirm_unsaved_viewers_before_exit", _prompt)
+    fake = types.SimpleNamespace(
+        _exit_from_tray=True, app_config={}, tray=None, queue=queue,
+        download_queue=[], _closing=False, _folder_watcher=None, history=history,
+        withdraw=lambda: None, destroy=lambda: None,
+        _save_window_geometry=lambda: None, _shutdown_server_on_exit=lambda: None,
+        transcription_service=types.SimpleNamespace(
+            stop_all=lambda **_k: None, settle_done_on_exit=lambda: 0),
+    )
+
+    App.on_exit(fake)  # type: ignore[arg-type]
+
+    assert recorded == [[5, 7]]
+
+
 def test_a_failing_settle_does_not_stop_the_exit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
