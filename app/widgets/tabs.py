@@ -51,6 +51,23 @@ _SELF_SCROLLING = frozenset({
 })
 
 
+def _redraw_embedded_window(canvas: tk.Canvas, window: int) -> None:
+    """Make the canvas paint its embedded window again (macOS only needs this).
+
+    After its tab was hidden and shown again, an aqua canvas draws blank until something
+    moves its embedded window: a repeated ``itemconfigure``, a background re-set, ``update()``
+    or re-gridding all leave it blank, but moving the item by one pixel and back repaints it
+    (measured in the macOS 13 VM). Both moves happen before Tk draws, so nothing flickers.
+    """
+    try:
+        x, y = canvas.coords(window)
+        canvas.coords(window, x, y + 1)
+        canvas.update_idletasks()
+        canvas.coords(window, x, y)
+    except tk.TclError:
+        pass  # the page is being destroyed
+
+
 def fit_or_scroll(page: tk.Misc) -> ttk.Frame:
     """Give ``page`` a vertical scroller that only appears when needed.
 
@@ -102,6 +119,15 @@ def fit_or_scroll(page: tk.Misc) -> ttk.Frame:
 
     canvas.bind("<Configure>", lambda _e: _layout())
     canvas.after(50, _poll)
+    if sys.platform == "darwin":
+        # The notebook maps this page again when its tab is selected (the canvas itself gets
+        # no <Map>): repaint the embedded content once per switch, not on a timer, so an
+        # idle window stays idle.
+        page.bind(
+            "<Map>",
+            lambda _e: canvas.after_idle(lambda: _redraw_embedded_window(canvas, window)),
+            add="+",
+        )
 
     def _scrollable() -> bool:
         first, last_frac = canvas.yview()
