@@ -106,6 +106,12 @@ def detect_chapter_boundaries(
 # "3.14" do not end it; the CJK full-width marks need no space after them.
 _SENTENCE_END_RE = re.compile(r"[.!?\u061f](?=\s|$)|[\u3002\uff01\uff1f]")
 _TERMINATORS = ".!?\u061f\u3002\uff01\uff1f\u2026"
+# Scripts written without spaces between words (kana, Han ideographs, Thai,
+# Lao, Khmer, Myanmar): a title cut by "words" never shortens them.
+_UNSPACED_SCRIPT_RE = re.compile(
+    "[\u0e00-\u0eff\u1000-\u109f\u1780-\u17ff\u3040-\u30ff\u3400-\u9fff]"
+)
+_MAX_UNSPACED_TITLE_CHARS = 30
 # Words ending in "." that are abbreviations, not a sentence end. Words
 # with an inner dot ("e.g", "U.S") count as abbreviations too.
 _ABBREVIATIONS = frozenset({
@@ -171,6 +177,8 @@ def heuristic_title(segments: list[dict[str, Any]], boundary: ChapterBoundary,
     first = " ".join(words)
     if len(words) > max_words:
         first = " ".join(words[:max_words]) + "…"
+    elif len(first) > _MAX_UNSPACED_TITLE_CHARS and _UNSPACED_SCRIPT_RE.search(first):
+        first = first[:_MAX_UNSPACED_TITLE_CHARS].rstrip() + "…"
     return first or "Chapter"
 
 

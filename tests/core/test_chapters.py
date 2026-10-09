@@ -173,3 +173,21 @@ def test_build_chapters_assigns_sequential_indices():
             for i in range(5)]
     out = ch.build_chapters(segs, min_chapter_seconds=30.0, gap_seconds=5.0)
     assert [c["index"] for c in out] == list(range(len(out)))
+
+
+def test_heuristic_title_caps_a_long_unspaced_script_sentence():
+    """Chinese/Japanese/Thai text has no spaces, so the word limit never
+    applies: one long clause used to become the whole chapter title."""
+    long_zh = "今天我们来讨论一下人工智能在医疗领域的应用以及未来的发展趋势和挑战还有很多很多内容"
+    segs = [{"start": 0.0, "end": 5.0, "text": long_zh}]
+    b = ch.ChapterBoundary(start=0.0, end=5.0, segment_start=0, segment_end=0)
+    title = ch.heuristic_title(segs, b)
+    assert title.endswith("…")
+    assert len(title) <= 31
+    assert title.startswith("今天我们来讨论")
+
+
+def test_heuristic_title_keeps_a_short_unspaced_script_sentence():
+    segs = [{"start": 0.0, "end": 5.0, "text": "今天我们来讨论。第二句。"}]
+    b = ch.ChapterBoundary(start=0.0, end=5.0, segment_start=0, segment_end=0)
+    assert ch.heuristic_title(segs, b) == "今天我们来讨论"

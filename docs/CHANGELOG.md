@@ -365,6 +365,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   refuses those two files compared names with a case rule that only Windows applies, so on a Mac
   volume `T.JSON` passed as a new name and replaced `t.json`. It now asks the filesystem; the same
   fix covers one transcript window per file, the Re-run duplicate check and subtitle-burn output names.
+- **Chapter titles for Chinese, Japanese and Thai transcripts stay short.** These scripts have no
+  spaces, so the six-word limit never applied and a long clause became the whole title; titles now
+  stop at 30 characters with an ellipsis.
 - **Cancelling on macOS and Linux no longer leaves a stubborn child process behind.** After the polite
   stop, the app waited only for the main process to exit; a helper (for example ffmpeg) that ignored it
   survived as soon as the main process was gone. It now waits for the whole process group and force-kills
