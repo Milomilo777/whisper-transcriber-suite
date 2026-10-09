@@ -42,6 +42,7 @@ from app.domain.cookies import (
 from app.dpi import fit_size, px, scaled, work_area
 from app.theme import tokens
 from app.widgets import tray
+from app.widgets.platform import reveal_label
 from app.widgets.tooltip import (
     bind_tooltip,
     collapsible_section,
@@ -919,7 +920,7 @@ class AdvancedDialog(tk.Toplevel):
             folder_row, text="Change...", command=self._change_model_folder,
         ).pack(side="left", padx=(6, 0))
         ttk.Button(
-            folder_row, text="Open folder", command=self._open_model_folder,
+            folder_row, text=reveal_label("Open folder"), command=self._open_model_folder,
         ).pack(side="left", padx=(6, 0))
         help_icon(
             engine,

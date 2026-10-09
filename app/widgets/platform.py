@@ -21,7 +21,38 @@ def open_with_default_app(path: str) -> None:
         subprocess.Popen(["xdg-open", path])
 
 
-def open_folder(folder: str, parent: "tk.Misc | None" = None) -> None:
+def reveal_label(default: str, what: str = "") -> str:
+    """The wording of an "open this folder" action: macOS says Reveal in Finder.
+
+    ``default`` is returned unchanged everywhere else. ``what`` names the thing
+    on macOS when "Reveal in Finder" alone would be unclear (a menu that is not
+    about one selected item), for example ``"Log Folder"``.
+    """
+    if sys.platform != "darwin":
+        return default
+    return f"Reveal {what} in Finder" if what else "Reveal in Finder"
+
+
+def open_folder(
+    folder: str,
+    parent: "tk.Misc | None" = None,
+    select: "str | None" = None,
+) -> None:
+    """Show ``folder`` in the file manager.
+
+    ``select``: a file to highlight. Only macOS uses it (``open -R`` reveals the
+    file inside its folder, like Finder's own Reveal in Finder); Windows and
+    Linux open the folder exactly as before.
+    """
+    if (
+        sys.platform == "darwin" and select and os.path.isfile(select)
+        and folder and os.path.isdir(folder)
+    ):
+        try:
+            subprocess.run(["open", "-R", select], check=False)
+            return
+        except OSError:
+            pass  # fall through to opening the folder the usual way
     if not folder or not os.path.isdir(folder):
         kwargs = {"parent": parent} if parent is not None else {}
         messagebox.showwarning(
@@ -34,10 +65,8 @@ def open_folder(folder: str, parent: "tk.Misc | None" = None) -> None:
         if os.name == "nt":
             os.startfile(folder)  # type: ignore[attr-defined]
         elif sys.platform == "darwin":
-            import subprocess
             subprocess.run(["open", folder], check=False)
         else:
-            import subprocess
             subprocess.run(["xdg-open", folder], check=False)
     except Exception as e:  # noqa: BLE001
         # show_error needs a real Tk/Toplevel to attach to and to read

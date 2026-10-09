@@ -20,7 +20,7 @@ from app.dialogs.advanced import AdvancedDialog
 from app.dialogs.model_download import ModelDownloadDialog
 from app.dialogs.quick_start import QuickStartChoice, QuickStartDialog, apply_choice, should_show
 from app.dialogs import share_page
-from app import shortcuts
+from app import mac_native, shortcuts
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
 from app.domain.task_outputs import (
@@ -46,6 +46,7 @@ from app.widgets.error_dialog import show_error
 from app.widgets.notice import notify
 from app.widgets import subtitle_edit as subtitle_edit_ui
 from app.widgets.platform import open_folder as _open_folder_helper
+from app.widgets.platform import reveal_label
 from app.widgets.live_tab import build_live_tab, stop_live_session
 from app.widgets.live_tab import apply_theme as live_tab_theme
 from app.widgets.live_tab import save_before_exit as live_save_before_exit
@@ -1040,6 +1041,11 @@ class App(tk.Tk):
         self._star_stamp_first_run()
 
         self._build_menu()
+        # macOS: the app menu, Finder "Open With" and the Dock icon call back
+        # into the app. Registered before the first event-loop turn so a file
+        # that launched the app waits in a queue instead of being lost.
+        self._start_ran = False
+        mac_native.install(self)
         self._refresh_update_signs()
         self._build_tabs()
         self.txt = build_console(self, theme=_resolve_theme(self.theme_var.get()))
@@ -1184,6 +1190,9 @@ class App(tk.Tk):
         # A new install first gets the quick start window (language, Fast or
         # Best quality, output folder). Finish also settles the model folder;
         # Skip falls through to the hub-setup dialog, as before.
+        # Both first-run windows are created below, in this one call; files
+        # macOS handed over earlier (mac_native) may now wait for them.
+        self._start_ran = True
         if should_show(self.app_config):
             try:
                 self._quick_start_open = True
@@ -1253,6 +1262,10 @@ class App(tk.Tk):
 
     # Menu --------------------------------------------------------------------
     def _build_menu(self) -> None:
+        # Tk's macOS (Aqua) port gives the app menu, the Window menu and the
+        # Help menu their native form (app/mac_native.py); Windows and Linux
+        # build the menu bar exactly as before.
+        aqua = mac_native.is_aqua(self)
         m = tk.Menu(self)
         f = tk.Menu(m, tearoff=0)
         f.add_command(**shortcuts.menu_item("Browse...", "o", gap=26), command=self.browse)
@@ -1284,6 +1297,14 @@ class App(tk.Tk):
             # here: the app menu already carries "Quit <App>".
             f.add_command(**shortcuts.menu_item("Exit", "q", gap=34),
                           command=self._force_exit)
+        if aqua:
+            # Command-W closes the front secondary window (viewer, dialog) with
+            # its own close handler; it never closes the main window.
+            f.add_separator()
+            f.add_command(
+                **shortcuts.menu_item("Close Window", "w"),
+                command=lambda: mac_native.close_front_window(self),
+            )
 
         v = tk.Menu(m, tearoff=0)
         for label, value in (("Light", "light"), ("Dark", "dark"), ("System", "system")):
@@ -1301,7 +1322,7 @@ class App(tk.Tk):
             command=self._save_chime_pref,
         )
 
-        h = tk.Menu(m, tearoff=0)
+        h = tk.Menu(m, tearoff=0, **mac_native.help_menu_kwargs(self))
         h.add_command(label="Open transcript viewer...", command=self._open_transcript_viewer_picker)
         h.add_command(label="Search transcripts...", command=self._open_search_dialog)
         h.add_separator()
@@ -1317,7 +1338,8 @@ class App(tk.Tk):
         h.add_command(label="Open oTranscribe website...",
                       command=self.integrations_service.open_otranscribe)
         h.add_separator()
-        h.add_command(label="Open log folder", command=self.open_log_folder)
+        h.add_command(label=reveal_label("Open log folder", "Log Folder"),
+                      command=self.open_log_folder)
         h.add_separator()
         # Manual update check — always runs (ignores the once-per-day
         # throttle the quiet launch check obeys) and DOES report the
@@ -1343,10 +1365,20 @@ class App(tk.Tk):
             command=self._save_telemetry_pref,
         )
         # About is the last Help item (the usual place), one click from Help.
-        h.add_separator()
-        h.add_command(label=_ABOUT_MENU_LABEL, command=self._show_about)
+        # On macOS it lives in the app menu instead ("About <App>", wired to
+        # tkAboutDialog by mac_native.install), so Help does not repeat it.
+        if not aqua:
+            h.add_separator()
+            h.add_command(label=_ABOUT_MENU_LABEL, command=self._show_about)
         m.add_cascade(label="File", menu=f)
         m.add_cascade(label="View", menu=v)
+        if aqua:
+            # The standard Window menu: Minimize, Zoom, Bring All to Front and
+            # the list of open windows are added by macOS itself.
+            m.add_cascade(
+                label="Window",
+                menu=tk.Menu(m, tearoff=0, **mac_native.window_menu_kwargs(self)),
+            )
         m.add_cascade(label=_HELP_MENU_LABEL, menu=h)
         self._menubar = m
         self._help_cascade_index = m.index("end")
@@ -1469,7 +1501,7 @@ class App(tk.Tk):
                     self.bell()
             except Exception:  # noqa: BLE001
                 pass
-        self._open_folder(os.path.dirname(out_path) or ".")
+        self._open_folder(os.path.dirname(out_path) or ".", select=out_path)
 
     def _burn_subs_failed(self, msg: str) -> None:
         self.log(f"Burn-subs failed: {msg}")
@@ -1909,11 +1941,12 @@ class App(tk.Tk):
         self.log(f"Converted {os.path.basename(in_path)} -> {out_path}")
         if messagebox.askyesno(
             "Convert transcript",
-            f"Wrote:\n{out_path}\n\nOpen its folder?",
+            f"Wrote:\n{out_path}\n\n"
+            + ("Reveal it in Finder?" if shortcuts.is_mac() else "Open its folder?"),
             parent=self,
         ):
             try:
-                _open_folder_helper(os.path.dirname(out_path) or ".")
+                _open_folder_helper(os.path.dirname(out_path) or ".", select=out_path)
             except Exception as e:  # noqa: BLE001
                 self.log(f"Could not open output folder: {e}")
 
@@ -3971,7 +4004,7 @@ class App(tk.Tk):
                     ),
                 )
                 m.add_command(
-                    label="Open output folder",
+                    label=reveal_label("Open output folder"),
                     command=lambda: self._open_folder(task_output_folder(task)),
                 )
                 m.add_separator()
@@ -4056,7 +4089,7 @@ class App(tk.Tk):
                     command=lambda p=saved: self._open_file(p),
                 )
             m.add_command(
-                label="Open download folder",
+                label=reveal_label("Open download folder"),
                 command=lambda: self._open_folder(task.folder),
             )
             m.add_command(label="Re-run", command=lambda: self._rerun_download(task))
@@ -4199,8 +4232,8 @@ class App(tk.Tk):
                           command=lambda ts=terminal: self._bulk_apply(ts, self.remove_download))
         m.tk_popup(e.x_root, e.y_root)
 
-    def _open_folder(self, folder: str) -> None:
-        _open_folder_helper(folder, parent=self)
+    def _open_folder(self, folder: str, select: str | None = None) -> None:
+        _open_folder_helper(folder, parent=self, select=select)
 
     def _rerun_task(self, task: TranscriptionTask) -> None:
         # Right-click re-run is an interactive action: show the
@@ -5284,8 +5317,9 @@ class App(tk.Tk):
         button_row = ttk.Frame(self.last_result_body)
         button_row.pack(anchor="w", pady=(8, 0))
         ttk.Button(
-            button_row, text="Open folder",
-            command=lambda: self._open_folder(folder),
+            button_row, text=reveal_label("Open folder"),
+            command=lambda: self._open_folder(
+                folder, select=existing[0] if existing else None),
         ).pack(side="left")
         # "View transcript" launches the in-app viewer with the JSON
         # next to the source media (or the file picker if no JSON
@@ -5975,7 +6009,11 @@ class App(tk.Tk):
                 item_label = f"{_CHECK_FOR_UPDATES_LABEL}  ● {version} available"
             else:
                 help_label, item_label = _HELP_MENU_LABEL, _CHECK_FOR_UPDATES_LABEL
-            menubar.entryconfigure(self._help_cascade_index, label=help_label)
+            if not mac_native.is_aqua(self):
+                # On macOS the Help title must stay exactly "Help": macOS adds
+                # its search field only to a menu with that title, so the dot
+                # stays on the "Check for updates" item alone.
+                menubar.entryconfigure(self._help_cascade_index, label=help_label)
             help_menu.entryconfigure(self._check_updates_index, label=item_label)
         except Exception:  # noqa: BLE001
             logger.debug("Could not refresh the update signs", exc_info=True)
@@ -6631,7 +6669,7 @@ class App(tk.Tk):
         task = self.row_map.get(item)
         if not task or task.status != "finished":
             return
-        self._open_folder(os.path.dirname(task.file_path) or ".")
+        self._open_folder(os.path.dirname(task.file_path) or ".", select=task.file_path)
 
     def log(self, msg: str) -> None:
         self._ui_logger.info(msg)

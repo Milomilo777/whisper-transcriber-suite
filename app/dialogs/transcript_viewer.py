@@ -44,7 +44,7 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any, Optional
 
 from app.dialogs import share_page
-from app import shortcuts
+from app import mac_native, shortcuts
 from app.dpi import px, scaled_size
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
@@ -679,6 +679,17 @@ class TranscriptViewer(tk.Toplevel):
     _disk_stamp: tuple[int, int] | None = None
     _registry_key: str | None = None
 
+    @property
+    def _dirty(self) -> bool:
+        """True while the list holds edits that are not saved to the JSON."""
+        return bool(self.__dict__.get("_dirty_flag", False))
+
+    @_dirty.setter
+    def _dirty(self, value: bool) -> None:
+        self.__dict__["_dirty_flag"] = bool(value)
+        # macOS: the dot in the close button; a no-op on Windows and Linux.
+        mac_native.set_modified(self, bool(value))
+
     def __init__(
         self,
         master: "tk.Tk | tk.Toplevel",
@@ -703,6 +714,8 @@ class TranscriptViewer(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self.json_path = json_path
+        # macOS: the transcript file as the window's proxy icon in the title bar.
+        mac_native.set_title_path(self, json_path)
         # Subtitle file next to the JSON -> its stamp, for the ones that still
         # match the JSON (see _scan_siblings); Save rewrites only those.
         self._synced_siblings: dict[str, tuple[int, int] | None] = {}
