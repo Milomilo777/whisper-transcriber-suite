@@ -30,6 +30,13 @@ from core.js_runtime import (
 logger = logging.getLogger(__name__)
 
 
+def _name_key(stem: str) -> str:
+    """A file name reduced to its letters and digits, case folded, so the
+    name yt-dlp announced matches the file on disk despite a replaced
+    character (U+FFFD for an apostrophe) or different quote marks."""
+    return "".join(ch for ch in stem.casefold() if ch.isalnum())
+
+
 def _may_go_online(app: object, what: str) -> bool:
     """Work offline: the App asks to turn it off; without that hook, refuse."""
     ensure = getattr(app, "ensure_online", None)
@@ -82,9 +89,10 @@ from app.domain.cookies import (
     is_cookie_extraction_error,
 )
 from app.domain.languages import subtitle_lang_patterns
-from core import yt_dlp_update
+from core import burn_subs, yt_dlp_update
 from core.config import save_config
 from core.integrations import smtv as smtv_mod
+from core.watcher import is_download_intermediate
 
 if TYPE_CHECKING:
     from app.app import App
@@ -2538,40 +2546,78 @@ class DownloadService:
 
         saved_path is parsed from yt-dlp stdout and can be wrong (a
         postprocessor rename, or a filename character that slips past the
-        utf-8 fix). Downloads run one at a time, so the newest media file in
-        the target folder touched since this task started is the real
-        output. Returns None when nothing plausible is found.
+        utf-8 fix). Returns None when nothing plausible is found or when
+        several files fit equally well (see ``_find_recovered_path``).
+        """
+        return self._find_recovered_path(task, parsed)[0]
+
+    def _find_recovered_path(
+        self, task: "VideoDownloadTask", parsed: str | None
+    ) -> tuple[str | None, bool]:
+        """``(path, ambiguous)``: the media file this download produced.
+
+        Candidates are media files in the target folder touched since the
+        task started, minus what is never a download: hidden files, the
+        ``.burn-*`` temp and the placeholder or result of a subtitled-video
+        chain of this run burning in the same folder (recorded by
+        ``core.burn_subs``, never matched by name), and empty files.
+        One candidate wins; several are told apart by the expected title (the
+        parsed name, else the task title), newest first. With several and no
+        title match nothing is returned and ``ambiguous`` is True, so the
+        caller fails clearly instead of transcribing someone else's file.
+        yt-dlp's unmerged ``.f137`` / ``.temp`` part files are not candidates either.
         """
         folder = getattr(task, "folder", "") or (
             os.path.dirname(parsed) if parsed else ""
         )
         if not folder or not os.path.isdir(folder):
-            return None
+            return None, False
         media_exts = {
             ".mp4", ".mkv", ".webm", ".mov", ".avi", ".flv",
             ".m4a", ".mp3", ".opus", ".aac", ".flac", ".wav", ".ogg",
         }
         started = float(getattr(task, "start_time", None) or 0.0)
-        best: tuple[float, str] | None = None
+        found: list[tuple[float, str]] = []
         try:
             names = os.listdir(folder)
         except OSError:
-            return None
+            return None, False
         for name in names:
             if os.path.splitext(name)[1].lower() not in media_exts:
                 continue
+            if name.startswith(".") or is_download_intermediate(name):
+                continue
             full = os.path.join(folder, name)
+            if burn_subs.is_reserved(full) or burn_subs.is_own_output(full):
+                continue
             try:
                 if not os.path.isfile(full):
+                    continue
+                if os.path.getsize(full) == 0:
                     continue
                 mtime = os.path.getmtime(full)
             except OSError:
                 continue
             if mtime + 5.0 < started:  # untouched since the download began
                 continue
-            if best is None or mtime > best[0]:
-                best = (mtime, full)
-        return best[1] if best else None
+            found.append((mtime, full))
+        if not found:
+            return None, False
+        if len(found) == 1:
+            return found[0][1], False
+        wanted = {
+            key for key in (
+                _name_key(os.path.splitext(os.path.basename(parsed or ""))[0]),
+                _name_key(str(getattr(task, "title", "") or "")),
+            ) if key
+        }
+        matching = [
+            item for item in found
+            if _name_key(os.path.splitext(os.path.basename(item[1]))[0]) in wanted
+        ]
+        if matching:
+            return max(matching)[1], False
+        return None, True
 
     def _finish(self, task: "VideoDownloadTask", status: str, saved_path: str | None) -> None:
         app = self.app
@@ -2656,11 +2702,24 @@ class DownloadService:
             # download just produced so the size readout AND auto-transcribe
             # still find it.
             if not saved_path or not os.path.exists(saved_path):
-                recovered = self._recover_saved_path(task, saved_path)
+                recovered, ambiguous = self._find_recovered_path(task, saved_path)
                 if recovered:
                     if not saved_path or os.path.basename(recovered) != os.path.basename(saved_path):
                         app.log(f"(recovered downloaded file: {os.path.basename(recovered)})")
                     saved_path = recovered
+                elif ambiguous:
+                    # The parsed name is not on disk and the folder holds
+                    # several candidates: end the row with a reason, record
+                    # no output and hand nothing to the transcription.
+                    chain_error = (
+                        "The download finished, but the file could not be told "
+                        "apart from others in the folder"
+                        + ("; no subtitled video was made." if getattr(task, "make_subbed_video", False) else ".")
+                    )
+                    app.log(f"{chain_error} ({os.path.basename(saved_path or '')})")
+                    status = "error"
+                    task.status = "error"
+                    saved_path = None
             if saved_path:
                 task.saved_path = saved_path
                 # Friendly completion line — the user actually wants
@@ -2696,6 +2755,7 @@ class DownloadService:
                 )
                 and saved_path
                 and not getattr(task, "caption_only", False)
+                and not chain_error
                 and not (chain_error := self._subbed_without_video(task, saved_path))
             ):
                 try:

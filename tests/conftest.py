@@ -83,6 +83,28 @@ _TRANSCRIBER_GLOBALS = (
 
 
 @pytest.fixture(autouse=True)
+def _reset_burn_process_state():
+    """Forget the subtitle burns of an earlier test.
+
+    core.burn_subs keeps process-wide state: the one-way "the app is closing"
+    flag (set by App.on_exit), the reserved and produced output records and
+    the list of running burns. A test that closes the app would otherwise
+    make every later burn in the same pytest process raise BurnCancelled.
+    """
+    from core import burn_subs
+
+    def _reset() -> None:
+        burn_subs._closing.clear()
+        burn_subs._reserved.clear()
+        burn_subs._produced.clear()
+        burn_subs._active.clear()
+
+    _reset()
+    yield
+    _reset()
+
+
+@pytest.fixture(autouse=True)
 def _isolate_transcriber_globals():
     """Snapshot core.transcriber module globals; restore them after the test."""
     try:

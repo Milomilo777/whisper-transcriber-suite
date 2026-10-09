@@ -8,6 +8,7 @@ import http.client
 import importlib.util
 import io
 import json
+import os
 import re
 import sys
 import urllib.error
@@ -509,3 +510,29 @@ def test_smoke_covers_the_real_tree_and_the_gui_dependencies():
     for dep in ("PIL.ImageTk", "pystray", "watchdog.observers", "sounddevice"):
         assert dep in smoke.RUNTIME_MODULES
     assert any(a.endswith("sample_clip.mp3") for a in smoke.REQUIRED_ASSETS)
+
+
+def _fake_ffmpeg(tmp_path, listing: str) -> str:
+    """A stand-in ffmpeg.exe-like program: prints *listing* for any arguments."""
+    import sys
+
+    program = tmp_path / "fake_ffmpeg.py"
+    program.write_text("print(" + repr(listing) + ")\n", encoding="utf-8")
+    launcher = tmp_path / "fake_ffmpeg.cmd"
+    launcher.write_text(f'@"{sys.executable}" "{program}" %*\r\n', encoding="utf-8", newline="")
+    return str(launcher)
+
+
+_LISTING = (
+    "Filters:\n  T.. = Timeline support\n"
+    " ... scale             V->V       Scale the input video size.\n"
+    " .. subtitles         V->V       Render text subtitles onto input video using the libass library.\n"
+)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="the stand-in is a .cmd launcher")
+def test_smoke_requires_the_subtitles_filter_in_ffmpeg(tmp_path):
+    assert smoke.BURN_FILTERS == ("subtitles",)
+    assert smoke.ffmpeg_missing_filters(_fake_ffmpeg(tmp_path, _LISTING), smoke.BURN_FILTERS) == []
+    without = "\n".join(ln for ln in _LISTING.splitlines() if "subtitles " not in ln)
+    assert smoke.ffmpeg_missing_filters(_fake_ffmpeg(tmp_path, without), smoke.BURN_FILTERS) == ["subtitles"]

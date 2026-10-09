@@ -1150,6 +1150,12 @@ class App(tk.Tk):
                     )
             except Exception:  # noqa: BLE001
                 logger.debug("partials sweep failed", exc_info=True)
+            # What a crashed or killed run left of a subtitle burn (journal-driven).
+            try:
+                from core import burn_subs
+                burn_subs.sweep_stale_burns()
+            except Exception:  # noqa: BLE001
+                logger.warning("burn leftovers sweep failed", exc_info=True)
 
         _t.Thread(target=_work, name="partials-sweep", daemon=True).start()
 
@@ -1433,6 +1439,9 @@ class App(tk.Tk):
                 # main-thread queue (self.after(0, ...) from a worker
                 # raises RuntimeError on Python 3.14).
                 self.post_to_main(lambda: self._burn_subs_done(out_path))
+            except burn_subs.BurnCancelled:
+                # The app is closing (burn_subs.abandon_active_burns).
+                logger.info("Subtitle burn stopped: %s", out_path)
             except Exception as e:  # noqa: BLE001
                 # Audit B3: log the stack trace before the lossy
                 # UI string-conversion so postmortem diagnosis is
@@ -2142,6 +2151,16 @@ class App(tk.Tk):
                         kill_process_tree(proc, force=False)
                     except Exception:  # noqa: BLE001
                         pass
+            # A running subtitle burn (a chained download's, or the manual
+            # "Burn subtitles" one) runs on a daemon thread that dies with the
+            # process: stop its ffmpeg and remove the hidden .burn-* partial,
+            # the work folder and the empty placeholder it leaves in the
+            # user's folder (only files that burn created).
+            try:
+                from core import burn_subs
+                burn_subs.abandon_active_burns()
+            except Exception:  # noqa: BLE001
+                logger.exception("Could not stop the running subtitle burns on exit")
             # Stop the Live tab BEFORE the transcription workers: it owns its
             # own worker subprocess plus a capture thread holding the audio
             # device, and both would outlive the window otherwise.

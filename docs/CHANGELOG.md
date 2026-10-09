@@ -360,6 +360,19 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **A cloud run on a time range that failed part-way saved shifted subtitles.** The
   `.partial.srt` kept after the failure now carries the original file's timestamps, like a finished
   run, instead of times counted from the start of the range.
+- **Make subtitled video: wrong file, silent failure, leftovers.** A download whose file name yt-dlp
+  reported wrongly is no longer matched to another chain's hidden `.burn-*` temp, reserved
+  `-subbed` placeholder or finished burn, and a folder with several equal candidates now ends the
+  row as an error with a reason instead of transcribing a guess. A folder that refuses the
+  `-subbed` file ends the row as an error with the reason and keeps the transcript listed. Closing
+  the app stops a running burn (chained or manual) before it can start ffmpeg and removes its
+  partial, work folder and empty placeholder; the next start removes what a crash left, from a
+  journal it re-checks path by path. The watched folder skips only the app's own burn files, never
+  a `-subbed` file the user copies in. A burned Persian line that mixes Latin words and digits
+  (`... 1.9.3 ... macOS ...`) keeps its clause order, burned videos get the normal file mode
+  (0644, not 0600), the macOS bundle check and the Windows install smoke test require ffmpeg's
+  `subtitles` filter, and the picture check before the transcription waits at most 5 seconds.
+
 - **Hardware detection and model advice.** GPUs without efficient float16 (GTX 10-series) now get
   an NVIDIA CUDA (int8) tier in the Hardware wizard, so Apply no longer pins the CPU over the
   automatic CUDA pick. Applying the untouched list while an NVIDIA GPU is unusable saves nothing

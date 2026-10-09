@@ -16,6 +16,8 @@ import re
 import threading
 from typing import Any, Callable
 
+from .burn_subs import is_burn_temp, is_own_output, is_reserved
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,6 +60,9 @@ def is_media_file(path: str) -> bool:
     ext = os.path.splitext(path)[1].lower()
     if ext not in _MEDIA_EXTENSIONS:
         return False
+    if is_burn_temp(path):
+        # The hidden ".burn-*" file a running subtitle burn encodes into.
+        return False
     if os.path.basename(path).startswith("._"):
         # macOS AppleDouble metadata ("._clip.mp4") written next to every
         # file copied to a FAT/exFAT/network drive: never media.
@@ -70,6 +75,24 @@ def is_media_file(path: str) -> bool:
             return True
         return first in (b"", _TS_SYNC_BYTE)
     return True
+
+
+def watch_skip_reason(path: str) -> str:
+    """Why the watched folder ignores *path*, or "" when it is a new file.
+
+    The app's own subtitle-burn files are not new input: the placeholder a
+    chained download reserved and the video a burn of this run wrote (it
+    would otherwise be transcribed again when the watched folder is also the
+    download folder). Only paths this run recorded are skipped, never a name
+    or a size: a ``lecture-subbed.mp4`` the user copies in is a new file.
+    """
+    if is_burn_temp(path):
+        return "a subtitle burn's temporary file"
+    if is_reserved(path):
+        return "the placeholder of a subtitled video being made"
+    if is_own_output(path):
+        return "a subtitled video this app just made"
+    return ""
 
 
 def _is_inside(folder: str, path: bytes | str) -> bool:
@@ -148,6 +171,10 @@ class FolderWatcher:
                 if isinstance(path, bytes):
                     path = path.decode("utf-8", "replace")
                 if not path or not is_media_file(path):
+                    return
+                skipped = watch_skip_reason(path)
+                if skipped:
+                    logger.info("Watched folder: skipped %s (%s)", path, skipped)
                     return
                 if is_download_intermediate(path):
                     logger.info("Watched folder: skipped %s (a yt-dlp part file)", path)

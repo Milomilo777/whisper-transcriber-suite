@@ -7,6 +7,7 @@ which files the burn receives and what the history row records.
 from __future__ import annotations
 
 import os
+import subprocess
 import time
 from types import SimpleNamespace
 from typing import Any
@@ -192,7 +193,7 @@ def test_cancel_during_burn(tmp_path, media, monkeypatch, sync_threads):
     srt.write_text("x", encoding="utf-8")
     seen = {}
 
-    def fake_burn(v, s, o, *, progress_cb, cancel_check, on_process):
+    def fake_burn(v, s, o, *, progress_cb, cancel_check, on_process, placeholder=None):
         on_process("proc")
         seen["registered"] = dl.process
         progress_cb(30.0)
@@ -392,7 +393,7 @@ def test_two_chains_of_one_title_get_two_names(tmp_path, media, monkeypatch):
 
 
 def test_download_without_picture_ends_before_transcription(tmp_path, media, monkeypatch):
-    monkeypatch.setattr(burn_subs, "probe_media", lambda p: burn_subs.MediaInfo(5.0, False, "aac"))
+    monkeypatch.setattr(burn_subs, "probe_media", lambda p, timeout=60.0: burn_subs.MediaInfo(5.0, False, "aac"))
     app = _App()
     svc = DownloadService(app)  # type: ignore[arg-type]
     monkeypatch.setattr(svc, "_finish_history", app._finish_history)
@@ -431,3 +432,118 @@ def test_cancelling_a_waiting_transcription_releases_the_chain_row(tmp_path, med
     assert dl.status == "cancelled"
     assert tr.source_download is None and dl.transcription_task is None
     assert app.history_rows[-1][:2] == ("cancelled", [media])
+
+
+# -- review fixes, second round ----------------------------------------------------
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        PermissionError(13, "Access is denied"),
+        OSError(36, "File name too long"),
+    ],
+)
+def test_unwritable_output_folder_ends_the_row_with_a_reason(tmp_path, media, monkeypatch, sync_threads, exc):
+    srt = tmp_path / "Talk [x].srt"
+    srt.write_text("x", encoding="utf-8")
+
+    def refuse(path):
+        raise exc
+
+    monkeypatch.setattr(burn_subs, "reserve_output_path", refuse)
+    monkeypatch.setattr(burn_subs, "burn", lambda *a, **k: pytest.fail("burn must not run"))
+    app, dl = _App(), _dl(media)
+
+    subbed_video.after_transcription(app, dl, _tr(str(srt)), True)  # must not raise
+
+    assert dl.status == "error"
+    status, paths, error = app.history_rows[-1]
+    assert status == "error" and paths == [media]
+    assert "could not be created" in error and str(exc.args[1]) in error
+    # The download and its transcript stay where they were.
+    assert _files(tmp_path) == {"Talk [x].mp4", "Talk [x].srt"}
+
+
+def test_a_failure_before_the_burn_starts_closes_the_row_with_a_reason(tmp_path, media, monkeypatch):
+    app, dl = _App(), _dl(media)
+    tr = _tr(str(tmp_path / "Talk [x].srt"), source_download=dl, file_path=media,
+             end_time=None, start_time=time.time(), history_id=0)
+    dl.transcription_task = tr
+
+    def boom(*a, **k):
+        raise RuntimeError("disk exploded")
+
+    monkeypatch.setattr(subbed_video, "after_transcription", boom)
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    monkeypatch.setattr(svc, "_post_usage_stats", lambda *a, **k: None)
+    tr.status = "running"
+
+    svc.finish_task({"task": tr, "temporary": False}, keep_status=False)
+
+    assert dl.status == "error"
+    assert app.history_rows[-1][0] == "error"
+    assert "disk exploded" in app.history_rows[-1][2]
+
+
+def test_a_burn_thread_that_cannot_start_leaves_no_placeholder(tmp_path, media, monkeypatch):
+    import core._threads as threads
+
+    srt = tmp_path / "Talk [x].srt"
+    srt.write_text("x", encoding="utf-8")
+
+    def no_thread(fn, name=""):
+        raise RuntimeError("can't start new thread")
+
+    monkeypatch.setattr(threads, "safe_thread", no_thread)
+    app, dl = _App(), _dl(media)
+
+    subbed_video.after_transcription(app, dl, _tr(str(srt)), True)
+
+    assert dl.status == "error"
+    assert _files(tmp_path) == {"Talk [x].mp4", "Talk [x].srt"}
+    assert "can't start new thread" in app.history_rows[-1][2]
+
+
+def test_the_burn_receives_its_placeholder_for_exit_cleanup(tmp_path, media, monkeypatch, sync_threads):
+    srt = tmp_path / "Talk [x].srt"
+    srt.write_text("x", encoding="utf-8")
+    seen = {}
+
+    def fake_burn(v, s, o, **kw):
+        seen["placeholder"] = kw.get("placeholder")
+        open(o, "wb").close()
+
+    monkeypatch.setattr(burn_subs, "burn", fake_burn)
+    app, dl = _App(), _dl(media)
+
+    subbed_video.after_transcription(app, dl, _tr(str(srt)), True)
+
+    assert seen["placeholder"] == str(tmp_path / "Talk [x]-subbed.mp4")
+
+
+def test_the_picture_check_on_the_ui_thread_is_short(monkeypatch, media):
+    seen = {}
+
+    def probe(path, timeout=60.0):
+        seen["timeout"] = timeout
+        return burn_subs.MediaInfo(0.0, None, "")
+
+    monkeypatch.setattr(burn_subs, "probe_media", probe)
+    assert subbed_video.has_no_video(media) is False        # unanswered probe: not refused
+    assert seen["timeout"] <= 10
+
+
+def test_probe_media_passes_its_timeout_to_ffprobe(monkeypatch, media):
+    seen = {}
+
+    def run(cmd, **kw):
+        seen["timeout"] = kw["timeout"]
+        raise subprocess.TimeoutExpired(cmd, kw["timeout"])
+
+    monkeypatch.setattr(burn_subs.subprocess, "run", run)
+    monkeypatch.setattr(burn_subs, "bundled_binary", lambda name: "ffprobe")
+
+    info = burn_subs.probe_media(media, timeout=3.0)
+
+    assert seen["timeout"] == 3.0
+    assert info.has_video is None

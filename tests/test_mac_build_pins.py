@@ -10,12 +10,17 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 FETCH = ROOT / "platform" / "macos" / "pyinstaller" / "fetch_mac_binaries.sh"
 CONSTRAINTS = ROOT / "platform" / "macos" / "pyinstaller" / "constraints-macos.txt"
 SPEC = ROOT / "platform" / "macos" / "pyinstaller" / "whisper_project_mac.spec"
+VERIFY = ROOT / "platform" / "macos" / "pyinstaller" / "verify_mac_bundle.sh"
 
 
 def _vars(text: str) -> dict[str, str]:
@@ -108,3 +113,45 @@ def test_constraints_pin_numpy_and_pyinstaller():
     assert pins.get("numpy") == "1.26.4"
     assert re.fullmatch(r"\d+\.\d+\.\d+", pins.get("pyinstaller", ""))
     assert pins.get("onnxruntime") == "1.19.2"
+
+
+def _filter_check_snippet() -> str:
+    lines = VERIFY.read_text(encoding="utf-8").splitlines()
+    start = next(i for i, ln in enumerate(lines) if ln.startswith('filters="$('))
+    end = next(i for i in range(start, len(lines)) if lines[i].lstrip().startswith("|| {"))
+    return "\n".join(lines[start : end + 1])
+
+
+def _run_filter_check(tmp_path: Path, filter_list: str) -> subprocess.CompletedProcess:
+    bash = shutil.which("bash")
+    if bash is None:
+        pytest.skip("bash is not installed")
+    fake = tmp_path / "ffmpeg"
+    fake.write_text("#!/usr/bin/env bash\ncat <<'LIST'\n" + filter_list + "LIST\n", encoding="utf-8", newline="\n")
+    fake.chmod(0o755)
+    script = tmp_path / "check.sh"
+    script.write_text(
+        "set -uo pipefail\nB='" + tmp_path.as_posix() + "'\nbad=0\n" + _filter_check_snippet() + '\necho "bad=$bad"\n',
+        encoding="utf-8", newline="\n",
+    )
+    return subprocess.run([bash, str(script)], capture_output=True, text=True, timeout=60)
+
+
+_FILTERS_WITH = (
+    "Filters:\n  T.. = Timeline support\n"
+    " ... scale             V->V       Scale the input video size.\n"
+    " .S. ass               V->V       Render ASS subtitles onto input video using the libass library.\n"
+    " .S. subtitles         V->V       Render text subtitles onto input video using the libass library.\n"
+)
+
+
+def test_bundle_check_passes_an_ffmpeg_that_lists_the_subtitles_filter(tmp_path):
+    done = _run_filter_check(tmp_path, _FILTERS_WITH)
+    assert done.stdout.strip().endswith("bad=0"), done.stdout + done.stderr
+
+
+def test_bundle_check_fails_an_ffmpeg_without_the_subtitles_filter(tmp_path):
+    without = "".join(ln + "\n" for ln in _FILTERS_WITH.splitlines() if " subtitles " not in ln)
+    done = _run_filter_check(tmp_path, without)
+    assert "no 'subtitles' filter" in done.stdout
+    assert done.stdout.strip().endswith("bad=1"), done.stdout + done.stderr
