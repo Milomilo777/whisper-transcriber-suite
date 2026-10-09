@@ -98,6 +98,30 @@ def test_a_lone_surrogate_is_replaced_not_fatal() -> None:
     argv[-2].encode("utf-8")
 
 
+def _expected_arg(value: str) -> str:
+    """The contract, written independently of the code: text and title are cleaned the same way.
+
+    A process argument cannot hold NUL (exec refuses it) or a lone surrogate (not UTF-8), so NUL is
+    dropped and each lone surrogate becomes U+FFFD; everything else, an astral character included,
+    arrives unchanged.
+    """
+    return "".join(chr(0xFFFD) if 0xD800 <= ord(c) <= 0xDFFF else c for c in value if c != chr(0))
+
+
+@pytest.mark.parametrize("value", [chr(0xD800), chr(0xDC00), "a" + chr(0xD83D) + "b" + chr(0xDE00)])
+def test_title_and_text_are_cleaned_the_same_way(value: str) -> None:
+    argv = da.build_osascript_argv(value, value)
+    assert argv[-2] == argv[-1] == _expected_arg(value)
+    assert chr(0xFFFD) in argv[-1]
+    for arg in argv:
+        arg.encode("utf-8")                  # what exec needs
+
+
+def test_a_valid_surrogate_pair_character_is_left_alone() -> None:
+    emoji = chr(0x1F600)                     # one character: a pair only in UTF-16
+    assert da.build_osascript_argv(emoji, "t" + emoji)[-2:] == [emoji, "t" + emoji]
+
+
 def test_property_argv_round_trips_for_any_unicode() -> None:
     hypothesis = pytest.importorskip("hypothesis")
     st = pytest.importorskip("hypothesis.strategies")
@@ -114,11 +138,15 @@ def test_property_argv_round_trips_for_any_unicode() -> None:
     reference = da.build_osascript_argv("x", "y")[:-2]
 
     @hypothesis.settings(max_examples=300, deadline=None)
+    @hypothesis.example(chr(0xD800), chr(0xD800))            # a lone high surrogate, as text and title
+    @hypothesis.example(chr(0xDC00), chr(0xDC00))            # a lone low surrogate
+    @hypothesis.example("ok", chr(0xD800) + "x" + chr(0xDC00))
+    @hypothesis.example(chr(0x1F600), chr(0x1F600) + chr(0x645))  # a valid pair (one emoji) stays
     @hypothesis.given(texts, texts)
     def check(text: str, title: str) -> None:
         argv = da.build_osascript_argv(text, title)
-        expected_text, expected_title = (t.replace("\x00", "") for t in (text, title))
-        assert argv[-2:] == [expected_text, expected_title]      # exact: nothing escaped or trimmed
+        expected_text, expected_title = (_expected_arg(t) for t in (text, title))
+        assert argv[-2:] == [expected_text, expected_title]      # exact: only NUL and lone surrogates change
         assert argv[:-2] == reference                            # the script never contains the text
         assert argv[-3] == "--" and isinstance(argv, list)
         assert all(isinstance(a, str) and "\x00" not in a for a in argv)
