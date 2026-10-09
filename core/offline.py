@@ -184,10 +184,15 @@ def require_online(what: str) -> None:
 # --- the Network log: what the switch did in this process ------------------
 
 #: Event kinds: a refused action or connection, an automatic request that was
-#: not sent, a connection allowed because it stays on this computer.
+#: not sent, a connection allowed because it stays on this computer, and a
+#: Verify offline now probe that was refused (kept out of the refused count).
 REFUSED = "refused"
 SKIPPED = "skipped"
 LOCAL = "local"
+TEST = "test"
+
+#: The feature name of the Verify offline now probes.
+SELF_TEST_FEATURE = "Verify offline now"
 
 _LOG_SIZE = 500
 
@@ -213,7 +218,10 @@ class Activity:
 
 _log_lock = threading.Lock()
 _events: deque[NetEvent] = deque(maxlen=_LOG_SIZE)
-_counts = {REFUSED: 0, SKIPPED: 0, LOCAL: 0}
+# Allowed local connections can be many (a local AI server): their own ring,
+# so they never push refusals out of the log.
+_local_events: deque[NetEvent] = deque(maxlen=_LOG_SIZE)
+_counts = {REFUSED: 0, SKIPPED: 0, LOCAL: 0, TEST: 0}
 _since = time.time()
 _skipped_once: set[str] = set()
 _feature_label = threading.local()
@@ -245,7 +253,7 @@ def _caller_feature() -> str:
 def _record(kind: str, feature: str, host: object = "") -> None:
     event = NetEvent(time.time(), kind, feature, _host_text(host) if host else "")
     with _log_lock:
-        _events.append(event)
+        (_local_events if kind == LOCAL else _events).append(event)
         _counts[kind] = _counts.get(kind, 0) + 1
 
 
@@ -289,7 +297,8 @@ def feature(name: str) -> Generator[None]:
 def activity() -> Activity:
     """A snapshot of this process's Network log."""
     with _log_lock:
-        return Activity(_since, dict(_counts), tuple(_events))
+        events = sorted((*_events, *_local_events), key=lambda e: e.when)
+        return Activity(_since, dict(_counts), tuple(events))
 
 
 def reset_activity() -> None:
@@ -297,6 +306,7 @@ def reset_activity() -> None:
     global _since
     with _log_lock:
         _events.clear()
+        _local_events.clear()
         _skipped_once.clear()
         for kind in _counts:
             _counts[kind] = 0
@@ -413,7 +423,8 @@ def reverse_lookup_allowed(address: object) -> bool:
 def _refusal(target: object) -> OfflineModeError:
     # Logged: a refusal here means a call site did not ask first.
     logger.info("Work offline: refused a connection to %s", target)
-    _record(REFUSED, _caller_feature(), target)
+    feature_name = _caller_feature()
+    _record(TEST if feature_name == SELF_TEST_FEATURE else REFUSED, feature_name, target)
     return OfflineModeError(message(f"a connection to {target}"))
 
 
@@ -434,8 +445,8 @@ def _target(address: object) -> object:
 # per process and acts only while the guard is installed.
 _audit_hook_added = False
 _AUDIT_EVENTS = frozenset({
-    "socket.sendto", "socket.sendmsg", "socket.gethostbyname",
-    "socket.gethostbyaddr", "socket.getnameinfo",
+    "socket.connect", "socket.getaddrinfo", "socket.sendto", "socket.sendmsg",
+    "socket.gethostbyname", "socket.gethostbyaddr", "socket.getnameinfo",
 })
 
 
@@ -444,7 +455,17 @@ def _audit_hook(event: str, args: tuple[Any, ...]) -> None:
     # everything that is not one of the five socket calls.
     if event not in _AUDIT_EVENTS or not _originals or not is_offline():
         return
-    if event in ("socket.sendto", "socket.sendmsg"):
+    if event == "socket.connect":
+        # The C-level connect / connect_ex: code that calls _socket directly
+        # or a getaddrinfo bound before the patch (the patched methods asked first).
+        sock, address = args[0], args[1]
+        family = getattr(sock, "family", socket.AF_INET)
+        if not connect_allowed(family, getattr(sock, "type", socket.SOCK_STREAM), address):
+            raise _refusal(_target(address))
+    elif event == "socket.getaddrinfo":
+        if not lookup_allowed(args[0]):
+            raise _refusal(args[0])
+    elif event in ("socket.sendto", "socket.sendmsg"):
         sock, address = args[0], args[1]
         family = getattr(sock, "family", socket.AF_INET)
         if not send_allowed(family, address):
@@ -468,10 +489,12 @@ def install_network_guard() -> None:
     while the switch is off. Covers ``socket.socket.connect`` / ``connect_ex``
     (and so ``ssl``, ``http.client``, ``urllib``, ``requests``),
     ``socket.getaddrinfo`` (``create_connection``) and, through an audit hook,
-    UDP ``sendto`` / ``sendmsg`` with an address and the lookups
-    ``gethostbyname`` / ``gethostbyaddr`` / ``getnameinfo``. Not covered: a
-    UDP socket connected to an outside address and then used with ``send``,
-    and code that does not go through Python's :mod:`socket` module. Child
+    the same calls made on ``_socket`` directly, UDP ``sendto`` / ``sendmsg``
+    with an address and the lookups ``gethostbyname`` / ``gethostbyaddr`` /
+    ``getnameinfo``; on Windows also asyncio's Proactor loop (IOCP connect and
+    sendto). Not covered: a UDP socket connected to an outside address and
+    then used with ``send``, and code that does not go through Python's
+    :mod:`socket` module or asyncio. Child
     processes (workers, yt-dlp, ffmpeg) are guarded by their own entry point
     or call site, not by this process.
     """
@@ -515,6 +538,34 @@ def install_network_guard() -> None:
         if not _audit_hook_added:
             sys.addaudithook(_audit_hook)
             _audit_hook_added = True
+        _guard_asyncio_proactor()
+
+
+def _guard_asyncio_proactor() -> None:
+    """Windows: asyncio's default (Proactor) loop connects and sends through
+    IOCP (ConnectEx / WSASendTo), which fires no socket audit event, so its two
+    entry points ask too. Called with ``_guard_lock`` held."""
+    if sys.platform != "win32":
+        return
+    from asyncio import windows_events
+
+    cls = windows_events.IocpProactor
+    orig_connect = cls.connect
+    orig_sendto = cls.sendto
+
+    def connect(self: Any, conn: socket.socket, address: Any) -> Any:
+        if is_offline() and not connect_allowed(conn.family, conn.type, address):
+            raise _refusal(_target(address))
+        return orig_connect(self, conn, address)
+
+    def sendto(self: Any, conn: socket.socket, buf: Any, flags: int = 0, addr: Any = None) -> Any:
+        if is_offline() and not send_allowed(conn.family, addr):
+            raise _refusal(_target(addr))
+        return orig_sendto(self, conn, buf, flags, addr)
+
+    _originals["proactor"] = (cls, orig_connect, orig_sendto)
+    cls.connect = connect  # type: ignore[method-assign]
+    cls.sendto = sendto  # type: ignore[method-assign]
 
 
 def uninstall_network_guard() -> None:
@@ -525,6 +576,11 @@ def uninstall_network_guard() -> None:
         socket.socket.connect = _originals["connect"]  # type: ignore[method-assign]
         socket.socket.connect_ex = _originals["connect_ex"]  # type: ignore[method-assign]
         socket.getaddrinfo = _originals["getaddrinfo"]
+        proactor = _originals.get("proactor")
+        if proactor is not None:
+            cls, connect, sendto = proactor
+            cls.connect = connect
+            cls.sendto = sendto
         _originals.clear()
 
 
@@ -569,8 +625,11 @@ def poll_connections(root_pid: int | None = None) -> ConnectionCheck:
     """List the open connections to other computers of this process and its children.
 
     Reads the operating system's connection table (psutil): what is open at
-    this moment, whatever opened it. A connection that opens and closes
-    between two checks is not seen, and nothing here measures bytes.
+    this moment, whatever opened it. Children are found through their parent
+    links, so a process whose parent has already ended is not seen. Windows
+    reports no remote address for UDP sockets, so in practice this lists TCP
+    connections. A connection that opens and closes between two checks is
+    not seen, and nothing here measures bytes.
     """
     import os
 
@@ -663,7 +722,7 @@ def self_test() -> list[ProbeResult]:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.sendto(b"", (SELF_TEST_ADDRESS, 9))
 
-    with feature("Verify offline now"):
+    with feature(SELF_TEST_FEATURE):
         return [
             _probe(f"TCP connection to {SELF_TEST_ADDRESS}", tcp),
             _probe(f"name lookup of {SELF_TEST_NAME}", lookup),

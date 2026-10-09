@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import errno
 import socket
+import sys
 import threading
 import time
 from pathlib import Path
@@ -105,6 +106,27 @@ def test_reading_the_config_while_offline_counts_the_online_config_once(monkeypa
         cfg.load_config()
     skipped = [e.feature for e in offline.activity().events if e.kind == offline.SKIPPED]
     assert skipped == ["the online config"]
+
+
+def test_only_requests_with_a_destination_count_as_not_sent(monkeypatch):
+    import app.observability as obs
+    import core.config as cfg
+    from core import stats
+
+    offline.set_offline(True)
+    monkeypatch.setattr(cfg, "load_config", lambda *a, **k: {"telemetry_opt_in": True})
+    monkeypatch.delenv("SENTRY_DSN", raising=False)
+    monkeypatch.delenv("WHISPER_TELEMETRY_URL", raising=False)
+    obs.init_sentry()
+    obs.send_launch_ping_async()
+    stats.post_stats_async({"telemetry_opt_in": True, "stats_url": ""}, {})
+    assert offline.activity().counts[offline.SKIPPED] == 0
+    monkeypatch.setenv("SENTRY_DSN", "https://dummy-credential-A@example.invalid/1")
+    monkeypatch.setenv("WHISPER_TELEMETRY_URL", "https://example.invalid/ping")
+    assert obs.init_sentry() is False
+    obs.send_launch_ping_async()
+    features = [e.feature for e in offline.activity().events]
+    assert features == ["crash reports", "the launch ping"]
 
 
 def test_reset_starts_a_new_count():
@@ -214,14 +236,81 @@ def test_reverse_lookup_allowed_only_for_this_computer():
         assert not offline.reverse_lookup_allowed(host), host
 
 
+def test_calls_on_the_raw_socket_module_are_refused(guard):
+    import _socket
+
+    offline.set_offline(True)
+    raw = _socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        with pytest.raises(offline.OfflineModeError):
+            raw.connect(("203.0.113.1", 443))
+    finally:
+        raw.close()
+    with pytest.raises(offline.OfflineModeError):
+        _socket.getaddrinfo("work-offline-check.invalid", 80)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the Proactor loop is Windows only")
+def test_asyncio_proactor_connections_and_datagrams_are_refused(guard):
+    import asyncio
+
+    offline.set_offline(True)
+
+    async def run() -> None:
+        with pytest.raises(offline.OfflineModeError):
+            await asyncio.open_connection("203.0.113.1", 443)
+        loop = asyncio.get_running_loop()
+        transport, _ = await loop.create_datagram_endpoint(
+            asyncio.DatagramProtocol, local_addr=("127.0.0.1", 0))
+        try:
+            transport.sendto(b"x", ("203.0.113.1", 9))
+            await asyncio.sleep(0.2)
+        finally:
+            transport.close()
+
+    asyncio.run(run())
+    hosts = [e.host for e in offline.activity().events if e.kind == offline.REFUSED]
+    assert hosts == ["203.0.113.1", "203.0.113.1"]
+
+
+def test_allowed_local_connections_never_push_refusals_out_of_the_log():
+    offline.refused("downloading this link")
+    for _ in range(offline._LOG_SIZE + 100):
+        offline._record(offline.LOCAL, "core.llm", "127.0.0.1")
+    act = offline.activity()
+    assert [e.feature for e in act.events if e.kind == offline.REFUSED] == ["downloading this link"]
+    assert act.counts[offline.LOCAL] == offline._LOG_SIZE + 100
+
+
+def test_a_failing_look_shows_unknown_and_keeps_polling():
+    import tkinter as tk
+
+    try:
+        root = tk.Tk()
+    except tk.TclError:
+        pytest.skip("no Tk display")
+    try:
+        def boom() -> offline.ConnectionCheck:
+            raise RuntimeError("boom")
+
+        bar = status.OfflineStatusBar(root, post_to_main=lambda fn: fn(), poll=boom)
+        bar.tick()
+        assert bar.check is not None and not bar.check.ok
+        assert "unknown" in bar.text_var.get() and bar._after_id is not None
+        bar.hide()
+    finally:
+        root.destroy()
+
+
 # --- Verify offline now --------------------------------------------------------
 
 def test_verify_offline_now_shows_every_probe_refused(guard):
     offline.set_offline(True)
     probes = offline.self_test()
     assert [p.refused for p in probes] == [True, True, True], probes
-    features = {e.feature for e in offline.activity().events}
-    assert features == {"Verify offline now"}
+    act = offline.activity()
+    assert {(e.kind, e.feature) for e in act.events} == {(offline.TEST, "Verify offline now")}
+    assert act.counts[offline.REFUSED] == 0 and act.counts[offline.TEST] == 3
 
 
 def test_verify_offline_now_fails_without_the_guard(monkeypatch):
@@ -308,7 +397,7 @@ def test_bar_text_never_claims_more_than_it_checked():
         text = status.bar_text(check, act, now)
         assert "open connections unknown" in text and "no open connection" not in text
     clean = status.bar_text(_check(when=now), act, now)
-    assert clean.startswith("Work offline: no open connection to another computer (checked ")
+    assert clean.startswith("Work offline: this app has no open TCP connection to another computer (checked ")
     for text in (clean, status.log_text(act, _check(when=now))):
         assert "0 bytes" not in text and "0 outside" not in text
 
@@ -340,13 +429,18 @@ _CHECK_NAMES = frozenset({
 })
 
 
-def _dotted(node: ast.expr) -> str:
+def _dotted(node: ast.expr, aliases: dict[str, str] | None = None) -> str:
     parts: list[str] = []
-    while isinstance(node, ast.Attribute):
-        parts.append(node.attr)
-        node = node.value
+    while True:
+        if isinstance(node, ast.Attribute):
+            parts.append(node.attr)
+            node = node.value
+        elif isinstance(node, ast.Call):  # requests.Session().get
+            node = node.func
+        else:
+            break
     if isinstance(node, ast.Name):
-        parts.append(node.id)
+        parts.append((aliases or {}).get(node.id, node.id))
     return ".".join(reversed(parts))
 
 
@@ -358,20 +452,46 @@ def _is_network_call(name: str) -> bool:
     return head in _NET_MODULES and last[:1].islower() and last not in ("exceptions",)
 
 
+def _aliases(tree: ast.Module) -> dict[str, str]:
+    """Local name -> full dotted name, from the module's imports (any depth)."""
+    out: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                if a.asname:
+                    out[a.asname] = a.name
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            for a in node.names:
+                out[a.asname or a.name] = f"{node.module}.{a.name}"
+    return out
+
+
+def _functions(tree: ast.Module):
+    """(qualified name, function node) for every function, nested ones included."""
+    def walk(node: ast.AST, prefix: str):
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                yield f"{prefix}{child.name}", child
+                yield from walk(child, f"{prefix}{child.name}.")
+            elif isinstance(child, ast.ClassDef):
+                yield from walk(child, f"{prefix}{child.name}.")
+            else:
+                yield from walk(child, prefix)
+    yield from walk(tree, "")
+
+
 def _network_functions() -> dict[str, bool]:
-    """``path::function`` -> whether it asks core.offline itself."""
+    """``path::qualified.name`` -> whether it asks core.offline itself."""
     found: dict[str, bool] = {}
     for path in sorted([*ROOT.glob("app/**/*.py"), *ROOT.glob("core/**/*.py")]):
         tree = ast.parse(path.read_text(encoding="utf-8"))
+        aliases = _aliases(tree)
         rel = path.relative_to(ROOT).as_posix()
-        for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            calls = [_dotted(n.func) for n in ast.walk(node) if isinstance(n, ast.Call)]
+        for qualname, node in _functions(tree):
+            calls = [_dotted(n.func, aliases) for n in ast.walk(node) if isinstance(n, ast.Call)]
             if any(_is_network_call(c) for c in calls):
                 asks = any(c.rsplit(".", 1)[-1] in _CHECK_NAMES for c in calls)
-                key = f"{rel}::{node.name}"
-                found[key] = found.get(key, False) or asks
+                found[f"{rel}::{qualname}"] = asks
     return found
 
 
@@ -400,10 +520,46 @@ def test_every_network_call_asks_work_offline_or_is_listed():
     assert not stale, f"allow-list entries that no longer open a connection: {stale}"
 
 
+def _scan_source(source: str) -> list[str]:
+    tree = ast.parse(source)
+    aliases = _aliases(tree)
+    return [_dotted(n.func, aliases) for n in ast.walk(tree) if isinstance(n, ast.Call)]
+
+
 def test_the_scan_sees_a_new_unasked_call():
-    # Negative control for the rule above.
-    tree = ast.parse("import urllib.request\ndef f():\n    urllib.request.urlopen('https://x')\n")
-    calls = [_dotted(n.func) for n in ast.walk(tree) if isinstance(n, ast.Call)]
-    assert any(_is_network_call(c) for c in calls)
-    assert not any(c.rsplit(".", 1)[-1] in _CHECK_NAMES for c in calls)
+    # Negative controls for the rule above, including aliased imports.
+    for source in (
+        """import urllib.request
+def f():
+    urllib.request.urlopen('https://x')
+""",
+        """from urllib.request import urlopen as u
+def f():
+    u('https://x')
+""",
+        """import socket as s
+def f():
+    s.socket()
+""",
+        """from socket import socket
+def f():
+    socket()
+""",
+        """import requests
+def f():
+    requests.Session().get('https://x')
+""",
+    ):
+        calls = _scan_source(source)
+        assert any(_is_network_call(c) for c in calls), source
+        assert not any(c.rsplit(".", 1)[-1] in _CHECK_NAMES for c in calls)
     assert len(_network_functions()) >= 20
+
+
+def test_functions_are_keyed_by_their_qualified_name():
+    tree = ast.parse("""class A:
+    def go(self): pass
+class B:
+    def go(self): pass
+""")
+    assert [q for q, _ in _functions(tree)] == ["A.go", "B.go"]

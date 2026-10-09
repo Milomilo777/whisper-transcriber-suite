@@ -363,7 +363,8 @@ def post_stats_async(
         from core import offline
         if offline.is_offline():
             logger.debug("stats post skipped: offline mode is on")
-            offline.skipped("usage statistics")
+            if str(config.get("stats_url") or "").strip():
+                offline.skipped("usage statistics")
             return False
         url = str(config.get("stats_url") or "").strip()
         if not url:

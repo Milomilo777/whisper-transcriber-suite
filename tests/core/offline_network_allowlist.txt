@@ -8,21 +8,25 @@
 # An entry here needs a reviewer's sign-off: name the caller that asks first,
 # or why the call cannot leave this computer.
 #
-# Format: <path>::<function name>  <reason>
+# Format: <path>::<qualified function name>  <reason>
+#
+# Known limits of the scan: a network call on an object stored in a variable
+# (s = requests.Session(); s.get(...)) is not seen, and a check anywhere in
+# the function counts, even after the call.
 
-app/observability.py::send_launch_ping_async  asks _telemetry_opted_in(), which returns False while offline (and counts it as skipped)
-app/observability.py::_worker  nested in send_launch_ping_async, which asks first
-app/services/download_service.py::_stream_smtv_file  only reached from _run_smtv_task, after _refused_offline() and the SMTV page fetch (smtv._http_get asks)
-core/backends/cloud_stt.py::_upload_file  only reached from transcribe(), which calls require_online("the Gemini cloud engine") first
-core/backends/cloud_stt.py::_wait_for_active  only reached from _upload_file (see above)
-core/backends/cloud_stt.py::_delete_file  only reached from transcribe() / _upload_file (see above)
-core/backends/cloud_stt.py::_post_json  only reached from transcribe() (see above)
+app/observability.py::send_launch_ping_async  asks _telemetry_opted_in(), which returns False while offline
+app/observability.py::send_launch_ping_async._worker  nested in send_launch_ping_async, which asks first
+app/services/download_service.py::DownloadService._stream_smtv_file  only reached from _run_smtv_task, after _refused_offline() and the SMTV page fetch (smtv._http_get asks)
+core/backends/cloud_stt.py::CloudSttBackend._upload_file  only reached from transcribe(), which calls require_online("the Gemini cloud engine") first
+core/backends/cloud_stt.py::CloudSttBackend._wait_for_active  only reached from _upload_file (see above)
+core/backends/cloud_stt.py::CloudSttBackend._delete_file  only reached from transcribe() / _upload_file (see above)
+core/backends/cloud_stt.py::CloudSttBackend._post_json  only reached from transcribe() (see above)
 core/config.py::fetch_online_config  load_config() asks is_offline() and passes an empty URL while offline (no request)
 core/js_runtime.py::_download  only reached from install_deno(), which asks first
-core/llm.py::_post_once  only reached from the request method that refuses a non-local base_url while offline
+core/llm.py::RemoteLLMRunner._post_once  only reached from the request method that refuses a non-local base_url while offline
 core/model_manager.py::_download_via_huggingface  only reached from ensure_model(), which calls require_online() first
-core/offline.py::tcp  the Verify offline now probe; self_test() runs it only while offline, to a reserved address
-core/offline.py::udp  the Verify offline now probe (see tcp)
+core/offline.py::self_test.tcp  the Verify offline now probe; self_test() runs it only while offline, to a reserved address
+core/offline.py::self_test.udp  the Verify offline now probe (see tcp)
 core/server/__init__.py::_primary_lan_ip  a UDP connect that only picks a route and sends nothing
 core/server/__init__.py::_port_is_free  binds a local port; no connection
 core/server/__init__.py::find_available_port  binds local ports; no connection

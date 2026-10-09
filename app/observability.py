@@ -54,11 +54,27 @@ def _telemetry_opted_in() -> bool:
         from core import offline
         from core.config import load_config  # type: ignore[import-not-found]
         if offline.is_offline():
-            offline.skipped("crash reports and the launch ping")
             return False
         return bool(load_config().get("telemetry_opt_in", False))
     except Exception:  # noqa: BLE001
         return False
+
+
+def _note_skipped_while_offline(what: str, configured: bool) -> None:
+    """Count ``what`` in the Work offline log when only the switch stopped it.
+
+    ``configured``: the request has a destination (a DSN / URL), so it would
+    have been sent with Work offline off and usage statistics on.
+    """
+    if not configured:
+        return
+    try:
+        from core import offline
+        from core.config import load_config  # type: ignore[import-not-found]
+        if offline.is_offline() and bool(load_config().get("telemetry_opt_in", False)):
+            offline.skipped(what)
+    except Exception:  # noqa: BLE001
+        logger.debug("could not note a skipped request", exc_info=True)
 
 
 def _anonymised_id() -> str:
@@ -214,6 +230,9 @@ def init_sentry() -> bool:
     Every event passes through :func:`scrub_sentry_event`.
     """
     if not _telemetry_opted_in():
+        _note_skipped_while_offline(
+            "crash reports", bool(os.environ.get("SENTRY_DSN", "").strip()),
+        )
         return False
     dsn = os.environ.get("SENTRY_DSN", "").strip()
     if not dsn:
@@ -245,6 +264,9 @@ def send_launch_ping_async() -> None:
     and swallowed; nothing about the ping is surfaced to the user.
     """
     if not _telemetry_opted_in():
+        _note_skipped_while_offline(
+            "the launch ping", bool(os.environ.get("WHISPER_TELEMETRY_URL", "").strip()),
+        )
         return
     url = os.environ.get("WHISPER_TELEMETRY_URL", "").strip()
     if not url:

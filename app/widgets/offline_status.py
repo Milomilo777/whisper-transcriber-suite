@@ -4,12 +4,13 @@ While Work offline is on (``core.offline``), a one-line bar at the bottom of the
 window says what the switch has done in this window's process and whether the
 app has any connection to another computer open right now. Its three states:
 
-* clean: a fresh look at the open connections found none to another computer;
+* clean: a fresh look at the app's open TCP connections found none to another
+  computer;
 * cannot check: there was no fresh look, or it failed (never shown as clean);
 * warning: a connection to another computer is open (shown, never hidden).
 
-**Network log** opens a window with every refused action, every automatic
-request that was not sent, every connection allowed because it stays on this
+**Network log** opens a window with the recent refused actions, automatic
+requests that were not sent and connections allowed because they stay on this
 computer, the open connections, a **Verify offline now** button and the limits
 of what is checked. The text is copyable and holds host and feature names only.
 
@@ -34,15 +35,19 @@ FRESH_SECONDS = 30.0
 LIMITS = (
     "What this shows, and what it does not:",
     "- The counts and events come from this window's process. Transcription "
-    "workers, yt-dlp and ffmpeg are stopped by the code that starts them; "
-    "their refusals are not counted here.",
-    "- The open-connection check lists the TCP connections and connected UDP "
-    "sockets of this app and every process it started, every 10 seconds. A "
-    "connection that opens and closes between two checks can be missed.",
+    "workers refuse in their own process; yt-dlp and ffmpeg are not started "
+    "by the actions that would go online; Demucs only gets offline proxy and "
+    "Hugging Face settings. Their refusals are not counted here.",
+    "- The open-connection check lists the TCP connections of this app and of "
+    "the processes it started that are still running under it, about every "
+    "10 seconds. UDP sockets are not listed (Windows does not report where a "
+    "UDP socket is connected). A connection that opens and closes between two "
+    "checks can be missed. Another computer means any address that is not "
+    "loopback, including this computer's own network address.",
     "- Refused here: outgoing TCP connections, host-name lookups and UDP sends "
-    "to another computer. Not covered: a UDP socket connected to another "
-    "computer and then used with send(), and code that does not use Python's "
-    "socket module.",
+    "to another computer (also through asyncio). Not covered: a UDP socket "
+    "connected to another computer and then used with send(), and native code "
+    "that does not use Python's socket module.",
     "- Bytes are not measured. To watch all traffic yourself, see "
     "docs/WORK_OFFLINE.md (Resource Monitor, Get-NetTCPConnection, Wireshark).",
 )
@@ -82,12 +87,12 @@ def bar_text(check: offline.ConnectionCheck | None, act: offline.Activity, now: 
         n = len(check.outside)
         first = _connection_text(check.outside[0])
         return (
-            f"Work offline: WARNING, {n} open connection{'' if n == 1 else 's'} to "
-            f"another computer ({first}). See the Network log."
+            f"Work offline: WARNING, this app has {n} open connection{'' if n == 1 else 's'} "
+            f"to another computer ({first}). See the Network log."
         )
     if state == "clean" and check is not None:
         return (
-            f"Work offline: no open connection to another computer "
+            f"Work offline: this app has no open TCP connection to another computer "
             f"(checked {_clock(check.when)}) · {_counts_text(act)}"
         )
     reason = "not checked yet"
@@ -95,13 +100,14 @@ def bar_text(check: offline.ConnectionCheck | None, act: offline.Activity, now: 
         reason = f"could not check: {check.error}"
     elif check is not None:
         reason = f"last check {_clock(check.when)} is too old"
-    return f"Work offline: open connections unknown ({reason}) · {_counts_text(act)}"
+    return f"Work offline: this app's open connections unknown ({reason}) · {_counts_text(act)}"
 
 
 _KIND_WORDS = {
     offline.REFUSED: "refused",
     offline.SKIPPED: "not sent",
     offline.LOCAL: "allowed (this computer)",
+    offline.TEST: "refused (test)",
 }
 
 
@@ -116,7 +122,8 @@ def log_text(
         f"Work offline: Network log of this window since {_clock(act.since)}",
         f"Refused: {act.counts.get(offline.REFUSED, 0)}    "
         f"Automatic requests not sent: {act.counts.get(offline.SKIPPED, 0)}    "
-        f"Connections allowed on this computer: {act.counts.get(offline.LOCAL, 0)}",
+        f"Connections allowed on this computer: {act.counts.get(offline.LOCAL, 0)}    "
+        f"Verify offline now refusals (not in the counts): {act.counts.get(offline.TEST, 0)}",
         "",
     ]
     if check is None:
@@ -125,7 +132,7 @@ def log_text(
         lines.append(f"Open connections to other computers: could not check ({check.error})")
     else:
         lines.append(
-            f"Open connections to other computers (checked {_clock(check.when)}, "
+            f"Open TCP connections to other computers (checked {_clock(check.when)}, "
             f"{check.processes} process{'' if check.processes == 1 else 'es'} of this app):"
         )
         if check.outside:
@@ -138,7 +145,9 @@ def log_text(
         lines.extend(
             f"  {'OK' if p.refused else 'FAILED'}  {p.what}: {p.detail}" for p in probes
         )
-    lines += ["", f"Events (oldest first, the last {len(act.events)}):"]
+    lines += ["", f"Events (oldest first, {len(act.events)} shown; the log keeps the last "
+              f"{offline._LOG_SIZE} refused or not sent and the last {offline._LOG_SIZE} "
+              "allowed; the counts above are not capped):"]
     if not act.events:
         lines.append("  none yet")
     for ev in act.events:
@@ -262,9 +271,13 @@ class OfflineStatusBar(ttk.Frame):
         if self._after_id is not None:
             self.after_cancel(self._after_id)
             self._after_id = None
-        self.check = self._poll()
+        try:
+            self.check = self._poll()
+        except Exception as e:  # noqa: BLE001 - shown as "unknown", never as clean
+            self.check = offline.ConnectionCheck(time.time(), False, error=f"{type(e).__name__}: {e}")
+        finally:
+            self._after_id = self.after(POLL_MS, self.tick)
         self.render()
-        self._after_id = self.after(POLL_MS, self.tick)
 
     def render(self) -> None:
         now = time.time()
