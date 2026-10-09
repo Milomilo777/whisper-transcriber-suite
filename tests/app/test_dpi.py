@@ -235,3 +235,25 @@ def test_an_unshown_dialog_measures_the_monitor_of_its_parent(monkeypatch):
     assert dpi._windows_work_area(Win(2, False, master=parent)) is None
     assert dpi._windows_work_area(Win(3, True, master=parent)) is None
     assert seen == [1, 3]
+
+
+def test_a_mac_screen_keeps_room_for_the_menu_bar_title_bar_and_dock(monkeypatch):
+    """The viewer's 1180x720 ran past the Dock of a 1280x800 Mac (S10-5 margins were for a taskbar)."""
+    monkeypatch.setattr(sys, "platform", "darwin")
+    assert dpi.scaled_size(_Widget(96, screen=(1280, 800)), 1180, 720) == (1180, 660)
+    assert dpi.scaled_size(_Widget(96, screen=(1280, 800)), 1320, 900) == (1240, 660)
+    # A screen with room to spare, and a window already small enough, keep the asked size.
+    assert dpi.scaled_size(_Widget(96, screen=(2560, 1440)), 1180, 720) == (1180, 720)
+    assert dpi.scaled_size(_Widget(96, screen=(1280, 800)), 820, 520) == (820, 520)
+
+
+def test_a_mac_window_keeps_the_floor_on_a_tiny_screen(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "darwin")
+    assert dpi.scaled_size(_Widget(96, screen=(600, 300)), 1180, 720) == (560, 240)
+
+
+@pytest.mark.parametrize("platform", ["linux", "win32"])
+def test_the_screen_margins_are_unchanged_off_macos(monkeypatch, platform):
+    monkeypatch.setattr(sys, "platform", platform)
+    monkeypatch.setattr(dpi, "_windows_work_area", lambda _w: None)
+    assert dpi.scaled_size(_Widget(96, screen=(1280, 800)), 1180, 720) == (1180, 710)

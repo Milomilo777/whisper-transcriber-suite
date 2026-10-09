@@ -1477,6 +1477,64 @@ def test_viewer_json_folder_button_says_reveal_in_finder_and_selects_the_json(
         viewer._on_close()
 
 
+def test_a_big_window_can_keep_the_bottom_of_the_screen_free_for_the_dock() -> None:
+    dialog = _Shown(0, 0, 0, 0)
+    mac_native.centre_over(
+        dialog, _Shown(1100, 600, 300, 250), 680, 620, reserve_bottom=mac_native.DOCK_ROOM_PX,
+    )
+    assert dialog.geometries == ["+760+168"]          # 900 - 620 - 112, not the 280 of the default
+
+
+def _viewer_over_a_1280x800_mac(host: _Host, monkeypatch: pytest.MonkeyPatch, tmp_path: Any):
+    """Open the transcript viewer over a shown main window on a faked 1280x800 Mac screen."""
+    from app import dpi
+    from tests.app.test_viewer_edit_safety import _open, _write_outputs
+
+    monkeypatch.setattr(dpi, "_is_mac", lambda: True)
+    monkeypatch.setattr(dpi, "scale_factor", lambda _w: 1.0)
+    monkeypatch.setattr(dpi, "work_area", lambda _w: (0, 0, 1280, 800, False))
+    for name, value in (("winfo_viewable", True), ("winfo_rootx", 20), ("winfo_rooty", 22),
+                        ("winfo_width", 1240), ("winfo_height", 716),
+                        ("winfo_screenwidth", 1280), ("winfo_screenheight", 800)):
+        monkeypatch.setattr(host, name, lambda v=value: v)
+    seen: list[str] = []
+    real = tk.Toplevel.geometry
+
+    def geometry(self: tk.Toplevel, value: Any = None) -> Any:
+        if value is not None:
+            seen.append(str(value))
+        return real(self, value)
+
+    monkeypatch.setattr(tk.Toplevel, "geometry", geometry)
+    viewer = _open(host, _write_outputs(tmp_path, ["json"]))
+    return viewer, seen
+
+
+def test_the_viewer_opens_inside_a_1280x800_mac_screen(
+    aqua: None, host: _Host, monkeypatch: pytest.MonkeyPatch, tmp_path: Any,
+) -> None:
+    viewer, seen = _viewer_over_a_1280x800_mac(host, monkeypatch, tmp_path)
+    try:
+        assert seen == ["1180x660", "+50+28"]
+        width, height, x, y = 1180, 660, 50, 28
+        assert x + width <= 1280                       # right edge on screen
+        assert y + 28 + height <= 800 - 60             # title bar and window end above the Dock
+    finally:
+        viewer._dirty = False
+        viewer._on_close()
+
+
+def test_the_viewer_is_left_to_the_system_off_macos(
+    not_aqua: str, host: _Host, monkeypatch: pytest.MonkeyPatch, tmp_path: Any,
+) -> None:
+    viewer, seen = _viewer_over_a_1280x800_mac(host, monkeypatch, tmp_path)
+    try:
+        assert len(seen) == 1 and seen[0].count("+") == 0   # a size only, no position
+    finally:
+        viewer._dirty = False
+        viewer._on_close()
+
+
 def test_viewer_json_folder_button_is_unchanged_on_windows_and_linux(
     platform_name: Callable[[str], None], host: _Host, monkeypatch: pytest.MonkeyPatch, tmp_path: Any,
 ) -> None:

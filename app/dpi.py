@@ -190,7 +190,14 @@ def work_area(widget: Any) -> tuple[int, int, int, int, bool]:
 # frame when the work area is known, plus the taskbar / menu bar / Dock when only the screen is.
 _MARGIN_EXACT = (16, 48)
 _MARGIN_SCREEN = (40, 90)
+# macOS: Tk's screen height still holds the menu bar (28) and the Dock (about 84 when it is
+# not hidden), and the title bar (28) comes on top of a window's height.
+_MARGIN_SCREEN_MAC = (40, 140)
 _MIN_SIZE = (320, 240)   # a fitted window never shrinks below this (if the request was larger)
+
+
+def _is_mac() -> bool:
+    return sys.platform == "darwin"
 
 
 def fit_size(widget: Any, width: int, height: int) -> tuple[int, int]:
@@ -199,7 +206,12 @@ def fit_size(widget: Any, width: int, height: int) -> tuple[int, int]:
     if area_w <= 0 or area_h <= 0:
         return width, height
     factor = scale_factor(widget)
-    margin_w, margin_h = _MARGIN_EXACT if exact else _MARGIN_SCREEN
+    if exact:
+        margin_w, margin_h = _MARGIN_EXACT
+    elif _is_mac():
+        margin_w, margin_h = _MARGIN_SCREEN_MAC
+    else:
+        margin_w, margin_h = _MARGIN_SCREEN
     room_w = max(area_w - int(round(margin_w * factor)), 1)
     room_h = max(area_h - int(round(margin_h * factor)), 1)
     floor_w = min(width, int(round(_MIN_SIZE[0] * factor)))

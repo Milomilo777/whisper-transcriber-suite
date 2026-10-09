@@ -375,12 +375,20 @@ def close_front_window(app: Any) -> bool:
 _MENU_BAR_PX = 28
 
 
-def centre_over(window: Any, master: Any, width: int, height: int) -> None:
+# What the Dock and a window's own title bar take below its top edge on a small screen.
+DOCK_ROOM_PX = 112
+
+
+def centre_over(
+    window: Any, master: Any, width: int, height: int, reserve_bottom: int = 0,
+) -> None:
     """Aqua: put ``window`` (about to be ``width`` x ``height``) in the middle of ``master``.
 
     macOS opens a new Tk window wherever it likes, which left the About dialog off to one side
     of the main window. On the main screen it is kept on screen; over a main window on another
     monitor it is simply centred there. Does nothing off Aqua or while ``master`` is not shown.
+    ``reserve_bottom`` keeps that much of the screen's bottom free (a big window passes
+    ``DOCK_ROOM_PX`` so it does not end up under the Dock).
     """
     if not is_aqua(window):
         return
@@ -398,7 +406,7 @@ def centre_over(window: Any, master: Any, width: int, height: int) -> None:
         # lie outside it (negative is valid: "+-800+40") and a clamp would send the window away.
         if 0 <= left + across // 2 < screen_w and 0 <= up + down // 2 < screen_h:
             x = max(0, min(x, screen_w - width))
-            y = max(_MENU_BAR_PX, min(y, screen_h - height))
+            y = max(_MENU_BAR_PX, min(y, screen_h - height - reserve_bottom))
         window.geometry(f"+{x}+{y}")
     except tk.TclError:
         logger.debug("Window not centred", exc_info=True)

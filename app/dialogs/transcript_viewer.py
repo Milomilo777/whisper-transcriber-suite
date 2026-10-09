@@ -698,6 +698,11 @@ class TranscriptViewer(tk.Toplevel):
         # own launch size, which was already fixed regardless of screen
         # size, so this doesn't change anything about small-screen fit.
         self.minsize(width, height)
+        # macOS opens a new window at its own offset, which pushed this one past the right edge
+        # of a 1280x800 screen and under the Dock; place it over the main window, on screen.
+        mac_native.centre_over(
+            self, master, width, height, reserve_bottom=mac_native.DOCK_ROOM_PX,
+        )
         self.transient(master)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
