@@ -143,6 +143,7 @@ def _macos_region(prefs_path: Path | None = None) -> str:
     AppleLocale`` prints), so no subprocess and no PyObjC is needed.
     """
     import plistlib
+    from xml.parsers.expat import ExpatError
 
     path = prefs_path or (
         Path.home() / "Library" / "Preferences" / ".GlobalPreferences.plist"
@@ -150,7 +151,8 @@ def _macos_region(prefs_path: Path | None = None) -> str:
     try:
         with open(path, "rb") as fh:
             prefs = plistlib.load(fh)
-    except (OSError, ValueError) as e:
+    except (OSError, ValueError, ExpatError) as e:
+        # ExpatError: malformed XML (plistlib does not wrap it in ValueError)
         logger.debug("AppleLocale not readable (ignored): %s", e)
         return ""
     locale_name = prefs.get("AppleLocale") if isinstance(prefs, dict) else None
