@@ -6,6 +6,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **macOS native feel.** The Mac app has an app menu with About and Settings (Command-comma), the
+  standard Window menu, a Help menu with the system search field, Command-W for secondary windows,
+  and "Reveal in Finder". Files from Finder ("Open With", a drop on the Dock icon) wait until
+  start-up is done and then open like a drop on the window, a Dock click shows a hidden window, and
+  the transcript viewer shows its file as the proxy icon and the unsaved-edits dot. Windows and Linux
+  are unchanged; the hooks are the ones `tools/mac_native_probe.py` proved (`docs/MACOS_BUILD_NOTES.md`).
 - **FFmpeg source for the GPL builds.** `THIRD_PARTY_NOTICES.md` now names the exact corresponding
   source of the bundled FFmpeg (Windows: the gyan.dev build's FFmpeg commit; macOS: the FFmpeg 9.0.2
   release) and the builders' library lists. `tools/fetch_ffmpeg_source.py` downloads the pinned

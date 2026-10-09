@@ -291,6 +291,84 @@ Still open:
   cookies (no longer installable on 10.15), a trackpad's scroll feel,
   microphone/Live on the VM.
 
+## Native integration (app menu, Window and Help menus, Finder, Dock)
+
+On macOS the app behaves like a Mac app: `app/mac_native.py` wires the hooks of Tk's Aqua port. Every
+function is a no-op unless `tk windowingsystem` is `aqua`, so Windows and Linux are unchanged (the
+tests run each case twice, once pretending to be Aqua and once as `win32` and `x11`). The code is
+built only on hooks that `tools/mac_native_probe.py` proved on the real Tk.
+
+**The probe.** `python tools/mac_native_probe.py` (standard library plus tkinter; run it in a desktop
+session with the Python and Tk the app is built with) prints the Tk patch level, then `PASS` or `FAIL`
+per hook, and exits 0 when every hook the app uses passes. It drives the real native menu bar through
+the Objective-C runtime with `ctypes` (menu items are found by title and "clicked" with
+`performActionForItemAtIndex:`), and sends the real Apple events with `open -a`. Result on macOS 13.7.8,
+python.org Python 3.12.10, Tk 8.6.16:
+
+| Hook | Result | Used for |
+|---|---|---|
+| `tk::mac::ShowPreferences` | PASS: the app menu item "Settings…" (Command-comma) is enabled and runs it | Settings opens the Advanced settings dialog |
+| `tkAboutDialog` | PASS: the app menu's "About" item runs it | the app's own About dialog; Help no longer repeats About |
+| `tk::mac::ShowHelp` | PASS: Tk adds "<App> Help" to a `.help` menu and runs it | opens `docs/README.md` on GitHub |
+| `tk::mac::OpenDocument` | PASS: a file sent with `open -a` arrives | Finder "Open With", drops on the Dock icon |
+| `tk::mac::ReopenApplication` | PASS: runs when the Dock icon is clicked while the window is minimised | shows the window again |
+| `.window` menu | PASS: macOS adds Minimize, Zoom, Bring All to Front and the window list | Window menu |
+| `.help` menu | PASS: Tk adds its Help item, macOS adds the search field | Help menu |
+| `wm attributes -modified`, `-titlepath` | PASS: the window gets the proxy icon and the unsaved dot | transcript viewer |
+| `.apple` menu | FAIL: its entries are not merged into the app menu (an extra top-level menu with an empty title appears) | not used |
+| Dock menu | FAIL: Tk's application class has no `applicationDockMenu:` and Tk has no Tcl command for Dock entries (a positive and a negative control on the same query behaved) | not used; adding one needs a new native dependency, left for a later card |
+| `tk::mac::standardAboutPanel` | exists, not used (it would show only the bundle's name and version, not the About dialog) | |
+
+Findings that shaped the code (all measured with the probe or a throwaway script in the VM):
+
+- Tk fills the Window and Help menus when its window first becomes active, so the menu bar must be
+  attached before the window is first shown. The app builds it in `__init__`, which does.
+- macOS adds the Help search field only to a menu titled exactly `Help`. A title such as `Help ●` loses
+  it, so on macOS the update dot is shown on the "Check for updates" item only, never on the title.
+- A Tk menu item with an `accelerator` is a real key equivalent (`File > Close Window` reports `w`).
+- Python callbacks cannot run inside a synchronous Objective-C call from `ctypes` (fatal "GIL" error);
+  the probe uses plain Tcl procs for that step. The app registers its commands with `createcommand`,
+  which Tk runs from the event loop like the existing `::tk::mac::Quit` handler.
+
+**Behaviour.**
+
+- App menu: "About Whisper Transcriber Suite" and "Settings…" (Command-comma). Both do nothing (a beep)
+  while a modal window is open or before start-up has finished, as the main window's buttons would.
+- Window menu (Minimize Command-M, Zoom, Bring All to Front) and the Help menu with the native search
+  field. **File > Close Window** (Command-W) closes the front secondary window by running its own
+  close handler, so the transcript viewer still asks about unsaved edits. It never closes the main
+  window.
+- Open files from Finder: never PyInstaller `argv_emulation` (it conflicts with Tk). The handler is
+  registered before the first event-loop turn; files wait in a queue until the first-run windows and
+  any modal window are done, then go through `App.open_paths`: the same path, validation and
+  English-only model question as a drop on the window. The spec declares `CFBundleDocumentTypes`
+  (`platform/macos/pyinstaller/document_types.py`, built from `core/media_types.py`): role Viewer, rank
+  Alternate, so Finder lists the app under "Open With" and never makes it the default app. `.ts` is left
+  out (TypeScript). `verify_mac_bundle.sh` and `test_dmg.sh` check the key in the built app.
+- Dock icon: a click while the window is minimised or hidden in the tray shows it again.
+- Wording: "Reveal in Finder" replaces "Open folder" / "Open output folder" / "Open download folder"
+  (and "Reveal Log Folder in Finder" in Help); where a file is known (a finished job's first output, a
+  burned video, a converted transcript) it is selected with `open -R`. There is no "Options" or
+  "Preferences" text in the app; the native item says "Settings…".
+- Transcript viewer: the transcript file is the window's proxy icon and unsaved edits show the dot in
+  the close button.
+
+**Manual checks on a Mac (the automated tests cannot see these).** From a built `.app` on macOS 13 and
+10.15:
+
+1. App menu shows "About Whisper Transcriber Suite" and "Settings…"; Command-comma opens Advanced
+   settings; About opens the full About dialog; Help has no second About.
+2. Window menu lists the open windows; Command-M minimises; Bring All to Front works. Help shows the
+   search field and a Help item that opens the documentation page.
+3. Open a transcript viewer; Command-W closes it; with an unsaved edit it asks first and Cancel keeps it;
+   the dot shows in the close button while edits are unsaved; Command-click the title shows the path.
+4. Finder: right-click an `.mp3` > Open With lists the app (not as default); choose it with the app
+   closed (it starts and fills the file picker) and open; drag three files onto the Dock icon (they are
+   queued once the first-run windows are closed); on a fresh install nothing opens before the quick
+   start window is dismissed.
+5. Minimise the window, click the Dock icon: it returns.
+6. Last Result card, queue and Help menu say "Reveal in Finder"; the button selects the output file.
+
 ## Next steps worth doing
 
 - **universal2**: python.org 3.12 is universal2; fuse per-arch wheels with `delocate-merge`, `fetch_mac_binaries.sh universal2`, `WTS_TARGET_ARCH=universal2 WTS_DMG_SUFFIX=universal`, then `verify_mac_bundle.sh <app> universal2`.
