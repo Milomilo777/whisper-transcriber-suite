@@ -354,6 +354,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   appears when the app is in front and its window is on screen, even if no control has the keyboard
   focus (for example right after clicking a tab); it still appears when another app is in front or
   the window is minimised or hidden.
+- **Quitting before a Word file is rebuilt now says so.** When the 30-second wait for the
+  transcript viewer's export rebuild runs out, a message names the files that still hold the old
+  text and says to reopen the transcript and save again; the transcript itself was already saved.
 - **Stopping a helper process on Windows no longer gives up silently.** When the forced
   `taskkill` of a worker or download tree reports a failure, the app now also signals the
   process itself instead of treating the kill as done.

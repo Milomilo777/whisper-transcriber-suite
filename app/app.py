@@ -749,11 +749,73 @@ def build_about_links() -> list[tuple[str, str]]:
     ]
 
 
+#: Longest list of file names the "not updated" message shows; the rest is counted.
+_MAX_FILES_LISTED = 8
+
+
+def _not_updated_message(left: list[str]) -> str:
+    """The text of the box shown when the exit gave up on some export rebuilds.
+
+    File names, not paths; a name that two folders share also gets its folder, so the person can
+    tell the files apart; a long list is cut and counted.
+    """
+    paths = list(dict.fromkeys(left))
+    counts: dict[str, int] = {}
+    for path in paths:
+        counts[os.path.basename(path)] = counts.get(os.path.basename(path), 0) + 1
+    labels = []
+    for path in paths:
+        name = os.path.basename(path)
+        folder = os.path.basename(os.path.dirname(path))
+        labels.append(f"{name} ({folder})" if counts[name] > 1 and folder else name)
+    shown = labels[:_MAX_FILES_LISTED]
+    lines = [f"  {label}" for label in shown]
+    if len(labels) > len(shown):
+        lines.append(f"  ...and {len(labels) - len(shown)} more")
+    return (
+        "Your transcript was saved, but these files were still being rebuilt when the "
+        "app had to close, so they still hold the old text:\n\n"
+        + "\n".join(lines)
+        + "\n\nTo update them, open the transcript again and save it once more. "
+        "The transcript (JSON) and the other files are saved."
+    )
+
+
+def _viewable_parent(app: Any) -> Any:
+    """``app`` as the parent of a message box when its window is showing, else None (a window
+    hidden in the tray, or a stand-in, cannot be the parent of a visible box)."""
+    try:
+        if isinstance(app, tk.Misc) and app.winfo_viewable():
+            return app
+    except tk.TclError:
+        pass
+    return None
+
+
+def _warn_exports_not_updated(app: Any, left: list[str]) -> None:
+    """Tell the person which files kept the old text (an ordinary modal; they dismiss it).
+
+    Shown after the wait window is gone and before the app tears down; the exit is never
+    blocked by a failure here (the transcripts are saved and the log names the files).
+    """
+    app._exit_prompt_open = True  # a second close press must not stack another exit
+    try:
+        messagebox.showwarning(
+            "Some files were not updated", _not_updated_message(left),
+            parent=_viewable_parent(app))
+    except Exception:  # noqa: BLE001 - never block the exit
+        logger.exception("Could not show the 'exports not updated' message")
+    finally:
+        app._exit_prompt_open = False
+
+
 def _finish_viewer_exports(app: Any) -> None:
     """Wait (at most 30 s) for the transcript viewers' export rebuilds before the app ends.
 
     Only what exists on ``app`` is used (the exit tests pass stand-ins): its title says why
-    the window stays, its event loop keeps running, its log names what was not rebuilt.
+    the window stays, its event loop keeps running, its log names what was not rebuilt. When the
+    limit is reached with files still old, a message box names them (the exit goes on after the
+    person dismisses it); the transcript itself was saved before the wait began.
     """
     from app.dialogs.transcript_viewer import finish_exports_before_exit
 
@@ -787,6 +849,7 @@ def _finish_viewer_exports(app: Any) -> None:
             "Closed before these exports were rebuilt; they keep the old text: "
             + ", ".join(os.path.basename(p) for p in left)
         )
+        _warn_exports_not_updated(app, left)
 
 
 def _open_exit_wait_dialog(app: tk.Misc) -> tk.Toplevel | None:

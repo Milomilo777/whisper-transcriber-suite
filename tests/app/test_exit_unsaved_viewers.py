@@ -802,3 +802,142 @@ def test_the_queue_pump_runs_normally_when_no_exit_wait_is_on(app: App) -> None:
     app.loop()
     assert started == ["dispatch", "downloads"]
     app._closing = True
+
+
+# --------------------------------------------- exports still old when the 30 s cap is reached
+
+class _StubViewer:
+    """A viewer whose export worker is still running (``_export_idle`` never set), or finishes later."""
+
+    def __init__(self, remaining: list[str]) -> None:
+        import threading
+
+        self._export_idle = threading.Event()
+        self._export_remaining = set(remaining)
+
+
+def _short_wait(monkeypatch: pytest.MonkeyPatch, seconds: float = 0.3) -> None:
+    """The real cap is 30 s: the same function with a short one (the app calls it without one)."""
+    import functools
+
+    monkeypatch.setattr(
+        tv, "finish_exports_before_exit",
+        functools.partial(tv.finish_exports_before_exit, timeout=seconds))
+
+
+def _record_warnings(app: App, monkeypatch: pytest.MonkeyPatch, calls: list[str]) -> list[dict[str, Any]]:
+    shown: list[dict[str, Any]] = []
+
+    def _warn(title: str, message: str, **kw: Any) -> str:
+        shown.append({
+            "title": title, "message": message, "parent": kw.get("parent"),
+            "exit_prompt_open": app._exit_prompt_open, "grab": app.grab_current(),
+        })
+        calls.append("warn")
+        return "ok"
+
+    monkeypatch.setattr(app_module.messagebox, "showwarning", _warn)
+    return shown
+
+
+def test_a_timeout_tells_the_person_which_files_keep_the_old_text(
+    app: App, calls: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stuck = _StubViewer([str(tmp_path / "talk.docx"), str(tmp_path / "talk.srt")])
+    tv._EXPORTING.append(stuck)  # type: ignore[arg-type]
+    shown = _record_warnings(app, monkeypatch, calls)
+    _short_wait(monkeypatch)
+
+    app_module._finish_viewer_exports(app)
+
+    assert len(shown) == 1
+    text = shown[0]["message"]
+    assert "talk.docx" in text and "talk.srt" in text
+    assert str(tmp_path) not in text  # names, not paths
+    assert "old text" in text and "save" in text.lower()
+    assert shown[0]["exit_prompt_open"] is True  # a second close press cannot stack another exit
+    assert shown[0]["grab"] is None  # the wait window has been closed before the question
+    assert app._exit_prompt_open is False and app._exit_waiting is False
+
+
+def test_nothing_is_shown_when_every_export_finished_in_time(
+    app: App, calls: list[str], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import threading
+
+    quick = _StubViewer(["talk.docx"])
+    tv._EXPORTING.append(quick)  # type: ignore[arg-type]
+    threading.Timer(0.15, quick._export_idle.set).start()
+    shown = _record_warnings(app, monkeypatch, calls)
+    _short_wait(monkeypatch, seconds=5)
+
+    app_module._finish_viewer_exports(app)
+
+    assert shown == [] and quick._export_idle.is_set()
+
+
+def test_nothing_is_shown_when_no_viewer_exports(
+    app: App, calls: list[str], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shown = _record_warnings(app, monkeypatch, calls)
+    app_module._finish_viewer_exports(app)
+    assert shown == []
+
+
+def test_a_long_list_is_cut_and_a_name_listed_twice_is_listed_once(
+    app: App, calls: list[str], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    names = [f"/m/talk{i:02d}.docx" for i in range(15)]
+    tv._EXPORTING.append(_StubViewer(names))  # type: ignore[arg-type]
+    tv._EXPORTING.append(_StubViewer(names[:2]))  # type: ignore[arg-type]
+    shown = _record_warnings(app, monkeypatch, calls)
+    _short_wait(monkeypatch)
+
+    app_module._finish_viewer_exports(app)
+
+    text = shown[0]["message"]
+    assert text.count("talk00.docx") == 1
+    assert "talk14.docx" not in text and "more" in text
+
+
+def test_a_persian_file_name_is_shown_whole(
+    app: App, calls: list[str], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = "مصاحبه " + chr(0x200C) + " فارسی.docx"
+    tv._EXPORTING.append(_StubViewer(["/m/" + name]))  # type: ignore[arg-type]
+    shown = _record_warnings(app, monkeypatch, calls)
+    _short_wait(monkeypatch)
+    app_module._finish_viewer_exports(app)
+    assert name in shown[0]["message"]
+
+
+def test_a_failing_message_box_never_blocks_the_exit(
+    app: App, calls: list[str], monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture,
+) -> None:
+    tv._EXPORTING.append(_StubViewer(["/m/talk.docx"]))  # type: ignore[arg-type]
+
+    def _boom(*_a: Any, **_k: Any) -> str:
+        raise tk.TclError("window gone")
+
+    monkeypatch.setattr(app_module.messagebox, "showwarning", _boom)
+    _short_wait(monkeypatch)
+
+    app_module._finish_viewer_exports(app)  # no exception
+
+    assert app._exit_prompt_open is False
+    assert "Could not show the" in caplog.text
+
+
+def test_the_exit_shows_the_message_after_the_wait_and_before_the_teardown(
+    app: App, calls: list[str], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tv._EXPORTING.append(_StubViewer(["/m/talk.docx"]))  # type: ignore[arg-type]
+    shown = _record_warnings(app, monkeypatch, calls)
+    _short_wait(monkeypatch)
+
+    app.on_exit()
+
+    assert len(shown) == 1 and "talk.docx" in shown[0]["message"]
+    assert calls[0] == "warn" and calls[-1] == "destroy"  # the message first, then the teardown
+    assert "stop_all" in calls
+    app._closing = True
