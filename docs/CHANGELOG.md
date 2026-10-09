@@ -353,6 +353,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A model entry with an impossible download size no longer blocks its download.** A catalog size of
+  `Infinity` or a number too large to count raised an error before the first byte; the size is now treated as
+  unknown. A full disk while creating the model folder now says so and suggests another folder.
 - **A dropped file whose name has `#` or `%41` in it keeps its name.** The file address was decoded twice, so
   `a%20%231.mp4` became `a ` and an encoded `%41` became `A`; it is now decoded once.
 - **Closing the app during a Live session always finishes the recording.** If the unsaved transcript could not be
