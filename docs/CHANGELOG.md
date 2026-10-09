@@ -144,7 +144,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   and the bundled one is newer (the bundled binary is never written, and no update runs during
   a download). **Advanced → Downloads (yt-dlp)** offers "Ask me" (default), "Keep it up to date
   automatically" (once a day, before a download) and "Never"; an old `auto_update_yt_dlp: true`
-  loads as the automatic mode. Not in the macOS app, whose yt-dlp build cannot update itself.
+  loads as the automatic mode. The macOS app does the same with a downloaded copy (next entry).
+- **macOS: the video downloader can update itself too.** The first **Update it** (or the
+  automatic mode) downloads yt-dlp's official single-file `yt-dlp_macos` from its latest stable
+  release, over https from GitHub's hosts only, and installs it in the user cache only if it
+  matches the release's `SHA2-256SUMS`; a mismatch, a cut-off download or a file that does not
+  start installs nothing and the bundled copy keeps working. After that yt-dlp's own updater keeps
+  the copy current. A Mac older than macOS 10.15 keeps the old advice to install the newest app
+  version, now with the download-page link. The single-file build starts more slowly than the
+  bundled folder build (`docs/MACOS_BUILD_NOTES.md`).
 - **"Try it now" sample clip.** An 18-second public-domain (CC0) spoken clip ships with the
   app. "Finish and try it now" in the quick start window, and a "Try it now (sample clip)"
   button on the Transcribe tab, transcribe it with the chosen model and open the transcript, so

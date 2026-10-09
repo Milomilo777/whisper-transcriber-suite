@@ -128,6 +128,89 @@ def test_no_offer_when_this_copy_cannot_update_yt_dlp(host, monkeypatch):
     assert not _visible(host)
 
 
+# ------------------------------------------------- the macOS app (C2.78)
+
+_REAL_CAN_SELF_UPDATE = ytu.can_self_update
+
+
+@pytest.fixture
+def mac_app(host, tmp_path, monkeypatch):
+    """The macOS app: a folder yt-dlp bundled, so only the download route exists."""
+    dist = tmp_path / "bin" / "yt-dlp_dist"
+    dist.mkdir(parents=True)
+    exe = dist / "yt-dlp_macos"
+    exe.write_bytes(b"yt-dlp 2026.08.19")
+    (dist / "_internal").mkdir()
+    monkeypatch.setattr(ytu, "bundled_binary", lambda _n: str(exe))
+    monkeypatch.setattr(ytu, "user_cache_dir", lambda: tmp_path / "cache")
+    monkeypatch.setattr(ytu, "_is_macos", lambda: True)
+    monkeypatch.setattr(ytu, "macos_version", lambda: (13, 7))
+    monkeypatch.setattr(ytu, "can_self_update", _REAL_CAN_SELF_UPDATE)
+    return host
+
+
+def test_the_mac_app_shows_the_same_bar_instead_of_a_log_line(mac_app):
+    mac_app.offer_yt_dlp_update(_FAILURE)
+    assert _visible(mac_app)
+    text = mac_app._yt_dlp_bar.text_var.get()
+    assert text.startswith("The video downloader may be out of date.")
+    assert "about 37 MB" in text  # the universal macOS build, not the 18 MB Windows exe
+    assert str(mac_app._yt_dlp_bar.update_button.cget("text")) == "Update it"
+    assert not any("cannot update itself" in line for line in mac_app.logs)
+
+
+def test_the_mac_update_runs_and_a_failure_offers_retry(mac_app, updater):
+    updater.result = ytu.UpdateResult(
+        "failed", message="The downloaded file does not match its published checksum, so it was not installed.",
+        completed=True,
+    )
+    mac_app.offer_yt_dlp_update(_FAILURE)
+    bar = mac_app._yt_dlp_bar
+    bar.update_button.invoke()
+    _run_posted(mac_app)
+    assert "checksum" in bar.text_var.get()
+    assert "The app keeps using the version it has." in bar.text_var.get()
+    assert bar.update_button.winfo_manager() and bar.update_button.instate(["!disabled"])
+    bar.update_button.invoke()
+    assert len(updater.calls) == 2
+
+
+def test_the_mac_update_waits_while_work_offline_is_on(mac_app, updater, monkeypatch):
+    from tkinter import messagebox
+
+    from core import offline
+
+    mac_app.offer_yt_dlp_update(_FAILURE)
+    monkeypatch.setattr(offline, "is_offline", lambda: True)
+    monkeypatch.setattr(messagebox, "askyesno", lambda *_a, **_k: False)
+    mac_app._yt_dlp_bar.update_button.invoke()
+    assert updater.calls == []
+    assert any("Offline mode is on" in line for line in mac_app.logs)
+
+
+def test_the_mac_app_offers_nothing_in_mode_never(mac_app):
+    mac_app.app_config["yt_dlp_update_mode"] = "never"
+    mac_app.offer_yt_dlp_update(_FAILURE)
+    assert not _visible(mac_app)
+
+
+def test_an_old_mac_keeps_the_hint_and_names_the_download_page(mac_app, monkeypatch):
+    from core.updates import RELEASES_PAGE_URL
+
+    monkeypatch.setattr(ytu, "macos_version", lambda: (10, 14))
+    mac_app.offer_yt_dlp_update(_FAILURE)
+    mac_app.offer_yt_dlp_update(_FAILURE)
+    assert not _visible(mac_app)
+    hints = [line for line in mac_app.logs if "cannot update itself" in line]
+    assert len(hints) == 1  # once per launch
+    assert RELEASES_PAGE_URL in hints[0]
+
+
+def test_other_systems_show_the_same_size_as_before(host):
+    host.offer_yt_dlp_update(_FAILURE)
+    assert f"about {ytu.DOWNLOAD_MB} MB" in host._yt_dlp_bar.text_var.get()
+
+
 def test_not_now_hides_it_for_the_rest_of_the_launch(host, updater):
     host.offer_yt_dlp_update(_FAILURE)
     host._yt_dlp_bar.dismiss_button.invoke()

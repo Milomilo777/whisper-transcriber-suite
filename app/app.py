@@ -6177,8 +6177,10 @@ class App(tk.Tk):
         Called after a download or a format lookup failed in a way an
         outdated yt-dlp fails (core.yt_dlp_update.should_offer_update). Not
         in mode "never", not when this copy of the app cannot update yt-dlp
-        (no single-file build to copy, e.g. the macOS app), not again after
-        "Not now" in this launch, and not while an update runs.
+        (no single-file build to copy or download: a Mac older than 10.15, or
+        a source run without a bundled yt-dlp), not again after "Not now" in
+        this launch, and not while an update runs. The macOS app downloads
+        yt-dlp's single-file build on the first "Update it".
         """
         if self._closing or self._yt_dlp_bar_dismissed or self._yt_dlp_updating:
             return
@@ -6187,7 +6189,8 @@ class App(tk.Tk):
             return
         if not yt_dlp_update.can_self_update():
             # No bar to offer; say once per launch what does help (a failed
-            # download's own message carries the same advice).
+            # download's own message carries the same advice, with the app's
+            # download page).
             if not _inst_attr(self, "_yt_dlp_outdated_hint_shown") and yt_dlp_update.looks_outdated(reason):
                 self._yt_dlp_outdated_hint_shown = True
                 self.log("Note: " + yt_dlp_update.OUTDATED_HINT)
@@ -6195,7 +6198,7 @@ class App(tk.Tk):
         logger.info("Offering a yt-dlp update after: %s", reason)
         self._ensure_yt_dlp_bar().show_offer(
             "The video downloader may be out of date. An update (about "
-            f"{yt_dlp_update.DOWNLOAD_MB} MB) often fixes failing YouTube downloads.",
+            f"{yt_dlp_update.download_mb()} MB) often fixes failing YouTube downloads.",
             before=self.nb,
         )
 

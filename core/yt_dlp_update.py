@@ -20,8 +20,14 @@ and is cheap enough for the Tk thread. A copy whose size or modification time
 no longer matches the record, or that failed ``--version``, is not used.
 
 Only single-file yt-dlp builds can update themselves: yt-dlp refuses for its
-folder ("onedir") builds, which the macOS app bundles. ``can_self_update`` is
-False there and the app keeps using the bundled copy.
+folder ("onedir") builds, which the macOS app bundles. There the first update
+downloads yt-dlp's official single-file ``yt-dlp_macos`` instead
+(``_bootstrap``): from the latest stable GitHub release, over https to GitHub's
+own hosts only, checked against the release's SHA2-256SUMS before it is made
+executable, then started once with ``--version``. From then on the copy updates
+itself like any other. A Mac older than that file's minimum macOS (10.15), or
+one where the downloaded file did not start, keeps the bundled copy and the
+"install the newest app version" advice (``can_self_update`` is False).
 
 An update never runs while a yt-dlp download runs, and a download that starts
 during an update waits for it (``download_running`` / ``update_cached_copy``).
@@ -31,26 +37,35 @@ Tk-free; safe to import from the worker, the server and the UI.
 from __future__ import annotations
 
 import contextlib
+import hashlib
+import http.client
 import json
 import logging
 import os
+import platform
 import re
 import shutil
+import ssl
 import stat
 import subprocess
 import sys
 import tempfile
 import threading
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Generator, Mapping
+from typing import IO, Any, Callable, Generator, Mapping
 
 from . import offline
 from ._proc import kill_process_tree, new_session_kwargs
 from .config import user_cache_dir
 from .js_runtime import find_deno, mentions_missing_js_runtime, yt_dlp_version
 from .paths import bundled_binary
+from .updates import RELEASES_PAGE_URL
 
 logger = logging.getLogger(__name__)
 
@@ -67,14 +82,40 @@ MODES = (MODE_ASK, MODE_AUTO, MODE_NEVER)
 RELEASE_API_URL = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
 RELEASE_DOWNLOADS_URL = "https://github.com/yt-dlp/yt-dlp/releases/"
 
+#: macOS first update (``_bootstrap``): yt-dlp's single-file build, taken from
+#: the latest stable release and listed in the same release's checksum file.
+#: The README calls it "Universal MacOS (10.15+) standalone executable".
+BOOTSTRAP_ASSET = "yt-dlp_macos"
+CHECKSUMS_ASSET = "SHA2-256SUMS"
+RELEASE_LATEST_URL = RELEASE_DOWNLOADS_URL + "latest/download/"
+#: The only hosts a download may be redirected to (GitHub's own file hosts).
+TRUSTED_HOSTS = frozenset({
+    "github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com",
+})
+#: The oldest macOS the file runs on, from yt-dlp's README.
+MACOS_MIN = (10, 15)
+#: Roughly what the macOS download weighs (the universal build); shown on the bar.
+DOWNLOAD_MB_MACOS = 37
+#: Far above the real size; a longer answer is not the file.
+BOOTSTRAP_MAX_BYTES = 150 * 1024 * 1024
+#: The whole macOS download, checksum list included (a slow link needs minutes).
+BOOTSTRAP_TIMEOUT_S = 300
+_SOCKET_TIMEOUT_S = 30
+_CHECKSUMS_MAX_BYTES = 256 * 1024
+_CHUNK_BYTES = 256 * 1024
+_USER_AGENT = "WhisperTranscriberSuite-yt-dlp-download"
+# ``/yt-dlp/yt-dlp/releases/download/<tag>/<file>``: the tag GitHub resolved
+# "latest" to, so the checksum list and the file come from one release.
+_RELEASE_TAG_RE = re.compile(r"^/yt-dlp/yt-dlp/releases/download/([0-9A-Za-z._-]{1,64})/")
+
 AUTO_INTERVAL = timedelta(hours=24)
 #: Roughly what one update downloads (the Windows yt-dlp.exe); shown on the bar.
 DOWNLOAD_MB = 18
 UPDATE_TIMEOUT_S = 180
 #: How long a download start waits for a running update before going ahead:
-#: the updater itself plus two ``--version`` calls (up to 120 s each on a
-#: slow first start) and the copy.
-WAIT_FOR_UPDATE_S = UPDATE_TIMEOUT_S + 2 * 120 + 60
+#: the updater itself (or the macOS download) plus two ``--version`` calls (up
+#: to 120 s each on a slow first start) and the copy.
+WAIT_FOR_UPDATE_S = max(UPDATE_TIMEOUT_S, BOOTSTRAP_TIMEOUT_S) + 2 * 120 + 60
 
 _STATE_NAME = "state.json"
 
@@ -167,6 +208,16 @@ def auto_update_due(last: object, now: datetime) -> bool:
 
 
 def can_self_update(bundled: str | None = None) -> bool:
+    """True when this app can keep a self-updating yt-dlp copy.
+
+    Either the bundled yt-dlp is a single-file build we can copy, or this is a
+    Mac that can download yt-dlp's single-file build (``bootstrap_possible``).
+    """
+    path = bundled if bundled is not None else bundled_binary("yt-dlp")
+    return _can_copy_bundled(path) or bootstrap_possible()
+
+
+def _can_copy_bundled(path: str) -> bool:
     """True when the bundled yt-dlp is a single-file build we can copy.
 
     A bare name (no bundled binary; PATH lookup on Linux/macOS from source)
@@ -175,13 +226,52 @@ def can_self_update(bundled: str | None = None) -> bool:
     so do package-manager and other unofficial single-file builds, which
     this module learns from the updater's answer and records.
     """
-    path = bundled if bundled is not None else bundled_binary("yt-dlp")
     if not (os.path.isabs(path) and os.path.isfile(path)):
         return False
     real = os.path.realpath(path)
     if os.path.isdir(os.path.join(os.path.dirname(real), "_internal")):
         return False
     return not _marked_unsupported(load_state(), path)
+
+
+def _is_macos() -> bool:
+    return sys.platform == "darwin"
+
+
+def macos_version() -> tuple[int, ...]:
+    """(13, 7) for macOS 13.7.8; () when unknown or not macOS."""
+    try:
+        text = platform.mac_ver()[0]
+    except Exception:  # noqa: BLE001 -- unknown means "do not block"
+        return ()
+    m = re.match(r"\s*(\d+)(?:\.(\d+))?", text or "")
+    return (int(m.group(1)), int(m.group(2) or 0)) if m else ()
+
+
+def bootstrap_possible() -> bool:
+    """True on a Mac that may download yt-dlp's single-file build.
+
+    Not below ``MACOS_MIN`` (that Mac keeps the bundled copy), and not on a
+    macOS where a verified download did not start (``bootstrap_refused``; a
+    newer macOS tries again). An unknown macOS version is not held back: the
+    start check after the download decides.
+    """
+    if not _is_macos():
+        return False
+    version = macos_version()
+    if version and version < MACOS_MIN:
+        return False
+    return not _bootstrap_refused(load_state(), version)
+
+
+def _bootstrap_refused(state: Mapping[str, Any], version: tuple[int, ...]) -> bool:
+    rec = state.get("bootstrap_refused")
+    return isinstance(rec, dict) and rec.get("macos") == list(version)
+
+
+def download_mb() -> int:
+    """About how many MB an update downloads on this system, for the bar."""
+    return DOWNLOAD_MB_MACOS if _is_macos() else DOWNLOAD_MB
 
 
 def _marked_unsupported(state: Mapping[str, Any], bundled: str) -> bool:
@@ -309,8 +399,9 @@ def refresh_state(*, version_of: VersionOf | None = None) -> dict[str, Any]:
     with _state_lock:
         previous = load_state()
         state: dict[str, Any] = {}
-        if isinstance(previous.get("unsupported"), dict):
-            state["unsupported"] = previous["unsupported"]
+        for key in ("unsupported", "bootstrap_refused"):
+            if isinstance(previous.get(key), dict):
+                state[key] = previous[key]
         bundled = bundled_binary("yt-dlp")
         if os.path.isabs(bundled) and os.path.isfile(bundled):
             fingerprint = _fingerprint(bundled)
@@ -332,6 +423,11 @@ def refresh_state(*, version_of: VersionOf | None = None) -> dict[str, Any]:
             version = ask(str(cached))
             # An empty version = the copy did not answer --version: never used.
             state["cached"] = {"fingerprint": fingerprint, "version": list(version)}
+        # Where a downloaded copy came from; dropped once the file has changed
+        # (yt-dlp updated it) because the record no longer describes it.
+        brec = previous.get("bootstrap")
+        if isinstance(brec, dict) and fingerprint is not None and brec.get("fingerprint") == fingerprint:
+            state["bootstrap"] = brec
         _save_state(state)
         return state
 
@@ -490,7 +586,8 @@ def _end_tree(proc: subprocess.Popen[Any]) -> None:
 #: update yt-dlp by itself (``can_self_update`` False).
 OUTDATED_HINT = (
     "the video downloader in this app may be out of date and cannot update "
-    "itself here: install the newest version of this app and retry."
+    "itself here: install the newest version of this app and retry "
+    f"(download page: {RELEASES_PAGE_URL})."
 )
 
 _UNSUPPORTED_TEXT = (
@@ -510,7 +607,8 @@ def update_cached_copy(
 
     Blocking (network; up to ``timeout`` seconds): call it off the Tk thread.
     Refuses with "busy" while a download runs. ``log`` receives yt-dlp's own
-    output lines.
+    output lines. A Mac without a single-file copy first downloads one
+    (``_bootstrap``); every other system copies the bundled one.
     """
     global _updating
     bundled = bundled_binary("yt-dlp")
@@ -527,7 +625,11 @@ def update_cached_copy(
             )
         _updating = True
     try:
-        return _update(bundled, log or (lambda _m: None), timeout, run, version_of or yt_dlp_version)
+        say = log or (lambda _m: None)
+        ask = version_of or yt_dlp_version
+        if _can_copy_bundled(bundled):
+            return _update(bundled, say, timeout, run, ask)
+        return _update_by_download(bundled, say, timeout, run, ask)
     except Exception as e:  # noqa: BLE001 -- e.g. the cache folder is not writable
         logger.exception("yt-dlp update failed")
         return UpdateResult("failed", message=str(e) or type(e).__name__)
@@ -547,9 +649,13 @@ def _seed(bundled: str, target: Path) -> None:
     if os.name != "nt":
         tmp.chmod(tmp.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     os.replace(tmp, target)
-    # A rejection is remembered by size and modification time. It belongs to the
-    # file just replaced; a new file with the same two numbers (written within
-    # one timer tick) must not inherit it.
+    _forget_cached_record()
+
+
+def _forget_cached_record() -> None:
+    """Drop the record of the copy just replaced. A rejection is remembered by
+    size and modification time; a new file with the same two numbers (written
+    within one timer tick) must not inherit it."""
     with _state_lock:
         state = load_state()
         if state.pop("cached", None) is not None:
@@ -609,7 +715,19 @@ def _update(
         if not cached_v:
             _discard_copy(target, version_of=version_of)
             return UpdateResult("failed", message="The copied video downloader does not start.")
+    return _run_updater(bundled, target, cached_v, log, timeout, run, version_of)
 
+
+def _run_updater(
+    bundled: str,
+    target: Path,
+    cached_v: tuple[int, ...],
+    log: Callable[[str], None],
+    timeout: float,
+    run: Callable[..., Any],
+    version_of: VersionOf,
+) -> UpdateResult:
+    """Run yt-dlp's own ``--update-to stable`` on the user-writable copy."""
     kwargs: dict[str, Any] = {
         "capture_output": True,
         "text": True,
@@ -674,6 +792,280 @@ def _update(
         "failed", before=cached_v, after=after, completed=False,
         message=_last_error(output) or f"yt-dlp exited with code {proc.returncode}",
     )
+
+
+# macOS: the first update downloads yt-dlp's single-file build -------------------
+
+
+class _BootstrapFailed(Exception):
+    """A download that must not be used. ``message`` is plain words for the
+    bar. ``completed``: the answer is final (a wrong checksum, a file that does
+    not start), so the automatic mode does not try again for 24 h."""
+
+    def __init__(self, message: str, *, completed: bool = False) -> None:
+        super().__init__(message)
+        self.message = message
+        self.completed = completed
+
+
+def _check_release_url(url: str) -> None:
+    """Raise unless ``url`` is https on a GitHub release host (default port,
+    no user name): the only places the macOS download may come from."""
+    try:
+        parts = urllib.parse.urlsplit(url)
+        port = parts.port
+    except ValueError:
+        parts, port = None, -1
+    if (
+        parts is None
+        or parts.scheme != "https"
+        or (parts.hostname or "").lower() not in TRUSTED_HOSTS
+        or port not in (None, 443)
+        or parts.username is not None
+        or parts.password is not None
+    ):
+        raise _BootstrapFailed(
+            "The download was sent to an address the app does not trust, so it was not used.",
+            completed=True,
+        )
+
+
+class _TrustedRedirects(urllib.request.HTTPRedirectHandler):
+    """Follow redirects only to ``TRUSTED_HOSTS`` over https, and remember them."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.seen: list[str] = []
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
+        target = urllib.parse.urljoin(req.full_url, newurl)
+        _check_release_url(target)
+        self.seen.append(target)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _ssl_context() -> ssl.SSLContext | None:
+    """The system's trusted roots plus certifi's: a Python without a system
+    certificate store (python.org builds) still verifies GitHub."""
+    try:
+        import certifi  # noqa: PLC0415
+    except ImportError:
+        return None
+    try:
+        context = ssl.create_default_context()
+        context.load_verify_locations(cafile=certifi.where())
+    except (OSError, ssl.SSLError):
+        return None
+    return context
+
+
+def _network_failure(exc: BaseException) -> _BootstrapFailed:
+    """Plain words for a failed request or read. Nothing was installed."""
+    if isinstance(exc, offline.OfflineModeError):
+        return _BootstrapFailed(str(exc))
+    if isinstance(exc, urllib.error.HTTPError):
+        if 300 <= exc.code < 400:  # a redirect urllib itself refuses (other scheme, too many)
+            return _BootstrapFailed(
+                "The download was sent to an address the app does not trust, so it was not used.",
+                completed=True,
+            )
+        return _BootstrapFailed(
+            f"GitHub answered with an error ({exc.code}), so nothing was downloaded."
+        )
+    reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
+    if isinstance(reason, ssl.SSLError):
+        return _BootstrapFailed(
+            "The secure connection to GitHub could not be verified, so nothing was downloaded."
+        )
+    if isinstance(reason, TimeoutError):
+        return _BootstrapFailed("The download timed out.")
+    return _BootstrapFailed("The internet connection is not working, or GitHub cannot be reached.")
+
+
+def _open_release(url: str) -> tuple[Any, _TrustedRedirects]:
+    """GET ``url`` (a trusted address) and return the open answer plus the
+    redirects followed. The system proxy settings apply, as for any urllib call."""
+    _check_release_url(url)
+    redirects = _TrustedRedirects()
+    handlers: list[Any] = [redirects]
+    context = _ssl_context()
+    if context is not None:
+        handlers.append(urllib.request.HTTPSHandler(context=context))
+    opener = urllib.request.build_opener(*handlers)
+    request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
+    try:
+        return opener.open(request, timeout=_SOCKET_TIMEOUT_S), redirects
+    except (OSError, http.client.HTTPException) as e:
+        raise _network_failure(e) from e
+
+
+def _read(resp: Any, size: int) -> bytes:
+    try:
+        return resp.read(size)
+    except (OSError, http.client.HTTPException) as e:
+        raise _network_failure(e) from e
+
+
+def _release_tag(urls: list[str]) -> str:
+    """The release tag in the first GitHub release URL among ``urls``, or ""."""
+    for url in urls:
+        parts = urllib.parse.urlsplit(url)
+        if (parts.hostname or "").lower() == "github.com":
+            m = _RELEASE_TAG_RE.match(parts.path)
+            if m:
+                return m.group(1)
+    return ""
+
+
+def _expected_hash(checksums: str, name: str) -> str:
+    """The SHA-256 SHA2-256SUMS lists for exactly ``name`` (``<hash>  <name>``
+    or ``<hash> *<name>`` lines), lower case."""
+    for line in checksums.splitlines():
+        m = re.fullmatch(r"\s*([0-9A-Fa-f]{64})\s+\*?(\S+)\s*", line)
+        if m and m.group(2) == name:
+            return m.group(1).lower()
+    raise _BootstrapFailed(
+        "The release has no checksum for the macOS build, so it was not installed."
+    )
+
+
+def _fetch_checksum() -> tuple[str, str]:
+    """(release tag, expected SHA-256) of the latest stable release's macOS build."""
+    resp, redirects = _open_release(RELEASE_LATEST_URL + CHECKSUMS_ASSET)
+    with resp:
+        raw = _read(resp, _CHECKSUMS_MAX_BYTES + 1)
+    if len(raw) > _CHECKSUMS_MAX_BYTES:
+        raise _BootstrapFailed("The checksum list is larger than expected, so it was not used.")
+    tag = _release_tag(redirects.seen)
+    return tag, _expected_hash(raw.decode("utf-8", errors="replace"), BOOTSTRAP_ASSET)
+
+
+def _too_big() -> _BootstrapFailed:
+    return _BootstrapFailed("The download is larger than expected, so it was not installed.")
+
+
+def _download_checked(url: str, out: IO[bytes], expected: str, deadline: float) -> None:
+    """Write ``url`` to ``out`` and raise unless it is complete and its SHA-256
+    is ``expected``. The caller removes the file on any exception."""
+    resp, _redirects = _open_release(url)
+    digest = hashlib.sha256()
+    received = 0
+    with resp:
+        try:
+            length: int | None = int(resp.headers.get("Content-Length"))
+        except (TypeError, ValueError):
+            length = None
+        if length is not None and length > BOOTSTRAP_MAX_BYTES:
+            raise _too_big()
+        while True:
+            if time.monotonic() > deadline:
+                raise _BootstrapFailed("The download timed out.")
+            chunk = _read(resp, _CHUNK_BYTES)
+            if not chunk:
+                break
+            received += len(chunk)
+            if received > BOOTSTRAP_MAX_BYTES:
+                raise _too_big()
+            digest.update(chunk)
+            out.write(chunk)
+    if received == 0 or (length is not None and received != length):
+        raise _BootstrapFailed("The download was cut short, so it was not installed.")
+    if digest.hexdigest() != expected:
+        raise _BootstrapFailed(
+            "The downloaded file does not match its published checksum, so it was not installed.",
+            completed=True,
+        )
+
+
+def _remember_refusal() -> None:
+    """Record that a verified download did not start on this macOS."""
+    with _state_lock:
+        state = load_state()
+        state["bootstrap_refused"] = {"macos": list(macos_version())}
+        _save_state(state)
+
+
+def _bootstrap(
+    bundled: str, target: Path, log: Callable[[str], None], version_of: VersionOf,
+) -> UpdateResult:
+    """Download yt-dlp's single-file macOS build into ``target``.
+
+    Order matters: the checksum list first (its redirect names the release),
+    then that release's file into a temporary name beside ``target``; the
+    SHA-256 is checked before the file is made executable, and the file must
+    answer ``--version`` before it replaces anything. Any failure removes the
+    temporary file and leaves the bundled copy as the only one in use.
+    """
+    deadline = time.monotonic() + BOOTSTRAP_TIMEOUT_S
+    tmp: Path | None = None
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        tag, expected = _fetch_checksum()
+        url = (
+            f"{RELEASE_DOWNLOADS_URL}download/{tag}/{BOOTSTRAP_ASSET}"
+            if tag else RELEASE_LATEST_URL + BOOTSTRAP_ASSET
+        )
+        log(f"Downloading yt-dlp {tag or '(latest)'} ({BOOTSTRAP_ASSET}, about {DOWNLOAD_MB_MACOS} MB)")
+        fd, name = tempfile.mkstemp(prefix=target.name + ".", suffix=".download", dir=str(target.parent))
+        tmp = Path(name)
+        with os.fdopen(fd, "wb") as out:
+            _download_checked(url, out, expected, deadline)
+        tmp.chmod(0o755)  # only now: the bytes are the ones the release published
+        if not version_of(str(tmp)):
+            _remember_refusal()
+            raise _BootstrapFailed(
+                "The downloaded video downloader does not start on this Mac, so it is not used.",
+                completed=True,
+            )
+        with contextlib.suppress(OSError):  # a build rejected earlier (_discard_copy)
+            target.with_name(target.name + ".rejected").unlink()
+        os.replace(tmp, target)
+        tmp = None
+        _forget_cached_record()
+        state = refresh_state(version_of=version_of)
+        rec = state.get("cached")
+        after = _as_version(rec.get("version")) if isinstance(rec, dict) else ()
+        if not after:
+            _discard_copy(target, version_of=version_of)
+            raise _BootstrapFailed(
+                "The downloaded video downloader does not start, so it is not used.", completed=True,
+            )
+        with _state_lock:
+            state = load_state()
+            state["bootstrap"] = {"tag": tag, "sha256": expected, "fingerprint": _fingerprint(target)}
+            _save_state(state)
+        log(f"Installed yt-dlp {version_label(after)} at {target}")
+        bundled_v = version_of(bundled)
+        if bundled_v and after <= bundled_v:
+            # Nothing newer than the app's own copy exists yet (which stays the
+            # one in use): same answer as the Windows "already the newest".
+            return UpdateResult("current", before=bundled_v, after=after, completed=True)
+        return UpdateResult("updated", before=bundled_v, after=after, completed=True)
+    except _BootstrapFailed as e:
+        return UpdateResult("failed", message=e.message, completed=e.completed)
+    except OSError as e:
+        return UpdateResult("failed", message=f"Could not save the video downloader: {e}")
+    finally:
+        if tmp is not None:
+            with contextlib.suppress(OSError):
+                tmp.unlink()
+
+
+def _update_by_download(
+    bundled: str,
+    log: Callable[[str], None],
+    timeout: float,
+    run: Callable[..., Any],
+    version_of: VersionOf,
+) -> UpdateResult:
+    """macOS without a copyable bundled yt-dlp: download the single-file build
+    once; a working copy already there updates itself (``--update-to stable``)."""
+    target = cached_path()
+    usable = target.is_file() and not _rejected(load_state(), _fingerprint(target))
+    cached_v = version_of(str(target)) if usable else ()
+    if cached_v:
+        return _run_updater(bundled, target, cached_v, log, timeout, run, version_of)
+    return _bootstrap(bundled, target, log, version_of)
 
 
 def result_text(result: UpdateResult) -> str:

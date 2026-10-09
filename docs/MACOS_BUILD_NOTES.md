@@ -291,6 +291,38 @@ Still open:
   cookies (no longer installable on 10.15), a trackpad's scroll feel,
   microphone/Live on the VM.
 
+## Updating yt-dlp inside the Mac app
+
+The app bundles yt-dlp's onedir build, which yt-dlp's own updater refuses, so a YouTube change used
+to need a new app release. `core/yt_dlp_update.py` now does what it does on Windows, with one extra
+first step (the "Update it" bar, or the automatic mode):
+
+1. Fetch `https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS`; the redirect names
+   the release tag, and the line for exactly `yt-dlp_macos` gives the expected SHA-256.
+2. Download that tag's `yt-dlp_macos` (universal, about 37 MB) to a temporary name in
+   `<user cache>/tools/yt-dlp/`. Only https to `github.com`, `objects.githubusercontent.com` and
+   `release-assets.githubusercontent.com` is followed; the size is capped and the total time limited.
+3. Compare the SHA-256 and the length. Only then `chmod 0755`, run `--version` and move it into place
+   atomically. Any failure deletes the temporary file; the bundled copy is never touched.
+4. Later updates are yt-dlp's own `--update-to stable` on that copy. The app runs the newer of the
+   two copies (`resolve_yt_dlp_path`).
+
+Minimum macOS: yt-dlp's README lists `yt-dlp_macos` as "Universal MacOS (10.15+) standalone
+executable" (the README of 2026-10-09 has no `yt-dlp_macos_legacy` file any more, and the latest
+release lists none), so macOS 10.15 is offered the download and anything older keeps the old advice
+(`MACOS_MIN`). If a verified download does not start on some macOS anyway, `state.json` records
+`bootstrap_refused` for that macOS version and the bar is not offered again until the macOS changes.
+
+Known cost: the single-file build unpacks itself on every run (row 10 above: about 25 s per call
+on the VMs), so once the downloaded copy is the newer one every yt-dlp call is slower than with the
+bundled folder build. A folder-build variant (the release's `yt-dlp_macos.zip`, checked the same way,
+but updated by downloading it again because yt-dlp refuses to update a folder build) would avoid it.
+
+Checks on a real Mac: the bar appears after a failed YouTube download, **Update it** installs the
+file (`state.json` has `cached` and `bootstrap`), `tools/yt-dlp/yt-dlp --version` runs from the app
+(expected: no Gatekeeper hold, since the file has no quarantine flag when the app wrote it), Work offline refuses,
+a second **Update it** runs `--update-to stable`, and a download after it works with the new copy.
+
 ## Native integration (app menu, Window and Help menus, Finder, Dock)
 
 On macOS the app behaves like a Mac app: `app/mac_native.py` wires the hooks of Tk's Aqua port. Every
