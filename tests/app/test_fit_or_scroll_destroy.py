@@ -55,16 +55,17 @@ def test_destroying_the_page_cancels_the_pending_poll(root: tk.Tk) -> None:
     assert not any("_fit_or_scroll_timer" in s for s in _pending_scripts(root))
 
 
-def test_destroying_the_toplevel_cancels_the_pending_poll() -> None:
-    top = tk.Tk()
-    top.withdraw()
-    _build(top)
-    _pump(top, 0.15)
-    interp = top.tk
+def test_destroying_the_toplevel_cancels_the_pending_poll(root: tk.Tk) -> None:
+    # A Toplevel under a root that stays alive: destroying a Tk ROOT would pass on its own,
+    # because the conftest net cancels every pending after() of a destroyed root. Here only
+    # the canvas's own <Destroy> binding can cancel the poll.
+    top = tk.Toplevel(root)
+    _build(top)  # type: ignore[arg-type]
+    _pump(root, 0.15)
+    assert any("_fit_or_scroll_timer" in s for s in _pending_scripts(root)), "control: a poll is pending"
     top.destroy()
-    # The interpreter outlives the window object: no script may still call a deleted command.
-    left = [str(interp.call("after", "info", i)) for i in interp.splitlist(interp.call("after", "info"))]
-    assert not any("_fit_or_scroll_timer" in s for s in left)
+    # The root outlives the window: no script may still call a deleted command.
+    assert not any("_fit_or_scroll_timer" in s for s in _pending_scripts(root))
 
 
 def test_destroying_the_page_cancels_the_macos_repaint_on_show(
