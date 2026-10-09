@@ -71,6 +71,7 @@ from core.hub import voice_clone_tab_enabled
 from core.logging_setup import get_ui_logger, open_log_folder, setup_logging
 from core.paths import bin_dir as _resource_bin_dir
 from core.paths import bundled_binary as _bundled_binary
+from core.speed_meter import speed_cell, task_summary_line
 from core.watcher import FolderWatcher
 
 logger = logging.getLogger(__name__)
@@ -4818,7 +4819,7 @@ class App(tk.Tk):
         if self.tree.identify_region(event.x, event.y) != "cell":
             return
         col = self.tree.identify_column(event.x)
-        # columns are ("file","status","progress","language","time")
+        # columns are ("file","status","progress","speed","language","time")
         # -> status is #2, progress is #3.
         if col not in ("#2", "#3"):
             return
@@ -5169,6 +5170,7 @@ class App(tk.Tk):
                     name,
                     status_label(t.status),
                     self._row_progress_text(t.status, t.progress),
+                    speed_cell(t),
                     lang_str,
                     self.fmt_time(t),
                 ),
@@ -5341,6 +5343,13 @@ class App(tk.Tk):
             text=f"✓ {os.path.basename(task.file_path)}",
             font=("TkDefaultFont", 10, "bold"),
         ).pack(anchor="w")
+        speed_line = task_summary_line(task)
+        if speed_line:
+            ttk.Label(
+                self.last_result_body,
+                text=speed_line,
+                foreground=tokens.themed(tokens.TEXT_MUTED),
+            ).pack(anchor="w", pady=(2, 0))
         if getattr(task, "no_speech", False):
             ttk.Label(
                 self.last_result_body,

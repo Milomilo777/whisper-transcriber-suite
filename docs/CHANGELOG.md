@@ -6,6 +6,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Speed and time left.** The Queue tab shows how fast each transcription runs and roughly how
+  long is left (`about 4.8x, 6 min left`), and the result card says e.g. "42 min of audio
+  transcribed in 3 min 40 s (11.5x) with small on CPU". The speed comes from segment end times on a clock that
+  stops while paused; the history records speed, model and device. Rules in `docs/SPEED_METER.md`.
 - **macOS native feel.** The Mac app has an app menu with About and Settings (Command-comma), the
   standard Window menu, a Help menu with the system search field, Command-W for secondary windows,
   and "Reveal in Finder". Files from Finder ("Open With", a drop on the Dock icon) wait until

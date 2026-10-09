@@ -35,6 +35,7 @@ except ImportError:  # pragma: no cover
 
 from . import _checkpoint
 from . import loop_guard as _loop_guard
+from . import speed_meter as _speed_meter
 from . import task_settings as _task_settings
 from . import translate_task as _translate
 from . import vad_window as _vad_window
@@ -654,6 +655,41 @@ def _log_loop_guard_summary(
             f"{stats.marked} kept and marked for review.",
             log_cb,
         )
+
+
+def _wait_while_paused(task: Any, meter: "_speed_meter.SpeedMeter") -> None:
+    """Block while the task is paused, with the speed clock stopped."""
+    if not (task.paused and not task.cancelled):
+        return
+    meter.pause()
+    try:
+        while task.paused and not task.cancelled:
+            time.sleep(0.2)
+    finally:
+        meter.resume()
+
+
+def _publish_speed(task: Any, meter: "_speed_meter.SpeedMeter") -> None:
+    """Live speed + time left for the next "progress" event."""
+    task.live_speed_x = meter.speed_x
+    task.live_eta_s = meter.eta_s
+
+
+def _finish_speed(
+    task: Any, meter: "_speed_meter.SpeedMeter", *, resumed: bool = False
+) -> None:
+    """Freeze the decode clock and record the run's overall speed.
+
+    Called when the decode loop ends, before diarisation and the writers,
+    so neither counts as transcription time. A "progress" event sent after
+    this (diarisation) carries the final speed and a time left of 0.
+    """
+    meter.finish()
+    task.speed_x = float(meter.average_x or 0.0)
+    task.speed_audio_s = float(meter.audio_s)
+    task.speed_seconds = float(meter.elapsed())
+    task.speed_resumed = bool(resumed)
+    _publish_speed(task, meter)
 
 
 def _segment_to_dict(seg: Any, want_words: bool) -> dict[str, Any]:
@@ -2161,6 +2197,21 @@ def transcribe(
             log_cb=log_cb,
         )
 
+        # Speed meter on the source timeline (segments are shifted back by
+        # the clip offset). Started after the slice/denoise pre-processing;
+        # the engine's own VAD + language detection inside transcribe()
+        # count as decode time.
+        # Its end is the range end capped at the probed length: a start-only
+        # range runs to the end of the file (not start + whole duration),
+        # and an end typed past the file cannot inflate the final speed.
+        _meter_end = float(duration or 0.0)
+        if _clip_end_v and float(_clip_end_v) > _clip_start_s:
+            _meter_end = (
+                min(_meter_end, float(_clip_end_v)) if _meter_end > 0.0
+                else float(_clip_end_v)
+            )
+        meter = _speed_meter.SpeedMeter(_meter_end, _clip_start_s)
+        meter.start()
         try:
             # faster-whisper runs the VAD inside transcribe(), before it
             # returns the lazy iterator, so the window scope covers it.
@@ -2264,8 +2315,7 @@ def transcribe(
             for seg in segments:
                 if _handle_cancelled():
                     return
-                while task.paused and not task.cancelled:
-                    time.sleep(0.2)
+                _wait_while_paused(task, meter)
                 if _handle_cancelled():
                     return
 
@@ -2273,6 +2323,8 @@ def transcribe(
                     min(100, max(0, int(((seg.end - _clip_start_s) / progress_span) * 100)))
                     if progress_span else 0
                 )
+                meter.update(float(seg.end))
+                _publish_speed(task, meter)
                 if isinstance(seg, _loop_guard.LoopGuardTick):
                     # A dropped loop copy: cancel, pause and progress only.
                     if progress_cb:
@@ -2337,6 +2389,7 @@ def transcribe(
 
         if _handle_cancelled():
             return
+        _finish_speed(task, meter)
 
         # Speaker diarization (opt-in) + word-level alignment (opt-in).
         detected_lang = str(getattr(info, "language", "") or "")
@@ -2471,6 +2524,20 @@ def _transcribe_via_alt_backend(
 
     from .backends.base import PartialResultError
 
+    # Alternative engines return all segments at once: no live speed or
+    # time left, only the final average. The clock stops while the engine
+    # reports the task paused (it polls ``paused`` in its wait loop).
+    meter = _speed_meter.SpeedMeter(duration)
+    meter.start()
+    task.speed_live = False
+
+    def _paused_for_backend() -> bool:
+        if task.paused and not task.cancelled:
+            meter.pause()
+            return True
+        meter.resume()
+        return False
+
     try:
         try:
             segments_data, lang_info = backend.transcribe_to_segments(
@@ -2484,7 +2551,7 @@ def _transcribe_via_alt_backend(
                 progress_cb=progress_cb,
                 log_cb=log_cb,
                 cancelled=lambda: bool(task.cancelled),
-                paused=lambda: bool(task.paused),
+                paused=_paused_for_backend,
                 duration=duration,
             )
         except PartialResultError as partial:
@@ -2538,6 +2605,7 @@ def _transcribe_via_alt_backend(
             )
         log("Task cancelled", log_cb)
         return
+    _finish_speed(task, meter)
 
     # Single checkpoint right after the backend returns — covers a
     # crash during the post-pipeline (diarisation can run for
@@ -2971,6 +3039,14 @@ def resume_transcription(
 
         start = time.time()
         log(f"Resume: transcribing tail slice {transcribe_slice}", log_cb)
+        # The resumed run measures only the tail it decodes: the checkpoint
+        # holds no timing from the first run.
+        try:
+            _resume_total = get_duration(task.file_path)
+        except Exception:  # noqa: BLE001
+            _resume_total = 0.0
+        meter = _speed_meter.SpeedMeter(_resume_total, last_end_time)
+        meter.start()
 
         new_segments_iter: Any = None
         guard_stats = _loop_guard.LoopGuardStats()
@@ -3031,10 +3107,7 @@ def resume_transcription(
             # d["end"] below is already shifted onto the original timeline,
             # so dividing by the whole-file duration makes the bar climb
             # last_end_time→100 instead of pinning at a constant 99 (P2-25).
-            try:
-                total_dur = get_duration(task.file_path)
-            except Exception:  # noqa: BLE001
-                total_dur = 0.0
+            total_dur = _resume_total
 
             def _handle_resume_cancelled() -> bool:
                 if not task.cancelled:
@@ -3058,11 +3131,12 @@ def resume_transcription(
             for seg in new_segments_iter:
                 if _handle_resume_cancelled():
                     return True  # We "handled" the cancel cleanly.
-                while task.paused and not task.cancelled:
-                    time.sleep(0.2)
+                _wait_while_paused(task, meter)
                 if _handle_resume_cancelled():
                     return True
 
+                meter.update(float(seg.end) + last_end_time)
+                _publish_speed(task, meter)
                 if isinstance(seg, _loop_guard.LoopGuardTick):
                     # A dropped loop copy: cancel, pause and progress only.
                     if progress_cb:
@@ -3150,6 +3224,7 @@ def resume_transcription(
         # work and skip the post-pipeline (diarisation can take minutes).
         if _handle_resume_cancelled():
             return True
+        _finish_speed(task, meter, resumed=True)
 
         final_segments = prior_segments + new_segments_data
         detected_lang = cp_language or str(getattr(info, "language", "") or "")

@@ -155,7 +155,7 @@ Worker → parent events:
 - `{"event": "ready"}` — model loaded, accepting jobs
 - `{"event": "startup_error", "message": "..."}` — model load failed before becoming ready
 - `{"event": "started", "file_path": "..."}` — beginning a job
-- `{"event": "progress", "percent": N}` — emitted per segment
+- `{"event": "progress", "percent": N}` — emitted per segment; additive `speed_x` / `eta_s` once the speed meter has enough data ([SPEED_METER.md](SPEED_METER.md))
 - `{"event": "log", "message": "..."}` — non-structured log line
 - `{"event": "done", "file_path": "..."}` — job finished successfully
 - `{"event": "error", "message": "...", "file_path": "..."}` — job failed
