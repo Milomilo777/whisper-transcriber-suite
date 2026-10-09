@@ -1058,3 +1058,84 @@ def test_runtime_available_serializes_concurrent_calls():
     t.join(timeout=3.0)
     assert not t.is_alive(), "runtime_available() never returned after unlock"
     assert "done" in result
+
+
+# --------------------------------------------------- batch upload leaves no blob
+
+
+class _FakeBlob:
+    def __init__(self, store, name, fail_upload, fail_delete):
+        self._store, self.name = store, name
+        self._fail_upload, self._fail_delete = fail_upload, fail_delete
+
+    def upload_from_filename(self, path, content_type=None):
+        # The object is created on the server, then the reply is lost.
+        self._store["objects"].add(self.name)
+        if self._fail_upload:
+            raise ConnectionError("reply lost after the object was stored")
+
+    def delete(self):
+        self._store["delete_calls"].append(self.name)
+        if self._fail_delete:
+            raise LookupError("not found")
+        self._store["objects"].discard(self.name)
+
+
+def _fake_storage(monkeypatch, *, fail_upload, fail_delete=False):
+    import sys
+    import types
+
+    store = {"objects": set(), "delete_calls": []}
+    storage = types.ModuleType("google.cloud.storage")
+
+    class _Bucket:
+        def blob(self, name):
+            return _FakeBlob(store, name, fail_upload, fail_delete)
+
+    class _Client:
+        def __init__(self, project=None, credentials=None):
+            pass
+
+        def bucket(self, name):
+            return _Bucket()
+
+    storage.Client = _Client
+    oauth2 = types.ModuleType("google.oauth2")
+    sa = types.ModuleType("google.oauth2.service_account")
+    sa.Credentials = types.SimpleNamespace(from_service_account_file=lambda path: object())
+    oauth2.service_account = sa
+    cloud = types.ModuleType("google.cloud")
+    cloud.storage = storage
+    google = types.ModuleType("google")
+    google.cloud, google.oauth2 = cloud, oauth2
+    for name, mod in (
+        ("google", google), ("google.cloud", cloud), ("google.cloud.storage", storage),
+        ("google.oauth2", oauth2), ("google.oauth2.service_account", sa),
+    ):
+        monkeypatch.setitem(sys.modules, name, mod)
+    backend = g.GoogleCloudSttBackend(config={})
+    backend._bucket, backend._credentials_path, backend._project_id = "bkt", "creds.json", "proj"
+    return backend, store
+
+
+def test_failed_upload_does_not_leave_the_object_in_the_bucket(monkeypatch):
+    backend, store = _fake_storage(monkeypatch, fail_upload=True)
+    with pytest.raises(RuntimeError):
+        backend._upload_to_gcs("audio.flac", None)
+    assert store["objects"] == set(), "the stored object would be billed for ever"
+
+
+def test_failed_cleanup_after_a_failed_upload_keeps_the_upload_error(monkeypatch):
+    backend, store = _fake_storage(monkeypatch, fail_upload=True, fail_delete=True)
+    with pytest.raises(RuntimeError) as err:
+        backend._upload_to_gcs("audio.flac", None)
+    assert store["delete_calls"], "cleanup was not tried"
+    assert isinstance(err.value.__cause__, ConnectionError)
+
+
+def test_successful_upload_is_kept_for_the_batch_request(monkeypatch):
+    backend, store = _fake_storage(monkeypatch, fail_upload=False)
+    uri, name = backend._upload_to_gcs("audio.flac", None)
+    assert uri == f"gs://bkt/{name}"
+    assert store["objects"] == {name}
+    assert store["delete_calls"] == []

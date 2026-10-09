@@ -366,6 +366,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   as an unusable item.
 - **A late Cancel no longer turns a finished download into a cancelled one.** Cancelling a download
   that had ended in the meantime (the Esc question left open, an old menu) also cancelled its transcription.
+- **A failed Google batch upload no longer leaves the audio in your bucket.** When the connection
+  dropped after the file was stored, nothing deleted it and it kept costing storage; the upload now
+  removes its own object before reporting the error.
 - **The NVIDIA Parakeet engine no longer waits forever on an unreadable file.** Decoding the audio
   with ffmpeg had no time limit, so a file on a disconnected network drive wedged the worker; it now
   stops after 30 minutes with a clear message, like the cloud engines.

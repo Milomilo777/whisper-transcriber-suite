@@ -1745,6 +1745,7 @@ class GoogleCloudSttBackend(Backend):
             raise RuntimeError(
                 "The google-cloud-storage library failed to import."
             ) from e
+        blob: Any = None
         try:
             creds = service_account.Credentials.from_service_account_file(  # type: ignore[no-untyped-call]
                 self._credentials_path
@@ -1757,6 +1758,15 @@ class GoogleCloudSttBackend(Backend):
             blob = bucket.blob(blob_name)
             blob.upload_from_filename(local_path, content_type=CHUNK_MIME)
         except Exception as e:  # noqa: BLE001
+            # The caller never learns the object name when this raises, and its
+            # cleanup only deletes a name it holds. An upload whose reply was
+            # lost may still have stored the object (billed until deleted), so
+            # remove it here; a failure to do so must not hide the upload error.
+            if blob is not None:
+                try:
+                    blob.delete()
+                except Exception:  # noqa: BLE001 - usually "not found": nothing was stored
+                    logger.debug("No stored object to remove after the failed upload", exc_info=True)
             raise RuntimeError(classify_google_error(e)) from e
         if log_cb:
             log_cb(f"Uploaded audio to gs://{self._bucket}/{blob_name}")
