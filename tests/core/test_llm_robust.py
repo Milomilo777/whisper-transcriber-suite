@@ -206,3 +206,28 @@ def test_only_old_part_files_are_cleaned_up(tmp_path, monkeypatch):
     llm._remove_stale_parts(dest)
     assert not old.exists()
     assert young.exists()  # may belong to a download running right now
+
+@pytest.mark.parametrize("base_url", [
+    "file:///etc/hosts",
+    "ftp://llm.example/v1",
+    "llm.example/v1",
+    "http://[::1",  # unparseable
+    "",
+])
+def test_a_non_web_base_url_is_refused_before_any_request(monkeypatch, base_url):
+    calls = _script(monkeypatch, [_Resp()])
+    runner = llm.RemoteLLMRunner(llm.RemoteLLMConfig(base_url=base_url, model="m"))
+    with pytest.raises(llm.RemoteLLMError, match="http"):
+        runner._chat([{"role": "user", "content": "hi"}])
+    assert calls == []
+
+
+@pytest.mark.parametrize("base_url", [
+    "http://localhost:11434/v1",
+    "HTTPS://llm.example/v1",
+])
+def test_http_and_https_base_urls_are_still_used(monkeypatch, base_url):
+    calls = _script(monkeypatch, [_Resp()])
+    runner = llm.RemoteLLMRunner(llm.RemoteLLMConfig(base_url=base_url, model="m"))
+    assert runner._chat([{"role": "user", "content": "hi"}]) == "ok"
+    assert len(calls) == 1

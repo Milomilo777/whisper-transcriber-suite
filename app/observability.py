@@ -31,6 +31,7 @@ import platform
 import re
 import threading
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
@@ -270,6 +271,14 @@ def send_launch_ping_async() -> None:
         return
     url = os.environ.get("WHISPER_TELEMETRY_URL", "").strip()
     if not url:
+        return
+    # urlopen also opens file:// and ftp://; the ping is plain web traffic.
+    try:
+        scheme = urllib.parse.urlsplit(url).scheme.lower()
+    except ValueError:
+        scheme = ""
+    if scheme not in ("http", "https"):
+        logger.info("Launch ping skipped: WHISPER_TELEMETRY_URL is not an http(s) address")
         return
 
     payload = {

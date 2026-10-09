@@ -345,6 +345,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **The AI provider address and the launch-ping address accept only http(s).** A `file://` or
+  `ftp://` value in either setting is refused with a message instead of being opened.
 - **A line break in a logged value can no longer forge a log line.** A video title, a file name
   or a setting that holds a newline is now shown as an escape in `app.log` (the message only:
   tracebacks keep their own lines), and the macOS helper hook

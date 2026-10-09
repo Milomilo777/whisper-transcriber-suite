@@ -50,6 +50,7 @@ import os
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 from dataclasses import dataclass
@@ -655,7 +656,16 @@ class RemoteLLMRunner:
             raise RemoteLLMError(offline.refused("the remote AI provider")) from (
                 offline.OfflineModeError("the remote AI provider")
             )
-        base = self.cfg.base_url.rstrip("/")
+        base = self.cfg.base_url.strip().rstrip("/")
+        # urlopen opens file:// and ftp:// too; the endpoint is a web API.
+        try:
+            scheme = urllib.parse.urlsplit(base).scheme.lower()
+        except ValueError:
+            scheme = ""
+        if scheme not in ("http", "https"):
+            raise RemoteLLMError(
+                "the AI provider address must start with http:// or https://"
+            )
         url = f"{base}/chat/completions"
         payload = {
             "model": self.cfg.model,

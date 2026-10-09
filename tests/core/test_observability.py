@@ -74,6 +74,36 @@ def test_launch_ping_skipped_without_url(obs, monkeypatch):
     obs.send_launch_ping_async()  # must not raise
 
 
+@pytest.mark.parametrize("url", [
+    "file:///etc/hosts",
+    "ftp://collector.invalid/ping",
+    "collector.invalid/ping",
+])
+def test_launch_ping_refuses_a_non_web_url(obs, monkeypatch, url):
+    """The env var goes straight to urlopen, which opens file:// and ftp://."""
+    import core._threads as threads
+
+    monkeypatch.setattr(obs, "_telemetry_opted_in", lambda: True)
+    monkeypatch.setenv("WHISPER_TELEMETRY_URL", url)
+    started: list[str] = []
+    monkeypatch.setattr(
+        threads, "safe_thread", lambda *_a, **kw: started.append(kw.get("name", "")))
+    obs.send_launch_ping_async()
+    assert started == []
+
+
+def test_launch_ping_still_starts_for_a_web_url(obs, monkeypatch):
+    import core._threads as threads
+
+    monkeypatch.setattr(obs, "_telemetry_opted_in", lambda: True)
+    monkeypatch.setenv("WHISPER_TELEMETRY_URL", "HTTPS://collector.invalid/ping")
+    started: list[str] = []
+    monkeypatch.setattr(
+        threads, "safe_thread", lambda *_a, **kw: started.append(kw.get("name", "")))
+    obs.send_launch_ping_async()
+    assert started == ["launch-ping"]
+
+
 def test_anonymised_id_is_stable(obs, monkeypatch, tmp_path):
     """Two calls in the same install yield the same id."""
     fake_cfg = types.ModuleType("core.config")
