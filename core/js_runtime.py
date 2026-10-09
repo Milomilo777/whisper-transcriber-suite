@@ -269,7 +269,7 @@ def install_deno(
         if target.is_file():
             return str(target)
         if offline.is_offline():
-            raise RuntimeError(offline.message("installing the YouTube helper"))
+            raise RuntimeError(offline.refused("installing the YouTube helper"))
         target.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=str(target.parent)) as tmp:
             tmp_dir = Path(tmp)

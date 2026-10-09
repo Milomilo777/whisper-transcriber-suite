@@ -1747,6 +1747,7 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     if config_url and offline.is_offline(switch_view or None):
         # Work offline: no request at all; the last good copy still applies
         # (it is on disk), so the model catalog stays the same.
+        offline.skipped("the online config", once=True)
         online = fetch_online_config("")
     elif config_url:
         with _ONLINE_MEMO_LOCK:

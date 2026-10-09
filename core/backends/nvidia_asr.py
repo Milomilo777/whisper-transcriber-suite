@@ -305,7 +305,7 @@ class NvidiaAsrBackend(Backend):
                     status_cb(self._error)
                 return False
             if offline.is_offline():
-                self._error = offline.message("installing the NVIDIA Parakeet engine")
+                self._error = offline.refused("installing the NVIDIA Parakeet engine")
                 if status_cb:
                     status_cb(self._error)
                 return False

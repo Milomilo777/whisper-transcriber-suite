@@ -42,7 +42,10 @@ def _may_go_online(app: object, what: str) -> bool:
     ensure = getattr(app, "ensure_online", None)
     if callable(ensure):
         return bool(ensure(what))
-    return not offline.is_offline()
+    if offline.is_offline():
+        offline.refused(what[:1].lower() + what[1:])
+        return False
+    return True
 
 
 def _make_subbed_video_requested(app: object) -> bool:
@@ -1267,7 +1270,7 @@ class DownloadService:
         """
         if not offline.is_offline():
             return False
-        self.app.download_events.put(("error", task, offline.message("downloading this link")))
+        self.app.download_events.put(("error", task, offline.refused("downloading this link")))
         return True
 
     def _run_task(self, task: "VideoDownloadTask") -> None:

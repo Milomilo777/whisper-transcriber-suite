@@ -365,6 +365,7 @@ a = Analysis(
         'app.widgets.tabs',
         'app.widgets.tray',
         'app.widgets.update_bar',
+        'app.widgets.offline_status',
         'app.dialogs.model_loading',
         'app.dpi',
         'app.shortcuts',

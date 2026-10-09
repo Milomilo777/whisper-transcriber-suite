@@ -580,7 +580,7 @@ def _install_impl(
         return False
     if offline.is_offline():
         if log_cb is not None:
-            log_cb(offline.message(f"installing {feature}"))
+            log_cb(offline.refused(f"installing {feature}"))
         return False
     with _install_lock, contextlib.ExitStack() as held:
         # A concurrent caller may have installed it while we waited on

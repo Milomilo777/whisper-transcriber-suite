@@ -492,7 +492,7 @@ class HardwareWizard(tk.Toplevel):
         from core import optional_deps
 
         if offline.is_offline():
-            self.status_var.set(offline.message("installing GPU support"))
+            self.status_var.set(offline.refused("installing GPU support"))
             return
         if not messagebox.askyesno(
             "Install GPU support",

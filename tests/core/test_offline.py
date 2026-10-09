@@ -4,6 +4,7 @@ The call sites that ask the switch are covered in test_offline_call_sites.py.
 """
 from __future__ import annotations
 
+import errno
 import json
 import math
 import socket
@@ -263,8 +264,8 @@ def test_backstop_refuses_remote_connections_and_lookups_while_offline(recorded_
     try:
         with pytest.raises(offline.OfflineModeError, match="Offline mode is on"):
             s.connect(("93.184.216.34", 443))
-        with pytest.raises(offline.OfflineModeError):
-            s.connect_ex(("93.184.216.34", 443))
+        # connect_ex reports failures as an error number; it never raises.
+        assert s.connect_ex(("93.184.216.34", 443)) == errno.EACCES
         with pytest.raises(offline.OfflineModeError, match="smch.ir"):
             socket.getaddrinfo("smch.ir", 443)
         with pytest.raises(OSError):  # what urllib / requests already handle

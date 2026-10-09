@@ -115,7 +115,7 @@ def search(
 ) -> SearchPage:
     """Fetch one page (20 results) of the site's search / browse listing."""
     if offline.is_offline():
-        raise SmtvBrowseError(offline.message("Supreme Master TV"))
+        raise SmtvBrowseError(offline.refused("Supreme Master TV"))
     url = search_url(lang, query, type_, category, page)
     req = urllib.request.Request(
         url, data=b"", method="POST",
@@ -136,7 +136,7 @@ def fetch_bytes(url: str, *, timeout: float = 20.0, limit: int = 2_000_000) -> b
     if not re.match(r"^https://(?:www\.)?suprememastertv\.com/", url):
         raise SmtvBrowseError(f"Refusing non-SMTV URL: {url}")
     if offline.is_offline():
-        raise SmtvBrowseError(offline.message("Supreme Master TV"))
+        raise SmtvBrowseError(offline.refused("Supreme Master TV"))
     req = urllib.request.Request(url, headers={"User-Agent": _UA})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.read(limit)

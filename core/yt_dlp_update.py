@@ -515,7 +515,7 @@ def update_cached_copy(
     if not can_self_update(bundled):
         return UpdateResult("unsupported", message=_UNSUPPORTED_TEXT)
     if offline.is_offline():
-        return UpdateResult("offline", message=offline.message("updating the video downloader"))
+        return UpdateResult("offline", message=offline.refused("updating the video downloader"))
     with _cond:
         if _updating:
             return UpdateResult("busy", message="The video downloader is already being updated.")
