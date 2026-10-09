@@ -15,7 +15,17 @@ import math
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from .base import coerce_seconds, normalize_text, sanitize_for_xml, speaker_prefix
+from .base import coerce_seconds, normalize_text, replace_lone_surrogates, sanitize_for_xml, speaker_prefix
+
+
+def _media_url(audio_path: str) -> str:
+    """file:// URL of the media; a name that this system cannot encode keeps its other characters."""
+    try:
+        return Path(audio_path).resolve().as_uri()
+    except (UnicodeError, ValueError, OSError):
+        # POSIX cannot encode a lone surrogate in a path (Windows can).
+        return Path(replace_lone_surrogates(audio_path)).absolute().as_uri()
+
 
 TIER_ID = "default"
 LINGUISTIC_TYPE_REF = "default-lt"
@@ -59,7 +69,7 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         # file:///C:/... on Windows and file:///home/... on POSIX (string
         # concatenation produced file:////home/... with raw characters).
         ET.SubElement(header, "MEDIA_DESCRIPTOR", {
-            "MEDIA_URL": Path(audio_path).resolve().as_uri(),
+            "MEDIA_URL": _media_url(audio_path),
             "MIME_TYPE": "audio/x-wav",
         })
 

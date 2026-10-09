@@ -80,3 +80,14 @@ def test_normalize_text_replaces_each_lone_half_and_keeps_pairs_of_astral_text()
         f"a {_REPLACEMENT} {_REPLACEMENT}b {astral}"
     )
     assert base.normalize_text("سلام  دنیا") == "سلام دنیا"
+
+def test_elan_media_url_survives_a_name_the_system_cannot_encode(monkeypatch):
+    # POSIX file systems cannot encode a lone surrogate; resolve() raises there.
+    from core.writers import elan
+
+    def refuse(self, strict=False):
+        raise UnicodeEncodeError("utf-8", "x", 0, 1, "surrogates not allowed")
+
+    monkeypatch.setattr(elan.Path, "resolve", refuse)
+    url = elan._media_url(_AUDIO)
+    assert url.startswith("file:") and "clip" in url
