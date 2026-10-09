@@ -353,6 +353,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Two different file names no longer count as one file.** On Windows and macOS a transcript name with
+  the German sharp s was treated as the same file as its "ss" spelling, so the transcript viewer raised
+  the wrong window and the share page refused a legitimate name. Only case differences are folded now.
 - **Declining "stop the running job?" after a model or engine change no longer keeps the old model.**
   The change was saved but the running worker was never replaced, so every later job silently used the
   old model until the app restarted. The worker is now replaced as soon as it is idle, before the next

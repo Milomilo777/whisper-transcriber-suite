@@ -33,10 +33,12 @@ def path_key(path: str) -> str:
 
     ``os.path.normcase`` folds case only on Windows, but macOS volumes (APFS, the
     default) ignore case too, so ``T.JSON`` and ``t.json`` are one file there. Linux stays
-    case-sensitive. Prefer :func:`same_file` when both paths exist.
+    case-sensitive. ``lower()``, not ``casefold()``: full case folding is wider than the
+    volumes' own (it turns the German sharp s into "ss"), which merged two different files.
+    Prefer :func:`same_file` when both paths exist.
     """
     key = os.path.normcase(os.path.realpath(path))
-    return key.casefold() if sys.platform in ("win32", "darwin") else key
+    return key.lower() if sys.platform in ("win32", "darwin") else key
 
 
 def same_file(a: str, b: str) -> bool:

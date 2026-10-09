@@ -48,6 +48,16 @@ def test_path_key_folds_case_where_volumes_ignore_it(monkeypatch, posix_normcase
     assert paths.path_key("/Media/Talk.JSON") == paths.path_key("/media/talk.json")
 
 
+@pytest.mark.parametrize("platform", ["darwin", "win32"])
+def test_path_key_does_not_merge_names_the_volume_keeps_apart(monkeypatch, posix_normcase,
+                                                            platform):
+    """Full case folding maps the German sharp s to "ss"; NTFS and APFS do not, so two
+    different files must not share a key (the wrong viewer window, a refused share name)."""
+    monkeypatch.setattr(paths.sys, "platform", platform)
+    sharp = "/media/Stra" + chr(0xDF) + "e.json"
+    assert paths.path_key(sharp) != paths.path_key("/media/Strasse.json")
+
+
 def test_path_key_stays_case_sensitive_on_linux(monkeypatch, posix_normcase):
     monkeypatch.setattr(paths.sys, "platform", "linux")
     assert paths.path_key("/Media/Talk.JSON") != paths.path_key("/media/talk.json")
@@ -64,6 +74,13 @@ def test_burn_output_keys_ignore_case_on_macos(monkeypatch, posix_normcase):
 
     monkeypatch.setattr(paths.sys, "platform", "darwin")
     assert burn_subs._output_key("/Out/Movie.MP4") == burn_subs._output_key("/out/movie.mp4")
+
+
+def test_viewer_keys_keep_a_sharp_s_name_apart_from_its_ss_spelling(monkeypatch, posix_normcase):
+    from app.dialogs import transcript_viewer as tv
+
+    monkeypatch.setattr(paths.sys, "platform", "darwin")
+    assert tv._viewer_key("/m/Stra" + chr(0xDF) + "e.json") != tv._viewer_key("/m/Strasse.json")
 
 
 def test_one_transcript_viewer_key_per_file_on_macos(monkeypatch, posix_normcase):
