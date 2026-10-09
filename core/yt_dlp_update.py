@@ -94,6 +94,8 @@ TRUSTED_HOSTS = frozenset({
 })
 #: The oldest macOS the file runs on, from yt-dlp's README.
 MACOS_MIN = (10, 15)
+#: After a verified download did not start (twice), how long that macOS is left alone.
+REFUSAL_DAYS = 30
 #: Roughly what the macOS download weighs (the universal build); shown on the bar.
 DOWNLOAD_MB_MACOS = 37
 #: Far above the real size; a longer answer is not the file.
@@ -265,8 +267,15 @@ def bootstrap_possible() -> bool:
 
 
 def _bootstrap_refused(state: Mapping[str, Any], version: tuple[int, ...]) -> bool:
+    """True while a verified download is known not to start on this macOS. The
+    record expires (``REFUSAL_DAYS``) so a transient cause is not final."""
     rec = state.get("bootstrap_refused")
-    return isinstance(rec, dict) and rec.get("macos") == list(version)
+    if not isinstance(rec, dict) or rec.get("macos") != list(version):
+        return False
+    try:
+        return now_utc() < datetime.fromisoformat(str(rec.get("until")))
+    except (ValueError, TypeError):
+        return False  # unreadable or without a UTC offset: try again
 
 
 def download_mb() -> int:
@@ -981,7 +990,10 @@ def _remember_refusal() -> None:
     """Record that a verified download did not start on this macOS."""
     with _state_lock:
         state = load_state()
-        state["bootstrap_refused"] = {"macos": list(macos_version())}
+        state["bootstrap_refused"] = {
+            "macos": list(macos_version()),
+            "until": (now_utc() + timedelta(days=REFUSAL_DAYS)).isoformat(),
+        }
         _save_state(state)
 
 
@@ -1011,7 +1023,9 @@ def _bootstrap(
         with os.fdopen(fd, "wb") as out:
             _download_checked(url, out, expected, deadline)
         tmp.chmod(0o755)  # only now: the bytes are the ones the release published
-        if not version_of(str(tmp)):
+        # Asked twice: the first start of a new file can be very slow and time
+        # out (dyld checks it once), which must not stick as "does not run here".
+        if not version_of(str(tmp)) and not version_of(str(tmp)):
             _remember_refusal()
             raise _BootstrapFailed(
                 "The downloaded video downloader does not start on this Mac, so it is not used.",

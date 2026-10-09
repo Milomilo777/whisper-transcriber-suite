@@ -337,6 +337,7 @@ def test_a_verified_file_that_does_not_start_is_removed_and_remembered(mac, gith
     result = _update()
     assert result.status == "failed" and result.completed is True
     assert "does not start on this Mac" in result.message
+    assert ytu.load_state()["bootstrap_refused"]["macos"] == [13, 7]
     assert _cache_files(mac) == ["state.json"]
     # The same macOS is not asked to download it again; another version is.
     assert ytu.can_self_update() is False
@@ -344,6 +345,38 @@ def test_a_verified_file_that_does_not_start_is_removed_and_remembered(mac, gith
     assert github.requested.count(_TAGGED.format(tag=_NEW) + "yt-dlp_macos") == 1
     monkeypatch.setattr(ytu, "macos_version", lambda: (14, 0))
     assert ytu.can_self_update() is True
+
+
+def test_the_refusal_expires(mac, github, monkeypatch):
+    from datetime import timedelta
+
+    github.publish(_NEW, asset=b"verified but not a program")
+    _update()
+    assert ytu.can_self_update() is False
+    monkeypatch.setattr(ytu, "now_utc", lambda: ytu.datetime.now(ytu.timezone.utc) + timedelta(days=ytu.REFUSAL_DAYS + 1))
+    assert ytu.can_self_update() is True
+
+
+@pytest.mark.parametrize("until", ["", "garbage", "2999-01-01T00:00:00", None])
+def test_an_unreadable_or_offsetless_refusal_time_does_not_block(mac, until):
+    ytu._save_state({"bootstrap_refused": {"macos": [13, 7], "until": until}})
+    assert ytu.can_self_update() is True
+
+
+def test_a_slow_first_start_is_asked_again_before_giving_up(mac, github):
+    github.publish(_NEW)
+    answers: list[str] = []
+
+    def _slow_first_start(path: str) -> tuple[int, ...]:
+        if path.endswith(".download") and not answers:
+            answers.append(path)
+            return ()  # the first start timed out
+        return _version_of(path)
+
+    result = _update(version_of=_slow_first_start)
+    assert result.status == "updated"
+    assert ytu.can_self_update() is True
+    assert "bootstrap_refused" not in ytu.load_state()
 
 
 # ---------------------------------------------------- fail closed: where from

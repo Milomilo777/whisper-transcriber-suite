@@ -311,7 +311,8 @@ Minimum macOS: yt-dlp's README lists `yt-dlp_macos` as "Universal MacOS (10.15+)
 executable" (the README of 2026-10-09 has no `yt-dlp_macos_legacy` file any more, and the latest
 release lists none), so macOS 10.15 is offered the download and anything older keeps the old advice
 (`MACOS_MIN`). If a verified download does not start on some macOS anyway, `state.json` records
-`bootstrap_refused` for that macOS version and the bar is not offered again until the macOS changes.
+`bootstrap_refused` for that macOS version (it is asked twice first, since a new file's first start can
+be very slow) and the bar is not offered again for 30 days or until the macOS changes.
 
 Known cost: the single-file build unpacks itself on every run (row 10 above: about 25 s per call
 on the VMs), so once the downloaded copy is the newer one every yt-dlp call is slower than with the
