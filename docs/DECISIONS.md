@@ -483,3 +483,41 @@ source but the Hub is ever contacted. A model counts as installed when it has a 
 - Networks that block huggingface.co cannot download a model from the app; a model can still be
   placed by hand in the model folder.
 - Older app versions keep using the mirror files, so those files stay where they are.
+
+## 0011 — Windows frame theming through ctypes DWM calls; "System" theme by a slow registry check
+
+**Status:** Accepted
+
+**Date:** 2026-10-09
+
+**Context:** The Light/Dark theme restyled the Tk widgets, but the title bar and border are drawn
+by Windows and stayed light. "System" asked the optional `darkdetect` package, which no Windows
+bundle contains, so it always meant Dark there. Prior art read first: pywinstyles (DWM attribute
+numbers and colour order; no Windows build checks) and darkdetect (the `AppsUseLightTheme`
+registry value; its change listener blocks a thread in `RegNotifyChangeKeyValue`).
+
+**Options considered (live "System" follow):**
+1. Check the registry value every 2 s on the Tk thread (`root.after`). Chosen: no thread, no
+   hook, one cheap read, only while the mode is "System".
+2. Hook `WM_SETTINGCHANGE` ("ImmersiveColorSet"). Instant, but it means replacing Tk's window
+   procedure, which Tk and tkdnd already own.
+3. A listener thread blocked in `RegNotifyChangeKeyValue` (darkdetect's way). Instant, but Tk is
+   not safe to touch from another thread, so it needs a hand-off queue and a stop event.
+
+**Decision:** `app/theme/win_chrome.py` calls `DwmSetWindowAttribute` through `ctypes` (no new
+dependency, no COM): the dark flag (20, then 19 if refused) on every window, the caption, border
+and text colours on Windows 11 (build 22000+, read from `RtlGetVersion`, not the exe manifest)
+only, a frame redraw on Windows 10. Every call is wrapped; `native_window_theme` /
+`WTS_NO_NATIVE_CHROME` switch it all off. `app/theme/system_appearance.py` holds one back-end per
+OS behind `is_dark()` / `subscribe()`; the Windows back-end is option 1.
+
+**Consequences:**
+- A theme flip in Windows Settings reaches the app within 2 s.
+- A dialog shown for the first time may paint its title bar light for one frame before the
+  `<Map>` handler runs.
+- Windows' own message boxes and file dialogs keep the system title bar.
+- Known cosmetic gap: plain `tk.Text` / `tk.Listbox` widgets with colours of their own inside a
+  dialog that is open during a flip keep their old colours until the dialog is reopened; ttk
+  widgets and the colour tokens follow at once.
+- macOS and Linux behave as before (`darkdetect` once, no watching; no answer counts as light, a
+  missing package as dark, now logged); the macOS back-end plugs into `get_backend`.

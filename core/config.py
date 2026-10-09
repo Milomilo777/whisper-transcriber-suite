@@ -124,6 +124,10 @@ DEFAULT_CONFIG = {
     # optionally with yt-dlp's :PROFILE suffix.
     "cookies_from_browser": "",
     "theme": "light",
+    # Windows: let Windows draw the title bar and border of every window in the app theme
+    # (app/theme/win_chrome.py). false turns every such call off; the environment variable
+    # WTS_NO_NATIVE_CHROME=1 does the same without editing the file.
+    "native_window_theme": True,
     "log_level": "INFO",
     # R3: set once the first time a one-time "running on CPU (slower)"
     # warning has been shown, so it never nags again. Defaulted here so

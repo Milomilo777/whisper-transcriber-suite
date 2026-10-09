@@ -122,6 +122,26 @@ def _isolate_transcriber_globals():
                 setattr(_t, name, value)
 
 
+@pytest.fixture(autouse=True)
+def _reset_native_window_theme_state():
+    """Forget the process-wide state of the Windows frame theme and the system-theme logger.
+
+    app.theme.win_chrome keeps the kill-switch value, the theme new windows get, the loaded
+    native functions and the failures already logged; app.theme.system_appearance keeps the
+    warnings already logged. A test that switches the kill switch or fakes the native layer
+    would otherwise leak that into later tests in the same pytest process.
+    """
+    from app.theme import system_appearance, win_chrome
+
+    def _reset() -> None:
+        win_chrome.reset_for_tests()
+        system_appearance._warned.clear()
+
+    _reset()
+    yield
+    _reset()
+
+
 _tk_touched = False
 _last_module: object = None
 
