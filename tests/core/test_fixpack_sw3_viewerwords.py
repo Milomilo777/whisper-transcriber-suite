@@ -114,3 +114,14 @@ def test_update_karaoke_mixed_words_skips_junk_and_highlights_real_word():
     TranscriptViewer._update_karaoke(viewer, 1.0)
 
     assert viewer._words_lbl.text == "[hi]"  # type: ignore[attr-defined]
+
+
+def test_segment_min_probability_ignores_words_without_a_probability():
+    """A word with no confidence value is unknown, not 0 %: it must not turn
+    the whole row red (hand-edited or third-party JSON often lacks the key)."""
+    from app.dialogs.transcript_viewer import _segment_min_probability
+
+    assert _segment_min_probability({"words": [{"word": "a"}, {"word": "b"}]}) is None
+    assert _segment_min_probability({"words": [{"probability": None}]}) is None
+    seg = {"words": [{"word": "a"}, {"probability": 0.9}, {"probability": 0.8}]}
+    assert _segment_min_probability(seg) == 0.8

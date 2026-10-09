@@ -365,6 +365,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   refuses those two files compared names with a case rule that only Windows applies, so on a Mac
   volume `T.JSON` passed as a new name and replaced `t.json`. It now asks the filesystem; the same
   fix covers one transcript window per file, the Re-run duplicate check and subtitle-burn output names.
+- **A word with no confidence value no longer paints its transcript row red.** The viewer counted a
+  missing `probability` as 0 %, so one such word (hand-edited or third-party JSON) made the whole
+  row look low-confidence; the word is now ignored.
 - **"Remove fillers" keeps the marks a segment opens with.** A segment such as `... um, well` or
   `...and then um we go` lost its leading `...` (and `?!`) because the cleanup of punctuation left
   by the filler also stripped the original opening marks.

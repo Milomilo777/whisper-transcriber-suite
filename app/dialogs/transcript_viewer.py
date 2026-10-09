@@ -420,8 +420,12 @@ def _segment_min_probability(seg: dict[str, Any]) -> float | None:
     for w in words:
         if not isinstance(w, dict):
             continue
+        # A word without a confidence value is unknown, not 0 %.
+        raw = w.get("probability")
+        if raw is None:
+            continue
         try:
-            probs.append(float(w.get("probability", 0.0)))
+            probs.append(float(raw))
         except (TypeError, ValueError):
             continue
     if not probs:
