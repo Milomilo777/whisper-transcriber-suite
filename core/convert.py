@@ -61,6 +61,7 @@ from xml.etree import ElementTree as ET
 
 from . import writers as _writers
 from .integrations import otranscribe as _otr
+from .writers.base import normalize_text as _normalize_text
 
 logger = logging.getLogger(__name__)
 
@@ -830,7 +831,7 @@ def dedupe_rolling_captions(segments: list[dict]) -> list[dict]:
     prev_words: list[str] = []
     for seg in segments:
         # normalize_text maps a null text to "" (str(None) was the word "None").
-        words = _writers.base.normalize_text(seg.get("text")).split()
+        words = _normalize_text(seg.get("text")).split()
         overlap = _prefix_suffix_overlap(prev_words, words)
         prev_words = words
         kept = words[overlap:]

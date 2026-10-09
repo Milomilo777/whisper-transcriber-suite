@@ -346,9 +346,10 @@ def _set_direction(paragraph: Any, run: Any, rtl: bool) -> None:
         return
     if paragraph is not None:
         ppr = paragraph._p.pPr
-        bidi = ppr.find(qn("w:bidi")) if ppr is not None else None
-        if bidi is not None:
-            ppr.remove(bidi)
+        if ppr is not None:
+            bidi = ppr.find(qn("w:bidi"))
+            if bidi is not None:
+                ppr.remove(bidi)
     run.font.rtl = None
 
 
