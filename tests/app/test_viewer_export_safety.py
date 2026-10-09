@@ -449,3 +449,163 @@ def test_closing_while_the_exports_build_cancels_the_poll_and_loses_nothing(
         time.sleep(0.05)
     assert NEW in _text(tmp_path / "talk.srt")
     assert NEW in zipfile.ZipFile(tmp_path / "talk.docx").read("word/document.xml").decode("utf-8")
+
+
+# --- round 2: exit waits, quick-file waiters, poll race, logging, damaged zips -------------
+
+
+def _slow_writer(monkeypatch, name: str, seconds: float) -> None:
+    real = writers.WRITERS[name]
+
+    def slow(segments, audio_path=""):
+        time.sleep(seconds)
+        return real(segments, audio_path)
+
+    monkeypatch.setitem(writers.WRITERS, name, slow)
+
+
+def test_exit_waits_for_a_running_word_rebuild(root, tmp_path, notices, monkeypatch) -> None:
+    json_path = _make(tmp_path, ["srt", "docx", "json"], count=20)
+    viewer = _open(root, json_path)
+    _slow_docx(monkeypatch, 1.0)
+    _edit(viewer)
+    viewer._save_changes()
+    assert not viewer._export_idle.is_set()
+    shown: list[int] = []
+    left = tv.finish_exports_before_exit(timeout=15, on_wait=shown.append, pump=root.update)
+    assert left == [] and viewer._export_idle.is_set() and shown  # it said why it waited
+    body = zipfile.ZipFile(tmp_path / "talk.docx").read("word/document.xml").decode("utf-8")
+    assert NEW in body
+    _close(viewer)
+
+
+def test_exit_wait_is_bounded_and_names_what_was_not_rebuilt(
+    root, tmp_path, notices, monkeypatch, caplog
+) -> None:
+    json_path = _make(tmp_path, ["srt", "docx", "json"], count=20)
+    viewer = _open(root, json_path)
+    _slow_docx(monkeypatch, 2.5)
+    _edit(viewer)
+    viewer._save_changes()
+    t0 = time.monotonic()
+    with caplog.at_level("WARNING", logger=tv.logger.name):
+        left = tv.finish_exports_before_exit(timeout=0.4)
+    assert time.monotonic() - t0 < 1.5  # never for ever
+    assert [os.path.basename(p) for p in left] == ["talk.docx"]  # srt was done, docx was not
+    assert "talk.docx" in caplog.text
+    _close(viewer)
+
+
+def test_exit_also_waits_for_a_viewer_closed_during_the_rebuild(
+    root, tmp_path, notices, monkeypatch
+) -> None:
+    json_path = _make(tmp_path, ["docx", "json"], count=20)
+    viewer = _open(root, json_path)
+    _slow_docx(monkeypatch, 1.0)
+    _edit(viewer)
+    viewer._save_changes()
+    viewer._dirty = False
+    viewer._on_close()
+    assert tv.finish_exports_before_exit(timeout=15) == []
+    body = zipfile.ZipFile(tmp_path / "talk.docx").read("word/document.xml").decode("utf-8")
+    assert NEW in body
+
+
+def test_exit_with_nothing_running_returns_at_once(root, tmp_path, notices) -> None:
+    json_path = _make(tmp_path, ["srt", "json"])
+    viewer = _open(root, json_path)
+    t0 = time.monotonic()
+    assert tv.finish_exports_before_exit(timeout=30) == []
+    assert time.monotonic() - t0 < 0.5
+    _close(viewer)
+
+
+def test_a_waiter_for_the_quick_files_is_not_released_by_an_older_save(
+    root, tmp_path, notices, monkeypatch
+) -> None:
+    json_path = _make(tmp_path, ["srt", "txt", "json"], count=20)
+    viewer = _open(root, json_path)
+    _slow_writer(monkeypatch, "txt", 0.6)
+    try:
+        _edit(viewer, "text from save A")
+        viewer._save_changes()
+        time.sleep(0.2)  # A's job is inside the slow txt writer
+        _edit(viewer, "text from save B")
+        viewer._save_changes()
+        viewer._wait_for_subtitle_files()
+        assert "text from save B" in _text(tmp_path / "talk.srt")
+    finally:
+        _close(viewer)
+
+
+def test_poll_does_not_stop_while_a_report_arrives_during_delivery(
+    root, tmp_path, notices
+) -> None:
+    json_path = _make(tmp_path, ["srt", "json"])
+    viewer = _open(root, json_path)
+    try:
+        viewer._export_idle.clear()
+        report = ve.ExportReport(updated=[str(tmp_path / "talk.srt")])
+
+        def deliver_then_the_worker_finishes() -> None:
+            # the worker ends its job right after this round took the reports
+            viewer._export_reports.append(report)
+            viewer._export_idle.set()
+
+        viewer._deliver_export_reports = deliver_then_the_worker_finishes  # type: ignore[method-assign]
+        viewer._poll_exports()
+        assert viewer._export_poll_id is not None  # another round is due for that report
+        viewer._export_poll_id = None
+        del viewer._deliver_export_reports
+        viewer._poll_exports()
+        assert any(t.startswith("Updated") for t, _k in notices)
+    finally:
+        _close(viewer)
+
+
+def test_lists_left_with_the_old_text_are_logged_by_the_worker(
+    root, tmp_path, notices, caplog
+) -> None:
+    json_path = _make(tmp_path, ["srt", "txt", "json"])
+    (tmp_path / "talk.txt").write_text("not ours\n", encoding="utf-8")
+    viewer = _open(root, json_path)
+    try:
+        _edit(viewer)
+        with caplog.at_level("WARNING", logger=ve.logger.name):
+            viewer._save_changes()
+            viewer._finish_exports()
+        assert "talk.txt" in caplog.text and "not matching" in caplog.text
+    finally:
+        _close(viewer)
+
+
+def _break_deflate_stream(path, name: str) -> None:
+    with zipfile.ZipFile(path) as z:
+        info = z.getinfo(name)
+        offset = info.header_offset + 30 + len(info.filename.encode("utf-8")) + len(info.extra)
+        size = info.compress_size
+    raw = bytearray(open(path, "rb").read())
+    raw[offset:offset + size] = b"\xff" * size
+    with open(path, "wb") as f:
+        f.write(bytes(raw))
+
+
+def test_a_word_file_with_a_damaged_stream_is_reported_as_unreadable(
+    root, tmp_path, notices
+) -> None:
+    json_path = _make(tmp_path, ["docx", "srt", "json"])
+    docx = tmp_path / "talk.docx"
+    _break_deflate_stream(docx, "word/document.xml")
+    assert ve.signature("docx", docx.read_bytes()) is None  # no zlib.error escapes
+    before = docx.read_bytes()
+    viewer = _open(root, json_path)
+    try:
+        _edit(viewer)
+        viewer._save_changes()
+        viewer._finish_exports()
+        warning = _warnings(notices)
+        assert "talk.docx" in warning and "could not be read or checked" in warning
+        assert "does not match" not in warning
+        assert docx.read_bytes() == before
+    finally:
+        _close(viewer)

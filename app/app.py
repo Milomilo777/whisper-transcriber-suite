@@ -715,6 +715,36 @@ def build_about_links() -> list[tuple[str, str]]:
     ]
 
 
+def _finish_viewer_exports(app: Any) -> None:
+    """Wait (at most 30 s) for the transcript viewers' export rebuilds before the app ends.
+
+    Only what exists on ``app`` is used (the exit tests pass stand-ins): its title says why
+    the window stays, its event loop keeps running, its log names what was not rebuilt.
+    """
+    from app.dialogs.transcript_viewer import finish_exports_before_exit
+
+    base = getattr(app, "_base_title", "Whisper Transcriber Suite")
+    set_title = getattr(app, "title", None)
+
+    def _say(_working: int) -> None:
+        if set_title is not None:
+            set_title(f"{base} — finishing exports before closing…")
+
+    app._exit_prompt_open = True  # a second close press must not stack another exit
+    try:
+        left = finish_exports_before_exit(on_wait=_say, pump=getattr(app, "update", None))
+    except Exception:  # noqa: BLE001 - the transcripts are saved: never block the exit
+        logger.exception("Waiting for the viewers' exports failed")
+        left = []
+    finally:
+        app._exit_prompt_open = False
+    if left:
+        app.log(
+            "Closed before these exports were rebuilt; they keep the old text: "
+            + ", ".join(os.path.basename(p) for p in left)
+        )
+
+
 class App(tk.Tk):
     """The Tk root.
 
@@ -2215,6 +2245,11 @@ class App(tk.Tk):
         if keep_open:
             self._exit_from_tray = False
             return
+
+        # The process ends right after the teardown below and kills worker threads, so a
+        # transcript viewer's export rebuild (a Word file can take tens of seconds) is
+        # waited for first, within a limit, with the window still showing why.
+        _finish_viewer_exports(self)
 
         # Confirmation passed (or there was nothing to confirm): flip the
         # closing flag so watcher events / stability-checks in flight

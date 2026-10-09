@@ -22,6 +22,7 @@ import re
 import sys
 import threading
 import zipfile
+import zlib
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterator
@@ -46,6 +47,10 @@ WRITERS_USING_AUDIO_PATH = frozenset({"md", "lrc", "otr", "elan", "docx"})
 # faithfully here (a PDF embeds fonts, dates and ids; the SMTV team document needs
 # the language and work title): Save names them.
 UNREBUILDABLE_SUFFIXES = (".pdf",)
+# Everything reading a damaged or odd file can raise: a bad zip, a bad deflate stream, an
+# unsupported or encrypted member, text that is not UTF-8, a file that vanished.
+_UNREADABLE = (zipfile.BadZipFile, zlib.error, KeyError, ValueError, OSError,
+               NotImplementedError, RuntimeError, EOFError)
 # The one Word part that holds a save time: everything else must match to count as "ours".
 _DOCX_VOLATILE_PART = "docProps/core.xml"
 # The slow writer: rebuilt after the quick ones, so the subtitle files are ready first.
@@ -130,7 +135,7 @@ def signature(fmt: str, raw: bytes) -> object | None:
             with zipfile.ZipFile(io.BytesIO(raw)) as z:
                 return {n: z.read(n) for n in z.namelist() if n != _DOCX_VOLATILE_PART}
         return raw.decode("utf-8-sig").replace("\r\n", "\n")
-    except (zipfile.BadZipFile, KeyError, UnicodeDecodeError, OSError):
+    except _UNREADABLE:
         return None
 
 
@@ -164,7 +169,7 @@ def title_in_export(fmt: str, raw: bytes) -> str | None:
                 return None
             # The writer saved Path.resolve().as_uri(): undo the file:// URI.
             return url2pathname(urlsplit(xml_unescape(found.group(1))).path)
-    except (zipfile.BadZipFile, KeyError, ValueError, OSError, AttributeError):
+    except _UNREADABLE + (AttributeError,):
         return None
     return None
 
@@ -260,7 +265,7 @@ def _matching_audio_path(
     """The ``audio_path`` with which writer ``fmt`` rebuilds ``raw`` exactly, else None."""
     wanted = signature(fmt, raw)
     if wanted is None:
-        return None
+        raise _CannotCheck(fmt)  # unreadable: not the same as "differs"
     for audio_path in audio_path_candidates(fmt, raw, media_path):
         try:
             rendered = render_bytes(fmt, segments, audio_path)
@@ -348,13 +353,15 @@ def update_exports(
     scan: ScanResult,
     fast_done: Callable[[], None] | None = None,
     wait_slow_scan: Callable[[], None] | None = None,
+    progress: Callable[[str], None] | None = None,
 ) -> ExportReport:
     """Rebuild the matching exports from ``segments`` (the transcript just saved).
 
     The quick formats go first; ``fast_done`` is called when only the slow Word file is left,
     and ``wait_slow_scan`` (if given) is called before that file is judged, because its check
     against the opened transcript may still be running. ``scan.synced`` gets the new stamp of
-    each file written, so the next Save matches it.
+    each file written, so the next Save matches it. ``progress(path)`` is called after each
+    file has been dealt with, whatever the outcome.
     """
     report = ExportReport()
     files = sibling_files(json_path)
@@ -367,10 +374,19 @@ def update_exports(
         for path, formats in files:
             if _is_slow(formats) == slow:
                 _update_one(path, scan, segments, report)
+                if progress is not None:
+                    progress(path)
     if fast_done is not None:
         fast_done()
     report.unrebuildable = unrebuildable_files(json_path)
     report.other = other_files(json_path)
+    # In the log too: the window that would show the notices may be closed by now.
+    for label, paths in (("not matching", report.stale), ("unreadable", report.unchecked),
+                         ("links", report.linked), ("changed while rebuilding", report.raced),
+                         ("failed", report.failed)):
+        if paths:
+            logger.warning("Exports left with the old text (%s) next to %s: %s",
+                           label, os.path.basename(json_path), _names(paths))
     return report
 
 

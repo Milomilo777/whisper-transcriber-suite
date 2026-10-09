@@ -39,9 +39,10 @@ import re
 import subprocess
 import sys
 import threading
+import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from app.dialogs import share_page, viewer_exports
 from app import mac_native, shortcuts
@@ -133,6 +134,9 @@ def _seg_words(seg: dict[str, Any]) -> list[Any]:
 # One viewer per transcript file, keyed by _viewer_key(json_path): two
 # viewers on one JSON would each save their own copy, the last one winning.
 _OPEN_VIEWERS: dict[str, "TranscriptViewer"] = {}
+# Viewers whose export rebuild is (or was) running, kept even after the window is closed:
+# the app's exit waits for them (finish_exports_before_exit).
+_EXPORTING: list["TranscriptViewer"] = []
 
 
 def _viewer_key(json_path: str) -> str:
@@ -714,6 +718,7 @@ class TranscriptViewer(tk.Toplevel):
         self._export_fast_done = threading.Event()
         self._export_fast_done.set()
         self._export_reports: list[viewer_exports.ExportReport] = []
+        self._export_remaining: set[str] = set()  # files of the running job not yet dealt with
         self._export_poll_id: str | None = None
         self.media_path = media_path or _find_media_next_to(json_path)
         # The transcript's language when the opener knows it (a queue task); the JSON itself has
@@ -2012,6 +2017,9 @@ class TranscriptViewer(tk.Toplevel):
         if not viewer_exports.exports_exist(self.json_path):
             return
         self._start_scan()
+        _EXPORTING[:] = [v for v in _EXPORTING if v is self or not v._export_idle.is_set()]
+        if self not in _EXPORTING:
+            _EXPORTING.append(self)
         with self._export_lock:
             self._export_pending = saved_json_text
             self._export_fast_done.clear()
@@ -2041,10 +2049,13 @@ class TranscriptViewer(tk.Toplevel):
                 scan = viewer_exports.ScanResult(
                     self._synced_siblings, self._sibling_plan, self._sibling_unchecked
                 )
+                self._export_remaining = {
+                    p for p, _f in viewer_exports.sibling_files(self.json_path)
+                }
                 with viewer_exports.responsive_threads():
                     report = viewer_exports.update_exports(
-                        self.json_path, segments, scan, self._export_fast_done.set,
-                        self._wait_for_scan,
+                        self.json_path, segments, scan, self._mark_export_fast_done,
+                        self._wait_for_scan, self._export_remaining.discard,
                     )
             except Exception:  # noqa: BLE001 - never leave a Save without a report
                 logger.exception("Updating the exports of %s failed", self.json_path)
@@ -2053,6 +2064,13 @@ class TranscriptViewer(tk.Toplevel):
                 )
             with self._export_lock:
                 self._export_reports.append(report)
+
+    def _mark_export_fast_done(self) -> None:
+        """The running job's quick files are written: say so unless a newer Save is waiting
+        (its files are the ones the waiters need)."""
+        with self._export_lock:
+            if self._export_pending is None:
+                self._export_fast_done.set()
 
     def _schedule_export_poll(self) -> None:
         if self._export_poll_id is not None or self._closing:
@@ -2066,8 +2084,11 @@ class TranscriptViewer(tk.Toplevel):
         self._export_poll_id = None
         if self._closing:
             return
+        # Idle is read BEFORE the reports are taken: a worker that finishes in between
+        # leaves a report this round did not deliver, and the next round must run for it.
+        idle = self._export_idle.is_set()
         self._deliver_export_reports()
-        if self._export_idle.is_set():
+        if idle:
             self._set_busy(False)
         else:
             self._schedule_export_poll()
@@ -2629,7 +2650,7 @@ class TranscriptViewer(tk.Toplevel):
             self._notice_quietly("Not saved, so the app stays open.", "warning")
             return False
         # The JSON is on disk. The quick exports (subtitle files) land before the app goes;
-        # a long Word build finishes in its own thread, which keeps the process alive.
+        # a long Word build is waited for, within a limit, by finish_exports_before_exit.
         self._wait_for_subtitle_files()
         return True
 
@@ -2977,6 +2998,49 @@ def confirm_unsaved_before_exit() -> bool:
             except tk.TclError:
                 pass
     return True
+
+
+EXIT_EXPORT_WAIT_S = 30.0
+
+
+def finish_exports_before_exit(
+    timeout: float = EXIT_EXPORT_WAIT_S,
+    on_wait: "Callable[[int], None] | None" = None,
+    pump: "Callable[[], None] | None" = None,
+) -> list[str]:
+    """Exit hook: let the export rebuilds of every open viewer finish, within ``timeout``.
+
+    The process ends with ``os._exit`` right after the app's teardown, which kills the
+    worker threads, so a Word file still being rebuilt would keep its old text without a
+    word (a viewer closed meanwhile counts too). The transcripts are already saved: this only
+    waits (up to ``timeout`` seconds in all, never for ever), calling ``on_wait(viewers still working)`` and ``pump()`` (the
+    window's event loop, so it does not look frozen) every 100 ms. Returns the exports
+    that were NOT rebuilt when the time ran out (also logged), empty when all finished.
+    """
+    deadline = time.monotonic() + timeout
+    viewers = [v for v in _EXPORTING if not v._export_idle.is_set()]
+    while viewers:
+        viewers = [v for v in viewers if not v._export_idle.is_set()]
+        if not viewers or time.monotonic() >= deadline:
+            break
+        if on_wait is not None:
+            on_wait(len(viewers))
+        if pump is not None:
+            try:
+                pump()
+            except tk.TclError:
+                pump = None
+        time.sleep(0.1)
+    left: list[str] = []
+    for viewer in viewers:
+        left.extend(sorted(viewer._export_remaining))
+    _EXPORTING[:] = [v for v in _EXPORTING if not v._export_idle.is_set()]
+    if left:
+        logger.warning(
+            "Exiting before these exports were rebuilt (they keep the old text): %s",
+            ", ".join(left),
+        )
+    return left
 
 
 def open_viewer(

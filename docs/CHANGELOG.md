@@ -345,6 +345,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   rebuilt, a PDF, the SMTV document and a file whose writer failed are named in a notice, say that
   they still hold the old text, and are left as they are; bilingual subtitles and the chapters
   file are named as not rebuilt.
+  Quitting the app waits up to 30 seconds for a rebuild in progress, then names what was not rebuilt.
 - **A long Last result list no longer squeezes the window.** With many output files the Last result
   card grew until the drop zone was cut off and the log pane shrank to one line. The file list now
   scrolls after four rows, and the Transcribe tab scrolls like the other tall tabs when the window

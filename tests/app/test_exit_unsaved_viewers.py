@@ -615,7 +615,7 @@ def test_a_failing_sibling_update_after_a_good_write_does_not_stop_the_exit(
     notices: list[str] = []
     monkeypatch.setattr(tv, "notify", lambda _w, text, kind="info": notices.append(text))
 
-    def _boom() -> Any:
+    def _boom(*_a: Any, **_k: Any) -> Any:
         raise RuntimeError("sibling bug")
 
     viewer._queue_exports = _boom  # type: ignore[method-assign]
@@ -675,3 +675,37 @@ def test_a_unique_file_name_does_not_repeat_the_folder(
     app.on_exit()
     for q in asked:
         assert str(tmp_path) not in q["message"]
+
+
+def test_exit_waits_for_the_word_rebuild_of_a_saved_viewer_left_open(
+    app: App, calls: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A clean Save with the viewer still open: quitting must not lose the Word rebuild."""
+    import time
+    import zipfile
+
+    import core.writers as writers
+
+    base = str(tmp_path / "talk")
+    written = _write_outputs(base, _segments(), str(tmp_path / "talk.mp4"), ["json", "srt", "docx"])
+    json_path = next(p for p in written if p.endswith(".json"))
+    viewer = tv.TranscriptViewer(app, json_path)
+    viewer.withdraw()
+    viewer._finish_exports()
+    real = writers.BINARY_WRITERS["docx"]
+
+    def slow(segments, audio_path=""):
+        time.sleep(1.0)
+        return real(segments, audio_path)
+
+    monkeypatch.setitem(writers.BINARY_WRITERS, "docx", slow)
+    viewer.segments[0]["text"] = "Saved while quitting"
+    viewer._dirty = True
+    viewer._save_changes()  # clean again, the viewer stays open, the rebuild is running
+    assert not viewer._export_idle.is_set()
+
+    app.on_exit()
+
+    assert calls[-1] == "destroy" and viewer._export_idle.is_set()
+    body = zipfile.ZipFile(Path(json_path).with_suffix(".docx")).read("word/document.xml")
+    assert b"Saved while quitting" in body
