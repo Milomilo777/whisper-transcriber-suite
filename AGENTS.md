@@ -25,8 +25,10 @@ local HTTP API. User docs: `README.md` and `docs/README.md`; code map: `docs/ARC
 
 ## Build and test
 
-- Setup: `pip install -r requirements.txt`, then `pip install pyright pytest hypothesis`
-  (the property-based tests skip themselves without `hypothesis`).
+- Setup: `pip install -r requirements.txt`, then
+  `pip install pyright pytest pytest-timeout responses hypothesis` (`pytest-timeout` and
+  `responses` are required by the suite; the property-based tests skip themselves without
+  `hypothesis`).
 - Run from source: `python gui.py` (or `run_from_source.bat`).
 - Gate before every commit; both must pass:
   - `pyright app core`: 0 errors and 0 warnings. The baseline is 0 errors / 0 warnings /
