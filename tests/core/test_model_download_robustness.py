@@ -445,6 +445,24 @@ def test_no_download_without_room_for_the_model(tmp_path, fake_hf, monkeypatch):
     assert fake_hf["calls"] == []
 
 
+def test_a_full_disk_while_making_the_model_folder_says_so(tmp_path, monkeypatch):
+    """The folder cannot be created on a disk with no room: the same plain advice as the
+    free-space check gives, not the bare operating-system line."""
+    model_path = tmp_path / "cache" / f"models--Systran--{HF_ONLY_ENTRY['name']}"
+    real_mkdir = Path.mkdir
+
+    def _mkdir(self, *a, **k):
+        if self == model_path.parent:
+            raise OSError(errno.ENOSPC, "No space left on device", str(self))
+        return real_mkdir(self, *a, **k)
+
+    monkeypatch.setattr(Path, "mkdir", _mkdir)
+    with pytest.raises(mm.InsufficientDiskSpace) as info:
+        mm.ensure_model(_config(model_path, HF_ONLY_ENTRY))
+    assert str(model_path.parent) in str(info.value)
+    assert "another model folder" in str(info.value)
+
+
 def test_resumed_bytes_count_toward_the_free_space(tmp_path, fake_hf, monkeypatch):
     model_path = tmp_path / "cache" / f"models--Systran--{HF_ONLY_ENTRY['name']}"
     blob = _partial_hf_folder(model_path)

@@ -982,6 +982,12 @@ def ensure_model(
                 "may be unplugged or disconnected.",
                 reason="missing",
             ) from e
+        if _is_disk_full(e):
+            raise InsufficientDiskSpace(
+                f"Not enough free disk space to create the model folder {cache_dir}. "
+                "Free up space on that drive, or choose another model folder "
+                "(Advanced settings > Model folder), then try again."
+            ) from e
         raise
 
     # A download that was killed mid-transfer can leave the folder holding
