@@ -656,6 +656,9 @@ class TranscriptViewer(tk.Toplevel):
     # (mtime_ns, size) of the JSON when it was loaded or last saved here.
     _disk_stamp: tuple[int, int] | None = None
     _registry_key: str | None = None
+    # Defaults for a viewer built without __init__ (tests drive _load_segments that way).
+    media_path: str | None = None
+    _scan_generation: int = 0
 
     @property
     def _dirty(self) -> bool:
@@ -1632,8 +1635,12 @@ class TranscriptViewer(tk.Toplevel):
         media_path = self.media_path
         json_path = self.json_path
         if not viewer_exports.exports_exist(json_path):
-            self._scan_fast_done.set()
-            self._scan_done.set()
+            # Nothing to check. (getattr: a bare viewer built without __init__, as some
+            # tests do for _load_segments, has no events; a real one always has them.)
+            for name in ("_scan_fast_done", "_scan_done"):
+                event = getattr(self, name, None)
+                if event is not None:
+                    event.set()
             self._scan_start = None
             return
         self._scan_fast_done.clear()
