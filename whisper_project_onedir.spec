@@ -183,6 +183,7 @@ a = Analysis(
         'app.theme.theme_colours',
         'app.theme.system_appearance',
         'app.theme.win_chrome',
+        'app.theme.win_taskbar',
         'app.dialogs.advanced',
         'app.dialogs.caption_choice',
         'app.dialogs.english_only_model',

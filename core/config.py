@@ -128,6 +128,10 @@ DEFAULT_CONFIG = {
     # (app/theme/win_chrome.py). false turns every such call off; the environment variable
     # WTS_NO_NATIVE_CHROME=1 does the same without editing the file.
     "native_window_theme": True,
+    # Windows: progress bar, job-count badge and a flash on the app's taskbar button
+    # (app/theme/win_taskbar.py). false turns every such call off; the environment variable
+    # WTS_NO_TASKBAR=1 does the same without editing the file.
+    "native_taskbar": True,
     "log_level": "INFO",
     # R3: set once the first time a one-time "running on CPU (slower)"
     # warning has been shown, so it never nags again. Defaulted here so

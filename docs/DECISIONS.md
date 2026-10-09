@@ -521,3 +521,57 @@ OS behind `is_dark()` / `subscribe()`; the Windows back-end is option 1.
   widgets and the colour tokens follow at once.
 - macOS and Linux behave as before (`darkdetect` once, no watching; no answer counts as light, a
   missing package as dark, now logged); the macOS back-end plugs into `get_backend`.
+
+## 0012 — Taskbar progress, badge and flash through ctypes ITaskbarList3; guarded set-up
+
+**Status:** Accepted
+
+**Date:** 2026-10-09
+
+**Context:** A long transcription gave no sign on the Windows taskbar: no progress, no count of
+queued jobs, nothing when a job finished behind another window. The Windows way is
+`ITaskbarList3` (progress state and value, overlay icon) plus `FlashWindowEx`. It is a COM
+interface called through a vtable, so one wrong slot number or argument type is an access
+violation that no `try` can catch. Prior art read first: Microsoft's `ITaskbarList3` and "Taskbar
+Extensions" documentation and the SDK header `ShObjIdl_core.h`; the `TaskbarButtonCreated`
+message is how a program learns that the button exists again after Explorer restarts. The app
+already uses `ctypes` for DWM (ADR 0011) and has no `comtypes` or `pywin32` dependency.
+
+**Options considered:**
+1. `comtypes` or `pywin32`. Typed wrappers, but a new dependency in every bundle for three calls.
+2. `ctypes` with a hand-written vtable. Chosen: no dependency; the slot numbers are written once,
+   checked against the SDK header (a test re-derives them from the header when the SDK is
+   installed) and pinned, and a test calls a fake COM object built from ctypes callbacks so each
+   wrapper method is shown to land on its slot with 64-bit arguments.
+3. Progress through the window title only (already done). Nothing on the button itself.
+
+**Decision:** `app/theme/win_taskbar.py`. `App.refresh` (every 500 ms) calls `sync`, which turns
+both queues into one snapshot (state, percent, badge count) and sends only what changed, at most
+one round per 500 ms, on the main thread only. The flash is decided from the same snapshots (a job
+going from queued/running to finished while the window is not the foreground window) and is tied
+to the existing "Chime on completion" setting; no second option. A download row that the auto-transcribe
+hand-off sets to "finished" is not a finish by itself (the hand-off does that for a failed or cancelled
+transcription too); the linked transcription task reports a success on its own. Guards:
+- Kill switch: `native_taskbar` (config) and `WTS_NO_TASKBAR` (environment).
+- Start marker `taskbar_integration.marker` in the app data folder, written before the first COM
+  call and removed after the first real update (state, value and the badge icon) went through. A
+  crash in between leaves it; the next start of the same app version logs a warning and keeps the
+  integration off. Another version ignores it. It does not repair itself: delete the file or update.
+- No COM until a job exists, and not for a withdrawn window; `CoInitializeEx` in a single-threaded
+  apartment on the Tk thread (a thread already in a multi-threaded apartment is refused);
+  `HrInit` is called; everything is released (`Release`, `CoUninitialize` if this code initialised,
+  icons destroyed) in `App.destroy` before the window goes.
+- `TaskbarButtonCreated`: `SetWindowSubclass` (chains to the existing procedure; Tk's own is not
+  replaced, unlike the option rejected in ADR 0011) only sets a flag; the next round creates a new
+  COM object and re-applies the state. If the hook cannot be installed only this recovery is lost.
+- Five rounds in a row of refused calls switch the integration off for the session; every failure
+  is logged once and never reaches the user.
+
+**Consequences:**
+- Windows 7 and later get the taskbar features; macOS and Linux import the module and do nothing.
+- A failed job turns the bar red for at least 5 seconds, and then until the window is in front.
+- A user job flashes the button (three blinks) once, when its last stage ended well: not for a failed
+  or cancelled job, and not for the transcription step of a subtitled-video row (its burn is last).
+- A user whose start crashed in the set-up sees no taskbar features until the next app version.
+- Another instance that starts at the very moment the first one holds the marker also stays off.
+- The AppUserModelID is unchanged (a pinned or grouped taskbar button is not touched).

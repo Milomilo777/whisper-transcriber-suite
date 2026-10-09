@@ -63,7 +63,7 @@ from app.widgets.tabs import (
 from app.widgets.tray import TrayController
 from core import __version__ as _APP_VERSION
 from core import offline, subtitle_edit, task_settings
-from app.theme import script_fonts, system_appearance, theme_colours, tokens, win_chrome
+from app.theme import script_fonts, system_appearance, theme_colours, tokens, win_chrome, win_taskbar
 from core._proc import kill_process_tree
 from core.config import load_config, save_config
 from core.history import EXIT_REASON, HistoryDB
@@ -979,6 +979,7 @@ class App(tk.Tk):
         theme_colours.apply(self, start_theme)
         win_chrome.set_enabled(self.app_config.get("native_window_theme", True))
         win_chrome.install(self, start_theme)
+        win_taskbar.set_enabled(self.app_config.get("native_taskbar", True))
         self._system_theme_watch = system_appearance.SystemThemeWatcher(
             self, self._on_system_theme_change)
         self._sync_system_theme_watch(self.theme_var.get())
@@ -2317,6 +2318,7 @@ class App(tk.Tk):
             self.destroy()
 
     def destroy(self) -> None:  # type: ignore[override]
+        win_taskbar.shutdown()
         # Cancel every pending after() callback before tearing down the
         # Tcl interpreter. Otherwise the service poll loops fire one last
         # time after destroy() and spam the console with
@@ -5194,6 +5196,7 @@ class App(tk.Tk):
         # the app minimised see "Whisper — 34% transcribing foo.mp4"
         # in their taskbar / Alt-Tab.
         self._refresh_window_title()
+        win_taskbar.sync(self)   # Windows taskbar progress/badge/flash (no-op elsewhere)
         self._ensure_animation()
         # Recompute the action-bar enabled state AFTER the selection is
         # restored: refresh rebuilds the tree every tick, so a row whose
