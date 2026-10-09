@@ -80,3 +80,30 @@ def test_a_cloned_row_does_not_inherit_the_direction_of_the_row_it_copies():
     assert "english tail" in tail
     assert not _has(tail, "bidi")
     assert not _has(tail, "rtl")
+
+
+@pytest.mark.parametrize("speaker", ["Speaker 1", "SPEAKER_00"])
+def test_a_short_persian_line_stays_right_to_left_with_a_latin_speaker_label(speaker):
+    # The label ("Speaker 1: ") has more Latin letters than "بله" has Persian ones; the
+    # direction follows the text, as the plain DOCX writer does.
+    table = _table([
+        {"start": 1.0, "end": 2.0, "text": "بله", "speaker": speaker},
+        {"start": 2.0, "end": 3.0, "text": "بله", "speaker": speaker},
+    ])
+    xml = _cell_xml(table, FIRST_DATA_ROW + 1)
+    assert speaker in xml
+    assert _has(xml, "bidi")
+    assert _has(xml, "rtl")
+    first = _cell_xml(table, FIRST_DATA_ROW)
+    run = next(r for r in re.findall(r"<w:r[ >].*?</w:r>", first, flags=re.S) if "بله" in r)
+    assert _has(run, "rtl")
+
+
+def test_a_latin_line_with_a_persian_speaker_label_stays_left_to_right():
+    table = _table([
+        {"start": 1.0, "end": 2.0, "text": "ok", "speaker": "ali"},
+        {"start": 2.0, "end": 3.0, "text": "ok", "speaker": "مهمان یک"},
+    ])
+    xml = _cell_xml(table, FIRST_DATA_ROW + 1)
+    assert not _has(xml, "bidi")
+    assert not _has(xml, "rtl")

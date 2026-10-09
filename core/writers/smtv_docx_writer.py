@@ -432,7 +432,8 @@ def write_bytes(
         row_number = str(idx + 1)
         time_code = _fmt_smtv_time(coerce_seconds(seg.get("start")))
         prefix = speaker_prefix(seg)
-        body = sanitize_for_xml(prefix + normalize_text(seg.get("text")))
+        text = normalize_text(seg.get("text"))
+        body = sanitize_for_xml(prefix + text)
 
         # col1 = row number
         _set_cell_text(cells[0], row_number)
@@ -442,7 +443,8 @@ def write_bytes(
         # "[<Lang> starts]" marker filled above (always, even with no detected
         # language); APPEND the segment text after it (in a new run) so the
         # team's cue is preserved instead of being overwritten.
-        rtl = is_rtl_text(body)
+        # The direction follows the spoken text, not the speaker label in front of it.
+        rtl = is_rtl_text(text)
         if idx == 0:
             marker_para = cells[2].paragraphs[0]
             text_run = marker_para.add_run(" " + body)
