@@ -121,8 +121,11 @@ updates…** checks on demand; the automatic daily check only tells you when
 a newer version exists and never downloads anything by itself. It shows a
 quiet bar under the menu: **What's new**, **Download** (opens the file for
 your kind of install in the browser; close the app before you run it),
-**Later** (again in 3, 7, then 14 days, then only a dot in the Help menu) and
-**Skip this version**. Turn the check off under **Advanced → App behaviour**.
+**Later** (again in 3, 7, then 14 days, then about once a month) and
+**Skip this version** (silent until a newer version). The bar never appears
+while a transcription or download runs, and a major new version (for example
+3.0) is announced as such, with up to five highlights under **What's new**.
+Turn the check off under **Advanced → App behaviour**.
 
 ---
 

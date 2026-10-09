@@ -87,6 +87,9 @@ _WORK_OFFLINE_LABEL = "Work offline"
 # An app left open keeps checking about once a day (the date throttle in
 # _maybe_quiet_update_check still applies).
 _UPDATE_RECHECK_MS = 24 * 60 * 60 * 1000
+# A launch check that finds a release while a job runs keeps the bar back and
+# looks again this often until the queue is idle (_retry_update_bar).
+_UPDATE_BAR_RETRY_MS = 2 * 60 * 1000
 
 
 def _today() -> date:
@@ -639,8 +642,8 @@ def build_about_sections() -> list[AboutSection]:
                 "tells you; it never downloads or installs on its own",
                 "A newer version shows a quiet bar under the menu: What's "
                 "new, Download (the file for this kind of install), Later "
-                "(again in 3, 7, then 14 days, then only a dot in the Help "
-                "menu) or Skip this version",
+                "(again in 3, 7, then 14 days, then about once a month; "
+                "never while a job runs) or Skip this version",
                 "Run it any time from Help → Check for updates…; turn the "
                 "daily check off in Advanced → App behaviour",
                 "When you install the newer Setup it upgrades in place over "
@@ -1039,6 +1042,8 @@ class App(tk.Tk):
         self._latest_update: Any = None
         self._whats_new_window: Any = None
         self._update_bar_shown_this_launch = False
+        # The timer of a bar held back while a job runs (_retry_update_bar).
+        self._update_bar_retry_id: Any = None
         # "The video downloader may be out of date" bar (core.yt_dlp_update):
         # offered after a download or format lookup fails the way an
         # outdated yt-dlp fails; "Not now" keeps it away for this launch.
@@ -5770,7 +5775,12 @@ class App(tk.Tk):
             if level == _updates.NOTICE_BAR and (
                 bar_visible or not self._update_bar_shown_this_launch
             ):
-                self._show_update_bar(info)
+                if bar_visible or not self._jobs_active():
+                    self._show_update_bar(info)
+                else:
+                    # Never while a transcription or download runs: the bar
+                    # waits for an idle queue (the Help-menu dot shows now).
+                    self._book_update_bar_retry()
         self._refresh_update_signs()
 
     # Update notice: bar, buttons and passive signs ----------------------------
@@ -5809,6 +5819,35 @@ class App(tk.Tk):
     def _hide_update_bar(self) -> None:
         if self._update_bar is not None:
             self._update_bar.hide()
+
+    def _book_update_bar_retry(self) -> None:
+        """Look again for an idle queue later (one timer at a time)."""
+        if _inst_attr(self, "_update_bar_retry_id") is not None:
+            return
+        self._update_bar_retry_id = self.after(_UPDATE_BAR_RETRY_MS, self._retry_update_bar)
+
+    def _retry_update_bar(self) -> None:
+        """Show the bar a running job held back, once no job is queued or running.
+
+        Every rule is checked again, because the user may have turned the check
+        off, gone offline, skipped or snoozed the version (Help menu) or seen
+        the bar through a manual check in the meantime.
+        """
+        self._update_bar_retry_id = None
+        if self._closing or self._update_bar_shown_this_launch:
+            return
+        info = self._latest_update
+        if info is None:
+            return
+        from core import updates as _updates
+        if not _updates.automatic_check_enabled(self.app_config) or offline.is_offline():
+            return
+        if _updates.notice_level(self.app_config, _APP_VERSION, _today()) != _updates.NOTICE_BAR:
+            return
+        if self._jobs_active():
+            self._book_update_bar_retry()
+            return
+        self._show_update_bar(info)
 
     # Gentle star invitation (core.star_invite) -------------------------------
     def _star_save(self) -> None:
@@ -6043,7 +6082,7 @@ class App(tk.Tk):
         self._hide_update_bar()
 
     def _update_later(self) -> None:
-        """"Later": hide the bar for 3, 7, then 14 days, then only the passive signs."""
+        """"Later": hide the bar for 3, 7, then 14 days, then 30 days each time."""
         info = self._latest_update
         from core import updates as _updates
         until = _updates.snooze(self.app_config, _today())
@@ -6051,13 +6090,10 @@ class App(tk.Tk):
         self._hide_update_bar()
         self._refresh_update_signs()
         version = _updates.version_label(info.latest_tag) if info is not None else "the new version"
-        if until is None:
-            self.log(
-                f"No more reminders about version {version}; Help → Check for updates "
-                "still shows it."
-            )
-        else:
-            self.log(f"Update reminder for version {version} again on {until.isoformat()}.")
+        message = f"Update reminder for version {version} again on {until.isoformat()}"
+        if _updates.is_monthly_reminder(self.app_config):
+            message += " (about once a month from now on; Skip this version stops it)"
+        self.log(message + ".")
 
     def _update_skip(self) -> None:
         """"Skip this version": silent until a newer version appears."""
