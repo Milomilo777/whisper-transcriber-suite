@@ -521,6 +521,8 @@ def start_background_model_load(status_cb: Callable[[str], None] | None = None) 
 def get_duration(path: str) -> float:
     ffprobe = bundled_binary("ffprobe")
     kwargs: dict[str, Any] = {
+        # Never the worker's command pipe (see _slice_audio_from).
+        "stdin": subprocess.DEVNULL,
         "capture_output": True,
         "text": True,
         "encoding": "utf-8",
@@ -570,6 +572,7 @@ def require_audio_stream(path: str) -> None:
     decoder, which reports it itself.
     """
     kwargs: dict[str, Any] = {
+        "stdin": subprocess.DEVNULL,
         "capture_output": True, "text": True, "encoding": "utf-8",
         "errors": "replace", "timeout": 60,
     }

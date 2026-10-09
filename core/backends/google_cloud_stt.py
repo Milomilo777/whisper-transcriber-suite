@@ -1992,6 +1992,7 @@ def _encode_chunk_flac(
     cmd += ["-ac", "1", "-ar", "16000", "-c:a", "flac", out_path]
 
     kwargs: dict[str, Any] = {
+        "stdin": subprocess.DEVNULL,
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "check": True,

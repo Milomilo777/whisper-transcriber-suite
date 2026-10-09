@@ -623,6 +623,7 @@ def _install_impl(
             # open and defeat the rmtree below.
             proc = subprocess.Popen(
                 cmd,
+                stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,

@@ -432,6 +432,7 @@ def _run_demucs_cli(
         log(f"Running demucs: {' '.join(cmd)}")
     kwargs: dict[str, object] = {
         "check": True,
+        "stdin": subprocess.DEVNULL,
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "timeout": 600,

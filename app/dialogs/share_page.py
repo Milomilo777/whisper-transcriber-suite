@@ -123,11 +123,11 @@ def ask_options(master: "tk.Misc", *, media_path: str | None) -> tuple[str, bool
 def open_in_browser(path: str) -> None:
     """Open the saved page with the system's default handler for .html files."""
     if sys.platform == "darwin":
-        subprocess.run(["open", path], check=False)
+        subprocess.run(["open", path], stdin=subprocess.DEVNULL, check=False)
     elif os.name == "nt":
         os.startfile(path)  # type: ignore[attr-defined]
     else:
-        subprocess.run(["xdg-open", path], check=False)
+        subprocess.run(["xdg-open", path], stdin=subprocess.DEVNULL, check=False)
 
 
 def save_shareable_page(

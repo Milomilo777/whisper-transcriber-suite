@@ -599,6 +599,7 @@ def is_available() -> bool:
     ok = False
     try:
         kwargs: dict[str, object] = {
+            "stdin": subprocess.DEVNULL,
             "stdout": subprocess.DEVNULL,
             "stderr": subprocess.DEVNULL,
             "timeout": 30,
@@ -632,6 +633,7 @@ def require_ffmpeg() -> str:
 
 def _run(cmd: list[str], timeout: float) -> subprocess.CompletedProcess[str]:
     kwargs: dict[str, object] = {
+        "stdin": subprocess.DEVNULL,
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "text": True,

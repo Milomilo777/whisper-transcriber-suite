@@ -444,11 +444,11 @@ def _segment_min_probability(seg: dict[str, Any]) -> float | None:
 def _os_open(path: str) -> None:
     """Open a file or folder with the OS default handler (cross-platform)."""
     if sys.platform == "darwin":
-        subprocess.run(["open", path], check=False)
+        subprocess.run(["open", path], stdin=subprocess.DEVNULL, check=False)
     elif os.name == "nt":
         os.startfile(path)  # type: ignore[attr-defined]
     else:
-        subprocess.run(["xdg-open", path], check=False)
+        subprocess.run(["xdg-open", path], stdin=subprocess.DEVNULL, check=False)
 
 
 def _dir_has_vlc_lib(d: str) -> bool:

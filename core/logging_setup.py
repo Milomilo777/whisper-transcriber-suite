@@ -211,7 +211,7 @@ def open_log_folder():
     if os.name == "nt":
         os.startfile(str(folder))  # type: ignore[attr-defined]
     elif sys.platform == "darwin":
-        subprocess.run(["open", str(folder)], check=False)
+        subprocess.run(["open", str(folder)], stdin=subprocess.DEVNULL, check=False)
     else:
-        subprocess.run(["xdg-open", str(folder)], check=False)
+        subprocess.run(["xdg-open", str(folder)], stdin=subprocess.DEVNULL, check=False)
     return folder
