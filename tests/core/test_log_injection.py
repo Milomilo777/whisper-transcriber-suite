@@ -36,8 +36,9 @@ def _format(msg: str, *args: object, exc: bool = False) -> str:
 
 @pytest.mark.parametrize(
     "separator",
-    ["\n", "\r", "\r\n", "\x0b", "\x0c", "\x85", "\u2028", "\u2029"],
-    ids=["lf", "cr", "crlf", "vt", "ff", "nel", "ls", "ps"],
+    ["\n", "\r", "\r\n", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85",
+     "\u2028", "\u2029"],
+    ids=["lf", "cr", "crlf", "vt", "ff", "fs", "gs", "rs", "nel", "ls", "ps"],
 )
 def test_a_line_break_in_an_argument_does_not_start_a_new_line(separator):
     out = _format("device=%s", f"cpu{separator}{FORGED}")
@@ -50,6 +51,36 @@ def test_a_line_break_in_the_message_itself_is_escaped():
     out = _format(f"first\n{FORGED}")
     assert len(out.splitlines()) == 1
     assert "first\\n2026" in out
+
+
+def test_every_splitlines_boundary_is_covered():
+    """The escape table matches str.splitlines(), whatever the Python version."""
+    boundaries = [
+        chr(c) for c in range(0x110000)
+        if len(f"a{chr(c)}b".splitlines()) != 1
+    ]
+    assert len(boundaries) >= 8
+    for char in boundaries:
+        assert len(_format("v=%s", f"x{char}y").splitlines()) == 1, hex(ord(char))
+
+
+def test_text_after_a_line_break_survives_url_redaction():
+    out = _format("GET %s", "https://host/p?sig=SECRET\nnext words")
+    assert "SECRET" not in out
+    assert out.endswith("https://host/p?<redacted>\\nnext words")
+
+
+def test_a_url_in_the_traceback_is_still_redacted():
+    try:
+        raise ValueError("failed https://host/p?sig=SECRET")
+    except ValueError:
+        exc_info = sys.exc_info()
+    record = logging.LogRecord(
+        "core.test", logging.INFO, __file__, 1, "oops", None, exc_info
+    )
+    out = RedactingFormatter(LOG_FORMAT).format(record)
+    assert "SECRET" not in out
+    assert "ValueError: failed https://host/p?<redacted>" in out
 
 
 def test_a_plain_message_is_unchanged():

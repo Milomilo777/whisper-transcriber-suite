@@ -96,11 +96,15 @@ def redact_urls(text: str) -> str:
 
 # Log messages carry text the app does not control (a video title, a file name
 # with a newline, a value read back from hardware.json, an HTTP request line).
-# Every character str.splitlines() treats as a line break is shown as an escape
-# so such a value cannot start a second, forged log line.
+# Every character str.splitlines() treats as a line break (LF, CR, VT, FF, the
+# FS/GS/RS separators, NEL, LS, PS) is shown as an escape in the MESSAGE, so
+# such a value cannot start a second, forged log line. Only the message is
+# covered: a traceback (exc_info / exc_text) and stack_info keep their own
+# lines by design, and an exception's text inside a traceback is not escaped.
 _LINE_BREAKS = {
     ord("\n"): "\\n", ord("\r"): "\\r", ord("\x0b"): "\\x0b",
-    ord("\x0c"): "\\x0c", ord("\x85"): "\\x85",
+    ord("\x0c"): "\\x0c", ord("\x1c"): "\\x1c", ord("\x1d"): "\\x1d",
+    ord("\x1e"): "\\x1e", ord("\x85"): "\\x85",
     ord("\u2028"): "\\u2028", ord("\u2029"): "\\u2029",
 }
 
@@ -108,19 +112,28 @@ _LINE_BREAKS = {
 class RedactingFormatter(logging.Formatter):
     """A Formatter whose whole output (message and traceback) is URL-redacted.
 
-    The message is also kept to one line: line breaks in it are escaped. The
-    traceback that follows keeps its own lines.
+    The message is redacted first and then kept to one line (line breaks
+    escaped), so text after a line break is not taken for part of a URL. The
+    traceback and stack info are redacted but keep their own lines.
     """
 
     def format(self, record: logging.LogRecord) -> str:
-        message = record.getMessage()
-        one_line = message.translate(_LINE_BREAKS)
-        if one_line != message:
-            # A copy, so another handler of the same record sees the original.
-            record = logging.makeLogRecord(record.__dict__)
-            record.msg, record.args = one_line, None
-        return redact_urls(super().format(record))
-
+        # A copy, so another handler of the same record sees the original.
+        line = logging.makeLogRecord(record.__dict__)
+        line.msg = redact_urls(record.getMessage()).translate(_LINE_BREAKS)
+        line.args = None
+        line.exc_info = line.exc_text = line.stack_info = None
+        text = super().format(line)
+        tail = []
+        if record.exc_info and not record.exc_text:
+            record.exc_text = self.formatException(record.exc_info)
+        if record.exc_text:
+            tail.append(record.exc_text)
+        if record.stack_info:
+            tail.append(self.formatStack(record.stack_info))
+        if tail:
+            text += "\n" + redact_urls("\n".join(tail))
+        return text
 
 
 def _prune_worker_logs(log_dir: Path) -> None:
