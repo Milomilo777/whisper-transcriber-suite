@@ -49,7 +49,7 @@ def test_resume_dedupes_repeated_file_paths(tmp_path: Path) -> None:
         a = db.insert_transcription(str(media), language="en")
         b = db.insert_transcription(str(media), language="en")
         c = db.insert_transcription(str(media), language="en")
-        assert {a, b, c} == {a, b, c}  # sanity
+        assert len({a, b, c}) == 3  # three distinct history rows
         db.mark_interrupted()
 
         rows = db.list_transcriptions(limit=200)

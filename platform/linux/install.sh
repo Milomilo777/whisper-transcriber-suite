@@ -81,7 +81,7 @@ else
     TMP="$(mktemp -d)"
     trap 'rm -rf "$TMP"' EXIT
     URL="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-${FF_ARCH}-static.tar.xz"
-    if curl -fsSL "$URL" -o "$TMP/ffmpeg.tar.xz" && tar -xf "$TMP/ffmpeg.tar.xz" -C "$TMP"; then
+    if curl --proto '=https' --tlsv1.2 -fsSL "$URL" -o "$TMP/ffmpeg.tar.xz" && tar -xf "$TMP/ffmpeg.tar.xz" -C "$TMP"; then
       D="$(find "$TMP" -maxdepth 1 -type d -name 'ffmpeg-*-static' | head -n1)"
       if [ -n "$D" ]; then
         cp "$D/ffmpeg" "$D/ffprobe" "$REPO_ROOT/bin/"

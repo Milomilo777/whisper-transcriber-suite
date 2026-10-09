@@ -94,10 +94,31 @@ def redact_urls(text: str) -> str:
     return _URL_RE.sub(lambda m: _redact_url(m.group(0)), text)
 
 
+# Log messages carry text the app does not control (a video title, a file name
+# with a newline, a value read back from hardware.json, an HTTP request line).
+# Every character str.splitlines() treats as a line break is shown as an escape
+# so such a value cannot start a second, forged log line.
+_LINE_BREAKS = {
+    ord("\n"): "\\n", ord("\r"): "\\r", ord("\x0b"): "\\x0b",
+    ord("\x0c"): "\\x0c", ord("\x85"): "\\x85",
+    ord(" "): "\\u2028", ord(" "): "\\u2029",
+}
+
+
 class RedactingFormatter(logging.Formatter):
-    """A Formatter whose whole output (message and traceback) is URL-redacted."""
+    """A Formatter whose whole output (message and traceback) is URL-redacted.
+
+    The message is also kept to one line: line breaks in it are escaped. The
+    traceback that follows keeps its own lines.
+    """
 
     def format(self, record: logging.LogRecord) -> str:
+        message = record.getMessage()
+        one_line = message.translate(_LINE_BREAKS)
+        if one_line != message:
+            # A copy, so another handler of the same record sees the original.
+            record = logging.makeLogRecord(record.__dict__)
+            record.msg, record.args = one_line, None
         return redact_urls(super().format(record))
 
 

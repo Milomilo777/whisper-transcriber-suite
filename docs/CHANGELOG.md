@@ -345,6 +345,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A line break in a logged value can no longer forge a log line.** A video title, a file name
+  or a setting that holds a newline is now shown as an escape in `app.log`, and the macOS helper hook
+  runs only the exact multiprocessing command it was written for. The Linux installer fetches
+  ffmpeg over HTTPS only, and two form fields and a graphics page got a label or a title.
 - **Stopping a helper process on Windows no longer gives up silently.** When the forced
   `taskkill` of a worker or download tree reports a failure, the app now also signals the
   process itself instead of treating the kill as done.

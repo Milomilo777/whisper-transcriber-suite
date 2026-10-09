@@ -13,6 +13,51 @@
 # ones — so do the (argv-only, side-effect-free) diversion here.
 import sys
 
+_WTS_HELPER_MODULES = (
+    "multiprocessing.resource_tracker",
+    "multiprocessing.forkserver",
+)
+
+
+def _wts_helper_code(command):
+    """Compiled code of an exact multiprocessing helper command, else None.
+
+    The command is what multiprocessing builds: ``from <module> import main``
+    followed by one ``main(<literals>)`` call (the forkserver one may end in
+    ``**{<literals>}``). Anything else, such as more code after the prefix,
+    is refused, so a ``-c`` argument cannot make the app run arbitrary code.
+    """
+    import ast
+
+    try:
+        body = ast.parse(command).body
+        if len(body) != 2:
+            return None
+        imp, stmt = body
+        if not (
+            isinstance(imp, ast.ImportFrom)
+            and imp.level == 0
+            and imp.module in _WTS_HELPER_MODULES
+            and [(a.name, a.asname) for a in imp.names] == [("main", None)]
+        ):
+            return None
+        call = stmt.value if isinstance(stmt, ast.Expr) else None
+        if not (
+            isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Name)
+            and call.func.id == "main"
+        ):
+            return None
+        for arg in call.args:
+            ast.literal_eval(arg)
+        for kw in call.keywords:
+            value = ast.literal_eval(kw.value)
+            if kw.arg is None and not isinstance(value, dict):
+                return None
+        return compile(ast.Module(body=body, type_ignores=[]), "<multiprocessing helper>", "exec")
+    except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError):
+        return None
+
 
 def _wts_divert_multiprocessing_helper() -> None:
     argv = sys.argv
@@ -22,12 +67,9 @@ def _wts_divert_multiprocessing_helper() -> None:
         return
     if idx + 1 >= len(argv):
         return
-    command = argv[idx + 1]
-    if command.startswith((
-        "from multiprocessing.resource_tracker import main",
-        "from multiprocessing.forkserver import main",
-    )):
-        exec(command)
+    code = _wts_helper_code(argv[idx + 1])
+    if code is not None:
+        exec(code)
         sys.exit()
 
 

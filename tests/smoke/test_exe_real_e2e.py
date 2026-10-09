@@ -147,7 +147,8 @@ def test_exe_worker_transcribes_real_video(
         assert summary["progress_max"] >= 90, f"progress capped at {summary['progress_max']}%"
     finally:
         try:
-            assert proc.stdin is not None
+            if proc.stdin is None:
+                raise RuntimeError("worker has no stdin pipe")
             proc.stdin.write(json.dumps({"action": "shutdown"}) + "\n")
             proc.stdin.flush()
             proc.wait(timeout=10)
@@ -201,7 +202,8 @@ def test_exe_boots_and_loads_bundle(
         _ready_or_error(proc, deadline_s=300.0)
     finally:
         try:
-            assert proc.stdin is not None
+            if proc.stdin is None:
+                raise RuntimeError("worker has no stdin pipe")
             proc.stdin.write(json.dumps({"action": "shutdown"}) + "\n")
             proc.stdin.flush()
             proc.wait(timeout=10)

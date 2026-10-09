@@ -137,7 +137,8 @@ def main() -> int:
         return 0
     finally:
         try:
-            assert proc.stdin is not None
+            if proc.stdin is None:
+                raise RuntimeError("worker has no stdin pipe")
             proc.stdin.write(json.dumps({"action": "shutdown"}) + "\n")
             proc.stdin.flush()
             proc.wait(timeout=10)
