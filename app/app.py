@@ -4723,6 +4723,12 @@ class App(tk.Tk):
                     self._suppress_scale_cb = False
 
     def cancel_download(self, task: VideoDownloadTask) -> None:
+        # Terminal-status guard (mirrors cancel()): the Esc question or a
+        # context menu can still be open when the download ends, and a late
+        # "yes" would turn a finished download into a cancelled one and
+        # cancel the transcription that follows it.
+        if getattr(task, "status", "") in ("finished", "cancelled", "error"):
+            return
         # Paused, or waiting to start again: no worker runs that would clean
         # up after the cancel, so do its part (partial files, history row).
         no_worker = task.status in ("paused", "waiting")

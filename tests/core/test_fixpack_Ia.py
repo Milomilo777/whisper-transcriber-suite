@@ -614,6 +614,40 @@ def test_cancel_download_snapshots_process_no_attributeerror(monkeypatch):
     assert killed["n"] == 1  # the snapshot was killed
 
 
+@pytest.mark.parametrize("terminal", ["finished", "cancelled", "error"])
+def test_cancel_download_ignores_a_task_that_already_ended(monkeypatch, terminal):
+    """A Cancel confirmed after the download ended (the Esc question stays open
+    while the download finishes, or a menu is left open) must not turn the
+    finished row into a cancelled one nor cancel its follow-up transcription."""
+    killed = {"n": 0}
+    monkeypatch.setattr("app.app.kill_process_tree",
+                        lambda proc, force=False: killed.__setitem__("n", killed["n"] + 1))
+    task = VideoDownloadTask(url="u", folder="f", format_label="x",
+                             format_info={"mode": "Audio"})
+    task.status = terminal
+    task.cancelled = False
+    task.end_time = 123.0
+    followup = types.SimpleNamespace(status="waiting")
+    task.transcription_task = followup
+    cancelled_followups: list[object] = []
+    refreshed = {"n": 0}
+    app = types.SimpleNamespace(
+        download_queue=[task],
+        download_current=None,
+        cancel=cancelled_followups.append,
+        refresh_download_queue=lambda: refreshed.__setitem__("n", refreshed["n"] + 1),
+    )
+
+    App.cancel_download(app, task)  # type: ignore[arg-type]
+
+    assert task.status == terminal
+    assert task.cancelled is False
+    assert task.end_time == 123.0
+    assert task.transcription_task is followup
+    assert cancelled_followups == []
+    assert killed["n"] == 0
+
+
 def test_pause_download_snapshots_process_no_attributeerror(monkeypatch):
     killed = {"n": 0}
     monkeypatch.setattr("app.app.kill_process_tree",

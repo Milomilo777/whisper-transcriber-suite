@@ -353,6 +353,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A late Cancel no longer turns a finished download into a cancelled one.** Cancelling a download
+  that had ended in the meantime (the Esc question left open, an old menu) also cancelled its transcription.
 - **Bilingual subtitles for a non-Latin target language no longer overwrite each other.** The file name
   dropped every non-ASCII letter of the language (Persian, Arabic, ...), so each run replaced the previous file.
 - **A failed format lookup always shows a reason, and odd caption data no longer blocks the formats.**
