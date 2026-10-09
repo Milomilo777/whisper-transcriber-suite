@@ -330,6 +330,17 @@ Findings that shaped the code (all measured with the probe or a throwaway script
   the probe uses plain Tcl procs for that step. The app registers its commands with `createcommand`,
   which Tk runs from the event loop like the existing `::tk::mac::Quit` handler.
 
+`app/mac_native.py` itself was also run in the same VM against a stub app (real menu bar built the
+way `_build_menu` builds it, real mouse clicks, `open -a`): the app menu's About and Settings, the
+Help item, File > Close Window (the viewer's own close handler ran) and a file with a space in its
+path sent with `open -a` all reached their handlers, and the viewer showed its proxy icon. The Command-W
+keystroke itself could not be sent through the VM's remote keyboard, so it is on the manual list below.
+
+The macOS app build workflow (`macos-app.yml`) also runs the probe on the Intel and Apple-silicon
+runners as an extra, non-blocking step (`continue-on-error`): a runner's Python may not be an app
+bundle, so a FAIL line there is information, not a build failure. It has not been run yet: the
+workflow is manual-dispatch only.
+
 **Behaviour.**
 
 - App menu: "About Whisper Transcriber Suite" and "Settings…" (Command-comma). Both do nothing (a beep)
@@ -344,7 +355,9 @@ Findings that shaped the code (all measured with the probe or a throwaway script
   English-only model question as a drop on the window. The spec declares `CFBundleDocumentTypes`
   (`platform/macos/pyinstaller/document_types.py`, built from `core/media_types.py`): role Viewer, rank
   Alternate, so Finder lists the app under "Open With" and never makes it the default app. `.ts` is left
-  out (TypeScript). `verify_mac_bundle.sh` and `test_dmg.sh` check the key in the built app.
+  out (TypeScript). `verify_mac_bundle.sh` and `test_dmg.sh` check the key in the built app. The
+  source install (`install.command`) writes its own small Info.plist and declares no document types, so
+  "Open With" is for the packaged app only.
 - Dock icon: a click while the window is minimised or hidden in the tray shows it again.
 - Wording: "Reveal in Finder" replaces "Open folder" / "Open output folder" / "Open download folder"
   (and "Reveal Log Folder in Finder" in Help); where a file is known (a finished job's first output, a

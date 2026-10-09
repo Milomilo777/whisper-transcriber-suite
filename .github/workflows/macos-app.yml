@@ -54,6 +54,17 @@ jobs:
             -r requirements.slim.txt pyinstaller
           pip freeze | grep -iE '^(numpy|onnxruntime|ctranslate2|av|tokenizers|sherpa|faster|pyinstaller)'
 
+      # Extra check, never a gate: which native hooks this runner's Python/Tk
+      # really supports (app menu, Window/Help menus, OpenDocument, Dock click).
+      # The app's macOS integration (app/mac_native.py) is built on the result
+      # measured in a macOS 13 VM; this shows whether the runners agree. The
+      # process may not be an app bundle here (setup-python), so a FAIL line
+      # is information, not a build failure. See docs/MACOS_BUILD_NOTES.md.
+      - name: Probe native macOS hooks (extra check)
+        continue-on-error: true
+        timeout-minutes: 3
+        run: python -u tools/mac_native_probe.py
+
       # Self-contained ffmpeg/ffprobe + yt-dlp + deno. NOT Homebrew's ffmpeg:
       # it links ~18 dylibs under the Homebrew prefix that PyInstaller does
       # not bundle, and is built for the runner's own macOS (minos 15.0).

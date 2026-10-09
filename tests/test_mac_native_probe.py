@@ -69,3 +69,12 @@ def test_the_probe_declines_when_tk_is_not_aqua(capsys: pytest.CaptureFixture[st
     assert _probe().main([]) == 2
     out = capsys.readouterr().out
     assert "Tk patchlevel" in out and "SKIP" in out
+
+
+def test_the_macos_workflow_runs_the_probe_as_a_non_blocking_extra_check() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "macos-app.yml").read_text(encoding="utf-8")
+    at = workflow.index("name: Probe native macOS hooks")
+    step = workflow[at: workflow.index("\n      - name:", at + 10)]
+    assert "tools/mac_native_probe.py" in step
+    assert "continue-on-error: true" in step  # a runner that is not an app bundle must not fail the build
+    assert "timeout-minutes:" in step
