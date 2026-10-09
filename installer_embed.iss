@@ -354,6 +354,36 @@ begin
   Result := Pos(P, C) = 1;
 end;
 
+// Deletes the downloaded models in the hub folder: the `models--*` folders
+// (core.hub.model_folder_for), and the hub folder itself once that leaves it
+// empty. hub_folder is whatever folder the user picked (it can be Documents or
+// a drive root), so nothing else in it is ever touched. A link is skipped.
+// False when a model folder could not be removed.
+function DeleteHubModels(HubFolder: string): Boolean;
+var
+  FindRec: TFindRec;
+  Root: string;
+begin
+  Result := True;
+  Root := AddBackslash(HubFolder);
+  if FindFirst(Root + 'models--*', FindRec) then begin
+    try
+      repeat
+        // $400 = FILE_ATTRIBUTE_REPARSE_POINT
+        if ((FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0) and
+           ((FindRec.Attributes and $400) = 0) then begin
+          if not DelTree(Root + FindRec.Name, True, True, True) then
+            Result := False;
+        end;
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+  // RemoveDir only removes an empty folder.
+  RemoveDir(HubFolder);
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   HubFolder, AppFolder, Msg, MarkerPath, ConfigPath: string;
@@ -382,11 +412,12 @@ begin
     Msg := 'The Whisper model hub folder is located outside the install directory:' + #13#10 + #13#10 +
            HubFolder + #13#10 + #13#10 +
            'It may contain several gigabytes of downloaded Whisper models.' + #13#10 +
-           'Do you want to delete this folder as part of the uninstall?';
+           'Do you want to delete the downloaded models in it as part of the uninstall?' + #13#10 +
+           'Other files in this folder are not touched.';
     if MsgBox(Msg, mbConfirmation, MB_YESNO) = IDYES then begin
-      if not DelTree(HubFolder, True, True, True) then
-        MsgBox('Could not fully delete ' + HubFolder + '.' + #13#10 +
-               'You can remove it manually with File Explorer.',
+      if not DeleteHubModels(HubFolder) then
+        MsgBox('Could not fully delete the models in ' + HubFolder + '.' + #13#10 +
+               'You can remove them manually with File Explorer.',
                mbInformation, MB_OK);
     end;
   end;

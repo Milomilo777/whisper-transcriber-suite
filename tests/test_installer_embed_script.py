@@ -97,3 +97,28 @@ def test_clone_your_voice_task_and_marker_are_unchanged():
     code = _section(text, "Code")
     assert "NoVoiceCloneMarker = '{app}\\no_voice_clone.flag'" in code
     assert "WizardIsTaskSelected('voiceclone')" in code
+
+
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _both_installers():
+    for name in ("installer_embed.iss", "installer.iss"):
+        with open(os.path.join(_ROOT, name), encoding="utf-8") as fh:
+            yield name, fh.read()
+
+
+def test_uninstall_never_deletes_the_whole_model_folder():
+    """hub_folder is any folder the user picked (Documents, a drive root, ...), and
+    only the model folders the app made in it are the app's to delete. A recursive
+    delete of the folder itself, on a "yes", would take the user's other files too."""
+    for name, text in _both_installers():
+        code = _section(text, "Code")
+        assert "DelTree(HubFolder" not in code, name
+        cleanup = _function(code, "DeleteHubModels")
+        # Only the `models--*` folders (core.hub.model_folder_for) are removed; the
+        # hub folder itself goes only when that left it empty.
+        assert "'models--*'" in cleanup, name
+        assert "DelTree(" in cleanup and "RemoveDir(HubFolder)" in cleanup, name
+        assert cleanup.index("RemoveDir(HubFolder)") > cleanup.index("DelTree("), name
+        assert "DeleteHubModels(HubFolder)" in _function(code, "CurUninstallStepChanged"), name

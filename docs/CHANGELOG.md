@@ -353,6 +353,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Uninstalling and answering Yes to deleting the models folder removes only the models.** The question
+  used to delete the whole folder chosen as the model hub, which could be Documents or a drive; now only
+  the `models--*` folders go, and the hub folder itself only if that leaves it empty.
 - **Meaning search on a long history no longer loads every stored vector at once.** It reads the rows
   one by one and keeps only the best matches, which keeps memory flat.
 - **A job that starts while the exit questions are open is recorded as closed on purpose.** The next
