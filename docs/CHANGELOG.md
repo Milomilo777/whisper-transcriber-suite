@@ -317,8 +317,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   `batch_size`, `chapter_min_seconds`) are re-read from `config.json` for each task, so a hand edit
   applies to the next file.
 
-- **Quitting during a job.** On macOS, Cmd+Q (and the app-menu and Dock Quit) now ask "Exit with queued
-  tasks?" like Windows instead of dropping a running transcription. A confirmed exit is recorded as
+- **Quitting during a job.** On macOS, Cmd+Q (and the app-menu and Dock Quit) now ask before
+  quitting ("Quit with queued tasks?" on macOS, "Exit with queued tasks?" on Windows) instead of
+  dropping a running transcription. A confirmed exit is recorded as
   closed on purpose, so the next start offers to resume it as "interrupted when the app was closed"
   rather than blaming a crash, and a worker whose app has gone logs one line instead of a
   `BrokenPipeError` traceback.
