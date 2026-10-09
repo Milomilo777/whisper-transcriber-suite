@@ -47,6 +47,7 @@ from app.widgets.console import apply_console_theme, build_console, insert_log_l
 from app.widgets.error_dialog import show_error
 from app.widgets.notice import notify
 from app.widgets import subtitle_edit as subtitle_edit_ui
+from app.widgets.platform import open_file as _open_file_helper
 from app.widgets.platform import open_folder as _open_folder_helper
 from app.widgets.platform import folder_action_label, folder_label, reveal_label
 from app.widgets.live_tab import build_live_tab, stop_live_session
@@ -5701,22 +5702,13 @@ class App(tk.Tk):
             pass
 
     def _open_file(self, path: str) -> None:
-        """Open a single file with the OS default handler."""
-        try:
-            if os.name == "nt":
-                os.startfile(path)  # type: ignore[attr-defined]
-            elif sys.platform == "darwin":
-                import subprocess
-                subprocess.run(["open", path], stdin=subprocess.DEVNULL, check=False)
-            else:
-                import subprocess
-                subprocess.run(["xdg-open", path], stdin=subprocess.DEVNULL, check=False)
-        except Exception as e:  # noqa: BLE001
-            show_error(
-                self, "Open failed",
-                "Could not open that file with your system's default app.",
-                detail=str(e),
-            )
+        """Open a single file with the OS default handler.
+
+        The outcome is checked on every platform: with no app set for the file type the file is
+        shown in its folder with a notice (see ``app.widgets.platform.open_file``); any other
+        failure shows an error.
+        """
+        _open_file_helper(path, parent=self)
 
     def _install_tray(self) -> None:
         """Bring up the system-tray icon if pystray + Pillow are present.

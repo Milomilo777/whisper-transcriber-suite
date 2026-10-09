@@ -10,14 +10,13 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
-import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import Any
 
 from app.dpi import px
 from app.theme import tokens
+from app.widgets.platform import open_with_default_app
 from core.writers import html_transcript
 
 BUTTON_TEXT = "Save shareable page"
@@ -122,12 +121,7 @@ def ask_options(master: "tk.Misc", *, media_path: str | None) -> tuple[str, bool
 
 def open_in_browser(path: str) -> None:
     """Open the saved page with the system's default handler for .html files."""
-    if sys.platform == "darwin":
-        subprocess.run(["open", path], stdin=subprocess.DEVNULL, check=False)
-    elif os.name == "nt":
-        os.startfile(path)  # type: ignore[attr-defined]
-    else:
-        subprocess.run(["xdg-open", path], stdin=subprocess.DEVNULL, check=False)
+    open_with_default_app(path)
 
 
 def save_shareable_page(

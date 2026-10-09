@@ -43,7 +43,11 @@ def test_play_opens_the_file_on_macos_and_linux(root, fakes, monkeypatch, tmp_pa
     opened: list = []
     monkeypatch.setattr(plat, "sys", types.SimpleNamespace(platform=platform))
     monkeypatch.delattr(os, "startfile", raising=False)
-    monkeypatch.setattr(plat.subprocess, "Popen", lambda cmd, **_k: opened.append(cmd))
+    def popen(cmd, **_k):
+        opened.append(cmd)
+        return types.SimpleNamespace(wait=lambda timeout=None: 0)  # the opener exited 0
+
+    monkeypatch.setattr(plat.subprocess, "Popen", popen)
     app = _build(root, fakes)
     out = tmp_path / "speech.wav"
     _write_wav(str(out), 1.0)

@@ -36,7 +36,6 @@ import logging
 import math
 import os
 import re
-import subprocess
 import sys
 import threading
 import time
@@ -51,7 +50,9 @@ from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
 from app.widgets import subtitle_edit as subtitle_edit_ui
 from app.widgets.notice import Kind, notify
-from app.widgets.platform import is_darwin, open_folder, reveal_label
+from app.widgets.platform import (
+    is_darwin, open_file, open_folder, open_with_default_app, reveal_label,
+)
 from app.widgets.tooltip import help_icon
 from core import subtitle_edit
 from core.media_types import MEDIA_EXTENSIONS
@@ -428,12 +429,7 @@ def _segment_min_probability(seg: dict[str, Any]) -> float | None:
 
 def _os_open(path: str) -> None:
     """Open a file or folder with the OS default handler (cross-platform)."""
-    if sys.platform == "darwin":
-        subprocess.run(["open", path], stdin=subprocess.DEVNULL, check=False)
-    elif os.name == "nt":
-        os.startfile(path)  # type: ignore[attr-defined]
-    else:
-        subprocess.run(["xdg-open", path], stdin=subprocess.DEVNULL, check=False)
+    open_with_default_app(path)
 
 
 def _dir_has_vlc_lib(d: str) -> bool:
@@ -1891,14 +1887,10 @@ class TranscriptViewer(tk.Toplevel):
         if not self.media_path:
             notify(self, "No media file was found alongside the transcript JSON.", "warning")
             return
-        try:
-            _os_open(self.media_path)
-        except Exception as e:  # noqa: BLE001
-            show_error(
-                self, "Open failed",
-                "Could not open the media file in your system player.",
-                detail=str(e),
-            )
+        open_file(
+            self.media_path, parent=self,
+            error_text="Could not open the media file in your system player.",
+        )
 
     # -- edit operations -------------------------------------------------
 

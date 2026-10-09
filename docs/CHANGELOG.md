@@ -362,6 +362,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the next jobs still run; the notification is logged and dropped.
 - **A large upload stays byte-exact when a long text field follows the file.** The server could keep
   the two line-break bytes in front of the closing boundary in the saved media.
+- **Opening a result file says so when no app can open it.** "Open" on a `.srt` did nothing on a Mac
+  with no app for that type, because the exit code of `open` was ignored. The result is now checked
+  on every platform (also `xdg-open`, and Windows "no association"): a Mac opens text files such as
+  `.srt` in its text editor, anything else is shown in its folder with a short notice.
 - **The engine row agrees with the model row after Quick start.** Finishing Quick start left
   "Model not downloaded yet" next to "Downloaded" until Advanced settings was opened; the engine
   status is now probed again once the choices are saved.
