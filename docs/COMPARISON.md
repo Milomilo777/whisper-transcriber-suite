@@ -15,7 +15,7 @@ Vibe, Buzz, noScribe and aTrain.
 - Facts about the other apps come from each project's own README, docs,
   website and GitHub API, all read on the date above. Every fact has a source
   link in [Sources for the other apps](#sources-for-the-other-apps).
-- Facts about WTS describe release v1.9.3 and were checked against this
+- Facts about WTS describe release v2.0.0 and were checked against this
   repository's code and docs on the same date; the file behind each one is in
   [Where the WTS facts come from](#where-the-wts-facts-come-from).
 - "Not stated" means the cited source was read and says nothing on the point.
@@ -81,7 +81,7 @@ Vibe, Buzz, noScribe and aTrain.
 
 | | Whisper Transcriber Suite | Subtitle Edit | Vibe | Buzz | noScribe | aTrain |
 |---|---|---|---|---|---|---|
-| Latest stable version | v1.9.3 (September 2026) | v5.2.0 (2026-09-10) | v3.2.2 (2026-09-05) | v1.4.5 (2026-08-23) | v0.7.2 (2026-06-02) | v1.4.1 (2026-01-28); v1.5.0 release candidates since 2026-08-19 |
+| Latest stable version | v2.0.0 (October 2026) | v5.2.0 (2026-09-10) | v3.2.2 (2026-09-05) | v1.4.5 (2026-08-23) | v0.7.2 (2026-06-02) | v1.4.1 (2026-01-28); v1.5.0 release candidates since 2026-08-19 |
 | Licence | BSD-3-Clause | MIT | MIT | MIT | GPL-3.0 | AGPL-3.0 |
 | Price | Free, no paid tier | Free; donations | Free; support link, no paid tier stated | Free, no paid tier stated | Free; donations | Free; Microsoft Store price not checked |
 | Windows | 10 or 11, 64-bit: installer and portable ZIP | 10 22H2 or newer: x64 installer and zip, ARM64 zip | x64 installer | Yes (README sends Windows users to SourceForge) | Standard and CUDA installers | 10 and 11, from the Microsoft Store |
@@ -97,7 +97,7 @@ Vibe, Buzz, noScribe and aTrain.
 
 | Fact | Source in this repository |
 |---|---|
-| Version 1.9.3 | [`core/__init__.py`](../core/__init__.py), [`pyproject.toml`](../pyproject.toml), [CHANGELOG](CHANGELOG.md) |
+| Version 2.0.0 | [`core/__init__.py`](../core/__init__.py), [`pyproject.toml`](../pyproject.toml), [CHANGELOG](CHANGELOG.md) |
 | BSD-3-Clause licence, free | [`LICENSE`](../LICENSE) |
 | Windows 10 or 11, 64-bit; not code-signed (SmartScreen warning) | [INSTALL.md](INSTALL.md) |
 | Windows installer and portable ZIP | [BUILD.md](BUILD.md) |
