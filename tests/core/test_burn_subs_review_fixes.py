@@ -174,3 +174,21 @@ def test_real_burn_draws_markup_as_text(tmp_path):
     with_braces = sum(burned("A {x} B", "braces"))
     without = sum(burned("A B", "plain"))
     assert with_braces > without, "the literal {x} must be drawn"
+
+
+def test_cue_text_holding_an_arrow_is_still_escaped():
+    # Only a real timing line is left alone; a cue line that merely contains
+    # "-->" (a user-supplied SRT) must be escaped like any other cue text.
+    srt = "1\n00:00:00,000 --> 00:00:01,000\nlook --> {" + BS + "an8}here\n"
+    lines = burn_subs.escape_srt_markup(srt).split("\n")
+    assert lines[1] == "00:00:00,000 --> 00:00:01,000"
+    assert lines[2] == "look --> " + BS + "{" + BS + WJ + "an8" + BS + "}here"
+
+
+@pytest.mark.parametrize(
+    "timing",
+    ["00:00:00,000 --> 00:00:01,000", "00:00:00.000 --> 00:00:01.000",
+     "1:02:03,456 --> 1:02:04,000", "  00:00:00,000 --> 00:00:01,000 X1:0 Y2:3"],
+)
+def test_real_timing_lines_stay_untouched(timing):
+    assert burn_subs.escape_srt_markup("1\n" + timing + "\nx\n").split("\n")[1] == timing

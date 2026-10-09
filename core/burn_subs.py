@@ -796,7 +796,11 @@ def _same_path(a: str, b: str) -> bool:
 
 _WJ = chr(0x2060)  # WORD JOINER: invisible, breaks a libass "\N"-style code
 _BACKSLASH = chr(92)
-_SRT_TIMING_ARROW = "-->"
+# A cue timing line: "[hh:]mm:ss[,mmm] --> [hh:]mm:ss[,mmm]" at the start of the line.
+# Matching the arrow alone also skipped cue text that merely contains "-->".
+_SRT_TIMING_LINE = re.compile(
+    r"^\s*(?:\d+:)?\d{1,2}:\d{2}(?:[,.]\d+)?\s*-->\s*(?:\d+:)?\d{1,2}:\d{2}(?:[,.]\d+)?"
+)
 
 
 def escape_cue_text(line: str) -> str:
@@ -826,7 +830,7 @@ def escape_srt_markup(text: str) -> str:
     """``escape_cue_text`` on every cue line; index and timing lines unchanged."""
     lines = text.split("\n")
     for n, line in enumerate(lines):
-        if _SRT_TIMING_ARROW in line or line.strip().isdigit():
+        if _SRT_TIMING_LINE.match(line) or line.strip().isdigit():
             continue
         lines[n] = escape_cue_text(line)
     return "\n".join(lines)
