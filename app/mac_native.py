@@ -392,11 +392,11 @@ def centre_over(window: Any, master: Any, width: int, height: int) -> None:
         across, down = top.winfo_width(), top.winfo_height()
         x = left + (across - width) // 2
         y = up + (down - height) // 2
-        screen_w, screen_h = window.winfo_screenwidth(), window.winfo_screenheight()
-        # Tk's screen size is the main screen's. Keep the window on it only when the main window
-        # is on it too; on a monitor left of, above or right of the main screen the coordinates
+        screen_w, screen_h = top.winfo_screenwidth(), top.winfo_screenheight()
+        # Tk's screen size is the main screen's. Keep the window on it when the middle of the main
+        # window is on it; on a monitor left of, above or right of the main screen the coordinates
         # lie outside it (negative is valid: "+-800+40") and a clamp would send the window away.
-        if left >= 0 and up >= 0 and left + across <= screen_w and up + down <= screen_h:
+        if 0 <= left + across // 2 < screen_w and 0 <= up + down // 2 < screen_h:
             x = max(0, min(x, screen_w - width))
             y = max(_MENU_BAR_PX, min(y, screen_h - height))
         window.geometry(f"+{x}+{y}")

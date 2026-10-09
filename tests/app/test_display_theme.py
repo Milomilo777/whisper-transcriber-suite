@@ -30,8 +30,14 @@ def root():
     except tk.TclError as e:  # pragma: no cover - no display
         pytest.skip(f"no Tk display: {e}")
     r.withdraw()
+    # ``tk scaling`` belongs to the display, not to this root: a test that sets it (_scale) would
+    # otherwise leave 125/150 % behind for every later test that builds a window.
+    scaling = r.tk.call("tk", "scaling")
     yield r
-    r.destroy()
+    try:
+        r.tk.call("tk", "scaling", scaling)
+    finally:
+        r.destroy()
 
 
 @pytest.fixture(autouse=True)

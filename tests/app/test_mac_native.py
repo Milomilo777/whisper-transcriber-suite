@@ -836,7 +836,6 @@ def test_a_centred_window_on_the_main_screen_stays_on_it_below_the_menu_bar() ->
     ((-1500, 100, 1000, 800), "+-1340+190"),      # a monitor left of the main one
     ((1600, 50, 1000, 800), "+1760+140"),         # right of it, beyond its width
     ((100, -1000, 1000, 800), "+260+-910"),       # above it
-    ((-300, 200, 1000, 800), "+-140+290"),        # straddling the left edge: still its own window
 ])
 def test_a_window_is_centred_on_a_main_window_that_lies_off_the_main_screen(
     box: tuple[int, int, int, int], expected: str,
@@ -845,6 +844,13 @@ def test_a_window_is_centred_on_a_main_window_that_lies_off_the_main_screen(
     dialog = _Shown(0, 0, 0, 0)
     mac_native.centre_over(dialog, _Shown(*box), 680, 620)
     assert dialog.geometries == [expected]
+
+
+def test_a_main_window_half_off_the_main_screen_keeps_the_dialog_on_it() -> None:
+    """Its middle is on the main screen: the dialog is clamped onto that screen, not off the edge."""
+    dialog = _Shown(0, 0, 0, 0)
+    mac_native.centre_over(dialog, _Shown(-300, 200, 1000, 800), 680, 620)
+    assert dialog.geometries == ["+0+280"]            # x clamped to the left edge; bottom held at 900
 
 
 @pytest.mark.parametrize("system", ["win32", "x11"])
@@ -860,7 +866,12 @@ def test_a_window_is_not_centred_over_a_hidden_main_window() -> None:
     assert dialog.geometries == []
 
 
-def _open_about(host: _Host, monkeypatch: pytest.MonkeyPatch) -> tk.Toplevel:
+def _open_about(host: _Host, monkeypatch: pytest.MonkeyPatch, screen_h: int = 900) -> tk.Toplevel:
+    # The dialog size and the screen are the display's (DPI scale, work area); fix both so the
+    # expected position does not depend on the machine or on what an earlier test left behind.
+    monkeypatch.setattr(app_mod, "scaled_size", lambda _w, width, height: (width, height))
+    monkeypatch.setattr(host, "winfo_screenwidth", lambda: 1440)
+    monkeypatch.setattr(host, "winfo_screenheight", lambda: screen_h)
     host.app_config = {}  # type: ignore[attr-defined]
     host._star_open_page = lambda: None  # type: ignore[attr-defined]
     monkeypatch.setattr(host, "winfo_viewable", lambda: True)
@@ -887,18 +898,26 @@ def test_the_apps_about_dialog_opens_centred_on_aqua(
     host: _Host, aqua: None, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     dlg = _open_about(host, monkeypatch)
-    w, h = app_mod.scaled_size(dlg, 680, 620)
     _w, _h, x, y = _geometry(dlg)   # not on screen yet: its size still reads 1x1
-    assert (x, y) == (100 + (1000 - w) // 2, 60 + (800 - h) // 2)
+    assert (x, y) == (100 + (1000 - 680) // 2, 60 + (800 - 620) // 2) == (260, 150)
+
+
+@pytest.mark.parametrize("screen_h, y", [(700, 80), (500, 28)])
+def test_the_apps_about_dialog_stays_on_a_screen_shorter_than_the_main_window(
+    host: _Host, aqua: None, monkeypatch: pytest.MonkeyPatch, screen_h: int, y: int,
+) -> None:
+    """Main window at y=60, 800 high; the screen is shorter than it (700) or than the dialog (500)."""
+    dlg = _open_about(host, monkeypatch, screen_h)
+    _w, _h, x, got_y = _geometry(dlg)
+    assert (x, got_y) == (260, y)
 
 
 def test_the_apps_about_dialog_is_not_placed_by_the_app_elsewhere(
     host: _Host, not_aqua: str, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     dlg = _open_about(host, monkeypatch)
-    w, h = app_mod.scaled_size(dlg, 680, 620)
     _w, _h, x, y = _geometry(dlg)
-    assert (x, y) != (100 + (1000 - w) // 2, 60 + (800 - h) // 2)
+    assert (x, y) != (260, 150)
 
 
 # ------------------------------------------------------- window marks, viewer
