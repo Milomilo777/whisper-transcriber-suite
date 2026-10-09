@@ -229,7 +229,7 @@ if not "%_CORE_RC%"=="0" (
 )
 
 echo [embed] verifying gui.py worker entry point parses
-"%BUILD%\python\python.exe" -c "import ast; ast.parse(open(r'%BUILD%\gui.py').read())"
+"%BUILD%\python\python.exe" -c "import ast; ast.parse(open(r'%BUILD%\gui.py','rb').read())"
 if errorlevel 1 (
   echo [embed] gui.py parse failed
   exit /b 6

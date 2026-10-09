@@ -122,3 +122,13 @@ def test_uninstall_never_deletes_the_whole_model_folder():
         assert "DelTree(" in cleanup and "RemoveDir(HubFolder)" in cleanup, name
         assert cleanup.index("RemoveDir(HubFolder)") > cleanup.index("DelTree("), name
         assert "DeleteHubModels(HubFolder)" in _function(code, "CurUninstallStepChanged"), name
+
+
+def test_build_script_parses_gui_py_independent_of_the_windows_code_page():
+    """`open(path).read()` decodes with the Windows ANSI code page, so the same gui.py
+    passes on one PC and fails the build on another. Reading bytes lets Python apply
+    its own source rule (UTF-8)."""
+    with open(os.path.join(_ROOT, "build_embed_installer.bat"), encoding="utf-8") as fh:
+        lines = [ln for ln in fh.read().splitlines() if "ast.parse" in ln]
+    assert len(lines) == 1
+    assert "gui.py','rb')" in lines[0]

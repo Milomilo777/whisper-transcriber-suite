@@ -353,6 +353,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **The installer build no longer depends on the PC's Windows code page when it checks `gui.py`.**
+  A non-ASCII character that the code page cannot decode failed the check.
 - **Uninstalling and answering Yes to deleting the models folder removes only the models.** The question
   used to delete the whole folder chosen as the model hub, which could be Documents or a drive; now only
   the `models--*` folders go, and the hub folder itself only if that leaves it empty.
