@@ -183,6 +183,7 @@ a = Analysis(
         'app.theme.theme_colours',
         'app.theme.mac_appearance',
         'app.theme.system_appearance',
+        'app.theme.bidi_display',
         'app.theme.system_fonts',
         'app.theme.win_chrome',
         'app.theme.win_taskbar',

@@ -352,6 +352,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   nothing once the Find dialog and an alert had been closed, because Tk reports no focus then even
   though the viewer is the front window. It now acts on the window macOS calls the key window (asked
   from AppKit) and still never on the main window.
+- **macOS: Persian and Arabic file names read left to right in the queues and the Last result card.** Tk on macOS takes the line direction from the first strong letter, so "name.wav" was drawn as "wav.name" and the bullet or check mark jumped to the right end; the queue and download rows and the result card now start such strings with an invisible left-to-right mark, as Tk does on Windows (`app/theme/bidi_display.py`). Transcript lines are unchanged, and Windows and Linux are unaffected.
 - **Work offline: UDP and name-lookup gaps closed.** The network guard now also refuses UDP
   datagrams sent to another computer (`sendto` / `sendmsg`), the `gethostbyname`,
   `gethostbyaddr` and `getnameinfo` lookups and calls made on `_socket` directly, through a
