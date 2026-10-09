@@ -22,6 +22,7 @@ the embeddings live in their own table.
 """
 from __future__ import annotations
 
+import heapq
 import json
 import logging
 import math
@@ -871,8 +872,13 @@ def _semantic_query(
         "JOIN segments_fts s ON e.json_path = s.json_path "
         "AND e.segment_index = s.segment_index"
     )
-    hits: list[SearchHit] = []
-    for r in cur.fetchall():
+    # Stream the rows and keep only the best ``limit`` hits: a long history
+    # holds tens of thousands of vectors, and neither the rows nor a hit per
+    # segment may be held in memory at once. The sequence number makes equal
+    # scores keep their row order, as the stable sort did.
+    best: list[tuple[float, int, SearchHit]] = []
+    seq = 0
+    for r in cur:
         vec = _blob_to_vector(bytes(r["vector"]), int(r["dim"]))
         if not vec:
             continue
@@ -887,7 +893,10 @@ def _semantic_query(
         vnorm = math.sqrt(sum(x * x for x in vec)) or 1.0
         dot = sum(a * b for a, b in zip(qvec, vec))
         score = dot / (qnorm * vnorm)
-        hits.append(SearchHit(
+        if limit <= 0:
+            continue
+        seq += 1
+        entry = (float(score), -seq, SearchHit(
             json_path=str(r["json_path"]),
             segment_index=int(r["segment_index"]),
             text=str(r["text"]),
@@ -895,8 +904,12 @@ def _semantic_query(
             start_seconds=_finite_seconds(r["start_seconds"], 0.0),
             end_seconds=_finite_seconds(r["end_seconds"], 0.0),
         ))
-    hits.sort(key=lambda h: h.score, reverse=True)
-    return hits[:limit]
+        if len(best) < limit:
+            heapq.heappush(best, entry)
+        elif entry[:2] > best[0][:2]:
+            heapq.heapreplace(best, entry)
+    best.sort(key=lambda e: e[:2], reverse=True)
+    return [hit for _score, _seq, hit in best]
 
 
 # ---------------------------------------------------------------- embedder

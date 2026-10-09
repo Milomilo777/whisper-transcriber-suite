@@ -340,6 +340,52 @@ def test_semantic_query_skips_dimension_mismatched_rows(tmp_path):
         conn.close()
 
 
+class _NoFetchAllCursor:
+    """Lets the rows stream but refuses fetchall(): a semantic search must not
+    hold every stored vector in memory at once."""
+
+    def __init__(self, cur):
+        self._cur = cur
+
+    def __iter__(self):
+        return iter(self._cur)
+
+    def fetchall(self):
+        raise AssertionError("fetchall() loads every stored vector at once")
+
+
+class _StreamingConn:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, *args):
+        return _NoFetchAllCursor(self._conn.execute(*args))
+
+
+def test_semantic_query_streams_rows_and_keeps_only_the_best(tmp_path):
+    p = tmp_path / "t.json"
+    texts = ["cat one", "dog two", "cat three", "car four", "cat five", "dog six"]
+    _write_transcript(p, [
+        {"start": float(i), "end": float(i + 1), "text": t} for i, t in enumerate(texts)
+    ])
+    conn = _open_db_at(tmp_path)
+    embedder = _FakeEmbedder()
+    try:
+        sm.index_file(str(p), conn=conn, embedder=embedder)
+        everything = sm._semantic_query(conn, "a cat", embedder, 100)
+        assert len(everything) == len(texts)
+        top = sm._semantic_query(_StreamingConn(conn), "a cat", embedder, 2)
+        assert [(h.segment_index, h.score) for h in top] == [
+            (h.segment_index, h.score) for h in everything[:2]
+        ]
+        assert all("cat" in h.text for h in top)
+        # Equal scores keep their row order (as the former stable sort did).
+        assert [h.segment_index for h in top] == [0, 2]
+        assert sm._semantic_query(conn, "a cat", embedder, 0) == []
+    finally:
+        conn.close()
+
+
 def test_indexed_files_table_tracks_one_row_per_file(tmp_path):
     p = tmp_path / "t.json"
     _write_transcript(p, [{"start": 0.0, "end": 1.0, "text": "x"}])

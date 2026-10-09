@@ -353,6 +353,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Meaning search on a long history no longer loads every stored vector at once.** It reads the rows
+  one by one and keeps only the best matches, which keeps memory flat.
 - **A job that starts while the exit questions are open is recorded as closed on purpose.** The next
   launch no longer calls it a crash.
 - **A folder dropped as a `file://` address is queued like any other dropped folder.** It was reported
