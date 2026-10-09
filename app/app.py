@@ -2370,7 +2370,9 @@ class App(tk.Tk):
         # on a big window they fill it exactly as before.
         from app.widgets.tabs import fit_or_scroll
 
-        build_transcribe_tab(self, self.t1)
+        # Scrolls when the window is shorter than the tab (a long Last result card), so
+        # the drop zone keeps its height and the log below the tabs keeps its lines.
+        build_transcribe_tab(self, fit_or_scroll(self.t1))
         build_queue_tab(self, self.t2)
         build_live_tab(self, fit_or_scroll(self.t6))
         build_download_tab(self, fit_or_scroll(self.t3))
@@ -5304,7 +5306,7 @@ class App(tk.Tk):
         one-click "Open" buttons. Also offers a single "Open folder"
         button as a shortcut.
         """
-        from app.widgets.tabs import _fmt_bytes
+        from app.widgets.tabs import _fmt_bytes, capped_rows
 
         if not hasattr(self, "last_result_frame"):
             return
@@ -5362,17 +5364,23 @@ class App(tk.Tk):
 
             files_frame = ttk.Frame(self.last_result_body)
             files_frame.pack(fill="x")
-            for path in existing:
-                row = ttk.Frame(files_frame)
-                row.pack(fill="x", pady=1)
-                size = _fmt_bytes(os.path.getsize(path))
-                ttk.Label(
-                    row, text=f"• {os.path.basename(path)}  ({size})"
-                ).pack(side="left")
-                ttk.Button(
-                    row, text="Open",
-                    command=lambda p=path: self._open_file(p),
-                ).pack(side="right")
+
+            def _fill_rows(rows_parent: "ttk.Frame") -> None:
+                for path in existing:
+                    row = ttk.Frame(rows_parent)
+                    row.pack(fill="x", pady=1)
+                    size = _fmt_bytes(os.path.getsize(path))
+                    ttk.Label(
+                        row, text=f"• {os.path.basename(path)}  ({size})"
+                    ).pack(side="left")
+                    ttk.Button(
+                        row, text="Open",
+                        command=lambda p=path: self._open_file(p),
+                    ).pack(side="right")
+
+            # A long list scrolls inside the card: it must never grow until the drop
+            # zone and the log have no room left.
+            capped_rows(files_frame, len(existing), _fill_rows)
         else:
             ttk.Label(
                 self.last_result_body,

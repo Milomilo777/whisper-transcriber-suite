@@ -341,6 +341,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   each text and Word export that still matches the transcript it came from, with the same writers
   and the same title as the transcription. A file edited elsewhere, a PDF (it cannot be rebuilt
   faithfully) and a file whose writer failed are named in a notice and left as they are.
+- **A long Last result list no longer squeezes the window.** With many output files the Last result
+  card grew until the drop zone was cut off and the log pane shrank to one line. The file list now
+  scrolls after four rows, and the Transcribe tab scrolls like the other tall tabs when the window
+  is shorter than it.
 - **Work offline: UDP and name-lookup gaps closed.** The network guard now also refuses UDP
   datagrams sent to another computer (`sendto` / `sendmsg`), the `gethostbyname`,
   `gethostbyaddr` and `getnameinfo` lookups and calls made on `_socket` directly, through a
