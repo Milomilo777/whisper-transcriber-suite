@@ -154,6 +154,69 @@ def test_random_texts_keep_the_matching_invariants():
         assert (again, count2) == (new, 0)
 
 
+def _reference_spans(text, casefold=True):
+    """The plain, slow definition of fold_with_spans, one character at a time."""
+    out, starts, ends = [], [], []
+    last_len = 0
+    for i, ch in enumerate(text):
+        f = srch._fold_char(ch, casefold)
+        if f:
+            out.append(f)
+            starts += [i] * len(f)
+            ends += [i + 1] * len(f)
+            last_len = len(f)
+        elif last_len and ends[-1] == i and unicodedata.category(ch) == "Mn":
+            ends[-last_len:] = [i + 1] * last_len
+    return "".join(out), tuple(starts), tuple(ends)
+
+
+def test_the_span_index_equals_the_plain_definition():
+    rng = random.Random(268)
+    alphabet = ["a", "B", " ", ZWNJ, chr(0x200D), chr(0x0640), KAF_AR, KAF_FA, YEH_AR, FATHA,
+                chr(0x0651), chr(0x0654), "1", chr(0x0661), "e", chr(0x301), FI, LAM_ALEF,
+                SHARP_S, _u("0627"), chr(0x1112) + chr(0x1161), chr(0x1F600)]
+    for _ in range(1500):
+        text = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 14)))
+        for cf in (True, False):
+            assert srch.fold_with_spans(text, cf) == _reference_spans(text, cf), (text, cf)
+
+
+# --- speed: the viewer's filter runs on every segment at every keystroke ---------------
+
+
+def test_the_edge_character_filter_is_fast_on_a_long_transcript():
+    """Generous bounds (about 10x the measured warm time) so a slow machine does not flake;
+    the bug this guards was a cache that rebuilt every segment's index on each keystroke
+    (about 1 s for 6000 segments)."""
+    import time
+
+    rng = random.Random(1)
+    words = [KETAB_FA, KETAB_AR, _u("0645 06CC"), _u("0631 0648 0645"), _u("0647 0627"),
+             _u("062E 0648 0627 0647 0645"), _u("0633 0644 0627 0645")]
+    segments = []
+    for _ in range(6000):
+        parts = []
+        for _ in range(14):
+            word = rng.choice(words)
+            parts.append(word + (ZWNJ + _u("0647 0627") if rng.random() < 0.2 else ""))
+        segments.append(" ".join(parts))
+    query = _u("0645 06CC") + ZWNJ  # a trailing half-space makes the query "edged"
+    srch.fold_with_spans.cache_clear()
+
+    def run() -> int:
+        return sum(srch.folded_contains(text, query) for text in segments)
+
+    start = time.perf_counter()
+    hits = run()
+    cold = time.perf_counter() - start
+    start = time.perf_counter()
+    assert run() == hits
+    warm = time.perf_counter() - start
+    assert 0 < hits <= len(segments)
+    assert cold < 1.5, cold
+    assert warm < 0.5, warm  # measured: about 0.04 s; the 512-entry cache took about 0.9 s
+
+
 # --- the viewer ------------------------------------------------------------------------
 
 tk = pytest.importorskip("tkinter")
