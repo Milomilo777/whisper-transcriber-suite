@@ -387,6 +387,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Changing the Whisper model in Settings no longer stops a running transcription without asking, or
   before the choice is saved.** It now asks like an engine switch does and restarts the worker only
   after the save worked; a failed save (also from "Download now") puts the previous model back.
+- **A start or end time typed with a minus sign and zeros (`-0:00:01`) is no longer accepted** for a download clip; it is treated as unusable input, like any other negative time.
 - **A failed copy of the bundled yt-dlp no longer leaves a stray `yt-dlp.copy` file** in the cache folder; the copy in use is kept untouched.
 - **A speaker name containing `-->` no longer breaks an SRT cue.** The name is now escaped like the cue text in the SRT and bilingual SRT files, as WebVTT already did.
 - **A damaged "online config not published" marker file no longer aborts the settings load.** A marker that is not valid UTF-8 is treated as absent and the online config is simply asked for again.

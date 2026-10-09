@@ -197,7 +197,8 @@ def _parse_timecode(raw: str | None) -> float | None:
         nums = [float(p) for p in parts]
     except ValueError:
         return None
-    if any(n < 0 for n in nums):
+    # copysign: "-0" parses to -0.0, which is not < 0 yet is a negative input.
+    if any(n < 0 or math.copysign(1.0, n) < 0 for n in nums):
         return None
     # Reject sub-positions >= 60 in MM:SS / H:MM:SS shapes — that
     # would normally be a typo. SS-only is allowed to exceed 60
