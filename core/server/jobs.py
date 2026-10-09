@@ -1203,8 +1203,15 @@ class JobManager:
                 logger.exception("server: webhook POST to %s failed",
                                  redact_url(url))
 
-        threading.Thread(
-            target=_run, name="server-webhook", daemon=True).start()
+        try:
+            threading.Thread(
+                target=_run, name="server-webhook", daemon=True).start()
+        except Exception:  # noqa: BLE001 - the job is already settled
+            # Out of OS threads: the notification is lost, but this must not
+            # reach _run_one, whose error handler would settle the finished
+            # job as failed and fire again, killing the single worker.
+            logger.exception("server: could not start the webhook thread for %s",
+                             redact_url(url))
 
     # --- history (optional, never fatal) -------------------------------------
 
