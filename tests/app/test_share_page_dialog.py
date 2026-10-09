@@ -58,7 +58,7 @@ def test_save_writes_the_page_with_the_footer(tk_root, tmp_path, monkeypatch):
     out = tmp_path / "talk.html"
     monkeypatch.setattr(sp.filedialog, "asksaveasfilename", lambda **_k: str(out))
     opened: list[str] = []
-    monkeypatch.setattr(sp, "open_in_browser", opened.append)
+    monkeypatch.setattr(sp, "open_in_browser", lambda path, master: opened.append(path))
     seen: list[str] = []
     _act(tk_root, "Save\u2026", seen=seen)
     path = sp.save_shareable_page(tk_root, segments=SEGS, media_path=str(media),
@@ -76,7 +76,7 @@ def test_save_and_open_without_footer(tk_root, tmp_path, monkeypatch):
     out = tmp_path / "t.html"
     monkeypatch.setattr(sp.filedialog, "asksaveasfilename", lambda **_k: str(out))
     opened: list[str] = []
-    monkeypatch.setattr(sp, "open_in_browser", opened.append)
+    monkeypatch.setattr(sp, "open_in_browser", lambda path, master: opened.append(path))
     _act(tk_root, "Save and open in browser", untick_footer=True)
     path = sp.save_shareable_page(tk_root, segments=SEGS, media_path=None,
                                   json_path=str(tmp_path / "t.json"))
@@ -169,7 +169,7 @@ def test_save_and_open_never_opens_a_non_page_file(tk_root, tmp_path, monkeypatc
     out = tmp_path / "t.bat"
     monkeypatch.setattr(sp.filedialog, "asksaveasfilename", lambda **_k: str(out))
     opened: list[str] = []
-    monkeypatch.setattr(sp, "open_in_browser", opened.append)
+    monkeypatch.setattr(sp, "open_in_browser", lambda path, master: opened.append(path))
     _act(tk_root, "Save and open in browser")
     assert sp.save_shareable_page(tk_root, segments=SEGS, media_path=None,
                                   json_path=str(tmp_path / "t.json")) == str(out)

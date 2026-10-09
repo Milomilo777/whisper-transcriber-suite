@@ -10,6 +10,7 @@ Same hermetic fakes as test_voice_clone_tab.py: no model, worker or download.
 from __future__ import annotations
 
 import os
+import time
 import types
 from typing import Any
 
@@ -53,13 +54,19 @@ def test_play_opens_the_file_on_macos_and_linux(root, fakes, monkeypatch, tmp_pa
     _write_wav(str(out), 1.0)
     app.vc_last_output = str(out)
     vct._play(app)
+    for _ in range(300):  # the opener runs off the Tk thread; its answer comes back through after()
+        root.update()
+        if opened:
+            break
+        time.sleep(0.01)
+    root.update()
     assert no_dialogs == []
     assert opened == [[command, str(out)]]
 
 
 def test_preview_plays_through_the_same_opener(root, fakes, monkeypatch):
     played: list = []
-    monkeypatch.setattr(vct, "open_with_default_app", lambda path: played.append(path))
+    monkeypatch.setattr(vct, "open_async", lambda path, parent, on_done, **k: played.append(path))
     app = _build(root, fakes)
     _engine(app, vct._ENGINE_KOKORO, "")
     vct._preview(app)

@@ -40,7 +40,7 @@ from typing import Any
 from app.dpi import px
 from app.theme import script_fonts
 from app.widgets.error_dialog import show_error
-from app.widgets.platform import open_with_default_app
+from app.widgets.platform import open_async
 from app.widgets.tooltip import section_labelframe
 from app.theme import tokens
 from app.theme.bidi_display import ltr_base
@@ -1678,10 +1678,11 @@ def _play(app: Any) -> None:
     path = app.vc_last_output
     if not path or not os.path.isfile(path):
         return
-    try:
-        open_with_default_app(path)
-    except Exception as e:  # noqa: BLE001
-        show_error(app, "Could not play the result", str(e))
+    def done(error: BaseException | None) -> None:
+        if error is not None:
+            show_error(app, "Could not play the result", str(error))
+
+    open_async(path, app, done)
 
 
 def _save(app: Any) -> None:

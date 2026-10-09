@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import errno
 import os
+import queue
 import subprocess
 import sys
+import threading
 import tkinter as tk
+from collections.abc import Callable
 from tkinter import messagebox
 
 from app.widgets.error_dialog import show_error
@@ -28,10 +31,13 @@ _TEXT_EXTENSIONS = frozenset(
 
 
 def _run_opener(cmd: list[str], path: str) -> None:
-    """Run ``open`` / ``xdg-open`` and check how it ended.
+    """Run ``open`` / ``xdg-open`` and check how it ended. Blocks for up to
+    ``_OPENER_WAIT_S``: never call it on the Tk thread (see :func:`open_async`).
 
-    Raises ``FileNotFoundError`` / ``PermissionError`` for those causes and
-    :class:`NoDefaultAppError` for any other failure of a file that exists.
+    Raises ``FileNotFoundError`` / ``PermissionError`` for those causes,
+    :class:`NoDefaultAppError` when macOS ``open`` fails for a file that exists,
+    and a plain ``OSError`` naming the exit code for any other ``xdg-open`` failure
+    (its codes 3 and 4 do not mean "no app").
     """
     proc = subprocess.Popen(
         cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
@@ -44,8 +50,12 @@ def _run_opener(cmd: list[str], path: str) -> None:
         return
     if not os.path.exists(path):
         raise FileNotFoundError(errno.ENOENT, "No such file", path)
-    if cmd[0] == "xdg-open" and code == 5:  # xdg-open: no permission
-        raise PermissionError(errno.EACCES, "Permission denied", path)
+    if cmd[0] == "xdg-open":
+        if code == 5:  # xdg-open: no permission
+            raise PermissionError(errno.EACCES, "Permission denied", path)
+        if code == 3:  # xdg-open: a required tool is missing
+            raise OSError(f"xdg-open needs a tool that is not installed (exit code {code}).")
+        raise OSError(f"xdg-open could not open the file (exit code {code}).")
     raise NoDefaultAppError(
         f"No app is set to open this kind of file ({cmd[0]} exited with code {code})."
     )
@@ -54,7 +64,9 @@ def _run_opener(cmd: list[str], path: str) -> None:
 def open_with_default_app(path: str) -> None:
     """Open the file *path* with the system's default app (Windows, macOS,
     Linux). Raises :class:`NoDefaultAppError` when no app is set for the file
-    type, and another ``OSError`` when it cannot be opened."""
+    type, and another ``OSError`` when it cannot be opened. On macOS and Linux
+    this waits for the opener (up to ``_OPENER_WAIT_S``): from the Tk thread use
+    :func:`open_async` or :func:`open_file`."""
     if sys.platform == "win32":
         try:
             os.startfile(path)  # type: ignore[attr-defined]
@@ -70,6 +82,67 @@ def open_with_default_app(path: str) -> None:
         _run_opener(["xdg-open", path], path)
 
 
+_POLL_MS = 50
+
+
+def open_async(
+    path: str,
+    parent: "tk.Misc | None",
+    on_done: "Callable[[BaseException | None], None]",
+    *,
+    text_editor: bool = False,
+) -> None:
+    """Open ``path`` without making the Tk thread wait; ``on_done(error)`` follows.
+
+    The opener runs on a daemon thread; the Tk thread only polls a queue with
+    ``parent.after`` (never calls Tk from the thread), so the window stays
+    responsive. ``on_done`` runs on the Tk thread with None or the exception
+    (any exception, e.g. a ``ValueError`` for a path with a null byte). It is not
+    called when the window is destroyed first. ``text_editor`` (macOS) opens in
+    the text editor instead (``open -t``). Windows ``os.startfile`` returns at
+    once, and with no ``parent`` there is no window to deliver to: both run inline.
+    """
+    def work() -> None:
+        if text_editor:
+            _run_opener(["open", "-t", path], path)
+        else:
+            open_with_default_app(path)
+
+    if sys.platform == "win32" or parent is None:
+        error: BaseException | None = None
+        try:
+            work()
+        except Exception as e:  # noqa: BLE001 - reported through on_done
+            error = e
+        on_done(error)
+        return
+    outcome: "queue.SimpleQueue[BaseException | None]" = queue.SimpleQueue()
+
+    def run() -> None:
+        try:
+            work()
+            outcome.put(None)
+        except Exception as e:  # noqa: BLE001 - handed to the Tk thread
+            outcome.put(e)
+
+    def poll() -> None:
+        try:
+            error = outcome.get_nowait()
+        except queue.Empty:
+            try:
+                parent.after(_POLL_MS, poll)
+            except tk.TclError:
+                pass  # the window is gone
+            return
+        on_done(error)
+
+    threading.Thread(target=run, name="open-file", daemon=True).start()
+    try:
+        parent.after(_POLL_MS, poll)
+    except tk.TclError:
+        pass
+
+
 def _file_kind(path: str) -> str:
     ext = os.path.splitext(path)[1].lower()
     return f"{ext} files" if ext else "this kind of file"
@@ -79,37 +152,48 @@ def open_file(
     path: str,
     parent: "tk.Misc | None" = None,
     error_text: str = "Could not open that file with your system's default app.",
-) -> bool:
+) -> None:
     """Open ``path`` with the default app and always tell the person how it went.
 
-    True when an app took the file. When no app is set for the file type, the
-    file is shown in its folder (a text file opens in the Mac text editor) and a
-    short notice says so; any other failure shows an error with ``error_text``.
-    Returns False in both of those cases; never fails silently.
+    Never blocks the Tk thread (:func:`open_async`). When no app is set for the file
+    type, a text file opens in the Mac text editor; anything else is shown in its
+    folder with a short notice. Any other failure shows an error with ``error_text``.
     """
-    try:
-        open_with_default_app(path)
-        return True
-    except NoDefaultAppError:
-        pass
-    except OSError as e:
-        _show_open_error(parent, error_text, str(e))
-        return False
+    def done(error: BaseException | None) -> None:
+        if error is None:
+            return
+        if isinstance(error, NoDefaultAppError):
+            _no_app(path, parent)
+        else:
+            _show_open_error(parent, error_text, str(error))
+
+    open_async(path, parent, done)
+
+
+def _no_app(path: str, parent: "tk.Misc | None") -> None:
     if is_darwin() and os.path.splitext(path)[1].lower() in _TEXT_EXTENSIONS:
-        try:
-            _run_opener(["open", "-t", path], path)
-            return True
-        except OSError:
-            pass  # not even the text editor: show it in its folder below
-    open_folder(os.path.dirname(path) or ".", parent=parent, select=path)
-    message = f"No app is set to open {_file_kind(path)}; the file is shown in its folder."
+        def edited(error: BaseException | None) -> None:
+            if error is not None:
+                _reveal_with_notice(path, parent)  # not even the text editor
+
+        open_async(path, parent, edited, text_editor=True)
+        return
+    _reveal_with_notice(path, parent)
+
+
+def _reveal_with_notice(path: str, parent: "tk.Misc | None") -> None:
+    shown = open_folder(os.path.dirname(path) or ".", parent=parent, select=path)
+    kind = _file_kind(path)
+    if shown:
+        message = f"No app is set to open {kind}; the file is shown in its folder."
+    else:
+        message = f"No app is set to open {kind}, and its folder could not be opened either."
     if parent is not None:
         from app.widgets.notice import notify
 
         notify(parent, message, "warning")
     else:
         messagebox.showinfo("No app to open the file", message)
-    return False
 
 
 def _show_open_error(parent: "tk.Misc | None", text: str, detail: str) -> None:
@@ -150,8 +234,9 @@ def open_folder(
     folder: str,
     parent: "tk.Misc | None" = None,
     select: "str | None" = None,
-) -> None:
-    """Show ``folder`` in the file manager.
+) -> bool:
+    """Show ``folder`` in the file manager; True when it was opened (a failure has
+    already been shown to the person).
 
     ``select``: a file to highlight. Only macOS uses it (``open -R`` reveals the
     file inside its folder, like Finder's own Reveal in Finder; when that fails
@@ -166,7 +251,7 @@ def open_folder(
             if subprocess.run(
                 ["open", "-R", select], stdin=subprocess.DEVNULL, check=False
             ).returncode == 0:
-                return
+                return True
         except OSError:
             pass
         # `open -R` failed: open the folder the usual way below.
@@ -177,7 +262,7 @@ def open_folder(
             f"Could not open: {folder or '(empty)'}",
             **kwargs,  # type: ignore[arg-type]
         )
-        return
+        return False
     try:
         if os.name == "nt":
             os.startfile(folder)  # type: ignore[attr-defined]
@@ -200,3 +285,5 @@ def open_folder(
             messagebox.showerror(
                 "Open folder failed", str(e), **kwargs  # type: ignore[arg-type]
             )
+        return False
+    return True

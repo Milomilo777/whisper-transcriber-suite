@@ -16,7 +16,7 @@ from typing import Any
 
 from app.dpi import px
 from app.theme import tokens
-from app.widgets.platform import open_with_default_app
+from app.widgets.platform import open_async
 from core.writers import html_transcript
 
 BUTTON_TEXT = "Save shareable page"
@@ -119,9 +119,18 @@ def ask_options(master: "tk.Misc", *, media_path: str | None) -> tuple[str, bool
     return result["action"], bool(footer.get())
 
 
-def open_in_browser(path: str) -> None:
-    """Open the saved page with the system's default handler for .html files."""
-    open_with_default_app(path)
+def open_in_browser(path: str, master: "tk.Misc") -> None:
+    """Open the saved page with the system's default handler for .html files.
+
+    Does not make the window wait for the opener; a failure is shown when it comes.
+    """
+    def done(error: BaseException | None) -> None:
+        if error is not None:
+            messagebox.showerror(BUTTON_TEXT, f"The page was saved to\n{path}\n"
+                                 f"but could not be opened:\n{error}",
+                                 parent=master)  # type: ignore[arg-type]
+
+    open_async(path, master, done)
 
 
 def save_shareable_page(
@@ -174,10 +183,5 @@ def save_shareable_page(
     # Only a web page is handed to the system opener: "All files" lets the user type
     # any name, and opening a .bat or .hta would run it.
     if action == ACTION_SAVE_OPEN and path.lower().endswith((".html", ".htm")):
-        try:
-            open_in_browser(path)
-        except OSError as e:
-            messagebox.showerror(BUTTON_TEXT, f"The page was saved to\n{path}\n"
-                                 f"but could not be opened:\n{e}",
-                                 parent=master)  # type: ignore[arg-type]
+        open_in_browser(path, master)
     return path

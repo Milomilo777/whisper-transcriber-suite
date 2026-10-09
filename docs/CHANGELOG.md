@@ -362,6 +362,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the next jobs still run; the notification is logged and dropped.
 - **A large upload stays byte-exact when a long text field follows the file.** The server could keep
   the two line-break bytes in front of the closing boundary in the saved media.
+- **Opening a file no longer freezes the window.** The Mac and Linux openers are waited for off the
+  window's thread (up to 5 s was blocked before), and any failure of the opener, a path it rejects
+  included, still shows the error dialog. A failing `xdg-open` now shows its exit code instead of
+  "no app is set", and the "shown in its folder" notice is not shown when the folder cannot be opened.
 - **The primary button's text is readable while pressed.** The pressed text of the main blue/cyan
   button (Transcribe, Finish, Search) read 3.1:1 (dark) and 2.9:1 (light); it is now black, 7.7:1 and
   4.9:1. The resting button was already fine (black on cyan 11.1:1 in dark, white on blue 6.3:1 in light).

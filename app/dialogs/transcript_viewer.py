@@ -51,7 +51,7 @@ from app.widgets.error_dialog import show_error
 from app.widgets import subtitle_edit as subtitle_edit_ui
 from app.widgets.notice import Kind, notify
 from app.widgets.platform import (
-    is_darwin, open_file, open_folder, open_with_default_app, reveal_label,
+    is_darwin, open_async, open_file, open_folder, reveal_label,
 )
 from app.widgets.tooltip import help_icon
 from core import subtitle_edit
@@ -427,9 +427,16 @@ def _segment_min_probability(seg: dict[str, Any]) -> float | None:
     return min(probs)
 
 
-def _os_open(path: str) -> None:
-    """Open a file or folder with the OS default handler (cross-platform)."""
-    open_with_default_app(path)
+def _os_open(path: str, parent: "tk.Misc | None" = None) -> None:
+    """Open a file or folder with the OS default handler (cross-platform).
+
+    Does not make the window wait for the opener; a failure is shown when it comes.
+    """
+    def done(error: BaseException | None) -> None:
+        if error is not None and isinstance(parent, (tk.Tk, tk.Toplevel)):
+            show_error(parent, "Open failed", "Could not open that folder.", detail=str(error))
+
+    open_async(path, parent, done)
 
 
 def _dir_has_vlc_lib(d: str) -> bool:
@@ -1826,7 +1833,7 @@ class TranscriptViewer(tk.Toplevel):
                 # Reveal in Finder: the JSON is selected inside its folder.
                 open_folder(folder, parent=self, select=self.json_path)
             else:
-                _os_open(folder)
+                _os_open(folder, self)
         except Exception as e:  # noqa: BLE001
             show_error(
                 self, "Open failed",
