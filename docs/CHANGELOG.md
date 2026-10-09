@@ -353,6 +353,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Bilingual subtitles for a non-Latin target language no longer overwrite each other.** The file name
+  dropped every non-ASCII letter of the language (Persian, Arabic, ...), so each run replaced the previous file.
 - **A failed format lookup always shows a reason, and odd caption data no longer blocks the formats.**
   A yt-dlp error with only blank lines on stderr showed an empty message; a non-object
   `automatic_captions` value raised an error in the format list.

@@ -139,6 +139,17 @@ _OPEN_VIEWERS: dict[str, "TranscriptViewer"] = {}
 _EXPORTING: list["TranscriptViewer"] = []
 
 
+def _bilingual_lang_slug(lang: str) -> str:
+    """File-name part for the target language typed in the AI panel.
+
+    Letters and digits of any script are kept (a Persian or Arabic name must not
+    collapse to the same slug as another language); every other run of
+    characters, path separators and reserved characters included, becomes one
+    hyphen. "translated" when nothing is left.
+    """
+    return re.sub(r"[\W_]+", "-", lang).strip("-").lower() or "translated"
+
+
 def _viewer_key(json_path: str) -> str:
     try:
         return os.path.normcase(os.path.realpath(json_path))
@@ -1537,7 +1548,7 @@ class TranscriptViewer(tk.Toplevel):
             )
             return
         base, _ = os.path.splitext(self.json_path)
-        lang_slug = re.sub(r"[^A-Za-z0-9]+", "-", lang).strip("-").lower() or "translated"
+        lang_slug = _bilingual_lang_slug(lang)
         out_path = f"{base}.bilingual.{lang_slug}.srt"
         part = out_path + ".part"
         try:
