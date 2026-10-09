@@ -2939,7 +2939,7 @@ def resume_transcription(
         # with: the captured half is already in that task, so the tail must
         # use it too or one transcript would mix two tasks.
         cp_task = _translate.normalise_task(data.get("whisper_task"))
-        cfg_fp = _checkpoint.config_fingerprint(config, cp_task)
+        cfg_fp = _checkpoint.accepted_fingerprints(config, cp_task)
         reason = _checkpoint.validate_checkpoint(
             data,
             backend=backend_for_check,

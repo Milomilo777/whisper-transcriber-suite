@@ -80,6 +80,13 @@ _CONFIG_FINGERPRINT_KEYS: tuple[str, ...] = (
     "word_timestamps",
 )
 
+# Keys a fresh profile's config does not store while a run fills them in for its own
+# duration (core.transcriber._RUNTIME_OVERRIDE_DEFAULTS). Like the VAD window below, such a
+# key joins the hash only when it is not the default: absent and default hash alike, or a
+# checkpoint written outside that fill-in would read as "config changed" on resume.
+_FINGERPRINT_DEFAULTS: dict[str, Any] = {"alignment": "none"}
+_UNSET = object()
+
 
 def partials_dir() -> Path:
     """Folder where checkpoint JSONs live. Created on demand."""
@@ -108,7 +115,9 @@ def checkpoint_path(source_path: str) -> Path:
     return partials_dir() / f"{source_key(source_path)}.json"
 
 
-def config_fingerprint(cfg: dict[str, Any], whisper_task: str = "transcribe") -> str:
+def config_fingerprint(
+    cfg: dict[str, Any], whisper_task: str = "transcribe", *, _keep_defaults: bool = False,
+) -> str:
     """Stable sha1 over the transcription-affecting config keys.
 
     Only the keys in ``_CONFIG_FINGERPRINT_KEYS`` are included; the
@@ -123,7 +132,7 @@ def config_fingerprint(cfg: dict[str, Any], whisper_task: str = "transcribe") ->
     """
     extracted: dict[str, Any] = {}
     for key in _CONFIG_FINGERPRINT_KEYS:
-        if key in cfg:
+        if key in cfg and (_keep_defaults or cfg[key] != _FINGERPRINT_DEFAULTS.get(key, _UNSET)):
             extracted[key] = cfg[key]
     if whisper_task == "translate":
         extracted["whisper_task"] = whisper_task
@@ -140,6 +149,17 @@ def config_fingerprint(cfg: dict[str, Any], whisper_task: str = "transcribe") ->
         extracted["loop_guard_repeats"] = repeats
     blob = json.dumps(extracted, sort_keys=True, default=str)
     return hashlib.sha1(blob.encode("utf-8"), usedforsecurity=False).hexdigest()
+
+
+def accepted_fingerprints(cfg: dict[str, Any], whisper_task: str = "transcribe") -> tuple[str, ...]:
+    """Fingerprints a resume accepts for ``cfg``: today's and the earlier spelling.
+
+    Builds before the default-omitting rule hashed an explicit ``alignment: "none"`` (a run
+    fills it in); a partial they wrote must stay resumable.
+    """
+    current = config_fingerprint(cfg, whisper_task)
+    earlier = config_fingerprint(cfg, whisper_task, _keep_defaults=True)
+    return (current,) if earlier == current else (current, earlier)
 
 
 def write_checkpoint(
@@ -344,9 +364,12 @@ def validate_checkpoint(
     *,
     backend: str,
     model_name: str,
-    cfg_fingerprint: str,
+    cfg_fingerprint: str | tuple[str, ...],
 ) -> str:
     """Return "" if the checkpoint is usable, else a human reason.
+
+    ``cfg_fingerprint`` is one fingerprint or the tuple of accepted ones
+    (:func:`accepted_fingerprints`).
 
     Caller is responsible for deleting the stale partial when the
     return value is non-empty.
@@ -382,7 +405,8 @@ def validate_checkpoint(
             f"model changed: checkpoint={data.get('model_name')!r} "
             f"current={model_name!r}"
         )
-    if str(data.get("config_fingerprint") or "") != cfg_fingerprint:
+    accepted = (cfg_fingerprint,) if isinstance(cfg_fingerprint, str) else cfg_fingerprint
+    if str(data.get("config_fingerprint") or "") not in accepted:
         return "transcription config changed since checkpoint"
     segs = data.get("segments")
     if not isinstance(segs, list):

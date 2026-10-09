@@ -281,6 +281,58 @@ def test_checkpoint_from_before_the_option_still_resumes(t, monkeypatch, tmp_pat
     assert t.resume_transcription(task, lambda p: None, lambda m: None) is True
 
 
+def test_resume_works_with_a_config_that_never_stored_alignment(t, monkeypatch, tmp_path):
+    """A fresh profile's config has no ``alignment`` key; the run fills in "none" while it
+    works. A checkpoint written without the key must still match the resume that has it."""
+    monkeypatch.delitem(t.config, "alignment", raising=False)
+    engine = _Engine()
+    _wire(t, monkeypatch, engine)
+    monkeypatch.setattr(t, "_slice_audio_from", lambda src, start, out_dir, end_seconds=None: str(tmp_path / "tail.wav"))
+    (tmp_path / "tail.wav").write_bytes(b"\0")
+    task = _task(tmp_path)
+    t._write_periodic_checkpoint(task, [{"start": 0.0, "end": 10.0, "text": "first half"}], 10.0, "fa", 0.9, None)
+    monkeypatch.setitem(t.config, "alignment", "none")  # what a run adds for its own duration
+
+    task.resume = True
+    logs: list[str] = []
+    assert t.resume_transcription(task, lambda p: None, logs.append) is True, logs
+
+
+def test_fingerprint_reads_a_missing_alignment_as_none():
+    cfg = {"model": "small", "vad_enabled": True}
+    assert _checkpoint.config_fingerprint(cfg) == _checkpoint.config_fingerprint({**cfg, "alignment": "none"})
+    assert _checkpoint.config_fingerprint(cfg) != _checkpoint.config_fingerprint({**cfg, "alignment": "stable_ts"})
+
+
+def test_a_checkpoint_that_hashed_an_explicit_default_alignment_still_resumes(t, monkeypatch, tmp_path):
+    """Earlier builds wrote ``alignment: "none"`` into the hash; that partial stays valid."""
+    monkeypatch.setitem(t.config, "alignment", "none")
+    engine = _Engine()
+    _wire(t, monkeypatch, engine)
+    monkeypatch.setattr(t, "_slice_audio_from", lambda src, start, out_dir, end_seconds=None: str(tmp_path / "tail.wav"))
+    (tmp_path / "tail.wav").write_bytes(bytes([0]))
+    task = _task(tmp_path)
+    t._write_periodic_checkpoint(task, [{"start": 0.0, "end": 10.0, "text": "old"}], 10.0, "fa", 0.9, None)
+    path = _checkpoint.checkpoint_path(task.file_path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    legacy = _checkpoint.config_fingerprint(t.config, "transcribe", _keep_defaults=True)
+    assert legacy != data["config_fingerprint"], "control: the two spellings differ"
+    data["config_fingerprint"] = legacy
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    task.resume = True
+    assert t.resume_transcription(task, lambda p: None, lambda m: None) is True
+
+
+def test_a_changed_alignment_still_invalidates_the_checkpoint(t, monkeypatch, tmp_path):
+    monkeypatch.setitem(t.config, "alignment", "none")
+    task = _task(tmp_path)
+    t._write_periodic_checkpoint(task, [{"start": 0.0, "end": 10.0, "text": "x"}], 10.0, "fa", 0.9, None)
+    monkeypatch.setitem(t.config, "alignment", "stable_ts")
+    task.resume = True
+    assert t.resume_transcription(task, lambda p: None, lambda m: None) is False
+
+
 # --- command, history -------------------------------------------------------
 
 
