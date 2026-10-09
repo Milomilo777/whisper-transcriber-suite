@@ -618,7 +618,7 @@ def test_a_failing_sibling_update_after_a_good_write_does_not_stop_the_exit(
     def _boom() -> Any:
         raise RuntimeError("sibling bug")
 
-    viewer._update_siblings = _boom  # type: ignore[method-assign]
+    viewer._queue_exports = _boom  # type: ignore[method-assign]
 
     app.on_exit()
 

@@ -339,8 +339,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Transcript viewer Save keeps every export in step.** Save rewrote only the SRT, VTT and ASS, so
   the TXT, Markdown, Word and the other exports kept the old text without a word. It now rebuilds
   each text and Word export that still matches the transcript it came from, with the same writers
-  and the same title as the transcription. A file edited elsewhere, a PDF (it cannot be rebuilt
-  faithfully) and a file whose writer failed are named in a notice and left as they are.
+  and the same title as the transcription. The check at open and the rebuild after Save run in
+  worker threads (a Word file of 20,000 segments froze the window for 18 s each time); the JSON is
+  written first. A file edited elsewhere (any Word part), a link, a file that changed while it was
+  rebuilt, a PDF, the SMTV document and a file whose writer failed are named in a notice, say that
+  they still hold the old text, and are left as they are; bilingual subtitles and the chapters
+  file are named as not rebuilt.
 - **A long Last result list no longer squeezes the window.** With many output files the Last result
   card grew until the drop zone was cut off and the log pane shrank to one line. The file list now
   scrolls after four rows, and the Transcribe tab scrolls like the other tall tabs when the window

@@ -61,6 +61,7 @@ def _write_outputs(tmp_path, formats: list[str]) -> str:
 def _open(root, json_path: str) -> tv.TranscriptViewer:
     viewer = tv.TranscriptViewer(root, json_path)
     viewer.withdraw()
+    viewer._finish_exports()  # the open-time check of the exports runs in a worker
     return viewer
 
 
@@ -96,11 +97,12 @@ def test_save_updates_every_output_format(root, tmp_path, notices) -> None:
     try:
         _edit(viewer)
         viewer._save_changes()
+        viewer._finish_exports()
         for path in files:
             body = _body(path)
             assert NEW in body and OLD not in body, os.path.basename(path)
         assert OLD not in _body(json_path) and NEW in _body(json_path)
-        text, kind = notices[0]
+        text, kind = next(n for n in notices if n[0].startswith("Updated"))
         assert kind == "success"
         for name in ("talk.srt", "talk.txt", "talk.md", "talk.docx"):
             assert name in text
@@ -117,6 +119,7 @@ def test_save_keeps_the_title_the_files_were_made_with(root, tmp_path, notices) 
         assert viewer.media_path is None
         _edit(viewer)
         viewer._save_changes()
+        viewer._finish_exports()
         assert _body(str(tmp_path / "talk.md")).startswith("# talk.mp4\n")
         assert "talk.mp4" in _body(str(tmp_path / "talk.docx"))
         assert NEW in _body(str(tmp_path / "talk.docx"))
@@ -134,6 +137,7 @@ def test_save_keeps_the_title_when_the_media_is_found(root, tmp_path, notices) -
         assert viewer.media_path is not None
         _edit(viewer)
         viewer._save_changes()
+        viewer._finish_exports()
         assert _body(str(tmp_path / "talk.md")).startswith("# talk.mp4\n")
         assert NEW in _body(str(tmp_path / "talk.md"))
     finally:
@@ -149,6 +153,7 @@ def test_express_scribe_text_file_is_updated(root, tmp_path, notices) -> None:
     try:
         _edit(viewer)
         viewer._save_changes()
+        viewer._finish_exports()
         assert NEW in _body(txt)
         assert _body(txt) == old_layout.replace(OLD, NEW)
     finally:
@@ -167,6 +172,7 @@ def test_failing_writer_is_reported_and_the_rest_is_saved(root, tmp_path, notice
     try:
         _edit(viewer)
         viewer._save_changes()
+        viewer._finish_exports()
         # The edits are on disk before anything is reported, and the other files followed.
         assert NEW in _body(json_path)
         assert NEW in _body(str(tmp_path / "talk.srt")) and NEW in _body(str(tmp_path / "talk.md"))
@@ -191,6 +197,7 @@ def test_failing_binary_writer_is_reported(root, tmp_path, notices, monkeypatch)
     try:
         _edit(viewer)
         viewer._save_changes()
+        viewer._finish_exports()
         assert (tmp_path / "talk.docx").read_bytes() == before
         assert NEW in _body(str(tmp_path / "talk.srt"))
         assert any(kind == "warning" and "talk.docx" in text for text, kind in notices)
@@ -208,6 +215,7 @@ def test_text_file_edited_elsewhere_is_left_alone_and_named(root, tmp_path, noti
     try:
         _edit(viewer)
         viewer._save_changes()
+        viewer._finish_exports()
         assert txt.read_text(encoding="utf-8") == hand_edit
         assert NEW in _body(str(tmp_path / "talk.md"))
         assert any(kind == "warning" and "talk.txt" in text for text, kind in notices)
@@ -228,6 +236,7 @@ def test_word_file_edited_elsewhere_is_left_alone(root, tmp_path, notices) -> No
     try:
         _edit(viewer)
         viewer._save_changes()
+        viewer._finish_exports()
         assert (tmp_path / "talk.docx").read_bytes() == after_hand_edit
         assert any(kind == "warning" and "talk.docx" in text for text, kind in notices)
     finally:
@@ -242,6 +251,7 @@ def test_pdf_cannot_be_rebuilt_so_it_is_named(root, tmp_path, notices) -> None:
     try:
         _edit(viewer)
         viewer._save_changes()
+        viewer._finish_exports()
         assert pdf.read_bytes() == b"%PDF-1.4 not really"
         assert any(kind == "warning" and "talk.pdf" in text for text, kind in notices)
     finally:
@@ -256,6 +266,7 @@ def test_files_of_another_transcript_are_never_touched(root, tmp_path, notices) 
     try:
         _edit(viewer)
         viewer._save_changes()
+        viewer._finish_exports()
         assert (tmp_path / "talk-notes.txt").read_text(encoding="utf-8") == "my own notes\n"
         assert (tmp_path / "other.md").read_text(encoding="utf-8") == "# other\n"
     finally:
@@ -268,8 +279,10 @@ def test_second_save_updates_the_other_formats_again(root, tmp_path, notices) ->
     try:
         _edit(viewer, "First edit")
         viewer._save_changes()
+        viewer._finish_exports()
         _edit(viewer, "Second edit")
         viewer._save_changes()
+        viewer._finish_exports()
         for name in ("talk.txt", "talk.md", "talk.docx"):
             assert "Second edit" in _body(str(tmp_path / name)), name
         assert not any(kind == "warning" for _t, kind in notices)
@@ -283,6 +296,7 @@ def test_persian_text_round_trips_into_every_format(root, tmp_path, notices) -> 
     try:
         _edit(viewer, "سلام دنیا")
         viewer._save_changes()
+        viewer._finish_exports()
         for name in ("talk.txt", "talk.md", "talk.docx"):
             assert "سلام دنیا" in _body(str(tmp_path / name)), name
         with open(json_path, encoding="utf-8") as f:
@@ -299,6 +313,7 @@ def test_smtv_team_document_is_named_not_touched(root, tmp_path, notices) -> Non
     try:
         _edit(viewer)
         viewer._save_changes()
+        viewer._finish_exports()
         assert smtv.read_bytes() == b"PK team template"
         assert any(kind == "warning" and smtv.name in text for text, kind in notices)
     finally:
