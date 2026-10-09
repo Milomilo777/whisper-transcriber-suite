@@ -6179,8 +6179,8 @@ class App(tk.Tk):
         in mode "never", not when this copy of the app cannot update yt-dlp
         (no single-file build to copy or download: a Mac older than 10.15, or
         a source run without a bundled yt-dlp), not again after "Not now" in
-        this launch, and not while an update runs. The macOS app downloads
-        yt-dlp's single-file build on the first "Update it".
+        this launch, and not while an update runs. The macOS app installs
+        yt-dlp's folder build from the latest release on "Update it".
         """
         if self._closing or self._yt_dlp_bar_dismissed or self._yt_dlp_updating:
             return

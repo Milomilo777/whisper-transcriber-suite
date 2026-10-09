@@ -1,12 +1,15 @@
-"""macOS: the first "Update it" downloads yt-dlp's single-file build (core.yt_dlp_update).
+"""macOS: "Update it" installs yt-dlp's official folder (onedir) build (core.yt_dlp_update).
 
-The macOS app bundles a folder ("onedir") yt-dlp, which yt-dlp's own updater
-refuses, so the first update fetches the official ``yt-dlp_macos`` from the
-latest stable GitHub release, checks it against that release's SHA2-256SUMS and
-only then makes it executable. Hermetic: the GitHub release is a fake that
-answers inside ``HTTPSHandler.https_open``, so the real redirect handling, size
-checks and hashing run; nothing touches the network. A "binary" is a small file
-whose content is its version ("yt-dlp 2026.09.27"), as in test_yt_dlp_update.py.
+The macOS app bundles a folder yt-dlp, which yt-dlp's own updater refuses. The
+single-file build unpacks itself on every run (about 25 s per call), so instead
+the app installs the release's ``yt-dlp_macos.zip`` into a versioned folder in
+the user cache: checksum list first (its redirect names the tag), the zip of
+that tag, SHA-256 and length checked, a safe extraction, ``--version`` on the
+result, and only then the switch in ``state.json``. Hermetic: the GitHub release
+is a fake that answers inside ``HTTPSHandler.https_open``, so the real redirect
+handling, size checks, hashing and extraction run; nothing touches the network.
+A "binary" is a small file whose content is its version ("yt-dlp 2026.09.27"),
+as in test_yt_dlp_update.py.
 """
 from __future__ import annotations
 
@@ -16,9 +19,11 @@ import io
 import json
 import os
 import socket
+import stat
 import urllib.error
 import urllib.request
 import urllib.response
+import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -33,16 +38,16 @@ _NEWER = "2026.10.30"
 _LATEST = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/"
 _TAGGED = "https://github.com/yt-dlp/yt-dlp/releases/download/{tag}/"
 _CDN = "https://release-assets.githubusercontent.com/github-production-release-asset/1/{name}"
+_ZIP = "yt-dlp_macos.zip"
+
+_FILE = 0o100000
+_DIR = 0o040000
+_LINK = 0o120000
+_posix_only = pytest.mark.skipif(os.name == "nt", reason="needs POSIX permission bits")
 
 
 def _binary(version: str) -> bytes:
     return f"yt-dlp {version}".encode()
-
-
-def _write_binary(path: Path, version: str | None) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(b"broken" if version is None else _binary(version))
-    return path
 
 
 def _version_of(path: str) -> tuple[int, ...]:
@@ -59,6 +64,28 @@ def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _entries(version: str | None = _NEW) -> list[tuple[str, bytes, int]]:
+    """What the release zip holds: the program beside an ``_internal`` folder."""
+    exe = b"broken" if version is None else _binary(version)
+    return [
+        ("yt-dlp_macos", exe, _FILE | 0o755),
+        ("_internal/", b"", _DIR | 0o755),
+        ("_internal/lib.dylib", b"library", _FILE | 0o755),
+        ("_internal/data.txt", b"data", _FILE | 0o644),
+    ]
+
+
+def _zip_bytes(entries: list[tuple[str, bytes, int]]) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, data, mode in entries:
+            info = zipfile.ZipInfo(name, date_time=(2026, 9, 27, 0, 0, 0))
+            info.external_attr = mode << 16
+            info.compress_type = zipfile.ZIP_DEFLATED
+            z.writestr(info, data)
+    return buf.getvalue()
+
+
 class FakeGithub:
     """Answers the release URLs the way GitHub does: 302 hops, then the file."""
 
@@ -69,37 +96,37 @@ class FakeGithub:
             urllib.request.HTTPSHandler, "https_open", lambda _handler, req: self._open(req),
         )
 
-    # --- building a release ---------------------------------------------------
     def publish(
         self,
         version: str = _NEW,
         *,
+        entries: list[tuple[str, bytes, int]] | None = None,
         asset: bytes | None = None,
         sums: str | None = None,
         sums_hash: str | None = None,
-        binary_hop: str | None = None,
+        zip_hop: str | None = None,
         content_length: int | None = None,
         sums_status: int = 200,
     ) -> bytes:
-        """A release ``version``. ``asset`` is what the download serves; the
-        checksum file lists ``sums_hash`` (default: the hash of ``asset``)."""
-        data = _binary(version) if asset is None else asset
+        """A release ``version``. ``asset`` (default: a zip of ``entries``) is
+        what the download serves; the checksum file lists ``sums_hash``
+        (default: the hash of ``asset``)."""
+        data = asset if asset is not None else _zip_bytes(entries or _entries(version))
         listed = sums_hash if sums_hash is not None else _sha(data)
         text = sums if sums is not None else (
-            f"{listed}  yt-dlp_macos\n{'0' * 64}  yt-dlp_macos.zip\n{'1' * 64}  yt-dlp.exe\n"
+            f"{'2' * 64}  yt-dlp_macos\n{listed}  {_ZIP}\n{'1' * 64}  yt-dlp.exe\n"
         )
         tagged = _TAGGED.format(tag=version)
         self.routes[_LATEST + "SHA2-256SUMS"] = {"redirect": tagged + "SHA2-256SUMS"}
         self.routes[tagged + "SHA2-256SUMS"] = {"redirect": _CDN.format(name="sums")}
         self.routes[_CDN.format(name="sums")] = {"body": text.encode(), "status": sums_status}
-        # The latest-URL for the binary: only the tag-pinned one is expected.
-        self.routes[tagged + "yt-dlp_macos"] = {
-            "redirect": binary_hop or _CDN.format(name="binary"),
-        }
-        self.routes[_CDN.format(name="binary")] = {"body": data, "content_length": content_length}
+        self.routes[tagged + _ZIP] = {"redirect": zip_hop or _CDN.format(name="zip")}
+        self.routes[_CDN.format(name="zip")] = {"body": data, "content_length": content_length}
         return data
 
-    # --- the transport -----------------------------------------------------------
+    def zip_requests(self) -> list[str]:
+        return [u for u in self.requested if u.endswith("/" + _ZIP)]
+
     def _open(self, req: urllib.request.Request):
         url = req.full_url
         self.requested.append(url)
@@ -136,7 +163,9 @@ def _clean_gate():
 def mac(tmp_path, monkeypatch):
     """The macOS app: a folder yt-dlp bundled, the cache elsewhere, macOS 13.7."""
     dist = tmp_path / "app" / "bin" / "yt-dlp_dist"
-    exe = _write_binary(dist / "yt-dlp_macos", _OLD)
+    dist.mkdir(parents=True)
+    exe = dist / "yt-dlp_macos"
+    exe.write_bytes(_binary(_OLD))
     (dist / "_internal").mkdir()
     monkeypatch.setattr(ytu, "bundled_binary", lambda _n: str(exe))
     monkeypatch.setattr(ytu, "user_cache_dir", lambda: tmp_path / "cache")
@@ -153,8 +182,8 @@ def github(monkeypatch):
     return FakeGithub(monkeypatch)
 
 
-def _no_updater(*_a, **_k):  # a bootstrap must not start yt-dlp's own updater
-    raise AssertionError("--update-to must not run for a fresh download")
+def _no_updater(*_a, **_k):  # yt-dlp's own updater refuses folder builds: never used on macOS
+    raise AssertionError("--update-to must not run on macOS")
 
 
 def _update(**kwargs):
@@ -163,19 +192,27 @@ def _update(**kwargs):
     return ytu.update_cached_copy(**kwargs)
 
 
+def _tools(mac) -> Path:
+    return mac.cache / "tools" / "yt-dlp"
+
+
 def _cache_files(mac) -> list[str]:
-    folder = mac.cache / "tools" / "yt-dlp"
+    folder = _tools(mac)
     return sorted(p.name for p in folder.iterdir()) if folder.exists() else []
 
 
-# --------------------------------------------------------------- the good path
+def _installed(mac) -> list[str]:
+    return [n for n in _cache_files(mac) if n.startswith("onedir-")]
 
-def test_a_good_download_is_installed_and_used(mac, github, monkeypatch):
-    chmods: list[tuple[str, int]] = []
-    original = Path.chmod
-    monkeypatch.setattr(
-        Path, "chmod", lambda self, mode, **k: (chmods.append((self.name, mode)), original(self, mode, **k))[1],
-    )
+
+def _active_exe(mac) -> Path:
+    rec = ytu.load_state()["onedir"]
+    return _tools(mac) / rec["dir"] / "yt-dlp_macos"
+
+
+# ----------------------------------------------------------------- the good path
+
+def test_a_good_zip_is_installed_and_used(mac, github):
     bundled_before = mac.bundled.read_bytes()
     github.publish(_NEW)
 
@@ -183,132 +220,260 @@ def test_a_good_download_is_installed_and_used(mac, github, monkeypatch):
 
     assert result.status == "updated" and result.completed is True
     assert result.after == (2026, 9, 27) and result.before == (2026, 8, 19)
-    target = ytu.cached_path()
-    assert target.read_bytes() == _binary(_NEW)
-    assert ytu.resolve_yt_dlp_path() == str(target)  # newer than the bundled one
+    folders = _installed(mac)
+    assert len(folders) == 1 and folders[0].startswith(f"onedir-{_NEW}")
+    assert _cache_files(mac) == sorted(["state.json", folders[0]])  # no part folder, no .download
+    exe = _tools(mac) / folders[0] / "yt-dlp_macos"
+    assert exe.read_bytes() == _binary(_NEW)
+    assert (_tools(mac) / folders[0] / "_internal" / "lib.dylib").read_bytes() == b"library"
+    assert ytu.cached_path() == exe
+    assert ytu.resolve_yt_dlp_path() == str(exe)  # newer than the bundled one
     assert mac.bundled.read_bytes() == bundled_before  # the bundled copy is never touched
-    assert _cache_files(mac) == sorted(["state.json", target.name])  # no partial file left behind
-    assert [mode for name, mode in chmods if name.endswith(".download")] == [0o755]
-    if os.name != "nt":
-        assert os.access(target, os.X_OK)
     state = ytu.load_state()
     assert state["cached"]["version"] == [2026, 9, 27]
-    assert state["bootstrap"]["tag"] == _NEW
-    assert state["bootstrap"]["sha256"] == _sha(_binary(_NEW))
-    # The binary came from the release the checksum file named, not "latest".
-    assert _TAGGED.format(tag=_NEW) + "yt-dlp_macos" in github.requested
-    assert _LATEST + "yt-dlp_macos" not in github.requested
+    assert state["onedir"]["tag"] == _NEW and state["onedir"]["dir"] == folders[0]
+    assert state["onedir"]["sha256"] == _sha(_zip_bytes(_entries(_NEW)))
+    # The zip came from the release the checksum file named, not "latest".
+    assert github.zip_requests() == [_TAGGED.format(tag=_NEW) + _ZIP]
 
 
-def test_a_release_no_newer_than_the_bundled_copy_reports_already_newest(mac, github):
+@_posix_only
+def test_the_program_and_libraries_keep_their_execute_bits(mac, github):
+    github.publish(_NEW)
+    _update()
+    root = _tools(mac) / ytu.load_state()["onedir"]["dir"]
+    assert stat.S_IMODE((root / "yt-dlp_macos").stat().st_mode) == 0o755
+    assert stat.S_IMODE((root / "_internal" / "lib.dylib").stat().st_mode) == 0o755
+    assert stat.S_IMODE((root / "_internal" / "data.txt").stat().st_mode) == 0o644
+    assert stat.S_IMODE((root / "_internal").stat().st_mode) == 0o755
+
+
+def test_without_an_install_the_bundled_one_is_used_and_the_offer_exists(mac):
+    assert ytu.can_self_update() is True
+    assert ytu.resolve_yt_dlp_path() == str(mac.bundled)
+    assert ytu.cached_path().parent == _tools(mac)  # nothing installed: the plain default name
+
+
+def test_a_newer_bundled_copy_wins_over_the_install(mac, github):
+    github.publish(_NEW)
+    _update()
+    mac.bundled.write_bytes(_binary(_NEWER))
+    os.utime(mac.bundled, ns=(mac.bundled.stat().st_mtime_ns + 2_000_000_000,) * 2)
+    ytu.refresh_state(version_of=_version_of)
+    assert ytu.resolve_yt_dlp_path() == str(mac.bundled)
+
+
+def test_the_onedir_record_survives_a_refresh(mac, github):
+    github.publish(_NEW)
+    _update()
+    ytu.refresh_state(version_of=_version_of)
+    assert ytu.load_state()["onedir"]["tag"] == _NEW
+    assert ytu.resolve_yt_dlp_path() == str(_active_exe(mac))
+
+
+# ------------------------------------------------------------- update = reinstall
+
+def test_a_newer_release_replaces_the_old_folder(mac, github):
+    github.publish(_NEW)
+    _update()
+    old = _installed(mac)[0]
+    github.publish(_NEWER)
+
+    result = _update()
+
+    assert result.status == "updated" and result.after == (2026, 10, 30)
+    assert result.before == (2026, 9, 27)
+    folders = _installed(mac)
+    assert len(folders) == 1 and folders[0] != old and folders[0].startswith(f"onedir-{_NEWER}")
+    assert _active_exe(mac).read_bytes() == _binary(_NEWER)
+    assert ytu.resolve_yt_dlp_path() == str(_active_exe(mac))
+    assert _cache_files(mac) == sorted(["state.json", folders[0]])
+
+
+def test_a_release_that_is_not_newer_downloads_nothing(mac, github):
+    github.publish(_NEW)
+    _update()
+    folder = _installed(mac)
+    github.requested.clear()
+
+    result = _update()
+
+    assert result.status == "current" and result.completed is True
+    assert "already the newest version (2026.09.27)" in ytu.result_text(result)
+    assert github.zip_requests() == []  # only the checksum list was read
+    assert _installed(mac) == folder
+
+
+def test_a_release_no_newer_than_the_bundled_copy_downloads_nothing(mac, github):
     github.publish(_OLD)
     result = _update()
     assert result.status == "current" and result.completed is True
     assert "already the newest version (2026.08.19)" in ytu.result_text(result)
-    assert ytu.resolve_yt_dlp_path() == str(mac.bundled)  # the app's own copy stays in use
+    assert github.zip_requests() == []
+    assert _installed(mac) == []
+    assert ytu.resolve_yt_dlp_path() == str(mac.bundled)
 
 
-def test_work_offline_raised_inside_the_download_is_reported_as_is(mac, github):
-    from core import offline
-
-    github.publish(_NEW)
-    github.routes[_LATEST + "SHA2-256SUMS"] = {"raises": offline.OfflineModeError(offline.message("x"))}
+def test_an_older_release_than_the_install_changes_nothing(mac, github):
+    github.publish(_NEWER)
+    _update()
+    github.publish(_NEW)  # e.g. the newest release was withdrawn
     result = _update()
-    assert result.status == "failed"
-    assert result.message == offline.message("x")
-    assert _cache_files(mac) == []
+    assert result.status == "current" and result.after == (2026, 10, 30)
+    assert _active_exe(mac).read_bytes() == _binary(_NEWER)
 
 
-def test_the_bootstrap_record_survives_a_refresh(mac, github):
+def test_a_broken_install_is_replaced(mac, github):
     github.publish(_NEW)
     _update()
+    broken = _active_exe(mac)
+    broken.write_bytes(b"damaged")
+    os.utime(broken, ns=(broken.stat().st_mtime_ns + 2_000_000_000,) * 2)
     ytu.refresh_state(version_of=_version_of)
-    assert ytu.load_state()["bootstrap"]["tag"] == _NEW
+    assert ytu.resolve_yt_dlp_path() == str(mac.bundled)
+
+    result = _update()
+
+    assert result.status == "updated"
+    assert len(_installed(mac)) == 1
+    assert _active_exe(mac).read_bytes() == _binary(_NEW)
 
 
-def test_after_the_download_the_normal_updater_updates_the_copy(mac, github):
+def test_leftovers_of_an_interrupted_install_are_cleaned_up(mac, github):
+    tools = _tools(mac)
+    (tools / "onedir-2026.01.01-dead").mkdir(parents=True)
+    (tools / "onedir-2026.01.01-dead" / "yt-dlp_macos").write_bytes(b"x")
+    stale = tools / "yt-dlp.abc.download"
+    stale.write_bytes(b"half")
+    two_days_ago = stale.stat().st_mtime - 2 * 86400
+    os.utime(stale, (two_days_ago, two_days_ago))
     github.publish(_NEW)
     _update()
-    calls: list[list[str]] = []
-
-    def _updater(cmd, **_kwargs):
-        calls.append(list(cmd))
-        target = Path(cmd[0])
-        target.write_bytes(_binary(_NEWER))
-        os.utime(target, ns=(target.stat().st_mtime_ns + 2_000_000_000,) * 2)
-        return SimpleNamespace(returncode=0, stdout="Updated yt-dlp", stderr="")
-
-    result = _update(run=_updater)
-    assert result.status == "updated" and result.after == (2026, 10, 30)
-    assert calls == [[str(ytu.cached_path()), "--update-to", "stable"]]
-    assert github.requested.count(_TAGGED.format(tag=_NEW) + "yt-dlp_macos") == 1  # no second download
+    assert _cache_files(mac) == sorted(["state.json", *_installed(mac)])
+    assert len(_installed(mac)) == 1
 
 
-def test_a_broken_copy_is_downloaded_again(mac, github):
-    _write_binary(ytu.cached_path(), None)
+def test_a_fresh_unfinished_download_is_left_for_another_process(mac, github):
+    tools = _tools(mac)
+    tools.mkdir(parents=True)
+    (tools / "yt-dlp.abc.download").write_bytes(b"half")
+    (tools / "onedir-2026.01.01-xyz.part").mkdir()
     github.publish(_NEW)
+    _update()
+    assert "yt-dlp.abc.download" in _cache_files(mac)
+    assert "onedir-2026.01.01-xyz.part" in _cache_files(mac)
+
+
+def test_yt_dlps_own_updater_is_never_used_on_a_mac(mac, github):
+    github.publish(_NEW)
+    _update()
+    github.publish(_NEWER)
+    _update()  # _no_updater raises if --update-to is started
+
+
+# ------------------------------------------------------- the switch is atomic
+
+def test_a_new_build_that_does_not_start_leaves_the_old_one_in_use(mac, github):
+    github.publish(_NEW)
+    _update()
+    old_folder, old_state = _installed(mac), ytu.load_state()["onedir"]
+    github.publish(_NEWER, entries=_entries(None))  # verified, but not a program
+
     result = _update()
-    assert result.status == "updated"
-    assert ytu.cached_path().read_bytes() == _binary(_NEW)
+
+    assert result.status == "failed" and "does not start on this Mac" in result.message
+    assert _installed(mac) == old_folder
+    assert ytu.load_state()["onedir"] == old_state
+    assert ytu.resolve_yt_dlp_path() == str(_active_exe(mac))
+    assert _active_exe(mac).read_bytes() == _binary(_NEW)
+    assert ytu.can_self_update() is True  # a working install keeps the updates available
 
 
-def test_the_bar_can_offer_it_and_the_bundled_one_is_still_the_fallback(mac, github):
-    assert ytu.can_self_update() is True
-    assert ytu.resolve_yt_dlp_path() == str(mac.bundled)  # nothing downloaded yet
+def test_a_failed_switch_removes_the_new_folder_and_keeps_the_old_one(mac, github, monkeypatch):
+    github.publish(_NEW)
+    _update()
+    old_folder, old_state = _installed(mac), ytu.load_state()["onedir"]
+    github.publish(_NEWER)
+    real_save = ytu._save_state
+
+    def _save(state):
+        if state.get("onedir", {}).get("tag") == _NEWER:
+            raise OSError("disk full")
+        real_save(state)
+
+    monkeypatch.setattr(ytu, "_save_state", _save)
+    result = _update()
+
+    assert result.status == "failed" and "disk full" in result.message
+    assert _installed(mac) == old_folder  # the new folder is gone, the old one is not
+    assert ytu.load_state()["onedir"] == old_state
+    assert _active_exe(mac).read_bytes() == _binary(_NEW)
+
+
+def test_the_old_folder_stays_until_the_state_points_at_the_new_one(mac, github, monkeypatch):
+    github.publish(_NEW)
+    _update()
+    old_folder = _installed(mac)
+    github.publish(_NEWER)
+    seen: dict[str, object] = {}
+    real_save = ytu._save_state
+
+    def _save(state):
+        if state.get("onedir", {}).get("tag") == _NEWER:
+            seen["folders_at_switch"] = _installed(mac)
+        real_save(state)
+
+    monkeypatch.setattr(ytu, "_save_state", _save)
+    _update()
+    assert set(old_folder) <= set(seen["folders_at_switch"])  # type: ignore[arg-type]
+    assert len(seen["folders_at_switch"]) == 2  # type: ignore[arg-type]
+    assert len(_installed(mac)) == 1
 
 
 # ----------------------------------------------------------- fail closed: bytes
 
-def test_a_checksum_mismatch_installs_nothing(mac, github, monkeypatch):
-    chmods: list[str] = []
-    monkeypatch.setattr(Path, "chmod", lambda self, mode, **k: chmods.append(self.name))
+def test_a_checksum_mismatch_installs_nothing(mac, github):
     asked: list[str] = []
     github.publish(_NEW, sums_hash="f" * 64)
 
     result = _update(version_of=lambda p: asked.append(p) or _version_of(p))
 
-    assert result.status == "failed"
-    assert "checksum" in result.message
-    assert "not installed" in result.message
-    assert not ytu.cached_path().exists()
-    assert _cache_files(mac) == []  # the partial file is removed too
-    assert chmods == []  # never made executable
-    assert [p for p in asked if not p.endswith("yt-dlp_macos")] == []  # never started
+    assert result.status == "failed" and result.completed is True
+    assert "checksum" in result.message and "not installed" in result.message
+    assert _cache_files(mac) == []  # nothing was extracted, no partial file is left
+    assert [p for p in asked if str(mac.cache) in p] == []  # nothing from the zip was started
     assert ytu.resolve_yt_dlp_path() == str(mac.bundled)
     assert ytu.result_text(result).startswith("Could not update the video downloader:")
 
 
 def test_a_truncated_download_installs_nothing(mac, github):
-    data = _binary(_NEW)
-    github.publish(_NEW, asset=data[:-5], sums_hash=_sha(data), content_length=len(data))
+    data = github.publish(_NEW)
+    github.publish(_NEW, asset=data[:-50], sums_hash=_sha(data), content_length=len(data))
     result = _update()
-    assert result.status == "failed"
-    assert "cut short" in result.message
+    assert result.status == "failed" and "cut short" in result.message
     assert result.completed is False  # a network problem: try again
     assert _cache_files(mac) == []
 
 
 def test_a_truncated_download_without_a_length_fails_the_checksum(mac, github):
-    data = _binary(_NEW)
-    github.publish(_NEW, asset=data[:-5], sums_hash=_sha(data))
-    result = _update()
-    assert result.status == "failed"
+    data = github.publish(_NEW)
+    github.publish(_NEW, asset=data[:-50], sums_hash=_sha(data))
+    assert _update().status == "failed"
     assert _cache_files(mac) == []
 
 
 def test_an_empty_download_installs_nothing(mac, github):
-    github.publish(_NEW, asset=b"", sums_hash=_sha(_binary(_NEW)))
-    result = _update()
-    assert result.status == "failed"
+    github.publish(_NEW, asset=b"", sums_hash=_sha(b"x"))
+    assert _update().status == "failed"
     assert _cache_files(mac) == []
 
 
-def test_a_release_without_a_checksum_line_installs_nothing(mac, github):
-    github.publish(_NEW, sums=f"{'a' * 64}  yt-dlp_macos.zip\n{'b' * 64}  yt-dlp_macos_legacy\n")
+def test_a_release_without_a_checksum_for_the_zip_installs_nothing(mac, github):
+    # The single-file build and the legacy name are not the folder build.
+    github.publish(_NEW, sums=f"{'a' * 64}  yt-dlp_macos\n{'b' * 64}  yt-dlp_macos_legacy\n")
     result = _update()
-    assert result.status == "failed"
-    assert "no checksum" in result.message
-    assert not any(u.endswith("/yt-dlp_macos") for u in github.requested)  # nothing fetched unchecked
+    assert result.status == "failed" and "no checksum" in result.message
+    assert github.zip_requests() == []
     assert _cache_files(mac) == []
 
 
@@ -316,8 +481,7 @@ def test_an_oversized_download_is_stopped(mac, github, monkeypatch):
     monkeypatch.setattr(ytu, "BOOTSTRAP_MAX_BYTES", 8)
     github.publish(_NEW)
     result = _update()
-    assert result.status == "failed"
-    assert "larger than expected" in result.message
+    assert result.status == "failed" and "larger than expected" in result.message
     assert _cache_files(mac) == []
 
 
@@ -325,15 +489,180 @@ def test_a_slow_download_times_out(mac, github, monkeypatch):
     monkeypatch.setattr(ytu, "BOOTSTRAP_TIMEOUT_S", -1)
     github.publish(_NEW)
     result = _update()
-    assert result.status == "failed"
-    assert "timed out" in result.message
+    assert result.status == "failed" and "timed out" in result.message
     assert result.completed is False
     assert _cache_files(mac) == []
 
 
-def test_a_verified_file_that_does_not_start_is_removed_and_remembered(mac, github, monkeypatch):
-    broken = b"verified but not a program"
-    github.publish(_NEW, asset=broken)
+def test_a_verified_file_that_is_not_a_zip_installs_nothing(mac, github):
+    junk = b"this is not an archive at all"
+    github.publish(_NEW, asset=junk)
+    result = _update()
+    assert result.status == "failed" and "not a valid archive" in result.message
+    assert _cache_files(mac) == []
+
+
+def test_a_corrupt_member_installs_nothing(mac, github):
+    data = bytearray(_zip_bytes(_entries(_NEW)))
+    data[len(data) // 3] ^= 0xFF  # damage the stored data; the checksum below is of the damaged file
+    github.publish(_NEW, asset=bytes(data))
+    result = _update()
+    assert result.status == "failed"
+    assert _cache_files(mac) == []
+
+
+# ------------------------------------------------------ fail closed: the archive
+
+@pytest.mark.parametrize("name", [
+    "../evil.txt", "_internal/../../evil.txt", "/abs/evil.txt", "C:/evil.txt", "..\\evil.txt",
+    "_internal/..\\evil.txt", "a/./../../evil.txt",
+])
+def test_a_path_that_leaves_the_folder_is_refused(mac, github, name):
+    github.publish(_NEW, entries=[*_entries(_NEW), (name, b"pwned", _FILE | 0o644)])
+    result = _update()
+    assert result.status == "failed" and "unsafe" in result.message
+    assert result.completed is True
+    assert _cache_files(mac) == []  # nothing at all was written
+    assert not (mac.cache / "evil.txt").exists() and not (mac.tmp / "evil.txt").exists()
+    assert not Path("/abs/evil.txt").exists()
+
+
+def test_a_link_pointing_outside_is_refused(mac, github, monkeypatch):
+    made: list[tuple[str, str]] = []
+    monkeypatch.setattr(os, "symlink", lambda target, path, *a, **k: made.append((target, path)))
+    for target in ("../../../outside", "/etc/passwd", "../../x", "_internal/../../../x"):
+        github.publish(_NEW, entries=[*_entries(_NEW), ("_internal/lnk", target.encode(), _LINK | 0o777)])
+        result = _update()
+        assert result.status == "failed" and "unsafe" in result.message, target
+        assert _cache_files(mac) == [], target
+    assert made == []
+
+
+def test_a_link_inside_the_folder_is_allowed(mac, github, monkeypatch):
+    made: list[tuple[str, str]] = []
+    monkeypatch.setattr(os, "symlink", lambda target, path, *a, **k: made.append((target, Path(path).name)))
+    github.publish(_NEW, entries=[*_entries(_NEW), ("_internal/Current", b"lib.dylib", _LINK | 0o755)])
+    assert _update().status == "updated"
+    assert made == [("lib.dylib", "Current")]
+
+
+def test_a_file_written_through_a_link_is_refused(mac, github, monkeypatch):
+    monkeypatch.setattr(os, "symlink", lambda *a, **k: None)
+    github.publish(_NEW, entries=[
+        *_entries(_NEW), ("_internal/lnk", b".", _LINK | 0o777), ("_internal/lnk/x.txt", b"x", _FILE | 0o644),
+    ])
+    result = _update()
+    assert result.status == "failed" and "unsafe" in result.message
+    assert _cache_files(mac) == []
+
+
+@pytest.mark.parametrize("mode", [0o020644, 0o060644, 0o010644, 0o140644])  # char, block, fifo, socket
+def test_device_files_and_other_special_entries_are_refused(mac, github, mode):
+    github.publish(_NEW, entries=[*_entries(_NEW), ("_internal/dev", b"", mode)])
+    result = _update()
+    assert result.status == "failed" and "unsafe" in result.message
+    assert _cache_files(mac) == []
+
+
+@pytest.mark.filterwarnings("ignore:Duplicate name")
+def test_a_repeated_name_is_refused(mac, github):
+    github.publish(_NEW, entries=[*_entries(_NEW), ("_internal/data.txt", b"second", _FILE | 0o644)])
+    result = _update()
+    assert result.status == "failed" and "unsafe" in result.message
+    assert _cache_files(mac) == []
+
+
+def test_too_many_files_are_refused(mac, github, monkeypatch):
+    monkeypatch.setattr(ytu, "ONEDIR_MAX_FILES", 3)
+    github.publish(_NEW)
+    result = _update()
+    assert result.status == "failed" and "more files than expected" in result.message
+    assert _cache_files(mac) == []
+
+
+def test_an_archive_that_unpacks_too_large_is_refused(mac, github, monkeypatch):
+    monkeypatch.setattr(ytu, "ONEDIR_MAX_UNPACKED_BYTES", 10)
+    github.publish(_NEW)
+    result = _update()
+    assert result.status == "failed" and "unpacks larger than expected" in result.message
+    assert _cache_files(mac) == []
+
+
+@pytest.mark.parametrize("entries", [
+    [("_internal/lib.dylib", b"library", _FILE | 0o755)],
+    [("sub/yt-dlp_macos", _binary(_NEW), _FILE | 0o755)],
+    [("yt-dlp_macos/", b"", _DIR | 0o755), ("_internal/lib.dylib", b"library", _FILE | 0o755)],
+])
+def test_a_zip_without_the_program_installs_nothing(mac, github, entries):
+    github.publish(_NEW, entries=entries)
+    result = _update()
+    assert result.status == "failed" and "does not contain the program" in result.message
+    assert _cache_files(mac) == []
+
+
+def test_a_program_that_is_a_link_is_refused(mac, github, monkeypatch):
+    monkeypatch.setattr(os, "symlink", lambda *a, **k: None)
+    github.publish(_NEW, entries=[("yt-dlp_macos", b"_internal/lib.dylib", _LINK | 0o755),
+                                  ("_internal/lib.dylib", b"library", _FILE | 0o755)])
+    result = _update()
+    assert result.status == "failed" and "does not contain the program" in result.message
+    assert _cache_files(mac) == []
+
+
+def test_a_failure_halfway_through_the_extraction_leaves_nothing(mac, github, monkeypatch):
+    github.publish(_NEW)
+    real_copy = ytu.shutil.copyfileobj
+    calls: list[int] = []
+
+    def _flaky(src, dst, *a, **k):
+        calls.append(1)
+        if len(calls) == 2:
+            raise OSError("No space left on device")
+        return real_copy(src, dst, *a, **k)
+
+    monkeypatch.setattr(ytu.shutil, "copyfileobj", _flaky)
+    result = _update()
+    assert len(calls) == 2  # one file was already written when it failed
+    assert result.status == "failed" and "No space left" in result.message
+    assert _cache_files(mac) == []  # no part folder, no zip
+    assert ytu.resolve_yt_dlp_path() == str(mac.bundled)
+
+
+def test_extraction_asks_for_the_archives_modes_without_special_bits(tmp_path, monkeypatch):
+    asked: dict[str, int] = {}
+    real = os.chmod
+    monkeypatch.setattr(ytu.os, "chmod", lambda p, m, *a, **k: (asked.__setitem__(Path(p).name, m), real(p, m, *a, **k))[1])
+    zip_path = tmp_path / "x.zip"
+    zip_path.write_bytes(_zip_bytes([
+        *_entries(_NEW), ("_internal/suid", b"x", _FILE | 0o4755), ("_internal/odd", b"x", _FILE | 0o000),
+    ]))
+    dest = tmp_path / "out"
+    dest.mkdir()
+    ytu._extract_onedir(zip_path, dest)
+    assert asked["yt-dlp_macos"] == 0o755 and asked["lib.dylib"] == 0o755 and asked["data.txt"] == 0o644
+    assert asked["suid"] == 0o755  # the setuid bit is not asked for
+    assert asked["odd"] == 0o644  # an archive without a mode: a readable file
+    assert asked["_internal"] == 0o755
+
+
+@_posix_only
+def test_extraction_keeps_the_modes_of_the_archive_and_drops_special_bits(tmp_path):
+    zip_path = tmp_path / "x.zip"
+    zip_path.write_bytes(_zip_bytes([
+        *_entries(_NEW), ("_internal/suid", b"x", _FILE | 0o4755), ("_internal/odd", b"x", _FILE | 0o000),
+    ]))
+    dest = tmp_path / "out"
+    dest.mkdir()
+    ytu._extract_onedir(zip_path, dest)
+    assert stat.S_IMODE((dest / "yt-dlp_macos").stat().st_mode) == 0o755
+    assert stat.S_IMODE((dest / "_internal" / "suid").stat().st_mode) == 0o755  # setuid dropped
+    assert stat.S_IMODE((dest / "_internal" / "odd").stat().st_mode) == 0o644  # no mode: readable file
+
+
+# ----------------------------------------------- fail closed: the start check
+
+def test_a_verified_build_that_does_not_start_is_removed_and_remembered(mac, github, monkeypatch):
+    github.publish(_NEW, entries=_entries(None))
     result = _update()
     assert result.status == "failed" and result.completed is True
     assert "does not start on this Mac" in result.message
@@ -342,7 +671,7 @@ def test_a_verified_file_that_does_not_start_is_removed_and_remembered(mac, gith
     # The same macOS is not asked to download it again; another version is.
     assert ytu.can_self_update() is False
     assert _update().status == "unsupported"
-    assert github.requested.count(_TAGGED.format(tag=_NEW) + "yt-dlp_macos") == 1
+    assert github.zip_requests() == [_TAGGED.format(tag=_NEW) + _ZIP]
     monkeypatch.setattr(ytu, "macos_version", lambda: (14, 0))
     assert ytu.can_self_update() is True
 
@@ -350,10 +679,11 @@ def test_a_verified_file_that_does_not_start_is_removed_and_remembered(mac, gith
 def test_the_refusal_expires(mac, github, monkeypatch):
     from datetime import timedelta
 
-    github.publish(_NEW, asset=b"verified but not a program")
+    github.publish(_NEW, entries=_entries(None))
     _update()
     assert ytu.can_self_update() is False
-    monkeypatch.setattr(ytu, "now_utc", lambda: ytu.datetime.now(ytu.timezone.utc) + timedelta(days=ytu.REFUSAL_DAYS + 1))
+    later = ytu.datetime.now(ytu.timezone.utc) + timedelta(days=ytu.REFUSAL_DAYS + 1)
+    monkeypatch.setattr(ytu, "now_utc", lambda: later)
     assert ytu.can_self_update() is True
 
 
@@ -368,7 +698,7 @@ def test_a_slow_first_start_is_asked_again_before_giving_up(mac, github):
     answers: list[str] = []
 
     def _slow_first_start(path: str) -> tuple[int, ...]:
-        if path.endswith(".download") and not answers:
+        if "part" in path and not answers:
             answers.append(path)
             return ()  # the first start timed out
         return _version_of(path)
@@ -382,19 +712,18 @@ def test_a_slow_first_start_is_asked_again_before_giving_up(mac, github):
 # ---------------------------------------------------- fail closed: where from
 
 @pytest.mark.parametrize("hop", [
-    "https://evil.example/yt-dlp_macos",
-    "https://github.com.evil.example/yt-dlp/yt-dlp/releases/download/x/yt-dlp_macos",
-    "https://evilgithub.com/yt-dlp_macos",
-    "http://github.com/yt-dlp/yt-dlp/releases/download/x/yt-dlp_macos",
+    "https://evil.example/yt-dlp_macos.zip",
+    "https://github.com.evil.example/yt-dlp/yt-dlp/releases/download/x/yt-dlp_macos.zip",
+    "https://evilgithub.com/yt-dlp_macos.zip",
+    "http://github.com/yt-dlp/yt-dlp/releases/download/x/yt-dlp_macos.zip",
     "https://user@release-assets.githubusercontent.com/x",
-    "https://github.com:8443/yt-dlp_macos",
-    "ftp://github.com/yt-dlp_macos",
+    "https://github.com:8443/yt-dlp_macos.zip",
+    "ftp://github.com/yt-dlp_macos.zip",
 ])
 def test_a_redirect_to_a_foreign_place_is_refused(mac, github, hop):
-    github.publish(_NEW, binary_hop=hop)
+    github.publish(_NEW, zip_hop=hop)
     result = _update()
-    assert result.status == "failed"
-    assert "address" in result.message
+    assert result.status == "failed" and "address" in result.message
     assert hop not in github.requested  # never even requested
     assert _cache_files(mac) == []
 
@@ -405,7 +734,7 @@ def test_a_redirect_of_the_checksum_file_to_a_foreign_host_is_refused(mac, githu
     result = _update()
     assert result.status == "failed"
     assert "https://evil.example/sums" not in github.requested
-    assert not any("yt-dlp_macos" in u for u in github.requested)
+    assert github.zip_requests() == []
 
 
 @pytest.mark.parametrize("host", [
@@ -441,6 +770,16 @@ def test_work_offline_downloads_nothing(mac, github, monkeypatch):
     assert _cache_files(mac) == []
 
 
+def test_work_offline_raised_inside_the_download_is_reported_as_is(mac, github):
+    from core import offline
+
+    github.publish(_NEW)
+    github.routes[_LATEST + "SHA2-256SUMS"] = {"raises": offline.OfflineModeError(offline.message("x"))}
+    result = _update()
+    assert result.status == "failed" and result.message == offline.message("x")
+    assert _cache_files(mac) == []
+
+
 def test_no_internet_says_so_in_plain_words(mac, github):
     github.publish(_NEW)
     github.routes[_LATEST + "SHA2-256SUMS"] = {
@@ -455,8 +794,7 @@ def test_no_internet_says_so_in_plain_words(mac, github):
 def test_a_github_error_names_the_code(mac, github):
     github.publish(_NEW, sums_status=503)
     result = _update()
-    assert result.status == "failed"
-    assert "503" in result.message
+    assert result.status == "failed" and "503" in result.message
     assert result.completed is False
 
 
@@ -509,9 +847,8 @@ def test_a_mac_below_the_floor_keeps_the_old_behaviour(mac, github, monkeypatch)
     monkeypatch.setattr(ytu, "macos_version", lambda: (10, 14))
     github.publish(_NEW)
     result = _update()
-    assert result.status == "unsupported"
+    assert result.status == "unsupported" and result.message == ytu._UNSUPPORTED_TEXT
     assert github.requested == []
-    assert result.message == ytu._UNSUPPORTED_TEXT
 
 
 def test_the_version_comes_from_the_operating_system(monkeypatch):
@@ -523,14 +860,16 @@ def test_the_version_comes_from_the_operating_system(monkeypatch):
 # ------------------------------------------------- Windows and Linux unchanged
 
 @pytest.mark.parametrize("system", ["windows", "linux"])
-def test_other_systems_never_download_an_executable(tmp_path, monkeypatch, github, system):
+def test_other_systems_never_download_an_archive(tmp_path, monkeypatch, github, system):
     monkeypatch.setattr(ytu, "_is_macos", lambda: False)
     monkeypatch.setattr(ytu, "user_cache_dir", lambda: tmp_path / "cache")
     monkeypatch.setattr(ytu.offline, "is_offline", lambda: False)
     github.publish(_NEW)
     # A folder build or a bare name: no copy to make and no download to do.
     dist = tmp_path / "bin" / "yt-dlp_dist"
-    exe = _write_binary(dist / "yt-dlp", _OLD)
+    dist.mkdir(parents=True)
+    exe = dist / "yt-dlp"
+    exe.write_bytes(_binary(_OLD))
     (dist / "_internal").mkdir()
     for bundled in (str(exe), "yt-dlp"):
         monkeypatch.setattr(ytu, "bundled_binary", lambda _n, b=bundled: b)
@@ -543,7 +882,9 @@ def test_a_single_file_build_still_updates_by_copying_not_downloading(tmp_path, 
     monkeypatch.setattr(ytu, "_is_macos", lambda: False)
     monkeypatch.setattr(ytu, "user_cache_dir", lambda: tmp_path / "cache")
     monkeypatch.setattr(ytu.offline, "is_offline", lambda: False)
-    exe = _write_binary(tmp_path / "install" / "yt-dlp.exe", _OLD)
+    exe = tmp_path / "install" / "yt-dlp.exe"
+    exe.parent.mkdir()
+    exe.write_bytes(_binary(_OLD))
     monkeypatch.setattr(ytu, "bundled_binary", lambda _n: str(exe))
 
     def _updater(cmd, **_k):
@@ -553,14 +894,22 @@ def test_a_single_file_build_still_updates_by_copying_not_downloading(tmp_path, 
         return SimpleNamespace(returncode=0, stdout="Updated", stderr="")
 
     assert ytu.can_self_update() is True
+    assert ytu.cached_path() == tmp_path / "cache" / "tools" / "yt-dlp" / ytu._exe_name()
     result = _update(run=_updater)
     assert result.status == "updated"
     assert github.requested == []
 
 
-def test_the_mac_download_size_is_the_universal_build(monkeypatch):
+def test_the_wait_for_an_update_is_longer_only_on_a_mac(monkeypatch):
+    monkeypatch.setattr(ytu, "_is_macos", lambda: False)
+    assert ytu.wait_bound() == ytu.WAIT_FOR_UPDATE_S == ytu.UPDATE_TIMEOUT_S + 2 * 120 + 60
     monkeypatch.setattr(ytu, "_is_macos", lambda: True)
-    assert ytu.download_mb() == ytu.DOWNLOAD_MB_MACOS == 37
+    assert ytu.wait_bound() > ytu.BOOTSTRAP_TIMEOUT_S
+
+
+def test_the_mac_download_size_is_the_zips(monkeypatch):
+    monkeypatch.setattr(ytu, "_is_macos", lambda: True)
+    assert ytu.download_mb() == ytu.DOWNLOAD_MB_MACOS == 54  # 53,923,637 bytes in 2026.08.19
     monkeypatch.setattr(ytu, "_is_macos", lambda: False)
     assert ytu.download_mb() == ytu.DOWNLOAD_MB == 18
 
@@ -570,28 +919,29 @@ def test_the_mac_download_size_is_the_universal_build(monkeypatch):
 def test_the_checksum_line_is_matched_by_exact_file_name():
     good = "a" * 64
     text = (
-        f"{'b' * 64}  yt-dlp_macos.zip\n"
+        f"{'b' * 64}  yt-dlp_macos\n"
         f"{'c' * 64}  yt-dlp_macos_legacy\n"
-        f"{good} *yt-dlp_macos\n"
+        f"{good} *yt-dlp_macos.zip\n"
         f"{'d' * 64}  yt-dlp\n"
     )
-    assert ytu._expected_hash(text, "yt-dlp_macos") == good
-    assert ytu._expected_hash(text.upper().replace("YT-DLP_MACOS", "yt-dlp_macos"), "yt-dlp_macos") == good
+    assert ytu._expected_hash(text, "yt-dlp_macos.zip") == good
+    assert ytu._expected_hash(text, "yt-dlp_macos") == "b" * 64
+    assert ytu._expected_hash(text.upper().replace("YT-DLP_MACOS.ZIP", "yt-dlp_macos.zip"), "yt-dlp_macos.zip") == good
 
 
 @pytest.mark.parametrize("text", [
-    "", "not a checksum file", f"{'a' * 63}  yt-dlp_macos\n", f"{'g' * 64}  yt-dlp_macos\n",
-    f"{'a' * 64}  other/yt-dlp_macos\n",
+    "", "not a checksum file", f"{'a' * 63}  yt-dlp_macos.zip\n", f"{'g' * 64}  yt-dlp_macos.zip\n",
+    f"{'a' * 64}  other/yt-dlp_macos.zip\n",
 ])
 def test_a_missing_or_malformed_line_is_an_error(text):
     with pytest.raises(ytu._BootstrapFailed):
-        ytu._expected_hash(text, "yt-dlp_macos")
+        ytu._expected_hash(text, "yt-dlp_macos.zip")
 
 
 def test_the_state_file_stays_valid_json(mac, github):
     github.publish(_NEW)
     _update()
-    json.loads((mac.cache / "tools" / "yt-dlp" / "state.json").read_text(encoding="utf-8"))
+    json.loads((_tools(mac) / "state.json").read_text(encoding="utf-8"))
 
 
 def test_the_fallback_hint_names_the_app_download_page():

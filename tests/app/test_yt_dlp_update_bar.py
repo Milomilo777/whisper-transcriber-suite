@@ -154,7 +154,7 @@ def test_the_mac_app_shows_the_same_bar_instead_of_a_log_line(mac_app):
     assert _visible(mac_app)
     text = mac_app._yt_dlp_bar.text_var.get()
     assert text.startswith("The video downloader may be out of date.")
-    assert "about 37 MB" in text  # the universal macOS build, not the 18 MB Windows exe
+    assert "about 54 MB" in text  # the macOS zip, not the 18 MB Windows exe
     assert str(mac_app._yt_dlp_bar.update_button.cget("text")) == "Update it"
     assert not any("cannot update itself" in line for line in mac_app.logs)
 

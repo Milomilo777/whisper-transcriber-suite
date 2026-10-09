@@ -261,9 +261,9 @@ corrupted (non-UTF8 bytes, malformed JSON), the app moves it aside as
    your user folder, so no administrator rights are needed, and never runs
    while a download runs. **Advanced → Downloads (yt-dlp)** can keep it up to
    date automatically instead, or turn the offer off. On a Mac (macOS 10.15
-   or newer) the first update downloads yt-dlp's own single-file build
-   (about 37 MB) after checking it against the published checksum; an older
-   Mac needs the newest app version instead.
+   or newer) the update installs yt-dlp's own folder build (about 54 MB)
+   after checking it against the published checksum; an older Mac needs the
+   newest app version instead.
 
 ### The app crashes
 

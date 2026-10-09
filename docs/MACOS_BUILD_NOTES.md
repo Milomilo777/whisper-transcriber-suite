@@ -294,35 +294,47 @@ Still open:
 ## Updating yt-dlp inside the Mac app
 
 The app bundles yt-dlp's onedir build, which yt-dlp's own updater refuses, so a YouTube change used
-to need a new app release. `core/yt_dlp_update.py` now does what it does on Windows, with one extra
-first step (the "Update it" bar, or the automatic mode):
+to need a new app release. `core/yt_dlp_update.py` now installs the release's own folder build
+(the "Update it" bar, or the automatic mode). The first install and every later update are the same
+steps; yt-dlp's `--update-to` is not used on macOS:
 
-1. Fetch `https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS`; the redirect names
-   the release tag, and the line for exactly `yt-dlp_macos` gives the expected SHA-256.
-2. Download that tag's `yt-dlp_macos` (universal, about 37 MB) to a temporary name in
-   `<user cache>/tools/yt-dlp/`. Only https to `github.com`, `objects.githubusercontent.com` and
-   `release-assets.githubusercontent.com` is followed; the size is capped and the total time limited.
-3. Compare the SHA-256 and the length. Only then `chmod 0755`, run `--version` and move it into place
-   atomically. Any failure deletes the temporary file; the bundled copy is never touched.
-4. Later updates are yt-dlp's own `--update-to stable` on that copy. The app runs the newer of the
-   two copies (`resolve_yt_dlp_path`).
+1. Fetch `https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS`. The redirect
+   names the release tag and the line for exactly `yt-dlp_macos.zip` gives the expected SHA-256.
+   Nothing more is fetched when that tag is not newer than both the installed folder
+   (`state.json`, `onedir.tag`) and the bundled copy ("already the newest").
+2. Download that tag's `yt-dlp_macos.zip` (universal; 53,923,637 bytes in 2026.08.19) to a temporary
+   file in `<user cache>/tools/yt-dlp/`. Only https to `github.com`,
+   `objects.githubusercontent.com` and `release-assets.githubusercontent.com` is followed; the size
+   is capped, the time limited and the length compared with `Content-Length`.
+3. Compare the SHA-256. Only then unpack, after every entry has been checked: no absolute or
+   drive path, backslash or `..`, no repeated name, no device/pipe/socket entry, links only when
+   they stay inside the folder and nothing is written through a link, at most 3000 entries and
+   600 MB (the real zip has 162 entries, 130 MB, no links), and `yt-dlp_macos` must be a regular
+   file at the top. Files keep the zip's permission bits (without setuid/setgid/sticky).
+4. Run `yt-dlp_macos --version` in the `.part` folder (asked twice, since a new file's first start
+   can be slow). Then rename the folder to `onedir-<tag>-<id>`, write `state.json`
+   (`onedir`: folder, tag, checksum) and only then remove the old folder. Any failure deletes the
+   temporary files and the `.part` folder and leaves the previous install, or the bundled copy, in
+   use. The app runs the newer of the two (`resolve_yt_dlp_path`).
 
 Minimum macOS: yt-dlp's README lists `yt-dlp_macos` as "Universal MacOS (10.15+) standalone
-executable" (the README of 2026-10-09 has no `yt-dlp_macos_legacy` file any more, and the latest
-release lists none), so macOS 10.15 is offered the download and anything older keeps the old advice
-(`MACOS_MIN`). If a verified download does not start on some macOS anyway, `state.json` records
-`bootstrap_refused` for that macOS version (it is asked twice first, since a new file's first start can
-be very slow) and the bar is not offered again for 30 days or until the macOS changes.
+executable" and the zip as "Unpackaged MacOS (10.15+) executable (no auto-update)"; the latest
+release has no `yt-dlp_macos_legacy`. So macOS 10.15 is offered the install and anything older keeps
+the old advice (`MACOS_MIN`). If a verified build does not start on a Mac with nothing installed,
+`state.json` records `bootstrap_refused` for that macOS version and the bar is not offered again
+for 30 days or until the macOS changes.
 
-Known cost: the single-file build unpacks itself on every run (row 10 above: about 25 s per call
-on the VMs), so once the downloaded copy is the newer one every yt-dlp call is slower than with the
-bundled folder build. A folder-build variant (the release's `yt-dlp_macos.zip`, checked the same way,
-but updated by downloading it again because yt-dlp refuses to update a folder build) would avoid it.
+Why the folder build and not the single-file `yt-dlp_macos`: the single-file build unpacks itself
+on every run (row 10 above: about 25 s per call on the VMs), so once the installed copy is the
+newer one every format lookup and download would pay that. The folder build starts in about a second.
 
-Checks on a real Mac: the bar appears after a failed YouTube download, **Update it** installs the
-file (`state.json` has `cached` and `bootstrap`), `tools/yt-dlp/yt-dlp --version` runs from the app
-(expected: no Gatekeeper hold, since the file has no quarantine flag when the app wrote it), Work offline refuses,
-a second **Update it** runs `--update-to stable`, and a download after it works with the new copy.
+Checks on a real Mac: the bar appears after a failed YouTube download; **Update it** installs the
+folder (`state.json` has `onedir` and `cached`); **measure `tools/yt-dlp/onedir-*/yt-dlp_macos
+--version` (expect about 1 s, the same as the bundled copy) and the first start after install**; no
+Gatekeeper hold (expected: the files have no quarantine flag since the app wrote them, and the
+signatures from the zip stay valid because the bytes are unchanged); on 10.15 confirm the current
+release starts; a second **Update it** says "already the newest"; after a newer release it replaces
+the folder and removes the old one; Work offline refuses; a download after it uses the new copy.
 
 ## Native integration (app menu, Window and Help menus, Finder, Dock)
 
