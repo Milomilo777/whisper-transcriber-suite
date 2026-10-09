@@ -48,7 +48,14 @@ import math
 import os
 from typing import Any
 
-from .base import coerce_seconds, normalize_text, sanitize_for_xml, speaker_prefix
+from . import docx_writer as _docx_writer
+from .base import (
+    coerce_seconds,
+    is_rtl_text,
+    normalize_text,
+    sanitize_for_xml,
+    speaker_prefix,
+)
 
 # Placeholder strings exactly as they appear (consolidated) in the
 # template's paragraph text. Replacement is run-aware so styling on the
@@ -321,6 +328,30 @@ def _set_cell_text(cell: Any, text: str) -> None:
             r.text = ""
 
 
+def _set_direction(paragraph: Any, run: Any, rtl: bool) -> None:
+    """Make a transcript cell read right-to-left for Arabic-script/Hebrew text.
+
+    Without ``w:bidi`` Word lays the paragraph out left-to-right, so the
+    closing punctuation of a Persian sentence lands on the wrong side. Same
+    marks as the plain DOCX writer. A cloned row copies the direction of the
+    row it was cloned from, so left-to-right text clears both marks.
+    *paragraph* is None for the marker row, whose paragraph stays as it is.
+    """
+    from docx.oxml.ns import qn  # type: ignore
+
+    if rtl:
+        if paragraph is not None:
+            _docx_writer._set_paragraph_rtl(paragraph)
+        _docx_writer._set_run_rtl(run)
+        return
+    if paragraph is not None:
+        ppr = paragraph._p.pPr
+        bidi = ppr.find(qn("w:bidi")) if ppr is not None else None
+        if bidi is not None:
+            ppr.remove(bidi)
+    run.font.rtl = None
+
+
 def _clone_last_row(table: Any) -> Any:
     """Append a deep copy of the last table row and return it.
 
@@ -386,7 +417,7 @@ def write_bytes(
             _replace_in_paragraph(para, _HEADER_FOREIGN_LABEL, lang_label)
 
     # --- Transcription rows -------------------------------------------
-    nonempty = [s for s in segments if normalize_text(str(s.get("text") or ""))]
+    nonempty = [s for s in segments if normalize_text(s.get("text"))]
 
     for idx, seg in enumerate(nonempty):
         row_index = _FIRST_DATA_ROW + idx
@@ -400,7 +431,7 @@ def write_bytes(
         row_number = str(idx + 1)
         time_code = _fmt_smtv_time(coerce_seconds(seg.get("start")))
         prefix = speaker_prefix(seg)
-        body = sanitize_for_xml(prefix + normalize_text(str(seg.get("text") or "")))
+        body = sanitize_for_xml(prefix + normalize_text(seg.get("text")))
 
         # col1 = row number
         _set_cell_text(cells[0], row_number)
@@ -410,11 +441,17 @@ def write_bytes(
         # "[<Lang> starts]" marker filled above (always, even with no detected
         # language); APPEND the segment text after it (in a new run) so the
         # team's cue is preserved instead of being overwritten.
+        rtl = is_rtl_text(body)
         if idx == 0:
             marker_para = cells[2].paragraphs[0]
-            marker_para.add_run(" " + body)
+            text_run = marker_para.add_run(" " + body)
+            # The marker is Latin text: leave the paragraph left-to-right so
+            # it is not scrambled, and mark only the transcript run.
+            _set_direction(None, text_run, rtl)
         else:
             _set_cell_text(cells[2], body)
+            para = cells[2].paragraphs[0]
+            _set_direction(para, para.runs[0], rtl)
         # col4 = English Translation -> left empty for a translator.
         _set_cell_text(cells[3], "")
 

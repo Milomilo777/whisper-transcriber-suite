@@ -366,6 +366,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   as an unusable item.
 - **A late Cancel no longer turns a finished download into a cancelled one.** Cancelling a download
   that had ended in the meantime (the Esc question left open, an old menu) also cancelled its transcription.
+- **The SMTV Word template now reads right-to-left for Persian, Arabic and Hebrew.** The transcript
+  cells were left-to-right, so closing punctuation landed on the wrong side; a segment whose text is
+  the number 0 was also dropped from that file.
 - **A caption with null text no longer becomes the word "None" in Convert.** The rolling-caption
   clean-up turned a null `text` into the string `None`.
 - **Subtitle text that contains an arrow is now escaped when burned in.** A cue line holding `-->`
