@@ -4436,9 +4436,11 @@ class App(tk.Tk):
         """
         for existing in self.queue:
             try:
-                if (_same_file(os.path.abspath(existing.file_path), os.path.abspath(file_path))
-                        and getattr(existing, "status", "")
-                        not in ("finished", "cancelled", "error")):
+                # Status first: a finished row costs no filesystem calls (this
+                # runs on the Tk thread, once per queue row, per candidate).
+                if getattr(existing, "status", "") in ("finished", "cancelled", "error"):
+                    continue
+                if _same_file(os.path.abspath(existing.file_path), os.path.abspath(file_path)):
                     return True
             except Exception:  # noqa: BLE001
                 continue

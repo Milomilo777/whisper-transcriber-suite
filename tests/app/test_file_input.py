@@ -379,3 +379,25 @@ def test_point_check_asks_windows() -> None:
     width, height = user32.GetSystemMetrics(78), user32.GetSystemMetrics(79)
     assert app_mod._point_on_a_monitor(left + 5, top + 5) or app_mod._point_on_a_monitor(10, 10)
     assert not app_mod._point_on_a_monitor(left + width + 5000, top + height + 5000)
+
+def test_the_duplicate_check_skips_finished_rows_without_touching_the_disk(
+    monkeypatch: pytest.MonkeyPatch, media: str
+) -> None:
+    """Finished / cancelled / error rows cost no filesystem call; a pending one is
+    still compared, and a same-path pending row is still a duplicate."""
+    asked: list[str] = []
+
+    def _spy(a: str, b: str) -> bool:
+        asked.append(a)
+        return a == b
+
+    monkeypatch.setattr(app_mod, "_same_file", _spy)
+    rows = [types.SimpleNamespace(file_path=f"old{i}.mp4", status=status)
+            for i, status in enumerate(("finished", "cancelled", "error"))]
+    fake = _fake_app(queue=rows + [types.SimpleNamespace(file_path="busy.mp4", status="waiting")])
+
+    assert App._active_dup_in_queue(fake, media) is False  # type: ignore[arg-type]
+    assert len(asked) == 1 and asked[0].endswith("busy.mp4")
+
+    fake.queue.append(types.SimpleNamespace(file_path=media, status="running"))
+    assert App._active_dup_in_queue(fake, media) is True  # type: ignore[arg-type]
