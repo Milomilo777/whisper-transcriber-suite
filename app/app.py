@@ -479,16 +479,17 @@ def build_about_sections() -> list[AboutSection]:
     return [
         ("What's new in this version", [
             ("Highlights", [
-                "Cloud transcription you can opt into: Google Gemini "
-                "(paste one free key) and Google Cloud Speech-to-Text "
-                "(service-account file, with a cheaper Batch mode)",
-                "Web / LAN access — one click to let a browser on this PC "
-                "or another device transcribe, with nothing to install",
-                "Per-task buttons on every queue item: Pause, Resume, "
-                "Cancel, Re-run, Remove",
-                "Built-in update check (once a day, notify-only); the "
-                "installer upgrades in place over the old version — no need "
-                "to uninstall first",
+                "Make a subtitled video: burn the subtitles into a copy of "
+                "the video, with progress and a Stop button",
+                "Translate speech straight to English, and share a "
+                "transcript as a single web page",
+                "Work offline: one switch that keeps the app off the network",
+                "Speed and time left for every job, and taskbar progress on "
+                "Windows",
+                "A more native Mac app: Open With, the Dock, the menus and "
+                "notifications, and a video downloader that updates itself",
+                "Quick start on the first launch, a \"Try it now\" sample "
+                "clip, and quiet notices instead of message boxes",
             ]),
         ]),
         ("Transcription engine", [

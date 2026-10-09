@@ -120,3 +120,11 @@ def test_releases_label_is_user_friendly():
     label, url = build_about_links()[0]
     assert "/releases/latest" in url
     assert "download" in label.lower() or "version" in label.lower()
+
+def test_whats_new_lists_the_current_release_not_the_1x_highlights():
+    from app.app import build_about_sections
+
+    sections = dict(build_about_sections())
+    highlights = " ".join(dict(sections["What's new in this version"])["Highlights"])
+    assert "subtitled video" in highlights and "Work offline" in highlights
+    assert "Per-task buttons on every queue item" not in highlights  # a 1.x highlight
