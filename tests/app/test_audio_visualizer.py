@@ -214,9 +214,11 @@ def test_widget_builds_pushes_and_idles(root):
     for _ in range(10):
         viz.push_frames(_tone(0.05, amplitude=0.6), RATE)
         viz._tick()  # drain synchronously on the Tk thread
+    # Read the meter before root.update(): scheduled ticks with no new audio
+    # let it fall with wall time, so a slow machine read a decayed value.
+    assert viz.meter_db > -10.0
     root.update()
     assert viz.amplitude > av.IDLE_AMPLITUDE
-    assert viz.meter_db > -10.0
     photo = viz._photo
     viz._tick()
     assert viz._photo is photo  # image reused, not recreated per frame
