@@ -183,6 +183,9 @@ class _RecordingTree:
     def selection_set(self, _iids):
         pass
 
+    def focus(self, _iid=None):
+        return ""
+
 
 def _queue_app(queue):
     return types.SimpleNamespace(
