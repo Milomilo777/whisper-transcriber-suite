@@ -23,7 +23,12 @@ from app.dialogs import share_page
 from app import shortcuts
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
-from app.domain.task_outputs import task_output_folder, task_srt_output
+from app.domain.task_outputs import (
+    pick_transcript_json,
+    task_output_folder,
+    task_srt_output,
+    task_transcript_json,
+)
 from app.domain.tasks import TranscriptionTask, VideoDownloadTask
 from app.observability import init_sentry, send_launch_ping_async
 from app.services.download_service import DownloadService
@@ -1494,7 +1499,8 @@ class App(tk.Tk):
         recomputing ``splitext(file_path)[0] + '.json'`` would miss it and
         pop a confusing file picker even though a real transcript exists.
         Only when no known JSON is on disk do we fall back to recomputing the
-        beside-input name, and finally to the picker. ``language`` (the
+        beside-input name, and finally to an explanation that offers the
+        picker. ``language`` (the
         task's chosen or detected language) reaches the viewer for its
         per-script fonts; a file picked by hand gets none.
         """
@@ -1512,7 +1518,18 @@ class App(tk.Tk):
                 self, guessed, language=language, media_path=file_path
             )
         else:
-            _open_transcript_viewer(self, None)
+            # The viewer reads and saves .json files only; a run that wrote
+            # just srt/vtt/... (json not among the formats) has nothing to open.
+            # Say so, and still let the user pick a .json by hand.
+            if messagebox.askyesno(
+                "View transcript",
+                f"No transcript .json was saved for {os.path.basename(file_path)}: "
+                "the viewer opens .json files only. Turn on \"Whisper JSON\" in the "
+                "output formats to get one next time. "
+                "Choose a .json file yourself?",
+                parent=self,
+            ):
+                _open_transcript_viewer(self, None)
 
     def _save_shareable_page_for(
         self, file_path: str, json_path: str, language: str | None = None,
@@ -1537,16 +1554,14 @@ class App(tk.Tk):
 
     @staticmethod
     def _task_json_output(task: Any) -> str | None:
-        """Return the .json path the task actually wrote, if known.
+        """Return the transcript .json path the task actually wrote, if known.
 
-        Reads ``task.output_paths`` (the exact files the worker reported)
-        and returns the first .json entry — the source of truth for the
-        viewer, robust to templated/relocated output names.
+        Reads ``task.output_paths`` (the exact files the worker reported),
+        the source of truth for the viewer, robust to templated/relocated
+        output names. The auto-chapters ``.chapters.json`` sidecar is not a
+        transcript and is never returned (None when json was not an output).
         """
-        for p in getattr(task, "output_paths", None) or ():
-            if isinstance(p, str) and p.lower().endswith(".json"):
-                return p
-        return None
+        return task_transcript_json(task)
 
 
     def _open_recent(self, path: str) -> None:
@@ -5271,9 +5286,7 @@ class App(tk.Tk):
         # "View transcript" launches the in-app viewer with the JSON
         # next to the source media (or the file picker if no JSON
         # found). Discoverable single click into the new viewer.
-        json_output = next(
-            (p for p in existing if p.lower().endswith(".json")), None
-        )
+        json_output = pick_transcript_json(existing, task.file_path)
         if json_output is not None:
             ttk.Button(
                 button_row, text="View transcript",

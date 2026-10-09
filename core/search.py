@@ -26,9 +26,12 @@ import json
 import logging
 import math
 import os
+import re
 import sqlite3
 import unicodedata
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -123,6 +126,18 @@ def _is_search_noise(ch: str) -> bool:
             or code == 0x0670 or 0x06D6 <= code <= 0x06ED)
 
 
+def _fold(text: str, casefold: bool) -> str:
+    if text.isascii():
+        # NFKC, the noise list and the fold table only touch non-ASCII text.
+        return text.casefold() if casefold else text
+    s = unicodedata.normalize("NFD", unicodedata.normalize("NFKC", text))
+    s = "".join(ch for ch in s if not _is_search_noise(ch))
+    s = unicodedata.normalize("NFC", s).translate(_FOLD_TABLE)
+    if casefold:
+        s = s.casefold()
+    return unicodedata.normalize("NFKC", s)
+
+
 def normalize_search_text(text: str) -> str:
     """Fold *text* so that spelling variants compare equal.
 
@@ -130,10 +145,326 @@ def normalize_search_text(text: str) -> str:
     NFKC, accents and Arabic vowel marks removed, ZWNJ/tatweel removed,
     Arabic kaf/yeh as Persian, digits as ASCII, case folded.
     """
-    s = unicodedata.normalize("NFD", unicodedata.normalize("NFKC", text))
-    s = "".join(ch for ch in s if not _is_search_noise(ch))
-    s = unicodedata.normalize("NFC", s).translate(_FOLD_TABLE).casefold()
-    return unicodedata.normalize("NFKC", s)
+    return _fold(text, True)
+
+
+# ---- matching inside one text (transcript viewer search and Find/Replace) ----
+#
+# The same folding as normalize_search_text, but done one character at a time
+# so every folded character knows which characters of the ORIGINAL text it
+# came from. A match can then be mapped back to an exact span of the original,
+# which is what Replace rewrites: folding only decides what matches, it never
+# changes the text around it.
+
+
+class _CharFolds(dict):  # type: ignore[type-arg]
+    """``ch -> its fold``, filled on demand. ``map(table.__getitem__, text)`` folds a
+    whole segment at C speed (an ``lru_cache`` call per character was the cost)."""
+
+    def __init__(self, casefold: bool) -> None:
+        super().__init__()
+        self._casefold = casefold
+        self.version = 0  # grows with every entry added, never resets
+
+    def __missing__(self, ch: str) -> str:
+        if len(self) > 20000:  # a stray huge text must not grow the table for good
+            self.clear()
+        self.version += 1
+        folded = self[ch] = _fold(ch, self._casefold)
+        return folded
+
+
+_CHAR_FOLDS = {True: _CharFolds(True), False: _CharFolds(False)}
+
+
+def _fold_char(ch: str, casefold: bool) -> str:
+    return _CHAR_FOLDS[casefold][ch]
+
+
+class _MarkFlags(dict):  # type: ignore[type-arg]
+    """``ch -> is it a combining mark (category Mn)``, filled on demand."""
+
+    def __missing__(self, ch: str) -> bool:
+        if len(self) > 20000:
+            self.clear()
+        flag = self[ch] = unicodedata.category(ch) == "Mn"
+        return flag
+
+
+_is_mark = _MarkFlags().__getitem__
+
+
+def _folded_text(text: str, casefold: bool) -> str:
+    """``fold_with_spans(text)[0]`` without the spans: cheap enough for every row."""
+    if text.isascii():
+        return text.casefold() if casefold else text
+    return _folded_non_ascii(text, casefold)
+
+
+# Cached: the viewer's search box folds every segment again on each keystroke.
+@lru_cache(maxsize=16384)
+def _folded_non_ascii(text: str, casefold: bool) -> str:
+    return "".join(map(_CHAR_FOLDS[casefold].__getitem__, text))
+
+
+class _SpanIndex:
+    """Where each folded character of one text came from in the original.
+
+    Usually every kept character folds to exactly one character, so the map is
+    given by the few characters that fold away (``dropped``): folded character
+    ``k`` is original character ``k + (number of dropped ones before it)``, kept
+    as ``adjusted`` for a bisect, and the index is small and quick to build.
+    A text with an expanding character (a ligature) gets explicit ``starts`` and
+    ``ends`` instead.
+    """
+
+    __slots__ = ("folded", "dropped", "adjusted", "extended", "starts", "ends")
+
+    def __init__(self, folded: str) -> None:
+        self.folded = folded
+        self.dropped: tuple[int, ...] = ()
+        self.adjusted: tuple[int, ...] = ()
+        self.extended: dict[int, int] = {}  # folded index -> end that includes its marks
+        self.starts: tuple[int, ...] | None = None
+        self.ends: tuple[int, ...] | None = None
+
+    def start_of(self, k: int) -> int:
+        if self.starts is not None:
+            return self.starts[k]
+        return k + bisect_right(self.adjusted, k)
+
+    def end_of(self, k: int) -> int:
+        if self.ends is not None:
+            return self.ends[k]
+        return self.extended.get(k, self.start_of(k) + 1)
+
+    def first_at(self, offset: int) -> int:
+        """Index of the first folded character that starts at or after *offset*."""
+        if self.starts is not None:
+            return bisect_left(self.starts, offset)
+        return max(0, offset - bisect_left(self.dropped, offset))
+
+    def whole_chars(self, pos: int, last: int) -> bool:
+        """True when folded ``pos..last`` neither starts nor ends inside one character's expansion."""
+        starts = self.starts
+        if starts is None:
+            return True
+        return (pos == 0 or starts[pos - 1] != starts[pos]) and (
+            last == len(self.folded) - 1 or starts[last + 1] != starts[last]
+        )
+
+
+@lru_cache(maxsize=8)
+def _dropped_regex(casefold: bool, version: int) -> "re.Pattern[str] | None":
+    """A character class of every character seen so far that folds to nothing."""
+    chars = [c for c, f in _CHAR_FOLDS[casefold].items() if not f]
+    if not chars:
+        return None
+    return re.compile("[" + "".join(re.escape(c) for c in chars) + "]")
+
+
+# Same size as _folded_non_ascii: the viewer's filter asks for the index of every
+# segment on each keystroke once the query starts or ends with a half-space, and
+# a smaller cache would rebuild them all every time.
+@lru_cache(maxsize=16384)
+def _index(text: str, casefold: bool) -> _SpanIndex:
+    folded = _folded_text(text, casefold)  # also teaches the table every character
+    index = _SpanIndex(folded)
+    table = _CHAR_FOLDS[casefold]
+    pattern = _dropped_regex(casefold, table.version)
+    dropped = [m.start() for m in pattern.finditer(text)] if pattern else []
+    if len(folded) == len(text) - len(dropped):
+        index.dropped = tuple(dropped)
+        index.adjusted = tuple(d - i for i, d in enumerate(dropped))
+        extended = index.extended
+        for i, d in enumerate(dropped):  # a mark that folds away stays with the letter before it
+            if d and _is_mark(text[d]):
+                k = d - i - 1  # the kept letter just before d, if d - 1 is kept
+                if i == 0 or dropped[i - 1] != d - 1:
+                    extended[k] = d + 1
+                elif extended.get(k) == d:  # d - 1 was a mark that already joined it
+                    extended[k] = d + 1
+        return index
+    starts: list[int] = []
+    ends: list[int] = []
+    last_len = 0  # folded characters made by the last kept original character
+    for i, f in enumerate(map(table.__getitem__, text)):
+        if f:
+            last_len = len(f)
+            starts.extend([i] * last_len)
+            ends.extend([i + 1] * last_len)
+        elif last_len and ends[-1] == i and _is_mark(text[i]):
+            ends[-last_len:] = [i + 1] * last_len
+    index.starts = tuple(starts)
+    index.ends = tuple(ends)
+    return index
+
+
+def fold_with_spans(
+    text: str, casefold: bool = True
+) -> tuple[str, tuple[int, ...], tuple[int, ...]]:
+    """``(folded, starts, ends)``: ``text[starts[i]:ends[i]]`` produced ``folded[i]``.
+
+    Characters that fold to nothing (ZWNJ, tatweel, vowel marks) have no folded
+    character. A combining mark that follows a kept character is attached to its
+    span, so a match swallows the vowel marks of its last letter; a ZWNJ is not,
+    so "ketab" matches the start of "ketab" + ZWNJ + "ha" without taking the
+    half-space. ``casefold=False`` keeps Latin case (a "Match case" search).
+    """
+    index = _index(text, casefold)
+    count = len(index.folded)
+    return (
+        index.folded,
+        tuple(index.start_of(k) for k in range(count)),
+        tuple(index.end_of(k) for k in range(count)),
+    )
+
+
+fold_with_spans.cache_clear = _index.cache_clear  # type: ignore[attr-defined]
+
+
+def _literal_span(text: str, needle: str, start: int, casefold: bool) -> tuple[int, int] | None:
+    """Plain substring search (case-insensitive when ``casefold``): no other folding."""
+    start = max(0, start)
+    if casefold:
+        m = re.compile(re.escape(needle), re.IGNORECASE).search(text, start)
+        return m.span() if m else None
+    i = text.find(needle, start)
+    return (i, i + len(needle)) if i >= 0 else None
+
+
+@lru_cache(maxsize=256)
+def _split_edges(needle: str, casefold: bool) -> tuple[str, str, str]:
+    """``(prefix, core, suffix)``: the needle's leading and trailing characters that
+    the folding drops, and what lies between them.
+
+    A half-space, tatweel or vowel mark at the edge of what the user typed is
+    something they mean (the "mi-" prefix, a stray tatweel to delete). Folded
+    matching would drop it and widen the match, so those characters must be
+    found literally next to the folded core. Inside the core they stay forgiving.
+    A needle of only such characters has an empty core.
+    """
+    n = len(needle)
+    i = 0
+    while i < n and not _fold_char(needle[i], casefold):
+        i += 1
+    j = n
+    while j > i and not _fold_char(needle[j - 1], casefold):
+        j -= 1
+    return needle[:i], needle[i:j], needle[j:]
+
+
+def find_folded_span(
+    text: str, needle: str, start: int = 0, *, casefold: bool = True, exact: bool = False
+) -> tuple[int, int] | None:
+    """The first match of *needle* in *text* at or after original offset *start*.
+
+    Compares with the search folding (ZWNJ, Arabic kaf/yeh, digits, accents and,
+    unless ``casefold`` is False, case). Returns the ``(start, end)`` span of the
+    ORIGINAL text, or None. Matches are exact spans of the original:
+
+    * ``exact`` turns the folding off (a plain, case-sensitive substring search);
+    * a needle is tried as typed and precomposed (NFC), the leftmost hit wins, so an
+      NFD paste finds precomposed text;
+    * characters the folding drops (ZWNJ, tatweel, a vowel mark) at the start or
+      end of the needle are matched literally, right next to the folded core; a
+      needle of only such characters matches literally;
+    * a match never starts or ends inside the expansion of one character
+      ("f" does not match half of the ligature U+FB01).
+    """
+    if not needle:
+        return None
+    if exact:
+        return _literal_span(text, needle, start, False)
+    # As typed, and precomposed (an NFD paste from macOS Find): the leftmost hit wins.
+    hits = [_find_spans(text, needle, start, casefold)]
+    composed = unicodedata.normalize("NFC", needle)
+    if composed != needle:
+        hits.append(_find_spans(text, composed, start, casefold))
+    return min((h for h in hits if h is not None), default=None)
+
+
+def _find_spans(
+    text: str, needle: str, start: int, casefold: bool
+) -> tuple[int, int] | None:
+    prefix, core, suffix = _split_edges(needle, casefold)
+    if not core:
+        return _literal_span(text, needle, start, casefold)
+    wanted = _folded_text(core, casefold)
+    if not wanted or wanted not in _folded_text(text, casefold):
+        return None
+    index = _index(text, casefold)
+    folded = index.folded
+    start = max(0, start)
+    pos = folded.find(wanted, index.first_at(start))
+    while pos >= 0:
+        last = pos + len(wanted) - 1
+        if index.whole_chars(pos, last):
+            first_char = index.start_of(pos)
+            raw_end = index.start_of(last) + 1  # the core's last letter, without its marks
+            end = index.end_of(last)
+            begin = first_char - len(prefix)
+            if begin >= start and text.startswith(prefix, begin):
+                if not suffix:
+                    return begin, end
+                # The suffix follows the letter's own marks (a ZWNJ after "alef + hamza")
+                # or is one of them (a trailing fatha): take whichever really is there.
+                for after in dict.fromkeys((end, raw_end)):
+                    if text.startswith(suffix, after):
+                        return begin, after + len(suffix)
+        pos = folded.find(wanted, pos + 1)
+    return None
+
+
+def folded_contains(
+    text: str, query: str, *, casefold: bool = True, exact: bool = False
+) -> bool:
+    """True when *query* occurs in *text* under the search folding.
+
+    Same needle rules as :func:`find_folded_span`, except that a plain query
+    (no dropped character at its edges) also counts a hit inside a character's
+    expansion: a filter only has to show the row, and it runs on every segment
+    at every keystroke, so it skips building spans.
+    """
+    if not query:
+        return False
+    if exact:
+        return query in text
+    composed = unicodedata.normalize("NFC", query)
+    for variant in dict.fromkeys((query, composed)):
+        prefix, _core, suffix = _split_edges(variant, casefold)
+        if prefix or suffix:
+            if find_folded_span(text, variant, casefold=casefold) is not None:
+                return True
+            continue
+        wanted = _folded_text(variant, casefold)
+        if wanted and wanted in _folded_text(text, casefold):
+            return True
+    return False
+
+
+def replace_folded(
+    text: str, needle: str, replacement: str, *, casefold: bool = True, exact: bool = False
+) -> tuple[str, int]:
+    """Replace every match of *needle* with *replacement*, literally.
+
+    Only the matched spans of *text* change; returns ``(new_text, count)``.
+    Matching follows :func:`find_folded_span`.
+    """
+    pieces: list[str] = []
+    last = pos = count = 0
+    while True:
+        span = find_folded_span(text, needle, pos, casefold=casefold, exact=exact)
+        if span is None:
+            break
+        pieces.append(text[last:span[0]])
+        pieces.append(replacement)
+        last = pos = span[1]
+        count += 1
+    if not count:
+        return text, 0
+    pieces.append(text[last:])
+    return "".join(pieces), count
 
 
 def _trigram_supported() -> bool:

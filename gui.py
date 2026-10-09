@@ -49,6 +49,7 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
     from core.config import ConfigSaveError, load_config, save_config
     from core.task import TranscriptionTask
     from core import transcriber as _trans
+    from core.hub import model_weights_present
 
     src = os.path.abspath(args.file)
     if not os.path.isfile(src):
@@ -99,7 +100,7 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
     # model folder; other engines (cloud, NVIDIA, whisper.cpp...) load their
     # own way, so a missing folder there must not trigger a model download.
     if (backend and backend != "faster_whisper") or not model_dir \
-            or os.path.isfile(os.path.join(model_dir, "model.bin")):
+            or model_weights_present(model_dir):
         print("[cli] loading model...", flush=True)
         loaded = _trans.load_existing_model(_status)
     else:

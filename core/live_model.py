@@ -114,7 +114,10 @@ def live_model_config(config: dict[str, Any], slug: str) -> dict[str, Any] | Non
 
 
 def is_downloaded(model_config: dict[str, Any]) -> bool:
-    return (Path(str(model_config.get("model_path") or "")) / "model.bin").exists()
+    """True when the config's model folder holds real (non-empty) weights."""
+    from .hub import model_weights_present
+
+    return model_weights_present(model_config.get("model_path"))
 
 
 def apply_env_override(config: dict[str, Any]) -> str | None:

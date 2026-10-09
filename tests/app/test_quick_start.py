@@ -489,11 +489,11 @@ def test_best_quality_is_sized_for_a_4_gb_computer(tk_root, tmp_path):
         tk_root, {"download_folder": str(tmp_path)}, probe=lambda: (_CPU, 4, 3.9),
     )
     best = dialog.mode_detail_vars["best"].get()
-    assert best.startswith("Medium")
+    assert best.startswith("Small")
     assert "sized for this computer's 4 GB of memory" in best
     dialog.mode_var.set("best")
     dialog.finish()
-    assert _results[0].model_slug == "medium"
+    assert _results[0].model_slug == "small"
 
 
 def test_best_quality_keeps_large_v3_on_an_8_gb_laptop(tk_root, tmp_path):

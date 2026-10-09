@@ -108,3 +108,12 @@ def test_other_engine_never_downloads_a_whisper_model(cli):
     cli["cfg"]["transcribe_backend"] = "google_cloud"
     assert cli["run"]() == 0
     assert cli["calls"] == ["load_existing_model"]
+
+
+def test_empty_model_bin_is_downloaded_again_not_loaded(cli):
+    """A killed download leaves a 0-byte model.bin; loading it only fails later."""
+    model_dir = cli["tmp"] / "models" / "large-v3"
+    model_dir.mkdir(parents=True)
+    (model_dir / "model.bin").write_bytes(b"")
+    assert cli["run"]() == 0
+    assert cli["calls"] == ["load_model"]
