@@ -604,6 +604,10 @@ def run_killing_tree(
             _end_tree(proc)
             proc.communicate()  # reap it and close the pipes
             raise
+        except BaseException:
+            if proc.poll() is None:
+                _end_tree(proc)
+            raise
     return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
 
 
