@@ -465,6 +465,186 @@ def test_the_unsaved_edits_prompt_stays_in_charge_of_command_w(
     assert asked == ["Discard changes?", "Discard changes?"]
 
 
+# ---------------------------------------- Command-W follows the key window, not Tk's focus
+#
+# Found in the macOS VM: after the Find dialog and an alert of the viewer were closed, File >
+# Close Window did nothing (three tries) because Tk reported no focus while the viewer was still
+# the front window. macOS decides Command-W by the key window, so AppKit is asked first.
+
+def _front(monkeypatch: pytest.MonkeyPatch, root: _Host, key: str | None,
+           stack: list[tk.Misc], focus: tk.Misc | None = None) -> None:
+    """Fake what AppKit and Tk report: the key window's title, the stacking order (front first)
+    and Tk's focus widget."""
+    monkeypatch.setattr(mac_native, "key_window_title", lambda: key)
+    monkeypatch.setattr(mac_native, "_stack_front_first", lambda _app: [str(w) for w in stack])
+    monkeypatch.setattr(root, "focus_get", lambda: focus)
+
+
+def _two_windows(root: _Host) -> tuple[tk.Toplevel, tk.Toplevel]:
+    viewer = tk.Toplevel(root)
+    viewer.title("Transcript - talk.json")
+    find = tk.Toplevel(viewer)
+    find.title("Find and replace")
+    root.title("Whisper Transcriber Suite")
+    return viewer, find
+
+
+def test_command_w_closes_the_key_window_when_tk_has_lost_its_focus(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, _find = _two_windows(host)
+    asked: list[str] = []
+    viewer.protocol("WM_DELETE_WINDOW", lambda: asked.append("viewer"))
+    _front(monkeypatch, host, "Transcript - talk.json", [viewer, host], focus=None)
+    assert mac_native.close_front_window(host) is True
+    assert asked == ["viewer"]
+
+
+def test_command_w_closes_the_key_window_when_tk_still_names_the_main_window(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, _find = _two_windows(host)
+    asked: list[str] = []
+    viewer.protocol("WM_DELETE_WINDOW", lambda: asked.append("viewer"))
+    stale = tk.Entry(host)
+    _front(monkeypatch, host, "Transcript - talk.json", [viewer, host], focus=stale)
+    assert mac_native.close_front_window(host) is True
+    assert asked == ["viewer"]
+
+
+def test_command_w_never_closes_a_window_behind_the_key_main_window(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tk's focus can be stale in the viewer while the person works in the main window."""
+    viewer, _find = _two_windows(host)
+    viewer.protocol("WM_DELETE_WINDOW", lambda: pytest.fail("the viewer is not the front window"))
+    stale = tk.Entry(viewer)
+    _front(monkeypatch, host, "Whisper Transcriber Suite", [viewer, host], focus=stale)
+    assert mac_native.close_front_window(host) is False
+
+
+def test_command_w_closes_the_find_dialog_in_front_of_its_viewer(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, find = _two_windows(host)
+    viewer.protocol("WM_DELETE_WINDOW", lambda: pytest.fail("only the dialog is in front"))
+    _front(monkeypatch, host, "Find and replace", [find, viewer, host])
+    assert mac_native.close_front_window(host) is True
+    assert not find.winfo_exists() and viewer.winfo_exists()
+
+
+def test_command_w_with_two_windows_of_one_title_takes_the_front_one(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first, second = tk.Toplevel(host), tk.Toplevel(host)
+    first.title("Transcript - a.json")
+    second.title("Transcript - a.json")
+    _front(monkeypatch, host, "Transcript - a.json", [second, first, host])
+    assert mac_native.close_front_window(host) is True
+    assert not second.winfo_exists() and first.winfo_exists()
+
+
+def test_command_w_does_nothing_when_the_key_window_is_not_one_of_ours(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, _find = _two_windows(host)
+    viewer.protocol("WM_DELETE_WINDOW", lambda: pytest.fail("a native panel is the key window"))
+    _front(monkeypatch, host, "Open", [viewer, host], focus=tk.Entry(viewer))
+    assert mac_native.close_front_window(host) is False
+
+
+def test_command_w_matches_a_persian_title(host: _Host, monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer = tk.Toplevel(host)
+    viewer.title("متن — نمونه صدا.json")
+    _front(monkeypatch, host, "متن — نمونه صدا.json", [viewer, host])
+    assert mac_native.close_front_window(host) is True
+    assert not viewer.winfo_exists()
+
+
+def test_without_appkit_command_w_uses_the_front_window_when_tk_has_no_focus(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, _find = _two_windows(host)
+    asked: list[str] = []
+    viewer.protocol("WM_DELETE_WINDOW", lambda: asked.append("viewer"))
+    _front(monkeypatch, host, None, [viewer, host], focus=None)
+    assert mac_native.close_front_window(host) is True
+    assert asked == ["viewer"]
+
+
+def test_without_appkit_and_with_only_the_main_window_nothing_closes(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    host.protocol("WM_DELETE_WINDOW", lambda: pytest.fail("the main window must not close"))
+    _front(monkeypatch, host, None, [host], focus=None)
+    assert mac_native.close_front_window(host) is False
+    _front(monkeypatch, host, None, [], focus=None)
+    assert mac_native.close_front_window(host) is False
+
+
+def test_the_unsaved_edits_prompt_stays_in_charge_of_the_key_window(
+    host: _Host, monkeypatch: pytest.MonkeyPatch, tmp_path: Any,
+) -> None:
+    from app.dialogs import transcript_viewer as tv
+    from tests.app.test_viewer_edit_safety import _open, _write_outputs
+
+    viewer = _open(host, _write_outputs(tmp_path, ["json"]))
+    title = str(viewer.title())
+    _front(monkeypatch, host, title, [viewer, host], focus=None)
+    viewer._dirty = True
+    answers = iter([False, True])
+    asked: list[str] = []
+    monkeypatch.setattr(
+        tv.messagebox, "askyesno", lambda t, *a, **k: asked.append(t) or next(answers))
+    assert mac_native.close_front_window(host) is True
+    assert viewer.winfo_exists()
+    assert mac_native.close_front_window(host) is True
+    assert not viewer.winfo_exists()
+    assert asked == ["Discard changes?", "Discard changes?"]
+
+
+def test_the_real_stacking_order_lists_the_front_window_first() -> None:
+    try:
+        root = tk.Tk()
+    except tk.TclError as exc:  # pragma: no cover - no display
+        pytest.skip(f"no Tk display: {exc}")
+    try:
+        root.title("main")
+        back, front = tk.Toplevel(root), tk.Toplevel(root)
+        back.title("back")
+        front.title("front")
+        root.update()
+        front.lift()
+        root.update()
+        order = mac_native._stack_front_first(root)
+        assert order.index(str(front)) < order.index(str(back))
+        back.lift()
+        root.update()
+        assert mac_native._stack_front_first(root)[0] == str(back)
+    finally:
+        root.destroy()
+
+
+def test_the_key_window_is_unknown_off_macos(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(mac_native.sys, "platform", "win32")
+    assert mac_native.key_window_title() is None
+
+
+def test_the_key_window_is_unknown_when_the_objc_runtime_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mac_native.sys, "platform", "darwin")
+    monkeypatch.setattr(mac_native.ctypes.util, "find_library", lambda _name: None)
+    assert mac_native.key_window_title() is None
+    monkeypatch.setattr(mac_native.ctypes.util, "find_library", lambda _name: "libobjc.fake")
+
+    def refuse(*_a: Any, **_k: Any) -> Any:
+        raise OSError("no such library")
+
+    monkeypatch.setattr(mac_native.ctypes, "PyDLL", refuse)
+    assert mac_native.key_window_title() is None
+
+
 # ------------------------------------------------------- window marks, viewer
 
 class _Win:

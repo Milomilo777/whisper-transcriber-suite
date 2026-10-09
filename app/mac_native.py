@@ -23,7 +23,10 @@ as a drop on the window.
 """
 from __future__ import annotations
 
+import ctypes
+import ctypes.util
 import logging
+import sys
 import tkinter as tk
 from typing import Any, Callable
 
@@ -218,27 +221,102 @@ def show_main_window(app: Any) -> None:
 
 # ------------------------------------------------------------- Close Window
 
+def key_window_title() -> str | None:
+    """Title of the app's AppKit key window, the one macOS gives Command-W; None if unknown.
+
+    Asked through the Objective-C runtime with ``ctypes`` (no pyobjc), as
+    ``desktop_alert`` asks ``[NSApp isActive]``. None off macOS, when the runtime cannot be
+    reached, or when the app has no key window.
+    """
+    if sys.platform != "darwin":
+        return None
+    try:
+        path = ctypes.util.find_library("objc")
+        if not path:
+            return None
+        lib = ctypes.PyDLL(path)
+        ctypes.CDLL("/System/Library/Frameworks/AppKit.framework/AppKit")
+        lib.objc_getClass.restype = ctypes.c_void_p
+        lib.objc_getClass.argtypes = [ctypes.c_char_p]
+        lib.sel_registerName.restype = ctypes.c_void_p
+        lib.sel_registerName.argtypes = [ctypes.c_char_p]
+
+        def send(restype: Any, receiver: Any, selector: bytes) -> Any:
+            call = ctypes.PYFUNCTYPE(restype, ctypes.c_void_p, ctypes.c_void_p)(("objc_msgSend", lib))
+            return call(receiver, lib.sel_registerName(selector))
+
+        ns_app_class = lib.objc_getClass(b"NSApplication")
+        shared = send(ctypes.c_void_p, ns_app_class, b"sharedApplication") if ns_app_class else None
+        window = send(ctypes.c_void_p, shared, b"keyWindow") if shared else None
+        title = send(ctypes.c_void_p, window, b"title") if window else None
+        raw = send(ctypes.c_char_p, title, b"UTF8String") if title else None
+        return raw.decode("utf-8") if raw is not None else None
+    except (OSError, AttributeError, ctypes.ArgumentError, UnicodeDecodeError):
+        return None
+
+
+def _stack_front_first(app: Any) -> list[str]:
+    """Path names of the app's windows that are on screen, front window first.
+
+    ``wm stackorder`` lists them bottom to top; on Aqua Tk builds it from AppKit's own ordered
+    window list.
+    """
+    try:
+        return list(reversed([str(p) for p in app.tk.splitlist(app.tk.call("wm", "stackorder", "."))]))
+    except tk.TclError:
+        return []
+
+
+def _window_title(app: Any, path: str) -> str | None:
+    try:
+        return str(app.tk.call("wm", "title", path))
+    except tk.TclError:
+        return None
+
+
+def _front_window_path(app: Any) -> str | None:
+    """Path name of the window Command-W acts on; ``.`` or None when there is none to close.
+
+    The front window is the one macOS keeps as its key window. Tk's own focus is not a reliable
+    stand-in: after a dialog or an alert of the window was closed Tk can report no focus at all
+    while that window is still the key one (the same gap ``desktop_alert`` found for an inactive
+    app). So AppKit is asked first, and its key window is matched to a Tk window by title, the
+    front-most one when several share it. When AppKit cannot be asked, Tk's focus decides, and
+    with no focus the front window in the stacking order.
+    """
+    stack = _stack_front_first(app)
+    title = key_window_title()
+    if title is not None:
+        for path in stack:
+            if _window_title(app, path) == title:
+                return path
+        return None   # the key window is not a window of ours (a native panel)
+    try:
+        focus = app.focus_get()
+    except (tk.TclError, KeyError):
+        focus = None
+    if focus is not None:
+        return str(focus.winfo_toplevel())
+    return stack[0] if stack else None
+
+
 def close_front_window(app: Any) -> bool:
-    """Command-W: close the window that has the keyboard focus, never the main one.
+    """Command-W: close the front window, never the main one.
 
     Runs the window's own ``WM_DELETE_WINDOW`` handler, so a viewer with unsaved
     edits still asks first. A window without a handler is destroyed. Returns True
     when a secondary window was asked to close.
     """
-    try:
-        focus = app.focus_get()
-    except (tk.TclError, KeyError):
-        focus = None
-    window = focus.winfo_toplevel() if focus is not None else None
-    if window is None or window is app:
+    path = _front_window_path(app)
+    if path is None or path == str(app):
         return False
     try:
-        handler = str(app.tk.call("wm", "protocol", window, "WM_DELETE_WINDOW"))
+        handler = str(app.tk.call("wm", "protocol", path, "WM_DELETE_WINDOW"))
         if handler:
             app.tk.call(handler)
         else:
-            window.destroy()
-    except tk.TclError:
+            app.nametowidget(path).destroy()
+    except (tk.TclError, KeyError):
         logger.debug("Close Window failed", exc_info=True)
         return False
     return True

@@ -348,7 +348,11 @@ workflow runs on manual dispatch and on a push to the `macos-app-build` branch.
 - Window menu (Minimize Command-M, Zoom, Bring All to Front) and the Help menu with the native search
   field. **File > Close Window** (Command-W) closes the front secondary window by running its own
   close handler, so the transcript viewer still asks about unsaved edits. It never closes the main
-  window.
+  window. "Front" is AppKit's key window (`[NSApp keyWindow]` through `ctypes`), matched to a Tk
+  window by title (the front-most one when titles repeat); Tk's focus decides only when AppKit
+  cannot be asked. Measured on macOS 13.7.8 / Tk 8.6.16: after the viewer's Find dialog and an alert
+  were closed, `focus_get()` returned `None` while the viewer was still the key window, so a
+  focus-based Close Window silently did nothing; `wm stackorder .` stayed correct (lowest first).
 - Open files from Finder: never PyInstaller `argv_emulation` (it conflicts with Tk). The handler is
   registered before the first event-loop turn; files wait in a queue until the first-run windows and
   any modal window or question are done (the Tk grab, a mapped transient window, the quit question,

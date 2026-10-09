@@ -336,6 +336,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **macOS: File > Close Window works after a dialog was closed.** In the transcript viewer it did
+  nothing once the Find dialog and an alert had been closed, because Tk reports no focus then even
+  though the viewer is the front window. It now acts on the window macOS calls the key window (asked
+  from AppKit) and still never on the main window.
 - **Work offline: UDP and name-lookup gaps closed.** The network guard now also refuses UDP
   datagrams sent to another computer (`sendto` / `sendmsg`), the `gethostbyname`,
   `gethostbyaddr` and `getnameinfo` lookups and calls made on `_socket` directly, through a
