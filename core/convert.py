@@ -829,7 +829,8 @@ def dedupe_rolling_captions(segments: list[dict]) -> list[dict]:
     cleaned: list[dict] = []
     prev_words: list[str] = []
     for seg in segments:
-        words = str(seg.get("text", "")).split()
+        # normalize_text maps a null text to "" (str(None) was the word "None").
+        words = _writers.base.normalize_text(seg.get("text")).split()
         overlap = _prefix_suffix_overlap(prev_words, words)
         prev_words = words
         kept = words[overlap:]

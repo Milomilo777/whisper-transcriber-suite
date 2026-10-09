@@ -335,3 +335,13 @@ def test_convert_file_survives_hand_edited_json(tmp_path):
     assert "42" in body
     # Every segment made it into the output (nothing was skipped).
     assert len(convert.parse_to_segments(out)) == len(payload)
+
+
+def test_dedupe_rolling_captions_does_not_turn_null_text_into_the_word_none():
+    # A segment whose text is null has no words; it must be dropped, not
+    # written out as the string "None".
+    cleaned = convert.dedupe_rolling_captions([
+        {"start": 0.0, "end": 1.0, "text": None},
+        {"start": 1.0, "end": 2.0, "text": "kept"},
+    ])
+    assert [s["text"] for s in cleaned] == ["kept"]
