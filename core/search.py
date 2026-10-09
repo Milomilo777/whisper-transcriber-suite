@@ -893,7 +893,9 @@ def _semantic_query(
         vnorm = math.sqrt(sum(x * x for x in vec)) or 1.0
         dot = sum(a * b for a, b in zip(qvec, vec))
         score = dot / (qnorm * vnorm)
-        if limit <= 0:
+        if limit <= 0 or not math.isfinite(score):
+            # A damaged vector (NaN/inf) has no rank; as the first heap entry its NaN
+            # would make every later comparison false and starve the real hits.
             continue
         seq += 1
         entry = (float(score), -seq, SearchHit(

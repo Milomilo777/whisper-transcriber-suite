@@ -386,6 +386,34 @@ def test_semantic_query_streams_rows_and_keeps_only_the_best(tmp_path):
         conn.close()
 
 
+@pytest.mark.parametrize("bad", [float("nan"), float("inf")])
+def test_semantic_query_skips_non_finite_vectors(tmp_path, bad):
+    """A stored vector with NaN/inf scores NaN; as the first heap entry it would turn
+    every later comparison false and starve the real hits."""
+    p = tmp_path / "t.json"
+    _write_transcript(p, [
+        {"start": 0.0, "end": 1.0, "text": "damaged row"},
+        {"start": 1.0, "end": 2.0, "text": "a cat sat there"},
+        {"start": 2.0, "end": 3.0, "text": "another cat"},
+    ])
+    conn = _open_db_at(tmp_path)
+    try:
+        sm.index_file(str(p), conn=conn)  # FTS rows only
+        for index, vector in enumerate((
+            [bad, 1.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0], [0.9, 0.1, 0.0, 0.0],
+        )):
+            conn.execute(
+                "INSERT INTO embeddings (json_path, segment_index, vector, dim) VALUES (?, ?, ?, 4)",
+                (str(p), index, sm._vector_to_blob(vector)),
+            )
+        conn.commit()
+        for limit in (1, 2, 3):
+            hits = sm._semantic_query(conn, "a cat", _FakeEmbedder(), limit)
+            assert [h.segment_index for h in hits] == [1, 2][:limit], limit
+    finally:
+        conn.close()
+
+
 def test_indexed_files_table_tracks_one_row_per_file(tmp_path):
     p = tmp_path / "t.json"
     _write_transcript(p, [{"start": 0.0, "end": 1.0, "text": "x"}])
