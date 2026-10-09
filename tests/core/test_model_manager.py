@@ -362,6 +362,21 @@ def test_merged_catalog_ignores_unsafe_model_names():
 
 
 
+@pytest.mark.parametrize("size", [float("inf"), float("-inf"), float("nan"), 1e308])
+def test_a_non_finite_catalog_size_means_unknown_not_a_crash(size):
+    """JSON from the online catalog may say Infinity (Python's parser accepts it) or a
+    number so large that its byte count overflows: the download then starts with no size
+    estimate instead of raising OverflowError before the first byte."""
+    name = "faster-whisper-odd-model"
+    entry = {"name": name, "hf_repo": "Systran/faster-whisper-odd-model", "approx_size_gb": size}
+    cfg = {"model_catalog": {"odd": entry}}
+    assert mm._approx_model_bytes(cfg, name) == 0
+    info = mm.catalog_entry_info(cfg, "odd")
+    assert info is not None and info["approx_size_gb"] in (0.0, 1e308)
+    sane = {"model_catalog": {"odd": {**entry, "approx_size_gb": 2.0}}}
+    assert mm._approx_model_bytes(sane, name) == 2 * 1024 ** 3
+
+
 def test_merged_catalog_coerces_hostile_display_field_types():
     """A compromised/MITM'd online catalog entry with wrong-typed display
     fields must not crash the Advanced dialog's info popup: ``_show_model_info``

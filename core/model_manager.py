@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import errno
+import math
 import shutil
 import threading
 import time
@@ -490,7 +491,8 @@ def _merged_catalog(config: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
         if not isinstance(base.get("info"), str):
             base["info"] = ""
         _gb = base.get("approx_size_gb")
-        if isinstance(_gb, bool) or not isinstance(_gb, (int, float)):
+        if (isinstance(_gb, bool) or not isinstance(_gb, (int, float))
+                or not math.isfinite(_gb)):  # JSON "Infinity" / "NaN" parse as floats
             base["approx_size_gb"] = 0.0
         merged[slug] = base
     return merged
@@ -743,7 +745,9 @@ def _approx_model_bytes(config: dict[str, Any], name: str) -> int:
         if entry.get("name") == name:
             gb = entry.get("approx_size_gb") or 0.0
             if isinstance(gb, (int, float)) and not isinstance(gb, bool) and gb > 0:
-                return int(gb * 1024 ** 3)
+                size = gb * 1024 ** 3
+                # A value like 1e308 is finite, but its byte count is not.
+                return int(size) if math.isfinite(size) else 0
     return 0
 
 
