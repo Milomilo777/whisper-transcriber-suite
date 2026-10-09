@@ -39,7 +39,7 @@ import time
 from typing import Any, Callable
 
 from app.dpi import scale_factor, scaled
-from app.theme import tokens
+from app.theme import system_fonts, tokens
 
 logger = logging.getLogger(__name__)
 
@@ -542,7 +542,7 @@ class AudioVisualizer:
             self._image_id = c.create_image(0, 0, image=self._photo, anchor="nw")
             self._text_id = c.create_text(
                 img.size[0] - scaled(c, 10), scaled(c, 8), anchor="ne", fill=tokens.TEXT_SUBTLE,
-                font=("Segoe UI", 8), text="",
+                font=system_fonts.ui_font(c, "Segoe UI", 8), text="",
             )
         else:
             self._photo.paste(img)

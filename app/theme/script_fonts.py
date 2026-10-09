@@ -51,7 +51,7 @@ from tkinter import font as tkfont
 from tkinter import ttk
 
 from app import dpi
-from app.theme import tokens
+from app.theme import system_fonts, tokens
 
 logger = logging.getLogger(__name__)
 
@@ -326,6 +326,7 @@ def apply_theme_fonts(root: tk.Misc) -> None:
     up here, together with the theme, and a tree only switches to one later
     (``tree_row_tags``), which changes no style.
     """
+    system_fonts.apply(root)
     scale_theme_fonts(root)
     fix_tree_font(root)
     if not _on_windows():
