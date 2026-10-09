@@ -14,6 +14,7 @@ from unittest.mock import MagicMock
 import pytest
 
 import app.app as app_mod
+from app import mac_native, shortcuts
 from app.app import App
 from app.widgets import tabs
 
@@ -41,7 +42,11 @@ def _menu_host() -> _MenuHost:
 
 
 @pytest.fixture
-def menu_host():
+def menu_host(monkeypatch: pytest.MonkeyPatch):
+    # The Windows/Linux menu bar. The Mac one differs on purpose (app menu, Window menu,
+    # no Exit, About in the app menu); tests/app/test_mac_native.py covers it.
+    monkeypatch.setattr(mac_native, "is_aqua", lambda _w: False)
+    monkeypatch.setattr(shortcuts, "is_mac", lambda: False)
     root = _menu_host()
     try:
         root._build_menu()

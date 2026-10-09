@@ -167,7 +167,9 @@ def _font_of_line(text: tk.Text, line: int) -> str | None:
 def test_text_box_gets_a_proportional_font_and_per_line_script_fonts(windows: set[str], root: tk.Tk) -> None:
     text = tk.Text(root)
     assert script_fonts.use_text_font(text)
-    assert tkfont.Font(root=root, font=text.cget("font")).cget("family") == "Segoe UI"
+    # The family that was asked for; a resolved Font would report the stand-in on a machine
+    # without Segoe UI (the table is installed only in the fake above).
+    assert root.tk.splitlist(str(text.cget("font")))[0] == "Segoe UI"
     assert int(text.cget("spacing1")) == int(text.cget("spacing3")) == tokens.TEXT_LINE_GAP > 0
     text.insert("1.0", "\n".join(["English line", "မြန်မာ", SRI_LANKA, "हिन्दी", "日本語", "ไทย"]))
     script_fonts.tag_script_lines(text, language="ja")

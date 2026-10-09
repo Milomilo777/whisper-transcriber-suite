@@ -17,6 +17,7 @@ import pytest
 
 from app import app as appmod
 from app.domain import task_outputs
+from app.widgets import platform as platform_mod
 from app.services.transcription_service import TranscriptionService
 
 SRT = "1\n00:00:00,000 --> 00:00:02,000\nHello world again\n\n"
@@ -215,12 +216,17 @@ def test_last_result_card_gives_the_transcript_json_to_the_buttons(tk_root, tmp_
     assert fake._save_shareable_page_for.call_args[0][1] == str(tmp_path / "talk.json")
 
 
-def test_last_result_card_has_no_viewer_buttons_for_srt_plus_chapters(tk_root, tmp_path):
+@pytest.mark.parametrize(("darwin", "folder_button"), [(False, "Open folder"), (True, "Reveal in Finder")])
+def test_last_result_card_has_no_viewer_buttons_for_srt_plus_chapters(
+    tk_root, tmp_path, monkeypatch, darwin, folder_button
+):
+    # The folder button is worded for the platform: macOS selects the file in Finder.
+    monkeypatch.setattr(platform_mod, "is_darwin", lambda: darwin)
     fake = _result_card(tk_root, _srt_plus_chapters(tmp_path))
     buttons = _buttons(fake.last_result_body)
     assert "View transcript" not in buttons
     assert "Save shareable page" not in buttons
-    assert "Open folder" in buttons
+    assert folder_button in buttons
 
 
 # --- site 3: the word-count fallback ---------------------------------------

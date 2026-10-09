@@ -17,6 +17,7 @@ from unittest.mock import MagicMock
 import pytest
 
 import app.app as app_mod
+from app import mac_native
 from app.app import App
 from app.widgets import update_bar as bar_mod
 from app.widgets.notice import host_for
@@ -77,6 +78,9 @@ def host(monkeypatch, boxes):
     monkeypatch.setattr(app_mod, "_today", lambda: _TODAY)
     monkeypatch.setattr(app_mod, "_APP_VERSION", "1.9.3")
     monkeypatch.delenv(u.DISABLE_ENV_VAR, raising=False)
+    # Windows/Linux: the "Help" title carries the update dot. On macOS it stays exactly
+    # "Help" and only the menu item is dotted (covered below with is_aqua forced on).
+    monkeypatch.setattr(mac_native, "is_aqua", lambda _w: False)
     root = _Host()
     root.withdraw()
     root.app_config = {  # type: ignore[attr-defined]
@@ -526,3 +530,12 @@ def test_a_withdrawn_release_closes_its_bar(host):
     host._on_update_result(_info("v1.9.3", newer=False), manual=False)
     assert not _bar_visible(host)
     assert host._latest_update is None
+
+
+def test_on_macos_the_help_title_stays_plain_and_only_the_item_is_dotted(host, monkeypatch):
+    monkeypatch.setattr(mac_native, "is_aqua", lambda _w: True)
+    host.app_config["update_latest_seen"] = "v1.9.4"
+    host._refresh_update_signs()
+    title, item = _labels(host)
+    assert title == app_mod._HELP_MENU_LABEL
+    assert "1.9.4 available" in item

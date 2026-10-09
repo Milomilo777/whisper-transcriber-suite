@@ -289,6 +289,9 @@ def test_viewer_toolbars_fit_the_window(root, tmp_path, monkeypatch, factor) -> 
 
     monkeypatch.setattr(subtitle_edit, "is_supported", lambda: True)
     monkeypatch.setattr(sys, "platform", "win32")  # scale_factor follows tk scaling
+    # python-vlc reads Windows-only environment variables once sys.platform says win32
+    # (KeyError 'ProgramFiles' on a Mac); the toolbars do not depend on a player.
+    monkeypatch.setattr(tv, "_try_load_vlc", lambda: (None, "no player in this test"))
     _sv_ttk(root, "light")
     _scale(root, factor)
     script_fonts.scale_theme_fonts(root, factor)
