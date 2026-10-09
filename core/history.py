@@ -220,6 +220,21 @@ class HistoryDB:
                         "ALTER TABLE transcriptions "
                         "ADD COLUMN task TEXT DEFAULT 'transcribe'"
                     )
+            # ``speed_x``: the finished run's overall speed (audio seconds per
+            # decode second, core.speed_meter); 0 = not measured. ``device``:
+            # what it ran on ("cpu", "cuda", ...), "" when unknown.
+            if "speed_x" not in cols:
+                with self._conn:
+                    self._conn.execute(
+                        "ALTER TABLE transcriptions "
+                        "ADD COLUMN speed_x REAL DEFAULT 0"
+                    )
+            if "device" not in cols:
+                with self._conn:
+                    self._conn.execute(
+                        "ALTER TABLE transcriptions "
+                        "ADD COLUMN device TEXT DEFAULT ''"
+                    )
         except sqlite3.Error as e:
             logger.exception("history.db column migration failed: %s", e)
 
@@ -491,8 +506,15 @@ class HistoryDB:
                              duration_seconds: float = 0.0,
                              language: str = "",
                              error: str = "",
-                             word_count: int = 0) -> bool:
+                             word_count: int = 0,
+                             speed_x: float = 0.0,
+                             device: str = "",
+                             model: str = "") -> bool:
         """Returns True iff a row was actually updated.
+
+        ``speed_x`` / ``device`` record how fast the run went and on what;
+        a non-empty ``model`` replaces the model stored at insert time with
+        the one the worker reports it actually used.
 
         See finish_download's docstring: an id that matches no row
         (a swallowed insert_transcription failure, or a stale id after
@@ -504,9 +526,11 @@ class HistoryDB:
             cur = conn.execute(
                 "UPDATE transcriptions SET status=?, finished_at=?,"
                 " output_paths=?, duration_seconds=?, language=?, error=?,"
-                " word_count=? WHERE id=?",
+                " word_count=?, speed_x=?, device=?,"
+                " model=COALESCE(NULLIF(?, ''), model) WHERE id=?",
                 (status, int(time.time()), paths_json, duration_seconds,
-                 language, error, int(word_count or 0), row_id),
+                 language, error, int(word_count or 0), float(speed_x or 0.0),
+                 str(device or ""), str(model or ""), row_id),
             )
             if cur.rowcount != 1:
                 logger.error(

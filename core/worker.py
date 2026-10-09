@@ -12,10 +12,16 @@ Events emitted:
     CPU. Older parents that don't read them keep working unchanged.
   - ``startup_error``                  : model failed to load; exiting
   - ``log``       (message)             : free-text log line
-  - ``progress``  (percent)             : current task progress 0–100
+  - ``progress``  (percent[, speed_x, eta_s])
+                                       : current task progress 0–100; the
+    additive speed fields are the decode's smoothed speed (x real time) and
+    time left in seconds (core.speed_meter), sent once there is enough data.
   - ``language_detected`` (language, probability, file_path)
   - ``started``   (file_path[, task_id])  : task accepted
   - ``done``      (file_path[, task_id])  : task finished writing outputs
+    (additive: word_count, audio_duration, no_speech, and speed_x,
+    speed_audio_s, speed_seconds, speed_resumed, model, device when the run
+    measured its speed)
   - ``error``     (message[, file_path][, task_id]): task or worker error
   - ``control_applied`` (action, task_id[, delayed])
                                           : a cancel/pause/resume was applied
@@ -122,6 +128,33 @@ def _set_current_task(task: "TranscriptionTask | None") -> None:
     global _current_task
     with _state_lock:
         _current_task = task
+
+
+def _speed_fields(task: "TranscriptionTask") -> dict[str, Any]:
+    """Additive "done" fields: the run's overall speed and what it covered.
+
+    Empty when the run measured no speed (older code paths, nothing
+    decoded). ``model`` / ``device`` name what produced the number so the
+    result card and the history row can say "with small on CPU".
+    """
+    speed = float(getattr(task, "speed_x", 0.0) or 0.0)
+    if speed <= 0.0:
+        return {}
+    fields: dict[str, Any] = {
+        "speed_x": round(speed, 3),
+        "speed_audio_s": round(float(getattr(task, "speed_audio_s", 0.0) or 0.0), 2),
+        "speed_seconds": round(float(getattr(task, "speed_seconds", 0.0) or 0.0), 2),
+        "speed_resumed": bool(getattr(task, "speed_resumed", False)),
+    }
+    try:
+        from .transcriber import _current_backend_and_model
+
+        backend, model = _current_backend_and_model()
+        fields["model"] = model if backend == "faster_whisper" else backend
+        fields["device"] = str(get_effective_device().device or "")
+    except Exception:  # noqa: BLE001 - labels only; the number stands alone
+        logger.debug("speed labels unavailable", exc_info=True)
+    return fields
 
 
 # Parent loss. The app is the only writer of this worker's stdin pipe, so
@@ -778,7 +811,20 @@ def _main() -> int:
         emit("log", message=message)
 
     def progress_cb(percent: float) -> None:
-        emit("progress", percent=percent)
+        # Additive fields: the decode's smoothed speed (x real time) and
+        # time left in seconds, present only once the meter has enough data.
+        extra: dict[str, float] = {}
+        task = _current_task
+        if task is not None:
+            speed = getattr(task, "live_speed_x", None)
+            eta = getattr(task, "live_eta_s", None)
+            if speed is not None:
+                extra["speed_x"] = round(float(speed), 3)
+            if eta is not None:
+                extra["eta_s"] = round(float(eta), 1)
+            if getattr(task, "speed_live", True) is False:
+                extra["speed_live"] = False
+        emit("progress", percent=percent, **extra)
 
     # Audit D8: heartbeat thread. Without this the parent has no way
     # to distinguish "worker is mid-CPU-bound-transcribe" from
@@ -1067,6 +1113,7 @@ def _main() -> int:
                     getattr(task, "audio_duration", 0.0) or 0.0
                 ),
                 no_speech=bool(getattr(task, "no_speech", False)),
+                **_speed_fields(task),
             )
         except Exception as e:  # noqa: BLE001
             if isinstance(e, OSError) and _parent_lost.is_set():

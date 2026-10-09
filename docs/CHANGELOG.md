@@ -19,6 +19,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   "Chime on completion" setting, now "Chime and notify on completion" on macOS; one per job, one
   summary per queue). Clicking the banner opens Script Editor, not the app. Windows and Linux are
   unchanged (`docs/MACOS_BUILD_NOTES.md`).
+- **Speed and time left.** The Queue tab shows how fast each transcription runs and roughly how
+  long is left (`about 4.8x, 6 min left`), and the result card says e.g. "42 min of audio
+  transcribed in 3 min 40 s (11.5x) with small on CPU". The speed comes from segment end times on a clock that
+  stops while paused; the history records speed, model and device. Rules in `docs/SPEED_METER.md`.
 - **macOS native feel.** The Mac app has an app menu with About and Settings (Command-comma), the
   standard Window menu, a Help menu with the system search field, Command-W for secondary windows,
   and "Reveal in Finder". Files from Finder ("Open With", a drop on the Dock icon) wait until
@@ -336,6 +340,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Resuming a job and time ranges no longer stall for ten minutes.** The ffmpeg that cuts the
+  audio slice inherited the worker's command pipe as its stdin and, on Windows, hung at the end of
+  the slice until its 600-second timeout; a resume then started over from the beginning. It now
+  gets no stdin and finishes in about a second.
 - **Work offline: UDP and name-lookup gaps closed.** The network guard now also refuses UDP
   datagrams sent to another computer (`sendto` / `sendmsg`), the `gethostbyname`,
   `gethostbyaddr` and `getnameinfo` lookups and calls made on `_socket` directly, through a
