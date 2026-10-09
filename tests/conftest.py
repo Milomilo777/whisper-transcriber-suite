@@ -209,6 +209,34 @@ except Exception:  # noqa: BLE001 — no Tk on this interpreter
     pass
 
 
+def _cancel_pending_after_on_destroy() -> None:
+    """Cancel every pending after() of a root when the root is destroyed.
+
+    Tcl runs timers of ALL interpreters in a thread, so a call left pending by a destroyed
+    root fires during the next test's ``update()``, fails with "invalid command name", and on
+    Tk 8.6.16 / macOS the error dialog of the dead interpreter then hangs that ``update()``.
+    The app's own loops cancel on destroy; this net keeps one test's loose timer (a loop of a
+    test stand-in, a library timer) from hanging the next test.
+    """
+    original = _tkinter.Tk.destroy
+
+    def destroy(self):  # type: ignore[no-untyped-def]
+        try:
+            for ident in self.tk.splitlist(self.tk.call("after", "info")):
+                self.tk.call("after", "cancel", ident)
+        except _tkinter.TclError:
+            pass
+        original(self)
+
+    _tkinter.Tk.destroy = destroy  # type: ignore[method-assign]
+
+
+try:
+    _cancel_pending_after_on_destroy()
+except Exception:  # noqa: BLE001 — no Tk on this interpreter
+    pass
+
+
 def pytest_terminal_summary(terminalreporter):  # type: ignore[no-untyped-def]
     """Report how many times tk.Tk() needed the init.tcl retry (never silent)."""
     if _tk_init_retry.retries:

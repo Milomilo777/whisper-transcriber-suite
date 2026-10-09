@@ -353,6 +353,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Closing a window no longer leaves layout and status timers running.** The tab pages' layout check and
+  the Work-offline status bar now cancel their timers when destroyed; before, a leftover timer failed with
+  an "invalid command name" error and on macOS could freeze the next window's redraw.
 - **Save shareable page can no longer overwrite the transcript or media on a Mac.** The check that
   refuses those two files compared names with a case rule that only Windows applies, so on a Mac
   volume `T.JSON` passed as a new name and replaced `t.json`. It now asks the filesystem; the same

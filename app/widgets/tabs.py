@@ -88,6 +88,33 @@ def fit_or_scroll(page: tk.Misc) -> ttk.Frame:
     inner = ttk.Frame(canvas)
     window = canvas.create_window((0, 0), window=inner, anchor="nw")
     last: dict[str, tuple[int, int, int]] = {}
+    # Pending after()/after_idle() calls. Destroying the page deletes the Tcl commands they
+    # point at, so a call left pending fails later with 'invalid command name'.
+    timers: set[str] = set()
+    closed: list[bool] = []
+
+    def _after(ms: int | None, func: Callable[[], None]) -> None:
+        if closed:
+            return
+        ident = ""
+
+        def _fit_or_scroll_timer() -> None:
+            timers.discard(ident)
+            func()
+
+        ident = canvas.after_idle(_fit_or_scroll_timer) if ms is None else canvas.after(ms, _fit_or_scroll_timer)
+        timers.add(ident)
+
+    def _cancel_timers(event: tk.Event) -> None:
+        if event.widget is not canvas:
+            return
+        closed.append(True)
+        for ident in list(timers):
+            try:
+                canvas.after_cancel(ident)
+            except tk.TclError:
+                pass
+        timers.clear()
 
     def _layout() -> None:
         try:
@@ -115,17 +142,18 @@ def fit_or_scroll(page: tk.Misc) -> ttk.Frame:
         except tk.TclError:
             return
         _layout()
-        canvas.after(400, _poll)
+        _after(400, _poll)
 
     canvas.bind("<Configure>", lambda _e: _layout())
-    canvas.after(50, _poll)
+    canvas.bind("<Destroy>", _cancel_timers, add="+")
+    _after(50, _poll)
     if sys.platform == "darwin":
         # The notebook maps this page again when its tab is selected (the canvas itself gets
         # no <Map>): repaint the embedded content once per switch, not on a timer, so an
         # idle window stays idle.
         page.bind(
             "<Map>",
-            lambda _e: canvas.after_idle(lambda: _redraw_embedded_window(canvas, window)),
+            lambda _e: _after(None, lambda: _redraw_embedded_window(canvas, window)),
             add="+",
         )
 

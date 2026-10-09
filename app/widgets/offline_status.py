@@ -240,6 +240,7 @@ class OfflineStatusBar(ttk.Frame):
         self._post = post_to_main
         self._poll = poll
         self._after_id: str | None = None
+        self._closed = False
         self.check: offline.ConnectionCheck | None = None
         self._log_window: NetworkLogWindow | None = None
         ttk.Separator(self, orient="horizontal").pack(fill="x", pady=(0, 4))
@@ -249,6 +250,21 @@ class OfflineStatusBar(ttk.Frame):
         self.label = ttk.Label(row, textvariable=self.text_var, anchor="w")
         self.label.pack(side="left", fill="x", expand=True)
         ttk.Button(row, text="Network log", command=self.open_log).pack(side="right")
+        self.bind("<Destroy>", self._on_destroy, add="+")
+
+    def _on_destroy(self, event: tk.Event) -> None:
+        # A tick left pending would call a deleted command ('invalid command name').
+        if event.widget is self:
+            self._closed = True
+            self._cancel_tick()
+
+    def _cancel_tick(self) -> None:
+        if self._after_id is not None:
+            try:
+                self.after_cancel(self._after_id)
+            except tk.TclError:
+                pass
+            self._after_id = None
 
     @property
     def visible(self) -> bool:
@@ -260,17 +276,15 @@ class OfflineStatusBar(ttk.Frame):
         self.tick()
 
     def hide(self) -> None:
-        if self._after_id is not None:
-            self.after_cancel(self._after_id)
-            self._after_id = None
+        self._cancel_tick()
         if self.visible:
             self.pack_forget()
 
     def tick(self) -> None:
         """Look at the open connections now and every :data:`POLL_MS` while shown."""
-        if self._after_id is not None:
-            self.after_cancel(self._after_id)
-            self._after_id = None
+        if self._closed:
+            return
+        self._cancel_tick()
         try:
             self.check = self._poll()
         except Exception as e:  # noqa: BLE001 - shown as "unknown", never as clean
