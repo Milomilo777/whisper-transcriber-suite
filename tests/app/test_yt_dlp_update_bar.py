@@ -21,7 +21,7 @@ from core import yt_dlp_update as ytu
 
 _BORROWED = (
     "offer_yt_dlp_update", "_ensure_yt_dlp_bar", "_yt_dlp_bar_dismiss",
-    "_yt_dlp_update_now", "_yt_dlp_update_done", "ensure_online",
+    "_yt_dlp_update_now", "_yt_dlp_update_done", "ensure_online", "hide_yt_dlp_offer",
 )
 _FAILURE = "ERROR: unable to download video data: HTTP Error 403: Forbidden"
 
@@ -101,7 +101,7 @@ def test_a_failure_offers_the_update_above_the_tabs(host):
     assert _visible(host)
     bar = host._yt_dlp_bar
     assert bar.text_var.get().startswith("The video downloader may be out of date.")
-    assert f"about {ytu.DOWNLOAD_MB} MB" in bar.text_var.get()
+    assert f"about {ytu.download_mb()} MB" in bar.text_var.get()  # 18 on Windows and Linux, 54 on a Mac
     assert bar.update_button.instate(["!disabled"])
     assert str(bar.update_button.cget("text")) == "Update it"
     assert str(bar.dismiss_button.cget("text")) == "Not now"
@@ -206,9 +206,87 @@ def test_an_old_mac_keeps_the_hint_and_names_the_download_page(mac_app, monkeypa
     assert RELEASES_PAGE_URL in hints[0]
 
 
-def test_other_systems_show_the_same_size_as_before(host):
+def test_other_systems_show_the_same_size_as_before(host, monkeypatch):
+    monkeypatch.setattr(ytu, "_is_macos", lambda: False)  # the tests also run on a Mac
     host.offer_yt_dlp_update(_FAILURE)
     assert f"about {ytu.DOWNLOAD_MB} MB" in host._yt_dlp_bar.text_var.get()
+
+
+# ---------------------------------------- the offer goes away once yt-dlp works
+
+
+def test_a_success_takes_the_offer_down_and_a_later_failure_offers_again(host):
+    host.offer_yt_dlp_update(_FAILURE)
+    assert _visible(host)
+    host.hide_yt_dlp_offer()
+    assert not _visible(host)
+    host.offer_yt_dlp_update(_FAILURE)  # "Not now" was not clicked, so it may come back
+    assert _visible(host)
+
+
+def test_a_success_leaves_an_update_in_progress_alone(host, updater):
+    host.offer_yt_dlp_update(_FAILURE)
+    host._yt_dlp_bar.update_button.invoke()
+    assert host._yt_dlp_bar.text_var.get() == "Updating the video downloader…"
+    host.hide_yt_dlp_offer()
+    assert _visible(host)
+    _run_posted(host)
+    assert "updated to" in host._yt_dlp_bar.text_var.get()
+    host.hide_yt_dlp_offer()  # the result stays until the person closes it
+    assert _visible(host)
+
+
+def test_a_success_without_an_offer_does_nothing(host):
+    host.hide_yt_dlp_offer()
+    assert host._yt_dlp_bar is None
+
+
+def test_not_now_stays_not_now_after_a_success(host):
+    host.offer_yt_dlp_update(_FAILURE)
+    host._yt_dlp_bar.dismiss_button.invoke()
+    host.hide_yt_dlp_offer()
+    host.offer_yt_dlp_update(_FAILURE)
+    assert not _visible(host)
+
+
+def test_a_format_lookup_that_worked_hides_the_offer():
+    from unittest.mock import MagicMock
+
+    app = MagicMock()
+    app.download_url_var.get.return_value = "https://www.youtube.com/watch?v=abc"
+    FormatService(app)._handle_event("formats", "https://www.youtube.com/watch?v=abc", {"formats": []})
+    app.hide_yt_dlp_offer.assert_called_once_with()
+
+
+def test_a_format_lookup_that_failed_keeps_the_offer():
+    from unittest.mock import MagicMock
+
+    app = MagicMock()
+    app.download_url_var.get.return_value = "https://www.youtube.com/watch?v=abc"
+    app.app_config = {"cookies_from_browser": ""}
+    FormatService(app)._handle_event("error", "https://www.youtube.com/watch?v=abc", _FAILURE)
+    app.hide_yt_dlp_offer.assert_not_called()
+    app.offer_yt_dlp_update.assert_called_once()
+
+
+@pytest.mark.parametrize("kind,payload,hides", [
+    ("done", "finished", True), ("done_full", {"status": "finished"}, True),
+    ("done", "cancelled", False), ("done_full", {"status": "error"}, False),
+])
+def test_a_finished_download_hides_the_offer(kind, payload, hides):
+    """The real poll dispatch: only a download that finished takes the offer down."""
+    from unittest.mock import MagicMock
+
+    app = MagicMock()
+    svc = DownloadService(app)
+    svc._finish = MagicMock()  # type: ignore[method-assign]
+    task = types.SimpleNamespace()
+    app.download_events = Queue()
+    app.download_events.put((kind, task, payload))
+    app._closing = False
+    svc.poll()
+    svc._finish.assert_called_once()
+    assert app.hide_yt_dlp_offer.called is hides
 
 
 def test_not_now_hides_it_for_the_rest_of_the_launch(host, updater):

@@ -1220,6 +1220,9 @@ class App(tk.Tk):
         self._yt_dlp_bar: Any = None
         self._yt_dlp_bar_dismissed = False
         self._yt_dlp_updating = False
+        # True while the bar shows only the offer (not an update's progress or
+        # result): a later successful lookup or download takes it down again.
+        self._yt_dlp_offer_open = False
         # The gentle star invitation (core.star_invite): local counters in
         # app_config, the bar is built on first use.
         self._star_bar: Any = None
@@ -6196,13 +6199,25 @@ class App(tk.Tk):
                 self.log("Note: " + yt_dlp_update.OUTDATED_HINT)
             return
         logger.info("Offering a yt-dlp update after: %s", reason)
+        self._yt_dlp_offer_open = True
         self._ensure_yt_dlp_bar().show_offer(
             "The video downloader may be out of date. An update (about "
             f"{yt_dlp_update.download_mb()} MB) often fixes failing YouTube downloads.",
             before=self.nb,
         )
 
+    def hide_yt_dlp_offer(self) -> None:
+        """Take the "may be out of date" offer down after a format lookup or a
+        download worked (main thread). Only the plain offer: never an update's
+        progress or result. Not "Not now", so a later failure can offer again."""
+        if not _inst_attr(self, "_yt_dlp_offer_open", False):
+            return
+        self._yt_dlp_offer_open = False
+        if self._yt_dlp_bar is not None and not self._yt_dlp_updating:
+            self._yt_dlp_bar.hide()
+
     def _yt_dlp_bar_dismiss(self) -> None:
+        self._yt_dlp_offer_open = False
         self._yt_dlp_bar_dismissed = True
         if self._yt_dlp_bar is not None:
             self._yt_dlp_bar.hide()
@@ -6211,6 +6226,7 @@ class App(tk.Tk):
         """"Update it": update the user-writable copy off the Tk thread."""
         if self._yt_dlp_updating or self._closing:
             return
+        self._yt_dlp_offer_open = False
         if not self.ensure_online("Updating the video downloader"):
             return
         from core import yt_dlp_update

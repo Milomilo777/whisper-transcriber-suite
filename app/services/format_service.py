@@ -342,6 +342,11 @@ class FormatService:
                 app.update_caption_shortcut_state()
             return
 
+        # A lookup that worked: an earlier "may be out of date" offer no longer applies.
+        hide_offer = getattr(app, "hide_yt_dlp_offer", None)
+        if callable(hide_offer):
+            hide_offer()
+
         if kind == "smtv_formats":
             self._apply_smtv_formats(payload)
             return

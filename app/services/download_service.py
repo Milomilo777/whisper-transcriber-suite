@@ -773,6 +773,13 @@ class DownloadService:
         except Exception:  # noqa: BLE001
             logger.exception("Failed to save the yt-dlp update time")
 
+    def _hide_yt_dlp_offer_after(self, status: object) -> None:
+        """A download that finished means yt-dlp works: take an earlier "may be
+        out of date" offer down (main thread)."""
+        hide = getattr(self.app, "hide_yt_dlp_offer", None)
+        if status == "finished" and callable(hide):
+            hide()
+
     def _offer_yt_dlp_update(self, reason: str) -> None:
         """Ask the UI to show the "may be out of date" bar (from any thread)."""
         offer = getattr(self.app, "offer_yt_dlp_update", None)
@@ -2425,8 +2432,10 @@ class DownloadService:
             app.subtitle_status_var.set(payload)
         elif kind == "done":
             self._finish(task, payload, saved_path=None)
+            self._hide_yt_dlp_offer_after(payload)
         elif kind == "done_full":
             self._finish(task, payload["status"], saved_path=payload.get("saved_path"))
+            self._hide_yt_dlp_offer_after(payload["status"])
         elif kind == "error":
             # Late-error guard, the error-event twin of _finish's
             # late-success guard: the worker posts "error" while the task
