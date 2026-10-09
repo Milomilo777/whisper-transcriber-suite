@@ -17,16 +17,19 @@ click bring its window forward, and nothing here promises that. No pyobjc and no
 
 The existing "Chime on completion" setting (View menu, ``chime_on_complete``) is the only
 completion-cue setting there is, so it also switches this notification off; no second option.
-A notification is posted only while the app has no Tk focus (it is in the background, minimised
-or hidden): a person looking at the window already sees the result card. One per finished job; when
+A notification is posted only while the person is not looking at the app (see
+``window_has_focus``): a person looking at the window already sees the result card. One per finished job; when
 the last job of a queue of two or more finishes, one summary replaces that job's own notification.
 """
 from __future__ import annotations
 
+import ctypes
+import ctypes.util
 import logging
 import os
 import re
 import subprocess
+import sys
 import threading
 import tkinter as tk
 from typing import Any
@@ -40,8 +43,9 @@ OSASCRIPT = "/usr/bin/osascript"
 #: Seconds before a stuck ``osascript`` is killed (it normally returns in well under a second).
 OSASCRIPT_TIMEOUT_S = 15
 
-JOB_TITLE = "Whisper Transcriber Suite — transcription done"
-QUEUE_TITLE = "Whisper Transcriber Suite — queue done"
+#: Short on purpose: a banner cuts a title at about 35 characters, and its icon is Script Editor's,
+#: so the app's name is what tells the person whose notification this is.
+APP_TITLE = "Whisper Transcriber Suite"
 
 #: View-menu wording on macOS, where the setting also controls the notification.
 MAC_CHIME_LABEL = "Chime and notify on completion"
@@ -128,16 +132,65 @@ def post_notification(text: str, title: str) -> None:
 
 # ---------------------------------------------------------------------- when to post
 
-def window_has_focus(app: Any) -> bool:
-    """True when this app has the keyboard focus (Tk's view, not System Events').
+def _on_mac() -> bool:
+    return sys.platform == "darwin"
 
-    ``focus_displayof`` is None while the app is in the background, minimised or hidden. A Tk
-    that cannot answer counts as "no focus": an extra banner is harmless.
+
+def _ns_app_active() -> bool | None:
+    """``[NSApp isActive]`` through the Objective-C runtime; None where that cannot be asked.
+
+    Tk's own focus is not enough. Measured on macOS 13 / Tk 8.6.16 (docs/MACOS_BUILD_NOTES.md):
+    with another app in front, or with the app hidden (Cmd+H), ``focus -displayof`` still names a
+    widget while the app is inactive. No pyobjc and no System Events: the same ``ctypes`` calls
+    ``tools/mac_native_probe.py`` uses.
+    """
+    if not _on_mac():
+        return None
+    try:
+        path = ctypes.util.find_library("objc")
+        if not path:
+            return None
+        lib = ctypes.PyDLL(path)
+        ctypes.CDLL("/System/Library/Frameworks/AppKit.framework/AppKit")
+        lib.objc_getClass.restype = ctypes.c_void_p
+        lib.objc_getClass.argtypes = [ctypes.c_char_p]
+        lib.sel_registerName.restype = ctypes.c_void_p
+        lib.sel_registerName.argtypes = [ctypes.c_char_p]
+        ns_app_class = lib.objc_getClass(b"NSApplication")
+        if not ns_app_class:
+            return None
+        shared = ctypes.PYFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p)(
+            ("objc_msgSend", lib))(ns_app_class, lib.sel_registerName(b"sharedApplication"))
+        if not shared:
+            return None
+        active = ctypes.PYFUNCTYPE(ctypes.c_byte, ctypes.c_void_p, ctypes.c_void_p)(
+            ("objc_msgSend", lib))(shared, lib.sel_registerName(b"isActive"))
+        return bool(active)
+    except (OSError, AttributeError, ctypes.ArgumentError):
+        return None
+
+
+def window_has_focus(app: Any) -> bool:
+    """True when the person is looking at the app: it is the active app, its main window is on
+    screen and Tk has a focus widget.
+
+    Each test alone misses a case (macOS 13, measured): a minimised main window leaves the app
+    active with a focus widget; another app in front or Cmd+H leaves a focus widget while the app is
+    inactive. A Tk that cannot answer counts as "no focus": an extra banner is harmless.
     """
     try:
-        return app.focus_displayof() is not None
+        if str(app.state()) in ("iconic", "withdrawn"):
+            return False
+    except tk.TclError:
+        return False
+    except AttributeError:
+        pass
+    try:
+        if app.focus_displayof() is None:
+            return False
     except (tk.TclError, AttributeError):
         return False
+    return _ns_app_active() is not False
 
 
 def _cue_enabled(app: Any) -> bool:
@@ -181,12 +234,11 @@ def job_done(app: Any, task: Any, output_count: int) -> None:
         if window_has_focus(app):
             return
         if not busy and total >= 2:
-            post_notification(f"{total} files transcribed", QUEUE_TITLE)
+            post_notification(f"Queue done: {total} files transcribed", APP_TITLE)
             return
         name = os.path.basename(str(getattr(task, "file_path", "")))
         post_notification(
-            f"Wrote {output_count} output file{'' if output_count == 1 else 's'} for {name}",
-            JOB_TITLE)
+            f"Done: {name} ({output_count} output file{'' if output_count == 1 else 's'})", APP_TITLE)
     except Exception:  # noqa: BLE001 - a notification must never break the result card
         logger.exception("Desktop notification failed")
 

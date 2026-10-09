@@ -55,7 +55,7 @@ _results: list[tuple[str, str, str]] = []
 USED_BY_APP = (
     "special_menus", "show_preferences", "show_preferences_createcommand", "about",
     "show_help", "open_document", "reopen_application", "window_menu", "help_menu",
-    "window_attributes", "appearance_isdark", "appearance_events", "system_font_name",
+    "window_attributes", "appearance_isdark", "appearance_events", "system_font_name", "app_active",
 )
 
 
@@ -431,6 +431,21 @@ def effective_appearance_name(oc: _ObjC) -> str:
     return oc.string(oc.msg(appearance, "name")) if appearance else ""
 
 
+def probe_app_active(root: tk.Tk, oc: _ObjC) -> None:
+    """``[NSApp isActive]`` and Tk's own view of the window, for the notification focus check.
+
+    The probe activated the app at start, so ``isActive`` must be true here. The cases where Tk's
+    focus and NSApp disagree (another app in front, Cmd+H) need a person or a second app: see the
+    table in docs/MACOS_BUILD_NOTES.md, measured with the app harness of card C2.73.
+    """
+    active = bool(oc.msg(oc.app(), "isActive", restype=ctypes.c_byte))
+    hidden = bool(oc.msg(oc.app(), "isHidden", restype=ctypes.c_byte))
+    focus = root.tk.call("focus", "-displayof", ".")
+    _report("PASS" if active and not hidden else "FAIL", "app_active",
+            f"NSApp isActive={int(active)} isHidden={int(hidden)}; wm state={root.state()!r}; "
+            f"focus -displayof={str(focus)!r}")
+
+
 def probe_appearance_static(root: tk.Tk, oc: _ObjC) -> None:
     _report("INFO", "tk_patchlevel", str(root.tk.call("info", "patchlevel")))
     try:
@@ -587,6 +602,7 @@ def main(argv: list[str]) -> int:
             ("reopen_application", lambda: probe_reopen(root, oc, events)),
             ("dock_menu", lambda: probe_dock_menu(root, oc)),
             ("window_attributes", lambda: probe_window_attributes(root, oc)),
+            ("app_active", lambda: probe_app_active(root, oc)),
             ("appearance_isdark", lambda: probe_appearance_static(root, oc)),
             ("appearance_events", lambda: probe_appearance_events(root, oc, flip)),
             ("system_fonts", lambda: probe_system_fonts(root)),

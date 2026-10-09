@@ -143,7 +143,7 @@ def test_the_appearance_hooks_the_app_uses_are_the_ones_the_probe_proves() -> No
     assert tuple(probe.APPEARANCE_EVENTS[:2]) == tuple(system_appearance.MAC_APPEARANCE_EVENTS)
     assert "<<TkSystemAppearanceChanged>>" in probe.APPEARANCE_EVENTS      # checked, reported, unused
     assert system_fonts.SYSTEM_UI_FAMILY in probe.SYSTEM_FONT_CANDIDATES
-    for hook in ("appearance_isdark", "appearance_events", "system_font_name"):
+    for hook in ("appearance_isdark", "appearance_events", "system_font_name", "app_active"):
         assert hook in probe.USED_BY_APP
 
 

@@ -20,6 +20,8 @@ import pytest
 from app import desktop_alert as da
 from app import mac_native
 
+_REAL_NS_APP_ACTIVE = da._ns_app_active   # before the autouse stub replaces it
+
 # ----------------------------------------------------------------------------- fakes
 
 
@@ -29,7 +31,8 @@ def _task(path: str = "/media/talk.mp4", *, start: float | None = 100.0, end: fl
 
 
 def _app(*, aqua: bool = True, focused: bool = False, queue: list[Any] | None = None,
-         chime: bool | None = True, config_chime: bool = True, closing: bool = False) -> Any:
+         chime: bool | None = True, config_chime: bool = True, closing: bool = False,
+         state: str = "normal") -> Any:
     def focus_displayof() -> Any:
         return object() if focused else None
 
@@ -38,7 +41,13 @@ def _app(*, aqua: bool = True, focused: bool = False, queue: list[Any] | None = 
         tk=SimpleNamespace(call=lambda *a: "aqua" if aqua else "win32"),
         queue=[] if queue is None else queue, chime_on_complete_var=var,
         app_config={"chime_on_complete": config_chime}, _closing=closing,
-        focus_displayof=focus_displayof)
+        focus_displayof=focus_displayof, state=lambda: state)
+
+
+@pytest.fixture(autouse=True)
+def _nsapp_is_active(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Without a Mac there is no NSApp: the default answer is "the app is the active one"."""
+    monkeypatch.setattr(da, "_ns_app_active", lambda: True)
 
 
 @pytest.fixture
@@ -229,18 +238,18 @@ def test_a_missing_osascript_starts_nothing_and_says_so_once(monkeypatch: pytest
 
 def test_an_unfocused_mac_window_gets_one_notification(posted: list[tuple[str, str]]) -> None:
     da.job_done(_app(), _task("/media/talk.mp4"), 3)
-    assert posted == [("Wrote 3 output files for talk.mp4", da.JOB_TITLE)]
+    assert posted == [("Done: talk.mp4 (3 output files)", da.APP_TITLE)]
 
 
 def test_one_output_file_is_singular(posted: list[tuple[str, str]]) -> None:
     da.job_done(_app(), _task("/m/a.mp3"), 1)
-    assert posted[0][0] == "Wrote 1 output file for a.mp3"
+    assert posted[0][0] == "Done: a.mp3 (1 output file)"
 
 
 def test_a_persian_file_name_is_passed_on_unchanged(posted: list[tuple[str, str]]) -> None:
     name = "مصاحبه " + chr(0x200C) + " فارسی.mp4"
     da.job_done(_app(), _task("/m/" + name), 2)
-    assert posted[0][0] == f"Wrote 2 output files for {name}"
+    assert posted[0][0] == f"Done: {name} (2 output files)"
 
 
 def test_a_focused_window_gets_nothing(posted: list[tuple[str, str]]) -> None:
@@ -303,8 +312,8 @@ def test_a_queue_gets_one_summary_instead_of_the_last_job_notification(
     t3.status = "finished"
     da.job_done(app, t3, 1)                      # the queue is empty: one summary
     assert [text for text, _title in posted] == [
-        "Wrote 1 output file for a.mp4", "Wrote 1 output file for b.mp4", "3 files transcribed"]
-    assert posted[2][1] == da.QUEUE_TITLE
+        "Done: a.mp4 (1 output file)", "Done: b.mp4 (1 output file)", "Queue done: 3 files transcribed"]
+    assert posted[2][1] == da.APP_TITLE
 
 
 def test_the_next_single_job_after_a_queue_is_a_plain_notification(posted: list[tuple[str, str]]) -> None:
@@ -317,7 +326,7 @@ def test_the_next_single_job_after_a_queue_is_a_plain_notification(posted: list[
     c = _task("/m/c.mp4", start=40, end=50)
     app.queue.append(c)
     da.job_done(app, c, 2)
-    assert posted[-1][0] == "Wrote 2 output files for c.mp4"
+    assert posted[-1][0] == "Done: c.mp4 (2 output files)"
     assert len(posted) == 3
 
 
@@ -333,7 +342,7 @@ def test_a_stale_count_from_a_queue_that_ended_in_an_error_is_forgotten(
     later = _task("/m/later.mp4", start=20 + da.BATCH_GAP_S + 5, end=20 + da.BATCH_GAP_S + 15)
     app.queue.append(later)
     da.job_done(app, later, 1)
-    assert posted[-1][0] == "Wrote 1 output file for later.mp4"      # not "2 files transcribed"
+    assert posted[-1][0] == "Done: later.mp4 (1 output file)"      # not "Queue done: 2 files"
 
 
 def test_a_summary_is_skipped_when_a_window_is_focused_but_the_count_resets(
@@ -349,7 +358,7 @@ def test_a_summary_is_skipped_when_a_window_is_focused_but_the_count_resets(
     c = _task("/m/c.mp4", start=5, end=6)
     app.queue.append(c)
     da.job_done(app, c, 1)
-    assert [t for t, _ in posted] == ["Wrote 1 output file for c.mp4"]
+    assert [t for t, _ in posted] == ["Done: c.mp4 (1 output file)"]
 
 
 def test_paused_jobs_do_not_hold_the_summary_back(posted: list[tuple[str, str]]) -> None:
@@ -360,7 +369,71 @@ def test_paused_jobs_do_not_hold_the_summary_back(posted: list[tuple[str, str]])
     da.job_done(app, a, 1)
     b.status = "finished"
     da.job_done(app, b, 1)
-    assert posted[-1][0] == "2 files transcribed"
+    assert posted[-1][0] == "Queue done: 2 files transcribed"
+
+
+# ---------------------------------------------------------------- what "focused" means
+
+def test_a_minimised_main_window_counts_as_not_focused(posted: list[tuple[str, str]]) -> None:
+    # macOS 13: iconic leaves the app active AND a focus widget; nobody can see the result card.
+    da.job_done(_app(focused=True, state="iconic"), _task(), 1)
+    assert len(posted) == 1
+
+
+def test_a_withdrawn_main_window_counts_as_not_focused(posted: list[tuple[str, str]]) -> None:
+    da.job_done(_app(focused=True, state="withdrawn"), _task(), 1)
+    assert len(posted) == 1
+
+
+def test_an_inactive_app_with_a_leftover_tk_focus_counts_as_not_focused(
+        monkeypatch: pytest.MonkeyPatch, posted: list[tuple[str, str]]) -> None:
+    # macOS 13: another app in front, or Cmd+H, leaves focus_displayof naming a widget.
+    monkeypatch.setattr(da, "_ns_app_active", lambda: False)
+    da.job_done(_app(focused=True), _task(), 1)
+    assert len(posted) == 1
+
+
+def test_when_nsapp_cannot_be_asked_the_tk_focus_decides(
+        monkeypatch: pytest.MonkeyPatch, posted: list[tuple[str, str]]) -> None:
+    monkeypatch.setattr(da, "_ns_app_active", lambda: None)
+    da.job_done(_app(focused=True), _task(), 1)
+    assert posted == []
+    da.job_done(_app(focused=False), _task(), 1)
+    assert len(posted) == 1
+
+
+def test_an_app_double_without_a_window_state_is_judged_by_focus_alone(
+        posted: list[tuple[str, str]]) -> None:
+    app = _app(focused=True)
+    del app.state
+    da.job_done(app, _task(), 1)
+    assert posted == []
+
+
+def test_an_unreadable_window_state_counts_as_not_focused(posted: list[tuple[str, str]]) -> None:
+    app = _app(focused=True)
+
+    def boom() -> str:
+        raise tk.TclError("application has been destroyed")
+
+    app.state = boom
+    da.job_done(app, _task(), 1)
+    assert len(posted) == 1
+
+
+def test_nsapp_is_not_asked_off_macOS(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(da, "_ns_app_active", _REAL_NS_APP_ACTIVE)   # the autouse stub off
+    monkeypatch.setattr(da, "_on_mac", lambda: False)
+    assert da._ns_app_active() is None
+
+
+def test_nsapp_answer_failures_are_none_not_exceptions(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(da, "_ns_app_active", _REAL_NS_APP_ACTIVE)
+    monkeypatch.setattr(da, "_on_mac", lambda: True)
+    monkeypatch.setattr(da.ctypes.util, "find_library", lambda name: None)
+    assert da._ns_app_active() is None
+    monkeypatch.setattr(da.ctypes.util, "find_library", lambda name: "/nonexistent/libobjc.dylib")
+    assert da._ns_app_active() is None          # the library cannot be loaded: None, not OSError
 
 
 # ------------------------------------------------------------------- menu wording
