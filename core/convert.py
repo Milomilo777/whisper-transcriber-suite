@@ -349,7 +349,9 @@ def _safe_fromstring(text: str) -> ET.Element:
     """
     if "<!DOCTYPE" in text:
         raise ET.ParseError("DOCTYPE declarations are not allowed in .eaf input")
-    return ET.fromstring(text)
+    # S314: a DOCTYPE (the only way to declare an entity) was refused above, so
+    # no entity expansion is possible; expat also bounds the rest.
+    return ET.fromstring(text)  # noqa: S314
 
 
 def _parse_eaf(text: str, path: str) -> list[dict]:

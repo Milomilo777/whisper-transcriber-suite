@@ -101,7 +101,7 @@ def source_key(source_path: str) -> str:
     distinct files differing only in case keep distinct keys.
     """
     norm = os.path.normcase(os.path.abspath(source_path))
-    return hashlib.sha1(norm.encode("utf-8")).hexdigest()
+    return hashlib.sha1(norm.encode("utf-8"), usedforsecurity=False).hexdigest()
 
 
 def checkpoint_path(source_path: str) -> Path:
@@ -139,7 +139,7 @@ def config_fingerprint(cfg: dict[str, Any], whisper_task: str = "transcribe") ->
     if repeats != loop_guard.DEFAULT_REPEATS:
         extracted["loop_guard_repeats"] = repeats
     blob = json.dumps(extracted, sort_keys=True, default=str)
-    return hashlib.sha1(blob.encode("utf-8")).hexdigest()
+    return hashlib.sha1(blob.encode("utf-8"), usedforsecurity=False).hexdigest()
 
 
 def write_checkpoint(

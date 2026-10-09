@@ -167,8 +167,8 @@ def enrol_with_vector(
     # would think the enrolment succeeded. Reject at the DB gate.
     try:
         finite = all(math.isfinite(x) for x in vector)
-    except TypeError:
-        raise ValueError("Vector must contain only finite values")
+    except TypeError as e:
+        raise ValueError("Vector must contain only finite values") from e
     if not finite:
         raise ValueError("Vector must contain only finite values")
     import time

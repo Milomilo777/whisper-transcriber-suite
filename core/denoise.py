@@ -480,7 +480,7 @@ def _cache_key(audio_path: str, level: str) -> str:
         token = f"{audio_path}|{st.st_size}|{int(st.st_mtime)}|{level}"
     except OSError:
         token = f"{audio_path}|missing|{level}"
-    return hashlib.sha1(token.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha1(token.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
 
 
 def _cached_path(audio_path: str, level: str) -> Path:

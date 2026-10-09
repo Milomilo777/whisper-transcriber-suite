@@ -147,6 +147,18 @@ def test_enrol_rejects_non_numeric_vector_with_value_error(tmp_path):
         conn.close()
 
 
+def test_enrol_non_numeric_vector_error_keeps_the_original_cause(tmp_path):
+    """The ValueError for a non-numeric element points at the TypeError that
+    raised it, so a traceback shows which element was wrong."""
+    conn = _conn(tmp_path)
+    try:
+        with pytest.raises(ValueError) as caught:
+            vp.enrol_with_vector("Alice", ["x", 0.0], conn=conn)  # type: ignore[list-item]
+        assert isinstance(caught.value.__cause__, TypeError)
+    finally:
+        conn.close()
+
+
 def test_delete_voice_removes_row(tmp_path):
     conn = _conn(tmp_path)
     try:

@@ -1035,10 +1035,10 @@ def burn(
                 raise RuntimeError(
                     f"ffmpeg timed out burning subtitles after {timeout}s"
                 ) from e
-            except OSError:
+            except OSError as e:
                 # The app closing removed the work folder ffmpeg was about to start in.
                 if _closing_now():
-                    raise BurnCancelled("Subtitle burn cancelled")
+                    raise BurnCancelled("Subtitle burn cancelled") from e
                 raise
         # (Only the app closing stops here: a Cancel that lands after the
         # encode finished keeps the finished file, as the chain row expects.)
