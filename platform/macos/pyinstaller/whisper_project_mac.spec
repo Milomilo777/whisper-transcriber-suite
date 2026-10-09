@@ -354,6 +354,7 @@ a = Analysis(
         'app.crash_report',
         'app.theme.script_fonts',
         'app.theme.theme_colours',
+        'app.theme.mac_appearance',
         'app.theme.system_appearance',
         'app.theme.system_fonts',
         'app.theme.win_chrome',

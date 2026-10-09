@@ -126,7 +126,8 @@ DEFAULT_CONFIG = {
     "theme": "light",
     # Windows: let Windows draw the title bar and border of every window in the app theme
     # (app/theme/win_chrome.py). false turns every such call off; the environment variable
-    # WTS_NO_NATIVE_CHROME=1 does the same without editing the file.
+    # WTS_NO_NATIVE_CHROME=1 does the same without editing the file. On macOS the same switch
+    # controls the Light/Dark title bar (app/theme/mac_appearance.py).
     "native_window_theme": True,
     # Windows: progress bar, job-count badge and a flash on the app's taskbar button
     # (app/theme/win_taskbar.py). false turns every such call off; the environment variable

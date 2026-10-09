@@ -344,6 +344,14 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   audio slice inherited the worker's command pipe as its stdin and, on Windows, hung at the end of
   the slice until its 600-second timeout; a resume then started over from the beginning. It now
   gets no stdin and finishes in about a second.
+- **macOS: the About window opens over the middle of the main window** instead of off to one side.
+- **macOS: the title bar follows an explicit Light or Dark theme.** With Dark chosen on a Light Mac
+  (or the reverse) the main window and every dialog kept the system title bar; they now take the
+  theme, and System still follows the Mac. `native_window_theme` (or `WTS_NO_NATIVE_CHROME=1`) turns it off.
+- **macOS: File > Close Window works after a dialog was closed.** In the transcript viewer it did
+  nothing once the Find dialog and an alert had been closed, because Tk reports no focus then even
+  though the viewer is the front window. It now acts on the window macOS calls the key window (asked
+  from AppKit) and still never on the main window.
 - **Work offline: UDP and name-lookup gaps closed.** The network guard now also refuses UDP
   datagrams sent to another computer (`sendto` / `sendmsg`), the `gethostbyname`,
   `gethostbyaddr` and `getnameinfo` lookups and calls made on `_socket` directly, through a

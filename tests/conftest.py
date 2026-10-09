@@ -135,10 +135,11 @@ def _reset_native_window_theme_state():
     controller and the "closed" flag; its reset also blocks the real COM layer, so no other test
     can reach the real taskbar by accident.
     """
-    from app.theme import system_appearance, win_chrome, win_taskbar
+    from app.theme import mac_appearance, system_appearance, win_chrome, win_taskbar
 
     def _reset() -> None:
         win_chrome.reset_for_tests()
+        mac_appearance.reset_for_tests()
         win_taskbar.reset_for_tests()
         system_appearance._warned.clear()
 

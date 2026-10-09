@@ -348,7 +348,22 @@ workflow runs on manual dispatch and on a push to the `macos-app-build` branch.
 - Window menu (Minimize Command-M, Zoom, Bring All to Front) and the Help menu with the native search
   field. **File > Close Window** (Command-W) closes the front secondary window by running its own
   close handler, so the transcript viewer still asks about unsaved edits. It never closes the main
-  window.
+  window. "Front" is AppKit's key window (`[NSApp keyWindow]` through `ctypes`), matched to a Tk
+  window by title (compared composed and trimmed; the front-most one when titles repeat). A title that
+  matches nothing closes only a secondary window Tk reports as focused, never the main window or a
+  native panel; Tk's focus decides alone when AppKit cannot be asked. While a modal dialog holds the
+  Tk grab only that dialog (or a window opened from it) closes, any other window gets a beep. Measured on macOS 13.7.8 / Tk 8.6.16: after the viewer's Find dialog and an alert
+  were closed, `focus_get()` returned `None` while the viewer was still the key window, so a
+  focus-based Close Window silently did nothing; `wm stackorder .` stayed correct (lowest first).
+- Title bars follow the theme (`app/theme/mac_appearance.py`). Tk 8.6.16's
+  `::tk::unsupported::MacWindowStyle appearance <window> aqua|darkaqua|auto` pins one window's
+  appearance; the app sets it on the main window and every dialog (on `<Map>`, so a dialog opened
+  later gets it) from the theme mode: Light = `aqua`, Dark = `darkaqua`, System = `auto`. Measured in
+  the VM on a Light macOS 13.7.8: `darkaqua` gave a dark title bar on the root and a Toplevel,
+  `aqua` a light one, `auto` back to the system look. The same `isdark` that "System" asks answers
+  for the pinned window (`darkaqua` => 1 whatever the Mac says), so the mode is applied BEFORE the
+  theme is resolved, or "System" would read its own earlier pin. Checked on a Dark macOS with
+  Light chosen too. Native alerts and file dialogs are not Tk windows and keep the system look.
 - Open files from Finder: never PyInstaller `argv_emulation` (it conflicts with Tk). The handler is
   registered before the first event-loop turn; files wait in a queue until the first-run windows and
   any modal window or question are done (the Tk grab, a mapped transient window, the quit question,

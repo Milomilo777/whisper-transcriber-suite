@@ -465,6 +465,442 @@ def test_the_unsaved_edits_prompt_stays_in_charge_of_command_w(
     assert asked == ["Discard changes?", "Discard changes?"]
 
 
+# ---------------------------------------- Command-W follows the key window, not Tk's focus
+#
+# Found in the macOS VM: after the Find dialog and an alert of the viewer were closed, File >
+# Close Window did nothing (three tries) because Tk reported no focus while the viewer was still
+# the front window. macOS decides Command-W by the key window, so AppKit is asked first.
+
+def _front(monkeypatch: pytest.MonkeyPatch, root: _Host, key: str | None,
+           stack: list[tk.Misc], focus: tk.Misc | None = None) -> None:
+    """Fake what AppKit and Tk report: the key window's title, the stacking order (front first)
+    and Tk's focus widget."""
+    monkeypatch.setattr(mac_native, "key_window_title", lambda: key)
+    monkeypatch.setattr(mac_native, "_stack_front_first", lambda _app: [str(w) for w in stack])
+    monkeypatch.setattr(root, "focus_get", lambda: focus)
+
+
+def _two_windows(root: _Host) -> tuple[tk.Toplevel, tk.Toplevel]:
+    viewer = tk.Toplevel(root)
+    viewer.title("Transcript - talk.json")
+    find = tk.Toplevel(viewer)
+    find.title("Find and replace")
+    root.title("Whisper Transcriber Suite")
+    return viewer, find
+
+
+def test_command_w_closes_the_key_window_when_tk_has_lost_its_focus(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, _find = _two_windows(host)
+    asked: list[str] = []
+    viewer.protocol("WM_DELETE_WINDOW", lambda: asked.append("viewer"))
+    _front(monkeypatch, host, "Transcript - talk.json", [viewer, host], focus=None)
+    assert mac_native.close_front_window(host) is True
+    assert asked == ["viewer"]
+
+
+def test_command_w_closes_the_key_window_when_tk_still_names_the_main_window(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, _find = _two_windows(host)
+    asked: list[str] = []
+    viewer.protocol("WM_DELETE_WINDOW", lambda: asked.append("viewer"))
+    stale = tk.Entry(host)
+    _front(monkeypatch, host, "Transcript - talk.json", [viewer, host], focus=stale)
+    assert mac_native.close_front_window(host) is True
+    assert asked == ["viewer"]
+
+
+def test_command_w_never_closes_a_window_behind_the_key_main_window(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tk's focus can be stale in the viewer while the person works in the main window."""
+    viewer, _find = _two_windows(host)
+    viewer.protocol("WM_DELETE_WINDOW", lambda: pytest.fail("the viewer is not the front window"))
+    stale = tk.Entry(viewer)
+    _front(monkeypatch, host, "Whisper Transcriber Suite", [viewer, host], focus=stale)
+    assert mac_native.close_front_window(host) is False
+
+
+def test_command_w_closes_the_find_dialog_in_front_of_its_viewer(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, find = _two_windows(host)
+    viewer.protocol("WM_DELETE_WINDOW", lambda: pytest.fail("only the dialog is in front"))
+    _front(monkeypatch, host, "Find and replace", [find, viewer, host])
+    assert mac_native.close_front_window(host) is True
+    assert not find.winfo_exists() and viewer.winfo_exists()
+
+
+def test_command_w_with_two_windows_of_one_title_takes_the_front_one(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first, second = tk.Toplevel(host), tk.Toplevel(host)
+    first.title("Transcript - a.json")
+    second.title("Transcript - a.json")
+    _front(monkeypatch, host, "Transcript - a.json", [second, first, host])
+    assert mac_native.close_front_window(host) is True
+    assert not second.winfo_exists() and first.winfo_exists()
+
+
+def test_command_w_does_nothing_when_the_key_window_is_not_one_of_ours(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A native panel is key (no title matches) and Tk has no focus in a secondary window."""
+    viewer, _find = _two_windows(host)
+    viewer.protocol("WM_DELETE_WINDOW", lambda: pytest.fail("a native panel is the key window"))
+    _front(monkeypatch, host, "Open", [viewer, host], focus=None)
+    assert mac_native.close_front_window(host) is False
+    _front(monkeypatch, host, "Open", [viewer, host], focus=tk.Entry(host))   # focus in the main window
+    assert mac_native.close_front_window(host) is False
+
+
+def test_an_unmatched_key_title_falls_back_to_the_secondary_window_tk_has_focus_in(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The title can differ in a way no normalisation fixes (changed after open): the original
+    "Close Window does nothing" must not come back while Tk still knows the focused window."""
+    viewer, _find = _two_windows(host)
+    asked: list[str] = []
+    viewer.protocol("WM_DELETE_WINDOW", lambda: asked.append("viewer"))
+    _front(monkeypatch, host, "A title no window has", [viewer, host], focus=tk.Entry(viewer))
+    assert mac_native.close_front_window(host) is True
+    assert asked == ["viewer"]
+
+
+def _nfd(text: str) -> str:
+    import unicodedata
+
+    decomposed = unicodedata.normalize("NFD", text)
+    assert decomposed != text      # the sample really differs between the two forms
+    return decomposed
+
+
+@pytest.mark.parametrize("tk_form, key_form", [("nfc", "nfd"), ("nfd", "nfc")])
+def test_command_w_matches_a_title_in_another_unicode_form(
+    host: _Host, monkeypatch: pytest.MonkeyPatch, tk_form: str, key_form: str,
+) -> None:
+    """AppKit and Tk may hand back the same Persian title composed differently (alef-madda is
+    one code point or alef + madda)."""
+    composed = "آزمون — نمونه صدا.json"
+    forms = {"nfc": composed, "nfd": _nfd(composed)}
+    viewer = tk.Toplevel(host)
+    viewer.title(forms[tk_form])
+    asked: list[str] = []
+    viewer.protocol("WM_DELETE_WINDOW", lambda: asked.append("viewer"))
+    _front(monkeypatch, host, forms[key_form], [viewer, host], focus=None)
+    assert mac_native.close_front_window(host) is True
+    assert asked == ["viewer"]
+
+
+def test_command_w_ignores_blank_edges_of_a_title(host: _Host, monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer = tk.Toplevel(host)
+    viewer.title("Transcript - talk.json")
+    _front(monkeypatch, host, "  Transcript - talk.json \n", [viewer, host], focus=None)
+    assert mac_native.close_front_window(host) is True
+    assert not viewer.winfo_exists()
+
+
+def test_command_w_matches_a_title_with_a_non_bmp_character(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer = tk.Toplevel(host)
+    viewer.title("Talk \U0001F3A4 notes.json")
+    _front(monkeypatch, host, "Talk \U0001F3A4 notes.json", [viewer, host], focus=None)
+    assert mac_native.close_front_window(host) is True
+    assert not viewer.winfo_exists()
+
+
+# --- a modal dialog's grab: only that dialog (or a window of its own) may be closed
+
+def _grab(monkeypatch: pytest.MonkeyPatch, root: _Host, holder: tk.Misc | None) -> list[int]:
+    monkeypatch.setattr(root, "grab_current", lambda: holder)
+    bells: list[int] = []
+    monkeypatch.setattr(root, "bell", lambda *a, **k: bells.append(1))
+    return bells
+
+
+def test_command_w_leaves_other_windows_alone_while_a_dialog_holds_the_grab(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, find = _two_windows(host)
+    dialog = tk.Toplevel(host)
+    viewer.protocol("WM_DELETE_WINDOW", lambda: pytest.fail("a modal dialog holds the grab"))
+    bells = _grab(monkeypatch, host, tk.Entry(dialog))   # the grab holder is a widget in the dialog
+    _front(monkeypatch, host, "Transcript - talk.json", [viewer, dialog, host])
+    assert mac_native.close_front_window(host) is False
+    assert bells == [1] and viewer.winfo_exists() and find.winfo_exists()
+
+
+def test_command_w_closes_the_dialog_that_holds_the_grab(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dialog = tk.Toplevel(host)
+    dialog.title("Modal question")
+    bells = _grab(monkeypatch, host, dialog)
+    _front(monkeypatch, host, "Modal question", [dialog, host])
+    assert mac_native.close_front_window(host) is True
+    assert not dialog.winfo_exists() and bells == []
+
+
+def test_command_w_closes_a_window_opened_by_the_dialog_that_holds_the_grab(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dialog = tk.Toplevel(host)
+    child = tk.Toplevel(dialog)
+    child.title("Opened from the dialog")
+    _grab(monkeypatch, host, dialog)
+    _front(monkeypatch, host, "Opened from the dialog", [child, dialog, host])
+    assert mac_native.close_front_window(host) is True
+    assert not child.winfo_exists() and dialog.winfo_exists()
+
+
+def test_a_sibling_whose_name_starts_like_the_grab_window_is_not_part_of_it(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``.!toplevel1`` and ``.!toplevel10`` are different windows (prefix tests need a dot)."""
+    wins = [tk.Toplevel(host) for _ in range(10)]
+    first, tenth = wins[0], wins[9]
+    assert str(tenth).startswith(str(first))
+    tenth.title("Tenth")
+    tenth.protocol("WM_DELETE_WINDOW", lambda: pytest.fail("not a descendant of the grab window"))
+    bells = _grab(monkeypatch, host, first)
+    _front(monkeypatch, host, "Tenth", [tenth, first, host])
+    assert mac_native.close_front_window(host) is False
+    assert bells == [1]
+
+
+def test_a_grab_that_cannot_be_read_does_not_stop_command_w(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, _find = _two_windows(host)
+
+    def broken() -> None:
+        raise tk.TclError("no grab")
+
+    monkeypatch.setattr(host, "grab_current", broken)
+    _front(monkeypatch, host, "Transcript - talk.json", [viewer, host])
+    assert mac_native.close_front_window(host) is True
+
+
+def test_command_w_matches_a_persian_title(host: _Host, monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer = tk.Toplevel(host)
+    viewer.title("متن — نمونه صدا.json")
+    _front(monkeypatch, host, "متن — نمونه صدا.json", [viewer, host])
+    assert mac_native.close_front_window(host) is True
+    assert not viewer.winfo_exists()
+
+
+def test_without_appkit_command_w_uses_the_front_window_when_tk_has_no_focus(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    viewer, _find = _two_windows(host)
+    asked: list[str] = []
+    viewer.protocol("WM_DELETE_WINDOW", lambda: asked.append("viewer"))
+    _front(monkeypatch, host, None, [viewer, host], focus=None)
+    assert mac_native.close_front_window(host) is True
+    assert asked == ["viewer"]
+
+
+def test_without_appkit_and_with_only_the_main_window_nothing_closes(
+    host: _Host, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    host.protocol("WM_DELETE_WINDOW", lambda: pytest.fail("the main window must not close"))
+    _front(monkeypatch, host, None, [host], focus=None)
+    assert mac_native.close_front_window(host) is False
+    _front(monkeypatch, host, None, [], focus=None)
+    assert mac_native.close_front_window(host) is False
+
+
+def test_the_unsaved_edits_prompt_stays_in_charge_of_the_key_window(
+    host: _Host, monkeypatch: pytest.MonkeyPatch, tmp_path: Any,
+) -> None:
+    from app.dialogs import transcript_viewer as tv
+    from tests.app.test_viewer_edit_safety import _open, _write_outputs
+
+    viewer = _open(host, _write_outputs(tmp_path, ["json"]))
+    title = str(viewer.title())
+    _front(monkeypatch, host, title, [viewer, host], focus=None)
+    viewer._dirty = True
+    answers = iter([False, True])
+    asked: list[str] = []
+    monkeypatch.setattr(
+        tv.messagebox, "askyesno", lambda t, *a, **k: asked.append(t) or next(answers))
+    assert mac_native.close_front_window(host) is True
+    assert viewer.winfo_exists()
+    assert mac_native.close_front_window(host) is True
+    assert not viewer.winfo_exists()
+    assert asked == ["Discard changes?", "Discard changes?"]
+
+
+def test_the_real_stacking_order_lists_the_front_window_first() -> None:
+    try:
+        root = tk.Tk()
+    except tk.TclError as exc:  # pragma: no cover - no display
+        pytest.skip(f"no Tk display: {exc}")
+    try:
+        if str(root.tk.call("tk", "windowingsystem")) == "aqua":
+            pytest.skip("Aqua orders windows only for an active app; proved in the macOS VM")
+        root.title("main")
+        back, front = tk.Toplevel(root), tk.Toplevel(root)
+        back.title("back")
+        front.title("front")
+        root.update()
+        front.lift()
+        root.update()
+        order = mac_native._stack_front_first(root)
+        assert order.index(str(front)) < order.index(str(back))
+        back.lift()
+        root.update()
+        assert mac_native._stack_front_first(root)[0] == str(back)
+    finally:
+        root.destroy()
+
+
+def test_the_key_window_is_unknown_off_macos(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(mac_native.sys, "platform", "win32")
+    assert mac_native.key_window_title() is None
+
+
+def test_the_key_window_is_unknown_when_the_objc_runtime_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mac_native.sys, "platform", "darwin")
+    monkeypatch.setattr(mac_native.ctypes.util, "find_library", lambda _name: None)
+    assert mac_native.key_window_title() is None
+    monkeypatch.setattr(mac_native.ctypes.util, "find_library", lambda _name: "libobjc.fake")
+
+    def refuse(*_a: Any, **_k: Any) -> Any:
+        raise OSError("no such library")
+
+    monkeypatch.setattr(mac_native.ctypes, "PyDLL", refuse)
+    assert mac_native.key_window_title() is None
+
+
+# ---------------------------------------------------------------- About dialog placement
+
+class _Shown:
+    """A main window (or screen) with a position and a size, recording ``geometry`` calls."""
+
+    def __init__(self, x: int, y: int, w: int, h: int, *, viewable: bool = True,
+                 screen: tuple[int, int] = (1440, 900), system: str = "aqua") -> None:
+        self.tk = types.SimpleNamespace(call=lambda *a: system)
+        self._box, self._viewable, self._screen = (x, y, w, h), viewable, screen
+        self.geometries: list[str] = []
+
+    def winfo_toplevel(self) -> "_Shown":
+        return self
+
+    def winfo_viewable(self) -> bool:
+        return self._viewable
+
+    def winfo_rootx(self) -> int:
+        return self._box[0]
+
+    def winfo_rooty(self) -> int:
+        return self._box[1]
+
+    def winfo_width(self) -> int:
+        return self._box[2]
+
+    def winfo_height(self) -> int:
+        return self._box[3]
+
+    def winfo_screenwidth(self) -> int:
+        return self._screen[0]
+
+    def winfo_screenheight(self) -> int:
+        return self._screen[1]
+
+    def geometry(self, value: str) -> None:
+        self.geometries.append(value)
+
+
+def test_the_about_dialog_is_centred_over_the_main_window_on_aqua() -> None:
+    main, dialog = _Shown(100, 60, 1000, 800), _Shown(0, 0, 0, 0)
+    mac_native.centre_over(dialog, main, 680, 620)
+    assert dialog.geometries == ["+260+150"]
+
+
+def test_a_centred_window_on_the_main_screen_stays_on_it_below_the_menu_bar() -> None:
+    dialog = _Shown(0, 0, 0, 0)
+    mac_native.centre_over(dialog, _Shown(1100, 600, 300, 250), 680, 620)
+    assert dialog.geometries == ["+760+280"]          # right/bottom edge clamped to the screen
+    dialog = _Shown(0, 0, 0, 0)
+    mac_native.centre_over(dialog, _Shown(0, 0, 200, 100), 680, 620)
+    assert dialog.geometries == ["+0+28"]             # never left of the screen or under the menu bar
+
+
+@pytest.mark.parametrize("box, expected", [
+    ((-1500, 100, 1000, 800), "+-1340+190"),      # a monitor left of the main one
+    ((1600, 50, 1000, 800), "+1760+140"),         # right of it, beyond its width
+    ((100, -1000, 1000, 800), "+260+-910"),       # above it
+    ((-300, 200, 1000, 800), "+-140+290"),        # straddling the left edge: still its own window
+])
+def test_a_window_is_centred_on_a_main_window_that_lies_off_the_main_screen(
+    box: tuple[int, int, int, int], expected: str,
+) -> None:
+    """Tk accepts negative coordinates (a monitor left of or above the main one): no clamp."""
+    dialog = _Shown(0, 0, 0, 0)
+    mac_native.centre_over(dialog, _Shown(*box), 680, 620)
+    assert dialog.geometries == [expected]
+
+
+@pytest.mark.parametrize("system", ["win32", "x11"])
+def test_a_window_is_left_where_the_system_puts_it_elsewhere(system: str) -> None:
+    dialog = _Shown(0, 0, 0, 0, system=system)
+    mac_native.centre_over(dialog, _Shown(100, 60, 1000, 800), 680, 620)
+    assert dialog.geometries == []
+
+
+def test_a_window_is_not_centred_over_a_hidden_main_window() -> None:
+    dialog = _Shown(0, 0, 0, 0)
+    mac_native.centre_over(dialog, _Shown(100, 60, 1000, 800, viewable=False), 680, 620)
+    assert dialog.geometries == []
+
+
+def _open_about(host: _Host, monkeypatch: pytest.MonkeyPatch) -> tk.Toplevel:
+    host.app_config = {}  # type: ignore[attr-defined]
+    host._star_open_page = lambda: None  # type: ignore[attr-defined]
+    monkeypatch.setattr(host, "winfo_viewable", lambda: True)
+    monkeypatch.setattr(host, "winfo_rootx", lambda: 100)
+    monkeypatch.setattr(host, "winfo_rooty", lambda: 60)
+    monkeypatch.setattr(host, "winfo_width", lambda: 1000)
+    monkeypatch.setattr(host, "winfo_height", lambda: 800)
+    before = set(host.winfo_children())
+    App._show_about(host)  # type: ignore[arg-type]  # duck-typed host
+    (dlg,) = set(host.winfo_children()) - before
+    host.update_idletasks()
+    return dlg  # type: ignore[return-value]
+
+
+def _geometry(dlg: tk.Toplevel) -> tuple[int, int, int, int]:
+    import re
+
+    m = re.fullmatch(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", dlg.wm_geometry())
+    assert m, dlg.wm_geometry()
+    return tuple(int(g) for g in m.groups())  # type: ignore[return-value]
+
+
+def test_the_apps_about_dialog_opens_centred_on_aqua(
+    host: _Host, aqua: None, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dlg = _open_about(host, monkeypatch)
+    w, h = app_mod.scaled_size(dlg, 680, 620)
+    _w, _h, x, y = _geometry(dlg)   # not on screen yet: its size still reads 1x1
+    assert (x, y) == (100 + (1000 - w) // 2, 60 + (800 - h) // 2)
+
+
+def test_the_apps_about_dialog_is_not_placed_by_the_app_elsewhere(
+    host: _Host, not_aqua: str, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dlg = _open_about(host, monkeypatch)
+    w, h = app_mod.scaled_size(dlg, 680, 620)
+    _w, _h, x, y = _geometry(dlg)
+    assert (x, y) != (100 + (1000 - w) // 2, 60 + (800 - h) // 2)
+
+
 # ------------------------------------------------------- window marks, viewer
 
 class _Win:
