@@ -112,6 +112,7 @@ gcloud_stt.json
 
 # Test artifacts
 .pytest_cache/
+.hypothesis/
 .coverage
 htmlcov/
 .tox/

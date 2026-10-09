@@ -50,7 +50,7 @@ jobs:
       - name: Install dev tools
         if: ${{ !cancelled() }}
         continue-on-error: true
-        run: pip install pytest pytest-cov pyright responses
+        run: pip install pytest pytest-cov pyright responses hypothesis
 
       - name: pip check + freeze
         if: ${{ !cancelled() }}
