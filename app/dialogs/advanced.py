@@ -2022,12 +2022,18 @@ class AdvancedDialog(tk.Toplevel):
             self.app.log("That model is already downloaded.")
             return
         cfg = self.app.app_config
+        # A failed save puts the old choice back: the live config must not
+        # keep a model that never reached the disk (the next save from
+        # anywhere would write it silently).
+        before = copy.deepcopy(dict(cfg))
         cfg["whisper_model"] = slug
         cfg["model"] = entry
         cfg["model_path"] = ""  # let ensure_model fetch it into the hub
         try:
             save_config(cfg)
         except Exception as e:  # noqa: BLE001
+            cfg.clear()
+            cfg.update(before)
             self.app.log(f"Could not save model choice: {e}")
             return
         # Close Advanced first, then open the download modal on the app so
@@ -2138,26 +2144,17 @@ class AdvancedDialog(tk.Toplevel):
         # at the right cache folder for the new model.
         chosen_label = self._model_display.get() or ""
         new_slug = self._model_label_to_slug.get(chosen_label, DEFAULT_MODEL_SLUG)
+        _model_changed = False
         if new_slug and new_slug != cfg.get("whisper_model"):
             entry = catalog_resolve_entry(cfg, new_slug)
             if entry is not None:
                 cfg["whisper_model"] = new_slug
                 cfg["model"] = entry
                 cfg["model_path"] = ""
-                # Stop any live worker so the OLD model stops transcribing.
-                # The worker loads the model once at spawn and keeps it hot;
-                # rewriting cfg alone left it serving the previous model until
-                # the process happened to restart. stop_all() forces a fresh
-                # worker (loading the new model) on the next transcribe — the
-                # same mechanism _offer_optional_install uses after an install.
-                try:
-                    self.app.transcription_service.stop_all()
-                except Exception as e:  # noqa: BLE001
-                    self.app.log(f"Could not restart the transcription worker: {e}")
-                self.app.log(
-                    f"Whisper model changed to {new_slug}. The new model "
-                    "will download on the next transcription."
-                )
+                # The live worker is restarted after the save succeeded (see
+                # below): it loads the model once at spawn and keeps it hot,
+                # so rewriting cfg alone leaves it serving the previous model.
+                _model_changed = True
             else:
                 self.app.log(f"Unknown model slug {new_slug!r}; keeping current model.")
         at_open = getattr(self, "_switches_at_open", {})
@@ -2202,33 +2199,51 @@ class AdvancedDialog(tk.Toplevel):
                 parent=self,
             )
             return
-        # Engine switch needs a fresh worker: the live worker snapshots
-        # transcribe_backend at spawn and the dispatch prefers that stale
-        # value, so rewriting cfg alone keeps the old engine running until the
-        # process restarts. stop_all() forces a fresh worker (reading the new
-        # backend) on the next transcribe — same mechanism as a model change.
-        if _backend_changed:
-            # stop_all() is a hard terminate, not the cooperative per-task
-            # Cancel -- if something is actually running, ask first rather
-            # than silently losing more progress than a normal Cancel
-            # would. Declining still saves the new backend above; it just
-            # lets the active job finish on its current worker instead of
-            # forcing a respawn right now.
+        if _model_changed:
+            self.app.log(
+                f"Whisper model changed to {new_slug}. The new model "
+                "will download on the next transcription."
+            )
+        # A model or engine change needs a fresh worker: the live worker
+        # snapshots transcribe_backend and loads the model once at spawn, so
+        # rewriting cfg alone keeps the old engine / model running until the
+        # process restarts. stop_all() forces a fresh worker on the next
+        # transcribe. It runs only after the save worked (a failed save must
+        # leave a running transcription alone), and it asks first when a job
+        # is running: stop_all() is a hard terminate, not the cooperative
+        # per-task Cancel. Declining still saves the choice above; the active
+        # job just finishes on its current worker.
+        if _backend_changed or _model_changed:
             confirm = getattr(self.app, "_confirm_backend_switch", None)
-            if not callable(confirm) or confirm(self):
+            if not callable(confirm):
+                restart = True
+            elif _backend_changed:
+                restart = confirm(self)
+            else:
+                restart = confirm(
+                    self,
+                    title="Change the Whisper model?",
+                    action="Changing the model",
+                    question="Change it anyway?",
+                )
+            what = (
+                f"Transcription engine changed to {cfg['transcribe_backend']}"
+                if _backend_changed else "Whisper model changed"
+            )
+            if restart:
                 try:
                     self.app.transcription_service.stop_all()
                 except Exception as e:  # noqa: BLE001
                     self.app.log(f"Could not restart the transcription worker: {e}")
-                self.app.log(
-                    f"Transcription engine changed to {cfg['transcribe_backend']}. "
-                    "The new engine will be used on the next transcription."
-                )
+                if _backend_changed:
+                    self.app.log(
+                        f"{what}. The new engine will be used on the next "
+                        "transcription."
+                    )
             else:
                 self.app.log(
-                    f"Transcription engine changed to {cfg['transcribe_backend']}; "
-                    "the current worker keeps running its active job and "
-                    "will pick up the new engine once it's free."
+                    f"{what}; the current worker keeps running its active job "
+                    "and will pick up the change once it's free."
                 )
         # Refresh the Transcribe-tab engine + model pickers to match what was
         # just saved (backend, model, and/or model folder may have changed).

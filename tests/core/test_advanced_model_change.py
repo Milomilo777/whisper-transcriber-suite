@@ -212,3 +212,117 @@ def test_backend_change_skips_stop_all_when_switch_declined(monkeypatch: Any) ->
     assert cfg["transcribe_backend"] == "google_cloud_stt"
     # ...but the busy worker was not force-stopped.
     assert stop_calls["count"] == 0
+
+
+def test_model_change_with_a_failed_save_leaves_the_worker_running(monkeypatch: Any) -> None:
+    """The worker restart waits for the save: a failed save keeps the old
+    model in memory AND must not hard-terminate a running transcription."""
+    import tkinter.messagebox as mb
+
+    from app.dialogs import advanced as adv
+
+    def failing_save(_cfg: Any) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(adv, "save_config", failing_save)
+    monkeypatch.setattr(mb, "showerror", lambda *a, **k: None)
+    monkeypatch.setattr(
+        adv, "catalog_resolve_entry",
+        lambda _cfg, slug: {"name": slug, "url": "u", "md5": "m"},
+    )
+
+    cfg = {"whisper_model": "large-v3", "transcribe_backend": "faster_whisper"}
+    app, stop_calls = _fake_app(cfg)
+    dlg = _advanced_fake(app, chosen_label="Medium", slug_map={"Medium": "medium"})
+
+    adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
+
+    assert stop_calls["count"] == 0, "a failed save must not kill the running worker"
+    assert cfg["whisper_model"] == "large-v3", "the unsaved model must be undone"
+
+
+def test_model_change_asks_before_stopping_a_busy_worker(monkeypatch: Any) -> None:
+    """Changing the model hard-stops a running job, so it asks like an engine
+    switch does; declining still saves the model but leaves the worker alone."""
+    from app.dialogs import advanced as adv
+
+    monkeypatch.setattr(adv, "save_config", lambda _cfg: None)
+    monkeypatch.setattr(
+        adv, "catalog_resolve_entry",
+        lambda _cfg, slug: {"name": slug, "url": "u", "md5": "m"},
+    )
+
+    cfg = {"whisper_model": "large-v3", "transcribe_backend": "faster_whisper"}
+    app, stop_calls = _fake_app(cfg)
+    asked: list[dict[str, Any]] = []
+
+    def decline(_parent: Any, **kwargs: Any) -> bool:
+        asked.append(kwargs)
+        return False
+
+    app._confirm_backend_switch = decline  # type: ignore[attr-defined]
+    dlg = _advanced_fake(app, chosen_label="Medium", slug_map={"Medium": "medium"})
+
+    adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
+
+    assert len(asked) == 1 and asked[0]["action"] == "Changing the model"
+    assert cfg["whisper_model"] == "medium"
+    assert stop_calls["count"] == 0
+
+
+def test_model_and_engine_change_together_ask_once(monkeypatch: Any) -> None:
+    from app.dialogs import advanced as adv
+
+    monkeypatch.setattr(adv, "save_config", lambda _cfg: None)
+    monkeypatch.setattr(
+        adv, "catalog_resolve_entry",
+        lambda _cfg, slug: {"name": slug, "url": "u", "md5": "m"},
+    )
+
+    cfg = {"whisper_model": "large-v3", "transcribe_backend": "faster_whisper"}
+    app, stop_calls = _fake_app(cfg)
+    asked: list[Any] = []
+    app._confirm_backend_switch = lambda *a, **k: asked.append(a) or True  # type: ignore[attr-defined]
+    dlg = _advanced_fake(app, chosen_label="Medium", slug_map={"Medium": "medium"})
+    dlg._backend_display = _V(
+        "Google Cloud Speech-to-Text — service account (60 min/mo free)"
+    )
+
+    adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
+
+    assert len(asked) == 1
+    assert stop_calls["count"] == 1
+
+
+def _download_fake(app: Any) -> Any:
+    return types.SimpleNamespace(
+        app=app,
+        _model_display=_V("Medium"),
+        _model_label_to_slug={"Medium": "medium"},
+        _model_downloaded=lambda _slug: False,
+        _teardown_mousewheel=lambda: None,
+        grab_release=lambda: None,
+        destroy=lambda: None,
+    )
+
+
+def test_download_now_with_a_failed_save_restores_the_model_choice(monkeypatch: Any) -> None:
+    from app.dialogs import advanced as adv
+
+    def failing_save(_cfg: Any) -> None:
+        raise OSError("read-only")
+
+    monkeypatch.setattr(adv, "save_config", failing_save)
+    monkeypatch.setattr(
+        adv, "catalog_resolve_entry",
+        lambda _cfg, slug: {"name": slug, "url": "u", "md5": "m"},
+    )
+    cfg = {"whisper_model": "large-v3", "model": {"name": "large-v3"}, "model_path": "keep"}
+    app, _stop = _fake_app(cfg)
+    app.after = lambda *_a, **_k: None  # type: ignore[attr-defined]
+
+    adv.AdvancedDialog._download_selected_model(_download_fake(app))  # type: ignore[arg-type]
+
+    assert cfg == {
+        "whisper_model": "large-v3", "model": {"name": "large-v3"}, "model_path": "keep",
+    }
