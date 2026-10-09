@@ -115,6 +115,29 @@ def test_burn_gets_the_srt_the_transcription_wrote(tmp_path, media, monkeypatch,
     assert app.history_rows == [("finished", [media, dl.burned_path], "")]
 
 
+def test_finished_burn_reaches_the_history_before_the_main_thread_hears_of_it(
+    tmp_path, media, monkeypatch, sync_threads,
+):
+    # The app can be closed between the burn finishing and the main thread
+    # running the queued callback: the history row is written by the burn
+    # thread itself, and once only.
+    srt = tmp_path / "Talk [x].srt"
+    srt.write_text("x", encoding="utf-8")
+    monkeypatch.setattr(burn_subs, "burn", lambda v, s, o, **kw: open(o, "wb").close())
+    app, dl = _App(), _dl(media)
+    posted: list = []
+    app.post_to_main = posted.append
+
+    subbed_video.after_transcription(app, dl, _tr(str(srt)), True)
+
+    out = str(tmp_path / "Talk [x]-subbed.mp4")
+    assert app.history_rows == [("finished", [media, out], "")]
+    for fn in posted:
+        fn()
+    assert dl.status == "finished"
+    assert app.history_rows == [("finished", [media, out], "")]
+
+
 def test_existing_subbed_file_is_never_replaced(tmp_path, media, monkeypatch, sync_threads):
     srt = tmp_path / "Talk [x].srt"
     srt.write_text("x", encoding="utf-8")

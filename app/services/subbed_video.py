@@ -152,7 +152,12 @@ def start_burn(app: Any, dl: Any, srt_path: str) -> None:
             msg = f"Burning the subtitles failed: {e}"
             app.post_to_main(lambda: end_chain(app, dl, "error", error=msg))
         else:
-            app.post_to_main(lambda: end_chain(app, dl, "finished", burned=out_path))
+            # The video is on disk: record it in the history here, before the
+            # queued callback, which never runs if the app closes first.
+            persisted = _record_finished(app, dl, out_path)
+            app.post_to_main(
+                lambda: end_chain(app, dl, "finished", burned=out_path, persisted=persisted)
+            )
         finally:
             dl.process = None
 
@@ -183,14 +188,36 @@ def fail_unstarted_burn(app: Any, dl: Any, exc: BaseException) -> None:
         dl.status = "error"
 
 
-def end_chain(app: Any, dl: Any, status: str, *, error: str = "", burned: str = "") -> None:
-    """Close the chained row: history first, then the row and the log."""
+def _record_finished(app: Any, dl: Any, burned: str) -> bool:
+    """Write the finished chain's history row; True once it has been written.
+
+    Runs on the burn thread (the history database serialises its writers).
+    """
+    service = getattr(app, "download_service", None)
+    if service is None:
+        return False
+    paths = [p for p in (getattr(dl, "saved_path", None), burned) if p]
+    try:
+        service._finish_history(dl, "finished", paths)
+    except Exception:  # noqa: BLE001 - end_chain tries again on the main thread
+        logger.exception("Could not record the finished subtitled video in the history")
+        return False
+    return True
+
+
+def end_chain(
+    app: Any, dl: Any, status: str, *, error: str = "", burned: str = "", persisted: bool = False,
+) -> None:
+    """Close the chained row: history first, then the row and the log.
+
+    *persisted* means the history row was already written (by the burn thread).
+    """
     media = getattr(dl, "saved_path", None)
     paths = [p for p in (media, burned) if p]
     if burned:
         dl.burned_path = burned
     service = getattr(app, "download_service", None)
-    if service is not None:
+    if service is not None and not persisted:
         service._finish_history(dl, status, paths, error=error)
     # A Cancel that landed after the encode finished keeps the finished file.
     if burned or dl.status != "cancelled":
