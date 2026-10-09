@@ -1189,12 +1189,15 @@ class TranscriptionService:
                 # A log line is the difference between recoverable-and-
                 # visible and invisible data loss (contrast
                 # control_unmatched, which was already logged).
-                if event_type in _LATE_EVENTS:
+                if event_type in _LATE_EVENTS and (
+                    event_type == "heartbeat" or event.get("return_code") in (0, None)
+                ):
                     # Not data loss: a retired worker (the extra one a parallel
                     # batch used) is removed from app.workers before its process
                     # has stopped, and its reader thread still queues the last
                     # heartbeats and the worker_exit. Neither carries a result
-                    # and nothing waits for a worker that is no longer tracked.
+                    # and nothing waits for a worker that is no longer tracked. A
+                    # worker_exit with a non-zero code (a crash, -9) stays a warning.
                     logger.debug(
                         "Ignoring late %r event from a worker that is no longer "
                         "tracked (worker_id=%r pid=%r)",
@@ -1203,9 +1206,11 @@ class TranscriptionService:
                     continue
                 logger.warning(
                     "Dropping unroutable worker event %r (no matching "
-                    "worker for worker_id=%r pid=%r token=%r)",
+                    "worker for worker_id=%r pid=%r token=%r)%s",
                     event_type, event.get("_worker_id"), event.get("_pid"),
                     bool(event.get("_token")),
+                    (f"; exit code {event.get('return_code')!r}"
+                     if event_type == "worker_exit" else ""),
                 )
                 continue
 

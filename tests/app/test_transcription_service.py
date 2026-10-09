@@ -531,3 +531,31 @@ def test_an_unroutable_event_that_can_carry_a_result_still_warns(caplog, event):
     warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
     assert len(warnings) == 1 and "Dropping unroutable worker event" in warnings[0].getMessage()
     assert repr(event) in warnings[0].getMessage()
+
+
+@pytest.mark.parametrize("code", [-9, 1, 139])
+def test_an_unroutable_crash_exit_still_warns_with_its_code(caplog, code):
+    """A worker_exit with a non-zero code is a crash that nothing was told about: keep it loud."""
+    import logging
+
+    svc = _service_with_events([
+        {"event": "worker_exit", "return_code": code,
+         "_worker_id": 2, "_pid": 1469, "_token": "retired-token"},
+    ])
+    with caplog.at_level(logging.DEBUG, logger="app.services.transcription_service"):
+        svc.poll()
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert f"exit code {code}" in warnings[0].getMessage()
+
+
+def test_an_unroutable_exit_without_a_code_is_quiet(caplog):
+    import logging
+
+    svc = _service_with_events([
+        {"event": "worker_exit", "return_code": None,
+         "_worker_id": 2, "_pid": 1469, "_token": "retired-token"},
+    ])
+    with caplog.at_level(logging.DEBUG, logger="app.services.transcription_service"):
+        svc.poll()
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
