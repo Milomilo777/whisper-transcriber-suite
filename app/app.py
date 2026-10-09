@@ -20,7 +20,7 @@ from app.dialogs.advanced import AdvancedDialog
 from app.dialogs.model_download import ModelDownloadDialog
 from app.dialogs.quick_start import QuickStartChoice, QuickStartDialog, apply_choice, should_show
 from app.dialogs import share_page
-from app import mac_native, shortcuts
+from app import desktop_alert, mac_native, shortcuts
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
 from app.domain.task_outputs import (
@@ -1325,7 +1325,7 @@ class App(tk.Tk):
             value=bool(self.app_config.get("chime_on_complete", True))
         )
         v.add_checkbutton(
-            label="Chime on completion",
+            label=desktop_alert.chime_menu_label(self),
             variable=self.chime_on_complete_var,
             command=self._save_chime_pref,
         )
@@ -5436,6 +5436,8 @@ class App(tk.Tk):
                 self.tray.notify("Whisper Transcriber Suite — transcription done", body)
             except Exception:  # noqa: BLE001
                 pass
+        # macOS has no tray: a desktop notification while the window is in the background.
+        desktop_alert.job_done(self, task, len(existing))
         self.log(
             f"Done: {os.path.basename(task.file_path)} → "
             f"{len(existing)} file(s) in {folder}"
