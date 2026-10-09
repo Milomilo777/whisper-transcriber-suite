@@ -22,6 +22,7 @@ from typing import Any
 from app.dpi import px, scaled_size
 from app.theme import script_fonts
 from app.theme import tokens
+from app.theme.bidi_display import ltr_base
 
 logger = logging.getLogger(__name__)
 
@@ -212,7 +213,7 @@ class SearchDialog(tk.Toplevel):
             name = os.path.basename(hit.json_path)
             self.tree.insert(
                 "", "end", iid=str(i),
-                values=(name, _fmt_hms(hit.start_seconds), hit.text),
+                values=(ltr_base(name), _fmt_hms(hit.start_seconds), hit.text),
                 tags=script_fonts.tree_row_tags(self.tree, name, hit.text),
             )
         self.status_var.set(f"{len(hits)} result(s)")

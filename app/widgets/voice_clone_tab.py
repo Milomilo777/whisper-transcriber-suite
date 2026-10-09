@@ -43,6 +43,7 @@ from app.widgets.error_dialog import show_error
 from app.widgets.platform import open_with_default_app
 from app.widgets.tooltip import section_labelframe
 from app.theme import tokens
+from app.theme.bidi_display import ltr_base
 from core import offline
 
 logger = logging.getLogger(__name__)
@@ -560,7 +561,7 @@ def _omni_language(app: Any) -> str:
 def _refresh_samples_listbox(app: Any) -> None:
     app.vc_samples_listbox.delete(0, "end")
     for path in app.vc_samples:
-        app.vc_samples_listbox.insert("end", os.path.basename(path))
+        app.vc_samples_listbox.insert("end", ltr_base(os.path.basename(path)))
 
 
 def _validate_and_add_sample(app: Any, path: str) -> None:

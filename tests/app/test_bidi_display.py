@@ -173,7 +173,7 @@ class _RecordingTree:
     def delete(self, *_iids):
         self.rows = []
 
-    def insert(self, _parent, _index, values=(), tags=()):
+    def insert(self, _parent, _index, iid=None, values=(), tags=()):
         self.rows.append((tuple(values), tuple(tags)))
         return str(len(self.rows) - 1)
 
@@ -282,3 +282,56 @@ def test_last_result_card_is_unchanged_off_aqua(not_aqua, tk_root, tmp_path):
     texts = _last_result_texts(tk_root, tmp_path)
     assert "✓ " + PERSIAN_NAME in texts
     assert not any(LRM in t for t in texts)
+
+
+# --- search dialog and voice-clone sample list -----------------------------------------------------
+
+
+def _search_rows(monkeypatch):
+    from app.dialogs import search_dialog
+
+    monkeypatch.setattr(search_dialog.script_fonts, "tree_row_tags", lambda *_a, **_k: ())
+    hit = types.SimpleNamespace(
+        json_path=os.path.join("media", "نمونه صدا.json"),
+        start_seconds=1.0, text=PERSIAN_NAME,
+    )
+    fake = types.SimpleNamespace(
+        _closing=False, _search_seq=1, status_var=MagicMock(), tree=_RecordingTree(), _hits=[],
+    )
+    search_dialog.SearchDialog._finish_search(fake, [hit], None, 1)  # type: ignore[arg-type]
+    return fake, hit
+
+
+def test_search_result_marks_the_file_name_column_but_not_the_hit_text(aqua, monkeypatch):
+    fake, hit = _search_rows(monkeypatch)
+    (values, _tags), = fake.tree.rows
+    assert values[0] == LRM + os.path.basename(hit.json_path)
+    assert values[2] == PERSIAN_NAME  # transcript text keeps the first-strong direction
+    assert fake._hits == [hit] and hit.json_path.endswith(".json")
+
+
+def test_search_result_is_unchanged_off_aqua(not_aqua, monkeypatch):
+    fake, hit = _search_rows(monkeypatch)
+    assert fake.tree.rows[0][0][0] == os.path.basename(hit.json_path)
+
+
+def _sample_names(root, paths):
+    import tkinter as tk
+
+    from app.widgets import voice_clone_tab
+
+    box = tk.Listbox(root)
+    fake = types.SimpleNamespace(vc_samples_listbox=box, vc_samples=list(paths))
+    voice_clone_tab._refresh_samples_listbox(fake)
+    return list(box.get(0, "end")), fake
+
+
+def test_voice_clone_sample_list_marks_names_on_aqua(aqua, tk_root):
+    names, fake = _sample_names(tk_root, [os.path.join("a", PERSIAN_NAME), os.path.join("a", "x.wav")])
+    assert names == [LRM + PERSIAN_NAME, "x.wav"]
+    assert fake.vc_samples[0] == os.path.join("a", PERSIAN_NAME)  # the stored path is not marked
+
+
+def test_voice_clone_sample_list_is_unchanged_off_aqua(not_aqua, tk_root):
+    names, _fake = _sample_names(tk_root, [os.path.join("a", PERSIAN_NAME)])
+    assert names == [PERSIAN_NAME]
