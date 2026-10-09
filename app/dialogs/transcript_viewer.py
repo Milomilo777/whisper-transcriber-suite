@@ -689,6 +689,8 @@ class TranscriptViewer(tk.Toplevel):
         super().__init__(master)
         self.title(f"Transcript — {os.path.basename(json_path)}")
         width, height = scaled_size(self, 1180, 720)
+        # macOS: end above the Dock; the window may then be dragged shorter (see minsize below).
+        height = mac_native.fit_height(self, height)
         self.geometry(f"{width}x{height}")
         # No resizable()/minsize() existed before — Tk's default is
         # resizable in both directions, so nothing stopped a user from
@@ -697,7 +699,10 @@ class TranscriptViewer(tk.Toplevel):
         # plus 2 hover icons) actually needs. Floor it at the window's
         # own launch size, which was already fixed regardless of screen
         # size, so this doesn't change anything about small-screen fit.
-        self.minsize(width, height)
+        self.minsize(
+            width,
+            min(height, mac_native.FITTED_MIN_HEIGHT_PX) if mac_native.is_aqua(self) else height,
+        )
         # macOS opens a new window at its own offset, which pushed this one past the right edge
         # of a 1280x800 screen and under the Dock; place it over the main window, on screen.
         mac_native.centre_over(

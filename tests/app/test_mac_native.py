@@ -1485,7 +1485,27 @@ def test_a_big_window_can_keep_the_bottom_of_the_screen_free_for_the_dock() -> N
     mac_native.centre_over(
         dialog, _Shown(1100, 600, 300, 250), 680, 620, reserve_bottom=mac_native.DOCK_ROOM_PX,
     )
-    assert dialog.geometries == ["+760+168"]          # 900 - 620 - 112, not the 280 of the default
+    assert dialog.geometries == ["+760+140"]          # 900 - 620 - 140, not the 280 of the default
+
+
+@pytest.mark.parametrize("screen_h, asked, expected", [
+    (800, 720, 632),      # the Dock room comes off a small screen
+    (1080, 720, 720),     # a big screen keeps the size asked for
+    (500, 720, 520),      # never below the fitted minimum
+    (500, 400, 400),      # nor above what was asked
+])
+def test_a_big_window_is_fitted_above_the_dock(
+    aqua: None, screen_h: int, asked: int, expected: int,
+) -> None:
+    screen = types.SimpleNamespace(
+        tk=types.SimpleNamespace(call=lambda *a: "aqua"), winfo_screenheight=lambda: screen_h)
+    assert mac_native.fit_height(screen, asked) == expected
+
+
+def test_a_window_height_is_left_alone_off_aqua(not_aqua: str) -> None:
+    screen = types.SimpleNamespace(
+        tk=types.SimpleNamespace(call=lambda *a: "x11"), winfo_screenheight=lambda: 500)
+    assert mac_native.fit_height(screen, 720) == 720
 
 
 def _viewer_over_a_1280x800_mac(host: _Host, monkeypatch: pytest.MonkeyPatch, tmp_path: Any):
@@ -1500,6 +1520,7 @@ def _viewer_over_a_1280x800_mac(host: _Host, monkeypatch: pytest.MonkeyPatch, tm
                         ("winfo_width", 1240), ("winfo_height", 716),
                         ("winfo_screenwidth", 1280), ("winfo_screenheight", 800)):
         monkeypatch.setattr(host, name, lambda v=value: v)
+    monkeypatch.setattr(tk.Misc, "winfo_screenheight", lambda self: 800)  # the viewer's own screen
     seen: list[str] = []
     real = tk.Toplevel.geometry
 
@@ -1518,10 +1539,11 @@ def test_the_viewer_opens_inside_a_1280x800_mac_screen(
 ) -> None:
     viewer, seen = _viewer_over_a_1280x800_mac(host, monkeypatch, tmp_path)
     try:
-        assert seen == ["1180x660", "+50+28"]
-        width, height, x, y = 1180, 660, 50, 28
+        assert seen == ["1180x632", "+50+28"]        # 800 - menu bar 28 - Dock room 140
+        width, height, x, y = 1180, 632, 50, 28
         assert x + width <= 1280                       # right edge on screen
-        assert y + 28 + height <= 800 - 60             # title bar and window end above the Dock
+        assert y + 28 + height <= 800 - 100            # title bar and window end above a 100 px Dock
+        assert viewer.minsize() == (1180, 520)         # it may be dragged shorter, not wider
     finally:
         viewer._dirty = False
         viewer._on_close()
@@ -1533,6 +1555,7 @@ def test_the_viewer_is_left_to_the_system_off_macos(
     viewer, seen = _viewer_over_a_1280x800_mac(host, monkeypatch, tmp_path)
     try:
         assert len(seen) == 1 and seen[0].count("+") == 0   # a size only, no position
+        assert viewer.minsize() == (1180, 660)              # the old floor: the launch size
     finally:
         viewer._dirty = False
         viewer._on_close()
@@ -1551,7 +1574,7 @@ def test_viewer_json_folder_button_is_unchanged_on_windows_and_linux(
         buttons = _buttons(viewer)
         assert "Open JSON folder" in buttons
         opened: list[str] = []
-        monkeypatch.setattr(tv, "_os_open", opened.append)
+        monkeypatch.setattr(tv, "_os_open", lambda path, parent=None: opened.append(path))
         monkeypatch.setattr(tv, "open_folder", lambda *a, **k: pytest.fail("not on this platform"))
         buttons["Open JSON folder"].invoke()
         assert opened == [str(tmp_path)]

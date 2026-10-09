@@ -375,8 +375,27 @@ def close_front_window(app: Any) -> bool:
 _MENU_BAR_PX = 28
 
 
-# What the Dock and a window's own title bar take below its top edge on a small screen.
-DOCK_ROOM_PX = 112
+# What the Dock (with its gap and magnified icons) and a window's own title bar take below
+# the top edge of a window's content on a small screen.
+DOCK_ROOM_PX = 140
+# The shortest a window that is fitted to the screen may become (it can be dragged smaller).
+FITTED_MIN_HEIGHT_PX = 520
+
+
+def fit_height(window: Any, height: int) -> int:
+    """Aqua: ``height`` cut so the window ends above the Dock when it sits below the menu bar.
+
+    The size the window was asked for is kept when the screen has room; otherwise the height
+    shrinks, but never below ``FITTED_MIN_HEIGHT_PX`` (or the request, if that was smaller).
+    Other platforms get ``height`` back unchanged.
+    """
+    if not is_aqua(window):
+        return height
+    try:
+        room = int(window.winfo_screenheight()) - _MENU_BAR_PX - DOCK_ROOM_PX
+    except (tk.TclError, ValueError):
+        return height
+    return max(min(height, room), min(height, FITTED_MIN_HEIGHT_PX))
 
 
 def centre_over(

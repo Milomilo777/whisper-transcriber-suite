@@ -378,7 +378,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **The transcript viewer opens inside a small Mac screen.** On a 1280x800 Mac it was placed at the
   system's offset and ran past the right edge and under the Dock. It now opens centred over the main
   window, and windows sized to the screen keep room for the menu bar, title bar and Dock there
-  (Windows and Linux are unchanged).
+  (Windows and Linux are unchanged). The viewer also ends above the Dock and can be dragged shorter there.
 - **Opening a result file says so when no app can open it.** "Open" on a `.srt` did nothing on a Mac
   with no app for that type, because the exit code of `open` was ignored. The result is now checked
   on every platform (also `xdg-open`, and Windows "no association"): a Mac opens text files such as
