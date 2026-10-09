@@ -5,8 +5,10 @@ What the user sees on the app's taskbar button (Windows 7 and later):
 * a green progress bar while a job runs (a marquee while it has no percentage yet), a yellow one
   while the running jobs are paused, a red one after a job failed;
 * a small red badge with the number of queued and running jobs (``9+`` above nine);
-* one short flash of the button when a job finishes while the window is not in front, tied to
-  the existing "Chime on completion" setting (no second option).
+* a flash of the button (three blinks) when a job finishes while the window is not in front,
+  tied to the existing "Chime on completion" setting (no second option). A user job flashes once,
+  when its last stage is done: a failed or cancelled job does not flash, and the transcription
+  step of a subtitled-video chain waits for the burn.
 
 How it is done: ``ITaskbarList3`` through ``ctypes`` only (no new dependency). The COM object is
 called through its vtable, so the slot numbers below are pinned by a test and were checked against
@@ -106,7 +108,7 @@ _SUBCLASS_ID = 0x57545331   # arbitrary id of this subclass ("WTS1"); one per wi
 MIN_INTERVAL = 0.5          # seconds between two rounds of taskbar updates (<= 2 per second)
 MAX_FAILURES = 5            # failed rounds in a row before the integration stops for the session
 FLASH_COUNT = 3             # blinks of one flash (a single blink is easy to miss)
-ERROR_MIN_SECONDS = 5.0     # a red bar stays at least this long, then until the window is in front
+ERROR_MIN_SECONDS = 5.0     # a failure shows red for 5 s at least, then until the window is in front
 BADGE_RED = (0xC4, 0x2B, 0x1C)
 
 QUEUE_ACTIVE = ("waiting", "running", "paused")
@@ -117,6 +119,8 @@ DOWNLOAD_ACTIVE = ("waiting", "running", "paused", "burning")
 _config_enabled = True
 _failed: set[str] = set()
 _ctl: "_Controller | None" = None
+# Set by shutdown() (App.destroy) and never cleared in production: the process ends with the
+# window, so the integration is deliberately not restartable after a close.
 _closed = False
 _session_off = False
 
@@ -363,9 +367,17 @@ class _ComObject:
     """
 
     def __init__(self, pointer: int) -> None:
+        """Take over one reference to ``pointer``; it is released again if wrapping fails."""
         if not pointer:
             raise ComError("null interface pointer")
         self._pointer = int(pointer)
+        try:
+            self._bind()
+        except BaseException:
+            self._release_raw()
+            raise
+
+    def _bind(self) -> None:
         functype = ctypes.WINFUNCTYPE  # type: ignore[attr-defined]
         void_p, hresult = ctypes.c_void_p, ctypes.c_long
         self._release = self._method(SLOT_RELEASE, functype(ctypes.c_ulong, void_p))
@@ -377,6 +389,14 @@ class _ComObject:
             SLOT_SET_PROGRESS_STATE, functype(hresult, void_p, void_p, ctypes.c_int))
         self._set_overlay = self._method(
             SLOT_SET_OVERLAY_ICON, functype(hresult, void_p, void_p, void_p, ctypes.c_wchar_p))
+
+    def _release_raw(self) -> None:
+        """Release without relying on the other wrappers (they may be what failed)."""
+        try:
+            functype = ctypes.WINFUNCTYPE  # type: ignore[attr-defined]
+            self._method(SLOT_RELEASE, functype(ctypes.c_ulong, ctypes.c_void_p))(self._pointer)
+        except Exception as exc:  # noqa: BLE001 - nothing more can be done for this pointer
+            _note_failure("release-raw", "Could not release a taskbar interface: %s", exc)
 
     def _method(self, slot: int, prototype: Any) -> Any:
         size = ctypes.sizeof(ctypes.c_void_p)
@@ -601,10 +621,16 @@ class _Native:
         # A process that runs as administrator only receives the message when it is allowed.
         self._user32.ChangeWindowMessageFilterEx(hwnd, message, MSGFLT_ALLOW, None)
 
+        # The procedure sees the callback only through this cell, which close() empties: the
+        # procedure itself must stay alive for good, the controller behind it must not.
+        cell: list[Callable[[], None] | None] = [callback]
+
         def window_proc(h: int, msg: int, wparam: int, lparam: int, _id: int, _ref: int) -> int:
             try:
                 if msg == message:
-                    callback()
+                    target = cell[0]
+                    if target is not None:
+                        target()
                 elif msg == WM_NCDESTROY:
                     comctl.RemoveWindowSubclass(h, proc, _SUBCLASS_ID)
             except Exception:  # noqa: BLE001 - never raise into the window procedure
@@ -614,9 +640,15 @@ class _Native:
         proc = proc_type(window_proc)
         if not comctl.SetWindowSubclass(hwnd, proc, _SUBCLASS_ID, 0):
             raise ComError("SetWindowSubclass failed")
-        # The callback must outlive every call Windows can still make to it: for good.
-        _KEEP_ALIVE.append(proc)
-        self._subclassed = (hwnd, lambda: comctl.RemoveWindowSubclass(hwnd, proc, _SUBCLASS_ID))
+        # Windows can still call the procedure until its window is gone, so it is never freed;
+        # one entry per window (a new start of the same window replaces the removed one).
+        _KEEP_ALIVE[hwnd] = proc
+
+        def unhook() -> None:
+            cell[0] = None
+            comctl.RemoveWindowSubclass(hwnd, proc, _SUBCLASS_ID)
+
+        self._subclassed = (hwnd, unhook)
 
     def close(self) -> None:
         """Release everything, each step on its own so one failure cannot skip the rest."""
@@ -638,7 +670,7 @@ class _Native:
                 _note_failure("close", "Taskbar clean-up step failed: %s", exc)
 
 
-_KEEP_ALIVE: list[Any] = []
+_KEEP_ALIVE: dict[int, Any] = {}
 
 
 def _unavailable() -> Any:
@@ -665,7 +697,9 @@ class _Controller:
         self.button_created = False
         self.error_since: float | None = None
         self.errors_seen: set[int] = set()
-        self.active_ids: set[int] = set()
+        self.active_ids: set[int] = set()        # queue tasks seen queued/running/paused
+        self.chained_ids: set[int] = set()       # ... that belong to a subtitled-video row
+        self.download_status: dict[int, str] = {}   # last status seen of each download row
 
     # TaskbarButtonCreated arrives on the Tk thread inside the window procedure: only note it.
     def on_button_created(self) -> None:
@@ -729,7 +763,12 @@ def _activate(root: Any) -> "_Controller | None":
         return None
     if not hwnd:
         return None   # no frame window yet: try again at the next round
-    path = marker_path()
+    try:
+        path = marker_path()
+    except Exception as exc:  # noqa: BLE001 - e.g. no usable profile folder
+        logger.warning("Windows taskbar integration is off for this session: %s", exc)
+        _session_off = True
+        return None
     if marker_blocks(path) or not _write_marker(path):
         _session_off = True
         return None
@@ -776,33 +815,68 @@ def _chime_on(root: Any) -> bool:
         return False
 
 
+def _chained(task: Any) -> bool:
+    """True for a transcription that is the middle stage of a "Make subtitled video" row."""
+    return bool(getattr(getattr(task, "source_download", None), "make_subbed_video", False))
+
+
+def _download_finished_for_user(item: Any, previous: str | None) -> bool:
+    """A download row that just became "finished": did a user-visible job end well?
+
+    The auto-transcribe hand-off sets the row to "finished" when the linked transcription ends
+    however it ended (finished, failed, cancelled, model-load timeout), so ``transcribing`` ->
+    ``finished`` says nothing: a successful transcription is reported by its own queue task.
+    A subtitled-video row is done only after its burn.
+    """
+    if previous is None:
+        return False
+    if getattr(item, "make_subbed_video", False):
+        return previous == "burning"
+    return previous in ("waiting", "running", "paused")
+
+
 def _track_jobs(ctl: _Controller, queue: list[Any], downloads: list[Any], now: float) -> bool:
-    """Update the failure latch; True when a job went from queued/running to finished."""
+    """Update the failure latch; True when a user job just finished well (one flash per round)."""
     finished = False
     alive: set[int] = set()
-    rows = [(task, QUEUE_ACTIVE) for task in queue] + [
-        (item, DOWNLOAD_ACTIVE + ("transcribing",)) for item in downloads]
-    for task, active in rows:
+    for task in queue:
         key = id(task)
         alive.add(key)
         status = getattr(task, "status", "")
-        if status in active:
+        if status in QUEUE_ACTIVE:
             ctl.active_ids.add(key)
+            if _chained(task):
+                ctl.chained_ids.add(key)
         elif status == "finished" and key in ctl.active_ids:
             ctl.active_ids.discard(key)
-            finished = True
+            # The transcription of a subtitled-video row is not the last stage.
+            finished = finished or key not in ctl.chained_ids
         elif status in ("error", "cancelled"):
             ctl.active_ids.discard(key)
         if status == "error" and key not in ctl.errors_seen:
             ctl.errors_seen.add(key)
             ctl.error_since = now
+    for item in downloads:
+        key = id(item)
+        alive.add(key)
+        status = getattr(item, "status", "")
+        previous = ctl.download_status.get(key)
+        if status == "finished" and _download_finished_for_user(item, previous):
+            finished = True
+        ctl.download_status[key] = status
+        if status == "error" and key not in ctl.errors_seen:
+            ctl.errors_seen.add(key)
+            ctl.error_since = now
     ctl.active_ids &= alive
+    ctl.chained_ids &= alive
     ctl.errors_seen &= alive
+    ctl.download_status = {k: v for k, v in ctl.download_status.items() if k in alive}
     return finished
 
 
 def _clear_error_if_seen(ctl: _Controller, now: float) -> None:
-    """The red bar goes once it was shown for a while and the window is in front again."""
+    """The red bar goes when the failure is at least ``ERROR_MIN_SECONDS`` old and the window
+    is in front now (so a user who was already looking still sees it for those seconds)."""
     if ctl.error_since is None or now - ctl.error_since < ERROR_MIN_SECONDS:
         return
     if ctl.native.is_foreground(ctl.hwnd):
@@ -832,6 +906,10 @@ def sync(root: Any, *, now: float | None = None) -> None:
     global _ctl
     if _closed:
         return
+    # First, before anything is released or created: COM belongs to the Tk (main) thread.
+    if threading.current_thread() is not threading.main_thread():
+        _note_failure("thread", "Taskbar update refused: not on the main (Tk) thread")
+        return
     if not enabled():
         _release()
         return
@@ -840,9 +918,6 @@ def sync(root: Any, *, now: float | None = None) -> None:
     if ctl is not None and now - ctl.last_round < MIN_INTERVAL:
         return
     try:
-        if threading.current_thread() is not threading.main_thread():
-            _note_failure("thread", "Taskbar update refused: not on the main (Tk) thread")
-            return
         if _is_withdrawn(root):
             return
         if ctl is not None and ctl.root is not root:
@@ -890,16 +965,27 @@ def _give_up(reason: str) -> None:
     global _session_off
     logger.warning("Windows taskbar integration is off for this session: %s", reason)
     _session_off = True
-    _release()
+    _release(clear=False)    # the taskbar is refusing calls: do not send it more
 
 
-def _release() -> None:
-    """Release the COM object, the window hook and the badge icons (idempotent)."""
+def _release(clear: bool = True) -> None:
+    """Release the COM object, the window hook and the badge icons (idempotent).
+
+    With ``clear`` the progress bar and the badge are taken off the button first (each call on
+    its own, so a refusal skips nothing).
+    """
     global _ctl
     ctl, _ctl = _ctl, None
     if ctl is None:
         return
     try:
+        if clear and ctl.applied is not None:
+            for call in (lambda: ctl.native.set_progress_state(ctl.hwnd, TBPF_NOPROGRESS),
+                         lambda: ctl.native.set_overlay(ctl.hwnd, None, "")):
+                try:
+                    call()
+                except Exception as exc:  # noqa: BLE001
+                    _note_failure("clear", "Could not clear the taskbar button: %s", exc)
         ctl.native.close()
     finally:
         ctl.clear_marker()
@@ -922,7 +1008,7 @@ def reset_for_tests() -> None:
     """
     global _config_enabled, _closed, _session_off, _native_factory
     try:
-        _release()
+        _release(clear=False)
     except Exception:  # noqa: BLE001
         pass
     _config_enabled = True

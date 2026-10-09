@@ -7,9 +7,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Added
 
 - **Windows taskbar progress, job badge and flash.** The app's taskbar button shows a progress bar
-  while a job runs (yellow when paused, red after a failure until you come back to the window), a
-  small badge with the number of queued and running jobs, and flashes once when a job finishes
-  while the window is not in front. The flash follows the existing **Chime on completion** setting;
+  while a job runs (yellow when paused; red after a failure, for at least 5 seconds and then until
+  the window is in front), a small badge with the number of queued and running jobs, and blinks
+  three times when a job finishes while the window is not in front (once per job, when its last
+  stage is done; never for a failed or cancelled job). The flash follows the existing **Chime on completion** setting;
   there is no new option. `native_taskbar` in `config.json` (or `WTS_NO_TASKBAR=1`) turns it off, and
   a start that crashed in the set-up keeps it off until the app is updated (ADR 0012).
 - **macOS native feel.** The Mac app has an app menu with About and Settings (Command-comma), the

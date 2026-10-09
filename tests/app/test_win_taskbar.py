@@ -960,3 +960,362 @@ def test_the_real_taskbar_accepts_every_call_on_a_withdrawn_window() -> None:
         if native is not None:
             native.close()
         root.destroy()
+
+
+# ------------------------------------- review round: real queue objects and status paths
+
+class LifecycleApp:
+    """The App surface that the real ``TranscriptionService.finish_task`` and ``sync`` touch."""
+
+    def __init__(self, chime: bool = True) -> None:
+        self.queue: list[Any] = []
+        self.download_queue: list[Any] = []
+        self.history = None
+        self.app_config = {"output_formats": ["srt"]}
+        self.chime_on_complete_var = SimpleNamespace(get=lambda: chime)
+        self.logged: list[str] = []
+
+    def winfo_id(self) -> int:
+        return 77
+
+    def state(self) -> str:
+        return "normal"
+
+    def log(self, msg: str) -> None:
+        self.logged.append(msg)
+
+    def show_last_result(self, task: Any) -> None:
+        pass
+
+    def refresh_download_queue(self) -> None:
+        pass
+
+    def note_job_success(self) -> None:
+        pass
+
+    def update_overall_progress(self) -> None:
+        pass
+
+    def open_sample_result(self, task: Any) -> None:
+        pass
+
+
+def _real_tasks(app: LifecycleApp, *, subbed: bool = False, linked: bool = True):
+    """A real download row handed off to a real transcription task, as the app builds them."""
+    from app.domain.tasks import VideoDownloadTask
+    from core.task import TranscriptionTask
+
+    dl = VideoDownloadTask("https://example.invalid/v", "out", "best", {}, title="t",
+                           make_subbed_video=subbed)
+    app.download_queue.append(dl)
+    dl.status = "running"
+    tr = TranscriptionTask("out/t.mp4")
+    if linked:
+        tr.source_download = dl          # app.enqueue_transcription_from_download
+        dl.transcription_task = tr
+    app.queue.append(tr)
+    return dl, tr
+
+
+def _chain_after_transcription(app: Any, dl: Any, tr: Any, finished: bool) -> None:
+    """What ``subbed_video.after_transcription`` does to the row (the burn thread aside)."""
+    dl.status = "burning" if finished else ("cancelled" if tr.cancelled else "error")
+
+
+def _finish_transcription(app: LifecycleApp, tr: Any, how: str, monkeypatch) -> None:
+    """End ``tr`` through the real ``finish_task``: success, "error" or "cancelled"."""
+    from app.services import subbed_video
+    from app.services.transcription_service import TranscriptionService
+
+    service = TranscriptionService(app)  # type: ignore[arg-type]
+    monkeypatch.setattr(service, "_post_usage_stats", lambda *a, **k: None)
+    monkeypatch.setattr(subbed_video, "after_transcription", _chain_after_transcription)
+    tr.status = "running" if how == "finished" else how
+    tr.cancelled = how == "cancelled"
+    service.finish_task({"task": tr, "temporary": False}, keep_status=how != "finished")
+
+
+def _flashes(tb) -> int:
+    return len(tb.native.only("flash"))
+
+
+def _start(app: LifecycleApp, dl: Any, tr: Any, tb) -> None:
+    """The download is done and the transcription runs: two rounds, as the 500 ms loop makes."""
+    wt.sync(app, now=1.0)
+    dl.status = "transcribing"          # DownloadService hands the row to the transcription
+    tr.status = "running"
+    tr.progress = 20
+    wt.sync(app, now=2.0)
+    tb.native.foreground = False
+
+
+def test_a_successful_auto_transcribe_flashes_once(tb, monkeypatch) -> None:
+    app = LifecycleApp()
+    dl, tr = _real_tasks(app)
+    _start(app, dl, tr, tb)
+    _finish_transcription(app, tr, "finished", monkeypatch)
+    assert (tr.status, dl.status) == ("finished", "finished")   # the real code paths did this
+    wt.sync(app, now=3.0)
+    assert _flashes(tb) == 1
+
+
+@pytest.mark.parametrize("how", ["error", "cancelled"])
+def test_a_failed_or_cancelled_auto_transcribe_does_not_flash(tb, monkeypatch, how) -> None:
+    """finish_task restores the download row to "finished" even when the transcription failed."""
+    app = LifecycleApp()
+    dl, tr = _real_tasks(app)
+    _start(app, dl, tr, tb)
+    _finish_transcription(app, tr, how, monkeypatch)
+    assert (tr.status, dl.status) == (how, "finished")          # the row says finished
+    wt.sync(app, now=3.0)
+    assert _flashes(tb) == 0
+
+
+def test_cancelling_a_waiting_transcription_does_not_flash(tb) -> None:
+    """App._release_waiting_download sets the row "finished" for a cancelled waiting task."""
+    from app.app import App
+
+    app = LifecycleApp()
+    dl, tr = _real_tasks(app)
+    _start(app, dl, tr, tb)
+    tr.status = "cancelled"
+    App._release_waiting_download(app, tr)       # type: ignore[arg-type]
+    assert dl.status == "finished"
+    wt.sync(app, now=3.0)
+    assert _flashes(tb) == 0
+
+
+def test_a_model_load_timeout_does_not_flash(tb) -> None:
+    """enqueue_transcription_from_download's timeout sets the row "finished" with no job run."""
+    app = LifecycleApp()
+    dl, tr = _real_tasks(app, linked=False)
+    app.queue.clear()
+    wt.sync(app, now=1.0)
+    dl.status = "transcribing"
+    wt.sync(app, now=2.0)
+    tb.native.foreground = False
+    dl.status = "finished"
+    wt.sync(app, now=3.0)
+    assert _flashes(tb) == 0
+
+
+def test_a_plain_download_flashes_once_when_it_finishes(tb) -> None:
+    from app.domain.tasks import VideoDownloadTask
+
+    app = LifecycleApp()
+    dl = VideoDownloadTask("https://example.invalid/v", "out", "best", {}, title="t")
+    app.download_queue.append(dl)
+    wt.sync(app, now=1.0)
+    dl.status = "running"
+    dl.progress = 40
+    wt.sync(app, now=2.0)
+    tb.native.foreground = False
+    dl.status = "finished"
+    dl.progress = 100
+    wt.sync(app, now=3.0)
+    assert _flashes(tb) == 1
+
+
+def test_a_subtitled_video_chain_flashes_once_on_its_last_stage(tb, monkeypatch) -> None:
+    app = LifecycleApp()
+    dl, tr = _real_tasks(app, subbed=True)
+    _start(app, dl, tr, tb)
+    _finish_transcription(app, tr, "finished", monkeypatch)
+    assert (tr.status, dl.status) == ("finished", "burning")
+    wt.sync(app, now=3.0)
+    assert _flashes(tb) == 0                      # not done yet: the burn is still to run
+    dl.status = "finished"                        # subbed_video.end_chain
+    wt.sync(app, now=4.0)
+    assert _flashes(tb) == 1
+
+
+@pytest.mark.parametrize("end", ["error", "cancelled"])
+def test_a_chain_whose_burn_fails_or_is_cancelled_does_not_flash(tb, monkeypatch, end) -> None:
+    app = LifecycleApp()
+    dl, tr = _real_tasks(app, subbed=True)
+    _start(app, dl, tr, tb)
+    _finish_transcription(app, tr, "finished", monkeypatch)
+    wt.sync(app, now=3.0)
+    dl.status = end
+    wt.sync(app, now=4.0)
+    assert _flashes(tb) == 0
+
+
+def test_a_real_job_lifecycle_drives_the_taskbar_through_the_queue_objects(tb) -> None:
+    """Real TranscriptionTask objects in the app's queue, from waiting to finished."""
+    from core.task import TranscriptionTask
+
+    app = LifecycleApp()
+    job = TranscriptionTask("a.mp4")
+    app.queue.append(job)
+    wt.sync(app, now=1.0)                                        # waiting: badge only
+    assert tb.native.only("overlay")[-1] == ("overlay", HWND, "1", "1 job")
+    job.status, job.progress = "running", 25
+    wt.sync(app, now=2.0)
+    assert tb.native.only("state")[-1] == ("state", HWND, wt.TBPF_NORMAL)
+    assert tb.native.only("value")[-1] == ("value", HWND, 25, 100)
+    job.status = "paused"
+    wt.sync(app, now=3.0)
+    assert tb.native.only("state")[-1] == ("state", HWND, wt.TBPF_PAUSED)
+    job.status, job.progress = "running", 70
+    wt.sync(app, now=4.0)
+    tb.native.foreground = False
+    job.status, job.progress = "finished", 100
+    wt.sync(app, now=5.0)
+    assert _flashes(tb) == 1
+    assert tb.native.only("state")[-1] == ("state", HWND, wt.TBPF_NOPROGRESS)
+    assert tb.native.only("overlay")[-1] == ("overlay", HWND, None, "")
+    assert not tb.marker.exists()
+
+
+# ----------------------------------------------- review round: COM-layer hardening
+
+def test_a_worker_thread_cannot_release_com_even_with_the_feature_off(tb) -> None:
+    """The main-thread check comes first: a release (CoUninitialize) belongs to the Tk thread."""
+    root = make_root([task("running", 40)])
+    wt.sync(root, now=1.0)
+    wt.set_enabled(False)
+    thread = threading.Thread(target=lambda: wt.sync(root, now=3.0))
+    thread.start()
+    thread.join()
+    assert tb.native.closed == 0
+    wt.sync(root, now=4.0)                  # the main thread may
+    assert tb.native.closed == 1
+
+
+def test_a_clean_release_clears_the_bar_and_the_badge_first(tb) -> None:
+    root = make_root([task("running", 40), task("waiting")])
+    wt.sync(root, now=1.0)
+    tb.native.calls.clear()
+    wt.shutdown()
+    assert tb.native.calls == [("state", HWND, wt.TBPF_NOPROGRESS), ("overlay", HWND, None, "")]
+    assert tb.native.closed == 1
+
+
+def test_switching_the_feature_off_live_clears_the_button_too(tb) -> None:
+    root = make_root([task("running", 40)])
+    wt.sync(root, now=1.0)
+    tb.native.calls.clear()
+    wt.set_enabled(False)
+    wt.sync(root, now=3.0)
+    assert ("state", HWND, wt.TBPF_NOPROGRESS) in tb.native.calls
+    assert tb.native.closed == 1
+
+
+def test_a_window_change_clears_the_old_button_before_the_new_setup(tb) -> None:
+    first, second = make_root([task("running", 1)]), make_root([task("running", 2)])
+    wt.sync(first, now=1.0)
+    tb.native.calls.clear()
+    wt.sync(second, now=2.0)
+    names = tb.native.names()
+    assert names.index("overlay") < names.index("create")       # old overlay cleared first
+    assert tb.native.calls[0] == ("state", HWND, wt.TBPF_NOPROGRESS)
+
+
+def test_a_clear_that_fails_does_not_stop_the_release(tb) -> None:
+    root = make_root([task("running", 40)])
+    wt.sync(root, now=1.0)
+    tb.native.raises["state"] = OSError("gone")
+    tb.native.raises["overlay"] = OSError("gone")
+    wt.shutdown()
+    assert tb.native.closed == 1
+
+
+def test_giving_up_does_not_send_more_calls_to_a_refusing_taskbar(tb) -> None:
+    job = task("running", 40)
+    root = make_root([job])
+    wt.sync(root, now=1.0)
+    tb.native.hr["value"] = -2147023174
+    for step in range(2, 2 + wt.MAX_FAILURES):
+        job.progress = step
+        wt.sync(root, now=float(step))
+    assert tb.native.closed == 1
+    # the last calls are the refused round itself, not a clear sent after giving up
+    assert tb.native.calls[-3:-1] == [("state", HWND, wt.TBPF_NORMAL),
+                                      ("value", HWND, 1 + wt.MAX_FAILURES, 100)]
+    assert tb.native.calls[-1][:3] == ("overlay", HWND, "1")
+
+
+def test_a_failing_data_folder_lookup_turns_the_feature_off_once(tb, monkeypatch) -> None:
+    built: list[int] = []
+    monkeypatch.setattr(wt, "_native_factory", lambda: built.append(1) or tb.native)
+
+    def broken() -> Path:
+        raise OSError("no profile folder")
+
+    monkeypatch.setattr(wt, "marker_path", broken)
+    root = make_root([task("running", 1)])
+    for step in range(1, 6):
+        wt.sync(root, now=float(step))
+    assert len(built) == 1                          # no new native layer every round
+    assert "co_initialize" not in tb.native.names()
+
+
+def _fake_com_object(zero_slot: str | None = None):
+    """A fake ITaskbarList3 made of ctypes callbacks; ``zero_slot`` leaves one method empty."""
+    seen: list[str] = []
+    keep: list[Any] = []
+    functype = ctypes.WINFUNCTYPE  # type: ignore[attr-defined]
+    unused = functype(ctypes.c_long, ctypes.c_void_p)
+    slots: list[int] = []
+    for name in wt.ITASKBAR_LIST3_METHODS:
+        if name == zero_slot:
+            slots.append(0)
+            continue
+        callback = unused(lambda this, n=name: seen.append(n) or 0)
+        keep.append(callback)
+        slots.append(ctypes.cast(callback, ctypes.c_void_p).value or 0)
+    table = (ctypes.c_void_p * len(slots))(*slots)
+    obj = ctypes.c_void_p(ctypes.addressof(table))
+    keep.extend([table, obj])
+    return seen, keep, ctypes.addressof(obj)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="stdcall vtable call needs Windows")
+def test_an_interface_that_cannot_be_wrapped_is_still_released() -> None:
+    seen, keep, pointer = _fake_com_object(zero_slot="SetOverlayIcon")
+    with pytest.raises(wt.ComError):
+        wt._ComObject(pointer)
+    assert seen == ["Release"]
+    assert keep
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="stdcall vtable call needs Windows")
+def test_a_wrapped_interface_is_not_released_early() -> None:
+    seen, keep, pointer = _fake_com_object()
+    com = wt._ComObject(pointer)
+    assert seen == []
+    com.release()
+    assert seen == ["Release"] and keep
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="real window hook needs Windows")
+def test_the_window_hook_lets_go_of_its_callback_and_is_replaced_not_stacked() -> None:
+    import gc
+    import weakref
+
+    class Callback:
+        def __call__(self) -> None:
+            pass
+
+    root = tk.Tk()
+    root.withdraw()
+    native = None
+    try:
+        root.update_idletasks()
+        native = wt._Native()
+        hwnd = native.top_window(int(root.winfo_id()))
+        before = len(wt._KEEP_ALIVE)            # earlier windows of this process may be listed
+        for _ in range(3):                      # three activations of the same window
+            callback = Callback()
+            ref = weakref.ref(callback)
+            native.watch_button_created(hwnd, callback)
+            native.close()
+            del callback
+            gc.collect()
+            assert ref() is None                # the hook no longer keeps the controller alive
+        assert len(wt._KEEP_ALIVE) == before + 1   # one small entry per window, not one per start
+    finally:
+        if native is not None:
+            native.close()
+        root.destroy()

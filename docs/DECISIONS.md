@@ -549,7 +549,9 @@ already uses `ctypes` for DWM (ADR 0011) and has no `comtypes` or `pywin32` depe
 both queues into one snapshot (state, percent, badge count) and sends only what changed, at most
 one round per 500 ms, on the main thread only. The flash is decided from the same snapshots (a job
 going from queued/running to finished while the window is not the foreground window) and is tied
-to the existing "Chime on completion" setting; no second option. Guards:
+to the existing "Chime on completion" setting; no second option. A download row that the auto-transcribe
+hand-off sets to "finished" is not a finish by itself (the hand-off does that for a failed or cancelled
+transcription too); the linked transcription task reports a success on its own. Guards:
 - Kill switch: `native_taskbar` (config) and `WTS_NO_TASKBAR` (environment).
 - Start marker `taskbar_integration.marker` in the app data folder, written before the first COM
   call and removed after the first real update (state, value and the badge icon) went through. A
@@ -567,7 +569,9 @@ to the existing "Chime on completion" setting; no second option. Guards:
 
 **Consequences:**
 - Windows 7 and later get the taskbar features; macOS and Linux import the module and do nothing.
-- A failed job turns the bar red and keeps it red until the window has been in front for 5 seconds.
+- A failed job turns the bar red for at least 5 seconds, and then until the window is in front.
+- A user job flashes the button (three blinks) once, when its last stage ended well: not for a failed
+  or cancelled job, and not for the transcription step of a subtitled-video row (its burn is last).
 - A user whose start crashed in the set-up sees no taskbar features until the next app version.
 - Another instance that starts at the very moment the first one holds the marker also stays off.
 - The AppUserModelID is unchanged (a pinned or grouped taskbar button is not touched).
