@@ -75,9 +75,10 @@ def _advanced_fake(app, *, chosen_label, slug_map):
 
 
 def _fake_app(cfg):
-    stop_calls = {"count": 0}
+    stop_calls = {"count": 0, "idle": 0}
     svc = types.SimpleNamespace(
-        stop_all=lambda: stop_calls.__setitem__("count", stop_calls["count"] + 1)
+        stop_all=lambda: stop_calls.__setitem__("count", stop_calls["count"] + 1),
+        restart_when_idle=lambda: stop_calls.__setitem__("idle", stop_calls["idle"] + 1),
     )
     app = types.SimpleNamespace(
         app_config=cfg,
@@ -184,6 +185,7 @@ def test_backend_change_stops_worker(monkeypatch: Any) -> None:
 
     assert cfg["transcribe_backend"] == "google_cloud_stt"
     assert stop_calls["count"] == 1, "switching the engine must restart the worker"
+    assert stop_calls["idle"] == 0
 
 
 def test_backend_change_skips_stop_all_when_switch_declined(monkeypatch: Any) -> None:
@@ -210,8 +212,10 @@ def test_backend_change_skips_stop_all_when_switch_declined(monkeypatch: Any) ->
 
     # The pick is still saved (the NEXT freshly-spawned worker will use it)...
     assert cfg["transcribe_backend"] == "google_cloud_stt"
-    # ...but the busy worker was not force-stopped.
+    # ...but the busy worker was not force-stopped; it is marked to be
+    # replaced once it is idle, so the saved engine really takes effect.
     assert stop_calls["count"] == 0
+    assert stop_calls["idle"] == 1
 
 
 def test_model_change_with_a_failed_save_leaves_the_worker_running(monkeypatch: Any) -> None:
@@ -268,6 +272,7 @@ def test_model_change_asks_before_stopping_a_busy_worker(monkeypatch: Any) -> No
     assert len(asked) == 1 and asked[0]["action"] == "Changing the model"
     assert cfg["whisper_model"] == "medium"
     assert stop_calls["count"] == 0
+    assert stop_calls["idle"] == 1, "the declined switch must still replace the worker later"
 
 
 def test_model_and_engine_change_together_ask_once(monkeypatch: Any) -> None:
@@ -292,6 +297,7 @@ def test_model_and_engine_change_together_ask_once(monkeypatch: Any) -> None:
 
     assert len(asked) == 1
     assert stop_calls["count"] == 1
+    assert stop_calls["idle"] == 0, "the accepted path stops the worker now, nothing is deferred"
 
 
 def _download_fake(app: Any) -> Any:

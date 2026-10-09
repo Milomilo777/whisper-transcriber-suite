@@ -146,3 +146,88 @@ def test_a_done_event_of_an_older_attempt_does_not_finish_the_task():
     TranscriptionService(app).poll()
 
     assert task.status == "running"
+
+
+# --- A worker left on the old model after a declined model / engine change ----
+
+class _StaleHistory:
+    def __init__(self):
+        self.models: list[str] = []
+
+    def insert_transcription(self, **kw):
+        self.models.append(kw["model"])
+        return 7
+
+
+def _stale_setup(monkeypatch):
+    """A service with one idle, ready worker that was spawned before a model change."""
+    app = _app(history=_StaleHistory())
+    app.app_config["model"] = {"name": "medium"}
+    task = SimpleNamespace(status="waiting", file_path="clip.mp4")
+    app.queue.append(task)
+    worker = dict(_idle_worker(), model_name="small", spawn_backend="faster_whisper")
+    app.workers.append(worker)
+    svc = TranscriptionService(app)
+    started: list[bool] = []
+    monkeypatch.setattr(
+        TranscriptionService, "start_worker",
+        lambda self, worker=None, temporary=False: started.append(temporary),
+    )
+    monkeypatch.setattr(TranscriptionService, "_stop_in_background", lambda *a: None)
+    return app, svc, task, worker, started
+
+
+def test_a_stale_idle_worker_is_replaced_before_the_next_dispatch(sent, monkeypatch):
+    app, svc, task, worker, started = _stale_setup(monkeypatch)
+
+    assert svc.restart_when_idle() == 1
+    svc.dispatch_waiting()
+
+    assert worker not in app.workers, "the old-model worker must be retired"
+    assert worker["task"] is None and sent == [], "no job may go to the old worker"
+    assert task.status == "waiting"
+    assert started == [True], "a fresh worker (new model) is spawned for the job"
+
+
+def test_a_stale_busy_worker_keeps_its_job_until_it_is_idle(sent, monkeypatch):
+    app, svc, _task, worker, started = _stale_setup(monkeypatch)
+    running = SimpleNamespace(status="running", file_path="old.mp4")
+    worker["task"] = running
+
+    svc.restart_when_idle()
+    svc.dispatch_waiting()
+    assert worker in app.workers and worker["task"] is running, "a running job is never cut"
+
+    worker["task"] = None  # the job finished
+    svc.dispatch_waiting()
+    assert worker not in app.workers
+    assert sent == []
+
+
+def test_a_worker_that_is_not_stale_is_reused(sent, monkeypatch):
+    app, svc, task, worker, started = _stale_setup(monkeypatch)
+
+    svc.dispatch_waiting()
+
+    assert worker in app.workers and worker["task"] is task
+    assert len(sent) == 1 and started == []
+
+
+def test_the_history_row_names_the_model_the_worker_loaded(sent, monkeypatch):
+    app, svc, _task, _worker, _started = _stale_setup(monkeypatch)
+
+    svc.dispatch_waiting()  # the worker is not stale: it runs, labelled with ITS model
+
+    assert app.history.models == ["small"]
+
+
+def test_the_engine_snapshot_reads_the_saved_model():
+    app = _app()
+    app.app_config["model"] = {"name": "medium"}
+    svc = TranscriptionService(app)
+
+    assert svc._engine_snapshot() == {
+        "spawn_backend": "faster_whisper",
+        "model_name": "medium",
+        "spawn_nvidia_model_id": "",
+    }

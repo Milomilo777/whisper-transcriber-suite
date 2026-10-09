@@ -353,6 +353,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Declining "stop the running job?" after a model or engine change no longer keeps the old model.**
+  The change was saved but the running worker was never replaced, so every later job silently used the
+  old model until the app restarted. The worker is now replaced as soon as it is idle, before the next
+  job starts, and the history and usage-stats model label names the model that really ran.
 - **A model entry with an impossible download size no longer blocks its download.** A catalog size of
   `Infinity` or a number too large to count raised an error before the first byte, and NaN showed "about nan
   GB"; such a size is now treated as unknown. A full disk while creating the model folder now says so and

@@ -614,6 +614,10 @@ class TranscriptionService:
             worker.pop("dead_since", None)
             worker.pop("exit_synthesized", None)
 
+        worker.pop("stale", None)
+        # What this process is about to load, for labels: the config can change
+        # while the worker lives on.
+        worker.update(self._engine_snapshot())
         app.model_loading = True
         worker["ready"] = False
         worker["task"] = None
@@ -722,6 +726,46 @@ class TranscriptionService:
         the log alone.
         """
         self._stop_workers([worker])
+
+    def _engine_snapshot(self) -> dict[str, str]:
+        """The engine and model a worker spawned now will load (from the config)."""
+        from core.backends import availability as _eng
+        cfg = self.app.app_config
+        model = cfg.get("model") or {}
+        return {
+            "spawn_backend": _eng.normalise_engine(cfg.get("transcribe_backend")),
+            "model_name": str(
+                (model.get("name") if isinstance(model, dict) else "")
+                or cfg.get("whisper_model")
+                or ""
+            ),
+            "spawn_nvidia_model_id": str(cfg.get("nvidia_asr_model_id") or "").strip(),
+        }
+
+    def restart_when_idle(self) -> int:
+        """Mark every live worker stale: each is replaced once it is idle.
+
+        A worker loads its model and engine once, at spawn, so a saved model or
+        engine change only reaches it when it is replaced. stop_all() does that
+        at once but hard-stops a running job; this is the gentle form for the
+        "let the running job finish" answer. A busy worker keeps its job; the
+        first dispatch tick after it is idle retires it (before any new job is
+        handed over) and a fresh worker loads the saved model. Returns how many
+        workers were marked.
+        """
+        marked = 0
+        for worker in self.active_workers():
+            worker["stale"] = True
+            marked += 1
+        return marked
+
+    def _retire_stale_idle_workers(self) -> None:
+        """Replace every idle worker marked by :meth:`restart_when_idle`."""
+        for worker in self.idle_workers():
+            if worker.get("stale") and worker in self.app.workers:
+                logger.info("Worker %s is stale (model or engine changed); replacing it",
+                            worker.get("id", "?"))
+                self.retire_worker(worker)
 
     def stop_all(self, cancel_running: bool = False) -> None:
         """Stop every worker.
@@ -1513,6 +1557,9 @@ class TranscriptionService:
         # Don't spawn new workers once shutdown has begun (Audit P2-5).
         if getattr(app, "_closing", False):
             return
+        # A worker left running after a declined model / engine change is
+        # replaced here, before any job can be handed to it.
+        self._retire_stale_idle_workers()
         if not app.queue:
             return
         waiting = [t for t in app.queue if t.status == "waiting"]
@@ -1543,7 +1590,12 @@ class TranscriptionService:
                 try:
                     t.history_id = history.insert_transcription(
                         file_path=t.file_path,
-                        model=str(app.app_config.get("model", {}).get("name", "")),
+                        # The model this worker really loaded (its spawn-time
+                        # snapshot), not whatever the config says now.
+                        model=str(
+                            worker["model_name"] if "model_name" in worker
+                            else app.app_config.get("model", {}).get("name", "")
+                        ),
                         language=getattr(t, "language", "") or "",
                         task=getattr(t, "whisper_task", "transcribe"),
                     )
@@ -1847,7 +1899,7 @@ class TranscriptionService:
         # backend had no valid key. history.finish_transcription() above
         # still records the real status locally regardless.
         if newly_finished:
-            self._post_usage_stats(task, word_count, audio_duration)
+            self._post_usage_stats(task, word_count, audio_duration, worker)
         # If this task was auto-spawned from a download, the Download row
         # mirrored "transcribing" + live progress while it ran. It's
         # terminal now (finished / error / cancelled) — restore that row to
@@ -1957,7 +2009,8 @@ class TranscriptionService:
             return 0, 0.0
 
     def _post_usage_stats(
-        self, task: Any, word_count: int, audio_duration: float
+        self, task: Any, word_count: int, audio_duration: float,
+        worker: dict[str, Any] | None = None,
     ) -> None:
         """Fire the usage-stats POST (best-effort, off-thread).
 
@@ -1976,21 +2029,18 @@ class TranscriptionService:
             # an alternative engine (whisper.cpp / cloud / NVIDIA) never
             # touches it, so those rows used to claim e.g.
             # "faster-whisper-large-v3" for an NVIDIA Parakeet run.
-            from core.backends import availability as _eng
-            backend = _eng.normalise_engine(
-                app.app_config.get("transcribe_backend")
-            )
+            # The worker's spawn-time snapshot wins over the live config: a
+            # model or engine change declined while a job ran leaves that
+            # worker on the old one.
+            snap = self._engine_snapshot()
+            if worker is not None and "spawn_backend" in worker:
+                snap = {k: str(worker.get(k, v)) for k, v in snap.items()}
+            backend = snap["spawn_backend"]
             if backend == "faster_whisper":
-                model = str(
-                    (app.app_config.get("model") or {}).get("name")
-                    or app.app_config.get("whisper_model")
-                    or ""
-                )
+                model = snap["model_name"]
             elif backend == "nvidia_asr":
                 from core.backends.nvidia_asr import DEFAULT_MODEL_ID
-                model_id = str(
-                    app.app_config.get("nvidia_asr_model_id") or ""
-                ).strip() or DEFAULT_MODEL_ID
+                model_id = snap["spawn_nvidia_model_id"] or DEFAULT_MODEL_ID
                 model = f"{backend}:{model_id}"
             else:
                 model = backend

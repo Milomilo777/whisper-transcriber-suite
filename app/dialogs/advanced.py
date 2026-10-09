@@ -2212,7 +2212,8 @@ class AdvancedDialog(tk.Toplevel):
         # leave a running transcription alone), and it asks first when a job
         # is running: stop_all() is a hard terminate, not the cooperative
         # per-task Cancel. Declining still saves the choice above; the active
-        # job just finishes on its current worker.
+        # job finishes on its current worker, which is then marked stale so the
+        # service replaces it once it is idle (restart_when_idle).
         if _backend_changed or _model_changed:
             confirm = getattr(self.app, "_confirm_backend_switch", None)
             if not callable(confirm):
@@ -2241,10 +2242,18 @@ class AdvancedDialog(tk.Toplevel):
                         "transcription."
                     )
             else:
-                self.app.log(
-                    f"{what}; the current worker keeps running its active job "
-                    "and will pick up the change once it's free."
-                )
+                try:
+                    self.app.transcription_service.restart_when_idle()
+                except Exception as e:  # noqa: BLE001
+                    self.app.log(
+                        f"Could not schedule the worker restart: {e}. "
+                        "The change applies after the app is restarted."
+                    )
+                else:
+                    self.app.log(
+                        f"{what}; the current worker keeps running its active job "
+                        "and is replaced once it's free."
+                    )
         # Refresh the Transcribe-tab engine + model pickers to match what was
         # just saved (backend, model, and/or model folder may have changed).
         _refresh = getattr(self.app, "_refresh_engine_selector", None)
