@@ -135,6 +135,22 @@ def test_forced_cut_prefers_a_recent_quiet_moment():
     assert _seconds(chunks[0]) < 4.9
 
 
+def test_a_cut_at_a_quiet_moment_forgets_that_moment():
+    """The quiet moment a chunk was cut at is gone from the buffer.
+
+    The next forced cut must not treat the leftover audio as if it ended in a
+    pause: with no quiet patch in it, the chunk runs to the deadline.
+    """
+    cfg = live.SegmenterConfig(min_chunk_s=1.0, max_chunk_s=3.0, backtrack_s=2.5,
+                               silence_hold_s=10.0)  # disable pause cuts
+    seg = live.Segmenter(config=cfg)
+    audio = _speech(1.4) + _silence(0.2) + _speech(1.6) + _speech(3.2)
+    chunks = _feed_in_blocks(seg, audio)
+    assert len(chunks) >= 2
+    assert 1.5 < _seconds(chunks[0]) < 1.7   # first cut: the quiet patch
+    assert _seconds(chunks[1]) > 2.9         # second cut: no pause, so the deadline
+
+
 def test_pure_silence_is_never_emitted():
     """Whisper invents text on silence — the main source of junk lines."""
     seg = live.Segmenter()

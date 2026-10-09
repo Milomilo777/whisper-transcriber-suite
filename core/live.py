@@ -193,7 +193,8 @@ class Segmenter:
         # Whatever is left is the start of the next utterance.
         self._voiced = block_rms(bytes(self._buf)) > cfg.silence_rms
         self._silence_bytes = min(self._silence_bytes, len(self._buf))
-        self._last_quiet_offset = min(self._last_quiet_offset, len(self._buf))
+        # An offset into the buffer: the bytes before the cut are gone, so it moves with them.
+        self._last_quiet_offset = max(0, self._last_quiet_offset - split_at)
         if not was_voiced:
             # Pure silence: never hand it to the model. Whisper invents
             # text on silence, and that junk is the main thing that makes
