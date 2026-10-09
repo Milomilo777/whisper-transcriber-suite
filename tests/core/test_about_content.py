@@ -10,6 +10,8 @@ helpful link is a real, well-formed URL pointing at the right place.
 """
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 import pytest
 
 pytest.importorskip("tkinter")
@@ -99,8 +101,10 @@ def test_links_are_well_formed_and_cover_the_key_destinations():
 
     joined = " ".join(urls)
     assert "/releases/latest" in joined  # GitHub downloads page
-    assert "aistudio.google.com" in joined  # free Gemini key
-    assert "console.cloud.google.com" in joined  # Google Cloud console
+    # Compare whole host names, not substrings of the URL text.
+    hosts = {urlparse(url).hostname for url in urls}
+    assert "aistudio.google.com" in hosts  # free Gemini key
+    assert "console.cloud.google.com" in hosts  # Google Cloud console
     assert "docs/CLOUD_STT.md" in joined  # Gemini setup guide
     assert "docs/CLOUD_STT_GOOGLE.md" in joined  # Cloud STT setup guide
 
