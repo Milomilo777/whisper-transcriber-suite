@@ -353,6 +353,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Closing the app during a Live session always finishes the recording.** If the unsaved transcript could not be
+  written (for example a character that cannot be encoded), the recorder was never closed, the session stayed
+  open and an empty transcript file was left behind. The audio is now kept and no empty file remains.
 - **Closing a window no longer leaves layout and status timers running.** The tab pages' layout check and
   the Work-offline status bar now cancel their timers when destroyed; before, a leftover timer failed with
   an "invalid command name" error and on macOS could freeze the next window's redraw.

@@ -1096,7 +1096,11 @@ def stop_live_session(app: Any) -> None:
     forced = False
     if not getattr(app, "_live_exit_discard", False):
         unsaved = has_unsaved_transcript(app)
-        saved = autosave_unsaved_transcript(app)
+        try:
+            saved = autosave_unsaved_transcript(app)
+        except Exception:  # noqa: BLE001 - whatever fails, the recording is still finished
+            logger.exception("Autosaving the live transcript failed")
+            saved = ""
         forced = bool(unsaved and not saved and not keep)
         keep = keep or forced
     if session is not None:
@@ -1356,9 +1360,17 @@ def autosave_unsaved_transcript(app: Any) -> str:
                     fp.write(body + "\n")
             except FileExistsError:
                 continue
+            except Exception:
+                # The file was created but the text did not go in (a lone surrogate
+                # cannot be encoded): do not leave an empty "saved" file behind.
+                try:
+                    os.unlink(candidate)
+                except OSError:
+                    pass
+                raise
             path = candidate
             break
-    except OSError:
+    except Exception:  # noqa: BLE001 - OSError, or an encoding error in the text
         logger.exception("Autosaving the live transcript failed")
         return ""
     if not path:

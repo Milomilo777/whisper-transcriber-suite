@@ -1233,6 +1233,40 @@ def test_exit_keeps_the_audio_when_the_transcript_could_not_be_saved(built, monk
     assert keep_flags == [True], "the audio is the only copy of the words left"
 
 
+def test_exit_with_an_unwritable_line_still_finishes_the_recording(built, tmp_path):
+    """A lone surrogate cannot be encoded as UTF-8: the autosave fails with a
+    UnicodeEncodeError, not an OSError. The recorder must still be finished (with the
+    audio kept: it is the only copy), the session cleared and no empty file left behind."""
+    built.app_config["download_folder"] = str(tmp_path)
+    events: list[str] = []
+    keep_flags: list[bool] = []
+    built.live_session = _exit_session(events, keep_flags)
+    built.live_transcriber = types.SimpleNamespace(stop=lambda: None)
+    built.live_lines = ["ok line", "bad " + chr(0xD800) + " surrogate"]
+    built._live_saved_count = 0
+    live_tab.stop_live_session(built)
+    assert events == ["audio"]
+    assert keep_flags == [True]
+    assert built.live_session is None
+    assert list(tmp_path.glob("live-transcript-*")) == []
+
+
+def test_exit_finishes_the_recording_when_the_autosave_raises(built, monkeypatch):
+    events: list[str] = []
+    keep_flags: list[bool] = []
+    built.live_session = _exit_session(events, keep_flags)
+    built.live_transcriber = types.SimpleNamespace(stop=lambda: None)
+    live_tab._append_line(built, "unsaved words")
+
+    def boom(app):
+        raise RuntimeError("disk exploded")
+
+    monkeypatch.setattr(live_tab, "autosave_unsaved_transcript", boom)
+    live_tab.stop_live_session(built)
+    assert events == ["audio"] and keep_flags == [True]
+    assert built.live_session is None
+
+
 def test_exit_removes_the_audio_when_the_user_threw_the_text_away(built, monkeypatch):
     events: list[str] = []
     keep_flags: list[bool] = []
