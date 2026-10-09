@@ -388,6 +388,8 @@ def _app_stub(cfg: dict, var: bool = False) -> SimpleNamespace:
     stub._hide_update_bar = lambda: setattr(stub, "hidden", stub.hidden + 1)
     stub.star_hidden = 0
     stub._hide_star_bar = lambda: setattr(stub, "star_hidden", stub.star_hidden + 1)
+    stub.status_refreshes = 0
+    stub._refresh_offline_status = lambda: setattr(stub, "status_refreshes", stub.status_refreshes + 1)
     stub._set_work_offline = lambda on: App._set_work_offline(stub, on)  # type: ignore[arg-type]
     return stub
 

@@ -589,7 +589,7 @@ class CloudSttBackend(Backend):
         if not self._api_key:
             return False, "No API key set."
         if offline.is_offline():
-            return False, offline.message("testing the key")
+            return False, offline.refused("testing the key")
         url = f"{API_HOST}/{API_VERSION}/models?pageSize=1"
         req = urllib.request.Request(
             url, method="GET", headers={API_KEY_HEADER: self._api_key}

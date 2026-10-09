@@ -1049,6 +1049,7 @@ class App(tk.Tk):
         self._refresh_update_signs()
         self._build_tabs()
         self.txt = build_console(self, theme=_resolve_theme(self.theme_var.get()))
+        self._refresh_offline_status()
 
         # Wire global keyboard shortcuts now that the widgets exist:
         #   Ctrl+O          → Browse for a file to transcribe
@@ -1678,6 +1679,8 @@ class App(tk.Tk):
         the saved file, so a failed save is reported.
         """
         self.app_config[offline.CONFIG_KEY] = on
+        if on and not offline.is_offline():
+            offline.reset_activity()
         offline.set_offline(on)
         var = getattr(self, "work_offline_var", None)
         if var is not None:
@@ -1704,6 +1707,7 @@ class App(tk.Tk):
             self.log("Work offline: off.")
             self._retry_refused_link_lookup()
         self._refresh_window_title()
+        self._refresh_offline_status()
 
     def _retry_refused_link_lookup(self) -> None:
         """Look the pasted link up again when only Work offline had stopped it."""
@@ -1721,6 +1725,8 @@ class App(tk.Tk):
         """After the Advanced dialog: the File menu item and the switch follow the config."""
         on = offline.flag_from(self.app_config)
         was = offline.is_offline()
+        if on and not was:
+            offline.reset_activity()
         offline.set_offline(on)
         var = getattr(self, "work_offline_var", None)
         if var is not None:
@@ -1732,6 +1738,23 @@ class App(tk.Tk):
         elif was and not on:
             self._retry_refused_link_lookup()
         self._refresh_window_title()
+        self._refresh_offline_status()
+
+    def _refresh_offline_status(self) -> None:
+        """Show the Work offline line (and its Network log button) only while the switch is on."""
+        nb = _inst_attr(self, "nb")
+        if nb is None:
+            return  # before the tabs exist; called again once they do
+        bar = _inst_attr(self, "_offline_bar")
+        if not offline.is_offline():
+            if bar is not None:
+                bar.hide()
+            return
+        if bar is None:
+            from app.widgets.offline_status import OfflineStatusBar
+            bar = OfflineStatusBar(self, post_to_main=self.post_to_main)
+            self._offline_bar = bar
+        bar.show(before=nb)
 
     def ensure_online(self, what: str) -> bool:
         """True when ``what`` may use the network; asks to turn Work offline off first.
@@ -1748,7 +1771,7 @@ class App(tk.Tk):
             "makes no network connection.\n\nTurn Work offline off now?",
             parent=self,
         ):
-            self.log(offline.message(what.lower()[:1] + what[1:]))
+            self.log(offline.refused(what.lower()[:1] + what[1:]))
             return False
         self._set_work_offline(False)
         return True
@@ -5540,6 +5563,7 @@ class App(tk.Tk):
             if not _updates.automatic_check_enabled(self.app_config):
                 return
             if offline.is_offline():
+                offline.skipped("the automatic update check")
                 return  # not stamped: the next daily call (or a restart) checks
             today = _today().isoformat()
             if (self.app_config.get("last_update_check") or "") == today:

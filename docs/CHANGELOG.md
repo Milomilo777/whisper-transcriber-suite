@@ -12,6 +12,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   start-up is done and then open like a drop on the window, a Dock click shows a hidden window, and
   the transcript viewer shows its file as the proxy icon and the unsaved-edits dot. Windows and Linux
   are unchanged; the hooks are the ones `tools/mac_native_probe.py` proved (`docs/MACOS_BUILD_NOTES.md`).
+- **Work offline, made visible.** While Work offline is on, a line at the bottom of the window
+  says whether the app or any process it started has a connection to another computer open
+  (checked every 10 seconds, never "clean" without a fresh check) and counts refused actions and
+  automatic requests that were not sent. **Network log** lists each event with its feature and
+  host, and **Verify offline now** shows a test connection, lookup and UDP send being refused.
+  `docs/WORK_OFFLINE.md` explains the limits and how to check the app with Resource Monitor,
+  PowerShell or Wireshark.
 - **FFmpeg source for the GPL builds.** `THIRD_PARTY_NOTICES.md` now names the exact corresponding
   source of the bundled FFmpeg (Windows: the gyan.dev build's FFmpeg commit; macOS: the FFmpeg 9.0.2
   release) and the builders' library lists. `tools/fetch_ffmpeg_source.py` downloads the pinned
@@ -309,6 +316,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Work offline: UDP and name-lookup gaps closed.** The network guard now also refuses UDP
+  datagrams sent to another computer (`sendto` / `sendmsg`) and the `gethostbyname`,
+  `gethostbyaddr` and `getnameinfo` lookups, through a Python audit hook; before, a datagram to
+  this computer's own LAN address was delivered while offline. A refused `connect_ex` now returns
+  an error number (`EACCES`) instead of raising.
 - **macOS shows Mac wording and shortcuts.** Menus, buttons and the What's-new list now show the Command key and work with it (Command-O, Command-F, Command-S, Command-Return); the File menu has no Exit item on macOS (the app menu owns Quit) and the queued-tasks prompt says Quit; About no longer calls the app a Windows app, and the VLC hint mentions 32/64-bit only on Windows. Windows and Linux keep Ctrl and "Exit" unchanged (`app/shortcuts.py`).
 - **Unsaved viewer edits are no longer lost on exit.** Closing the app (close button, File > Exit,
   Ctrl+Q, tray Exit, macOS Cmd+Q) while a transcript viewer holds unsaved edits now asks Save /

@@ -54,6 +54,7 @@ def _telemetry_opted_in() -> bool:
         from core import offline
         from core.config import load_config  # type: ignore[import-not-found]
         if offline.is_offline():
+            offline.skipped("crash reports and the launch ping")
             return False
         return bool(load_config().get("telemetry_opt_in", False))
     except Exception:  # noqa: BLE001

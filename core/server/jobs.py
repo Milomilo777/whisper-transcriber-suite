@@ -721,7 +721,7 @@ class JobManager:
         """Register a URL job; return job_id. Scheme is validated here."""
         if offline.is_offline():
             # Before is_safe_url, which looks the host name up.
-            raise ValueError(offline.message("a link job"))
+            raise ValueError(offline.refused("a link job"))
         if not is_safe_url(url):
             # is_safe_url also refuses loopback / link-local / cloud-metadata
             # hosts (SSRF guard); say so, instead of claiming a plain
@@ -1189,6 +1189,7 @@ class JobManager:
             return
         if offline.is_offline():
             logger.info("server: webhook not sent (offline mode is on)")
+            offline.skipped("the server's webhook")
             return
         payload = webhook_payload(job)
         url = self._webhook_url

@@ -112,7 +112,7 @@ class FormatService:
             return
         if offline.is_offline():
             # The lookup runs yt-dlp (or SMTV) against the site at once.
-            text = offline.message("looking up this link")
+            text = offline.refused("looking up this link")
             self.app.format_status_var.set(text)
             self.app.format_lookup_error = text
             return

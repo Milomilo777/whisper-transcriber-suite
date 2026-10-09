@@ -643,6 +643,7 @@ def check_for_update(timeout: int = _DEFAULT_TIMEOUT_S) -> UpdateInfo | None:
     from core import offline
     if offline.is_offline():
         logger.info("Update check skipped: offline mode is on")
+        offline.skipped("the update check")
         return None
     url = latest_release_api_url(GITHUB_OWNER, GITHUB_REPO)
     req = urllib.request.Request(

@@ -280,7 +280,7 @@ def transcript_filename(episode: SmtvEpisode) -> str:
 
 def _http_get(url: str, *, timeout: float) -> str:
     if offline.is_offline():
-        raise SmtvError(offline.message("Supreme Master TV"))
+        raise SmtvError(offline.refused("Supreme Master TV"))
     req = urllib.request.Request(url, headers={"User-Agent": _DEFAULT_UA})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:

@@ -652,7 +652,7 @@ class RemoteLLMRunner:
         if offline.is_offline() and not offline.url_stays_local(self.cfg.base_url):
             # Same error type as every other failed call, so callers show it.
             # A server on this computer (Ollama, LM Studio) is not the network.
-            raise RemoteLLMError(offline.message("the remote AI provider")) from (
+            raise RemoteLLMError(offline.refused("the remote AI provider")) from (
                 offline.OfflineModeError("the remote AI provider")
             )
         base = self.cfg.base_url.rstrip("/")
