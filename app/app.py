@@ -64,6 +64,7 @@ from app.widgets.tray import TrayController
 from core import __version__ as _APP_VERSION
 from core import offline, subtitle_edit, task_settings
 from app.theme import script_fonts, system_appearance, theme_colours, tokens, win_chrome, win_taskbar
+from app.theme.bidi_display import ltr_base
 from core._proc import kill_process_tree
 from core.config import load_config, save_config
 from core.history import EXIT_REASON, HistoryDB
@@ -5170,7 +5171,7 @@ class App(tk.Tk):
                 "",
                 "end",
                 values=(
-                    name,
+                    ltr_base(name),
                     status_label(t.status),
                     self._row_progress_text(t.status, t.progress),
                     lang_str,
@@ -5228,7 +5229,7 @@ class App(tk.Tk):
                 "",
                 "end",
                 values=(
-                    task.title,
+                    ltr_base(task.title),
                     task.url,
                     task.format_label,
                     status_label(task.status),
@@ -5343,7 +5344,7 @@ class App(tk.Tk):
 
         ttk.Label(
             self.last_result_body,
-            text=f"✓ {os.path.basename(task.file_path)}",
+            text=ltr_base(f"✓ {os.path.basename(task.file_path)}"),
             font=("TkDefaultFont", 10, "bold"),
         ).pack(anchor="w")
         if getattr(task, "no_speech", False):
@@ -5367,7 +5368,7 @@ class App(tk.Tk):
                 row.pack(fill="x", pady=1)
                 size = _fmt_bytes(os.path.getsize(path))
                 ttk.Label(
-                    row, text=f"• {os.path.basename(path)}  ({size})"
+                    row, text=ltr_base(f"• {os.path.basename(path)}  ({size})")
                 ).pack(side="left")
                 ttk.Button(
                     row, text="Open",
