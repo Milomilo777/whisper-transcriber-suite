@@ -388,6 +388,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Changing the Whisper model in Settings no longer stops a running transcription without asking, or
   before the choice is saved.** It now asks like an engine switch does and restarts the worker only
   after the save worked; a failed save (also from "Download now") puts the previous model back.
+- **An SRT cue with an absurdly long timecode no longer stops the oTranscribe import.** That cue is skipped and the others are read.
+- **A Supreme Master TV download named like a Windows device with spaces (`LPT1 .txt`) is now renamed too,** as `LPT1.txt` already was, so it cannot be routed to the device.
 - **A damaged macOS preferences file no longer hides the country from the usage statistics.** The region lookup now falls back to the locale environment instead of returning nothing.
 - **One damaged history row no longer stops the search re-index.** A row whose saved output list was not a list aborted the walk, so every later transcript stayed unindexed; the row is now skipped.
 - **A model size of `Infinity` or NaN in the model catalog no longer breaks the download.** It used to crash the start of a download (`Infinity`) or show "about nan GB"; such a size now counts as unknown.

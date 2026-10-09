@@ -480,7 +480,8 @@ def _sanitise_filename(name: str) -> str:
     # device names — writing a file with that stem fails with OSError.
     # Treat the stem (everything before the first dot) and prefix '_'
     # when it collides.
-    stem = cleaned.split(".", 1)[0]
+    # rstrip: Windows ignores spaces before the dot, so "LPT1 .txt" is the device too
+    stem = cleaned.split(".", 1)[0].rstrip(" ")
     if stem.upper() in _WINDOWS_RESERVED_NAMES:
         cleaned = "_" + cleaned
     return cleaned

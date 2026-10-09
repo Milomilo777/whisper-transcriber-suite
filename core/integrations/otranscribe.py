@@ -106,18 +106,23 @@ def _parse_srt(text: str):
         m = _SRT_TS.search(lines[ts_idx])
         if not m:
             continue
-        start = (
-            int(m.group(1)) * 3600
-            + int(m.group(2)) * 60
-            + int(m.group(3))
-            + int(m.group(4)) / 1000.0
-        )
-        end = (
-            int(m.group(5)) * 3600
-            + int(m.group(6)) * 60
-            + int(m.group(7))
-            + int(m.group(8)) / 1000.0
-        )
+        try:
+            start = (
+                int(m.group(1)) * 3600
+                + int(m.group(2)) * 60
+                + int(m.group(3))
+                + int(m.group(4)) / 1000.0
+            )
+            end = (
+                int(m.group(5)) * 3600
+                + int(m.group(6)) * 60
+                + int(m.group(7))
+                + int(m.group(8)) / 1000.0
+            )
+        except (ValueError, OverflowError):
+            # digit strings past Python's int limit (or too big for a float):
+            # not a usable timecode, skip this cue and keep the rest
+            continue
         body_lines = lines[ts_idx + 1 :]
         body = " ".join(ln.strip() for ln in body_lines).strip()
         if body:
