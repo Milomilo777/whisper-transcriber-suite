@@ -366,6 +366,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   as an unusable item.
 - **A late Cancel no longer turns a finished download into a cancelled one.** Cancelling a download
   that had ended in the meantime (the Esc question left open, an old menu) also cancelled its transcription.
+- **A transcription cancelled before it starts stops at once.** It used to run vocal separation,
+  duration probing and slicing first, which could take minutes.
 - **A subtitled video finished just before closing the app is recorded in the history.** The row was
   written by a callback on the window thread that never ran when the app closed first; the burn
   thread now writes it as soon as the file exists.

@@ -2071,6 +2071,12 @@ def transcribe(
     # call (including the alt-backend dispatcher) inherits the
     # prefix without each call site having to manage it.
     log_cb = _with_task_prefix(log_cb, task)
+    if getattr(task, "cancelled", False):
+        # Cancelled before it started (a control that overtook the dispatch,
+        # or a lost parent): skip the model wait, vocal separation, ffprobe
+        # and slicing that would run before the first cancel check.
+        log("Task cancelled", log_cb)
+        return
     # Wrap the per-file work in ``_runtime_overrides_scope`` so any
     # ``.whisperproject.json`` mutation of the module-level ``config``
     # is reverted before the next file runs (audit P0-6). The scope
@@ -2883,6 +2889,11 @@ def resume_transcription(
     surface; backends that don't share it would need their own slicer.
     """
     log_cb = _with_task_prefix(log_cb, task)
+    if getattr(task, "cancelled", False):
+        # Cancelled before it started: the checkpoint on disk stays as it is
+        # and the caller must not fall back to a fresh run.
+        log("Task cancelled during resume.", log_cb)
+        return True
     with _runtime_overrides_scope(task) as runtime_cfg:
         # A checkpoint is keyed to the whole file with no clip marker, and
         # clipped runs never write one. Resuming a clipped task from a
