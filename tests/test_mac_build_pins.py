@@ -122,10 +122,34 @@ def _filter_check_snippet() -> str:
     return "\n".join(lines[start : end + 1])
 
 
+def _find_bash() -> str | None:
+    """A real bash. On Windows the PATH can offer the WSL launcher stub
+    (WindowsApps or System32 bash.exe), which prints a UTF-16 "install WSL"
+    message instead of running the script; prefer Git for Windows' bash."""
+    candidates = []
+    git = shutil.which("git")
+    if git:
+        candidates.append(Path(git).resolve().parent.parent / "bin" / "bash.exe")
+    found = shutil.which("bash")
+    if found:
+        candidates.append(Path(found))
+    for cand in candidates:
+        low = str(cand).lower()
+        if "windowsapps" in low or "system32" in low or not cand.is_file():
+            continue
+        try:
+            probe = subprocess.run([str(cand), "-c", "echo ok"], capture_output=True, text=True, timeout=30)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if probe.returncode == 0 and probe.stdout.strip() == "ok":
+            return str(cand)
+    return None
+
+
 def _run_filter_check(tmp_path: Path, filter_list: str) -> subprocess.CompletedProcess:
-    bash = shutil.which("bash")
+    bash = _find_bash()
     if bash is None:
-        pytest.skip("bash is not installed")
+        pytest.skip("no working bash (Git for Windows or a Unix shell) is installed")
     fake = tmp_path / "ffmpeg"
     fake.write_text("#!/usr/bin/env bash\ncat <<'LIST'\n" + filter_list + "LIST\n", encoding="utf-8", newline="\n")
     fake.chmod(0o755)
