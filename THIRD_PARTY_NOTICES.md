@@ -41,16 +41,16 @@ https://ffmpeg.martin-riedl.de/ (macOS Apple silicon).
 
 ## Bundled Python packages (selected)
 
-Each ships its full license text in its `site-packages` folder.
+Each ships its full license text in its `site-packages` folder. Packages marked LGPL or
+MPL-2.0 are shipped unmodified, as their own packages, with their source linked below.
 
 - **faster-whisper** — MIT
-- **openai-whisper** — MIT
-- **stable-ts** — MIT
 - **ctranslate2** — MIT
-- **PyTorch / torchaudio** — BSD-3-Clause
-- **numpy** — BSD-3-Clause
+- **numpy** — BSD-3-Clause (its wheels also carry parts under 0BSD, MIT, Zlib and CC0-1.0; the texts
+  are in the package)
 - **tokenizers / huggingface-hub** — Apache-2.0
-- **sherpa-onnx / onnxruntime** — Apache-2.0
+- **sherpa-onnx** — Apache-2.0 (speaker diarization runtime)
+- **onnxruntime** — MIT (Microsoft; runs the sherpa-onnx and Silero VAD models)
 - **pywhispercpp** (whisper.cpp bindings) — MIT
 - **arabic-reshaper** — MIT (joins Arabic-script letters in PDF output)
 - **python-bidi** — LGPL-3.0-or-later, shipped unmodified as its own package and
@@ -59,10 +59,36 @@ Each ships its full license text in its `site-packages` folder.
   https://github.com/MeirKriheli/python-bidi (also on PyPI). To use another
   build, replace the `bidi` folder in the app's `site-packages`
   (`python\Lib\site-packages\bidi` in the Windows installer and Portable ZIP).
-- **sv-ttk**, **tkinterdnd2**, **pystray**, **Pillow**, **requests**,
-  **rich**, **typer**, **reportlab**, **python-docx**, **watchdog**,
-  **python-vlc** — see each package's bundled LICENSE (MIT / BSD / Apache /
-  LGPL variants).
+- **pystray** — LGPL-3.0-or-later, shipped unmodified as its own package and imported at runtime
+  (the system-tray icon, `app/widgets/tray.py`). Source: https://github.com/moses-palmer/pystray
+  (also on PyPI). To use another build, replace the `pystray` folder in the app's `site-packages`
+  (`python\Lib\site-packages\pystray` in the Windows installer and Portable ZIP). The macOS app is
+  built from this repository (`platform/macos/build_mac.sh`), so a modified copy can be built in.
+- **python-vlc** — LGPL-2.1-or-later, shipped unmodified as the single module `vlc.py` and imported
+  at runtime (the media preview in the transcript viewer, `app/dialogs/transcript_viewer.py`). It is
+  only a binding: VLC itself is not bundled, the app uses a VLC the user has installed. Source:
+  https://github.com/oaubert/python-vlc (also on PyPI). To use another build, replace `vlc.py` in the
+  app's `site-packages` (`python\Lib\site-packages\vlc.py` in the Windows installer and Portable ZIP);
+  the macOS app is rebuilt as described above.
+- **PyAV (`av`)** — BSD-3-Clause for the binding itself. Its wheels bundle their own shared FFmpeg
+  libraries (libavcodec, libavformat, libavutil, libavfilter, libswscale, libswresample), in
+  `site-packages\av.libs` on Windows and inside the package on macOS; the library reports its license as
+  LGPL version 3 or later. The wheels also carry the codec libraries FFmpeg is linked against,
+  among them libx264 and libx265 (GPL-2.0-or-later), libvpx, libwebp, libopus and dav1d (BSD-style),
+  SVT-AV1 (BSD-3-Clause-Clear with the AOMedia patent license), LAME (LGPL-2.0-or-later),
+  opencore-amr (Apache-2.0), oneVPL (MIT) and libiconv (LGPL-2.1-or-later), and the MinGW runtime
+  (GPL-3.0 with the GCC Runtime Library Exception; winpthreads is MIT). This is a second FFmpeg copy,
+  separate from the `ffmpeg.exe` above, used to decode audio for faster-whisper; the app as a whole is
+  distributed under GPL terms because of the `ffmpeg.exe` build (see above). Source and build recipe:
+  https://github.com/PyAV-Org/PyAV and https://github.com/PyAV-Org/pyav-ffmpeg. To use another build,
+  replace the `av` and `av.libs` folders in the app's `site-packages`.
+- **certifi** — MPL-2.0 (the CA certificate bundle `requests` uses for HTTPS, derived from Mozilla's
+  root list). Shipped unmodified; source: https://github.com/certifi/python-certifi.
+- **tqdm** — MPL-2.0 and MIT (progress bars of model downloads, a dependency of faster-whisper and
+  pywhispercpp). Shipped unmodified; source: https://github.com/tqdm/tqdm.
+- **Pillow** — MIT-CMU (HPND-style); **requests**, **watchdog** — Apache-2.0; **reportlab** —
+  BSD; **sv-ttk**, **tkinterdnd2**, **python-docx** — MIT. See each package's bundled
+  LICENSE for the exact text.
 
 ## On-demand optional packages (not bundled)
 
@@ -70,6 +96,11 @@ Some features install their packages from PyPI on first use instead of
 shipping in the base installer, keeping the default install small. Each
 installs only if you opt into that specific feature.
 
+- **stable-ts** (word-timing refinement, MIT) and **openai-whisper** (the original Whisper backend,
+  MIT) with **PyTorch / torchaudio** (BSD-3-Clause), which they pull in. The Windows build
+  deletes any copy of them from the installer tree (`build_embed_installer.bat`), none of them is in
+  `requirements.txt`, and `core/optional_deps.py` downloads them when the feature is first used.
+  (PyTorch is also what the optional NVIDIA ASR and voice-cloning features download.)
 - **OmniVoice** (k2-fsa) — Apache-2.0, on both code and pretrained weights.
   Powers the optional Clone Your Voice / Text to Voice tab; installs
   together with `torch` (BSD-3-Clause) and `soundfile` (BSD-3-Clause) on
@@ -84,6 +115,19 @@ installs only if you opt into that specific feature.
   `Systran/faster-whisper-large-v3`) are distributed under the model's own
   license (Whisper is MIT from OpenAI). The model is downloaded at first
   run, not bundled in the installer.
+- The two **speaker-diarization models** in `bin/diarization/` are bundled in the Windows
+  installer, the Portable ZIP and the macOS app (`platform/windows/build-deps.json` pins them):
+  - `segmentation.onnx`: **pyannote segmentation 3.0**, MIT. The license is declared in the model
+    card of the original, https://huggingface.co/pyannote/segmentation-3.0 (that page is gated: access
+    asks for contact details); the app ships the ONNX conversion made by the
+    sherpa-onnx project, https://huggingface.co/csukuangfj/sherpa-onnx-pyannote-segmentation-3-0,
+    a derivative that stays under the same MIT license.
+  - `embedding.onnx`: **3D-Speaker CAM++ (English, VoxCeleb, 16 kHz)**, Apache-2.0. The 3D-Speaker
+    project (https://github.com/modelscope/3D-Speaker) is Apache-2.0 and the ModelScope page of the
+    model, `iic/speech_campplus_sv_en_voxceleb_16k`, states "Apache License 2.0"; the app ships the
+    ONNX conversion from https://huggingface.co/csukuangfj/speaker-embedding-models. The license
+    covers the weights; the VoxCeleb data they were trained on is licensed separately by its authors.
+  Both run through the sherpa-onnx runtime (Apache-2.0), fully offline.
 
 ## Website (`site/`)
 
