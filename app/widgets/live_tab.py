@@ -1089,12 +1089,25 @@ def stop_live_session(app: Any) -> None:
             transcriber.stop()
         except Exception:  # noqa: BLE001
             logger.exception("Live worker teardown failed")
+    # Save the words first: the recording is deleted unless kept, and it is the
+    # only other copy of them. When the words cannot be saved (disk full, no
+    # permission) the recording is kept instead of being deleted too.
+    keep = _keep_recording(app)
+    forced = False
+    if not getattr(app, "_live_exit_discard", False):
+        unsaved = has_unsaved_transcript(app)
+        saved = autosave_unsaved_transcript(app)
+        forced = bool(unsaved and not saved and not keep)
+        keep = keep or forced
     if session is not None:
-        _finish_recording(session, _keep_recording(app))
+        kept = _finish_recording(session, keep)
+        if forced and kept:
+            try:
+                app.log(f"The transcript could not be saved; the session audio was kept at {kept}")
+            except Exception:  # noqa: BLE001 - the window may already be going away
+                logger.debug("Could not log the kept recording", exc_info=True)
     app.live_session = None
     app.live_transcriber = None
-    if not getattr(app, "_live_exit_discard", False):
-        autosave_unsaved_transcript(app)
     try:
         viz = getattr(app, "live_visualizer", None)
         if viz is not None:

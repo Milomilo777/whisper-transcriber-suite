@@ -1184,3 +1184,61 @@ def test_no_fallback_to_an_english_only_main_model(built, monkeypatch, tmp_path)
     assert live_tab._prepare_live_model(built, "en") is None
     with pytest.raises(RuntimeError, match="not in the model list"):
         live_tab._prepare_live_model(built, "fa")
+
+
+# ---- exit: the transcript is saved before its audio goes, and the audio is
+# ---- kept when the transcript could not be saved
+
+def _exit_session(events: list[str], keep_flags: list[bool]):
+    session = types.SimpleNamespace(
+        stop=lambda **kw: "", drain_events=lambda limit=64: [], keep_recording=False,
+    )
+
+    def finish() -> str:
+        events.append("audio")
+        keep_flags.append(bool(session.keep_recording))
+        return ""
+
+    session.finish_recording = finish
+    return session
+
+
+def test_exit_saves_the_transcript_before_the_audio_is_removed(built, tmp_path, monkeypatch):
+    built.app_config["download_folder"] = str(tmp_path)
+    events: list[str] = []
+    keep_flags: list[bool] = []
+    built.live_session = _exit_session(events, keep_flags)
+    built.live_transcriber = types.SimpleNamespace(stop=lambda: None)
+    live_tab._append_line(built, "unsaved words")
+    real = live_tab.autosave_unsaved_transcript
+
+    def spy(app):
+        events.append("text")
+        return real(app)
+
+    monkeypatch.setattr(live_tab, "autosave_unsaved_transcript", spy)
+    live_tab.stop_live_session(built)
+    assert events == ["text", "audio"]
+    assert keep_flags == [False], "saved text: the recording may go"
+
+
+def test_exit_keeps_the_audio_when_the_transcript_could_not_be_saved(built, monkeypatch):
+    events: list[str] = []
+    keep_flags: list[bool] = []
+    built.live_session = _exit_session(events, keep_flags)
+    built.live_transcriber = types.SimpleNamespace(stop=lambda: None)
+    live_tab._append_line(built, "unsaved words")
+    monkeypatch.setattr(live_tab, "autosave_unsaved_transcript", lambda app: "")
+    live_tab.stop_live_session(built)
+    assert keep_flags == [True], "the audio is the only copy of the words left"
+
+
+def test_exit_removes_the_audio_when_the_user_threw_the_text_away(built, monkeypatch):
+    events: list[str] = []
+    keep_flags: list[bool] = []
+    built.live_session = _exit_session(events, keep_flags)
+    built.live_transcriber = types.SimpleNamespace(stop=lambda: None)
+    live_tab._append_line(built, "unsaved words")
+    built._live_exit_discard = True
+    live_tab.stop_live_session(built)
+    assert keep_flags == [False]

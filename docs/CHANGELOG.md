@@ -366,6 +366,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   as an unusable item.
 - **A late Cancel no longer turns a finished download into a cancelled one.** Cancelling a download
   that had ended in the meantime (the Esc question left open, an old menu) also cancelled its transcription.
+- **Closing the app during a live session can no longer lose both the words and the audio.** The
+  session recording was deleted before the unsaved transcript was written; the transcript is saved
+  first now, and if that fails the recording is kept and its location is logged.
 - **A failed Google batch upload no longer leaves the audio in your bucket.** When the connection
   dropped after the file was stored, nothing deleted it and it kept costing storage; the upload now
   removes its own object before reporting the error.
