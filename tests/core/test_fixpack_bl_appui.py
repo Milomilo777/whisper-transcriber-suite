@@ -369,6 +369,42 @@ def test_file_uri_to_path_windows():
         r"C:\videos\my clip.mp4"
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows drive paths")
+@pytest.mark.parametrize(("uri", "expected"), [
+    ("file:///C:/t/a%20%231.mp4", r"C:\t\a #1.mp4"),         # a space and an encoded '#'
+    ("file:///C:/t/%2541.mp4", r"C:\t\%41.mp4"),             # a literal "%41" in the name
+    ("file:///C:/t/100%25.mp4", r"C:\t\100%.mp4"),
+    ("file:///C:/%D9%81%D8%A7%D8%B1%D8%B3%DB%8C/a.mp4", r"C:\فارسی\a.mp4"),
+    ("file://server/share/a%20b.mp4", r"\\server\share\a b.mp4"),
+])
+def test_file_uri_to_path_decodes_once_on_windows(uri, expected):
+    from app.app import _file_uri_to_path
+    assert _file_uri_to_path(uri) == expected
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX paths")
+@pytest.mark.parametrize(("uri", "expected"), [
+    ("file:///home/u/a%20%231.mp4", "/home/u/a #1.mp4"),
+    ("file:///home/u/%2541.mp4", "/home/u/%41.mp4"),
+    ("file:///Users/u/%D9%81%D8%A7%D8%B1%D8%B3%DB%8C/a.mp4", "/Users/u/فارسی/a.mp4"),
+    ("file://localhost/home/u/a.mp4", "/home/u/a.mp4"),
+])
+def test_file_uri_to_path_decodes_once_on_posix(uri, expected):
+    from app.app import _file_uri_to_path
+    assert _file_uri_to_path(uri) == expected
+
+
+def test_file_uri_of_a_real_folder_with_hash_space_and_persian_round_trips(tmp_path):
+    from app.app import _file_uri_to_path
+    folder = tmp_path / "پوشه ی من #1 %41"
+    folder.mkdir()
+    (folder / "a.mp4").write_bytes(b"x")
+    for uri in (folder.as_uri(), folder.as_uri() + "/"):
+        path = _file_uri_to_path(uri)
+        assert os.path.samefile(path, folder), path
+        assert os.path.isfile(os.path.join(path, "a.mp4"))
+
+
 def test_file_uri_to_path_non_file_uri_returns_empty():
     from app.app import _file_uri_to_path
     assert _file_uri_to_path("ftp://host/x") == ""

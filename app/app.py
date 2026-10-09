@@ -330,14 +330,16 @@ def _file_uri_to_path(uri: str) -> str:
     """
     if not uri.startswith("file://"):
         return ""
-    from urllib.parse import unquote, urlsplit
+    from urllib.parse import urlsplit
     from urllib.request import url2pathname
     try:
         parts = urlsplit(uri)
         # A non-empty netloc on file:// is a UNC host (file://server/share);
         # localhost/empty is the ordinary local-file case.
         netloc = parts.netloc
-        path = url2pathname(unquote(parts.path))
+        # url2pathname decodes the %XX escapes itself; decoding first as well would turn
+        # an encoded '%41' or '#' in a file name into a second, different character.
+        path = url2pathname(parts.path)
         if netloc and netloc.lower() != "localhost":
             return r"\\{}{}".format(netloc, path)
         return path
