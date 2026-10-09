@@ -17,8 +17,31 @@ every Python package ships inside the distribution under
 |---|---|---|
 | **CPython** (embeddable runtime) | PSF License Agreement | The `python\` folder in the distribution. |
 | **FFmpeg** (`ffmpeg.exe`, `ffprobe.exe`) | GPL-3.0-or-later (the bundled builds are configured with `--enable-gpl --enable-version3` and include libx264/libx265) | Used for audio/video decode, slicing, subtitle burn-in. Windows: the gyan.dev "essentials" build pinned in `platform/windows/build-deps.json`; macOS: the evermeet.cx (Intel) and martin-riedl.de (Apple Silicon) static builds pinned in `platform/macos/pyinstaller/fetch_mac_binaries.sh`. GPL obligations (license text + source availability) apply; see "FFmpeg corresponding source" below. |
+| **Microsoft Visual C++ runtime** (`msvcp140.dll`, `msvcp140_1.dll`, `vcruntime140.dll`, `vcruntime140_1.dll` in `python\`) | Microsoft Software License Terms (Visual Studio "Distributable Code"); not covered by this project's BSD licence | Unmodified Microsoft files, deployed app-local so the app starts on a PC without the Visual C++ Redistributable. See "Microsoft Visual C++ runtime" below. |
 | **yt-dlp** (`yt-dlp.exe`) | Unlicense (public domain) | Video downloads. |
 | **Deno** (`deno.exe`) | MIT | JavaScript runtime that yt-dlp uses for YouTube. |
+
+### Microsoft Visual C++ runtime
+
+The Windows installer and the Portable ZIP include `msvcp140.dll` and `msvcp140_1.dll` from the
+Microsoft Visual C++ 2015-2022 runtime (version 14.44.35211, x64), next to the
+`vcruntime140.dll` and `vcruntime140_1.dll` that come with the bundled Python. They are Microsoft's
+files, unmodified (each carries a valid Microsoft Authenticode signature), copied app-local into
+`python\` as Microsoft's documentation allows:
+
+- "It's also possible to directly install the Redistributable DLLs in the application local
+  folder": https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files
+- the Visual Studio 2022 redistribution list, "Visual C++ Runtime Files": you may copy and
+  distribute these files, unmodified, as a part of the installation package of your program,
+  subject to the Visual Studio licence terms:
+  https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution
+
+Microsoft's page also says that distributing these files is limited to licensed Visual Studio
+users; whoever publishes a release is responsible for holding that licence. The files are taken
+from the `msvc-runtime` 14.44.35112 wheel on PyPI (a repackaging of Microsoft's files), pinned by
+URL, size and SHA-256 in `platform/windows/build-deps.json`. They are only used by the Windows
+builds that ship the bundled Python; the Microsoft licence terms apply to them, not the BSD
+licence of this project.
 
 ### FFmpeg corresponding source
 

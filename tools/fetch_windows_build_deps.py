@@ -10,6 +10,11 @@ Usage (standard library only, Python 3.10+):
   python tools/fetch_windows_build_deps.py --check         verify bin/ against the list, no network
                                            [--root DIR]    ... or a built/installed tree
                                            [--select NAME] ... limited to one entry (repeatable)
+  python tools/fetch_windows_build_deps.py --select NAME --root DIR
+                                           fill one entry into DIR. An entry marked "explicit"
+                                           (files for the embed tree, such as the Visual C++
+                                           runtime DLLs) is only filled or checked when it is
+                                           selected by name
   python tools/fetch_windows_build_deps.py --only NAME --out FILE
                                                            one raw download, e.g. the Python tarball
                                                            (build_embed_installer.bat) or Inno Setup
@@ -83,6 +88,8 @@ def validate(deps: list[dict[str, Any]]) -> list[str]:
             errors.append(f"{where}: size must be a positive integer")
         if not isinstance(dep.get("sha256"), str) or not _SHA256.match(dep["sha256"]):
             errors.append(f"{where}: sha256 must be 64 lowercase hex digits")
+        if "explicit" in dep and not isinstance(dep["explicit"], bool):
+            errors.append(f"{where}: explicit must be true or false")
         files = dep.get("files")
         if not isinstance(files, list):
             errors.append(f"{where}: files must be a list")
@@ -247,6 +254,9 @@ def main(argv: list[str] | None = None) -> int:
             raise FetchError(f"no entry named {', '.join(sorted(unknown))} in {args.pins}")
         if args.select:
             deps = [d for d in deps if d["name"] in args.select]
+        elif not args.only:
+            # Targets that belong inside the embed tree, not under the repository root.
+            deps = [d for d in deps if not d.get("explicit")]
         if args.only:
             if args.out is None:
                 ap.error("--only needs --out")

@@ -347,6 +347,14 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **The AI provider address and the launch-ping address accept only http(s).** A `file://` or
   `ftp://` value in either setting is refused with a message instead of being opened.
+- **The Windows installer and Portable ZIP start on a PC without the Visual C++ Redistributable.**
+  The speech engines (`ctranslate2`, `onnxruntime`) import `msvcp140.dll` and `msvcp140_1.dll`,
+  which the bundled Python does not carry; the build now adds them (pinned, SHA-256 checked) to
+  `python\` and fails if any DLL in the tree imports a DLL that is neither shipped nor part of
+  Windows 10 (`tools/check_embed_tree.py`).
+- **The Windows build no longer ships the build machine's bytecode.** `app\` and `core\` were copied
+  with their `__pycache__` folders (bytecode of the build machine's CPython 3.14, in a CPython 3.11
+  tree); they are now left out, and the build fails if any reappear.
 - **A line break in a logged value can no longer forge a log line.** A video title, a file name
   or a setting that holds a newline is now shown as an escape in `app.log` (the message only:
   tracebacks keep their own lines), and the macOS helper hook

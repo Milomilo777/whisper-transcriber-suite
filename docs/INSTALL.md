@@ -175,7 +175,14 @@ If "Auto-transcribe after download" is enabled in Advanced, the downloaded file 
 
 ### "MSVCP140.dll is missing" or a similar DLL error
 
-Install the Visual C++ Redistributable from Microsoft:
+The Windows installer and the Portable ZIP carry the Visual C++ runtime
+files they need, so you do not have to install anything from Microsoft.
+If you see this error with one of them, a file was probably removed on the
+way (an antivirus quarantine, or a ZIP extracted only in part): extract
+the ZIP again or reinstall, and open an issue if it persists.
+
+If you run the app **from source** with your own Python, install the
+Visual C++ Redistributable from Microsoft:
 🔗 https://aka.ms/vs/17/release/vc_redist.x64.exe
 
 This is free and usually already installed on Windows 10/11.

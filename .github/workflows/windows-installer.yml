@@ -5,6 +5,10 @@ name: Windows installer
 #   * every third-party download (python-build-standalone, ffmpeg/ffprobe, yt-dlp, Deno, the two
 #     diarization models, Inno Setup) comes from platform/windows/build-deps.json at a pinned URL
 #     and must match the size and SHA-256 recorded there (tools/fetch_windows_build_deps.py);
+#   * build_embed_installer.bat fails the build when a DLL or extension module in the tree imports
+#     a DLL that is neither in the tree nor part of Windows 10 (tools/check_embed_tree.py), and the
+#     same check runs on the installed copy, so a runner that happens to have the Visual C++
+#     runtime installed cannot hide a missing one;
 #   * the installer is installed silently on the runner, smoke-tested with the installed
 #     interpreter and uninstalled again;
 #   * the outputs are workflow artifacts kept for 7 days, plus a file manifest of the build.
@@ -21,6 +25,7 @@ on:
       - requirements.txt
       - platform/windows/build-deps.json
       - tools/fetch_windows_build_deps.py
+      - tools/check_embed_tree.py
       - tools/build_manifest.py
       - tools/smoke_windows_install.py
       - .github/workflows/windows-installer.yml
@@ -100,6 +105,8 @@ jobs:
         run: |
           python tools/fetch_windows_build_deps.py --check --root embed_build
           if ($LASTEXITCODE -ne 0) { throw 'embed_build\bin does not match the pins' }
+          python tools/fetch_windows_build_deps.py --check --select msvc-runtime --root embed_build
+          if ($LASTEXITCODE -ne 0) { throw 'embed_build\python Visual C++ runtime DLLs do not match the pins' }
 
       - name: Compile the installer (installer_embed.iss)
         shell: pwsh
@@ -145,6 +152,11 @@ jobs:
           if ($p.ExitCode -ne 0) { Get-Content $log -Tail 40; throw "silent install exited $($p.ExitCode)" }
           python tools/fetch_windows_build_deps.py --check --root $dir
           if ($LASTEXITCODE -ne 0) { throw 'the installed bin\ does not match the pins' }
+          python tools/fetch_windows_build_deps.py --check --select msvc-runtime --root $dir
+          if ($LASTEXITCODE -ne 0) { throw 'the installed Visual C++ runtime DLLs do not match the pins' }
+          # Before the smoke test, which makes Python write __pycache__ into app\ and core\.
+          & (Join-Path $dir 'python\python.exe') -I tools\check_embed_tree.py $dir
+          if ($LASTEXITCODE -ne 0) { throw 'the installed tree imports a DLL it does not carry' }
           & (Join-Path $dir 'python\python.exe') tools\smoke_windows_install.py $dir $env:APP_VERSION
           if ($LASTEXITCODE -ne 0) { throw "smoke test failed ($LASTEXITCODE)" }
           # Upgrade path: the same installer run over the installed copy must find it

@@ -146,14 +146,28 @@ The batch script:
    so we cannot use it directly.
 2. Extracts it with the Windows-native `tar.exe`.
 3. Verifies tkinter is importable.
-4. `pip install --target` reads `requirements.txt` into the
+4. Adds the Visual C++ runtime DLLs `msvcp140.dll` and `msvcp140_1.dll`
+   to `python\`, next to the `vcruntime140*.dll` that
+   python-build-standalone already carries (the `msvc-runtime` entry of
+   `platform\windows\build-deps.json`, size and SHA-256 checked, see
+   "Visual C++ runtime DLLs" below). `ctranslate2` and `onnxruntime`
+   import them, and a Windows 10 PC without the Visual C++
+   Redistributable does not have them.
+5. `pip install --target` reads `requirements.txt` into the
    embed-build's `Lib\site-packages\`.
-5. Copies `app\`, `core\`, `bin\`, and `gui.py` into the embed tree.
-6. Writes a `sitecustomize.py` that prepends the bundle's
+6. Copies `app\`, `core\`, `bin\`, and `gui.py` into the embed tree.
+   `app\` and `core\` are copied without `__pycache__` and `*.pyc` (the
+   bytecode of the build machine's CPython does not belong in a
+   CPython 3.11 tree).
+7. Writes a `sitecustomize.py` that prepends the bundle's
    `Lib\site-packages\` to `sys.path` whenever the embedded
    interpreter starts.
-7. Runs a sanity import (`faster_whisper`, `ctranslate2`, `sv_ttk`,
+8. Runs a sanity import (`faster_whisper`, `ctranslate2`, `sv_ttk`,
    `platformdirs`, `tkinter`) to confirm the bundle is complete.
+9. Runs `tools\check_embed_tree.py` on the tree and fails the build
+   (exit code 11) if a `.dll`, `.pyd` or `.exe` imports a DLL that is not
+   in the tree, not an API-set name and not on its list of DLLs every
+   Windows 10 has, or if `app\` or `core\` holds any `__pycache__`.
 
 **Before running this script for a release**, re-check the `tokenizers`
 pin in `requirements.txt` against the `transformers` pin in
@@ -198,6 +212,26 @@ python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscribe
 uploaded to a new GitHub release (see `docs/RELEASE_PROCESS.md`; the
 "Rebuild without bumping the version" section below is retired).
 
+**Visual C++ runtime DLLs.** The tree carries `msvcp140.dll` and
+`msvcp140_1.dll` itself (app-local deployment, which Microsoft allows
+for these files when they are shipped unmodified; see
+`THIRD_PARTY_NOTICES.md`), so the installer and the Portable ZIP start on
+a Windows 10 PC that never installed the Visual C++ Redistributable. They
+sit in `python\`, the folder of `python.exe`: Python loads every extension
+module with the application folder on the DLL search path, and the
+`ctranslate2` and `onnxruntime` DLLs they pull in are found there before
+any copy in `System32`. The pin is the `msvc-runtime` 14.44.35112 wheel
+for CPython 3.11 (PyPI repackages Microsoft's files; every DLL has a valid
+Microsoft signature and its `vcruntime140*.dll` are byte for byte the ones
+in the pinned Python build). It is marked `"explicit": true`, so a plain
+`fetch_windows_build_deps.py` run (which fills `bin\`) skips it and the
+build asks for it with `--select msvc-runtime --root embed_build`.
+`check_embed_tree.py` is the guard: when a new package imports another
+runtime DLL (`msvcp140_2.dll`, `concrt140.dll`, `vcomp140.dll`, ...) the
+build fails until that file is added to the pin's `files` list. A source
+install (`run_from_source.bat`) uses your own Python and still needs the
+Redistributable.
+
 **cuDNN.** Nothing downloads cuDNN separately. The `ctranslate2` wheel
 from PyPI carries its own `cudnn64_9.dll` (about 0.3 MB) inside
 `Lib\site-packages\ctranslate2\`, and Method C bundles that wheel as
@@ -218,19 +252,24 @@ cancelling it. It:
 
 1. fetches every third-party download from
    `platform/windows/build-deps.json` — python-build-standalone,
-   ffmpeg/ffprobe, yt-dlp, Deno, the two diarization models and Inno
-   Setup 6.7.3 — at a fixed URL, checked against the recorded size and
+   ffmpeg/ffprobe, yt-dlp, Deno, the Visual C++ runtime DLLs, the two
+   diarization models and Inno Setup 6.7.3 — at a fixed URL, checked against the recorded size and
    a SHA-256 the upstream project publishes (release checksum file,
    GitHub release asset digest or Hugging Face LFS id);
-2. runs `build_embed_installer.bat`, checks `embed_build\bin\` against
-   the pins again (`--check --root embed_build`), compiles
+2. runs `build_embed_installer.bat`, checks `embed_build\bin\` and the
+   runtime DLLs in `embed_build\python\` against the pins again
+   (`--check --root embed_build`, `--check --select msvc-runtime --root
+   embed_build`), compiles
    `installer_embed.iss` and zips the Portable build;
 3. writes a file manifest (`tools/build_manifest.py`: path, size and
    SHA-256 of every file in `embed_build\` and `dist_installer\`) and the
    exact PyPI package versions of the run (`site-packages.txt`);
 4. runs `tools/smoke_windows_install.py` on the Portable tree
    (`embed_build\`), then installs the installer silently on the runner, checks the installed
-   `bin\` against the pins, runs `tools/smoke_windows_install.py` with
+   `bin\` and the runtime DLLs against the pins, runs
+   `tools/check_embed_tree.py` on the installed tree (before the smoke
+   test, which makes Python write `__pycache__` folders), runs
+   `tools/smoke_windows_install.py` with
    the installed interpreter (version, runtime imports including the GUI
    dependencies, an import of every `app.*` / `core.*` module, assets and
    licence files, Tcl/Tk, bundled tools, diarization models,
@@ -272,7 +311,13 @@ release (checksum file or the asset digest GitHub shows), then run
 `python tools\fetch_windows_build_deps.py --root <empty folder>`: it
 fails on any value that does not match the real download. Entries
 without `files` (the Python tarball, Inno Setup) are not part of that
-run; test them with `--only <name> --out <file>`.
+run; test them with `--only <name> --out <file>`. The entry marked
+`"explicit": true` (`msvc-runtime`) is also left out of a plain run
+because its files belong in the embed tree: test it with `--select
+msvc-runtime --root <empty folder>`. When moving it, check that each DLL
+still has a valid Microsoft signature (`Get-AuthenticodeSignature`) and
+that the wheel's `vcruntime140.dll` and `vcruntime140_1.dll` equal the
+ones in `embed_build\python\`.
 
 ## Rebuild without bumping the version — RETIRED, do not use (2026-08-23)
 
@@ -424,6 +469,7 @@ why).
 | `bin\` | bundled `ffmpeg.exe`, `ffprobe.exe`, `yt-dlp.exe`, `deno.exe`, diarization models (all methods) |
 | `platform\windows\build-deps.json` | pinned URL, size and SHA-256 of every third-party download of Method C |
 | `tools\fetch_windows_build_deps.py` | downloads and verifies those pins into `bin\` (or one file with `--only`) |
+| `tools\check_embed_tree.py` | build check: every DLL import in `embed_build\` resolves on a clean Windows 10, no bytecode in `app\` and `core\` |
 | `tools\build_manifest.py` | file manifest of a build tree, and a comparison of two manifests |
 | `tools\smoke_windows_install.py` | smoke test of an installed build (used by CI) |
 | `.github\workflows\windows-installer.yml` | Method C on a GitHub runner, outputs as workflow artifacts |

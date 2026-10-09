@@ -81,6 +81,7 @@ def test_pins_cover_everything_the_build_bundles_or_runs():
     assert targets == {
         "bin/ffmpeg.exe", "bin/ffprobe.exe", "bin/yt-dlp.exe", "bin/deno.exe",
         "bin/diarization/segmentation.onnx", "bin/diarization/embedding.onnx",
+        "python/msvcp140.dll", "python/msvcp140_1.dll",
     }
     assert deps["python-build-standalone"]["files"] == []
     assert deps["inno-setup"]["files"] == []
@@ -93,10 +94,13 @@ def test_pins_cover_everything_the_build_bundles_or_runs():
 def test_every_url_is_a_fixed_version_on_a_known_host():
     for dep in fetch.load_pins():
         url = dep["url"]
-        assert re.match(r"^https://(github\.com|huggingface\.co)/", url), url
+        assert re.match(r"^https://(github\.com|huggingface\.co|files\.pythonhosted\.org)/", url), url
         assert "/latest/" not in url and "/main/" not in url, url
         if "huggingface.co" in url:
             assert re.search(r"/resolve/[0-9a-f]{40}/", url), f"pin a revision: {url}"
+        elif "pythonhosted.org" in url:
+            # PyPI's content-addressed path (/packages/aa/bb/<hash>/file): it never moves.
+            assert re.search(r"/packages/[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{60,}/[^/]+\.whl$", url), url
         else:
             assert "/releases/download/" in url, url
         assert dep["hash_source"].strip(), dep["name"]
@@ -110,6 +114,51 @@ def test_bat_downloads_python_only_through_the_verified_fetch():
     # A missing bin\deno.exe is filled from the pin, not from the latest release.
     assert "fetch_windows_build_deps.py\" --select deno" in text
     assert "install_deno" not in text
+
+
+def test_msvc_runtime_pin_is_app_local_and_only_filled_when_selected():
+    deps = {d["name"]: d for d in fetch.load_pins()}
+    dep = deps["msvc-runtime"]
+    assert dep["explicit"] is True
+    assert {f["to"] for f in dep["files"]} == {"python/msvcp140.dll", "python/msvcp140_1.dll"}
+    # Both land next to vcruntime140.dll (python\), each pinned on its own as well as the wheel.
+    assert all(f["member"].endswith(Path(f["to"]).name) and f["sha256"] != dep["sha256"] for f in dep["files"])
+    assert "cp311" in dep["url"] and "win_amd64" in dep["url"]
+    # Every other entry is unaffected: it has no "explicit" flag.
+    assert [n for n, d in deps.items() if d.get("explicit")] == ["msvc-runtime"]
+
+
+def test_explicit_entries_are_skipped_by_default_and_filled_by_select(tmp_path, monkeypatch):
+    pins = tmp_path / "pins.json"
+    wheel = _zip({"data/msvcp140.dll": b"runtime-A"})
+    plain = _dep(b"plain", name="plain")
+    runtime = _dep(wheel, name="runtime", files=[
+        {"member": "data/msvcp140.dll", "to": "python/msvcp140.dll", "sha256": _sha(b"runtime-A")}])
+    runtime["explicit"] = True
+    pins.write_text(json.dumps({"deps": [plain, runtime]}), encoding="utf-8")
+    root = tmp_path / "root"
+    # Default fill and check never touch the explicit entry (its target is not under the repo root).
+    monkeypatch.setattr(fetch.install, "__kwdefaults__", {"opener": _opener(b"plain")})
+    assert fetch.main(["--pins", str(pins), "--root", str(root)]) == 0
+    assert (root / "bin" / "tool.exe").read_bytes() == b"plain"
+    assert not (root / "python").exists()
+    assert fetch.main(["--pins", str(pins), "--root", str(root), "--check"]) == 0
+    # Selected by name: filled, and then checked.
+    monkeypatch.setattr(fetch.install, "__kwdefaults__", {"opener": _opener(wheel)})
+    assert fetch.main(["--pins", str(pins), "--root", str(root), "--select", "runtime"]) == 0
+    assert (root / "python" / "msvcp140.dll").read_bytes() == b"runtime-A"
+    assert fetch.main(["--pins", str(pins), "--root", str(root), "--check", "--select", "runtime"]) == 0
+    (root / "python" / "msvcp140.dll").write_bytes(b"swapped")
+    assert fetch.main(["--pins", str(pins), "--root", str(root), "--check", "--select", "runtime"]) == 1
+
+
+def test_a_wheel_member_with_the_wrong_hash_is_refused(tmp_path):
+    wheel = _zip({"data/msvcp140.dll": b"tampered"})
+    dep = _dep(wheel, files=[{"member": "data/msvcp140.dll", "to": "python/msvcp140.dll",
+                              "sha256": _sha(b"genuine")}])
+    with pytest.raises(fetch.FetchError, match="python/msvcp140.dll has sha256"):
+        fetch.install(dep, tmp_path, opener=_opener(wheel))
+    assert not (tmp_path / "python").exists()
 
 
 # ------------------------------------------------------------------ validate()
@@ -126,6 +175,7 @@ def test_bat_downloads_python_only_through_the_verified_fetch():
     (lambda d: d["files"][0].update(sha256="0" * 64), "download itself"),
     (lambda d: d["files"][0].update(member="../evil"), "bad archive member"),
     (lambda d: d.update(files="bin/tool.exe"), "files must be a list"),
+    (lambda d: d.update(explicit="yes"), "explicit must be"),
 ])
 def test_validate_rejects_a_bad_entry(mutate, needle):
     dep = _dep(b"payload")
@@ -397,7 +447,7 @@ def test_workflow_triggers_on_build_files_and_by_hand_only():
     assert "pull_request" not in on and "schedule" not in on
     for path in ("build_embed_installer.bat", "installer_embed.iss", "requirements.txt",
                  "platform/windows/build-deps.json", "tools/fetch_windows_build_deps.py",
-                 ".github/workflows/windows-installer.yml"):
+                 "tools/check_embed_tree.py", ".github/workflows/windows-installer.yml"):
         assert f"      - {path}\n" in on, path
 
 
@@ -429,6 +479,14 @@ def test_workflow_builds_with_pinned_tools_and_smoke_tests_the_install():
     # The bytes that ship are checked against the pins, not only the downloads.
     assert "fetch_windows_build_deps.py --check --root embed_build" in text
     assert "fetch_windows_build_deps.py --check --root $dir" in text
+
+
+def test_workflow_checks_the_runtime_dlls_in_the_built_and_the_installed_tree():
+    text = _workflow()
+    assert "tools\\check_embed_tree.py $dir" in text  # the installed copy, before the smoke test
+    assert text.index("tools\\check_embed_tree.py $dir") < text.index("tools\\smoke_windows_install.py $dir")
+    assert text.count("--check --select msvc-runtime --root") == 2  # embed_build and the install dir
+    assert text.count("--check --root embed_build") == 1  # the bin\ check is unchanged
 
 
 def test_workflow_runs_when_shipped_code_changes_and_never_cancels_a_build():
@@ -481,6 +539,36 @@ def test_bat_puts_assets_into_the_embed_tree_and_checks_them():
     assert copy < check < text.index("build complete")
     assert "for %%F in (LICENSE THIRD_PARTY_NOTICES.md) do (" in text
     assert text.index(r"ERROR: %%F missing from embed tree") < text.index("build complete")
+
+
+def test_bat_ships_the_visual_cpp_runtime_next_to_vcruntime140():
+    text = BAT.read_text(encoding="utf-8")
+    fetch_line = r'python "%ROOT%tools\fetch_windows_build_deps.py" --select msvc-runtime --root "%BUILD%"'
+    assert fetch_line in text
+    # After Python is unpacked (the DLLs go into python\), before any import check loads the engines.
+    assert text.index('"%SystemRoot%\\System32\\tar.exe"') < text.index(fetch_line) < text.index("sanity import check")
+    assert text.index(fetch_line) < text.index("exit /b 10") < text.index("sanity import check")
+
+
+def test_bat_copies_app_and_core_without_bytecode():
+    text = BAT.read_text(encoding="utf-8")
+    for name in ("app", "core"):
+        line = (rf'robocopy "%ROOT%{name}" "%BUILD%\{name}" /E /XD __pycache__ /XF *.pyc '
+                r"/NFL /NDL /NJH /NJS /NP >nul")
+        assert line in text, name
+        # robocopy reports success with exit codes 0-7; 8 and above are failures.
+        assert text.index(line) < text.index(rf"echo [embed] copying {name}\ failed")
+    assert "if errorlevel 8 (" in text
+    assert r'xcopy /E /I /Y "%ROOT%app"' not in text and r'xcopy /E /I /Y "%ROOT%core"' not in text
+
+
+def test_bat_runs_the_tree_check_last_and_keeps_the_sanity_imports_from_writing_bytecode():
+    text = BAT.read_text(encoding="utf-8")
+    check = r'"%BUILD%\python\python.exe" -I "%ROOT%tools\check_embed_tree.py" "%BUILD%"'
+    assert check in text
+    assert text.index("set PYTHONDONTWRITEBYTECODE=1") < text.index("sanity import check (full stack)")
+    assert text.index("embed_core_import_ok") < text.index(check) < text.index("exit /b 11") < text.index("build complete")
+    assert (ROOT / "tools" / "check_embed_tree.py").is_file()
 
 
 def test_installer_takes_assets_from_the_embed_tree_only():

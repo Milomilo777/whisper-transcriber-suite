@@ -1,5 +1,5 @@
 {
-  "about": "Third-party downloads of the Windows build (docs/BUILD.md, Method C), pinned by URL, byte size and SHA-256. Each sha256 is a hash the upstream project publishes (see hash_source). tools/fetch_windows_build_deps.py downloads them, refuses any mismatch and writes the files listed under 'files' (paths relative to the repository root). Entries without 'files' are raw downloads fetched with --only NAME --out FILE.",
+  "about": "Third-party downloads of the Windows build (docs/BUILD.md, Method C), pinned by URL, byte size and SHA-256. Each sha256 is a hash the upstream project publishes (see hash_source). tools/fetch_windows_build_deps.py downloads them, refuses any mismatch and writes the files listed under 'files' (paths relative to the repository root). Entries without 'files' are raw downloads fetched with --only NAME --out FILE. An entry with 'explicit': true is skipped unless selected by name (--select NAME) because its targets belong inside the embed tree, not the repository root (build_embed_installer.bat passes --root embed_build).",
   "deps": [
     {
       "name": "python-build-standalone",
@@ -9,6 +9,27 @@
       "sha256": "c0d6d9da1286640790c07f32c74516486c4ccd170a65952eebb3e125c34e6c67",
       "hash_source": "SHA256SUMS in the release and the GitHub release asset digest",
       "files": []
+    },
+    {
+      "name": "msvc-runtime",
+      "version": "Microsoft Visual C++ 2015-2022 runtime 14.44.35211 (x64): msvcp140.dll and msvcp140_1.dll, taken from the msvc-runtime 14.44.35112 wheel for CPython 3.11 / win_amd64",
+      "url": "https://files.pythonhosted.org/packages/ce/92/5a10262c2a489d5854f96d69e287923d6f720c4935dd26634deb7a5426e9/msvc_runtime-14.44.35112-cp311-cp311-win_amd64.whl",
+      "size": 1921911,
+      "sha256": "aba7fbe71897d25ed53fbb7f391e9f50289378a8a9ae218ba18530c663448391",
+      "hash_source": "PyPI file digest (JSON API, /pypi/msvc-runtime/14.44.35112/json) and a download hashed on 2026-10-09; each DLL below has a valid Microsoft Authenticode signature (Get-AuthenticodeSignature, 2026-10-09), and the wheel's vcruntime140.dll and vcruntime140_1.dll are byte for byte the ones in the pinned python-build-standalone release above",
+      "explicit": true,
+      "files": [
+        {
+          "member": "msvc_runtime-14.44.35112.data/data/msvcp140.dll",
+          "to": "python/msvcp140.dll",
+          "sha256": "0f885b509a685d2bbfa652fed26b5fb31d88fbdab0a978c641d1c7b8aa460aa9"
+        },
+        {
+          "member": "msvc_runtime-14.44.35112.data/data/msvcp140_1.dll",
+          "to": "python/msvcp140_1.dll",
+          "sha256": "bfad5aef4c63a669e3c140655cdfdf395b6c979b400a447bd5dcb65ed8826c3d"
+        }
+      ]
     },
     {
       "name": "ffmpeg",

@@ -58,6 +58,20 @@ if errorlevel 1 (
   exit /b 3
 )
 
+REM The Visual C++ runtime DLLs the native packages import (ctranslate2 and onnxruntime need
+REM msvcp140.dll and msvcp140_1.dll) are NOT in the python-build-standalone tree, which carries
+REM only vcruntime140*.dll. A Windows 10 PC without the "Visual C++ 2015-2022 Redistributable"
+REM would fail to load the speech engines. Microsoft allows shipping these files unmodified with
+REM an application (app-local deployment, see THIRD_PARTY_NOTICES.md); they go next to
+REM vcruntime140.dll in python\, the folder that is searched first for every extension module and
+REM for the DLLs it imports. Pinned (size + SHA-256) in platform\windows\build-deps.json.
+echo [embed] adding the pinned Visual C++ runtime DLLs to python\ (app-local, SHA-256 checked)
+python "%ROOT%tools\fetch_windows_build_deps.py" --select msvc-runtime --root "%BUILD%"
+if errorlevel 1 (
+  echo [embed] Visual C++ runtime download failed or did not match its pin
+  exit /b 10
+)
+
 echo [embed] installing runtime requirements into Lib\site-packages
 mkdir "%BUILD%\Lib"
 "%BUILD%\python\python.exe" -m pip install --no-warn-script-location --target "%BUILD%\Lib\site-packages" -r "%ROOT%requirements.txt"
@@ -98,8 +112,19 @@ python "%ROOT%tools\fetch_windows_build_deps.py" --check
 if errorlevel 1 echo [embed] WARNING: bin\ differs from platform\windows\build-deps.json
 
 echo [embed] copying source tree
-xcopy /E /I /Y "%ROOT%app" "%BUILD%\app" >nul
-xcopy /E /I /Y "%ROOT%core" "%BUILD%\core" >nul
+REM app\ and core\ are copied without __pycache__ and *.pyc: the dev machine's bytecode (any
+REM CPython version) must not ship; the shipped CPython 3.11 writes its own on first run.
+REM robocopy exit codes below 8 mean success.
+robocopy "%ROOT%app" "%BUILD%\app" /E /XD __pycache__ /XF *.pyc /NFL /NDL /NJH /NJS /NP >nul
+if errorlevel 8 (
+  echo [embed] copying app\ failed
+  exit /b 12
+)
+robocopy "%ROOT%core" "%BUILD%\core" /E /XD __pycache__ /XF *.pyc /NFL /NDL /NJH /NJS /NP >nul
+if errorlevel 8 (
+  echo [embed] copying core\ failed
+  exit /b 12
+)
 xcopy /E /I /Y "%ROOT%bin" "%BUILD%\bin" >nul
 copy "%ROOT%gui.py" "%BUILD%\" >nul
 
@@ -163,6 +188,9 @@ echo [embed] writing sitecustomize.py to teach python where site-packages lives
 >> "%BUILD%\python\Lib\sitecustomize.py" echo if os.path.isdir(_site) and _site not in sys.path:
 >> "%BUILD%\python\Lib\sitecustomize.py" echo     sys.path.insert(0, _site)
 
+REM The sanity imports below must not write __pycache__ folders into app\ and core\.
+set PYTHONDONTWRITEBYTECODE=1
+
 echo [embed] sanity import check (full stack)
 REM docx + reportlab (+ arabic_reshaper and bidi for Arabic-script PDF text)
 REM are bundled (NOT pruned) — they back the docx/pdf
@@ -205,6 +233,16 @@ echo [embed] verifying gui.py worker entry point parses
 if errorlevel 1 (
   echo [embed] gui.py parse failed
   exit /b 6
+)
+
+REM Every DLL that a .dll / .pyd / .exe in the tree imports must be in the tree, an API-set name
+REM or a Windows 10 system DLL, and app\ and core\ must hold no bytecode. Fails the build
+REM instead of shipping a tree that only starts on a PC that happens to have the runtime.
+echo [embed] checking DLL imports and stray bytecode in the tree
+"%BUILD%\python\python.exe" -I "%ROOT%tools\check_embed_tree.py" "%BUILD%"
+if errorlevel 1 (
+  echo [embed] tree check failed — see the lines above
+  exit /b 11
 )
 
 echo [embed] build complete: %BUILD%
