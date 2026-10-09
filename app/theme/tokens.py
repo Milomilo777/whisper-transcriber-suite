@@ -31,6 +31,12 @@ TEXT_MISSING = "#8a8a8a"   # names of models that are not downloaded yet
 CHIP_GPU = "#2e9e44"
 CHIP_CPU = "#d08a1d"
 
+# Text of a pressed primary ("Accent.TButton") button, both themes. sv_ttk's own pressed text
+# (#25536a on the dark theme's #4ba6d5, #c1d8ee on the light theme's #327ec5) reads 3.06:1 and
+# 2.91:1; black reads 7.7:1 and 4.9:1. The other states already pass 4.5:1 (see
+# tests/app/test_accent_button_contrast.py, which measures them from sv_ttk's own images).
+ACCENT_BUTTON_PRESSED_TEXT = "#000000"
+
 # --------------------------------------------------------------- tree row tints
 ROW_ACTIVE = "#fffacd"   # karaoke highlight
 ROW_SUSPECT = "#ffe0e0"

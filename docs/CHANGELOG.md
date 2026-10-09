@@ -362,6 +362,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the next jobs still run; the notification is logged and dropped.
 - **A large upload stays byte-exact when a long text field follows the file.** The server could keep
   the two line-break bytes in front of the closing boundary in the saved media.
+- **The primary button's text is readable while pressed.** The pressed text of the main blue/cyan
+  button (Transcribe, Finish, Search) read 3.1:1 (dark) and 2.9:1 (light); it is now black, 7.7:1 and
+  4.9:1. The resting button was already fine (black on cyan 11.1:1 in dark, white on blue 6.3:1 in light).
 - **Destructive confirmations default to the safe answer.** Quitting with jobs running, stopping
   running jobs to switch the engine or model, cancelling a transcription or download, closing a viewer
   with unsaved edits, overwriting a transcript changed on disk and replacing an `.otr` file now select

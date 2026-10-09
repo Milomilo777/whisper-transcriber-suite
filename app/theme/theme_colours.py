@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import tkinter as tk
 from collections.abc import Iterator
+from tkinter import ttk
 
 from app.theme import tokens
 
@@ -94,6 +95,28 @@ def recolour(root: tk.Misc, theme: str) -> int:
         if widget.winfo_class() in ("Treeview", "Text"):
             changed += _recolour_tags(widget, resolved)
     return changed
+
+
+def fix_accent_button(root: tk.Misc) -> None:
+    """Give the pressed primary button readable text (>= 4.5:1) in the theme just set.
+
+    Call right after ``sv_ttk.set_theme``, before the theme fonts: a style change makes Tk send
+    <<ThemeChanged>>, which sv_ttk answers by resetting the entry fonts. Only the pressed entry
+    of the foreground map changes; the disabled colour and the other states stay sv_ttk's.
+    """
+    style = ttk.Style(root)
+    current = style.map("Accent.TButton", "foreground")
+    fixed: list[tuple[str, str]] = []
+    seen_pressed = False
+    for entry in current:
+        *states, value = entry
+        if "pressed" in states:
+            value = tokens.ACCENT_BUTTON_PRESSED_TEXT
+            seen_pressed = True
+        fixed.append((" ".join(str(s) for s in states), str(value)))
+    if not seen_pressed:
+        fixed.insert(0, ("pressed", tokens.ACCENT_BUTTON_PRESSED_TEXT))
+    style.map("Accent.TButton", foreground=fixed)
 
 
 def apply(root: tk.Misc, theme: str) -> int:
