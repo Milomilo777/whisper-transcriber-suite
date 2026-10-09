@@ -609,6 +609,8 @@ def test_the_real_stacking_order_lists_the_front_window_first() -> None:
     except tk.TclError as exc:  # pragma: no cover - no display
         pytest.skip(f"no Tk display: {exc}")
     try:
+        if str(root.tk.call("tk", "windowingsystem")) == "aqua":
+            pytest.skip("Aqua orders windows only for an active app; proved in the macOS VM")
         root.title("main")
         back, front = tk.Toplevel(root), tk.Toplevel(root)
         back.title("back")
