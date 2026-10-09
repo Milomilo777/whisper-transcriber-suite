@@ -147,6 +147,21 @@ def _reset_native_window_theme_state():
     _reset()
 
 
+@pytest.fixture(autouse=True)
+def _reset_desktop_alert_state():
+    """Forget the queue count and the "osascript missing" note of app.desktop_alert.
+
+    The module keeps the finished-jobs count of the current queue run (for the one-per-queue
+    summary) and its notification threads; a test that finishes jobs would otherwise leak them.
+    """
+    from app import desktop_alert
+
+    desktop_alert.reset_for_tests()
+    yield
+    desktop_alert.join_pending_for_tests()
+    desktop_alert.reset_for_tests()
+
+
 _tk_touched = False
 _last_module: object = None
 

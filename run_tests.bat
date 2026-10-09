@@ -12,7 +12,8 @@ REM  terminal opened in the repo root.
 REM
 REM  One-time setup:
 REM     pip install -r requirements.txt
-REM     pip install pyright pytest
+REM     pip install pyright pytest hypothesis
+REM  (hypothesis runs the property-based tests; they are skipped without it)
 REM ===================================================================
 setlocal
 cd /d "%~dp0"

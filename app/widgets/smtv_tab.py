@@ -30,7 +30,7 @@ from tkinter import ttk
 from typing import Any
 
 from app.dpi import scale_factor, scaled
-from app.theme import tokens
+from app.theme import system_fonts, tokens
 
 logger = logging.getLogger(__name__)
 
@@ -251,11 +251,11 @@ def _build_hero(app: Any, state: "_TabState", parent: Any) -> tk.Canvas:
             hero.create_line(*pts, fill=_mix((253, 230, 138), _HERO_RIGHT, 1 - opacity * 0.7),
                              width=width * k, smooth=True)
         hero.create_text(24 * k, 26 * k, anchor="nw", text="SUPREME MASTER TELEVISION",
-                         fill=_HERO_ACCENT, font=("Segoe UI", 10, "bold"))
+                         fill=_HERO_ACCENT, font=system_fonts.ui_font(hero, "Segoe UI", 10, "bold"))
         hero.create_text(24 * k, 46 * k, anchor="nw", text="Good news from around our beautiful planet",
-                         fill=_HERO_TEXT, font=("Segoe UI Semibold", 20))
+                         fill=_HERO_TEXT, font=system_fonts.ui_font(hero, "Segoe UI Semibold", 20))
         hero.create_text(24 * k, 86 * k, anchor="nw", text=state.stats_text(),
-                         fill=_HERO_SUB, font=("Segoe UI", 10))
+                         fill=_HERO_SUB, font=system_fonts.ui_font(hero, "Segoe UI", 10))
         x = 24 * k
         for btn in buttons:
             hero.create_window(x, 124 * k, anchor="nw", window=btn)
@@ -434,7 +434,7 @@ class _TabState:
         thumb.bind("<Button-1>", lambda _e, u=item.url: webbrowser.open(u))
         rtl = self._rtl
         side, anchor, justify = ("right", "e", "right") if rtl else ("left", "w", "left")
-        title = ttk.Label(frame, text=item.title, font=("Segoe UI Semibold", 11),
+        title = ttk.Label(frame, text=item.title, font=system_fonts.ui_font(frame, "Segoe UI Semibold", 11),
                           wraplength=self._wrap, justify=justify, cursor="hand2")
         title.grid(row=0, column=1, sticky=anchor)
         title.bind("<Button-1>", lambda _e, u=item.url: webbrowser.open(u))

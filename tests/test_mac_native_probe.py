@@ -122,3 +122,80 @@ def test_main_names_every_step_creates_objc_in_the_guarded_block_and_always_dest
     assert any(isinstance(t, ast.Try) and any(
         isinstance(c, ast.Call) and getattr(c.func, "attr", "") == "destroy"
         for stmt in t.finalbody for c in ast.walk(stmt)) for t in ast.walk(main))
+
+
+# ------------------------------------------------------------------ appearance (card C2.73)
+
+class _FakeEventRoot:
+    """Records the virtual-event bindings of the appearance probe and fires them by hand."""
+
+    def __init__(self) -> None:
+        self.bound: dict[str, Any] = {}
+
+    def bind(self, sequence: str, func: Any, add: Any = None) -> None:
+        self.bound[sequence] = func
+
+
+def test_the_appearance_hooks_the_app_uses_are_the_ones_the_probe_proves() -> None:
+    from app.theme import system_appearance, system_fonts
+
+    probe = _probe()
+    assert tuple(probe.APPEARANCE_EVENTS[:2]) == tuple(system_appearance.MAC_APPEARANCE_EVENTS)
+    assert "<<TkSystemAppearanceChanged>>" in probe.APPEARANCE_EVENTS      # checked, reported, unused
+    assert system_fonts.SYSTEM_UI_FAMILY in probe.SYSTEM_FONT_CANDIDATES
+    for hook in ("appearance_isdark", "appearance_events", "system_font_name", "app_active"):
+        assert hook in probe.USED_BY_APP
+
+
+def test_the_flip_is_never_run_without_the_flag_and_changes_nothing(capsys: pytest.CaptureFixture[str]) -> None:
+    probe = _probe()
+    probe._results.clear()
+    flips: list[bool] = []
+    probe.set_system_dark_mode = flips.append  # type: ignore[assignment]
+    probe.probe_appearance_events(_FakeEventRoot(), object(), flip=False)  # type: ignore[arg-type]
+    assert flips == []
+    assert probe._results[0][0] == "INFO" and "--flip-appearance" in probe._results[0][2]
+
+
+def test_the_original_appearance_is_restored_even_when_no_event_arrives() -> None:
+    probe = _probe()
+    probe._results.clear()
+    setting = {"dark": False}
+    calls: list[bool] = []
+
+    def set_mode(dark: bool) -> None:
+        calls.append(dark)
+        setting["dark"] = dark
+
+    probe.system_dark_mode = lambda: setting["dark"]
+    probe.set_system_dark_mode = set_mode
+    probe.tk_isdark = lambda _root: setting["dark"]
+    probe._pump = lambda *a, **k: None          # no event ever arrives
+    probe.probe_appearance_events(_FakeEventRoot(), object(), flip=True)  # type: ignore[arg-type]
+    assert setting["dark"] is False and calls[0] is True and calls[-1] is False
+    statuses = {hook: status for status, hook, _d in probe._results}
+    assert statuses["appearance_events"] == "FAIL"        # no event: a failure, not a pass
+    assert statuses["appearance_restore"] == "PASS"
+
+
+def test_the_original_appearance_is_restored_when_a_step_raises() -> None:
+    probe = _probe()
+    probe._results.clear()
+    setting = {"dark": True}
+
+    def set_mode(dark: bool) -> None:
+        if dark is False and setting["dark"] is True:
+            setting["dark"] = False       # the flip itself works ...
+            return
+        setting["dark"] = dark
+
+    probe.system_dark_mode = lambda: setting["dark"]
+    probe.set_system_dark_mode = set_mode
+
+    def boom(*a: Any, **k: Any) -> None:
+        raise RuntimeError("window server gone")
+
+    probe._pump = boom
+    with pytest.raises(RuntimeError):
+        probe.probe_appearance_events(_FakeEventRoot(), object(), flip=True)  # type: ignore[arg-type]
+    assert setting["dark"] is True        # the finally step put the original setting back

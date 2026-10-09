@@ -15,6 +15,7 @@ import threading
 from queue import Empty
 from typing import TYPE_CHECKING, Any
 
+from app import desktop_alert
 from app.domain.task_outputs import is_sidecar_json, task_transcript_json
 from core import task_settings
 from core._proc import kill_process_tree, new_session_kwargs
@@ -1847,6 +1848,7 @@ class TranscriptionService:
                 app.note_job_success()
             except Exception:  # noqa: BLE001
                 logger.exception("Could not count the finished job")
+        desktop_alert.job_ended(app, task)
         app.update_overall_progress()
         if worker.get("temporary") and not any(t.status == "waiting" for t in app.queue):
             self.retire_worker(worker)

@@ -60,6 +60,7 @@ dev = [
     "pytest-cov>=5.0",
     "pytest-timeout>=2.3",
     "responses>=0.25",
+    "hypothesis>=6.100",
     "pyright>=1.1.350",
 ]
 crash_reporting = [

@@ -389,6 +389,82 @@ workflow runs on manual dispatch and on a push to the `macos-app-build` branch.
 5. Minimise the window, click the Dock icon: it returns.
 6. Last Result card, queue and Help menu say "Reveal in Finder"; the button selects the output file.
 
+### Appearance, system font and notifications
+
+Same rules as above: Aqua only, Windows and Linux unchanged, built only on what the probe proved.
+`python tools/mac_native_probe.py --flip-appearance` adds the appearance checks. The flip changes the
+real Light/Dark setting, so it runs only with that flag; it restores the original value in a `finally`
+step and prints both values (`appearance_original`, `appearance_restore`). Raw key lines, macOS 13.7.8,
+python.org Python 3.12.10, Tk 8.6.16 (original setting Light, final setting Light):
+
+```
+INFO tk_patchlevel: 8.6.16
+PASS appearance_isdark: isdark=0; NSApp effectiveAppearance='NSAppearanceNameAqua' (agrees)
+PASS appearance_events: set dark=True: events=['<<DarkAqua>>'], isdark at event=[True], isdark now=1; set dark=False: events=['<<LightAqua>>'], isdark at event=[False], isdark now=0
+PASS appearance_restore: original dark mode=False, final dark mode=False
+INFO font_named: TkDefaultFont: -family .AppleSystemUIFont -size 13 -weight normal ...
+PASS system_font_name: a font asked for '.AppleSystemUIFont' really is '.AppleSystemUIFont'; TkDefaultFont is '.AppleSystemUIFont'
+INFO font_candidate: 'Segoe UI Variable Text': in `font families`=False; a font asked for it draws as '.AppleSystemUIFont'
+INFO font_script: persian U+0645: system font -> '.SF Arabic'
+INFO font_script: han U+6F22: system font -> '.PingFang SC'
+INFO font_script: hangul U+D55C: system font -> '.Apple SD Gothic NeoI'
+INFO font_script: thai U+0E01: system font -> '.ThonburiUI'
+PASS app_active: NSApp isActive=1 isHidden=0; wm state='normal'; focus -displayof='.'
+```
+
+- **System theme.** `tk::unsupported::MacWindowStyle isdark .` answers the current appearance and Tk
+  sends `<<LightAqua>>` / `<<DarkAqua>>` to the main window on a flip. `<<TkSystemAppearanceChanged>>`
+  never fired in the probe and is not used. `MacBackend` in `app/theme/system_appearance.py` binds the
+  two events (no timer, no thread) and re-reads `isdark`; a failed restyle is retried a few times like
+  on Windows. In the real app the System mode followed a live flip, with a dialog open and with the
+  window minimised or hidden; an explicit Light or Dark choice ignored the flip, and the saved choice
+  was never rewritten. macOS draws the title bar and the window controls from the system setting,
+  so an explicit Light choice under a Dark system keeps a dark title bar (as before this change).
+- **System font.** sv_ttk names Windows families. Tk on macOS substitutes the system font for an unknown
+  family, but the theme fonts now name `.AppleSystemUIFont` after every theme switch (sizes kept; the
+  "Semibold" ones become bold), and the four hard-coded "Segoe UI" fonts go through
+  `app/theme/system_fonts.py`. Per-script fonts stay Windows-only: the rows above show macOS draws
+  Persian and Arabic, Han, Hangul and Thai in its own per-script fonts. Checked by name in the real
+  app: every `SunValley*Font` is `.AppleSystemUIFont`, and a Persian character in the body font is
+  drawn by `.SF Arabic`. Not yet checked on macOS 10.15.
+- **Notifications.** `app/desktop_alert.py`, called from the same completion hook as the Windows tray
+  toast, through the existing "Chime on completion" setting (the macOS menu text is "Chime and notify on
+  completion"). It runs `/usr/bin/osascript` on a worker thread (15 s timeout, no shell) with a fixed
+  script that reads the text and title from its arguments:
+  `osascript -e 'on run argv' -e 'display notification (item 1 of argv) with title (item 2 of argv)' -e 'end run' -- TEXT TITLE`.
+  23 awkward strings (quotes, backslashes, new lines, a leading `-`, `--`, `-e`, Persian with a
+  zero-width non-joiner, emoji, 3000 characters, an attempted `do shell script`) came back from
+  `osascript` byte for byte and none ran as code. It follows the chime's completion events, one banner
+  per user job on its last stage: a finished transcription, a finished download (only when no
+  transcription follows it) and a finished subtitle burn (a manual burn, or the end of a "Make
+  subtitled video" chain, whose transcription stage posts nothing). When the last transcription of a
+  queue of two or more finishes, one summary replaces that job's own banner; the count starts over when
+  the queue goes idle. A job with no output files, or no recognised speech, says so instead of
+  "Done". A chain that ends in an error posts one "Subtitled video not made" banner (its transcription stage posted
+  nothing); other failures and cancellations post nothing. Click behaviour: the
+  banner belongs to Script Editor (the host of `osascript`), so a click opens Script Editor and cannot
+  bring this app forward; the app does not promise otherwise.
+- **When the app counts as "in the background".** Tk's focus alone is wrong: measured with the real app,
+  with another app in front or after Cmd+H, `focus -displayof` still named a widget while
+  `[NSApp isActive]` was 0, and a minimised main window leaves the app active with a focus widget.
+
+  | Situation | `focus -displayof` | `wm state` | `NSApp isActive` | Notification |
+  |---|---|---|---|---|
+  | window in front | the window | normal | 1 | no |
+  | main window minimised | the window | iconic | 1 | yes |
+  | Cmd+H (hidden) | the window | normal | 0 | yes |
+  | another app in front | a widget (or none) | normal | 0 | yes |
+
+  The app therefore posts unless the main window is on screen, Tk has a focus widget and
+  `[NSApp isActive]` (read with `ctypes`, like the probe) is true; if NSApp cannot be asked the app counts
+  as being in the background (logged once). In the VM each row behaved as
+  the last column says, and with the chime setting off nothing was posted.
+
+Manual checks on a Mac (macOS 13 done in the VM; 10.15 still to do): flip System Settings >
+Appearance with the theme on System; finish a short job with the app in the background, minimised and
+hidden (a banner each time) and in front (none); open the Script Editor icon's banner once to see where
+a click goes.
+
 ## Next steps worth doing
 
 - **universal2**: python.org 3.12 is universal2; fuse per-arch wheels with `delocate-merge`, `fetch_mac_binaries.sh universal2`, `WTS_TARGET_ARCH=universal2 WTS_DMG_SUFFIX=universal`, then `verify_mac_bundle.sh <app> universal2`.
