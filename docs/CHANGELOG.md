@@ -353,6 +353,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **macOS 10.15: PDF export and the menu-bar icon work again.** The app bundled two versions of one compression library and older macOS loaded the wrong one for the image library.
 - **macOS: opening several files at once from Finder (Open With) adds them all to the queue together.** Before, only the last of them ended up selected.
 - **On macOS, the app no longer uses a third of a CPU core while a text box has the focus.** The text cursor stays steady instead of blinking.
 - **On macOS, quiet notices no longer appear as an empty bar** at the bottom of the window.

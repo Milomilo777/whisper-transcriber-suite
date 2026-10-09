@@ -72,15 +72,23 @@ for media in sample.wav sample.mp4; do
   # Own folder per input: the app never overwrites existing outputs (a
   # second "sample.*" in the same folder would get "sample (1).srt").
   d="$WORK/run-${media##*.}"; mkdir -p "$d"; cp "$WORK/$media" "$d/"
-  if env -i HOME="$HOME" PATH=/usr/bin:/bin "$BIN" transcribe "$d/$media" --formats srt --language en \
+  # PDF too: reportlab needs Pillow's native code, which failed to load on
+  # macOS 10.15 once (a wrong liblzma) while SRT output still worked.
+  if env -i HOME="$HOME" PATH=/usr/bin:/bin "$BIN" transcribe "$d/$media" --formats srt pdf --language en \
        > "$WORK/$media.log" 2>&1; then
     srt="$d/${media%.*}.srt"
+    pdf="$d/${media%.*}.pdf"
     if grep -qi "quick brown fox" "$srt"; then
       echo "OK   $media -> $(tr '\n' ' ' < "$srt" | cut -c1-160)"
     else
       echo "FAIL $media: transcript does not contain the spoken words"; cat "$srt" || true; fail=1
     fi
-    rm -f "$srt"
+    if [ "$(head -c 5 "$pdf" 2>/dev/null)" = "%PDF-" ]; then
+      echo "OK   $media -> PDF written"
+    else
+      echo "FAIL $media: no PDF output"; grep -i "pdf\|reportlab\|PIL" "$WORK/$media.log" | tail -5; fail=1
+    fi
+    rm -f "$srt" "$pdf"
   else
     echo "FAIL $media: CLI exit $?"; tail -30 "$WORK/$media.log"; fail=1
   fi

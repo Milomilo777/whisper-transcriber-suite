@@ -714,6 +714,49 @@ for _name in _POST_COPY_BINS:
     print('[mac-spec] bundled %s %s (copied verbatim; start %.1f s, then %.1f s)' % (
         _name, _out.stdout.strip(), _runs[0], _runs[1]))
 
+# ---- Post-BUNDLE: one version of a dylib that several wheels ship ----------
+# PyInstaller links every collected dylib name once at the top of
+# Contents/Frameworks (and Contents/Resources), and the first package wins.
+# PyAV and Pillow both ship liblzma.5.dylib: PyAV's has compatibility version
+# 10, Pillow's 14. Pillow's libtiff reaches the top-level link through its
+# @loader_path/../.. rpath, and the dyld of macOS 10.15 refuses the older file
+# ("Incompatible library version"), so PIL._imaging did not load there: no PDF
+# export and no tray icon (macOS 13 does not enforce the check). Point each
+# such top-level link at the copy with the highest compatibility version,
+# which satisfies every client of that name.
+import re as _re
+
+
+def _compat_version(path):
+    out = _subprocess.run(['otool', '-L', path], capture_output=True, text=True, check=True).stdout
+    lines = out.splitlines()
+    m = _re.search(r'compatibility version ([\d.]+)', lines[1] if len(lines) > 1 else '')
+    return tuple(int(x) for x in m.group(1).split('.')) if m else (0,)
+
+
+_fw_dir = os.path.join(_app_path, 'Contents', 'Frameworks')
+_dylib_copies = {}
+for _root, _dirs, _files in os.walk(_fw_dir):
+    for _f in _files:
+        _p = os.path.join(_root, _f)
+        if _f.endswith('.dylib') and not os.path.islink(_p):
+            _dylib_copies.setdefault(_f, set()).add(os.path.realpath(_p))
+for _name, _paths in sorted(_dylib_copies.items()):
+    if len(_paths) < 2:
+        continue
+    _versions = {_p: _compat_version(_p) for _p in _paths}
+    if len(set(_versions.values())) < 2:
+        continue
+    _best = max(sorted(_paths), key=lambda _p: _versions[_p])
+    for _top in (os.path.join(_fw_dir, _name), os.path.join(_app_path, 'Contents', 'Resources', _name)):
+        if os.path.islink(_top) and os.path.realpath(_top) != _best:
+            os.remove(_top)
+            os.symlink(os.path.relpath(_best, os.path.dirname(_top)), _top)
+            print('[mac-spec] %s -> %s (compatibility %s; other copies %s)' % (
+                os.path.relpath(_top, _app_path), os.path.relpath(_best, _app_path),
+                '.'.join(map(str, _versions[_best])),
+                ', '.join('.'.join(map(str, v)) for p, v in sorted(_versions.items()) if p != _best)))
+
 # core.paths.resource_base() resolves to dirname(sys.executable) at runtime,
 # i.e. Contents/MacOS/ -- so core.paths.bundled_binary() looks for every tool
 # under Contents/MacOS/bin/. But PyInstaller's macOS BUNDLE step physically
