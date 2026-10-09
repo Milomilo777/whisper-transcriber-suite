@@ -62,9 +62,22 @@ sherpa-onnx>=1.10
 # Folder watcher (auto-transcribe on new file)
 watchdog>=3.0
 
-# System tray (minimise-to-tray)
+# System tray (minimise-to-tray) and image decoding (the SMTV tab opens image
+# bytes fetched from a remote site). osv.dev lists 35 advisories against the
+# old floor (10.0); the newest fix among them landed in 12.3.0, which the
+# Windows embed build already installs. Its macOS wheels are tagged
+# macosx_10_13 (Intel) and macosx_11_0 (Apple silicon), so the floor does not
+# raise the Mac minimum.
 pystray>=0.19
-Pillow>=10.0
+Pillow>=12.3.0
+
+# numpy is imported directly (Live tab, audio visualiser, VAD window,
+# diarization, hardware probes) and comes in through faster-whisper /
+# ctranslate2 / onnxruntime, so declare it. Floor 1.26: the macOS build pins
+# numpy 1.26.4 (platform/macos/pyinstaller/constraints-macos.txt); the Windows
+# embed build (CPython 3.11) installs 2.4.x. Ceiling: the next major, as
+# faster-whisper and ctranslate2 accept.
+numpy>=1.26,<3
 
 # Live tab audio capture. Small, no heavy transitive deps (unlike the
 # opt-in on-demand extras below), so — unlike those — these ship by

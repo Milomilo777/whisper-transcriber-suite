@@ -28,6 +28,9 @@ dependencies = [
     # PyAV 19 dropped av.open(metadata_errors=...), which faster-whisper
     # <= 1.2.1 still passes; see the note in requirements.txt.
     "av>=11,<19",
+    # tokenizers is bundled so the on-demand nvidia_asr 'transformers' sees a
+    # compatible one; keep this range identical to requirements.txt.
+    "tokenizers>=0.22.0,<=0.23.0",
     "requests>=2.31.0",
     "sv-ttk>=2.6.0",
     "platformdirs>=4.0.0",
@@ -44,7 +47,10 @@ dependencies = [
     "python-bidi>=0.6",
     "watchdog>=3.0",
     "pystray>=0.19",
-    "Pillow>=10.0",
+    # Pillow 12.3.0 closes the published advisories (see requirements.txt);
+    # numpy is imported directly in several modules.
+    "Pillow>=12.3.0",
+    "numpy>=1.26,<3",
     "psutil>=5.9",
     # Live tab audio capture — small, no heavy transitive deps, so these
     # ship by default rather than through the opt-in extras below (see
@@ -52,6 +58,11 @@ dependencies = [
     # loopback for the "System audio" source).
     "sounddevice>=0.4.6",
     "PyAudioWPatch>=0.2.12.6; sys_platform == 'win32'",
+    # whisper.cpp backend: the Windows and Linux installers ship it (it is in
+    # requirements.txt). The Mac installers filter it out (no Intel wheel for
+    # >= 1.4), so it is skipped on macOS here too; there it stays the opt-in
+    # extra backend_cpp below.
+    "pywhispercpp>=1.4; sys_platform != 'darwin'",
 ]
 
 [project.optional-dependencies]
@@ -70,8 +81,9 @@ theme_detection = [
     "darkdetect>=0.8.0",
 ]
 backend_cpp = [
-    # whisper.cpp backend — opt-in because the ggml model download
-    # is 1.1 GB and pywhispercpp transitively pulls a native lib.
+    # whisper.cpp backend. Part of the base install except on macOS (see
+    # dependencies above); this extra is how a Mac opts in. The ggml model
+    # download is 1.1 GB and pywhispercpp pulls a native lib.
     "pywhispercpp>=1.4",
 ]
 alignment = [

@@ -919,6 +919,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   -70631), which matter because the app decodes files and streams it did not create. The pin in
   `platform/windows/build-deps.json` and the source offer in `platform/ffmpeg-source.json` now name
   the gyan.dev 9.0.2 essentials build (same GPL configuration) and the official 9.0.2 source.
+- **Dependency floors match what ships.** `Pillow` now needs 12.3.0 or newer (35 published advisories
+  hit the old 10.0 floor; the SMTV tab opens image bytes from a remote site), `numpy` is declared
+  (`>=1.26,<3`, it is imported directly), and `tokenizers` and `pywhispercpp` are listed in
+  `pyproject.toml` the way `requirements.txt` and the installers already had them. A test keeps the
+  two files and the macOS constraints in step.
 - **No credential file can enter a build.** The macOS spec no longer bundles a Google Cloud key
   file found in the build folder (the Windows builds had already dropped this), and a test fails
   when any spec, the build script or an installer script names a credential file.
