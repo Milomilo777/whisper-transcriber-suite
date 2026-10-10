@@ -33,6 +33,8 @@ from core import offline
 # ``config.json.lock`` file lock taken inside it (_config_file_lock).
 _SAVE_LOCK = threading.RLock()
 
+_MISSING_LOGGED: set[str] = set()
+
 
 class ConfigSaveError(OSError):
     """config.json could not be written; the settings on disk are unchanged."""
@@ -1182,6 +1184,11 @@ def _forget_last_good() -> None:
         _LAST_GOOD = None
 
 
+def _forget_missing_logged() -> None:
+    """Clear the memo of paths logged as missing (tests)."""
+    _MISSING_LOGGED.clear()
+
+
 def _parse_config_bytes(raw: bytes) -> dict[str, Any] | None:
     """Parse config.json bytes; ``None`` when they are not a JSON object.
 
@@ -1664,7 +1671,9 @@ def _read_local_config_state() -> tuple[dict[str, Any], bool]:
         _remember_last_good(data)
         return data, False
     if status == "missing" and not os.path.exists(path + ".corrupt"):
-        logger.warning("config.json not found at %s; using defaults", path)
+        if path not in _MISSING_LOGGED:
+            logger.info("config.json not found at %s; using defaults", path)
+            _MISSING_LOGGED.add(path)
         return {}, False
     if status != "unreadable":
         try:

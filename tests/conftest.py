@@ -83,6 +83,16 @@ _TRANSCRIBER_GLOBALS = (
 
 
 @pytest.fixture(autouse=True)
+def _reset_config_missing_logged():
+    """Forget the config paths already logged as missing (logged once per process)."""
+    from core import config as _cfg
+
+    _cfg._forget_missing_logged()
+    yield
+    _cfg._forget_missing_logged()
+
+
+@pytest.fixture(autouse=True)
 def _reset_burn_process_state():
     """Forget the subtitle burns of an earlier test.
 

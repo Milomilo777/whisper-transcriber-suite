@@ -14,6 +14,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **PDF export shows `/` and `:` in titles from yt-dlp downloads** instead of empty boxes: the
   look-alike characters yt-dlp puts in file names (⧸, ：, ＊ and others) fall back to their ASCII form
   when no available font can draw them.
+- **No warning about a missing settings file on the first start.** "config.json not found" is
+  normal on a fresh install; it is now logged once, as information, instead of as a warning on
+  every settings read.
 
 ## [2.0.0] — 2026-10-10
 
