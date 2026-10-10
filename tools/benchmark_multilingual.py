@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import math
 import io
 import os
 import re
@@ -445,8 +446,8 @@ def aggregate(rows: Iterable[Mapping[str, object]]) -> dict[tuple[str, str], Agg
             n=len(items),
             errors=sum(int(str(r["errors"])) for r in items),
             ref_len=sum(int(str(r["ref_len"])) for r in items),
-            audio_s=sum(float(str(r["audio_s"])) for r in items),
-            decode_s=sum(float(str(r["decode_s"])) for r in items),
+            audio_s=math.fsum(float(str(r["audio_s"])) for r in items),
+            decode_s=math.fsum(float(str(r["decode_s"])) for r in items),
         )
         for key, items in groups.items()
     }
