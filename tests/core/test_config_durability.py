@@ -399,7 +399,12 @@ c.user_config_dir = lambda: d
 c._legacy_config_path = lambda: str(d / "no-legacy.json")
 c._legacy_app_dirs = lambda: None
 mode, key, n = sys.argv[3], sys.argv[4], int(sys.argv[5])
+import time
 for i in range(n):
+    # A short gap between saves, as in real use: back-to-back saves let one process
+    # re-take the lock at once and starve the other past the save deadline on a slow
+    # CI runner. The two processes still interleave, which is what is tested.
+    time.sleep(0.01)
     if mode == "update":
         c.update_config(lambda cfg: cfg.__setitem__(key, int(cfg.get(key, 0)) + 1))
     else:
