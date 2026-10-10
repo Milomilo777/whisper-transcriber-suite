@@ -111,7 +111,7 @@ BOOKS: tuple[Book, ...] = (
     Book(
         key="more-ebooks",
         title="More e-books",
-        subtitle="by Supreme Master Ching Hai",
+        subtitle="",
         author="Supreme Master Ching Hai",
         summary=(
             "The eBook section of SMCH Books lists more of her books: aphorisms, celestial art, "

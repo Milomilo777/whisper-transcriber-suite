@@ -100,9 +100,9 @@ def _texts(widget: Any) -> list[str]:
 
 # --------------------------------------------------------------- entries
 
-def test_books_row_has_two_separate_entries(built):
+def test_books_row_has_one_entry_per_book(built):
     st = built.smtv_state
-    assert st.books_row.labels == [CRISIS.title, LOVE.title]
+    assert st.books_row.labels == [CRISIS.title, LOVE.title, MORE.title]
     assert not st.panel.winfo_ismapped()
 
 
