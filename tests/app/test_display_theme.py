@@ -138,19 +138,12 @@ def test_contrast_helper_is_not_blind() -> None:
 
 
 def test_dark_text_variants_meet_wcag_aa_on_dark_panels() -> None:
-    tints = set(tokens.ROW_TINTS) | set(tokens.SURFACE_TINTS)
+    tints = set(tokens.ROW_TINTS)
     for light, dark in tokens.DARK_VARIANTS.items():
         if light in tints:
             continue
         for panel in tokens.DARK_PANELS:
             assert _contrast(dark, panel) >= 4.5, (light, dark, panel)
-
-
-def test_explore_chip_text_is_readable_on_both_chip_backgrounds() -> None:
-    for theme in ("light", "dark"):
-        text = tokens.themed(tokens.EXPLORE_CHIP_TEXT, theme)
-        for bg in tokens.SURFACE_TINTS:
-            assert _contrast(text, tokens.themed(bg, theme)) >= 4.5, (theme, text, bg)
 
 
 def test_dark_row_tints_keep_text_readable() -> None:

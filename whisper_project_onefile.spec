@@ -223,6 +223,7 @@ a = Analysis(
         'app.widgets.subtitle_edit',
         'app.widgets.live_tab',
         'app.widgets.smtv_tab',
+        'app.widgets.chip_cloud',
         'app.widgets.audio_visualizer',
         'app.widgets.tabs',
         'app.widgets.tray',

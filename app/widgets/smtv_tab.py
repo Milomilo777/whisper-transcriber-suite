@@ -31,6 +31,7 @@ from typing import Any
 
 from app.dpi import scale_factor, scaled
 from app.theme import system_fonts, tokens
+from app.widgets.chip_cloud import ChipCloud
 from core._threads import safe_thread
 
 logger = logging.getLogger(__name__)
@@ -53,36 +54,6 @@ _SHORTCUTS = (
     "Climate Change", "Nature Beauty", "Cultural Traces Around the World",
     "Our Noble Lineage", "Animal World: Our Co-inhabitants",
 )
-_SHORTCUT_COLUMNS = 6
-
-
-def _explore_chip(parent: Any, text: str, command: Any, *, alt: bool) -> tk.Label:
-    """One "Explore" shortcut: a flat label that acts like a button.
-
-    Neighbours alternate between two backgrounds (a checkerboard over the
-    grid) so the many shortcuts do not read as one white block; both
-    colours are theme tokens, so a Light/Dark switch recolours them.
-    """
-    if alt:
-        bg = tokens.themed(tokens.EXPLORE_CHIP_ALT)
-    else:
-        bg = tokens.themed(tokens.EXPLORE_CHIP)
-    chip = tk.Label(parent, text=text, background=bg,
-                    foreground=tokens.themed(tokens.EXPLORE_CHIP_TEXT),
-                    padx=8, pady=4, cursor="hand2", takefocus=1,
-                    highlightthickness=1, highlightbackground=bg)
-
-    def _activate(_e: Any = None) -> str:
-        command()
-        return "break"
-
-    chip.bind("<Button-1>", _activate)
-    chip.bind("<Return>", _activate)
-    chip.bind("<space>", _activate)
-    chip.bind("<FocusIn>", lambda _e: chip.configure(
-        highlightbackground=tokens.themed(tokens.LINK)))
-    chip.bind("<FocusOut>", lambda _e: chip.configure(highlightbackground=chip.cget("background")))
-    return chip
 
 
 def _mix(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> str:
@@ -181,15 +152,19 @@ def build_smtv_tab(app: Any, parent: Any) -> None:
 
     chips = ttk.Frame(parent, padding=(15, 2, 15, 6))
     chips.grid(row=2, column=0, sticky="ew")
-    ttk.Label(chips, text="Explore:", foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
-        row=0, column=0, sticky="nw", padx=(0, 6), pady=2)
-    for i, label in enumerate(_SHORTCUTS):
-        row, col = divmod(i, _SHORTCUT_COLUMNS)
-        chips.columnconfigure(col + 1, weight=1, uniform="explore")
-        _explore_chip(chips, label.split(":")[0],
-                      lambda lb=label: state.show_program(lb),
-                      alt=(row + col) % 2 == 1).grid(
-            row=row, column=col + 1, sticky="nsew", padx=1, pady=1)
+    chips.columnconfigure(1, weight=1)
+    ttk.Label(chips, text="Explore", foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
+        row=0, column=0, sticky="nw", padx=(0, 10), pady=(9, 0))
+    try:
+        chips_bg = str(ttk.Style().lookup("TFrame", "background") or "")
+    except tk.TclError:
+        chips_bg = ""
+    explore = ChipCloud(chips, list(_SHORTCUTS), state.show_program,
+                        display=lambda lb: lb.split(":")[0], background=chips_bg)
+    explore.grid(row=0, column=1, sticky="ew")
+    state.explore = explore
+    state.program_var.trace_add(
+        "write", lambda *_a: explore.set_selected(state.program_var.get()))
 
     # ── Results ────────────────────────────────────────────────────────
     body = ttk.Frame(parent)
@@ -312,6 +287,7 @@ class _TabState:
         self.app = app
         self.query_var: tk.StringVar
         self.program_var: tk.StringVar
+        self.explore: ChipCloud | None = None
         self.lang_var: tk.StringVar
         self.status_var: tk.StringVar
         self.canvas: tk.Canvas | None = None

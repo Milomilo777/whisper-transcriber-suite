@@ -149,22 +149,19 @@ def _all_widgets(w):
         yield from _all_widgets(c)
 
 
-def test_explore_grid_opens_every_listed_program_and_alternates_colours(built):
+def test_explore_chips_list_every_program_and_drive_the_query(built):
     built.pump()
-    first = next(w for w in _all_widgets(built.smtv_state.canvas.winfo_toplevel())
-                 if isinstance(w, tk.Label) and w.cget('text') == 'Featured Programs')
-    chips = [w for w in first.master.winfo_children() if isinstance(w, tk.Label)]
-    assert [c.cget('text') for c in chips] == [lb.split(':')[0] for lb in smtv_tab._SHORTCUTS]
+    explore = built.smtv_state.explore
     programs = {label for label, _t, _c in sb.PROGRAMS}
+    assert explore.labels == list(smtv_tab._SHORTCUTS)
     assert set(smtv_tab._SHORTCUTS) <= programs  # every chip has a type/category
-    assert len({c.cget('background') for c in chips}) == 2  # two alternating backgrounds
-    first, second = chips[0], chips[1]
-    assert first.cget('background') != second.cget('background')
-    second.event_generate('<Button-1>')
+    explore.activate(1)
     built.pump()
     label = smtv_tab._SHORTCUTS[1]
     t, c = next((t, c) for lb, t, c in sb.PROGRAMS if lb == label)
     assert built.calls[-1][2:4] == (t, c)
+    built.smtv_state.program_var.set(smtv_tab._SHORTCUTS[0])
+    assert explore.selected == smtv_tab._SHORTCUTS[0]  # the dropdown and the chips agree
 
 
 def test_cards_and_hero_offer_no_transcribe_or_live_buttons(built):

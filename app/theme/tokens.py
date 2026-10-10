@@ -52,10 +52,6 @@ HERO_SUB = "#bae6fd"
 HERO_ACCENT = "#fde68a"   # warm gold
 THUMB_BG = "#1e293b"
 PROGRAM_ACCENT = "#0891b2"
-# Supreme Master TV "Explore" grid: two alternating backgrounds and their text.
-EXPLORE_CHIP = "#ffffff"
-EXPLORE_CHIP_ALT = "#e9edf2"
-EXPLORE_CHIP_TEXT = "#1f2937"
 
 # ------------------------------------------------------- theme-dependent colours
 LIGHT = {
@@ -97,12 +93,8 @@ DARK_VARIANTS = {
     ROW_ACTIVE: "#4a4520",
     ROW_SUSPECT: "#5a2a2a",
     ROW_WARN: "#523d16",
-    EXPLORE_CHIP: "#262b33",
-    EXPLORE_CHIP_ALT: "#323943",
-    EXPLORE_CHIP_TEXT: "#e5e7eb",
 }
 ROW_TINTS = (ROW_ACTIVE, ROW_SUSPECT, ROW_WARN)
-SURFACE_TINTS = (EXPLORE_CHIP, EXPLORE_CHIP_ALT)  # backgrounds, not text
 LIGHT_VARIANTS = {dark: light for light, dark in DARK_VARIANTS.items()}
 
 _theme = "light"
