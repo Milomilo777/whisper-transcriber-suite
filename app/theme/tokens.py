@@ -58,14 +58,14 @@ CHIP_PALETTES = {
     "light": {
         "normal_bg": "#eef2f4", "normal_fg": "#1f2937",
         "hover_bg": "#dfe8eb", "hover_fg": "#0f172a",
-        "selected_bg": "#207a80", "selected_fg": "#ffffff",
-        "toggle_fg": "#1b666b", "ring": "#207a80",
+        "selected_bg": "#1f3a68", "selected_fg": "#ffffff",
+        "toggle_fg": "#1f3a68", "ring": "#1f3a68",
     },
     "dark": {
         "normal_bg": "#2d3238", "normal_fg": "#e5e7eb",
         "hover_bg": "#3a4149", "hover_fg": "#ffffff",
-        "selected_bg": "#207a80", "selected_fg": "#ffffff",
-        "toggle_fg": "#6fd3da", "ring": "#4fd1db",
+        "selected_bg": "#3b66b3", "selected_fg": "#ffffff",
+        "toggle_fg": "#9cbcff", "ring": "#9cbcff",
     },
 }
 

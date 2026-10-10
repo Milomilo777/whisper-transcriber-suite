@@ -66,8 +66,8 @@ def test_clicking_a_chip_runs_the_command_and_marks_it_selected(cloud):
     cloud.activate(2)
     assert cloud.picked == [LABELS[2]] and cloud.selected == LABELS[2]
     pal = cloud.palette()
-    fills = {cloud.itemcget(i, "fill") for i in cloud.find_withtag("chip2")}
-    assert pal["selected_bg"] in fills
+    assert cloud._chips[2].bg == pal["selected_bg"]
+    assert cloud.find_withtag("chip2")  # drawn
 
 
 def test_keyboard_moves_the_focus_and_activates(cloud, root):
@@ -82,8 +82,7 @@ def test_keyboard_moves_the_focus_and_activates(cloud, root):
 def test_redraw_follows_the_theme(cloud, monkeypatch):
     monkeypatch.setattr(tokens, "current_theme", lambda: "dark")
     cloud.redraw()
-    fills = {cloud.itemcget(i, "fill") for i in cloud.find_withtag("chip0")}
-    assert cc.PALETTES["dark"]["normal_bg"] in fills
+    assert cloud._chips[0].bg == cc.PALETTES["dark"]["normal_bg"]
 
 
 @pytest.mark.parametrize("theme", ["light", "dark"])
@@ -92,3 +91,11 @@ def test_chip_text_is_readable_in_every_state(theme):
     for state in ("normal", "hover", "selected"):
         assert _contrast(pal[f"{state}_fg"], pal[f"{state}_bg"]) >= 4.5, (theme, state)
     assert _contrast(pal["toggle_fg"], pal["normal_bg"]) >= 4.5, theme
+
+
+def test_pills_are_cached_images_not_tk_ovals(cloud):
+    kinds = {cloud.type(i) for i in cloud.find_all()}
+    assert "oval" not in kinds and "arc" not in kinds and "image" in kinds
+    before = len(cloud._images)
+    cloud.redraw()
+    assert len(cloud._images) == before  # same sizes and colours reuse the images

@@ -171,3 +171,6 @@ def test_cards_and_hero_offer_no_transcribe_or_live_buttons(built):
     assert not any('Transcribe' in t for t in texts)
     assert not any(t.strip().endswith(('Watch live', 'TV schedule', 'Website')) for t in texts)
     assert 'About the channel' in texts
+    for label in smtv_tab._HERO_PROGRAMS:  # banner shortcuts, all real programs
+        assert label in texts and label in {lb for lb, _t, _c in sb.PROGRAMS}
+    assert not set(smtv_tab._HERO_PROGRAMS) & set(smtv_tab._SHORTCUTS)

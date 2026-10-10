@@ -40,6 +40,7 @@ class _Chip:
     y: float = 0.0
     w: float = 0.0
     toggle: bool = False
+    bg: str = ""
 
 
 def flow_layout(widths: list[float], avail: float, gap: float, row_h: float,
@@ -74,6 +75,7 @@ class ChipCloud(tk.Canvas):
         self.focus_index = 0
         self.hover_index: int | None = None
         self._chips: list[_Chip] = []
+        self._images: dict[tuple[object, ...], object] = {}  # PhotoImages must stay referenced
         self._has_focus = False
         self._font = tkfont.nametofont("TkDefaultFont").copy()
         self._bold = self._font.copy()
@@ -155,6 +157,7 @@ class ChipCloud(tk.Canvas):
                 bg, fg = pal["hover_bg"], pal["hover_fg"]
             else:
                 bg, fg = pal["normal_bg"], (pal["toggle_fg"] if c.toggle else pal["normal_fg"])
+            c.bg = bg
             self._pill(c.x, c.y, c.w, h, fill=bg, tags=(f"chip{i}",))
             bold = c.toggle or (c.label == self.selected)
             self.create_text(c.x + c.w / 2, c.y + h / 2, text=c.text, fill=fg,
@@ -169,19 +172,28 @@ class ChipCloud(tk.Canvas):
 
     def _pill(self, x: float, y: float, w: float, h: float, *, fill: str,
               outline: str = "", width: float = 0, tags: tuple[str, ...] = ()) -> None:
-        """A rounded rectangle with semicircle ends (ovals + a rectangle, or arcs + lines for a ring)."""
-        r = h / 2
-        if fill:
-            self.create_oval(x, y, x + h, y + h, fill=fill, outline="", tags=tags)
-            self.create_oval(x + w - h, y, x + w, y + h, fill=fill, outline="", tags=tags)
-            self.create_rectangle(x + r, y, x + w - r, y + h, fill=fill, outline="", tags=tags)
-        if outline:
-            self.create_arc(x, y, x + h, y + h, start=90, extent=180, style="arc",
-                            outline=outline, width=width)
-            self.create_arc(x + w - h, y, x + w, y + h, start=-90, extent=180, style="arc",
-                            outline=outline, width=width)
-            self.create_line(x + r, y, x + w - r, y, fill=outline, width=width)
-            self.create_line(x + r, y + h, x + w - r, y + h, fill=outline, width=width)
+        """A rounded rectangle with semicircle ends, drawn as one anti-aliased image.
+
+        Tk's own ovals and arcs are not anti-aliased on Windows, so a pill built
+        from them shows stair-stepped ends and seams; Pillow draws it four times
+        larger and scales it down, and the image keeps an alpha channel so it sits
+        on any background.
+        """
+        iw, ih = max(1, round(w)), max(1, round(h))
+        key = (iw, ih, fill, outline, round(width))
+        photo = self._images.get(key)
+        if photo is None:
+            from PIL import Image, ImageDraw, ImageTk
+            ss = 4
+            big = Image.new("RGBA", (iw * ss, ih * ss), (0, 0, 0, 0))
+            ImageDraw.Draw(big).rounded_rectangle(
+                (0, 0, iw * ss - 1, ih * ss - 1), radius=ih * ss // 2,
+                fill=fill or None, outline=outline or None,
+                width=max(1, round(width * ss)) if outline else 0)
+            small = big.resize((iw, ih), Image.Resampling.LANCZOS)
+            photo = ImageTk.PhotoImage(small, master=self)
+            self._images[key] = photo
+        self.create_image(round(x), round(y), anchor="nw", image=photo, tags=tags)
 
     # --------------------------------------------------------------- events
     def _index_at(self, x: float, y: float) -> int | None:

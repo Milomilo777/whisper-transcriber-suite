@@ -44,15 +44,18 @@ _HERO_RIGHT = (8, 110, 130)   # teal
 _HERO_TEXT = tokens.HERO_TEXT
 _HERO_SUB = tokens.HERO_SUB
 _HERO_ACCENT = tokens.HERO_ACCENT      # warm gold
+# Programs shown as buttons in the banner, next to "About the channel".
+_HERO_PROGRAMS = (
+    "Veggie Elite", "Messages From Celebrities", "Cinema Scene", "Golden Age Technology",
+    "Ancient Predictions",
+)
 _SHORTCUTS = (
-    "Featured Programs", "Noteworthy News", "Between Master and Disciples",
-    "Words of Wisdom", "Vegan Cooking Show", "Science and Spirituality",
-    "Veggie Elite", "Make Peace", "Messages From Celebrities", "Cinema Scene",
-    "Golden Age Technology", "Veg Trend News", "Good People, Good Work",
-    "Healthy Living", "Models of Success", "Ancient Predictions",
-    "A Journey through Aesthetic Realms", "Show", "Prophecies about Maitreya Buddha",
-    "Climate Change", "Nature Beauty", "Cultural Traces Around the World",
-    "Our Noble Lineage", "Animal World: Our Co-inhabitants",
+    "Models of Success", "Healthy Living", "Animal World: Our Co-inhabitants",
+    "Climate Change", "Prophecies about Maitreya Buddha", "Show", "Our Noble Lineage",
+    "Veg Trend News", "Make Peace", "Cultural Traces Around the World", "Nature Beauty",
+    "Good People, Good Work", "A Journey through Aesthetic Realms", "Featured Programs",
+    "Noteworthy News", "Between Master and Disciples", "Words of Wisdom",
+    "Vegan Cooking Show", "Science and Spirituality",
 )
 
 
@@ -233,15 +236,11 @@ def _build_hero(app: Any, state: "_TabState", parent: Any) -> tk.Canvas:
 
     hero = tk.Canvas(parent, height=scaled(parent, _HERO_H), highlightthickness=0,
                      borderwidth=0, background=_mix(_HERO_LEFT, _HERO_LEFT, 0))
-    links = (
-        ("About the channel", "about-us/"),
-    )
-    buttons = []
-    for i, (label, target) in enumerate(links):
-        style = "Accent.TButton" if i == 0 else "TButton"
-        btn = ttk.Button(hero, text=label, style=style,
-                         command=lambda t=target: state.open_link(t))
-        buttons.append(btn)
+    buttons = [ttk.Button(hero, text="About the channel", style="Accent.TButton",
+                          command=lambda: state.open_link("about-us/"))]
+    for label in _HERO_PROGRAMS:
+        buttons.append(ttk.Button(hero, text=label, style="Accent.TButton",
+                                  command=lambda lb=label: state.show_program(lb)))
 
     def _draw(_e: Any = None) -> None:
         hero.delete("all")
