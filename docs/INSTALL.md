@@ -143,6 +143,7 @@ Turn the check off under **Advanced → App behaviour**.
 
 Keyboard: `Ctrl+O` browse · `Ctrl+Enter` transcribe · `Esc` cancel ·
 `Ctrl+Q` exit.
+In the transcript viewer: `Ctrl+F` find and replace, `Ctrl+S` save (`Cmd` instead of `Ctrl` on a Mac).
 
 ### Download Videos (from YouTube and other sites)
 

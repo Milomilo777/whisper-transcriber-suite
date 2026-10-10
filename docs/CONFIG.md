@@ -539,7 +539,7 @@ Not a config key — a **File → Convert transcript…** menu action backed by 
 | `word_timestamps` | bool | `false` | Per-word timings in the JSON output. |
 | `initial_prompt` | string | `""` | Text given to the model before the audio (names, spelling). |
 | `hotwords` | string | `""` | Words the model should prefer. |
-| `output_formats` | array of strings | `["srt", "json"]` | Subset of `srt / vtt / tsv / json / txt / lrc / md`. |
+| `output_formats` | array of strings | `["srt", "json"]` | Subset of `srt / vtt / tsv / json / txt / lrc / md / ass / docx / elan / express_scribe / inqscribe / otr / pdf`. |
 | `transcribe_backend` | string | `"faster_whisper"` | The transcription engine (Advanced settings). Cloud engines run only when chosen here, with the user's own credentials. |
 | `transcribe_language` | string | `"Auto"` | Spoken-language picker on the Transcribe tab (display name). Kept for older files; the picker itself is not saved. |
 | `hallucination_detect_enabled` | bool | `true` | Flags repeated or invented lines in the output. |

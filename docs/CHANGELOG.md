@@ -24,6 +24,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   truncated cache entry that a later run would reuse.
 - **Transcripts, resume checkpoints, chapter files and partial subtitles are flushed to disk before they
   replace the old file**, so a power cut right after a save cannot leave an empty or half-written file.
+- **Docs:** the configuration reference lists every output format, and the install guide names the
+  transcript viewer's Ctrl+F (find and replace) and Ctrl+S (save); new tests keep CLI flags, formats,
+  shortcuts and links between docs in step with the code.
 - **No warning about a missing settings file on the first start.** "config.json not found" is
   normal on a fresh install; it is now logged once, as information, instead of as a warning on
   every settings read.
