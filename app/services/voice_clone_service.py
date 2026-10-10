@@ -15,6 +15,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 import uuid
 from typing import Any, Callable, Optional
 
@@ -39,6 +40,14 @@ class VoiceCloneWorker:
 
     #: How long stop() lets the worker exit by itself before killing it.
     STOP_GRACE_S = 5.0
+    #: The worker prints a heartbeat every 5 s from its own thread, also while
+    #: it downloads or loads the model. A native library stuck in its import
+    #: (seen with a BLAS DLL on Windows) holds the interpreter lock and stops
+    #: the heartbeat too: after this long without any output the request is
+    #: given up instead of showing "Loading the speech model" forever.
+    SILENCE_TIMEOUT_S = 300.0
+    #: How often a waiting generate() checks the silence and the deadline.
+    WAIT_POLL_S = 1.0
 
     def __init__(
         self,
@@ -54,6 +63,7 @@ class VoiceCloneWorker:
         self._dead = threading.Event()
         self._lock = threading.Lock()
         self._pending: dict[str, dict[str, Any]] = {}
+        self._last_seen = time.monotonic()  # last line read from the worker
 
     # ---------- lifecycle -------------------------------------------
 
@@ -78,6 +88,7 @@ class VoiceCloneWorker:
             self._process = subprocess.Popen(cmd, **kwargs)
         except OSError as e:
             raise VoiceCloneWorkerError(f"Could not start the voice-clone worker: {e}") from e
+        self._last_seen = time.monotonic()
         self._reader = threading.Thread(
             target=self._read_loop, name="voiceclone-worker-reader", daemon=True
         )
@@ -220,8 +231,21 @@ class VoiceCloneWorker:
                 self._pending.pop(req_id, None)
             raise VoiceCloneWorkerError(f"Voice-clone worker write failed: {e}") from e
 
-        if not done.wait(timeout=max(GENERATE_TIMEOUT_S, timeout_s)):
-            reason = "The voice-clone worker did not answer in time."
+        sent = time.monotonic()
+        deadline = sent + max(GENERATE_TIMEOUT_S, timeout_s)
+        while not done.wait(timeout=self.WAIT_POLL_S):
+            now = time.monotonic()
+            if now >= deadline:
+                reason = "The voice-clone worker did not answer in time."
+            elif now - max(self._last_seen, sent) >= self.SILENCE_TIMEOUT_S:
+                minutes = max(1, round(self.SILENCE_TIMEOUT_S / 60))
+                reason = (
+                    "The voice engine stopped responding (no sign of life for "
+                    f"{minutes} minute{'s' if minutes != 1 else ''}) and was stopped. "
+                    "Click Generate to try again; if it happens again, restart the app."
+                )
+            else:
+                continue
             self._abandon_worker(reason)
             raise VoiceCloneWorkerError(reason)
         if slot["error"]:
@@ -236,6 +260,7 @@ class VoiceCloneWorker:
             return
         try:
             for line in proc.stdout:
+                self._last_seen = time.monotonic()
                 line = line.strip()
                 if not line:
                     continue
