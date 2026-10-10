@@ -716,7 +716,7 @@ def build_about_sections() -> list[AboutSection]:
             ]),
             ("Usage statistics", [
                 "Sent after each finished transcription; on by default. "
-                "Switch: Help → Send usage statistics, or Advanced → App "
+                "Switch: Help → Usage statistics, or Advanced → App "
                 "behaviour (config: telemetry_opt_in)",
                 "What is sent: model, language, audio length, processing "
                 "time, job status, word count, app version, OS name/version, "
@@ -1572,7 +1572,7 @@ class App(tk.Tk):
             value=bool(self.app_config.get("telemetry_opt_in", True))
         )
         h.add_checkbutton(
-            label="Send usage statistics",
+            label="Usage statistics",
             variable=self.telemetry_opt_in_var,
             command=self._save_telemetry_pref,
         )
@@ -1862,7 +1862,7 @@ class App(tk.Tk):
             self.log(f"Could not save preference: {e}")
 
     def _save_telemetry_pref(self) -> None:
-        """Help → Send usage statistics: store the choice like the Advanced checkbox does."""
+        """Help → Usage statistics: store the choice like the Advanced checkbox does."""
         on = bool(self.telemetry_opt_in_var.get())
         self.app_config["telemetry_opt_in"] = on
         try:

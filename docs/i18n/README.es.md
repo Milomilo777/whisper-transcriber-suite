@@ -87,7 +87,7 @@ La interfaz Tk se ejecuta en el proceso principal. Cada trabajo de transcripció
 
 ## Local por defecto
 
-Todos los backends por defecto se ejecutan en su máquina: el audio y las transcripciones se quedan en ella, no existe ninguna cuenta y, una vez descargado el modelo, la aplicación funciona con la red desconectada. Por defecto, la aplicación envía estadísticas de uso después de cada transcripción terminada (modelo, idioma, duración del audio y de la transcripción, número de palabras, versión de la aplicación, sistema operativo, CPU y tamaño de la memoria, región; nunca el nombre del archivo); puede desactivarlas en **Help → Send usage statistics**.
+Todos los backends por defecto se ejecutan en su máquina: el audio y las transcripciones se quedan en ella, no existe ninguna cuenta y, una vez descargado el modelo, la aplicación funciona con la red desconectada. Por defecto, la aplicación envía estadísticas de uso después de cada transcripción terminada (modelo, idioma, duración del audio y de la transcripción, número de palabras, versión de la aplicación, sistema operativo, CPU y tamaño de la memoria, región; nunca el nombre del archivo); puede desactivarlas en **Help → Usage statistics**.
 
 > [!IMPORTANT]
 > Dos backends **opcionales** rompen esa garantía y ambos están desactivados salvo que entre en **Advanced → Backend** y los elija. Úselos solo con contenido que esté dispuesto a enviar a un tercero.

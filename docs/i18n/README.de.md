@@ -87,7 +87,7 @@ Die Tk-Oberfläche läuft im Hauptprozess. Jeder Transkriptionsauftrag läuft in
 
 ## Standardmäßig lokal
 
-Alle Standard-Backends laufen auf Ihrem Rechner: Audio und Transkripte bleiben dort, es gibt kein Konto, und nach dem Herunterladen des Modells funktioniert die Anwendung auch ohne Netzwerk. Standardmäßig sendet die Anwendung nach jeder abgeschlossenen Transkription Nutzungsstatistiken (Modell, Sprache, Audio- und Transkriptionsdauer, Wortanzahl, App-Version, Betriebssystem, CPU- und Arbeitsspeichergröße, Region; nie den Dateinamen); abschalten lässt sich das unter **Help → Send usage statistics**.
+Alle Standard-Backends laufen auf Ihrem Rechner: Audio und Transkripte bleiben dort, es gibt kein Konto, und nach dem Herunterladen des Modells funktioniert die Anwendung auch ohne Netzwerk. Standardmäßig sendet die Anwendung nach jeder abgeschlossenen Transkription Nutzungsstatistiken (Modell, Sprache, Audio- und Transkriptionsdauer, Wortanzahl, App-Version, Betriebssystem, CPU- und Arbeitsspeichergröße, Region; nie den Dateinamen); abschalten lässt sich das unter **Help → Usage statistics**.
 
 > [!IMPORTANT]
 > Zwei Backends, die Sie **ausdrücklich auswählen müssen**, durchbrechen diese Garantie. Sie sind aus, solange Sie sie nicht unter **Advanced → Backend** wählen. Nutzen Sie sie nur für Inhalte, die Sie an Dritte senden möchten.

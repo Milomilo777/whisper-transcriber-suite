@@ -87,7 +87,7 @@ A interface Tk corre no processo principal. Cada trabalho de transcrição corre
 
 ## Local por omissão
 
-Todos os backends por omissão correm na sua máquina: o áudio e as transcrições ficam nela, não existe conta e, depois de o modelo ser transferido, a aplicação funciona com a rede desligada. Por omissão, a aplicação envia estatísticas de utilização depois de cada transcrição concluída (modelo, idioma, duração do áudio e da transcrição, número de palavras, versão da aplicação, sistema operativo, CPU e tamanho da memória, região; nunca o nome do ficheiro); pode desativá-las em **Help → Send usage statistics**.
+Todos os backends por omissão correm na sua máquina: o áudio e as transcrições ficam nela, não existe conta e, depois de o modelo ser transferido, a aplicação funciona com a rede desligada. Por omissão, a aplicação envia estatísticas de utilização depois de cada transcrição concluída (modelo, idioma, duração do áudio e da transcrição, número de palavras, versão da aplicação, sistema operativo, CPU e tamanho da memória, região; nunca o nome do ficheiro); pode desativá-las em **Help → Usage statistics**.
 
 > [!IMPORTANT]
 > Dois backends **opcionais** quebram essa garantia e ambos estão desligados a menos que vá a **Advanced → Backend** e os escolha. Use-os apenas com conteúdo que esteja disposto a enviar a terceiros.

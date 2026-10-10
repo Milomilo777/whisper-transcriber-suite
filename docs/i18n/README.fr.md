@@ -87,7 +87,7 @@ L'interface Tk s'exécute dans le processus principal. Chaque tâche de transcri
 
 ## Local par défaut
 
-Tous les moteurs par défaut s'exécutent sur votre machine : l'audio et les transcriptions y restent, aucun compte n'existe, et une fois le modèle téléchargé l'application fonctionne réseau débranché. Par défaut, l'application envoie des statistiques d'utilisation après chaque transcription terminée (modèle, langue, durée de l'audio et de la transcription, nombre de mots, version de l'application, système d'exploitation, processeur et taille de la mémoire, région ; jamais le nom du fichier) ; vous pouvez les désactiver dans **Help → Send usage statistics**.
+Tous les moteurs par défaut s'exécutent sur votre machine : l'audio et les transcriptions y restent, aucun compte n'existe, et une fois le modèle téléchargé l'application fonctionne réseau débranché. Par défaut, l'application envoie des statistiques d'utilisation après chaque transcription terminée (modèle, langue, durée de l'audio et de la transcription, nombre de mots, version de l'application, système d'exploitation, processeur et taille de la mémoire, région ; jamais le nom du fichier) ; vous pouvez les désactiver dans **Help → Usage statistics**.
 
 > [!IMPORTANT]
 > Deux moteurs **optionnels** rompent cette garantie, et tous deux restent désactivés tant que vous n'allez pas les choisir dans **Advanced → Backend**. Ne les utilisez que pour du contenu que vous acceptez d'envoyer à un tiers.

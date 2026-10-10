@@ -226,4 +226,4 @@ def test_translated_readmes_never_say_nothing_is_sent(path: Path) -> None:
 
 @pytest.mark.parametrize("path", _I18N_READMES, ids=lambda p: p.name)
 def test_translated_readmes_name_the_stats_switch(path: Path) -> None:
-    assert "**Help → Send usage statistics**" in path.read_text(encoding="utf-8")
+    assert "**Help → Usage statistics**" in path.read_text(encoding="utf-8")

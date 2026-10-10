@@ -113,7 +113,7 @@ The app does use the network for:
 - usage statistics, on by default, after each finished transcription: model,
   language, durations, word count, app version, operating system, CPU and
   memory size, and region, never the file's name. Turn them off under
-  **Help → Send usage statistics**.
+  **Help → Usage statistics**.
 
 Audio or transcript text is sent only if you choose a cloud engine (Gemini API
 or Google Cloud Speech-to-Text) or connect a remote AI provider yourself.

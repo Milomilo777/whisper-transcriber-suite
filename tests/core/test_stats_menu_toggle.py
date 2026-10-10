@@ -1,4 +1,4 @@
-"""Help → Send usage statistics: the menu item and the Advanced checkbox share one config key.
+"""Help → Usage statistics: the menu item and the Advanced checkbox share one config key.
 
 Constructing the real App needs a display and the whole config stack, so the menu wiring is
 checked from the source (like test_app_init_order) and the two small handlers run on a stub.
@@ -35,7 +35,7 @@ def test_help_menu_has_the_stats_check_item_bound_to_the_config_key():
     src = inspect.getsource(App._build_menu)
     item = src[src.index("h.add_checkbutton("):]
     item = item[: item.index(")") + 1]
-    assert 'label="Send usage statistics"' in item
+    assert 'label="Usage statistics"' in item
     assert "variable=self.telemetry_opt_in_var" in item
     assert "command=self._save_telemetry_pref" in item
     assert 'self.app_config.get("telemetry_opt_in", True)' in src
@@ -81,7 +81,7 @@ def test_about_names_both_switches_and_avoids_anonymous():
     text = " ".join(
         line for _title, subs in build_about_sections() for _sub, lines in subs for line in lines
     )
-    assert "Help → Send usage statistics" in text and "Advanced → App" in text
+    assert "Help → Usage statistics" in text and "Advanced → App" in text
     assert "computer name" in text
     assert "anonymous" not in text.lower()
 

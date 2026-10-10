@@ -153,7 +153,7 @@ def test_aqua_help_menu_drops_the_about_item_the_app_menu_now_carries(
         labels = _labels(root._help_menu)
         assert "About" not in labels
         assert labels[-1] != "-"  # no dangling separator where About was
-        assert labels[-1] == "Send usage statistics"
+        assert labels[-1] == "Usage statistics"
     finally:
         root.destroy()
 
