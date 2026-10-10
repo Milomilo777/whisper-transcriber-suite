@@ -41,6 +41,7 @@ Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscri
 - Local engines: faster-whisper (default), whisper.cpp, NVIDIA Parakeet. Transcription works without an internet connection after a one-time Whisper model download (about 1-3 GB); no account or API key for local use.
 - Output formats: srt, vtt, ass, tsv, txt, json, lrc, md, docx, pdf, plus oTranscribe, ELAN, InqScribe and Express Scribe.
 - Also: speaker diarisation, live microphone/system-audio transcription, a batch queue, yt-dlp downloads, and a local-network server mode.
+- New in 2.0: the queue shows each transcription's speed and time left; Make subtitled video turns a link into an MP4 with burned-in subtitles; a finished transcript can be saved as one offline web page; Work offline shows whether anything is connected; speech can be translated straight to English; native Mac menus, Dark mode and notifications; Windows taskbar progress and dark title bars; a quick start window with a sample clip. The Video Tiling tab was removed.
 - Latest version v2.0.0, released 2026-10-10; repository created 2026-05-11 and actively maintained.
 - Author: translation-robot.
 

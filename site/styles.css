@@ -514,12 +514,26 @@ html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="
 html[data-motion="off"] .marquee-track, html[data-motion="off"] .rail-pulse { animation: none !important; }
 html[data-motion="off"] .rail-pulse { transform: translateX(380px); }
 
+/* ---------- What's new in 2.0 ---------- */
+.whatsnew { background: linear-gradient(180deg, var(--bg-2), var(--bg)); }
+.new-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.new-card { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 26px 24px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); transition: box-shadow 0.4s, border-color 0.4s; }
+.new-card:hover { box-shadow: var(--shadow); border-color: var(--line-2); }
+.new-card:nth-child(3n+1) .new-tag { color: #0a6f69; background: var(--teal-soft); }
+.new-card:nth-child(3n+2) .new-tag { color: #4b3fd1; background: var(--violet-soft); }
+.new-card:nth-child(3n) .new-tag { color: #b8402f; background: var(--coral-soft); }
+.new-tag { align-self: flex-start; padding: 4px 10px; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; }
+.new-card h3 { font-size: 1.2rem; line-height: 1.25; }
+.new-card p:not(.new-tag) { color: var(--ink-2); font-size: 0.95rem; }
+.new-shot { margin-top: auto; padding-top: 6px; }
+.new-shot img { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line-2); }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1080px) {
   .site-nav { display: none; }
   .hero-grid { grid-template-columns: minmax(0, 1fr); }
   .hero-scene { max-width: 680px; width: 100%; margin: 12px auto 0; }
-  .dl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dl-grid, .new-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bento { grid-template-areas: "eng eng eng eng eng eng fmt fmt fmt fmt fmt fmt" "live live live live live live spk spk spk spk spk spk" "que que que que que que dl dl dl dl dl dl" "den den den den den den den den den den den den"; }
 }
 @media (max-width: 760px) {
@@ -534,7 +548,7 @@ html[data-motion="off"] .rail-pulse { transform: translateX(380px); }
   .bento { display: flex; flex-direction: column; }
   .cell-denoise { flex-direction: column; align-items: stretch; }
   .cell-denoise .cell-copy { flex: none; }
-  .pipeline, .contact-grid, .dl-grid, .faq-grid, .mac-install { grid-template-columns: 1fr; }
+  .pipeline, .contact-grid, .dl-grid, .new-grid, .faq-grid, .mac-install { grid-template-columns: 1fr; }
   .faq-head { position: static; }
   .support-card { flex-direction: column; text-align: center; }
   .support-actions { justify-content: center; }

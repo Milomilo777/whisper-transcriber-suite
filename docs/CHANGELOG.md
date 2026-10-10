@@ -7,6 +7,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Added
 
 - **Report a problem without a GitHub account** (Help → About → Report a problem…): a short message goes to the project with only the app version and the operating system; Work offline blocks it, and a GitHub link stays for people who have an account.
+- **Website: What's new in 2.0.** A new section with eight cards, three new FAQ answers
+  (what is new, subtitled video from a link, keeping the app off the network), the 2.0 feature
+  lines in `site/llms.txt`, and captions that match the refreshed screenshots.
 - **Windows taskbar progress, job badge and flash.** The app's taskbar button shows a progress bar
   while a job runs (yellow when paused; red after a failure, for at least 5 seconds and then until
   the window is in front), a small badge with the number of queued and running jobs, and blinks

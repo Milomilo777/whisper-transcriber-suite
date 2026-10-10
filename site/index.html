@@ -36,7 +36,7 @@
 <link rel="preload" href="assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/shots/transcribe.webp" as="image" type="image/webp">
-<link rel="stylesheet" href="styles.css?v=20261002a">
+<link rel="stylesheet" href="styles.css?v=20261010a">
 <script src="js/motion-init.js?v=20260927b"></script>
 
 <script type="application/ld+json">
@@ -100,7 +100,12 @@
         "Adaptive denoise",
         "Optional AI summaries, action items and bilingual SRT",
         "Optional offline voice cloning",
-        "Web / LAN access mode"
+        "Web / LAN access mode",
+        "Queue shows each transcription's speed and time left",
+        "Make subtitled video: download, transcribe and burn subtitles into an MP4",
+        "Save a transcript as one offline web page",
+        "Work offline switch with a visible network status",
+        "Translate speech straight to English"
       ],
       "offers": {
         "@type": "Offer",
@@ -179,7 +184,7 @@
   "@type": "FAQPage",
   "mainEntity": [
     {"@type":"Question","name":"Is Whisper Transcriber Suite free?","acceptedAnswer":{"@type":"Answer","text":"Yes. It's BSD-3-Clause licensed, with no subscription and no per-minute cost. The Whisper model itself downloads once (about 1-3 GB) on first launch; after that, transcription works without an internet connection."}},
-    {"@type":"Question","name":"Does it upload my audio or video anywhere?","acceptedAnswer":{"@type":"Answer","text":"No, not by default. Every default backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — runs locally on your machine. Two backends are opt-in only (cloud_stt via the Gemini API, and google_cloud_stt), and both stay off until you turn them on yourself in Advanced to Backend."}},
+    {"@type":"Question","name":"Does it upload my audio or video anywhere?","acceptedAnswer":{"@type":"Answer","text":"No, not by default. Every default backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — runs locally on your machine. Two backends are opt-in only (cloud_stt via the Gemini API, and google_cloud_stt), and both stay off until you turn them on yourself in Advanced to Backend. Usage statistics (no audio, no file names) are on by default and can be turned off under Help > Usage statistics, the app checks GitHub once a day for a new version, and File > Work offline stops all network use."}},
     {"@type":"Question","name":"What platforms does it run on?","acceptedAnswer":{"@type":"Answer","text":"Windows, macOS and Linux. Published downloads are a Windows installer, a Windows portable ZIP, and a macOS DMG; Linux runs from source."}},
     {"@type":"Question","name":"What transcript formats can it produce?","acceptedAnswer":{"@type":"Answer","text":"SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and PDF, plus oTranscribe, ELAN, InqScribe and Express Scribe."}},
     {"@type":"Question","name":"Can it label who is speaking?","acceptedAnswer":{"@type":"Answer","text":"Yes, optional speaker diarisation (Identify speakers), with per-word timestamps and time-range clipping."}},
@@ -189,6 +194,9 @@
     {"@type":"Question","name":"Can it clone a voice and make it say new text?","acceptedAnswer":{"@type":"Answer","text":"Yes, via the optional Clone Your Voice tab, using OmniVoice (Apache-2.0) entirely on your machine. Off by default; opt in at install time."}},
     {"@type":"Question","name":"How is this different from calling the Whisper API directly?","acceptedAnswer":{"@type":"Answer","text":"It runs the model locally via faster-whisper by default, so there is no per-minute API cost and no audio leaves your machine, unless you explicitly opt into one of the two cloud backends."}},
     {"@type":"Question","name":"Can several people on the same network use it without installing it on every machine?","acceptedAnswer":{"@type":"Answer","text":"Yes, Web/LAN access mode turns this machine into a transcription page the other devices on the network can use."}},
+    {"@type":"Question","name":"What is new in version 2.0?","acceptedAnswer":{"@type":"Answer","text":"The queue shows each transcription's speed and time left; a Make subtitled video option turns a link into an MP4 with the subtitles burned in; a finished transcript can be saved as one offline web page; Work offline shows whether anything is connected; speech can be translated straight to English; the Mac app has native menus, Dark mode and notifications; the Windows app shows taskbar progress and dark title bars. The Video Tiling tab was removed."}},
+    {"@type":"Question","name":"Can it turn a video link into a video with subtitles?","acceptedAnswer":{"@type":"Answer","text":"Yes. On the Download Videos tab, tick Make subtitled video: the app downloads the video, transcribes it with Whisper and burns the subtitles in with ffmpeg, producing a file named after the video with -subbed.mp4. The download and the transcript are kept, and an existing -subbed.mp4 is never replaced."}},
+    {"@type":"Question","name":"Can I keep the app off the network completely?","acceptedAnswer":{"@type":"Answer","text":"Yes. File > Work offline stops the update check, usage statistics, model downloads and remote AI providers. While it is on, a line at the bottom of the window says whether a connection is open, and Verify offline now shows test connections being refused. With it off, the app contacts the network only for its online settings at startup, the daily update check, usage statistics (which can be turned off under Help > Usage statistics) and downloads you start."}},
     {"@type":"Question","name":"How do I contact the project?","acceptedAnswer":{"@type":"Answer","text":"Bugs and feature requests go to GitHub Issues, questions to GitHub Discussions, and anything else by email (the address is shown on request in the Contact section). Security reports go through GitHub's private vulnerability reporting."}}
   ]
 }
@@ -332,8 +340,8 @@
           <div class="reel-ring" data-reel-ring>
             <figure class="reel-card" data-title="Transcribe" data-caption="A drop target, engine, model and language pickers, speaker-label and per-word timestamp options."><div class="win-bar"><i></i><i></i><i></i><span>Transcribe</span></div><img src="assets/shots/transcribe-640.webp" alt="Transcribe tab: drop target, engine, model and language pickers, speaker-label and word-timestamp options" width="640" height="362" loading="lazy" decoding="async"></figure>
             <figure class="reel-card" data-title="Live" data-caption="Transcribe a microphone — or whatever this machine is playing — as it happens, with an input-level meter."><div class="win-bar"><i></i><i></i><i></i><span>Live</span></div><img src="assets/shots/live-640.webp" alt="Live tab: microphone or system-audio source, language and model pickers, input level meter and a live transcript pane" width="640" height="362" loading="lazy" decoding="async"></figure>
-            <figure class="reel-card" data-title="Download Videos" data-caption="Pick a format, clip a time range, pull subtitles, and optionally transcribe as soon as the download finishes."><div class="win-bar"><i></i><i></i><i></i><span>Download Videos</span></div><img src="assets/shots/download-640.webp" alt="Download Videos tab: URL, browser log-in cookies, format, time range, subtitles and transcribe-after-download" width="640" height="362" loading="lazy" decoding="async"></figure>
-            <figure class="reel-card" data-title="Transcription Queue" data-caption="Batch jobs with live progress — pause, resume, cancel, re-run or remove any row."><div class="win-bar"><i></i><i></i><i></i><span>Transcription Queue</span></div><img src="assets/shots/queue-640.webp" alt="Transcription Queue tab: file, status, progress, language and elapsed columns with pause, resume, cancel, re-run and remove" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Download Videos" data-caption="Pick a format, clip a time range, see which subtitles the video already has, and optionally transcribe it or burn the subtitles into a new MP4."><div class="win-bar"><i></i><i></i><i></i><span>Download Videos</span></div><img src="assets/shots/download-640.webp" alt="Download Videos tab: URL with the line Subtitles available, browser log-in cookies, format, time range, Use captions instead, Transcribe after download and Make subtitled video" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Transcription Queue" data-caption="Batch jobs with live progress, speed and time left — pause, resume, cancel, re-run or remove any row."><div class="win-bar"><i></i><i></i><i></i><span>Transcription Queue</span></div><img src="assets/shots/queue-640.webp" alt="Transcription Queue tab: file, status, progress, speed and time left, language and elapsed columns with pause, resume, cancel, re-run and remove" width="640" height="362" loading="lazy" decoding="async"></figure>
             <figure class="reel-card" data-title="Clone Your Voice" data-caption="Optional, fully offline: clone a voice from a short sample, or design one, and have it read new text."><div class="win-bar"><i></i><i></i><i></i><span>Clone Your Voice</span></div><img src="assets/shots/voice-640.webp" alt="Clone Your Voice / Text to Voice tab: OmniVoice model, voice sample, text to speak, language and speed" width="640" height="362" loading="lazy" decoding="async"></figure>
             <figure class="reel-card" data-title="Web / LAN access" data-caption="One button turns this machine into a transcription page for the other devices on your network."><div class="win-bar"><i></i><i></i><i></i><span>Web / LAN access</span></div><img src="assets/shots/web-640.webp" alt="Web / LAN access tab: start web access, port, share on local network, access password and HTTPS options" width="640" height="362" loading="lazy" decoding="async"></figure>
           </div>
@@ -348,6 +356,63 @@
         </div>
         <div class="reel-dots" data-reel-dots role="group" aria-label="Choose a screen"></div>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT'S NEW IN 2.0 ============ -->
+  <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">New in 2.0</p>
+        <h2 id="new-title">What's new in 2.0. <span class="h2-soft">Made for long recordings.</span></h2>
+        <p class="section-lede">A queue that shows its speed, subtitled videos from a link, transcripts you can share as one web page, and a window that behaves like a native Windows or Mac app.</p>
+      </header>
+
+      <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">All platforms</p>
+          <h3>Speed and time left</h3>
+          <p>The Transcription Queue tab shows how fast each transcription runs and roughly how long is left, for example <em>about 4.8x, 6 min left</em>. The result card reports the speed, the model and the device when the job is done.</p>
+          <figure class="new-shot"><img src="assets/shots/queue-640.webp" alt="Transcription Queue tab with a Speed and time left column showing about 6.8x, 2 min left for the running job" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">All platforms</p>
+          <h3>Make subtitled video</h3>
+          <p>Tick it on the Download Videos tab and a link becomes <code>&lt;title&gt;-subbed.mp4</code> with the subtitles burned in: download, transcribe and burn in as one queued job with progress and a working Cancel. The download and the transcript are kept.</p>
+          <figure class="new-shot"><img src="assets/shots/download-640.webp" alt="Download Videos tab showing the line Subtitles available: English and German, the Use captions instead button and the Make subtitled video tick box" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">All platforms</p>
+          <h3>Share a transcript as one web page</h3>
+          <p>Save a finished transcript as a single <code>.html</code> file that opens in any browser with no install and no internet connection: timestamps, speakers, chapters and a search box. Click a word and the media plays from there.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">All platforms</p>
+          <h3>Work offline, made visible</h3>
+          <p>One switch under File keeps the app off the network. A line at the bottom of the window says whether a connection is open, and <em>Verify offline now</em> shows test connections being refused. Usage statistics are on by default and can be turned off under Help.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">All platforms</p>
+          <h3>Translate speech to English</h3>
+          <p>An <em>Output: English translation</em> option turns non-English speech into English subtitles in one pass, using Whisper's own translate task. It is off by default and not available for every engine or model.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">macOS</p>
+          <h3>A Mac that feels like a Mac</h3>
+          <p>An app menu with Settings (Command-comma), Light and Dark that follow macOS, the system font, files opened from Finder or dropped on the Dock icon, and a notification when a job finishes while the app is in the background.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">Windows</p>
+          <h3>Taskbar progress and dark title bars</h3>
+          <p>The taskbar button shows progress, a count of queued and running jobs, and flashes when a job finishes. Title bars follow the Dark theme, and text stays sharp at 125% and 150% display scaling.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">First launch</p>
+          <h3>A quick start and a sample clip</h3>
+          <p>A new install asks for your language, Fast or Best quality, and a folder, and shows the model size before anything downloads. An 18-second public-domain clip lets you see a real transcript before you pick a file of your own.</p>
+        </article>
+      </div>
+      <p class="feature-more sr">Also new: Text to Voice reads texts up to 100,000 characters piece by piece, an <em>Update it</em> button refreshes the video downloader without administrator rights, and a quiet update bar replaces the update dialog. The Video Tiling tab is gone. Everything is in the <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">changelog</a>.</p>
     </div>
   </section>
 
@@ -584,7 +649,7 @@ python gui.py</code></pre>
       </header>
       <div class="faq-list sr">
         <article class="qa"><h3>Is Whisper Transcriber Suite free?</h3><div class="faq-a"><p>Yes. It's BSD-3-Clause licensed, with no subscription and no per-minute cost. The Whisper model itself downloads once (about 1-3 GB) on first launch; after that, transcription works without an internet connection.</p></div></article>
-        <article class="qa"><h3>Does it upload my audio or video anywhere?</h3><div class="faq-a"><p>No, not by default. Every default backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — runs locally on your machine. Two backends are opt-in only (a cloud Gemini-API backend, and Google Cloud Speech-to-Text), and both stay off until you enable them yourself in Advanced &rarr; Backend.</p></div></article>
+        <article class="qa"><h3>Does it upload my audio or video anywhere?</h3><div class="faq-a"><p>No, not by default. Every default backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — runs locally on your machine. Two backends are opt-in only (a cloud Gemini-API backend, and Google Cloud Speech-to-Text), and both stay off until you enable them yourself in Advanced &rarr; Backend. Usage statistics (no audio, no file names) are on by default and can be turned off under Help &rarr; Usage statistics, the app checks GitHub once a day for a new version, and <b>File &rarr; Work offline</b> stops all network use.</p></div></article>
         <article class="qa"><h3>What platforms does it run on?</h3><div class="faq-a"><p>Windows, macOS and Linux. Published downloads are a Windows installer, a Windows portable ZIP, and a macOS DMG; Linux runs from source.</p></div></article>
         <article class="qa"><h3>What transcript formats can it produce?</h3><div class="faq-a"><p><code>srt</code> <code>vtt</code> <code>ass</code> <code>tsv</code> <code>txt</code> <code>json</code> <code>lrc</code> <code>md</code> <code>docx</code> <code>pdf</code>, plus oTranscribe, ELAN, InqScribe and Express Scribe.</p></div></article>
         <article class="qa"><h3>Can it label who is speaking?</h3><div class="faq-a"><p>Yes — optional speaker diarisation ("Identify speakers"), with per-word timestamps and time-range clipping.</p></div></article>
@@ -594,6 +659,9 @@ python gui.py</code></pre>
         <article class="qa"><h3>Can it clone a voice and make it say new text?</h3><div class="faq-a"><p>Yes, via the optional Clone Your Voice tab, using OmniVoice (Apache-2.0) entirely on your machine. Off by default; opt in at install time, and you must confirm you have permission to clone the reference voice.</p></div></article>
         <article class="qa"><h3>How is this different from calling the Whisper API directly?</h3><div class="faq-a"><p>It runs the model locally via faster-whisper by default, so there's no per-minute API cost and no audio leaves your machine — unless you explicitly opt into one of the two cloud backends.</p></div></article>
         <article class="qa"><h3>Can several people on the same network use it without installing it on every machine?</h3><div class="faq-a"><p>Yes — Web/LAN access mode turns this machine into a transcription page the other devices on the network can use.</p></div></article>
+        <article class="qa"><h3>What is new in version 2.0?</h3><div class="faq-a"><p>The queue shows each transcription's speed and time left; a <b>Make subtitled video</b> option turns a link into an MP4 with the subtitles burned in; a finished transcript can be saved as one offline web page; Work offline shows whether anything is connected; speech can be translated straight to English; the Mac app has native menus, Dark mode and notifications; the Windows app shows taskbar progress and dark title bars. The Video Tiling tab was removed. See <a href="#whats-new">What's new in 2.0</a> and the <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">changelog</a>.</p></div></article>
+        <article class="qa"><h3>Can it turn a video link into a video with subtitles?</h3><div class="faq-a"><p>Yes. On the Download Videos tab, tick <b>Make subtitled video</b>: the app downloads the video, transcribes it with Whisper and burns the subtitles in with ffmpeg, producing a file named after the video with <code>-subbed.mp4</code>. The download and the transcript are kept, and an existing <code>-subbed.mp4</code> is never replaced.</p></div></article>
+        <article class="qa"><h3>Can I keep the app off the network completely?</h3><div class="faq-a"><p>Yes. <b>File &rarr; Work offline</b> stops the update check, usage statistics, model downloads and remote AI providers. While it is on, a line at the bottom of the window says whether a connection is open, and <em>Verify offline now</em> shows test connections being refused. With it off, the app contacts the network only for its online settings at startup, the daily update check, usage statistics (which can be turned off under Help &rarr; Usage statistics) and downloads you start.</p></div></article>
         <article class="qa"><h3>How do I contact the project?</h3><div class="faq-a"><p>Bugs and feature requests go to <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, questions to <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, and anything else by email (the address is shown on request in the <a href="#contact">Contact section</a>). Security reports go through GitHub's private vulnerability reporting.</p></div></article>
       </div>
     </div>
