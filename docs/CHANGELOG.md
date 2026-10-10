@@ -6,6 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Report a problem without a GitHub account** (Help → About → Report a problem…): a short message goes to the project with only the app version and the operating system; Work offline blocks it, and a GitHub link stays for people who have an account.
 - **Windows taskbar progress, job badge and flash.** The app's taskbar button shows a progress bar
   while a job runs (yellow when paused; red after a failure, for at least 5 seconds and then until
   the window is in front), a small badge with the number of queued and running jobs, and blinks
@@ -220,7 +221,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Changed
 
 - **Help → About links to this project's repository and has a "Report a problem" button** that opens a new GitHub issue with the app version and system filled in; translation-robot is named as co-author.
-- **Supreme Master TV tab: an Explore grid of 24 programs**, including Veggie Elite, Make Peace, Cinema Scene, Golden Age Technology and Climate Change; the banner keeps only "About the channel" and the video cards no longer have a Transcribe button.
+- **Supreme Master TV tab: 24 programs as rounded Explore chips**, including Veggie Elite, Make Peace, Cinema Scene, Golden Age Technology and Climate Change; the banner keeps only "About the channel" and the video cards no longer have a Transcribe button.
 - **Update notice: major releases and a monthly reminder.** A release whose first version number is
   higher (2.x to 3.0) is announced as "Version 3.0 is here: a major new release", and What's new
   lists up to five highlights instead of three. After Later's 3, 7 and 14 days the bar comes back

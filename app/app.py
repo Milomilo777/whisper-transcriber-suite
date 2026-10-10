@@ -2134,7 +2134,7 @@ class App(tk.Tk):
         footer.pack(fill="x")
         ttk.Button(footer, text="OK", command=dlg.destroy).pack(side="right")
         ttk.Button(footer, text="Report a problem…",
-                   command=lambda: _open_new_issue()).pack(side="right", padx=(0, 8))
+                   command=lambda: self._open_problem_report(dlg)).pack(side="right", padx=(0, 8))
         # The project's home is this repository; translation-robot co-wrote it.
         credit = ttk.Label(
             footer,
@@ -2157,6 +2157,12 @@ class App(tk.Tk):
             dlg.grab_set()
         except tk.TclError:
             pass
+
+    def _open_problem_report(self, parent: tk.Misc) -> None:
+        """About → Report a problem: a short message without a GitHub account."""
+        from app.dialogs.problem_report import open_problem_report
+
+        open_problem_report(parent, self.app_config, new_issue_url())
 
     def show_statistics(self) -> None:
         _show_stats(self)

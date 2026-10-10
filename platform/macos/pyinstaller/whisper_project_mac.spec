@@ -405,6 +405,8 @@ a = Analysis(
         'app.widgets.notice',
         'app.widgets.smtv_tab',
         'app.widgets.chip_cloud',
+        'app.dialogs.problem_report',
+        'core.problem_report',
         'app.widgets.tooltip',
         'app.widgets.voice_clone_tab',
         'core',

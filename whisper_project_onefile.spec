@@ -224,6 +224,8 @@ a = Analysis(
         'app.widgets.live_tab',
         'app.widgets.smtv_tab',
         'app.widgets.chip_cloud',
+        'app.dialogs.problem_report',
+        'core.problem_report',
         'app.widgets.audio_visualizer',
         'app.widgets.tabs',
         'app.widgets.tray',
