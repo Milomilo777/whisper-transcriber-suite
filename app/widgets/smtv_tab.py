@@ -468,10 +468,13 @@ class _TabState:
 
     def _clear_cards(self) -> None:
         for card in self._cards:
-            try:
-                card["frame"].destroy()
-            except Exception:  # noqa: BLE001
-                pass
+            # The separator under the card goes with it: left packed, each earlier search
+            # stacked another grey strip above the first card of the next one.
+            for key in ("frame", "sep"):
+                try:
+                    card[key].destroy()
+                except Exception:  # noqa: BLE001
+                    pass
         self._cards = []
         self._remove_more_button()
 
@@ -524,8 +527,9 @@ class _TabState:
         for text, style, cmd in buttons:
             ttk.Button(actions, text=text, style=style, command=cmd).pack(
                 side=side, padx=(0, 6) if not rtl else (6, 0))
-        ttk.Separator(self.inner, orient="horizontal").pack(fill="x", padx=(0, 12))
-        card = {"frame": frame, "title": title, "abstract": abstract, "thumb": thumb}
+        sep = ttk.Separator(self.inner, orient="horizontal")
+        sep.pack(fill="x", padx=(0, 12))
+        card = {"frame": frame, "sep": sep, "title": title, "abstract": abstract, "thumb": thumb}
         self._cards.append(card)
         if item.thumbnail:
             self._load_thumb(item.thumbnail, thumb)

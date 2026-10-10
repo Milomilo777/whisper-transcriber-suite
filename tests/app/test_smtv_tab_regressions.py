@@ -99,3 +99,30 @@ def test_prefer_audio_when_available_cancels_previous_after(app_mock):
     state._prefer_audio_when_available("http://test.com", tries=1)
     assert getattr(state, "_audio_after_id", None) is not None
     assert state._audio_after_id != first_id
+
+
+def test_each_search_leaves_no_orphan_widgets_above_the_cards(app_mock, monkeypatch):
+    """Every card is followed by a separator; clearing the cards must remove those too.
+
+    A separator left behind by each earlier search stacked up above the first card of the next
+    one (a grey band that grew with every chip or Search click, seen on macOS).
+    """
+    def fake_search(lang, query, type_, cat, page, **kw):
+        items = [sb.VideoItem(url=f"https://suprememastertv.com/en1/v/{i}.html", title=f"V{i}")
+                 for i in range(4)]
+        return sb.SearchPage(items=items, total=4, page=page)
+
+    monkeypatch.setattr(sb, "search", fake_search)
+    frame = ttk.Frame(app_mock.root)
+    smtv_tab.build_smtv_tab(app_mock, frame)
+    state = app_mock.smtv_state
+    heights = []
+    for _ in range(3):
+        state.new_search()
+        app_mock.pump()
+        app_mock.root.update_idletasks()
+        heights.append(state.inner.winfo_reqheight())
+        kids = state.inner.winfo_children()
+        assert len(kids) == 2 * len(state._cards)  # one card + one separator each
+        assert kids[0] is state._cards[0]["frame"]  # nothing above the first card
+    assert len(set(heights)) == 1  # the list does not grow from search to search
