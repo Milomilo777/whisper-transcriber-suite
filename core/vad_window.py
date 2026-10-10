@@ -67,7 +67,7 @@ def window_seconds(cfg: dict[str, Any]) -> float:
 
 def _window_samples(seconds: float, frame: int) -> int:
     """Window length in samples, a whole number of *frame*-sample frames."""
-    if seconds <= 0 or frame <= 0:
+    if not math.isfinite(seconds) or seconds <= 0 or frame <= 0:
         return 0
     frames = int(seconds * SAMPLE_RATE) // frame
     return frames * frame

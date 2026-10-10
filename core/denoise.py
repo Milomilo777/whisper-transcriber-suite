@@ -64,6 +64,7 @@ import statistics
 import subprocess
 import threading
 import time
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -372,7 +373,7 @@ def sample_windows(duration_s: float) -> list[tuple[float, float]]:
     cannot dominate the estimate, and so analysis cost stays flat as
     duration grows.
     """
-    if duration_s != duration_s or duration_s <= 0.0:
+    if not math.isfinite(duration_s) or duration_s <= 0.0:
         return [(0.0, 0.0)]
     if duration_s <= FULL_SCAN_MAX_S:
         return [(0.0, 0.0)]
@@ -475,11 +476,12 @@ def _cache_key(audio_path: str, level: str) -> str:
     mtime catches the edit-then-re-transcribe case. ``level`` is in the
     key so switching strength does not reuse the previous render.
     """
+    norm_path = unicodedata.normalize('NFC', audio_path)
     try:
         st = os.stat(audio_path)
-        token = f"{audio_path}|{st.st_size}|{int(st.st_mtime)}|{level}"
+        token = f"{norm_path}|{st.st_size}|{int(st.st_mtime)}|{level}"
     except OSError:
-        token = f"{audio_path}|missing|{level}"
+        token = f"{norm_path}|missing|{level}"
     return hashlib.sha1(token.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
 
 
@@ -940,6 +942,9 @@ def _denoise_audio_inner(
             return audio_path
 
         try:
+            with open(str(staging), "r+b") as f:
+                f.flush()
+                os.fsync(f.fileno())
             os.replace(str(staging), str(target))
         except OSError as e:
             logger.info("Could not move denoised render into place: %s", e)

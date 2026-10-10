@@ -20,6 +20,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   keeps the taskbar integration off with one log line, as intended.
 - **On macOS the transcript of a task is found again when the file name uses decomposed accents**: the
   media name and the output name are compared in the same Unicode form.
+- **Denoised audio is flushed to disk before it enters the cache**, so a power cut cannot leave a
+  truncated cache entry that a later run would reuse.
 - **No warning about a missing settings file on the first start.** "config.json not found" is
   normal on a fresh install; it is now logged once, as information, instead of as a warning on
   every settings read.
