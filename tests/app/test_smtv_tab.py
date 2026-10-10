@@ -5,7 +5,8 @@ import types
 
 import pytest
 
-from app.widgets import smtv_tab
+from app.theme import tokens
+from app.widgets import chip_cloud, smtv_tab
 from core.integrations import smtv_browse as sb
 
 tk = pytest.importorskip("tkinter")
@@ -169,8 +170,152 @@ def test_cards_and_hero_offer_no_transcribe_or_live_buttons(built):
     texts = [w.cget('text') for w in _all_widgets(built.smtv_state.canvas.winfo_toplevel())
              if isinstance(w, ttk.Button)]
     assert not any('Transcribe' in t for t in texts)
-    assert not any(t.strip().endswith(('Watch live', 'TV schedule', 'Website')) for t in texts)
-    assert 'About the channel' in texts
+    pills = built.smtv_state.hero_pills.labels  # the banner buttons are pills on the hero canvas
+    assert not any(t.strip().endswith(('Watch live', 'TV schedule', 'Website')) for t in texts + pills)
+    assert pills[0] == 'About the channel'  # first, and looking like the others
+    assert pills[1:] == list(smtv_tab._HERO_PROGRAMS)
     for label in smtv_tab._HERO_PROGRAMS:  # banner shortcuts, all real programs
-        assert label in texts and label in {lb for lb, _t, _c in sb.PROGRAMS}
+        assert label in {lb for lb, _t, _c in sb.PROGRAMS}
     assert not set(smtv_tab._HERO_PROGRAMS) & set(smtv_tab._SHORTCUTS)
+    assert not any(t in texts for t in pills)  # no leftover square ttk buttons in the banner
+
+
+def _hero_items(hero, kind):
+    return [i for i in hero.find_all() if hero.type(i) == kind]
+
+
+def test_banner_buttons_are_pills_that_look_the_same(built, root):
+    built.pump()
+    st = built.smtv_state
+    hero, pills = st.hero_pills.hero, st.hero_pills
+    root.update()
+    assert len(pills.boxes) == len(pills.labels) == 1 + len(smtv_tab._HERO_PROGRAMS)
+    assert len({round(h) for _x, _y, _w, h in pills.boxes}) == 1  # one height for all
+    names = {str(img): key for key, img in pills._images.items()}
+    keys = [names[hero.itemcget(i, "image")] for i in _hero_items(hero, "image")
+            if "pills" in hero.gettags(i)]
+    assert len(keys) == len(pills.labels)
+    assert len({k[2:] for k in keys}) == 1  # same fill, border and width for every pill
+    assert all(k[1] == keys[0][1] for k in keys)  # and the same height: no special first button
+    assert not [w for w in _all_widgets(hero) if isinstance(w, ttk.Button)]  # drawn, not widgets
+
+
+def test_banner_has_a_featured_programs_eyebrow_above_the_pills(built, root):
+    built.pump()
+    pills = built.smtv_state.hero_pills
+    hero = pills.hero
+    eyebrow = [i for i in _hero_items(hero, "text")
+               if hero.itemcget(i, "text") == "FEATURED PROGRAMS"]
+    assert len(eyebrow) == 1
+    assert hero.itemcget(eyebrow[0], "fill") == tokens.HERO_ACCENT
+    assert hero.bbox(eyebrow[0])[3] <= pills.boxes[0][1]  # sits above the first pill
+
+
+def test_banner_pills_work_from_the_keyboard_and_the_mouse(built, root, monkeypatch):
+    built.pump()
+    st = built.smtv_state
+    pills, hero = st.hero_pills, st.hero_pills.hero
+    opened: list[str] = []
+    monkeypatch.setattr(smtv_tab.webbrowser, "open", opened.append)
+    assert str(hero.cget("takefocus")) == "1"  # reachable with Tab
+
+    def press(key):
+        # Other windows can take the focus from a test run on a busy desktop: take it back first.
+        hero.focus_force()
+        hero.event_generate("<FocusIn>")
+        hero.event_generate(key)
+        root.update()
+
+    press("<Return>")  # focus starts on "About the channel"
+    assert pills.has_focus
+    rings = len(_hero_items(hero, "image"))
+    assert opened and opened[0].endswith("about-us/")
+    press("<Right>")
+    press("<space>")
+    built.pump()
+    assert st.program_var.get() == smtv_tab._HERO_PROGRAMS[0] and pills.focus_index == 1
+    assert built.calls[-1][2:4] != ("all", "")  # same search as the chip would run
+    # A mouse click on the last pill runs the same action.
+    x, y, w, h = pills.boxes[-1]
+    hero.event_generate("<Button-1>", x=int(x + w / 2), y=int(y + h / 2))
+    root.update()
+    built.pump()
+    assert st.program_var.get() == smtv_tab._HERO_PROGRAMS[-1]
+    # The focus ring is one extra image, gone when the focus leaves.
+    hero.event_generate("<FocusIn>")
+    assert len(_hero_items(hero, "image")) == rings
+    hero.event_generate("<FocusOut>")
+    root.update()
+    assert not pills.has_focus and len(_hero_items(hero, "image")) == rings - 1
+
+
+def test_hovered_banner_pill_gets_the_gold_border(built, root):
+    built.pump()
+    pills = built.smtv_state.hero_pills
+    x, y, w, h = pills.boxes[2]
+    pills.hero.event_generate("<Motion>", x=int(x + w / 2), y=int(y + h / 2))
+    root.update()
+    assert pills.hover == 2
+    names = {str(img): key for key, img in pills._images.items()}
+    borders = {names[pills.hero.itemcget(i, "image")][3] for i in _hero_items(pills.hero, "image")}
+    assert tokens.HERO_PILLS["hover_border"] in borders
+    pills.hero.event_generate("<Leave>")
+    root.update()
+    assert pills.hover is None
+
+
+def _blend(rgba, bg):
+    a = rgba[3] / 255
+    return tuple(rgba[i] * a + bg[i] * (1 - a) for i in range(3))
+
+
+def _lum(rgb):
+    lin = [c / 255 / 12.92 if c / 255 <= 0.03928 else ((c / 255 + 0.055) / 1.055) ** 2.4 for c in rgb]
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+
+
+def _ratio(a, b):
+    hi, lo = sorted((_lum(a), _lum(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def _banner_colours():
+    lo, hi = smtv_tab._HERO_LEFT, smtv_tab._HERO_RIGHT
+    return [tuple(lo[i] + (hi[i] - lo[i]) * t / 10 for i in range(3)) for t in range(11)]
+
+
+def test_banner_pill_text_stays_readable_over_the_whole_gradient():
+    pal = tokens.HERO_PILLS
+    scrim = (pal["scrim"], pal["scrim_alpha"])
+    white = chip_cloud.hex_rgb(pal["text"])
+    for alpha in (pal["rest_alpha"], pal["hover_alpha"]):
+        fill = chip_cloud.flatten([scrim, (pal["fill"], alpha)])
+        for bg in _banner_colours():
+            assert _ratio(white, _blend(fill, bg)) >= 4.5, (alpha, bg)
+    # Negative control: without the scrim a hovered pill fails AA where the banner is teal.
+    bare = chip_cloud.flatten([(pal["fill"], pal["hover_alpha"])])
+    assert _ratio(white, _blend(bare, smtv_tab._HERO_RIGHT)) < 4.5
+    # The gold eyebrow, hover border and focus ring on the plain banner.
+    gold = chip_cloud.hex_rgb(tokens.HERO_ACCENT)
+    assert pal["hover_border"] == pal["ring"] == tokens.HERO_ACCENT
+    for bg in _banner_colours():
+        assert _ratio(gold, bg) >= 4.5
+
+
+def test_sections_have_a_heading_on_their_own_line_and_the_chips_align_with_it(built, root):
+    built.pump()
+    st = built.smtv_state
+    root.update()
+    labels = {w.cget("text") for w in _all_widgets(st.canvas.winfo_toplevel())
+              if isinstance(w, ttk.Label)}
+    assert "Browse programs" in labels and "Books" in labels
+    assert "Explore" not in labels  # the inline label is gone
+    assert any(t.strip(" ·") == str(len(smtv_tab._SHORTCUTS)) for t in labels)  # muted count
+    for heading, cloud in ((st.explore_heading, st.explore), (st.books_heading, st.books_row)):
+        assert int(heading.grid_info()["row"]) < int(cloud.grid_info()["row"])  # above, not beside
+        assert int(cloud.grid_info()["column"]) == int(heading.grid_info()["column"]) == 0
+        title = heading.winfo_children()[0]
+        assert abs(title.winfo_rootx() - (cloud.winfo_rootx() + chip_cloud.MARGIN)) <= 1
+    divider = [w for w in st.explore.master.winfo_children() if isinstance(w, ttk.Separator)]
+    assert len(divider) == 1 and int(divider[0].grid_info()["row"]) > int(
+        st.books_row.grid_info()["row"])  # a divider closes the chip rows

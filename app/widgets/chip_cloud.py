@@ -1,37 +1,135 @@
 """A wrapping row of rounded "chips" (pill buttons) drawn on one Canvas.
 
-Used by the Supreme Master TV tab for its program shortcuts. The chips flow
-left to right and wrap to the width of the widget. Collapsed, only the first
-row shows, ending in a "+N more" chip; expanded, every chip shows and the
-last one reads "Show less". The chip whose label equals ``selected`` is drawn
-filled in the brand colour.
+Used by the Supreme Master TV tab for its program shortcuts and its books. The chips flow
+left to right and wrap to the width of the widget. A chip has a tinted fill and a 1 px
+border that stands out from the panel on its own (3:1), semibold accent text, and a hand
+cursor; the hovered chip darkens, and the chip whose label equals ``selected`` is drawn
+solid in the accent colour with a check mark in front of its text.
 
-Keyboard: the canvas takes the focus with Tab; Left/Right (and Home/End)
-move between chips, Return or Space activates the focused chip. A 2 px ring
-marks the focused chip. Colours come from this module's two palettes and are
-redrawn on <<ThemeChanged>>, because Canvas items are not reached by the
-theme colour swap.
+Collapsed, only the first row shows, ending in a ghost text control ("All programs v");
+expanded, every chip shows and the control reads "Show less ^". The control has no fill
+or border on purpose, so it never reads as one more category.
+
+Keyboard: the canvas takes the focus with Tab; Left/Right (and Home/End) move between
+chips, Return or Space activates the focused chip. A 2 px ring, 2 px away from the chip,
+marks the focused one. Colours come from ``tokens.CHIP_PALETTES`` and are redrawn on
+<<ThemeChanged>>, because Canvas items are not reached by the theme colour swap.
+
+The module also holds the pill drawing the SMTV banner buttons share: ``render_pill``,
+``pill_photo`` and ``flatten``.
 """
 from __future__ import annotations
 
+import sys
 import tkinter as tk
 import tkinter.font as tkfont
 from dataclasses import dataclass
-from typing import Callable
+from tkinter import ttk
+from typing import Callable, Union
 
 from app.dpi import scale_factor
-from app.theme import tokens
+from app.theme import system_fonts, tokens
 
 # Sizes at 96 dpi; scaled by the window's DPI factor when drawn.
-CHIP_H = 30
+CHIP_H = 32
 PAD_X = 14
+GHOST_PAD = 8
 GAP = 8
+BORDER = 1
 RING = 2
-MARGIN = RING + 2  # room around the chips for the focus ring
+RING_OFFSET = 2
+MARGIN = RING + RING_OFFSET  # room around the chips for the focus ring
+CHECK = "✓ "
+MORE_TEXT = "All programs ▾"
+LESS_TEXT = "Show less ▴"
+FONT_SIZE = 10
 
 PALETTES = tokens.CHIP_PALETTES
 
+Rgba = tuple[int, int, int, int]
+Colour = Union[str, Rgba, None]
 
+
+# ------------------------------------------------------------------ pill drawing
+def hex_rgb(colour: str) -> tuple[int, int, int]:
+    return int(colour[1:3], 16), int(colour[3:5], 16), int(colour[5:7], 16)
+
+
+def flatten(layers: list[tuple[str, float]]) -> Rgba:
+    """One RGBA colour that paints like ``layers`` (``(hex, alpha 0..1)``, bottom first).
+
+    The banner pill is a dark scrim plus a white film; flattened to one colour it can be drawn
+    as a single image that Tk blends over the gradient behind it.
+    """
+    alpha = 0.0
+    rgb = (0.0, 0.0, 0.0)
+    for colour, a in layers:
+        new_alpha = a + alpha * (1 - a)
+        if new_alpha <= 0:
+            continue
+        src = hex_rgb(colour)
+        rgb = tuple((src[i] * a + rgb[i] * alpha * (1 - a)) / new_alpha for i in range(3))
+        alpha = new_alpha
+    return round(rgb[0]), round(rgb[1]), round(rgb[2]), round(alpha * 255)
+
+
+def _rgba(colour: Colour) -> Rgba | None:
+    if not colour:
+        return None
+    if isinstance(colour, str):
+        r, g, b = hex_rgb(colour)
+        return r, g, b, 255
+    return colour
+
+
+def render_pill(w: int, h: int, fill: Colour, outline: Colour = None, width: int = 0):
+    """A rounded rectangle with semicircle ends as a Pillow RGBA image.
+
+    Drawn four times larger and scaled down (Pillow resizes RGBA in premultiplied alpha), so
+    the edge is anti-aliased and a translucent fill has no dark fringe. ``fill`` and ``outline`` are hex strings or RGBA
+    tuples.
+    """
+    from PIL import Image, ImageDraw
+
+    iw, ih = max(1, int(w)), max(1, int(h))
+    ss = 4
+    big = Image.new("RGBA", (iw * ss, ih * ss), (0, 0, 0, 0))
+    edge = _rgba(outline)
+    ImageDraw.Draw(big).rounded_rectangle(
+        (0, 0, iw * ss - 1, ih * ss - 1), radius=ih * ss // 2,
+        fill=_rgba(fill), outline=edge, width=max(1, width * ss) if edge else 0)
+    return big.resize((iw, ih), Image.Resampling.LANCZOS)
+
+
+def pill_photo(master: tk.Misc, cache: dict[tuple[object, ...], object], w: float, h: float,
+               fill: Colour, outline: Colour = None, width: int = 0):
+    """The pill as a PhotoImage, kept in ``cache`` (a PhotoImage must stay referenced)."""
+    iw, ih = max(1, round(w)), max(1, round(h))
+    key = (iw, ih, fill, outline, width)
+    photo = cache.get(key)
+    if photo is None:
+        from PIL import ImageTk
+        photo = ImageTk.PhotoImage(render_pill(iw, ih, fill, outline, width), master=master)
+        cache[key] = photo
+    return photo
+
+
+def semibold_font(widget: tk.Misc) -> tkfont.Font:
+    """The 10 pt semibold UI font of the chips and the banner pills.
+
+    Windows has a Semibold face; macOS maps the family to its bold system font (see
+    ``system_fonts.ui_font``); elsewhere the weight is asked for directly.
+    """
+    if sys.platform in ("win32", "darwin"):
+        spec = system_fonts.ui_font(widget, "Segoe UI Semibold", FONT_SIZE)
+    else:
+        spec = system_fonts.ui_font(widget, "Segoe UI", FONT_SIZE, "bold")
+    family, size, *style = spec
+    bold = bool(style) and "bold" in str(style[0]).split()
+    return tkfont.Font(root=widget, family=family, size=size, weight="bold" if bold else "normal")
+
+
+# ---------------------------------------------------------------------- layout
 @dataclass
 class _Chip:
     label: str
@@ -63,13 +161,18 @@ class ChipCloud(tk.Canvas):
     """Program shortcuts as rounded chips; ``command(label)`` runs on activation."""
 
     def __init__(self, master: tk.Misc, labels: list[str], command: Callable[[str], None],
-                 *, display: Callable[[str], str] = lambda s: s, background: str = "") -> None:
+                 *, display: Callable[[str], str] = lambda s: s, background: str = "",
+                 panel_background: bool = False, more_text: str = MORE_TEXT,
+                 less_text: str = LESS_TEXT) -> None:
         super().__init__(master, highlightthickness=0, borderwidth=0, takefocus=1, height=1)
         if background:
             self.configure(background=background)
         self.labels = list(labels)
         self.command = command
         self.display = display
+        self.more_text = more_text
+        self.less_text = less_text
+        self.panel_background = panel_background  # follow the ttk panel colour on a theme switch
         self.selected: str | None = None
         self.expanded = False
         self.focus_index = 0
@@ -77,11 +180,11 @@ class ChipCloud(tk.Canvas):
         self._chips: list[_Chip] = []
         self._images: dict[tuple[object, ...], object] = {}  # PhotoImages must stay referenced
         self._has_focus = False
-        self._font = tkfont.nametofont("TkDefaultFont").copy()
-        self._bold = self._font.copy()
-        self._bold.configure(weight="bold")
+        self._font = semibold_font(self)
+        self._underlined = self._font.copy()
+        self._underlined.configure(underline=True)
         self.bind("<Configure>", lambda _e: self.redraw(), add="+")
-        self.bind("<<ThemeChanged>>", lambda _e: self.after_idle(self.redraw), add="+")
+        self.bind("<<ThemeChanged>>", lambda _e: self.after_idle(self._on_theme_changed), add="+")
         self.bind("<Motion>", self._on_motion, add="+")
         self.bind("<Leave>", self._on_leave, add="+")
         self.bind("<Button-1>", self._on_click, add="+")
@@ -108,39 +211,61 @@ class ChipCloud(tk.Canvas):
         k = scale_factor(self)
         return CHIP_H * k, PAD_X * k, GAP * k, MARGIN * k
 
-    def _chip_width(self, text: str, bold: bool, pad: float) -> float:
-        return (self._bold if bold else self._font).measure(text) + 2 * pad
+    def _text_of(self, c: _Chip) -> str:
+        return CHECK + c.text if c.label and c.label == self.selected else c.text
+
+    def _chip_width(self, text: str, pad: float) -> float:
+        return self._font.measure(text) + 2 * pad
+
+    def _toggle(self, text: str) -> _Chip:
+        chip = _Chip("", text, toggle=True)
+        chip.w = self._chip_width(text, 0)
+        return chip
 
     def _layout(self) -> list[_Chip]:
         h, pad, gap, margin = self._metrics()
         avail = max(self.winfo_width(), 200)
         chips = [_Chip(lb, self.display(lb)) for lb in self.labels]
         for c in chips:
-            c.w = self._chip_width(c.text, c.label == self.selected, pad)
+            c.w = self._chip_width(self._text_of(c), pad)
         if self.expanded:
-            chips.append(_Chip("", "Show less", toggle=True))
-            chips[-1].w = self._chip_width(chips[-1].text, True, pad)
-            shown = chips
+            shown = chips + [self._toggle(self.less_text)]
         else:
-            # Keep as many chips as fit on the first row next to the "+N more" chip.
+            # Keep as many chips as fit on the first row next to the "All programs" control.
+            more = self._toggle(self.more_text)
+            lead = GHOST_PAD * scale_factor(self)
             shown = []
             for i, c in enumerate(chips):
-                rest = len(chips) - i - 1
-                more_w = self._chip_width(f"+{rest} more", True, pad) + gap if rest else 0
+                more_w = more.w + lead + gap if i < len(chips) - 1 else 0
                 used = sum(s.w + gap for s in shown)
                 if margin + used + c.w + more_w > avail - margin and shown:
                     break
                 shown.append(c)
-            hidden = len(chips) - len(shown)
-            if hidden:
-                more = _Chip("", f"+{hidden} more", toggle=True)
-                more.w = self._chip_width(more.text, True, pad)
+            if len(shown) < len(chips):
                 shown.append(more)
-        for c, (x, y) in zip(shown, flow_layout([c.w for c in shown], avail, gap, h, margin)):
-            c.x, c.y = x, y
+        # The ghost control has no edge of its own: it gets a little air after a chip on its
+        # row, and when it starts a row its text lines up with the chips' left edge.
+        lead = GHOST_PAD * scale_factor(self)
+        widths = [c.w + lead if c.toggle else c.w for c in shown]
+        for c, (x, y) in zip(shown, flow_layout(widths, avail, gap, h, margin)):
+            c.x, c.y = (x + lead if c.toggle and x > margin else x), y
         return shown
 
     # ----------------------------------------------------------------- draw
+    def _sync_background(self) -> None:
+        if not self.panel_background:
+            return
+        try:
+            bg = str(ttk.Style().lookup("TFrame", "background") or "")
+            if bg and str(self.cget("background")) != bg:
+                self.configure(background=bg)
+        except tk.TclError:
+            pass
+
+    def _on_theme_changed(self) -> None:
+        self._sync_background()
+        self.redraw()
+
     def redraw(self) -> None:
         try:
             self.delete("all")
@@ -149,29 +274,37 @@ class ChipCloud(tk.Canvas):
         self._chips = self._layout()
         self.focus_index = min(self.focus_index, max(0, len(self._chips) - 1))
         h, _pad, _gap, margin = self._metrics()
+        k = scale_factor(self)
         pal = self.palette()
         for i, c in enumerate(self._chips):
-            if c.label and c.label == self.selected:
-                bg, fg = pal["selected_bg"], pal["selected_fg"]
-            elif i == self.hover_index:
-                bg, fg = pal["hover_bg"], pal["hover_fg"]
+            tag = (f"chip{i}",)
+            hovered = i == self.hover_index
+            font = self._font
+            if c.toggle:  # ghost control: text only, underlined while hovered
+                c.bg = ""
+                fg = pal["toggle_fg"]
+                font = self._underlined if hovered else self._font
+            elif c.label and c.label == self.selected:
+                c.bg, fg = pal["selected_bg"], pal["selected_fg"]
+                self._pill(c.x, c.y, c.w, h, fill=c.bg, tags=tag)
             else:
-                bg, fg = pal["normal_bg"], (pal["toggle_fg"] if c.toggle else pal["normal_fg"])
-            c.bg = bg
-            self._pill(c.x, c.y, c.w, h, fill=bg, tags=(f"chip{i}",))
-            bold = c.toggle or (c.label == self.selected)
-            self.create_text(c.x + c.w / 2, c.y + h / 2, text=c.text, fill=fg,
-                             font=self._bold if bold else self._font, tags=(f"chip{i}",))
+                state = "hover" if hovered else "normal"
+                c.bg, fg = pal[f"{state}_bg"], pal[f"{state}_fg"]
+                self._pill(c.x, c.y, c.w, h, fill=c.bg, outline=pal[f"{state}_border"],
+                           width=max(1, round(BORDER * k)), tags=tag)
+            self.create_text(c.x + c.w / 2, c.y + h / 2, text=self._text_of(c), fill=fg,
+                             font=font, tags=tag)
             if self._has_focus and i == self.focus_index:
-                r = RING * scale_factor(self)
-                self._pill(c.x - r - 1, c.y - r - 1, c.w + 2 * r + 2, h + 2 * r + 2,
-                           outline=pal["ring"], width=r, fill="")
+                r = RING * k
+                o = (RING + RING_OFFSET) * k
+                self._pill(c.x - o, c.y - o, c.w + 2 * o, h + 2 * o,
+                           outline=pal["ring"], width=max(1, round(r)), fill="")
         bottom = max((c.y for c in self._chips), default=0) + h + margin
         if int(float(self.cget("height"))) != int(bottom):
             self.configure(height=int(bottom))
 
     def _pill(self, x: float, y: float, w: float, h: float, *, fill: str,
-              outline: str = "", width: float = 0, tags: tuple[str, ...] = ()) -> None:
+              outline: str = "", width: int = 0, tags: tuple[str, ...] = ()) -> None:
         """A rounded rectangle with semicircle ends, drawn as one anti-aliased image.
 
         Tk's own ovals and arcs are not anti-aliased on Windows, so a pill built
@@ -179,27 +312,15 @@ class ChipCloud(tk.Canvas):
         larger and scales it down, and the image keeps an alpha channel so it sits
         on any background.
         """
-        iw, ih = max(1, round(w)), max(1, round(h))
-        key = (iw, ih, fill, outline, round(width))
-        photo = self._images.get(key)
-        if photo is None:
-            from PIL import Image, ImageDraw, ImageTk
-            ss = 4
-            big = Image.new("RGBA", (iw * ss, ih * ss), (0, 0, 0, 0))
-            ImageDraw.Draw(big).rounded_rectangle(
-                (0, 0, iw * ss - 1, ih * ss - 1), radius=ih * ss // 2,
-                fill=fill or None, outline=outline or None,
-                width=max(1, round(width * ss)) if outline else 0)
-            small = big.resize((iw, ih), Image.Resampling.LANCZOS)
-            photo = ImageTk.PhotoImage(small, master=self)
-            self._images[key] = photo
+        photo = pill_photo(self, self._images, w, h, fill, outline, width)
         self.create_image(round(x), round(y), anchor="nw", image=photo, tags=tags)
 
     # --------------------------------------------------------------- events
     def _index_at(self, x: float, y: float) -> int | None:
         h, *_ = self._metrics()
         for i, c in enumerate(self._chips):
-            if c.x <= x <= c.x + c.w and c.y <= y <= c.y + h:
+            slack = GHOST_PAD * scale_factor(self) if c.toggle else 0  # a text target: be generous
+            if c.x - slack <= x <= c.x + c.w + slack and c.y <= y <= c.y + h:
                 return i
         return None
 
@@ -242,7 +363,7 @@ class ChipCloud(tk.Canvas):
         return "break"
 
     def activate(self, index: int) -> None:
-        """Run the chip at ``index``: a program shortcut, or the more/less toggle."""
+        """Run the chip at ``index``: a program shortcut, or the all/less control."""
         if not (0 <= index < len(self._chips)):
             return
         chip = self._chips[index]

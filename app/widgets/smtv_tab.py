@@ -3,12 +3,12 @@ browsable, searchable view of its video library.
 
 Layout, top to bottom:
 
-* a hero banner (gradient, channel name, tagline, live stats and an
-  "About the channel" link);
+* a hero banner (gradient, channel name, tagline, live stats and a row of
+  pill buttons: "About the channel" and five featured programs);
 * a search bar (keyword, program, site language), a row of one-click
-  program shortcuts ("Explore") and a row with one entry per book
-  ("Books"), each opening a showcase panel (``book_panel.py``) in place of
-  the video list;
+  program chips ("Browse programs") and a row with one chip per book
+  ("Books"), each with a heading of its own and each book opening a showcase
+  panel (``book_panel.py``) in place of the video list;
 * a scrolling list of video cards (thumbnail, title, program, date,
   length, views, summary) with Watch / Download actions, and "Load more"
   paging.
@@ -29,18 +29,20 @@ import tkinter as tk
 import webbrowser
 from concurrent.futures import ThreadPoolExecutor
 from tkinter import ttk
-from typing import Any
+from typing import Any, Callable
 
 from app.dpi import scale_factor, scaled
 from app.theme import system_fonts, tokens
 from app.widgets.book_panel import BookPanel
+from app.widgets import chip_cloud
 from app.widgets.chip_cloud import ChipCloud
 from core._threads import safe_thread
 from core.integrations import smtv_books
 
 logger = logging.getLogger(__name__)
 
-_HERO_H = 176
+_HERO_H = 186
+_PILLS_Y = 134   # top of the banner's pill row (96 dpi)
 _THUMB_W, _THUMB_H = 192, 108
 # Fixed hero palette (reads the same under sv_ttk light/dark).
 _HERO_LEFT = (12, 25, 58)     # deep navy
@@ -157,28 +159,34 @@ def build_smtv_tab(app: Any, parent: Any) -> None:
         bar, text="Search", style="Accent.TButton", command=state.new_search,
     ).grid(row=0, column=4)
 
-    chips = ttk.Frame(parent, padding=(15, 2, 15, 6))
+    # Program shortcuts and books: each row has its own heading on a line of its own, and the
+    # chips start at the left margin (the canvas keeps a few pixels around them for the focus
+    # ring, so the frame is that much narrower and the headings are indented by the same).
+    m = chip_cloud.MARGIN
+    chips = ttk.Frame(parent, padding=(15 - m, 0, 15 - m, 0))
     chips.grid(row=2, column=0, sticky="ew")
-    chips.columnconfigure(1, weight=1)
-    ttk.Label(chips, text="Explore", foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
-        row=0, column=0, sticky="nw", padx=(0, 10), pady=(9, 0))
+    chips.columnconfigure(0, weight=1)
     try:
         chips_bg = str(ttk.Style().lookup("TFrame", "background") or "")
     except tk.TclError:
         chips_bg = ""
+    state.explore_heading = _section_heading(chips, "Browse programs", len(_SHORTCUTS),
+                                             row=0, top=16)
     explore = ChipCloud(chips, list(_SHORTCUTS), state.show_program,
-                        display=lambda lb: lb.split(":")[0], background=chips_bg)
-    explore.grid(row=0, column=1, sticky="ew")
+                        display=lambda lb: lb.split(":")[0], background=chips_bg,
+                        panel_background=True)
+    explore.grid(row=1, column=0, sticky="ew", pady=(4, 0))
     state.explore = explore
     state.program_var.trace_add(
         "write", lambda *_a: explore.set_selected(state.program_var.get()))
     # A second row: one entry per book; each opens that book's panel in place of the list.
-    ttk.Label(chips, text="Books", foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
-        row=1, column=0, sticky="nw", padx=(0, 10), pady=(9, 0))
+    state.books_heading = _section_heading(chips, "Books", len(smtv_books.BOOKS), row=2, top=10)
     books_row = ChipCloud(chips, [b.title for b in smtv_books.BOOKS], state.show_book,
-                          background=chips_bg)
-    books_row.grid(row=1, column=1, sticky="ew")
+                          background=chips_bg, panel_background=True)
+    books_row.grid(row=3, column=0, sticky="ew", pady=(4, 0))
     state.books_row = books_row
+    ttk.Separator(chips, orient="horizontal").grid(
+        row=4, column=0, sticky="ew", padx=(m, m), pady=(10, 0))
 
     # ── Results ────────────────────────────────────────────────────────
     body = ttk.Frame(parent)
@@ -187,7 +195,7 @@ def build_smtv_tab(app: Any, parent: Any) -> None:
     body.rowconfigure(1, weight=1)
     state.status_var = tk.StringVar(value="")
     ttk.Label(body, textvariable=state.status_var, foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
-        row=0, column=0, sticky="w", pady=(0, 4)
+        row=0, column=0, sticky="w", pady=(12, 4)
     )
     canvas = tk.Canvas(body, highlightthickness=0, borderwidth=0)
     try:
@@ -230,6 +238,16 @@ def build_smtv_tab(app: Any, parent: Any) -> None:
     parent.bind("<Map>", _first_show, add="+")
 
 
+def _section_heading(parent: Any, text: str, count: int, *, row: int, top: int) -> ttk.Frame:
+    """A heading on its own line: the title in semibold and a muted count after it."""
+    box = ttk.Frame(parent)
+    box.grid(row=row, column=0, sticky="w", padx=(chip_cloud.MARGIN, 0), pady=(top, 0))
+    ttk.Label(box, text=text, font=system_fonts.ui_font(box, "Segoe UI Semibold", 11)).pack(side="left")
+    ttk.Label(box, text=f"   ·   {count}", foreground=tokens.themed(tokens.TEXT_MUTED),
+              font=system_fonts.ui_font(box, "Segoe UI", 10)).pack(side="left")
+    return box
+
+
 def _bind_wheel(canvas: tk.Canvas, inner: Any) -> None:
     """Mouse-wheel scrolls the list only while the pointer is over it."""
     def _wheel(e: "tk.Event[Any]") -> None:
@@ -250,16 +268,120 @@ def _bind_wheel(canvas: tk.Canvas, inner: Any) -> None:
         w.bind("<Leave>", _leave)
 
 
+class _HeroPills:
+    """The banner's buttons: pills drawn straight on the hero canvas.
+
+    Same shape and font as the program chips, but translucent white over the gradient (so the
+    picture shows through), a gold border while hovered and a gold ring while focused. The
+    canvas takes the focus with Tab; Left/Right move between the pills, Return or Space press
+    the focused one, like the chips.
+    """
+
+    def __init__(self, hero: tk.Canvas, entries: list[tuple[str, Callable[[], None]]]) -> None:
+        self.hero = hero
+        self.labels = [label for label, _cmd in entries]
+        self.commands = [cmd for _label, cmd in entries]
+        self.hover: int | None = None
+        self.focus_index = 0
+        self.has_focus = False
+        self.boxes: list[tuple[float, float, float, float]] = []  # x, y, w, h of each pill
+        self._images: dict[tuple[object, ...], object] = {}
+        self._font = chip_cloud.semibold_font(hero)
+        hero.configure(takefocus=1)
+        hero.bind("<Motion>", self._on_motion, add="+")
+        hero.bind("<Leave>", lambda _e: self._set_hover(None), add="+")
+        hero.bind("<Button-1>", self._on_click, add="+")
+        hero.bind("<FocusIn>", lambda _e: self._set_focus(True), add="+")
+        hero.bind("<FocusOut>", lambda _e: self._set_focus(False), add="+")
+        hero.bind("<Left>", lambda _e: self._move(-1), add="+")
+        hero.bind("<Right>", lambda _e: self._move(1), add="+")
+        hero.bind("<Return>", self._on_key, add="+")
+        hero.bind("<space>", self._on_key, add="+")
+
+    def layout(self, x: float, y: float) -> None:
+        """Place the pills in one row starting at (x, y), in canvas pixels."""
+        k = scale_factor(self.hero)
+        self.boxes = []
+        for label in self.labels:
+            w = self._font.measure(label) + 2 * chip_cloud.PAD_X * k
+            self.boxes.append((x, y, w, chip_cloud.CHIP_H * k))
+            x += w + chip_cloud.GAP * k
+
+    def draw(self) -> None:
+        hero, pal, k = self.hero, tokens.HERO_PILLS, scale_factor(self.hero)
+        hero.delete("pills")
+        scrim = (pal["scrim"], pal["scrim_alpha"])
+        rest = chip_cloud.flatten([scrim, (pal["fill"], pal["rest_alpha"])])
+        lift = chip_cloud.flatten([scrim, (pal["fill"], pal["hover_alpha"])])
+        edge = chip_cloud.flatten([scrim, (pal["border"], pal["border_alpha"])])
+        bw = max(1, round(chip_cloud.BORDER * k))
+        for i, (x, y, w, h) in enumerate(self.boxes):
+            hovered = i == self.hover
+            photo = chip_cloud.pill_photo(hero, self._images, w, h, lift if hovered else rest,
+                                          pal["hover_border"] if hovered else edge, bw)
+            hero.create_image(round(x), round(y), anchor="nw", image=photo, tags="pills")
+            hero.create_text(x + w / 2, y + h / 2, text=self.labels[i], fill=pal["text"],
+                             font=self._font, tags="pills")
+            if self.has_focus and i == self.focus_index:
+                o = (chip_cloud.RING + chip_cloud.RING_OFFSET) * k
+                ring = chip_cloud.pill_photo(hero, self._images, w + 2 * o, h + 2 * o, None,
+                                             pal["ring"], max(1, round(chip_cloud.RING * k)))
+                hero.create_image(round(x - o), round(y - o), anchor="nw", image=ring,
+                                  tags="pills")
+
+    def _index_at(self, px: float, py: float) -> int | None:
+        for i, (x, y, w, h) in enumerate(self.boxes):
+            if x <= px <= x + w and y <= py <= y + h:
+                return i
+        return None
+
+    def _on_motion(self, e: "tk.Event[tk.Misc]") -> None:
+        i = self._index_at(e.x, e.y)
+        self.hero.configure(cursor="hand2" if i is not None else "")
+        self._set_hover(i)
+
+    def _set_hover(self, index: int | None) -> None:
+        if index != self.hover:
+            self.hover = index
+            self.draw()
+
+    def _on_click(self, e: "tk.Event[tk.Misc]") -> None:
+        i = self._index_at(e.x, e.y)
+        if i is not None:
+            self.focus_index = i
+            self.activate(i)
+
+    def _on_key(self, _e: object) -> str:
+        self.activate(self.focus_index)
+        return "break"
+
+    def _set_focus(self, on: bool) -> None:
+        self.has_focus = on
+        self.draw()
+
+    def _move(self, step: int) -> str:
+        if self.boxes:
+            self.focus_index = (self.focus_index + step) % len(self.boxes)
+            self.draw()
+        return "break"
+
+    def activate(self, index: int) -> None:
+        if 0 <= index < len(self.commands):
+            self.commands[index]()
+
+
 def _build_hero(app: Any, state: "_TabState", parent: Any) -> tk.Canvas:
     from core.integrations import smtv_browse as sb
 
     hero = tk.Canvas(parent, height=scaled(parent, _HERO_H), highlightthickness=0,
                      borderwidth=0, background=_mix(_HERO_LEFT, _HERO_LEFT, 0))
-    buttons = [ttk.Button(hero, text="About the channel", style="Accent.TButton",
-                          command=lambda: state.open_link("about-us/"))]
+    # "About the channel" looks exactly like the program pills and comes first.
+    entries: list[tuple[str, Callable[[], None]]] = [
+        ("About the channel", lambda: state.open_link("about-us/"))]
     for label in _HERO_PROGRAMS:
-        buttons.append(ttk.Button(hero, text=label, style="Accent.TButton",
-                                  command=lambda lb=label: state.show_program(lb)))
+        entries.append((label, lambda lb=label: state.show_program(lb)))
+    pills = _HeroPills(hero, entries)
+    state.hero_pills = pills
 
     def _draw(_e: Any = None) -> None:
         hero.delete("all")
@@ -285,10 +407,10 @@ def _build_hero(app: Any, state: "_TabState", parent: Any) -> tk.Canvas:
                          fill=_HERO_TEXT, font=system_fonts.ui_font(hero, "Segoe UI Semibold", 20))
         hero.create_text(24 * k, 86 * k, anchor="nw", text=state.stats_text(),
                          fill=_HERO_SUB, font=system_fonts.ui_font(hero, "Segoe UI", 10))
-        x = 24 * k
-        for btn in buttons:
-            hero.create_window(x, 124 * k, anchor="nw", window=btn)
-            x += btn.winfo_reqwidth() + 8 * k
+        hero.create_text(24 * k, (_PILLS_Y - 22) * k, anchor="nw", text="FEATURED PROGRAMS",
+                         fill=_HERO_ACCENT, font=system_fonts.ui_font(hero, "Segoe UI", 9, "bold"))
+        pills.layout(24 * k, _PILLS_Y * k)
+        pills.draw()
 
     hero.bind("<Configure>", _draw)
     state.redraw_hero = _draw
@@ -307,6 +429,9 @@ class _TabState:
         self.program_var: tk.StringVar
         self.explore: ChipCloud | None = None
         self.books_row: ChipCloud | None = None
+        self.explore_heading: Any = None
+        self.books_heading: Any = None
+        self.hero_pills: _HeroPills | None = None
         self.panel: BookPanel | None = None
         self.body: Any = None
         self.lang_var: tk.StringVar

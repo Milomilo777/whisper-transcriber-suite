@@ -58,20 +58,33 @@ BOOK_COVER_MAT = "#ffffff"
 BOOK_COVER_EDGE = "#d5dbe1"
 BOOK_PLACEHOLDER = "#cbd5e1"
 # Rounded program chips (app/widgets/chip_cloud.py): one palette per theme, drawn on a Canvas,
-# so they are read at draw time instead of being swapped by theme_colours.
+# so they are read at draw time instead of being swapped by theme_colours. A chip has a tinted
+# fill and a 1 px border that reaches 3:1 against the panel (it must be seen without relying on
+# the text); the selected chip is solid. "toggle_fg" is the text of the ghost "All programs"
+# control, drawn straight on the panel.
 CHIP_PALETTES = {
     "light": {
-        "normal_bg": "#eef2f4", "normal_fg": "#1f2937",
-        "hover_bg": "#dfe8eb", "hover_fg": "#0f172a",
-        "selected_bg": "#1f3a68", "selected_fg": "#ffffff",
-        "toggle_fg": "#1f3a68", "ring": "#1f3a68",
+        "normal_bg": "#eaf2fb", "normal_border": "#5b8bc0", "normal_fg": "#0b4f8c",
+        "hover_bg": "#d6e6f7", "hover_border": "#0b5cad", "hover_fg": "#0b4f8c",
+        "selected_bg": "#0b5cad", "selected_fg": "#ffffff",
+        "toggle_fg": "#0b5cad", "ring": "#0b5cad",
     },
     "dark": {
-        "normal_bg": "#2d3238", "normal_fg": "#e5e7eb",
-        "hover_bg": "#3a4149", "hover_fg": "#ffffff",
-        "selected_bg": "#3b66b3", "selected_fg": "#ffffff",
-        "toggle_fg": "#9cbcff", "ring": "#9cbcff",
+        "normal_bg": "#1e2a38", "normal_border": "#4f7fb0", "normal_fg": "#9ccbff",
+        "hover_bg": "#26384d", "hover_border": "#7fb2e8", "hover_fg": "#cfe6ff",
+        "selected_bg": "#57c8ff", "selected_fg": "#0b1a26",
+        "toggle_fg": "#7fb2e8", "ring": "#7fb2e8",
     },
+}
+# Program buttons on the hero banner (same pill shape as the chips). The banner is dark in both
+# themes, so one style serves both: a translucent white pill over a faint dark scrim (the scrim
+# keeps white text at 4.5:1 even where the banner turns teal), a white border, and a gold border
+# on hover. Alphas are 0..1; layers are painted scrim, then fill, over the banner gradient.
+HERO_PILLS = {
+    "scrim": "#000000", "scrim_alpha": 0.22,
+    "fill": "#ffffff", "rest_alpha": 0.12, "hover_alpha": 0.22,
+    "border": "#ffffff", "border_alpha": 0.55, "hover_border": HERO_ACCENT,
+    "text": "#ffffff", "ring": HERO_ACCENT,
 }
 
 # ------------------------------------------------------- theme-dependent colours

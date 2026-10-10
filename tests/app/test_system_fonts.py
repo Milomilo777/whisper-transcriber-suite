@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 import tkinter as tk
+import tkinter.font as tkfont
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -226,8 +227,12 @@ def test_real_sv_ttk_fonts_are_switched_on_aqua_and_untouched_elsewhere(
 
 # ----------------------------- the real call sites (smtv hero, audio meter) with aqua forced
 
-def _text_fonts(canvas: tk.Canvas) -> list[str]:
-    return [str(canvas.itemcget(item, "font")) for item in canvas.find_all() if canvas.type(item) == "text"]
+def _text_fonts(canvas: tk.Canvas, *, tag: str | None = None) -> list[str]:
+    """Font of each text item; only the items with ``tag``, or all but the banner pills, which
+    draw with a named Font object (checked on its own below)."""
+    return [str(canvas.itemcget(item, "font")) for item in canvas.find_all()
+            if canvas.type(item) == "text" and ((tag in canvas.gettags(item)) if tag
+                                                else "pills" not in canvas.gettags(item))]
 
 
 @pytest.mark.parametrize(("is_aqua", "expect_system"), [(True, True), (False, False)])
@@ -242,13 +247,19 @@ def test_smtv_hero_and_audio_meter_use_the_system_font_only_on_aqua(
         hero = smtv_tab._build_hero(SimpleNamespace(), state, themed_root)
         state.redraw_hero()
         hero_fonts = _text_fonts(hero)
+        pill_font_names = _text_fonts(hero, tag="pills")
         viz = audio_visualizer.AudioVisualizer(tk.Frame(themed_root))
         viz.frame.pack()
         themed_root.update()
         meter_fonts = _text_fonts(viz.canvas)
     finally:
         state._pool.shutdown(wait=False)
-    assert len(hero_fonts) == 3 and meter_fonts
+    assert len(hero_fonts) == 4 and meter_fonts  # title, tagline, stats, "FEATURED PROGRAMS"
+    assert len(set(pill_font_names)) == 1 and len(pill_font_names) == 6  # one font, six pills
+    pill = tkfont.Font(root=themed_root, name=pill_font_names[0], exists=True)
+    assert (pill.cget("family") == system_fonts.SYSTEM_UI_FAMILY) is expect_system
+    if expect_system:
+        assert pill.cget("weight") == "bold"  # macOS has no Semibold family to name
     for font in hero_fonts + meter_fonts:
         assert (system_fonts.SYSTEM_UI_FAMILY in font) is expect_system, font
         assert ("Segoe" in font) is not expect_system, font

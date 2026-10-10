@@ -6,7 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
-- **Two books in the Supreme Master TV tab.** A "Books" row under Explore opens a showcase panel for *From Crisis to Peace* and *Love Is The Only Solution*: cover, short description and buttons that open the official free e-book pages in the browser. The cover downloads once into the cache folder; Work offline shows a placeholder instead.
+- **Two books in the Supreme Master TV tab.** A "Books" row under the program chips opens a showcase panel for *From Crisis to Peace* and *Love Is The Only Solution*: cover, short description and buttons that open the official free e-book pages in the browser. The cover downloads once into the cache folder; Work offline shows a placeholder instead.
 - **Report a problem without a GitHub account** (Help → About → Report a problem…): a short message goes to the project with only the app version and the operating system; Work offline blocks it, and a GitHub link stays for people who have an account.
 - **Windows taskbar progress, job badge and flash.** The app's taskbar button shows a progress bar
   while a job runs (yellow when paused; red after a failure, for at least 5 seconds and then until
@@ -221,6 +221,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Supreme Master TV tab: the program menus are easier to see.** Program chips now have a tinted fill, a clear border, semibold text and a check mark when selected; "Browse programs" and "Books" are headings on their own line with a divider below; "+N more" became a plain "All programs" / "Show less" control; the banner buttons (About the channel first) are translucent pills under a "FEATURED PROGRAMS" label, with a gold hover border and focus ring.
 - **Help → About links to this project's repository and has a "Report a problem" button** that opens a new GitHub issue with the app version and system filled in; translation-robot is named as co-author.
 - **Supreme Master TV tab: 24 programs as rounded Explore chips**, including Veggie Elite, Make Peace, Cinema Scene, Golden Age Technology and Climate Change; the banner keeps only "About the channel" and the video cards no longer have a Transcribe button.
 - **Update notice: major releases and a monthly reminder.** A release whose first version number is
@@ -357,6 +358,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Supreme Master TV tab: a blank band above the first video no longer grows with every search.** The line under each video card was left behind when the results were cleared.
 - **macOS 10.15: PDF export and the menu-bar icon work again.** The app bundled two versions of one compression library and older macOS loaded the wrong one for the image library.
 - **macOS: opening several files at once from Finder (Open With) adds them all to the queue together.** Before, only the last of them ended up selected.
 - **On macOS, the app no longer uses a third of a CPU core while a text box has the focus.** The text cursor stays steady instead of blinking.
