@@ -53,6 +53,23 @@ PROGRAMS: tuple[tuple[str, str, str], ...] = (
     ("Miracles on the Quan Yin Path", "QYP", ""),
     ("Shining World Awards", "SWA", ""),
     ("Shorts", "ADS", ""),
+    ("Veggie Elite", "ADS", "VE"),
+    ("Make Peace", "ADS", "MP"),
+    ("Messages From Celebrities", "ADS", "MFC"),
+    ("Cinema Scene", "CS", ""),
+    ("Golden Age Technology", "GAT", ""),
+    ("Veg Trend News", "ADS", "VTN"),
+    ("Good People, Good Work", "GPGW", ""),
+    ("Healthy Living", "HL", ""),
+    ("Models of Success", "MOS", ""),
+    ("Ancient Predictions", "AP", ""),
+    ("A Journey through Aesthetic Realms", "AJAR", ""),
+    ("Show", "SHOW", ""),
+    ("Prophecies about Maitreya Buddha", "AP", "PAMB"),
+    ("Climate Change", "ADS", "CC"),
+    ("Nature Beauty", "NB", ""),
+    ("Cultural Traces Around the World", "CTAW", ""),
+    ("Our Noble Lineage", "NL", ""),
 )
 
 

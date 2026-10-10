@@ -142,3 +142,35 @@ def test_helpers():
     assert smtv_tab.shorten("a b", 10) == "a b"
     assert smtv_tab.shorten("word " * 100, 20).endswith("…")
     assert "·" not in smtv_tab.detail_line(sb.VideoItem(url="u", title="t"))
+
+def _all_widgets(w):
+    yield w
+    for c in w.winfo_children():
+        yield from _all_widgets(c)
+
+
+def test_explore_grid_opens_every_listed_program_and_alternates_colours(built):
+    built.pump()
+    first = next(w for w in _all_widgets(built.smtv_state.canvas.winfo_toplevel())
+                 if isinstance(w, tk.Label) and w.cget('text') == 'Featured Programs')
+    chips = [w for w in first.master.winfo_children() if isinstance(w, tk.Label)]
+    assert [c.cget('text') for c in chips] == [lb.split(':')[0] for lb in smtv_tab._SHORTCUTS]
+    programs = {label for label, _t, _c in sb.PROGRAMS}
+    assert set(smtv_tab._SHORTCUTS) <= programs  # every chip has a type/category
+    assert len({c.cget('background') for c in chips}) == 2  # two alternating backgrounds
+    first, second = chips[0], chips[1]
+    assert first.cget('background') != second.cget('background')
+    second.event_generate('<Button-1>')
+    built.pump()
+    label = smtv_tab._SHORTCUTS[1]
+    t, c = next((t, c) for lb, t, c in sb.PROGRAMS if lb == label)
+    assert built.calls[-1][2:4] == (t, c)
+
+
+def test_cards_and_hero_offer_no_transcribe_or_live_buttons(built):
+    built.pump()
+    texts = [w.cget('text') for w in _all_widgets(built.smtv_state.canvas.winfo_toplevel())
+             if isinstance(w, ttk.Button)]
+    assert not any('Transcribe' in t for t in texts)
+    assert not any(t.strip().endswith(('Watch live', 'TV schedule', 'Website')) for t in texts)
+    assert 'About the channel' in texts

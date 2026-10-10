@@ -3,18 +3,18 @@ browsable, searchable view of its video library.
 
 Layout, top to bottom:
 
-* a hero banner (gradient, channel name, tagline, live stats and links:
-  watch live, about, schedule, website);
-* a search bar (keyword, program, site language) and one-click program
-  shortcuts;
+* a hero banner (gradient, channel name, tagline, live stats and an
+  "About the channel" link);
+* a search bar (keyword, program, site language) and a grid of one-click
+  program shortcuts ("Explore");
 * a scrolling list of video cards (thumbnail, title, program, date,
-  length, views, summary) with Watch / Download / Transcribe actions,
-  and "Load more" paging.
+  length, views, summary) with Watch / Download actions, and "Load more"
+  paging.
 
 All network work (search pages, thumbnails) runs on background threads
 and comes back through ``app.post_to_main``; Tk is only touched on the
 main thread. Data comes from :mod:`core.integrations.smtv_browse`.
-Download / Transcribe prefill the existing Download tab (which already
+Download prefills the existing Download tab (which already
 understands SMTV episode URLs) rather than duplicating that pipeline.
 """
 from __future__ import annotations
@@ -45,9 +45,44 @@ _HERO_SUB = tokens.HERO_SUB
 _HERO_ACCENT = tokens.HERO_ACCENT      # warm gold
 _SHORTCUTS = (
     "Featured Programs", "Noteworthy News", "Between Master and Disciples",
-    "Words of Wisdom", "Vegan Cooking Show", "Animal World: Our Co-inhabitants",
-    "Science and Spirituality",
+    "Words of Wisdom", "Vegan Cooking Show", "Science and Spirituality",
+    "Veggie Elite", "Make Peace", "Messages From Celebrities", "Cinema Scene",
+    "Golden Age Technology", "Veg Trend News", "Good People, Good Work",
+    "Healthy Living", "Models of Success", "Ancient Predictions",
+    "A Journey through Aesthetic Realms", "Show", "Prophecies about Maitreya Buddha",
+    "Climate Change", "Nature Beauty", "Cultural Traces Around the World",
+    "Our Noble Lineage", "Animal World: Our Co-inhabitants",
 )
+_SHORTCUT_COLUMNS = 6
+
+
+def _explore_chip(parent: Any, text: str, command: Any, *, alt: bool) -> tk.Label:
+    """One "Explore" shortcut: a flat label that acts like a button.
+
+    Neighbours alternate between two backgrounds (a checkerboard over the
+    grid) so the many shortcuts do not read as one white block; both
+    colours are theme tokens, so a Light/Dark switch recolours them.
+    """
+    if alt:
+        bg = tokens.themed(tokens.EXPLORE_CHIP_ALT)
+    else:
+        bg = tokens.themed(tokens.EXPLORE_CHIP)
+    chip = tk.Label(parent, text=text, background=bg,
+                    foreground=tokens.themed(tokens.EXPLORE_CHIP_TEXT),
+                    padx=8, pady=4, cursor="hand2", takefocus=1,
+                    highlightthickness=1, highlightbackground=bg)
+
+    def _activate(_e: Any = None) -> str:
+        command()
+        return "break"
+
+    chip.bind("<Button-1>", _activate)
+    chip.bind("<Return>", _activate)
+    chip.bind("<space>", _activate)
+    chip.bind("<FocusIn>", lambda _e: chip.configure(
+        highlightbackground=tokens.themed(tokens.LINK)))
+    chip.bind("<FocusOut>", lambda _e: chip.configure(highlightbackground=chip.cget("background")))
+    return chip
 
 
 def _mix(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> str:
@@ -146,12 +181,15 @@ def build_smtv_tab(app: Any, parent: Any) -> None:
 
     chips = ttk.Frame(parent, padding=(15, 2, 15, 6))
     chips.grid(row=2, column=0, sticky="ew")
-    ttk.Label(chips, text="Explore:", foreground=tokens.themed(tokens.TEXT_MUTED)).pack(side="left", padx=(0, 6))
-    for label in _SHORTCUTS:
-        ttk.Button(
-            chips, text=label.split(":")[0], style="Toolbutton",
-            command=lambda lb=label: state.show_program(lb),
-        ).pack(side="left", padx=2)
+    ttk.Label(chips, text="Explore:", foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
+        row=0, column=0, sticky="nw", padx=(0, 6), pady=2)
+    for i, label in enumerate(_SHORTCUTS):
+        row, col = divmod(i, _SHORTCUT_COLUMNS)
+        chips.columnconfigure(col + 1, weight=1, uniform="explore")
+        _explore_chip(chips, label.split(":")[0],
+                      lambda lb=label: state.show_program(lb),
+                      alt=(row + col) % 2 == 1).grid(
+            row=row, column=col + 1, sticky="nsew", padx=1, pady=1)
 
     # ── Results ────────────────────────────────────────────────────────
     body = ttk.Frame(parent)
@@ -221,10 +259,7 @@ def _build_hero(app: Any, state: "_TabState", parent: Any) -> tk.Canvas:
     hero = tk.Canvas(parent, height=scaled(parent, _HERO_H), highlightthickness=0,
                      borderwidth=0, background=_mix(_HERO_LEFT, _HERO_LEFT, 0))
     links = (
-        ("▶  Watch live", sb.LIVE_URL),
         ("About the channel", "about-us/"),
-        ("TV schedule", "schedule/"),
-        ("Website", ""),
     )
     buttons = []
     for i, (label, target) in enumerate(links):
@@ -458,8 +493,6 @@ class _TabState:
             ("▶  Watch", "Accent.TButton", lambda u=item.url: webbrowser.open(u)),
             ("⬇  Download", "TButton",
              lambda u=item.url: self.send_to_download(u, transcribe=False)),
-            ("✎  Transcribe", "TButton",
-             lambda u=item.url: self.send_to_download(u, transcribe=True)),
         )
         for text, style, cmd in buttons:
             ttk.Button(actions, text=text, style=style, command=cmd).pack(

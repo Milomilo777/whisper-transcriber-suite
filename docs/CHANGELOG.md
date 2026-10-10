@@ -184,7 +184,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the audio samples are unchanged. Each voice clone from reference clips also
   appends a local, never-uploaded consent record (time, output hash, reference
   hashes) to `voice_clone_consent.jsonl`; see `docs/CONFIG.md`.
-- **Help → Send usage statistics.** The usage-statistics switch is now a
+- **Help → Usage statistics.** The usage-statistics switch is now a
   check item in the Help menu as well as in Advanced → App behaviour; both
   show the same saved value, and About lists exactly what is sent.
 - **macOS: the finished `.dmg` is now tested like a user meets it**
@@ -256,7 +256,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   messages.
 - **The translated READMEs no longer say that nothing is sent.** The German, Spanish, French,
   Japanese, Korean, Portuguese and Chinese pages now name the usage statistics and their switch
-  (**Help → Send usage statistics**); the Persian page drops the claim.
+  (**Help → Usage statistics**); the Persian page drops the claim.
 - **A quiet update bar instead of the "Open the download page?" dialog.** A newer
   release shows one line under the menu (version and headline) with What's new (its
   first highlights), Download (the installer, Portable ZIP or Mac dmg this copy came
@@ -353,6 +353,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Supreme Master TV tab: an Explore grid of 24 programs**, including Veggie Elite, Make Peace, Cinema Scene, Golden Age Technology and Climate Change; the banner keeps only "About the channel" and the video cards no longer have a Transcribe button.
 - **macOS 10.15: PDF export and the menu-bar icon work again.** The app bundled two versions of one compression library and older macOS loaded the wrong one for the image library.
 - **macOS: opening several files at once from Finder (Open With) adds them all to the queue together.** Before, only the last of them ended up selected.
 - **On macOS, the app no longer uses a third of a CPU core while a text box has the focus.** The text cursor stays steady instead of blinking.
