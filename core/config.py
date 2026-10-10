@@ -555,6 +555,7 @@ def online_cache_path() -> Path:
 #: the fetch is skipped for this long, so every worker start does not repeat
 #: a request that cannot succeed and does not log the failure again.
 ONLINE_MISSING_RETRY_SECONDS = 24 * 3600
+_MTIME_SLACK_SECONDS = 2.0
 
 
 def _online_missing_marker(cache_path: Path) -> Path:
@@ -584,9 +585,11 @@ def _online_known_missing(cache_path: Path, url: str) -> bool:
     marker = _online_missing_marker(cache_path)
     try:
         age = time.time() - marker.stat().st_mtime
-        # A negative age (clock was ahead, restored backup) is an invalid
-        # marker, not "missing until then".
-        if not 0 <= age < ONLINE_MISSING_RETRY_SECONDS:
+        # A clearly negative age (clock was ahead, restored backup) is an
+        # invalid marker, not "missing until then". A few milliseconds below
+        # zero is normal on Windows right after the write: the file time can
+        # be stamped slightly later than time.time() reads.
+        if not -_MTIME_SLACK_SECONDS <= age < ONLINE_MISSING_RETRY_SECONDS:
             return False
         return marker.read_text(encoding="utf-8").strip() == _url_digest(url)
     except (OSError, ValueError):
