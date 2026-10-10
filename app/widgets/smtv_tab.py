@@ -463,6 +463,12 @@ class _TabState:
 
     def destroy(self) -> None:
         self._pool.shutdown(wait=False)
+        if self._audio_after_id is not None:
+            try:
+                self.app.after_cancel(self._audio_after_id)
+            except tk.TclError:
+                logger.debug("Failed to cancel audio timer", exc_info=True)
+            self._audio_after_id = None
 
     # -- queries --------------------------------------------------------
 
