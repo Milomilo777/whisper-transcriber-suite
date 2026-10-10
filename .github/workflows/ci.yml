@@ -38,9 +38,9 @@ jobs:
     # Backstop for a hung test slipping past pytest-timeout below (e.g. a
     # hang in the install step, or in pytest's own startup/collection
     # before the per-test timeout plugin is active). Normal runs finish
-    # in a few minutes; 20 replaces GitHub's 360-minute default so a wedge
-    # fails fast instead of burning hours of Actions time.
-    timeout-minutes: 20
+    # in about 15-22 minutes; 30 replaces GitHub's 360-minute default so a
+    # wedge fails fast instead of burning hours of Actions time.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
