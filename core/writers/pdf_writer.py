@@ -19,10 +19,41 @@ from __future__ import annotations
 
 import io
 import os
-from typing import Any
+from typing import Any, Callable
 
 from . import pdf_bidi, pdf_fonts
 from .base import coerce_seconds, fmt_srt_time, normalize_text, replace_lone_surrogates
+
+
+def replace_missing_lookalikes(text: str, has_glyph: Callable[[str], bool]) -> str:
+    """Replace yt-dlp look-alike characters with their ASCII equivalents
+    if the font cannot render them.
+
+    yt-dlp uses characters like U+29F8 (BIG SOLIDUS) instead of '/' in
+    filenames to avoid OS path issues. If the system fonts lack them,
+    they render as missing-glyph boxes in the PDF. This replaces them
+    with the intended ASCII characters so the text is legible. Arabic,
+    Persian, or CJK characters are untouched if the font covers them.
+    """
+    lookalikes = {
+        0x29F8: "/",   # BIG SOLIDUS
+        0x29F9: "\\",  # BIG REVERSE SOLIDUS
+        0xFF1A: ":",   # FULLWIDTH COLON
+        0xFF1F: "?",   # FULLWIDTH QUESTION MARK
+        0xFF0A: "*",   # FULLWIDTH ASTERISK
+        0xFF1C: "<",   # FULLWIDTH LESS-THAN SIGN
+        0xFF1E: ">",   # FULLWIDTH GREATER-THAN SIGN
+        0xFF5C: "|",   # FULLWIDTH VERTICAL LINE
+        0xFF02: '"',   # FULLWIDTH QUOTATION MARK
+    }
+    out = []
+    for ch in text:
+        cp = ord(ch)
+        if cp in lookalikes and not has_glyph(ch):
+            out.append(lookalikes[cp])
+        else:
+            out.append(ch)
+    return "".join(out)
 
 
 def _fmt_pdf_time(seconds: float) -> str:
@@ -86,6 +117,9 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
         body_style.fontName = base.name
     rtl_style = ParagraphStyle(name="BodyRTL", parent=body_style, alignment=TA_RIGHT)
     by_name = {f.name: f for f in chain.fonts}
+
+    def has_glyph(ch: str) -> bool:
+        return chain.font_for(ch) is not None
     # The frame's text width (6 pt padding on each side), less a little
     # slack so reportlab never re-wraps a line broken by pdf_bidi.
     line_width = doc.width - 12 - 2
@@ -126,6 +160,7 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
     story: list[Any] = []
     title = (replace_lone_surrogates(os.path.basename(audio_path))
              if audio_path else "Transcript")
+    title = replace_missing_lookalikes(title, has_glyph)
     shaped_title = bidi_markup("", title, title_style.fontSize, True)
     if shaped_title is not None:
         story.append(Paragraph(shaped_title[0], title_style))
@@ -156,7 +191,9 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
             replace_lone_surrogates(str(raw_speaker).strip())
             if raw_speaker not in (None, "") else ""
         )
+        speaker = replace_missing_lookalikes(speaker, has_glyph)
         plain = normalize_text(seg.get("text", ""))
+        plain = replace_missing_lookalikes(plain, has_glyph)
         prefix = f"[{ts}] {speaker}:" if speaker else f"[{ts}]"
         shaped = bidi_markup(prefix, plain, body_style.fontSize, False)
         if shaped is not None:
