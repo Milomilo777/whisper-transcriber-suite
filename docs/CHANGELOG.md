@@ -22,6 +22,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   media name and the output name are compared in the same Unicode form.
 - **Denoised audio is flushed to disk before it enters the cache**, so a power cut cannot leave a
   truncated cache entry that a later run would reuse.
+- **Transcripts, resume checkpoints, chapter files and partial subtitles are flushed to disk before they
+  replace the old file**, so a power cut right after a save cannot leave an empty or half-written file.
 - **No warning about a missing settings file on the first start.** "config.json not found" is
   normal on a fresh install; it is now logged once, as information, instead of as a warning on
   every settings read.

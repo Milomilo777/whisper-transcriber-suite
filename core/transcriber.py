@@ -870,11 +870,12 @@ def _save_partial_subtitles(
     reaches the caller.
     """
     path = os.path.splitext(task.file_path)[0] + ".partial.srt"
+    part = f"{path}.{os.getpid()}.part"
     try:
         text = get_writer("srt")(segments, task.file_path)
-        part = f"{path}.{os.getpid()}.part"
         with open(part, "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
+            _checkpoint._flush_to_disk(f)
         os.replace(part, path)
         log(
             f"Kept the {len(segments)} finished segment(s) in "
@@ -882,6 +883,10 @@ def _save_partial_subtitles(
             log_cb,
         )
     except Exception as e:  # noqa: BLE001
+        try:
+            os.unlink(part)
+        except OSError:
+            pass
         logger.warning("Could not save the partial subtitles: %s", e)
         log(f"WARN: could not save the partial subtitles: {e}", log_cb)
 
@@ -1196,14 +1201,17 @@ def _write_outputs(
                 )
                 with open(part_path, "wb") as fb:
                     fb.write(payload_b)
+                    _checkpoint._flush_to_disk(fb)
             elif is_binary(fmt_name):
                 payload_b = get_binary_writer(fmt_name)(segments_data, audio_path)
                 with open(part_path, "wb") as fb:
                     fb.write(payload_b)
+                    _checkpoint._flush_to_disk(fb)
             else:
                 payload_s = get_writer(fmt_name)(segments_data, audio_path)
                 with open(part_path, "w", encoding="utf-8", newline="\n") as fs:
                     fs.write(payload_s)
+                    _checkpoint._flush_to_disk(fs)
             os.replace(part_path, path)
         except Exception as e:  # noqa: BLE001
             try:
@@ -1593,6 +1601,7 @@ def _write_chapter_sidecar(path: str, chapters: list[dict[str, Any]]) -> str | N
         with open(part, "w", encoding="utf-8", newline="\n") as f:
             _json.dump(chapters, f, indent=2, ensure_ascii=False)
             f.write("\n")
+            _checkpoint._flush_to_disk(f)
         os.replace(part, path)
     except Exception:
         try:

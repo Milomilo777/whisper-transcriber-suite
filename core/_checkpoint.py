@@ -31,6 +31,21 @@ from .config import user_data_dir
 
 logger = logging.getLogger(__name__)
 
+
+def _flush_to_disk(f: Any) -> None:
+    """Flush and fsync a file, logging but swallowing OSErrors.
+
+    Certain network shares, FUSE systems, or USB filesystems return
+    EINVAL/ENOTSUP for fsync. A failed durability sync must never discard
+    a transcript that was written successfully.
+    """
+    try:
+        f.flush()
+        os.fsync(f.fileno())
+    except OSError as e:
+        logger.warning("Could not fsync file: %s", e)
+
+
 # Wire-format version. Bump only on a breaking change to the on-disk
 # schema (renamed/removed field, type change). Add-only field changes
 # do NOT require a bump; the loader tolerates unknown keys.
@@ -236,6 +251,7 @@ def write_checkpoint(
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
             json.dump(payload, f, ensure_ascii=False)
+            _flush_to_disk(f)
         # Two writers can still legitimately race AT the rename itself
         # (two app instances resuming the same source at nearly the same
         # moment): on Windows a destination mid-replace by one thread can
