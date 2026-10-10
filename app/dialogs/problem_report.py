@@ -17,6 +17,8 @@ from core import problem_report as pr
 from core._threads import safe_thread
 
 _POLL_MS = 100
+_GRAB_POLL_MS = 50
+_GRAB_TRIES = 40  # about two seconds
 
 
 def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str) -> tk.Toplevel:
@@ -72,8 +74,13 @@ def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str
         count_var.set(f"{n} / {pr.MAX_CHARS}" + ("  (the rest is cut)" if raw > pr.MAX_CHARS else ""))
         send_btn.state(["!disabled"] if n else ["disabled"])
 
-    text.bind("<KeyRelease>", _update_count, add="+")
-    text.bind("<<Paste>>", lambda _e: dlg.after_idle(_update_count), add="+")
+    def _on_modified(_e: object = None) -> None:
+        # <<Modified>> fires for every change (typing, paste, drag and drop, undo);
+        # clearing the flag re-arms it for the next change.
+        text.edit_modified(False)
+        _update_count()
+
+    text.bind("<<Modified>>", _on_modified, add="+")
     _update_count()
 
     results: "queue.Queue[str | None]" = queue.Queue()
@@ -143,11 +150,21 @@ def _take_grab(parent: tk.Misc, dlg: tk.Toplevel) -> None:
         had_grab = False
     if had_grab:
         owner.grab_release()
-    try:
-        dlg.wait_visibility()
-        dlg.grab_set()
-    except tk.TclError:
-        pass  # not viewable yet (tests, a closing app): no grab, the window still works
+
+    def _grab_when_viewable(tries: int = 0) -> None:
+        # Never block on wait_visibility(): a window that never maps (main window
+        # minimised, no visible desktop) would freeze the app. Poll briefly instead.
+        try:
+            if not dlg.winfo_exists():
+                return
+            if dlg.winfo_viewable():
+                dlg.grab_set()
+            elif tries < _GRAB_TRIES:
+                dlg.after(_GRAB_POLL_MS, lambda: _grab_when_viewable(tries + 1))
+        except tk.TclError:
+            pass  # the window still works without a grab
+
+    _grab_when_viewable()
 
     def _give_back(event: "tk.Event[tk.Misc]") -> None:
         if event.widget is not dlg or not had_grab:

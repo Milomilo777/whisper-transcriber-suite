@@ -19,15 +19,27 @@ def root():
     r.destroy()
 
 
+def _pump_until(root, cond, seconds=3.0):
+    import time
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        root.update()
+        if cond():
+            return True
+        time.sleep(0.02)
+    return cond()
+
+
 def test_the_report_window_takes_the_about_grab_and_gives_it_back(root):
     about = tk.Toplevel(root)
-    about.wait_visibility()
+    if not _pump_until(root, about.winfo_viewable):
+        about.destroy()
+        pytest.skip("no visible desktop (e.g. an SSH session): windows never map")
     about.grab_set()
     assert root.grab_current() is about
     win = dialog.open_problem_report(about, {"stats_url": ""}, "https://example.invalid/issues/new")
-    root.update()
     # On macOS a child of a grabbing window got no clicks: the report window must hold the grab.
-    assert root.grab_current() is win
+    assert _pump_until(root, lambda: root.grab_current() is win)
     win.destroy()
     root.update()
     assert root.grab_current() is about
@@ -41,7 +53,7 @@ def test_send_is_disabled_until_there_is_text(root):
     assert buttons["Send"].instate(["disabled"])
     text = next(w for w in _walk(win) if isinstance(w, tk.Text))
     text.insert("1.0", "It froze")
-    text.event_generate("<KeyRelease>")
+    root.update()  # <<Modified>> updates the counter and the button
     root.update()
     assert not buttons["Send"].instate(["disabled"])
     win.destroy()
@@ -59,3 +71,15 @@ def _walk(w):
     yield w
     for c in w.winfo_children():
         yield from _walk(c)
+
+
+def test_opening_never_waits_for_a_window_that_does_not_map(root):
+    import time
+
+    hidden = tk.Toplevel(root)
+    hidden.withdraw()  # a child of a withdrawn window does not map either
+    t0 = time.monotonic()
+    win = dialog.open_problem_report(hidden, {"stats_url": ""}, "https://example.invalid/issues/new")
+    assert time.monotonic() - t0 < 1.0
+    win.destroy()
+    hidden.destroy()
