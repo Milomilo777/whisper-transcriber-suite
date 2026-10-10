@@ -153,7 +153,7 @@ def test_aqua_help_menu_drops_the_about_item_the_app_menu_now_carries(
         labels = _labels(root._help_menu)
         assert "About" not in labels
         assert labels[-1] != "-"  # no dangling separator where About was
-        assert labels[-1] == "Usage statistics"
+        assert labels[-1] == "Report a problem…" and labels[-3] == "Usage statistics"
     finally:
         root.destroy()
 
@@ -197,7 +197,8 @@ def test_other_windowing_systems_build_the_menu_bar_exactly_as_before(
         assert _labels(root._menubar) == ["File", "View", "Help"]
         assert str(_cascade(root._menubar, "Help")).rsplit(".", 1)[-1] != "help"
         help_labels = _labels(root._help_menu)
-        assert help_labels[-1] == "About" and help_labels[-2] == "-"
+        assert help_labels[-1] == "About" and help_labels[-2] == "Report a problem…"
+        assert help_labels[-3] == "-"
         assert "Close Window" not in _labels(_cascade(root._menubar, "File"))
         assert root._menubar.entrycget(root._help_cascade_index, "label") == "Help"
     finally:

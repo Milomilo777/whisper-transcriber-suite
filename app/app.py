@@ -1604,11 +1604,14 @@ class App(tk.Tk):
             variable=self.telemetry_opt_in_var,
             command=self._save_telemetry_pref,
         )
-        # About is the last Help item (the usual place), one click from Help.
-        # On macOS it lives in the app menu instead ("About <App>", wired to
-        # tkAboutDialog by mac_native.install), so Help does not repeat it.
+        # Report a problem sits right above About. About is the last Help item
+        # (the usual place), one click from Help. On macOS it lives in the app
+        # menu instead ("About <App>", wired to tkAboutDialog by
+        # mac_native.install), so Help does not repeat it.
+        h.add_separator()
+        h.add_command(label="Report a problem…",
+                      command=lambda: self._open_problem_report(self))
         if not aqua:
-            h.add_separator()
             h.add_command(label=_ABOUT_MENU_LABEL, command=self._show_about)
         m.add_cascade(label="File", menu=f)
         m.add_cascade(label="View", menu=v)
