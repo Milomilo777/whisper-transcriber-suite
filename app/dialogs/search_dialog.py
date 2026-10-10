@@ -19,7 +19,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Any
 
-from app.dpi import px, scaled_size
+from app.dpi import place_over, px, scaled_size
 from app.theme import script_fonts
 from app.theme import tokens
 from app.theme.bidi_display import ltr_base
@@ -51,6 +51,7 @@ class SearchDialog(tk.Toplevel):
         self.geometry(f"{width}x{height}")
         self.minsize(width, height)
         self.transient(master)
+        place_over(self, master, width, height)
 
         # tkinter types self.master as the generic Misc, not Tk | Toplevel —
         # keep the correctly-typed constructor arg around for open_viewer().

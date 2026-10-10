@@ -45,7 +45,7 @@ from typing import Any, Callable, Collection, Optional
 
 from app.dialogs import share_page, viewer_exports
 from app import mac_native, shortcuts
-from app.dpi import px, scaled_size
+from app.dpi import place_over, px, scaled_size
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
 from app.widgets import subtitle_edit as subtitle_edit_ui
@@ -727,6 +727,7 @@ class TranscriptViewer(tk.Toplevel):
             self, master, width, height, reserve_bottom=mac_native.DOCK_ROOM_PX,
         )
         self.transient(master)
+        place_over(self, master, width, height)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self.json_path = json_path
@@ -2811,6 +2812,7 @@ class EditTimestampDialog(tk.Toplevel):
 
         self.bind("<Return>", lambda _e: self._save())
         self.bind("<Escape>", lambda _e: self.destroy())
+        place_over(self, viewer)
         start_entry.focus_set()
         start_entry.selection_range(0, "end")
 
@@ -2847,7 +2849,9 @@ class FindReplaceDialog(tk.Toplevel):
         self.viewer = viewer
         self.title("Find and replace")
         self.transient(viewer)
-        self.geometry("%dx%d" % scaled_size(self, 420, 180))
+        width, height = scaled_size(self, 420, 180)
+        self.geometry(f"{width}x{height}")
+        place_over(self, viewer, width, height)
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
 

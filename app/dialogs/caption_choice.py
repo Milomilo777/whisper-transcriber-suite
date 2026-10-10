@@ -10,7 +10,7 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 
-from app.dpi import px
+from app.dpi import place_over, px
 from app.theme import tokens
 
 CHOICE_ASK = "ask"
@@ -68,6 +68,7 @@ def ask_caption_choice(master: "tk.Misc", *, kind: str, language: str) -> tuple[
         actions, text="Use the subtitles", command=lambda: pick(CHOICE_CAPTIONS),
     ).pack(side="right", padx=(0, 8))
     dialog.protocol("WM_DELETE_WINDOW", lambda: pick(CHOICE_CANCEL))
+    place_over(dialog, master)
     dialog.update_idletasks()
     try:
         dialog.grab_set()

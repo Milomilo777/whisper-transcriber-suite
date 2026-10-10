@@ -12,6 +12,7 @@ import webbrowser
 from tkinter import ttk
 from typing import Any
 
+from app.dpi import place_over
 from app.theme import tokens
 from core import problem_report as pr
 from core._threads import safe_thread
@@ -132,6 +133,7 @@ def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str
 
     send_btn.configure(command=_send)
     dlg.bind("<Escape>", lambda _e: dlg.destroy())
+    place_over(dlg, parent)
     _take_grab(parent, dlg)
     text.focus_set()
     return dlg

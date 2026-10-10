@@ -4,11 +4,12 @@ A read-only summary of the SQLite history. Opened from File → Statistics....
 """
 from __future__ import annotations
 
+import sys
 import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING
 
-from app.dpi import px
+from app.dpi import place_over, px
 from app.widgets.error_dialog import show_error
 from app.widgets.notice import notify
 
@@ -71,13 +72,16 @@ def show_statistics(app: "App") -> None:
         row=len(rows), column=0, columnspan=2, sticky="e", pady=(14, 0)
     )
 
-    top.update_idletasks()
-    try:
-        x = app.winfo_rootx() + (app.winfo_width() - top.winfo_width()) // 2
-        y = app.winfo_rooty() + (app.winfo_height() - top.winfo_height()) // 2
-        top.geometry(f"+{max(x, 0)}+{max(y, 0)}")
-    except tk.TclError:
-        pass
+    if sys.platform == "win32":
+        place_over(top, app)
+    else:
+        top.update_idletasks()
+        try:
+            x = app.winfo_rootx() + (app.winfo_width() - top.winfo_width()) // 2
+            y = app.winfo_rooty() + (app.winfo_height() - top.winfo_height()) // 2
+            top.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+        except tk.TclError:
+            pass
     try:
         top.grab_set()
     except tk.TclError:

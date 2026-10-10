@@ -39,7 +39,7 @@ from app.domain.cookies import (
     cookie_browser_label,
     cookie_browser_value,
 )
-from app.dpi import fit_size, px, scaled, work_area
+from app.dpi import fit_size, place_over, px, scaled, work_area
 from app.theme import tokens
 from app.widgets import tray
 from app.widgets.platform import folder_label
@@ -1923,6 +1923,7 @@ class AdvancedDialog(tk.Toplevel):
         ttk.Button(frame, text="Close", command=top.destroy).pack(
             anchor="e", pady=(14, 0)
         )
+        place_over(top, self)
         top.update_idletasks()
         try:
             top.grab_set()
@@ -2651,6 +2652,7 @@ class AdvancedDialog(tk.Toplevel):
         ttk.Button(frame, text="Close", command=top.destroy).pack(
             anchor="e", pady=(14, 0)
         )
+        place_over(top, self)
         top.update_idletasks()
         try:
             top.grab_set()

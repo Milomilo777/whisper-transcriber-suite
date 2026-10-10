@@ -227,6 +227,9 @@ def test_an_unshown_dialog_measures_the_monitor_of_its_parent(monkeypatch):
         def winfo_toplevel(self):
             return self
 
+        def state(self):
+            return "normal"
+
         def winfo_id(self):
             seen.append(self.hwnd)
             raise RuntimeError("stop here: only the window asked about is under test")
@@ -257,3 +260,151 @@ def test_the_screen_margins_are_unchanged_off_macos(monkeypatch, platform):
     monkeypatch.setattr(sys, "platform", platform)
     monkeypatch.setattr(dpi, "_windows_work_area", lambda _w: None)
     assert dpi.scaled_size(_Widget(96, screen=(1280, 800)), 1180, 720) == (1180, 710)
+
+
+# --- placing new windows (issue #8: Tk on Windows opened transient windows at (0, 0)) ---
+
+_AREA = (0, 40, 1920, 1000)  # a taskbar docked at the top takes the first 40 px
+
+
+def test_centred_position_puts_the_window_over_the_middle_of_its_parent():
+    assert dpi.centred_position((400, 300, 800, 600), (400, 200), _AREA) == (600, 500)
+
+
+def test_centred_position_counts_the_title_bar():
+    assert dpi.centred_position((400, 300, 800, 600), (400, 200), _AREA, title=32) == (600, 484)
+
+
+def test_centred_position_without_a_parent_uses_the_middle_of_the_area():
+    assert dpi.centred_position(None, (400, 200), _AREA) == (760, 440)
+
+
+def test_centred_position_never_puts_the_title_bar_under_a_top_taskbar():
+    # The parent fills the top of the screen; a tall dialog over it would start above it.
+    x, y = dpi.centred_position((0, 40, 1920, 300), (600, 700), _AREA, title=32)
+    assert y == 40
+    assert x == 660
+
+
+def test_centred_position_keeps_the_window_inside_the_right_and_bottom_edges():
+    x, y = dpi.centred_position((1700, 900, 400, 300), (600, 400), _AREA)
+    assert (x, y) == (1920 - 600, 1040 - 400)
+
+
+def test_centred_position_keeps_the_top_left_corner_of_a_window_larger_than_the_area():
+    assert dpi.centred_position((0, 40, 1920, 1000), (2500, 1200), _AREA) == (0, 40)
+
+
+def test_centred_position_works_on_a_monitor_left_of_the_primary_one():
+    area = (-1920, 0, 1920, 1040)
+    assert dpi.centred_position((-1600, 200, 800, 600), (400, 200), area) == (-1400, 400)
+
+
+@pytest.mark.parametrize("platform", ["darwin", "linux"])
+def test_place_over_leaves_other_platforms_alone(monkeypatch, platform):
+    monkeypatch.setattr(sys, "platform", platform)
+
+    class _Untouchable:
+        def __getattr__(self, name):
+            raise AssertionError(f"touched {name}")
+
+    dpi.place_over(_Untouchable(), _Untouchable())
+
+
+def _windows_root():
+    if sys.platform != "win32":
+        pytest.skip("Windows only")
+    import tkinter as tk
+
+    try:
+        root = tk.Tk()
+    except tk.TclError:
+        pytest.skip("no display")
+    x, y, w, h, _exact = dpi.work_area(root)
+    root.geometry(f"600x400+{x + 300}+{y + 200}")
+    root.update()
+    return root
+
+
+def _centre(window):
+    return window.winfo_rootx() + window.winfo_width() // 2, window.winfo_rooty() + window.winfo_height() // 2
+
+
+@pytest.mark.parametrize("give_size", [True, False])
+def test_a_transient_window_opens_over_its_parent_not_at_the_corner(give_size):
+    """The real Tk behaviour behind issue #8, and the fix, on Windows."""
+    import tkinter as tk
+    from tkinter import ttk
+
+    root = _windows_root()
+    try:
+        top = tk.Toplevel(root)
+        top.transient(root)
+        ttk.Label(top, text="A dialog " * 8).pack(padx=20, pady=40)
+        if give_size:
+            top.geometry("300x150")
+            dpi.place_over(top, root, 300, 150)
+        else:
+            dpi.place_over(top, root)
+        top.update()
+        assert top.winfo_ismapped()
+        assert (top.winfo_x(), top.winfo_y()) != (0, 0)
+        (rx, ry), (tx, ty) = _centre(root), _centre(top)
+        # Centred within the frame's border and title bar: geometry() places the frame.
+        assert abs(rx - tx) <= dpi.scaled(top, 12)
+        assert abs(ry - ty) <= dpi.scaled(top, dpi._TITLE_BAR)
+    finally:
+        root.destroy()
+
+
+def test_place_over_keeps_a_grab_and_a_withdrawn_window_hidden():
+    import tkinter as tk
+
+    root = _windows_root()
+    try:
+        modal = tk.Toplevel(root)
+        modal.transient(root)
+        modal.grab_set()
+        dpi.place_over(modal, root)
+        modal.update()
+        assert modal.winfo_ismapped()
+        assert root.grab_current() is modal
+
+        hidden = tk.Toplevel(root)
+        hidden.withdraw()
+        dpi.place_over(hidden, root)
+        hidden.update()
+        assert not hidden.winfo_ismapped()
+    finally:
+        root.destroy()
+
+
+def test_the_unfixed_tk_default_is_the_corner():
+    """Control: without place_over Tk on Windows really opens a transient window at (0, 0)."""
+    import tkinter as tk
+
+    root = _windows_root()
+    try:
+        top = tk.Toplevel(root)
+        top.geometry("300x150")
+        top.transient(root)
+        top.update()
+        assert (top.winfo_x(), top.winfo_y()) == (0, 0)
+    finally:
+        root.destroy()
+
+
+def test_a_minimised_parent_keeps_its_own_monitor():
+    """Minimised, a window sits at (-32000, -32000); its dialogs still belong on its monitor."""
+    import tkinter as tk
+
+    root = _windows_root()
+    try:
+        shown = dpi.work_area(root)
+        root.iconify()
+        root.update()
+        assert root.state() == "iconic"
+        top = tk.Toplevel(root)
+        assert dpi.work_area(top) == shown
+    finally:
+        root.destroy()
