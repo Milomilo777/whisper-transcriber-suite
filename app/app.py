@@ -2130,14 +2130,18 @@ class App(tk.Tk):
 
         text.configure(state="disabled")
 
-        footer = ttk.Frame(dlg, padding=(16, 4, 16, 14))
+        # The credit gets its own row: next to the buttons it was cut off on
+        # narrow windows (seen on macOS 10.15).
+        credit_row = ttk.Frame(dlg, padding=(16, 4, 16, 0))
+        credit_row.pack(fill="x")
+        footer = ttk.Frame(dlg, padding=(16, 6, 16, 14))
         footer.pack(fill="x")
         ttk.Button(footer, text="OK", command=dlg.destroy).pack(side="right")
         ttk.Button(footer, text="Report a problem…",
                    command=lambda: self._open_problem_report(dlg)).pack(side="right", padx=(0, 8))
         # The project's home is this repository; translation-robot co-wrote it.
         credit = ttk.Label(
-            footer,
+            credit_row,
             text="github.com/Milomilo777/whisper-transcriber-suite  ·  "
                  "co-author: translation-robot",
             foreground=tokens.themed(tokens.LINK), cursor="hand2",

@@ -59,10 +59,18 @@ def split_text(text: str) -> dict[str, str]:
     return out
 
 
+def os_name() -> str:
+    """The operating system as people know it: "macOS 10.15.7", not "Darwin 19.6.0"."""
+    system = platform.system()
+    if system == "Darwin":
+        version = platform.mac_ver()[0]
+        return f"macOS {version}" if version else "macOS"
+    return f"{system} {platform.release()}".strip()
+
+
 def system_summary() -> str:
     """The facts that go with a report, as the dialog shows them."""
-    return (f"Whisper Transcriber Suite {_APP_VERSION} on "
-            f"{platform.system()} {platform.release()} ({platform.machine()})")
+    return f"Whisper Transcriber Suite {_APP_VERSION} on {os_name()} ({platform.machine()})"
 
 
 def build_payload(text: str) -> dict[str, str]:
@@ -76,7 +84,7 @@ def build_payload(text: str) -> dict[str, str]:
         "language": "",
         "program_version": str(_APP_VERSION),
         "platform_system": platform.system(),
-        "platform_release": platform.release(),
+        "platform_release": os_name(),
         "platform_machine": platform.machine(),
         "audio_duration": "0",
         "transcription_time": "0",

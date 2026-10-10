@@ -48,7 +48,7 @@ def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str
               foreground=tokens.themed(tokens.TEXT_MUTED)).grid(row=0, column=0, sticky="w")
     count_var = tk.StringVar(master=dlg, value=f"0 / {pr.MAX_CHARS}")
     count = ttk.Label(info, textvariable=count_var, foreground=tokens.themed(tokens.TEXT_MUTED))
-    count.grid(row=0, column=1, sticky="e")
+    count.grid(row=0, column=1, sticky="e", padx=(12, 0))
     status_var = tk.StringVar(master=dlg, value="")
     status = ttk.Label(body, textvariable=status_var, wraplength=460, justify="left")
     status.grid(row=4, column=0, sticky="w", pady=(6, 0))
@@ -125,5 +125,37 @@ def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str
 
     send_btn.configure(command=_send)
     dlg.bind("<Escape>", lambda _e: dlg.destroy())
+    _take_grab(parent, dlg)
     text.focus_set()
     return dlg
+
+
+def _take_grab(parent: tk.Misc, dlg: tk.Toplevel) -> None:
+    """Move a modal grab from ``parent`` (the About window) to ``dlg`` and give it back on close.
+
+    About holds a local grab. A child window opened under it gets no mouse clicks on macOS
+    (Send and Cancel did nothing on 10.15), so the grab moves to this window while it is open.
+    """
+    owner = parent.winfo_toplevel()
+    try:
+        had_grab = owner.grab_current() is owner
+    except tk.TclError:
+        had_grab = False
+    if had_grab:
+        owner.grab_release()
+    try:
+        dlg.wait_visibility()
+        dlg.grab_set()
+    except tk.TclError:
+        pass  # not viewable yet (tests, a closing app): no grab, the window still works
+
+    def _give_back(event: "tk.Event[tk.Misc]") -> None:
+        if event.widget is not dlg or not had_grab:
+            return
+        try:
+            if owner.winfo_exists():
+                owner.grab_set()
+        except tk.TclError:
+            pass
+
+    dlg.bind("<Destroy>", _give_back, add="+")
