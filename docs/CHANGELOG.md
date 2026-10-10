@@ -6,6 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Two books in the Supreme Master TV tab.** A "Books" row under Explore opens a showcase panel for *From Crisis to Peace* and *Love Is The Only Solution*: cover, short description and buttons that open the official free e-book pages in the browser. The cover downloads once into the cache folder; Work offline shows a placeholder instead.
 - **Report a problem without a GitHub account** (Help → About → Report a problem…): a short message goes to the project with only the app version and the operating system; Work offline blocks it, and a GitHub link stays for people who have an account.
 - **Windows taskbar progress, job badge and flash.** The app's taskbar button shows a progress bar
   while a job runs (yellow when paused; red after a failure, for at least 5 seconds and then until

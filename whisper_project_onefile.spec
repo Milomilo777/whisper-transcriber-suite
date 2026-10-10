@@ -223,6 +223,7 @@ a = Analysis(
         'app.widgets.subtitle_edit',
         'app.widgets.live_tab',
         'app.widgets.smtv_tab',
+        'app.widgets.book_panel',
         'app.widgets.chip_cloud',
         'app.dialogs.problem_report',
         'core.problem_report',
@@ -322,8 +323,8 @@ a = Analysis(
         'core.integrations.smtv',
         'core.integrations.smtv_browse',
         'core.i18n_native_names',
-        # Optional LAN/web HTTP job server (stdlib only).
         'core.integrations.smtv_books',
+        # Optional LAN/web HTTP job server (stdlib only).
         'core.server',
         'core.server.httpd',
         'core.server.jobs',

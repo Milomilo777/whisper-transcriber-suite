@@ -52,6 +52,11 @@ HERO_SUB = "#bae6fd"
 HERO_ACCENT = "#fde68a"   # warm gold
 THUMB_BG = "#1e293b"
 PROGRAM_ACCENT = "#0891b2"
+# Book showcase panel: the white mat the cover picture sits on (the official covers are shot on
+# white) with its hairline edge, and the neutral book drawn while a cover is not available.
+BOOK_COVER_MAT = "#ffffff"
+BOOK_COVER_EDGE = "#d5dbe1"
+BOOK_PLACEHOLDER = "#cbd5e1"
 # Rounded program chips (app/widgets/chip_cloud.py): one palette per theme, drawn on a Canvas,
 # so they are read at draw time instead of being swapped by theme_colours.
 CHIP_PALETTES = {

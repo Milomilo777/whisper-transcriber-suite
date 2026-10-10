@@ -5,8 +5,10 @@ Layout, top to bottom:
 
 * a hero banner (gradient, channel name, tagline, live stats and an
   "About the channel" link);
-* a search bar (keyword, program, site language) and a grid of one-click
-  program shortcuts ("Explore");
+* a search bar (keyword, program, site language), a row of one-click
+  program shortcuts ("Explore") and a row with one entry per book
+  ("Books"), each opening a showcase panel (``book_panel.py``) in place of
+  the video list;
 * a scrolling list of video cards (thumbnail, title, program, date,
   length, views, summary) with Watch / Download actions, and "Load more"
   paging.
@@ -31,8 +33,10 @@ from typing import Any
 
 from app.dpi import scale_factor, scaled
 from app.theme import system_fonts, tokens
+from app.widgets.book_panel import BookPanel
 from app.widgets.chip_cloud import ChipCloud
 from core._threads import safe_thread
+from core.integrations import smtv_books
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +172,13 @@ def build_smtv_tab(app: Any, parent: Any) -> None:
     state.explore = explore
     state.program_var.trace_add(
         "write", lambda *_a: explore.set_selected(state.program_var.get()))
+    # A second row: one entry per book; each opens that book's panel in place of the list.
+    ttk.Label(chips, text="Books", foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
+        row=1, column=0, sticky="nw", padx=(0, 10), pady=(9, 0))
+    books_row = ChipCloud(chips, [b.title for b in smtv_books.BOOKS], state.show_book,
+                          background=chips_bg)
+    books_row.grid(row=1, column=1, sticky="ew")
+    state.books_row = books_row
 
     # ── Results ────────────────────────────────────────────────────────
     body = ttk.Frame(parent)
@@ -200,6 +211,14 @@ def build_smtv_tab(app: Any, parent: Any) -> None:
     canvas.bind("<Configure>", _on_canvas_resize)
     _bind_wheel(canvas, inner)
     state.canvas, state.inner = canvas, inner
+
+    # The book panel shares the results' grid cell; only one of the two shows.
+    panel = BookPanel(parent, post_to_main=lambda fn: app.post_to_main(fn),
+                      submit=state.submit_background,
+                      on_close=state.hide_book)
+    panel.grid(row=3, column=0, sticky="nsew", padx=15, pady=(6, 10))
+    panel.grid_remove()
+    state.body, state.panel = body, panel
 
     # First load waits until the tab is actually shown: no network traffic
     # at app start for anyone who never opens it, and by then the app's
@@ -287,6 +306,9 @@ class _TabState:
         self.query_var: tk.StringVar
         self.program_var: tk.StringVar
         self.explore: ChipCloud | None = None
+        self.books_row: ChipCloud | None = None
+        self.panel: BookPanel | None = None
+        self.body: Any = None
         self.lang_var: tk.StringVar
         self.status_var: tk.StringVar
         self.canvas: tk.Canvas | None = None
@@ -337,7 +359,37 @@ class _TabState:
         self.program_var.set(label)
         self.new_search()
 
+    # -- books --------------------------------------------------------------
+
+    def submit_background(self, fn: Any) -> Any:
+        return self._pool.submit(fn)
+
+    def show_book(self, title: str) -> None:
+        """Show the panel of the book called ``title`` in place of the video list."""
+        book = smtv_books.find(title)
+        if book is None or self.panel is None or self.body is None:
+            return
+        self.body.grid_remove()
+        self.panel.grid()
+        self.panel.show(book)
+        if self.books_row is not None:
+            self.books_row.set_selected(book.title)
+        if self.explore is not None:
+            self.explore.set_selected(None)
+
+    def hide_book(self) -> None:
+        """Back from a book panel to the video list."""
+        if self.panel is None or self.body is None or not self.panel.winfo_manager():
+            return
+        self.panel.grid_remove()
+        self.body.grid()
+        if self.books_row is not None:
+            self.books_row.set_selected(None)
+        if self.explore is not None:
+            self.explore.set_selected(self.program_var.get())
+
     def new_search(self) -> None:
+        self.hide_book()
         # Supersede any request still in flight: its result is dropped by
         # the generation check in _on_page, so it must not block this one.
         self._generation += 1
