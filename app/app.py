@@ -468,6 +468,34 @@ def _media_files_in_folder(folder: str) -> list[str]:
 AboutSection = tuple[str, list[tuple[str, list[str]]]]
 
 
+def new_issue_url() -> str:
+    """A GitHub "new issue" link with the app version and system filled in.
+
+    Only the version, the operating system and the Python version go into the
+    form: no file names, paths or settings. The person sees and edits the text
+    in the browser before anything is sent.
+    """
+    import platform
+    import urllib.parse
+
+    from core.updates import NEW_ISSUE_URL
+
+    body = (
+        "**What happened?**\n\n\n**What did you expect?**\n\n\n**Steps to reproduce**\n1. \n\n"
+        "---\n"
+        f"App version: {_APP_VERSION}\n"
+        f"System: {platform.system()} {platform.release()} ({platform.machine()})\n"
+        f"Python: {platform.python_version()}\n"
+    )
+    return NEW_ISSUE_URL + "?" + urllib.parse.urlencode({"body": body})
+
+
+def _open_new_issue() -> None:
+    import webbrowser
+
+    webbrowser.open(new_issue_url())
+
+
 def build_about_sections() -> list[AboutSection]:
     """Return the full, plain-language feature inventory for the About dialog.
 
@@ -2105,19 +2133,23 @@ class App(tk.Tk):
         footer = ttk.Frame(dlg, padding=(16, 4, 16, 14))
         footer.pack(fill="x")
         ttk.Button(footer, text="OK", command=dlg.destroy).pack(side="right")
-        # Author credit — the project was written by translation-robot.
+        ttk.Button(footer, text="Report a problem…",
+                   command=lambda: _open_new_issue()).pack(side="right", padx=(0, 8))
+        # The project's home is this repository; translation-robot co-wrote it.
         credit = ttk.Label(
             footer,
-            text="Created by translation-robot — github.com/translation-robot",
+            text="github.com/Milomilo777/whisper-transcriber-suite  ·  "
+                 "co-author: translation-robot",
             foreground=tokens.themed(tokens.LINK), cursor="hand2",
         )
         credit.pack(side="left")
 
-        def _open_author(_e: object) -> None:
+        def _open_repo(_e: object) -> None:
             import webbrowser
-            webbrowser.open("https://github.com/translation-robot")
+            from core.updates import REPO_URL
+            webbrowser.open(REPO_URL)
 
-        credit.bind("<Button-1>", _open_author)
+        credit.bind("<Button-1>", _open_repo)
 
         dlg.bind("<Escape>", lambda _e: dlg.destroy())
         dlg.update_idletasks()

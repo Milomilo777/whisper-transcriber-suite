@@ -128,3 +128,15 @@ def test_whats_new_lists_the_current_release_not_the_1x_highlights():
     highlights = " ".join(dict(sections["What's new in this version"])["Highlights"])
     assert "subtitled video" in highlights and "Work offline" in highlights
     assert "Per-task buttons on every queue item" not in highlights  # a 1.x highlight
+
+def test_report_a_problem_link_points_at_this_repository_and_carries_no_paths():
+    import urllib.parse
+
+    from app.app import new_issue_url
+    from core import __version__
+
+    url = new_issue_url()
+    assert url.startswith("https://github.com/Milomilo777/whisper-transcriber-suite/issues/new?")
+    body = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)["body"][0]
+    assert f"App version: {__version__}" in body
+    assert ":\\" not in body and "/Users/" not in body and "/home/" not in body

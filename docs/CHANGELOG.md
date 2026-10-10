@@ -219,6 +219,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Help → About links to this project's repository and has a "Report a problem" button** that opens a new GitHub issue with the app version and system filled in; translation-robot is named as co-author.
 - **Supreme Master TV tab: an Explore grid of 24 programs**, including Veggie Elite, Make Peace, Cinema Scene, Golden Age Technology and Climate Change; the banner keeps only "About the channel" and the video cards no longer have a Transcribe button.
 - **Update notice: major releases and a monthly reminder.** A release whose first version number is
   higher (2.x to 3.0) is announced as "Version 3.0 is here: a major new release", and What's new

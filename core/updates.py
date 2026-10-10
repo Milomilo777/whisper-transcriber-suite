@@ -54,6 +54,8 @@ GITHUB_REPO = "whisper-transcriber-suite"
 
 # Human-facing page the UI opens on the user's request. ``/releases/latest``
 # redirects to the newest published release's page.
+REPO_URL = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}"
+NEW_ISSUE_URL = f"{REPO_URL}/issues/new"
 RELEASES_PAGE_URL = (
     f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
 )

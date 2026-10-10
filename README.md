@@ -161,7 +161,8 @@ ones carry a `Co-Authored-By: Claude` line instead.
 
 ## License
 
-Copyright (c) 2026 [translation-robot](https://github.com/translation-robot).
+Copyright (c) 2026 translation-robot (co-author). The project lives in this repository,
+[Milomilo777/whisper-transcriber-suite](https://github.com/Milomilo777/whisper-transcriber-suite).
 The project's own source is under the [BSD 3-Clause License](LICENSE). Bundled
 tools, the Python runtime and the models keep their own licences; see
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
