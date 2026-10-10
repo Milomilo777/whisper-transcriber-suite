@@ -420,6 +420,7 @@ a = Analysis(
         'core.integrations.smtv_browse',
         'core.i18n_native_names',
         'core.live_model',
+        'core.integrations.smtv_books',
         'core.optional_deps',
         'core.server.tls',
         'core.star_invite',

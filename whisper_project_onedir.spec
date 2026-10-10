@@ -312,6 +312,7 @@ a = Analysis(
         'core.integrations.smtv_browse',
         'core.i18n_native_names',
         # Optional LAN/web HTTP job server (stdlib only).
+        'core.integrations.smtv_books',
         'core.server',
         'core.server.httpd',
         'core.server.jobs',

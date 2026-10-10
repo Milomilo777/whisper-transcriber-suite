@@ -245,6 +245,15 @@ def test_smtv_pages_and_listing_are_not_fetched(offline_on, monkeypatch):
         smtv_browse.fetch_bytes("https://suprememastertv.com/a.jpg")
 
 
+def test_smtv_book_covers_are_not_fetched(offline_on, tmp_path, monkeypatch):
+    from core.integrations import smtv_books
+
+    monkeypatch.setattr(smtv_books, "cache_dir", lambda: tmp_path)
+    monkeypatch.setattr(smtv_books.urllib.request, "urlopen", _boom)
+    with pytest.raises(offline.OfflineModeError, match="Offline mode is on"):
+        smtv_books.fetch_cover(smtv_books.BOOKS[0])
+
+
 def test_gemini_engine_and_key_test_are_refused(offline_on, monkeypatch):
     from core.backends import cloud_stt
 
