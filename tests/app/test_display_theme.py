@@ -5,6 +5,7 @@ app's scale factor from that); a real 125/150 % Windows display is a manual chec
 """
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -281,6 +282,12 @@ def _segments() -> list[dict[str, Any]]:
     return [{"start": 0.0, "end": 1.25, "text": "Hello world"}]
 
 
+@pytest.mark.skipif(
+    os.environ.get("GITHUB_ACTIONS") == "true",
+    reason=("measures real font widths: the hosted runners ship other fonts and screen metrics than"
+            " the machines people use, so the result there says nothing about the app; this check"
+            " runs locally and on the macOS test machines"),
+)
 @pytest.mark.parametrize("factor", [1.0, 1.25, 1.5])
 def test_viewer_toolbars_fit_the_window(root, tmp_path, monkeypatch, factor) -> None:
     from app.dialogs import transcript_viewer as tv
