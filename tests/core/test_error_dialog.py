@@ -115,3 +115,19 @@ def test_close_does_not_grab_a_parent_that_had_none():
         assert root.grab_current() is None
     finally:
         root.destroy()
+
+
+def test_stays_on_a_monitor_left_of_the_primary_one():
+    """A negative x must reach Tk as "+-900", not "-900" (900 px from the right edge)."""
+    root = tk.Tk()
+    root.geometry("600x400+-1500+100")
+    try:
+        root.update()
+        assert root.winfo_rootx() < 0
+        show_error(root, "Left monitor", "message")
+        dlg = _error_dialog(root, "Left monitor")
+        dlg.update()
+        assert dlg.winfo_rootx() < 0, f"dialog went to x={dlg.winfo_rootx()}"
+        _dismiss(dlg)
+    finally:
+        root.destroy()

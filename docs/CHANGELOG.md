@@ -9,6 +9,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **New windows no longer open in the top-left corner on Windows** (#8). The transcript viewer,
   hardware wizard, model download and other dialogs opened at (0, 0), under a taskbar docked at
   the top; they now open over the middle of the main window, inside the screen's work area.
+- **Error dialogs and tooltips on a monitor left of the primary one** opened near the right edge of
+  the screen: a negative position was passed to Tk as an offset from the right edge.
 
 ## [2.0.0] — 2026-10-10
 
