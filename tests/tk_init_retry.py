@@ -54,3 +54,31 @@ def wrap_init(original: Callable[..., Any]) -> Callable[..., Any]:
 
     wrapper.__wrapped__ = original  # type: ignore[attr-defined]
     return wrapper
+
+
+def is_sv_ttk_read_error(exc: BaseException) -> bool:
+    """The same transient Tcl read fault, hit while sv_ttk sources its theme script."""
+    return (type(exc).__name__ == "TclError" and "couldn't read file" in str(exc)
+            and "sv.tcl" in str(exc))
+
+
+def wrap_sv_ttk_load(original: Callable[..., Any]) -> Callable[..., Any]:
+    """Return an ``sv_ttk._load_theme`` replacement that retries the sv.tcl read fault.
+
+    Seen on the Windows CI runners ("couldn't read file .../sv_ttk/sv.tcl: No error"), the same
+    fault as the init.tcl one above; counted and reported the same way.
+    """
+    def wrapper(style: Any) -> Any:
+        for attempt in range(1, MAX_TRIES + 1):
+            try:
+                return original(style)
+            except Exception as exc:  # noqa: BLE001 - re-raised unless it is the known fault
+                if not is_sv_ttk_read_error(exc) or attempt == MAX_TRIES:
+                    raise
+                first_line = str(exc).splitlines()[0][:120]
+                retries.append(first_line)
+                print(f"[tk-init-retry] sv_ttk theme load failed ({first_line}); "
+                      f"retry {attempt}/{MAX_TRIES - 1}", file=sys.stderr)
+
+    wrapper.__wrapped__ = original  # type: ignore[attr-defined]
+    return wrapper

@@ -205,6 +205,12 @@ try:
         _mark_tk_touched(_cls, _attr)
     # Retry the one transient "cannot read init.tcl" start-up fault (see tk_init_retry).
     _tkinter.Tk.__init__ = _tk_init_retry.wrap_init(_tkinter.Tk.__init__)  # type: ignore[method-assign]
+    try:
+        import sv_ttk as _sv_ttk
+
+        _sv_ttk._load_theme = _tk_init_retry.wrap_sv_ttk_load(_sv_ttk._load_theme)
+    except ImportError:
+        pass
 except Exception:  # noqa: BLE001 — no Tk on this interpreter
     pass
 
