@@ -219,6 +219,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Supreme Master TV tab: an Explore grid of 24 programs**, including Veggie Elite, Make Peace, Cinema Scene, Golden Age Technology and Climate Change; the banner keeps only "About the channel" and the video cards no longer have a Transcribe button.
 - **Update notice: major releases and a monthly reminder.** A release whose first version number is
   higher (2.x to 3.0) is announced as "Version 3.0 is here: a major new release", and What's new
   lists up to five highlights instead of three. After Later's 3, 7 and 14 days the bar comes back
@@ -353,7 +354,6 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
-- **Supreme Master TV tab: an Explore grid of 24 programs**, including Veggie Elite, Make Peace, Cinema Scene, Golden Age Technology and Climate Change; the banner keeps only "About the channel" and the video cards no longer have a Transcribe button.
 - **macOS 10.15: PDF export and the menu-bar icon work again.** The app bundled two versions of one compression library and older macOS loaded the wrong one for the image library.
 - **macOS: opening several files at once from Finder (Open With) adds them all to the queue together.** Before, only the last of them ended up selected.
 - **On macOS, the app no longer uses a third of a CPU core while a text box has the focus.** The text cursor stays steady instead of blinking.
