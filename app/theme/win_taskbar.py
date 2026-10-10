@@ -186,7 +186,7 @@ def marker_blocks(path: Path) -> bool:
             return False
         try:
             text = path.read_text(encoding="utf-8").strip()
-        except OSError:
+        except (OSError, UnicodeError):
             text = None
         if text is not None and text != _app_version():
             logger.info("Removing a taskbar start marker left by version %s", text)
