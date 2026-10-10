@@ -59,6 +59,7 @@ class Book:
 _CRISIS_PDF = ("https://crisis2peace.org/download/download_pdf.php"
                "?file=From-Crisis-to-Peace-English-S-2025-02-12.pdf")
 _LOVE_PRODUCT = "https://smchbooks.com/index.php?route=product/product&product_id=1154"
+_EBOOK_CATEGORY = "https://smchbooks.com/index.php?route=product/category&path=61"
 
 BOOKS: tuple[Book, ...] = (
     Book(
@@ -106,6 +107,25 @@ BOOKS: tuple[Book, ...] = (
             BookLink("Learn more", _LOVE_PRODUCT),
         ),
         official_url=_LOVE_PRODUCT,
+    ),
+    Book(
+        key="more-ebooks",
+        title="More e-books",
+        subtitle="by Supreme Master Ching Hai",
+        author="Supreme Master Ching Hai",
+        summary=(
+            "The eBook section of SMCH Books lists more of her books: aphorisms, celestial art, "
+            "colouring books, illustrated stories and others, many in several languages."
+        ),
+        facts=(
+            "More than 30 e-books",
+            "SMCH Books eBook section",
+        ),
+        cover_url="https://smchbooks.com/image/cache/data/cover-english-celestialart-b-180x180.jpg",
+        links=(
+            BookLink("Browse all e-books", _EBOOK_CATEGORY, primary=True),
+        ),
+        official_url=_EBOOK_CATEGORY,
     ),
 )
 

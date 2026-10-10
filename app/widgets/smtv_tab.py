@@ -484,8 +484,7 @@ class _TabState:
 
         videos = f"{self.total:,} videos" if self.total and not self.query_var.get().strip() \
             and self.program_var.get() == sb.PROGRAMS[0][0] else "Thousands of videos"
-        return (f"On air 24 hours a day, 7 days a week   ·   {len(sb.LANGUAGES)} "
-                f"website languages   ·   {videos}   ·   news, wisdom, arts, animals & vegan living")
+        return f"On air 24/7   ·   {len(sb.LANGUAGES)} languages   ·   {videos}"
 
     def show_program(self, label: str) -> None:
         self.query_var.set("")
