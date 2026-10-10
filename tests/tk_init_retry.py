@@ -18,6 +18,7 @@ hidden. After the last attempt the original error is raised unchanged.
 from __future__ import annotations
 
 import sys
+import time
 from typing import Any, Callable
 
 MAX_TRIES = 3
@@ -69,13 +70,20 @@ def wrap_sv_ttk_load(original: Callable[..., Any]) -> Callable[..., Any]:
     fault as the init.tcl one above; counted and reported the same way.
     """
     def wrapper(style: Any) -> Any:
+        saw_read_fault = False
         for attempt in range(1, MAX_TRIES + 1):
             try:
                 return original(style)
             except Exception as exc:  # noqa: BLE001 - re-raised unless it is the known fault
-                if not is_sv_ttk_read_error(exc) or attempt == MAX_TRIES:
+                # After the read fault, the next attempt on a Windows runner has raised a
+                # TclError with no message at all (CI run 38032814098); same fault, retry it.
+                known = is_sv_ttk_read_error(exc) or (
+                    saw_read_fault and type(exc).__name__ == "TclError" and not str(exc).strip())
+                if not known or attempt == MAX_TRIES:
                     raise
-                first_line = str(exc).splitlines()[0][:120]
+                saw_read_fault = True
+                time.sleep(0.2 * attempt)
+                first_line = (str(exc).splitlines() or ["TclError with no message"])[0][:120]
                 retries.append(first_line)
                 print(f"[tk-init-retry] sv_ttk theme load failed ({first_line}); "
                       f"retry {attempt}/{MAX_TRIES - 1}", file=sys.stderr)

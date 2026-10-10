@@ -263,6 +263,10 @@ def test_a_bad_image_falls_back_to_the_placeholder(built, monkeypatch):
 # --------------------------------------------------------------- scrolling
 
 def test_a_short_window_scrolls_the_panel_a_tall_one_does_not(built, root):
+    if root.winfo_screenheight() < 950:
+        # The window manager clamps a 900 px window to a small screen (the Windows CI
+        # runners have 1024x768), so the "tall" case cannot be shown there.
+        pytest.skip("screen too short for a 900 px window")
     st = built.smtv_state
     try:
         root.geometry("1000x900")

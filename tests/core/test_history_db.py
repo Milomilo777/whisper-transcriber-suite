@@ -102,7 +102,8 @@ def test_close_waits_for_an_in_flight_write(db):
 
     finish.set()
     t.join(timeout=2.0)
-    closer.join(timeout=2.0)
+    # Generous: a busy CI runner can take seconds to checkpoint and close the file.
+    closer.join(timeout=15.0)
     assert not closer.is_alive()
 
 

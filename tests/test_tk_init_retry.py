@@ -95,3 +95,33 @@ def test_non_tcl_errors_are_not_retried():
 
 def test_conftest_wraps_the_real_tk_class():
     assert hasattr(tkinter.Tk.__init__, "__wrapped__")
+
+
+_SV_READ_MSG = 'couldn\'t read file "C:/x/site-packages/sv_ttk/sv.tcl": No error'
+
+
+def _sv_flaky(errors):
+    calls = {"n": 0}
+
+    def original(style):
+        calls["n"] += 1
+        if calls["n"] <= len(errors):
+            raise tkinter.TclError(errors[calls["n"] - 1])
+        return "loaded"
+
+    return original, calls
+
+
+def test_sv_ttk_empty_error_after_the_read_fault_is_retried(monkeypatch):
+    monkeypatch.setattr(r.time, "sleep", lambda _s: None)
+    original, calls = _sv_flaky([_SV_READ_MSG, ""])
+    assert r.wrap_sv_ttk_load(original)(object()) == "loaded"
+    assert calls["n"] == 3
+
+
+def test_sv_ttk_empty_error_alone_is_not_retried(monkeypatch):
+    monkeypatch.setattr(r.time, "sleep", lambda _s: None)
+    original, calls = _sv_flaky([""])
+    with pytest.raises(tkinter.TclError):
+        r.wrap_sv_ttk_load(original)(object())
+    assert calls["n"] == 1
