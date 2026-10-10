@@ -159,9 +159,12 @@ def test_try_sample_reports_a_missing_clip_and_a_copy_failure(monkeypatch):
     from core import sample_clip
 
     fake = _fake_app()
+    missing_shown = MagicMock()
+    monkeypatch.setattr(app_mod, "show_error", missing_shown)
     monkeypatch.setattr(sample_clip, "prepare_working_copy", lambda: None)
     app_mod.App.try_sample_clip(fake)  # type: ignore[arg-type]
     assert fake.queue == [] and "missing" in fake.log.call_args[0][0]
+    missing_shown.assert_called_once()  # the user sees it, not only the log
     fake._ensure_transcribe_ready.assert_not_called()
 
     def boom():
