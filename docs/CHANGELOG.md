@@ -4,6 +4,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-10-10
+
 ### Added
 
 - **Report a problem without a GitHub account** (Help → About → Report a problem…): a short message goes to the project with only the app version and the operating system; Work offline blocks it, and a GitHub link stays for people who have an account.

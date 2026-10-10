@@ -143,6 +143,19 @@ Drop in an audio or video file and the transcript is written next to it. The spe
 no per-minute cost and, once the model is downloaded, no internet connection
 is needed.
 
+## What's new in 2.0
+
+- **Speed and time left:** the Queue tab shows each job's speed and a rough time left.
+- **Subtitled video from a link:** download, transcribe and burn in the subtitles as one job ([docs/SUBTITLED_VIDEO.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SUBTITLED_VIDEO.md)).
+- **Transcript as a web page:** one `.html` file with search and click-to-play that works offline in any browser.
+- **Work offline you can check:** with Work offline on, a status line shows whether the app or a process it started has a network connection.
+- **Translate to English:** non-English speech becomes English subtitles in one pass.
+- **Quick start:** new installs ask three questions, and an 18-second sample clip shows a result at once.
+- **Report a problem** from Help, without a GitHub account.
+- **macOS:** app menu with Settings (Command-comma), Light and Dark that follow the system, notifications. **Windows:** taskbar progress and dark title bars.
+
+Full list: [CHANGELOG](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md).
+
 ## Features
 
 - **Local engines:** [faster-whisper](https://github.com/SYSTRAN/faster-whisper)

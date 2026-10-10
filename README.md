@@ -30,6 +30,19 @@ is needed.
 <img src="docs/img/screenshot-transcribe.png" alt="The Transcribe tab: a drop target, engine and language pickers, speaker-label and word-timestamp options" width="80%">
 </div>
 
+## What's new in 2.0
+
+- **Speed and time left:** the Queue tab shows each job's speed and a rough time left.
+- **Subtitled video from a link:** download, transcribe and burn in the subtitles as one job ([docs/SUBTITLED_VIDEO.md](docs/SUBTITLED_VIDEO.md)).
+- **Transcript as a web page:** one `.html` file with search and click-to-play that works offline in any browser.
+- **Work offline you can check:** with Work offline on, a status line shows whether the app or a process it started has a network connection.
+- **Translate to English:** non-English speech becomes English subtitles in one pass.
+- **Quick start:** new installs ask three questions, and an 18-second sample clip shows a result at once.
+- **Report a problem** from Help, without a GitHub account.
+- **macOS:** app menu with Settings (Command-comma), Light and Dark that follow the system, notifications. **Windows:** taskbar progress and dark title bars.
+
+Full list: [CHANGELOG](docs/CHANGELOG.md).
+
 ## Features
 
 - **Local engines:** [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
@@ -94,7 +107,8 @@ newer installer over the old one; settings are kept.
 release — older versions stay published and their counts are never
 reset):
 
-[![v1.9.3](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.9.3/total?label=v1.9.3&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.3)
+[![v2.0.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v2.0.0/total?label=v2.0.0&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.0.0)
+[![v1.9.3](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.9.3/total?label=v1.9.3&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.3)
 [![v1.9.1](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.9.1/total?label=v1.9.1&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.1)
 [![v1.9.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.9.0/total?label=v1.9.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.0)
 [![v1.8.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.8.0/total?label=v1.8.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.8.0)
