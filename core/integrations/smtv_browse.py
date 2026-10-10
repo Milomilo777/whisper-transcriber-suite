@@ -18,6 +18,7 @@ import urllib.request
 from dataclasses import dataclass, field
 
 from core import offline
+from core.i18n_native_names import NATIVE_NAMES as _NATIVE_NAMES
 
 SITE = "https://suprememastertv.com"
 _UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) WhisperTranscriberSuite"
@@ -34,6 +35,22 @@ LANGUAGES: tuple[tuple[str, str], ...] = (
     ("uk", "Ukrainian"), ("vn", "Vietnamese"),
 )
 _LANG_CODES = {code for code, _ in LANGUAGES}
+#: Each site language in its own language (endonym), as people look for it in a list.
+NATIVE_NAMES: dict[str, str] = _NATIVE_NAMES
+
+
+def language_label(code: str) -> str:
+    """The name shown in the language list: the language's own name."""
+    return NATIVE_NAMES.get(code) or dict(LANGUAGES).get(code, code)
+
+
+def code_for_label(label: str) -> str:
+    """The site code for a shown name (native or English); English when unknown."""
+    for code, english in LANGUAGES:
+        if label in (english, NATIVE_NAMES.get(code)):
+            return code
+    return "en"
+
 
 #: A curated subset of the site's ~60 program filters: (label, type, category).
 PROGRAMS: tuple[tuple[str, str, str], ...] = (

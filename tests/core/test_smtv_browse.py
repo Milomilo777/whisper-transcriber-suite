@@ -93,3 +93,12 @@ def test_search_wraps_network_errors(monkeypatch):
     monkeypatch.setattr(sb.urllib.request, "urlopen", boom)
     with pytest.raises(sb.SmtvBrowseError):
         sb.search("en")
+
+def test_every_site_language_has_its_own_name_and_maps_back():
+    codes = [c for c, _n in sb.LANGUAGES]
+    assert set(sb.NATIVE_NAMES) == set(codes)
+    for code, english in sb.LANGUAGES:
+        assert sb.code_for_label(sb.language_label(code)) == code
+        assert sb.code_for_label(english) == code  # an older saved English name still works
+    assert sb.language_label("fa") == "".join(chr(c) for c in (0x641, 0x627, 0x631, 0x633, 0x6CC))
+    assert sb.code_for_label("Klingon") == "en"

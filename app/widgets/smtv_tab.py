@@ -143,7 +143,7 @@ def build_smtv_tab(app: Any, parent: Any) -> None:
     state.lang_var = tk.StringVar(value="English")
     lang_combo = ttk.Combobox(
         bar, textvariable=state.lang_var, state="readonly", width=20,
-        values=[name for _c, name in sb.LANGUAGES],
+        values=[sb.language_label(c) for c, _n in sb.LANGUAGES],
     )
     lang_combo.grid(row=0, column=3, padx=(0, 8))
     for combo in bar.grid_slaves(row=0):
@@ -314,7 +314,7 @@ class _TabState:
     def _params(self) -> tuple[str, str, str, str]:
         from core.integrations import smtv_browse as sb
 
-        lang = next((c for c, n in sb.LANGUAGES if n == self.lang_var.get()), "en")
+        lang = sb.code_for_label(self.lang_var.get())
         type_, cat = next(
             ((t, c) for label, t, c in sb.PROGRAMS if label == self.program_var.get()),
             ("all", ""),

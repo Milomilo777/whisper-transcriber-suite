@@ -418,6 +418,7 @@ a = Analysis(
         'core._threads',
         'core.integrations',
         'core.integrations.smtv_browse',
+        'core.i18n_native_names',
         'core.live_model',
         'core.optional_deps',
         'core.server.tls',
