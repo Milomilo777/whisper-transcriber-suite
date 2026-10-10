@@ -1579,6 +1579,12 @@ def is_safe_url(url: str) -> bool:
         # Block loopback (127.0.0.0/8, ::1), link-local (169.254/16 incl. the
         # cloud-metadata IP, fe80::/10), unspecified (0.0.0.0, ::), multicast,
         # and reserved. Private RFC-1918 ranges are intentionally allowed.
+        # An IPv4-mapped IPv6 address (::ffff:a.b.c.d) is judged as its IPv4
+        # address: Python before 3.11.10 / 3.12.4 calls every such address
+        # "reserved" (it falls in ::/8), newer versions look at the IPv4 part.
+        mapped = getattr(ip, "ipv4_mapped", None)
+        if mapped is not None:
+            ip = mapped
         return bool(
             ip.is_loopback or ip.is_link_local or ip.is_unspecified
             or ip.is_multicast or ip.is_reserved
