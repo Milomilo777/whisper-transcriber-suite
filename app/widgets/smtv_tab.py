@@ -51,6 +51,7 @@ _HERO_TEXT = tokens.HERO_TEXT
 _HERO_SUB = tokens.HERO_SUB
 _HERO_ACCENT = tokens.HERO_ACCENT      # warm gold
 # Programs shown as buttons in the banner, next to "About the channel".
+_SEARCH_CHARS = 42  # width of the search field, in average characters
 _HERO_PROGRAMS = (
     "Veggie Elite", "Messages From Celebrities", "Cinema Scene", "Golden Age Technology",
     "Ancient Predictions",
@@ -135,29 +136,36 @@ def build_smtv_tab(app: Any, parent: Any) -> None:
     # ── Search bar ─────────────────────────────────────────────────────
     bar = ttk.Frame(parent, padding=(15, 12, 15, 4))
     bar.grid(row=1, column=0, sticky="ew")
-    bar.columnconfigure(1, weight=1)
+    # One compact group, left-aligned: the search field keeps a fixed, readable width with its
+    # button right next to it, then the two filters with their own labels. A field stretched
+    # across a wide window looked unfinished; the space on the right stays empty instead.
+    bar.columnconfigure(7, weight=1)
     ttk.Label(bar, text="Search").grid(row=0, column=0, sticky="w")
     state.query_var = tk.StringVar()
-    entry = ttk.Entry(bar, textvariable=state.query_var)
-    entry.grid(row=0, column=1, sticky="ew", padx=(8, 12))
+    entry = ttk.Entry(bar, textvariable=state.query_var, width=_SEARCH_CHARS)
+    entry.grid(row=0, column=1, sticky="w", padx=(8, 6))
     entry.bind("<Return>", lambda _e: state.new_search())
+    ttk.Button(
+        bar, text="Search", style="Accent.TButton", command=state.new_search,
+    ).grid(row=0, column=2, sticky="w")
+    ttk.Label(bar, text="Program", foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
+        row=0, column=3, sticky="e", padx=(24, 6))
     state.program_var = tk.StringVar(value=sb.PROGRAMS[0][0])
     ttk.Combobox(
-        bar, textvariable=state.program_var, state="readonly", width=30,
+        bar, textvariable=state.program_var, state="readonly", width=28,
         values=[label for label, _t, _c in sb.PROGRAMS],
-    ).grid(row=0, column=2, padx=(0, 8))
+    ).grid(row=0, column=4, sticky="w")
+    ttk.Label(bar, text="Language", foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
+        row=0, column=5, sticky="e", padx=(16, 6))
     state.lang_var = tk.StringVar(value="English")
     lang_combo = ttk.Combobox(
-        bar, textvariable=state.lang_var, state="readonly", width=20,
+        bar, textvariable=state.lang_var, state="readonly", width=18,
         values=[sb.language_label(c) for c, _n in sb.LANGUAGES],
     )
-    lang_combo.grid(row=0, column=3, padx=(0, 8))
+    lang_combo.grid(row=0, column=6, sticky="w")
     for combo in bar.grid_slaves(row=0):
         if isinstance(combo, ttk.Combobox):
             combo.bind("<<ComboboxSelected>>", lambda _e: state.new_search())
-    ttk.Button(
-        bar, text="Search", style="Accent.TButton", command=state.new_search,
-    ).grid(row=0, column=4)
 
     # Program shortcuts and books: each row has its own heading on a line of its own, and the
     # chips start at the left margin (the canvas keeps a few pixels around them for the focus
