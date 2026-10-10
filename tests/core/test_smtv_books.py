@@ -44,10 +44,13 @@ def cache(tmp_path, monkeypatch):
 
 # ------------------------------------------------------------------ data
 
-def test_two_books_with_the_official_titles_and_pages():
+def test_the_books_with_the_official_titles_and_pages():
     assert [b.title for b in sb.BOOKS] == [
-        "From Crisis to Peace", "Love Is The Only Solution"]
-    crisis, love = sb.BOOKS
+        "From Crisis to Peace", "Love Is The Only Solution", "More e-books"]
+    crisis, love, more = sb.BOOKS
+    assert more.official_url == (
+        "https://smchbooks.com/index.php?route=product/category&path=61")
+    assert [link.url for link in more.links] == [more.official_url]
     assert crisis.subtitle == "The Organic Vegan Way is the Answer"
     assert love.subtitle == ""
     assert crisis.official_url == "https://crisis2peace.org/"
@@ -70,7 +73,7 @@ def test_every_link_and_cover_is_https_on_an_official_host():
 
 
 def test_free_pdf_links_point_at_the_english_files():
-    crisis, love = sb.BOOKS
+    crisis, love, _more = sb.BOOKS
     assert any(link.url.endswith("From-Crisis-to-Peace-English-S-2025-02-12.pdf")
                for link in crisis.links)
     assert any(link.url == "https://smchbooks.com/ebook/data/english/E-LoveistheOnly.pdf"

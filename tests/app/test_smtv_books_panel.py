@@ -17,7 +17,7 @@ from core.integrations import smtv_browse as sb
 tk = pytest.importorskip("tkinter")
 from tkinter import ttk  # noqa: E402
 
-CRISIS, LOVE = smtv_books.BOOKS
+CRISIS, LOVE, MORE = smtv_books.BOOKS
 
 
 @pytest.fixture(scope="module")
