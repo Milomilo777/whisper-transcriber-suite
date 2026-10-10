@@ -1,6 +1,7 @@
 """Task models for the queues."""
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -106,7 +107,7 @@ class VideoDownloadTask:
             return None
 
         def _fmt(seconds: float | None, *, fallback: str) -> str:
-            if seconds is None:
+            if seconds is None or not math.isfinite(seconds):
                 return fallback
             total = int(seconds)
             hours, rem = divmod(total, 3600)

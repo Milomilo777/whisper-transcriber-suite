@@ -18,6 +18,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   visible (the message only went to the log).
 - **A damaged Windows taskbar start marker no longer causes repeated failures**: an unreadable marker now
   keeps the taskbar integration off with one log line, as intended.
+- **On macOS the transcript of a task is found again when the file name uses decomposed accents**: the
+  media name and the output name are compared in the same Unicode form.
 - **No warning about a missing settings file on the first start.** "config.json not found" is
   normal on a fresh install; it is now logged once, as information, instead of as a warning on
   every settings read.

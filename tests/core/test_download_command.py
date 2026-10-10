@@ -600,3 +600,9 @@ def test_video_download_task_paused_defaults_false():
     )
     assert t.paused is False
     assert t.cancelled is False
+
+def test_time_range_badge_inf():
+    from app.services.download_service import _time_range_badge
+    # time_range_badge takes start, end
+    assert _time_range_badge(float('inf'), float('nan')) == "start -> end"
+

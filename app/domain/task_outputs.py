@@ -9,6 +9,7 @@ fallback for tasks without one (older history rows).
 from __future__ import annotations
 
 import os
+import unicodedata
 from typing import Any
 
 
@@ -47,8 +48,10 @@ def pick_transcript_json(
     ]
     if source_path:
         want = os.path.splitext(os.path.basename(source_path))[0].lower() + ".json"
+        want_norm = unicodedata.normalize("NFC", want)
         for p in found:
-            if os.path.basename(p).lower() == want:
+            p_norm = unicodedata.normalize("NFC", os.path.basename(p).lower())
+            if p_norm == want_norm:
                 return p
     return next((p for p in found if not is_sidecar_json(p)), None)
 

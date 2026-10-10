@@ -295,7 +295,7 @@ def _time_range_badge(
         return None
 
     def _fmt(seconds: float | None, *, fallback: str) -> str:
-        if seconds is None:
+        if seconds is None or not math.isfinite(seconds):
             return fallback
         total = int(seconds)
         hours, rem = divmod(total, 3600)
