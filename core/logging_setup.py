@@ -235,17 +235,21 @@ def get_ui_logger() -> logging.Logger:
     return logging.getLogger(UI_LOGGER_NAME)
 
 
-def open_log_folder():
+def open_log_folder() -> Path | None:
     """Open the platformdirs log directory in the OS file manager."""
     import os
     import subprocess
 
     folder = user_log_dir()
     folder.mkdir(parents=True, exist_ok=True)
-    if os.name == "nt":
-        os.startfile(str(folder))  # type: ignore[attr-defined]
-    elif sys.platform == "darwin":
-        subprocess.run(["open", str(folder)], stdin=subprocess.DEVNULL, check=False)
-    else:
-        subprocess.run(["xdg-open", str(folder)], stdin=subprocess.DEVNULL, check=False)
+    try:
+        if os.name == "nt":
+            os.startfile(str(folder))  # type: ignore[attr-defined]
+        elif sys.platform == "darwin":
+            subprocess.run(["open", str(folder)], stdin=subprocess.DEVNULL, check=False)
+        else:
+            subprocess.run(["xdg-open", str(folder)], stdin=subprocess.DEVNULL, check=False)
+    except OSError:
+        logging.getLogger(__name__).warning("Failed to open log folder %s", folder, exc_info=True)
+        return None
     return folder

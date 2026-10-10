@@ -114,7 +114,12 @@ def emit(event: str, **payload: Any) -> None:
     try:
         line = json.dumps(payload)
     except (TypeError, ValueError) as e:
-        safe = {k: repr(v) for k, v in payload.items()}
+        safe = {}
+        for k, v in payload.items():
+            try:
+                safe[k] = repr(v)
+            except Exception as repr_e:  # noqa: BLE001 -- fallback is robust against completely broken objects
+                safe[k] = f"<unrepresentable: {type(repr_e).__name__}>"
         safe["event"] = event
         safe["_emit_warning"] = f"payload not JSON-serialisable: {e}"
         line = json.dumps(safe)

@@ -2308,7 +2308,10 @@ class App(tk.Tk):
 
     def open_log_folder(self) -> None:
         path = open_log_folder()
-        logger.info("Opened log folder: %s", path)
+        if path:
+            logger.info("Opened log folder: %s", path)
+        else:
+            logger.warning("Could not open the log folder")
 
     def _restyle(self, name: str) -> None:
         """Draw the app, its open dialogs and (Windows) their title bars in theme ``name``."""

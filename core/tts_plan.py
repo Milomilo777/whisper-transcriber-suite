@@ -441,7 +441,12 @@ def check_disk(est: Estimate, folder: "str | os.PathLike[str] | None" = None,
     probe = target
     while not probe.exists() and probe.parent != probe:
         probe = probe.parent
-    return DiskCheck(folder=str(target), free_bytes=free_bytes(probe),
+    try:
+        f_bytes = free_bytes(probe)
+    except OSError:
+        logger.warning("Failed to check free disk space at %s", probe, exc_info=True)
+        f_bytes = 0
+    return DiskCheck(folder=str(target), free_bytes=f_bytes,
                      need_bytes=est.size_high if need_bytes is None else int(need_bytes),
                      margin_bytes=DISK_MARGIN_BYTES)
 

@@ -29,6 +29,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   shortcuts and links between docs in step with the code.
 - **On macOS, files moved into a watched folder are no longer ignored** when the folder and the file path
   use different Unicode forms for accented letters.
+- **Opening the log folder no longer reports success when the file manager could not start**; it logs a
+  warning instead. The Text to Voice free-space check also logs a warning when the drive cannot be read.
 - **No warning about a missing settings file on the first start.** "config.json not found" is
   normal on a fresh install; it is now logged once, as information, instead of as a warning on
   every settings read.
