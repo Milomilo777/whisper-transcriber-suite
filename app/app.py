@@ -3892,6 +3892,10 @@ class App(tk.Tk):
             return
         if path is None:
             self.log("The sample clip is missing from this install.")
+            show_error(
+                self, "Sample clip missing",
+                "The sample clip could not be found in this install."
+            )
             return
         if any(
             t.file_path == path and t.status in ("waiting", "running", "paused")
