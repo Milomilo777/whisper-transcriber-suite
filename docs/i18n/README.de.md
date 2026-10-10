@@ -72,7 +72,7 @@ Alles Nötige ist enthalten — ein mitgeliefertes Python, `ffmpeg`, `ffprobe` u
 | **Sprechertrennung** | Optionales „Sprecher erkennen“, dazu wortgenaue Zeitstempel und Zeitbereichs-Zuschnitt. |
 | **Adaptive Rauschreduktion** | Misst jede Aufnahme zuerst und bereinigt nur, wenn die Messung das nahelegt; prüft das eigene Ergebnis und verwirft es, wenn Sprache entfernt wurde. |
 | **Stapelverarbeitung** | Live-Status für jeden wartenden und laufenden Auftrag, mit **Pause / Fortsetzen / Abbrechen / Erneut / Entfernen** stets einen Klick entfernt. |
-| **Downloads** | Alles, was `yt-dlp` beherrscht, dazu Supreme-Master-TV-Folgenlinks. Downloads werden fortgesetzt statt neu begonnen. |
+| **Downloads** | Alles, was `yt-dlp` beherrscht. Downloads werden fortgesetzt statt neu begonnen. |
 | **Lokaler Netzwerkmodus** | Ein Webserver nur aus der Standardbibliothek, damit andere Geräte über diesen Rechner transkribieren — optionales Passwort, aus bis Sie ihn starten. |
 
 ## Funktionsweise

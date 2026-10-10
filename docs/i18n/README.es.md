@@ -72,7 +72,7 @@ Todo lo necesario va incluido: un Python integrado, `ffmpeg`, `ffprobe` y `yt-dl
 | **Diarización de hablantes** | «Identificar hablantes» opcional, además de marcas de tiempo por palabra y recorte por intervalos. |
 | **Reducción de ruido adaptativa** | Mide cada grabación antes de actuar y solo la limpia cuando la medición lo justifica; comprueba su propio resultado y lo descarta si ha eliminado voz. |
 | **Cola por lotes** | Estado en vivo de cada trabajo pendiente y en curso, con **Pausar / Reanudar / Cancelar / Repetir / Quitar** siempre a un clic. |
-| **Descargas** | Todo lo que maneja `yt-dlp`, más los enlaces de episodios de Supreme Master TV. Las descargas se reanudan en lugar de reiniciarse. |
+| **Descargas** | Todo lo que maneja `yt-dlp`. Las descargas se reanudan en lugar de reiniciarse. |
 | **Modo de red local** | Un servidor web hecho solo con la biblioteca estándar para que otros dispositivos transcriban a través de este equipo — contraseña opcional, apagado hasta que usted lo inicie. |
 
 ## Cómo funciona

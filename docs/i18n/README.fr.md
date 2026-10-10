@@ -72,7 +72,7 @@ Tout le nécessaire est inclus : un Python embarqué, `ffmpeg`, `ffprobe` et `yt
 | **Diarisation des locuteurs** | « Identifier les locuteurs » en option, plus l'horodatage par mot et la découpe par intervalle. |
 | **Débruitage adaptatif** | Mesure chaque enregistrement d'abord et ne le nettoie que si la mesure le justifie ; vérifie son propre résultat et l'abandonne s'il a supprimé de la parole. |
 | **File de traitement** | État en direct de chaque tâche en attente ou en cours, avec **Pause / Reprendre / Annuler / Relancer / Retirer** toujours à un clic. |
-| **Téléchargements** | Tout ce que `yt-dlp` sait faire, plus les liens d'épisodes Supreme Master TV. Les téléchargements reprennent au lieu de recommencer. |
+| **Téléchargements** | Tout ce que `yt-dlp` sait faire. Les téléchargements reprennent au lieu de recommencer. |
 | **Mode réseau local** | Un serveur web fait uniquement avec la bibliothèque standard, pour que d'autres appareils transcrivent via cette machine — mot de passe facultatif, éteint tant que vous ne le démarrez pas. |
 
 ## Fonctionnement

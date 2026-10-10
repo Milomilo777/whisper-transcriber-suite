@@ -6,7 +6,6 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
-- **Two books in the Supreme Master TV tab.** A "Books" row under the program chips opens a showcase panel for *From Crisis to Peace* and *Love Is The Only Solution*: cover, short description and buttons that open the official free e-book pages in the browser. The cover downloads once into the cache folder; Work offline shows a placeholder instead.
 - **Report a problem without a GitHub account** (Help → About → Report a problem…): a short message goes to the project with only the app version and the operating system; Work offline blocks it, and a GitHub link stays for people who have an account.
 - **Windows taskbar progress, job badge and flash.** The app's taskbar button shows a progress bar
   while a job runs (yellow when paused; red after a failure, for at least 5 seconds and then until
@@ -125,7 +124,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   regenerates the set (PyMuPDF, development only).
 - **Sharp text at 125% and 150% display scaling on Windows.** The app now declares per-monitor DPI
   awareness before its first window opens (with fallbacks for older Windows), so Windows no longer
-  stretches a blurry bitmap. Window minimum sizes, the Supreme Master TV banner and the Live tab
+  stretches a blurry bitmap. Window minimum sizes, banners and the Live tab
   level display scale with the display; the sizes stay inside small screens. macOS and Linux are unchanged.
 - **An empty Transcribe tab says what to do, and About moved under Help.** While nothing is queued
   the tab shows one block: "Drop a file here, paste a link, or try the sample" (it names only what
@@ -221,9 +220,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
-- **Supreme Master TV tab: the program menus are easier to see.** Program chips now have a tinted fill, a clear border, semibold text and a check mark when selected; "Browse programs" and "Books" are headings on their own line with a divider below; "+N more" became a plain "All programs" / "Show less" control; the banner buttons (About the channel first) are translucent pills under a "FEATURED PROGRAMS" label, with a gold hover border and focus ring.
-- **Help → About links to this project's repository and has a "Report a problem" button** that opens a new GitHub issue with the app version and system filled in; translation-robot is named as co-author.
-- **Supreme Master TV tab: 24 programs as rounded Explore chips**, including Veggie Elite, Make Peace, Cinema Scene, Golden Age Technology and Climate Change; the banner keeps only "About the channel" and the video cards no longer have a Transcribe button.
+- **Help → About links to this project's repository and has a "Report a problem" button**; translation-robot is named as co-author.
 - **Update notice: major releases and a monthly reminder.** A release whose first version number is
   higher (2.x to 3.0) is announced as "Version 3.0 is here: a major new release", and What's new
   lists up to five highlights instead of three. After Later's 3, 7 and 14 days the bar comes back
@@ -358,12 +355,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
-- **Supreme Master TV tab: a blank band above the first video no longer grows with every search.** The line under each video card was left behind when the results were cleared.
 - **macOS 10.15: PDF export and the menu-bar icon work again.** The app bundled two versions of one compression library and older macOS loaded the wrong one for the image library.
 - **macOS: opening several files at once from Finder (Open With) adds them all to the queue together.** Before, only the last of them ended up selected.
 - **On macOS, the app no longer uses a third of a CPU core while a text box has the focus.** The text cursor stays steady instead of blinking.
 - **On macOS, quiet notices no longer appear as an empty bar** at the bottom of the window.
-- **Closing the app now also stops the SMTV tab's background search workers**, and a crash in an SMTV search is written to the log instead of vanishing.
+- **Closing the app now also stops background search workers**, and a crash in a search is written to the log instead of vanishing.
 - **An interrupted yt-dlp self-update or version check no longer leaves yt-dlp running.** Its process tree is now ended before the error is passed on.
 - **A URL job in the local API no longer leaves yt-dlp running when its wait is interrupted.** The download process is now stopped whenever the wait ends early.
 - **A broken character in a transcript no longer loses an export format or the unsaved Live text.** A
@@ -1103,7 +1099,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   `platform/windows/build-deps.json` and the source offer in `platform/ffmpeg-source.json` now name
   the gyan.dev 9.0.2 essentials build (same GPL configuration) and the official 9.0.2 source.
 - **Dependency floors match what ships.** `Pillow` now needs 12.3.0 or newer (35 published advisories
-  hit the old 10.0 floor; the SMTV tab opens image bytes from a remote site), `numpy` is declared
+  hit the old 10.0 floor; the app opens image bytes from remote sites), `numpy` is declared
   (`>=1.26,<3`, it is imported directly), and `tokenizers` and `pywhispercpp` are listed in
   `pyproject.toml` the way `requirements.txt` and the installers already had them. A test keeps the
   two files and the macOS constraints in step.

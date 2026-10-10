@@ -33,7 +33,7 @@ fits into one of five buckets.
 - [WORK_OFFLINE.md](WORK_OFFLINE.md) — Work offline: the status line, the Network log, Verify offline now, and how to check the app yourself
 - [SAMPLE_CLIP.md](SAMPLE_CLIP.md) — the bundled "Try it now" sample clip: source, licence, speaker credit
 - [COMPARISON.md](COMPARISON.md) — sourced comparison with similar apps
-- [integrations/](integrations/) — third-party service integrations (SMTV, oTranscribe)
+- [integrations/](integrations/) — third-party service integrations
 - [evaluations/](evaluations/) — model / backend evaluation writeups
 - [tutorial/](tutorial/) — end-user install-and-use walkthrough
 

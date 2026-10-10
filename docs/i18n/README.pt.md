@@ -72,7 +72,7 @@ Está tudo incluído — um Python integrado, `ffmpeg`, `ffprobe` e `yt-dlp`. A 
 | **Diarização de oradores** | «Identificar oradores» opcional, mais marcação de tempo por palavra e corte por intervalo. |
 | **Redução de ruído adaptativa** | Mede cada gravação primeiro e só a limpa quando a medição o justifica; verifica o próprio resultado e descarta-o se tiver removido voz. |
 | **Fila de processamento** | Estado em direto de cada trabalho pendente e em curso, com **Pausar / Retomar / Cancelar / Repetir / Remover** sempre a um clique. |
-| **Descargas** | Tudo o que o `yt-dlp` consegue, mais ligações de episódios da Supreme Master TV. As descargas retomam em vez de recomeçar. |
+| **Descargas** | Tudo o que o `yt-dlp` consegue. As descargas retomam em vez de recomeçar. |
 | **Modo de rede local** | Um servidor web feito só com a biblioteca padrão, para que outros dispositivos transcrevam através desta máquina — palavra-passe opcional, desligado até o iniciar. |
 
 ## Como funciona
