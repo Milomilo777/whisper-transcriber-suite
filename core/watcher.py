@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import threading
+import unicodedata
 from typing import Any, Callable
 
 from .burn_subs import is_burn_temp, is_own_output, is_reserved
@@ -106,6 +107,9 @@ def _is_inside(folder: str, path: bytes | str) -> bool:
         path = path.decode("utf-8", "replace")
     if not path:
         return False
+    # macOS can report an NFD path for a folder stored in NFC (or the reverse).
+    folder = unicodedata.normalize("NFC", folder)
+    path = unicodedata.normalize("NFC", path)
     try:
         rel = os.path.relpath(os.path.abspath(path), os.path.abspath(folder))
     except (OSError, ValueError):  # e.g. different drive on Windows

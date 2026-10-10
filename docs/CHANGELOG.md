@@ -27,6 +27,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Docs:** the configuration reference lists every output format, and the install guide names the
   transcript viewer's Ctrl+F (find and replace) and Ctrl+S (save); new tests keep CLI flags, formats,
   shortcuts and links between docs in step with the code.
+- **On macOS, files moved into a watched folder are no longer ignored** when the folder and the file path
+  use different Unicode forms for accented letters.
 - **No warning about a missing settings file on the first start.** "config.json not found" is
   normal on a fresh install; it is now logged once, as information, instead of as a warning on
   every settings read.
