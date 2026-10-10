@@ -86,6 +86,8 @@ Keep these in every clone; they protect users and release history.
 
 - `master` is the single mainline. No force-push or history rewrite on it without an explicit
   maintainer request. The `archive/*` tags preserve old branch tips; keep them.
+- A branch merged into `master` is deleted right after the merge is pushed (its worktree too, once it holds no
+  uncommitted work); no `archive/*` or other tag is created for it.
 - Releases need the maintainer's explicit go-ahead every time: version bump, release build,
   `git tag`, `gh release create` and `gh release edit`. A broad "fix things" mandate is not that
   go-ahead. Batch several fixes into one release rather than releasing for every change.
