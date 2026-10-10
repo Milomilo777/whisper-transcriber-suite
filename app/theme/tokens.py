@@ -52,6 +52,22 @@ HERO_SUB = "#bae6fd"
 HERO_ACCENT = "#fde68a"   # warm gold
 THUMB_BG = "#1e293b"
 PROGRAM_ACCENT = "#0891b2"
+# Rounded program chips (app/widgets/chip_cloud.py): one palette per theme, drawn on a Canvas,
+# so they are read at draw time instead of being swapped by theme_colours.
+CHIP_PALETTES = {
+    "light": {
+        "normal_bg": "#eef2f4", "normal_fg": "#1f2937",
+        "hover_bg": "#dfe8eb", "hover_fg": "#0f172a",
+        "selected_bg": "#207a80", "selected_fg": "#ffffff",
+        "toggle_fg": "#1b666b", "ring": "#207a80",
+    },
+    "dark": {
+        "normal_bg": "#2d3238", "normal_fg": "#e5e7eb",
+        "hover_bg": "#3a4149", "hover_fg": "#ffffff",
+        "selected_bg": "#207a80", "selected_fg": "#ffffff",
+        "toggle_fg": "#6fd3da", "ring": "#4fd1db",
+    },
+}
 
 # ------------------------------------------------------- theme-dependent colours
 LIGHT = {

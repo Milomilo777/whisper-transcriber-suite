@@ -29,20 +29,7 @@ GAP = 8
 RING = 2
 MARGIN = RING + 2  # room around the chips for the focus ring
 
-PALETTES = {
-    "light": {
-        "normal_bg": "#eef2f4", "normal_fg": "#1f2937",
-        "hover_bg": "#dfe8eb", "hover_fg": "#0f172a",
-        "selected_bg": "#207a80", "selected_fg": "#ffffff",
-        "toggle_fg": "#1b666b", "ring": "#207a80",
-    },
-    "dark": {
-        "normal_bg": "#2d3238", "normal_fg": "#e5e7eb",
-        "hover_bg": "#3a4149", "hover_fg": "#ffffff",
-        "selected_bg": "#207a80", "selected_fg": "#ffffff",
-        "toggle_fg": "#6fd3da", "ring": "#4fd1db",
-    },
-}
+PALETTES = tokens.CHIP_PALETTES
 
 
 @dataclass
