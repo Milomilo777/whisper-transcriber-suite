@@ -9,7 +9,7 @@ from queue import Empty, Queue
 from tkinter import messagebox, ttk
 from typing import Any
 
-from app.dpi import px
+from app.dpi import place_over, px
 from core.config import load_config, save_config
 from core.model_manager import (
     DownloadCancelled,
@@ -100,10 +100,13 @@ class ModelDownloadDialog(tk.Toplevel):
         body.columnconfigure(0, weight=1)
         body.columnconfigure(1, weight=1)
 
-        self.update_idletasks()
-        x = master.winfo_rootx() + (master.winfo_width() - self.winfo_width()) // 2
-        y = master.winfo_rooty() + (master.winfo_height() - self.winfo_height()) // 2
-        self.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+        if sys.platform == "win32":
+            place_over(self, master)
+        else:
+            self.update_idletasks()
+            x = master.winfo_rootx() + (master.winfo_width() - self.winfo_width()) // 2
+            y = master.winfo_rooty() + (master.winfo_height() - self.winfo_height()) // 2
+            self.geometry(f"+{max(x, 0)}+{max(y, 0)}")
 
         self._start_worker()
         self.after(100, self._poll)

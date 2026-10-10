@@ -136,6 +136,10 @@ class _MonitorInfo(ctypes.Structure):
                 ("rcWork", _Rect), ("dwFlags", ctypes.c_ulong)]
 
 
+class _Point(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+
+
 _MONITOR_DEFAULTTONEAREST = 2
 
 
@@ -149,12 +153,25 @@ def _windows_work_area(widget: Any) -> tuple[int, int, int, int] | None:
         master = getattr(widget, "master", None)
         if master is not None and not widget.winfo_ismapped():
             widget = master.winfo_toplevel()
-        hwnd = int(widget.winfo_id())
         user32 = ctypes.windll.user32  # type: ignore[attr-defined]
-        user32.MonitorFromWindow.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
-        user32.MonitorFromWindow.restype = ctypes.c_void_p
         user32.GetMonitorInfoW.argtypes = [ctypes.c_void_p, ctypes.POINTER(_MonitorInfo)]
-        monitor = user32.MonitorFromWindow(ctypes.c_void_p(hwnd), _MONITOR_DEFAULTTONEAREST)
+        top = widget.winfo_toplevel()
+        if top.state() == "iconic":
+            # A minimised window sits at (-32000, -32000), nearest to whichever monitor is
+            # leftmost; its restored place is still in geometry().
+            size, _sep, pos = top.wm_geometry().partition("+")
+            width, height = (int(n) for n in size.split("x"))
+            left, top_y = (int(n) for n in pos.split("+"))
+            user32.MonitorFromPoint.argtypes = [_Point, ctypes.c_ulong]
+            user32.MonitorFromPoint.restype = ctypes.c_void_p
+            monitor = user32.MonitorFromPoint(
+                _Point(left + width // 2, top_y + height // 2), _MONITOR_DEFAULTTONEAREST,
+            )
+        else:
+            hwnd = int(widget.winfo_id())
+            user32.MonitorFromWindow.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+            user32.MonitorFromWindow.restype = ctypes.c_void_p
+            monitor = user32.MonitorFromWindow(ctypes.c_void_p(hwnd), _MONITOR_DEFAULTTONEAREST)
         info = _MonitorInfo()
         info.cbSize = ctypes.sizeof(_MonitorInfo)
         if not monitor or not user32.GetMonitorInfoW(monitor, ctypes.byref(info)):
@@ -227,3 +244,85 @@ def scaled_size(widget: Any, width: int, height: int) -> tuple[int, int]:
     """
     factor = scale_factor(widget)
     return fit_size(widget, int(round(width * factor)), int(round(height * factor)))
+
+
+# Height of a Windows title bar at 96 dpi; geometry() places the frame, the size is the client's.
+_TITLE_BAR = 32
+
+
+def centred_position(
+    parent: tuple[int, int, int, int] | None,
+    size: tuple[int, int],
+    area: tuple[int, int, int, int],
+    title: int = 0,
+) -> tuple[int, int]:
+    """Top-left corner for a window of ``size`` over the middle of ``parent``, kept in ``area``.
+
+    ``parent`` and ``area`` are ``(x, y, width, height)``; with no parent the window goes in the
+    middle of ``area``. ``title`` is the title bar's height, which comes on top of ``size``.
+    A window larger than ``area`` keeps its top-left corner in it, so the title bar stays
+    reachable. Coordinates may be negative (a monitor left of or above the primary one).
+    """
+    width, height = size[0], size[1] + title
+    area_x, area_y, area_w, area_h = area
+    box_x, box_y, box_w, box_h = parent if parent is not None else area
+    x = box_x + (box_w - width) // 2
+    y = box_y + (box_h - height) // 2
+    x = max(area_x, min(x, area_x + area_w - width))
+    y = max(area_y, min(y, area_y + area_h - height))
+    return x, y
+
+
+def place_over(
+    window: Any, master: Any, width: int | None = None, height: int | None = None,
+) -> None:
+    """Windows: show the new Toplevel ``window`` over the middle of ``master``'s window.
+
+    Tk on Windows opens a Toplevel that was made transient() before it is shown at (0, 0),
+    where a taskbar docked at the top of the screen covers its title bar. Call this once the
+    window's content is built, or pass the size it was given. Without a size the window is
+    hidden while Tk works out the size its content asks for, so it never flashes at (0, 0).
+    The window is kept inside the work area of ``master``'s monitor. Elsewhere the window
+    manager places new windows itself (macOS: ``app.mac_native.centre_over``).
+    """
+    if sys.platform != "win32":
+        return
+    import tkinter as tk
+
+    from app import mac_native
+
+    if mac_native.is_aqua(window):  # placed by mac_native.centre_over
+        return
+    hidden = False
+    try:
+        if width is None or height is None:
+            if not window.winfo_ismapped() and window.state() == "normal":
+                window.withdraw()
+                hidden = True
+            window.update_idletasks()
+        size = (
+            width if width is not None else max(window.winfo_width(), window.winfo_reqwidth()),
+            height if height is not None else max(window.winfo_height(), window.winfo_reqheight()),
+        )
+        parent = None
+        top = master.winfo_toplevel()
+        if top.winfo_viewable() and top.state() != "iconic":
+            parent = (top.winfo_rootx(), top.winfo_rooty(), top.winfo_width(), top.winfo_height())
+        area_x, area_y, area_w, area_h, _exact = work_area(window)
+        if area_w <= 0 or area_h <= 0:
+            area_x, area_y = 0, 0
+            area_w, area_h = window.winfo_screenwidth(), window.winfo_screenheight()
+        x, y = centred_position(
+            parent, size, (area_x, area_y, area_w, area_h),
+            scaled(window, _TITLE_BAR),
+        )
+        # "+-800" is a left edge at -800; "-800" would mean 800 px from the right edge.
+        window.geometry(f"+{x}+{y}")
+    except tk.TclError:
+        logger.debug("Window not placed over its parent", exc_info=True)
+    finally:
+        if hidden:
+            try:
+                window.deiconify()
+            except tk.TclError:
+                logger.debug("Window not shown again after placing it", exc_info=True)

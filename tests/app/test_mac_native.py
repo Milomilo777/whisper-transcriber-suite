@@ -12,6 +12,7 @@ events reaching ``::tk::mac::OpenDocument``) is proved by
 """
 from __future__ import annotations
 
+import sys
 import time
 import tkinter as tk
 import types
@@ -1568,7 +1569,12 @@ def test_the_viewer_is_left_to_the_system_off_macos(
 ) -> None:
     viewer, seen = _viewer_over_a_1280x800_mac(host, monkeypatch, tmp_path)
     try:
-        assert len(seen) == 1 and seen[0].count("+") == 0   # a size only, no position
+        assert seen[0].count("+") == 0                      # the size, with no macOS position
+        if sys.platform == "win32":
+            # Issue #8: Windows opened it at (0, 0); it is placed over the main window instead.
+            assert len(seen) == 2 and seen[1].startswith("+")
+        else:
+            assert len(seen) == 1
         assert viewer.minsize() == (1180, 660)              # the old floor: the launch size
     finally:
         viewer._dirty = False

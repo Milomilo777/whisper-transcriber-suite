@@ -41,7 +41,7 @@ from app.services.transcription_service import (
     TranscriptionService,
 )
 from app.dialogs.statistics import show_statistics as _show_stats
-from app.dpi import px, remember_scale, scaled_size, work_area
+from app.dpi import place_over, px, remember_scale, scaled_size, work_area
 from app.dpi import scaled as dpi_scaled
 from app.widgets.console import apply_console_theme, build_console, insert_log_line
 from app.widgets.error_dialog import show_error
@@ -2033,6 +2033,7 @@ class App(tk.Tk):
         about_w, about_h = scaled_size(dlg, 680, 620)
         dlg.geometry("%dx%d" % (about_w, about_h))
         mac_native.centre_over(dlg, self, about_w, about_h)
+        place_over(dlg, self, about_w, about_h)
         dlg.minsize(*scaled_size(dlg, 560, 480))
 
         header = ttk.Frame(dlg, padding=(16, 14, 16, 8))
@@ -2300,6 +2301,7 @@ class App(tk.Tk):
         dlg.protocol("WM_DELETE_WINDOW", _cancel)
         dlg.bind("<Return>", lambda _e: _ok())
         dlg.bind("<Escape>", lambda _e: _cancel())
+        place_over(dlg, self)
         dlg.grab_set()
         self.wait_window(dlg)
         return result["fmt"]
@@ -3772,6 +3774,7 @@ class App(tk.Tk):
         cancel_btn = ttk.Button(win, text="Cancel", command=_request_cancel)
         cancel_btn.pack(pady=(0, 14))
         win.protocol("WM_DELETE_WINDOW", _request_cancel)
+        place_over(win, self)
 
         def _work() -> None:
             # self.log writes the Tk text widget directly; this runs off

@@ -14,7 +14,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import Any
 
-from app.dpi import px
+from app.dpi import place_over, px
 from app.theme import tokens
 from app.widgets.platform import open_async
 from core.paths import same_file
@@ -109,6 +109,7 @@ def ask_options(master: "tk.Misc", *, media_path: str | None) -> tuple[str, bool
         side="right", padx=(0, 8)
     )
     dialog.protocol("WM_DELETE_WINDOW", lambda: pick(None))
+    place_over(dialog, master)
     dialog.update_idletasks()
     try:
         dialog.grab_set()

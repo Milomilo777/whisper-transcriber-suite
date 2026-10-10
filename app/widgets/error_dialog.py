@@ -143,10 +143,10 @@ def show_error(
         if 0 <= parent.winfo_rootx() < screen_w and 0 <= parent.winfo_rooty() < screen_h:
             x = max(x, 0)
             y = max(y, 0)
-        # Explicit sign (no literal "+"): Tk's geometry parser reads
-        # "+-500" as "500px from the right edge", not "-500 from the
-        # left" -- a real trap once x/y can legitimately be negative.
-        top.wm_geometry(f"{x:+d}{y:+d}")
+        # Always a literal "+": Tk reads "+-500" as a left edge at -500,
+        # while "-500" means 500 px from the right edge -- a real trap
+        # once x/y can legitimately be negative.
+        top.wm_geometry(f"+{x}+{y}")
     except tk.TclError:
         pass
     try:

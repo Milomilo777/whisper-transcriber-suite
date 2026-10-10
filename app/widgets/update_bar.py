@@ -20,7 +20,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Callable
 
-from app.dpi import px
+from app.dpi import place_over, px
 
 _WRAP_MIN = 220
 _WINDOW_WRAP = 460
@@ -209,6 +209,7 @@ def show_whats_new(
     buttons.pack(fill="x", pady=(14, 0))
     ttk.Button(buttons, text="Full release notes", command=on_full_notes).pack(side="left")
     ttk.Button(buttons, text="Close", command=top.destroy).pack(side="right")
+    place_over(top, parent)
     return top
 
 
@@ -241,4 +242,5 @@ def show_update_command(parent: tk.Misc, *, version: str, command: str) -> tk.To
     ttk.Button(buttons, text="Copy", command=_copy).pack(side="left")
     ttk.Label(buttons, textvariable=status).pack(side="left", padx=(8, 0))
     ttk.Button(buttons, text="Close", command=top.destroy).pack(side="right")
+    place_over(top, parent)
     return top

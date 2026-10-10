@@ -11,11 +11,12 @@ by the Transcribe tab before a file is queued.
 """
 from __future__ import annotations
 
+import sys
 import tkinter as tk
 from dataclasses import dataclass
 from tkinter import ttk
 
-from app.dpi import px
+from app.dpi import place_over, px
 from app.theme import tokens
 
 CHOICE_SWITCH = "switch"
@@ -60,6 +61,9 @@ class EnglishOnlyPrompt:
 
 def _centre_over(dialog: tk.Toplevel, master: "tk.Misc") -> None:
     """Put ``dialog`` over the middle of ``master``'s window, if that is shown."""
+    if sys.platform == "win32":
+        place_over(dialog, master)
+        return
     try:
         top = master.winfo_toplevel()
         if not top.winfo_ismapped():

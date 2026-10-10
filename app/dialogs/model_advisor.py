@@ -15,7 +15,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
-from app.dpi import px
+from app.dpi import place_over, px
 from app.theme import tokens
 from core import hardware as _hw
 from core import offline
@@ -79,6 +79,7 @@ class ModelAdvisorDialog(tk.Toplevel):
         self.picks_frame = ttk.Frame(body)
         self.picks_frame.pack(fill="x")
         ttk.Button(body, text="Close", command=self.destroy).pack(anchor="e", pady=(12, 0))
+        place_over(self, master)
 
         self._thread = threading.Thread(target=self._check, daemon=True)
         self._thread.start()

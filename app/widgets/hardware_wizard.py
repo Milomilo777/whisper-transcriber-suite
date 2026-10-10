@@ -36,7 +36,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Callable, Optional
 
-from app.dpi import px
+from app.dpi import place_over, px
 from app.theme import tokens
 from app.widgets.error_dialog import show_error
 from core import hardware as _hw
@@ -101,6 +101,7 @@ class HardwareWizard(tk.Toplevel):
         self._selecting: bool = False
 
         self._build()
+        place_over(self, master)
         self._reprobe()
 
     # ---------- UI -----------------------------------------------------

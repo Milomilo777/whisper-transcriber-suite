@@ -81,3 +81,25 @@ def test_tooltip_is_flipped_on_screen_at_the_bottom_right_edge(monkeypatch):
         assert x + width <= 320 and y + height <= 240
     finally:
         root.destroy()
+
+
+def test_tooltip_stays_on_a_monitor_left_of_the_primary_one():
+    """A negative x must reach Tk as "+-900", not "-900" (900 px from the right edge)."""
+    root = tk.Tk()
+    root.geometry("300x200+-1500+100")
+    root.deiconify()
+    try:
+        root.update()
+        assert root.winfo_rootx() < 0
+        lbl = tk.Label(root, text="left")
+        lbl.place(x=10, y=10)
+        root.update()
+
+        bind_tooltip(lbl, "left tip", delay_ms=1)
+        lbl.event_generate("<Enter>", x=1, y=1, when="now")
+        assert _pump_until(root, lambda: bool(_tips(lbl)))
+        tip = _tips(lbl)[0]
+        root.update()
+        assert tip.winfo_rootx() < 0, f"tooltip went to x={tip.winfo_rootx()}"
+    finally:
+        root.destroy()
