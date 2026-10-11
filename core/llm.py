@@ -194,6 +194,8 @@ def download_default_model(
                         pct = int(bytes_done / total * 100)
                         if pct % 5 == 0:
                             log(f"  …{pct}% ({bytes_done/1e9:.2f} / {total/1e9:.2f} GB)")
+                f.flush()
+                os.fsync(f.fileno())
     except Exception:
         # File handle now closed by `with`; safe to unlink the
         # partial download before re-raising. Windows in particular
@@ -708,16 +710,19 @@ class RemoteLLMRunner:
             with urllib.request.urlopen(req, timeout=self.cfg.timeout) as resp:
                 raw = resp.read(_MAX_RESPONSE_BYTES + 1)
         except urllib.error.HTTPError as e:
-            body = ""
             try:
-                body = e.read().decode("utf-8", errors="replace")[:500]
-            except Exception:  # noqa: BLE001
-                pass
-            message = f"{url} returned HTTP {e.code}: {body or e.reason}"
-            if e.code in _RETRYABLE_STATUS:
-                raise _RetryableLLMError(
-                    message, _retry_after_seconds(e.headers)) from e
-            raise RemoteLLMError(message) from e
+                body = ""
+                try:
+                    body = e.read().decode("utf-8", errors="replace")[:500]
+                except Exception:  # noqa: BLE001
+                    pass
+                message = f"{url} returned HTTP {e.code}: {body or e.reason}"
+                if e.code in _RETRYABLE_STATUS:
+                    raise _RetryableLLMError(
+                        message, _retry_after_seconds(e.headers)) from e
+                raise RemoteLLMError(message) from e
+            finally:
+                e.close()
         except urllib.error.URLError as e:
             message = f"Could not reach {url}: {e.reason}"
             if isinstance(e.reason, (TimeoutError, ConnectionResetError,

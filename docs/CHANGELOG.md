@@ -36,6 +36,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   every settings read.
 - **Tagging a synthetic-speech WAV flushes the new file to disk before it replaces the original**, so a
   power cut cannot leave a half-written file.
+- **Downloaded AI models and trimmed voice-clone reference clips are flushed to disk before they are moved
+  into place**, so a crash cannot leave a truncated file; remote LLM error responses are closed promptly.
 
 ## [2.0.0] — 2026-10-10
 

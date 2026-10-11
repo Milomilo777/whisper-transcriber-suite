@@ -249,6 +249,9 @@ def trim_reference_sample(
         result = subprocess.run(cmd, **kwargs)
         if result.returncode != 0 or not os.path.isfile(tmp_out):
             raise RuntimeError(f"Could not trim reference clip: {result.stderr}")
+        with open(tmp_out, "r+b") as f:
+            f.flush()
+            os.fsync(f.fileno())
         os.replace(tmp_out, output_path)
     except Exception:
         try:
