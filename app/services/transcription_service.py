@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 import threading
+import unicodedata
 from queue import Empty
 from typing import TYPE_CHECKING, Any
 
@@ -905,6 +906,53 @@ class TranscriptionService:
                                  getattr(task, "file_path", "?"))
         return settled
 
+    def _are_outputs_complete(self, task: Any) -> bool:
+        """Returns True if the output files expected for this task exist on disk."""
+        # Mirror the fallback logic in finish_task to derive expected paths
+        # if the worker crashed before sending the 'done' event (and output_paths).
+        written = getattr(task, "output_paths", None)
+        derived = not written
+        if written:
+            paths = list(written)
+        else:
+            base = os.path.splitext(task.file_path)[0]
+            if getattr(task, "whisper_task", "") == "translate":
+                base += TRANSLATED_SUFFIX
+            formats = getattr(task, "output_formats", None)
+            if formats is None:
+                formats = self.app.app_config.get("output_formats") or ["srt", "json"]
+            paths = [unicodedata.normalize('NFC', f"{base}.{ext}") for ext in formats]
+
+        no_speech = bool(getattr(task, "no_speech", False))
+        if not paths:
+            return False
+
+        try:
+            start_time = getattr(task, "start_time", 0.0)
+            for p in paths:
+                try:
+                    if not (os.path.getsize(p) > 0 or no_speech):
+                        return False
+                    if start_time and os.path.getmtime(p) < start_time - 2.0:
+                        return False
+                except OSError:
+                    # try the NFD spelling (macOS)
+                    p_nfd = unicodedata.normalize('NFD', p)
+                    if p != p_nfd:
+                        if not (os.path.getsize(p_nfd) > 0 or no_speech):
+                            return False
+                        if start_time and os.path.getmtime(p_nfd) < start_time - 2.0:
+                            return False
+                    else:
+                        raise
+            if derived:
+                # finish_task's own fallback derives names from the CONFIG formats only; hand it
+                # the files this task really wrote so history records all of them.
+                task.output_paths = paths
+            return True
+        except OSError:
+            return False
+
     def _settle_one_done(self, history: Any, task: Any, event: dict[str, Any]) -> bool:
         outputs = event.get("outputs")
         if not isinstance(outputs, list) or not outputs:
@@ -1461,9 +1509,24 @@ class TranscriptionService:
                         if getattr(worker["task"], "status", None) not in (
                             "finished", "error", "cancelled",
                         ):
-                            worker["task"].status = "error"
-                            app.log(f"Transcription worker exited with code {event.get('return_code')}")
-                        self.finish_task(worker, keep_status=True)
+                            # The worker process crashed, but check if it successfully
+                            # wrote its files before dying (e.g. crash after writing outputs
+                            # but before emitting 'done'). If so, treat it as a success so 
+                            # the work isn't discarded.
+                            if getattr(worker["task"], "status", None) == "running" and self._are_outputs_complete(worker["task"]):
+                                worker["task"].status = "finished"
+                                note = f"Worker exited with code {event.get('return_code')} after writing all outputs"
+                                worker["task"].recovery_note = note
+                                logger.warning("Worker for task %s exited but left complete outputs: salvaging as success", event.get("task_id", "?"))
+                                app.log(f"Transcription worker exited with code {event.get('return_code')}, but output files are complete.")
+                                self.finish_task(worker, keep_status=False)
+                            else:
+                                worker["task"].status = "error"
+                                app.log(f"Transcription worker exited with code {event.get('return_code')}")
+                                self.finish_task(worker, keep_status=True)
+                        else:
+                            # paused/cancelled/other terminal: unchanged behaviour (paused -> error)
+                            self.finish_task(worker, keep_status=True)
                     # A worker that dies before going ready would otherwise hang
                     # an ensure_worker_ready() modal forever — release it.
                     self._release_pending_load(worker, success=False)
@@ -1847,7 +1910,7 @@ class TranscriptionService:
                     error=(
                         NO_SPEECH_NOTE
                         if newly_finished and getattr(task, "no_speech", False)
-                        else ""
+                        else str(getattr(task, "recovery_note", "") or "") if newly_finished else ""
                     ),
                     # How fast the run went, with what model on what device
                     # (worker-reported; 0 / "" when not measured).

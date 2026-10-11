@@ -10,6 +10,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   process, so an older `onnxruntime.dll` from another program no longer takes the app down; the
   transcript is saved before the speaker step, and a failed step leaves a clear log line and a
   transcript without speaker labels. The hardware diagnostics list the loaded ONNX Runtime copies.
+- **A transcription whose worker died after writing all of its files is recorded as finished**, not as an
+  error; the history row notes the worker's exit code.
 - **New windows no longer open in the top-left corner on Windows** (#8). The transcript viewer,
   hardware wizard, model download and other dialogs opened at (0, 0), under a taskbar docked at
   the top; they now open over the middle of the main window, inside the screen's work area.

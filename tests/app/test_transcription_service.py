@@ -10,6 +10,7 @@ see docs/CHANGELOG.md).
 from __future__ import annotations
 
 import json
+import sqlite3
 import time
 from types import SimpleNamespace
 
@@ -559,3 +560,87 @@ def test_an_unroutable_exit_without_a_code_is_quiet(caplog):
     with caplog.at_level(logging.DEBUG, logger="app.services.transcription_service"):
         svc.poll()
     assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
+
+def test_finish_task_recovers_if_history_save_fails(tmp_path):
+    """If history.finish_transcription raises (e.g., locked DB), finish_task
+    logs the error but still marks the UI task as finished so the user gets
+    their files.
+    
+    (This pins existing master behaviour: the outer except in finish_task
+    catches the DB error.)
+    """
+    logged = []
+    app = SimpleNamespace(
+        app_config={},
+        update_overall_progress=lambda: None,
+        show_last_result=lambda task: None,
+        queue=[],
+        log=logged.append,
+        note_job_success=lambda: None,
+        workers=[],
+    )
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    svc._post_usage_stats = lambda *a, **k: None  # type: ignore[method-assign]
+    
+    class _FailingHistory:
+        def finish_transcription(self, *a, **k):
+            raise sqlite3.OperationalError("database is locked")
+            
+    app.history = _FailingHistory()
+    task = SimpleNamespace(
+        status="running", cancelled=False, end_time=None, start_time=time.time(),
+        output_paths=["clip.srt"], file_path="clip.mp4", history_id=7,
+        source_download=None, detected_language="",
+    )
+    worker = {"task": task, "temporary": False}
+
+    svc.finish_task(worker, keep_status=False)
+
+    assert task.status == "finished", "Task should be marked finished even if DB fails"
+    assert "database is locked" in logged[0]
+
+
+def test_poll_worker_exit_marks_finished_if_outputs_exist(tmp_path, monkeypatch):
+    """If a worker crashes after writing outputs but before sending 'done',
+    poll() must check the disk and mark the task 'finished' instead of 'error'."""
+    import queue
+    app = SimpleNamespace(
+        app_config={"output_formats": ["srt"]},
+        update_overall_progress=lambda: None,
+        show_last_result=lambda task: None,
+        queue=[],
+        log=lambda m: None,
+        note_job_success=lambda: None,
+        workers=[],
+        history=SimpleNamespace(finish_transcription=lambda *a, **k: True),
+        worker_events=queue.Queue(),
+        model_status=lambda *a: None,
+    )
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    svc._post_usage_stats = lambda *a, **k: None  # type: ignore[method-assign]
+    
+    # Mock Tkinter after to prevent the scheduled loop
+    monkeypatch.setattr(svc, "_ensure_poll_scheduled", lambda: None)
+    
+    file_path = tmp_path / "clip.mp4"
+    file_path.touch()
+    out_file = tmp_path / "clip.srt"
+    out_file.write_text("hello")
+    
+    task = SimpleNamespace(
+        status="running", cancelled=False, end_time=None, start_time=time.time() - 10,
+        file_path=str(file_path), history_id=7, source_download=None,
+    )
+    
+    class FakeProc:
+        pid = 111
+        def poll(self): return -9
+        
+    worker = {"task": task, "temporary": False, "id": "w1", "process": FakeProc(), "ready": True}
+    app.workers.append(worker)
+    
+    app.worker_events.put({"event": "worker_exit", "return_code": -9, "_pid": 111, "_worker_id": "w1"})
+    
+    svc.poll()
+    
+    assert task.status == "finished", "Task should be finished because output exists"
