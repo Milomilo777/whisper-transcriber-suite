@@ -40,6 +40,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   into place**, so a crash cannot leave a truncated file; remote LLM error responses are closed promptly.
 - **A finished subtitle burn is no longer lost when its destination file is locked** (for example open in
   a player); it is saved under a numbered name instead.
+- **A transcription is no longer restarted as unresponsive when the system clock changes** (for example
+  after a time sync).
 
 ## [2.0.0] — 2026-10-10
 

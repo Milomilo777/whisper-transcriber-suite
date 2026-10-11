@@ -45,6 +45,7 @@ def test_transcription_service_ignores_system_clock_jumps(monkeypatch):
     service._poll_once()
     assert len(restarted_workers) == 0
 
+
 def test_transcription_service_restarts_on_real_monotonic_timeout(monkeypatch):
     proc = _AliveProc()
     worker = {
