@@ -15,6 +15,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **macOS: online features failed with "certificate verify failed"**: on a Mac without python.org Python, the
+  update check, problem reports and other web lookups failed with `CERTIFICATE_VERIFY_FAILED` because the app
+  looked for the build machine's certificate file. It now uses the certificate bundle it ships with, and the
+  macOS build check fails if that ever regresses.
+
 - **Saved files survive a power cut**: an edited transcript, viewer exports, the bilingual subtitle, the HTML
   page, converted files and the yt-dlp state file are now flushed to disk before they replace the old file,
   so a sudden power loss can no longer leave an empty file. Closing the transcript viewer right after opening it

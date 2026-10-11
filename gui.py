@@ -7,6 +7,9 @@
   python gui.py serve               → run the local-network HTTP job server
   python gui.py --help              → usage
 
+``--tls-self-check`` prints which CA certificates HTTPS requests trust
+(JSON) and exits; the macOS build check runs it.
+
 A media file passed on its own (dropped on the shortcut, or "Open with")
 opens the app with that file picked; macOS's ``-psn_...`` launch argument
 is ignored.
@@ -505,6 +508,16 @@ def main() -> int:
     # diversion for the resource tracker.
     import multiprocessing
     multiprocessing.freeze_support()
+
+    # Before any HTTPS request and before the workers start (they inherit
+    # it): the frozen macOS build would otherwise look for the build
+    # machine's CA file and every urllib request would fail verification.
+    from core import tls_trust
+    tls_trust.configure()
+    if "--tls-self-check" in sys.argv:
+        import json
+        print(json.dumps(tls_trust.describe()))
+        return 0
 
     # Worker mode is a special early branch — bypasses argparse so
     # we never break the spawn-contract.

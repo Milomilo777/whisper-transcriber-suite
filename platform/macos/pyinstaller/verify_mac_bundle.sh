@@ -82,6 +82,13 @@ done
 # clear_bundled_quarantine() walks this dir; it must reach the onedir files.
 [ -d "$RB/yt-dlp_dist/_internal" ] || { echo "RUNTIME-PATH $RB/yt-dlp_dist missing (quarantine clear would miss yt-dlp's files)"; bad=$((bad + 1)); }
 "$APP/Contents/MacOS/Whisper Transcriber Suite" transcribe --help >/dev/null || { echo "CLI boot FAILED"; bad=$((bad + 1)); }
+# HTTPS trust (core/tls_trust.py): urllib must load certifi's CA file from inside the bundle. The
+# bundled OpenSSL's own default is the BUILD machine's python.org path, so 2.0.0 passed every test
+# here and failed verification on every user's Mac. Run without SSL_CERT_* so the app chooses.
+tls="$(env -u SSL_CERT_FILE -u SSL_CERT_DIR "$APP/Contents/MacOS/Whisper Transcriber Suite" --tls-self-check 2>&1 | tail -1)"
+echo "TLS self-check: $tls"
+{ grep -q '"source": "certifi"' <<<"$tls" && grep -q '"cafile": "[^"]*\.app/Contents/' <<<"$tls"; } \
+  || { echo "HTTPS trust store is not the bundled certifi file (user Macs would fail CERTIFICATE_VERIFY_FAILED)"; bad=$((bad + 1)); }
 codesign --verify --deep --strict "$APP" || bad=$((bad + 1))
 plutil -lint "$APP/Contents/Info.plist" >/dev/null || { echo "Info.plist does not parse"; bad=$((bad + 1)); }
 # macOS 10.14+ (TCC) terminates an app that opens the microphone without this

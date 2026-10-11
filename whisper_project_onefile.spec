@@ -317,6 +317,7 @@ a = Analysis(
         'core.speed_meter',
         'core.stats',
         'core.text_metrics',
+        'core.tls_trust',
         'core.task',
         'core.transcriber',
         'core.updates',
