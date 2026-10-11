@@ -370,10 +370,10 @@ def _save_state(state: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
     try:
+        from core import _checkpoint
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
             json.dump(state, f, indent=2)
-            f.flush()
-            os.fsync(f.fileno())
+            _checkpoint._flush_to_disk(f)
         os.replace(tmp, path)
     except BaseException:
         with contextlib.suppress(OSError):

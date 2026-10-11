@@ -338,10 +338,10 @@ def write_page(
     )
     part = out_path + ".part"
     try:
+        from core import _checkpoint
         with open(part, "w", encoding="utf-8", newline="\n") as f:
             f.write(page)
-            f.flush()
-            os.fsync(f.fileno())
+            _checkpoint._flush_to_disk(f)
         os.replace(part, out_path)
     except BaseException:
         try:

@@ -33,7 +33,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **Saved files survive a power cut**: an edited transcript, viewer exports, the bilingual subtitle, the HTML
   page, converted files and the yt-dlp state file are now flushed to disk before they replace the old file,
-  so a sudden power loss can no longer leave an empty file. Closing the transcript viewer right after opening it
+  so a sudden power loss can no longer leave an empty file. A drive that refuses that flush (some network
+  shares, FUSE and USB file systems) still gets the file. Closing the transcript viewer right after opening it
   also cancels its pending background steps.
 - **`serve --host ::1` and other IPv6 addresses**: the local API server failed to start on an IPv6 host
   because it always opened an IPv4 socket. It now binds IPv6 literals, and the printed address is bracketed

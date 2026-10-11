@@ -55,6 +55,31 @@ def test_writer_fsyncs_before_the_replace(name, tmp_path, events):
     assert "fsync" in events[:events.index("replace")], events
 
 
+@pytest.mark.parametrize("name", list(WRITERS))
+def test_a_volume_that_rejects_fsync_still_gets_the_file(name, tmp_path, monkeypatch):
+    # Some network shares, FUSE and USB file systems answer fsync with EINVAL/ENOTSUP; before
+    # the fsync was added these saves worked there, so a refused sync must not fail them.
+    def refuse(_fd: int) -> None:
+        raise OSError(22, "Invalid argument")
+
+    monkeypatch.setattr(os, "fsync", refuse)
+    target = str(tmp_path / "out.bin")
+    WRITERS[name](target)
+    assert os.path.getsize(target) > 0
+    assert [p.name for p in tmp_path.iterdir()] == ["out.bin"]
+
+
+def test_yt_dlp_state_file_survives_a_refused_fsync(tmp_path, monkeypatch):
+    def refuse(_fd: int) -> None:
+        raise OSError(95, "Operation not supported")
+
+    monkeypatch.setattr(os, "fsync", refuse)
+    state = tmp_path / "state" / "yt_dlp_state.json"
+    monkeypatch.setattr(yt_dlp_update, "_state_path", lambda: state)
+    yt_dlp_update._save_state({"active": "bundled"})
+    assert state.read_text(encoding="utf-8").strip().startswith("{")
+
+
 def test_yt_dlp_state_file_fsyncs_before_the_replace(tmp_path, events, monkeypatch):
     state = tmp_path / "state" / "yt_dlp_state.json"
     monkeypatch.setattr(yt_dlp_update, "_state_path", lambda: state)

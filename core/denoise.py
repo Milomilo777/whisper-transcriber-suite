@@ -942,9 +942,9 @@ def _denoise_audio_inner(
             return audio_path
 
         try:
+            from core import _checkpoint
             with open(str(staging), "r+b") as f:
-                f.flush()
-                os.fsync(f.fileno())
+                _checkpoint._flush_to_disk(f)
             os.replace(str(staging), str(target))
         except OSError as e:
             logger.info("Could not move denoised render into place: %s", e)

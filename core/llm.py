@@ -181,6 +181,7 @@ def download_default_model(
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             total = int(r.headers.get("content-length") or 0)
+            from core import _checkpoint
             with open(part, "wb") as f:
                 while True:
                     if cancel_event is not None and cancel_event.is_set():
@@ -195,8 +196,7 @@ def download_default_model(
                         pct = int(bytes_done / total * 100)
                         if pct % 5 == 0:
                             log(f"  …{pct}% ({bytes_done/1e9:.2f} / {total/1e9:.2f} GB)")
-                f.flush()
-                os.fsync(f.fileno())
+                _checkpoint._flush_to_disk(f)
     except Exception:
         # File handle now closed by `with`; safe to unlink the
         # partial download before re-raising. Windows in particular

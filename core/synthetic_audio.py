@@ -132,6 +132,7 @@ def tag_wav(path: "str | os.PathLike[str]", comment: str = AI_COMMENT,
     try:
         # fdopen first: if opening *path* fails, the temp's handle is
         # still closed, so the cleanup below can delete it on Windows.
+        from core import _checkpoint
         with os.fdopen(fd, "wb") as dst, open(path, "rb") as src:
             chunks = _scan_chunks(src, file_size)
             kept_info: list[tuple[bytes, bytes]] = []
@@ -166,8 +167,7 @@ def tag_wav(path: "str | os.PathLike[str]", comment: str = AI_COMMENT,
                 raise ValueError("WAV file too large to tag (over 4 GB)")
             dst.seek(4)
             dst.write(struct.pack("<I", riff_size))
-            dst.flush()
-            os.fsync(dst.fileno())
+            _checkpoint._flush_to_disk(dst)
         shutil.copymode(path, tmp_path)  # mkstemp makes it 0600 on POSIX
         _replace_with_retry(tmp_path, path)
     except BaseException:

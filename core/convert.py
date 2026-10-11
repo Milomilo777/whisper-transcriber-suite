@@ -945,10 +945,10 @@ def _replace_atomically(target: str, payload: bytes) -> None:
     """Write *payload* to a temp sibling of *target*, then move it into place."""
     tmp = f"{target}.{os.getpid()}.part"
     try:
+        from core import _checkpoint
         with open(tmp, "wb") as fb:
             fb.write(payload)
-            fb.flush()
-            os.fsync(fb.fileno())
+            _checkpoint._flush_to_disk(fb)
         os.replace(tmp, target)
     finally:
         if os.path.exists(tmp):

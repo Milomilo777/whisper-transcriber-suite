@@ -1577,10 +1577,10 @@ class TranscriptViewer(tk.Toplevel):
         out_path = f"{base}.bilingual.{lang_slug}.srt"
         part = out_path + ".part"
         try:
+            from core import _checkpoint
             with open(part, "w", encoding="utf-8", newline="\n") as f:
                 f.write(body)
-                f.flush()
-                os.fsync(f.fileno())
+                _checkpoint._flush_to_disk(f)
             os.replace(part, out_path)
         except Exception as e:  # noqa: BLE001
             try:
@@ -2049,10 +2049,10 @@ class TranscriptViewer(tk.Toplevel):
             payload_s = json.dumps(self.segments, indent=2, ensure_ascii=False) + "\n"
         part = self.json_path + ".part"
         try:
+            from core import _checkpoint
             with open(part, "w", encoding="utf-8", newline="\n") as f:
                 f.write(payload_s)
-                f.flush()
-                os.fsync(f.fileno())
+                _checkpoint._flush_to_disk(f)
             os.replace(part, self.json_path)
         except Exception as e:  # noqa: BLE001
             try:

@@ -240,10 +240,10 @@ def write_atomically(
     """
     part = f"{path}.{os.getpid()}.part"
     try:
+        from core import _checkpoint
         with open(part, "wb") as f:
             f.write(data)
-            f.flush()
-            os.fsync(f.fileno())
+            _checkpoint._flush_to_disk(f)
         if expect_stamp is not None and (
             file_stamp(path) != expect_stamp or link_reason(path) is not None
         ):

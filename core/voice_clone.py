@@ -249,9 +249,9 @@ def trim_reference_sample(
         result = subprocess.run(cmd, **kwargs)
         if result.returncode != 0 or not os.path.isfile(tmp_out):
             raise RuntimeError(f"Could not trim reference clip: {result.stderr}")
+        from core import _checkpoint
         with open(tmp_out, "r+b") as f:
-            f.flush()
-            os.fsync(f.fileno())
+            _checkpoint._flush_to_disk(f)
         os.replace(tmp_out, output_path)
     except Exception:
         try:

@@ -36,10 +36,10 @@ def _write_text_atomic(path: str, text: str) -> None:
     """
     tmp = f"{path}.{os.getpid()}.part"
     try:
+        from core import _checkpoint
         with open(tmp, "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
-            f.flush()
-            os.fsync(f.fileno())
+            _checkpoint._flush_to_disk(f)
         os.replace(tmp, path)
     finally:
         if os.path.exists(tmp):
