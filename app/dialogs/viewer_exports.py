@@ -242,6 +242,8 @@ def write_atomically(
     try:
         with open(part, "wb") as f:
             f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
         if expect_stamp is not None and (
             file_stamp(path) != expect_stamp or link_reason(path) is not None
         ):

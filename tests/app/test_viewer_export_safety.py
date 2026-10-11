@@ -662,3 +662,47 @@ def test_a_finished_viewer_leaves_the_exit_registry(root, tmp_path, notices) -> 
         assert viewer not in tv._EXPORTING and not viewer._export_remaining
     finally:
         _close(viewer)
+
+
+def test_closing_right_after_opening_cancels_the_pending_export_scan(root, tmp_path, notices) -> None:
+    json_path = _make(tmp_path, ["srt", "json"])
+    viewer = _open(root, json_path, wait=False)
+    scan_id = viewer._scan_start_id
+    assert scan_id is not None  # the scan starts 100 ms after opening
+    viewer._dirty = False
+    viewer._on_close()
+    assert viewer._scan_start_id is None
+    assert scan_id not in root.tk.splitlist(root.tk.call("after", "info"))
+
+
+def test_saving_flushes_the_transcript_to_disk_before_the_replace(
+    root, tmp_path, notices, monkeypatch
+) -> None:
+    json_path = _make(tmp_path, ["srt", "json"])
+    viewer = _open(root, json_path)
+    events: list[str] = []
+    real_fsync, real_replace = os.fsync, os.replace
+
+    def fsync(fd: int) -> None:
+        events.append("fsync")
+        real_fsync(fd)
+
+    def replace(src, dst) -> None:
+        events.append(f"replace {os.path.basename(dst)}")
+        real_replace(src, dst)
+
+    try:
+        monkeypatch.setattr(os, "fsync", fsync)
+        monkeypatch.setattr(os, "replace", replace)
+        _edit(viewer)
+        viewer._save_changes()
+        viewer._finish_exports()
+        monkeypatch.undo()
+        json_replace = events.index(f"replace {os.path.basename(json_path)}")
+        assert "fsync" in events[:json_replace], events
+        srt_replace = next(i for i, e in enumerate(events) if e.endswith(".srt"))
+        assert events[srt_replace - 1] == "fsync", events
+        assert NEW in _text(json_path)
+    finally:
+        monkeypatch.undo()
+        _close(viewer)

@@ -947,6 +947,8 @@ def _replace_atomically(target: str, payload: bytes) -> None:
     try:
         with open(tmp, "wb") as fb:
             fb.write(payload)
+            fb.flush()
+            os.fsync(fb.fileno())
         os.replace(tmp, target)
     finally:
         if os.path.exists(tmp):

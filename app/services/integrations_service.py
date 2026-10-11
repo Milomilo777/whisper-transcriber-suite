@@ -38,6 +38,8 @@ def _write_text_atomic(path: str, text: str) -> None:
     try:
         with open(tmp, "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
         os.replace(tmp, path)
     finally:
         if os.path.exists(tmp):

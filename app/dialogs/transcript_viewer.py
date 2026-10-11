@@ -1579,6 +1579,8 @@ class TranscriptViewer(tk.Toplevel):
         try:
             with open(part, "w", encoding="utf-8", newline="\n") as f:
                 f.write(body)
+                f.flush()
+                os.fsync(f.fileno())
             os.replace(part, out_path)
         except Exception as e:  # noqa: BLE001
             try:
@@ -1708,11 +1710,13 @@ class TranscriptViewer(tk.Toplevel):
         self._scan_start = lambda: threading.Thread(
             target=work, name="viewer-export-scan", daemon=True).start()
         try:
-            self.after(100, self._start_scan)
+            self._scan_start_id = self.after(100, self._start_scan)
         except tk.TclError:
             self._start_scan()
+            self._scan_start_id = None
 
     def _start_scan(self) -> None:
+        self._scan_start_id = None
         start, self._scan_start = self._scan_start, None
         if start is not None:
             start()
@@ -2047,6 +2051,8 @@ class TranscriptViewer(tk.Toplevel):
         try:
             with open(part, "w", encoding="utf-8", newline="\n") as f:
                 f.write(payload_s)
+                f.flush()
+                os.fsync(f.fileno())
             os.replace(part, self.json_path)
         except Exception as e:  # noqa: BLE001
             try:
@@ -2226,7 +2232,7 @@ class TranscriptViewer(tk.Toplevel):
             # native Windows access-violation that bypasses Python try/except
             # and kills the whole process ("View transcript closes the app").
             # Defer the bind until the window is actually mapped.
-            self.after(0, self._bind_vlc_window)
+            self._vlc_bind_id = self.after(0, self._bind_vlc_window)
         except Exception as e:  # noqa: BLE001
             logger.warning("VLC init failed: %s", e)
             # Same degraded state as a failed HWND bind: no player, and
@@ -2244,6 +2250,7 @@ class TranscriptViewer(tk.Toplevel):
         system player" button rather than risk the access-violation, and we
         do NOT start the position loop (no embedded surface to track).
         """
+        self._vlc_bind_id = None
         if self._closing or self.vlc_player is None:
             return
         try:
@@ -2745,13 +2752,14 @@ class TranscriptViewer(tk.Toplevel):
 
     def destroy(self) -> None:
         # Also reached when the main window goes away with the viewer open.
-        poll_id = getattr(self, "_export_poll_id", None)
-        if poll_id is not None:
-            try:
-                self.after_cancel(poll_id)
-            except Exception:  # noqa: BLE001
-                pass
-            self._export_poll_id = None
+        for attr in ("_export_poll_id", "_scan_start_id", "_vlc_bind_id"):
+            poll_id = getattr(self, attr, None)
+            if poll_id is not None:
+                try:
+                    self.after_cancel(poll_id)
+                except Exception:  # noqa: BLE001
+                    pass
+                setattr(self, attr, None)
         key = self._registry_key
         if key is not None and _OPEN_VIEWERS.get(key) is self:
             del _OPEN_VIEWERS[key]

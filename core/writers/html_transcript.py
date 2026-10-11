@@ -340,6 +340,8 @@ def write_page(
     try:
         with open(part, "w", encoding="utf-8", newline="\n") as f:
             f.write(page)
+            f.flush()
+            os.fsync(f.fileno())
         os.replace(part, out_path)
     except BaseException:
         try:

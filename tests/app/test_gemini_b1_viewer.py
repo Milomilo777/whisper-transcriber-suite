@@ -94,3 +94,22 @@ def test_the_slug_never_holds_a_path_or_reserved_character(lang):
 ])
 def test_slug_keeps_the_old_names_for_latin_input(lang, slug):
     assert tv._bilingual_lang_slug(lang) == slug
+
+
+def test_the_bilingual_file_is_flushed_to_disk_before_the_replace(tmp_path, dialogs, monkeypatch):
+    events: list[str] = []
+    real_fsync, real_replace = os.fsync, os.replace
+
+    def fsync(fd: int) -> None:
+        events.append("fsync")
+        real_fsync(fd)
+
+    def replace(src, dst) -> None:
+        events.append("replace")
+        real_replace(src, dst)
+
+    monkeypatch.setattr(os, "fsync", fsync)
+    monkeypatch.setattr(os, "replace", replace)
+    _run(_viewer_standin(str(tmp_path / "talk.json")), "German", "Hallo")
+    assert events == ["fsync", "replace"]
+    assert "Hallo" in (tmp_path / "talk.bilingual.german.srt").read_text(encoding="utf-8")
