@@ -907,7 +907,20 @@ class TranscriptionService:
         return settled
 
     def _are_outputs_complete(self, task: Any) -> bool:
-        """Returns True if the output files expected for this task exist on disk."""
+        """Returns True if the output files expected for this task exist on disk.
+
+        Only a salvage check for a worker that exited without "done": whatever goes wrong
+        here must fall back to the normal error path, never break the worker_exit handling
+        (an exception left the task "running" until the dead-worker deadline).
+        """
+        try:
+            return self._outputs_complete_unchecked(task)
+        except Exception:  # noqa: BLE001 - fail-safe: the caller then records the error as before
+            logger.warning("Output check after a worker exit failed; recording the run as failed",
+                           exc_info=True)
+            return False
+
+    def _outputs_complete_unchecked(self, task: Any) -> bool:
         # Mirror the fallback logic in finish_task to derive expected paths
         # if the worker crashed before sending the 'done' event (and output_paths).
         written = getattr(task, "output_paths", None)
@@ -915,7 +928,10 @@ class TranscriptionService:
         if written:
             paths = list(written)
         else:
-            base = os.path.splitext(task.file_path)[0]
+            file_path = getattr(task, "file_path", None)
+            if not file_path:
+                return False
+            base = os.path.splitext(file_path)[0]
             if getattr(task, "whisper_task", "") == "translate":
                 base += TRANSLATED_SUFFIX
             formats = getattr(task, "output_formats", None)

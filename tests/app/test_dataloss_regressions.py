@@ -260,3 +260,23 @@ def test_worker_exit_recovery_logic(tmp_path, monkeypatch):
 
     svc.poll()
     assert task3.status == "cancelled"
+
+
+def test_output_check_never_breaks_worker_exit_handling(caplog):
+    # The salvage check runs inside the worker_exit handler; an exception there used to abort the
+    # handler and leave the task "running" (tests/core/test_worker_lifecycle_c251b.py caught it).
+    svc = TranscriptionService.__new__(TranscriptionService)
+    svc.app = SimpleNamespace(app_config={"output_formats": ["srt"]})
+
+    assert svc._are_outputs_complete(SimpleNamespace(status="running")) is False  # no file_path
+
+    class Broken:
+        status = "running"
+
+        @property
+        def output_paths(self):
+            raise RuntimeError("unexpected task state")
+
+    with caplog.at_level("WARNING"):
+        assert svc._are_outputs_complete(Broken()) is False
+    assert "Output check after a worker exit failed" in caplog.text
