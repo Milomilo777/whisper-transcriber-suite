@@ -578,3 +578,30 @@ def test_hypothesis_scan_multipart_invariants(data, boundary):
     parts = scan_multipart_file(data, boundary)
     if parts.file_start >= 0:
         assert 0 <= parts.file_start <= parts.file_end <= len(data)
+
+
+@pytest.mark.parametrize("digits", [19, 4301, 6000])
+def test_audit_json_content_length_with_thousands_of_digits_gets_a_reply(running_server, digits):
+    # int() refuses more than 4300 digits; that ValueError used to kill the handler with no reply.
+    conn = http.client.HTTPConnection("127.0.0.1", running_server.port, timeout=10)
+    conn.putrequest("POST", "/api/jobs")
+    conn.putheader("Content-Type", "application/json")
+    conn.putheader("Content-Length", "9" * digits)
+    conn.endheaders()
+    resp = conn.getresponse()
+    assert resp.status == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+    conn.close()
+
+
+@pytest.mark.parametrize("padding", [b" ", b"\t", b"  \t "])
+def test_audit_multipart_transport_padding_after_the_delimiter(padding):
+    # RFC 2046 allows spaces/tabs between a delimiter and its CRLF.
+    from core.server.httpd import scan_multipart_file
+    body = (b"--XbX" + padding + b"\r\n"
+            b'Content-Disposition: form-data; name="file"; filename="a.wav"\r\n\r\n'
+            b"DATA\r\n--XbX" + padding + b"\r\n"
+            b'Content-Disposition: form-data; name="formats"\r\n\r\nsrt\r\n--XbX--' + padding + b"\r\n")
+    parts = scan_multipart_file(body, "XbX")
+    assert body[parts.file_start:parts.file_end] == b"DATA"
+    assert parts.filename == "a.wav"
+    assert parts.fields == {"formats": "srt"}

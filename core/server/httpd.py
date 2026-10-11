@@ -570,6 +570,9 @@ def scan_multipart_file(data: bytes, boundary: str) -> _UploadParts:
 
     while nxt != -1:
         seg_start = nxt + boundary_len
+        # RFC 2046 allows transport padding (spaces/tabs) after a delimiter.
+        while data[seg_start:seg_start + 1] in (b" ", b"\t"):
+            seg_start += 1
         if data[seg_start:seg_start + 2] == b"--":
             break
 
@@ -1814,6 +1817,15 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         else:
             if not isinstance(raw_len, str) or not raw_len.isascii() or not raw_len.isdigit():
                 self._send_error_json_close(HTTPStatus.BAD_REQUEST, "bad length")
+                return None
+            if len(raw_len.lstrip("0")) > 18:
+                # Far over any cap, and int() raises past 4300 digits, which
+                # killed the handler with no reply. Nothing to drain sensibly.
+                self._send_error_json_close(
+                    HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                    f"request body exceeds "
+                    f"{_MAX_JSON_BODY_BYTES // (1024 * 1024)} MB cap",
+                )
                 return None
             length = int(raw_len)  # ASCII digits only: never negative
         if length > _MAX_JSON_BODY_BYTES:
