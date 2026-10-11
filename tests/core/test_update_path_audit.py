@@ -1,5 +1,3 @@
-import json
-import pytest
 from core.updates import parse_release, pick_asset, INSTALL_WINDOWS_INSTALLER, INSTALL_WINDOWS_PORTABLE, INSTALL_MACOS_APP
 
 # A recorded fixture of the GitHub API response for v2.0.0.
@@ -42,9 +40,9 @@ def test_parse_release_extracts_correctly() -> None:
 
 def test_pick_asset_selects_correct_files() -> None:
     details = parse_release(V2_0_0_RELEASE_JSON)
-    
+
     assert pick_asset(INSTALL_WINDOWS_INSTALLER, details.assets) == "WhisperTranscriberSuite-Installer-Windows-v2.0.0.exe"
     assert pick_asset(INSTALL_WINDOWS_PORTABLE, details.assets) == "WhisperTranscriberSuite-Portable-Windows-v2.0.0.zip"
-    
+
     assert pick_asset(INSTALL_MACOS_APP, details.assets, machine="arm64") == "WhisperTranscriberSuite-v2.0.0-macOS-arm64.dmg"
     assert pick_asset(INSTALL_MACOS_APP, details.assets, machine="x86_64") == "WhisperTranscriberSuite-v2.0.0-macOS-x64.dmg"
