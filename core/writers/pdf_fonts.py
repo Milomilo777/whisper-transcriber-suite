@@ -47,8 +47,8 @@ _CANDIDATES: tuple[tuple[tuple[str, ...], tuple[str, ...], str], ...] = (
     (("notonaskharabic-regular.ttf",), ("notonaskharabic-bold.ttf",), ""),
     (("notosansarabic-regular.ttf",), ("notosansarabic-bold.ttf",), ""),
     (("notosanshebrew-regular.ttf",), ("notosanshebrew-bold.ttf",), ""),
-    (("nirmala.ttf",), ("nirmalab.ttf",), ""),
-    (("leelawui.ttf",), ("leelauib.ttf",), ""),
+    (("nirmala.ttf", "devanagari sangam mn.ttc", "notosansdevanagari-regular.ttf", "lohit-devanagari.ttf", "gargi.ttf"), ("nirmalab.ttf",), ""),
+    (("leelawui.ttf", "thonburi.ttc", "notosansthai-regular.ttf", "garuda.ttf", "kinnari.ttf"), ("leelauib.ttf",), ""),
     # CJK. Windows first, then macOS, then common Linux packages.
     (("msyh.ttc",), ("msyhbd.ttc",), ""),
     (("yugothr.ttc", "msgothic.ttc"), ("yugothb.ttc",), "kana"),

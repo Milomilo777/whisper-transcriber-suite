@@ -23,6 +23,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **PDF export shows `/` and `:` in titles from yt-dlp downloads** instead of empty boxes: the
   look-alike characters yt-dlp puts in file names (⧸, ：, ＊ and others) fall back to their ASCII form
   when no available font can draw them.
+- **PDF export looks for more Devanagari and Thai fonts** on Linux and macOS (Noto, Lohit, Gargi, Garuda,
+  Kinnari, Devanagari Sangam MN, Thonburi), so Hindi or Thai text has a font to fall back to outside Windows.
+- **The transcript viewer no longer reports an export as changed** when it differs from the saved file only by
+  trailing blank lines.
 - **"Try it now" says so when the sample clip is missing** from the install, instead of doing nothing
   visible (the message only went to the log).
 - **A damaged Windows taskbar start marker no longer causes repeated failures**: an unreadable marker now

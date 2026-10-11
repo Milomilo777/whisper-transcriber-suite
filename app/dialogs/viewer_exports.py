@@ -134,7 +134,7 @@ def signature(fmt: str, raw: bytes) -> object | None:
         if fmt == "docx":
             with zipfile.ZipFile(io.BytesIO(raw)) as z:
                 return {n: z.read(n) for n in z.namelist() if n != _DOCX_VOLATILE_PART}
-        return raw.decode("utf-8-sig").replace("\r\n", "\n")
+        return raw.decode("utf-8-sig").replace("\r\n", "\n").rstrip("\n")
     except _UNREADABLE:
         return None
 
