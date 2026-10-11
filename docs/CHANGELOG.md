@@ -4,6 +4,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- **Speakers option on the Transcribe tab**: next to Identify speakers you can now tell the app how many people
+  talk (2 to 10) instead of leaving it on Auto. It is greyed out while speaker detection is off.
+
 ### Fixed
 
 - **Speaker detection can no longer crash a finished transcription** (#7). It now runs in its own

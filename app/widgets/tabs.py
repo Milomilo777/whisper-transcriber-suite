@@ -6,6 +6,7 @@ sibling components.
 """
 from __future__ import annotations
 
+import logging
 import sys
 import tkinter as tk
 from tkinter import ttk
@@ -20,6 +21,8 @@ from app.widgets.tooltip import bind_tooltip, help_icon, section_labelframe
 if TYPE_CHECKING:
     from app.app import App
     from app.domain.tasks import TranscriptionTask, VideoDownloadTask
+
+logger = logging.getLogger(__name__)
 
 
 # --- shared UX helpers -----------------------------------------------------
@@ -512,6 +515,13 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     app.diarization_var = tk.BooleanVar(
         value=bool(_diar_available) and bool(app.app_config.get("diarization_enabled", False))
     )
+    _speakers_val = app.app_config.get("diarization_num_speakers", -1)
+    if type(_speakers_val) is not int or (_speakers_val not in range(2, 11) and _speakers_val != -1):
+        logger.warning("Invalid speaker count %r; defaulting to Auto", _speakers_val)
+        _speakers_val = -1
+    app.diarization_speakers_var = tk.StringVar(
+        value="Auto" if _speakers_val == -1 else str(_speakers_val)
+    )
     # Always start at "Auto" — the language is deliberately NOT restored
     # from config (user request: every launch defaults to auto-detect).
     app.transcribe_lang_var = tk.StringVar(value="Auto")
@@ -767,22 +777,49 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         if _diar_available
         else "Identify speakers (unavailable)"
     )
-    diar_check = ttk.Checkbutton(
+    def _on_diar_check_changed() -> None:
+        app._save_transcribe_prefs()
+        app._sync_diarization_speakers_option()
+
+    app.diarization_check = ttk.Checkbutton(
         opts_line1,
         text=diar_label,
         variable=app.diarization_var,
-        command=app._save_transcribe_prefs,
+        command=_on_diar_check_changed,
     )
     if not _diar_available:
-        diar_check.state(["disabled"])
-        bind_tooltip(diar_check, f"Unavailable: {_diar_reason}")
-    diar_check.pack(side="left", padx=(0, 4))
-    help_icon(
+        app.diarization_check.state(["disabled"])
+        bind_tooltip(app.diarization_check, f"Unavailable: {_diar_reason}")
+    app.diarization_check.pack(side="left", padx=(0, 4))
+
+    app.diarization_help_icon = help_icon(
         opts_line1,
         "Splits the transcript by who is speaking (SPEAKER_00, SPEAKER_01, "
         "...). Adds processing time and needs the optional sherpa-onnx "
         "component to be installed.",
-    ).pack(side="left", padx=(0, 20))
+    )
+    app.diarization_help_icon.pack(side="left", padx=(0, 20))
+
+    app.diarization_speakers_label = ttk.Label(opts_line2, text="Speakers:")
+    app.diarization_speakers_label.pack(side="left")
+    speaker_values = ["Auto"] + [str(i) for i in range(2, 11)]
+    app.diarization_speakers_combo = ttk.Combobox(
+        opts_line2,
+        textvariable=app.diarization_speakers_var,
+        values=speaker_values,
+        state="readonly",
+        width=5,
+    )
+    app.diarization_speakers_combo.pack(side="left", padx=(6, 2))
+    app.diarization_speakers_combo.bind(
+        "<<ComboboxSelected>>", lambda _e: app._save_transcribe_prefs()
+    )
+    bind_tooltip(
+        app.diarization_speakers_combo,
+        "Force the detector to find exactly this many people, or leave on Auto."
+    )
+
+    app._sync_diarization_speakers_option()
 
     ttk.Checkbutton(
         opts_line1,

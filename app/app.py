@@ -70,7 +70,7 @@ from app.theme import (
 )
 from app.theme.bidi_display import ltr_base
 from core._proc import kill_process_tree
-from core.config import load_config, save_config
+from core.config import _PROJECT_KEY_RANGES, load_config, save_config
 from core.history import EXIT_REASON, HistoryDB
 from core.hub import voice_clone_tab_enabled
 from core.logging_setup import get_ui_logger, open_log_folder, setup_logging
@@ -1007,7 +1007,12 @@ class App(tk.Tk):
     caption_bar_label: "ttk.Label"
     smtv_download_all_parts_var: tk.BooleanVar
     # Diarization toggle (Transcribe tab)
+    diarization_check: "ttk.Checkbutton"
     diarization_var: tk.BooleanVar
+    diarization_speakers_label: "ttk.Label"
+    diarization_speakers_var: tk.StringVar
+    diarization_speakers_combo: "ttk.Combobox"
+    diarization_help_icon: "ttk.Label"
     # Quick-options row on the Transcribe tab
     transcribe_lang_var: tk.StringVar
     device_var: tk.StringVar
@@ -2727,6 +2732,24 @@ class App(tk.Tk):
         except tk.TclError:
             pass
 
+    def _sync_diarization_speakers_option(self) -> None:
+        """Grey out the speakers combobox if speaker detection is off."""
+        combo = _inst_attr(self, "diarization_speakers_combo")
+        if combo is None:
+            return
+
+        try:
+            diar_var = _inst_attr(self, "diarization_var")
+            if diar_var is None:
+                return
+            diar_enabled = bool(diar_var.get())
+            if not diar_enabled:
+                combo.state(["disabled"])
+            else:
+                combo.state(["!disabled"])
+        except tk.TclError:
+            logger.debug("Could not sync the speakers option", exc_info=True)
+
     def _save_transcribe_prefs(self) -> None:
         # vad_enabled is intentionally NOT written here, same reasoning as
         # hotwords below: vad_enabled_var has no matching widget on this
@@ -2742,8 +2765,32 @@ class App(tk.Tk):
         translate_var = _inst_attr(self, "translate_var")
         if translate_var is not None:
             self.app_config["translate_to_english"] = bool(translate_var.get())
-        if getattr(self, "diarization_var", None) is not None:
+        if _inst_attr(self, "diarization_var") is not None:
             self.app_config["diarization_enabled"] = bool(self.diarization_var.get())
+
+        spk_var = _inst_attr(self, "diarization_speakers_var")
+        if spk_var is not None:
+            spk_val = spk_var.get().strip()
+            if spk_val.lower() == "auto":
+                self.app_config["diarization_num_speakers"] = -1
+            else:
+                # The underlying setting is validated when workers load config.
+                # We also reuse the validation bounds configured centrally.
+                try:
+                    num_speakers = int(spk_val)
+                    lower_bound, upper_bound = _PROJECT_KEY_RANGES.get(
+                        "diarization_num_speakers", (-1, 100)
+                    )
+                    if not (lower_bound <= num_speakers <= upper_bound):
+                        raise ValueError("Out of bounds")
+                    self.app_config["diarization_num_speakers"] = num_speakers
+                except ValueError:
+                    logger.warning(
+                        "Invalid diarization_num_speakers '%s'; falling back to Auto (-1)",
+                        spk_val
+                    )
+                    self.app_config["diarization_num_speakers"] = -1
+
         # transcribe_language is intentionally NOT persisted: the picker
         # resets to "Auto" every launch (user request). The choice still
         # lives in transcribe_lang_var for the rest of the session.
