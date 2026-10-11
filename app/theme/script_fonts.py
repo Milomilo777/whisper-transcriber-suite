@@ -461,7 +461,7 @@ def _cluster_boundary(text: str, i: int) -> bool:
 
 def run_pieces(line: str, limit: int = RUN_BYTES) -> list[tuple[int, int]]:
     """Cut a line into pieces of at most ``limit`` Tk bytes: after a space where possible, else
-    between clusters (a single cluster longer than the limit is the only forced cut)."""
+    between clusters (a single cluster or character longer than the limit forms its own piece)."""
     pieces: list[tuple[int, int]] = []
     start = 0
     while start < len(line):
@@ -469,6 +469,8 @@ def run_pieces(line: str, limit: int = RUN_BYTES) -> list[tuple[int, int]]:
         while end < len(line) and size + _tk_bytes(line[end]) <= limit:
             size += _tk_bytes(line[end])
             end += 1
+        if end == start:
+            end = start + 1
         if end >= len(line):
             pieces.append((start, len(line)))
             break
