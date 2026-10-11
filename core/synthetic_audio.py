@@ -166,6 +166,8 @@ def tag_wav(path: "str | os.PathLike[str]", comment: str = AI_COMMENT,
                 raise ValueError("WAV file too large to tag (over 4 GB)")
             dst.seek(4)
             dst.write(struct.pack("<I", riff_size))
+            dst.flush()
+            os.fsync(dst.fileno())
         shutil.copymode(path, tmp_path)  # mkstemp makes it 0600 on POSIX
         _replace_with_retry(tmp_path, path)
     except BaseException:
