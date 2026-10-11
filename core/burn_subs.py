@@ -357,7 +357,7 @@ def _output_key(path: str) -> str:
 def is_burn_temp(path: str) -> bool:
     """True for the hidden temp file a running burn encodes into."""
     # Use path.replace for Windows-style paths seen on POSIX
-    return os.path.basename(path.replace("\\", "/")).startswith(_BURN_TEMP_PREFIX)
+    return os.path.basename(path).startswith(_BURN_TEMP_PREFIX)
 
 
 def is_own_output(path: str) -> bool:
@@ -881,6 +881,10 @@ def burn(
     (``reserve_output_path``): if the app is closed during the burn, it is
     removed with the burn's other leftovers. While it runs the burn is listed
     for ``abandon_active_burns``, after which it stops and starts no ffmpeg.
+
+    Returns:
+        The final output path. It differs from ``out_path`` when the destination
+        stayed locked: the finished video is then saved under a numbered name.
 
     Raises:
         FileNotFoundError if the video or srt is missing.

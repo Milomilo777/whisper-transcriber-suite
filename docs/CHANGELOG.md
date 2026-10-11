@@ -38,6 +38,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   power cut cannot leave a half-written file.
 - **Downloaded AI models and trimmed voice-clone reference clips are flushed to disk before they are moved
   into place**, so a crash cannot leave a truncated file; remote LLM error responses are closed promptly.
+- **A finished subtitle burn is no longer lost when its destination file is locked** (for example open in
+  a player); it is saved under a numbered name instead.
 
 ## [2.0.0] — 2026-10-10
 

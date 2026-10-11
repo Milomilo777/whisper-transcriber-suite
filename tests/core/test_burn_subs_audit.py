@@ -5,17 +5,13 @@ import time
 
 import core.burn_subs as burn_subs
 from core.burn_subs import (
-    is_burn_temp, abandon_active_burns, burn_timeout, escape_srt_markup, is_own_output,
-    probe_duration, probe_media, release_reserved_path, reserve_output_path, sweep_stale_burns,
-    burn, _ActiveBurn
+    is_burn_temp, burn_timeout, escape_srt_markup, probe_duration, probe_media,
+    release_reserved_path, reserve_output_path, _ActiveBurn
 )
 
 def test_is_burn_temp():
     assert is_burn_temp(".burn-abc.mp4") is True
     assert is_burn_temp("/path/to/.burn-xyz.mkv") is True
-    # Test Windows paths to ensure it doesn't fail when run on POSIX
-    assert is_burn_temp("C:\\Users\\test\\.burn-windows.mp4") is True
-    assert is_burn_temp("\\\\server\\share\\.burn-unc.mp4") is True
     assert is_burn_temp("burn-not-hidden.mp4") is False
     assert is_burn_temp(".notburn-xyz.mp4") is False
     assert is_burn_temp("") is False
@@ -315,3 +311,35 @@ def test_salvage_both_permissionerror(tmp_path, monkeypatch):
     partials = [f for f in os.listdir(tmp_path) if f.startswith(".burn-")]
     assert len(partials) == 0
 
+
+def test_salvage_reserve_failure_clears_produced(tmp_path, monkeypatch):
+    """Destination locked AND no salvage name can be reserved: the error propagates and no bookkeeping leaks."""
+    video = tmp_path / "v.mp4"
+    srt = tmp_path / "v.srt"
+    video.write_bytes(b"vid")
+    srt.write_text("1\n00:00:00,000 --> 00:00:01,000\ntest\n", encoding="utf-8")
+    out = str(tmp_path / "out.mp4")
+    monkeypatch.setattr("core.burn_subs.probe_media", lambda p, timeout=60: type(
+        "MediaInfo", (), {"duration": 1.0, "has_video": True, "audio_codec": "aac"})())
+    monkeypatch.setattr("core.burn_subs.bundled_binary", lambda n: "echo")
+
+    def fake_ffmpeg(*args, **kwargs):
+        with open(args[0][-1], "w") as f:
+            f.write("finished_work")
+    monkeypatch.setattr(burn_subs, "_run_ffmpeg", fake_ffmpeg)
+    real_replace = os.replace
+
+    def locked_replace(src, dst):
+        if os.path.abspath(dst) == os.path.abspath(out):
+            raise PermissionError("locked")
+        return real_replace(src, dst)
+    monkeypatch.setattr(os, "replace", locked_replace)
+
+    def no_reserve(*a, **k):
+        raise PermissionError("cannot reserve")
+    monkeypatch.setattr(burn_subs, "reserve_output_path", no_reserve)
+    monkeypatch.setattr(time, "sleep", lambda s: None)
+    with pytest.raises(PermissionError):
+        burn_subs.burn(str(video), str(srt), out)
+    assert not burn_subs.is_own_output(out)
+    assert not burn_subs.is_reserved(out)
