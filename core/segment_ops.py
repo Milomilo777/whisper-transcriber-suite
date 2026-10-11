@@ -108,6 +108,10 @@ def merge_with_next(segments: list[dict], index: int) -> list[dict]:
     new_seg["start"] = min(left["start"], right["start"])
     new_seg["end"] = max(left["end"], right["end"])
 
+    for k, v in right.items():
+        if k not in new_seg:
+            new_seg[k] = copy.deepcopy(v)
+
     l_text = left.get("text", "") or ""
     r_text = right.get("text", "") or ""
 

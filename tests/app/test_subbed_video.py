@@ -103,7 +103,7 @@ def test_burn_gets_the_srt_the_transcription_wrote(tmp_path, media, monkeypatch,
     calls = []
     monkeypatch.setattr(
         burn_subs, "burn",
-        lambda v, s, o, **kw: (calls.append((v, s, o)), open(o, "wb").close()),
+        lambda v, s, o, **kw: (calls.append((v, s, o)), open(o, "wb").close(), o)[-1],
     )
     app, dl = _App(), _dl(media)
 
@@ -123,7 +123,7 @@ def test_finished_burn_reaches_the_history_before_the_main_thread_hears_of_it(
     # thread itself, and once only.
     srt = tmp_path / "Talk [x].srt"
     srt.write_text("x", encoding="utf-8")
-    monkeypatch.setattr(burn_subs, "burn", lambda v, s, o, **kw: open(o, "wb").close())
+    monkeypatch.setattr(burn_subs, "burn", lambda v, s, o, **kw: (open(o, "wb").close(), o)[-1])
     app, dl = _App(), _dl(media)
     posted: list = []
     app.post_to_main = posted.append
@@ -143,7 +143,7 @@ def test_existing_subbed_file_is_never_replaced(tmp_path, media, monkeypatch, sy
     srt.write_text("x", encoding="utf-8")
     sentinel = tmp_path / "Talk [x]-subbed.mp4"
     sentinel.write_bytes(b"earlier result")
-    monkeypatch.setattr(burn_subs, "burn", lambda v, s, o, **kw: open(o, "wb").close())
+    monkeypatch.setattr(burn_subs, "burn", lambda v, s, o, **kw: (open(o, "wb").close(), o)[-1])
     app, dl = _App(), _dl(media)
 
     subbed_video.after_transcription(app, dl, _tr(str(srt)), True)
@@ -302,6 +302,7 @@ def test_full_chain_runs_download_then_transcribe_then_burn(tmp_path, media, mon
         order.append("burn")
         assert os.path.isfile(s)
         open(o, "wb").close()
+        return o
 
     monkeypatch.setattr(burn_subs, "burn", fake_burn)
 
@@ -535,6 +536,7 @@ def test_the_burn_receives_its_placeholder_for_exit_cleanup(tmp_path, media, mon
     def fake_burn(v, s, o, **kw):
         seen["placeholder"] = kw.get("placeholder")
         open(o, "wb").close()
+        return o
 
     monkeypatch.setattr(burn_subs, "burn", fake_burn)
     app, dl = _App(), _dl(media)

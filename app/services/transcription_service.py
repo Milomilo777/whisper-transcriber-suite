@@ -659,7 +659,7 @@ class TranscriptionService:
         # Seed liveness timestamp at spawn so the watchdog grace
         # period covers initial model load.
         import time as _time
-        worker["last_event_at"] = _time.time()
+        worker["last_event_at"] = _time.monotonic()
         # Capture the token THIS process was spawned with. restart_worker()
         # rewrites worker["token"] in place while this reader thread may
         # still be draining the old process's pipe; reading
@@ -1216,7 +1216,7 @@ class TranscriptionService:
     def _poll_once(self) -> None:
         app = self.app
         import time as _time
-        now = _time.time()
+        now = _time.monotonic()
         while True:
             try:
                 event = app.worker_events.get_nowait()

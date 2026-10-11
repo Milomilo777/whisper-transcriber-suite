@@ -513,6 +513,24 @@ def test_split_inside_word():
     assert len(res[0].get("words", [])) + len(res[1].get("words", [])) == 2
     assert res[0].get("words", []) + res[1].get("words", []) == segments[0]["words"]
 
+
+def test_merge_missing_speaker_and_unknown_keys():
+    segments = [
+        {"start": 0.0, "end": 1.0, "text": "a", "foo": 1},
+        {"start": 1.0, "end": 2.0, "text": "b", "bar": 2, "speaker": "A"}
+    ]
+    res = merge_with_next(segments, 0)
+    assert res[0]["foo"] == 1
+    assert res[0]["bar"] == 2
+    assert res[0]["speaker"] == "A"
+
+    segments_left_speaker = [
+        {"start": 0.0, "end": 1.0, "text": "a", "speaker": "A"},
+        {"start": 1.0, "end": 2.0, "text": "b"}
+    ]
+    res2 = merge_with_next(segments_left_speaker, 0)
+    assert res2[0]["speaker"] == "A"
+
 def test_none_text():
     segments = [{"start": 0.0, "end": 1.0, "text": None}, {"start": 1.0, "end": 2.0, "text": None}]
     res = merge_with_next(segments, 0)

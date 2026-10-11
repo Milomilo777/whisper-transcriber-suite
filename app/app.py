@@ -1714,11 +1714,11 @@ class App(tk.Tk):
 
         def worker() -> None:
             try:
-                burn_subs.burn(task.file_path, srt_path, out_path)
+                final_out = burn_subs.burn(task.file_path, srt_path, out_path) or out_path
                 # Tk methods touched from a thread → route via the
                 # main-thread queue (self.after(0, ...) from a worker
                 # raises RuntimeError on Python 3.14).
-                self.post_to_main(lambda: self._burn_subs_done(out_path))
+                self.post_to_main(lambda p=final_out: self._burn_subs_done(p))
             except burn_subs.BurnCancelled:
                 # The app is closing (burn_subs.abandon_active_burns).
                 logger.info("Subtitle burn stopped: %s", out_path)

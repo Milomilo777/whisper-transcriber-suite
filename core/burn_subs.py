@@ -356,7 +356,8 @@ def _output_key(path: str) -> str:
 
 def is_burn_temp(path: str) -> bool:
     """True for the hidden temp file a running burn encodes into."""
-    return os.path.basename(path).startswith(_BURN_TEMP_PREFIX)
+    # Use path.replace for Windows-style paths seen on POSIX
+    return os.path.basename(path.replace("\\", "/")).startswith(_BURN_TEMP_PREFIX)
 
 
 def is_own_output(path: str) -> bool:
@@ -869,7 +870,7 @@ def burn(
     cancel_check: Callable[[], bool] | None = None,
     on_process: Callable[[Any], None] | None = None,
     placeholder: str = "",
-) -> None:
+) -> str:
     """Write ``out_path`` with the SRT subtitles burned into the video.
 
     ``timeout`` defaults to ``burn_timeout`` of the probed duration.
@@ -1054,11 +1055,47 @@ def burn(
         _produced.add(key)
         try:
             os.replace(tmp_out, out_path)
+        except FileNotFoundError:
+            _produced.discard(key)
+            raise
+        except PermissionError:
+            try:
+                salvaged = False
+                deadline = time.monotonic() + 1.0
+                while time.monotonic() < deadline:
+                    time.sleep(0.1)
+                    try:
+                        os.replace(tmp_out, out_path)
+                        salvaged = True
+                        break
+                    except PermissionError:
+                        pass
+                    except OSError:
+                        break
+                if not salvaged:
+                    salvage_path = reserve_output_path(out_path)
+                    try:
+                        os.replace(tmp_out, salvage_path)
+                        logger.warning("Subtitle burn: salvaged output to %s because the original destination was locked", salvage_path)
+                        _produced.discard(key)
+                        out_path = salvage_path
+                        key = _output_key(out_path)
+                        _produced.add(key)
+                        if placeholder:
+                            release_reserved_path(placeholder)
+                            placeholder = ""
+                    except BaseException:
+                        release_reserved_path(salvage_path)
+                        raise
+            except BaseException:
+                _produced.discard(key)
+                raise
         except BaseException:
             _produced.discard(key)
             raise
         with _reserved_lock:
-            _reserved.discard(key)  # the placeholder now holds the video
+            _reserved.discard(_output_key(out_path))
+        return out_path
     finally:
         with _active_lock:
             if entry in _active:

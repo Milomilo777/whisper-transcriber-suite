@@ -135,8 +135,9 @@ def start_burn(app: Any, dl: Any, srt_path: str) -> None:
         dl.process = proc
 
     def _worker() -> None:
+        nonlocal out_path
         try:
-            burn_subs.burn(
+            out_path = burn_subs.burn(
                 media, srt_path, out_path,
                 progress_cb=_progress,
                 cancel_check=lambda: bool(getattr(dl, "cancelled", False)),
