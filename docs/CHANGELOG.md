@@ -4,6 +4,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-10-12
+
 ### Added
 
 - **Local API: queue status and Retry-After**: `GET /api/health` now reports how many jobs are queued and
