@@ -60,6 +60,7 @@ from typing import Any, Callable
 from . import offline
 from ._gc_import_guard import gc_disabled_import
 from .config import user_cache_dir
+from .text_metrics import count_words
 
 logger = logging.getLogger(__name__)
 
@@ -532,7 +533,7 @@ class LLMRunner:
     ) -> str:
         return _strip_wrapped_quotes(self._chat(
             [{"role": "user", "content": _translate_prompt(text, target_language)}],
-            max_tokens=max(256, int(len(text.split()) * 1.5)),
+            max_tokens=max(256, int(count_words(text) * 1.5)),
         ))
 
 
@@ -761,7 +762,7 @@ class RemoteLLMRunner:
     def translate(self, text: str, *, target_language: str = "English") -> str:
         return _strip_wrapped_quotes(self._chat(
             [{"role": "user", "content": _translate_prompt(text, target_language)}],
-            max_tokens=max(256, int(len(text.split()) * 1.5)),
+            max_tokens=max(256, int(count_words(text) * 1.5)),
         ))
 
 

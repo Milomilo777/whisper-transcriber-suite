@@ -55,6 +55,7 @@ except ImportError:  # pragma: no cover - exercised via a blocked import in test
     psutil = None  # type: ignore[assignment]
 
 from core import __version__ as _PROGRAM_VERSION
+from .text_metrics import count_words
 
 logger = logging.getLogger(__name__)
 
@@ -199,11 +200,6 @@ def region_country() -> str:
     lookup fails. Local only: no network, never raises.
     """
     return _region_for(sys.platform)
-
-
-def count_words(text: str) -> int:
-    """Whitespace-split word count of *text* (0 for empty / None)."""
-    return len((text or "").split())
 
 
 def count_words_in_segments(segments: list[dict] | None) -> int:

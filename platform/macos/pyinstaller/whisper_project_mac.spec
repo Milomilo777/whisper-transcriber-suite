@@ -482,6 +482,7 @@ a = Analysis(
         'core.process_exit',
         'core.speed_meter',
         'core.stats',
+        'core.text_metrics',
         'core.task',
         'core.transcriber',
         'core.updates',

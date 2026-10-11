@@ -11,6 +11,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Word counts for Chinese, Japanese, Thai, Lao, Khmer and Burmese**: these scripts put no spaces between words,
+  so a whole sentence counted as one word in history and statistics. Chinese and Japanese now count one word per
+  character (punctuation such as 。 not counted), the South-East Asian scripts about one word per four letters.
+  Chapter titles in these scripts are cut by length, and translation gets room for the whole text.
 - **Speaker detection can no longer crash a finished transcription** (#7). It now runs in its own
   process, so an older `onnxruntime.dll` from another program no longer takes the app down; the
   transcript is saved before the speaker step, and a failed step leaves a clear log line and a

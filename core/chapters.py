@@ -35,6 +35,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from core.text_metrics import count_words
+
 logger = logging.getLogger(__name__)
 
 
@@ -168,17 +170,18 @@ def heuristic_title(segments: list[dict[str, Any]], boundary: ChapterBoundary,
         t = _seg_text(segments[idx])
         if t:
             text_parts.append(t)
-            if len(" ".join(text_parts).split()) >= max_words * 2:
+            if count_words(" ".join(text_parts)) >= max_words * 2:
                 break
     combined = " ".join(text_parts).strip()
     if not combined:
         return "Chapter"
     words = _first_sentence(combined).strip(_TERMINATORS + " \t\n").split()
     first = " ".join(words)
-    if len(words) > max_words:
+    if _UNSPACED_SCRIPT_RE.search(first):
+        if len(first) > _MAX_UNSPACED_TITLE_CHARS:
+            first = first[:_MAX_UNSPACED_TITLE_CHARS].rstrip() + "…"
+    elif count_words(first) > max_words:
         first = " ".join(words[:max_words]) + "…"
-    elif len(first) > _MAX_UNSPACED_TITLE_CHARS and _UNSPACED_SCRIPT_RE.search(first):
-        first = first[:_MAX_UNSPACED_TITLE_CHARS].rstrip() + "…"
     return first or "Chapter"
 
 
