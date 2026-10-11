@@ -50,7 +50,15 @@ def output_formats_for(task: Any, configured: Any) -> list[str]:
 
 
 # History note for a finished run that recognised no speech (empty outputs).
-NO_SPEECH_NOTE = "No speech recognised"
+NO_SPEECH_NOTE = "No speech recognised (check the audio track, or the file may be music only)"
+
+
+def _reported_language(task: Any) -> str:
+    """Return the detected language, clearing it if no speech was found."""
+    lang = getattr(task, "detected_language", "") or ""
+    if getattr(task, "no_speech", False):
+        lang = ""
+    return str(lang)
 
 
 def task_correlation_id(t: Any) -> str:
@@ -1919,7 +1927,7 @@ class TranscriptionService:
                     status=terminal_status,
                     output_paths=paths,
                     duration_seconds=float(duration),
-                    language=getattr(task, "detected_language", "") or "",
+                    language=_reported_language(task),
                     word_count=word_count,
                     # A finished run with empty outputs keeps a note in the
                     # row, so the record says why it has no words.
@@ -2038,8 +2046,9 @@ class TranscriptionService:
             # 0 words falls through to the file-based path so an older
             # worker (which never sends the fields) still gets counted.
             wc = int(getattr(task, "word_count", 0) or 0)
-            if wc > 0:
-                return wc, float(getattr(task, "audio_duration", 0.0) or 0.0)
+            duration = float(getattr(task, "audio_duration", 0.0) or 0.0)
+            if wc > 0 or duration > 0.0:
+                return wc, duration
             paths = list(getattr(task, "output_paths", None) or [])
             # The transcript JSON, never the auto-chapters sidecar.
             json_path = task_transcript_json(task, must_exist=True) or ""
@@ -2129,7 +2138,7 @@ class TranscriptionService:
             # "local-model" (core.stats.public_model_name).
             payload = _stats.build_stats_payload(
                 model=model,
-                language=getattr(task, "detected_language", "") or "",
+                language=_reported_language(task),
                 audio_duration=audio_duration,
                 transcription_time=ai_time,
                 status=getattr(task, "status", "") or "",

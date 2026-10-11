@@ -16,7 +16,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.services.transcription_service import TranscriptionService
+from app.services.transcription_service import NO_SPEECH_NOTE, TranscriptionService, _reported_language
 from core import stats as core_stats
 
 SRT_TWO_WORDS = "1\n00:00:00,000 --> 00:00:02,000\nHello world\n\n"
@@ -381,8 +381,8 @@ def test_finish_task_persists_history_with_the_real_terminal_status(monkeypatch)
     assert task.status == "finished"
 
 
-@pytest.mark.parametrize("no_speech, note", [(True, "No speech recognised"), (False, "")])
-def test_finish_task_notes_a_run_without_speech_in_history(monkeypatch, no_speech, note):
+@pytest.mark.parametrize("no_speech, expected_note", [(True, NO_SPEECH_NOTE), (False, "")])
+def test_finish_task_notes_a_run_without_speech_in_history(monkeypatch, no_speech, expected_note):
     """S01-5: an empty transcript finished like any other success; the
     history row now says why it has no words."""
     shown: list = []
@@ -405,8 +405,58 @@ def test_finish_task_notes_a_run_without_speech_in_history(monkeypatch, no_speec
     svc.finish_task({"task": task, "temporary": False}, keep_status=False)
 
     assert recorded[0]["status"] == "finished"
-    assert recorded[0]["error"] == note
+    assert recorded[0]["error"] == expected_note
     assert shown == [task]
+
+
+def test_finish_task_language_history_recording(monkeypatch):
+    """Rework 2: ensure language is cleared in history if and only if no_speech is True,
+    ignoring probability entirely."""
+    shown: list = []
+    app = SimpleNamespace(
+        app_config={}, update_overall_progress=lambda: None,
+        show_last_result=shown.append,
+    )
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    monkeypatch.setattr(svc, "_post_usage_stats", lambda *a, **k: None)
+
+    # Test case (a): no_speech False -> language is preserved even if probability is 0.0
+    recorded: list = []
+    app.history = SimpleNamespace(
+        finish_transcription=lambda *a, **k: (recorded.append(k), True)[1]
+    )
+    task1 = SimpleNamespace(
+        status="running", cancelled=False, end_time=None, start_time=time.time(),
+        output_paths=["clip.srt"], file_path="clip.mp4", history_id=7,
+        source_download=None, detected_language="fr", language_probability=0.0, no_speech=False,
+    )
+    svc.finish_task({"task": task1, "temporary": False}, keep_status=False)
+    assert recorded[0]["language"] == "fr"
+
+    # Test case (b): no_speech True -> language is cleared
+    recorded.clear()
+    task2 = SimpleNamespace(
+        status="running", cancelled=False, end_time=None, start_time=time.time(),
+        output_paths=["clip.srt"], file_path="clip.mp4", history_id=7,
+        source_download=None, detected_language="fr", language_probability=0.9, no_speech=True,
+    )
+    svc.finish_task({"task": task2, "temporary": False}, keep_status=False)
+    assert recorded[0]["language"] == ""
+
+
+def test_reported_language_helper():
+    """Rework 2: Unit tests for _reported_language helper."""
+    # no attribute
+    assert _reported_language(SimpleNamespace()) == ""
+
+    # None attribute
+    assert _reported_language(SimpleNamespace(detected_language=None)) == ""
+
+    # valid
+    assert _reported_language(SimpleNamespace(detected_language="en")) == "en"
+
+    # no_speech true
+    assert _reported_language(SimpleNamespace(detected_language="en", no_speech=True)) == ""
 
 
 def test_done_event_carries_the_no_speech_flag_to_the_task(monkeypatch):
@@ -565,7 +615,7 @@ def test_finish_task_recovers_if_history_save_fails(tmp_path):
     """If history.finish_transcription raises (e.g., locked DB), finish_task
     logs the error but still marks the UI task as finished so the user gets
     their files.
-    
+
     (This pins existing master behaviour: the outer except in finish_task
     catches the DB error.)
     """
@@ -581,11 +631,11 @@ def test_finish_task_recovers_if_history_save_fails(tmp_path):
     )
     svc = TranscriptionService(app)  # type: ignore[arg-type]
     svc._post_usage_stats = lambda *a, **k: None  # type: ignore[method-assign]
-    
+
     class _FailingHistory:
         def finish_transcription(self, *a, **k):
             raise sqlite3.OperationalError("database is locked")
-            
+
     app.history = _FailingHistory()
     task = SimpleNamespace(
         status="running", cancelled=False, end_time=None, start_time=time.time(),
@@ -618,29 +668,29 @@ def test_poll_worker_exit_marks_finished_if_outputs_exist(tmp_path, monkeypatch)
     )
     svc = TranscriptionService(app)  # type: ignore[arg-type]
     svc._post_usage_stats = lambda *a, **k: None  # type: ignore[method-assign]
-    
+
     # Mock Tkinter after to prevent the scheduled loop
     monkeypatch.setattr(svc, "_ensure_poll_scheduled", lambda: None)
-    
+
     file_path = tmp_path / "clip.mp4"
     file_path.touch()
     out_file = tmp_path / "clip.srt"
     out_file.write_text("hello")
-    
+
     task = SimpleNamespace(
         status="running", cancelled=False, end_time=None, start_time=time.time() - 10,
         file_path=str(file_path), history_id=7, source_download=None,
     )
-    
+
     class FakeProc:
         pid = 111
         def poll(self): return -9
-        
+
     worker = {"task": task, "temporary": False, "id": "w1", "process": FakeProc(), "ready": True}
     app.workers.append(worker)
-    
+
     app.worker_events.put({"event": "worker_exit", "return_code": -9, "_pid": 111, "_worker_id": "w1"})
-    
+
     svc.poll()
-    
+
     assert task.status == "finished", "Task should be finished because output exists"
