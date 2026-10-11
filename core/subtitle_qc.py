@@ -5,6 +5,7 @@ Pure functions for light subtitle QC, without I/O.
 from __future__ import annotations
 
 import math
+import re
 import unicodedata
 from dataclasses import dataclass
 
@@ -96,14 +97,15 @@ def suggest_line_break(text: str, max_line_chars: int, max_lines: int = 2) -> li
     if full_len <= max_line_chars:
         return None
 
-    has_space = " " in text
-    max_possible = max_line_chars * 2 + (1 if has_space else 0)
-    if full_len > max_possible:
+    # Early exit: a break drops one run of spaces between two lines of at most max_line_chars, so
+    # no break can exist when the text is longer than both lines plus its longest space run.
+    longest_space_run = max((len(m) for m in re.findall(" +", text)), default=0)
+    if full_len > max_line_chars * 2 + longest_space_run:
         return None
 
     splits = []
     for i in range(1, len(text)):
-        if text[i] == ' ':
+        if text[i] == ' ' and text[i-1] != ' ':
             splits.append((i, True))
         elif unicodedata.combining(text[i]) == 0:
             # split before a CJK base char whose previous base char (skipping combining marks) is also CJK
@@ -117,11 +119,24 @@ def suggest_line_break(text: str, max_line_chars: int, max_lines: int = 2) -> li
     if not splits:
         return None
 
+    # Pre-calculate chunk lengths to avoid O(N^2) visible_length calls
     prev = 0
     chunk_lens = []
+    end_spaces = []
+
     for i, is_space in splits:
         chunk_lens.append(visible_length(text[prev:i]))
         prev = i
+
+        if is_space:
+            end_space = i
+            while end_space < len(text) and text[end_space] == ' ':
+                end_space += 1
+            end_spaces.append(end_space)
+            prev = end_space
+        else:
+            end_spaces.append(i)
+
     chunk_lens.append(visible_length(text[prev:]))
 
     best_break = None
@@ -131,22 +146,27 @@ def suggest_line_break(text: str, max_line_chars: int, max_lines: int = 2) -> li
     len_l = 0
     for idx, (i, is_space) in enumerate(splits):
         len_l += chunk_lens[idx]
-        len_r = full_len - len_l - (1 if is_space else 0)
 
-        if len_l <= max_line_chars and len_r <= max_line_chars:
+        skipped_len = end_spaces[idx] - i
+        len_r = full_len - len_l - skipped_len
+
+        # end_spaces[idx] == len(text): only trailing spaces follow, the second line would be empty
+        if len_l <= max_line_chars and len_r <= max_line_chars and end_spaces[idx] < len(text):
             diff = abs(len_l - len_r)
             if diff < min_diff or (diff == min_diff and len_l < best_len_l):
                 min_diff = diff
                 best_len_l = len_l
                 left_str = text[:i]
-                right_str = text[i+1:] if is_space else text[i:]
+                right_str = text[end_spaces[idx]:]
                 best_break = [left_str, right_str]
+
+        len_l += skipped_len
 
     return best_break
 
 
 def _normalize_text_for_repeated(text: str) -> str:
-    nfc = unicodedata.normalize('NFC', text).casefold()
+    nfc = unicodedata.normalize('NFC', text.casefold())
     res = []
     for ch in nfc:
         cat = unicodedata.category(ch)

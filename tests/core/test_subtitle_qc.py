@@ -2,6 +2,7 @@ import math
 from copy import deepcopy
 
 import hypothesis.strategies as st
+import pytest
 from hypothesis import given, settings
 
 from core import subtitle_qc
@@ -473,3 +474,88 @@ def test_invariant_good_segments_no_issues(segments):
     issues = subtitle_qc.check_segments(valid_segments)
     assert len(issues) == 0
 
+
+def test_missing_tests():
+    # test suggest_line_break when full_len > max_line_chars * 2 + the longest run of spaces
+    assert subtitle_qc.suggest_line_break("a" * 86, 42, 2) is None
+
+    # test _is_cjk edge cases
+    assert subtitle_qc.suggest_line_break("가나", 1, 2) == ["가", "나"]
+
+    # Test with CJK punctuation (not CJK unified, e.g. U+3002) - should not split BEFORE it, but splitting before CJK char works
+    assert subtitle_qc.suggest_line_break("世界。", 2, 2) == ["世", "界。"]
+
+    # Test bad segment timing where one is bad, next is good
+    issues = subtitle_qc.check_segments([
+        {"start": "bad", "end": 1.0, "text": "hello"},
+        {"start": 1.0, "end": 2.0, "text": "world"}
+    ])
+    assert len(issues) == 1
+    assert issues[0].code == "bad_timing"
+
+    # NaN timing
+    issues = subtitle_qc.check_segments([{"start": float('nan'), "end": 2.0, "text": "test"}])
+    assert issues[0].code == "bad_timing"
+
+    # Test gap too small for overlapping slightly less than tolerance
+    issues = subtitle_qc.check_segments([
+        {"start": 1.0, "end": 2.0, "text": "hello"},
+        {"start": 1.999, "end": 3.0, "text": "world"}
+    ])
+    assert len(issues) == 0
+
+def test_missing_boundaries():
+    limits = QcLimits(max_cps=20.0, max_line_chars=42, max_lines=2, min_duration=1.0, max_duration=5.0, min_gap=0.1)
+
+    # just below max_cps (cps=19.0)
+    issues = subtitle_qc.check_segments([{"start": 0.0, "end": 1.0, "text": "a" * 19}], limits)
+    assert len(issues) == 0
+
+    # just below max_line_chars (41)
+    issues = subtitle_qc.check_segments([{"start": 0.0, "end": 3.0, "text": "a" * 41}], limits)
+    assert len(issues) == 0
+
+    # just below max_lines (1)
+    issues = subtitle_qc.check_segments([{"start": 0.0, "end": 3.0, "text": "a\n"}], limits)
+    assert len(issues) == 0
+
+    # just above min_duration (1.01)
+    issues = subtitle_qc.check_segments([{"start": 0.0, "end": 1.01, "text": "a"}], limits)
+    assert len(issues) == 0
+
+    # just below max_duration (4.99)
+    issues = subtitle_qc.check_segments([{"start": 0.0, "end": 4.99, "text": "a"}], limits)
+    assert len(issues) == 0
+
+    # just above min_gap (0.11)
+    issues = subtitle_qc.check_segments([{"start": 0.0, "end": 1.0, "text": "a"}, {"start": 1.11, "end": 3.0, "text": "b"}], limits)
+    assert len(issues) == 0
+
+    # just below min_gap (0.09) -> should warn
+    issues = subtitle_qc.check_segments([{"start": 0.0, "end": 1.0, "text": "a"}, {"start": 1.09, "end": 3.0, "text": "b"}], limits)
+    assert [(i.index, i.code) for i in issues] == [(1, 'gap_too_small')]
+
+def test_repeated_casefold_nfc():
+    # U+03AA is GREEK CAPITAL LETTER IOTA WITH DIALYTIKA
+    # U+0301 is COMBINING ACUTE ACCENT
+    # U+0390 is GREEK SMALL LETTER IOTA WITH DIALYTIKA AND TONOS
+    # These must be equal after casefolding AND NFC normalization in the correct order.
+    issues = subtitle_qc.check_segments([
+        {"start": 0.0, "end": 1.0, "text": "\u03AA\u0301"},
+        {"start": 1.5, "end": 2.5, "text": "\u0390"}
+    ])
+    assert len(issues) == 1
+    assert issues[0].code == "repeated"
+
+
+# --- line breaks around runs of spaces (post-merge review of subtitle_qc) ---
+
+@pytest.mark.parametrize(("text", "limit", "expected"), [
+    ("hello     world", 5, ["hello", "world"]),  # a run of spaces is dropped at the break
+    ("b      a", 1, ["b", "a"]),  # longer than 2 * limit + 1, still breakable (exact early-exit bound)
+    ("ab  cd", 3, ["ab", "cd"]),  # the run is kept in neither line
+    ("a   bbbb", 4, ["a", "bbbb"]),  # never break inside a run (that would end line 1 with a space)
+    ("a" * 30 + " " * 20, 30, None),  # only trailing spaces after the break: no empty second line
+])
+def test_line_break_handles_runs_of_spaces(text, limit, expected):
+    assert subtitle_qc.suggest_line_break(text, limit, 2) == expected
