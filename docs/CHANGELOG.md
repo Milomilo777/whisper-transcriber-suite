@@ -6,6 +6,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Speaker detection can no longer crash a finished transcription** (#7). It now runs in its own
+  process, so an older `onnxruntime.dll` from another program no longer takes the app down; the
+  transcript is saved before the speaker step, and a failed step leaves a clear log line and a
+  transcript without speaker labels. The hardware diagnostics list the loaded ONNX Runtime copies.
 - **New windows no longer open in the top-left corner on Windows** (#8). The transcript viewer,
   hardware wizard, model download and other dialogs opened at (0, 0), under a taskbar docked at
   the top; they now open over the middle of the main window, inside the screen's work area.

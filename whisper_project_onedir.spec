@@ -162,6 +162,7 @@ a = Analysis(
         *_rtl_datas,
     ],
     hiddenimports=[
+    'core.diarization_worker',
         *whisper_cpp_hidden,
         *alignment_hidden,
         *_gcloud_hidden,

@@ -514,6 +514,9 @@ def main() -> int:
     if "--voice-clone-worker" in sys.argv:
         from core.voice_clone_worker import main as _voice_clone_worker_main
         return _voice_clone_worker_main()
+    if "--diarize-worker" in sys.argv:
+        from core.diarization_worker import main as _diarize_worker_main
+        return _diarize_worker_main()
 
     _ensure_safe_stdio_encoding()
 

@@ -44,7 +44,7 @@ def test_diar_progress_wrapper_maps_fraction_to_90_99_slot(transcriber, monkeypa
     # the canonical fraction=0.5 sentinel and pin the int it forwards.
     captured: dict = {}
 
-    def _fake_diarize(_path, *, num_speakers, cluster_threshold, progress_cb):
+    def _fake_diarize(_path, *, num_speakers, cluster_threshold, progress_cb, cancelled=None):
         captured["progress_cb"] = progress_cb
         if progress_cb:
             progress_cb(0.5)
@@ -91,7 +91,7 @@ def test_diar_progress_wrapper_is_noop_when_progress_cb_is_none(
         "auto_chapters_enabled": False,
     })
 
-    def _fake_diarize(_path, *, num_speakers, cluster_threshold, progress_cb):
+    def _fake_diarize(_path, *, num_speakers, cluster_threshold, progress_cb, cancelled=None):
         # Sherpa-onnx WILL invoke this even when our wrapper has no
         # user callback. Must not raise.
         if progress_cb:

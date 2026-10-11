@@ -818,6 +818,7 @@ def _write_periodic_checkpoint(
     log_cb: Callable[[str], None] | None,
     *,
     periodic: bool = False,
+    transcription_completed: bool = False,
 ) -> None:
     """Persist a partial checkpoint; never raises — logs and moves on.
 
@@ -844,6 +845,7 @@ def _write_periodic_checkpoint(
             segments=segments_data,
             checkpoint_time=time.time(),
             whisper_task=whisper_task,
+            transcription_completed=transcription_completed,
         )
         task.checkpoint_failures = 0
     except Exception as e:  # noqa: BLE001
@@ -1420,6 +1422,7 @@ def _run_post_pipeline(
                     num_speakers=num_speakers,
                     cluster_threshold=threshold,
                     progress_cb=_diar_progress,
+                    cancelled=lambda: bool(task.cancelled),
                 )
                 _diar.assign_speakers_to_segments(segments_data, diar_segments)
                 speakers = sorted({s.speaker for s in diar_segments})
@@ -1429,7 +1432,7 @@ def _run_post_pipeline(
             else:
                 log(f"Diarisation skipped: {_diar.availability_reason()}", log_cb)
         except Exception as e:  # noqa: BLE001
-            log(f"Diarisation failed (continuing without speakers): {e}", log_cb)
+            log(f"Speaker detection failed: {e}; the transcript is saved without speaker labels", log_cb)
 
     # Word-level alignment refinement via stable-ts (opt-in). Skipped for a
     # translate run: the English text does not match the spoken language, so
@@ -2308,6 +2311,9 @@ def transcribe(
         )
 
         segments_data: list[dict[str, Any]] = []
+        # Set once the whole file is transcribed and saved, so a cancel during
+        # the post steps keeps the checkpoint marked as complete.
+        transcript_complete = False
 
         def _handle_cancelled() -> bool:
             if not task.cancelled:
@@ -2323,6 +2329,7 @@ def transcribe(
                     detected_lang_so_far,
                     lang_prob_so_far,
                     log_cb,
+                    transcription_completed=transcript_complete,
                 )
             log("Task cancelled", log_cb)
             return True
@@ -2408,6 +2415,19 @@ def transcribe(
         if _handle_cancelled():
             return
         _finish_speed(task, meter)
+
+        # Save first: the post steps (diarisation, alignment) run native code
+        # that can crash the process, so persist the finished transcript as a
+        # completed checkpoint before them; resume then only redoes the post
+        # steps and writes the outputs.
+        if segments_data and clip is None:
+            transcript_complete = True
+            _write_periodic_checkpoint(
+                task, segments_data, float(segments_data[-1].get("end", 0.0)),
+                str(getattr(info, "language", "") or ""),
+                float(getattr(info, "language_probability", 0.0) or 0.0),
+                log_cb, transcription_completed=True,
+            )
 
         # Speaker diarization (opt-in) + word-level alignment (opt-in).
         detected_lang = str(getattr(info, "language", "") or "")
@@ -2636,6 +2656,7 @@ def _transcribe_via_alt_backend(
             str(lang_info.language or ""),
             float(getattr(lang_info, "probability", 0.0) or 0.0),
             log_cb,
+            transcription_completed=True,
         )
 
     base = os.path.splitext(task.file_path)[0]
@@ -2879,6 +2900,38 @@ def _slice_audio_from(
     return str(slice_path)
 
 
+def _write_resumed_outputs(
+    task: "TranscriptionTask",
+    segments: list[dict[str, Any]],
+    detected_lang: str,
+    speaker_count: int,
+    log_cb: Callable[[str], None] | None,
+    progress_cb: Callable[[int], None] | None,
+) -> None:
+    """Final step of a resume: write the outputs, then drop the checkpoint."""
+    base = _task_output_base(task)
+    _note_no_speech(task, segments, log_cb)
+    written = _write_outputs(
+        base,
+        segments,
+        task.file_path,
+        getattr(task, "output_formats", None),
+        lang=_task_output_lang(task, detected_lang),
+        speaker_count=speaker_count,
+        chapters=getattr(task, "_chapters_for_writer", None) or [],
+    )
+    task.output_paths = list(written)
+    _record_transcript_stats(task, segments)
+    log(
+        f"Resume: wrote {len(written)} output file(s): "
+        f"{', '.join(os.path.basename(p) for p in written)}",
+        log_cb,
+    )
+    _checkpoint.delete_checkpoint(task.file_path)
+    if progress_cb:
+        progress_cb(100)
+
+
 def resume_transcription(
     task: TranscriptionTask,
     progress_cb: Callable[[int], None] | None = None,
@@ -2961,6 +3014,29 @@ def resume_transcription(
             return False
         task.whisper_task = cp_task
         _checked_whisper_task(task, backend_for_check or "faster_whisper")
+
+        if data.get("transcription_completed"):
+            # The whole file was transcribed and saved before the post steps;
+            # an earlier run died in them (e.g. a native diarisation crash).
+            # Redo only the post steps and write the outputs.
+            done_segments = list(data.get("segments") or [])
+            done_language = str(data.get("language") or "")
+            log(
+                f"Resume: transcription already complete ({len(done_segments)} "
+                "segment(s)); running the post steps and writing the outputs.",
+                log_cb,
+            )
+            if progress_cb:
+                progress_cb(90)
+            speaker_count = _run_post_pipeline(
+                task, done_segments, done_language, log_cb, progress_cb
+            )
+            if task.cancelled:
+                # The completed checkpoint stays as it is.
+                log("Task cancelled during resume.", log_cb)
+                return True
+            _write_resumed_outputs(task, done_segments, done_language, speaker_count, log_cb, progress_cb)
+            return True
 
         last_end_time = float(data.get("last_end_time") or 0.0)
         prior_segments = list(data.get("segments") or [])
@@ -3131,6 +3207,8 @@ def resume_transcription(
             # so dividing by the whole-file duration makes the bar climb
             # last_end_time→100 instead of pinning at a constant 99 (P2-25).
             total_dur = _resume_total
+            # Set once the merged transcript is saved as complete (see below).
+            resume_complete = False
 
             def _handle_resume_cancelled() -> bool:
                 if not task.cancelled:
@@ -3147,6 +3225,7 @@ def resume_transcription(
                         cp_language,
                         cp_lang_prob,
                         log_cb,
+                        transcription_completed=resume_complete,
                     )
                 log("Task cancelled during resume.", log_cb)
                 return True
@@ -3250,6 +3329,15 @@ def resume_transcription(
         _finish_speed(task, meter, resumed=True)
 
         final_segments = prior_segments + new_segments_data
+
+        # Save first (see transcribe()): the merged transcript is complete.
+        if final_segments:
+            resume_complete = True
+            _write_periodic_checkpoint(
+                task, final_segments, float(final_segments[-1].get("end", last_end_time)),
+                cp_language, cp_lang_prob, log_cb, transcription_completed=True,
+            )
+
         detected_lang = cp_language or str(getattr(info, "language", "") or "")
 
         # Post-pipeline must see the full ORIGINAL audio (diarisation,
@@ -3262,28 +3350,7 @@ def resume_transcription(
         if _handle_resume_cancelled():
             return True
 
-        base = _task_output_base(task)
-        _note_no_speech(task, final_segments, log_cb)
-        written = _write_outputs(
-            base,
-            final_segments,
-            task.file_path,
-            getattr(task, "output_formats", None),
-            lang=_task_output_lang(task, detected_lang),
-            speaker_count=speaker_count,
-            chapters=getattr(task, "_chapters_for_writer", None) or [],
-        )
-        task.output_paths = list(written)
-        _record_transcript_stats(task, final_segments)
-        log(
-            f"Resume: wrote {len(written)} output file(s): "
-            f"{', '.join(os.path.basename(p) for p in written)}",
-            log_cb,
-        )
-
-        _checkpoint.delete_checkpoint(task.file_path)
-        if progress_cb:
-            progress_cb(100)
+        _write_resumed_outputs(task, final_segments, detected_lang, speaker_count, log_cb, progress_cb)
         elapsed = time.time() - start
         log(f"Resume: done in {elapsed:.2f}s", log_cb)
         # runtime_cfg is used implicitly via the scope; reference it

@@ -150,14 +150,216 @@ def _prepare_audio_16k_mono(audio_path: str) -> tuple[Any, int]:
     return samples, 16000
 
 
+# Diarisation runs in its own process (core/diarization_worker.py): sherpa-onnx
+# loads onnxruntime.dll, and when the process already holds an older copy
+# (issue #7: a foreign ORT 1.17.1 on Windows) the native code crashes the whole
+# process. A fresh child keeps the transcription worker, and the finished
+# transcript it holds, alive whatever happens there.
+WORKER_STALL_TIMEOUT_S = 300.0  # no event from the worker for this long -> hung
+WORKER_MIN_TIMEOUT_S = 600.0  # overall limit floor
+WORKER_TIMEOUT_PER_AUDIO_S = 4.0  # overall limit: this many seconds per audio second
+_CANCEL_POLL_S = 0.1
+
+
+def _worker_command() -> list[str]:
+    import sys
+
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--diarize-worker"]
+    return [sys.executable, "-u", "-m", "core.diarization_worker"]
+
+
+def _crash_reason(returncode: int | None, stderr_lines: list[str]) -> str:
+    """Readable reason for a worker that exited without a result."""
+    text = " ".join(stderr_lines)
+    rc = returncode if returncode is not None else -1
+    # Negative: killed by a POSIX signal. >= 0xC0000000: a Windows NTSTATUS
+    # error such as 0xC0000005 (access violation).
+    if rc < 0 or rc >= 0xC0000000:
+        reason = f"Speaker detection crashed (exit code {rc})"
+        if "requested API version" in text:
+            reason += (": an older onnxruntime.dll was already loaded in the process "
+                       "(another program's copy); the bundled one could not be used")
+        return reason
+    reason = f"Speaker detection worker exited with code {rc}"
+    if text:
+        reason += f": {text[-300:]}"
+    return reason
+
+
 def diarize(
     audio_path: str,
     *,
     num_speakers: int = -1,
     cluster_threshold: float = 0.5,
     progress_cb: Callable[[float], None] | None = None,
+    cancelled: Callable[[], bool] | None = None,
 ) -> list[DiarSegment]:
-    """Run offline speaker diarization on ``audio_path``.
+    """Run offline speaker diarization on ``audio_path`` in a worker process.
+
+    Parameters:
+        audio_path: any file ffmpeg can read.
+        num_speakers: pass a positive int to force a known speaker
+            count; ``-1`` lets the clusterer decide based on
+            ``cluster_threshold``.
+        cluster_threshold: lower = more clusters (more speakers).
+            Default 0.5 is sherpa-onnx's recommended starting value.
+        progress_cb: optional callback receiving 0.0–1.0 fractions.
+        cancelled: polled while the worker runs; when it returns True the
+            worker is stopped and ``[]`` is returned.
+
+    Returns:
+        List of ``DiarSegment(start, end, speaker)`` sorted by
+        start time. Speaker IDs are stable across the file ("Speaker
+        00", "Speaker 01", …) but not across files.
+
+    Raises:
+        DiarizationUnavailable if the package or models are missing, the
+        audio cannot be decoded, or the worker crashes, hangs or times out.
+    """
+    import collections
+    import json
+    import queue
+    import threading
+    import time
+
+    from ._proc import kill_process_tree, new_session_kwargs
+
+    reason = availability_reason()
+    if reason:
+        raise DiarizationUnavailable(reason)
+
+    try:
+        from .transcriber import get_duration
+
+        duration = float(get_duration(audio_path))
+    except Exception:  # noqa: BLE001 - only sizes the time limit
+        duration = 0.0
+    overall_timeout_s = max(WORKER_MIN_TIMEOUT_S, duration * WORKER_TIMEOUT_PER_AUDIO_S)
+
+    kwargs: dict[str, Any] = {
+        "cwd": os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "stdin": subprocess.PIPE,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "text": True,
+        "encoding": "utf-8",
+        "errors": "replace",
+    }
+    kwargs.update(new_session_kwargs())
+    try:
+        process = subprocess.Popen(_worker_command(), **kwargs)
+    except OSError as e:
+        raise DiarizationUnavailable(f"could not start the speaker detection worker: {e}") from e
+
+    events: queue.Queue[dict[str, Any]] = queue.Queue()
+    stderr_tail: collections.deque[str] = collections.deque(maxlen=50)
+
+    def _read_stdout() -> None:
+        assert process.stdout is not None
+        for line in process.stdout:
+            try:
+                ev = json.loads(line)
+            except json.JSONDecodeError:
+                # Native libraries may print to stdout; only JSON lines are events.
+                logger.debug("diarization worker stdout: %s", line.strip()[:200])
+                continue
+            if isinstance(ev, dict):
+                events.put(ev)
+
+    def _read_stderr() -> None:
+        assert process.stderr is not None
+        for line in process.stderr:
+            if line.strip():
+                stderr_tail.append(line.strip())
+
+    readers = [threading.Thread(target=_read_stdout, daemon=True),
+               threading.Thread(target=_read_stderr, daemon=True)]
+    for t in readers:
+        t.start()
+
+    def _stop(force: bool) -> None:
+        kill_process_tree(process, force=force)
+        try:
+            process.wait(timeout=5.0)
+        except Exception:  # noqa: BLE001
+            kill_process_tree(process, force=True)
+
+    try:
+        assert process.stdin is not None
+        process.stdin.write(json.dumps({
+            "audio_path": audio_path,
+            "num_speakers": num_speakers,
+            "cluster_threshold": cluster_threshold,
+        }) + "\n")
+        process.stdin.flush()
+        process.stdin.close()
+    except (OSError, ValueError) as e:
+        # The worker died before reading the request; its exit code and
+        # stderr below say why.
+        logger.debug("diarization worker did not take the request: %s", e)
+
+    start = last_event = time.monotonic()
+    segments: list[dict[str, Any]] | None = None
+    exited = False
+    while segments is None:
+        if cancelled is not None and cancelled():
+            _stop(force=False)
+            return []
+        now = time.monotonic()
+        if now - start > overall_timeout_s:
+            _stop(force=True)
+            raise DiarizationUnavailable(
+                f"speaker detection took longer than {overall_timeout_s:.0f} s and was stopped")
+        if now - last_event > WORKER_STALL_TIMEOUT_S:
+            _stop(force=True)
+            raise DiarizationUnavailable(
+                f"speaker detection made no progress for {WORKER_STALL_TIMEOUT_S:.0f} s and was stopped")
+        try:
+            ev = events.get(timeout=_CANCEL_POLL_S)
+        except queue.Empty:
+            if exited:
+                break  # exited and every event it printed has been handled
+            if process.poll() is not None:
+                # Let the reader hand over what the worker printed last.
+                readers[0].join(timeout=2.0)
+                exited = True
+            continue
+        last_event = time.monotonic()
+        kind = ev.get("event")
+        if kind == "progress":
+            if progress_cb is not None:
+                progress_cb(float(ev.get("fraction", 0.0)))
+        elif kind == "done":
+            segments = list(ev.get("segments") or [])
+        elif kind == "error":
+            _stop(force=True)
+            raise DiarizationUnavailable(str(ev.get("error") or "unknown error"))
+
+    if segments is None:
+        readers[1].join(timeout=2.0)
+        raise DiarizationUnavailable(_crash_reason(process.returncode, list(stderr_tail)))
+    try:
+        process.wait(timeout=10.0)
+    except Exception:  # noqa: BLE001 - the result is already in hand
+        _stop(force=True)
+    return [
+        DiarSegment(start=float(s["start"]), end=float(s["end"]), speaker=str(s["speaker"]))
+        for s in segments
+    ]
+
+
+def _diarize_impl(
+    audio_path: str,
+    *,
+    num_speakers: int = -1,
+    cluster_threshold: float = 0.5,
+    progress_cb: Callable[[float], None] | None = None,
+) -> list[DiarSegment]:
+    """Diarize ``audio_path`` in THIS process (the worker's side of ``diarize``).
+
+    Call ``diarize`` instead: loading sherpa-onnx here can crash the caller
+    (issue #7). Same parameters and result as ``diarize``.
 
     Parameters:
         audio_path: any file ffmpeg can read.

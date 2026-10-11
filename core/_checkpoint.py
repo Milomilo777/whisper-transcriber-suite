@@ -195,6 +195,7 @@ def write_checkpoint(
     segments: list[dict[str, Any]],
     checkpoint_time: float,
     whisper_task: str = "transcribe",
+    transcription_completed: bool = False,
 ) -> Path:
     """Atomically persist a checkpoint.
 
@@ -233,6 +234,7 @@ def write_checkpoint(
         "segment_count": len(segments),
         "segments": segments,
         "checkpoint_time": float(checkpoint_time or _time.time()),
+        "transcription_completed": transcription_completed,
     }
 
     path = checkpoint_path(abs_path)

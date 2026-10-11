@@ -366,18 +366,21 @@ def test_resumed_tail_writes_periodic_checkpoints(t, monkeypatch, tmp_path):
     engine = Engine([Seg(0, 5, "one"), Seg(5, 9, "two"), Seg(9, 12, "three")])
     _wire(t, monkeypatch, tmp_path, engine)
     monkeypatch.setattr(t, "_CHECKPOINT_EVERY_N_SEGMENTS", 2)
-    saved: list[tuple[list[str], float]] = []
+    saved: list[tuple[list[str], float, bool]] = []
     real_write = t._write_periodic_checkpoint
 
     def spy(task_, segs, last_end, *a, **k):
-        saved.append(([s["text"] for s in segs], last_end))
+        saved.append(([s["text"] for s in segs], last_end, k.get("transcription_completed", False)))
         return real_write(task_, segs, last_end, *a, **k)
 
     monkeypatch.setattr(t, "_write_periodic_checkpoint", spy)
 
     assert t.resume_transcription(task) is True
 
-    assert saved == [(["first half", "one", "two"], 109.0)]
+    # One periodic write mid-tail, then the save-first write of the finished
+    # transcript before the post steps (issue #7).
+    assert saved == [(["first half", "one", "two"], 109.0, False),
+                     (["first half", "one", "two", "three"], 112.0, True)]
 
 
 def test_resume_cancel_on_the_last_segment_skips_the_post_pipeline(t, monkeypatch, tmp_path):

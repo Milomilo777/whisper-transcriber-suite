@@ -48,7 +48,8 @@ def test_diarize_maps_sherpa_items_to_labelled_segments(monkeypatch, tmp_path):
     monkeypatch.setitem(sys.modules, "sherpa_onnx", sherpa)
     monkeypatch.setattr(diar, "_prepare_audio_16k_mono", lambda p: (np.array([0.0]*16000, dtype=np.float32), 16000))
     
-    res = diar.diarize(str(tmp_path / "audio.wav"))
+    # The mapping runs in the worker process (issue #7), i.e. in _diarize_impl.
+    res = diar._diarize_impl(str(tmp_path / "audio.wav"))
     assert len(res) == 2
     assert res[0].start == 1.0
     assert res[0].speaker == "Speaker 01"

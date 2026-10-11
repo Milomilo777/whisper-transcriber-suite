@@ -1494,6 +1494,126 @@ def diagnostics_report() -> str:
     _safe("Platform", platform.platform)
 
     add("")
+    add("-- ONNX Runtime --")
+    
+    def _onnx_runtime_diagnostics():
+        import importlib.metadata
+        
+        # Check packages
+        try:
+            ort_version = importlib.metadata.version("onnxruntime")
+        except importlib.metadata.PackageNotFoundError:
+            ort_version = None
+            
+        try:
+            ort_gpu_version = importlib.metadata.version("onnxruntime-gpu")
+        except importlib.metadata.PackageNotFoundError:
+            ort_gpu_version = None
+            
+        try:
+            sherpa_version = importlib.metadata.version("sherpa-onnx")
+        except importlib.metadata.PackageNotFoundError:
+            sherpa_version = None
+
+        add(f"onnxruntime package: {ort_version or 'missing'}")
+        if ort_gpu_version:
+            add(f"onnxruntime-gpu package: {ort_gpu_version} (WARNING: may conflict with onnxruntime)")
+            
+        if ort_version:
+            # find where it's installed
+            try:
+                import onnxruntime
+                add(f"onnxruntime path: {onnxruntime.__file__}")
+            except ImportError:
+                pass
+                
+        add(f"sherpa-onnx package: {sherpa_version or 'missing'}")
+        if sherpa_version:
+            try:
+                import sherpa_onnx
+                add(f"sherpa-onnx path: {sherpa_onnx.__file__}")
+                import os
+                dll_path = os.path.join(os.path.dirname(sherpa_onnx.__file__), "lib", "onnxruntime.dll")
+                add(f"sherpa-onnx onnxruntime.dll: {'present' if os.path.isfile(dll_path) else 'missing'}")
+            except ImportError:
+                pass
+
+        if sys.platform == "win32":
+            import os
+            import ctypes
+            # Check C:\Windows\System32\onnxruntime.dll
+            sys32_dll = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "System32", "onnxruntime.dll")
+            if os.path.isfile(sys32_dll):
+                try:
+                    size = ctypes.windll.version.GetFileVersionInfoSizeW(sys32_dll, None)
+                    if size > 0:
+                        res = ctypes.create_string_buffer(size)
+                        if ctypes.windll.version.GetFileVersionInfoW(sys32_dll, 0, size, res):
+                            class VS_FIXEDFILEINFO(ctypes.Structure):
+                                _fields_ = [
+                                    ("dwSignature", ctypes.c_uint32),
+                                    ("dwStrucVersion", ctypes.c_uint32),
+                                    ("dwFileVersionMS", ctypes.c_uint32),
+                                    ("dwFileVersionLS", ctypes.c_uint32),
+                                ]
+                            ptr = ctypes.c_void_p()
+                            uLen = ctypes.c_uint()
+                            if ctypes.windll.version.VerQueryValueW(res, "\\", ctypes.byref(ptr), ctypes.byref(uLen)):
+                                vinfo = ctypes.cast(ptr, ctypes.POINTER(VS_FIXEDFILEINFO)).contents
+                                ms = vinfo.dwFileVersionMS
+                                ls = vinfo.dwFileVersionLS
+                                version = f"{ms >> 16}.{ms & 0xFFFF}.{ls >> 16}.{ls & 0xFFFF}"
+                                add(f"System32 onnxruntime.dll: present (version {version})")
+                            else:
+                                add(f"System32 onnxruntime.dll: present (version unknown)")
+                        else:
+                            add(f"System32 onnxruntime.dll: present (version unknown)")
+                    else:
+                        add(f"System32 onnxruntime.dll: present (version unknown)")
+                except Exception as e:
+                    add(f"System32 onnxruntime.dll: present (version error: {e})")
+            else:
+                add("System32 onnxruntime.dll: not found")
+
+            # Enumerate loaded modules
+            try:
+                from ctypes import wintypes
+                psapi = ctypes.WinDLL('psapi')
+                kernel32 = ctypes.WinDLL('kernel32')
+                
+                psapi.EnumProcessModules.argtypes = [wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
+                psapi.EnumProcessModules.restype = wintypes.BOOL
+                psapi.GetModuleFileNameExW.argtypes = [wintypes.HANDLE, wintypes.HMODULE, wintypes.LPWSTR, wintypes.DWORD]
+                psapi.GetModuleFileNameExW.restype = wintypes.DWORD
+                kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+                
+                hProcess = kernel32.GetCurrentProcess()
+                hMods = (wintypes.HMODULE * 1024)()
+                cbNeeded = wintypes.DWORD()
+                
+                if psapi.EnumProcessModules(hProcess, ctypes.byref(hMods), ctypes.sizeof(hMods), ctypes.byref(cbNeeded)):
+                    loaded_dlls = []
+                    for i in range(cbNeeded.value // ctypes.sizeof(wintypes.HMODULE)):
+                        mod_name = ctypes.create_unicode_buffer(1024)
+                        if psapi.GetModuleFileNameExW(hProcess, hMods[i], mod_name, ctypes.sizeof(mod_name)):
+                            if "onnxruntime" in os.path.normcase(mod_name.value):
+                                loaded_dlls.append(mod_name.value)
+                    if loaded_dlls:
+                        add("Loaded ONNX Runtime modules in this process:")
+                        for dll in loaded_dlls:
+                            add(f"  - {dll}")
+                    else:
+                        add("Loaded ONNX Runtime modules in this process: None")
+                else:
+                    import ctypes
+                    err = ctypes.GetLastError()
+                    add(f"Loaded ONNX Runtime modules: EnumProcessModules failed (error {err})")
+            except Exception as e:
+                add(f"Loaded ONNX Runtime modules: error enumerating ({e})")
+
+    _safe("ONNX Runtime Probes", _onnx_runtime_diagnostics)
+
+    add("")
     add("-- NVIDIA driver (CUDA driver API) --")
     driver = _run_with_timeout(_cuda_driver_info, _CUDA_DRIVER_PROBE_TIMEOUT_S, {})
     if not driver:
