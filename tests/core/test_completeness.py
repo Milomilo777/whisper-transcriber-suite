@@ -215,6 +215,22 @@ def test_text_identification_blank(text: str) -> None:
     assert report.empty is True
 
 
+@pytest.mark.parametrize("codes", [
+    (0x200B,), (0x200F, 0x20), (0x202B, 0x202C), (0xFEFF,), (0x2060, 0x200C, 0x200D),
+])
+def test_invisible_marks_alone_are_blank(codes: tuple[int, ...]) -> None:
+    text = "".join(map(chr, codes))
+    report = check_completeness([{"start": 0.0, "end": 1.0, "text": text}], 1.0)
+    assert report.empty is True
+
+
+def test_word_with_zero_width_non_joiner_is_speech() -> None:
+    # A Persian word written with ZWNJ inside it is real text.
+    text = "".join(map(chr, (0x645, 0x6CC, 0x200C, 0x631, 0x648, 0x645)))
+    report = check_completeness([{"start": 0.0, "end": 1.0, "text": text}], 1.0)
+    assert report.empty is False
+
+
 
 def test_100k_segments_do_not_crash() -> None:
     segments = []

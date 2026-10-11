@@ -11,6 +11,10 @@ from dataclasses import dataclass
 from typing import Any
 from core.writers.base import coerce_seconds
 
+# Zero-width spaces/joiners, LRM/RLM, bidi embeddings and overrides, word joiner, BOM: deleted before the
+# blank-text test, so a segment holding only these marks counts as empty.
+_INVISIBLE = dict.fromkeys([*range(0x200B, 0x2010), *range(0x202A, 0x202F), 0x2060, 0xFEFF])
+
 
 @dataclass(frozen=True)
 class Report:
@@ -121,8 +125,8 @@ def check_completeness(
             bad_segments += 1
             continue
             
-        # check if empty
-        if empty and str(text).strip():
+        # check if empty; zero-width and bidi control characters alone are not speech
+        if empty and str(text).translate(_INVISIBLE).strip():
             empty = False
             
         if start < last_start:
