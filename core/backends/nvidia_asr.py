@@ -40,6 +40,7 @@ cached for later runs.
 from __future__ import annotations
 
 import logging
+import math
 import os
 import subprocess
 import threading
@@ -457,12 +458,14 @@ class NvidiaAsrBackend(Backend):
             raise RuntimeError(self._error or "NVIDIA Parakeet model not loaded")
 
         effective_duration = duration
-        if effective_duration <= 0:
+        if effective_duration <= 0 or not math.isfinite(effective_duration):
             try:
                 from ..transcriber import get_duration
 
                 effective_duration = float(get_duration(audio_path) or 0.0)
             except Exception:  # noqa: BLE001
+                effective_duration = 0.0
+            if not math.isfinite(effective_duration):
                 effective_duration = 0.0
 
         chunks = plan_chunks(

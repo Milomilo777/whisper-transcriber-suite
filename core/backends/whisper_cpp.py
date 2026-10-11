@@ -12,6 +12,7 @@ ggml-large-v3-q5_0.bin`` and is downloaded on demand via
 from __future__ import annotations
 
 import logging
+import math
 import os
 import shutil
 import threading
@@ -242,6 +243,9 @@ class WhisperCppBackend(Backend):
     ) -> tuple[list[dict[str, Any]], LanguageInfo]:
         if not self._ready or self._model is None:
             raise RuntimeError(self._error or "whisper_cpp backend not loaded")
+
+        if not math.isfinite(duration):
+            duration = 0.0
 
         kwargs: dict[str, Any] = {}
         if language:
