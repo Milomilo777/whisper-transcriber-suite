@@ -6,6 +6,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Local API: queue status and Retry-After**: `GET /api/health` now reports how many jobs are queued and
+  running and the queue limit, and every "queue is full" 503 reply carries `Retry-After: 30`, so scripts can
+  wait instead of guessing.
+
 - **Speakers option on the Transcribe tab**: next to Identify speakers you can now tell the app how many people
   talk (2 to 10) instead of leaving it on Auto. It is greyed out while speaker detection is off.
 

@@ -273,7 +273,7 @@ set, except `GET /` (the page itself).
 | Method | Path | Purpose |
 |---|---|---|
 | GET  | `/` | the browser page |
-| GET  | `/api/health` | `{status, version, formats}` |
+| GET  | `/api/health` | `{status, version, formats, queue}` |
 | GET  | `/api/formats` | `{formats}` |
 | GET  | `/api/options` | `{formats, languages, diarization_available, backend_switchable}` |
 | GET  | `/api/jobs` | `{jobs: [{job_id, status, progress, paused, source, formats, created_at}]}` |
@@ -291,6 +291,10 @@ set, except `GET /` (the page itself).
 `cancelled`. Cancel, pause and resume answer 404 `no such active job` for a
 job that already ended. A job's `error` names files by their file name only,
 never by their full path on the server.
+
+`/api/health` also reports the queue, so a client can wait before it submits:
+`"queue": {"queued": 1, "running": 1, "max_queued": 50}` (`running` counts
+downloading jobs too). Like every other route it needs the token when one is set.
 
 Create a job from an uploaded file (put the `file` part first, as browsers do):
 
@@ -485,7 +489,7 @@ Behaviour to know:
   a URL can never be parsed as a yt-dlp flag. Private LAN addresses are
   allowed on purpose (fetching from a media server on the same network).
 - **Bounded queue.** Total and queued job counts are capped; once full the
-  server replies HTTP 503. A full queue is answered before an upload body is
+  server replies HTTP 503 with a `Retry-After: 30` header. A full queue is answered before an upload body is
   stored, so refused uploads do not fill the temp folder.
 - **Bounded connections.** At most 64 connections are served at once (one
   thread each). A further client gets HTTP 503 with `Retry-After` from a small

@@ -1350,7 +1350,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         treated as having room.
         """
         manager = self._srv.manager
-        limit = getattr(manager, "_max_queued", None)
+        limit = getattr(manager, "max_queued", getattr(manager, "_max_queued", None))
         if not isinstance(limit, int):
             return False
         queued = sum(1 for row in manager.list()
@@ -1423,18 +1423,20 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             route.query.get("token"),
         )
 
-    def _send_json(self, status: int, payload: dict[str, Any]) -> None:
+    def _send_json(self, status: int, payload: dict[str, Any], retry_after: int | None = None) -> None:
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        if retry_after is not None:
+            self.send_header("Retry-After", str(retry_after))
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_error_json(self, status: int, message: str) -> None:
-        self._send_json(status, {"error": message})
+    def _send_error_json(self, status: int, message: str, retry_after: int | None = None) -> None:
+        self._send_json(status, {"error": message}, retry_after=retry_after)
 
-    def _send_json_close(self, status: int, payload: dict[str, Any]) -> None:
+    def _send_json_close(self, status: int, payload: dict[str, Any], retry_after: int | None = None) -> None:
         """Send a JSON body and close the connection.
 
         Used when we reject a request WITHOUT consuming its body (the
@@ -1448,11 +1450,13 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Connection", "close")
+        if retry_after is not None:
+            self.send_header("Retry-After", str(retry_after))
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_error_json_close(self, status: int, message: str) -> None:
-        self._send_json_close(status, {"error": message})
+    def _send_error_json_close(self, status: int, message: str, retry_after: int | None = None) -> None:
+        self._send_json_close(status, {"error": message}, retry_after=retry_after)
 
     def _send_openai_error(
         self,
@@ -1462,9 +1466,10 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         err_type: str = "invalid_request_error",
         param: str | None = None,
         code: str | None = None,
+        retry_after: int | None = None,
     ) -> None:
         self._send_json(status, openai_error_payload(
-            message, err_type=err_type, param=param, code=code))
+            message, err_type=err_type, param=param, code=code), retry_after=retry_after)
 
     def _send_openai_error_close(
         self,
@@ -1474,9 +1479,10 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         err_type: str = "invalid_request_error",
         param: str | None = None,
         code: str | None = None,
+        retry_after: int | None = None,
     ) -> None:
         self._send_json_close(status, openai_error_payload(
-            message, err_type=err_type, param=param, code=code))
+            message, err_type=err_type, param=param, code=code), retry_after=retry_after)
 
     def _send_body(self, status: int, body: bytes, content_type: str) -> None:
         self.send_response(status)
@@ -1500,11 +1506,19 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             self._send_error_json(HTTPStatus.UNAUTHORIZED, "auth required")
             return
         if route.name == "health":
-            self._send_json(HTTPStatus.OK, {
+            payload: dict[str, Any] = {
                 "status": "ok",
                 "version": __version__,
                 "formats": supported_formats(),
-            })
+            }
+            if hasattr(self._srv.manager, "queue_counts") and hasattr(self._srv.manager, "max_queued"):
+                counts = self._srv.manager.queue_counts()
+                payload["queue"] = {
+                    "queued": counts["queued"],
+                    "running": counts["running"],
+                    "max_queued": self._srv.manager.max_queued,
+                }
+            self._send_json(HTTPStatus.OK, payload)
         elif route.name == "formats":
             self._send_json(HTTPStatus.OK, {"formats": supported_formats()})
         elif route.name == "options":
@@ -1728,14 +1742,14 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             except OSError:
                 pass
 
-    def _reject_post_early(self, status: int, message: str) -> None:
+    def _reject_post_early(self, status: int, message: str, retry_after: int | None = None) -> None:
         """Reject a POST before reading its body, keeping HTTP/1.1 in sync.
 
         Drains the declared body within bounds (see
         :meth:`_drain_for_reject`), then replies with Connection: close.
         """
         self._drain_for_reject()
-        self._send_error_json_close(status, message)
+        self._send_error_json_close(status, message, retry_after=retry_after)
 
     def _reject_openai_post_early(
         self,
@@ -1745,11 +1759,12 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         err_type: str = "invalid_request_error",
         param: str | None = None,
         code: str | None = None,
+        retry_after: int | None = None,
     ) -> None:
         """OpenAI-envelope twin of :meth:`_reject_post_early`."""
         self._drain_for_reject()
         self._send_openai_error_close(
-            status, message, err_type=err_type, param=param, code=code)
+            status, message, err_type=err_type, param=param, code=code, retry_after=retry_after)
 
     def _read_body(self) -> bytes | None:
         """Read the request body, enforcing the max-upload cap.
@@ -1846,7 +1861,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 # full-size upload to the temp folder just to be told "full".
                 self._reject_post_early(
                     HTTPStatus.SERVICE_UNAVAILABLE,
-                    "too many queued jobs; try again later")
+                    "too many queued jobs; try again later",
+                    retry_after=30)
                 return
             self._create_upload_job(boundary)
         else:
@@ -1997,7 +2013,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                     upload.filename, formats, language, options=options,
                     clip_start=clip_start, clip_end=clip_end)
             except QueueFull as e:
-                self._send_error_json(HTTPStatus.SERVICE_UNAVAILABLE, str(e))
+                self._send_error_json(HTTPStatus.SERVICE_UNAVAILABLE, str(e), retry_after=30)
                 return
             except ValueError as e:
                 self._send_error_json(HTTPStatus.BAD_REQUEST, str(e))
@@ -2166,7 +2182,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             self._send_error_json(HTTPStatus.BAD_REQUEST, str(e))
             return
         except QueueFull as e:
-            self._send_error_json(HTTPStatus.SERVICE_UNAVAILABLE, str(e))
+            self._send_error_json(HTTPStatus.SERVICE_UNAVAILABLE, str(e), retry_after=30)
             return
         self._send_json(HTTPStatus.ACCEPTED, {"job_id": job_id})
 
@@ -2216,13 +2232,13 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             self._reject_openai_post_early(
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 "too many transcriptions are waiting; try again later",
-                err_type="server_error")
+                err_type="server_error", retry_after=30)
             return
         if self._queue_is_full():
             self._reject_openai_post_early(
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 "too many queued jobs; try again later",
-                err_type="server_error")
+                err_type="server_error", retry_after=30)
             return
         try:
             upload = self._receive_upload(boundary)
@@ -2286,7 +2302,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         except QueueFull as e:
             self._send_openai_error(
                 HTTPStatus.SERVICE_UNAVAILABLE, str(e),
-                err_type="server_error")
+                err_type="server_error", retry_after=30)
             return
         except ValueError as e:
             self._send_openai_error(

@@ -820,6 +820,29 @@ class JobManager:
             job.paused = False
             return True
 
+    @property
+    def max_jobs(self) -> int:
+        """Cap on jobs kept in memory (any state)."""
+        return self._max_jobs
+
+    @property
+    def max_queued(self) -> int:
+        """Cap on jobs waiting to start; one more is refused with QueueFull."""
+        return self._max_queued
+
+    def queue_counts(self) -> dict[str, int]:
+        """Jobs by state: queued, running (downloading too) and finished (kept, in a terminal state)."""
+        with self._lock:
+            q = r = f = 0
+            for job in self._jobs.values():
+                if job.status == STATUS_QUEUED:
+                    q += 1
+                elif job.status in (STATUS_DOWNLOADING, STATUS_RUNNING):
+                    r += 1
+                elif job.status in _TERMINAL:
+                    f += 1
+            return {"queued": q, "running": r, "finished": f}
+
     def _queued_ids(self) -> list[str]:
         return [jid for jid, j in self._jobs.items()
                 if j.status == STATUS_QUEUED]
