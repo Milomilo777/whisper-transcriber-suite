@@ -1050,6 +1050,8 @@ class JobHTTPServer(ThreadingHTTPServer):
                  ssl_context: ssl.SSLContext | None = None,
                  max_connections: int = _MAX_CONNECTIONS,
                  max_sync_waits: int | None = None) -> None:
+        if server_address[0] and ":" in server_address[0]:
+            self.address_family = socket.AF_INET6
         self.manager = manager
         self.token = token
         self.max_upload_bytes = (

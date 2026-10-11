@@ -11,6 +11,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **`serve --host ::1` and other IPv6 addresses**: the local API server failed to start on an IPv6 host
+  because it always opened an IPv4 socket. It now binds IPv6 literals, and the printed address is bracketed
+  (`http://[::1]:8765/`) so it can be opened.
 - **Word counts for Chinese, Japanese, Thai, Lao, Khmer and Burmese**: these scripts put no spaces between words,
   so a whole sentence counted as one word in history and statistics. Chinese and Japanese now count one word per
   character (punctuation such as 。 not counted), the South-East Asian scripts about one word per four letters.

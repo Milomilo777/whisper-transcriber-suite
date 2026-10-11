@@ -235,7 +235,8 @@ def reachable_urls(host: str, port: int, https: bool = False) -> list[str]:
     """
     scheme = "https" if https else "http"
     if host not in ("0.0.0.0", "::", ""):
-        return [f"{scheme}://{host}:{port}/"]
+        bracketed = f"[{host}]" if ":" in host else host
+        return [f"{scheme}://{bracketed}:{port}/"]
     urls = [f"{scheme}://127.0.0.1:{port}/"]
     lan_ip = _primary_lan_ip()
     if lan_ip:
@@ -257,6 +258,11 @@ def _primary_lan_ip() -> str:
         s.close()
 
 
+def _family(host: str) -> socket.AddressFamily:
+    """AF_INET6 for an IPv6 literal such as ``::1`` (``serve --host``), else AF_INET."""
+    return socket.AF_INET6 if ":" in host else socket.AF_INET
+
+
 def _port_is_free(host: str, port: int) -> bool:
     """True iff no listener currently holds ``host:port``.
 
@@ -266,7 +272,7 @@ def _port_is_free(host: str, port: int) -> bool:
     point. A plain bind fails cleanly when something is already listening,
     which is exactly the "port already in use" case we want to detect.
     """
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s = socket.socket(_family(host), socket.SOCK_STREAM)
     try:
         s.bind((host, port))
         return True
@@ -292,7 +298,7 @@ def find_available_port(preferred: int = 8765, host: str = HOST_LOOPBACK) -> int
     """
     if 1 <= int(preferred) <= 65535 and _port_is_free(host, int(preferred)):
         return int(preferred)
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s = socket.socket(_family(host), socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
         s.bind((host, 0))
