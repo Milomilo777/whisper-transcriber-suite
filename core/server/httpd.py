@@ -549,45 +549,50 @@ def scan_multipart_file(data: bytes, boundary: str) -> _UploadParts:
     """
     if not boundary:
         return _UploadParts("", -1, -1, {})
-    delim = b"--" + boundary.encode("latin-1")
+    try:
+        delim_base = b"--" + boundary.encode("latin-1")
+    except UnicodeEncodeError:
+        delim_base = b"--" + boundary.encode("utf-8", "replace")
+    delim_crlf = b"\r\n" + delim_base
     fields: dict[str, str] = {}
     filename = ""
     file_start = -1
     file_end = -1
     pos = 0
     n = len(data)
-    while pos < n:
-        nxt = data.find(delim, pos)
-        if nxt == -1:
-            break
-        # The body of the part that ended at ``nxt`` ran from the previous
-        # header block; we only need each part's own header + body, so walk
-        # forward from just after this delimiter.
-        seg_start = nxt + len(delim)
-        # A trailing "--" marks the final boundary.
+
+    if data.startswith(delim_base):
+        nxt = 0
+        boundary_len = len(delim_base)
+    else:
+        nxt = data.find(delim_crlf, pos)
+        boundary_len = len(delim_crlf)
+
+    while nxt != -1:
+        seg_start = nxt + boundary_len
         if data[seg_start:seg_start + 2] == b"--":
             break
-        # Skip the CRLF after the boundary line.
+
         if data[seg_start:seg_start + 2] == b"\r\n":
             seg_start += 2
-        head_end = data.find(b"\r\n\r\n", seg_start)
+            head_delim = b"\r\n\r\n"
+        else:
+            break
+
+        head_end = data.find(head_delim, seg_start)
         if head_end == -1:
             break
+
         raw_headers = _decode_part_headers(data[seg_start:head_end])
-        body_start = head_end + 4
-        # The body ends just before the next delimiter (with its leading CRLF).
-        body_delim = data.find(delim, body_start)
-        if body_delim == -1:
-            # Header parsed but the closing boundary is past the window we were
-            # given; treat the body as open-ended to the window's end.
+        body_start = head_end + len(head_delim)
+
+        nxt = data.find(delim_crlf, body_start)
+        if nxt == -1:
             body_end = n
-            next_pos = n
         else:
-            body_end = body_delim
-            next_pos = body_delim
-        # Strip the trailing CRLF that precedes the next boundary line.
-        if data[body_end - 2:body_end] == b"\r\n":
-            body_end -= 2
+            body_end = nxt
+            boundary_len = len(delim_crlf)
+
         name = _header_param(raw_headers, "name")
         fname = _header_param(raw_headers, "filename")
         if fname:
@@ -596,7 +601,7 @@ def scan_multipart_file(data: bytes, boundary: str) -> _UploadParts:
             file_end = body_end
         elif name:
             fields[name] = data[body_start:body_end].decode("utf-8", "replace")
-        pos = next_pos
+
     return _UploadParts(filename, file_start, file_end, fields)
 
 
@@ -1781,7 +1786,19 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         anything over :data:`_MAX_JSON_BODY_BYTES` with a 413, draining the
         declared body first so HTTP/1.1 keep-alive stays in sync.
         """
-        length = self._declared_length()
+        if "chunked" in self.headers.get("Transfer-Encoding", "").lower():
+            self._send_error_json_close(
+                HTTPStatus.LENGTH_REQUIRED,
+                "chunked requests are not supported")
+            return None
+        raw_len = self.headers.get("Content-Length")
+        if raw_len is None:
+            length = 0
+        else:
+            if not isinstance(raw_len, str) or not raw_len.isascii() or not raw_len.isdigit():
+                self._send_error_json_close(HTTPStatus.BAD_REQUEST, "bad length")
+                return None
+            length = int(raw_len)  # ASCII digits only: never negative
         if length > _MAX_JSON_BODY_BYTES:
             self._drain_body(length)
             self._send_error_json_close(
@@ -2027,7 +2044,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         closing the file part) — using the LAST delimiter would swallow the
         trailing text-field parts into the saved media as junk bytes.
         """
-        delim = b"--" + boundary.encode("latin-1")
+        delim_base = b"--" + boundary.encode("latin-1")
         with open(tmp_path, "rb") as f:
             head = f.read(min(size, _MULTIPART_HEADER_WINDOW))
             parts = scan_multipart_file(head, boundary)
@@ -2057,7 +2074,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 # start, NOT the last: any text-field parts sit between that
                 # first delimiter and the closing boundary, and must not be
                 # copied into the media file.
-                idx = tail.find(delim)
+                idx = tail.find(delim_base)
                 if idx == -1:
                     # No delimiter in the tail: only re-resolve the end if it
                     # was still pinned at the window edge (the closing boundary

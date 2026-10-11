@@ -10,6 +10,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   process, so an older `onnxruntime.dll` from another program no longer takes the app down; the
   transcript is saved before the speaker step, and a failed step leaves a clear log line and a
   transcript without speaker labels. The hardware diagnostics list the loaded ONNX Runtime copies.
+- **Local API uploads:** a file whose bytes happen to contain the form boundary is no longer cut short, names
+  with decomposed accents (as sent from macOS) keep their letters, and a malformed or chunked Content-Length on
+  a JSON request gets a clear 400 or 411 error.
 - **A transcription whose worker died after writing all of its files is recorded as finished**, not as an
   error; the history row notes the worker's exit code.
 - **New windows no longer open in the top-left corner on Windows** (#8). The transcript viewer,
