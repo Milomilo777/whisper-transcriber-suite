@@ -207,6 +207,62 @@ def test_cancel_stops_the_worker(fake_worker):
     assert _dead(started[-1])
 
 
+def test_no_stall_limit_before_the_first_progress(fake_worker, monkeypatch):
+    # sherpa-onnx's segmentation pass is silent for minutes on long audio: a 48-minute file was
+    # stopped as "no progress" before its first event and lost its speaker labels.
+    fake_worker("""
+        time.sleep(2.5)
+        emit({"event": "progress", "fraction": 0.5})
+        emit({"event": "done", "segments": [{"start": 0.0, "end": 1.0, "speaker": "Speaker 00"}]})
+    """)
+    monkeypatch.setattr(diarization, "WORKER_STALL_TIMEOUT_S", 1.0)
+
+    segs = diarization.diarize("long-talk.wav")
+
+    assert [s.speaker for s in segs] == ["Speaker 00"]
+
+
+def test_silent_worker_still_ends_at_the_overall_limit(fake_worker, monkeypatch):
+    started = fake_worker("""
+        time.sleep(60)
+    """)
+    monkeypatch.setattr(diarization, "WORKER_STALL_TIMEOUT_S", 0.2)
+    monkeypatch.setattr(diarization, "WORKER_MIN_TIMEOUT_S", 1.5)
+    monkeypatch.setattr("core.transcriber.get_duration", lambda p: 0.1)
+
+    with pytest.raises(diarization.DiarizationUnavailable, match="took longer than"):
+        diarization.diarize("talk.wav")
+
+    assert _dead(started[-1])
+
+
+def test_worker_is_stopped_when_the_progress_callback_raises(fake_worker):
+    started = fake_worker("""
+        emit({"event": "progress", "fraction": 0.1})
+        time.sleep(60)
+    """)
+
+    def broken_ui(_fraction):
+        raise RuntimeError("UI error in progress callback")
+
+    with pytest.raises(RuntimeError, match="UI error"):
+        diarization.diarize("talk.wav", progress_cb=broken_ui)
+
+    assert _dead(started[-1])
+
+
+def test_worker_is_stopped_when_the_result_is_malformed(fake_worker):
+    started = fake_worker("""
+        emit({"event": "done", "segments": [{"start": "soon", "end": 1.0, "speaker": "Speaker 00"}]})
+        time.sleep(60)
+    """)
+
+    with pytest.raises(ValueError):
+        diarization.diarize("talk.wav")
+
+    assert _dead(started[-1])
+
+
 def test_worker_command_matches_the_build_kind(monkeypatch):
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     assert diarization._worker_command() == [sys.executable, "--diarize-worker"]

@@ -302,51 +302,63 @@ def diarize(
     start = last_event = time.monotonic()
     segments: list[dict[str, Any]] | None = None
     exited = False
-    while segments is None:
-        if cancelled is not None and cancelled():
-            _stop(force=False)
-            return []
-        now = time.monotonic()
-        if now - start > overall_timeout_s:
-            _stop(force=True)
-            raise DiarizationUnavailable(
-                f"speaker detection took longer than {overall_timeout_s:.0f} s and was stopped")
-        if now - last_event > WORKER_STALL_TIMEOUT_S:
-            _stop(force=True)
-            raise DiarizationUnavailable(
-                f"speaker detection made no progress for {WORKER_STALL_TIMEOUT_S:.0f} s and was stopped")
-        try:
-            ev = events.get(timeout=_CANCEL_POLL_S)
-        except queue.Empty:
-            if exited:
-                break  # exited and every event it printed has been handled
-            if process.poll() is not None:
-                # Let the reader hand over what the worker printed last.
-                readers[0].join(timeout=2.0)
-                exited = True
-            continue
-        last_event = time.monotonic()
-        kind = ev.get("event")
-        if kind == "progress":
-            if progress_cb is not None:
-                progress_cb(float(ev.get("fraction", 0.0)))
-        elif kind == "done":
-            segments = list(ev.get("segments") or [])
-        elif kind == "error":
-            _stop(force=True)
-            raise DiarizationUnavailable(str(ev.get("error") or "unknown error"))
-
-    if segments is None:
-        readers[1].join(timeout=2.0)
-        raise DiarizationUnavailable(_crash_reason(process.returncode, list(stderr_tail)))
+    # sherpa-onnx reports nothing during its segmentation pass, which takes
+    # minutes on long audio (first progress after ~100 s for 12 min on a
+    # desktop CPU), so the stall limit only starts with the first progress;
+    # before that the overall limit, which grows with the audio, applies.
+    progressed = False
     try:
-        process.wait(timeout=10.0)
-    except Exception:  # noqa: BLE001 - the result is already in hand
-        _stop(force=True)
-    return [
-        DiarSegment(start=float(s["start"]), end=float(s["end"]), speaker=str(s["speaker"]))
-        for s in segments
-    ]
+        while segments is None:
+            if cancelled is not None and cancelled():
+                _stop(force=False)
+                return []
+            now = time.monotonic()
+            if now - start > overall_timeout_s:
+                _stop(force=True)
+                raise DiarizationUnavailable(
+                    f"speaker detection took longer than {overall_timeout_s:.0f} s and was stopped")
+            if progressed and now - last_event > WORKER_STALL_TIMEOUT_S:
+                _stop(force=True)
+                raise DiarizationUnavailable(
+                    f"speaker detection made no progress for {WORKER_STALL_TIMEOUT_S:.0f} s and was stopped")
+            try:
+                ev = events.get(timeout=_CANCEL_POLL_S)
+            except queue.Empty:
+                if exited:
+                    break  # exited and every event it printed has been handled
+                if process.poll() is not None:
+                    # Let the reader hand over what the worker printed last.
+                    readers[0].join(timeout=2.0)
+                    exited = True
+                continue
+            last_event = time.monotonic()
+            kind = ev.get("event")
+            if kind == "progress":
+                progressed = True
+                if progress_cb is not None:
+                    progress_cb(float(ev.get("fraction", 0.0)))
+            elif kind == "done":
+                segments = list(ev.get("segments") or [])
+            elif kind == "error":
+                _stop(force=True)
+                raise DiarizationUnavailable(str(ev.get("error") or "unknown error"))
+
+        if segments is None:
+            readers[1].join(timeout=2.0)
+            raise DiarizationUnavailable(_crash_reason(process.returncode, list(stderr_tail)))
+        try:
+            process.wait(timeout=10.0)
+        except Exception:  # noqa: BLE001 - the result is already in hand
+            _stop(force=True)
+        return [
+            DiarSegment(start=float(s["start"]), end=float(s["end"]), speaker=str(s["speaker"]))
+            for s in segments
+        ]
+    finally:
+        # Whatever left the loop (a raising progress callback, a malformed
+        # result, an interrupt), the worker must not outlive this call.
+        if process.poll() is None:
+            _stop(force=True)
 
 
 def _diarize_impl(

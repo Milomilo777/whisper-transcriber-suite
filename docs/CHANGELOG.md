@@ -22,6 +22,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   looked for the build machine's certificate file. It now uses the certificate bundle it ships with, and the
   macOS build check fails if that ever regresses.
 
+- **Speaker labels on long recordings**: speaker detection, which now runs in its own process, was stopped as
+  "made no progress" on files longer than about 40 minutes, because its first pass reports nothing for
+  minutes; the transcript was saved without speaker labels. The no-progress limit now starts with the first
+  progress report (the overall time limit still applies), and the helper process is always stopped if anything
+  goes wrong while waiting for it.
+
 - **Local API: a request with an absurdly long `Content-Length` now gets a 413** instead of a dropped
   connection, and multipart uploads with spaces after a boundary line (allowed by RFC 2046) are read again.
 
