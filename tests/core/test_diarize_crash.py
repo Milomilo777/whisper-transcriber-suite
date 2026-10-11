@@ -423,3 +423,81 @@ def test_diagnostics_list_the_loaded_onnx_runtime_modules_on_windows():
 
     assert "Loaded ONNX Runtime modules in this process:" in report
     assert "System32 onnxruntime.dll:" in report
+
+
+def test_worker_main_reports_segments_with_unicode(monkeypatch, capsys):
+    monkeypatch.setitem(sys.modules, "sherpa_onnx", object())
+    label = "".join(map(chr, (0x633, 0x62E, 0x646, 0x631, 0x627, 0x646))) + " 00"  # Persian "speaker 00"
+
+    def fake_impl(path, *, num_speakers, cluster_threshold, progress_cb):
+        return [diarization.DiarSegment(0.0, 1.0, label)]
+
+    monkeypatch.setattr(diarization, "_diarize_impl", fake_impl)
+
+    rc, events = _run_worker_main(
+        monkeypatch, capsys, '{"audio_path": "a.wav"}\n')
+
+    assert rc == 0
+    assert events[-1] == {"event": "done", "segments": [{"start": 0.0, "end": 1.0, "speaker": label}]}
+
+
+def test_diagnostics_probes_handle_failures_gracefully(monkeypatch):
+    import importlib.metadata
+
+    def fail_metadata(*args, **kwargs):
+        raise Exception("Mocked unexpected error")
+
+    monkeypatch.setattr(importlib.metadata, "version", fail_metadata)
+
+    import ctypes
+    class MockWinDLL:
+        def __getattr__(self, name):
+            raise OSError("Mocked ctypes error")
+
+    monkeypatch.setattr(ctypes, "windll", MockWinDLL(), raising=False)
+
+    def fake_open(*args, **kwargs):
+        raise Exception("Mocked file error")
+
+    from core import hardware
+    # monkeypatch _run_with_timeout so we don't hang on cuda probes
+    monkeypatch.setattr(hardware, "_run_with_timeout", lambda f, t, d: d)
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.platform", "win32")
+        import builtins
+        m.setattr(builtins, "open", fake_open)
+        report = hardware.diagnostics_report()
+
+    assert "-- ONNX Runtime --" in report
+    assert "<error:" in report
+
+
+def test_diarization_off_skips_child_and_does_not_save_twice(t, monkeypatch, tmp_path):
+    from core.task import TranscriptionTask
+
+    audio = tmp_path / "talk.wav"
+    audio.write_bytes(b"\0" * 16)
+
+    _slices, written = _wire(t, monkeypatch, tmp_path, Engine([Seg(0, 2, "one"), Seg(2, 4, "two")]))
+
+    called_diarize = False
+    def fake_diarize(*args, **kwargs):
+        nonlocal called_diarize
+        called_diarize = True
+        return []
+
+    monkeypatch.setattr(diarization, "diarize", fake_diarize)
+
+    writes = []
+    original_write = t._write_periodic_checkpoint
+    def mock_write(task, segments, end_time, lang, prob, log_cb, transcription_completed=False):
+        writes.append(transcription_completed)
+        return original_write(task, segments, end_time, lang, prob, log_cb, transcription_completed=transcription_completed)
+
+    monkeypatch.setattr(t, "_write_periodic_checkpoint", mock_write)
+
+    t.transcribe(TranscriptionTask(str(audio)), lambda p: None, lambda m: None)
+
+    assert not called_diarize
+    assert writes.count(True) == 1
