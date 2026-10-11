@@ -34,7 +34,7 @@ import threading
 from contextlib import contextmanager
 from typing import Iterator
 
-_lock = threading.Lock()
+_lock = threading.RLock()
 
 
 @contextmanager
