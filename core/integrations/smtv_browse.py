@@ -15,6 +15,7 @@ import html as _html
 import re
 import urllib.parse
 import urllib.request
+import urllib.error
 from dataclasses import dataclass, field
 
 from core import offline
@@ -158,6 +159,9 @@ def search(
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             body = resp.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        e.close()
+        raise SmtvBrowseError(f"Could not reach Supreme Master TV: {e}") from e
     except Exception as e:  # noqa: BLE001 — urllib raises a wide family
         raise SmtvBrowseError(f"Could not reach Supreme Master TV: {e}") from e
     result = parse_results(body, base_url=page_url(lang, "search/"))
@@ -172,8 +176,12 @@ def fetch_bytes(url: str, *, timeout: float = 20.0, limit: int = 2_000_000) -> b
     if offline.is_offline():
         raise SmtvBrowseError(offline.refused("Supreme Master TV"))
     req = urllib.request.Request(url, headers={"User-Agent": _UA})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read(limit)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.read(limit)
+    except urllib.error.HTTPError as e:
+        e.close()
+        raise
 
 
 # ---------------------------------------------------------------- parse --

@@ -292,6 +292,7 @@ def _http_get(url: str, *, timeout: float) -> str:
             # A charset name Python does not know: the pages are UTF-8.
             return body.decode("utf-8", errors="replace")
     except urllib.error.HTTPError as e:
+        e.close()
         raise SmtvError(f"HTTP {e.code} fetching {url}: {e.reason}") from e
     except urllib.error.URLError as e:
         raise SmtvError(f"network error fetching {url}: {e.reason}") from e
