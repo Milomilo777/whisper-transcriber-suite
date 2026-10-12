@@ -204,6 +204,10 @@ def parse_release(text: str) -> ReleaseDetails:
         raise ValueError(f"malformed release JSON: {e}") from e
     if not isinstance(data, dict):
         raise ValueError("release JSON is not an object")
+    # Belt and braces: /releases/latest never returns a draft or prerelease,
+    # but a notice must never point at one if the endpoint ever changes.
+    if data.get("draft") or data.get("prerelease"):
+        raise ValueError("release is a draft or prerelease")
     tag = data.get("tag_name")
     if not isinstance(tag, str) or not tag.strip():
         raise ValueError("release JSON has no usable tag_name")
@@ -264,10 +268,15 @@ _MD_STRONG = re.compile(r"\*\*(.+?)\*\*")
 _MD_EMPHASIS = re.compile(r"(?<![\w*])\*(?=\S)(.+?)(?<=\S)\*(?![\w*])")
 _MD_CODE = re.compile(r"`([^`]*)`")
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9(\"'])")
+# A GFM table delimiter row: "---|:---:", "| --- |", "|:--|--:|". Needs a pipe
+# (checked separately), so a bare "---" thematic break is not one.
+_TABLE_DELIMITER = re.compile(r"^\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?$")
 
 
 def _body_lines(body: str) -> list[str]:
-    return body[:_MAX_BODY_CHARS].replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    # A body saved with a byte order mark would hide its "# Title" heading.
+    body = body[:_MAX_BODY_CHARS].lstrip("\ufeff")
+    return body.replace("\r\n", "\n").replace("\r", "\n").split("\n")
 
 
 def _plain_text(markdown: str) -> str:
@@ -314,6 +323,27 @@ def _starts_block(line: str) -> bool:
     )
 
 
+def _is_table_delimiter(line: str) -> bool:
+    return "|" in line and _TABLE_DELIMITER.match(line) is not None
+
+
+def _opens_table(lines: list[str], index: int) -> bool:
+    """True when ``lines[index]`` is a table's header or delimiter row.
+
+    GFM tables need no leading pipe ("File | Size" over "--- | ---"), so the
+    delimiter row below a line is what marks it as a table: a sentence that
+    merely contains "|" is not one.
+    """
+    line = lines[index].strip()
+    if _is_table_delimiter(line):
+        return True
+    return (
+        "|" in line
+        and index + 1 < len(lines)
+        and _is_table_delimiter(lines[index + 1].strip())
+    )
+
+
 def release_headline(body: str) -> str:
     """The first sentence of the release body's intro paragraph, as plain text.
 
@@ -323,15 +353,16 @@ def release_headline(body: str) -> str:
     """
     lines = _body_lines(body)
     paragraph: list[str] = []
-    for raw in lines:
+    for index, raw in enumerate(lines):
         line = raw.strip()
+        opens_block = bool(line) and (_starts_block(line) or _opens_table(lines, index))
         if not paragraph:
             if not line or line.startswith("#"):
                 continue
-            if _starts_block(line):
+            if opens_block:
                 return ""
             paragraph.append(line)
-        elif not line or line.startswith("#") or _starts_block(line):
+        elif not line or line.startswith("#") or opens_block:
             break
         else:
             paragraph.append(line)
@@ -458,19 +489,32 @@ def pick_asset(kind: str, asset_names: tuple[str, ...], *, machine: str | None =
     """The release file for this kind of install, or ``None``.
 
     macOS picks the dmg for this CPU (``arm64`` on Apple silicon, else
-    ``x64``); source and unknown installs have no file.
+    ``x64``). An x64 app running under Rosetta on Apple silicon prefers the
+    ``arm64`` dmg and falls back to ``x64`` when only that one is published;
+    a native ``arm64`` app never falls back (its dmg may still be uploading).
+    Source and unknown installs have no file.
     """
     if kind == INSTALL_MACOS_APP:
-        cpu = (machine if machine is not None else _platform.machine()).lower()
-        arch = "arm64" if cpu in ("arm64", "aarch64") else "x64"
-        pattern: re.Pattern[str] | None = re.compile(rf"macos-{arch}\.dmg$", re.IGNORECASE)
+        if machine is not None:
+            cpu = machine.lower()
+            rosetta = False
+        else:
+            cpu = _platform.machine().lower()
+            # Under Rosetta the process sees x86_64, but uname's kernel
+            # version still names the ARM64 kernel ("RELEASE_ARM64_T8101").
+            rosetta = cpu == "x86_64" and "arm64" in _platform.version().lower()
+        if rosetta:
+            arches: tuple[str, ...] = ("arm64", "x64")
+        else:
+            arches = ("arm64",) if cpu in ("arm64", "aarch64") else ("x64",)
+        patterns = [re.compile(rf"macos-{arch}\.dmg$", re.IGNORECASE) for arch in arches]
     else:
         pattern = _ASSET_PATTERNS.get(kind)
-    if pattern is None:
-        return None
-    for name in asset_names:
-        if pattern.search(name):
-            return name
+        patterns = [pattern] if pattern is not None else []
+    for pattern in patterns:
+        for name in asset_names:
+            if pattern.search(name):
+                return name
     return None
 
 

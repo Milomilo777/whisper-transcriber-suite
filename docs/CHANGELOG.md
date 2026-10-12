@@ -20,6 +20,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **A second damaged history kept the first one**: when `history.db` is found damaged it is now moved aside as
   `history.db.corrupt.<date-time>` (with `-2`, `-3`, ... if that name is taken) instead of `history.db.corrupt`,
   which a later recovery deleted. The log names the archive path.
+- **Update notice summary and Mac download**: a release whose notes open with a table without a leading pipe,
+  or are saved with a byte order mark, no longer shows a table row or the title as its one-line summary. An
+  Intel copy of the app running under Rosetta on Apple silicon is now offered the Apple-silicon download, or
+  the Intel one when that is the only Mac file.
 
 - **macOS: online features failed with "certificate verify failed"**: on a Mac without python.org Python, the
   update check, problem reports and other web lookups failed with `CERTIFICATE_VERIFY_FAILED` because the app
