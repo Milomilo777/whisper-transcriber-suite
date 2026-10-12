@@ -47,8 +47,11 @@ Full list: [CHANGELOG](docs/CHANGELOG.md).
 
 - **Local engines:** [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
   (default), whisper.cpp and NVIDIA Parakeet, for the many languages Whisper
-  recognises (the app's own interface is in English). Uses an NVIDIA GPU
-  through CUDA when it can, otherwise the CPU.
+  recognises. Uses an NVIDIA GPU through CUDA when it can, otherwise the CPU.
+- **The app in your language:** menus, buttons and messages in 42 languages
+  (machine-translated, marked as such; corrections welcome). It follows your
+  system language, or you pick one in Advanced settings. Persian, Arabic and
+  Hebrew are offered on Windows for now.
 - **14 output formats:** SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and
   PDF, plus the oTranscribe, ELAN, InqScribe and Express Scribe formats. DOCX
   and PDF draw every script, and Persian, Arabic and Urdu read right to left

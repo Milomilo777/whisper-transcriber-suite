@@ -28,6 +28,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Download format message typo**: the message asking to pick a format now says "select a video format".
+
 - **A second damaged history kept the first one**: when `history.db` is found damaged it is now moved aside as
   `history.db.corrupt.<date-time>` (with `-2`, `-3`, ... if that name is taken) instead of `history.db.corrupt`,
   which a later recovery deleted. The log names the archive path.

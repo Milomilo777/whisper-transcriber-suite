@@ -65,10 +65,11 @@ Vibe, Buzz, noScribe and aTrain.
   default engine, faster-whisper, runs on the CPU everywhere else. Vibe,
   Subtitle Edit and Buzz state Vulkan support, and Buzz states Apple silicon
   support.
-- **You want the interface in a language other than English.** The WTS
-  interface is English only (the README is translated into 8 languages).
-  Subtitle Edit, Vibe, Buzz and noScribe have 35, 22, 16 and 9 interface
-  language files or folders (English included).
+- **You want the interface in a language other than English, checked by people.**
+  WTS 2.1 ships 42 interface languages, but every one except English is a
+  machine translation that no person has reviewed yet. Subtitle Edit, Vibe,
+  Buzz and noScribe have 35, 22, 16 and 9 interface language files or folders
+  (English included).
 - **You want a Linux package.** WTS runs on Linux from source, set up by an
   install script; there is no .deb, .rpm, Flatpak or Snap.
 - **You want no data sent by default.** After each transcription that finishes
@@ -91,7 +92,7 @@ Vibe, Buzz, noScribe and aTrain.
 | GPU acceleration | NVIDIA (CUDA); the default engine uses the CPU otherwise | NVIDIA (CUDA), Vulkan (whisper.cpp) | NVIDIA, AMD, Intel (Vulkan); CoreML | NVIDIA (CUDA), Apple silicon, Vulkan | NVIDIA (CUDA) build, RTX 20xx or newer with 6 GB VRAM | NVIDIA (CUDA) only; otherwise CPU |
 | Windows installer signed | No | Not stated | Yes, per the project's docs | No | No | From v1.5.0 (pre-release so far); Store packages signed by Microsoft |
 | macOS app signed | Ad-hoc only, not notarized | Developer ID, notarized | Not checked | Not stated | Apple Silicon build: Developer ID | Not checked |
-| Interface languages | English only | 35 language files | 22 locale files | 16 locale folders | 9 translation files | Not stated; no translation files found |
+| Interface languages | 42 language files (41 machine-translated) | 35 language files | 22 locale files | 16 locale folders | 9 translation files | Not stated; no translation files found |
 
 ## Where the WTS facts come from
 
@@ -110,7 +111,7 @@ Vibe, Buzz, noScribe and aTrain.
 | Online video downloads with yt-dlp | [`app/services/download_service.py`](../app/services/download_service.py) |
 | Watched folder | [`core/watcher.py`](../core/watcher.py) |
 | Local-network mode: browser page, JSON job API, OpenAI-compatible `/v1/audio/transcriptions`, optional HTTPS | [SERVER.md](SERVER.md), [`core/server/httpd.py`](../core/server/httpd.py), [`core/server/tls.py`](../core/server/tls.py) |
-| Interface in English only (no translation files and no interface-language setting) | [`core/config.py`](../core/config.py) |
+| Interface in 42 languages (41 machine-translated), picker in Advanced settings | [`app/locales/`](../app/locales/), [`app/i18n.py`](../app/i18n.py), [TRANSLATING.md](TRANSLATING.md) |
 | README in 8 more languages | [`docs/i18n/`](i18n/) |
 | Usage statistics on by default, no file name | [CONFIG.md](CONFIG.md#usage-statistics-p4-4), [`core/stats.py`](../core/stats.py), [`core/config.py`](../core/config.py) |
 

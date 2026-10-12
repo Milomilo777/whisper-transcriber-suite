@@ -42,6 +42,7 @@ Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscri
 - Output formats: srt, vtt, ass, tsv, txt, json, lrc, md, docx, pdf, plus oTranscribe, ELAN, InqScribe and Express Scribe.
 - Also: speaker diarisation, live microphone/system-audio transcription, a batch queue, yt-dlp downloads, and a local-network server mode.
 - New in 2.0: the queue shows each transcription's speed and time left; Make subtitled video turns a link into an MP4 with burned-in subtitles; a finished transcript can be saved as one offline web page; Work offline shows whether anything is connected; speech can be translated straight to English; native Mac menus, Dark mode and notifications; Windows taskbar progress and dark title bars; a quick start window with a sample clip. The Video Tiling tab was removed.
+- New in 2.1: the app comes in 42 interface languages (machine-translated, marked as such; Persian, Arabic and Hebrew on Windows); speaker labels reach the end of long recordings and the number of speakers can be set; files are fully written to disk before they replace the old ones; online features work on every Mac.
 - Latest version v2.0.0, released 2026-10-10; repository created 2026-05-11 and actively maintained.
 - Author: translation-robot.
 
