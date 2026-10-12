@@ -36,6 +36,11 @@ FFMPEG_X86_64_URL="https://evermeet.cx/ffmpeg/ffmpeg-9.0.2.zip"
 FFMPEG_X86_64_SHA256="4acc0be580f9b2788029eb7bd4d645ff87968911b0a62aeeb3940d42d54558d5"
 FFPROBE_X86_64_URL="https://evermeet.cx/ffmpeg/ffprobe-9.0.2.zip"
 FFPROBE_X86_64_SHA256="24a9c968cd4da72d99c7245e914b921815835eb6dff01d99868031aebaf1d439"
+# The executables inside those two zips (from the release build of 2026-10-10). A bin/ copy with
+# exactly this hash is kept instead of downloading again: evermeet.cx answered every request with
+# HTTP 429 on 2026-10-12, CI runners included.
+FFMPEG_X86_64_BIN_SHA256="a45b462cf91ed89148ae218c4577e30896485d7a6792c3673bcf5f823fa01b63"
+FFPROBE_X86_64_BIN_SHA256="a29f8c2e03553223a8b480b1a1f04c42f680c138fa952c20086718a075db38cb"
 FFMPEG_ARM64_URL="https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip"
 FFMPEG_ARM64_SHA256="c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b094492d924"
 FFPROBE_ARM64_URL="https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffprobe.zip"
@@ -54,11 +59,27 @@ DIAR_SEGMENTATION_SHA256="220ad67ca923bef2fa91f2390c786097bf305bceb5e261d4af67b3
 DIAR_EMBEDDING_URL="https://huggingface.co/csukuangfj/speaker-embedding-models/resolve/0743f301363dec56491a490f6d6cbc9d67f9a3bf/3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx"
 DIAR_EMBEDDING_SHA256="357a834f702b80161e5b981182c038e18553c1f2ca752ed6cec2052365d4129b"
 
+download() {  # download <url> <file>
+  # macOS 10.15's curl (LibreSSL 2.8) cannot reach hosts that require newer TLS
+  # (2026-10: evermeet.cx redirects to such a mirror), so fall back to python.org
+  # Python's OpenSSL. The caller's SHA-256 check stays the integrity gate.
+  curl -fsSL --retry 3 "$1" -o "$2" && return 0
+  local py
+  for py in "${WTS_FETCH_PYTHON:-}" /Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12 python3; do
+    { [ -n "$py" ] && command -v "$py" >/dev/null 2>&1; } || continue
+    echo "curl failed for $1; retrying with $py" >&2
+    "$py" -c 'import shutil, sys, urllib.request as u
+with u.urlopen(sys.argv[1], timeout=300) as r, open(sys.argv[2], "wb") as f:
+    shutil.copyfileobj(r, f)' "$1" "$2" && return 0
+  done
+  return 1
+}
+
 fetch_checked() {  # fetch_checked <url> <sha256> <dest>
   # Download into $TMP and move into place only after the hash matched, so a
   # bad download never leaves a file at <dest> for the spec to bundle.
   local part="$TMP/fetch.part" got
-  curl -fsSL --retry 3 "$1" -o "$part"
+  download "$1" "$part" || { echo "error: could not download $1" >&2; exit 1; }
   got="$(shasum -a 256 "$part" | cut -d' ' -f1)"
   [ "$got" = "$2" ] || { echo "error: $1 checksum mismatch (want $2, got $got)" >&2; exit 1; }
   mv -f "$part" "$3"
@@ -81,6 +102,11 @@ fetch_tool() {  # fetch_tool <ffmpeg|ffprobe> <x86_64|arm64> <dest>
   key="$(echo "$1_$2" | tr '[:lower:]' '[:upper:]')"
   url="${key}_URL"; sha="${key}_SHA256"
   [ -n "${!url:-}" ] || { echo "error: no pinned $1 for $2" >&2; exit 1; }
+  local binsha="${key}_BIN_SHA256"
+  if [ -n "${!binsha:-}" ] && [ -f "$3" ] && [ "$(shasum -a 256 "$3" | cut -d' ' -f1)" = "${!binsha}" ]; then
+    echo "$1 ($2): $3 already holds the pinned executable; not downloading it again"
+    return 0
+  fi
   fetch_zip "${!url}" "${!sha}" "$1" "$3"
 }
 

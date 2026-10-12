@@ -55,14 +55,35 @@ def test_every_pinned_url_has_a_sha256():
 
 def test_every_download_is_checked():
     code = _code(FETCH.read_text(encoding="utf-8"))
-    # Only the checked helper calls curl.
-    assert code.count("curl ") == 1
+    # Only download() fetches (curl, or Python where macOS 10.15's curl cannot do the TLS), and only
+    # the checked helper calls download().
+    assert len(re.findall(r"^\s*curl\s", code, re.M)) == 1  # command lines, not messages
+    assert code.count("urlopen(") == 1
+    dl = code[code.index("download() {"):]
+    dl = dl[: dl.index("\n}\n")]
+    assert re.search(r"^\s*curl\s", dl, re.M) and "urlopen(" in dl
+    assert code.count('download "') == 1
     assert 'fetch_checked() {' in code and '[ "$got" = "$2" ]' in code
     # Written to a temp file and moved only after the hash check.
     helper = code[code.index("fetch_checked() {"):]
     helper = helper[: helper.index("\n}\n")]
     assert helper.index('[ "$got" = "$2" ]') < helper.index('mv -f "$part" "$3"')
-    assert '-o "$part"' in helper
+    assert 'download "$1" "$part"' in helper
+
+
+def test_a_kept_tool_must_match_its_pinned_executable_hash():
+    text = FETCH.read_text(encoding="utf-8")
+    v = _vars(text)
+    pins = [k for k in v if k.endswith("_BIN_SHA256")]
+    assert pins
+    for key in pins:
+        assert re.fullmatch(r"[0-9a-f]{64}", v[key]), key
+    tool = _code(text)
+    tool = tool[tool.index("fetch_tool() {"):]
+    tool = tool[: tool.index("\n}\n")]
+    # The copy in bin/ is kept only when its own SHA-256 equals the pin; otherwise it is downloaded.
+    assert '= "${!binsha}" ]' in tool and "shasum -a 256" in tool
+    assert tool.index("return 0") < tool.index("fetch_zip")
 
 
 def test_ytdlp_and_deno_match_the_windows_pins():
