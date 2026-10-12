@@ -298,9 +298,8 @@ def _unmarked_in(states: dict[str, Any], skip: tuple[str, ...] = ()) -> list[str
     bad: list[str] = []
 
     def check(text: str) -> None:
-        for line in text.split("\n"):
-            if unmarked(line):
-                bad.append(line)
+        if unmarked(text):  # a pseudo segment can span lines: check the whole text
+            bad.append(text)
 
     for key, value in states.items():
         if key in skip:

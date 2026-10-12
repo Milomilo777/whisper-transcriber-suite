@@ -37,6 +37,7 @@ from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Callable, Optional
 
 from app.dpi import place_over, px
+from app.i18n import _, pgettext
 from app.theme import tokens
 from app.widgets.error_dialog import show_error
 from core import hardware as _hw
@@ -59,7 +60,7 @@ class HardwareWizard(tk.Toplevel):
     def __init__(self, master: "tk.Tk | tk.Toplevel", *, app: "App | None" = None) -> None:
         super().__init__(master)
         self.app = app
-        self.title("Hardware autodetect")
+        self.title(_("Hardware autodetect"))
         self.transient(master)
         # Tk keeps a single grab per display and does not stack them, so
         # our grab_set() silently replaces the master's (Advanced settings
@@ -112,7 +113,7 @@ class HardwareWizard(tk.Toplevel):
 
         ttk.Label(
             body,
-            text="Detected hardware (best first):",
+            text=_("Detected hardware (best first):"),
             font=("TkDefaultFont", 10, "bold"),
         ).pack(anchor="w", pady=(0, 6))
 
@@ -121,8 +122,8 @@ class HardwareWizard(tk.Toplevel):
             body, columns=cols, show="headings", height=8,
         )
         self.tree.heading("pick", text="")
-        self.tree.heading("label", text="Tier")
-        self.tree.heading("note", text="Status")
+        self.tree.heading("label", text=pgettext("hardware table", "Tier"))
+        self.tree.heading("note", text=pgettext("hardware table", "Status"))
         self.tree.column("pick", width=px(40), anchor="center")
         self.tree.column("label", width=px(480), anchor="w")
         self.tree.column("note", width=px(140), anchor="w")
@@ -131,7 +132,7 @@ class HardwareWizard(tk.Toplevel):
         self.tree.pack(fill="x")
         self.tree.bind("<<TreeviewSelect>>", self._on_select)
 
-        self.status_var = tk.StringVar(value="Probing…")
+        self.status_var = tk.StringVar(value=_("Probing…"))
         ttk.Label(body, textvariable=self.status_var, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
             anchor="w", pady=(6, 0)
         )
@@ -147,25 +148,25 @@ class HardwareWizard(tk.Toplevel):
 
         tools = ttk.Frame(body)
         tools.pack(fill="x", pady=(8, 4))
-        self.reprobe_btn = ttk.Button(tools, text="Re-probe", command=self._reprobe)
+        self.reprobe_btn = ttk.Button(tools, text=_("Re-probe"), command=self._reprobe)
         self.reprobe_btn.pack(side="left")
         self.diag_btn = ttk.Button(
-            tools, text="Copy diagnostics", command=self._copy_diagnostics,
+            tools, text=_("Copy diagnostics"), command=self._copy_diagnostics,
         )
         self.diag_btn.pack(side="left", padx=(8, 0))
         self.install_btn = ttk.Button(
-            tools, text="Install GPU support…", command=self._install_gpu_support,
+            tools, text=_("Install GPU support…"), command=self._install_gpu_support,
         )
         # Packed only when installing NVIDIA's cuBLAS is the fix
         # (see _update_cuda_line).
 
         actions = ttk.Frame(body)
         actions.pack(fill="x", pady=(12, 0))
-        ttk.Button(actions, text="Cancel", command=self._on_close).pack(
+        ttk.Button(actions, text=_("Cancel"), command=self._on_close).pack(
             side="right", padx=(8, 0)
         )
         self.save_btn = ttk.Button(
-            actions, text="Save and use", command=self._save_and_close
+            actions, text=_("Save and use"), command=self._save_and_close
         )
         self.save_btn.pack(side="right")
 
@@ -185,7 +186,7 @@ class HardwareWizard(tk.Toplevel):
         """
         self._probe_seq += 1
         seq = self._probe_seq
-        self.status_var.set("Probing…")
+        self.status_var.set(_("Probing…"))
         self._set_buttons_enabled(False)
         with self._probe_lock:
             self._probe_result = None
@@ -272,7 +273,7 @@ class HardwareWizard(tk.Toplevel):
         self._update_cuda_line()
         self._set_buttons_enabled(True)
         if not self._tiers:
-            self.status_var.set("No tier detected — falling back to CPU.")
+            self.status_var.set(_("No tier detected — falling back to CPU."))
             return
         recommended = _hw.first_supported_tier(self._tiers)
         # Pre-select the recommended tier so the user can just hit Save.
@@ -283,10 +284,11 @@ class HardwareWizard(tk.Toplevel):
             if t.slug == recommended.slug:
                 self._select_index(idx, set_widget_selection=False)
                 break
-        self.status_var.set(
-            f"Recommended: {recommended.label}  "
-            f"(device={recommended.device}, compute_type={recommended.compute_type})"
-        )
+        self.status_var.set(_(
+            "Recommended: {tier}  (device={device}, compute_type={compute_type})",
+            tier=recommended.label, device=recommended.device,
+            compute_type=recommended.compute_type,
+        ))
 
     def _set_buttons_enabled(self, enabled: bool) -> None:
         """Toggle Re-probe / Save / Install while a probe is in flight."""
@@ -322,7 +324,8 @@ class HardwareWizard(tk.Toplevel):
         self.tree.delete(*self.tree.get_children())
         for idx, tier in enumerate(self._tiers):
             supported = tier.backend == "faster_whisper"
-            note = "ready" if supported else "needs backend"
+            note = (pgettext("hardware tier status", "ready") if supported
+                    else pgettext("hardware tier status", "needs backend"))
             tags = ("supported",) if supported else ("unsupported",)
             self.tree.insert(
                 "", "end", iid=str(idx),
@@ -338,7 +341,7 @@ class HardwareWizard(tk.Toplevel):
                 values=(
                     "",
                     f"NVIDIA CUDA — {status.gpu_name or 'NVIDIA GPU'}",
-                    "needs setup",
+                    pgettext("hardware tier status", "needs setup"),
                 ),
                 tags=("unsupported",),
             )
@@ -352,7 +355,8 @@ class HardwareWizard(tk.Toplevel):
                 text = status.note
             else:
                 name = status.gpu_name or "NVIDIA GPU"
-                text = f"{name} cannot be used yet. {status.summary()}"
+                text = _("{name} cannot be used yet. {summary}", name=name,
+                         summary=status.summary())
         self.cuda_var.set(text)
         try:
             if status is not None and status.can_install_runtime:
@@ -418,11 +422,14 @@ class HardwareWizard(tk.Toplevel):
         self._select_index(idx)
         if 0 <= idx < len(self._tiers):
             t = self._tiers[idx]
-            note = "" if t.backend == "faster_whisper" else " -- its backend is not bundled, so it cannot be saved"
-            self.status_var.set(
-                f"Selected: {t.label}  "
-                f"(device={t.device}, compute_type={t.compute_type}){note}"
-            )
+            if t.backend == "faster_whisper":
+                text = _("Selected: {tier}  (device={device}, compute_type={compute_type})",
+                         tier=t.label, device=t.device, compute_type=t.compute_type)
+            else:
+                text = _("Selected: {tier}  (device={device}, compute_type={compute_type}) -- its "
+                         "backend is not bundled, so it cannot be saved",
+                         tier=t.label, device=t.device, compute_type=t.compute_type)
+            self.status_var.set(text)
 
     # ---------- diagnostics / GPU runtime install ----------------------
 
@@ -463,7 +470,7 @@ class HardwareWizard(tk.Toplevel):
     def _copy_diagnostics(self) -> None:
         """Copy a full GPU/CUDA report to the clipboard for a bug report."""
         self.diag_btn.state(["disabled"])
-        self.status_var.set("Collecting GPU diagnostics…")
+        self.status_var.set(_("Collecting GPU diagnostics…"))
 
         def _done(report: object, error: object) -> None:
             try:
@@ -478,10 +485,10 @@ class HardwareWizard(tk.Toplevel):
                 pass
             if self.app is not None:
                 self.app.log(text)
-            self.status_var.set(
+            self.status_var.set(_(
                 "GPU diagnostics copied to the clipboard (also written to the "
                 "log) — paste them into a GitHub issue."
-            )
+            ))
 
         self._run_in_background(_hw.diagnostics_report, _done)
 
@@ -496,17 +503,17 @@ class HardwareWizard(tk.Toplevel):
             self.status_var.set(offline.refused("installing GPU support"))
             return
         if not messagebox.askyesno(
-            "Install GPU support",
-            "Your NVIDIA GPU needs NVIDIA's cuBLAS library, which the graphics "
-            "driver does not include.\n\n"
-            "Download and install it now? It is a one-time download of about "
-            "550 MB from NVIDIA (via PyPI) into:\n"
-            f"{optional_deps.extras_dir()}",
+            _("Install GPU support"),
+            _("Your NVIDIA GPU needs NVIDIA's cuBLAS library, which the graphics "
+              "driver does not include.\n\n"
+              "Download and install it now? It is a one-time download of about "
+              "550 MB from NVIDIA (via PyPI) into:\n"
+              "{folder}", folder=optional_deps.extras_dir()),
             parent=self,
         ):
             return
         self._set_buttons_enabled(False)
-        self.status_var.set("Installing GPU support (about 550 MB)… this can take a few minutes.")
+        self.status_var.set(_("Installing GPU support (about 550 MB)… this can take a few minutes."))
         tail: list[str] = []
         app = self.app
 
@@ -539,10 +546,10 @@ class HardwareWizard(tk.Toplevel):
             if offline.is_offline():
                 self.status_var.set(offline.message("installing GPU support"))
                 return
-            self.status_var.set("GPU support install failed — see the log.")
+            self.status_var.set(_("GPU support install failed — see the log."))
             show_error(
-                self, "Install failed",
-                "Could not install NVIDIA's cuBLAS library.",
+                self, _("Install failed"),
+                _("Could not install NVIDIA's cuBLAS library."),
                 detail=str(error) if error is not None else "\n".join(tail),
             )
 
@@ -553,15 +560,15 @@ class HardwareWizard(tk.Toplevel):
     def _save_and_close(self) -> None:
         if not (0 <= self._selected_idx < len(self._tiers)):
             messagebox.showinfo(
-                "Pick a tier", "Select a tier in the table first.", parent=self
+                _("Pick a tier"), _("Select a tier in the table first."), parent=self
             )
             return
         tier = self._tiers[self._selected_idx]
         if tier.backend != "faster_whisper":
             messagebox.showinfo(
-                "Cannot be used yet",
-                f"{tier.label}\n\nThis needs a backend that is not bundled, so the "
-                "app would ignore it. Pick a tier marked ready.",
+                _("Cannot be used yet"),
+                _("{tier}\n\nThis needs a backend that is not bundled, so the "
+                  "app would ignore it. Pick a tier marked ready.", tier=tier.label),
                 parent=self,
             )
             return
@@ -586,8 +593,8 @@ class HardwareWizard(tk.Toplevel):
             path = _hw.save_hardware_choice(tier)
         except Exception as e:  # noqa: BLE001
             show_error(
-                self, "Save failed",
-                "Could not save your hardware preference.", detail=str(e),
+                self, _("Save failed"),
+                _("Could not save your hardware preference."), detail=str(e),
             )
             return
         if self.app is not None:
@@ -620,9 +627,9 @@ class HardwareWizard(tk.Toplevel):
         confirm = getattr(self.app, "_confirm_backend_switch", None)
         if callable(confirm) and not confirm(
             self,
-            title="Apply now?",
-            action="Applying the new hardware setting now",
-            question=(
+            title=_("Apply now?"),
+            action=_("Applying the new hardware setting now"),
+            question=_(
                 "Apply it now? Choose No to let it finish; the setting is "
                 "then used after the app is restarted."
             ),

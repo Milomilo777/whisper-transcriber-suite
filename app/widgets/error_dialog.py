@@ -10,6 +10,7 @@ import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk
 from app.dpi import px
+from app.i18n import _
 from app.theme import tokens
 
 
@@ -107,19 +108,19 @@ def show_error(
         def _toggle() -> None:
             if state["shown"]:
                 detail_box.pack_forget()
-                toggle_btn.configure(text="Show details ▸")
+                toggle_btn.configure(text=_("Show details ▸"))
             else:
                 detail_box.pack(fill="both", expand=True, pady=(6, 0))
-                toggle_btn.configure(text="Hide details ▾")
+                toggle_btn.configure(text=_("Hide details ▾"))
             state["shown"] = not state["shown"]
 
-        toggle_btn = ttk.Button(toggle_row, text="Show details ▸", command=_toggle)
+        toggle_btn = ttk.Button(toggle_row, text=_("Show details ▸"), command=_toggle)
         toggle_btn.pack(side="left")
-        ttk.Button(toggle_row, text="Copy details", command=_copy_detail).pack(
+        ttk.Button(toggle_row, text=_("Copy details"), command=_copy_detail).pack(
             side="left", padx=(8, 0)
         )
 
-    ok_btn = ttk.Button(body, text="OK", command=_close)
+    ok_btn = ttk.Button(body, text=_("OK"), command=_close)
     ok_btn.pack(anchor="e", pady=(14, 0))
 
     # Same keyboard contract as a native messagebox: Enter/Esc dismiss,
