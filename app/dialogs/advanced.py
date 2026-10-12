@@ -40,6 +40,7 @@ from app.domain.cookies import (
     cookie_browser_value,
 )
 from app.dpi import fit_size, place_over, px, scaled, work_area
+from app.i18n import N_, _, ngettext, pgettext, translate
 from app.theme import tokens
 from app.widgets import tray
 from app.widgets.platform import folder_label
@@ -62,13 +63,16 @@ if TYPE_CHECKING:
 _FORMAT_LABELS: dict[str, str] = {
     "smtv_docx": "SMTV transcription",
     # Bare "ASS" is opaque, and the acronym reads badly on its own.
-    "ass": "ASS (styled subtitles / karaoke)",
+    "ass": N_("ASS (styled subtitles / karaoke)"),
     # Without an override these fall back to name.upper(): "EXPRESS_SCRIBE"
     # renders with a literal underscore (looks like a raw identifier, not a
     # label) and "INQSCRIBE" loses the product's own InqScribe capitalisation.
     "express_scribe": "Express Scribe",
     "inqscribe": "InqScribe",
 }
+# Shown as they are in every language: product names, and the video-site
+# team's export (that feature stays English-only).
+_UNTRANSLATED_FORMAT_LABELS = frozenset({"smtv_docx", "express_scribe", "inqscribe"})
 
 # One-line "what is this / who uses it" for each output format's hover-help
 # icon. Most of these acronyms (ELAN, InqScribe, Express Scribe, LRC, TSV)
@@ -76,45 +80,45 @@ _FORMAT_LABELS: dict[str, str] = {
 # no other explanation — added in the 2026-08-14 readability pass. Every
 # key from core.writers.supported_formats() must appear here.
 _FORMAT_HELP: dict[str, str] = {
-    "srt": "The most common subtitle format. Works in VLC, YouTube "
-           "uploads, and nearly every video player/editor.",
-    "ass": "Styled subtitles with per-word karaoke highlighting and text "
-           "effects. Used by subtitle editors like Aegisub.",
-    "vtt": "The web-standard subtitle format (HTML5 video, YouTube). "
-           "Also supports per-word karaoke highlighting.",
-    "tsv": "Tab-separated start/end/text — opens directly as an Audacity "
-           "Labels track for lining the transcript up against a waveform.",
-    "txt": "Plain text, one line per segment, no timestamps — for "
-           "reading or pasting the transcript elsewhere.",
-    "json": "This app's own detailed format: every timestamp, word and "
+    "srt": N_("The most common subtitle format. Works in VLC, YouTube "
+           "uploads, and nearly every video player/editor."),
+    "ass": N_("Styled subtitles with per-word karaoke highlighting and text "
+           "effects. Used by subtitle editors like Aegisub."),
+    "vtt": N_("The web-standard subtitle format (HTML5 video, YouTube). "
+           "Also supports per-word karaoke highlighting."),
+    "tsv": N_("Tab-separated start/end/text — opens directly as an Audacity "
+           "Labels track for lining the transcript up against a waveform."),
+    "txt": N_("Plain text, one line per segment, no timestamps — for "
+           "reading or pasting the transcript elsewhere."),
+    "json": N_("This app's own detailed format: every timestamp, word and "
             "speaker label. What Convert / re-import and the transcript "
-            "viewer read.",
-    "lrc": "Synced-lyrics format used by music players and some karaoke "
-           "tools.",
-    "md": "Markdown with bold timestamps — readable on GitHub, Notion, "
-          "or any Markdown viewer.",
-    "otr": "Round-trips with the free otranscribe.com web transcript "
-           "editor.",
-    "elan": "For ELAN, a linguistics annotation tool used in language "
-            "research and documentation.",
-    "inqscribe": "For InqScribe, a transcription-editing application.",
-    "express_scribe": "For Express Scribe, transcription software often "
-                       "paired with a foot pedal. Export-only.",
-    "docx": "A Microsoft Word document with the transcript text.",
-    "pdf": "A PDF of the transcript, ready to print or share.",
+            "viewer read."),
+    "lrc": N_("Synced-lyrics format used by music players and some karaoke "
+           "tools."),
+    "md": N_("Markdown with bold timestamps — readable on GitHub, Notion, "
+          "or any Markdown viewer."),
+    "otr": N_("Round-trips with the free otranscribe.com web transcript "
+           "editor."),
+    "elan": N_("For ELAN, a linguistics annotation tool used in language "
+            "research and documentation."),
+    "inqscribe": N_("For InqScribe, a transcription-editing application."),
+    "express_scribe": N_("For Express Scribe, transcription software often "
+                       "paired with a foot pedal. Export-only."),
+    "docx": N_("A Microsoft Word document with the transcript text."),
+    "pdf": N_("A PDF of the transcript, ready to print or share."),
     "smtv_docx": "Fills the Supreme Master TV transcription team's exact "
                  "Word template layout.",
 }
 
 
 _SPONSORBLOCK_CATEGORIES = [
-    ("sponsor", "Sponsor"),
-    ("intro", "Intro"),
-    ("outro", "Outro"),
-    ("interaction", "Interaction reminder"),
-    ("selfpromo", "Self-promo"),
-    ("preview", "Preview/recap"),
-    ("filler", "Filler tangent"),
+    ("sponsor", N_("Sponsor")),
+    ("intro", N_("Intro")),
+    ("outro", N_("Outro")),
+    ("interaction", N_("Interaction reminder")),
+    ("selfpromo", N_("Self-promo")),
+    ("preview", N_("Preview/recap")),
+    ("filler", N_("Filler tangent")),
 ]
 
 
@@ -130,12 +134,12 @@ _BACKEND_VALUE_TO_LABEL = {value: label for label, value in _BACKEND_CHOICES}
 
 # "Jump to" sidebar: a link label -> the small grey caption placed above it,
 # starting a new group of links.
-_NAV_GROUP_CAPTIONS: dict[str, str] = {"Watched folder": "App preferences"}
+_NAV_GROUP_CAPTIONS: dict[str, str] = {"Watched folder": N_("App preferences")}
 
 # LLM provider picker — which implementation "Enable local LLM" turns on.
 _LLM_PROVIDER_CHOICES: list[tuple[str, str]] = [
-    ("Local — offline, downloaded model", "local"),
-    ("Remote — your own OpenAI-compatible API", "remote"),
+    (N_("Local — offline, downloaded model"), "local"),
+    (N_("Remote — your own OpenAI-compatible API"), "remote"),
 ]
 _LLM_PROVIDER_LABEL_TO_VALUE = {label: value for label, value in _LLM_PROVIDER_CHOICES}
 _LLM_PROVIDER_VALUE_TO_LABEL = {value: label for label, value in _LLM_PROVIDER_CHOICES}
@@ -145,32 +149,32 @@ _LLM_PROVIDER_VALUE_TO_LABEL = {value: label for label, value in _LLM_PROVIDER_C
 # console pages; screenshots are not embedded.
 _GCLOUD_HELP_STEPS: list[tuple[str, str]] = [
     (
-        "1. Create or pick a Google Cloud project.",
+        N_("1. Create or pick a Google Cloud project."),
         "https://console.cloud.google.com/projectcreate",
     ),
     (
-        "2. Enable the Speech-to-Text API for that project.",
+        N_("2. Enable the Speech-to-Text API for that project."),
         "https://console.cloud.google.com/apis/library/speech.googleapis.com",
     ),
     (
-        "3. (Optional but recommended) Make sure billing is on to unlock "
-        "the 60 free min/month + $300 credit.",
+        N_("3. (Optional but recommended) Make sure billing is on to unlock "
+        "the 60 free min/month + $300 credit."),
         "https://console.cloud.google.com/billing",
     ),
     (
-        "4. Create a service account, then give it the role "
+        N_("4. Create a service account, then give it the role "
         "'Cloud Speech-to-Text User' (for Batch mode also "
-        "'Storage Object Admin' on your bucket).",
+        "'Storage Object Admin' on your bucket)."),
         "https://console.cloud.google.com/iam-admin/serviceaccounts",
     ),
     (
-        "5. On that service account: Keys > Add key > Create new key > "
-        "JSON > Download. Keep this file private.",
+        N_("5. On that service account: Keys > Add key > Create new key > "
+        "JSON > Download. Keep this file private."),
         "",
     ),
     (
-        "6. Back here, click 'Browse...' and pick that downloaded .json "
-        "file. Then click 'Test connection'.",
+        N_("6. Back here, click 'Browse...' and pick that downloaded .json "
+        "file. Then click 'Test connection'."),
         "",
     ),
 ]
@@ -179,12 +183,75 @@ _GCLOUD_OFFICIAL_GUIDE = (
 )
 _GCLOUD_USAGE_CONSOLE = "https://console.cloud.google.com/billing"
 
+# Denoise strength: the values config.json stores, in picker order.
+_DENOISE_LEVELS: tuple[str, ...] = ("auto", "light", "medium", "strong")
+
+
+def _format_label(name: str) -> str:
+    """Checkbox label of output format ``name`` in the interface language."""
+    label = _FORMAT_LABELS.get(name, name.upper())
+    if name in _UNTRANSLATED_FORMAT_LABELS or name not in _FORMAT_LABELS:
+        return label  # a product name, the English-only export, or a format id
+    return translate(label)
+
+
+def _format_help(name: str) -> str:
+    """Hover help of output format ``name`` in the interface language."""
+    text = _FORMAT_HELP.get(name, "")
+    if not text or name == "smtv_docx":
+        return text  # the video-site team's export stays English-only
+    return translate(text)
+
+
+def _denoise_level_labels() -> dict[str, str]:
+    """Stored denoise value -> the label the strength picker shows."""
+    return {
+        "auto": pgettext("denoise strength", "auto"),
+        "light": pgettext("denoise strength", "light"),
+        "medium": pgettext("denoise strength", "medium"),
+        "strong": pgettext("denoise strength", "strong"),
+    }
+
+
+def _denoise_level_value(label: str) -> str:
+    """The stored value for a strength-picker label (an unknown label is kept as it is)."""
+    for value, shown in _denoise_level_labels().items():
+        if label in (shown, value):
+            return value
+    return label
+
+
+def _llm_provider_labels() -> list[str]:
+    """The LLM provider picker's labels, in the interface language."""
+    return [translate(label) for label, _value in _LLM_PROVIDER_CHOICES]
+
+
+def _llm_provider_label(value: str) -> str:
+    """The picker label for stored ``llm_provider`` value (the first choice if unknown)."""
+    english = _LLM_PROVIDER_VALUE_TO_LABEL.get(value, _LLM_PROVIDER_CHOICES[0][0])
+    return translate(english)
+
+
+def _llm_provider_value(label: str) -> str:
+    """The stored ``llm_provider`` value for a picker label (translated or English)."""
+    for english, value in _LLM_PROVIDER_CHOICES:
+        if label in (english, translate(english)):
+            return value
+    return "local"
+
+
+def _model_choice_label(base: str, downloaded: bool) -> str:
+    """A Whisper-model picker label: the catalog label plus its on-disk status."""
+    if downloaded:
+        return _("{model}   [OK - downloaded]", model=base)
+    return _("{model}   [needs download]", model=base)
+
 
 class AdvancedDialog(tk.Toplevel):
     def __init__(self, app: "App") -> None:
         super().__init__(app)
         self.app = app
-        self.title("Advanced settings")
+        self.title(_("Advanced settings"))
         self.transient(app)
         self.grab_set()
         self.resizable(True, True)
@@ -277,9 +344,15 @@ class AdvancedDialog(tk.Toplevel):
         self._denoise_enabled = tk.BooleanVar(
             value=bool(cfg.get("denoise_enabled", False))
         )
+        # The stored value ("auto" / "light" / ...); the strength picker
+        # shows _denoise_level_display, its label in the interface language.
         self._denoise_level = tk.StringVar(
             value=str(cfg.get("denoise_level", "auto") or "auto")
         )
+        self._denoise_level_display = tk.StringVar(
+            value=_denoise_level_labels().get(self._denoise_level.get(), self._denoise_level.get())
+        )
+        self._denoise_level.trace_add("write", self._on_denoise_level_changed)
         self._ai_enabled = tk.BooleanVar(
             value=bool(cfg.get("ai_enabled", False))
         )
@@ -287,10 +360,10 @@ class AdvancedDialog(tk.Toplevel):
         # the bundled offline model, or a remote OpenAI-compatible endpoint
         # the user configures themselves. See core/llm.py's
         # build_runner_from_config.
+        # Holds the picker LABEL (interface language); _save_and_close maps
+        # it back to the stored value with _llm_provider_value().
         self._llm_provider_display = tk.StringVar(
-            value=_LLM_PROVIDER_VALUE_TO_LABEL.get(
-                str(cfg.get("llm_provider") or "local"), _LLM_PROVIDER_CHOICES[0][0]
-            )
+            value=_llm_provider_label(str(cfg.get("llm_provider") or "local"))
         )
         self._llm_remote_base_url = tk.StringVar(
             value=str(cfg.get("llm_remote_base_url") or "https://api.openai.com/v1")
@@ -422,7 +495,7 @@ class AdvancedDialog(tk.Toplevel):
         nav.pack(side="left", fill="y", padx=(0, 6))
         nav.pack_propagate(False)
         ttk.Label(
-            nav, text="Jump to", font=("TkDefaultFont", 9, "bold"),
+            nav, text=_("Jump to"), font=("TkDefaultFont", 9, "bold"),
         ).pack(anchor="w", pady=(0, 6))
         self._nav_frame = nav
         self._nav_links: list[tk.Widget] = []
@@ -503,11 +576,11 @@ class AdvancedDialog(tk.Toplevel):
         # upload audio): their setup is a single pale, collapsed line that
         # opens on click, even while that engine is picked (owner request).
         gemini, gemini_holder = collapsible_section(
-            body, "Gemini cloud setup (optional — uploads audio to Google)",
+            body, _("Gemini cloud setup (optional — uploads audio to Google)"),
         )
         self._build_gemini_frame(gemini_holder).pack(fill="x")
         gcloud, gcloud_holder = collapsible_section(
-            body, "Google Cloud Speech-to-Text setup (optional — uploads audio)",
+            body, _("Google Cloud Speech-to-Text setup (optional — uploads audio)"),
         )
         self._build_gcloud_frame(gcloud_holder).pack(fill="x")
         nvidia = self._build_nvidia_frame(body)
@@ -526,18 +599,20 @@ class AdvancedDialog(tk.Toplevel):
             "nvidia_asr": nvidia,
         }
         # "Jump to" links in on-screen order; hidden sections are skipped.
+        # The labels are English keys (_NAV_GROUP_CAPTIONS looks them up);
+        # _refresh_nav shows them translated.
         self._nav_targets: list[tuple[str, tk.Widget]] = [
-            ("Model & engine", engine),
-            ("Gemini setup", gemini),
-            ("Google Cloud setup", gcloud),
-            ("Parakeet setup", nvidia),
-            ("Output formats", outputs),
-            ("Silence & noise", noise),
-            ("Prompt & hotwords", prompt),
-            ("AI Layer", ai),
-            ("Watched folder", watch),
-            ("Downloads (yt-dlp)", download),
-            ("App behaviour", misc),
+            (N_("Model & engine"), engine),
+            (N_("Gemini setup"), gemini),
+            (N_("Google Cloud setup"), gcloud),
+            (N_("Parakeet setup"), nvidia),
+            (N_("Output formats"), outputs),
+            (N_("Silence & noise"), noise),
+            (N_("Prompt & hotwords"), prompt),
+            (N_("AI Layer"), ai),
+            (N_("Watched folder"), watch),
+            (N_("Downloads (yt-dlp)"), download),
+            (N_("App behaviour"), misc),
         ]
         self._sync_engine_sections()
 
@@ -545,22 +620,22 @@ class AdvancedDialog(tk.Toplevel):
         # Packed at the bottom before the scroll area, so a short window
         # squeezes the scrolling content, never the Save/Cancel row.
         buttons.pack(side="bottom", fill="x", pady=(8, 0), before=content_container)
-        ttk.Button(buttons, text="Cancel", command=self._on_close).pack(side="right", padx=(8, 0))
-        ttk.Button(buttons, text="Save", command=self._save_and_close).pack(side="right")
+        ttk.Button(buttons, text=_("Cancel"), command=self._on_close).pack(side="right", padx=(8, 0))
+        ttk.Button(buttons, text=_("Save"), command=self._save_and_close).pack(side="right")
         ttk.Button(
-            buttons, text="Restore transcription defaults",
+            buttons, text=_("Restore transcription defaults"),
             command=self._restore_transcription_defaults,
         ).pack(side="left")
         help_icon(
             buttons,
-            "Resets the Silence & noise settings (VAD, denoise, Demucs, "
+            _("Resets the Silence & noise settings (VAD, denoise, Demucs, "
             "hallucination flagging), word-timing refinement and "
             "auto-chapters back to their defaults — plus GPU batch size, "
             "which no longer has a control of its own. Nothing is saved "
             "until you click Save, so Cancel undoes this too. Output "
             "formats, the hotwords/prompt text, model/engine choice, "
             "watched folder, and any cloud credentials are left untouched "
-            "— those are deliberate choices, not per-job tuning knobs.",
+            "— those are deliberate choices, not per-job tuning knobs."),
         ).pack(side="left", padx=(4, 0))
 
     def _refresh_nav(self) -> None:
@@ -599,14 +674,14 @@ class AdvancedDialog(tk.Toplevel):
                 separator = ttk.Separator(nav, orient="horizontal")
                 separator.pack(fill="x", pady=(8, 4))
                 caption_label = ttk.Label(
-                    nav, text=caption, foreground=tokens.themed(tokens.TEXT_MUTED),
+                    nav, text=translate(caption), foreground=tokens.themed(tokens.TEXT_MUTED),
                     font=("TkDefaultFont", 8),
                 )
                 caption_label.pack(anchor="w", pady=(0, 2))
                 self._nav_links += [separator, caption_label]
             muted = bool(getattr(frame, "muted", False))
             link = ttk.Label(
-                nav, text=label, foreground=tokens.TEXT_DISABLED if muted else tokens.themed(tokens.LINK),
+                nav, text=translate(label), foreground=tokens.TEXT_DISABLED if muted else tokens.themed(tokens.LINK),
                 cursor="hand2", wraplength=px(122), justify="left",
             )
             link.pack(anchor="w", pady=2, fill="x")
@@ -820,10 +895,11 @@ class AdvancedDialog(tk.Toplevel):
             return ""
         value = self._selected_backend()
         engine_label = _BACKEND_VALUE_TO_LABEL.get(value, value)
-        return (
-            f"The {engine_label} engine uses its own model. This picker only "
+        return _(
+            "The {engine} engine uses its own model. This picker only "
             "applies to the Faster-Whisper engine, so a change here would "
-            "have no effect."
+            "have no effect.",
+            engine=engine_label,
         )
 
     def _sync_llm_provider_rows(self) -> None:
@@ -834,9 +910,7 @@ class AdvancedDialog(tk.Toplevel):
         Never raises — runs from a Tk callback.
         """
         try:
-            remote = _LLM_PROVIDER_LABEL_TO_VALUE.get(
-                self._llm_provider_display.get() or "", "local"
-            ) == "remote"
+            remote = _llm_provider_value(self._llm_provider_display.get() or "") == "remote"
             for widget in self._llm_remote_widgets:
                 if remote:
                     widget.grid()
@@ -854,12 +928,12 @@ class AdvancedDialog(tk.Toplevel):
         """"Model & engine": which model and engine run the transcription,
         where downloaded models live, and the optional word-timing pass."""
         engine = section_labelframe(
-            body, "Model & engine",
-            "Which Whisper model and engine run the transcription, where "
+            body, _("Model & engine"),
+            _("Which Whisper model and engine run the transcription, where "
             "downloaded models are kept, and an optional word-timing "
             "refinement pass. An engine that needs a key or its own "
             "download gets a setup section right below this one once "
-            "picked.",
+            "picked."),
         )
         engine.pack(fill="x", pady=(0, 14))
 
@@ -869,15 +943,14 @@ class AdvancedDialog(tk.Toplevel):
         # can ship without an app update. Changing the picker rewrites
         # cfg["model"] + cfg["model_path"] in _save_and_close so ensure_model
         # downloads the new variant on the next transcription.
-        ttk.Label(engine, text="Whisper model").grid(
+        ttk.Label(engine, text=_("Whisper model")).grid(
             row=0, column=0, sticky="w", padx=8, pady=4
         )
         # Augment each model's label with its on-disk status so the user
         # can see which models are already downloaded vs. which will
         # download (the ~size is already in the label) on first use.
         labeled = [
-            (slug, f"{base}   "
-                   f"[{'OK - downloaded' if self._model_downloaded(slug) else 'needs download'}]")
+            (slug, _model_choice_label(base, self._model_downloaded(slug)))
             for slug, base in catalog_models(self.app.app_config)
         ]
         self._model_slug_to_label = {slug: lbl for slug, lbl in labeled}
@@ -901,14 +974,14 @@ class AdvancedDialog(tk.Toplevel):
             engine, text="?", width=3, command=self._show_model_info,
         ).grid(row=0, column=2, sticky="w", padx=(0, 8), pady=4)
         ttk.Button(
-            engine, text="Download now", command=self._download_selected_model,
+            engine, text=_("Download now"), command=self._download_selected_model,
         ).grid(row=0, column=3, sticky="w", padx=(0, 8), pady=4)
 
         # Model folder (v0.9) — where the picker above actually downloads
         # to / reads from. Reuses HubSetupDialog (first-run's own picker)
         # so "change it later" and "pick it at first launch" share one
         # implementation instead of two folder-writability code paths.
-        ttk.Label(engine, text="Model folder").grid(
+        ttk.Label(engine, text=_("Model folder")).grid(
             row=1, column=0, sticky="w", padx=8, pady=4
         )
         folder_row = ttk.Frame(engine)
@@ -917,23 +990,23 @@ class AdvancedDialog(tk.Toplevel):
             folder_row, textvariable=self._hub_folder_display, state="readonly",
         ).pack(side="left", fill="x", expand=True)
         ttk.Button(
-            folder_row, text="Change...", command=self._change_model_folder,
+            folder_row, text=_("Change..."), command=self._change_model_folder,
         ).pack(side="left", padx=(6, 0))
         ttk.Button(
-            folder_row, text=folder_label("Open folder", "Model Folder"),
+            folder_row, text=folder_label(_("Open folder"), "Model Folder"),
             command=self._open_model_folder,
         ).pack(side="left", padx=(6, 0))
         help_icon(
             engine,
-            "Where downloaded model files are stored (faster-whisper, "
+            _("Where downloaded model files are stored (faster-whisper, "
             "whisper.cpp, NVIDIA Parakeet). Change it to send future "
             "downloads to a different drive -- for example one with more "
             "free space. Changing this does NOT move models you've "
             "already downloaded; point it at a folder that already has "
-            "them to reuse it without re-downloading.",
+            "them to reuse it without re-downloading."),
         ).grid(row=1, column=3, sticky="w", padx=(0, 8), pady=4)
 
-        ttk.Label(engine, text="Engine").grid(row=2, column=0, sticky="w", padx=8, pady=4)
+        ttk.Label(engine, text=_("Engine")).grid(row=2, column=0, sticky="w", padx=8, pady=4)
         backend_combo = ttk.Combobox(
             engine,
             textvariable=self._backend_display,
@@ -951,19 +1024,19 @@ class AdvancedDialog(tk.Toplevel):
         )
         # Only shown while whisper.cpp is picked (see _sync_engine_sections).
         self._whisper_cpp_btn = ttk.Button(
-            engine, text="Get whisper.cpp model...",
+            engine, text=_("Get whisper.cpp model..."),
             command=self._download_whisper_cpp_model,
         )
         self._whisper_cpp_btn.grid(row=2, column=2, sticky="w", padx=8, pady=4)
         help_icon(
             engine,
-            "Which engine runs the transcription. Faster-Whisper is the "
+            _("Which engine runs the transcription. Faster-Whisper is the "
             "default; whisper.cpp helps on low-end CPUs. The two cloud "
             "engines and NVIDIA Parakeet need a one-time setup, which "
             "appears right below this section once you pick one. An engine "
             "that cannot run until you set it up is marked "
             "'⚠ unavailable' here. Same picker as the Engine dropdown on "
-            "the Transcribe tab.",
+            "the Transcribe tab."),
         ).grid(row=2, column=3, sticky="w", padx=(0, 8), pady=4)
 
         # Availability warning for the picked engine — mirrors the Transcribe
@@ -982,33 +1055,33 @@ class AdvancedDialog(tk.Toplevel):
         )
         self._engine_warning.grid_remove()
 
-        ttk.Label(engine, text="Hardware").grid(row=4, column=0, sticky="w", padx=8, pady=4)
+        ttk.Label(engine, text=_("Hardware")).grid(row=4, column=0, sticky="w", padx=8, pady=4)
         ttk.Button(
-            engine, text="Re-detect hardware…",
+            engine, text=_("Re-detect hardware…"),
             command=self._open_hardware_wizard,
         ).grid(row=4, column=1, sticky="w", padx=8, pady=4)
         help_icon(
             engine,
-            "Checks for an NVIDIA GPU (CUDA), NPUs and DirectML and picks the "
+            _("Checks for an NVIDIA GPU (CUDA), NPUs and DirectML and picks the "
             "fastest option. If an NVIDIA GPU can't be used yet it says why "
-            "and can install the missing NVIDIA library.",
+            "and can install the missing NVIDIA library."),
         ).grid(row=4, column=3, sticky="w", padx=(0, 8), pady=4)
 
         # Word-timing refinement — a plain on/off instead of the old
         # "none"/"stable_ts" dropdown; _save_and_close maps it back.
         ttk.Checkbutton(
             engine,
-            text="Refine word timings with stable-ts (slower)",
+            text=_("Refine word timings with stable-ts (slower)"),
             variable=self._alignment_enabled,
         ).grid(row=5, column=0, columnspan=3, sticky="w", padx=8, pady=4)
         help_icon(
             engine,
-            "After transcribing, re-aligns every word's start/end time "
+            _("After transcribing, re-aligns every word's start/end time "
             "against the audio (stable-ts, about ±50 ms) for sharper "
             "per-word timing, e.g. karaoke highlighting in ASS/VTT "
             "subtitles. Adds roughly 10-30% to the run time, and needs a "
             "one-time ~700 MB component that is offered the first time "
-            "you transcribe with this on.",
+            "you transcribe with this on."),
         ).grid(row=5, column=3, sticky="w", padx=(0, 8), pady=4)
         engine.columnconfigure(1, weight=1)
         return engine
@@ -1020,31 +1093,31 @@ class AdvancedDialog(tk.Toplevel):
         engine is picked.
         """
         cloud = section_labelframe(
-            body, "Cloud Speech-to-Text (Gemini)",
-            "Optional — paste a free Gemini API key to transcribe via "
+            body, _("Cloud Speech-to-Text (Gemini)"),
+            _("Optional — paste a free Gemini API key to transcribe via "
             "Google's cloud instead of this machine. Uploads your audio; "
-            "see the privacy warning below before turning it on.",
+            "see the privacy warning below before turning it on."),
         )
         ttk.Label(
             cloud,
             text=(
-                "PRIVACY: the Gemini engine UPLOADS your audio to Google for "
+                _("PRIVACY: the Gemini engine UPLOADS your audio to Google for "
                 "transcription. This BREAKS the offline guarantee — only use "
                 "it for content you may send to a cloud service. The default "
-                "engines stay fully offline."
+                "engines stay fully offline.")
             ),
             foreground=tokens.themed(tokens.DANGER_TEXT),
             wraplength=px(680),
             justify="left",
         ).grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=(4, 8))
-        ttk.Label(cloud, text="Google API key").grid(
+        ttk.Label(cloud, text=_("Google API key")).grid(
             row=1, column=0, sticky="w", padx=8, pady=4
         )
         ttk.Entry(
             cloud, textvariable=self._cloud_api_key, show="*", width=52,
         ).grid(row=1, column=1, sticky="ew", padx=8, pady=4)
         ttk.Button(
-            cloud, text="Test key", command=self._test_cloud_key,
+            cloud, text=_("Test key"), command=self._test_cloud_key,
         ).grid(row=1, column=2, sticky="w", padx=8, pady=4)
         ttk.Label(
             cloud,
@@ -1055,10 +1128,10 @@ class AdvancedDialog(tk.Toplevel):
         ).grid(row=2, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
         ttk.Label(
             cloud,
-            text="Get a free key at aistudio.google.com (paste it above).",
+            text=_("Get a free key at {site} (paste it above).", site="aistudio.google.com"),
             foreground=tokens.themed(tokens.TEXT_MUTED),
         ).grid(row=3, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
-        ttk.Label(cloud, text="Model").grid(
+        ttk.Label(cloud, text=pgettext("model id field", "Model")).grid(
             row=4, column=0, sticky="w", padx=8, pady=4
         )
         ttk.Entry(
@@ -1066,7 +1139,7 @@ class AdvancedDialog(tk.Toplevel):
         ).grid(row=4, column=1, sticky="w", padx=8, pady=4)
         ttk.Label(
             cloud,
-            text="Default: gemini-3.5-flash (a current Gemini audio model).",
+            text=_("Default: {model} (a current Gemini audio model).", model="gemini-3.5-flash"),
             foreground=tokens.themed(tokens.TEXT_MUTED),
         ).grid(row=4, column=2, sticky="w", padx=8, pady=4)
         # No free-minutes figure here: the Gemini API's free tier is
@@ -1078,10 +1151,11 @@ class AdvancedDialog(tk.Toplevel):
         used = float(self.app.app_config.get("cloud_stt_minutes_used") or 0.0)
         ttk.Label(
             cloud,
-            text=(
-                f"Cloud minutes used so far: {used:.1f} (counted on this "
+            text=_(
+                "Cloud minutes used so far: {minutes} (counted on this "
                 "computer). Real usage and any charges are only visible in "
-                "Google's billing console:"
+                "Google's billing console:",
+                minutes=f"{used:.1f}",
             ),
             wraplength=px(680),
             justify="left",
@@ -1104,28 +1178,28 @@ class AdvancedDialog(tk.Toplevel):
         engine is picked.
         """
         nvidia = section_labelframe(
-            body, "NVIDIA Parakeet (local, offline)",
-            "An alternative offline speech engine (multilingual "
+            body, _("NVIDIA Parakeet (local, offline)"),
+            _("An alternative offline speech engine (multilingual "
             "FastConformer/Parakeet) that runs entirely on this machine — "
             "no audio ever leaves the device. Downloads transformers + "
-            "torch + the model (a few GB) automatically on first use.",
+            "torch + the model (a few GB) automatically on first use."),
         )
         ttk.Label(
             nvidia,
             text=(
-                "Runs ENTIRELY on this machine (no audio leaves the device). "
+                _("Runs ENTIRELY on this machine (no audio leaves the device). "
                 "On first use, transformers + torch and the model download "
                 "automatically (a few GB, one time). The default is NVIDIA's "
                 "multilingual Parakeet TDT v3; you can point this at any "
                 "Hugging Face automatic-speech-recognition model id or a local "
                 "folder. (NVIDIA's exact Nemotron-3.5 .nemo checkpoint needs "
-                "the NeMo toolkit and is not loadable here.)"
+                "the NeMo toolkit and is not loadable here.)")
             ),
             foreground=tokens.themed(tokens.TEXT_MUTED),
             wraplength=px(680),
             justify="left",
         ).grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=(4, 8))
-        ttk.Label(nvidia, text="Model (HF id or local path)").grid(
+        ttk.Label(nvidia, text=_("Model (HF id or local path)")).grid(
             row=1, column=0, sticky="w", padx=8, pady=4
         )
         ttk.Entry(
@@ -1133,18 +1207,18 @@ class AdvancedDialog(tk.Toplevel):
         ).grid(row=1, column=1, sticky="ew", padx=8, pady=4)
         ttk.Label(
             nvidia,
-            text="Default: nvidia/parakeet-tdt-0.6b-v3",
+            text=_("Default: {model}", model="nvidia/parakeet-tdt-0.6b-v3"),
             foreground=tokens.themed(tokens.TEXT_MUTED),
         ).grid(row=2, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
         ttk.Button(
-            nvidia, text="Prepare Parakeet model now...",
+            nvidia, text=_("Prepare Parakeet model now..."),
             command=self._prepare_nvidia_asr_model,
         ).grid(row=3, column=0, sticky="w", padx=8, pady=(0, 8))
         ttk.Label(
             nvidia,
             text=(
-                "Installs transformers/torch/librosa and downloads the model "
-                "ahead of time, instead of waiting on the first transcription."
+                _("Installs transformers/torch/librosa and downloads the model "
+                "ahead of time, instead of waiting on the first transcription.")
             ),
             foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(500), justify="left",
         ).grid(row=3, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 8))
@@ -1154,11 +1228,11 @@ class AdvancedDialog(tk.Toplevel):
     def _build_outputs_section(self, body: ttk.Frame) -> ttk.LabelFrame:
         """"Output formats": which transcript files every job writes."""
         outputs = section_labelframe(
-            body, "Output formats",
-            "Which transcript file types to write for every transcription "
+            body, _("Output formats"),
+            _("Which transcript file types to write for every transcription "
             "(SRT/VTT subtitles, plain TXT, JSON with timestamps, etc.). "
             "You can check more than one — all checked formats are "
-            "written for every job.",
+            "written for every job."),
         )
         outputs.pack(fill="x", pady=(0, 14))
         for i, name in enumerate(supported_formats()):
@@ -1169,11 +1243,11 @@ class AdvancedDialog(tk.Toplevel):
             cell.grid(row=i // 3, column=i % 3, sticky="w", padx=8, pady=4)
             ttk.Checkbutton(
                 cell,
-                text=_FORMAT_LABELS.get(name, name.upper()),
+                text=_format_label(name),
                 variable=self._format_vars[name],
             ).pack(side="left")
             help_icon(
-                cell, _FORMAT_HELP.get(name, ""), wraplength=px(280),
+                cell, _format_help(name), wraplength=px(280),
             ).pack(side="left")
         return outputs
 
@@ -1187,31 +1261,31 @@ class AdvancedDialog(tk.Toplevel):
         and "AI Layer" sections.
         """
         noise = section_labelframe(
-            body, "Silence & noise",
-            "How the audio is prepared before the model hears it: skip "
+            body, _("Silence & noise"),
+            _("How the audio is prepared before the model hears it: skip "
             "silent stretches (VAD), reduce background noise, or isolate "
             "vocals from music (Demucs) — plus flagging of lines that look "
             "hallucinated. 'Apply noisy-audio preset' at the bottom sets "
-            "these for a typical non-studio recording.",
+            "these for a typical non-studio recording."),
         )
         noise.pack(fill="x", pady=(0, 14))
         vad_row = ttk.Frame(noise)
         vad_row.grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=(4, 2))
         ttk.Checkbutton(
-            vad_row, text="Enable VAD (skip silent segments)",
+            vad_row, text=_("Enable VAD (skip silent segments)"),
             variable=self._vad_enabled,
             command=self._sync_vad_controls_state,
         ).pack(side="left")
         # The three tuning sliders are expert knobs most people never touch;
         # they stay one click away instead of dominating the section.
         self._vad_tune_link = ttk.Label(
-            vad_row, text="▸ Fine-tune", foreground=tokens.themed(tokens.LINK), cursor="hand2",
+            vad_row, text=_("▸ Fine-tune"), foreground=tokens.themed(tokens.LINK), cursor="hand2",
         )
         self._vad_tune_link.pack(side="left", padx=(14, 0))
         self._vad_tune_link.bind("<Button-1>", lambda _e: self._toggle_vad_sliders())
         help_icon(
             noise,
-            "On (recommended): silent stretches are detected and skipped "
+            _("On (recommended): silent stretches are detected and skipped "
             "before the audio reaches the speech model — faster, and it "
             "stops Whisper from hallucinating text into pure silence.\n\n"
             "Off: the whole file is sent to the model as-is, silence "
@@ -1220,25 +1294,25 @@ class AdvancedDialog(tk.Toplevel):
             "Min silence: how long a gap must be to count as silence. "
             "Threshold: how confident the detector must be that audio is "
             "speech (lower = more sensitive). Speech pad: extra padding "
-            "kept around each detected speech chunk.",
+            "kept around each detected speech chunk."),
         ).grid(row=0, column=3, sticky="w", padx=(0, 8), pady=(4, 2))
         self._vad_control_rows = [
-            self._slider_row(noise, "Min silence (ms)", self._vad_min_silence, 100, 2000, 50, 1),
-            self._slider_row(noise, "Threshold", self._vad_threshold, 0.1, 0.9, 0.05, 2, is_float=True),
-            self._slider_row(noise, "Speech pad (ms)", self._vad_speech_pad, 0, 1000, 50, 3),
+            self._slider_row(noise, _("Min silence (ms)"), self._vad_min_silence, 100, 2000, 50, 1),
+            self._slider_row(noise, _("Threshold"), self._vad_threshold, 0.1, 0.9, 0.05, 2, is_float=True),
+            self._slider_row(noise, _("Speech pad (ms)"), self._vad_speech_pad, 0, 1000, 50, 3),
         ]
         self._vad_sliders_shown = True
         self._toggle_vad_sliders()  # start collapsed
         self._sync_vad_controls_state()
 
         ttk.Checkbutton(
-            noise, text="Reduce background noise before transcribing",
+            noise, text=_("Reduce background noise before transcribing"),
             variable=self._denoise_enabled,
             command=self._sync_denoise_level_state,
         ).grid(row=4, column=0, columnspan=2, sticky="w", padx=8, pady=(10, 2))
         help_icon(
             noise,
-            "Cleans hiss, hum and rumble out of the audio before the "
+            _("Cleans hiss, hum and rumble out of the audio before the "
             "speech model hears it, which cuts hallucinated lines on "
             "noisy recordings.\n\n"
             "The audio is measured first: recordings that are already "
@@ -1248,98 +1322,101 @@ class AdvancedDialog(tk.Toplevel):
             "noise, the original audio is used.\n\n"
             "Uses the bundled ffmpeg only: no download, no extra "
             "install, works offline. Costs roughly 20-40 seconds per "
-            "hour of audio.",
+            "hour of audio."),
         ).grid(row=4, column=3, sticky="w", padx=(0, 8), pady=(10, 2))
-        self._denoise_level_label = ttk.Label(noise, text="Strength:")
+        self._denoise_level_label = ttk.Label(noise, text=_("Strength:"))
         self._denoise_level_label.grid(
             row=5, column=0, sticky="e", padx=(24, 4), pady=(0, 6)
         )
         self._denoise_level_combo = ttk.Combobox(
-            noise, textvariable=self._denoise_level, state="readonly", width=12,
-            values=("auto", "light", "medium", "strong"),
+            noise, textvariable=self._denoise_level_display, state="readonly", width=12,
+            values=[_denoise_level_labels()[v] for v in _DENOISE_LEVELS],
         )
         self._denoise_level_combo.grid(
             row=5, column=1, sticky="w", padx=4, pady=(0, 6)
         )
+        self._denoise_level_combo.bind(
+            "<<ComboboxSelected>>", lambda _e: self._on_denoise_level_selected()
+        )
         help_icon(
             noise,
-            "Auto (recommended) measures each recording and picks the "
+            _("Auto (recommended) measures each recording and picks the "
             "gentlest setting that helps — including doing nothing at "
             "all. Pick a fixed strength only to override that "
             "measurement on material you know well; a fixed strength is "
-            "applied even to clean audio.",
+            "applied even to clean audio."),
         ).grid(row=5, column=3, sticky="w", padx=(0, 8), pady=(0, 6))
         self._sync_denoise_level_state()
 
         ttk.Checkbutton(
-            noise, text="Pre-process noisy audio with Demucs vocals separation",
+            noise, text=_("Pre-process noisy audio with Demucs vocals separation"),
             variable=self._demucs_enabled,
         ).grid(row=6, column=0, columnspan=3, sticky="w", padx=8, pady=4)
         help_icon(
             noise,
-            "Demucs isolates vocals from background music/noise before "
+            _("Demucs isolates vocals from background music/noise before "
             "transcribing. Can improve accuracy on noisy recordings; "
-            "adds processing time.",
+            "adds processing time."),
         ).grid(row=6, column=3, sticky="w", padx=(0, 8), pady=4)
 
         # Hallucination detector toggle (v0.8).
         ttk.Checkbutton(
             noise,
-            text="Flag likely hallucinations (repetition + BoH heuristics)",
+            text=_("Flag likely hallucinations (repetition + BoH heuristics)"),
             variable=self._hallucination_detect,
         ).grid(row=7, column=0, columnspan=3, sticky="w", padx=8, pady=4)
         help_icon(
             noise,
-            "Marks segments that look like Whisper's known failure modes "
+            _("Marks segments that look like Whisper's known failure modes "
             "on silence/noise: repeated phrases, or text matching common "
             "'beginning of hallucination' (BoH) patterns. Flags them in "
-            "the output rather than removing them.",
+            "the output rather than removing them."),
         ).grid(row=7, column=3, sticky="w", padx=(0, 8), pady=4)
 
         ttk.Button(
-            noise, text="Apply noisy-audio preset",
+            noise, text=_("Apply noisy-audio preset"),
             command=self._apply_noisy_audio_preset,
         ).grid(row=8, column=0, sticky="w", padx=8, pady=(8, 10))
         help_icon(
             noise,
-            "One click for a non-studio recording (street noise, a "
+            _("One click for a non-studio recording (street noise, a "
             "crowded room, a phone call): turns on VAD + denoise "
             "(fixed 'medium', not 'auto') + hallucination flagging, and "
             "raises the VAD threshold so background noise is less "
             "likely to be misread as speech. Does NOT turn on Demucs — "
             "that's a much heavier download/step, opt into it above "
-            "separately if this preset alone isn't enough.",
+            "separately if this preset alone isn't enough."),
         ).grid(row=8, column=3, sticky="w", padx=(0, 8), pady=(8, 10))
         return noise
 
     def _build_prompt_section(self, body: ttk.Frame) -> ttk.LabelFrame:
         """"Prompt & hotwords": user-authored text that steers recognition."""
         prompt_section = section_labelframe(
-            body, "Prompt & hotwords",
-            "Optional text fed to the model before it starts, and words "
-            "to bias recognition toward.",
+            body, _("Prompt & hotwords"),
+            _("Optional text fed to the model before it starts, and words "
+            "to bias recognition toward."),
         )
         prompt_section.pack(fill="x", pady=(0, 14))
 
-        ttk.Label(prompt_section, text="Initial prompt").grid(row=0, column=0, sticky="w", padx=8, pady=4)
+        ttk.Label(prompt_section, text=_("Initial prompt")).grid(row=0, column=0, sticky="w", padx=8, pady=4)
         ttk.Entry(prompt_section, textvariable=self._initial_prompt, width=42).grid(
             row=0, column=1, sticky="ew", padx=8, pady=4
         )
         help_icon(
             prompt_section,
-            "Optional text fed to the model as context before it starts — "
+            _("Optional text fed to the model as context before it starts — "
             "e.g. proper nouns or a punctuation/formatting style to "
-            "nudge it toward. Leave blank for none.",
+            "nudge it toward. Leave blank for none."),
         ).grid(row=0, column=2, sticky="w", padx=8, pady=4)
-        ttk.Label(prompt_section, text="Hotwords (comma-separated)").grid(row=1, column=0, sticky="w", padx=8, pady=4)
+        ttk.Label(prompt_section, text=_("Hotwords (comma-separated)")).grid(row=1, column=0, sticky="w", padx=8, pady=4)
         ttk.Entry(prompt_section, textvariable=self._hotwords, width=42).grid(
             row=1, column=1, sticky="ew", padx=8, pady=4
         )
         help_icon(
             prompt_section,
-            "Words or short phrases (names, jargon, acronyms) the model "
+            _("Words or short phrases (names, jargon, acronyms) the model "
             "should be biased toward recognizing correctly when it hears "
-            "something close to them.",
+            "something close to them."),
         ).grid(row=1, column=2, sticky="w", padx=8, pady=4)
         prompt_section.columnconfigure(1, weight=1)
         return prompt_section
@@ -1348,32 +1425,32 @@ class AdvancedDialog(tk.Toplevel):
         """"AI Layer": the optional LLM behind the transcript viewer's AI
         Tools tab and the auto-chapter titles."""
         ai = section_labelframe(
-            body, "AI Layer (optional)",
-            "Optional AI extras on top of the transcript: the transcript "
+            body, _("AI Layer (optional)"),
+            _("Optional AI extras on top of the transcript: the transcript "
             "viewer's AI Tools (summaries, action items, Q&A, translation) "
             "and sentence-like auto-chapter titles — run by a small model "
-            "on this machine (Local) or by your own API (Remote).",
+            "on this machine (Local) or by your own API (Remote)."),
         )
         ai.pack(fill="x", pady=(0, 14))
         ttk.Checkbutton(
-            ai, text="Enable AI tools (summaries, Q&A, translation, chapter titles)",
+            ai, text=_("Enable AI tools (summaries, Q&A, translation, chapter titles)"),
             variable=self._ai_enabled,
         ).grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=4)
         help_icon(
             ai,
-            "Master switch for the transcript viewer's AI Tools tab "
+            _("Master switch for the transcript viewer's AI Tools tab "
             "(summarize, action items, ask, translate) and for "
             "sentence-like auto-chapter titles (without it, chapters get "
             "plain generic titles). 'LLM provider' below picks where the "
-            "model runs.",
+            "model runs."),
         ).grid(row=0, column=3, sticky="w", padx=(0, 8), pady=4)
 
-        ttk.Label(ai, text="LLM provider").grid(
+        ttk.Label(ai, text=_("LLM provider")).grid(
             row=1, column=0, sticky="w", padx=8, pady=4
         )
         provider_combo = ttk.Combobox(
             ai, textvariable=self._llm_provider_display, state="readonly",
-            values=[label for label, _value in _LLM_PROVIDER_CHOICES], width=40,
+            values=_llm_provider_labels(), width=40,
         )
         provider_combo.grid(row=1, column=1, columnspan=2, sticky="w", padx=8, pady=4)
         provider_combo.bind(
@@ -1381,7 +1458,7 @@ class AdvancedDialog(tk.Toplevel):
         )
         help_icon(
             ai,
-            "Local (default): a small offline model (Qwen2.5-1.5B) on "
+            _("Local (default): a small offline model (Qwen2.5-1.5B) on "
             "this machine — nothing leaves it. Install it once with "
             "'Install AI model…'.\n\n"
             "Remote: sends the same summarise/action-items/ask/translate "
@@ -1391,51 +1468,52 @@ class AdvancedDialog(tk.Toplevel):
             "Studio, vLLM) or proxy (OpenRouter) if you point the Base "
             "URL at one. Your transcript text is sent to whatever "
             "endpoint you configure — only use this with a provider you "
-            "trust.",
+            "trust."),
         ).grid(row=1, column=3, sticky="w", padx=(0, 8), pady=4)
 
         # Local provider only (see _sync_llm_provider_rows).
         install_btn = ttk.Button(
-            ai, text="Install AI model…",
+            ai, text=_("Install AI model…"),
             command=self._install_ai_model,
         )
         install_btn.grid(row=2, column=0, sticky="w", padx=8, pady=4)
         install_note = ttk.Label(
             ai,
-            text="Downloads the offline model once (~1 GB); Local needs it before it works.",
+            text=_("Downloads the offline model once (~1 GB); Local needs it before it works."),
             foreground=tokens.themed(tokens.TEXT_MUTED),
         )
         install_note.grid(row=2, column=1, columnspan=2, sticky="w", padx=8, pady=4)
         self._llm_local_widgets: list[tk.Widget] = [install_btn, install_note]
 
         # Remote provider only.
-        url_label = ttk.Label(ai, text="Base URL")
+        url_label = ttk.Label(ai, text=_("Base URL"))
         url_label.grid(row=3, column=0, sticky="w", padx=8, pady=4)
         url_entry = ttk.Entry(ai, textvariable=self._llm_remote_base_url, width=42)
         url_entry.grid(row=3, column=1, columnspan=2, sticky="ew", padx=8, pady=4)
-        key_label = ttk.Label(ai, text="API key")
+        key_label = ttk.Label(ai, text=_("API key"))
         key_label.grid(row=4, column=0, sticky="w", padx=8, pady=4)
         key_entry = ttk.Entry(
             ai, textvariable=self._llm_remote_api_key, show="*", width=42,
         )
         key_entry.grid(row=4, column=1, columnspan=2, sticky="ew", padx=8, pady=4)
         key_hint = ttk.Label(
-            ai, text="For the real OpenAI API, get a key at platform.openai.com. "
-                     "Leave blank for a local server that doesn't need one.",
+            ai, text=_("For the real OpenAI API, get a key at {site}. "
+                       "Leave blank for a local server that doesn't need one.",
+                       site="platform.openai.com"),
             foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(420), justify="left",
         )
         key_hint.grid(row=5, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
-        model_label = ttk.Label(ai, text="Model")
+        model_label = ttk.Label(ai, text=pgettext("model id field", "Model"))
         model_label.grid(row=6, column=0, sticky="w", padx=8, pady=4)
         model_entry = ttk.Entry(ai, textvariable=self._llm_remote_model, width=42)
         model_entry.grid(row=6, column=1, columnspan=2, sticky="ew", padx=8, pady=4)
         model_help = help_icon(
             ai,
-            "The exact model id your endpoint expects, e.g. gpt-4o-mini "
+            _("The exact model id your endpoint expects, e.g. gpt-4o-mini "
             "or gpt-4o for the real OpenAI API, or a locally-loaded "
             "model's name for Ollama/LM Studio. This app does not pick "
             "one for you — different accounts/servers have different "
-            "models available.",
+            "models available."),
         )
         model_help.grid(row=6, column=3, sticky="w", padx=(0, 8), pady=4)
         self._llm_remote_widgets: list[tk.Widget] = [
@@ -1444,17 +1522,17 @@ class AdvancedDialog(tk.Toplevel):
         ]
 
         ttk.Checkbutton(
-            ai, text="Generate auto-chapter markers (writes <name>.chapters.json)",
+            ai, text=_("Generate auto-chapter markers (writes <name>.chapters.json)"),
             variable=self._auto_chapters_enabled,
         ).grid(row=7, column=0, columnspan=3, sticky="w", padx=8, pady=(10, 4))
         help_icon(
             ai,
-            "Splits the transcript into chapters at natural long pauses "
+            _("Splits the transcript into chapters at natural long pauses "
             "and writes them to a separate <name>.chapters.json file next "
             "to the transcript. Titles are a short generic label by "
             "default, or a real sentence-like title when 'Enable AI "
             "tools' above is also on. Browse them from the transcript "
-            "viewer's Chapters tab.",
+            "viewer's Chapters tab."),
         ).grid(row=7, column=3, sticky="w", padx=(0, 8), pady=(10, 4))
         ai.columnconfigure(1, weight=1)
         self._sync_llm_provider_rows()
@@ -1463,22 +1541,22 @@ class AdvancedDialog(tk.Toplevel):
     def _build_watch_section(self, body: ttk.Frame) -> ttk.LabelFrame:
         """"Watched folder": auto-queue new files dropped into a folder."""
         watch = section_labelframe(
-            body, "Watched folder",
-            "Automatically queues any new audio/video file dropped into "
+            body, _("Watched folder"),
+            _("Automatically queues any new audio/video file dropped into "
             "this folder for transcription, using your current Transcribe "
-            "settings — no need to open the app and browse for it.",
+            "settings — no need to open the app and browse for it."),
         )
         watch.pack(fill="x", pady=(0, 14))
         ttk.Checkbutton(
-            watch, text="Auto-transcribe new files dropped here",
+            watch, text=_("Auto-transcribe new files dropped here"),
             variable=self._watched_folder_enabled,
         ).grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=4)
-        ttk.Label(watch, text="Folder").grid(row=1, column=0, sticky="w", padx=8, pady=4)
+        ttk.Label(watch, text=_("Folder")).grid(row=1, column=0, sticky="w", padx=8, pady=4)
         ttk.Entry(watch, textvariable=self._watched_folder, width=42).grid(
             row=1, column=1, sticky="ew", padx=8, pady=4
         )
         ttk.Button(
-            watch, text="Browse...",
+            watch, text=_("Browse..."),
             command=self._browse_watched_folder,
         ).grid(row=1, column=2, sticky="w", padx=8, pady=4)
         watch.columnconfigure(1, weight=1)
@@ -1492,31 +1570,31 @@ class AdvancedDialog(tk.Toplevel):
         the download it applies to.
         """
         download = section_labelframe(
-            body, "Downloads (yt-dlp)",
-            "Options for video downloads (Download Videos tab): which "
+            body, _("Downloads (yt-dlp)"),
+            _("Options for video downloads (Download Videos tab): which "
             "SponsorBlock segments get cut, browser cookies for "
             "login-walled sites, and how the video downloader stays up "
-            "to date.",
+            "to date."),
         )
         download.pack(fill="x", pady=(0, 14))
-        ttk.Label(download, text="SponsorBlock — remove these segments:").grid(
+        ttk.Label(download, text=_("SponsorBlock — remove these segments:")).grid(
             row=0, column=0, columnspan=2, sticky="w", padx=8, pady=(4, 4)
         )
         help_icon(
             download,
-            "SponsorBlock is a community-maintained database of "
+            _("SponsorBlock is a community-maintained database of "
             "skippable segments (ads, intros, self-promo, etc.) for the "
             "exact video. Checked categories are cut from the downloaded "
-            "file automatically when the site has data for it.",
+            "file automatically when the site has data for it."),
         ).grid(row=0, column=2, sticky="w", padx=8, pady=(4, 4))
         for i, (cat, label) in enumerate(_SPONSORBLOCK_CATEGORIES):
-            ttk.Checkbutton(download, text=label, variable=self._sb_vars[cat]).grid(
+            ttk.Checkbutton(download, text=translate(label), variable=self._sb_vars[cat]).grid(
                 row=1 + i // 3, column=i % 3, sticky="w", padx=8, pady=2
             )
         ttk.Label(
             download,
-            text=("Cookies from browser (for login-walled sites — Facebook /"
-                  " Instagram / TikTok stories, some YouTube Shorts):"),
+            text=(_("Cookies from browser (for login-walled sites — Facebook /"
+                  " Instagram / TikTok stories, some YouTube Shorts):")),
         ).grid(row=4, column=0, columnspan=3, sticky="w", padx=8, pady=(8, 2))
         ttk.Combobox(
             download, textvariable=self._cookies_browser, state="readonly",
@@ -1533,12 +1611,12 @@ class AdvancedDialog(tk.Toplevel):
         """What a download to transcribe does when the video already has subtitles."""
         ttk.Label(
             parent,
-            text="When a video already has subtitles and I download it to transcribe:",
+            text=_("When a video already has subtitles and I download it to transcribe:"),
         ).grid(row=row, column=0, columnspan=3, sticky="w", padx=8, pady=(8, 2))
         choices = (
-            ("Ask me each time", "ask"),
-            ("Use the subtitles (seconds) instead of transcribing", "captions"),
-            ("Always download and transcribe", "transcribe"),
+            (_("Ask me each time"), "ask"),
+            (_("Use the subtitles (seconds) instead of transcribing"), "captions"),
+            (_("Always download and transcribe"), "transcribe"),
         )
         for i, (text, value) in enumerate(choices, start=1):
             ttk.Radiobutton(
@@ -1549,27 +1627,27 @@ class AdvancedDialog(tk.Toplevel):
         """Video downloader updates: ask (default) / automatic / never. Local only."""
         from core import yt_dlp_update as _ytu
 
-        ttk.Label(parent, text="Video downloader updates:").grid(
+        ttk.Label(parent, text=_("Video downloader updates:")).grid(
             row=row, column=0, columnspan=3, sticky="w", padx=8, pady=(8, 2)
         )
         choices = (
-            ("Ask me when a failed download suggests it is out of date", _ytu.MODE_ASK),
-            ("Keep it up to date automatically (checks at most once a day, before a download)",
+            (_("Ask me when a failed download suggests it is out of date"), _ytu.MODE_ASK),
+            (_("Keep it up to date automatically (checks at most once a day, before a download)"),
              _ytu.MODE_AUTO),
-            ("Never update it", _ytu.MODE_NEVER),
+            (_("Never update it"), _ytu.MODE_NEVER),
         )
         for i, (text, value) in enumerate(choices, start=1):
             ttk.Radiobutton(
                 parent, text=text, value=value, variable=self._yt_dlp_update_mode,
             ).grid(row=row + i, column=0, columnspan=3, sticky="w", padx=24, pady=1)
         if _ytu.can_self_update():
-            note = (
+            note = _(
                 "Updates come from yt-dlp's own GitHub releases (stable), are "
                 "checked against their published checksums and go to a copy "
                 "in your user folder; the app's own copy is never changed."
             )
         else:
-            note = (
+            note = _(
                 "This copy of the app cannot update its video downloader by "
                 "itself; a new app version brings a newer one."
             )
@@ -1580,28 +1658,28 @@ class AdvancedDialog(tk.Toplevel):
     def _build_misc_section(self, body: ttk.Frame) -> ttk.LabelFrame:
         """"App behaviour": tray, usage statistics, Work offline, update notice."""
         misc = section_labelframe(
-            body, "App behaviour",
-            "General app behaviour: whether closing the window minimises "
+            body, _("App behaviour"),
+            _("General app behaviour: whether closing the window minimises "
             "to the system tray instead of exiting, whether usage "
             "statistics (no audio or transcript content) are sent, whether "
             "the app works offline, and whether it tells you about a new "
-            "version.",
+            "version."),
         )
         misc.pack(fill="x", pady=(0, 14))
         tray_row = ttk.Frame(misc)
         tray_row.pack(anchor="w", fill="x")
         tray_check = ttk.Checkbutton(
-            tray_row, text="Minimise to system tray instead of exit",
+            tray_row, text=_("Minimise to system tray instead of exit"),
             variable=self._minimise_to_tray,
         )
         tray_check.pack(side="left", padx=8, pady=4)
         help_icon(
             tray_row,
-            "When on, closing the main window (the X button) hides it to "
+            _("When on, closing the main window (the X button) hides it to "
             "a small icon near the clock instead of quitting — any "
             "running or queued jobs keep going in the background. Click "
             "the tray icon to bring the window back, or use its right-"
-            "click menu to Exit for real.",
+            "click menu to Exit for real."),
         ).pack(side="left")
         # Where the tray cannot work (macOS, or pystray / Pillow missing)
         # the checkbox is disabled and says why, instead of offering a
@@ -1615,37 +1693,47 @@ class AdvancedDialog(tk.Toplevel):
                 foreground=tokens.themed(tokens.TEXT_MUTED),
             ).pack(side="left", padx=(8, 0))
         ttk.Checkbutton(
-            misc, text="Send usage statistics (on by default; also in the Help menu)",
+            misc, text=_("Send usage statistics (on by default; also in the Help menu)"),
             variable=self._telemetry_opt_in,
         ).pack(anchor="w", padx=8, pady=4)
         offline_row = ttk.Frame(misc)
         offline_row.pack(anchor="w", fill="x")
         ttk.Checkbutton(
-            offline_row, text="Work offline (also in the File menu)",
+            offline_row, text=_("Work offline (also in the File menu)"),
             variable=self._work_offline,
         ).pack(side="left", padx=8, pady=4)
         help_icon(
             offline_row,
-            "When on, the app makes no network connection at all: no update "
+            _("When on, the app makes no network connection at all: no update "
             "check, no usage statistics, no online settings. Local "
             "transcription works with the models already on this computer. "
             "Anything that needs the internet (a link, a model download, a "
-            "cloud engine) tells you so and offers to turn this off.",
+            "cloud engine) tells you so and offers to turn this off."),
         ).pack(side="left")
         tts_row = ttk.Frame(misc)
         tts_row.pack(anchor="w", fill="x")
         ttk.Checkbutton(
-            tts_row, text="Text to Voice: no text length limit (advanced)",
+            tts_row, text=_("Text to Voice: no text length limit (advanced)"),
             variable=self._tts_no_text_limit,
         ).pack(side="left", padx=8, pady=4)
         help_icon(
             tts_row,
-            f"Off by default: one Text to Voice job takes up to "
-            f"{tts_plan.MAX_TEXT_CHARS:,} characters (about 90 minutes of "
-            "speech). When on, longer texts are accepted. A long job is still "
-            "spoken piece by piece, so it can be cancelled and continued, and "
-            "the time, file size and free disk space are still checked before "
-            "it starts. A very long text can take many hours.",
+            ngettext(
+                "Off by default: one Text to Voice job takes up to "
+                "{count} character (about 90 minutes of "
+                "speech). When on, longer texts are accepted. A long job is still "
+                "spoken piece by piece, so it can be cancelled and continued, and "
+                "the time, file size and free disk space are still checked before "
+                "it starts. A very long text can take many hours.",
+                "Off by default: one Text to Voice job takes up to "
+                "{count} characters (about 90 minutes of "
+                "speech). When on, longer texts are accepted. A long job is still "
+                "spoken piece by piece, so it can be cancelled and continued, and "
+                "the time, file size and free disk space are still checked before "
+                "it starts. A very long text can take many hours.",
+                tts_plan.MAX_TEXT_CHARS,
+                count=f"{tts_plan.MAX_TEXT_CHARS:,}",
+            ),
         ).pack(side="left")
         if subtitle_edit.is_supported():
             self._build_subtitle_edit_row(misc)
@@ -1656,24 +1744,24 @@ class AdvancedDialog(tk.Toplevel):
         """Windows only: where SubtitleEdit.exe is, for a portable copy."""
         row = ttk.Frame(parent)
         row.pack(anchor="w", fill="x", padx=8, pady=4)
-        ttk.Label(row, text="Subtitle Edit program:").pack(side="left")
+        ttk.Label(row, text=_("Subtitle Edit program:")).pack(side="left")
         ttk.Entry(row, textvariable=self._subtitle_edit_path, width=36).pack(
             side="left", padx=(6, 4)
         )
-        ttk.Button(row, text="Browse…", command=self._browse_subtitle_edit).pack(side="left")
+        ttk.Button(row, text=_("Browse…"), command=self._browse_subtitle_edit).pack(side="left")
         help_icon(
             row,
-            "Leave empty to use an installed Subtitle Edit (found automatically). "
+            _("Leave empty to use an installed Subtitle Edit (found automatically). "
             "Choose SubtitleEdit.exe here only for a portable copy. The "
-            "\"Open in Subtitle Edit\" button after a job uses it.",
+            "\"Open in Subtitle Edit\" button after a job uses it."),
         ).pack(side="left", padx=(4, 0))
 
     def _browse_subtitle_edit(self) -> None:
         from tkinter import filedialog
         path = filedialog.askopenfilename(
             parent=self,
-            title="Choose SubtitleEdit.exe",
-            filetypes=[("Program", "*.exe"), ("All files", "*.*")],
+            title=_("Choose SubtitleEdit.exe"),
+            filetypes=[(_("Program"), "*.exe"), (_("All files"), "*.*")],
         )
         if path:
             self._subtitle_edit_path.set(path)
@@ -1682,19 +1770,25 @@ class AdvancedDialog(tk.Toplevel):
         """New versions: notify (default) or off. Never set by the online config."""
         from core import updates as _updates
 
-        ttk.Label(parent, text="New versions:").pack(anchor="w", padx=8, pady=(8, 0))
+        ttk.Label(parent, text=_("New versions:")).pack(anchor="w", padx=8, pady=(8, 0))
         for text, value in (
-            ("Tell me when a new version is available (a quiet bar under the menu)", True),
-            ("Don't check for updates", False),
+            (_("Tell me when a new version is available (a quiet bar under the menu)"), True),
+            (_("Don't check for updates"), False),
         ):
             ttk.Radiobutton(
                 parent, text=text, value=value, variable=self._update_check_enabled,
             ).pack(anchor="w", padx=24, pady=1)
-        note = "Help → Check for updates… always works. The app never installs anything by itself."
         if _updates.disabled_by_environment():
-            note = (
-                f"The {_updates.DISABLE_ENV_VAR} environment variable turns the daily "
-                "check off on this computer. " + note
+            note = _(
+                "The {variable} environment variable turns the daily check off on "
+                "this computer. Help → Check for updates… always works. The app "
+                "never installs anything by itself.",
+                variable=_updates.DISABLE_ENV_VAR,
+            )
+        else:
+            note = _(
+                "Help → Check for updates… always works. The app never installs "
+                "anything by itself."
             )
         ttk.Label(
             parent, text=note, wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
@@ -1710,8 +1804,8 @@ class AdvancedDialog(tk.Toplevel):
         only while this engine is picked.
         """
         gc = section_labelframe(
-            body, "Google Cloud Speech-to-Text (service account)",
-            "Optional — the full Google Cloud Speech-to-Text service, "
+            body, _("Google Cloud Speech-to-Text (service account)"),
+            _("Optional — the full Google Cloud Speech-to-Text service, "
             "signed in with a downloaded service-account JSON file (not "
             "the simple API key the separate Gemini engine uses). The "
             "only engine in this app that natively combines real "
@@ -1719,13 +1813,13 @@ class AdvancedDialog(tk.Toplevel):
             "Batch mode for long files (~$0.004/minute, usually ready "
             "within 24 hours). New accounts get 60 free minutes/month "
             "plus a $300/90-day credit. Uploads your audio to Google — "
-            "not offline.",
+            "not offline."),
         )
 
         ttk.Label(
             gc,
             text=(
-                "This is the FULL Google Cloud Speech-to-Text service. It "
+                _("This is the FULL Google Cloud Speech-to-Text service. It "
                 "signs in with a service-account JSON file you download from "
                 "the Google Cloud console (NOT the simple API key the "
                 "separate Gemini engine uses). New Google Cloud customers get "
@@ -1734,14 +1828,14 @@ class AdvancedDialog(tk.Toplevel):
                 "word-level timestamps, speaker diarization, and a cheap "
                 "Batch mode for long files — Batch costs about "
                 "$0.004/minute (~75% less than Standard's ~$0.016/minute) "
-                "and is usually ready within 24 hours."
+                "and is usually ready within 24 hours.")
             ),
             wraplength=px(680),
             justify="left",
         ).grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=(4, 8))
 
         # -- service-account JSON file row --------------------------------
-        ttk.Label(gc, text="Service-account JSON file:").grid(
+        ttk.Label(gc, text=_("Service-account JSON file:")).grid(
             row=1, column=0, sticky="w", padx=8, pady=4
         )
         self._gcloud_path_label = ttk.Label(
@@ -1753,17 +1847,17 @@ class AdvancedDialog(tk.Toplevel):
         )
         self._gcloud_path_label.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
         ttk.Button(
-            gc, text="Browse...", command=self._browse_gcloud_credentials,
+            gc, text=_("Browse..."), command=self._browse_gcloud_credentials,
         ).grid(row=1, column=2, sticky="w", padx=8, pady=4)
 
         btns = ttk.Frame(gc)
         btns.grid(row=2, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
         ttk.Button(
-            btns, text="How do I get this file?",
+            btns, text=_("How do I get this file?"),
             command=self._show_gcloud_help,
         ).pack(side="left")
         ttk.Button(
-            btns, text="Test connection",
+            btns, text=_("Test connection"),
             command=self._test_gcloud_connection,
         ).pack(side="left", padx=(8, 0))
         ttk.Label(
@@ -1777,22 +1871,22 @@ class AdvancedDialog(tk.Toplevel):
         # -- batch mode + bucket ------------------------------------------
         ttk.Checkbutton(
             gc,
-            text="Batch mode (cheaper, slower)",
+            text=_("Batch mode (cheaper, slower)"),
             variable=self._gcloud_batch_mode,
             command=self._refresh_gcloud_dynamic,
         ).grid(row=4, column=0, columnspan=3, sticky="w", padx=8, pady=(8, 0))
         ttk.Label(
             gc,
             text=(
-                "Batch is ~75% cheaper (~$0.004/min vs ~$0.016/min) but can "
+                _("Batch is ~75% cheaper (~$0.004/min vs ~$0.016/min) but can "
                 "take up to ~24 hours and needs a Google Cloud Storage bucket "
-                "you own."
+                "you own.")
             ),
             foreground=tokens.themed(tokens.TEXT_MUTED),
             wraplength=px(680),
             justify="left",
         ).grid(row=5, column=0, columnspan=3, sticky="w", padx=8, pady=(0, 4))
-        ttk.Label(gc, text="Cloud Storage bucket:").grid(
+        ttk.Label(gc, text=_("Cloud Storage bucket:")).grid(
             row=6, column=0, sticky="w", padx=8, pady=4
         )
         self._gcloud_bucket_entry = ttk.Entry(
@@ -1801,27 +1895,27 @@ class AdvancedDialog(tk.Toplevel):
         self._gcloud_bucket_entry.grid(row=6, column=1, sticky="ew", padx=8, pady=4)
         help_icon(
             gc,
-            "Only needed for Batch mode above: the name of a Google Cloud "
+            _("Only needed for Batch mode above: the name of a Google Cloud "
             "Storage bucket YOU own, that this Google Cloud account has "
             "access to. Create one in the Cloud Storage section of the "
-            "console if you don't have one yet.",
+            "console if you don't have one yet."),
         ).grid(row=6, column=2, sticky="w", padx=(0, 8), pady=4)
 
         # -- diarization ---------------------------------------------------
         ttk.Checkbutton(
             gc,
-            text="Detect speakers (diarization)",
+            text=_("Detect speakers (diarization)"),
             variable=self._gcloud_diarization,
         ).grid(row=7, column=0, columnspan=3, sticky="w", padx=8, pady=4)
         help_icon(
             gc,
-            "Labels which speaker said each part of the transcript "
+            _("Labels which speaker said each part of the transcript "
             "(Speaker 1, Speaker 2, ...). Works in both modes above. In "
             "Batch mode, labels stay consistent across the whole file. In "
             "Standard (online) mode, audio is sent to Google in ~1-minute "
             "pieces and the speaker numbering restarts each time, so the "
             "same person can end up under a different label in different "
-            "parts of the transcript.",
+            "parts of the transcript."),
         ).grid(row=7, column=3, sticky="w", padx=(0, 8), pady=4)
 
         # -- live usage / cost estimate -----------------------------------
@@ -1833,12 +1927,12 @@ class AdvancedDialog(tk.Toplevel):
         ).grid(row=8, column=0, columnspan=3, sticky="w", padx=8, pady=(8, 0))
         ttk.Label(
             gc,
-            text="(local estimate — see Google Cloud Console for the real figure)",
+            text=_("(local estimate — see Google Cloud Console for the real figure)"),
             foreground=tokens.themed(tokens.TEXT_MUTED),
         ).grid(row=9, column=0, columnspan=3, sticky="w", padx=8, pady=(0, 2))
         usage_link = ttk.Label(
             gc,
-            text="Open billing/usage console",
+            text=_("Open billing/usage console"),
             foreground=tokens.themed(tokens.LINK),
             cursor="hand2",
         )
@@ -1850,7 +1944,7 @@ class AdvancedDialog(tk.Toplevel):
         # -- privacy note --------------------------------------------------
         ttk.Label(
             gc,
-            text="Cloud transcription uploads your audio to Google (it is not offline).",
+            text=_("Cloud transcription uploads your audio to Google (it is not offline)."),
             foreground=tokens.themed(tokens.DANGER_TEXT),
             wraplength=px(680),
             justify="left",
@@ -1900,7 +1994,7 @@ class AdvancedDialog(tk.Toplevel):
             return
 
         top = tk.Toplevel(self)
-        top.title("Model info")
+        top.title(_("Model info"))
         top.transient(self)
         top.resizable(False, False)
         frame = ttk.Frame(top, padding=14)
@@ -1911,16 +2005,19 @@ class AdvancedDialog(tk.Toplevel):
             wraplength=px(420), justify="left",
         ).pack(anchor="w", pady=(0, 8))
 
-        body = info["info"] or "No description available."
+        body = info["info"] or _("No description available.")
         size_gb = info["approx_size_gb"]
         if size_gb:
-            body = f"{body}\n\nApprox. download size: ~{size_gb:g} GB"
+            body = _(
+                "{description}\n\nApprox. download size: ~{size} GB",
+                description=body, size=f"{size_gb:g}",
+            )
 
         ttk.Label(
             frame, text=body, wraplength=px(420), justify="left",
         ).pack(anchor="w")
 
-        ttk.Button(frame, text="Close", command=top.destroy).pack(
+        ttk.Button(frame, text=_("Close"), command=top.destroy).pack(
             anchor="e", pady=(14, 0)
         )
         place_over(top, self)
@@ -1960,8 +2057,7 @@ class AdvancedDialog(tk.Toplevel):
             self._model_display.get() or "", DEFAULT_MODEL_SLUG
         )
         labeled = [
-            (slug, f"{base}   "
-                   f"[{'OK - downloaded' if self._model_downloaded(slug) else 'needs download'}]")
+            (slug, _model_choice_label(base, self._model_downloaded(slug)))
             for slug, base in catalog_models(self.app.app_config)
         ]
         self._model_slug_to_label = {slug: lbl for slug, lbl in labeled}
@@ -2131,9 +2227,7 @@ class AdvancedDialog(tk.Toplevel):
         cfg["denoise_enabled"] = bool(self._denoise_enabled.get())
         cfg["denoise_level"] = (self._denoise_level.get() or "auto").strip().lower()
         cfg["ai_enabled"] = bool(self._ai_enabled.get())
-        cfg["llm_provider"] = _LLM_PROVIDER_LABEL_TO_VALUE.get(
-            self._llm_provider_display.get() or "", "local"
-        )
+        cfg["llm_provider"] = _llm_provider_value(self._llm_provider_display.get() or "")
         cfg["llm_remote_base_url"] = self._llm_remote_base_url.get().strip()
         cfg["llm_remote_api_key"] = self._llm_remote_api_key.get().strip()
         cfg["llm_remote_model"] = self._llm_remote_model.get().strip()
@@ -2193,10 +2287,13 @@ class AdvancedDialog(tk.Toplevel):
             self.app.log(f"Failed to save settings: {e}")
             from tkinter import messagebox
             messagebox.showerror(
-                "Settings not saved",
-                f"The settings could not be saved:\n{e}\n\n"
-                "Close other programs that may be using the settings file, "
-                "then click Save again.",
+                _("Settings not saved"),
+                _(
+                    "The settings could not be saved:\n{error}\n\n"
+                    "Close other programs that may be using the settings file, "
+                    "then click Save again.",
+                    error=e,
+                ),
                 parent=self,
             )
             return
@@ -2224,9 +2321,12 @@ class AdvancedDialog(tk.Toplevel):
             else:
                 restart = confirm(
                     self,
-                    title="Change the Whisper model?",
+                    title=_("Change the Whisper model?"),
+                    # App._confirm_backend_switch builds its sentence around
+                    # ``action``: a translated fragment would be spliced into
+                    # it, so it stays English until that message is converted.
                     action="Changing the model",
-                    question="Change it anyway?",
+                    question=_("Change it anyway?"),
                 )
             what = (
                 f"Transcription engine changed to {cfg['transcribe_backend']}"
@@ -2311,7 +2411,7 @@ class AdvancedDialog(tk.Toplevel):
 
     def _browse_watched_folder(self) -> None:
         from tkinter import filedialog
-        folder = filedialog.askdirectory(parent=self, title="Choose a folder to watch")
+        folder = filedialog.askdirectory(parent=self, title=_("Choose a folder to watch"))
         if folder:
             self._watched_folder.set(folder)
 
@@ -2344,7 +2444,7 @@ class AdvancedDialog(tk.Toplevel):
                     w.grid()
                 else:
                     w.grid_remove()
-        self._vad_tune_link.configure(text=("▾ Fine-tune" if shown else "▸ Fine-tune"))
+        self._vad_tune_link.configure(text=(_("▾ Fine-tune") if shown else _("▸ Fine-tune")))
 
     def _sync_vad_controls_state(self) -> None:
         """Grey out the three VAD sliders while VAD itself is off.
@@ -2381,6 +2481,16 @@ class AdvancedDialog(tk.Toplevel):
             "Applied the noisy-audio preset: VAD threshold raised, denoise "
             "set to 'medium', hallucination flagging on."
         )
+
+    def _on_denoise_level_changed(self, *_args: object) -> None:
+        """Show the label of the stored strength whenever it changes (a preset
+        or "Restore transcription defaults" sets the stored value)."""
+        value = self._denoise_level.get()
+        self._denoise_level_display.set(_denoise_level_labels().get(value, value))
+
+    def _on_denoise_level_selected(self) -> None:
+        """The strength picker changed: store the value of the picked label."""
+        self._denoise_level.set(_denoise_level_value(self._denoise_level_display.get()))
 
     def _sync_denoise_level_state(self) -> None:
         """Grey out the strength picker while denoise is off.
@@ -2500,9 +2610,9 @@ class AdvancedDialog(tk.Toplevel):
         key = self._cloud_api_key.get().strip()
         model = self._cloud_model.get().strip() or "gemini-3.5-flash"
         if not key:
-            self._cloud_test_result.set("Paste an API key first.")
+            self._cloud_test_result.set(_("Paste an API key first."))
             return
-        self._cloud_test_result.set("Testing key…")
+        self._cloud_test_result.set(_("Testing key…"))
 
         def _set_result(msg: str) -> None:
             try:
@@ -2518,11 +2628,15 @@ class AdvancedDialog(tk.Toplevel):
                 )
                 backend.load()
                 ok, msg = backend.ping_key()
+                # ``msg`` comes from the backend (core/), not translated here.
+                english = ("OK — " if ok else "FAILED — ") + msg
+                text = (_("OK — {message}", message=msg) if ok
+                        else _("FAILED — {message}", message=msg))
             except Exception as e:  # noqa: BLE001
-                ok, msg = False, f"Key check failed: {e}"
-            text = ("OK — " if ok else "FAILED — ") + msg
+                english = f"FAILED — Key check failed: {e}"
+                text = _("FAILED — Key check failed: {error}", error=e)
             self.app.post_to_main(lambda: _set_result(text))
-            self.app.log_threadsafe(f"Cloud STT key test: {text}")
+            self.app.log_threadsafe(f"Cloud STT key test: {english}")
 
         from core._threads import safe_thread
         safe_thread(_worker, name="cloud-stt-key-test")
@@ -2554,18 +2668,18 @@ class AdvancedDialog(tk.Toplevel):
             from core.backends.availability import bundled_gcloud_key_path
 
             if bundled_gcloud_key_path():
-                return "✓ Using the built-in Google Cloud key (loaded)"
+                return _("✓ Using the built-in Google Cloud key (loaded)")
         except Exception:  # noqa: BLE001
             pass
-        return "(none selected)"
+        return _("(none selected)")
 
     def _browse_gcloud_credentials(self) -> None:
         """Pick the downloaded service-account JSON file."""
         from tkinter import filedialog
         path = filedialog.askopenfilename(
             parent=self,
-            title="Pick your Google Cloud service-account JSON key file",
-            filetypes=[("JSON key file", "*.json"), ("All files", "*.*")],
+            title=_("Pick your Google Cloud service-account JSON key file"),
+            filetypes=[(_("JSON key file"), "*.json"), (_("All files"), "*.*")],
         )
         if path:
             self._gcloud_credentials.set(path)
@@ -2590,7 +2704,7 @@ class AdvancedDialog(tk.Toplevel):
         try:
             from core.backends import google_cloud_stt as _g
         except Exception as e:  # noqa: BLE001
-            self._gcloud_usage_text.set(f"Usage unavailable: {e}")
+            self._gcloud_usage_text.set(_("Usage unavailable: {error}", error=e))
             return
         cfg = self.app.app_config
         sync_from_disk(cfg)  # the worker's counter, not the launch-time copy
@@ -2606,7 +2720,7 @@ class AdvancedDialog(tk.Toplevel):
     def _show_gcloud_help(self) -> None:
         """Open a step-by-step help dialog with clickable console links."""
         top = tk.Toplevel(self)
-        top.title("How to get a Google Cloud service-account JSON file")
+        top.title(_("How to get a Google Cloud service-account JSON file"))
         top.transient(self)
         top.resizable(True, True)
         frame = ttk.Frame(top, padding=14)
@@ -2615,8 +2729,8 @@ class AdvancedDialog(tk.Toplevel):
         ttk.Label(
             frame,
             text=(
-                "Follow these steps once. The links open the exact Google "
-                "Cloud console pages (screenshots are not embedded)."
+                _("Follow these steps once. The links open the exact Google "
+                "Cloud console pages (screenshots are not embedded).")
             ),
             wraplength=px(620),
             justify="left",
@@ -2626,7 +2740,7 @@ class AdvancedDialog(tk.Toplevel):
             row = ttk.Frame(frame)
             row.pack(fill="x", anchor="w", pady=2)
             ttk.Label(
-                row, text=text, wraplength=px(620), justify="left",
+                row, text=translate(text), wraplength=px(620), justify="left",
             ).pack(anchor="w")
             if url:
                 link = ttk.Label(
@@ -2638,7 +2752,7 @@ class AdvancedDialog(tk.Toplevel):
 
         guide = ttk.Label(
             frame,
-            text=f"Official guide: {_GCLOUD_OFFICIAL_GUIDE}",
+            text=_("Official guide: {url}", url=_GCLOUD_OFFICIAL_GUIDE),
             foreground=tokens.themed(tokens.LINK),
             cursor="hand2",
             wraplength=px(620),
@@ -2649,7 +2763,7 @@ class AdvancedDialog(tk.Toplevel):
             "<Button-1>", lambda _e: self._open_url(_GCLOUD_OFFICIAL_GUIDE)
         )
 
-        ttk.Button(frame, text="Close", command=top.destroy).pack(
+        ttk.Button(frame, text=_("Close"), command=top.destroy).pack(
             anchor="e", pady=(14, 0)
         )
         place_over(top, self)
@@ -2684,13 +2798,13 @@ class AdvancedDialog(tk.Toplevel):
             path = bundled_credentials_path()
             if not path:
                 self._gcloud_test_result.set(
-                    "Pick your service-account JSON file first (Browse...)."
+                    _("Pick your service-account JSON file first (Browse...).")
                 )
                 return
             using_bundled = True
         self._gcloud_test_result.set(
-            "Testing connection (using the build-bundled key)..."
-            if using_bundled else "Testing connection..."
+            _("Testing connection (using the build-bundled key)...")
+            if using_bundled else _("Testing connection...")
         )
 
         def _set_result(msg: str) -> None:
@@ -2707,7 +2821,7 @@ class AdvancedDialog(tk.Toplevel):
                 from core import optional_deps
                 from core.backends import google_cloud_stt as _g
                 if not _g.runtime_available():
-                    _status("Installing Google Cloud libraries (one-time)...")
+                    _status(_("Installing Google Cloud libraries (one-time)..."))
                     ok_install = optional_deps.install(
                         "google_cloud_stt", log_cb=self.app.log_threadsafe
                     )
@@ -2715,9 +2829,9 @@ class AdvancedDialog(tk.Toplevel):
                         _status(
                             offline.message("installing the Google Cloud libraries")
                             if offline.is_offline() else
-                            "FAILED — could not install the Google Cloud "
-                            "libraries. Check your internet connection and "
-                            "retry."
+                            _("FAILED — could not install the Google Cloud "
+                              "libraries. Check your internet connection and "
+                              "retry.")
                         )
                         return
                 config = {
@@ -2734,27 +2848,27 @@ class AdvancedDialog(tk.Toplevel):
                 }
                 backend = _g.GoogleCloudSttBackend(config=config)
                 if not backend.load():
-                    _status("FAILED — " + (backend.get_error() or "unknown error"))
+                    _status(_("FAILED — {message}", message=backend.get_error() or _("unknown error")))
                     return
                 # Building the client proves the JSON authenticates and the
                 # Speech-to-Text client can initialise (no audio spent).
                 try:
                     backend._build_client()  # noqa: SLF001 — intentional probe
                 except Exception as e:  # noqa: BLE001
-                    _status("FAILED — " + str(e))
+                    _status(_("FAILED — {message}", message=str(e)))
                     return
                 _status(
-                    (
-                        "OK — the build-bundled service account works. "
-                        if using_bundled else
-                        "OK — service account accepted. "
-                    )
-                    + "The Speech-to-Text client initialised — "
-                    "you can transcribe with this backend."
+                    _("OK — the build-bundled service account works. The "
+                      "Speech-to-Text client initialised — you can transcribe "
+                      "with this backend.")
+                    if using_bundled else
+                    _("OK — service account accepted. The Speech-to-Text "
+                      "client initialised — you can transcribe with this "
+                      "backend.")
                 )
             except Exception as e:  # noqa: BLE001
                 logger.exception("Google Cloud STT connection test failed")
-                _status(f"FAILED — connection test error: {e}")
+                _status(_("FAILED — connection test error: {error}", error=e))
 
         from core._threads import safe_thread
         safe_thread(_worker, name="gcloud-stt-connection-test")
