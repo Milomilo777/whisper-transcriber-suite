@@ -45,7 +45,7 @@ from typing import Any, Callable, Collection, Optional
 
 from app.dialogs import share_page, viewer_exports
 from app import mac_native, shortcuts
-from app.i18n import N_, _, lazy, ngettext, pgettext, translate
+from app.i18n import N_, _, lazy, ngettext, pgettext, plain, translate
 from app.dpi import place_over, px, scaled_size
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
@@ -2796,7 +2796,7 @@ class TranscriptViewer(tk.Toplevel):
         try:
             notify(self, text, kind)
         except Exception:  # noqa: BLE001
-            logger.warning("Could not show the notice: %s", text, exc_info=True)
+            logger.warning("Could not show the notice: %s", plain(text), exc_info=True)
 
     def destroy(self) -> None:
         # Also reached when the main window goes away with the viewer open.

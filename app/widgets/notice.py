@@ -24,6 +24,7 @@ from collections import deque
 from tkinter import ttk
 from typing import Deque, Literal
 
+from app.i18n import plain
 from app.theme import tokens
 
 logger = logging.getLogger(__name__)
@@ -242,4 +243,4 @@ def notify(widget: tk.Misc, text: str, kind: Kind = "info") -> None:
     try:
         host_for(widget).post(text, kind)
     except tk.TclError:
-        logger.info("notice not shown (window closing): %s", text)
+        logger.info("notice not shown (window closing): %s", plain(text))

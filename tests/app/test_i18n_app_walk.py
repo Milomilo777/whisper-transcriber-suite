@@ -10,14 +10,20 @@ English-only by design and allowed as a whole.
 
 ``test_tk_rtl_*`` does the same with a Hebrew test catalog (every message prefixed with a Hebrew
 letter): the layer switches to right to left, the texts reach the widgets exactly as the catalog
-has them (no reordering, no added marks off macOS), and the language picker does not offer the
-right-to-left catalog while ``app.i18n.RTL_LAYOUT_READY`` is False.
+has them (no reordering; on Windows each line inside one RLE ... PDF pair, no LRM off macOS),
+and the language picker does not offer the right-to-left catalog while
+``app.i18n.rtl_layout_ready()`` is False.
+
+``test_tk_persian_*`` (Windows) builds the app with a small Persian catalog: every right-to-left
+letter on screen sits inside a direction-mark pair, translated combobox labels still map back to
+the stored English values, and the error dialog copies its details without the marks.
 
 These tests need a real Tk root; run them on the remote test machine (see AGENTS.md).
 """
 from __future__ import annotations
 
 import json
+import sys
 import tkinter as tk
 from pathlib import Path
 from types import SimpleNamespace
@@ -309,11 +315,14 @@ def test_tk_rtl_catalog_reaches_the_widgets_unchanged(build_app: Any, monkeypatc
     assert i18n.set_language("he") == "he"
     assert i18n.current_direction() == "rtl"
     app = build_app()
-    # Exactly the catalog's text, character for character (Tk on Windows and Linux does not
-    # reorder; nothing adds a direction mark off macOS).
+    # The catalog's text, character for character; on Windows each line inside one RLE ... PDF
+    # pair (U+202B ... U+202C), elsewhere unchanged. Tk does not reorder, and no LRM is added
+    # off macOS.
+    marks = (chr(0x202B), chr(0x202C)) if sys.platform == "win32" else ("", "")
     tabs = {str(app.nb.tab(t, "text")) for t in app.nb.tabs()}
-    expected = {messages["Transcription Queue"], messages["Download Videos"],
-                messages["Web / LAN access"], messages["tab" + i18n.CONTEXT_SEPARATOR + "Live"]}
+    expected = {marks[0] + messages[key] + marks[1] for key in (
+        "Transcription Queue", "Download Videos", "Web / LAN access",
+        "tab" + i18n.CONTEXT_SEPARATOR + "Live")}
     assert expected <= tabs, tabs
     if not bidi_display.is_aqua():
         rows = _collect(app)
@@ -335,11 +344,12 @@ def test_tk_rtl_catalog_is_not_offered_until_the_layout_is_mirrored(
     app = build_app()
     from app.dialogs.advanced import AdvancedDialog
 
+    monkeypatch.setattr(i18n, "RTL_LAYOUT_READY", False)
     dlg = AdvancedDialog(app)
     try:
         values = list(dlg.tk.splitlist(dlg._ui_language_combo.cget("values")))
         assert values[1:] == ["English"], values
-        assert values[0].startswith(HEBREW_MARK)
+        assert i18n.plain(values[0]).startswith(HEBREW_MARK)
     finally:
         dlg.destroy()
     monkeypatch.setattr(i18n, "RTL_LAYOUT_READY", True)
@@ -348,6 +358,166 @@ def test_tk_rtl_catalog_is_not_offered_until_the_layout_is_mirrored(
         values = list(dlg.tk.splitlist(dlg._ui_language_combo.cget("values")))
         assert values[1] == "English"
         # "{language} (machine translation)" as the test catalog has it.
-        assert values[2].endswith(HEBREW_MARK + "עברית (machine translation)"), values
+        assert i18n.plain(values[2]).endswith(HEBREW_MARK + "עברית (machine translation)"), values
     finally:
         dlg.destroy()
+
+
+# --- right to left on Windows: the direction marks ------------------------------------------------
+
+RLE_MARK = chr(0x202B)
+PDF_MARK = chr(0x202C)
+ISOLATE_MARKS = {chr(c) for c in range(0x2066, 0x206A)}
+SEP = i18n.CONTEXT_SEPARATOR
+# A small Persian catalog: a few texts of the main window and of Advanced settings, mixed with
+# Latin and digits and ending in ":" or ")" like the texts that came out wrong without the marks.
+PERSIAN = {
+    "Transcription Queue": "صف رونویسی",
+    "Download Videos": "دانلود ویدیو",
+    "Web / LAN access": "دسترسی Web / LAN",
+    "tab" + SEP + "Live": "زنده",
+    "download mode" + SEP + "Audio and video": "صدا و ویدیو (MP4)",
+    "download mode" + SEP + "Audio": "فقط صدا",
+    "Advanced settings": "تنظیمات پیشرفته",
+    "App behaviour": "رفتار برنامه",
+    "Interface language:": "زبان رابط:",
+    "Automatic (system language)": "خودکار (زبان سیستم)",
+    "{language} (machine translation)": "{language} (ترجمه ماشینی)",
+}
+
+
+def _rtl_letter(ch: str) -> bool:
+    import unicodedata
+
+    return unicodedata.bidirectional(ch) in ("R", "AL")
+
+
+def _unembedded(text: str) -> list[str]:
+    """Problems of one shown text: a right-to-left letter outside RLE ... PDF, unbalanced pairs,
+    a pair around a line without a right-to-left letter, an isolate mark."""
+    problems: list[str] = []
+    if ISOLATE_MARKS & set(text):
+        problems.append("isolate mark")
+    for line in text.split("\n"):
+        depth = 0
+        for ch in line:
+            if ch == RLE_MARK:
+                depth += 1
+            elif ch == PDF_MARK:
+                depth -= 1
+                if depth < 0:
+                    problems.append("PDF without RLE")
+                    break
+            elif _rtl_letter(ch) and depth == 0:
+                problems.append(f"letter {ch!r} outside the marks")
+                break
+        if depth > 0:
+            problems.append("RLE not closed")
+        if (RLE_MARK in line or PDF_MARK in line) and not any(_rtl_letter(c) for c in line):
+            problems.append("marks around a left-to-right line")
+    return problems
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the marks are added on Windows only")
+def test_tk_persian_catalog_marks_every_translated_line(
+        build_app: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    folder = tmp_path / "locales"
+    folder.mkdir()
+    doc = {"_meta": {"code": "fa", "name": "فارسی", "direction": "rtl", "status": "machine",
+                     "plural": "zero_one_other"}, "messages": PERSIAN}
+    (folder / "fa.json").write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(i18n, "locales_dir", lambda: folder)
+    monkeypatch.setattr(i18n, "_DOC_CACHE", {})
+    assert i18n.set_language("fa") == "fa"
+    assert i18n.rtl_marks() is True
+    app = build_app()
+
+    # The tabs: exactly the catalog text inside one pair.
+    tabs = {str(app.nb.tab(t, "text")) for t in app.nb.tabs()}
+    for key in ("Transcription Queue", "Download Videos", "Web / LAN access", "tab" + SEP + "Live"):
+        assert RLE_MARK + PERSIAN[key] + PDF_MARK in tabs, (key, tabs)
+    # A tab the small catalog does not translate stays English, without marks.
+    assert any(RLE_MARK not in t and PDF_MARK not in t for t in tabs), tabs
+
+    # A translated combobox label still maps back to the stored English value through Tk.
+    values = list(app.tk.splitlist(app.download_mode_combo.cget("values")))
+    assert values == [RLE_MARK + PERSIAN["download mode" + SEP + "Audio and video"] + PDF_MARK,
+                      RLE_MARK + PERSIAN["download mode" + SEP + "Audio"] + PDF_MARK]
+    app.download_mode_combo.set(values[1])
+    app.update_idletasks()
+    assert app.download_mode_var.get() == "Audio"
+    app.download_mode_combo.set(values[0])
+    app.update_idletasks()
+    assert app.download_mode_var.get() == "Audio and video"
+
+    # Advanced settings: the picker row and its value <-> label map.
+    from app.dialogs.advanced import AdvancedDialog
+
+    dlg = AdvancedDialog(app)
+    try:
+        dlg.update_idletasks()
+        assert str(dlg.title()) == RLE_MARK + PERSIAN["Advanced settings"] + PDF_MARK
+        from tests.app.i18n_walk import visible_texts
+
+        shown = [t for _p, t in visible_texts(dlg)]
+        assert RLE_MARK + PERSIAN["Interface language:"] + PDF_MARK in shown
+        assert RLE_MARK + PERSIAN["App behaviour"] + PDF_MARK in shown
+        picker = list(dlg.tk.splitlist(dlg._ui_language_combo.cget("values")))
+        assert picker[0] == RLE_MARK + PERSIAN["Automatic (system language)"] + PDF_MARK
+        assert RLE_MARK + "فارسی (ترجمه ماشینی)" + PDF_MARK in picker, picker
+        assert dlg._ui_language_value(dlg._ui_language_display.get()) == "auto"
+        assert dlg._ui_language_value(picker[0]) == "auto"
+    finally:
+        dlg.destroy()
+
+    # The whole app and its dialogs: every right-to-left letter inside a pair, no isolates,
+    # and the app did not fail building any of it.
+    rows = _collect(app)
+    # Language names (the picker lists each by its own name) and the English-only video-site
+    # tab are data, not translations.
+    names = {lang.endonym for lang in i18n.SUPPORTED_LANGUAGES}
+    bad = sorted({f"{state} | {path} | {text!r}: {', '.join(p)}" for state, path, text in rows
+                  if text not in names and not _video_site(app, path)
+                  for p in [_unembedded(text)] if p})
+    if bad:
+        pytest.fail(f"{len(bad)} texts with misplaced direction marks:\n" + "\n".join(bad))
+    persian_rows = [t for _s, _p, t in rows if any(_rtl_letter(c) for c in t)]
+    assert len(persian_rows) >= 6, persian_rows
+    # Negative control: the same texts without their marks are all reported.
+    assert all(_unembedded(i18n.plain(t)) for t in persian_rows if RLE_MARK in t)
+
+
+def test_tk_error_details_are_copied_without_marks() -> None:
+    from tkinter import ttk
+
+    from app.widgets.error_dialog import show_error
+
+    try:
+        root = tk.Tk()
+    except tk.TclError as e:
+        pytest.skip(f"Tk unavailable: {e}")
+    root.withdraw()
+    try:
+        detail = RLE_MARK + "خطا: disk full" + PDF_MARK
+        show_error(root, "t", "m", detail=detail)
+        root.update_idletasks()
+
+        def find(widget: tk.Misc) -> Any:
+            for child in widget.winfo_children():
+                if isinstance(child, ttk.Button) and i18n.plain(str(child.cget("text"))) == "Copy details":
+                    return child
+                found = find(child)
+                if found is not None:
+                    return found
+            return None
+
+        button = find(root)
+        assert button is not None
+        button.invoke()
+        try:
+            copied = root.clipboard_get()
+        except tk.TclError as e:
+            pytest.skip(f"no clipboard on this desktop: {e}")
+        assert copied == "خطا: disk full"
+    finally:
+        root.destroy()

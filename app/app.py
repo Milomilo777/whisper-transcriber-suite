@@ -21,7 +21,7 @@ from app.dialogs.model_download import ModelDownloadDialog
 from app.dialogs.quick_start import QuickStartChoice, QuickStartDialog, apply_choice, should_show
 from app.dialogs import share_page
 from app import desktop_alert, mac_native, shortcuts
-from app.i18n import N_, _, ngettext, pgettext, translate
+from app.i18n import N_, _, ngettext, pgettext, plain, translate
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
 from app.dialogs.transcript_viewer import dirty_viewers as _dirty_viewers_now
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
@@ -7335,7 +7335,8 @@ class App(tk.Tk):
         self._open_folder(os.path.dirname(task.file_path) or ".", select=task.file_path)
 
     def log(self, msg: str) -> None:
-        self._ui_logger.info(msg)
+        # The log file gets the text without the right-to-left marks; the panel keeps them.
+        self._ui_logger.info(plain(msg))
         if hasattr(self, "txt") and self.txt is not None:
             insert_log_line(self.txt, msg)
 

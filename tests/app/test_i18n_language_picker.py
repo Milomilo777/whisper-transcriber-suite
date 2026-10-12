@@ -85,19 +85,35 @@ def test_every_catalog_is_listed_in_script_groups_alphabetically(
     assert len(choices) == 43
 
 
-def test_machine_catalogs_are_marked_and_rtl_ones_wait_for_the_mirrored_layout(locales: Path) -> None:
+def test_machine_catalogs_are_marked_and_rtl_ones_wait_for_the_mirrored_layout(
+        locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     write_catalog(locales, "de", "reviewed")
     write_catalog(locales, "fr", "machine")
     write_catalog(locales, "ja", "machine")
     write_catalog(locales, "ar", "reviewed")
     write_catalog(locales, "he", "machine")
-    assert i18n.RTL_LAYOUT_READY is False
+    monkeypatch.setattr(sys, "platform", "darwin")  # right to left is offered on Windows only
+    assert i18n.rtl_layout_ready() is False
     assert _adv()._ui_language_choices() == [
         (AUTO_LABEL, "auto"),
         ("Deutsch", "de"),
         ("English", "en"),
         ("Français (machine translation)", "fr"),
         ("日本語 (machine translation)", "ja"),
+    ]
+
+
+def test_windows_offers_the_rtl_catalogs(locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    write_catalog(locales, "de", "reviewed")
+    write_catalog(locales, "ar", "reviewed")
+    write_catalog(locales, "he", "machine")
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert _adv()._ui_language_choices() == [
+        (AUTO_LABEL, "auto"),
+        ("Deutsch", "de"),
+        ("English", "en"),
+        ("עברית (machine translation)", "he"),
+        ("العربية", "ar"),
     ]
 
 
@@ -262,9 +278,10 @@ def _save(h: Any, dlg: Any) -> dict[str, Any]:
 def test_tk_picker_sits_in_app_behaviour_and_lists_the_catalogs(harness: Any, locales: Path) -> None:
     write_catalog(locales, "de", "reviewed")
     write_catalog(locales, "fr", "machine")
-    write_catalog(locales, "ar", "reviewed")  # right to left: not offered yet
+    write_catalog(locales, "ar", "reviewed")  # right to left: offered on Windows only
     dlg = harness.make()
-    assert _values(dlg) == [AUTO_LABEL, "Deutsch", "English", "Français (machine translation)"]
+    rtl = ["العربية"] if sys.platform == "win32" else []
+    assert _values(dlg) == [AUTO_LABEL, "Deutsch", "English", "Français (machine translation)", *rtl]
     assert dlg._ui_language_display.get() == AUTO_LABEL
     assert str(dlg._ui_language_combo.cget("state")) == "readonly"
     # Inside "App behaviour", right before the "New versions:" choice.

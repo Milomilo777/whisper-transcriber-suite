@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 import sys
 import tkinter as tk
-from app.i18n import _, pgettext
+from app.i18n import _, pgettext, plain
 from app.theme import tokens
 
 # Two colour schemes so the log feed matches the app's own Light/Dark
@@ -92,7 +92,7 @@ def _copy_all(txt: tk.Text) -> None:
         data = txt.get("1.0", "end-1c")
         if data:
             txt.clipboard_clear()
-            txt.clipboard_append(data)
+            txt.clipboard_append(plain(data))
     except tk.TclError:
         pass
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import string
+import sys
 import threading
 from pathlib import Path
 from typing import Any
@@ -262,9 +263,10 @@ def test_catalog_plural_rule_mismatch_uses_the_table_rule(locales: Path) -> None
     assert i18n.ngettext("{n} file", "{n} files", 0) == "0 fichier"  # fr: 0 is singular
 
 
-def test_direction_follows_the_table(locales: Path) -> None:
+def test_direction_follows_the_table(locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     write_catalog(locales, "fa", {"Save": "ذخیره"})
     assert i18n.current_direction() == "ltr"
+    monkeypatch.setattr(sys, "platform", "linux")  # no Windows direction marks (tests/test_i18n_rtl.py)
     i18n.set_language("fa")
     assert i18n.current_direction() == "rtl"
     assert i18n._("Save") == "ذخیره"
@@ -351,9 +353,13 @@ def test_available_offers_rtl_catalogs_only_once_the_layout_is_mirrored(
     assert i18n.resolve_language("he", os_language=None, available=i18n.catalog_statuses()) == "he"
 
 
-def test_rtl_layout_is_not_ready_in_this_release() -> None:
-    # Flipping this offers Arabic and Hebrew in the picker; do it only with the mirrored layout.
-    assert i18n.RTL_LAYOUT_READY is False
+def test_rtl_is_offered_on_windows_only_in_this_release(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Adding a platform offers Arabic, Persian and Hebrew there; do it only after checking how a
+    # right-to-left catalog looks on that platform.
+    assert i18n.RTL_LAYOUT_READY is None
+    assert i18n.RTL_PLATFORMS == frozenset({"win32"})
+    monkeypatch.setattr(sys, "platform", "darwin")
+    assert i18n.rtl_layout_ready() is False
 
 
 # --- R5 choosing the language --------------------------------------------------------------
