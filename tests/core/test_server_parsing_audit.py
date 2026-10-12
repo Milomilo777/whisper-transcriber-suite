@@ -605,3 +605,42 @@ def test_audit_multipart_transport_padding_after_the_delimiter(padding):
     assert body[parts.file_start:parts.file_end] == b"DATA"
     assert parts.filename == "a.wav"
     assert parts.fields == {"formats": "srt"}
+
+
+@pytest.mark.parametrize("value", ["{n}  ", "{n}\t", " {n}"])
+def test_audit_json_content_length_with_surrounding_whitespace_is_accepted(running_server, value):
+    # RFC 9110 allows optional whitespace around a field value; 2.0.0 accepted it (int() strips it),
+    # the stricter digit check after it answered 400 "bad length".
+    body = b'{"url": "x"}'
+    statuses = []
+    for header in (str(len(body)), value.format(n=len(body))):
+        conn = http.client.HTTPConnection("127.0.0.1", running_server.port, timeout=10)
+        conn.putrequest("POST", "/api/jobs")
+        conn.putheader("Content-Type", "application/json")
+        conn.putheader("Content-Length", header)
+        conn.endheaders()
+        conn.send(body)
+        resp = conn.getresponse()
+        statuses.append((resp.status, resp.read()))
+        conn.close()
+    assert statuses[1][0] == statuses[0][0], statuses
+    assert b"bad length" not in statuses[1][1]
+
+
+def test_audit_all_interfaces_ipv6_bind_also_takes_ipv4(monkeypatch):
+    # "::" lists 127.0.0.1 and the LAN IPv4 address (reachable_urls), so the socket must be dual-stack;
+    # Windows makes IPv6 sockets IPv6-only by default. The real bind is skipped (no firewall prompt).
+    import socket
+    import socketserver
+    from core.server.httpd import JobHTTPServer
+    from core.server.jobs import JobManager
+    if not socket.has_ipv6:
+        pytest.skip("no IPv6 support")
+    monkeypatch.setattr(socketserver.TCPServer, "server_bind", lambda self: None)
+    monkeypatch.setattr(socketserver.TCPServer, "server_activate", lambda self: None)
+    server = JobHTTPServer(("::", 0), JobManager(lambda *a, **k: None))
+    try:
+        assert server.socket.family == socket.AF_INET6
+        assert server.socket.getsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY) == 0
+    finally:
+        server.server_close()

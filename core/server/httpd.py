@@ -1201,6 +1201,14 @@ class JobHTTPServer(ThreadingHTTPServer):
         exclusive = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
         if os.name == "nt" and exclusive is not None:
             self.socket.setsockopt(socket.SOL_SOCKET, exclusive, 1)
+        if (self.address_family == socket.AF_INET6 and self.server_address[0] == "::"
+                and hasattr(socket, "IPV6_V6ONLY")):
+            # All interfaces means IPv4 too: Windows defaults to IPv6-only, and
+            # reachable_urls() lists the 127.0.0.1 / LAN IPv4 addresses for "::".
+            try:
+                self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+            except OSError as e:
+                logger.warning("server: could not accept IPv4 on the IPv6 socket: %s", e)
         super().server_bind()
 
     def finish_request(self, request: Any, client_address: Any) -> None:
@@ -1815,6 +1823,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         if raw_len is None:
             length = 0
         else:
+            if isinstance(raw_len, str):
+                raw_len = raw_len.strip(" \t")  # RFC 9110 field values may carry spaces/tabs around them
             if not isinstance(raw_len, str) or not raw_len.isascii() or not raw_len.isdigit():
                 self._send_error_json_close(HTTPStatus.BAD_REQUEST, "bad length")
                 return None

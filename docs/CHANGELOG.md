@@ -34,6 +34,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **Local API: a request with an absurdly long `Content-Length` now gets a 413** instead of a dropped
   connection, and multipart uploads with spaces after a boundary line (allowed by RFC 2046) are read again.
+  A `Content-Length` with spaces around the number is accepted again, and `serve --host ::` also answers
+  on the IPv4 addresses it prints.
 
 - **Saved files survive a power cut**: an edited transcript, viewer exports, the bilingual subtitle, the HTML
   page, converted files and the yt-dlp state file are now flushed to disk before they replace the old file,
