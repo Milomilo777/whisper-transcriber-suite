@@ -55,7 +55,7 @@ local HTTP API. User docs: `README.md` and `docs/README.md`; code map: `docs/ARC
 ## Code rules
 
 - English only in code, comments, docs and commit messages; the translated READMEs in
-  `docs/i18n/` are the exception. Features that accept non-English content (for example SMTV URLs)
+  `docs/i18n/` are the exception. Features that accept non-English content (for example site-specific URLs)
   are a per-input capability, not a reason to add non-English UI or docs text.
 - Persist completed work before reporting success. Transcription results are irreplaceable: output
   files, the history entry and any resume checkpoint are written BEFORE the UI or worker reports

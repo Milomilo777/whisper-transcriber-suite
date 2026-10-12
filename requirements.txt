@@ -62,7 +62,7 @@ sherpa-onnx>=1.10
 # Folder watcher (auto-transcribe on new file)
 watchdog>=3.0
 
-# System tray (minimise-to-tray) and image decoding (the SMTV tab opens image
+# System tray (minimise-to-tray) and image decoding (the site-specific download tab opens image
 # bytes fetched from a remote site). osv.dev lists 35 advisories against the
 # old floor (10.0); the newest fix among them landed in 12.3.0, which the
 # Windows embed build already installs. Its macOS wheels are tagged
