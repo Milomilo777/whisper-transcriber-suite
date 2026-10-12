@@ -42,6 +42,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Optional
 
+from app.i18n import _
 from app.theme import tokens
 from core import hub as _hub
 from core.config import save_config
@@ -79,7 +80,7 @@ class HubSetupDialog(tk.Toplevel):
         on_done: Callable[[str], None] | None = None,
     ) -> None:
         super().__init__(master)
-        self.title("Choose Model Hub Folder")
+        self.title(_("Choose Model Hub Folder"))
         self.transient(master)
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self._on_cancel)
@@ -117,12 +118,12 @@ class HubSetupDialog(tk.Toplevel):
 
         ttk.Label(
             body,
-            text="Choose where Whisper Transcriber Suite should store its model files.",
+            text=_("Choose where Whisper Transcriber Suite should store its model files."),
             font=("TkDefaultFont", 10, "bold"),
         ).pack(anchor="w", pady=(0, 4))
         ttk.Label(
             body,
-            text=(
+            text=_(
                 "These files are large (1–3 GB each). The default is a\n"
                 "private per-user cache folder that is always writable.\n"
                 "Pick a different folder (e.g. an external drive) if you\n"
@@ -134,17 +135,17 @@ class HubSetupDialog(tk.Toplevel):
 
         row = ttk.Frame(body)
         row.pack(fill="x", pady=(0, 6))
-        ttk.Label(row, text="Hub folder:").pack(side="left")
+        ttk.Label(row, text=_("Hub folder:")).pack(side="left")
         self._entry = ttk.Entry(row, textvariable=self._path_var, width=58)
         self._entry.pack(side="left", padx=(8, 4), fill="x", expand=True)
-        ttk.Button(row, text="Browse…", command=self._browse).pack(side="left")
+        ttk.Button(row, text=_("Browse…"), command=self._browse).pack(side="left")
 
         # Help line — show resolved default + remind user they can
         # change this later from the Advanced dialog.
         default_path = str(_hub.default_hub_folder())
         ttk.Label(
             body,
-            text=f"Default if you accept: {default_path}",
+            text=_("Default if you accept: {path}", path=default_path),
             foreground=tokens.themed(tokens.TEXT_MUTED),
         ).pack(anchor="w", pady=(0, 10))
 
@@ -154,14 +155,14 @@ class HubSetupDialog(tk.Toplevel):
         # behavior is "don't decide now" -- it still lets the app proceed
         # with the default for this session (see _on_cancel's docstring)
         # and asks again next launch, so a clearer label matches that.
-        ttk.Button(actions, text="Skip for now", command=self._on_cancel).pack(
+        ttk.Button(actions, text=_("Skip for now"), command=self._on_cancel).pack(
             side="right", padx=(8, 0)
         )
         ttk.Button(
-            actions, text="OK", command=self._on_ok, style="Accent.TButton",
+            actions, text=_("OK"), command=self._on_ok, style="Accent.TButton",
         ).pack(side="right")
         ttk.Button(
-            actions, text="Use default", command=self._on_use_default,
+            actions, text=_("Use default"), command=self._on_use_default,
         ).pack(side="right", padx=(0, 8))
 
     def _center_on(self, master: "tk.Misc") -> None:
@@ -190,7 +191,7 @@ class HubSetupDialog(tk.Toplevel):
             initial = parent if parent and os.path.isdir(parent) else ""
         folder = filedialog.askdirectory(
             parent=self,
-            title="Pick the model hub folder",
+            title=_("Pick the model hub folder"),
             initialdir=initial or None,
             mustexist=False,
         )
@@ -229,11 +230,12 @@ class HubSetupDialog(tk.Toplevel):
                 except OSError:
                     pass
             messagebox.showwarning(
-                "Folder not writable",
-                (
-                    f"Whisper cannot write to:\n\n{path}\n\n"
+                _("Folder not writable"),
+                _(
+                    "Whisper cannot write to:\n\n{folder}\n\n"
                     "Please pick a folder under your user profile (for "
-                    "example on your main drive or an external drive)."
+                    "example on your main drive or an external drive).",
+                    folder=path,
                 ),
                 parent=self,
             )

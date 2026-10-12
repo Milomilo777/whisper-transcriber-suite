@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from tkinter import ttk
 
 from app.dpi import place_over, px
+from app.i18n import _
 from app.theme import tokens
 
 CHOICE_SWITCH = "switch"
@@ -37,26 +38,25 @@ class EnglishOnlyPrompt:
     downloaded: bool = False
 
     def headline(self) -> str:
-        return f"{self.model} understands English only."
+        return _("{model} understands English only.", model=self.model)
 
     def problem(self) -> str:
         if self.language:
-            speech = f"{self.language} speech"
-        else:
-            speech = "With Auto, any speech that is not English"
-        return (
-            f"{speech} will come out as wrong English text: made-up words or "
-            "a rough English translation, not what was said."
-        )
+            return _("{language} speech will come out as wrong English text: made-up words or "
+                     "a rough English translation, not what was said.", language=self.language)
+        return _("With Auto, any speech that is not English will come out as wrong English "
+                 "text: made-up words or a rough English translation, not what was said.")
 
     def recommendation(self) -> str:
         if self.downloaded:
-            status = "Already on this computer."
+            status = _("Already on this computer.")
         elif self.size_text:
-            status = f"Needs a one-time download ({self.size_text})."
+            status = _("Needs a one-time download ({size}).", size=self.size_text)
         else:
-            status = "Needs a one-time download."
-        return f"Recommended: {self.alternative}. {self.reason} {status}"
+            status = _("Needs a one-time download.")
+        # Three whole sentences: the pick, the caller's reason, and the download status.
+        return _("Recommended: {model}. {reason} {status}", model=self.alternative,
+                 reason=self.reason, status=status)
 
 
 def _centre_over(dialog: tk.Toplevel, master: "tk.Misc") -> None:
@@ -84,7 +84,7 @@ def ask_english_only(master: "tk.Misc", prompt: EnglishOnlyPrompt) -> str:
     is Cancel. Nothing is changed here: the caller acts on the answer.
     """
     dialog = tk.Toplevel(master)
-    dialog.title("This model understands English only")
+    dialog.title(_("This model understands English only"))
     dialog.transient(master)  # type: ignore[arg-type]
     dialog.resizable(False, False)
     result = {"choice": CHOICE_CANCEL}
@@ -110,22 +110,22 @@ def ask_english_only(master: "tk.Misc", prompt: EnglishOnlyPrompt) -> str:
     actions = ttk.Frame(body)
     actions.pack(fill="x", pady=(14, 0))
     switch = ttk.Button(
-        actions, text=f"Switch to {prompt.alternative}", style="Accent.TButton",
+        actions, text=_("Switch to {model}", model=prompt.alternative), style="Accent.TButton",
         command=lambda: pick(CHOICE_SWITCH),
     )
     switch.pack(side="left")
     ttk.Button(
-        actions, text="Choose another model…",
+        actions, text=_("Choose another model…"),
         command=lambda: pick(CHOICE_CHOOSE),
     ).pack(side="left", padx=(8, 0))
     more = ttk.Frame(body)
     more.pack(fill="x", pady=(8, 0))
     ttk.Button(
-        more, text=f"Keep {prompt.model} anyway",
+        more, text=_("Keep {model} anyway", model=prompt.model),
         command=lambda: pick(CHOICE_KEEP),
     ).pack(side="left")
     ttk.Button(
-        more, text="Cancel", command=lambda: pick(CHOICE_CANCEL),
+        more, text=_("Cancel"), command=lambda: pick(CHOICE_CANCEL),
     ).pack(side="right")
 
     dialog.protocol("WM_DELETE_WINDOW", lambda: pick(CHOICE_CANCEL))

@@ -16,6 +16,7 @@ from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
 from app.dpi import place_over, px
+from app.i18n import N_, _, pgettext, translate
 from app.theme import tokens
 from core import hardware as _hw
 from core import offline
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_TITLES = {"fastest": "Fastest", "accurate": "Most accurate"}
+_TITLES = {"fastest": N_("Fastest"), "accurate": N_("Most accurate")}
 
 
 def advisor_summary(
@@ -37,26 +38,37 @@ def advisor_summary(
     force_cpu: bool = False,
 ) -> str:
     """The sentence above the picks: which hardware the advice is for."""
-    cpu = f"{cores} CPU cores" if cores else "the CPU"
-    if ram_gb:
-        cpu += f", {ram_gb:.0f} GB memory"
+    # {cpu} is one of four whole phrases, set into the sentences below.
+    ram = f"{ram_gb:.0f}"
+    if cores and ram_gb:
+        cpu = _("{cores} CPU cores, {ram} GB memory", cores=cores, ram=ram)
+    elif cores:
+        cpu = _("{cores} CPU cores", cores=cores)
+    elif ram_gb:
+        cpu = _("the CPU, {ram} GB memory", ram=ram)
+    else:
+        cpu = _("the CPU")
     if force_cpu:
-        return (
-            f"The settings run transcription on the CPU, so these are for {cpu}. "
-            "Advanced > Re-detect hardware changes that."
+        return _(
+            "The settings run transcription on the CPU, so these are for {cpu}. "
+            "Advanced > Re-detect hardware changes that.", cpu=cpu,
         )
     if status.usable:
-        mem = f", {status.memory_mb / 1024:.0f} GB" if status.memory_mb else ""
-        return f"{status.gpu_name or 'NVIDIA GPU'}{mem}: models run on the GPU."
+        gpu = status.gpu_name or _("NVIDIA GPU")
+        if status.memory_mb:
+            return _("{gpu}, {memory} GB: models run on the GPU.", gpu=gpu,
+                     memory=f"{status.memory_mb / 1024:.0f}")
+        return _("{gpu}: models run on the GPU.", gpu=gpu)
     if status.gpu_present:
-        return (
-            f"{status.gpu_name or 'Your NVIDIA GPU'} cannot be used yet, so "
-            f"these are for {cpu}. Advanced > Re-detect hardware explains "
-            "why and can fix it; then open this window again."
+        return _(
+            "{gpu} cannot be used yet, so "
+            "these are for {cpu}. Advanced > Re-detect hardware explains "
+            "why and can fix it; then open this window again.",
+            gpu=status.gpu_name or _("Your NVIDIA GPU"), cpu=cpu,
         )
     if platform == "darwin":
-        return f"This Mac runs models on {cpu}."
-    return f"No usable NVIDIA GPU, so models run on {cpu}."
+        return _("This Mac runs models on {cpu}.", cpu=cpu)
+    return _("No usable NVIDIA GPU, so models run on {cpu}.", cpu=cpu)
 
 
 class ModelAdvisorDialog(tk.Toplevel):
@@ -65,20 +77,20 @@ class ModelAdvisorDialog(tk.Toplevel):
     def __init__(self, master: "tk.Misc", app: "App") -> None:
         super().__init__(master)
         self.app = app
-        self.title("Best model for this computer")
+        self.title(_("Best model for this computer"))
         self.transient(master)  # type: ignore[arg-type]
         self.resizable(False, False)
         self._result: dict[str, Any] = {}
 
         body = ttk.Frame(self, padding=14)
         body.pack(fill="both", expand=True)
-        self.summary_var = tk.StringVar(value="Checking this computer…")
+        self.summary_var = tk.StringVar(value=_("Checking this computer…"))
         ttk.Label(
             body, textvariable=self.summary_var, wraplength=px(520), justify="left",
         ).pack(anchor="w", pady=(0, 10))
         self.picks_frame = ttk.Frame(body)
         self.picks_frame.pack(fill="x")
-        ttk.Button(body, text="Close", command=self.destroy).pack(anchor="e", pady=(12, 0))
+        ttk.Button(body, text=pgettext("button", "Close"), command=self.destroy).pack(anchor="e", pady=(12, 0))
         place_over(self, master)
 
         self._thread = threading.Thread(target=self._check, daemon=True)
@@ -113,7 +125,7 @@ class ModelAdvisorDialog(tk.Toplevel):
         except tk.TclError:
             return
         if "error" in self._result:
-            self.summary_var.set(f"Could not check this computer: {self._result['error']}")
+            self.summary_var.set(_("Could not check this computer: {error}", error=self._result["error"]))
             return
         if "done" not in self._result:
             self.after(100, self._poll)
@@ -149,7 +161,10 @@ class ModelAdvisorDialog(tk.Toplevel):
         for pick in picks:
             if pick.slug not in labels:
                 continue  # not in this catalog (e.g. a trimmed online catalog)
-            title = "Recommended" if len(picks) == 1 else _TITLES.get(pick.kind, pick.kind)
+            if len(picks) == 1:
+                title = _("Recommended")
+            else:
+                title = translate(_TITLES[pick.kind]) if pick.kind in _TITLES else pick.kind
             card = ttk.LabelFrame(self.picks_frame, text=title, padding=10)
             card.pack(fill="x", pady=(0, 8))
             ttk.Label(
@@ -160,28 +175,29 @@ class ModelAdvisorDialog(tk.Toplevel):
             )
             shown += 1
             if model_downloaded(cfg, pick.slug):
-                note = "Already downloaded."
+                note = _("Already downloaded.")
             elif offline.is_offline(cfg):
-                note = (
+                note = _(
                     "Not downloaded yet, and Work offline is on: turn it off "
                     "to download this model."
                 )
             else:
                 size = approx_download_size_text(cfg, pick.slug)
-                note = f"Downloads once on first use ({size})." if size else "Downloads once on first use."
+                note = (_("Downloads once on first use ({size}).", size=size) if size
+                        else _("Downloads once on first use."))
             ttk.Label(card, text=note, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(anchor="w")
             btn = ttk.Button(
-                card, text="Use this model",
+                card, text=_("Use this model"),
                 command=lambda slug=pick.slug: self._use(slug),
             )
             btn.pack(anchor="e", pady=(6, 0))
             if pick.slug == current:
-                btn.configure(text="Current model")
+                btn.configure(text=_("Current model"))
                 btn.state(["disabled"])
         if not shown:
             ttk.Label(
                 self.picks_frame, wraplength=px(500), justify="left",
-                text=(
+                text=_(
                     "None of the recommended models is in this model list. "
                     "Pick a model in the Transcribe tab instead."
                 ),
