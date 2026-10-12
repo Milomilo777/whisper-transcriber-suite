@@ -7,13 +7,13 @@ the English fallback and the pseudo-locale never get them, and macOS and Linux a
 right-to-left catalogs yet. Texts that leave the screen (log file, clipboard) go through
 ``plain()``. The platform is chosen with a patched ``sys.platform``; the marks are written here as
 ``chr(0x202B)`` / ``chr(0x202C)`` so a test never depends on the module's own constants.
+Property tests: tests/test_i18n_rtl_properties.py.
 """
 from __future__ import annotations
 
 import json
 import logging
 import sys
-import unicodedata
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -194,58 +194,12 @@ def test_plain_of_the_marked_text_is_the_catalog_text(fa_windows: None) -> None:
         "خط اول.\n\nخط دوم: 2 فایل\np"
 
 
-hypothesis = pytest.importorskip("hypothesis")
-from hypothesis import given  # noqa: E402
-from hypothesis import strategies as st  # noqa: E402
-
-PIECES = list("ab Z09.:()،؟«»-\n\r\t ") + ["ذ", "خیره", "ש", "۳", chr(0x200C), RLM, LRM]
-TEXTS = st.lists(st.sampled_from(PIECES), max_size=30).map("".join)
-
-
-def _depth_ok(line: str) -> bool:
-    depth = 0
-    for ch in line:
-        if ch == RLE:
-            depth += 1
-        elif ch == PDF:
-            depth -= 1
-            if depth < 0:
-                return False
-        elif unicodedata.bidirectional(ch) in ("R", "AL") and depth == 0:
-            return False
-    return depth == 0
-
-
-@given(TEXTS)
-def test_property_round_trip_idempotence_and_coverage(text: str) -> None:
-    out = i18n.embed_rtl(text)
-    assert i18n.plain(out) == text  # nothing lost, nothing reordered
-    assert i18n.embed_rtl(out) == out  # idempotent
-    assert out.count("\n") == text.count("\n")
-    assert not (ISOLATES & set(out))
-    for line in out.split("\n"):
-        assert _depth_ok(line), repr(line)  # every right-to-left letter inside a pair
-        if not any(unicodedata.bidirectional(c) in ("R", "AL") for c in line):
-            assert RLE not in line and PDF not in line
-    assert out.strip() == i18n.embed_rtl(text.strip())
-
-
 def test_a_line_of_two_wrapped_values_with_text_between_is_wrapped_as_a_whole() -> None:
     # "{a} ب {c}" filled with two translated values: starts with RLE and ends with PDF, but the
     # middle letter is outside both pairs, so the whole line still needs its own pair.
     line = RLE + "الف" + PDF + " ب " + RLE + "ج" + PDF
     assert i18n.embed_rtl(line) == RLE + line + PDF
     assert i18n.embed_rtl(RLE + line + PDF) == RLE + line + PDF
-
-
-@given(TEXTS, TEXTS, TEXTS)
-def test_property_filled_placeholders_keep_every_letter_inside_a_pair(a: str, b: str, c: str) -> None:
-    line = (i18n.embed_rtl(a) + b + i18n.embed_rtl(c)).replace("\n", " ").replace("\r", " ")
-    out = i18n.embed_rtl(line)
-    assert _depth_ok(out), repr(out)
-    assert i18n.plain(out) == i18n.plain(line)
-    assert i18n.embed_rtl(out) == out
-
 
 
 # --- R2 the platform gate ----------------------------------------------------------------------------
