@@ -493,7 +493,7 @@ def test_advanced_dialog_saves_the_checkbox():
 
     src = inspect.getsource(AdvancedDialog)
     assert "(offline.CONFIG_KEY, self._work_offline)" in src
-    assert 'text="Work offline (also in the File menu)"' in src
+    assert 'text=_("Work offline (also in the File menu)")' in src
     assert "variable=self._work_offline" in src
 
 
