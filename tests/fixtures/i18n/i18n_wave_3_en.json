@@ -1,0 +1,964 @@
+{
+ "vlc_hints": [
+  [
+   "missing:win32",
+   "VLC media player isn't installed (or is the 32-bit build — this app is 64-bit and needs the 64-bit VLC). Install the 64-bit VLC to enable embedded playback. The viewer still works in read-only mode."
+  ],
+  [
+   "missing:darwin",
+   "VLC media player isn't installed (or doesn't match this computer's architecture). Install VLC to enable embedded playback. The viewer still works in read-only mode."
+  ],
+  [
+   "start_failed:win32",
+   "VLC loaded but could not start (its plugins may be missing or the architecture doesn't match — this app is 64-bit). Reinstall the 64-bit VLC to enable embedded playback. The viewer still works in read-only mode."
+  ],
+  [
+   "start_failed:linux",
+   "VLC loaded but could not start (its plugins may be missing or the architecture doesn't match). Reinstall VLC to enable embedded playback. The viewer still works in read-only mode."
+  ],
+  [
+   "load:not_installed",
+   "python-vlc binding not installed: import of vlc halted; None in sys.modules"
+  ],
+  [
+   "load:start_failed",
+   "VLC loaded but could not start (its plugins may be missing or the architecture doesn't match — this app is 64-bit). Reinstall the 64-bit VLC to enable embedded playback. The viewer still works in read-only mode."
+  ]
+ ],
+ "ai_config": [
+  [
+   "status:off",
+   "AI Layer is off. Turn it on in Advanced Settings to use these tools."
+  ],
+  [
+   "status:remote_no_model",
+   "Provider: remote — (no model set)"
+  ],
+  [
+   "status:remote_model",
+   "Provider: remote — m-1"
+  ],
+  [
+   "status:local",
+   "Provider: local (Qwen2.5-1.5B)"
+  ],
+  [
+   "runner:off",
+   "AI Layer is off — turn it on in Advanced Settings' AI Layer section."
+  ],
+  [
+   "runner:remote",
+   "Remote LLM isn't configured — set Base URL + Model in Advanced Settings' AI Layer section."
+  ],
+  [
+   "runner:local",
+   "Local AI model isn't installed yet — use 'Install AI model…' in Advanced Settings' AI Layer section."
+  ]
+ ],
+ "export_notices": [
+  [
+   "success",
+   "Updated a.srt, a.vtt next to a.json."
+  ],
+  [
+   "warning",
+   "Could not update a.docx; it still holds the OLD text (the details are in app.log). Not updated: a.lrc changed while Save was rebuilding it, so it was left as it is and still holds the old text; save again to retry. Not updated: a.tsv is a link to another file, which Save never replaces; it still holds the old text. Not updated: a.md could not be read or checked when the transcript was opened, so it still holds the old text. Not updated: a.txt does not match this transcript's last saved version (it was changed elsewhere or comes from another run), so it was left as it is and still holds the old text. Cannot rebuild a.pdf here (PDF and the team document); it still holds the old text. Export it again if you need it."
+  ],
+  [
+   "info",
+   "Not rebuilt by Save: a.chapters.json (made from the transcript on request; make it again to match the new text)."
+  ],
+  [
+   "success",
+   "Updated a.srt next to a.json."
+  ]
+ ],
+ "viewer": [
+  [
+   ".!transcriptviewer",
+   "Transcript — demo.json"
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame.!button",
+   "Open JSON folder"
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame.!button2",
+   "Save shareable page"
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame.!button3",
+   "Open in Subtitle Edit"
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame.!label",
+   " ⓘ "
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame.!label2",
+   "Media: (none found next to JSON)"
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame2.!label",
+   " ⓘ "
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame2.!label2",
+   "Search:"
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame2.!button",
+   "Clear"
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame2.!button2",
+   "Find & Replace  (Ctrl+F)"
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame2.!button3",
+   "Remove fillers"
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame2.!label3",
+   " ⓘ "
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame2.!button4",
+   "Save changes  (Ctrl+S)"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook:.!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame",
+   "Media"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook:.!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame2",
+   "Chapters"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook:.!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3",
+   "AI Tools"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!label",
+   "Media"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame2.!button",
+   "▶ Play"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame2.!button2",
+   "⏮ Restart"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame2.!button3",
+   "Open in system player"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button",
+   "⏪ -10s"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button2",
+   "◀ -5s"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button3",
+   "+5s ▶"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button4",
+   "+10s ⏩"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!label",
+   "00:00 / 00:00"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!label3",
+   "VLC media player isn't installed (or is the 32-bit build — this app is 64-bit and needs the 64-bit VLC). Install the 64-bit VLC to enable embedded playback. The viewer still works in read-only mode."
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame2.!label",
+   "Chapters"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame2.!label2",
+   "No chapters detected for this transcript.\n\nTurn on 'Generate auto-chapter markers' in Advanced Settings' AI Layer section before transcribing to get chapters here."
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3.!label",
+   "AI Tools"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3.!label2",
+   "AI Layer is off. Turn it on in Advanced Settings to use these tools."
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame.!button",
+   "Summarise"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame.!button2",
+   "Action items"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame2.!label",
+   "Ask:"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame2.!button",
+   "Ask"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame3.!label",
+   "Target language:"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame3.!button",
+   "Translate (preview)"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame4.!button",
+   "Save bilingual subtitle…"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame4.!label",
+   " ⓘ "
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame4.!button2",
+   "Cancel"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3.!label4",
+   "Result:"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame3.!button",
+   "Copy result"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame.!treeview:heading:time",
+   "Time"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame.!treeview:heading:speaker",
+   "Speaker"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame.!treeview:heading:text",
+   "Segment"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame2.!treeview:heading:time",
+   "Start"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame2.!treeview:heading:title",
+   "Title"
+  ],
+  [
+   "help_icon#0",
+   "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour."
+  ],
+  [
+   "help_icon#0",
+   "Segment list colours: green/amber/red text is the model's confidence (high/medium/low). A red row background means the hallucination detector flagged that segment as suspect. An orange row background means its timing overlaps the previous segment or is under 1s (usually after a manual 'Edit timestamp...' edit). A yellow highlight marks the segment now playing."
+  ],
+  [
+   "help_icon#0",
+   "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving (there is no undo)."
+  ],
+  [
+   "help_icon#0",
+   "Translates every segment one at a time — needed to keep an exact line-for-line pairing with the original — and writes a new '.bilingual.<language>.srt' file with the original text and the translation under each cue. Can take a while on a long transcript with the local model."
+  ]
+ ],
+ "context_menu": [
+  [
+   "menu#0",
+   "Rename 'Speaker 00' (everywhere)..."
+  ],
+  [
+   "menu#1",
+   "Edit timestamp..."
+  ],
+  [
+   "menu#2",
+   "Copy text"
+  ],
+  [
+   "menu#0",
+   "Edit timestamp..."
+  ],
+  [
+   "menu#1",
+   "Copy text"
+  ]
+ ],
+ "edits": [
+  [
+   "askstring#0",
+   "Rename speaker"
+  ],
+  [
+   "askstring#1",
+   "Rename every 'Speaker 00' to:"
+  ],
+  [
+   "notify:success#0",
+   "Renamed 1 segment(s). Use Save changes (Ctrl+S) to write."
+  ],
+  [
+   "notify:warning#0",
+   "Remove fillers needs the transcript's language, and it is unknown here."
+  ],
+  [
+   "notify:warning#0",
+   "There is no filler list for the language 'xx', so nothing was removed."
+  ],
+  [
+   "messagebox.askyesno#0",
+   "Remove fillers"
+  ],
+  [
+   "messagebox.askyesno#1",
+   "Remove these filler words from every segment?\n\nuh, um, uhm, umm, er, erm, eh, ah, mm, mmm, hm, hmm"
+  ],
+  [
+   "messagebox.askyesno#0",
+   "Remove fillers"
+  ],
+  [
+   "messagebox.askyesno#1",
+   "Remove these filler words from every segment?\n\nuh, um, uhm, umm, er, erm, eh, ah, mm, mmm, hm, hmm"
+  ],
+  [
+   "notify:success#0",
+   "Fillers removed: updated 1 segment(s). Use Save changes (Ctrl+S) to write."
+  ]
+ ],
+ "save": [
+  [
+   "messagebox.askyesno#0",
+   "Transcript changed on disk"
+  ],
+  [
+   "messagebox.askyesno#1",
+   "demo.json was changed or removed by something else after it was opened here.\n\nOverwrite it with the version in this window?"
+  ],
+  [
+   "show_error#0",
+   "Save failed"
+  ],
+  [
+   "show_error#1",
+   "Could not write your changes to the transcript file."
+  ],
+  [
+   "notify:success#0",
+   "Saved 3 segment(s) → demo.json"
+  ]
+ ],
+ "close_and_exit": [
+  [
+   "messagebox.askyesno#0",
+   "Discard changes?"
+  ],
+  [
+   "messagebox.askyesno#1",
+   "There are unsaved transcript edits. Close anyway?"
+  ],
+  [
+   "messagebox.askyesnocancel#0",
+   "Unsaved edits"
+  ],
+  [
+   "messagebox.askyesnocancel#1",
+   "Subtitle Edit opens the saved subtitle file. Save your edits first so it shows them?\n\nYes: save, then open.\nNo: open the last saved version."
+  ],
+  [
+   "messagebox.askyesnocancel#0",
+   "Unsaved transcript edits"
+  ],
+  [
+   "messagebox.askyesnocancel#1",
+   "demo.json has edits that were not saved.\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app."
+  ],
+  [
+   "messagebox.askyesnocancel#0",
+   "Unsaved transcript edits"
+  ],
+  [
+   "messagebox.askyesnocancel#1",
+   "demo.json has edits that were not saved.\nFolder: <tmp>\\main\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app."
+  ],
+  [
+   "messagebox.askyesnocancel#0",
+   "Unsaved transcript edits"
+  ],
+  [
+   "messagebox.askyesnocancel#1",
+   "demo.json has edits that were not saved.\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app."
+  ],
+  [
+   "notify:warning#0",
+   "Saved, but the subtitle files next to it could not be updated; the details are in app.log."
+  ],
+  [
+   "messagebox.askyesnocancel#0",
+   "Unsaved transcript edits"
+  ],
+  [
+   "messagebox.askyesnocancel#1",
+   "demo.json has edits that were not saved.\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app."
+  ],
+  [
+   "show_error#0",
+   "Save failed"
+  ],
+  [
+   "show_error#1",
+   "Could not write your changes to the transcript file, so the app was not closed."
+  ],
+  [
+   "messagebox.askyesnocancel#0",
+   "Unsaved transcript edits"
+  ],
+  [
+   "messagebox.askyesnocancel#1",
+   "demo.json has edits that were not saved.\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app."
+  ],
+  [
+   "notify:warning#0",
+   "Not saved, so the app stays open."
+  ]
+ ],
+ "files": [
+  [
+   "notify:warning#0",
+   "No media file was found alongside the transcript JSON."
+  ],
+  [
+   "open_file#0",
+   "Could not open the media file in your system player."
+  ],
+  [
+   "show_error#0",
+   "Open failed"
+  ],
+  [
+   "show_error#1",
+   "Could not open the transcript's folder."
+  ],
+  [
+   "show_error#0",
+   "Open failed"
+  ],
+  [
+   "show_error#1",
+   "Could not open that folder."
+  ],
+  [
+   "show_error#0",
+   "Export failed"
+  ],
+  [
+   "show_error#1",
+   "Could not write a subtitle file for Subtitle Edit."
+  ],
+  [
+   "notify:info#0",
+   "Wrote demo.srt for Subtitle Edit."
+  ]
+ ],
+ "edit_timestamp": [
+  [
+   ".!transcriptviewer.!edittimestampdialog",
+   "Edit timestamp"
+  ],
+  [
+   ".!transcriptviewer.!edittimestampdialog.!frame.!label",
+   "Start (HH:MM:SS.mmm)"
+  ],
+  [
+   ".!transcriptviewer.!edittimestampdialog.!frame.!label2",
+   "End (HH:MM:SS.mmm)"
+  ],
+  [
+   ".!transcriptviewer.!edittimestampdialog.!frame.!frame.!button",
+   "Save"
+  ],
+  [
+   ".!transcriptviewer.!edittimestampdialog.!frame.!frame.!button2",
+   "Cancel"
+  ],
+  [
+   "error:invalid",
+   "Enter a valid time: HH:MM:SS.mmm, MM:SS.mmm, or plain seconds."
+  ],
+  [
+   "error:order",
+   "End must be after start."
+  ]
+ ],
+ "find_replace": [
+  [
+   ".!transcriptviewer.!findreplacedialog",
+   "Find and replace"
+  ],
+  [
+   ".!transcriptviewer.!findreplacedialog.!frame.!label",
+   "Find"
+  ],
+  [
+   ".!transcriptviewer.!findreplacedialog.!frame.!label2",
+   "Replace"
+  ],
+  [
+   ".!transcriptviewer.!findreplacedialog.!frame.!checkbutton",
+   "Match case"
+  ],
+  [
+   ".!transcriptviewer.!findreplacedialog.!frame.!frame.!button",
+   "Find next"
+  ],
+  [
+   ".!transcriptviewer.!findreplacedialog.!frame.!frame.!button2",
+   "Replace"
+  ],
+  [
+   ".!transcriptviewer.!findreplacedialog.!frame.!frame.!button3",
+   "Replace all"
+  ],
+  [
+   ".!transcriptviewer.!findreplacedialog.!frame.!frame.!button4",
+   "Close"
+  ],
+  [
+   "messagebox.showinfo#0",
+   "No match"
+  ],
+  [
+   "messagebox.showinfo#1",
+   "'zzz' not found."
+  ],
+  [
+   "messagebox.showinfo#0",
+   "Replace all"
+  ],
+  [
+   "messagebox.showinfo#1",
+   "Replaced in 0 segment(s)."
+  ],
+  [
+   "messagebox.showinfo#0",
+   "Replace all"
+  ],
+  [
+   "messagebox.showinfo#1",
+   "Replaced in 1 segment(s)."
+  ]
+ ],
+ "media_viewer": [
+  [
+   ".!transcriptviewer2",
+   "Transcript — demo.json"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame.!button",
+   "Open JSON folder"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame.!button2",
+   "Save shareable page"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame.!button3",
+   "Open in Subtitle Edit"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame.!label",
+   " ⓘ "
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame.!label2",
+   "Media: demo.mp4"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame2.!label",
+   " ⓘ "
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame2.!label2",
+   "Search:"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame2.!button",
+   "Clear"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame2.!button2",
+   "Find & Replace  (Ctrl+F)"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame2.!button3",
+   "Remove fillers"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame2.!label3",
+   " ⓘ "
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame2.!button4",
+   "Save changes  (Ctrl+S)"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook:.!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame",
+   "Media"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook:.!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame2",
+   "Chapters"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook:.!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3",
+   "AI Tools"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!label",
+   "Media"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame2.!button",
+   "▶ Play"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame2.!button2",
+   "⏮ Restart"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame2.!button3",
+   "Open in system player"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button",
+   "⏪ -10s"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button2",
+   "◀ -5s"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button3",
+   "+5s ▶"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button4",
+   "+10s ⏩"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!label",
+   "00:00 / 00:00"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!label3",
+   "Embedded playback not available."
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame2.!label",
+   "Chapters"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame2.!label2",
+   "No chapters detected for this transcript.\n\nTurn on 'Generate auto-chapter markers' in Advanced Settings' AI Layer section before transcribing to get chapters here."
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3.!label",
+   "AI Tools"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3.!label2",
+   "AI Layer is off. Turn it on in Advanced Settings to use these tools."
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame.!button",
+   "Summarise"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame.!button2",
+   "Action items"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame2.!label",
+   "Ask:"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame2.!button",
+   "Ask"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame3.!label",
+   "Target language:"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame3.!button",
+   "Translate (preview)"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame4.!button",
+   "Save bilingual subtitle…"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame4.!label",
+   " ⓘ "
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3.!frame4.!button2",
+   "Cancel"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3.!label4",
+   "Result:"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame3.!button",
+   "Copy result"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame.!treeview:heading:time",
+   "Time"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame.!treeview:heading:speaker",
+   "Speaker"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame.!treeview:heading:text",
+   "Segment"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame2.!treeview:heading:time",
+   "Start"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame2.!treeview:heading:title",
+   "Title"
+  ],
+  [
+   "help_icon#0",
+   "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour."
+  ],
+  [
+   "help_icon#0",
+   "Segment list colours: green/amber/red text is the model's confidence (high/medium/low). A red row background means the hallucination detector flagged that segment as suspect. An orange row background means its timing overlaps the previous segment or is under 1s (usually after a manual 'Edit timestamp...' edit). A yellow highlight marks the segment now playing."
+  ],
+  [
+   "help_icon#0",
+   "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving (there is no undo)."
+  ],
+  [
+   "help_icon#0",
+   "Translates every segment one at a time — needed to keep an exact line-for-line pairing with the original — and writes a new '.bilingual.<language>.srt' file with the original text and the translation under each cue. Can take a while on a long transcript with the local model."
+  ],
+  [
+   "chapter:0",
+   "Chapter 1"
+  ],
+  [
+   "chapter:1",
+   "Intro"
+  ],
+  [
+   "play:started",
+   "⏸ Pause"
+  ],
+  [
+   "play:paused",
+   "▶ Play"
+  ],
+  [
+   "play:restart",
+   "⏸ Pause"
+  ]
+ ],
+ "ai_tasks": [
+  [
+   "busy:summarise",
+   "Summarise…"
+  ],
+  [
+   "done:summarise",
+   "Summarise failed: boom"
+  ],
+  [
+   "busy:action_items",
+   "Action items…"
+  ],
+  [
+   "done:action_items",
+   "(no action items detected)"
+  ],
+  [
+   "busy:translate",
+   "Translate…"
+  ],
+  [
+   "done:translate",
+   "translated"
+  ],
+  [
+   "busy:ask",
+   "Ask…"
+  ],
+  [
+   "notify:warning#0",
+   "AI Layer is off — turn it on in Advanced Settings' AI Layer section."
+  ],
+  [
+   "notify:warning#0",
+   "AI Layer is off — turn it on in Advanced Settings' AI Layer section."
+  ],
+  [
+   "notify:warning#0",
+   "This transcript has no segments to work with."
+  ],
+  [
+   "notify:warning#0",
+   "This transcript has no segments to translate."
+  ],
+  [
+   "notify:warning#0",
+   "Type a question first."
+  ]
+ ],
+ "bilingual": [
+  [
+   "progress:start",
+   "Loading AI model…"
+  ],
+  [
+   "progress:step",
+   "Translating 1/3…"
+  ],
+  [
+   "progress:loading",
+   "Loading AI model…"
+  ],
+  [
+   "progress:cancelling",
+   "Cancelling…"
+  ],
+  [
+   "messagebox.askyesno#0",
+   "Bilingual subtitle"
+  ],
+  [
+   "messagebox.askyesno#1",
+   "Translate all 3 segment(s) to English, one at a time? This can take a while, especially with the local model."
+  ],
+  [
+   "messagebox.askyesno#0",
+   "Bilingual subtitle"
+  ],
+  [
+   "messagebox.askyesno#1",
+   "Translate all 3 segment(s) to German, one at a time? This can take a while, especially with the local model."
+  ],
+  [
+   "messagebox.showwarning#0",
+   "Bilingual subtitle saved with gaps"
+  ],
+  [
+   "messagebox.showwarning#1",
+   "Wrote 2/3 translated segment(s) → demo.bilingual.german.srt\n\n1 segment(s) could not be translated (the AI provider kept refusing or timed out) and are left empty in the file. Run it again to fill them."
+  ],
+  [
+   "messagebox.askyesno#0",
+   "Bilingual subtitle"
+  ],
+  [
+   "messagebox.askyesno#1",
+   "Translate all 3 segment(s) to German, one at a time? This can take a while, especially with the local model."
+  ],
+  [
+   "messagebox.showinfo#0",
+   "Bilingual subtitle saved"
+  ],
+  [
+   "messagebox.showinfo#1",
+   "Wrote 3/3 translated segment(s) → demo.bilingual.german.srt"
+  ],
+  [
+   "messagebox.showinfo#0",
+   "Bilingual subtitle"
+  ],
+  [
+   "messagebox.showinfo#1",
+   "Cancelled — no file was written."
+  ],
+  [
+   "messagebox.showinfo#0",
+   "Bilingual subtitle"
+  ],
+  [
+   "messagebox.showinfo#1",
+   "The provider said no."
+  ],
+  [
+   "show_error#0",
+   "Save failed"
+  ],
+  [
+   "show_error#1",
+   "Could not build the bilingual subtitle."
+  ],
+  [
+   "show_error#0",
+   "Save failed"
+  ],
+  [
+   "show_error#1",
+   "Could not write the bilingual subtitle file."
+  ]
+ ],
+ "load_and_open": [
+  [
+   "messagebox.showerror#0",
+   "Failed to load transcript"
+  ],
+  [
+   "messagebox.showerror#1",
+   "Could not read <tmp>\\dict\\demo.json:\nThis looks like a credentials/config file, not a transcript JSON — pick the .json next to your audio/video."
+  ],
+  [
+   "messagebox.showerror#0",
+   "Failed to load transcript"
+  ],
+  [
+   "messagebox.showerror#1",
+   "Could not read <tmp>\\numbers\\demo.json:\nThis JSON is a list, but none of its entries look like transcript segments — pick the .json next to your audio/video."
+  ],
+  [
+   "askopenfilename#0",
+   "Open transcript JSON"
+  ],
+  [
+   "askopenfilename#1",
+   "Transcript JSON"
+  ],
+  [
+   "askopenfilename#2",
+   "All files"
+  ],
+  [
+   "messagebox.showerror#0",
+   "Transcript missing"
+  ],
+  [
+   "messagebox.showerror#1",
+   "That JSON file does not exist:\n<tmp>\\nowhere.json"
+  ]
+ ]
+}
