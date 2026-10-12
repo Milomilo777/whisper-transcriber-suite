@@ -25,7 +25,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Any, Callable
 
 from app.dpi import px
-from app.i18n import N_, _, translate
+from app.i18n import N_, _, ngettext, translate
 from app.theme import tokens
 from core import hardware as _hw
 from core import hub as _hub
@@ -91,7 +91,8 @@ def format_per_minute(seconds: float) -> str:
         return _("under 10 seconds")
     nearest_five = int(round(seconds / 5.0)) * 5
     if nearest_five < 60:
-        return _("about {seconds} seconds", seconds=nearest_five)
+        # English never needs the singular here (10 to 55); other languages get their forms.
+        return ngettext("about {n} seconds", "about {n} seconds", nearest_five)
     minutes, rest = divmod(int(round(seconds / 15.0)) * 15, 60)
     if rest == 0:
         return _("about {minutes} min", minutes=minutes)

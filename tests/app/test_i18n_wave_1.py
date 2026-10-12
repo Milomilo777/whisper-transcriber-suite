@@ -617,8 +617,20 @@ def _quick_start_config(root: Any, mp: pytest.MonkeyPatch, folder: Path, languag
     quick = qs.QuickStartDialog(root, {"download_folder": str(folder)}, on_done=done.append,
                                 probe=lambda: (_cuda(), 4))
     if language_label is not None:
-        quick.language_var.set(language_label)
-    quick.mode_var.set(mode)
+        values = list(quick.language_combo.tk.splitlist(quick.language_combo.cget("values")))
+        quick.language_combo.current(values.index(language_label))
+        quick.language_combo.event_generate("<<ComboboxSelected>>")
+    else:
+        quick.language_combo.current(0)  # the translated "several languages" label
+    from tkinter import ttk
+
+    def walk(w: Any) -> Iterator[Any]:
+        for c in w.winfo_children():
+            yield c
+            yield from walk(c)
+
+    radios = [w for w in walk(quick) if isinstance(w, ttk.Radiobutton)]
+    radios[[m for m, _label in qs.MODES].index(mode)].invoke()  # as a click does
     quick.finish()
     assert len(done) == 1
     config: dict[str, Any] = {}

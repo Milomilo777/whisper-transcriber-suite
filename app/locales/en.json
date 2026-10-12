@@ -147,7 +147,10 @@
   "Your NVIDIA GPU": "Your NVIDIA GPU",
   "about {minutes} min": "about {minutes} min",
   "about {minutes} min {seconds} s": "about {minutes} min {seconds} s",
-  "about {seconds} seconds": "about {seconds} seconds",
+  "about {n} seconds": [
+   "about {n} seconds",
+   "about {n} seconds"
+  ],
   "button\u0004Close": "Close",
   "button\u0004Search": "Search",
   "column\u0004File": "File",
