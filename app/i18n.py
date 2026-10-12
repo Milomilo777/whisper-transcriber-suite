@@ -314,7 +314,7 @@ def _read_document(code: str) -> dict[str, Any] | None:
                        path, problem)
         else:
             doc = data
-    except (OSError, UnicodeDecodeError, ValueError) as e:
+    except (OSError, UnicodeDecodeError, ValueError, RecursionError) as e:
         _warn_once(("malformed", code), "The interface catalog %s is not usable (%s); using English",
                    path, e)
     _DOC_CACHE[code] = (stamp, doc)

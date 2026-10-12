@@ -92,6 +92,11 @@ def test_refuses_a_function_that_assigns_underscore_and_calls_it(body: str) -> N
     assert any("assigns the name _" in e for e in res.errors), res.errors
 
 
+def test_refuses_a_parameter_named_underscore_that_calls_it() -> None:
+    res = _scan("from app.i18n import _\ndef cb(_):\n    return _('Hi')\n")
+    assert any("assigns the name _" in e for e in res.errors), res.errors
+
+
 def test_underscore_in_a_comprehension_or_other_function_is_fine() -> None:
     res = _scan("from app.i18n import _\n"
                 "def f():\n    xs = [1 for _ in range(3)]\n    return _('Hi')\n"

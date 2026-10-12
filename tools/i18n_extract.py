@@ -152,6 +152,8 @@ def _binds_underscore(node: ast.AST) -> bool:
     """True when ``node`` (one statement or expression, not a nested scope) binds ``_``."""
     if isinstance(node, ast.Name) and node.id == "_" and isinstance(node.ctx, (ast.Store, ast.Del)):
         return True
+    if isinstance(node, ast.arg) and node.arg == "_":
+        return True
     if isinstance(node, ast.ExceptHandler) and node.name == "_":
         return True
     if isinstance(node, ast.alias) and (node.asname or node.name) == "_":

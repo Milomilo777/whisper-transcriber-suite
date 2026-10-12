@@ -221,6 +221,12 @@ def test_broken_catalog_gives_english_and_one_warning(locales: Path, content: by
     assert len([r for r in caplog.records if "not usable" in r.getMessage()]) == 1
 
 
+def test_deeply_nested_catalog_gives_english(locales: Path) -> None:
+    (locales / "de.json").write_bytes(b"[" * 100000 + b"]" * 100000)
+    assert i18n.set_language("de") == "en"
+    assert i18n.catalog_status("de") is None
+
+
 def test_missing_catalog_and_unknown_code_give_english(locales: Path,
                                                       caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.WARNING, logger="app.i18n"):
