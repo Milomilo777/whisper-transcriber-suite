@@ -104,6 +104,22 @@ def test_refuses_module_level_rebinding_after_import() -> None:
     assert any("rebinds _" in e for e in res.errors)
 
 
+@pytest.mark.parametrize("source", [
+    "from app.i18n import _\nTITLE = _('Title')\n",
+    "from app.i18n import ngettext\nclass A:\n    LABEL = ngettext('{n} a', '{n} b', 2)\n",
+    "from app.i18n import pgettext\nif True:\n    X = pgettext('menu', 'Open')\n",
+])
+def test_refuses_translation_at_import_time(source: str) -> None:
+    res = _scan(source)
+    assert any("import time" in e for e in res.errors), res.errors
+
+
+def test_marking_and_lazy_at_import_time_are_fine() -> None:
+    res = _scan("from app.i18n import N_, lazy, _\nA = N_('Title')\nB = lazy('Tip')\n"
+                "C = lambda: _('Later')\ndef f():\n    return _('Inside')\n")
+    assert res.errors == []
+
+
 def test_conflicting_uses_of_one_message() -> None:
     res = _scan("def f(n):\n    _('{n} file')\n    ngettext('{n} file', '{n} files', n)\n")
     assert any("conflicts" in e for e in res.errors)
@@ -116,6 +132,11 @@ def test_the_real_app_has_no_errors_and_ignores_the_layer_itself() -> None:
     assert ROOT / "gui.py" in ex.source_files(ROOT)
 
 
+def _module(*calls: str) -> str:
+    """A module that makes ``calls`` inside a function (not at import time)."""
+    return "from app.i18n import _, pgettext\ndef f():\n" + "".join(f"    {c}\n" for c in calls)
+
+
 def _tree(tmp_path: Path, source: str) -> Path:
     (tmp_path / "app").mkdir()
     (tmp_path / "app" / "m.py").write_text(source, encoding="utf-8")
@@ -123,8 +144,7 @@ def _tree(tmp_path: Path, source: str) -> Path:
 
 
 def test_writes_deterministic_sorted_lf_catalog(tmp_path: Path) -> None:
-    root = _tree(tmp_path, "from app.i18n import _, pgettext\n_('b')\n_('a')\n_('Sending…')\n"
-                           "pgettext('menu', 'Open')\n")
+    root = _tree(tmp_path, _module("_('b')", "_('a')", "_('Sending…')", "pgettext('menu', 'Open')"))
     assert _run("--root", str(root)).returncode == 0
     data = (root / "app" / "locales" / "en.json").read_bytes()
     assert b"\r" not in data and data.endswith(b"}\n")
@@ -140,19 +160,19 @@ def test_writes_deterministic_sorted_lf_catalog(tmp_path: Path) -> None:
 
 
 def test_check_fails_on_stale_catalog_and_on_errors(tmp_path: Path) -> None:
-    root = _tree(tmp_path, "from app.i18n import _\n_('a')\n")
+    root = _tree(tmp_path, _module("_('a')"))
     assert _run("--root", str(root), "--check").returncode == 1  # no en.json yet
     assert _run("--root", str(root)).returncode == 0
-    (root / "app" / "m.py").write_text("from app.i18n import _\n_('a')\n_('new')\n", encoding="utf-8")
+    (root / "app" / "m.py").write_text(_module("_('a')", "_('new')"), encoding="utf-8")
     res = _run("--root", str(root), "--check")
     assert res.returncode == 1 and "stale" in res.stderr
-    (root / "app" / "m.py").write_text("from app.i18n import _\n_(f'{1}')\n", encoding="utf-8")
+    (root / "app" / "m.py").write_text(_module("_(f'{1}')"), encoding="utf-8")
     res = _run("--root", str(root))
-    assert res.returncode == 1 and "app/m.py:2" in res.stderr
+    assert res.returncode == 1 and "app/m.py:3" in res.stderr
 
 
 def test_missing_lists_untranslated_messages(tmp_path: Path) -> None:
-    root = _tree(tmp_path, "from app.i18n import _\n_('a')\n_('b')\n_('c')\n")
+    root = _tree(tmp_path, _module("_('a')", "_('b')", "_('c')"))
     (root / "app" / "locales").mkdir()
     (root / "app" / "locales" / "de.json").write_text(
         json.dumps({"_meta": {"code": "de"}, "messages": {"a": "A", "b": ""}}), encoding="utf-8")

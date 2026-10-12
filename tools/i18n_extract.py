@@ -241,7 +241,27 @@ def scan_source(source: str, rel: str, out: Result) -> None:
             name = _marker_name(node.func)
             if name is not None:
                 _visit_call(node, name, f"{rel}:{node.lineno}", out)
+    _check_import_time_calls(tree, rel, out)
     _check_underscore_shadowing(tree, rel, out)
+
+
+_IMPORT_TIME_REFUSED = {"_", "ngettext", "pgettext", "translate"}
+
+
+def _check_import_time_calls(tree: ast.Module, rel: str, out: Result) -> None:
+    """A translation call at module or class level runs at import time, which can be before
+    the language is set at start-up: the text would stay English. Mark the constant with
+    N_() and translate it where it is shown (lazy() is fine: it runs later)."""
+    pending: list[ast.AST] = [tree]
+    while pending:
+        scope = pending.pop()
+        for node in _scope_nodes(scope):
+            if isinstance(node, ast.ClassDef):
+                pending.append(node)
+            elif isinstance(node, ast.Call) and _marker_name(node.func) in _IMPORT_TIME_REFUSED:
+                out.errors.append(f"{rel}:{node.lineno}: {_marker_name(node.func)}() runs at import "
+                                  "time, maybe before the language is set; use N_() here and "
+                                  "translate() where the text is shown")
 
 
 def source_files(root: Path) -> list[Path]:
