@@ -19,7 +19,7 @@ translated yet; see [Not translated yet](#not-translated-yet).
   `i18n.init_language()`). Changing it needs a restart.
   - The config key `ui_language` (see [CONFIG.md](CONFIG.md)) is `"auto"` or a language code.
   - `"auto"` uses the operating system's display language when a catalog for it ships, reviewed
-    or machine-translated; otherwise English. A region falls back to its language (`pt-BR`, then `pt`);
+    or machine-translated; otherwise English. A region falls back to its language (`de-AT`, then `de`);
     `zh-TW` and `zh-HK` map to `zh-Hant`, `zh-CN` and `zh-SG` to `zh-Hans`. The display
     language is Windows' display language, on macOS the first of the preferred languages
     (System Settings > Language & Region), on Linux `LC_ALL`, `LC_MESSAGES` or `LANG`.
@@ -106,7 +106,7 @@ and expects an empty list, plus a test that its English texts did not change.
   (system language)" and every catalog in `app/locales`, each language by its own name. Pick
   one, click Save and start the app again (a notice in the main window says so when the
   language will change). A catalog with status `"machine"` is listed as "<name> (machine
-  translation)"; `"auto"` never chooses it. Right-to-left catalogs are listed on Windows only
+  translation)"; `"auto"` may choose it too. Right-to-left catalogs are listed on Windows only
   (see the note at the end of the next section); elsewhere load them with `WTS_UI_LANGUAGE`.
 - **For one run**, without touching the setting: set `WTS_UI_LANGUAGE` to the code, then start
   from source. It wins over the saved setting; while it is set, the picker's notice says so.
