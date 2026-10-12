@@ -269,7 +269,7 @@ def test_model_change_asks_before_stopping_a_busy_worker(monkeypatch: Any) -> No
 
     adv.AdvancedDialog._save_and_close(dlg)  # type: ignore[arg-type]
 
-    assert len(asked) == 1 and asked[0]["action"] == "Changing the model"
+    assert len(asked) == 1 and asked[0] == {"kind": "model"}
     assert cfg["whisper_model"] == "medium"
     assert stop_calls["count"] == 0
     assert stop_calls["idle"] == 1, "the declined switch must still replace the worker later"

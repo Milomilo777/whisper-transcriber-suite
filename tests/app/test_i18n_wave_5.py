@@ -59,7 +59,7 @@ class Calls:
     def _rec(self, name: str) -> Callable[..., Any]:
         def call(*args: Any, **kwargs: Any) -> Any:
             row = [name] + [str(a) for a in args if isinstance(a, str)]
-            for key in ("title", "message", "detail", "action", "question"):
+            for key in ("title", "message", "detail", "action", "question", "kind"):
                 if isinstance(kwargs.get(key), str):
                     row.append(f"{key}={kwargs[key]}")
             self.rows.append(row)
@@ -187,7 +187,9 @@ def capture_pure(mp: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Any]:
                                            Misc=object))
     mp.setattr(plat, "is_darwin", lambda: True)
     out["platform.reveal.mac"] = plat.reveal_label("Open JSON folder")
-    out["platform.folder.mac"] = plat.folder_label("Open log folder", "Log Folder")
+    # The callers pass both labels translated (app.py's Help menu: the log folder).
+    out["platform.folder.mac"] = plat.folder_label(i18n._("Open log folder"),
+                                                   i18n._("Open Log Folder in Finder"))
     out["platform.folder.mac_default"] = plat.folder_label("Open folder")
     mp.setattr(plat, "is_darwin", lambda: False)
     out["platform.reveal.other"] = plat.reveal_label("Open JSON folder")
@@ -308,6 +310,8 @@ def _unmarked_in(states: dict[str, Any], skip: tuple[str, ...] = ()) -> list[str
                 if part in ("info", "success", "warning"):
                     continue  # a notice kind
                 head, sep, tail = part.partition("=")
+                if sep and head == "kind":
+                    continue  # App._confirm_backend_switch kind: a value, not text
                 check(tail if sep and head in _CALL_KEYS else part)
     return bad
 

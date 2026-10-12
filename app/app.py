@@ -90,18 +90,93 @@ _HELP_MENU_LABEL = N_("Help")
 _CHECK_FOR_UPDATES_LABEL = N_("Check for updates...")
 _ABOUT_MENU_LABEL = N_("About")
 _WORK_OFFLINE_LABEL = N_("Work offline")
-# The actions this module names to ensure_online(), which shows them translated.
-_ONLINE_ACTIONS = (
-    N_("Checking for updates"),
-    N_("Installing the YouTube helper"),
-    N_("Updating the video downloader"),
-)
 # An app left open keeps checking about once a day (the date throttle in
 # _maybe_quiet_update_check still applies).
 _UPDATE_RECHECK_MS = 24 * 60 * 60 * 1000
 # A launch check that finds a release while a job runs keeps the bar back and
 # looks again this often until the queue is idle (_retry_update_bar).
 _UPDATE_BAR_RETRY_MS = 2 * 60 * 1000
+
+# What App._confirm_backend_switch is asked about (advanced.py and hardware_wizard.py pass
+# the same strings).
+BACKEND_SWITCH_ENGINE = "engine"
+BACKEND_SWITCH_MODEL = "model"
+BACKEND_SWITCH_HARDWARE = "hardware"
+_BACKEND_SWITCH_KINDS = frozenset({BACKEND_SWITCH_ENGINE, BACKEND_SWITCH_MODEL,
+                                   BACKEND_SWITCH_HARDWARE})
+
+
+def backend_switch_texts(kind: str, n: int) -> tuple[str, str]:
+    """Title and question of the "stop the running transcription?" prompt for ``kind``.
+
+    One whole message per kind (no translated phrase is set into another sentence), with
+    the plural forms for the ``n`` running transcriptions.
+    """
+    if kind == BACKEND_SWITCH_MODEL:
+        return _("Change the Whisper model?"), ngettext(
+            "{n} transcription is running right now. Changing the model stops it immediately "
+            "-- more abruptly than a normal Cancel, so more progress may be lost."
+            "\n\nChange it anyway?",
+            "{n} transcriptions are running right now. Changing the model stops them "
+            "immediately -- more abruptly than a normal Cancel, so more progress may be lost."
+            "\n\nChange it anyway?",
+            n)
+    if kind == BACKEND_SWITCH_HARDWARE:
+        return _("Apply now?"), ngettext(
+            "{n} transcription is running right now. Applying the new hardware setting now "
+            "stops it immediately -- more abruptly than a normal Cancel, so more progress may "
+            "be lost.\n\nApply it now? Choose No to let it finish; the setting is then used "
+            "after the app is restarted.",
+            "{n} transcriptions are running right now. Applying the new hardware setting now "
+            "stops them immediately -- more abruptly than a normal Cancel, so more progress "
+            "may be lost.\n\nApply it now? Choose No to let it finish; the setting is then "
+            "used after the app is restarted.",
+            n)
+    if kind == BACKEND_SWITCH_ENGINE:
+        return _("Switch transcription engine?"), ngettext(
+            "{n} transcription is running right now. Switching engines stops it immediately "
+            "-- more abruptly than a normal Cancel, so more progress may be lost."
+            "\n\nSwitch anyway?",
+            "{n} transcriptions are running right now. Switching engines stops them "
+            "immediately -- more abruptly than a normal Cancel, so more progress may be lost."
+            "\n\nSwitch anyway?",
+            n)
+    raise ValueError(f"unknown backend switch kind: {kind!r}")
+
+
+def offline_question(what: str) -> str:
+    """The question App.ensure_online asks before ``what`` while Work offline is on.
+
+    ``what`` is the action's English name (it also goes to the log). Each known action has
+    its own whole message, so no translated phrase is set into another sentence; an action
+    missing here gets a message without its name (and a warning in the log).
+    """
+    if what == "Checking for updates":
+        return _("Checking for updates needs the internet, and Work offline is on, so the "
+                 "app makes no network connection.\n\nTurn Work offline off now?")
+    if what == "Installing the YouTube helper":
+        return _("Installing the YouTube helper needs the internet, and Work offline is on, "
+                 "so the app makes no network connection.\n\nTurn Work offline off now?")
+    if what == "Updating the video downloader":
+        return _("Updating the video downloader needs the internet, and Work offline is on, "
+                 "so the app makes no network connection.\n\nTurn Work offline off now?")
+    if what == "Downloading this link":
+        return _("Downloading this link needs the internet, and Work offline is on, so the "
+                 "app makes no network connection.\n\nTurn Work offline off now?")
+    if what == "Fetching the subtitles of this link":
+        return _("Fetching the subtitles of this link needs the internet, and Work offline "
+                 "is on, so the app makes no network connection.\n\nTurn Work offline off "
+                 "now?")
+    logger.warning("ensure_online: no message for the action %r; asking without its name", what)
+    return _("This needs the internet, and Work offline is on, so the app makes no network "
+             "connection.\n\nTurn Work offline off now?")
+
+
+# The actions offline_question knows (tests check every ensure_online caller against it).
+OFFLINE_ACTIONS = (
+    "Checking for updates", "Installing the YouTube helper", "Updating the video downloader",
+    "Downloading this link", "Fetching the subtitles of this link",
+)
 
 
 def _today() -> date:
@@ -1607,7 +1682,7 @@ class App(tk.Tk):
         h.add_command(label=_("Open oTranscribe website..."),
                       command=self.integrations_service.open_otranscribe)
         h.add_separator()
-        h.add_command(label=folder_label(_("Open log folder"), "Log Folder"),
+        h.add_command(label=folder_label(_("Open log folder"), _("Open Log Folder in Finder")),
                       command=self.open_log_folder)
         h.add_separator()
         # Manual update check — always runs (ignores the once-per-day
@@ -2034,19 +2109,17 @@ class App(tk.Tk):
     def ensure_online(self, what: str) -> bool:
         """True when ``what`` may use the network; asks to turn Work offline off first.
 
-        ``what`` names the action in English, e.g. "Downloading this link" (mark it with
-        ``N_`` where it is written so it reaches the catalog): the question shows it
-        translated, the log line keeps the English. Saying no leaves the switch on and the
-        action is not started.
+        ``what`` names the action in English, one of ``OFFLINE_ACTIONS`` (e.g. "Downloading
+        this link"): the question is that action's own message (:func:`offline_question`),
+        the log line keeps the English. Saying no leaves the switch on and the action is not
+        started.
         """
         if not offline.is_offline():
             return True
         from tkinter import messagebox
         if not messagebox.askyesno(
             _("Offline mode is on"),
-            _("{action} needs the internet, and Work offline is on, so the app "
-              "makes no network connection.\n\nTurn Work offline off now?",
-              action=translate(what)),
+            offline_question(what),
             parent=self,
         ):
             self.log(offline.refused(what.lower()[:1] + what[1:]))
@@ -2886,9 +2959,7 @@ class App(tk.Tk):
         self,
         parent: "tk.Misc | None" = None,
         *,
-        title: str = N_("Switch transcription engine?"),
-        action: str = N_("Switching engines"),
-        question: str = N_("Switch anyway?"),
+        kind: str = BACKEND_SWITCH_ENGINE,
     ) -> bool:
         """True if it's safe to stop_all() workers for an engine switch.
 
@@ -2899,9 +2970,11 @@ class App(tk.Tk):
         Asks first when any worker has an assigned task; returns True with
         no prompt when nothing is actually running.
 
-        ``title``, ``action`` and ``question`` are English msgids (marked with ``N_`` by the
-        caller); they are translated here.
+        ``kind`` names what the caller is about to do (``BACKEND_SWITCH_*``: "engine",
+        "model", "hardware"); each has its own whole title and question.
         """
+        if kind not in _BACKEND_SWITCH_KINDS:
+            raise ValueError(f"unknown backend switch kind: {kind!r}")
         svc = getattr(self, "transcription_service", None)
         if svc is None:
             return True
@@ -2909,19 +2982,10 @@ class App(tk.Tk):
         if not busy:
             return True
         from tkinter import messagebox
-        n = len(busy)
-        title = translate(title)
+        title, question = backend_switch_texts(kind, len(busy))
         return messagebox.askyesno(
             title,
-            ngettext(
-                "{n} transcription is running right now. {action} stops it immediately "
-                "-- more abruptly than a normal Cancel, so more progress may be lost."
-                "\n\n{question}",
-                "{n} transcriptions are running right now. {action} stops them immediately "
-                "-- more abruptly than a normal Cancel, so more progress may be lost."
-                "\n\n{question}",
-                n, action=translate(action), question=translate(question),
-            ),
+            question,
             parent=parent or self,
             default="no",
         )
@@ -3277,11 +3341,7 @@ class App(tk.Tk):
             return
         # stop_all() below is a hard stop: never kill a running transcription
         # without asking (the engine picker already asked; this one did not).
-        if not self._confirm_backend_switch(
-            title=N_("Change the Whisper model?"),
-            action=N_("Changing the model"),
-            question=N_("Change it anyway?"),
-        ):
+        if not self._confirm_backend_switch(kind=BACKEND_SWITCH_MODEL):
             slug_to_label = {s: lbl for lbl, s in label_to_slug.items()}
             mvar.set(slug_to_label.get(old_slug, mvar.get()))
             return
@@ -4497,7 +4557,8 @@ class App(tk.Tk):
                 )
                 out_file = task_output_file(task)
                 m.add_command(
-                    label=folder_action_label(_("Open output folder"), "Output Folder", out_file),
+                    label=folder_action_label(
+                        _("Open output folder"), _("Open Output Folder in Finder"), out_file),
                     command=lambda: self._open_folder(task_output_folder(task), select=out_file),
                 )
                 m.add_separator()
@@ -4583,7 +4644,8 @@ class App(tk.Tk):
                 )
             reveal_target = saved if task.status == "finished" and saved and os.path.isfile(saved) else None
             m.add_command(
-                label=folder_action_label(_("Open download folder"), "Download Folder", reveal_target),
+                label=folder_action_label(
+                    _("Open download folder"), _("Open Download Folder in Finder"), reveal_target),
                 command=lambda: self._open_folder(task.folder, select=reveal_target),
             )
             m.add_command(label=_("Re-run"), command=lambda: self._rerun_download(task))
@@ -5846,7 +5908,7 @@ class App(tk.Tk):
         ttk.Button(
             button_row,
             text=folder_action_label(
-                _("Open folder"), "Folder", existing[0] if existing else None),
+                _("Open folder"), _("Open Folder in Finder"), existing[0] if existing else None),
             command=lambda: self._open_folder(
                 folder, select=existing[0] if existing else None),
         ).pack(side="left")

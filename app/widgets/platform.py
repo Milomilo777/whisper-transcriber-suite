@@ -226,20 +226,21 @@ def reveal_label(default: str) -> str:
     return _("Reveal in Finder") if is_darwin() else default
 
 
-def folder_label(default: str, what: str | None = None) -> str:
-    """Wording of an action that only opens a folder: "Open <what> in Finder" on macOS.
+def folder_label(default: str, mac_label: str | None = None) -> str:
+    """Wording of an action that only opens a folder: ``mac_label`` on macOS.
 
-    ``default`` and ``what`` come translated from the caller (``what`` is a noun such as
-    "Log Folder"); without ``what`` it is "Folder".
+    Both come translated from the caller, each a whole label ("Open log folder" /
+    "Open Log Folder in Finder"), so no folder name is set into another sentence. Without
+    ``mac_label`` macOS shows "Open Folder in Finder".
     """
     if not is_darwin():
         return default
-    return _("Open {what} in Finder", what=what if what is not None else _("Folder"))
+    return mac_label if mac_label is not None else _("Open Folder in Finder")
 
 
-def folder_action_label(default: str, what: str, target: "str | None") -> str:
+def folder_action_label(default: str, mac_label: str, target: "str | None") -> str:
     """:func:`reveal_label` when ``target`` (a file to select) exists, else :func:`folder_label`."""
-    return reveal_label(default) if target else folder_label(default, what)
+    return reveal_label(default) if target else folder_label(default, mac_label)
 
 
 def open_folder(

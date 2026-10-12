@@ -372,7 +372,6 @@ _NOT_OURS_REASONS = {
     "video-site export": "the video-site team's export label and help stay English-only",
     "urls": "links show the URL itself",
     "core texts": "the model catalog's label/description and the usage line come from core/",
-    "confirm action": "App._confirm_backend_switch splices this fragment into its own sentence",
 }
 
 
@@ -388,7 +387,6 @@ def _not_ours() -> set[str]:
     texts |= {adv._FORMAT_LABELS[n] for n in adv._UNTRANSLATED_FORMAT_LABELS}
     texts.add(adv._FORMAT_HELP["smtv_docx"])
     texts |= {MODEL_INFO["label"], MODEL_INFO["info"], "Bare", CORE_USAGE}
-    texts.add("action=Changing the model")
     return texts
 
 
@@ -399,8 +397,8 @@ def _flat_texts(states: dict[str, list[list[str]]]) -> list[tuple[str, str]]:
             if state == "file_dialogs":
                 out.append((state, row[0]))
                 out.extend((state, label) for label, _pattern in json.loads(row[1]))
-            elif state == "confirm_model_change" and not row[1].startswith("action="):
-                out.append((state, row[1].split("=", 1)[1]))
+            elif state == "confirm_model_change":
+                continue  # kind=model: App._confirm_backend_switch owns the prompt text
             else:
                 out.extend((state, t) for t in row[1:])
     return out

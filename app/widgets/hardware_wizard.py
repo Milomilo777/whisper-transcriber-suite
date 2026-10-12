@@ -624,16 +624,9 @@ class HardwareWizard(tk.Toplevel):
             return
         # Same "a transcription is running -- stop it?" prompt as an engine
         # or model switch (App._confirm_backend_switch); no prompt when idle.
+        # kind "hardware" = app.app.BACKEND_SWITCH_HARDWARE (the prompt's text lives there).
         confirm = getattr(self.app, "_confirm_backend_switch", None)
-        if callable(confirm) and not confirm(
-            self,
-            title=_("Apply now?"),
-            action=_("Applying the new hardware setting now"),
-            question=_(
-                "Apply it now? Choose No to let it finish; the setting is "
-                "then used after the app is restarted."
-            ),
-        ):
+        if callable(confirm) and not confirm(self, kind="hardware"):
             return
         try:
             svc.stop_all()

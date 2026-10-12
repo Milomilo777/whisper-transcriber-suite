@@ -411,9 +411,9 @@ def test_save_restarts_the_engine_via_the_apps_busy_prompt(answer, stopped):
     )
     app = types.SimpleNamespace(
         transcription_service=svc,
-        _confirm_backend_switch=lambda *_a, **k: calls.append(k["title"]) or answer,
+        _confirm_backend_switch=lambda *_a, **k: calls.append(k["kind"]) or answer,
         log=lambda _m: None,
     )
     HardwareWizard._restart_idle_engine(types.SimpleNamespace(app=app))  # type: ignore[arg-type]
-    assert calls[0] == "Apply now?"
+    assert calls[0] == "hardware"
     assert ("stop_all" in calls) is stopped

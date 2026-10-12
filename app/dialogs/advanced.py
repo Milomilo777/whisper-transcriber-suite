@@ -993,7 +993,7 @@ class AdvancedDialog(tk.Toplevel):
             folder_row, text=_("Change..."), command=self._change_model_folder,
         ).pack(side="left", padx=(6, 0))
         ttk.Button(
-            folder_row, text=folder_label(_("Open folder"), "Model Folder"),
+            folder_row, text=folder_label(_("Open folder"), _("Open Model Folder in Finder")),
             command=self._open_model_folder,
         ).pack(side="left", padx=(6, 0))
         help_icon(
@@ -2319,15 +2319,8 @@ class AdvancedDialog(tk.Toplevel):
             elif _backend_changed:
                 restart = confirm(self)
             else:
-                restart = confirm(
-                    self,
-                    title=_("Change the Whisper model?"),
-                    # App._confirm_backend_switch builds its sentence around
-                    # ``action``: a translated fragment would be spliced into
-                    # it, so it stays English until that message is converted.
-                    action="Changing the model",
-                    question=_("Change it anyway?"),
-                )
+                # kind "model" = app.app.BACKEND_SWITCH_MODEL (the prompt's text lives there).
+                restart = confirm(self, kind="model")
             what = (
                 f"Transcription engine changed to {cfg['transcribe_backend']}"
                 if _backend_changed else "Whisper model changed"

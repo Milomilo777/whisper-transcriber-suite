@@ -46,6 +46,12 @@ Import what you need: `from app.i18n import _, ngettext, pgettext, N_, lazy, tra
   arguments it is formatted with `str.format`, so a literal brace is written `{{` or `}}`.
 - Mark whole sentences. Do not build a sentence from pieces (`_("Saved") + " " + _("3 files")`):
   word order differs between languages.
+- Never hand a translated phrase to another function that sets it into its own sentence (an
+  `{action}` placeholder filled with `_("Downloading this link")`): the grammar around the
+  phrase differs between languages. Give each case its own whole message and pass a stable key
+  instead, as `App.ensure_online(what)` (`offline_question`), `App._confirm_backend_switch(kind=...)`
+  (`backend_switch_texts`) and `platform.folder_label(default, mac_label)` (two whole labels)
+  do. A name inside a sentence (a file, a language, an engine) is fine as a placeholder value.
 - Counts use `ngettext`, never `"file" if n == 1 else "files"`. `{n}` is always available:
   `ngettext("{n} file", "{n} files", count)`. Languages have one to six plural forms.
 - A short label that can mean two things gets a context: `pgettext("menu", "Open")` versus
@@ -85,7 +91,8 @@ still looks plain English did not go through the layer, and a cut-off bracket sh
 that will not fit longer languages. Placeholders, `%` sequences and line breaks are kept.
 
 `tests/app/i18n_walk.py` does the same check in tests: `untranslated(dialog)` lists every visible
-text without the pseudo marker. Each converted dialog gets a test that builds it in `qps-ploc`
+text without the pseudo marker (`is_pseudo_marked` accepts a marked text nested inside another
+one and a trailing menu shortcut such as `Ctrl+O`). Each converted dialog gets a test that builds it in `qps-ploc`
 and expects an empty list, plus a test that its English texts did not change.
 
 ## Adding or updating a language

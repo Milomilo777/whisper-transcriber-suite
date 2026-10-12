@@ -12,6 +12,7 @@ events reaching ``::tk::mac::OpenDocument``) is proved by
 """
 from __future__ import annotations
 
+import re
 import sys
 import time
 import tkinter as tk
@@ -1021,21 +1022,23 @@ def test_reveal_label_says_reveal_in_finder_on_macos_only(platform_name: Callabl
 
 def test_folder_label_keeps_a_folder_wording_on_macos(platform_name: Callable[[str], None]) -> None:
     platform_name("darwin")
-    assert platform_mod.folder_label("Open log folder", "Log Folder") == "Open Log Folder in Finder"
+    assert platform_mod.folder_label("Open log folder", "Open Log Folder in Finder") == "Open Log Folder in Finder"
+    assert platform_mod.folder_label("Open log folder") == "Open Folder in Finder"
     for other in ("win32", "linux"):
         platform_name(other)
-        assert platform_mod.folder_label("Open log folder", "Log Folder") == "Open log folder"
+        assert platform_mod.folder_label("Open log folder", "Open Log Folder in Finder") == "Open log folder"
 
 
 def test_folder_action_label_reveals_only_when_there_is_a_file_to_select(
     platform_name: Callable[[str], None],
 ) -> None:
     platform_name("darwin")
-    assert platform_mod.folder_action_label("Open folder", "Output Folder", "/x/a.srt") == "Reveal in Finder"
-    assert platform_mod.folder_action_label("Open folder", "Output Folder", None) == "Open Output Folder in Finder"
+    mac = "Open Output Folder in Finder"
+    assert platform_mod.folder_action_label("Open folder", mac, "/x/a.srt") == "Reveal in Finder"
+    assert platform_mod.folder_action_label("Open folder", mac, None) == "Open Output Folder in Finder"
     platform_name("win32")
-    assert platform_mod.folder_action_label("Open folder", "Output Folder", "/x/a.srt") == "Open folder"
-    assert platform_mod.folder_action_label("Open folder", "Output Folder", None) == "Open folder"
+    assert platform_mod.folder_action_label("Open folder", mac, "/x/a.srt") == "Open folder"
+    assert platform_mod.folder_action_label("Open folder", mac, None) == "Open folder"
 
 
 def test_open_r_failing_falls_back_to_opening_the_folder(
@@ -1173,8 +1176,8 @@ def test_queue_and_download_menus_pick_their_wording_from_the_helper() -> None:
 
     queue_src = inspect.getsource(App.menu_row)
     download_src = inspect.getsource(App.download_menu_row)
-    assert 'folder_action_label(_("Open output folder")' in queue_src
-    assert 'folder_action_label(_("Open download folder")' in download_src
+    assert re.search(r'folder_action_label\(\s*_\("Open output folder"\)', queue_src)
+    assert re.search(r'folder_action_label\(\s*_\("Open download folder"\)', download_src)
     assert "reveal_label(" not in queue_src + download_src
 
 

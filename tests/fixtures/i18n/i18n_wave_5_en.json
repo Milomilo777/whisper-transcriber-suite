@@ -229,9 +229,7 @@
    ],
    [
     "confirm",
-    "title=Apply now?",
-    "action=Applying the new hardware setting now",
-    "question=Apply it now? Choose No to let it finish; the setting is then used after the app is restarted."
+    "kind=hardware"
    ]
   ],
   "hw.diagnostics": [

@@ -1550,15 +1550,7 @@
  "confirm_model_change": [
   [
    "confirm",
-   "action=Changing the model"
-  ],
-  [
-   "confirm",
-   "question=Change it anyway?"
-  ],
-  [
-   "confirm",
-   "title=Change the Whisper model?"
+   "kind=model"
   ]
  ]
 }
