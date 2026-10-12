@@ -170,7 +170,8 @@ def help_icon(parent: tk.Misc, text: TextOrGetter, *, wraplength: int = _WRAP) -
 
 
 def section_labelframe(
-    parent: tk.Misc, title: str, help_text: str, *, wraplength: int = _WRAP, **kwargs: object,
+    parent: tk.Misc, title: str, help_text: TextOrGetter, *, wraplength: int = _WRAP,
+    **kwargs: object,
 ) -> ttk.LabelFrame:
     """Build a ``ttk.LabelFrame`` whose title bar itself carries the hover
     help, via ``labelwidget=`` instead of the plain ``text=`` option.

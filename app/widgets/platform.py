@@ -11,6 +11,7 @@ import tkinter as tk
 from collections.abc import Callable
 from tkinter import messagebox
 
+from app.i18n import _
 from app.widgets.error_dialog import show_error
 
 
@@ -143,21 +144,17 @@ def open_async(
         pass
 
 
-def _file_kind(path: str) -> str:
-    ext = os.path.splitext(path)[1].lower()
-    return f"{ext} files" if ext else "this kind of file"
-
-
 def open_file(
     path: str,
     parent: "tk.Misc | None" = None,
-    error_text: str = "Could not open that file with your system's default app.",
+    error_text: str | None = None,
 ) -> None:
     """Open ``path`` with the default app and always tell the person how it went.
 
     Never blocks the Tk thread (:func:`open_async`). When no app is set for the file
     type, a text file opens in the Mac text editor; anything else is shown in its
-    folder with a short notice. Any other failure shows an error with ``error_text``.
+    folder with a short notice. Any other failure shows an error with ``error_text`` (by
+    default "Could not open that file with your system's default app.").
     """
     def done(error: BaseException | None) -> None:
         if error is None:
@@ -165,7 +162,9 @@ def open_file(
         if isinstance(error, NoDefaultAppError):
             _no_app(path, parent)
         else:
-            _show_open_error(parent, error_text, str(error))
+            text = error_text if error_text is not None else _(
+                "Could not open that file with your system's default app.")
+            _show_open_error(parent, text, str(error))
 
     open_async(path, parent, done)
 
@@ -183,26 +182,32 @@ def _no_app(path: str, parent: "tk.Misc | None") -> None:
 
 def _reveal_with_notice(path: str, parent: "tk.Misc | None") -> None:
     shown = open_folder(os.path.dirname(path) or ".", parent=parent, select=path)
-    kind = _file_kind(path)
-    if shown:
-        message = f"No app is set to open {kind}; the file is shown in its folder."
+    ext = os.path.splitext(path)[1].lower()
+    if shown and ext:
+        message = _("No app is set to open {ext} files; the file is shown in its folder.", ext=ext)
+    elif shown:
+        message = _("No app is set to open this kind of file; the file is shown in its folder.")
+    elif ext:
+        message = _("No app is set to open {ext} files, and its folder could not be opened "
+                    "either.", ext=ext)
     else:
-        message = f"No app is set to open {kind}, and its folder could not be opened either."
+        message = _("No app is set to open this kind of file, and its folder could not be "
+                    "opened either.")
     if parent is not None:
         from app.widgets.notice import notify
 
         notify(parent, message, "warning")
     else:
-        messagebox.showinfo("No app to open the file", message)
+        messagebox.showinfo(_("No app to open the file"), message)
 
 
 def _show_open_error(parent: "tk.Misc | None", text: str, detail: str) -> None:
     if isinstance(parent, (tk.Tk, tk.Toplevel)):
-        show_error(parent, "Open failed", text, detail=detail)
+        show_error(parent, _("Open failed"), text, detail=detail)
     else:
         kwargs = {"parent": parent} if parent is not None else {}
         messagebox.showerror(
-            "Open failed", f"{text}\n{detail}", **kwargs  # type: ignore[arg-type]
+            _("Open failed"), f"{text}\n{detail}", **kwargs  # type: ignore[arg-type]
         )
 
 
@@ -214,15 +219,22 @@ def is_darwin() -> bool:
 def reveal_label(default: str) -> str:
     """Wording of an action that shows one file in the file manager.
 
-    macOS says "Reveal in Finder"; ``default`` is returned unchanged elsewhere.
+    macOS says "Reveal in Finder"; ``default`` (already translated by the caller) is
+    returned unchanged elsewhere.
     Use it only where a file is selected (see :func:`open_folder`'s ``select``).
     """
-    return "Reveal in Finder" if is_darwin() else default
+    return _("Reveal in Finder") if is_darwin() else default
 
 
-def folder_label(default: str, what: str = "Folder") -> str:
-    """Wording of an action that only opens a folder: "Open <what> in Finder" on macOS."""
-    return f"Open {what} in Finder" if is_darwin() else default
+def folder_label(default: str, what: str | None = None) -> str:
+    """Wording of an action that only opens a folder: "Open <what> in Finder" on macOS.
+
+    ``default`` and ``what`` come translated from the caller (``what`` is a noun such as
+    "Log Folder"); without ``what`` it is "Folder".
+    """
+    if not is_darwin():
+        return default
+    return _("Open {what} in Finder", what=what if what is not None else _("Folder"))
 
 
 def folder_action_label(default: str, what: str, target: "str | None") -> str:
@@ -258,8 +270,8 @@ def open_folder(
     if not folder or not os.path.isdir(folder):
         kwargs = {"parent": parent} if parent is not None else {}
         messagebox.showwarning(
-            "Folder missing",
-            f"Could not open: {folder or '(empty)'}",
+            _("Folder missing"),
+            _("Could not open: {folder}", folder=folder) if folder else _("Could not open: (empty)"),
             **kwargs,  # type: ignore[arg-type]
         )
         return False
@@ -277,13 +289,13 @@ def open_folder(
         # so fall back to the plain messagebox in that rarer case.
         if isinstance(parent, (tk.Tk, tk.Toplevel)):
             show_error(
-                parent, "Open folder failed",
-                "Could not open that folder.", detail=str(e),
+                parent, _("Open folder failed"),
+                _("Could not open that folder."), detail=str(e),
             )
         else:
             kwargs = {"parent": parent} if parent is not None else {}
             messagebox.showerror(
-                "Open folder failed", str(e), **kwargs  # type: ignore[arg-type]
+                _("Open folder failed"), str(e), **kwargs  # type: ignore[arg-type]
             )
         return False
     return True

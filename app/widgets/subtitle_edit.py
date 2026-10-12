@@ -12,11 +12,13 @@ from collections.abc import Mapping
 from tkinter import messagebox
 from typing import Any
 
+from app.i18n import N_, _
 from app.widgets.error_dialog import show_error
 from core import subtitle_edit
 
-BUTTON_TEXT = "Open in Subtitle Edit"
-HELP_TEXT = (
+# Marked with N_(); callers show them with translate(BUTTON_TEXT) and translate(HELP_TEXT).
+BUTTON_TEXT = N_("Open in Subtitle Edit")
+HELP_TEXT = N_(
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for "
     "fine-tuning timing. If it is not installed, this button offers the download page. "
     "A portable copy can be chosen in Advanced > App behaviour."
@@ -32,26 +34,26 @@ def open_in_subtitle_edit(
     if exe is None:
         if configured:
             # Name the setting: otherwise a typo there looks like "not installed".
-            message = (
+            message = _(
                 "The Subtitle Edit path chosen in Advanced > App behaviour does not "
-                f"lead to SubtitleEdit.exe:\n{configured}\n\n"
+                "lead to SubtitleEdit.exe:\n{path}\n\n"
                 "Choose SubtitleEdit.exe there again. Open the official download "
-                "page now?"
+                "page now?", path=configured,
             )
         else:
-            message = (
+            message = _(
                 "Subtitle Edit was not found on this computer.\n\n"
                 "It is a free subtitle editor. Open its official download page now?\n\n"
                 "If you already have a portable copy, choose SubtitleEdit.exe in "
                 "Advanced > App behaviour."
             )
-        if messagebox.askyesno("Subtitle Edit not found", message, parent=parent):
+        if messagebox.askyesno(_("Subtitle Edit not found"), message, parent=parent):
             webbrowser.open(subtitle_edit.DOWNLOAD_URL)
         return
     if not subtitle_path:
         messagebox.showwarning(
-            "No subtitle file",
-            "There is no subtitle file (SRT, VTT, ASS) for this transcript yet.",
+            _("No subtitle file"),
+            _("There is no subtitle file (SRT, VTT, ASS) for this transcript yet."),
             parent=parent,
         )
         return
@@ -59,13 +61,13 @@ def open_in_subtitle_edit(
         subtitle_edit.open_in_subtitle_edit(exe, subtitle_path)
     except FileNotFoundError:
         messagebox.showwarning(
-            "Subtitle file missing",
-            f"The subtitle file is no longer there:\n{subtitle_path}",
+            _("Subtitle file missing"),
+            _("The subtitle file is no longer there:\n{path}", path=subtitle_path),
             parent=parent,
         )
     except OSError as e:
         top = parent.winfo_toplevel()
         if isinstance(top, (tk.Tk, tk.Toplevel)):
-            show_error(top, "Open failed", "Could not start Subtitle Edit.", detail=str(e))
+            show_error(top, _("Open failed"), _("Could not start Subtitle Edit."), detail=str(e))
         else:
-            messagebox.showerror("Open failed", str(e), parent=parent)
+            messagebox.showerror(_("Open failed"), str(e), parent=parent)

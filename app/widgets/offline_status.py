@@ -24,6 +24,7 @@ import tkinter as tk
 from collections.abc import Callable, Sequence
 from tkinter import ttk
 
+from app.i18n import N_, _, ngettext, pgettext, translate
 from app.theme import tokens
 from core import offline
 
@@ -32,24 +33,25 @@ POLL_MS = 10_000
 #: A look older than this no longer counts as "clean".
 FRESH_SECONDS = 30.0
 
+#: Shown at the end of the Network log; marked with N_() and translated where shown.
 LIMITS = (
-    "What this shows, and what it does not:",
-    "- The counts and events come from this window's process. Transcription "
-    "workers refuse in their own process; yt-dlp and ffmpeg are not started "
-    "by the actions that would go online; Demucs only gets offline proxy and "
-    "Hugging Face settings. Their refusals are not counted here.",
-    "- The open-connection check lists the TCP connections of this app and of "
-    "the processes it started that are still running under it, about every "
-    "10 seconds. UDP sockets are not listed (Windows does not report where a "
-    "UDP socket is connected). A connection that opens and closes between two "
-    "checks can be missed. Another computer means any address that is not "
-    "loopback, including this computer's own network address.",
-    "- Refused here: outgoing TCP connections, host-name lookups and UDP sends "
-    "to another computer (also through asyncio). Not covered: a UDP socket "
-    "connected to another computer and then used with send(), and native code "
-    "that does not use Python's socket module.",
-    "- Bytes are not measured. To watch all traffic yourself, see "
-    "docs/WORK_OFFLINE.md (Resource Monitor, Get-NetTCPConnection, Wireshark).",
+    N_("What this shows, and what it does not:"),
+    N_("- The counts and events come from this window's process. Transcription "
+       "workers refuse in their own process; yt-dlp and ffmpeg are not started "
+       "by the actions that would go online; Demucs only gets offline proxy and "
+       "Hugging Face settings. Their refusals are not counted here."),
+    N_("- The open-connection check lists the TCP connections of this app and of "
+       "the processes it started that are still running under it, about every "
+       "10 seconds. UDP sockets are not listed (Windows does not report where a "
+       "UDP socket is connected). A connection that opens and closes between two "
+       "checks can be missed. Another computer means any address that is not "
+       "loopback, including this computer's own network address."),
+    N_("- Refused here: outgoing TCP connections, host-name lookups and UDP sends "
+       "to another computer (also through asyncio). Not covered: a UDP socket "
+       "connected to another computer and then used with send(), and native code "
+       "that does not use Python's socket module."),
+    N_("- Bytes are not measured. To watch all traffic yourself, see "
+       "docs/WORK_OFFLINE.md (Resource Monitor, Get-NetTCPConnection, Wireshark)."),
 )
 
 
@@ -60,9 +62,10 @@ def _clock(when: float) -> str:
 def _counts_text(act: offline.Activity) -> str:
     refused = act.counts.get(offline.REFUSED, 0)
     skipped = act.counts.get(offline.SKIPPED, 0)
-    return (
-        f"{refused} refused, {skipped} automatic "
-        f"request{'' if skipped == 1 else 's'} not sent since {_clock(act.since)[:5]}"
+    return ngettext(
+        "{refused} refused, {n} automatic request not sent since {time}",
+        "{refused} refused, {n} automatic requests not sent since {time}",
+        skipped, refused=refused, time=_clock(act.since)[:5],
     )
 
 
@@ -76,8 +79,11 @@ def bar_state(check: offline.ConnectionCheck | None, now: float) -> str:
 
 
 def _connection_text(conn: offline.OpenConnection) -> str:
-    direction = "incoming" if conn.incoming else "outgoing"
-    return f"{conn.process} (pid {conn.pid}) {conn.protocol} {direction} {conn.remote}"
+    values = {"process": conn.process, "pid": conn.pid, "protocol": conn.protocol,
+              "remote": conn.remote}
+    if conn.incoming:
+        return _("{process} (pid {pid}) {protocol} incoming {remote}", **values)
+    return _("{process} (pid {pid}) {protocol} outgoing {remote}", **values)
 
 
 def bar_text(check: offline.ConnectionCheck | None, act: offline.Activity, now: float) -> str:
@@ -86,28 +92,33 @@ def bar_text(check: offline.ConnectionCheck | None, act: offline.Activity, now: 
     if state == "warning" and check is not None:
         n = len(check.outside)
         first = _connection_text(check.outside[0])
-        return (
-            f"Work offline: WARNING, this app has {n} open connection{'' if n == 1 else 's'} "
-            f"to another computer ({first}). See the Network log."
+        return ngettext(
+            "Work offline: WARNING, this app has {n} open connection to another computer "
+            "({connection}). See the Network log.",
+            "Work offline: WARNING, this app has {n} open connections to another computer "
+            "({connection}). See the Network log.",
+            n, connection=first,
         )
+    counts = _counts_text(act)
     if state == "clean" and check is not None:
-        return (
-            f"Work offline: this app has no open TCP connection to another computer "
-            f"(checked {_clock(check.when)}) · {_counts_text(act)}"
-        )
-    reason = "not checked yet"
+        return _("Work offline: this app has no open TCP connection to another computer "
+                 "(checked {time}) · {counts}", time=_clock(check.when), counts=counts)
     if check is not None and not check.ok:
-        reason = f"could not check: {check.error}"
-    elif check is not None:
-        reason = f"last check {_clock(check.when)} is too old"
-    return f"Work offline: this app's open connections unknown ({reason}) · {_counts_text(act)}"
+        return _("Work offline: this app's open connections unknown (could not check: "
+                 "{error}) · {counts}", error=check.error, counts=counts)
+    if check is not None:
+        return _("Work offline: this app's open connections unknown (last check {time} is "
+                 "too old) · {counts}", time=_clock(check.when), counts=counts)
+    return _("Work offline: this app's open connections unknown (not checked yet) · {counts}",
+             counts=counts)
 
 
+#: Event kind -> the word shown in the Network log (translated where shown).
 _KIND_WORDS = {
-    offline.REFUSED: "refused",
-    offline.SKIPPED: "not sent",
-    offline.LOCAL: "allowed (this computer)",
-    offline.TEST: "refused (test)",
+    offline.REFUSED: N_("refused"),
+    offline.SKIPPED: N_("not sent"),
+    offline.LOCAL: N_("allowed (this computer)"),
+    offline.TEST: N_("refused (test)"),
 }
 
 
@@ -119,41 +130,54 @@ def log_text(
 ) -> str:
     """The Network log as plain, copyable text."""
     lines = [
-        f"Work offline: Network log of this window since {_clock(act.since)}",
-        f"Refused: {act.counts.get(offline.REFUSED, 0)}    "
-        f"Automatic requests not sent: {act.counts.get(offline.SKIPPED, 0)}    "
-        f"Connections allowed on this computer: {act.counts.get(offline.LOCAL, 0)}    "
-        f"Verify offline now refusals (not in the counts): {act.counts.get(offline.TEST, 0)}",
+        _("Work offline: Network log of this window since {time}", time=_clock(act.since)),
+        _("Refused: {refused}    Automatic requests not sent: {skipped}    Connections allowed "
+          "on this computer: {local}    Verify offline now refusals (not in the counts): {test}",
+          refused=act.counts.get(offline.REFUSED, 0), skipped=act.counts.get(offline.SKIPPED, 0),
+          local=act.counts.get(offline.LOCAL, 0), test=act.counts.get(offline.TEST, 0)),
         "",
     ]
     if check is None:
-        lines.append("Open connections to other computers: not checked yet")
+        lines.append(_("Open connections to other computers: not checked yet"))
     elif not check.ok:
-        lines.append(f"Open connections to other computers: could not check ({check.error})")
+        lines.append(_("Open connections to other computers: could not check ({error})",
+                       error=check.error))
     else:
-        lines.append(
-            f"Open TCP connections to other computers (checked {_clock(check.when)}, "
-            f"{check.processes} process{'' if check.processes == 1 else 'es'} of this app):"
-        )
+        lines.append(ngettext(
+            "Open TCP connections to other computers (checked {time}, {n} process of this app):",
+            "Open TCP connections to other computers (checked {time}, {n} processes of this app):",
+            check.processes, time=_clock(check.when),
+        ))
         if check.outside:
-            lines.extend(f"  WARNING  {_connection_text(c)}" for c in check.outside)
+            lines.extend("  " + _("WARNING  {connection}", connection=_connection_text(c))
+                         for c in check.outside)
         else:
-            lines.append("  none")
+            lines.append("  " + pgettext("network log, open connections", "none"))
     if probes:
-        when = f" ({_clock(probes_when)})" if probes_when is not None else ""
-        lines += ["", f"Verify offline now{when}:"]
+        lines.append("")
+        if probes_when is not None:
+            lines.append(_("Verify offline now ({time}):", time=_clock(probes_when)))
+        else:
+            lines.append(_("Verify offline now:"))
         lines.extend(
-            f"  {'OK' if p.refused else 'FAILED'}  {p.what}: {p.detail}" for p in probes
+            "  " + (_("OK  {check}: {detail}", check=p.what, detail=p.detail) if p.refused
+                    else _("FAILED  {check}: {detail}", check=p.what, detail=p.detail))
+            for p in probes
         )
-    lines += ["", f"Events (oldest first, {len(act.events)} shown; the log keeps the last "
-              f"{offline._LOG_SIZE} refused or not sent and the last {offline._LOG_SIZE} "
-              "allowed; the counts above are not capped):"]
+    lines += ["", ngettext(
+        "Events (oldest first, {n} shown; the log keeps the last {size} refused or not sent "
+        "and the last {size} allowed; the counts above are not capped):",
+        "Events (oldest first, {n} shown; the log keeps the last {size} refused or not sent "
+        "and the last {size} allowed; the counts above are not capped):",
+        len(act.events), size=offline._LOG_SIZE)]
     if not act.events:
-        lines.append("  none yet")
+        lines.append("  " + _("none yet"))
     for ev in act.events:
         target = f" -> {ev.host}" if ev.host else ""
-        lines.append(f"  {_clock(ev.when)}  {_KIND_WORDS.get(ev.kind, ev.kind)}  {ev.feature}{target}")
-    lines += ["", *LIMITS]
+        word = _KIND_WORDS.get(ev.kind)
+        kind = translate(word) if word is not None else ev.kind
+        lines.append(f"  {_clock(ev.when)}  {kind}  {ev.feature}{target}")
+    lines += ["", *(translate(line) for line in LIMITS)]
     return "\n".join(lines)
 
 
@@ -168,7 +192,7 @@ class NetworkLogWindow(tk.Toplevel):
         post_to_main: Callable[[Callable[[], None]], None],
     ) -> None:
         super().__init__(master)
-        self.title("Network log (Work offline)")
+        self.title(_("Network log (Work offline)"))
         self._get_check = get_check
         self._post = post_to_main
         self._probes: list[offline.ProbeResult] = []
@@ -178,12 +202,12 @@ class NetworkLogWindow(tk.Toplevel):
         buttons = ttk.Frame(body)
         buttons.pack(side="bottom", fill="x", pady=(8, 0))
         self.verify_button = ttk.Button(
-            buttons, text="Verify offline now", command=self.verify,
+            buttons, text=_("Verify offline now"), command=self.verify,
         )
         self.verify_button.pack(side="left")
-        ttk.Button(buttons, text="Refresh", command=self.refresh).pack(side="left", padx=(8, 0))
-        ttk.Button(buttons, text="Copy all", command=self.copy_all).pack(side="left", padx=(8, 0))
-        ttk.Button(buttons, text="Close", command=self.destroy).pack(side="right")
+        ttk.Button(buttons, text=_("Refresh"), command=self.refresh).pack(side="left", padx=(8, 0))
+        ttk.Button(buttons, text=_("Copy all"), command=self.copy_all).pack(side="left", padx=(8, 0))
+        ttk.Button(buttons, text=_("Close"), command=self.destroy).pack(side="right")
         self.text = tk.Text(body, wrap="word", width=96, height=26)
         scroll = ttk.Scrollbar(body, orient="vertical", command=self.text.yview)
         self.text.configure(yscrollcommand=scroll.set)
@@ -212,7 +236,7 @@ class NetworkLogWindow(tk.Toplevel):
             try:
                 probes = offline.self_test()
             except RuntimeError as e:
-                probes = [offline.ProbeResult("Verify offline now", False, str(e))]
+                probes = [offline.ProbeResult(_("Verify offline now"), False, str(e))]
             self._post(lambda: self._show_probes(probes))
 
         threading.Thread(target=work, name="offline-verify", daemon=True).start()
@@ -249,7 +273,7 @@ class OfflineStatusBar(ttk.Frame):
         self.text_var = tk.StringVar(master=self, value="")
         self.label = ttk.Label(row, textvariable=self.text_var, anchor="w")
         self.label.pack(side="left", fill="x", expand=True)
-        ttk.Button(row, text="Network log", command=self.open_log).pack(side="right")
+        ttk.Button(row, text=_("Network log"), command=self.open_log).pack(side="right")
         self.bind("<Destroy>", self._on_destroy, add="+")
 
     def _on_destroy(self, event: tk.Event) -> None:

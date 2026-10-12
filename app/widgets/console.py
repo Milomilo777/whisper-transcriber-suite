@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 import sys
 import tkinter as tk
+from app.i18n import _, pgettext
 from app.theme import tokens
 
 # Two colour schemes so the log feed matches the app's own Light/Dark
@@ -128,10 +129,10 @@ def _attach_context_menu(txt: tk.Text) -> None:
     # Tk only destroys it with its parent, so a long session slowly
     # accumulated orphaned menu widgets under the log.
     menu = tk.Menu(txt, tearoff=0)
-    menu.add_command(label="Copy", command=lambda: _copy_selection(txt))
-    menu.add_command(label="Copy all", command=lambda: _copy_all(txt))
+    menu.add_command(label=_("Copy"), command=lambda: _copy_selection(txt))
+    menu.add_command(label=_("Copy all"), command=lambda: _copy_all(txt))
     menu.add_separator()
-    menu.add_command(label="Clear", command=lambda: _clear(txt))
+    menu.add_command(label=pgettext("log menu", "Clear"), command=lambda: _clear(txt))
 
     def _popup(event: tk.Event) -> str:
         return _popup_console_menu(menu, event)

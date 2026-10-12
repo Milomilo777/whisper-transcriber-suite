@@ -1,0 +1,373 @@
+{
+ "pure": {
+  "offline.bar.clean": "Work offline: this app has no open TCP connection to another computer (checked 02:46:35) · 3 refused, 1 automatic request not sent since 01:00",
+  "offline.bar.clean_zero": "Work offline: this app has no open TCP connection to another computer (checked 02:46:35) · 0 refused, 0 automatic requests not sent since 00:00",
+  "offline.bar.failed": "Work offline: this app's open connections unknown (could not check: PermissionError: denied) · 3 refused, 1 automatic request not sent since 01:00",
+  "offline.bar.none": "Work offline: this app's open connections unknown (not checked yet) · 0 refused, 2 automatic requests not sent since 00:00",
+  "offline.bar.old": "Work offline: this app's open connections unknown (last check 02:45:00 is too old) · 3 refused, 1 automatic request not sent since 01:00",
+  "offline.bar.warn1": "Work offline: WARNING, this app has 1 open connection to another computer (python.exe (pid 42) TCP outgoing 203.0.113.5:443). See the Network log.",
+  "offline.bar.warn2": "Work offline: WARNING, this app has 2 open connections to another computer (python.exe (pid 42) TCP outgoing 203.0.113.5:443). See the Network log.",
+  "offline.log.clean_one": "Work offline: Network log of this window since 01:00:00\nRefused: 3    Automatic requests not sent: 1    Connections allowed on this computer: 2    Verify offline now refusals (not in the counts): 4\n\nOpen TCP connections to other computers (checked 02:46:35, 1 process of this app):\n  none\n\nVerify offline now (01:23:20):\n  OK  Host-name lookup: refused as expected\n  FAILED  TCP connect: it connected\n\nEvents (oldest first, 5 shown; the log keeps the last 500 refused or not sent and the last 500 allowed; the counts above are not capped):\n  01:01:40  refused  Model download -> huggingface.co\n  01:03:20  not sent  Update check\n  01:05:00  allowed (this computer)  Local server -> 127.0.0.1\n  01:06:40  refused (test)  Self test -> example.com\n  01:08:20  other-kind  Something\n\nWhat this shows, and what it does not:\n- The counts and events come from this window's process. Transcription workers refuse in their own process; yt-dlp and ffmpeg are not started by the actions that would go online; Demucs only gets offline proxy and Hugging Face settings. Their refusals are not counted here.\n- The open-connection check lists the TCP connections of this app and of the processes it started that are still running under it, about every 10 seconds. UDP sockets are not listed (Windows does not report where a UDP socket is connected). A connection that opens and closes between two checks can be missed. Another computer means any address that is not loopback, including this computer's own network address.\n- Refused here: outgoing TCP connections, host-name lookups and UDP sends to another computer (also through asyncio). Not covered: a UDP socket connected to another computer and then used with send(), and native code that does not use Python's socket module.\n- Bytes are not measured. To watch all traffic yourself, see docs/WORK_OFFLINE.md (Resource Monitor, Get-NetTCPConnection, Wireshark).",
+  "offline.log.failed": "Work offline: Network log of this window since 01:00:00\nRefused: 3    Automatic requests not sent: 1    Connections allowed on this computer: 2    Verify offline now refusals (not in the counts): 4\n\nOpen connections to other computers: could not check (PermissionError: denied)\n\nEvents (oldest first, 5 shown; the log keeps the last 500 refused or not sent and the last 500 allowed; the counts above are not capped):\n  01:01:40  refused  Model download -> huggingface.co\n  01:03:20  not sent  Update check\n  01:05:00  allowed (this computer)  Local server -> 127.0.0.1\n  01:06:40  refused (test)  Self test -> example.com\n  01:08:20  other-kind  Something\n\nWhat this shows, and what it does not:\n- The counts and events come from this window's process. Transcription workers refuse in their own process; yt-dlp and ffmpeg are not started by the actions that would go online; Demucs only gets offline proxy and Hugging Face settings. Their refusals are not counted here.\n- The open-connection check lists the TCP connections of this app and of the processes it started that are still running under it, about every 10 seconds. UDP sockets are not listed (Windows does not report where a UDP socket is connected). A connection that opens and closes between two checks can be missed. Another computer means any address that is not loopback, including this computer's own network address.\n- Refused here: outgoing TCP connections, host-name lookups and UDP sends to another computer (also through asyncio). Not covered: a UDP socket connected to another computer and then used with send(), and native code that does not use Python's socket module.\n- Bytes are not measured. To watch all traffic yourself, see docs/WORK_OFFLINE.md (Resource Monitor, Get-NetTCPConnection, Wireshark).",
+  "offline.log.unchecked": "Work offline: Network log of this window since 01:00:00\nRefused: 3    Automatic requests not sent: 1    Connections allowed on this computer: 2    Verify offline now refusals (not in the counts): 4\n\nOpen connections to other computers: not checked yet\n\nEvents (oldest first, 5 shown; the log keeps the last 500 refused or not sent and the last 500 allowed; the counts above are not capped):\n  01:01:40  refused  Model download -> huggingface.co\n  01:03:20  not sent  Update check\n  01:05:00  allowed (this computer)  Local server -> 127.0.0.1\n  01:06:40  refused (test)  Self test -> example.com\n  01:08:20  other-kind  Something\n\nWhat this shows, and what it does not:\n- The counts and events come from this window's process. Transcription workers refuse in their own process; yt-dlp and ffmpeg are not started by the actions that would go online; Demucs only gets offline proxy and Hugging Face settings. Their refusals are not counted here.\n- The open-connection check lists the TCP connections of this app and of the processes it started that are still running under it, about every 10 seconds. UDP sockets are not listed (Windows does not report where a UDP socket is connected). A connection that opens and closes between two checks can be missed. Another computer means any address that is not loopback, including this computer's own network address.\n- Refused here: outgoing TCP connections, host-name lookups and UDP sends to another computer (also through asyncio). Not covered: a UDP socket connected to another computer and then used with send(), and native code that does not use Python's socket module.\n- Bytes are not measured. To watch all traffic yourself, see docs/WORK_OFFLINE.md (Resource Monitor, Get-NetTCPConnection, Wireshark).",
+  "offline.log.warn_many": "Work offline: Network log of this window since 00:00:00\nRefused: 0    Automatic requests not sent: 2    Connections allowed on this computer: 0    Verify offline now refusals (not in the counts): 0\n\nOpen TCP connections to other computers (checked 02:46:38, 3 processes of this app):\n  WARNING  python.exe (pid 42) TCP outgoing 203.0.113.5:443\n  WARNING  ffmpeg.exe (pid 7) UDP incoming 198.51.100.9:5000\n\nVerify offline now:\n  OK  Host-name lookup: refused as expected\n  FAILED  TCP connect: it connected\n\nEvents (oldest first, 0 shown; the log keeps the last 500 refused or not sent and the last 500 allowed; the counts above are not capped):\n  none yet\n\nWhat this shows, and what it does not:\n- The counts and events come from this window's process. Transcription workers refuse in their own process; yt-dlp and ffmpeg are not started by the actions that would go online; Demucs only gets offline proxy and Hugging Face settings. Their refusals are not counted here.\n- The open-connection check lists the TCP connections of this app and of the processes it started that are still running under it, about every 10 seconds. UDP sockets are not listed (Windows does not report where a UDP socket is connected). A connection that opens and closes between two checks can be missed. Another computer means any address that is not loopback, including this computer's own network address.\n- Refused here: outgoing TCP connections, host-name lookups and UDP sends to another computer (also through asyncio). Not covered: a UDP socket connected to another computer and then used with send(), and native code that does not use Python's socket module.\n- Bytes are not measured. To watch all traffic yourself, see docs/WORK_OFFLINE.md (Resource Monitor, Get-NetTCPConnection, Wireshark).",
+  "platform.calls.folder": [
+   [
+    "showwarning",
+    "Folder missing",
+    "Could not open: (empty)"
+   ],
+   [
+    "showwarning",
+    "Folder missing",
+    "Could not open: Z:/no/such/folder"
+   ],
+   [
+    "showerror",
+    "Open folder failed",
+    "explorer crashed"
+   ],
+   [
+    "show_error",
+    "Open folder failed",
+    "Could not open that folder.",
+    "detail=explorer crashed"
+   ]
+  ],
+  "platform.calls.open": [
+   [
+    "notify",
+    "warning",
+    "No app is set to open .mkv files; the file is shown in its folder."
+   ],
+   [
+    "showinfo",
+    "No app to open the file",
+    "No app is set to open .mkv files; the file is shown in its folder."
+   ],
+   [
+    "notify",
+    "warning",
+    "No app is set to open .mkv files, and its folder could not be opened either."
+   ],
+   [
+    "showinfo",
+    "No app to open the file",
+    "No app is set to open .mkv files, and its folder could not be opened either."
+   ],
+   [
+    "notify",
+    "warning",
+    "No app is set to open this kind of file; the file is shown in its folder."
+   ],
+   [
+    "showinfo",
+    "No app to open the file",
+    "No app is set to open this kind of file; the file is shown in its folder."
+   ],
+   [
+    "notify",
+    "warning",
+    "No app is set to open this kind of file, and its folder could not be opened either."
+   ],
+   [
+    "showinfo",
+    "No app to open the file",
+    "No app is set to open this kind of file, and its folder could not be opened either."
+   ],
+   [
+    "showerror",
+    "Open failed",
+    "Could not open that file with your system's default app.\ndisk on fire"
+   ],
+   [
+    "show_error",
+    "Open failed",
+    "Could not open that file with your system's default app.",
+    "detail=disk on fire"
+   ],
+   [
+    "showerror",
+    "Open failed",
+    "Could not play it.\ndisk on fire"
+   ]
+  ],
+  "platform.folder.mac": "Open Log Folder in Finder",
+  "platform.folder.mac_default": "Open Folder in Finder",
+  "platform.reveal.mac": "Reveal in Finder",
+  "platform.reveal.other": "Open JSON folder",
+  "subtitle_edit.button": "Open in Subtitle Edit",
+  "subtitle_edit.calls": [
+   [
+    "askyesno",
+    "Subtitle Edit not found",
+    "The Subtitle Edit path chosen in Advanced > App behaviour does not lead to SubtitleEdit.exe:\nD:/SE/SubtitleEdit.exe\n\nChoose SubtitleEdit.exe there again. Open the official download page now?"
+   ],
+   [
+    "askyesno",
+    "Subtitle Edit not found",
+    "Subtitle Edit was not found on this computer.\n\nIt is a free subtitle editor. Open its official download page now?\n\nIf you already have a portable copy, choose SubtitleEdit.exe in Advanced > App behaviour."
+   ],
+   [
+    "showwarning",
+    "No subtitle file",
+    "There is no subtitle file (SRT, VTT, ASS) for this transcript yet."
+   ],
+   [
+    "showwarning",
+    "Subtitle file missing",
+    "The subtitle file is no longer there:\nD:/subs/a.srt"
+   ],
+   [
+    "show_error",
+    "Open failed",
+    "Could not start Subtitle Edit.",
+    "detail=access denied"
+   ],
+   [
+    "showerror",
+    "Open failed",
+    "access denied"
+   ]
+  ],
+  "subtitle_edit.help": "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.",
+  "tray.menu": [
+   "Show",
+   "Hide",
+   "Exit",
+   "icon title: Whisper Transcriber Suite"
+  ],
+  "tray.reason.no_pillow": "Pillow Python package not installed",
+  "tray.reason.no_pystray": "pystray Python package not installed",
+  "tray.unavailable.mac": "Not available on macOS: the app stays in the Dock instead.",
+  "tray.unavailable.missing": "The tray icon libraries are missing.",
+  "tray.unavailable.no_pillow": "Pillow Python package not installed"
+ },
+ "tk": {
+  "bar.downloader.offer": [
+   "offer",
+   "Update it",
+   "Not now"
+  ],
+  "bar.downloader.progress": [
+   "progress",
+   "Update it",
+   "Not now"
+  ],
+  "bar.downloader.result": [
+   "result",
+   "Update it",
+   "Close"
+  ],
+  "bar.star": [
+   "Open GitHub page",
+   "Not now",
+   "Don't ask again"
+  ],
+  "bar.update": [
+   "What's new",
+   "Download",
+   "Later",
+   "Skip this version"
+  ],
+  "console": [
+   "Copy",
+   "Copy all",
+   "Clear"
+  ],
+  "error_dialog": [
+   "Caller title",
+   "⚠",
+   "Caller message.",
+   "Show details ▸",
+   "Copy details",
+   "OK"
+  ],
+  "error_dialog.open": [
+   "Caller title",
+   "⚠",
+   "Caller message.",
+   "Hide details ▾",
+   "Copy details",
+   "OK"
+  ],
+  "help_icon": [
+   " ⓘ "
+  ],
+  "hw.calls": [
+   [
+    "showinfo",
+    "Cannot be used yet",
+    "Snapdragon X NPU (QNN)\n\nThis needs a backend that is not bundled, so the app would ignore it. Pick a tier marked ready."
+   ],
+   [
+    "showinfo",
+    "Pick a tier",
+    "Select a tier in the table first."
+   ],
+   [
+    "askyesno",
+    "Install GPU support",
+    "Your NVIDIA GPU needs NVIDIA's cuBLAS library, which the graphics driver does not include.\n\nDownload and install it now? It is a one-time download of about 550 MB from NVIDIA (via PyPI) into:\nX:/extras"
+   ],
+   [
+    "askyesno",
+    "Install GPU support",
+    "Your NVIDIA GPU needs NVIDIA's cuBLAS library, which the graphics driver does not include.\n\nDownload and install it now? It is a one-time download of about 550 MB from NVIDIA (via PyPI) into:\nX:/extras"
+   ],
+   [
+    "show_error",
+    "Install failed",
+    "Could not install NVIDIA's cuBLAS library.",
+    "detail=pip broke"
+   ],
+   [
+    "show_error",
+    "Save failed",
+    "Could not save your hardware preference.",
+    "detail=read-only disk"
+   ],
+   [
+    "confirm",
+    "title=Apply now?",
+    "action=Applying the new hardware setting now",
+    "question=Apply it now? Choose No to let it finish; the setting is then used after the app is restarted."
+   ]
+  ],
+  "hw.diagnostics": [
+   "Hardware autodetect",
+   "Detected hardware (best first):",
+   "GPU diagnostics copied to the clipboard (also written to the log) — paste them into a GitHub issue.",
+   "NVIDIA GPU cannot be used yet. The driver is too old. Update it.",
+   "Re-probe",
+   "Copy diagnostics",
+   "Install GPU support…",
+   "Cancel",
+   "Save and use"
+  ],
+  "hw.initial": [
+   "Hardware autodetect",
+   "Detected hardware (best first):",
+   "Probing…",
+   "Re-probe",
+   "Copy diagnostics",
+   "Install GPU support…",
+   "Cancel",
+   "Save and use",
+   "Tier",
+   "Status"
+  ],
+  "hw.install_failed": [
+   "Hardware autodetect",
+   "Detected hardware (best first):",
+   "GPU support install failed — see the log.",
+   "NVIDIA GPU cannot be used yet. The driver is too old. Update it.",
+   "Re-probe",
+   "Copy diagnostics",
+   "Install GPU support…",
+   "Cancel",
+   "Save and use"
+  ],
+  "hw.no_tiers": [
+   "Hardware autodetect",
+   "Detected hardware (best first):",
+   "No tier detected — falling back to CPU.",
+   "Re-probe",
+   "Copy diagnostics",
+   "Install GPU support…",
+   "Cancel",
+   "Save and use",
+   "Tier",
+   "Status"
+  ],
+  "hw.probed": [
+   "Hardware autodetect",
+   "Detected hardware (best first):",
+   "Recommended: NVIDIA CUDA (float16) — RTX 9999  (device=cuda, compute_type=float16)",
+   "NVIDIA GPU cannot be used yet. The driver is too old. Update it.",
+   "Re-probe",
+   "Copy diagnostics",
+   "Install GPU support…",
+   "Cancel",
+   "Save and use",
+   "Tier",
+   "Status",
+   "NVIDIA CUDA — NVIDIA GPU",
+   "needs setup",
+   "✓",
+   "NVIDIA CUDA (float16) — RTX 9999",
+   "ready",
+   "Snapdragon X NPU (QNN)",
+   "needs backend",
+   "CPU int8",
+   "ready"
+  ],
+  "hw.select_supported": [
+   "Hardware autodetect",
+   "Detected hardware (best first):",
+   "Selected: NVIDIA CUDA (float16) — RTX 9999  (device=cuda, compute_type=float16)",
+   "NVIDIA GPU cannot be used yet. The driver is too old. Update it.",
+   "Re-probe",
+   "Copy diagnostics",
+   "Install GPU support…",
+   "Cancel",
+   "Save and use"
+  ],
+  "hw.select_unsupported": [
+   "Hardware autodetect",
+   "Detected hardware (best first):",
+   "Selected: Snapdragon X NPU (QNN)  (device=cpu, compute_type=int8) -- its backend is not bundled, so it cannot be saved",
+   "NVIDIA GPU cannot be used yet. The driver is too old. Update it.",
+   "Re-probe",
+   "Copy diagnostics",
+   "Install GPU support…",
+   "Cancel",
+   "Save and use"
+  ],
+  "notice": [
+   "Caller notice",
+   "×"
+  ],
+  "offline.bar": [
+   "Work offline: this app's open connections unknown (could not check: no psutil) · 1 refused, 0 automatic requests not sent since 01:00",
+   "Network log"
+  ],
+  "offline.window": [
+   "Network log (Work offline)",
+   "Verify offline now",
+   "Refresh",
+   "Copy all",
+   "Close"
+  ],
+  "offline.window.verify_failed": [
+   "  FAILED  Verify offline now: cannot run the self-test"
+  ],
+  "update_command": [
+   "Update to 9.9.9",
+   "Version 9.9.9 is available. This copy runs from the source code; to update it, close the app and run this command in a terminal:",
+   "Copy",
+   "Close"
+  ],
+  "update_command.copied": [
+   "Update to 9.9.9",
+   "Version 9.9.9 is available. This copy runs from the source code; to update it, close the app and run this command in a terminal:",
+   "Copy",
+   "Copied.",
+   "Close"
+  ],
+  "whats_new.empty": [
+   "What's new in 9.9.9",
+   "This release has no short summary. The full notes have the details.",
+   "Full release notes",
+   "Close"
+  ],
+  "whats_new.full": [
+   "What's new in 9.9.9",
+   "Faster start",
+   "• One thing",
+   "• Another",
+   "Full release notes",
+   "Close"
+  ]
+ }
+}

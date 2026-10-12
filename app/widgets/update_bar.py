@@ -21,6 +21,7 @@ from tkinter import ttk
 from typing import Callable
 
 from app.dpi import place_over, px
+from app.i18n import N_, _, translate
 
 _WRAP_MIN = 220
 _WINDOW_WRAP = 460
@@ -64,11 +65,12 @@ class _QuietBar(ttk.Frame):
 class UpdateBar(_QuietBar):
     """A one-line notice with four buttons, gridded in and out by pack."""
 
+    #: (key, English label); the label is translated where the button is made.
     BUTTONS = (
-        ("whats_new", "What's new"),
-        ("download", "Download"),
-        ("later", "Later"),
-        ("skip", "Skip this version"),
+        ("whats_new", N_("What's new")),
+        ("download", N_("Download")),
+        ("later", N_("Later")),
+        ("skip", N_("Skip this version")),
     )
 
     def __init__(
@@ -89,7 +91,7 @@ class UpdateBar(_QuietBar):
         }
         self.buttons: dict[str, ttk.Button] = {}
         for key, text in self.BUTTONS:
-            button = ttk.Button(self._button_row, text=text, command=commands[key])
+            button = ttk.Button(self._button_row, text=translate(text), command=commands[key])
             button.pack(side="left", padx=(6, 0))
             self.buttons[key] = button
 
@@ -110,9 +112,10 @@ class DownloaderUpdateBar(_QuietBar):
         on_dismiss: Callable[[], None],
     ) -> None:
         super().__init__(master)
-        self.update_button = ttk.Button(self._button_row, text="Update it", command=on_update)
+        self.update_button = ttk.Button(self._button_row, text=_("Update it"), command=on_update)
         self.update_button.pack(side="left", padx=(6, 0))
-        self.dismiss_button = ttk.Button(self._button_row, text="Not now", command=on_dismiss)
+        self.dismiss_button = ttk.Button(self._button_row, text=_("Not now"),
+                                         command=on_dismiss)
         self.dismiss_button.pack(side="left", padx=(6, 0))
 
     def _set_buttons(self, *, update: str, dismiss: str, dismiss_enabled: bool = True) -> None:
@@ -127,15 +130,15 @@ class DownloaderUpdateBar(_QuietBar):
         self.dismiss_button.state(["!disabled"] if dismiss_enabled else ["disabled"])
 
     def show_offer(self, text: str, *, before: tk.Misc) -> None:
-        self._set_buttons(update="enabled", dismiss="Not now")
+        self._set_buttons(update="enabled", dismiss=_("Not now"))
         self.show(text, before=before)
 
     def show_progress(self, text: str, *, before: tk.Misc) -> None:
-        self._set_buttons(update="disabled", dismiss="Not now", dismiss_enabled=False)
+        self._set_buttons(update="disabled", dismiss=_("Not now"), dismiss_enabled=False)
         self.show(text, before=before)
 
     def show_result(self, text: str, *, before: tk.Misc, can_retry: bool) -> None:
-        self._set_buttons(update="enabled" if can_retry else "hidden", dismiss="Close")
+        self._set_buttons(update="enabled" if can_retry else "hidden", dismiss=_("Close"))
         self.show(text, before=before)
 
 
@@ -146,10 +149,11 @@ class StarBar(_QuietBar):
     is ``App._star_*``.
     """
 
+    #: (key, English label); the label is translated where the button is made.
     BUTTONS = (
-        ("open", "Open GitHub page"),
-        ("not_now", "Not now"),
-        ("never", "Don't ask again"),
+        ("open", N_("Open GitHub page")),
+        ("not_now", N_("Not now")),
+        ("never", N_("Don't ask again")),
     )
 
     def __init__(
@@ -164,7 +168,7 @@ class StarBar(_QuietBar):
         commands = {"open": on_open, "not_now": on_not_now, "never": on_never}
         self.buttons: dict[str, ttk.Button] = {}
         for key, text in self.BUTTONS:
-            button = ttk.Button(self._button_row, text=text, command=commands[key])
+            button = ttk.Button(self._button_row, text=translate(text), command=commands[key])
             button.pack(side="left", padx=(6, 0))
             self.buttons[key] = button
 
@@ -190,7 +194,7 @@ def show_whats_new(
     on_full_notes: Callable[[], object],
 ) -> tk.Toplevel:
     """A small, non-modal window with the release's headline and highlights."""
-    top, frame = _window(parent, f"What's new in {version}")
+    top, frame = _window(parent, _("What's new in {version}", version=version))
     if headline:
         ttk.Label(
             frame, text=headline, wraplength=px(_WINDOW_WRAP), justify="left",
@@ -202,25 +206,26 @@ def show_whats_new(
         ).pack(anchor="w", pady=(8, 0))
     if not headline and not highlights:
         ttk.Label(
-            frame, text="This release has no short summary. The full notes have the details.",
+            frame, text=_("This release has no short summary. The full notes have the details."),
             wraplength=px(_WINDOW_WRAP), justify="left",
         ).pack(anchor="w")
     buttons = ttk.Frame(frame)
     buttons.pack(fill="x", pady=(14, 0))
-    ttk.Button(buttons, text="Full release notes", command=on_full_notes).pack(side="left")
-    ttk.Button(buttons, text="Close", command=top.destroy).pack(side="right")
+    ttk.Button(buttons, text=_("Full release notes"), command=on_full_notes).pack(side="left")
+    ttk.Button(buttons, text=_("Close"), command=top.destroy).pack(side="right")
     place_over(top, parent)
     return top
 
 
 def show_update_command(parent: tk.Misc, *, version: str, command: str) -> tk.Toplevel:
     """A small window with the command that updates a source checkout."""
-    top, frame = _window(parent, f"Update to {version}")
+    top, frame = _window(parent, _("Update to {version}", version=version))
     ttk.Label(
         frame,
-        text=(
-            f"Version {version} is available. This copy runs from the source code; "
-            "to update it, close the app and run this command in a terminal:"
+        text=_(
+            "Version {version} is available. This copy runs from the source code; "
+            "to update it, close the app and run this command in a terminal:",
+            version=version,
         ),
         wraplength=px(_WINDOW_WRAP), justify="left",
     ).pack(anchor="w")
@@ -235,12 +240,12 @@ def show_update_command(parent: tk.Misc, *, version: str, command: str) -> tk.To
     def _copy() -> None:
         top.clipboard_clear()
         top.clipboard_append(command)
-        status.set("Copied.")
+        status.set(_("Copied."))
 
     buttons = ttk.Frame(frame)
     buttons.pack(fill="x", pady=(10, 0))
-    ttk.Button(buttons, text="Copy", command=_copy).pack(side="left")
+    ttk.Button(buttons, text=_("Copy"), command=_copy).pack(side="left")
     ttk.Label(buttons, textvariable=status).pack(side="left", padx=(8, 0))
-    ttk.Button(buttons, text="Close", command=top.destroy).pack(side="right")
+    ttk.Button(buttons, text=_("Close"), command=top.destroy).pack(side="right")
     place_over(top, parent)
     return top

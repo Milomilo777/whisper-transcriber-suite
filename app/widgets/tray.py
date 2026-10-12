@@ -19,6 +19,7 @@ import threading
 from typing import TYPE_CHECKING, Any
 
 from app import shortcuts
+from app.i18n import _, pgettext
 
 if TYPE_CHECKING:
     from app.app import App
@@ -48,9 +49,9 @@ def is_available() -> bool:
 def availability_reason() -> str:
     ps, pil = _try_load_pystray()
     if ps is None:
-        return "pystray Python package not installed"
+        return _("pystray Python package not installed")
     if pil is None:
-        return "Pillow Python package not installed"
+        return _("Pillow Python package not installed")
     return ""
 
 
@@ -62,9 +63,9 @@ def unavailable_reason() -> str:
     platform needs pystray + Pillow.
     """
     if sys.platform == "darwin":
-        return "Not available on macOS: the app stays in the Dock instead."
+        return _("Not available on macOS: the app stays in the Dock instead.")
     if not is_available():
-        return availability_reason() or "The tray icon libraries are missing."
+        return availability_reason() or _("The tray icon libraries are missing.")
     return ""
 
 
@@ -151,9 +152,9 @@ class TrayController:
             return
         try:
             menu = self._pystray.Menu(
-                self._pystray.MenuItem("Show", lambda _i, _e: self._post(self._show_window),
+                self._pystray.MenuItem(pgettext("tray menu", "Show"), lambda _i, _e: self._post(self._show_window),
                                        default=True),
-                self._pystray.MenuItem("Hide", lambda _i, _e: self._post(self._hide_window)),
+                self._pystray.MenuItem(pgettext("tray menu", "Hide"), lambda _i, _e: self._post(self._hide_window)),
                 self._pystray.Menu.SEPARATOR,
                 self._pystray.MenuItem(shortcuts.quit_label(), lambda _i, _e: self._post(self._exit_app)),
             )
