@@ -521,9 +521,9 @@ def build_live_tab(app: Any, parent: Any) -> None:
     src = section_labelframe(
         parent, _("Audio source"),
         _("Choose what to listen to. 'Microphone' captures an input device; "
-        "'System audio' captures whatever is currently playing on this "
-        "computer — useful for a meeting, a video, or a call you are "
-        "listening to."),
+          "'System audio' captures whatever is currently playing on this "
+          "computer — useful for a meeting, a video, or a call you are "
+          "listening to."),
     )
     src.grid(row=0, column=0, sticky="ew", padx=15, pady=(15, 6))
     src.columnconfigure(1, weight=1)
@@ -574,8 +574,8 @@ def build_live_tab(app: Any, parent: Any) -> None:
     help_icon(
         src,
         _("Naming the language is more reliable than auto-detect for live "
-        "audio: each chunk is short, and detection on a few seconds of "
-        "speech can guess wrong and switch mid-session."),
+          "audio: each chunk is short, and detection on a few seconds of "
+          "speech can guess wrong and switch mid-session."),
     ).grid(row=2, column=2, sticky="w", padx=(0, 8), pady=6)
 
     ttk.Label(src, text=_("Model:")).grid(row=3, column=0, sticky="e", padx=8, pady=6)
@@ -599,11 +599,11 @@ def build_live_tab(app: Any, parent: Any) -> None:
     help_icon(
         src,
         _("Live text only keeps up if the model transcribes faster than you "
-        "speak. Tiny (the default) keeps up on any computer; bigger models "
-        "are more accurate but several times too slow on a computer without "
-        "a supported graphics card. Models already on this computer are "
-        "shown in bold; greyed ones still need a one-time download -- use "
-        "the Download button next to the picker."),
+          "speak. Tiny (the default) keeps up on any computer; bigger models "
+          "are more accurate but several times too slow on a computer without "
+          "a supported graphics card. Models already on this computer are "
+          "shown in bold; greyed ones still need a one-time download -- use "
+          "the Download button next to the picker."),
     ).grid(row=3, column=2, sticky="w", padx=(0, 8), pady=6)
 
     # ── Controls ──────────────────────────────────────────────────────
@@ -628,8 +628,8 @@ def build_live_tab(app: Any, parent: Any) -> None:
     help_icon(
         ctl,
         _("Off: the session's audio recording is deleted when you stop "
-        "(it takes 100-350 MB per hour). On: it is kept, and the log says "
-        "where the file is."),
+          "(it takes 100-350 MB per hour). On: it is kept, and the log says "
+          "where the file is."),
     ).pack(side="left", padx=(4, 0))
     ttk.Label(ctl, textvariable=app.live_status_var, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
         side="left", padx=(16, 0)
@@ -644,10 +644,10 @@ def build_live_tab(app: Any, parent: Any) -> None:
     lvl = section_labelframe(
         parent, _("Input level"),
         _("Live audio level while listening. The waves move with the sound "
-        "coming in; the bar underneath is a peak meter (green = normal "
-        "speech, yellow = loud, red = close to clipping) with the level in "
-        "dB at the top right. When nothing moves, nothing is being "
-        "captured."),
+          "coming in; the bar underneath is a peak meter (green = normal "
+          "speech, yellow = loud, red = close to clipping) with the level in "
+          "dB at the top right. When nothing moves, nothing is being "
+          "captured."),
     )
     lvl.grid(row=2, column=0, sticky="ew", padx=15, pady=(0, 6))
     lvl.columnconfigure(0, weight=1)
@@ -658,7 +658,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
     out = section_labelframe(
         parent, _("Live transcript"),
         _("Text appears a few seconds behind the speech: the app waits for a "
-        "natural pause before transcribing, so words are not cut in half."),
+          "natural pause before transcribing, so words are not cut in half."),
     )
     out.grid(row=3, column=0, sticky="nsew", padx=15, pady=(0, 6))
     out.columnconfigure(0, weight=1)
@@ -683,7 +683,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
     ttk.Label(
         actions,
         text=(_("Uses its own copy of the speech model while listening, "
-              "separate from the Transcribe queue.")),
+                "separate from the Transcribe queue.")),
         foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(side="right")
 
@@ -1250,7 +1250,7 @@ def _fail_live(app: Any, reason: str) -> None:
     app.after(0, lambda: show_error(
         app, _("Live transcription stopped"),
         _("Listening stopped because of a problem with the audio source or "
-        "the speech model. The text so far is kept."),
+          "the speech model. The text so far is kept."),
         detail=reason,
     ))
 
@@ -1374,7 +1374,7 @@ def save_before_exit(app: Any) -> bool:
     answer = messagebox.askyesnocancel(
         _("Unsaved live transcript"),
         _("The Live tab has a transcript that was not saved.\n\n"
-        "Save it before exiting?"),
+          "Save it before exiting?"),
         parent=app,
     )
     if answer is None:

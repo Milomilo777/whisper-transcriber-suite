@@ -631,9 +631,9 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         browse_row,
         _("Pick an audio or video file to transcribe locally (mp3, wav, mp4, "
-        "mkv, and most other common formats). The file is processed on "
-        "this machine and never leaves it unless you pick a cloud Engine "
-        "below."),
+          "mkv, and most other common formats). The file is processed on "
+          "this machine and never leaves it unless you pick a cloud Engine "
+          "below."),
     ).pack(side="left", padx=(6, 0))
 
     # ── Row 1: file path display (always visible — shows what's selected) ─
@@ -757,7 +757,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     bind_tooltip(
         app.transcribe_model_advisor_btn,
         _("Checks this computer's NVIDIA GPU (and its memory) or CPU and RAM "
-        "and suggests the fastest and the most accurate model that fit."),
+          "and suggests the fastest and the most accurate model that fit."),
     )
     # A disabled combobox still fires Enter/Leave, so this hover text is the
     # reason the picker is greyed out whenever the engine doesn't use it.
@@ -765,9 +765,9 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         model_row,
         _("Which Whisper model size the Faster-Whisper engine loads — bigger "
-        "models are more accurate but slower and use more RAM/VRAM. Not "
-        "used by the cloud engines or NVIDIA Parakeet, which have their "
-        "own model. Same picker as 'Whisper model' in Advanced settings."),
+          "models are more accurate but slower and use more RAM/VRAM. Not "
+          "used by the cloud engines or NVIDIA Parakeet, which have their "
+          "own model. Same picker as 'Whisper model' in Advanced settings."),
     ).pack(side="left", padx=(0, 8))
     model_combo.bind("<<ComboboxSelected>>", lambda _e: app._on_model_selected())
     app.model_status_var = tk.StringVar(value="")
@@ -814,8 +814,8 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         opts_line1,
         _("Spoken language in the file. Auto detects it from the first few "
-        "seconds of audio; picking it explicitly is faster and can be more "
-        "accurate for short or noisy clips."),
+          "seconds of audio; picking it explicitly is faster and can be more "
+          "accurate for short or noisy clips."),
     ).pack(side="left", padx=(0, 20))
     lang_combo.bind("<<ComboboxSelected>>", lambda _e: app._save_transcribe_prefs())
 
@@ -848,8 +848,8 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     app.diarization_help_icon = help_icon(
         opts_line1,
         _("Splits the transcript by who is speaking (SPEAKER_00, SPEAKER_01, "
-        "...). Adds processing time and needs the optional sherpa-onnx "
-        "component to be installed."),
+          "...). Adds processing time and needs the optional sherpa-onnx "
+          "component to be installed."),
     )
     app.diarization_help_icon.pack(side="left", padx=(0, 20))
 
@@ -885,8 +885,8 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         opts_line1,
         _("Stores a start/end time for every individual word instead of only "
-        "per sentence. Useful for karaoke-style captions or precise "
-        "editing; makes the output file larger."),
+          "per sentence. Useful for karaoke-style captions or precise "
+          "editing; makes the output file larger."),
     ).pack(side="left", padx=(4, 0))
 
     # Optional time-slice — transcribe only a portion of a long file
@@ -905,7 +905,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         opts_line2,
         _("Transcribe only this portion of the file (format H:MM:SS). Leave "
-        "both at 0:00:00 to transcribe the whole file."),
+          "both at 0:00:00 to transcribe the whole file."),
     ).pack(side="left", padx=(4, 0))
 
     # Output in English: Whisper's own translate task (no AI model needed).
@@ -976,8 +976,8 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     app.last_result_frame = section_labelframe(
         parent, _("Last result"),
         _("The output files from the most recently finished transcription, "
-        "with quick Open/Reveal actions. Stays empty until a job "
-        "completes; see the Transcription Queue tab for jobs in progress."),
+          "with quick Open/Reveal actions. Stays empty until a job "
+          "completes; see the Transcription Queue tab for jobs in progress."),
         padding=10,
     )
     app.last_result_frame.grid(
@@ -1007,11 +1007,11 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         top_row,
         _("Every transcription job you start is tracked here. Use the "
-        "buttons below the list (or right-click a row) to pause, resume, "
-        "cancel, re-run, or remove it; double-click a finished row to "
-        "open its output folder. Speed: 4.8x means 4.8 seconds of audio "
-        "were transcribed per second of work; below 1x is slower than the "
-        "recording plays. The time left is a rough estimate."),
+          "buttons below the list (or right-click a row) to pause, resume, "
+          "cancel, re-run, or remove it; double-click a finished row to "
+          "open its output folder. Speed: 4.8x means 4.8 seconds of audio "
+          "were transcribed per second of work; below 1x is slower than the "
+          "recording plays. The time left is a rough estimate."),
     ).pack(side="left")
     ttk.Button(top_row, text=_("Clear completed"), command=app.clear_completed).pack(
         side="right"
@@ -1134,8 +1134,8 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         top,
         _("Paste a link from YouTube or any other yt-dlp-supported site. "
-        "Available formats and subtitles are looked up automatically as "
-        "soon as you paste it."),
+          "Available formats and subtitles are looked up automatically as "
+          "soon as you paste it."),
     ).grid(row=0, column=3, sticky="w", padx=(6, 0))
 
     # Browser cookies right under the URL: login-walled sites (Instagram,
@@ -1166,11 +1166,11 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         top,
         _("Pick the browser you are logged in with. The download then uses "
-        "that browser's log-in session, so videos that need an account "
-        "(Instagram, Facebook, TikTok stories, age-restricted YouTube) work. "
-        "The cookies are read on this computer only; nothing is uploaded. "
-        "On Windows, close Chrome/Edge completely if it says it could not "
-        "copy the cookie database. Same setting as Advanced › Downloads."),
+          "that browser's log-in session, so videos that need an account "
+          "(Instagram, Facebook, TikTok stories, age-restricted YouTube) work. "
+          "The cookies are read on this computer only; nothing is uploaded. "
+          "On Windows, close Chrome/Edge completely if it says it could not "
+          "copy the cookie database. Same setting as Advanced › Downloads."),
     ).grid(row=1, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
     ttk.Label(top, text=pgettext("download form", "Folder")).grid(row=2, column=0, sticky="w", pady=(8, 0))
@@ -1184,7 +1184,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         top,
         _("Where the downloaded file is saved. Defaults to the folder "
-        "you last used; Browse to change it."),
+          "you last used; Browse to change it."),
     ).grid(row=2, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
     ttk.Label(top, text=pgettext("download form", "Mode")).grid(row=3, column=0, sticky="w", pady=(8, 0))
@@ -1207,8 +1207,8 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         top,
         _("'Audio and video' downloads a normal video file. 'Audio' "
-        "extracts just the audio track — smaller and faster if you only "
-        "need the sound or plan to transcribe it."),
+          "extracts just the audio track — smaller and faster if you only "
+          "need the sound or plan to transcribe it."),
     ).grid(row=3, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
     ttk.Label(top, text=pgettext("download form", "Audio")).grid(row=4, column=0, sticky="w", pady=(8, 0))
@@ -1220,8 +1220,8 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         top,
         _("Audio-only quality/codec choice, filled in once the URL is "
-        "looked up. Higher bitrate means a larger file and better "
-        "quality."),
+          "looked up. Higher bitrate means a larger file and better "
+          "quality."),
     ).grid(row=4, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
     ttk.Label(top, text=pgettext("download form", "Video")).grid(row=5, column=0, sticky="w", pady=(8, 0))
@@ -1233,7 +1233,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         top,
         _("Video quality/resolution choice, filled in once the URL is "
-        "looked up. Only used in 'Audio and video' mode."),
+          "looked up. Only used in 'Audio and video' mode."),
     ).grid(row=5, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
     ttk.Label(top, text=pgettext("download form", "Output")).grid(row=6, column=0, sticky="w", pady=(8, 0))
@@ -1245,8 +1245,8 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         top,
         _("Container format for the saved file (e.g. mp4). Changing it may "
-        "re-encode the file instead of just repackaging it, which takes "
-        "longer."),
+          "re-encode the file instead of just repackaging it, which takes "
+          "longer."),
     ).grid(row=6, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
     # --- Optional time-range slice (v1.0.3) -------------------------------
@@ -1259,8 +1259,8 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     trim_frame = section_labelframe(
         top, _("Time range (optional)"),
         _("Download (and optionally transcribe) only this portion of the "
-        "video instead of the whole thing. Leave both at 0:00:00 for the "
-        "full length."),
+          "video instead of the whole thing. Leave both at 0:00:00 for the "
+          "full length."),
         padding=(8, 4),
     )
     trim_frame.grid(
@@ -1342,9 +1342,9 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         top,
         _("Downloads the video's existing subtitles/captions (auto-"
-        "generated or manual) in the chosen language, instead of "
-        "transcribing the audio yourself. Only available when the site "
-        "provides them."),
+          "generated or manual) in the chosen language, instead of "
+          "transcribing the audio yourself. Only available when the site "
+          "provides them."),
     ).grid(row=7, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
     app.subtitle_lang_combo.bind(
         "<<ComboboxSelected>>", lambda _e: app.update_caption_shortcut_state()
@@ -1390,8 +1390,8 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         after_frame,
         _("Automatically queues the downloaded file for transcription as "
-        "soon as the download finishes, using the settings in the "
-        "Transcribe tab."),
+          "soon as the download finishes, using the settings in the "
+          "Transcribe tab."),
     ).pack(side="left", padx=(6, 0))
 
     # "Make subtitled video": per job, not saved (a re-encode can take as
@@ -1405,9 +1405,9 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         after_frame,
         _("Downloads the video, transcribes it with the Transcribe tab's "
-        "settings, then burns the subtitles into a new file named "
-        "<title>-subbed.mp4 next to the download. The download and the "
-        "transcript files are kept. Needs 'Audio and video'."),
+          "settings, then burns the subtitles into a new file named "
+          "<title>-subbed.mp4 next to the download. The download and the "
+          "transcript files are kept. Needs 'Audio and video'."),
     ).pack(side="left", padx=(6, 0))
 
     # SMTV "all parts" toggle. Built always, shown only when an SMTV
@@ -1461,9 +1461,9 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     bind_tooltip(
         app.js_runtime_button,
         _("YouTube downloads need a small JavaScript engine (Deno, one-time "
-        "download of about 40 MB from its official GitHub page, checked "
-        "against its published checksum). Without it some or all YouTube "
-        "formats are missing and downloads can fail."),
+          "download of about 40 MB from its official GitHub page, checked "
+          "against its published checksum). Without it some or all YouTube "
+          "formats are missing and downloads can fail."),
     )
 
     # Primary CTA for the Download tab — same Accent style + larger
@@ -1561,7 +1561,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Label(
         dl_action_bar,
         text=_("(Pause stops the download but keeps the partial file; "
-             "Resume continues it)"),
+               "Resume continues it)"),
         foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(side="left", padx=(8, 0))
     app.download_tree.bind(
@@ -1593,10 +1593,10 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
         frame,
         text=(
             _("Turn this on to open a simple web page that uses this app to "
-            "transcribe. Open it in a browser on this computer, or share it "
-            "with phones and other PCs on your network. It stays off until "
-            "you start it, and there is nothing to install on the other "
-            "devices.")
+              "transcribe. Open it in a browser on this computer, or share it "
+              "with phones and other PCs on your network. It stays off until "
+              "you start it, and there is nothing to install on the other "
+              "devices.")
         ),
         wraplength=px(620), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", pady=(4, 12))
@@ -1634,8 +1634,8 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     opts = section_labelframe(
         frame, _("Options"),
         _("Port, network sharing, and an optional access password for the "
-        "web page this tab starts. Each field also has its own note "
-        "below it."),
+          "web page this tab starts. Each field also has its own note "
+          "below it."),
         padding=12,
     )
     opts.pack(fill="x", pady=(0, 8))
@@ -1676,8 +1676,8 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
         opts,
         text=(
             _("Off: only this computer can use it (no firewall prompt).\n"
-            "On: Windows may ask to allow it through the firewall — click "
-            "Allow. Anyone on your network will be able to use it.")
+              "On: Windows may ask to allow it through the firewall — click "
+              "Allow. Anyone on your network will be able to use it.")
         ),
         wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", padx=(22, 0), pady=(0, 8))
@@ -1696,10 +1696,10 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
         opts,
         text=(
             _("Leave blank for no password. If you set one, share it with the "
-            "people you want to let in: they type it into the page's "
-            "password box, or open the address with  ?token=YOURPASSWORD  "
-            "added (letters and digits only; the page then removes it from "
-            "the address bar).")
+              "people you want to let in: they type it into the page's "
+              "password box, or open the address with  ?token=YOURPASSWORD  "
+              "added (letters and digits only; the page then removes it from "
+              "the address bar).")
         ),
         wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", padx=(0, 0), pady=(4, 0))
@@ -1717,8 +1717,8 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
         opts,
         text=(
             _("Off by default. When on, the address starts with https:// and "
-            "the browser will warn that the certificate is not trusted the "
-            "first time — that is expected; accept it once.")
+              "the browser will warn that the certificate is not trusted the "
+              "first time — that is expected; accept it once.")
         ),
         wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", padx=(22, 0), pady=(0, 8))
@@ -1739,8 +1739,8 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
         opts,
         text=(
             _("Leave blank for none. When set, the server POSTs a small JSON "
-            "summary to this URL each time a job finishes (or fails). "
-            "Loopback and private cloud-metadata addresses are refused.")
+              "summary to this URL each time a job finishes (or fails). "
+              "Loopback and private cloud-metadata addresses are refused.")
         ),
         wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", padx=(0, 0), pady=(4, 0))
@@ -1750,11 +1750,11 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
         frame,
         text=(
             _("Use this only on a network you trust (your home or office "
-            "Wi-Fi). It has no accounts, and unless you turn on HTTPS above "
-            "it is not encrypted — anyone who can reach the address (and "
-            "knows the password, if you set one) can use it. The first time "
-            "you turn it on it may need to download the speech model; jobs "
-            "will wait for that.")
+              "Wi-Fi). It has no accounts, and unless you turn on HTTPS above "
+              "it is not encrypted — anyone who can reach the address (and "
+              "knows the password, if you set one) can use it. The first time "
+              "you turn it on it may need to download the speech model; jobs "
+              "will wait for that.")
         ),
         wraplength=px(620), justify="left", foreground=tokens.themed(tokens.WARNING_TEXT),
     ).pack(anchor="w", pady=(10, 0))
