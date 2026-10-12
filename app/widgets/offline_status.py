@@ -37,21 +37,21 @@ FRESH_SECONDS = 30.0
 LIMITS = (
     N_("What this shows, and what it does not:"),
     N_("- The counts and events come from this window's process. Transcription "
-    "workers refuse in their own process; yt-dlp and ffmpeg are not started "
-    "by the actions that would go online; Demucs only gets offline proxy and "
-    "Hugging Face settings. Their refusals are not counted here."),
+       "workers refuse in their own process; yt-dlp and ffmpeg are not started "
+       "by the actions that would go online; Demucs only gets offline proxy and "
+       "Hugging Face settings. Their refusals are not counted here."),
     N_("- The open-connection check lists the TCP connections of this app and of "
-    "the processes it started that are still running under it, about every "
-    "10 seconds. UDP sockets are not listed (Windows does not report where a "
-    "UDP socket is connected). A connection that opens and closes between two "
-    "checks can be missed. Another computer means any address that is not "
-    "loopback, including this computer's own network address."),
+       "the processes it started that are still running under it, about every "
+       "10 seconds. UDP sockets are not listed (Windows does not report where a "
+       "UDP socket is connected). A connection that opens and closes between two "
+       "checks can be missed. Another computer means any address that is not "
+       "loopback, including this computer's own network address."),
     N_("- Refused here: outgoing TCP connections, host-name lookups and UDP sends "
-    "to another computer (also through asyncio). Not covered: a UDP socket "
-    "connected to another computer and then used with send(), and native code "
-    "that does not use Python's socket module."),
+       "to another computer (also through asyncio). Not covered: a UDP socket "
+       "connected to another computer and then used with send(), and native code "
+       "that does not use Python's socket module."),
     N_("- Bytes are not measured. To watch all traffic yourself, see "
-    "docs/WORK_OFFLINE.md (Resource Monitor, Get-NetTCPConnection, Wireshark)."),
+       "docs/WORK_OFFLINE.md (Resource Monitor, Get-NetTCPConnection, Wireshark)."),
 )
 
 
