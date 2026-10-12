@@ -89,6 +89,13 @@ tls="$(env -u SSL_CERT_FILE -u SSL_CERT_DIR "$APP/Contents/MacOS/Whisper Transcr
 echo "TLS self-check: $tls"
 { grep -q '"source": "certifi"' <<<"$tls" && grep -q '"cafile": "[^"]*\.app/Contents/' <<<"$tls"; } \
   || { echo "HTTPS trust store is not the bundled certifi file (user Macs would fail CERTIFICATE_VERIFY_FAILED)"; bad=$((bad + 1)); }
+# Interface translations (app/i18n.py): every catalog in the tree must be in the bundle, else the
+# app silently runs in English (the spec's datas entry for app/locales).
+want_cat="$(find app/locales -maxdepth 1 -name '*.json' | wc -l | tr -d ' ')"
+got_cat="$(find "$APP/Contents" -path '*/app/locales/*.json' -type f | sed 's#.*/##' | sort -u | wc -l | tr -d ' ')"
+echo "interface catalogs   : $got_cat of $want_cat"
+[ "$want_cat" -gt 0 ] && [ "$got_cat" = "$want_cat" ] \
+  || { echo "interface catalogs missing from the bundle (app/locales)"; bad=$((bad + 1)); }
 codesign --verify --deep --strict "$APP" || bad=$((bad + 1))
 plutil -lint "$APP/Contents/Info.plist" >/dev/null || { echo "Info.plist does not parse"; bad=$((bad + 1)); }
 # macOS 10.14+ (TCC) terminates an app that opens the microphone without this
