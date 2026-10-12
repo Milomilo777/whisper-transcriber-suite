@@ -17,3 +17,6 @@
 *.png       binary
 *.ico       binary
 *.onnx      binary
+
+# Interface catalogs: the extractor writes LF and --check compares bytes.
+app/locales/*.json text eol=lf

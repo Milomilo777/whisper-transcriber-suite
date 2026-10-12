@@ -39,6 +39,11 @@ def run(open_paths: list[str] | None = None) -> None:
     # otherwise leave no trace and no message.
     from . import crash_report
     crash_report.install_excepthook()
+    # The interface language, before any module that builds widget text is imported. The
+    # config is read without the online layer: no network request before the window opens.
+    from core.config import load_config
+    from . import i18n
+    i18n.init_language(lambda: load_config(fetch_online=False))
     from .app import App
     app = App()
     if open_paths:

@@ -182,6 +182,7 @@ a = Analysis(
         'app.widgets',
         'app.observability',
         'app.crash_report',
+        'app.i18n',
         'app.theme.script_fonts',
         'app.theme.theme_colours',
         'app.theme.mac_appearance',
