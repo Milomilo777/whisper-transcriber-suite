@@ -882,11 +882,9 @@ def test_tk_english_texts_match_the_capture(
 
 def test_tk_pseudo_locale_leaves_nothing_untranslated(
         pseudo: None, tk_root: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    from core import star_invite
-
     states = capture_tk(monkeypatch, tmp_path)
-    # Texts from core/ (untranslated by design), the product name and the file names shown.
-    foreign = {star_invite.ABOUT_LINE, "Whisper Transcriber Suite"}
+    # The product name and the file names shown.
+    foreign = {"Whisper Transcriber Suite"}
     left = sorted({
         f"{name}: {text}" for name, rows in states.items() for text in rows
         if text.strip() and not is_pseudo_marked(text) and text not in foreign

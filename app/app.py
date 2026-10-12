@@ -90,6 +90,10 @@ _HELP_MENU_LABEL = N_("Help")
 _CHECK_FOR_UPDATES_LABEL = N_("Check for updates...")
 _ABOUT_MENU_LABEL = N_("About")
 _WORK_OFFLINE_LABEL = N_("Work offline")
+# core.star_invite's two lines, marked here: the app shows them, and core/ is not translated.
+# tests/app/test_i18n_app_walk.py keeps them equal to core's English.
+_STAR_ABOUT_LINE = N_("Like the app? A star on its GitHub page helps other people find it.")
+_STAR_BAR_TEXT = N_("Enjoying it? A star on GitHub helps other people find it.")
 # An app left open keeps checking about once a day (the date throttle in
 # _maybe_quiet_update_check still applies).
 _UPDATE_RECHECK_MS = 24 * 60 * 60 * 1000
@@ -2175,9 +2179,9 @@ class App(tk.Tk):
                    version=newer),
             ).pack(anchor="w", pady=(4, 0))
         # One quiet line: the repo page (never /stargazers, it has no Star button).
-        from core import star_invite as _star
         star_line = ttk.Label(
-            header, text=_star.ABOUT_LINE, foreground=tokens.themed(tokens.LINK), cursor="hand2",
+            header, text=translate(_STAR_ABOUT_LINE), foreground=tokens.themed(tokens.LINK),
+            cursor="hand2",
         )
         star_line.pack(anchor="w", pady=(4, 0))
         star_line.bind("<Button-1>", lambda _e: self._star_open_page())
@@ -6391,7 +6395,6 @@ class App(tk.Tk):
 
     def _show_star_bar(self) -> None:
         """Show the quiet bar above the tabs. Never moves the focus."""
-        from core import star_invite
         bar = self._star_bar
         if bar is None:
             from app.widgets.update_bar import StarBar
@@ -6402,7 +6405,7 @@ class App(tk.Tk):
                 on_never=self._star_never,
             )
             self._star_bar = bar
-        bar.show(star_invite.BAR_TEXT, before=self.nb)
+        bar.show(translate(_STAR_BAR_TEXT), before=self.nb)
 
     def _hide_star_bar(self) -> None:
         bar = _inst_attr(self, "_star_bar")
