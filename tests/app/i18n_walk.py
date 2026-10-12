@@ -18,14 +18,45 @@ _TEXT_CLASSES = {
     "Label", "Button", "Checkbutton", "Radiobutton", "Labelframe", "Menubutton", "Message",
     "TLabel", "TButton", "TCheckbutton", "TRadiobutton", "TLabelframe", "TMenubutton",
 }
-# One pseudo-locale segment: "[" + text + " " + "~~~" + "]" (app.i18n.pseudo_translate).
-_PSEUDO_SEGMENT = re.compile(r"\[.*? ~+\]", re.DOTALL)
+# The end of one pseudo-locale segment: "[" + text + " " + "~~~" + "]" (app.i18n.pseudo_translate).
+_SEGMENT_END = re.compile(r" ~+\]")
+# The shortcut app.shortcuts.menu_item puts after a menu label ("Ctrl+O", "Cmd+O", the command
+# symbol): key names, never translated. Only one, only at the very end, right after a space or
+# the end of a segment.
+_TRAILING_SHORTCUT = re.compile(r"(?<=[\s\]])(?:(?:Ctrl|Cmd)\+|" + chr(0x2318) + r")\S+$")
+
+
+def unmarked_rest(text: str) -> str:
+    """``text`` without its pseudo-locale segments: what did not go through the layer.
+
+    Segments may nest (a translated phrase set into a translated sentence gives
+    "[... [phrase ~~] ... ~~~]"), and a placeholder value may hold plain brackets ("[1080p]"):
+    an opening "[" is matched by the next segment end " ~]" or plain "]" at its level. A
+    trailing menu shortcut is dropped too.
+    """
+    text = _TRAILING_SHORTCUT.sub("", text.rstrip())
+    covered = [False] * len(text)
+    openers: list[int] = []
+    i = 0
+    while i < len(text):
+        end = _SEGMENT_END.match(text, i)
+        if end and openers:
+            start = openers.pop()
+            covered[start:end.end()] = [True] * (end.end() - start)
+            i = end.end()
+            continue
+        if text[i] == "[":
+            openers.append(i)
+        elif text[i] == "]" and openers:
+            openers.pop()  # a plain pair of brackets, not a segment
+        i += 1
+    return "".join(ch for ch, hidden in zip(text, covered) if not hidden)
 
 
 def is_pseudo_marked(text: str) -> bool:
-    """True when every letter of ``text`` sits inside a pseudo-locale segment."""
-    rest = _PSEUDO_SEGMENT.sub("", text)
-    return not any(c.isalpha() for c in rest)
+    """True when every letter of ``text`` sits inside a pseudo-locale segment (nested ones
+    included), apart from a trailing menu shortcut such as "Ctrl+O"."""
+    return not any(c.isalpha() for c in unmarked_rest(text))
 
 
 def _text_of(w: tk.Misc) -> str:

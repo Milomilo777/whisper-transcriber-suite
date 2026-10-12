@@ -31,7 +31,7 @@ import pytest
 import app.app as app_mod
 from app import i18n, mac_native, shortcuts
 from app.app import App
-from tests.app.i18n_walk import is_pseudo_marked as _flat_marked
+from tests.app.i18n_walk import is_pseudo_marked
 
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "i18n" / "i18n_wave_7_en.json"
 # A remote run does not carry environment variables: an (untracked) marker file next to the
@@ -43,21 +43,6 @@ _VIDEO_SITE = "Supreme " + "Master"
 MEDIA = os.path.join(os.sep, "media", "talks", "talk one.mp4")
 
 Rows = list[list[str]]
-# One innermost pseudo-locale segment ("[" + text + " ~~~]" with no bracket inside).
-_INNER_SEGMENT = re.compile(r"\[[^\[\]]*? ~+\]")
-# The shortcut a menu item shows after its label (Windows / Linux form), never translated.
-_ACCEL = re.compile(r"\s+(?:Ctrl|Command)\+\S+$")
-
-
-def is_pseudo_marked(text: str) -> bool:
-    """i18n_walk.is_pseudo_marked, also for a translated text inside another one's placeholder
-    (the window title, "{action} needs the internet"): innermost segments are removed first."""
-    rest = _ACCEL.sub("", text)
-    while True:
-        shorter = _INNER_SEGMENT.sub("", rest)
-        if shorter == rest:
-            return _flat_marked(rest)
-        rest = shorter
 
 
 # ----------------------------------------------------------------------------- helpers

@@ -529,22 +529,6 @@ def _language_names() -> set[str]:
     return {name for name, _codes in SUBTITLE_LANGUAGES}
 
 
-_INNERMOST_SEGMENT = re.compile(r"\[[^\[\]]* ~+\]")
-
-
-def _marked(text: str) -> bool:
-    """``is_pseudo_marked`` that also accepts nested segments.
-
-    A translated phrase set into a translated sentence ("{cpu}" in advisor_summary) gives
-    "[... [phrase ~~] ... ~~~]"; the shared non-greedy check stops at the inner "]". Remove the
-    innermost segments until none is left, then look for letters.
-    """
-    previous = None
-    while previous != text:
-        previous, text = text, _INNERMOST_SEGMENT.sub("", text)
-    return is_pseudo_marked(text)
-
-
 def _unmarked(states: States) -> list[str]:
     """Texts with a letter outside a pseudo segment and outside a «data» value.
 
@@ -562,7 +546,7 @@ def _unmarked(states: States) -> list[str]:
                                       "askdirectory", "asksaveasfilename", "show_error",
                                       "notify info", "notify warning", "notify error"):
                 parts = parts[1:]
-            if not all(_marked(p) for p in parts):
+            if not all(is_pseudo_marked(p) for p in parts):
                 out.append(f"{key}: {text}")
     return out
 

@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 import os
 import queue
-import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -537,17 +536,12 @@ _NOT_OURS = {
 }
 
 
-_INNERMOST_SEGMENT = re.compile(r"\[[^\[\]]*? ~+\]")
-
-
 def _marked(text: str) -> bool:
-    """``i18n_walk.is_pseudo_marked`` for nested segments too: the caption line puts a
-    translated language name inside a translated entry inside a translated sentence."""
-    while True:
-        stripped = _INNERMOST_SEGMENT.sub("", text)
-        if stripped == text:
-            return not any(c.isalpha() for c in text)
-        text = stripped
+    """The shared check; the caption line nests segments (a translated language name inside
+    a translated entry inside a translated sentence)."""
+    from tests.app.i18n_walk import is_pseudo_marked
+
+    return is_pseudo_marked(text)
 
 
 @pytest.fixture

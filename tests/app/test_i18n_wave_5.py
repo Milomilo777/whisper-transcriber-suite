@@ -19,7 +19,6 @@ section of the fixture.
 from __future__ import annotations
 
 import json
-import re
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -28,8 +27,9 @@ from typing import Any, Callable, Iterator
 import pytest
 
 from app import i18n
+from tests.app.i18n_walk import is_pseudo_marked
 
-FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "i18n" / "i18n_wave_5_en.json"
+FIXTURE =Path(__file__).resolve().parent.parent / "fixtures" / "i18n" / "i18n_wave_5_en.json"
 SENTINEL = FIXTURE.parent / "CAPTURE_WAVE_5"
 
 
@@ -256,7 +256,6 @@ def _folder_calls(mp: pytest.MonkeyPatch, plat: Any, open_folder: Callable[..., 
     return calls.rows
 
 
-_SEGMENT = re.compile(r"\[[^\[\]]*? ~+\]")
 _CALL_KEYS = ("title", "message", "detail", "action", "question")
 
 # Test inputs that sit inside a widget-owned sentence as placeholder values, and texts that are
@@ -286,12 +285,7 @@ def unmarked(text: str) -> bool:
     rest = text
     for d in sorted(DATA, key=len, reverse=True):
         rest = rest.replace(d, "")
-    while True:
-        new = _SEGMENT.sub("", rest)
-        if new == rest:
-            break
-        rest = new
-    return any(c.isalpha() for c in rest)
+    return not is_pseudo_marked(rest)
 
 
 def _unmarked_in(states: dict[str, Any], skip: tuple[str, ...] = ()) -> list[str]:

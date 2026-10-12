@@ -490,18 +490,11 @@ def capture_tab(mp: pytest.MonkeyPatch, root: Any, fakes: Any, tmp_path: Path) -
 # ----------------------------------------------------------------- tests
 
 def _marked(text: str) -> bool:
-    """``is_pseudo_marked`` that also accepts a marked text inside a marked text (a translated
-    reason placed into a translated sentence): innermost segments are removed first."""
-    import re
-
+    """The shared check (nested segments included: a translated reason placed into a
+    translated sentence)."""
     from tests.app.i18n_walk import is_pseudo_marked
 
-    inner = re.compile(r"\[[^\[\]]*? ~+\]")
-    while True:
-        stripped = inner.sub("", text)
-        if stripped == text:
-            return is_pseudo_marked(text)
-        text = stripped
+    return is_pseudo_marked(text)
 
 
 # Texts that do not belong to this tab's own strings, with the reason.
