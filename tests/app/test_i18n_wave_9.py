@@ -588,9 +588,21 @@ def test_best_format_labels_stay_keys_of_their_maps(
         pseudo: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """The translated "Best audio" label is what the combobox shows AND the key the
     download looks up, so a download started in any language finds its format."""
-    states = _format(monkeypatch)
-    shown = [t for c, t in states["format_loaded"] if c == "combobox"]
-    assert shown[0].startswith("[") and shown[2].startswith("[")
+    from app.services import format_service as mod
+
+    url = "https://example.invalid/watch"
+    app = SimpleNamespace(
+        download_url_var=fake_tk.FakeVar(value=url), audio_format_combo={}, video_format_combo={},
+        audio_format_var=fake_tk.FakeVar(), video_format_var=fake_tk.FakeVar(), app_config={},
+        update_download_mode=lambda: None, set_download_duration=lambda _d: None,
+        update_caption_shortcut_state=lambda: None, hide_yt_dlp_offer=lambda: None,
+        format_status_var=fake_tk.FakeVar())
+    mod.FormatService(app)._handle_event("formats", url, {"formats": []})  # type: ignore[arg-type]
+    audio, video = app.audio_format_var.get(), app.video_format_var.get()
+    assert audio.startswith("[") and video.startswith("[")
+    assert app.audio_format_combo["values"] == [audio]
+    assert app.audio_format_map[audio] == {"kind": "best_audio"}
+    assert app.video_format_map[video] == {"kind": "best_video"}
 
 
 def test_errors_for_the_log_and_history_stay_english(
