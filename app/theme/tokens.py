@@ -12,24 +12,24 @@ from __future__ import annotations
 # --------------------------------------------------------------- text and links
 LINK = "#1a66d9"           # clickable text (5.1:1 on the light panel)
 TEXT_DISABLED = "#a0a0a0"  # faint / unavailable text
-TEXT_MUTED = "#64748b"     # secondary captions
-TEXT_SUBTLE = "#94a3b8"    # separators and tertiary hints
+TEXT_MUTED = "#505e73"     # secondary captions
+TEXT_SUBTLE = "#8191a3"    # separators and tertiary hints
 
 # ------------------------------------------------------------- status colours
-SUCCESS_TEXT = "#3a8f3a"
-WARNING_TEXT = "#b06a00"
+SUCCESS_TEXT = "#2b7a2b"
+WARNING_TEXT = "#a06000"
 DANGER_TEXT = "#b00020"
 DANGER_ICON = "#c62828"
 
 # Darker variants for text drawn on tinted rows or light panels (higher contrast).
 SUCCESS_STRONG = "#1e6f1e"
-WARNING_STRONG = "#9c6f00"
+WARNING_STRONG = "#7a5700"
 DANGER_STRONG = "#a00000"
-TEXT_MISSING = "#8a8a8a"   # names of models that are not downloaded yet
+TEXT_MISSING = "#616161"   # names of models that are not downloaded yet
 
 # Hardware chips: where the model runs.
-CHIP_GPU = "#2e9e44"
-CHIP_CPU = "#d08a1d"
+CHIP_GPU = "#268037"
+CHIP_CPU = "#9b6716"
 
 # Text of a pressed primary ("Accent.TButton") button, both themes. sv_ttk's own pressed text
 # (#25536a on the dark theme's #4ba6d5, #c1d8ee on the light theme's #327ec5) reads 3.06:1 and
@@ -114,7 +114,7 @@ DARK_PANELS = ("#1c1c1c", "#2b2b2b")
 LIGHT_PANEL = "#fafafa"
 DARK_VARIANTS = {
     LINK: "#6cb4ff",
-    TEXT_MUTED: "#a3adbb",
+    TEXT_MUTED: "#bac3cd",
     SUCCESS_TEXT: "#66bb6a",
     WARNING_TEXT: "#ffb74d",
     DANGER_TEXT: "#ff8a80",
@@ -122,8 +122,9 @@ DARK_VARIANTS = {
     SUCCESS_STRONG: "#a5d6a7",
     WARNING_STRONG: "#ffcc80",
     DANGER_STRONG: "#f4a6a6",
-    TEXT_MISSING: "#a6a6a6",
+    TEXT_MISSING: "#bcbcbc",
     CHIP_GPU: "#4caf50",
+    CHIP_CPU: "#d69736",
     ROW_ACTIVE: "#4a4520",
     ROW_SUSPECT: "#5a2a2a",
     ROW_WARN: "#523d16",

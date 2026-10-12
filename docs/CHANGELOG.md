@@ -100,6 +100,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   a player); it is saved under a numbered name instead.
 - **A transcription is no longer restarted as unresponsive when the system clock changes** (for example
   after a time sync).
+- **Easier-to-read colours**: success and warning text, the GPU/CPU badge and the names of models that are
+  not downloaded yet now reach WCAG AA contrast (4.5:1) on the light theme, secondary captions and
+  separators are darker too, and the CPU badge gets its own lighter amber on the dark theme.
 
 ## [2.0.0] — 2026-10-10
 

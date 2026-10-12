@@ -3650,14 +3650,14 @@ class App(tk.Tk):
         """Set the badge text + colour from the worker's effective device.
 
         ``kind`` is one of ``gpu`` (green), ``cpu`` (amber), ``cpu_downgraded``
-        (amber). Colours are theme-agnostic enough to read on sv_ttk's dark
-        and light palettes. The tooltip is refreshed with the full detail.
+        (amber). Colours come through ``tokens.themed`` so each keeps 4.5:1 on
+        the current theme's panel. The tooltip is refreshed with the full detail.
         """
         self.device_badge_var.set(text)
         colour = {
-            "gpu": tokens.themed(tokens.CHIP_GPU),            # green — running on the GPU
-            "cpu": tokens.CHIP_CPU,            # amber — CPU (slower)
-            "cpu_downgraded": tokens.CHIP_CPU,  # amber — GPU asked, fell back to CPU
+            "gpu": tokens.themed(tokens.CHIP_GPU),             # green — running on the GPU
+            "cpu": tokens.themed(tokens.CHIP_CPU),             # amber — CPU (slower)
+            "cpu_downgraded": tokens.themed(tokens.CHIP_CPU),  # amber — GPU asked, fell back to CPU
         }.get(kind, "")
         req = str(worker.get("requested_device") or "")
         ct = str(worker.get("compute_type") or "")
