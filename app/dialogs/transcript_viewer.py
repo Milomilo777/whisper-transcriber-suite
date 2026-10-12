@@ -45,6 +45,7 @@ from typing import Any, Callable, Collection, Optional
 
 from app.dialogs import share_page, viewer_exports
 from app import mac_native, shortcuts
+from app.i18n import N_, _, lazy, ngettext, pgettext, translate
 from app.dpi import place_over, px, scaled_size
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
@@ -440,7 +441,8 @@ def _os_open(path: str, parent: "tk.Misc | None" = None) -> None:
     """
     def done(error: BaseException | None) -> None:
         if error is not None and isinstance(parent, (tk.Tk, tk.Toplevel)):
-            show_error(parent, "Open failed", "Could not open that folder.", detail=str(error))
+            show_error(parent, _("Open failed"), _("Could not open that folder."),
+                       detail=str(error))
 
     open_async(path, parent, done)
 
@@ -482,7 +484,7 @@ def _locate_vlc_dir() -> str | None:
                         winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\VideoLAN\VLC",
                         0, winreg.KEY_READ | flag,
                     ) as key:
-                        install_dir, _ = winreg.QueryValueEx(key, "InstallDir")
+                        install_dir, _unused = winreg.QueryValueEx(key, "InstallDir")
                         if install_dir:
                             candidates.append(str(install_dir))
                 except OSError:
@@ -545,13 +547,13 @@ def _vlc_missing_hint(platform: str) -> str:
     macOS and Linux get platform-neutral wording.
     """
     if platform == "win32":
-        return (
+        return _(
             "VLC media player isn't installed (or is the 32-bit build — "
             "this app is 64-bit and needs the 64-bit VLC). Install the "
             "64-bit VLC to enable embedded playback. The viewer still "
             "works in read-only mode."
         )
-    return (
+    return _(
         "VLC media player isn't installed (or doesn't match this "
         "computer's architecture). Install VLC to enable embedded "
         "playback. The viewer still works in read-only mode."
@@ -561,13 +563,13 @@ def _vlc_missing_hint(platform: str) -> str:
 def _vlc_start_failed_hint(platform: str) -> str:
     """User-facing text for "libvlc loaded but vlc.Instance() failed"."""
     if platform == "win32":
-        return (
+        return _(
             "VLC loaded but could not start (its plugins may be missing or "
             "the architecture doesn't match — this app is 64-bit). "
             "Reinstall the 64-bit VLC to enable embedded playback. The "
             "viewer still works in read-only mode."
         )
-    return (
+    return _(
         "VLC loaded but could not start (its plugins may be missing or "
         "the architecture doesn't match). Reinstall VLC to enable "
         "embedded playback. The viewer still works in read-only mode."
@@ -601,7 +603,7 @@ def _try_load_vlc() -> tuple[Any, str]:
     try:
         import vlc  # type: ignore[import-not-found]
     except ImportError as e:
-        return None, f"python-vlc binding not installed: {e}"
+        return None, _("python-vlc binding not installed: {error}", error=e)
     except OSError:
         # libvlc.dll not loadable — either VLC isn't installed, or it's the
         # wrong architecture (this app is 64-bit, so it needs 64-bit VLC).
@@ -634,6 +636,16 @@ def _set_segment_text(seg: dict[str, Any], text: str) -> None:
     seg["text"] = text
     if "words" in seg and not words_match_text(seg):
         del seg["words"]
+
+
+# The texts the AI panel shows while an action runs and when it fails, by the action's
+# English name (TranscriptViewer._run_ai_task). Whole sentences, so translators can reorder.
+_AI_TASK_TEXTS: dict[str, tuple[str, str]] = {
+    "Summarise": (N_("Summarise…"), N_("Summarise failed: {error}")),
+    "Action items": (N_("Action items…"), N_("Action items failed: {error}")),
+    "Ask": (N_("Ask…"), N_("Ask failed: {error}")),
+    "Translate": (N_("Translate…"), N_("Translate failed: {error}")),
+}
 
 
 def _strip_fillers(text: str, pattern: re.Pattern[str]) -> str:
@@ -705,7 +717,7 @@ class TranscriptViewer(tk.Toplevel):
         language: str | None = None,
     ) -> None:
         super().__init__(master)
-        self.title(f"Transcript — {os.path.basename(json_path)}")
+        self.title(_("Transcript — {name}", name=os.path.basename(json_path)))
         width, height = scaled_size(self, 1180, 720)
         # macOS: end above the Dock; the window may then be dragged shorter (see minsize below).
         height = mac_native.fit_height(self, height)
@@ -839,23 +851,26 @@ class TranscriptViewer(tk.Toplevel):
         topbar = ttk.Frame(outer)
         topbar.pack(fill="x", pady=(0, 4))
         ttk.Button(
-            topbar, text=reveal_label("Open JSON folder"), command=self._open_json_folder,
+            topbar, text=reveal_label(_("Open JSON folder")), command=self._open_json_folder,
         ).pack(
             side="right"
         )
-        ttk.Button(topbar, text=share_page.BUTTON_TEXT, command=self._save_shareable_page).pack(
+        # The constants of other modules are translated where they are shown (N_ there).
+        ttk.Button(topbar, text=translate(share_page.BUTTON_TEXT),
+                   command=self._save_shareable_page).pack(
             side="right", padx=(0, 4)
         )
         if subtitle_edit.is_supported():
             ttk.Button(
-                topbar, text=subtitle_edit_ui.BUTTON_TEXT,
+                topbar, text=translate(subtitle_edit_ui.BUTTON_TEXT),
                 command=self._open_in_subtitle_edit,
             ).pack(side="right", padx=(0, 4))
-            help_icon(topbar, subtitle_edit_ui.HELP_TEXT).pack(side="right", padx=(0, 4))
+            help_icon(topbar, lambda: translate(subtitle_edit_ui.HELP_TEXT)).pack(
+                side="right", padx=(0, 4))
         media_label = (
-            f"Media: {os.path.basename(self.media_path)}"
+            _("Media: {name}", name=os.path.basename(self.media_path))
             if self.media_path
-            else "Media: (none found next to JSON)"
+            else _("Media: (none found next to JSON)")
         )
         ttk.Label(topbar, text=media_label, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
             side="left"
@@ -865,37 +880,40 @@ class TranscriptViewer(tk.Toplevel):
         toolbar.pack(fill="x", pady=(0, 6))
         help_icon(
             toolbar,
-            "Segment list colours: green/amber/red text is the model's "
+            lazy("Segment list colours: green/amber/red text is the model's "
             "confidence (high/medium/low). A red row background "
             "means the hallucination detector flagged that segment as "
             "suspect. An orange row background means its timing "
             "overlaps the previous segment or is under 1s (usually "
             "after a manual 'Edit timestamp...' edit). A yellow "
-            "highlight marks the segment now playing.",
+            "highlight marks the segment now playing."),
         ).pack(side="right")
-        ttk.Label(toolbar, text="Search:").pack(side="left", padx=(0, 4))
+        ttk.Label(toolbar, text=_("Search:")).pack(side="left", padx=(0, 4))
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *_: self._refilter())
         ttk.Entry(toolbar, textvariable=self.search_var, width=24).pack(side="left")
-        ttk.Button(toolbar, text="Clear", command=lambda: self.search_var.set("")).pack(
+        ttk.Button(toolbar, text=pgettext("button", "Clear"),
+                   command=lambda: self.search_var.set("")).pack(
             side="left", padx=(4, 0)
         )
 
         # Edit tools group
         ttk.Separator(toolbar, orient="vertical").pack(side="left", padx=8, fill="y")
-        ttk.Button(toolbar, text=f"Find & Replace  ({shortcuts.accel_text('f')})",
+        ttk.Button(toolbar, text=_("Find & Replace  ({shortcut})",
+                                   shortcut=shortcuts.accel_text('f')),
                    command=self._open_find_replace).pack(side="left", padx=(0, 4))
-        ttk.Button(toolbar, text="Remove fillers",
+        ttk.Button(toolbar, text=_("Remove fillers"),
                    command=self._remove_fillers).pack(side="left", padx=(0, 4))
         help_icon(
             toolbar,
-            "Deletes standalone filler words of the transcript's language "
+            lazy("Deletes standalone filler words of the transcript's language "
             "(English um, uh, er; German äh, ähm; French euh; …) from every "
             "segment's text. Only whole filler words are removed and the "
             "punctuation stays. Languages without a list are left alone. "
-            "Review the segment list before saving (there is no undo).",
+            "Review the segment list before saving (there is no undo)."),
         ).pack(side="left", padx=(0, 4))
-        ttk.Button(toolbar, text=f"Save changes  ({shortcuts.accel_text('s')})",
+        ttk.Button(toolbar, text=_("Save changes  ({shortcut})",
+                                   shortcut=shortcuts.accel_text('s')),
                    command=self._save_changes).pack(side="left", padx=(0, 4))
 
         # Body: left = segment list, right = media controls
@@ -907,9 +925,9 @@ class TranscriptViewer(tk.Toplevel):
 
         cols = ("time", "speaker", "text")
         self.tree = ttk.Treeview(left, columns=cols, show="headings")
-        self.tree.heading("time", text="Time")
-        self.tree.heading("speaker", text="Speaker")
-        self.tree.heading("text", text="Segment")
+        self.tree.heading("time", text=pgettext("column", "Time"))
+        self.tree.heading("speaker", text=pgettext("column", "Speaker"))
+        self.tree.heading("text", text=pgettext("column", "Segment"))
         self.tree.column("time", width=px(80), anchor="w")
         self.tree.column("speaker", width=px(110), anchor="w")
         self.tree.column("text", width=px(620))
@@ -955,15 +973,15 @@ class TranscriptViewer(tk.Toplevel):
         media_tab = ttk.Frame(self._right_notebook, padding=(4, 6, 0, 0))
         chapters_tab = ttk.Frame(self._right_notebook, padding=(4, 6, 0, 0))
         ai_tab = ttk.Frame(self._right_notebook, padding=(4, 6, 0, 0))
-        self._right_notebook.add(media_tab, text="Media")
-        self._right_notebook.add(chapters_tab, text="Chapters")
-        self._right_notebook.add(ai_tab, text="AI Tools")
+        self._right_notebook.add(media_tab, text=_("Media"))
+        self._right_notebook.add(chapters_tab, text=_("Chapters"))
+        self._right_notebook.add(ai_tab, text=_("AI Tools"))
         self._build_media_panel(media_tab)
         self._build_chapters_panel(chapters_tab)
         self._build_ai_panel(ai_tab)
 
     def _build_media_panel(self, parent: ttk.Frame) -> None:
-        ttk.Label(parent, text="Media", font=("TkDefaultFont", 10, "bold")).pack(
+        ttk.Label(parent, text=_("Media"), font=("TkDefaultFont", 10, "bold")).pack(
             anchor="w"
         )
         # The video frame — VLC will render into this widget id when
@@ -974,12 +992,12 @@ class TranscriptViewer(tk.Toplevel):
 
         controls = ttk.Frame(parent)
         controls.pack(fill="x")
-        self.play_btn = ttk.Button(controls, text="▶ Play", command=self._toggle_play)
+        self.play_btn = ttk.Button(controls, text=_("▶ Play"), command=self._toggle_play)
         self.play_btn.pack(side="left")
-        ttk.Button(controls, text="⏮ Restart", command=self._restart).pack(
+        ttk.Button(controls, text=_("⏮ Restart"), command=self._restart).pack(
             side="left", padx=(6, 0)
         )
-        ttk.Button(controls, text="Open in system player",
+        ttk.Button(controls, text=_("Open in system player"),
                    command=self._open_in_system_player).pack(side="right")
 
         # -- transport bar: draggable seek slider + skip + readout ------
@@ -1009,10 +1027,10 @@ class TranscriptViewer(tk.Toplevel):
         skips.pack(fill="x", pady=(4, 0))
         self._skip_btns: list[ttk.Button] = []
         for label, delta in (
-            ("⏪ -10s", -10000),
-            ("◀ -5s", -5000),
-            ("+5s ▶", 5000),
-            ("+10s ⏩", 10000),
+            (_("⏪ -10s"), -10000),
+            (_("◀ -5s"), -5000),
+            (_("+5s ▶"), 5000),
+            (_("+10s ⏩"), 10000),
         ):
             b = ttk.Button(
                 skips, text=label, width=8,
@@ -1043,7 +1061,7 @@ class TranscriptViewer(tk.Toplevel):
             note = ttk.Label(
                 parent,
                 text=self.vlc_unavailable_reason
-                or "Embedded playback not available.",
+                or _("Embedded playback not available."),
                 foreground=tokens.themed(tokens.DANGER_TEXT),
                 wraplength=px(360),
                 justify="left",
@@ -1083,7 +1101,7 @@ class TranscriptViewer(tk.Toplevel):
     # -- chapters ----------------------------------------------------------
 
     def _chapters_path(self) -> str:
-        base, _ = os.path.splitext(self.json_path)
+        base, _unused = os.path.splitext(self.json_path)
         return base + ".chapters.json"
 
     def _load_chapters(self) -> None:
@@ -1104,23 +1122,23 @@ class TranscriptViewer(tk.Toplevel):
         self._populate_chapters_list()
 
     def _build_chapters_panel(self, parent: ttk.Frame) -> None:
-        ttk.Label(parent, text="Chapters", font=("TkDefaultFont", 10, "bold")).pack(
+        ttk.Label(parent, text=_("Chapters"), font=("TkDefaultFont", 10, "bold")).pack(
             anchor="w"
         )
         self._chapters_empty_label = ttk.Label(
             parent,
-            text="No chapters detected for this transcript.\n\n"
-                 "Turn on 'Generate auto-chapter markers' in Advanced "
-                 "Settings' AI Layer section before transcribing to get "
-                 "chapters here.",
+            text=_("No chapters detected for this transcript.\n\n"
+                   "Turn on 'Generate auto-chapter markers' in Advanced "
+                   "Settings' AI Layer section before transcribing to get "
+                   "chapters here."),
             foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(360), justify="left",
         )
         cols = ("time", "title")
         self._chapters_tree = ttk.Treeview(
             parent, columns=cols, show="headings", height=16,
         )
-        self._chapters_tree.heading("time", text="Start")
-        self._chapters_tree.heading("title", text="Title")
+        self._chapters_tree.heading("time", text=pgettext("column", "Start"))
+        self._chapters_tree.heading("title", text=pgettext("column", "Title"))
         self._chapters_tree.column("time", width=px(70), anchor="w")
         self._chapters_tree.column("title", width=px(280))
         self._chapters_tree.bind("<<TreeviewSelect>>", self._on_chapter_select)
@@ -1137,7 +1155,7 @@ class TranscriptViewer(tk.Toplevel):
         self._chapters_empty_label.pack_forget()
         self._chapters_tree.pack(fill="both", expand=True)
         for i, ch in enumerate(self.chapters):
-            title = str(ch.get("title") or f"Chapter {i + 1}")
+            title = str(ch.get("title") or _("Chapter {number}", number=i + 1))
             start = _seg_float(ch, "start")
             self._chapters_tree.insert(
                 "", "end", iid=str(i), values=(_fmt_hms(start), title),
@@ -1161,7 +1179,7 @@ class TranscriptViewer(tk.Toplevel):
         self._on_chapter_select(event)
         if self.vlc_player is not None and not self.vlc_player.is_playing():
             self.vlc_player.play()
-            self.play_btn.configure(text="⏸ Pause")
+            self.play_btn.configure(text=_("⏸ Pause"))
 
     def _select_segment_near(self, seconds: float) -> None:
         """Select + scroll the segment list to the segment whose start is
@@ -1241,18 +1259,18 @@ class TranscriptViewer(tk.Toplevel):
             return self._llm_runner, ""
         from core import llm as _llm
         if not cfg.get("ai_enabled", False):
-            return None, (
+            return None, _(
                 "AI Layer is off — turn it on in Advanced Settings' AI "
                 "Layer section."
             )
         runner = _llm.build_runner_from_config(cfg)
         if runner is None:
             if str(cfg.get("llm_provider") or "local").strip().lower() == "remote":
-                return None, (
+                return None, _(
                     "Remote LLM isn't configured — set Base URL + Model "
                     "in Advanced Settings' AI Layer section."
                 )
-            return None, (
+            return None, _(
                 "Local AI model isn't installed yet — use 'Install AI "
                 "model…' in Advanced Settings' AI Layer section."
             )
@@ -1261,7 +1279,7 @@ class TranscriptViewer(tk.Toplevel):
         return runner, ""
 
     def _build_ai_panel(self, parent: ttk.Frame) -> None:
-        ttk.Label(parent, text="AI Tools", font=("TkDefaultFont", 10, "bold")).pack(
+        ttk.Label(parent, text=_("AI Tools"), font=("TkDefaultFont", 10, "bold")).pack(
             anchor="w"
         )
         self._ai_status_var = tk.StringVar(value="")
@@ -1274,55 +1292,55 @@ class TranscriptViewer(tk.Toplevel):
         row1 = ttk.Frame(parent)
         row1.pack(fill="x", pady=(0, 4))
         self._ai_summarise_btn = ttk.Button(
-            row1, text="Summarise", command=self._run_summarise,
+            row1, text=_("Summarise"), command=self._run_summarise,
         )
         self._ai_summarise_btn.pack(side="left")
         self._ai_actionitems_btn = ttk.Button(
-            row1, text="Action items", command=self._run_action_items,
+            row1, text=_("Action items"), command=self._run_action_items,
         )
         self._ai_actionitems_btn.pack(side="left", padx=(6, 0))
 
         row2 = ttk.Frame(parent)
         row2.pack(fill="x", pady=(0, 8))
-        ttk.Label(row2, text="Ask:").pack(side="left")
+        ttk.Label(row2, text=_("Ask:")).pack(side="left")
         self._ai_question_var = tk.StringVar()
         ttk.Entry(row2, textvariable=self._ai_question_var, width=24).pack(
             side="left", padx=(4, 4)
         )
-        self._ai_ask_btn = ttk.Button(row2, text="Ask", command=self._run_ask)
+        self._ai_ask_btn = ttk.Button(row2, text=_("Ask"), command=self._run_ask)
         self._ai_ask_btn.pack(side="left")
 
         ttk.Separator(parent, orient="horizontal").pack(fill="x", pady=6)
 
         row3 = ttk.Frame(parent)
         row3.pack(fill="x", pady=(0, 4))
-        ttk.Label(row3, text="Target language:").pack(side="left")
+        ttk.Label(row3, text=_("Target language:")).pack(side="left")
         self._ai_target_lang_var = tk.StringVar(value="English")
         ttk.Entry(row3, textvariable=self._ai_target_lang_var, width=14).pack(
             side="left", padx=(4, 4)
         )
         self._ai_translate_btn = ttk.Button(
-            row3, text="Translate (preview)", command=self._run_translate_preview,
+            row3, text=_("Translate (preview)"), command=self._run_translate_preview,
         )
         self._ai_translate_btn.pack(side="left")
 
         row4 = ttk.Frame(parent)
         row4.pack(fill="x", pady=(0, 4))
         self._ai_bilingual_btn = ttk.Button(
-            row4, text="Save bilingual subtitle…",
+            row4, text=_("Save bilingual subtitle…"),
             command=self._run_bilingual_translate,
         )
         self._ai_bilingual_btn.pack(side="left")
         help_icon(
             row4,
-            "Translates every segment one at a time — needed to keep an "
-            "exact line-for-line pairing with the original — and writes "
-            "a new '.bilingual.<language>.srt' file with the original "
-            "text and the translation under each cue. Can take a while "
-            "on a long transcript with the local model.",
+            lazy("Translates every segment one at a time — needed to keep an "
+                 "exact line-for-line pairing with the original — and writes "
+                 "a new '.bilingual.<language>.srt' file with the original "
+                 "text and the translation under each cue. Can take a while "
+                 "on a long transcript with the local model."),
         ).pack(side="left", padx=(4, 0))
         self._ai_cancel_btn = ttk.Button(
-            row4, text="Cancel", command=self._cancel_bilingual_translate,
+            row4, text=_("Cancel"), command=self._cancel_bilingual_translate,
         )
         # Not packed here — only shown while a bilingual translate runs.
 
@@ -1331,7 +1349,7 @@ class TranscriptViewer(tk.Toplevel):
             anchor="w"
         )
 
-        ttk.Label(parent, text="Result:").pack(anchor="w", pady=(8, 2))
+        ttk.Label(parent, text=_("Result:")).pack(anchor="w", pady=(8, 2))
         result_frame = ttk.Frame(parent)
         result_frame.pack(fill="both", expand=True)
         self._ai_result_text = tk.Text(
@@ -1344,24 +1362,24 @@ class TranscriptViewer(tk.Toplevel):
         self._ai_result_text.configure(yscrollcommand=ai_vsb.set)
         self._ai_result_text.pack(side="left", fill="both", expand=True)
         ai_vsb.pack(side="left", fill="y")
-        ttk.Button(parent, text="Copy result", command=self._copy_ai_result).pack(
+        ttk.Button(parent, text=_("Copy result"), command=self._copy_ai_result).pack(
             anchor="w", pady=(4, 0)
         )
 
     def _refresh_ai_status(self) -> None:
         cfg = self._app_config()
         if not cfg.get("ai_enabled", False):
-            self._ai_status_var.set(
+            self._ai_status_var.set(_(
                 "AI Layer is off. Turn it on in Advanced Settings to use "
                 "these tools."
-            )
+            ))
             return
         provider = str(cfg.get("llm_provider") or "local").strip().lower()
         if provider == "remote":
-            model = (cfg.get("llm_remote_model") or "").strip() or "(no model set)"
-            self._ai_status_var.set(f"Provider: remote — {model}")
+            model = (cfg.get("llm_remote_model") or "").strip() or _("(no model set)")
+            self._ai_status_var.set(_("Provider: remote — {model}", model=model))
         else:
-            self._ai_status_var.set("Provider: local (Qwen2.5-1.5B)")
+            self._ai_status_var.set(_("Provider: local (Qwen2.5-1.5B)"))
 
     def _set_ai_buttons_busy(self, busy: bool) -> None:
         self._ai_busy = busy
@@ -1396,6 +1414,10 @@ class TranscriptViewer(tk.Toplevel):
     def _run_ai_task(self, label: str, work, language: str | None = None) -> None:
         """Shared driver for the 3 simple (non-bilingual) AI actions.
 
+        ``label`` is the action's English name ("Summarise", "Action items", "Ask",
+        "Translate"); the texts shown while it runs and when it fails are looked up in
+        ``_AI_TASK_TEXTS`` and translated, and the worker thread is named after it.
+
         ``work(runner) -> str`` runs on a background thread — including
         the runner build/load itself, so a first-use local-model load
         never blocks the Tk main thread. Its return value (or a
@@ -1409,16 +1431,17 @@ class TranscriptViewer(tk.Toplevel):
         if not cfg.get("ai_enabled", False):
             notify(
                 self,
-                "AI Layer is off — turn it on in Advanced Settings' AI "
-                "Layer section.",
+                _("AI Layer is off — turn it on in Advanced Settings' AI "
+                  "Layer section."),
                 "warning",
             )
             return
         if not self.segments:
-            notify(self, "This transcript has no segments to work with.", "warning")
+            notify(self, _("This transcript has no segments to work with."), "warning")
             return
+        busy_text, failed_text = _AI_TASK_TEXTS.get(label, (label + "…", label + " failed: {error}"))
         self._set_ai_buttons_busy(True)
-        self._set_ai_result(f"{label}…")
+        self._set_ai_result(translate(busy_text))
 
         def _worker() -> None:
             try:
@@ -1428,7 +1451,7 @@ class TranscriptViewer(tk.Toplevel):
                     return
                 result = work(runner)
             except Exception as e:  # noqa: BLE001
-                result = f"{label} failed: {e}"
+                result = translate(failed_text, error=e)
             self._post_to_main(lambda: self._finish_ai_task(result, language))
 
         from core._threads import safe_thread
@@ -1450,7 +1473,7 @@ class TranscriptViewer(tk.Toplevel):
         def work(runner: Any) -> str:
             items = runner.action_items(text)
             return "\n".join(f"- {i}" for i in items) if items else (
-                "(no action items detected)"
+                _("(no action items detected)")
             )
 
         self._run_ai_task("Action items", work, self.language)
@@ -1458,7 +1481,7 @@ class TranscriptViewer(tk.Toplevel):
     def _run_ask(self) -> None:
         question = (self._ai_question_var.get() or "").strip()
         if not question:
-            notify(self, "Type a question first.", "warning")
+            notify(self, _("Type a question first."), "warning")
             return
         text = self._full_transcript_text()
         self._run_ai_task("Ask", lambda runner: runner.ask(text, question), self.language)
@@ -1476,23 +1499,27 @@ class TranscriptViewer(tk.Toplevel):
         if self._ai_busy:
             return
         if not self.segments:
-            notify(self, "This transcript has no segments to translate.", "warning")
+            notify(self, _("This transcript has no segments to translate."), "warning")
             return
         cfg = self._app_config()
         if not cfg.get("ai_enabled", False):
             notify(
                 self,
-                "AI Layer is off — turn it on in Advanced Settings' AI "
-                "Layer section.",
+                _("AI Layer is off — turn it on in Advanced Settings' AI "
+                  "Layer section."),
                 "warning",
             )
             return
         lang = (self._ai_target_lang_var.get() or "English").strip() or "English"
         if not messagebox.askyesno(
-            "Bilingual subtitle",
-            f"Translate all {len(self.segments)} segment(s) to {lang}, one "
-            "at a time? This can take a while, especially with the local "
-            "model.",
+            _("Bilingual subtitle"),
+            ngettext("Translate all {n} segment(s) to {language}, one "
+                     "at a time? This can take a while, especially with the local "
+                     "model.",
+                     "Translate all {n} segment(s) to {language}, one "
+                     "at a time? This can take a while, especially with the local "
+                     "model.",
+                     len(self.segments), language=lang),
             parent=self,
         ):
             return
@@ -1500,11 +1527,12 @@ class TranscriptViewer(tk.Toplevel):
         self._bilingual_cancel = threading.Event()
         self._set_ai_buttons_busy(True)
         self._ai_cancel_btn.pack(side="left", padx=(6, 0))
-        self._ai_progress_var.set("Loading AI model…")
+        self._ai_progress_var.set(_("Loading AI model…"))
 
         def _progress(done: int, total: int) -> None:
             self._post_to_main(
-                lambda: self._ai_progress_var.set(f"Translating {done}/{total}…")
+                lambda: self._ai_progress_var.set(
+                    _("Translating {done}/{total}…", done=done, total=total))
             )
 
         def _worker() -> None:
@@ -1538,7 +1566,7 @@ class TranscriptViewer(tk.Toplevel):
     def _cancel_bilingual_translate(self) -> None:
         if self._bilingual_cancel is not None:
             self._bilingual_cancel.set()
-            self._ai_progress_var.set("Cancelling…")
+            self._ai_progress_var.set(_("Cancelling…"))
 
     def _finish_bilingual_translate(
         self, segments: "list[dict[str, Any]]",
@@ -1556,11 +1584,11 @@ class TranscriptViewer(tk.Toplevel):
         self._ai_progress_var.set("")
         if translations is None:
             if error:
-                messagebox.showinfo("Bilingual subtitle", error, parent=self)
+                messagebox.showinfo(_("Bilingual subtitle"), error, parent=self)
             return
         if cancelled:
             messagebox.showinfo(
-                "Bilingual subtitle", "Cancelled — no file was written.", parent=self,
+                _("Bilingual subtitle"), _("Cancelled — no file was written."), parent=self,
             )
             return
         from core.writers import bilingual_srt as _bsrt
@@ -1568,11 +1596,11 @@ class TranscriptViewer(tk.Toplevel):
             body = _bsrt.write(segments, translations, self.media_path or "")
         except ValueError as e:
             show_error(
-                self, "Save failed", "Could not build the bilingual subtitle.",
+                self, _("Save failed"), _("Could not build the bilingual subtitle."),
                 detail=str(e),
             )
             return
-        base, _ = os.path.splitext(self.json_path)
+        base, _unused = os.path.splitext(self.json_path)
         lang_slug = _bilingual_lang_slug(lang)
         out_path = f"{base}.bilingual.{lang_slug}.srt"
         part = out_path + ".part"
@@ -1588,7 +1616,7 @@ class TranscriptViewer(tk.Toplevel):
             except OSError:
                 pass
             show_error(
-                self, "Save failed", "Could not write the bilingual subtitle file.",
+                self, _("Save failed"), _("Could not write the bilingual subtitle file."),
                 detail=str(e),
             )
             return
@@ -1598,22 +1626,30 @@ class TranscriptViewer(tk.Toplevel):
         missing = sum(
             1 for seg, t in zip(segments, translations)
             if (seg.get("text") or "").strip() and not t)
-        summary = (
-            f"Wrote {translated_count}/{len(translations)} translated "
-            f"segment(s) → {os.path.basename(out_path)}")
+        summary = ngettext(
+            "Wrote {done}/{n} translated segment(s) → {name}",
+            "Wrote {done}/{n} translated segment(s) → {name}",
+            len(translations), done=translated_count, name=os.path.basename(out_path))
         # A long background job ends here and the user may be in another window, so
         # the result stays a dialog (a notice would be gone before it is seen).
         if missing:
-            messagebox.showwarning(
-                "Bilingual subtitle saved with gaps",
-                f"{summary}\n\n{missing} segment(s) could not be translated "
+            # Two paragraphs: the summary above (its own sentence), then the gaps.
+            gaps = ngettext(
+                "{n} segment(s) could not be translated "
                 "(the AI provider kept refusing or timed out) and are left "
                 "empty in the file. Run it again to fill them.",
+                "{n} segment(s) could not be translated "
+                "(the AI provider kept refusing or timed out) and are left "
+                "empty in the file. Run it again to fill them.",
+                missing)
+            messagebox.showwarning(
+                _("Bilingual subtitle saved with gaps"),
+                f"{summary}\n\n{gaps}",
                 parent=self,
             )
             return
         messagebox.showinfo(
-            "Bilingual subtitle saved", summary, parent=self,
+            _("Bilingual subtitle saved"), summary, parent=self,
         )
 
     # -- loading ---------------------------------------------------------
@@ -1630,11 +1666,11 @@ class TranscriptViewer(tk.Toplevel):
                 # A transcript JSON is always a list of segment dicts. A dict
                 # root almost always means the user picked the wrong file
                 # (e.g. a credentials/config JSON), so say so plainly.
-                raise ValueError(
+                raise ValueError(_(
                     "This looks like a credentials/config file, not a "
                     "transcript JSON — pick the .json next to your "
                     "audio/video."
-                )
+                ))
             # The root is a list, but it may be a list of NON-dict elements
             # (e.g. ``[1, 2, 3]`` or ``["a", "b"]`` from an unrelated JSON
             # array). Downstream code calls ``.get(...)`` on each segment, so
@@ -1643,16 +1679,16 @@ class TranscriptViewer(tk.Toplevel):
             # instead of crashing with an AttributeError in _populate_listbox.
             segments = [item for item in payload if isinstance(item, dict)]
             if payload and not segments:
-                raise ValueError(
+                raise ValueError(_(
                     "This JSON is a list, but none of its entries look like "
                     "transcript segments — pick the .json next to your "
                     "audio/video."
-                )
+                ))
             self.segments = segments
         except Exception as e:  # noqa: BLE001
             messagebox.showerror(
-                "Failed to load transcript",
-                f"Could not read {self.json_path}:\n{e}",
+                _("Failed to load transcript"),
+                _("Could not read {path}:\n{error}", path=self.json_path, error=e),
                 parent=self,
             )
             self.segments = []
@@ -1793,7 +1829,7 @@ class TranscriptViewer(tk.Toplevel):
         self._on_segment_select(_event)
         if self.vlc_player is not None and not self.vlc_player.is_playing():
             self.vlc_player.play()
-            self.play_btn.configure(text="⏸ Pause")
+            self.play_btn.configure(text=_("⏸ Pause"))
 
     def _on_segment_right_click(self, event: tk.Event) -> None:
         """Pop the segment context menu.
@@ -1816,15 +1852,15 @@ class TranscriptViewer(tk.Toplevel):
         menu = tk.Menu(self, tearoff=0)
         if speaker:
             menu.add_command(
-                label=f"Rename '{speaker}' (everywhere)...",
+                label=_("Rename '{speaker}' (everywhere)...", speaker=speaker),
                 command=lambda s=speaker: self._rename_speaker(s),
             )
         menu.add_command(
-            label="Edit timestamp...",
+            label=_("Edit timestamp..."),
             command=lambda i=idx: self._open_edit_timestamp(i),
         )
         menu.add_command(
-            label="Copy text", command=lambda: self._copy_to_clipboard(
+            label=_("Copy text"), command=lambda: self._copy_to_clipboard(
                 _seg_text(seg).strip()
             )
         )
@@ -1852,8 +1888,8 @@ class TranscriptViewer(tk.Toplevel):
                 _os_open(folder, self)
         except Exception as e:  # noqa: BLE001
             show_error(
-                self, "Open failed",
-                "Could not open the transcript's folder.", detail=str(e),
+                self, _("Open failed"),
+                _("Could not open the transcript's folder."), detail=str(e),
             )
 
     def _save_shareable_page(self) -> None:
@@ -1876,10 +1912,10 @@ class TranscriptViewer(tk.Toplevel):
         """
         if self._dirty:
             answer = messagebox.askyesnocancel(
-                "Unsaved edits",
-                "Subtitle Edit opens the saved subtitle file. Save your edits "
-                "first so it shows them?\n\nYes: save, then open.\n"
-                "No: open the last saved version.",
+                _("Unsaved edits"),
+                _("Subtitle Edit opens the saved subtitle file. Save your edits "
+                  "first so it shows them?\n\nYes: save, then open.\n"
+                  "No: open the last saved version."),
                 parent=self,
             )
             if answer is None:
@@ -1925,8 +1961,8 @@ class TranscriptViewer(tk.Toplevel):
             _write_text_atomically(path, _render_sibling("srt", segments))
         except Exception as e:  # noqa: BLE001
             show_error(
-                self, "Export failed",
-                "Could not write a subtitle file for Subtitle Edit.", detail=str(e),
+                self, _("Export failed"),
+                _("Could not write a subtitle file for Subtitle Edit."), detail=str(e),
             )
             return None
         # It matches the saved JSON, so the next Save keeps it in step.
@@ -1934,16 +1970,16 @@ class TranscriptViewer(tk.Toplevel):
         self._synced_siblings[path] = _file_stamp(path)
         self._sibling_plan[path] = ("srt", "")
         self._sibling_unchecked.discard(path)
-        notify(self, f"Wrote {os.path.basename(path)} for Subtitle Edit.", "info")
+        notify(self, _("Wrote {name} for Subtitle Edit.", name=os.path.basename(path)), "info")
         return path
 
     def _open_in_system_player(self) -> None:
         if not self.media_path:
-            notify(self, "No media file was found alongside the transcript JSON.", "warning")
+            notify(self, _("No media file was found alongside the transcript JSON."), "warning")
             return
         open_file(
             self.media_path, parent=self,
-            error_text="Could not open the media file in your system player.",
+            error_text=_("Could not open the media file in your system player."),
         )
 
     # -- edit operations -------------------------------------------------
@@ -1961,8 +1997,8 @@ class TranscriptViewer(tk.Toplevel):
 
     def _rename_speaker(self, current: str) -> None:
         new = simpledialog.askstring(
-            "Rename speaker",
-            f"Rename every '{current}' to:",
+            _("Rename speaker"),
+            _("Rename every '{speaker}' to:", speaker=current),
             parent=self,
             initialvalue=current,
         )
@@ -1983,7 +2019,9 @@ class TranscriptViewer(tk.Toplevel):
             self._populate_listbox()
             notify(
                 self,
-                f"Renamed {renamed} segment(s). Use Save changes ({shortcuts.accel_text('s')}) to write.",
+                ngettext("Renamed {n} segment(s). Use Save changes ({shortcut}) to write.",
+                         "Renamed {n} segment(s). Use Save changes ({shortcut}) to write.",
+                         renamed, shortcut=shortcuts.accel_text('s')),
                 "success",
             )
 
@@ -1997,16 +2035,16 @@ class TranscriptViewer(tk.Toplevel):
         if not words:
             notify(
                 self,
-                "Remove fillers needs the transcript's language, and it is unknown here."
+                _("Remove fillers needs the transcript's language, and it is unknown here.")
                 if not _language_code(self.language) else
-                f"There is no filler list for the language '{self.language}', "
-                "so nothing was removed.",
+                _("There is no filler list for the language '{language}', "
+                  "so nothing was removed.", language=self.language),
                 "warning",
             )
             return
         if not messagebox.askyesno(
-            "Remove fillers",
-            f"Remove these filler words from every segment?\n\n{', '.join(words)}",
+            _("Remove fillers"),
+            _("Remove these filler words from every segment?\n\n{words}", words=", ".join(words)),
             parent=self,
         ):
             return
@@ -2023,7 +2061,9 @@ class TranscriptViewer(tk.Toplevel):
             self._populate_listbox()
         notify(
             self,
-            f"Fillers removed: updated {changed} segment(s). Use Save changes ({shortcuts.accel_text('s')}) to write.",
+            ngettext("Fillers removed: updated {n} segment(s). Use Save changes ({shortcut}) to write.",
+                     "Fillers removed: updated {n} segment(s). Use Save changes ({shortcut}) to write.",
+                     changed, shortcut=shortcuts.accel_text('s')),
             "success" if changed else "info",
         )
 
@@ -2032,10 +2072,11 @@ class TranscriptViewer(tk.Toplevel):
             return
         if self._disk_stamp is not None and _file_stamp(self.json_path) != self._disk_stamp:
             if not messagebox.askyesno(
-                "Transcript changed on disk",
-                f"{os.path.basename(self.json_path)} was changed or removed by "
-                "something else after it was opened here.\n\n"
-                "Overwrite it with the version in this window?",
+                _("Transcript changed on disk"),
+                _("{name} was changed or removed by "
+                  "something else after it was opened here.\n\n"
+                  "Overwrite it with the version in this window?",
+                  name=os.path.basename(self.json_path)),
                 parent=self,
                 default="no",
             ):
@@ -2060,8 +2101,8 @@ class TranscriptViewer(tk.Toplevel):
             except OSError:
                 pass
             show_error(
-                self, "Save failed",
-                "Could not write your changes to the transcript file.",
+                self, _("Save failed"),
+                _("Could not write your changes to the transcript file."),
                 detail=str(e),
             )
             return
@@ -2069,7 +2110,8 @@ class TranscriptViewer(tk.Toplevel):
         self._disk_stamp = _file_stamp(self.json_path)
         notify(
             self,
-            f"Saved {len(self.segments)} segment(s) → {os.path.basename(self.json_path)}",
+            ngettext("Saved {n} segment(s) → {name}", "Saved {n} segment(s) → {name}",
+                     len(self.segments), name=os.path.basename(self.json_path)),
             "success",
         )
         # The JSON is on disk: only now the other exports follow, off the UI thread.
@@ -2313,10 +2355,10 @@ class TranscriptViewer(tk.Toplevel):
             return
         if self.vlc_player.is_playing():
             self.vlc_player.pause()
-            self.play_btn.configure(text="▶ Play")
+            self.play_btn.configure(text=_("▶ Play"))
         else:
             self.vlc_player.play()
-            self.play_btn.configure(text="⏸ Pause")
+            self.play_btn.configure(text=_("⏸ Pause"))
 
     def _restart(self) -> None:
         if self.vlc_player is None:
@@ -2324,7 +2366,7 @@ class TranscriptViewer(tk.Toplevel):
         self.vlc_player.set_time(0)
         if not self.vlc_player.is_playing():
             self.vlc_player.play()
-            self.play_btn.configure(text="⏸ Pause")
+            self.play_btn.configure(text=_("⏸ Pause"))
 
     def _seek_to(self, seconds: float) -> None:
         if self.vlc_player is None:
@@ -2635,8 +2677,8 @@ class TranscriptViewer(tk.Toplevel):
     def _on_close(self) -> None:
         if self._dirty:
             if not messagebox.askyesno(
-                "Discard changes?",
-                "There are unsaved transcript edits. Close anyway?",
+                _("Discard changes?"),
+                _("There are unsaved transcript edits. Close anyway?"),
                 parent=self,
                 default="no",
             ):
@@ -2700,15 +2742,21 @@ class TranscriptViewer(tk.Toplevel):
         ``show_folder`` adds the folder, for two transcripts that share a file name.
         """
         self._bring_forward()
-        where = f"Folder: {os.path.dirname(self.json_path)}\n" if show_folder else ""
+        name = os.path.basename(self.json_path)
+        if show_folder:
+            question = _("{name} has edits that were not saved.\n"
+                         "Folder: {folder}\n\n"
+                         "Yes: save them, then exit.\n"
+                         "No: exit and discard them.\n"
+                         "Cancel: stay in the app.",
+                         name=name, folder=os.path.dirname(self.json_path))
+        else:
+            question = _("{name} has edits that were not saved.\n\n"
+                         "Yes: save them, then exit.\n"
+                         "No: exit and discard them.\n"
+                         "Cancel: stay in the app.", name=name)
         answer = messagebox.askyesnocancel(
-            "Unsaved transcript edits",
-            f"{os.path.basename(self.json_path)} has edits that were not saved.\n"
-            f"{where}\n"
-            "Yes: save them, then exit.\n"
-            "No: exit and discard them.\n"
-            "Cancel: stay in the app.",
-            parent=self,
+            _("Unsaved transcript edits"), question, parent=self,
         )
         if answer is None:
             return False
@@ -2722,21 +2770,21 @@ class TranscriptViewer(tk.Toplevel):
                 # The JSON was written; only the work after it (the subtitle files next
                 # to it, the "saved" notice) failed. Nothing is lost: say so and go on.
                 self._notice_quietly(
-                    "Saved, but the subtitle files next to it could not be updated; "
-                    "the details are in app.log.",
+                    _("Saved, but the subtitle files next to it could not be updated; "
+                      "the details are in app.log."),
                     "warning",
                 )
                 return True
             show_error(
-                self, "Save failed",
-                "Could not write your changes to the transcript file, so the app was not closed.",
+                self, _("Save failed"),
+                _("Could not write your changes to the transcript file, so the app was not closed."),
                 detail=str(e),
             )
             return False
         # Still dirty: the write failed (its error is on screen) or the user declined to
         # overwrite a file changed on disk. Either way nothing was saved: do not exit.
         if self._dirty:
-            self._notice_quietly("Not saved, so the app stays open.", "warning")
+            self._notice_quietly(_("Not saved, so the app stays open."), "warning")
             return False
         # The JSON is on disk. The quick exports (subtitle files) land before the app goes;
         # a long Word build is waited for, within a limit, by finish_exports_before_exit.
@@ -2783,7 +2831,7 @@ class EditTimestampDialog(tk.Toplevel):
         self.viewer = viewer
         self.seg_idx = seg_idx
         seg = viewer.segments[seg_idx]
-        self.title("Edit timestamp")
+        self.title(_("Edit timestamp"))
         self.transient(viewer)
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
@@ -2796,12 +2844,12 @@ class EditTimestampDialog(tk.Toplevel):
         body = ttk.Frame(self, padding=10)
         body.pack(fill="both", expand=True)
 
-        ttk.Label(body, text="Start (HH:MM:SS.mmm)").grid(
+        ttk.Label(body, text=_("Start (HH:MM:SS.mmm)")).grid(
             row=0, column=0, sticky="w", pady=4
         )
         start_entry = ttk.Entry(body, textvariable=self.start_var, width=16)
         start_entry.grid(row=0, column=1, sticky="w", padx=(6, 0))
-        ttk.Label(body, text="End (HH:MM:SS.mmm)").grid(
+        ttk.Label(body, text=_("End (HH:MM:SS.mmm)")).grid(
             row=1, column=0, sticky="w", pady=4
         )
         ttk.Entry(body, textvariable=self.end_var, width=16).grid(
@@ -2815,8 +2863,8 @@ class EditTimestampDialog(tk.Toplevel):
 
         btns = ttk.Frame(body)
         btns.grid(row=3, column=0, columnspan=2, sticky="e", pady=(10, 0))
-        ttk.Button(btns, text="Save", command=self._save).pack(side="left", padx=4)
-        ttk.Button(btns, text="Cancel", command=self.destroy).pack(side="left", padx=4)
+        ttk.Button(btns, text=_("Save"), command=self._save).pack(side="left", padx=4)
+        ttk.Button(btns, text=_("Cancel"), command=self.destroy).pack(side="left", padx=4)
 
         self.bind("<Return>", lambda _e: self._save())
         self.bind("<Escape>", lambda _e: self.destroy())
@@ -2829,11 +2877,11 @@ class EditTimestampDialog(tk.Toplevel):
         end = _parse_hms_ms(self.end_var.get())
         if start is None or end is None:
             self.error_var.set(
-                "Enter a valid time: HH:MM:SS.mmm, MM:SS.mmm, or plain seconds."
+                _("Enter a valid time: HH:MM:SS.mmm, MM:SS.mmm, or plain seconds.")
             )
             return
         if end <= start:
-            self.error_var.set("End must be after start.")
+            self.error_var.set(_("End must be after start."))
             return
         seg = self.viewer.segments[self.seg_idx]
         seg["start"] = start
@@ -2855,7 +2903,7 @@ class FindReplaceDialog(tk.Toplevel):
     def __init__(self, viewer: "TranscriptViewer") -> None:
         super().__init__(viewer)
         self.viewer = viewer
-        self.title("Find and replace")
+        self.title(_("Find and replace"))
         self.transient(viewer)
         width, height = scaled_size(self, 420, 180)
         self.geometry(f"{width}x{height}")
@@ -2877,30 +2925,30 @@ class FindReplaceDialog(tk.Toplevel):
         body = ttk.Frame(self, padding=10)
         body.pack(fill="both", expand=True)
 
-        ttk.Label(body, text="Find").grid(row=0, column=0, sticky="w", pady=4)
+        ttk.Label(body, text=pgettext("field", "Find")).grid(row=0, column=0, sticky="w", pady=4)
         ttk.Entry(body, textvariable=self.find_var, width=42).grid(
             row=0, column=1, sticky="ew", padx=(6, 0)
         )
-        ttk.Label(body, text="Replace").grid(row=1, column=0, sticky="w", pady=4)
+        ttk.Label(body, text=pgettext("field", "Replace")).grid(row=1, column=0, sticky="w", pady=4)
         ttk.Entry(body, textvariable=self.replace_var, width=42).grid(
             row=1, column=1, sticky="ew", padx=(6, 0)
         )
-        ttk.Checkbutton(body, text="Match case", variable=self.case_var).grid(
+        ttk.Checkbutton(body, text=_("Match case"), variable=self.case_var).grid(
             row=2, column=1, sticky="w", padx=(6, 0)
         )
 
         btns = ttk.Frame(body)
         btns.grid(row=3, column=0, columnspan=2, sticky="e", pady=(10, 0))
-        ttk.Button(btns, text="Find next", command=self.find_next).pack(
+        ttk.Button(btns, text=_("Find next"), command=self.find_next).pack(
             side="left", padx=4
         )
-        ttk.Button(btns, text="Replace", command=self.replace_current).pack(
+        ttk.Button(btns, text=pgettext("button", "Replace"), command=self.replace_current).pack(
             side="left", padx=4
         )
-        ttk.Button(btns, text="Replace all", command=self.replace_all).pack(
+        ttk.Button(btns, text=_("Replace all"), command=self.replace_all).pack(
             side="left", padx=4
         )
-        ttk.Button(btns, text="Close", command=self.destroy).pack(
+        ttk.Button(btns, text=pgettext("button", "Close"), command=self.destroy).pack(
             side="left", padx=4
         )
 
@@ -2964,7 +3012,7 @@ class FindReplaceDialog(tk.Toplevel):
                 self.last_match_pos = m[0]
                 self._reveal(idx)
                 return True
-        messagebox.showinfo("No match", f"'{needle}' not found.", parent=self)
+        messagebox.showinfo(_("No match"), _("'{needle}' not found.", needle=needle), parent=self)
         return False
 
     def _reveal(self, idx: int) -> None:
@@ -3037,8 +3085,8 @@ class FindReplaceDialog(tk.Toplevel):
             self.viewer._dirty = True
             self.viewer._populate_listbox()
         messagebox.showinfo(
-            "Replace all",
-            f"Replaced in {count} segment(s).",
+            _("Replace all"),
+            ngettext("Replaced in {n} segment(s).", "Replaced in {n} segment(s).", count),
             parent=self,
         )
 
@@ -3165,8 +3213,8 @@ def open_viewer(
         media_path = None
     if json_path is None:
         chosen = filedialog.askopenfilename(
-            title="Open transcript JSON",
-            filetypes=[("Transcript JSON", "*.json"), ("All files", "*.*")],
+            title=_("Open transcript JSON"),
+            filetypes=[(_("Transcript JSON"), "*.json"), (_("All files"), "*.*")],
             parent=master,
         )
         if not chosen:
@@ -3174,8 +3222,8 @@ def open_viewer(
         json_path = chosen
     if not os.path.isfile(json_path):
         messagebox.showerror(
-            "Transcript missing",
-            f"That JSON file does not exist:\n{json_path}",
+            _("Transcript missing"),
+            _("That JSON file does not exist:\n{path}", path=json_path),
             parent=master,
         )
         return None

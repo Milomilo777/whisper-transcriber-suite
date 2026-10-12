@@ -30,6 +30,8 @@ from urllib.parse import urlsplit
 from urllib.request import url2pathname
 from xml.sax.saxutils import unescape as xml_unescape
 
+from app.i18n import _
+
 logger = logging.getLogger(__name__)
 
 # Exports next to the JSON that Save keeps in step with it: (writer key, file
@@ -437,32 +439,40 @@ def _names(paths: list[str]) -> str:
 def report_notices(report: ExportReport, json_path: str) -> list[tuple[str, str]]:
     """The notices Save shows after the exports were handled: (text, kind)."""
     out: list[tuple[str, str]] = []
+    json_name = os.path.basename(json_path)
     if report.updated:
-        out.append((f"Updated {_names(report.updated)} next to {os.path.basename(json_path)}.",
-                    "success"))
+        out.append((_("Updated {names} next to {json_name}.",
+                      names=_names(report.updated), json_name=json_name), "success"))
+    # Each warning is a whole sentence (or two); they are shown together in one notice.
     warn: list[str] = []
     if report.failed:
-        warn.append(f"Could not update {_names(report.failed)}; it still holds the OLD text "
-                    "(the details are in app.log).")
+        warn.append(_("Could not update {names}; it still holds the OLD text "
+                      "(the details are in app.log).", names=_names(report.failed)))
     if report.raced:
-        warn.append(f"Not updated: {_names(report.raced)} changed while Save was rebuilding "
-                    "it, so it was left as it is and still holds the old text; save again to retry.")
+        warn.append(_("Not updated: {names} changed while Save was rebuilding "
+                      "it, so it was left as it is and still holds the old text; save again to retry.",
+                      names=_names(report.raced)))
     if report.linked:
-        warn.append(f"Not updated: {_names(report.linked)} is a link to another file, which "
-                    "Save never replaces; it still holds the old text.")
+        warn.append(_("Not updated: {names} is a link to another file, which "
+                      "Save never replaces; it still holds the old text.",
+                      names=_names(report.linked)))
     if report.unchecked:
-        warn.append(f"Not updated: {_names(report.unchecked)} could not be read or checked "
-                    "when the transcript was opened, so it still holds the old text.")
+        warn.append(_("Not updated: {names} could not be read or checked "
+                      "when the transcript was opened, so it still holds the old text.",
+                      names=_names(report.unchecked)))
     if report.stale:
-        warn.append(f"Not updated: {_names(report.stale)} does not match this transcript's "
-                    "last saved version (it was changed elsewhere or comes from another run), "
-                    "so it was left as it is and still holds the old text.")
+        warn.append(_("Not updated: {names} does not match this transcript's "
+                      "last saved version (it was changed elsewhere or comes from another run), "
+                      "so it was left as it is and still holds the old text.",
+                      names=_names(report.stale)))
     if report.unrebuildable:
-        warn.append(f"Cannot rebuild {_names(report.unrebuildable)} here (PDF and the team "
-                    "document); it still holds the old text. Export it again if you need it.")
+        warn.append(_("Cannot rebuild {names} here (PDF and the team "
+                      "document); it still holds the old text. Export it again if you need it.",
+                      names=_names(report.unrebuildable)))
     if warn:
         out.append((" ".join(warn), "warning"))
     if report.other:
-        out.append((f"Not rebuilt by Save: {_names(report.other)} (made from the transcript "
-                    "on request; make it again to match the new text).", "info"))
+        out.append((_("Not rebuilt by Save: {names} (made from the transcript "
+                      "on request; make it again to match the new text).",
+                      names=_names(report.other)), "info"))
     return out
