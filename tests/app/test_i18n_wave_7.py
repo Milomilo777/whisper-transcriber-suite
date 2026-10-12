@@ -881,7 +881,7 @@ def capture_tk(mp: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, list[str]]:
         tray: list[str] = []
         host.tray = types.SimpleNamespace(notify=lambda title, body: tray.extend([title, body]))
         out = tmp_path / "talk one.srt"
-        out.write_text("1\n", encoding="utf-8")
+        out.write_bytes(b"1\r\n")  # 3 bytes on every platform, as in the Windows capture
         js = tmp_path / "talk one.json"
         js.write_text("{}", encoding="utf-8")
         for name, outputs, no_speech in (("two_files", [str(out), str(js)], False),

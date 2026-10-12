@@ -479,7 +479,10 @@ def tk_states(root: Any, mp: pytest.MonkeyPatch, tmp_path: Path) -> States:
     quick.finish()
     quick.folder_var.set("bad\x00name")
     quick.finish()
-    states["quick_calls"] = calls.take()
+    # The last line of "Folder unavailable" is the OS error for the bad name; Windows and Linux
+    # word it differently ("mkdir: embedded null character in path" / "embedded null byte").
+    states["quick_calls"] = [c.rsplit("\n\n", 1)[0] + "\n\n<os error>" if "Folder unavailable" in c else c
+                             for c in calls.take()]
     quick.skip()
     return states
 
