@@ -182,6 +182,13 @@ def _rows(pairs: list[tuple[str, str]]) -> list[list[str]]:
     return [[path, text] for path, text in pairs]
 
 
+def _without_picker(dlg: Any, pairs: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Drop the interface-language list: it grows with every catalog in app/locales, its entries are
+    endonyms (never translated), and tests/app/test_i18n_language_picker.py checks it."""
+    picker = f"{dlg._ui_language_combo}:values"
+    return [(path, text) for path, text in pairs if path != picker]
+
+
 def _var_writes(var: Any) -> list[str]:
     """Every value written to a Tk variable from now on (status lines change several times)."""
     seen: list[str] = []
@@ -203,7 +210,7 @@ def capture_states(h: _Harness) -> dict[str, list[list[str]]]:
 
     states: dict[str, list[list[str]]] = {}
     dlg = h.make()
-    states["dialog"] = _rows(visible_texts(dlg))
+    states["dialog"] = _rows(_without_picker(dlg, visible_texts(dlg)))
     states["tooltips"] = [[f"tooltip#{i}", t] for i, t in enumerate(h.tooltips)]
     states["model_combo_tooltip"] = [["reason", dlg._model_picker_disabled_reason()]]
 
@@ -337,7 +344,7 @@ def capture_states(h: _Harness) -> dict[str, list[list[str]]]:
     h.mp.setattr(updates, "disabled_by_environment", lambda *a, **k: True)
     first = {t for _p, t in states["dialog"]}
     second = h.make()
-    states["dialog_variant_texts"] = [["variant", t] for _p, t in visible_texts(second)
+    states["dialog_variant_texts"] = [["variant", t] for _p, t in _without_picker(second, visible_texts(second))
                                       if t not in first]
 
     # A model change asks before restarting a busy worker.
