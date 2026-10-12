@@ -1818,7 +1818,9 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     if "yt_dlp_update_mode" not in local and "auto_update_yt_dlp" in local:
         # The next save drops the old key; it must write the mode read from it.
         baseline.pop("yt_dlp_update_mode", None)
-    merged.pop("auto_update_yt_dlp", None)
+    if "auto_update_yt_dlp" in merged:
+        logger.info("migrated auto_update_yt_dlp to yt_dlp_update_mode; dropping old key")
+        merged.pop("auto_update_yt_dlp", None)
     # Coerce / drop wrong-type values for keys that ship a default —
     # e.g. parallel_workers="many" survives the merge and downstream
     # int() crashes later. Drop the bad value (restore default).
