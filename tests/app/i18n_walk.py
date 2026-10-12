@@ -29,7 +29,8 @@ def is_pseudo_marked(text: str) -> bool:
 
 
 def _text_of(w: tk.Misc) -> str:
-    var = str(w.cget("textvariable") or "")
+    # ttk.Labelframe (and a few other widgets) have -text but no -textvariable.
+    var = str(w.cget("textvariable") or "") if "textvariable" in w.keys() else ""
     if var:
         return str(w.getvar(var))
     return str(w.cget("text"))
