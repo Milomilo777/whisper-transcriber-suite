@@ -38,6 +38,7 @@ from tkinter import filedialog, ttk
 from typing import Any
 
 from app.dpi import px
+from app.i18n import N_, _, ngettext, pgettext, translate
 from app.theme import script_fonts
 from app.widgets.error_dialog import show_error
 from app.widgets.platform import open_async
@@ -52,32 +53,77 @@ _SAMPLE_SECONDS = 6
 
 # Always visible on the tab: the rules replace the old one-time
 # confirmation dialog, and consent is the per-voice tick below.
-_RULES_TEXT = (
+_RULES_TEXT = N_(
     "AI-generated audio. Clone only your own voice, or a voice whose speaker "
     "has given you clear permission. Do not impersonate anyone, and do not "
     "make misleading audio of real people."
 )
-_CONSENT_TICK_TEXT = "I have the speaker's permission to clone this voice (or it is my own)"
+_CONSENT_TICK_TEXT = N_("I have the speaker's permission to clone this voice (or it is my own)")
 
 # Shown when the OmniVoice install actually starts (the first Generate).
-_OMNI_INSTALL_STATUS = (
+_OMNI_INSTALL_STATUS = N_(
     "Downloading OmniVoice (about 2 GB, one time; needs internet, a few "
     "minutes to over an hour depending on the connection). After that it "
     "runs offline..."
 )
 
-_KOKORO_DOWNLOAD_LINE = "The Kokoro voice model downloads first (about 350 MB, one time)."
-_OMNI_DOWNLOAD_LINE = "OmniVoice downloads first (about 2 GB, one time)."
+_KOKORO_DOWNLOAD_LINE = N_("The Kokoro voice model downloads first (about 350 MB, one time).")
+_OMNI_DOWNLOAD_LINE = N_("OmniVoice downloads first (about 2 GB, one time).")
 
-_ENGINE_KOKORO = "Kokoro — 53 ready-made voices, 9 languages (fast; ~350 MB download)"
-_ENGINE_OMNI = "OmniVoice — clone any voice, or design one (slow on CPU; ~2 GB download)"
+# The model picker shows these (translated); the config stores "kokoro" / "omnivoice".
+_ENGINE_KOKORO = N_("Kokoro — 53 ready-made voices, 9 languages (fast; ~350 MB download)")
+_ENGINE_OMNI = N_("OmniVoice — clone any voice, or design one (slow on CPU; ~2 GB download)")
 
 _MODE_CLONE = "clone"
 _MODE_DESIGN = "design"
 _MODE_AUTO = "auto"
 
-_ANY = "Any"
-_AUTO_LANG = "Auto-detect"
+# Voice-design attributes: the model takes the English value (core.voice_clone.DESIGN_*),
+# the picker shows the label. A value missing here is shown capitalised, in English.
+_DESIGN_LABELS = {
+    "male": N_("Male"),
+    "female": N_("Female"),
+    "child": N_("Child"),
+    "teenager": N_("Teenager"),
+    "young adult": N_("Young adult"),
+    "middle-aged": N_("Middle-aged"),
+    "elderly": N_("Elderly"),
+    "very low pitch": N_("Very low pitch"),
+    "low pitch": N_("Low pitch"),
+    "moderate pitch": N_("Moderate pitch"),
+    "high pitch": N_("High pitch"),
+    "very high pitch": N_("Very high pitch"),
+    "american accent": N_("American accent"),
+    "british accent": N_("British accent"),
+    "australian accent": N_("Australian accent"),
+    "canadian accent": N_("Canadian accent"),
+    "indian accent": N_("Indian accent"),
+    "chinese accent": N_("Chinese accent"),
+    "korean accent": N_("Korean accent"),
+    "japanese accent": N_("Japanese accent"),
+    "portuguese accent": N_("Portuguese accent"),
+    "russian accent": N_("Russian accent"),
+}
+
+
+def _any_label() -> str:
+    """The "no preference" entry of each voice-design picker."""
+    return pgettext("voice design", "Any")
+
+
+def _auto_lang_label() -> str:
+    """The language picker's first entry: OmniVoice detects the language itself."""
+    return _("Auto-detect")
+
+
+def _design_label(value: str) -> str:
+    """What the design picker shows for the model's attribute ``value``."""
+    label = _DESIGN_LABELS.get(value)
+    return translate(label) if label is not None else value[:1].upper() + value[1:]
+
+
+def _engine_label(kokoro: bool) -> str:
+    return translate(_ENGINE_KOKORO if kokoro else _ENGINE_OMNI)
 
 _PREVIEW_TEXT = {
     "US English": "Hello! This is how I sound. I can read any text you type.",
@@ -149,20 +195,19 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_recorder = None
     app.vc_cancel_event = None
     app.vc_recording_after_id = None
-    app.vc_status_var = tk.StringVar(value="Idle.")
+    app.vc_status_var = tk.StringVar(value=_("Idle."))
     cfg = app.app_config.setdefault("voice_clone", {})
-    app.vc_engine_var = tk.StringVar(
-        value=_ENGINE_OMNI if cfg.get("engine") == "omnivoice" else _ENGINE_KOKORO)
+    app.vc_engine_var = tk.StringVar(value=_engine_label(cfg.get("engine") != "omnivoice"))
     app.vc_mode_var = tk.StringVar(value=cfg.get("mode") or _MODE_CLONE)
     voice_labels = [v.label for v in tts_kokoro.VOICES]
     saved_voice = tts_kokoro.voice_by_key(str(cfg.get("kokoro_voice") or tts_kokoro.DEFAULT_VOICE))
     app.vc_voice_var = tk.StringVar(value=saved_voice.label)
-    app.vc_gender_var = tk.StringVar(value=_ANY)
-    app.vc_age_var = tk.StringVar(value=_ANY)
-    app.vc_pitch_var = tk.StringVar(value=_ANY)
-    app.vc_accent_var = tk.StringVar(value=_ANY)
+    app.vc_gender_var = tk.StringVar(value=_any_label())
+    app.vc_age_var = tk.StringVar(value=_any_label())
+    app.vc_pitch_var = tk.StringVar(value=_any_label())
+    app.vc_accent_var = tk.StringVar(value=_any_label())
     app.vc_whisper_var = tk.BooleanVar(value=False)
-    app.vc_lang_var = tk.StringVar(value=_AUTO_LANG)
+    app.vc_lang_var = tk.StringVar(value=_auto_lang_label())
     app.vc_speed_var = tk.DoubleVar(value=1.0)
     app.vc_count_var = tk.StringVar(value="")
     # Never restored from the config: every session (and every change of
@@ -183,17 +228,20 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
 
     # ── Model ───────────────────────────────────────────────────────────
     eng = section_labelframe(
-        parent, "Model",
-        "Kokoro speaks in one of 53 ready-made voices and is fast on any "
-        "computer. OmniVoice can clone a voice from a short recording, or "
-        "design a new one from a description (gender, age, pitch, accent); "
-        "it is much slower without a supported graphics card. Each model "
-        "downloads once, the first time it is used.",
+        parent, pgettext("speech model", "Model"),
+        _("Kokoro speaks in one of 53 ready-made voices and is fast on any "
+          "computer. OmniVoice can clone a voice from a short recording, or "
+          "design a new one from a description (gender, age, pitch, accent); "
+          "it is much slower without a supported graphics card. Each model "
+          "downloads once, the first time it is used."),
     )
     eng.grid(row=0, column=0, sticky="ew", padx=15, pady=(15, 6))
     eng.columnconfigure(1, weight=1)
-    ttk.Label(eng, text="Model:").grid(row=0, column=0, sticky="e", padx=8, pady=6)
-    app.vc_engine_combo = _combo(eng, app.vc_engine_var, [_ENGINE_KOKORO, _ENGINE_OMNI], 70)
+    ttk.Label(eng, text=pgettext("speech model", "Model:")).grid(
+        row=0, column=0, sticky="e", padx=8, pady=6)
+    # Index 0 is Kokoro, 1 OmniVoice (see _is_kokoro).
+    app.vc_engine_combo = _combo(eng, app.vc_engine_var,
+                                 [_engine_label(True), _engine_label(False)], 70)
     app.vc_engine_combo.grid(row=0, column=1, sticky="w", padx=8, pady=6)
     app.vc_engine_combo.bind("<<ComboboxSelected>>", lambda _e: _sync_engine(app))
     app.vc_engine_state = ttk.Label(eng, foreground=tokens.themed(tokens.TEXT_MUTED))
@@ -201,10 +249,10 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
 
     # ── Voice ───────────────────────────────────────────────────────────
     voice = section_labelframe(
-        parent, "Voice",
-        "Kokoro: pick a ready-made voice and press Preview to hear it. "
-        "OmniVoice: clone a voice from 1-3 short recordings (3-10 seconds "
-        "each), design one from its attributes, or let the model choose.",
+        parent, _("Voice"),
+        _("Kokoro: pick a ready-made voice and press Preview to hear it. "
+          "OmniVoice: clone a voice from 1-3 short recordings (3-10 seconds "
+          "each), design one from its attributes, or let the model choose."),
     )
     voice.grid(row=1, column=0, sticky="ew", padx=15, pady=(0, 6))
     voice.columnconfigure(0, weight=1)
@@ -212,12 +260,13 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     # Kokoro: ready-made voices.
     app.vc_kokoro_frame = ttk.Frame(voice)
     app.vc_kokoro_frame.columnconfigure(1, weight=1)
-    ttk.Label(app.vc_kokoro_frame, text="Voice:").grid(row=0, column=0, sticky="e", padx=8, pady=6)
+    ttk.Label(app.vc_kokoro_frame, text=_("Voice:")).grid(
+        row=0, column=0, sticky="e", padx=8, pady=6)
     app.vc_voice_combo = _combo(app.vc_kokoro_frame, app.vc_voice_var, voice_labels, 44)
     app.vc_voice_combo.grid(row=0, column=1, sticky="w", padx=8, pady=6)
     app.vc_voice_combo.bind("<<ComboboxSelected>>", lambda _e: _save_prefs(app))
     app.vc_preview_btn = ttk.Button(
-        app.vc_kokoro_frame, text="▶ Preview", command=lambda: _preview(app))
+        app.vc_kokoro_frame, text=_("▶ Preview"), command=lambda: _preview(app))
     app.vc_preview_btn.grid(row=0, column=2, sticky="w", padx=(0, 8), pady=6)
 
     # OmniVoice: mode switch + one panel per mode.
@@ -226,9 +275,9 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     modes = ttk.Frame(app.vc_omni_frame)
     modes.grid(row=0, column=0, sticky="w", padx=8, pady=(6, 2))
     app.vc_mode_radios = []
-    for text, value in (("Clone my voice / a recording", _MODE_CLONE),
-                        ("Design a voice", _MODE_DESIGN),
-                        ("Let the model choose", _MODE_AUTO)):
+    for text, value in ((_("Clone my voice / a recording"), _MODE_CLONE),
+                        (_("Design a voice"), _MODE_DESIGN),
+                        (_("Let the model choose"), _MODE_AUTO)):
         radio = ttk.Radiobutton(modes, text=text, value=value, variable=app.vc_mode_var,
                                 command=lambda: _sync_engine(app))
         radio.pack(side="left", padx=(0, 16))
@@ -241,52 +290,53 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     ref_btns = ttk.Frame(app.vc_clone_frame)
     ref_btns.grid(row=1, column=0, sticky="w", padx=8, pady=(0, 6))
     app.vc_record_btn = ttk.Button(
-        ref_btns, text=f"● Record sample ({_SAMPLE_SECONDS}s)",
+        ref_btns, text=_("● Record sample ({seconds}s)", seconds=_SAMPLE_SECONDS),
         command=lambda: _record_sample(app),
     )
     app.vc_record_btn.pack(side="left")
-    app.vc_load_btn = ttk.Button(ref_btns, text="Load audio file...",
+    app.vc_load_btn = ttk.Button(ref_btns, text=_("Load audio file..."),
                                  command=lambda: _load_sample(app))
     app.vc_load_btn.pack(side="left", padx=(8, 0))
-    app.vc_remove_btn = ttk.Button(ref_btns, text="Remove selected",
+    app.vc_remove_btn = ttk.Button(ref_btns, text=_("Remove selected"),
                                    command=lambda: _remove_sample(app))
     app.vc_remove_btn.pack(side="left", padx=(8, 0))
     app.vc_consent_check = ttk.Checkbutton(
-        app.vc_clone_frame, text=_CONSENT_TICK_TEXT, variable=app.vc_consent_var,
+        app.vc_clone_frame, text=translate(_CONSENT_TICK_TEXT), variable=app.vc_consent_var,
         command=lambda: _sync_generate_state(app))
     app.vc_consent_check.grid(row=2, column=0, sticky="w", padx=8, pady=(0, 6))
 
     app.vc_design_frame = ttk.Frame(app.vc_omni_frame)
     app.vc_design_widgets = []
     for col, (label, var, values) in enumerate((
-        ("Gender", app.vc_gender_var, _vc.DESIGN_GENDERS),
-        ("Age", app.vc_age_var, _vc.DESIGN_AGES),
-        ("Pitch", app.vc_pitch_var, _vc.DESIGN_PITCHES),
-        ("Accent (English)", app.vc_accent_var, _vc.DESIGN_ACCENTS),
+        (_("Gender"), app.vc_gender_var, _vc.DESIGN_GENDERS),
+        (_("Age"), app.vc_age_var, _vc.DESIGN_AGES),
+        (_("Pitch"), app.vc_pitch_var, _vc.DESIGN_PITCHES),
+        (_("Accent (English)"), app.vc_accent_var, _vc.DESIGN_ACCENTS),
     )):
         ttk.Label(app.vc_design_frame, text=label).grid(row=0, column=col, sticky="w", padx=8)
         combo = _combo(app.vc_design_frame, var,
-                       [_ANY] + [v[:1].upper() + v[1:] for v in values], 17)
+                       [_any_label()] + [_design_label(v) for v in values], 17)
         combo.grid(row=1, column=col, sticky="w", padx=8, pady=(0, 6))
         app.vc_design_widgets.append(combo)
-    whisper = ttk.Checkbutton(app.vc_design_frame, text="Whisper", variable=app.vc_whisper_var)
+    whisper = ttk.Checkbutton(app.vc_design_frame, text=pgettext("voice style", "Whisper"),
+                              variable=app.vc_whisper_var)
     whisper.grid(row=1, column=4, sticky="w", padx=8, pady=(0, 6))
     app.vc_design_widgets.append(whisper)
 
     app.vc_auto_label = ttk.Label(
         app.vc_omni_frame, foreground=tokens.themed(tokens.TEXT_MUTED),
-        text="OmniVoice picks a natural voice by itself -- no recording needed.")
+        text=_("OmniVoice picks a natural voice by itself -- no recording needed."))
 
     # ── Text ───────────────────────────────────────────────────────────
     txt = section_labelframe(
-        parent, "Text to speak",
-        f"Up to {tts_plan.MAX_TEXT_CHARS:,} characters (about 90 minutes of "
-        "speech; Advanced settings can lift the limit). Before a long text "
-        "starts, the tab shows how long it takes on this computer, how big "
-        "the file gets and whether the disk has room. A long text is spoken "
-        "piece by piece and joined into one audio file at the end: Cancel "
-        "keeps the finished pieces, and pressing Generate again with the same "
-        "text and voice continues the job.",
+        parent, _("Text to speak"),
+        _("Up to {count} characters (about 90 minutes of "
+          "speech; Advanced settings can lift the limit). Before a long text "
+          "starts, the tab shows how long it takes on this computer, how big "
+          "the file gets and whether the disk has room. A long text is spoken "
+          "piece by piece and joined into one audio file at the end: Cancel "
+          "keeps the finished pieces, and pressing Generate again with the same "
+          "text and voice continues the job.", count=f"{tts_plan.MAX_TEXT_CHARS:,}"),
     )
     txt.grid(row=2, column=0, sticky="nsew", padx=15, pady=(0, 6))
     txt.columnconfigure(0, weight=1)
@@ -301,26 +351,26 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
 
     opts = ttk.Frame(txt)
     opts.grid(row=1, column=0, columnspan=2, sticky="ew", padx=8, pady=(0, 8))
-    app.vc_lang_label = ttk.Label(opts, text="Language:")
+    app.vc_lang_label = ttk.Label(opts, text=_("Language:"))
     app.vc_lang_label.pack(side="left")
     from app.domain.languages import SUBTITLE_LANGUAGES as _LANGS
     app.vc_lang_combo = _combo(opts, app.vc_lang_var,
-                               [_AUTO_LANG] + [n for n, c in _LANGS if c], 18)
+                               [_auto_lang_label()] + [n for n, c in _LANGS if c], 18)
     app.vc_lang_combo.pack(side="left", padx=(6, 18))
     # The language picks the font of Han lines: retag when it changes, not only on the next edit.
     app.vc_lang_var.trace_add("write", lambda *_a: _retag_text(app))
-    ttk.Label(opts, text="Speed:").pack(side="left")
+    ttk.Label(opts, text=_("Speed:")).pack(side="left")
     app.vc_speed_scale = ttk.Scale(
         opts, from_=0.5, to=2.0, variable=app.vc_speed_var, length=px(140),
         command=lambda _v: app.vc_speed_label.configure(
-            text=f"{app.vc_speed_var.get():.2f}x"))
+            text=_speed_text(app.vc_speed_var.get())))
     app.vc_speed_scale.pack(side="left", padx=6)
-    app.vc_speed_label = ttk.Label(opts, text="1.00x", width=6)
+    app.vc_speed_label = ttk.Label(opts, text=_speed_text(1.0), width=6)
     app.vc_speed_label.pack(side="left")
     ttk.Label(opts, textvariable=app.vc_count_var, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(side="right")
 
     # ── Confirm step (long texts only; hidden until a plan needs it) ────
-    app.vc_confirm_frame = ttk.Labelframe(parent, text="Long text: check before starting")
+    app.vc_confirm_frame = ttk.Labelframe(parent, text=_("Long text: check before starting"))
     app.vc_confirm_frame.columnconfigure(0, weight=1)
     app.vc_confirm_label = ttk.Label(
         app.vc_confirm_frame, textvariable=app.vc_confirm_var, justify="left", wraplength=px(760))
@@ -328,14 +378,14 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     confirm_btns = ttk.Frame(app.vc_confirm_frame)
     confirm_btns.grid(row=1, column=0, sticky="w", padx=8, pady=(0, 8))
     app.vc_confirm_start_btn = ttk.Button(
-        confirm_btns, text="Start", style="Accent.TButton", command=lambda: _confirm_start(app))
+        confirm_btns, text=_("Start"), style="Accent.TButton", command=lambda: _confirm_start(app))
     app.vc_confirm_measure_btn = ttk.Button(
-        confirm_btns, text="Measure this computer's speed", style="Accent.TButton",
+        confirm_btns, text=_("Measure this computer's speed"), style="Accent.TButton",
         command=lambda: _measure_speed(app))
     app.vc_confirm_restart_btn = ttk.Button(
-        confirm_btns, text="Start over", command=lambda: _confirm_restart(app))
+        confirm_btns, text=_("Start over"), command=lambda: _confirm_restart(app))
     app.vc_confirm_cancel_btn = ttk.Button(
-        confirm_btns, text="Cancel", command=lambda: _cancel_generate(app))
+        confirm_btns, text=_("Cancel"), command=lambda: _cancel_generate(app))
     app.vc_confirm_start_btn.pack(side="left")
     app.vc_confirm_measure_btn.pack(side="left")
     app.vc_confirm_cancel_btn.pack(side="left", padx=(8, 0))
@@ -347,30 +397,36 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     out.grid(row=4, column=0, sticky="ew", padx=15, pady=(0, 4))
     out.columnconfigure(5, weight=1)
     app.vc_generate_btn = ttk.Button(
-        out, text="Generate speech", style="Accent.TButton", command=lambda: _generate(app))
+        out, text=_("Generate speech"), style="Accent.TButton", command=lambda: _generate(app))
     app.vc_generate_btn.grid(row=0, column=0, sticky="w")
     app.vc_cancel_btn = ttk.Button(
-        out, text="Cancel", command=lambda: _cancel_generate(app), state="disabled")
+        out, text=_("Cancel"), command=lambda: _cancel_generate(app), state="disabled")
     app.vc_cancel_btn.grid(row=0, column=1, sticky="w", padx=(8, 0))
     app.vc_play_btn = ttk.Button(
-        out, text="▶ Play", command=lambda: _play(app), state="disabled")
+        out, text=_("▶ Play"), command=lambda: _play(app), state="disabled")
     app.vc_play_btn.grid(row=0, column=2, sticky="w", padx=(8, 0))
     app.vc_save_btn = ttk.Button(
-        out, text="Save As...", command=lambda: _save(app), state="disabled")
+        out, text=_("Save As..."), command=lambda: _save(app), state="disabled")
     app.vc_save_btn.grid(row=0, column=3, sticky="w", padx=(8, 0))
     app.vc_progress = ttk.Progressbar(out, mode="determinate", maximum=100, length=px(180))
     app.vc_progress.grid(row=0, column=4, sticky="w", padx=(16, 0))
     ttk.Label(parent, textvariable=app.vc_status_var, foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
         row=5, column=0, sticky="w", padx=15, pady=(0, 2))
-    app.vc_rules_label = ttk.Label(parent, text=_RULES_TEXT, foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(760))
+    app.vc_rules_label = ttk.Label(parent, text=translate(_RULES_TEXT), foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(760))
     app.vc_rules_label.grid(row=6, column=0, sticky="w", padx=15, pady=(0, 12))
 
     _sync_engine(app)
     _on_text_modified(app)
 
 
+def _speed_text(speed: float) -> str:
+    return _("{speed}x", speed=f"{speed:.2f}")
+
+
 def _is_kokoro(app: Any) -> bool:
-    return app.vc_engine_var.get() == _ENGINE_KOKORO
+    # The picker shows the label in the interface language: compare with that, never
+    # with the English constant (the config stores "kokoro" / "omnivoice", see _save_prefs).
+    return app.vc_engine_var.get() == _engine_label(True)
 
 
 def _sync_engine(app: Any) -> None:
@@ -381,10 +437,12 @@ def _sync_engine(app: Any) -> None:
     if kokoro:
         app.vc_omni_frame.grid_remove()
         app.vc_kokoro_frame.grid(row=0, column=0, sticky="ew")
-        state = ("downloaded" if tts_kokoro.is_downloaded()
-                 else f"not downloaded yet (~{tts_kokoro.APPROX_DOWNLOAD_MB} MB, "
-                      "downloads on first use)")
-        app.vc_engine_state.configure(text=f"Kokoro-82M (Apache-2.0), runs locally -- {state}.")
+        app.vc_engine_state.configure(
+            text=_("Kokoro-82M (Apache-2.0), runs locally -- downloaded.")
+            if tts_kokoro.is_downloaded()
+            else _("Kokoro-82M (Apache-2.0), runs locally -- not downloaded yet "
+                   "(~{size} MB, downloads on first use).",
+                   size=tts_kokoro.APPROX_DOWNLOAD_MB))
     else:
         from core import voice_clone as _vc
 
@@ -399,9 +457,11 @@ def _sync_engine(app: Any) -> None:
                            padx=(0 if m != _MODE_AUTO else 8), pady=(0, 6))
             else:
                 frame.grid_remove()
-        state = ("installed" if _vc.is_available()
-                 else "not downloaded yet (~2 GB, downloads on first use)")
-        app.vc_engine_state.configure(text=f"OmniVoice (Apache-2.0, k2-fsa), runs locally -- {state}.")
+        app.vc_engine_state.configure(
+            text=_("OmniVoice (Apache-2.0, k2-fsa), runs locally -- installed.")
+            if _vc.is_available()
+            else _("OmniVoice (Apache-2.0, k2-fsa), runs locally -- not downloaded yet "
+                   "(~2 GB, downloads on first use)."))
     _sync_lock(app)
     _sync_generate_state(app)
     _save_prefs(app)
@@ -450,9 +510,11 @@ def _reset_consent(app: Any) -> bool:
 
 
 def _samples_changed_status(app: Any, untick: bool) -> str:
-    status = f"{len(app.vc_samples)} reference sample(s)."
+    count = len(app.vc_samples)
+    # Both English forms keep the old "(s)" text; other languages get real plural forms.
+    status = ngettext("{n} reference sample(s).", "{n} reference sample(s).", count)
     if untick:
-        status += " The clips changed: tick the permission box again."
+        status += " " + _("The clips changed: tick the permission box again.")
     return status
 
 
@@ -494,8 +556,12 @@ def _on_text_modified(app: Any) -> None:
     except Exception:  # noqa: BLE001
         return
     limit = _text_limit(app)
-    app.vc_count_var.set(f"{n:,} characters" if limit is None
-                         else f"{n:,} / {limit:,} characters")
+    # Both English forms are the same text as before; other languages get real plural forms.
+    app.vc_count_var.set(
+        ngettext("{count} characters", "{count} characters", n, count=f"{n:,}")
+        if limit is None
+        else ngettext("{count} / {limit} characters", "{count} / {limit} characters", limit,
+                      count=f"{n:,}", limit=f"{limit:,}"))
     _schedule_retag(app)
 
 
@@ -529,12 +595,19 @@ def _retag_text(app: Any) -> None:
 def _design_instruct(app: Any) -> str:
     from core.voice_clone import build_instruct
 
-    def val(var: Any) -> "str | None":
-        v = var.get()
-        return None if v == _ANY else v.lower()
+    from core import voice_clone as _vc
 
-    return build_instruct(val(app.vc_gender_var), val(app.vc_age_var),
-                          val(app.vc_pitch_var), val(app.vc_accent_var),
+    def val(var: Any, values: "tuple[str, ...]") -> "str | None":
+        """The model's English value for the label the picker shows."""
+        label = var.get()
+        if label == _any_label():
+            return None
+        return next((v for v in values if _design_label(v) == label), label.lower())
+
+    return build_instruct(val(app.vc_gender_var, _vc.DESIGN_GENDERS),
+                          val(app.vc_age_var, _vc.DESIGN_AGES),
+                          val(app.vc_pitch_var, _vc.DESIGN_PITCHES),
+                          val(app.vc_accent_var, _vc.DESIGN_ACCENTS),
                           whisper=bool(app.vc_whisper_var.get()))
 
 
@@ -542,7 +615,7 @@ def _language_code(app: Any) -> str:
     """The picked language's codes as the language list holds them
     ("zh-Hans,zh-CN" for Chinese); the font tagging reads them all."""
     name = app.vc_lang_var.get()
-    if name == _AUTO_LANG:
+    if name == _auto_lang_label():
         return ""
     from app.domain.languages import SUBTITLE_LANGUAGES as _LANGS
     return next((c for n, c in _LANGS if n == name), "")
@@ -577,9 +650,9 @@ def _validate_and_add_sample(app: Any, path: str) -> None:
 
     if len(app.vc_samples) >= MAX_REFERENCE_SAMPLES:
         show_error(
-            app, "Sample limit reached",
-            f"You can use up to {MAX_REFERENCE_SAMPLES} reference clips. "
-            "Remove one before adding another.",
+            app, _("Sample limit reached"),
+            _("You can use up to {count} reference clips. "
+              "Remove one before adding another.", count=MAX_REFERENCE_SAMPLES),
         )
         return
 
@@ -618,13 +691,13 @@ def _finish_adding_sample(app: Any, path: str, issue: "Any") -> None:
     # check-then-append is race-free even if both validations land here.
     if len(app.vc_samples) >= MAX_REFERENCE_SAMPLES:
         show_error(
-            app, "Sample limit reached",
-            f"You can use up to {MAX_REFERENCE_SAMPLES} reference clips. "
-            "Remove one before adding another.",
+            app, _("Sample limit reached"),
+            _("You can use up to {count} reference clips. "
+              "Remove one before adding another.", count=MAX_REFERENCE_SAMPLES),
         )
         return
     if issue is not None:
-        title = "Could not use this clip" if issue.blocking else "This clip may not work well"
+        title = _("Could not use this clip") if issue.blocking else _("This clip may not work well")
         show_error(app, title, issue.message)
         if issue.blocking:
             return
@@ -641,14 +714,14 @@ def _record_sample(app: Any) -> None:
 
     if not mic_available():
         show_error(
-            app, "Cannot record", "This computer cannot capture microphone audio yet.",
+            app, _("Cannot record"), _("This computer cannot capture microphone audio yet."),
             detail=mic_availability_reason(),
         )
         return
     if len(app.vc_samples) >= MAX_REFERENCE_SAMPLES:
         show_error(
-            app, "Sample limit reached",
-            f"You can use up to {MAX_REFERENCE_SAMPLES} reference clips.",
+            app, _("Sample limit reached"),
+            _("You can use up to {count} reference clips.", count=MAX_REFERENCE_SAMPLES),
         )
         return
 
@@ -659,7 +732,7 @@ def _record_sample(app: Any) -> None:
     try:
         recorder.start()
     except Exception as e:  # noqa: BLE001
-        show_error(app, "Could not start recording", str(e))
+        show_error(app, _("Could not start recording"), str(e))
         return
     app.vc_recorder = recorder
     app.vc_record_btn.configure(state="disabled")
@@ -667,7 +740,7 @@ def _record_sample(app: Any) -> None:
 
 
 def _tick_recording(app: Any, seconds_left: int) -> None:
-    app.vc_status_var.set(f"Recording... {seconds_left}s")
+    app.vc_status_var.set(_("Recording... {seconds}s", seconds=seconds_left))
     if seconds_left <= 0:
         app.vc_recording_after_id = None
         _finish_recording(app)
@@ -686,16 +759,16 @@ def _finish_recording(app: Any) -> None:
     try:
         path = recorder.stop()
     except Exception as e:  # noqa: BLE001
-        show_error(app, "Recording failed", str(e))
-        app.vc_status_var.set("Idle.")
+        show_error(app, _("Recording failed"), str(e))
+        app.vc_status_var.set(_("Idle."))
         return
     _validate_and_add_sample(app, path)
 
 
 def _load_sample(app: Any) -> None:
     path = filedialog.askopenfilename(
-        parent=app, title="Load reference voice clip",
-        filetypes=[("Audio", "*.wav *.mp3 *.m4a *.flac *.ogg"), ("All files", "*.*")],
+        parent=app, title=_("Load reference voice clip"),
+        filetypes=[(_("Audio"), "*.wav *.mp3 *.m4a *.flac *.ogg"), (_("All files"), "*.*")],
     )
     if not path:
         return
@@ -743,13 +816,14 @@ def _omni_refused(app: Any) -> bool:
     if app.vc_mode_var.get() != _MODE_CLONE:
         return False
     if not app.vc_samples:
-        show_error(app, "No reference voice",
-                   "Record or load at least one reference clip first, or "
-                   "choose \"Design a voice\" / \"Let the model choose\".")
+        show_error(app, _("No reference voice"),
+                   _('Record or load at least one reference clip first, or '
+                     'choose "{design}" / "{auto}".',
+                     design=_("Design a voice"), auto=_("Let the model choose")))
         return True
     if not app.vc_consent_var.get():
         # Generate is disabled until the tick; this guards other callers.
-        app.vc_status_var.set("Tick the permission box under the reference clips first.")
+        app.vc_status_var.set(_("Tick the permission box under the reference clips first."))
         return True
     return False
 
@@ -764,9 +838,10 @@ def _kokoro_refused(app: Any, text: str) -> bool:
     if script is None:
         return False
     show_error(
-        app, "Kokoro has no voice for this text",
-        f"Most of this text is in the {script} script. Kokoro's voices speak "
-        f"{tts_kokoro.LANGUAGE_NAMES}. Choose OmniVoice under Model for this language.",
+        app, _("Kokoro has no voice for this text"),
+        _("Most of this text is in the {script} script. Kokoro's voices speak "
+          "{languages}. Choose OmniVoice under Model for this language.",
+          script=script, languages=tts_kokoro.LANGUAGE_NAMES),
     )
     return True
 
@@ -790,10 +865,11 @@ def _offer_kept_clips(app: Any, text: str, speed: float) -> bool:
     app.vc_samples[:] = clips
     _refresh_samples_listbox(app)
     _reset_consent(app)
-    which = "finished" if finished else "unfinished"
     app.vc_status_var.set(
-        f"The reference clips kept with the {which} job for this text are back in the "
-        "list: tick the permission box, then press Generate again.")
+        _("The reference clips kept with the finished job for this text are back in the "
+          "list: tick the permission box, then press Generate again.") if finished
+        else _("The reference clips kept with the unfinished job for this text are back in the "
+               "list: tick the permission box, then press Generate again."))
     return True
 
 
@@ -805,15 +881,16 @@ def _generate(app: Any) -> None:
 
     text = app.vc_text.get("1.0", "end").strip()
     if not text:
-        show_error(app, "No text", "Type the text you want spoken.")
+        show_error(app, _("No text"), _("Type the text you want spoken."))
         return
     limit = _text_limit(app)
     if limit is not None and len(text) > limit:
         show_error(
-            app, "Text too long",
-            f"Text is {len(text):,} characters; the limit for one job is "
-            f"{limit:,} (about 90 minutes of speech). Split the text, or turn "
-            'on "No text length limit" under Advanced settings > App behaviour.',
+            app, _("Text too long"),
+            _("Text is {count} characters; the limit for one job is "
+              "{limit} (about 90 minutes of speech). Split the text, or turn "
+              'on "No text length limit" under Advanced settings > App behaviour.',
+              count=f"{len(text):,}", limit=f"{limit:,}"),
         )
         return
     kokoro = _is_kokoro(app)
@@ -827,12 +904,13 @@ def _generate(app: Any) -> None:
     if (not kokoro and app.vc_mode_var.get() != _MODE_CLONE
             and len(text) > tts_plan.MAX_PASS_CHARS):
         show_error(
-            app, "Text too long for this voice",
-            f"Text is {len(text):,} characters. A designed voice and the "
-            f"model's own voice speak at most {tts_plan.MAX_PASS_CHARS:,} "
-            "characters in one go: each piece of a longer text would get a "
-            "different voice. Clone a voice from a recording, or use Kokoro, "
-            "for longer texts.",
+            app, _("Text too long for this voice"),
+            _("Text is {count} characters. A designed voice and the "
+              "model's own voice speak at most {limit} "
+              "characters in one go: each piece of a longer text would get a "
+              "different voice. Clone a voice from a recording, or use Kokoro, "
+              "for longer texts.",
+              count=f"{len(text):,}", limit=f"{tts_plan.MAX_PASS_CHARS:,}"),
         )
         return
     engine = "kokoro" if kokoro else "omnivoice"
@@ -842,7 +920,7 @@ def _generate(app: Any) -> None:
     cancel_event = threading.Event()
     app.vc_cancel_event = cancel_event
     app.vc_planning = True
-    app.vc_status_var.set("Estimating the time...")
+    app.vc_status_var.set(_("Estimating the time..."))
 
     def worker() -> None:
         try:
@@ -1000,64 +1078,101 @@ def _time_hint(plan: _JobPlan) -> str:
     if est is None or est.time_high is None:
         return ""
     span = tts_plan.format_duration_range(est.time_low, est.time_high)
-    where = "on this computer" if est.measured else "(estimated, not measured on this computer yet)"
-    return f"{span} {where}"
+    if est.measured:
+        return _("{time} on this computer", time=span)
+    return _("{time} (estimated, not measured on this computer yet)", time=span)
+
+
+def _time_line(plan: _JobPlan, resumed: bool) -> str:
+    """The confirm step's time line: the whole job, or the pieces a continued job has left.
+
+    Every case is one whole sentence for translators; the "pieces left" forms are plurals
+    (both English forms are the same text as before)."""
+    from core import tts_plan
+
+    est = plan.estimate
+    seconds = f"{tts_plan.min_calibration_audio(plan.engine):.0f}"
+    left = len(plan.job.pending()) if resumed and plan.job is not None else 0
+    if est.time_high is None:
+        if resumed:
+            return ngettext(
+                "Time left for the {n} unfinished pieces: not known yet for this device; "
+                "the first run with at least {seconds} seconds of speech measures this "
+                "computer.",
+                "Time left for the {n} unfinished pieces: not known yet for this device; "
+                "the first run with at least {seconds} seconds of speech measures this "
+                "computer.", left, seconds=seconds)
+        return _("Time: not known yet for this device; the first run with at least "
+                 "{seconds} seconds of speech measures this computer.", seconds=seconds)
+    share = _left_share(plan) if resumed else 1.0
+    span = tts_plan.format_duration_range(est.time_low * share, est.time_high * share)
+    if est.measured:
+        if resumed:
+            return ngettext(
+                "Time left for the {n} unfinished pieces on this computer: {time} "
+                "(measured on this computer).",
+                "Time left for the {n} unfinished pieces on this computer: {time} "
+                "(measured on this computer).", left, time=span)
+        return _("Time on this computer: {time} (measured on this computer).", time=span)
+    if _can_measure(plan) and not resumed:  # a continued job is never offered the measuring run
+        return _("Time: {time} on a typical computer. Measure this computer's speed first "
+                 "(about 10 seconds, done once) for its own range.", time=span)
+    if resumed:
+        return ngettext(
+            "Time left for the {n} unfinished pieces: {time}, estimated from a reference "
+            "computer; the first run with at least {seconds} seconds of speech measures this "
+            "computer.",
+            "Time left for the {n} unfinished pieces: {time}, estimated from a reference "
+            "computer; the first run with at least {seconds} seconds of speech measures this "
+            "computer.", left, time=span, seconds=seconds)
+    return _("Time: {time}, estimated from a reference computer; the first run with at "
+             "least {seconds} seconds of speech measures this computer.",
+             time=span, seconds=seconds)
 
 
 def _confirm_text(plan: _JobPlan) -> str:
     from core import tts_plan
 
     est, disk = plan.estimate, plan.disk
-    first_run = (f"the first run with at least "
-                 f"{tts_plan.min_calibration_audio(plan.engine):.0f} seconds of speech "
-                 "measures this computer")
     lines = []
     job = plan.job
     if job is not None and _finished(plan):
         speech = tts_plan.format_duration_range(job.finished_audio_seconds,
                                                 job.finished_audio_seconds)
-        return (f"This text was already spoken with this voice and speed ({speech} of "
-                "speech, finished earlier). Use that file, or start over to speak it "
-                "again.")
-    resumed = job is not None and plan.resume_done
+        return _("This text was already spoken with this voice and speed ({speech} of "
+                 "speech, finished earlier). Use that file, or start over to speak it "
+                 "again.", speech=speech)
+    resumed = bool(job is not None and plan.resume_done)
     if job is not None and resumed:
-        lines.append(
-            f"Unfinished job found for this text and voice: {plan.resume_done} of "
-            f"{len(job.spoken())} pieces are done. Continue it, or start over.")
+        total = len(job.spoken())
+        lines.append(ngettext(
+            "Unfinished job found for this text and voice: {done} of {n} pieces are done. "
+            "Continue it, or start over.",
+            "Unfinished job found for this text and voice: {done} of {n} pieces are done. "
+            "Continue it, or start over.", total, done=plan.resume_done))
     # A continued job speaks only the pieces left: its time is their share.
-    head = f"Time left for the {len(job.pending())} unfinished pieces" if (
-        job is not None and resumed) else "Time"
-    share = _left_share(plan) if resumed else 1.0
-    if est.time_high is None:
-        lines.append(f"{head}: not known yet for this device; {first_run}.")
-    else:
-        span = tts_plan.format_duration_range(est.time_low * share, est.time_high * share)
-        if est.measured:
-            lines.append(f"{head} on this computer: {span} (measured on this computer).")
-        elif _can_measure(plan):
-            lines.append(f"{head}: {span} on a typical computer. Measure this computer's "
-                         "speed first (about 10 seconds, done once) for its own range.")
-        else:
-            lines.append(f"{head}: {span}, estimated from a reference computer; {first_run}.")
-    lines.append(
-        f"Speech: {tts_plan.format_duration_range(est.audio_low, est.audio_high)}. "
-        f"File: {tts_plan.format_size_range(est.size_low, est.size_high)} (WAV).")
+    lines.append(_time_line(plan, resumed))
+    lines.append(_("Speech: {speech}. File: {size} (WAV).",
+                   speech=tts_plan.format_duration_range(est.audio_low, est.audio_high),
+                   size=tts_plan.format_size_range(est.size_low, est.size_high)))
     if not plan.installed:
-        lines.append(_KOKORO_DOWNLOAD_LINE if plan.engine == "kokoro" else _OMNI_DOWNLOAD_LINE)
+        lines.append(translate(_KOKORO_DOWNLOAD_LINE if plan.engine == "kokoro"
+                               else _OMNI_DOWNLOAD_LINE))
     drive = Path(disk.folder).anchor or disk.folder
     if _too_big(plan):
-        lines.append(
+        lines.append(_(
             "This text is too long for one audio file: a WAV file holds at most "
-            "4 GB (about 24 hours of speech). Split the text into parts.")
+            "4 GB (about 24 hours of speech). Split the text into parts."))
     elif disk.ok:
-        lines.append(f"Free disk space: {tts_plan.format_size(disk.free_bytes)} on {drive}")
+        lines.append(_("Free disk space: {free} on {drive}",
+                       free=tts_plan.format_size(disk.free_bytes), drive=drive))
     else:
-        lines.append(
-            f"Not enough free disk space: this needs about "
-            f"{tts_plan.format_size(disk.need_bytes)} plus "
-            f"{tts_plan.format_size(disk.margin_bytes)} kept free on {drive} and only "
-            f"{tts_plan.format_size(disk.free_bytes)} is free. Free some space, then "
-            "try again.")
+        lines.append(_(
+            "Not enough free disk space: this needs about {need} plus {margin} kept free "
+            "on {drive} and only {free} is free. Free some space, then try again.",
+            need=tts_plan.format_size(disk.need_bytes),
+            margin=tts_plan.format_size(disk.margin_bytes), drive=drive,
+            free=tts_plan.format_size(disk.free_bytes)))
     return "\n".join(lines)
 
 
@@ -1071,8 +1186,8 @@ def _show_confirm(app: Any) -> None:
         btn.pack_forget()
     finished = _finished(plan)
     app.vc_confirm_start_btn.configure(
-        text="Use the finished file" if finished
-        else "Continue the unfinished job" if plan.resume_done else "Start")
+        text=_("Use the finished file") if finished
+        else _("Continue the unfinished job") if plan.resume_done else _("Start"))
     shown = app.vc_confirm_measure_btn if measure else app.vc_confirm_start_btn
     shown.pack(side="left", before=app.vc_confirm_cancel_btn)
     shown.configure(state="normal" if finished or _can_start(plan) else "disabled")
@@ -1089,15 +1204,15 @@ def _show_confirm(app: Any) -> None:
     app.vc_confirm_open = True
     _sync_lock(app)
     if _finished(plan):
-        app.vc_status_var.set("This text was already spoken with this voice.")
+        app.vc_status_var.set(_("This text was already spoken with this voice."))
     elif _too_big(plan):
-        app.vc_status_var.set("This text is too long for one audio file.")
+        app.vc_status_var.set(_("This text is too long for one audio file."))
     elif not plan.disk.ok:
-        app.vc_status_var.set("Not enough free disk space for this text.")
+        app.vc_status_var.set(_("Not enough free disk space for this text."))
     elif measure:
-        app.vc_status_var.set("Long text: measure this computer's speed, or Cancel.")
+        app.vc_status_var.set(_("Long text: measure this computer's speed, or Cancel."))
     else:
-        app.vc_status_var.set("Long text: check the estimate, then Start or Cancel.")
+        app.vc_status_var.set(_("Long text: check the estimate, then Start or Cancel."))
 
 
 def _close_confirm(app: Any) -> None:
@@ -1135,8 +1250,9 @@ def _use_finished(app: Any, plan: _JobPlan) -> None:
     app.vc_play_btn.configure(state="normal")
     app.vc_save_btn.configure(state="normal")
     app.vc_status_var.set(
-        f"Done: {plan.job.finished_audio_seconds:.0f}s of speech, finished earlier for "
-        "this text and voice (nothing was spoken again).")
+        _("Done: {audio}s of speech, finished earlier for "
+          "this text and voice (nothing was spoken again).",
+          audio=f"{plan.job.finished_audio_seconds:.0f}"))
 
 
 def _confirm_restart(app: Any) -> None:
@@ -1154,13 +1270,13 @@ def _confirm_restart(app: Any) -> None:
     held = sum(p.stat().st_size for p in plan.job.parts_dir.glob("piece-*.wav"))
     need = tts_plan.piece_job_need_bytes(plan.estimate) - held
     if _too_big(plan) or not tts_plan.check_disk(plan.estimate, need_bytes=need).ok:
-        app.vc_status_var.set("Not enough free disk space to start over; the finished "
-                              "work is kept.")
+        app.vc_status_var.set(_("Not enough free disk space to start over; the finished "
+                                "work is kept."))
         return
     try:
         plan.job.discard()
     except tts_job.JobBusy as e:
-        app.vc_status_var.set(f"{e} The finished pieces are kept.")
+        app.vc_status_var.set(_("{error} The finished pieces are kept.", error=e))
         return
     plan.resume_done = 0
     _confirm_start(app)
@@ -1183,7 +1299,7 @@ def _measure_speed(app: Any) -> None:
     app.vc_cancel_event = cancel_event
     app.vc_measuring = True
     app.vc_confirm_measure_btn.configure(state="disabled")
-    app.vc_status_var.set("Measuring this computer's speed (one time, about 10 seconds)...")
+    app.vc_status_var.set(_("Measuring this computer's speed (one time, about 10 seconds)..."))
 
     def worker() -> None:
         try:
@@ -1216,7 +1332,7 @@ def _on_measured(app: Any, plan: _JobPlan, cal: Any, cancel_event: threading.Eve
         _confirm_cancelled(app)
         return
     if cal is None:
-        _measure_failed(app, plan, "the check produced too little speech to measure",
+        _measure_failed(app, plan, _("the check produced too little speech to measure"),
                         cancel_event)
         return
     app.vc_measuring = False
@@ -1239,8 +1355,8 @@ def _measure_failed(app: Any, plan: _JobPlan, message: str,
     app.vc_cancel_event = None
     plan.measure_failed = True
     _show_confirm(app)
-    app.vc_status_var.set(f"Could not measure this computer's speed ({message}); "
-                          "the estimate is from a reference computer.")
+    app.vc_status_var.set(_("Could not measure this computer's speed ({error}); "
+                            "the estimate is from a reference computer.", error=message))
 
 
 def _start(app: Any) -> None:
@@ -1275,19 +1391,36 @@ def _record_speed(app: Any, result: "dict[str, Any]") -> None:
         logger.exception("Could not store the measured text-to-voice speed")
 
 
-def _left_text(seconds: "float | None") -> str:
+def _piece_status(voice: "str | None", current: int, total: int,
+                  seconds_left: "float | None") -> str:
+    """The status line while a job is spoken piece by piece: with ``voice`` (a Kokoro
+    voice's name) "Speaking as ...", without it (OmniVoice) "Generating". Whole sentences
+    for translators; plural forms by the piece count (both English forms are the same)."""
     from core import tts_plan
 
-    if seconds is None:
-        return ""
-    return f", {tts_plan.format_duration_range(seconds, seconds)} left"
+    if seconds_left is None:
+        if voice is None:
+            return ngettext("Generating: piece {current} of {n}...",
+                            "Generating: piece {current} of {n}...", total, current=current)
+        return ngettext("Speaking as {voice}: piece {current} of {n}...",
+                        "Speaking as {voice}: piece {current} of {n}...", total,
+                        voice=voice, current=current)
+    left = tts_plan.format_duration_range(seconds_left, seconds_left)
+    if voice is None:
+        return ngettext("Generating: piece {current} of {n}, {time} left...",
+                        "Generating: piece {current} of {n}, {time} left...", total,
+                        current=current, time=left)
+    return ngettext("Speaking as {voice}: piece {current} of {n}, {time} left...",
+                    "Speaking as {voice}: piece {current} of {n}, {time} left...", total,
+                    voice=voice, current=current, time=left)
 
 
 def _run_job(app: Any, plan: _JobPlan, speak: Any, cancel_event: threading.Event,
-             label: str, on_joined: Any = None) -> "dict[str, Any]":
+             voice: "str | None", on_joined: Any = None) -> "dict[str, Any]":
     """Speak the unfinished pieces of ``plan.job`` (worker thread) with the
-    progress bar and the time left on the status line; returns the payload
-    for :func:`_generate_done`. Raises like ``core.tts_job.run``."""
+    progress bar and the time left on the status line (``voice``: see
+    :func:`_piece_status`); returns the payload for :func:`_generate_done`.
+    Raises like ``core.tts_job.run``."""
     from core import tts_job
 
     job = plan.job
@@ -1299,7 +1432,7 @@ def _run_job(app: Any, plan: _JobPlan, speak: Any, cancel_event: threading.Event
 
     def on_progress(p: Any) -> None:
         current = min(p.pieces_done + 1, p.pieces_total)
-        status = f"{label} piece {current} of {p.pieces_total}{_left_text(p.seconds_left)}..."
+        status = _piece_status(voice, current, p.pieces_total, p.seconds_left)
 
         def show() -> None:
             app.vc_progress.configure(value=p.fraction * 100)
@@ -1332,7 +1465,7 @@ def _generate_kokoro(app: Any, text: str, play_when_done: bool = False) -> None:
     _set_busy(app, True)
     cancel_event = threading.Event()
     app.vc_cancel_event = cancel_event
-    app.vc_status_var.set("Preparing...")
+    app.vc_status_var.set(_("Preparing..."))
 
     def worker() -> None:
         try:
@@ -1340,9 +1473,10 @@ def _generate_kokoro(app: Any, text: str, play_when_done: bool = False) -> None:
                 def dl(done: int, total: int) -> None:
                     frac = done / total if total else 0.0
                     _set_progress(app, frac)
-                    app.post_to_main(lambda: app.vc_status_var.set(
-                        f"Downloading the Kokoro voice model (one time): "
-                        f"{done / 1e6:.0f} / {total / 1e6:.0f} MB"))
+                    status = _("Downloading the Kokoro voice model (one time): "
+                               "{done} / {total} MB",
+                               done=f"{done / 1e6:.0f}", total=f"{total / 1e6:.0f}")
+                    app.post_to_main(lambda: app.vc_status_var.set(status))
                 tts_kokoro.download(progress_cb=dl, cancel_event=cancel_event)
                 app.post_to_main(lambda: _sync_engine(app))
             if plan is not None and plan.job is not None:
@@ -1351,12 +1485,11 @@ def _generate_kokoro(app: Any, text: str, play_when_done: bool = False) -> None:
                         piece, voice.key, path, speed=speed, progress_cb=on_fraction,
                         cancel_event=cancel_event).elapsed_seconds
 
-                payload = _run_job(app, plan, speak, cancel_event,
-                                   f"Speaking as {voice.label}:")
+                payload = _run_job(app, plan, speak, cancel_event, voice.label)
                 app.post_to_main(lambda: _generate_done(app, payload))
                 return
             hint = _time_hint(plan) if plan is not None else ""
-            status = f"Speaking as {voice.label}... {hint}".rstrip()
+            status = _("Speaking as {voice}... {time}", voice=voice.label, time=hint).rstrip()
             app.post_to_main(lambda: app.vc_status_var.set(status))
             _set_progress(app, 0.0)
             out = os.path.join(voice_clone.session_work_dir(),
@@ -1409,12 +1542,13 @@ def _generate_omnivoice(app: Any, text: str) -> None:
         app.vc_progress.start(20)
     cancel_event = threading.Event()
     app.vc_cancel_event = cancel_event
-    app.vc_status_var.set("Preparing...")
+    app.vc_status_var.set(_("Preparing..."))
 
     def worker() -> None:
         try:
             if not voice_clone.is_available():
-                app.post_to_main(lambda: app.vc_status_var.set(_OMNI_INSTALL_STATUS))
+                install_status = translate(_OMNI_INSTALL_STATUS)
+                app.post_to_main(lambda: app.vc_status_var.set(install_status))
                 ok = voice_clone.ensure_installed(
                     log_cb=app.log_threadsafe, cancel_event=cancel_event
                 )
@@ -1425,7 +1559,7 @@ def _generate_omnivoice(app: Any, text: str) -> None:
                         reason = (
                             offline.message("downloading the speech model software")
                             if offline.is_offline()
-                            else "Could not download the speech model software."
+                            else _("Could not download the speech model software.")
                         )
                         app.post_to_main(lambda: _generate_failed(app, reason))
                     return
@@ -1446,10 +1580,9 @@ def _generate_omnivoice(app: Any, text: str) -> None:
                     plan.device = device
                     _replan(plan)
                 time_high = plan.estimate.time_high
-            hint = (_time_hint(plan) if plan is not None else "") or "time not known yet"
-            app.post_to_main(
-                lambda: app.vc_status_var.set(f"Generating... {hint}.")
-            )
+            hint = (_time_hint(plan) if plan is not None else "") or _("time not known yet")
+            generating = _("Generating... {time}.", time=hint)
+            app.post_to_main(lambda: app.vc_status_var.set(generating))
 
             _ensure_worker(app)
 
@@ -1457,15 +1590,13 @@ def _generate_omnivoice(app: Any, text: str) -> None:
                 app.post_to_main(lambda: _generate_cancelled(app, _kept(plan)))
                 return
 
-            def _on_model_loading() -> None:
-                app.post_to_main(
-                    lambda: app.vc_status_var.set(
-                        "Loading the speech model (first time this session; "
+            loading = _("Loading the speech model (first time this session; "
                         "this may also download ~2GB of model weights -- "
                         "needs internet; a few minutes to over an hour on "
-                        "a slow connection)..."
-                    )
-                )
+                        "a slow connection)...")
+
+            def _on_model_loading() -> None:
+                app.post_to_main(lambda: app.vc_status_var.set(loading))
 
             if plan is not None and plan.job is not None:
                 payload = _run_omnivoice_job(
@@ -1540,7 +1671,7 @@ def _run_omnivoice_job(app: Any, plan: _JobPlan, samples: "list[str]", consent: 
             logger.exception("Could not write the voice-clone consent record")
             warning.append(f"The local consent record could not be saved: {e}")
 
-    payload = _run_job(app, plan, speak, cancel_event, "Generating:",
+    payload = _run_job(app, plan, speak, cancel_event, None,
                        on_joined=record_consent if samples else None)
     if warning:
         payload["warning"] = warning[0]
@@ -1561,7 +1692,7 @@ def _ensure_worker(app: Any) -> None:
     if old is not None and not old.wait_for_exit():
         from app.services.voice_clone_service import VoiceCloneWorkerError
         raise VoiceCloneWorkerError(
-            "The previous voice-clone worker is still stopping; try again in a moment.")
+            _("The previous voice-clone worker is still stopping; try again in a moment."))
     from app.services.voice_clone_service import VoiceCloneWorker
     app.vc_worker = VoiceCloneWorker(app.entry_file, log=app.log_threadsafe)
     app.vc_worker.start()
@@ -1586,14 +1717,16 @@ def _generate_done(app: Any, result: dict[str, Any], play: bool = False) -> None
         app.vc_save_btn.configure(state="normal")
     elapsed = result.get("elapsed_seconds") or 0.0
     audio = result.get("audio_seconds") or 0.0
+    audio_s, elapsed_s = f"{audio:.0f}", f"{elapsed:.0f}"
     if "units_run" in result:  # piece by piece: a continued job spoke only part of it now
-        status = f"Done: {audio:.0f}s of speech; this run took {elapsed:.0f}s."
+        status = _("Done: {audio}s of speech; this run took {elapsed}s.",
+                   audio=audio_s, elapsed=elapsed_s)
     else:
-        status = (f"Done: {audio:.0f}s of speech in {elapsed:.0f}s." if audio
-                  else f"Done in {elapsed:.0f}s.")
+        status = (_("Done: {audio}s of speech in {elapsed}s.", audio=audio_s, elapsed=elapsed_s)
+                  if audio else _("Done in {elapsed}s.", elapsed=elapsed_s))
     warning = result.get("warning") or ""
     if warning:
-        status += " Warning: the consent record was not saved (see the log)."
+        status += " " + _("Warning: the consent record was not saved (see the log).")
     app.vc_status_var.set(status)
     app.log(f"Text to voice finished: {app.vc_last_output}")
     if warning:
@@ -1606,8 +1739,11 @@ def _generate_done(app: Any, result: dict[str, Any], play: bool = False) -> None
 def _kept_text(kept: "tuple[int, int] | None") -> str:
     if not kept or not kept[0]:
         return ""
-    return (f" {kept[0]} of {kept[1]} pieces are kept: press Generate with the same "
-            "text and voice to continue.")
+    # Both English forms are the same text as before; other languages get real plural forms.
+    return " " + ngettext(
+        "{done} of {n} pieces are kept: press Generate with the same text and voice to continue.",
+        "{done} of {n} pieces are kept: press Generate with the same text and voice to continue.",
+        kept[1], done=kept[0])
 
 
 def _is_job_busy(e: BaseException) -> bool:
@@ -1620,17 +1756,17 @@ def _generate_failed(app: Any, message: str,
     _finish(app)
     app.vc_plan = None
     if busy:  # another app window runs this job: nothing failed here
-        app.vc_status_var.set("Not started: " + message)
-        show_error(app, "Running in another window", message)
+        app.vc_status_var.set(_("Not started: {error}", error=message))
+        show_error(app, _("Running in another window"), message)
         return
-    app.vc_status_var.set("Failed." + _kept_text(kept))
+    app.vc_status_var.set(_("Failed.") + _kept_text(kept))
     show_error(
-        app, "Generation failed", message,
+        app, _("Generation failed"), message,
         detail=(
-            "If this looks like a network or download problem, check your "
-            "internet connection, then click Generate again to retry."
-            + (" The finished pieces are kept; the same text and voice "
-               "continue from there." if kept and kept[0] else "")
+            _("If this looks like a network or download problem, check your "
+              "internet connection, then click Generate again to retry.")
+            + (" " + _("The finished pieces are kept; the same text and voice "
+                       "continue from there.") if kept and kept[0] else "")
         ),
     )
 
@@ -1638,7 +1774,7 @@ def _generate_failed(app: Any, message: str,
 def _generate_cancelled(app: Any, kept: "tuple[int, int] | None" = None) -> None:
     _finish(app)
     app.vc_plan = None
-    app.vc_status_var.set("Cancelled." + _kept_text(kept))
+    app.vc_status_var.set(_("Cancelled.") + _kept_text(kept))
 
 
 def _cancel_generate(app: Any) -> None:
@@ -1680,7 +1816,7 @@ def _play(app: Any) -> None:
         return
     def done(error: BaseException | None) -> None:
         if error is not None:
-            show_error(app, "Could not play the result", str(error))
+            show_error(app, _("Could not play the result"), str(error))
 
     open_async(path, app, done)
 
@@ -1690,9 +1826,9 @@ def _save(app: Any) -> None:
     if not path or not os.path.isfile(path):
         return
     dest = filedialog.asksaveasfilename(
-        parent=app, title="Save generated speech",
+        parent=app, title=_("Save generated speech"),
         defaultextension=".wav",
-        filetypes=[("WAV audio", "*.wav"), ("All files", "*.*")],
+        filetypes=[(_("WAV audio"), "*.wav"), (_("All files"), "*.*")],
         initialfile="cloned-voice.wav",
     )
     if not dest:
@@ -1701,7 +1837,7 @@ def _save(app: Any) -> None:
         import shutil
         shutil.copyfile(path, dest)
     except OSError as e:
-        show_error(app, "Could not save the file", str(e))
+        show_error(app, _("Could not save the file"), str(e))
         return
     app.log(f"Voice-clone result saved to {dest}")
 
