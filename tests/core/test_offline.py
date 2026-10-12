@@ -63,6 +63,19 @@ def test_flag_from_defaults_to_off():
     assert offline.flag_from({}) is False
 
 
+def test_coerce_flag_returns_unknown_for_anything_unclear():
+    assert offline.coerce_flag(True, False) is True
+    assert offline.coerce_flag(1, False) is True
+    assert offline.coerce_flag("yes", False) is True
+    assert offline.coerce_flag(" OFF ", True) is False
+    assert offline.coerce_flag("0", True) is False
+    # Neither clearly on nor clearly off: the caller's value.
+    assert offline.coerce_flag("invalid", True) is True
+    assert offline.coerce_flag("invalid", False) is False
+    assert offline.coerce_flag(math.inf, False) is False
+    assert offline.coerce_flag(None, True) is True
+
+
 def test_in_memory_switch_wins_over_the_file(isolated_config):
     isolated_config.write_text(json.dumps({"work_offline": True}), encoding="utf-8")
     offline.set_offline(False)
@@ -217,6 +230,15 @@ def test_connect_allowed_only_on_this_computer():
     af_unix = getattr(socket, "AF_UNIX", None)
     if af_unix is not None:
         assert offline.connect_allowed(af_unix, tcp, "/tmp/sock")
+
+
+def test_send_allowed_only_on_this_computer():
+    v4, v6 = socket.AF_INET, socket.AF_INET6
+    assert offline.send_allowed(v4, ("127.0.0.1", 80))
+    assert offline.send_allowed(v6, ("::1", 80, 0, 0))
+    assert not offline.send_allowed(v4, ("8.8.8.8", 80))
+    assert not offline.send_allowed(v6, ("2606:4700::1111", 443, 0, 0))
+    assert offline.send_allowed(v4, None)  # sendmsg on a connected socket
 
 
 def test_lookup_allowed_only_without_a_query():

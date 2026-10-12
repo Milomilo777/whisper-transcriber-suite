@@ -254,6 +254,22 @@ def test_is_safe_model_folder_name_directly():
     assert hub.is_safe_model_folder_name("a\\b") is False
 
 
+# ---------- model_weights_present ---------------------------------------------
+
+
+def test_model_weights_present_needs_a_non_empty_model_bin(tmp_path):
+    """A folder, or an empty model.bin left by a killed download, is not an installed model."""
+    assert hub.model_weights_present(tmp_path) is False
+    weights = tmp_path / "model.bin"
+    weights.touch()
+    assert hub.model_weights_present(tmp_path) is False
+    weights.write_bytes(b"123")
+    assert hub.model_weights_present(tmp_path) is True
+    assert hub.model_weights_present(str(tmp_path)) is True
+    assert hub.model_weights_present("") is False
+    assert hub.model_weights_present(None) is False
+
+
 # ---------- is_path_inside ----------------------------------------------------
 
 
