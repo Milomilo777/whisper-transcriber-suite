@@ -1,0 +1,1395 @@
+{
+ "pure": {
+  "confirm": {
+   "unknown_not_installed": "Time: not known yet for this device; the first run with at least 5 seconds of speech measures this computer.\nSpeech: 10–15 minutes. File: 38–57 MB (WAV).\nThe Kokoro voice model downloads first (about 350 MB, one time).\nFree disk space: 931.3 GB on data",
+   "measured_omni_not_installed": "Time on this computer: 20–30 minutes (measured on this computer).\nSpeech: 10–15 minutes. File: 38–57 MB (WAV).\nOmniVoice downloads first (about 2 GB, one time).\nFree disk space: 931.3 GB on data",
+   "can_measure": "Time: 20–30 minutes on a typical computer. Measure this computer's speed first (about 10 seconds, done once) for its own range.\nSpeech: 10–15 minutes. File: 38–57 MB (WAV).\nFree disk space: 931.3 GB on data",
+   "measure_failed": "Time: 20–30 minutes, estimated from a reference computer; the first run with at least 5 seconds of speech measures this computer.\nSpeech: 10–15 minutes. File: 38–57 MB (WAV).\nFree disk space: 931.3 GB on data",
+   "resumed_measured": "Unfinished job found for this text and voice: 2 of 5 pieces are done. Continue it, or start over.\nTime left for the 3 unfinished pieces on this computer: 12–18 minutes (measured on this computer).\nSpeech: 10–15 minutes. File: 38–57 MB (WAV).\nFree disk space: 931.3 GB on data",
+   "resumed_unknown": "Unfinished job found for this text and voice: 2 of 5 pieces are done. Continue it, or start over.\nTime left for the 3 unfinished pieces: not known yet for this device; the first run with at least 5 seconds of speech measures this computer.\nSpeech: 10–15 minutes. File: 38–57 MB (WAV).\nFree disk space: 931.3 GB on data",
+   "finished": "This text was already spoken with this voice and speed (about 13 minutes of speech, finished earlier). Use that file, or start over to speak it again.",
+   "too_big": "Time: 20–30 minutes, estimated from a reference computer; the first run with at least 5 seconds of speech measures this computer.\nSpeech: 10–15 minutes. File: 38 MB to 4.0 GB (WAV).\nThis text is too long for one audio file: a WAV file holds at most 4 GB (about 24 hours of speech). Split the text into parts.",
+   "no_disk": "Time: 20–30 minutes, estimated from a reference computer; the first run with at least 5 seconds of speech measures this computer.\nSpeech: 10–15 minutes. File: 38–57 MB (WAV).\nNot enough free disk space: this needs about 57 MB plus 477 MB kept free on data and only less than 1 MB is free. Free some space, then try again."
+  },
+  "time_hint": {
+   "measured": "20–30 minutes on this computer",
+   "reference": "20–30 minutes (estimated, not measured on this computer yet)",
+   "unknown": ""
+  },
+  "kept": [
+   " 2 of 5 pieces are kept: press Generate with the same text and voice to continue.",
+   "",
+   ""
+  ]
+ },
+ "tab": {
+  "sections": [
+   [
+    "Model",
+    "Kokoro speaks in one of 53 ready-made voices and is fast on any computer. OmniVoice can clone a voice from a short recording, or design a new one from a description (gender, age, pitch, accent); it is much slower without a supported graphics card. Each model downloads once, the first time it is used."
+   ],
+   [
+    "Voice",
+    "Kokoro: pick a ready-made voice and press Preview to hear it. OmniVoice: clone a voice from 1-3 short recordings (3-10 seconds each), design one from its attributes, or let the model choose."
+   ],
+   [
+    "Text to speak",
+    "Up to 100,000 characters (about 90 minutes of speech; Advanced settings can lift the limit). Before a long text starts, the tab shows how long it takes on this computer, how big the file gets and whether the disk has room. A long text is spoken piece by piece and joined into one audio file at the end: Cancel keeps the finished pieces, and pressing Generate again with the same text and voice continues the job."
+   ]
+  ],
+  "tree": [
+   [
+    ".!frame.!labelframe.!frame.!label",
+    "Model"
+   ],
+   [
+    ".!frame.!labelframe.!frame.!label2",
+    " ⓘ "
+   ],
+   [
+    ".!frame.!labelframe.!label",
+    "Model:"
+   ],
+   [
+    ".!frame.!labelframe.!combobox:values",
+    "Kokoro — 53 ready-made voices, 9 languages (fast; ~350 MB download)"
+   ],
+   [
+    ".!frame.!labelframe.!combobox:values",
+    "OmniVoice — clone any voice, or design one (slow on CPU; ~2 GB download)"
+   ],
+   [
+    ".!frame.!labelframe.!label2",
+    "Kokoro-82M (Apache-2.0), runs locally -- downloaded."
+   ],
+   [
+    ".!frame.!labelframe2.!frame.!label",
+    "Voice"
+   ],
+   [
+    ".!frame.!labelframe2.!frame.!label2",
+    " ⓘ "
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!label",
+    "Voice:"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Alloy — US English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Aoede — US English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Bella — US English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Heart — US English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Jessica — US English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Kore — US English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Nicole — US English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Nova — US English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "River — US English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Sarah — US English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Sky — US English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Adam — US English, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Echo — US English, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Eric — US English, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Fenrir — US English, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Liam — US English, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Michael — US English, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Onyx — US English, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Puck — US English, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Santa — US English, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Alice — UK English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Emma — UK English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Isabella — UK English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Lily — UK English, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Daniel — UK English, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Fable — UK English, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "George — UK English, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Lewis — UK English, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Dora — Spanish, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Alex — Spanish, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Siwis — French, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Alpha — Hindi, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Beta — Hindi, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Omega — Hindi, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Psi — Hindi, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Sara — Italian, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Nicola — Italian, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Alpha — Japanese, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Gongitsune — Japanese, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Nezumi — Japanese, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Tebukuro — Japanese, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Kumo — Japanese, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Dora — Portuguese, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Alex — Portuguese, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Santa — Portuguese, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Xiaobei — Chinese, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Xiaoni — Chinese, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Xiaoxiao — Chinese, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Xiaoyi — Chinese, female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Yunjian — Chinese, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Yunxi — Chinese, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Yunxia — Chinese, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Yunyang — Chinese, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!combobox:values",
+    "Santa — Spanish, male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame2.!button",
+    "▶ Preview"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame.!radiobutton",
+    "Clone my voice / a recording"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame.!radiobutton2",
+    "Design a voice"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame.!radiobutton3",
+    "Let the model choose"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame2.!frame.!button",
+    "● Record sample (6s)"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame2.!frame.!button2",
+    "Load audio file..."
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame2.!frame.!button3",
+    "Remove selected"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame2.!checkbutton",
+    "I have the speaker's permission to clone this voice (or it is my own)"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!label",
+    "Gender"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox:values",
+    "Any"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox:values",
+    "Male"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox:values",
+    "Female"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!label2",
+    "Age"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox2:values",
+    "Any"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox2:values",
+    "Child"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox2:values",
+    "Teenager"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox2:values",
+    "Young adult"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox2:values",
+    "Middle-aged"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox2:values",
+    "Elderly"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!label3",
+    "Pitch"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox3:values",
+    "Any"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox3:values",
+    "Very low pitch"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox3:values",
+    "Low pitch"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox3:values",
+    "Moderate pitch"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox3:values",
+    "High pitch"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox3:values",
+    "Very high pitch"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!label4",
+    "Accent (English)"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox4:values",
+    "Any"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox4:values",
+    "American accent"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox4:values",
+    "British accent"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox4:values",
+    "Australian accent"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox4:values",
+    "Canadian accent"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox4:values",
+    "Indian accent"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox4:values",
+    "Chinese accent"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox4:values",
+    "Korean accent"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox4:values",
+    "Japanese accent"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox4:values",
+    "Portuguese accent"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!combobox4:values",
+    "Russian accent"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!frame3.!checkbutton",
+    "Whisper"
+   ],
+   [
+    ".!frame.!labelframe2.!frame3.!label",
+    "OmniVoice picks a natural voice by itself -- no recording needed."
+   ],
+   [
+    ".!frame.!labelframe3.!frame.!label",
+    "Text to speak"
+   ],
+   [
+    ".!frame.!labelframe3.!frame.!label2",
+    " ⓘ "
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!label",
+    "Language:"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Auto-detect"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "English"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Afrikaans"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Albanian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Amharic"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Arabic"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Armenian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Azerbaijani"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Basque"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Belarusian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Bengali"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Bosnian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Bulgarian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Catalan"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Cebuano"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Chinese (Simplified)"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Chinese (Traditional)"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Corsican"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Croatian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Czech"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Danish"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Dutch"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Esperanto"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Estonian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Finnish"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "French"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Frisian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Galician"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Georgian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "German"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Greek"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Gujarati"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Haitian Creole"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Hausa"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Hawaiian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Hebrew"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Hindi"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Hmong"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Hungarian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Icelandic"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Igbo"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Indonesian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Irish"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Italian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Japanese"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Javanese"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Kannada"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Kazakh"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Khmer"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Korean"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Kurdish"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Kyrgyz"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Lao"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Latin"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Latvian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Lithuanian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Luxembourgish"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Macedonian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Malagasy"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Malay"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Malayalam"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Maltese"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Maori"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Marathi"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Mongolian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Myanmar (Burmese)"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Nepali"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Norwegian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Nyanja (Chichewa)"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Pashto"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Persian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Polish"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Portuguese (Portugal, Brazil)"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Punjabi"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Romanian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Russian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Samoan"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Scots Gaelic"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Serbian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Sesotho"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Shona"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Sindhi"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Sinhala (Sinhalese)"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Slovak"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Slovenian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Somali"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Spanish"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Sundanese"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Swahili"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Swedish"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Tagalog (Filipino)"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Tajik"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Tamil"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Telugu"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Thai"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Turkish"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Ukrainian"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Urdu"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Uzbek"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Vietnamese"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Welsh"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Xhosa"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Yiddish"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Yoruba"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!combobox:values",
+    "Zulu"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!label2",
+    "Speed:"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!label3",
+    "1.00x"
+   ],
+   [
+    ".!frame.!labelframe3.!frame2.!label4",
+    "0 / 100,000 characters"
+   ],
+   [
+    ".!frame.!labelframe4",
+    "Long text: check before starting"
+   ],
+   [
+    ".!frame.!labelframe4.!frame.!button",
+    "Start"
+   ],
+   [
+    ".!frame.!labelframe4.!frame.!button2",
+    "Measure this computer's speed"
+   ],
+   [
+    ".!frame.!labelframe4.!frame.!button3",
+    "Start over"
+   ],
+   [
+    ".!frame.!labelframe4.!frame.!button4",
+    "Cancel"
+   ],
+   [
+    ".!frame.!frame.!button",
+    "Generate speech"
+   ],
+   [
+    ".!frame.!frame.!button2",
+    "Cancel"
+   ],
+   [
+    ".!frame.!frame.!button3",
+    "▶ Play"
+   ],
+   [
+    ".!frame.!frame.!button4",
+    "Save As..."
+   ],
+   [
+    ".!frame.!label",
+    "Idle."
+   ],
+   [
+    ".!frame.!label2",
+    "AI-generated audio. Clone only your own voice, or a voice whose speaker has given you clear permission. Do not impersonate anyone, and do not make misleading audio of real people."
+   ]
+  ],
+  "kokoro_ready": {
+   "engine_state": "Kokoro-82M (Apache-2.0), runs locally -- downloaded.",
+   "count": "0 / 100,000 characters",
+   "speed": "1.00x",
+   "start_btn": "Start"
+  },
+  "kokoro_missing": {
+   "engine_state": "Kokoro-82M (Apache-2.0), runs locally -- not downloaded yet (~350 MB, downloads on first use).",
+   "count": "0 / 100,000 characters",
+   "speed": "1.00x",
+   "start_btn": "Start"
+  },
+  "omni_ready": {
+   "engine_state": "OmniVoice (Apache-2.0, k2-fsa), runs locally -- installed.",
+   "count": "0 / 100,000 characters",
+   "speed": "1.00x",
+   "start_btn": "Start"
+  },
+  "omni_missing": {
+   "engine_state": "OmniVoice (Apache-2.0, k2-fsa), runs locally -- not downloaded yet (~2 GB, downloads on first use).",
+   "count": "0 / 100,000 characters",
+   "speed": "1.00x",
+   "start_btn": "Start"
+  },
+  "speed_moved": {
+   "engine_state": "Kokoro-82M (Apache-2.0), runs locally -- downloaded.",
+   "count": "0 / 100,000 characters",
+   "speed": "1.50x",
+   "start_btn": "Start"
+  },
+  "typed": {
+   "engine_state": "Kokoro-82M (Apache-2.0), runs locally -- downloaded.",
+   "count": "12 / 100,000 characters",
+   "speed": "1.50x",
+   "start_btn": "Start"
+  },
+  "build": {
+   "status": [],
+   "confirm": [],
+   "errors": []
+  },
+  "no_text": {
+   "status": [],
+   "confirm": [],
+   "errors": [
+    [
+     "No text",
+     "Type the text you want spoken.",
+     null
+    ]
+   ]
+  },
+  "typed_over_limit": {
+   "engine_state": "Kokoro-82M (Apache-2.0), runs locally -- downloaded.",
+   "count": "12 / 10 characters",
+   "speed": "1.50x",
+   "start_btn": "Start"
+  },
+  "text_too_long": {
+   "status": [],
+   "confirm": [],
+   "errors": [
+    [
+     "Text too long",
+     "Text is 12 characters; the limit for one job is 10 (about 90 minutes of speech). Split the text, or turn on \"No text length limit\" under Advanced settings > App behaviour.",
+     null
+    ]
+   ]
+  },
+  "kokoro_no_voice": {
+   "status": [],
+   "confirm": [],
+   "errors": [
+    [
+     "Kokoro has no voice for this text",
+     "Most of this text is in the Arabic script. Kokoro's voices speak US English, UK English, Spanish, French, Hindi, Italian, Japanese, Portuguese and Chinese. Choose OmniVoice under Model for this language.",
+     null
+    ]
+   ]
+  },
+  "design_too_long": {
+   "status": [],
+   "confirm": [],
+   "errors": [
+    [
+     "Text too long for this voice",
+     "Text is 5,499 characters. A designed voice and the model's own voice speak at most 5,000 characters in one go: each piece of a longer text would get a different voice. Clone a voice from a recording, or use Kokoro, for longer texts.",
+     null
+    ]
+   ]
+  },
+  "clone_no_samples": {
+   "status": [],
+   "confirm": [],
+   "errors": [
+    [
+     "No reference voice",
+     "Record or load at least one reference clip first, or choose \"Design a voice\" / \"Let the model choose\".",
+     null
+    ]
+   ]
+  },
+  "clone_no_tick": {
+   "status": [
+    "Tick the permission box under the reference clips first."
+   ],
+   "confirm": [],
+   "errors": []
+  },
+  "samples": {
+   "status": [
+    "1 reference sample(s).",
+    "2 reference sample(s). The clips changed: tick the permission box again.",
+    "1 reference sample(s)."
+   ],
+   "confirm": [],
+   "errors": [
+    [
+     "Could not use this clip",
+     "CORE: too quiet",
+     null
+    ],
+    [
+     "This clip may not work well",
+     "CORE: a bit short",
+     null
+    ],
+    [
+     "Sample limit reached",
+     "You can use up to 3 reference clips. Remove one before adding another.",
+     null
+    ],
+    [
+     "Sample limit reached",
+     "You can use up to 3 reference clips. Remove one before adding another.",
+     null
+    ]
+   ]
+  },
+  "recording": {
+   "status": [
+    "Recording... 6s",
+    "Recording... 0s",
+    "Idle."
+   ],
+   "confirm": [],
+   "errors": [
+    [
+     "Sample limit reached",
+     "You can use up to 3 reference clips.",
+     null
+    ],
+    [
+     "Cannot record",
+     "This computer cannot capture microphone audio yet.",
+     "CORE: no input device"
+    ],
+    [
+     "Could not start recording",
+     "CORE: device busy",
+     null
+    ],
+    [
+     "Recording failed",
+     "CORE: stream lost",
+     null
+    ]
+   ]
+  },
+  "kept_clips": {
+   "status": [
+    "The reference clips kept with the finished job for this text are back in the list: tick the permission box, then press Generate again.",
+    "The reference clips kept with the unfinished job for this text are back in the list: tick the permission box, then press Generate again."
+   ],
+   "confirm": [],
+   "errors": []
+  },
+  "kokoro_short": {
+   "status": [
+    "Estimating the time...",
+    "Preparing...",
+    "Speaking as Heart — US English, female... under a minute (estimated, not measured on this computer yet)",
+    "Done: 1s of speech in 0s."
+   ],
+   "confirm": [],
+   "errors": []
+  },
+  "kokoro_preview": {
+   "status": [
+    "Preparing...",
+    "Speaking as Heart — US English, female...",
+    "Done: 3s of speech in 1s."
+   ],
+   "confirm": [],
+   "errors": []
+  },
+  "confirm_measure": {
+   "engine_state": "Kokoro-82M (Apache-2.0), runs locally -- downloaded.",
+   "count": "4,049 / 100,000 characters",
+   "speed": "1.00x",
+   "start_btn": "Start"
+  },
+  "confirm_measured": {
+   "engine_state": "Kokoro-82M (Apache-2.0), runs locally -- downloaded.",
+   "count": "4,049 / 100,000 characters",
+   "speed": "1.00x",
+   "start_btn": "Start"
+  },
+  "kokoro_long": {
+   "status": [
+    "Estimating the time...",
+    "Long text: measure this computer's speed, or Cancel.",
+    "Measuring this computer's speed (one time, about 10 seconds)...",
+    "Long text: check the estimate, then Start or Cancel.",
+    "Preparing...",
+    "Speaking as Heart — US English, female: piece 1 of 3...",
+    "Speaking as Heart — US English, female: piece 2 of 3, about 2 minutes left...",
+    "Done: 300s of speech; this run took 90s."
+   ],
+   "confirm": [
+    "Time: 1–9 minutes on a typical computer. Measure this computer's speed first (about 10 seconds, done once) for its own range.\nSpeech: 3–5 minutes. File: 9–14 MB (WAV).\nFree disk space: 931.3 GB on <drive>",
+    "Time on this computer: 1–3 minutes (measured on this computer).\nSpeech: 3–5 minutes. File: 9–14 MB (WAV).\nFree disk space: 931.3 GB on <drive>"
+   ],
+   "errors": []
+  },
+  "confirm_cancelled": {
+   "status": [
+    "Estimating the time...",
+    "Long text: check the estimate, then Start or Cancel.",
+    "Cancelled."
+   ],
+   "confirm": [
+    "Time on this computer: 1–2 minutes (measured on this computer).\nSpeech: 4–6 minutes. File: 11–17 MB (WAV).\nFree disk space: 931.3 GB on <drive>"
+   ],
+   "errors": []
+  },
+  "measure_failed": {
+   "status": [
+    "Estimating the time...",
+    "Long text: measure this computer's speed, or Cancel.",
+    "Measuring this computer's speed (one time, about 10 seconds)...",
+    "Long text: check the estimate, then Start or Cancel.",
+    "Could not measure this computer's speed (CORE: no audio device); the estimate is from a reference computer.",
+    "Cancelled.",
+    "Estimating the time...",
+    "Long text: measure this computer's speed, or Cancel.",
+    "Measuring this computer's speed (one time, about 10 seconds)...",
+    "Long text: check the estimate, then Start or Cancel.",
+    "Could not measure this computer's speed (the check produced too little speech to measure); the estimate is from a reference computer.",
+    "Cancelled."
+   ],
+   "confirm": [
+    "Time: 1–9 minutes on a typical computer. Measure this computer's speed first (about 10 seconds, done once) for its own range.\nSpeech: 3–5 minutes. File: 9–15 MB (WAV).\nFree disk space: 931.3 GB on <drive>",
+    "Time: 1–9 minutes, estimated from a reference computer; the first run with at least 5 seconds of speech measures this computer.\nSpeech: 3–5 minutes. File: 9–15 MB (WAV).\nFree disk space: 931.3 GB on <drive>",
+    "Time: 1–9 minutes on a typical computer. Measure this computer's speed first (about 10 seconds, done once) for its own range.\nSpeech: 3–5 minutes. File: 9–15 MB (WAV).\nFree disk space: 931.3 GB on <drive>",
+    "Time: 1–9 minutes, estimated from a reference computer; the first run with at least 5 seconds of speech measures this computer.\nSpeech: 3–5 minutes. File: 9–15 MB (WAV).\nFree disk space: 931.3 GB on <drive>"
+   ],
+   "errors": []
+  },
+  "confirm_finished": {
+   "engine_state": "Kokoro-82M (Apache-2.0), runs locally -- downloaded.",
+   "count": "0 / 100,000 characters",
+   "speed": "1.00x",
+   "start_btn": "Use the finished file"
+  },
+  "confirm_resumed": {
+   "engine_state": "Kokoro-82M (Apache-2.0), runs locally -- downloaded.",
+   "count": "0 / 100,000 characters",
+   "speed": "1.00x",
+   "start_btn": "Continue the unfinished job"
+  },
+  "confirm_variants": {
+   "status": [
+    "This text was already spoken with this voice.",
+    "Long text: check the estimate, then Start or Cancel.",
+    "This text is too long for one audio file.",
+    "Not enough free disk space for this text.",
+    "Long text: measure this computer's speed, or Cancel.",
+    "Long text: check the estimate, then Start or Cancel.",
+    "Done: 754s of speech, finished earlier for this text and voice (nothing was spoken again)."
+   ],
+   "confirm": [
+    "This text was already spoken with this voice and speed (about 13 minutes of speech, finished earlier). Use that file, or start over to speak it again.",
+    "Unfinished job found for this text and voice: 2 of 5 pieces are done. Continue it, or start over.\nTime left for the 3 unfinished pieces: 12–18 minutes, estimated from a reference computer; the first run with at least 5 seconds of speech measures this computer.\nSpeech: 10–15 minutes. File: 38–57 MB (WAV).\nFree disk space: 931.3 GB on data",
+    "Time: 20–30 minutes, estimated from a reference computer; the first run with at least 5 seconds of speech measures this computer.\nSpeech: 10–15 minutes. File: 38 MB to 4.0 GB (WAV).\nThis text is too long for one audio file: a WAV file holds at most 4 GB (about 24 hours of speech). Split the text into parts.",
+    "Time: 20–30 minutes, estimated from a reference computer; the first run with at least 5 seconds of speech measures this computer.\nSpeech: 10–15 minutes. File: 38–57 MB (WAV).\nNot enough free disk space: this needs about 57 MB plus 477 MB kept free on data and only less than 1 MB is free. Free some space, then try again.",
+    "Time: 20–30 minutes on a typical computer. Measure this computer's speed first (about 10 seconds, done once) for its own range.\nSpeech: 10–15 minutes. File: 38–57 MB (WAV).\nFree disk space: 931.3 GB on data",
+    "Time on this computer: 20–30 minutes (measured on this computer).\nSpeech: 10–15 minutes. File: 38–57 MB (WAV).\nFree disk space: 931.3 GB on data"
+   ],
+   "errors": []
+  },
+  "start_over": {
+   "status": [
+    "Not enough free disk space to start over; the finished work is kept.",
+    "CORE: another window runs this job. The finished pieces are kept."
+   ],
+   "confirm": [],
+   "errors": []
+  },
+  "omni_short": {
+   "status": [
+    "Estimating the time...",
+    "Preparing...",
+    "Generating... 1–4 minutes (estimated, not measured on this computer yet).",
+    "Done: 1s of speech in 2s."
+   ],
+   "confirm": [],
+   "errors": []
+  },
+  "omni_failed": {
+   "status": [
+    "Estimating the time...",
+    "Preparing...",
+    "Generating... 1–4 minutes (estimated, not measured on this computer yet).",
+    "Loading the speech model (first time this session; this may also download ~2GB of model weights -- needs internet; a few minutes to over an hour on a slow connection)...",
+    "Failed."
+   ],
+   "confirm": [],
+   "errors": [
+    [
+     "Generation failed",
+     "CORE: out of memory",
+     "If this looks like a network or download problem, check your internet connection, then click Generate again to retry."
+    ]
+   ]
+  },
+  "omni_install_failed": {
+   "status": [
+    "Estimating the time...",
+    "Preparing...",
+    "Downloading OmniVoice (about 2 GB, one time; needs internet, a few minutes to over an hour depending on the connection). After that it runs offline...",
+    "Failed.",
+    "Estimating the time...",
+    "Preparing...",
+    "Downloading OmniVoice (about 2 GB, one time; needs internet, a few minutes to over an hour depending on the connection). After that it runs offline...",
+    "Failed."
+   ],
+   "confirm": [],
+   "errors": [
+    [
+     "Generation failed",
+     "Could not download the speech model software.",
+     "If this looks like a network or download problem, check your internet connection, then click Generate again to retry."
+    ],
+    [
+     "Generation failed",
+     "Offline mode is on: downloading the speech model software needs the internet. Turn off File > Work offline to allow it.",
+     "If this looks like a network or download problem, check your internet connection, then click Generate again to retry."
+    ]
+   ]
+  },
+  "omni_worker_stuck": {
+   "status": [
+    "Estimating the time...",
+    "Preparing...",
+    "Generating... 1–4 minutes (estimated, not measured on this computer yet).",
+    "Failed."
+   ],
+   "confirm": [],
+   "errors": [
+    [
+     "Generation failed",
+     "The previous voice-clone worker is still stopping; try again in a moment.",
+     "If this looks like a network or download problem, check your internet connection, then click Generate again to retry."
+    ]
+   ]
+  },
+  "omni_job_warning": {
+   "status": [
+    "Estimating the time...",
+    "Long text: check the estimate, then Start or Cancel.",
+    "Preparing...",
+    "Generating... 35 minutes to 4.6 hours (estimated, not measured on this computer yet).",
+    "Generating: piece 1 of 3...",
+    "Generating: piece 2 of 3, about 2 minutes left...",
+    "Done: 300s of speech; this run took 90s. Warning: the consent record was not saved (see the log)."
+   ],
+   "confirm": [
+    "Time: 35 minutes to 4.6 hours, estimated from a reference computer; the first run with at least 8 seconds of speech measures this computer.\nSpeech: 3–5 minutes. File: 9–15 MB (WAV).\nFree disk space: 931.3 GB on <drive>"
+   ],
+   "errors": []
+  },
+  "results": {
+   "status": [
+    "Not started: CORE: busy elsewhere",
+    "Failed. 2 of 5 pieces are kept: press Generate with the same text and voice to continue.",
+    "Failed.",
+    "Cancelled. 2 of 5 pieces are kept: press Generate with the same text and voice to continue.",
+    "Done in 3s.",
+    "Done: 7s of speech; this run took 3s. Warning: the consent record was not saved (see the log)."
+   ],
+   "confirm": [],
+   "errors": [
+    [
+     "Running in another window",
+     "CORE: busy elsewhere",
+     null
+    ],
+    [
+     "Generation failed",
+     "CORE: crashed",
+     "If this looks like a network or download problem, check your internet connection, then click Generate again to retry. The finished pieces are kept; the same text and voice continue from there."
+    ],
+    [
+     "Generation failed",
+     "CORE: crashed",
+     "If this looks like a network or download problem, check your internet connection, then click Generate again to retry."
+    ]
+   ]
+  },
+  "file_dialogs": [
+   [
+    "Load reference voice clip",
+    [
+     "Audio",
+     "All files"
+    ]
+   ],
+   [
+    "Save generated speech",
+    [
+     "WAV audio",
+     "All files"
+    ]
+   ]
+  ],
+  "raw_file_patterns": [
+   [
+    "*.wav *.mp3 *.m4a *.flac *.ogg",
+    "*.*"
+   ],
+   [
+    "*.wav",
+    "*.*"
+   ]
+  ],
+  "files": {
+   "status": [],
+   "confirm": [],
+   "errors": [
+    [
+     "Could not save the file",
+     "CORE: disk full",
+     null
+    ],
+    [
+     "Could not play the result",
+     "CORE: no player",
+     null
+    ]
+   ]
+  }
+ }
+}
