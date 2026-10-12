@@ -106,6 +106,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Closing the app finishes its shutdown even when one step fails**: an error while stopping downloads,
   installs or the local server no longer skips stopping the running transcription, which saves its resume
   point; a second close click during shutdown is ignored.
+- **A download that fails because the disk is full now says so** ("your disk is full: clear some space and
+  try again") after yt-dlp's error line, on Windows as well as on macOS and Linux.
 
 ## [2.0.0] — 2026-10-10
 

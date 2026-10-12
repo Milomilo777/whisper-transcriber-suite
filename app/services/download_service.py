@@ -2338,6 +2338,13 @@ class DownloadService:
                     "retry so yt-dlp can read its cookie jar, or the video "
                     "may simply be private."
                 )
+            # ENOSPC as Python and ffmpeg word it, and Windows' own text for
+            # ERROR_DISK_FULL (112) and ERROR_HANDLE_DISK_FULL (39).
+            elif any(k in low for k in (
+                "no space left on device", "not enough space on the disk",
+                "the disk is full",
+            )):
+                msg += "  — your disk is full: clear some space and try again."
             # Specific phrases only — bare "age"/"account" matched unrelated
             # errors ("storage", "page", "message").
             elif any(k in low for k in (
