@@ -557,7 +557,8 @@ def _mac_preferred_language() -> str | None:
     import subprocess
     try:
         done = subprocess.run(
-            [_MAC_DEFAULTS, "read", "-g", "AppleLanguages"], capture_output=True, text=True,
+            [_MAC_DEFAULTS, "read", "-g", "AppleLanguages"], stdin=subprocess.DEVNULL,
+            capture_output=True, text=True,
             encoding="utf-8", errors="replace", timeout=_MAC_DEFAULTS_TIMEOUT_S, check=False)
     except (OSError, subprocess.SubprocessError) as e:
         logger.warning("Could not read the macOS preferred languages (%s: %s); using the locale",
