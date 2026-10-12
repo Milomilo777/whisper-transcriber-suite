@@ -17,6 +17,7 @@ fits into one of five buckets.
 - [DECISIONS.md](DECISIONS.md) — why non-obvious design choices were made
 - [MANUAL_STEPS.md](MANUAL_STEPS.md) — release-time human checklist
 - [RELEASE_PROCESS.md](RELEASE_PROCESS.md) — how to ship a new version
+- [TRANSLATING.md](TRANSLATING.md) — translating the interface: rules for code, catalogs, the extractor and the pseudo-locale
 - [TESTING.md](TESTING.md) — how to run the tests (hermetic suite vs. smoke) and the app
 - [architecture-diagrams.md](architecture-diagrams.md) — Mermaid + SVG diagrams, a visual companion to ARCHITECTURE.md
 

@@ -8,6 +8,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Groundwork for a translated interface**: the app's own text can now be translated. The new config
+  key `ui_language` (`"auto"` by default) picks the language at start-up; for now English is the only one
+  that ships, so nothing changes on screen. Contributors: see docs/TRANSLATING.md.
+
 - **Local API: queue status and Retry-After**: `GET /api/health` now reports how many jobs are queued and
   running and the queue limit, and every "queue is full" 503 reply carries `Retry-After: 30`, so scripts can
   wait instead of guessing.
