@@ -326,16 +326,16 @@ def test_tk_restart_notice_only_when_the_language_would_change(
         harness: Any, locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     write_catalog(locales, "de", "reviewed")
     write_catalog(locales, "fr", "machine")
-    monkeypatch.setattr(i18n, "detect_os_language", lambda **_k: "fr-FR")
+    monkeypatch.setattr(i18n, "detect_os_language", lambda **_k: "ja-JP")
     restart = "The interface language changes the next time you start the app."
-    dlg = harness.make(ui_language="auto")  # running English: auto with a French OS is English
+    dlg = harness.make(ui_language="auto")  # running English: no Japanese catalog, auto is English
     _pick(dlg, "English")
     _save(harness, dlg)
     assert harness.notices == []  # "en" is what runs now
     dlg = harness.make(ui_language="en")
     _pick(dlg, AUTO_LABEL)
     _save(harness, dlg)
-    assert harness.notices == []  # French is machine translated: auto stays English
+    assert harness.notices == []  # no Japanese catalog: auto stays English
     dlg = harness.make(ui_language="auto")
     _pick(dlg, "Deutsch")
     _save(harness, dlg)
@@ -377,7 +377,8 @@ def test_tk_the_real_notice_reaches_the_main_window(harness: Any, locales: Path,
 
 @pytest.mark.parametrize("os_language,expected", [
     ("de-DE", {"auto": "de", "de": "de", "en": "en", "fr": "fr"}),
-    ("fr-FR", {"auto": "en", "de": "de", "en": "en", "fr": "fr"}),  # machine: never automatic
+    ("fr-FR", {"auto": "fr", "de": "de", "en": "en", "fr": "fr"}),  # machine catalogs count too
+    ("ja-JP", {"auto": "en", "de": "de", "en": "en", "fr": "fr"}),  # no catalog: English
     (None, {"auto": "en", "de": "de", "en": "en", "fr": "fr"}),
 ])
 def test_tk_every_picker_value_resolves_like_start_up(

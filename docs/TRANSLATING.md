@@ -18,8 +18,8 @@ translated yet; see [Not translated yet](#not-translated-yet).
 - The language is chosen once at start-up, before any window is built (`app.run()` calls
   `i18n.init_language()`). Changing it needs a restart.
   - The config key `ui_language` (see [CONFIG.md](CONFIG.md)) is `"auto"` or a language code.
-  - `"auto"` uses the operating system's display language only when its catalog has status
-    `"reviewed"`; otherwise English. A region falls back to its language (`pt-BR`, then `pt`);
+  - `"auto"` uses the operating system's display language when a catalog for it ships, reviewed
+    or machine-translated; otherwise English. A region falls back to its language (`pt-BR`, then `pt`);
     `zh-TW` and `zh-HK` map to `zh-Hant`, `zh-CN` and `zh-SG` to `zh-Hans`. The display
     language is Windows' display language, on macOS the first of the preferred languages
     (System Settings > Language & Region), on Linux `LC_ALL`, `LC_MESSAGES` or `LANG`.
@@ -143,8 +143,8 @@ and expects an empty list, plus a test that its English texts did not change.
    `east_slavic` rule has three forms (one, few, many) and `none` has one.
 6. Keys that contain `\u0004` carry a context before that character; translate only the value.
 7. Status: `"machine"` for an unreviewed machine translation, `"reviewed"` once a person who
-   speaks the language has checked it. `"auto"` never picks a machine translation: a person
-   gets one only by choosing it. The language picker lists it with the note
+   speaks the language has checked it. `"auto"` picks either kind for a matching display
+   language. The language picker lists a machine translation with the note
    "(machine translation)" after the language's name; a reviewed catalog shows the name alone.
 8. Run `python -m pytest tests/test_i18n_catalogs.py` (it reports untranslated messages as
    warnings and fails on broken placeholders, wrong plural counts or keys `en.json` lacks), then

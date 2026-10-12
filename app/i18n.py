@@ -48,6 +48,9 @@ CONTEXT_SEPARATOR = "\x04"
 #: Overrides the ``ui_language`` config key (tests, translators checking their work).
 ENV_LANGUAGE = "WTS_UI_LANGUAGE"
 STATUSES = ("source", "machine", "reviewed")
+# Catalog statuses "auto" follows the OS language into. Machine translations are included so the
+# translated interface reaches people at all; drop "machine" here to make "auto" reviewed-only.
+_AUTO_STATUSES = frozenset({"reviewed", "machine"})
 #: Platforms where a right-to-left catalog reads correctly. Tk keeps a left-to-right base
 #: direction on every platform; on Windows each translated line therefore gets a
 #: RIGHT-TO-LEFT EMBEDDING ... POP DIRECTIONAL FORMATTING pair (:func:`embed_rtl`), checked on
@@ -409,8 +412,7 @@ def available_languages() -> list[LanguageInfo]:
     """The languages the picker offers, in ``SUPPORTED_LANGUAGES`` order.
 
     English and every usable catalog: status "reviewed", and status "machine" (unreviewed
-    machine translation; the picker marks it as such, and "auto" never chooses it, so nobody
-    gets one without picking it). A right-to-left catalog is offered only where
+    machine translation; the picker marks it as such). A right-to-left catalog is offered only where
     :func:`rtl_layout_ready`. The pseudo-locale is never listed.
     """
     out: list[LanguageInfo] = []
@@ -475,8 +477,8 @@ def _is_auto(value: object) -> bool:
 def resolve_language(value: object, *, os_language: str | None, available: Mapping[str, str]) -> str:
     """The language to use for config value ``value`` ("auto" or a language code).
 
-    "auto" takes the OS language only when its catalog has status "reviewed" (unreviewed machine
-    translation is never chosen for anyone automatically), trying the region first and then the
+    "auto" takes the OS language when a catalog for it ships, reviewed or machine-translated (the
+    picker labels the latter, so a person can switch back), trying the region first and then the
     base language ('pt-BR' -> 'pt-BR', 'pt'; 'zh-TW'/'zh-HK' -> 'zh-Hant'; 'zh-CN'/'zh-SG' ->
     'zh-Hans'); otherwise English. "auto" never takes a right-to-left catalog where
     :func:`rtl_layout_ready` is False. An explicit code uses its catalog whatever its status, or
@@ -490,7 +492,7 @@ def resolve_language(value: object, *, os_language: str | None, available: Mappi
             lang = LANGUAGES_BY_CODE.get(code)
             if lang is None or (lang.direction == "rtl" and not rtl_layout_ready()):
                 continue
-            if available.get(code) == "reviewed":
+            if available.get(code) in _AUTO_STATUSES:
                 return code
         return SOURCE_LANGUAGE
     if not isinstance(value, str):

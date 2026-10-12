@@ -369,13 +369,20 @@ AVAILABLE = {"en": "source", "de": "reviewed", "fr": "machine", "pt-BR": "review
 
 
 @pytest.mark.parametrize("os_language,expected", [
-    ("de-DE", "de"), ("de_AT.UTF-8", "de"), ("fr-FR", "en"),  # machine: never automatic
+    ("de-DE", "de"), ("de_AT.UTF-8", "de"), ("fr-FR", "fr"),  # machine translations count too
     ("pt-BR", "pt-BR"), ("pt_PT", "en"), ("zh-TW", "zh-Hant"), ("zh-HK", "zh-Hant"),
     ("zh_CN", "zh-Hans"), ("zh-SG", "zh-Hans"), ("zh-Hant-TW", "zh-Hant"), ("en-GB", "en"),
     ("no_NO", "nb"), ("ja-JP", "en"), (None, "en"), ("", "en"), ("C", "en"),
 ])
-def test_auto_takes_a_reviewed_os_language_only(os_language: str | None, expected: str) -> None:
+def test_auto_takes_a_shipped_os_language(os_language: str | None, expected: str) -> None:
     assert i18n.resolve_language("auto", os_language=os_language, available=AVAILABLE) == expected
+
+
+def test_auto_ignores_a_catalog_with_an_unknown_status() -> None:
+    # Only "reviewed" and "machine" are followed automatically; anything else stays opt-in.
+    available = {"en": "source", "fr": "draft"}
+    assert i18n.resolve_language("auto", os_language="fr-FR", available=available) == "en"
+    assert i18n.resolve_language("fr", os_language=None, available=available) == "fr"
 
 
 def test_region_falls_back_to_the_base_language() -> None:
@@ -549,12 +556,12 @@ def test_init_language_survives_a_broken_config(locales: Path, monkeypatch: pyte
     assert i18n.init_language(broken, environ={}) == "de"  # treated as "auto"
 
 
-def test_init_language_auto_does_not_pick_machine_catalog(locales: Path,
-                                                          monkeypatch: pytest.MonkeyPatch) -> None:
+def test_init_language_auto_picks_a_machine_catalog(locales: Path,
+                                                    monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(i18n, "detect_os_language", lambda **_k: "de-DE")
     write_catalog(locales, "de", {"Save": "Speichern"}, status="machine")
-    assert i18n.init_language(lambda: {"ui_language": "auto"}, environ={}) == "en"
-    assert i18n._("Save") == "Save"
+    assert i18n.init_language(lambda: {"ui_language": "auto"}, environ={}) == "de"
+    assert i18n._("Save") == "Speichern"
 
 
 # --- R3 catalog location in source and frozen builds ---------------------------------------
