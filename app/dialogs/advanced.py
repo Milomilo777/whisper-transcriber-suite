@@ -10,8 +10,12 @@ from __future__ import annotations
 
 import copy
 import logging
+import os
 import sys
 import tkinter as tk
+import unicodedata
+from collections.abc import Collection
+from tkinter import font as tkfont
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
@@ -39,10 +43,12 @@ from app.domain.cookies import (
     cookie_browser_label,
     cookie_browser_value,
 )
+from app import i18n
 from app.dpi import fit_size, place_over, px, scaled, work_area
 from app.i18n import N_, _, ngettext, pgettext, translate
-from app.theme import tokens
+from app.theme import bidi_display, script_fonts, tokens
 from app.widgets import tray
+from app.widgets.notice import notify
 from app.widgets.platform import folder_label
 from app.widgets.tooltip import (
     bind_tooltip,
@@ -247,6 +253,123 @@ def _model_choice_label(base: str, downloaded: bool) -> str:
     return _("{model}   [needs download]", model=base)
 
 
+# --- interface-language picker ("App behaviour") ---------------------------------------------
+
+#: The stored ``ui_language`` value of the picker's first entry.
+_UI_LANGUAGE_AUTO = "auto"
+# After "Automatic", the languages come in groups by the script of their own name (Latin first),
+# each group sorted alphabetically: a person finds their own language at a glance among 42.
+# Prefixes of the Unicode character names.
+_SCRIPT_GROUPS: tuple[tuple[str, ...], ...] = (
+    ("LATIN",),
+    ("CYRILLIC",),
+    ("GREEK",),
+    ("ARABIC", "HEBREW"),
+    ("DEVANAGARI", "BENGALI"),
+    ("THAI",),
+    ("CJK", "HIRAGANA", "KATAKANA", "HANGUL"),
+)
+# Windows: a font with glyphs for the scripts that neither Segoe UI nor app.theme.script_fonts
+# covers (Nirmala UI, Leelawadee UI and Malgun Gothic ship with Windows 8.1, 10 and 11).
+_ENDONYM_FAMILIES_WINDOWS = {
+    "DEVANAGARI": "Nirmala UI",
+    "BENGALI": "Nirmala UI",
+    "THAI": "Leelawadee UI",
+    "HANGUL": "Malgun Gothic",
+}
+
+
+def _first_letter_script(text: str) -> str:
+    """The first word of the Unicode name of ``text``'s first letter ("LATIN", "THAI", ...)."""
+    for ch in text:
+        if ch.isalpha():
+            return unicodedata.name(ch, "").split(" ")[0]
+    return ""
+
+
+def _script_group(endonym: str) -> int:
+    """The picker group of a language's own name (``_SCRIPT_GROUPS`` index; unknown scripts last)."""
+    script = _first_letter_script(endonym)
+    for index, prefixes in enumerate(_SCRIPT_GROUPS):
+        if script in prefixes:
+            return index
+    return len(_SCRIPT_GROUPS)
+
+
+def _sort_text(text: str) -> str:
+    """``text`` for sorting: case folded, accents ignored ("Čeština" sorts as "cestina")."""
+    decomposed = unicodedata.normalize("NFKD", text)
+    bare = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    # Composed again: a Hangul syllable decomposes into its letters, which sort before Han.
+    return unicodedata.normalize("NFC", bare).casefold()
+
+
+def _ui_language_label(lang: i18n.LanguageInfo) -> str:
+    """A picker entry: the language's own name, marked when its catalog is machine translated."""
+    if lang.status == "machine":
+        label = _("{language} (machine translation)", language=lang.endonym)
+    else:
+        label = lang.endonym
+    # macOS draws a line that starts with a right-to-left name right to left ("(machine
+    # translation)" would jump to the left end); Windows and Linux keep left to right.
+    return bidi_display.ltr_base(label)
+
+
+def _ui_language_choices(current: object = _UI_LANGUAGE_AUTO) -> list[tuple[str, str]]:
+    """(label, stored ``ui_language`` value) of every picker entry, in picker order.
+
+    "Automatic (system language)" first, then ``i18n.available_languages()`` by their own names.
+    A ``current`` setting the list does not offer (a language whose catalog is gone or not
+    offered yet, the pseudo-locale) is added at the end as it is, so the dialog shows the truth
+    and Save keeps it.
+    """
+    languages = sorted(
+        i18n.available_languages(),
+        key=lambda lang: (_script_group(lang.endonym), _sort_text(lang.endonym), lang.code),
+    )
+    choices = [(_("Automatic (system language)"), _UI_LANGUAGE_AUTO)]
+    choices += [(_ui_language_label(lang), lang.code) for lang in languages]
+    if _ui_language_index(choices, current) is None:
+        value = str(current).strip()
+        known = i18n.LANGUAGES_BY_CODE.get(value)
+        choices.append((bidi_display.ltr_base(known.endonym) if known else value, value))
+    return choices
+
+
+def _ui_language_index(choices: list[tuple[str, str]], value: object) -> int | None:
+    """The index of the entry that stands for setting ``value`` ("" and None mean "auto")."""
+    def norm(setting: object) -> str:
+        text = "" if setting is None else str(setting).strip()
+        return (text or _UI_LANGUAGE_AUTO).replace("_", "-").lower()
+
+    wanted = norm(value)
+    for index, (_label, stored) in enumerate(choices):
+        if norm(stored) == wanted:
+            return index
+    return None
+
+
+def _ui_language_family(code: str, text: str, installed: Collection[str]) -> str | None:
+    """Windows: an installed font family with glyphs for ``text``, the name of language ``code``.
+
+    Tk on Windows borrows a missing glyph from another font, character by character, and under
+    the theme's font on Windows 10 (a family that is missing there) Chinese and Japanese names
+    get a mix of fonts. The Han names get the font of their own region from
+    ``app.theme.script_fonts``, Devanagari, Bengali, Thai and Korean a font that has the script,
+    everything else Segoe UI. None elsewhere: macOS and Linux pick a font per script themselves.
+    """
+    if not sys.platform.startswith("win"):
+        return None
+    key = script_fonts.font_key(text, code)
+    family = tokens.FONT_FAMILIES_WINDOWS.get(key) if key else None
+    if family is None:
+        family = _ENDONYM_FAMILIES_WINDOWS.get(_first_letter_script(text))
+    if family is not None and family in installed:
+        return family
+    ui = tokens.FONT_FAMILIES_WINDOWS["ui"]
+    return ui if ui in installed else None
+
+
 class AdvancedDialog(tk.Toplevel):
     def __init__(self, app: "App") -> None:
         super().__init__(app)
@@ -402,6 +525,13 @@ class AdvancedDialog(tk.Toplevel):
             offline.CONFIG_KEY: bool(self._work_offline.get()),
             "update_check_enabled": bool(self._update_check_enabled.get()),
         }
+        # Interface language: the picker shows a label (a language's own name); config stores
+        # "auto" or a code. Save writes it only when the pick changed here.
+        ui_language = cfg.get("ui_language", _UI_LANGUAGE_AUTO)
+        self._ui_language_choices = _ui_language_choices(ui_language)
+        shown = _ui_language_index(self._ui_language_choices, ui_language) or 0
+        self._ui_language_display = tk.StringVar(value=self._ui_language_choices[shown][0])
+        self._ui_language_at_open = self._ui_language_display.get()
         self._minimise_to_tray = tk.BooleanVar(
             value=bool(cfg.get("minimise_to_tray", False))
         )
@@ -1737,8 +1867,71 @@ class AdvancedDialog(tk.Toplevel):
         ).pack(side="left")
         if subtitle_edit.is_supported():
             self._build_subtitle_edit_row(misc)
+        self._build_ui_language_choice(misc)
         self._build_updates_choice(misc)
         return misc
+
+    def _build_ui_language_choice(self, parent: ttk.LabelFrame) -> None:
+        """The interface language: "Automatic" or one of the shipped catalogs, by its own name."""
+        row = ttk.Frame(parent)
+        row.pack(anchor="w", fill="x", padx=8, pady=(8, 4))
+        ttk.Label(row, text=_("Interface language:")).pack(side="left")
+        combo = ttk.Combobox(
+            row, textvariable=self._ui_language_display, state="readonly", width=40,
+            values=[label for label, _value in self._ui_language_choices],
+        )
+        combo.pack(side="left", padx=(6, 4))
+        self._ui_language_combo = combo
+        help_icon(
+            row,
+            _("The language of the app's menus, buttons and messages. Automatic uses the "
+              "language of your system when a reviewed translation for it is available, "
+              "otherwise English. A language marked \"machine translation\" was translated by a "
+              "computer and not yet checked by a person. A change applies the next time you "
+              "start the app."),
+        ).pack(side="left")
+        self._set_ui_language_fonts()
+        combo.bind("<<ComboboxSelected>>", lambda _e: self._set_ui_language_fonts(), add="+")
+
+    def _set_ui_language_fonts(self) -> None:
+        """Windows: fonts with glyphs for every language name (see ``_ui_language_family``).
+
+        The box gets the font of the name it shows; the drop-down list, one font for all names,
+        gets Segoe UI, whose fallback draws the other scripts at the right height
+        (``app.theme.script_fonts``). Elsewhere the platform's fonts stay.
+        """
+        combo = getattr(self, "_ui_language_combo", None)
+        if combo is None or not sys.platform.startswith("win"):
+            return
+        size = getattr(self, "_ui_language_font_size", None)
+        if size is None:
+            try:
+                name = str(combo.cget("font") or "") or "TkTextFont"
+                size = int(tkfont.nametofont(name, root=combo).cget("size"))
+            except (tk.TclError, ValueError):
+                size = tokens.FONT_BODY
+            self._ui_language_font_size = size
+        installed = script_fonts.installed_families(combo)
+        value = self._ui_language_value(self._ui_language_display.get())
+        known = i18n.LANGUAGES_BY_CODE.get(value or "")
+        family = _ui_language_family(value or "", known.endonym if known else combo.get(), installed)
+        if family is not None:
+            combo.configure(font=(family, size))
+        ui = tokens.FONT_FAMILIES_WINDOWS["ui"]
+        if ui not in installed:
+            return
+        try:
+            popdown = str(combo.tk.call("ttk::combobox::PopdownWindow", str(combo)))
+            combo.tk.call(f"{popdown}.f.l", "configure", "-font", (ui, size))
+        except tk.TclError as e:
+            logger.info("Could not set the font of the interface-language list: %s", e)
+
+    def _ui_language_value(self, label: str) -> str | None:
+        """The stored ``ui_language`` value of a picker label, or None for an unknown label."""
+        for shown, value in self._ui_language_choices:
+            if shown == label:
+                return value
+        return None
 
     def _build_subtitle_edit_row(self, parent: ttk.LabelFrame) -> None:
         """Windows only: where SubtitleEdit.exe is, for a portable copy."""
@@ -2261,6 +2454,16 @@ class AdvancedDialog(tk.Toplevel):
             value = bool(var.get())
             if at_open.get(key) != value:
                 cfg[key] = value
+        # Written only when the pick changed here (like the switches above); getattr for the
+        # stand-in dialogs of the tests that build no picker.
+        ui_language_changed = False
+        ui_language_display = getattr(self, "_ui_language_display", None)
+        if ui_language_display is not None and (
+                ui_language_display.get() != getattr(self, "_ui_language_at_open", None)):
+            picked = self._ui_language_value(ui_language_display.get())
+            if picked is not None:
+                cfg["ui_language"] = picked
+                ui_language_changed = True
         if getattr(self, "_tray_supported", True):
             # A disabled option keeps what config.json holds (it may be a
             # copy from another machine) instead of overwriting it.
@@ -2377,8 +2580,24 @@ class AdvancedDialog(tk.Toplevel):
                     restart()
                 except Exception as e:  # noqa: BLE001
                     self.app.log(f"Watched-folder restart failed: {e}")
+        if ui_language_changed:
+            self._notify_ui_language_restart(str(cfg["ui_language"]))
         self._teardown_mousewheel()
         self.destroy()
+
+    def _notify_ui_language_restart(self, value: str) -> None:
+        """After a saved language change: say when it applies, in the main window."""
+        if os.environ.get(i18n.ENV_LANGUAGE, "").strip():
+            text = _(
+                "The {variable} environment variable sets the interface language of this run. "
+                "Your choice applies when the app starts without it.",
+                variable=i18n.ENV_LANGUAGE,
+            )
+        elif i18n.setting_language(value) != i18n.current_language():
+            text = _("The interface language changes the next time you start the app.")
+        else:
+            return
+        notify(self.app, text)
 
     def _teardown_mousewheel(self) -> None:
         """Drop the global mousewheel binds before the dialog is destroyed.

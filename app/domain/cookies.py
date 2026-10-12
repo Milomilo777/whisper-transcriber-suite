@@ -11,6 +11,8 @@ from __future__ import annotations
 import re
 import sys
 
+from app.i18n import _, pgettext
+
 # What the config key ``cookies_from_browser`` may name (yt-dlp's supported
 # browsers). The value may carry yt-dlp's ``+KEYRING``/``:PROFILE`` suffixes.
 COOKIE_BROWSERS = frozenset({
@@ -18,10 +20,16 @@ COOKIE_BROWSERS = frozenset({
     "safari", "vivaldi", "whale",
 })
 
-# Dropdown entry that means "don't use browser cookies" (config value "").
+# Dropdown entry that means "don't use browser cookies" (config value ""), in English. The
+# dropdown shows it translated (off_label()); both map back to "".
 COOKIES_OFF_LABEL = "(off)"
 
 _DROPDOWN_BROWSERS: tuple[str, ...] = ("chrome", "edge", "firefox", "brave", "chromium", "opera", "vivaldi")
+
+
+def off_label() -> str:
+    """The dropdown entry for "no browser cookies" in the interface language."""
+    return pgettext("browser cookies", "(off)")
 
 
 def cookie_browser_choices(current: str = "", platform: str = sys.platform) -> list[str]:
@@ -33,22 +41,22 @@ def cookie_browser_choices(current: str = "", platform: str = sys.platform) -> l
     browsers: list[str] = list(_DROPDOWN_BROWSERS)
     if platform == "darwin":
         browsers.insert(0, "safari")
-    values = [COOKIES_OFF_LABEL, *browsers]
+    values = [off_label(), *browsers]
     cur = (current or "").strip()
-    if cur and cur not in values:
+    if cur and cur not in values and cur != COOKIES_OFF_LABEL:
         values.append(cur)
     return values
 
 
 def cookie_browser_label(value: str | None) -> str:
-    """Config value -> dropdown label ("" -> "(off)")."""
-    return (value or "").strip() or COOKIES_OFF_LABEL
+    """Config value -> dropdown label ("" -> "(off)", translated)."""
+    return (value or "").strip() or off_label()
 
 
 def cookie_browser_value(label: str | None) -> str:
-    """Dropdown label -> config value ("(off)" -> "")."""
+    """Dropdown label -> config value ("(off)", English or translated, -> "")."""
     raw = (label or "").strip()
-    return "" if raw in ("", COOKIES_OFF_LABEL) else raw
+    return "" if raw in ("", COOKIES_OFF_LABEL, off_label()) else raw
 
 
 def cookies_from_browser_args(value: str | None) -> list[str]:
@@ -122,13 +130,14 @@ def login_required_hint(error_text: str, cookies_browser: str | None) -> str:
         return ""
     browser = (cookies_browser or "").strip()
     if not browser:
-        return (
+        return _(
             "This site wants you to be logged in: pick the browser you are "
             "logged in with under \"Log-in cookies\" and the link is checked "
             "again."
         )
-    return (
-        f"The site still asks for a login: check that you are logged in to it "
-        f"in {browser} (on Windows, close {browser} completely if it keeps "
-        "failing)."
+    return _(
+        "The site still asks for a login: check that you are logged in to it "
+        "in {browser} (on Windows, close {browser} completely if it keeps "
+        "failing).",
+        browser=browser,
     )

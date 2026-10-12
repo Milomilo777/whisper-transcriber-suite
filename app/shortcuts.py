@@ -13,6 +13,8 @@ import sys
 import tkinter as tk
 from typing import Any, Callable
 
+from app.i18n import _
+
 # Built from a code point so no invisible character lives in the source.
 _COMMAND_SYMBOL = chr(0x2318)
 
@@ -72,5 +74,6 @@ def menu_item(text: str, key: str, *, gap: int = 0) -> dict[str, Any]:
 
 
 def quit_label() -> str:
-    """``Quit`` on macOS, ``Exit`` elsewhere."""
-    return "Quit" if is_mac() else "Exit"
+    """``Quit`` on macOS, ``Exit`` elsewhere, in the interface language (the File menu's
+    ``_("Exit")`` is the same message)."""
+    return _("Quit") if is_mac() else _("Exit")

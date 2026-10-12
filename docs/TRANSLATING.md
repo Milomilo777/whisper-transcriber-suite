@@ -4,10 +4,10 @@ The desktop app's own text (menus, buttons, labels, dialogs) goes through a smal
 layer, `app/i18n.py`. This guide is for contributors who mark text in the code and for
 translators who write a catalog.
 
-Status: the layer, the tools and the tests are in place, and one dialog (Help > About >
-Report a problem) is converted. The rest of `app/` is converted file by file, a language
-picker comes later, and no translation ships yet. Messages that come from `core/` (error
-texts, engine messages, file names) are not translated yet.
+Status: the layer, the tools and the tests are in place, the interface of `app/` goes through
+the layer, and people choose the language in Advanced settings > App behaviour > Interface
+language. Messages that come from `core/` (error texts, engine messages, file names) are not
+translated yet; see [Not translated yet](#not-translated-yet).
 
 ## How it works
 
@@ -20,7 +20,9 @@ texts, engine messages, file names) are not translated yet.
   - The config key `ui_language` (see [CONFIG.md](CONFIG.md)) is `"auto"` or a language code.
   - `"auto"` uses the operating system's display language only when its catalog has status
     `"reviewed"`; otherwise English. A region falls back to its language (`pt-BR`, then `pt`);
-    `zh-TW` and `zh-HK` map to `zh-Hant`, `zh-CN` and `zh-SG` to `zh-Hans`.
+    `zh-TW` and `zh-HK` map to `zh-Hant`, `zh-CN` and `zh-SG` to `zh-Hans`. The display
+    language is Windows' display language, on macOS the first of the preferred languages
+    (System Settings > Language & Region), on Linux `LC_ALL`, `LC_MESSAGES` or `LANG`.
   - An explicit code uses its catalog whatever its status, or English when there is none.
   - The environment variable `WTS_UI_LANGUAGE` overrides the config for one run.
 - A missing or broken catalog gives English and one warning in the log. A translation whose
@@ -98,6 +100,34 @@ text without the pseudo marker (`is_pseudo_marked` accepts a marked text nested 
 one and a trailing menu shortcut such as `Ctrl+O`). Each converted dialog gets a test that builds it in `qps-ploc`
 and expects an empty list, plus a test that its English texts did not change.
 
+## How to test a language
+
+- **In the app.** Advanced settings > App behaviour > Interface language lists "Automatic
+  (system language)" and every catalog in `app/locales`, each language by its own name. Pick
+  one, click Save and start the app again (a notice in the main window says so when the
+  language will change). A catalog with status `"machine"` is listed as "<name> (machine
+  translation)"; `"auto"` never chooses it. Right-to-left catalogs are not listed yet (see the
+  note at the end of the next section); load them with `WTS_UI_LANGUAGE`.
+- **For one run**, without touching the setting: set `WTS_UI_LANGUAGE` to the code, then start
+  from source. It wins over the saved setting; while it is set, the picker's notice says so.
+
+  ```
+  WTS_UI_LANGUAGE=de python gui.py                      # macOS, Linux, Git Bash
+  set WTS_UI_LANGUAGE=de                                # Windows cmd, then: python gui.py
+  $env:WTS_UI_LANGUAGE="de"; python gui.py              # PowerShell
+  ```
+
+- **The pseudo-locale** (`WTS_UI_LANGUAGE=qps-ploc`, see above) before a catalog exists: plain
+  English on screen is text that does not go through the layer yet, a bracket cut off at the
+  end is a label too narrow for a longer language.
+- **What to look at:** every tab, the menus, Advanced settings, the About and Statistics
+  windows, a message box or two (an empty Download link, a missing file), and the counts:
+  plural forms with 0, 1, 2, 5, 11 and 21 items.
+- **The tests:** `python -m pytest tests/test_i18n_catalogs.py` checks your catalog (see step 8
+  below). `tests/app/test_i18n_app_walk.py` builds the whole main window and its dialogs in the
+  pseudo-locale and in a right-to-left test catalog and fails on any text that skipped the
+  layer; it needs a display.
+
 ## Adding or updating a language
 
 1. Copy `app/locales/en.json` to `app/locales/<code>.json`, using a code from
@@ -113,9 +143,9 @@ and expects an empty list, plus a test that its English texts did not change.
    `east_slavic` rule has three forms (one, few, many) and `none` has one.
 6. Keys that contain `\u0004` carry a context before that character; translate only the value.
 7. Status: `"machine"` for an unreviewed machine translation, `"reviewed"` once a person who
-   speaks the language has checked it. Machine translations are never offered to people: the
-   language list shows them only with `WTS_UI_SHOW_UNREVIEWED=1`, and `"auto"` never picks them.
-   An explicit `ui_language` code still loads them, for reviewers.
+   speaks the language has checked it. `"auto"` never picks a machine translation: a person
+   gets one only by choosing it. The language picker lists it with the note
+   "(machine translation)" after the language's name; a reviewed catalog shows the name alone.
 8. Run `python -m pytest tests/test_i18n_catalogs.py` (it reports untranslated messages as
    warnings and fails on broken placeholders, wrong plural counts or keys `en.json` lacks), then
    look at the app with `WTS_UI_LANGUAGE=<code>`.
@@ -123,4 +153,20 @@ and expects an empty list, plus a test that its English texts did not change.
 Files are UTF-8 with LF line endings; `.gitattributes` keeps them LF on Windows checkouts.
 
 Right-to-left languages: the layer records the direction (`i18n.current_direction()`), but the
-Tk widgets are not mirrored yet. Check how an `rtl` catalog looks before setting `"reviewed"`.
+Tk widgets are not mirrored yet. Until they are (`i18n.RTL_LAYOUT_READY` is `False`), the
+language picker does not offer an `rtl` catalog; `WTS_UI_LANGUAGE` or an explicit `ui_language`
+code still loads one. Check how an `rtl` catalog looks before setting `"reviewed"`.
+
+## Not translated yet
+
+These texts reach the screen in English in every language; changing that needs work outside
+`app/`:
+
+- Texts built in `core/`: engine and model labels and the "⚠ unavailable" marker of the engine
+  pickers (`core.backends.availability`), the Text to Voice voice labels (`core.tts_kokoro`),
+  the new-version line of the update bar (`core.updates.bar_text`), the Google Cloud usage
+  line, engine and worker error messages, and what yt-dlp says about a failed download.
+- Texts that are also written to the log or the job history: the error a failed download shows
+  in its queue row (with its hint about log-in cookies, a full disk or an old downloader), the
+  notes of a subtitled-video download, and the technical voice-engine and live-capture worker
+  errors.

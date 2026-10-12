@@ -510,8 +510,8 @@ def _outside_texts() -> dict[str, str]:
         allowed[engine.display_label] = "engine label from core/backends/availability.py"
     for _slug, label in catalog_models({}):
         allowed[label] = "model label from the core model catalog"
-    for choice in cookie_browser_choices(""):
-        allowed[choice] = "cookie choice from app/domain/cookies.py"
+    for choice in cookie_browser_choices("")[1:]:  # [0] is the translated "(off)"
+        allowed[choice] = "browser id from app/domain/cookies.py"
     for text in _VIDEO_SITE_TEXTS:
         allowed[text] = "video-site feature: English only by design"
     allowed["mp4"] = "a file format id"

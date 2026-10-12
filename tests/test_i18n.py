@@ -17,8 +17,8 @@ from app import i18n
 def _english_and_fresh_warnings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     monkeypatch.setattr(i18n, "_WARNED", set())
     monkeypatch.setattr(i18n, "_DOC_CACHE", {})
+    monkeypatch.setattr(i18n, "_OS_LANGUAGE", [])
     monkeypatch.delenv(i18n.ENV_LANGUAGE, raising=False)
-    monkeypatch.delenv(i18n.ENV_SHOW_UNREVIEWED, raising=False)
     i18n.set_language("en")
     yield
     i18n.set_language("en")
@@ -323,17 +323,37 @@ def test_pseudo_locale_is_never_listed(locales: Path) -> None:
 
 # --- available_languages -------------------------------------------------------------------
 
-def test_available_lists_english_and_reviewed_only(locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_available_lists_english_reviewed_and_machine_catalogs(locales: Path) -> None:
     write_catalog(locales, "de", {}, status="reviewed")
     write_catalog(locales, "fr", {}, status="machine")
     (locales / "it.json").write_text("{broken", encoding="utf-8")
-    codes = [lang.code for lang in i18n.available_languages()]
-    assert codes == ["en", "de"]
-    monkeypatch.setenv(i18n.ENV_SHOW_UNREVIEWED, "1")
+    (locales / "xx.json").write_text("{}", encoding="utf-8")  # not a supported code
     listed = i18n.available_languages()
     assert [lang.code for lang in listed] == ["en", "de", "fr"]
+    assert listed[0] == i18n.LanguageInfo("en", "English", "ltr", "source")
+    assert listed[1].status == "reviewed"
     assert listed[2] == i18n.LanguageInfo("fr", "Français", "ltr", "machine")
-    assert listed[0].status == "source"
+
+
+def test_available_offers_rtl_catalogs_only_once_the_layout_is_mirrored(
+        locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    write_catalog(locales, "de", {}, status="machine")
+    write_catalog(locales, "ar", {}, status="reviewed")
+    write_catalog(locales, "he", {}, status="machine")
+    monkeypatch.setattr(i18n, "RTL_LAYOUT_READY", False)
+    assert [lang.code for lang in i18n.available_languages()] == ["en", "de"]
+    monkeypatch.setattr(i18n, "RTL_LAYOUT_READY", True)
+    listed = i18n.available_languages()
+    assert [lang.code for lang in listed] == ["en", "de", "ar", "he"]
+    assert {lang.direction for lang in listed if lang.code in ("ar", "he")} == {"rtl"}
+    # An explicit setting still loads an rtl catalog while the picker hides it (translators).
+    monkeypatch.setattr(i18n, "RTL_LAYOUT_READY", False)
+    assert i18n.resolve_language("he", os_language=None, available=i18n.catalog_statuses()) == "he"
+
+
+def test_rtl_layout_is_not_ready_in_this_release() -> None:
+    # Flipping this offers Arabic and Hebrew in the picker; do it only with the mirrored layout.
+    assert i18n.RTL_LAYOUT_READY is False
 
 
 # --- R5 choosing the language --------------------------------------------------------------
@@ -381,10 +401,13 @@ def test_detect_os_language_windows_and_posix() -> None:
     assert i18n.detect_os_language(platform="linux", environ=env) == "de-DE"
     env = {"LANG": "de_DE.UTF-8", "LC_MESSAGES": "fr_FR.UTF-8", "LC_ALL": ""}
     assert i18n.detect_os_language(platform="linux", environ=env) == "fr-FR"
+    # macOS without a readable language list: the locale, as on Linux.
     assert i18n.detect_os_language(platform="darwin", environ={"LANG": "C"},
-                                   getlocale=lambda: ("ja_JP", "UTF-8")) == "ja-JP"
+                                   getlocale=lambda: ("ja_JP", "UTF-8"),
+                                   mac_preferred_language=lambda: None) == "ja-JP"
     assert i18n.detect_os_language(platform="darwin", environ={},
-                                   getlocale=lambda: (None, None)) is None
+                                   getlocale=lambda: (None, None),
+                                   mac_preferred_language=lambda: None) is None
 
 
 def test_detect_os_language_never_raises() -> None:
@@ -394,8 +417,113 @@ def test_detect_os_language_never_raises() -> None:
     def boom_locale() -> tuple[str | None, str | None]:
         raise ValueError("unknown locale")
 
+    def boom_mac() -> str | None:
+        raise RuntimeError("defaults crashed")
+
     assert i18n.detect_os_language(platform="win32", windows_ui_language=boom) is None
     assert i18n.detect_os_language(platform="linux", environ={}, getlocale=boom_locale) is None
+    assert i18n.detect_os_language(platform="darwin", environ={"LANG": "de_DE.UTF-8"},
+                                   mac_preferred_language=boom_mac) is None
+
+
+# --- macOS: the preferred-languages list (AppleLanguages) -----------------------------------
+
+# The shapes `defaults read -g AppleLanguages` prints (an old-style plist array): hyphenated
+# entries are quoted, plain ones are not; one entry per line, four-space indent, LF line ends.
+MAC_DE_FIRST = '(\n    "de-DE",\n    "en-US"\n)\n'
+MAC_PLAIN_FIRST = '(\n    en,\n    "fr-FR"\n)\n'
+MAC_HANS = '(\n    "zh-Hans-CN",\n    "en-GB"\n)\n'
+
+
+@pytest.mark.parametrize("output,expected", [
+    (MAC_DE_FIRST, "de-DE"), (MAC_PLAIN_FIRST, "en"), (MAC_HANS, "zh-Hans-CN"),
+    ('(\n    "pt-BR"\n)', "pt-BR"), ("(\n)\n", None), ("()", None), ("", None),
+    ("The domain/default pair of (kCFPreferencesAnyApplication, AppleLanguages) does not exist\n",
+     None),
+    ('"de-DE"', None),
+])
+def test_parse_apple_languages(output: str, expected: str | None) -> None:
+    assert i18n.parse_apple_languages(output) == expected
+
+
+def test_detect_os_language_on_macos_prefers_the_language_list() -> None:
+    env = {"LANG": "en_US.UTF-8"}  # the region format often says English while the UI is German
+    found = i18n.detect_os_language(platform="darwin", environ=env,
+                                    mac_preferred_language=lambda: "de-DE")
+    assert found == "de-DE"
+    assert i18n.resolve_language("auto", os_language=found, available=AVAILABLE) == "de"
+    hans = i18n.detect_os_language(platform="darwin", environ=env,
+                                   mac_preferred_language=lambda: "zh-Hans-CN")
+    assert i18n.resolve_language("auto", os_language=hans, available=AVAILABLE) == "zh-Hans"
+    # Linux never asks macOS.
+    def never() -> str | None:
+        raise AssertionError("read on Linux")
+    assert i18n.detect_os_language(platform="linux", environ=env, mac_preferred_language=never) == "en-US"
+
+
+class _Done:
+    def __init__(self, returncode: int, stdout: str, stderr: str = "") -> None:
+        self.returncode, self.stdout, self.stderr = returncode, stdout, stderr
+
+
+def test_mac_preferred_language_reads_defaults_with_a_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    import subprocess
+    calls: list[tuple[Any, dict[str, Any]]] = []
+
+    def run(cmd: Any, **kwargs: Any) -> _Done:
+        calls.append((cmd, kwargs))
+        return _Done(0, MAC_DE_FIRST)
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert i18n._mac_preferred_language() == "de-DE"
+    cmd, kwargs = calls[0]
+    assert cmd == ["/usr/bin/defaults", "read", "-g", "AppleLanguages"]
+    assert 0 < kwargs["timeout"] <= 5 and kwargs["check"] is False
+
+
+@pytest.mark.parametrize("outcome,logged", [
+    (FileNotFoundError(2, "No such file", "/usr/bin/defaults"), "FileNotFoundError"),
+    ("timeout", "TimeoutExpired"),
+    (_Done(1, "", "Domain AppleLanguages does not exist"), "exit 1"),
+    (_Done(0, "garbage"), "Unexpected"),
+])
+def test_mac_preferred_language_failures_log_and_return_none(
+        monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, outcome: Any,
+        logged: str) -> None:
+    import subprocess
+
+    def run(cmd: Any, **kwargs: Any) -> _Done:
+        if outcome == "timeout":
+            raise subprocess.TimeoutExpired(cmd, kwargs["timeout"])
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    monkeypatch.setattr(subprocess, "run", run)
+    with caplog.at_level(logging.WARNING, logger="app.i18n"):
+        assert i18n._mac_preferred_language() is None
+    assert len(caplog.records) == 1 and logged in caplog.records[0].getMessage()
+    # detect_os_language then falls back to the locale.
+    assert i18n.detect_os_language(platform="darwin", environ={"LANG": "fr_FR.UTF-8"}) == "fr-FR"
+
+
+def test_setting_language_resolves_like_start_up(locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    write_catalog(locales, "de", {}, status="reviewed")
+    write_catalog(locales, "fr", {}, status="machine")
+    seen: list[int] = []
+
+    def detect(**_k: Any) -> str:
+        seen.append(1)
+        return "de-AT"
+
+    monkeypatch.setattr(i18n, "detect_os_language", detect)
+    assert i18n.setting_language("auto") == "de"
+    assert i18n.setting_language("") == "de"
+    assert i18n.setting_language("fr") == "fr"  # an explicit machine catalog
+    assert i18n.setting_language("en") == "en"
+    assert i18n.setting_language("ja") == "en"  # no catalog
+    assert i18n.setting_language("qps-ploc") == "qps-ploc"
+    assert len(seen) == 1  # the OS language is read once per process
 
 
 def test_init_language_env_overrides_config(locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:

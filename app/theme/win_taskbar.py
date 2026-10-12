@@ -56,6 +56,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+from app.i18n import ngettext
 from app.theme.win_chrome import _as_switch
 
 logger = logging.getLogger(__name__)
@@ -737,7 +738,7 @@ class _Controller:
             results.append(native.set_progress_value(hwnd, snap.value, 100))
         if old is None or old.badge != snap.badge:
             if snap.badge:
-                text = f"{snap.badge} job" + ("" if snap.badge == 1 else "s")
+                text = ngettext("{n} job", "{n} jobs", snap.badge)
                 results.append(native.set_overlay(hwnd, badge_label(snap.badge), text))
             else:
                 results.append(native.set_overlay(hwnd, None, ""))
