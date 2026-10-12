@@ -487,6 +487,21 @@ def capture_tab(mp: pytest.MonkeyPatch, root: Any, fakes: Any, tmp_path: Path) -
 
 # ----------------------------------------------------------------- tests
 
+def _marked(text: str) -> bool:
+    """``is_pseudo_marked`` that also accepts a marked text inside a marked text (a translated
+    reason placed into a translated sentence): innermost segments are removed first."""
+    import re
+
+    from tests.app.i18n_walk import is_pseudo_marked
+
+    inner = re.compile(r"\[[^\[\]]*? ~+\]")
+    while True:
+        stripped = inner.sub("", text)
+        if stripped == text:
+            return is_pseudo_marked(text)
+        text = stripped
+
+
 # Texts that do not belong to this tab's own strings, with the reason.
 _ALLOWED_PREFIX = "CORE: "  # messages the fakes pass in as core/ would (engine errors, issues)
 
@@ -571,7 +586,7 @@ def test_tab_pseudo_locale_leaves_no_text_untranslated(monkeypatch, root, fakes,
         i18n.set_language("en")
     texts = [t for t in _all_texts(got) if isinstance(t, str) and t.strip()]
     assert len(texts) > 100
-    left = sorted({t for t in texts if not is_pseudo_marked(t) and not _allowed(t, None)})
+    left = sorted({t for t in texts if not _marked(t) and not _allowed(t, None)})
     assert left == []
     # The fakes' core messages still reach the person, inside the marked sentence or alone.
     assert any("CORE: busy elsewhere" in t for t in texts)
