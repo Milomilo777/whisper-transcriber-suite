@@ -107,6 +107,7 @@
     "Autodetect at first launch (CUDA / NPU / DirectML / CPU)": "첫 실행 시 자동 감지(CUDA / NPU / DirectML / CPU)",
     "Automatic": "자동",
     "Automatic (fast enough for this computer)": "자동(이 컴퓨터에 충분히 빠름)",
+    "Automatic (system language)": "자동(시스템 언어)",
     "Automatically queues any new audio/video file dropped into this folder for transcription, using your current Transcribe settings — no need to open the app and browse for it.": "이 폴더에 넣은 새 오디오/동영상 파일을 현재 전사 설정으로 자동으로 전사 대기열에 추가합니다 — 앱을 열어 파일을 찾을 필요가 없습니다.",
     "Automatically queues the downloaded file for transcription as soon as the download finishes, using the settings in the Transcribe tab.": "다운로드가 끝나는 즉시 전사 탭의 설정으로 다운로드한 파일을 자동으로 전사 대기열에 추가합니다.",
     "Automation": "자동화",
@@ -166,6 +167,7 @@
     "Check for updates": "업데이트 확인",
     "Check for updates...": "업데이트 확인...",
     "Check for updates...  ● {version} available": "업데이트 확인...  ● {version} 사용 가능",
+    "Checking for updates needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "업데이트 확인에는 인터넷이 필요하지만 오프라인 작업이 켜져 있어 앱이 네트워크에 연결하지 않습니다.\n\n지금 오프라인 작업을 끄시겠습니까?",
     "Checking this computer…": "이 컴퓨터를 확인하는 중…",
     "Checking…": "확인 중…",
     "Checks for an NVIDIA GPU (CUDA), NPUs and DirectML and picks the fastest option. If an NVIDIA GPU can't be used yet it says why and can install the missing NVIDIA library.": "NVIDIA GPU(CUDA), NPU, DirectML을 확인해 가장 빠른 옵션을 고릅니다. NVIDIA GPU를 아직 사용할 수 없으면 이유를 알려 주고 누락된 NVIDIA 라이브러리를 설치할 수 있습니다.",
@@ -309,6 +311,7 @@
     "Downloading the Kokoro voice model (one time): {done} / {total} MB": "Kokoro 음성 모델 다운로드 중(한 번만): {done} / {total} MB",
     "Downloading the live model ({model}) — one time only…": "실시간 모델({model}) 다운로드 중 — 한 번만…",
     "Downloading the live model ({model}) — {percent}%, one time only…": "실시간 모델({model}) 다운로드 중 — {percent}%, 한 번만…",
+    "Downloading this link needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "이 링크 다운로드에는 인터넷이 필요하지만 오프라인 작업이 켜져 있어 앱이 네트워크에 연결하지 않습니다.\n\n지금 오프라인 작업을 끄시겠습니까?",
     "Downloading…": "다운로드 중…",
     "Downloads": "다운로드",
     "Downloads & new versions (GitHub releases)": "다운로드 및 새 버전(GitHub 릴리스)",
@@ -338,6 +341,7 @@
     "Engine": "엔진",
     "Engine:": "엔진:",
     "English": "영어",
+    "Enjoying it? A star on GitHub helps other people find it.": "마음에 드시나요? GitHub에서 별표를 누르면 다른 사람들이 이 앱을 찾는 데 도움이 됩니다.",
     "Enter a URL first.": "먼저 URL을 입력하세요.",
     "Enter a URL to load available formats": "사용 가능한 형식을 불러오려면 URL을 입력하세요",
     "Enter a valid time: HH:MM:SS.mmm, MM:SS.mmm, or plain seconds.": "올바른 시간을 입력하세요: HH:MM:SS.mmm, MM:SS.mmm 또는 초 단위 숫자.",
@@ -365,6 +369,7 @@
     "Fast": "빠름",
     "Fastest": "가장 빠름",
     "Female": "여성",
+    "Fetching the subtitles of this link needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "이 링크의 자막 가져오기에는 인터넷이 필요하지만 오프라인 작업이 켜져 있어 앱이 네트워크에 연결하지 않습니다.\n\n지금 오프라인 작업을 끄시겠습니까?",
     "File missing": "파일 없음",
     "File → Recent files (last 10)": "파일 → 최근 파일(최근 10개)",
     "File → Statistics… — total minutes transcribed, etc.": "파일 → 통계… — 전사한 총 시간(분) 등",
@@ -490,10 +495,12 @@
     "Installing GPU support (about 550 MB)… this can take a few minutes.": "GPU 지원 설치 중(약 550 MB)… 몇 분 걸릴 수 있습니다.",
     "Installing Google Cloud libraries (one-time)...": "Google Cloud 라이브러리 설치 중(한 번만)...",
     "Installing the YouTube helper (Deno, about {size} MB)…": "YouTube 도우미 설치 중(Deno, 약 {size} MB)…",
+    "Installing the YouTube helper needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "YouTube 도우미 설치에는 인터넷이 필요하지만 오프라인 작업이 켜져 있어 앱이 네트워크에 연결하지 않습니다.\n\n지금 오프라인 작업을 끄시겠습니까?",
     "Installing the YouTube helper… {percent}%": "YouTube 도우미 설치 중… {percent}%",
     "Installing {feature}": "{feature} 설치 중",
     "Installs transformers/torch/librosa and downloads the model ahead of time, instead of waiting on the first transcription.": "첫 전사를 기다리지 않고 transformers/torch/librosa를 설치하고 모델을 미리 다운로드합니다.",
     "Interaction reminder": "상호작용 알림",
+    "Interface language:": "인터페이스 언어:",
     "Intro": "인트로",
     "Irish": "아일랜드어",
     "It is the Transcribe tab's model: it understands other languages, and your graphics card runs it fast enough for live text.": "전사 탭의 모델입니다: 다른 언어도 이해하며, 그래픽 카드가 실시간 텍스트에 충분할 만큼 빠르게 실행합니다.",
@@ -541,6 +548,7 @@
     "Leave empty to use an installed Subtitle Edit (found automatically). Choose SubtitleEdit.exe here only for a portable copy. The \"Open in Subtitle Edit\" button after a job uses it.": "설치된 Subtitle Edit(자동으로 찾음)을 사용하려면 비워 두세요. 포터블 사본일 때만 여기에서 SubtitleEdit.exe를 선택하세요. 작업 후 \"Subtitle Edit에서 열기\" 버튼이 이를 사용합니다.",
     "Let the model choose": "모델이 선택",
     "Light / dark / system theme": "밝은 / 어두운 / 시스템 테마",
+    "Like the app? A star on its GitHub page helps other people find it.": "앱이 마음에 드시나요? GitHub 페이지에서 별표를 누르면 다른 사람들이 이 앱을 찾는 데 도움이 됩니다.",
     "Listening stopped because of a problem with the audio source or the speech model. The text so far is kept.": "오디오 소스 또는 음성 모델에 문제가 있어 듣기를 중지했습니다. 지금까지의 텍스트는 유지됩니다.",
     "Listening…": "듣는 중…",
     "Listening… no sound arrives from this device. Check that it is connected and selected.": "듣는 중… 이 장치에서 소리가 들어오지 않습니다. 연결되어 있고 선택되어 있는지 확인하세요.",
@@ -706,8 +714,13 @@
     "One click on the \"Web / LAN access\" tab opens a simple web page served by this app — no app to install on the other devices": "\"웹 / LAN 접속\" 탭에서 한 번 클릭하면 이 앱이 제공하는 간단한 웹 페이지가 열립니다 — 다른 기기에 앱을 설치할 필요가 없습니다",
     "Only needed for Batch mode above: the name of a Google Cloud Storage bucket YOU own, that this Google Cloud account has access to. Create one in the Cloud Storage section of the console if you don't have one yet.": "위의 Batch 모드에만 필요: 본인 소유이며 이 Google Cloud 계정이 접근할 수 있는 Google Cloud Storage 버킷 이름입니다. 아직 없다면 콘솔의 Cloud Storage 섹션에서 만드세요.",
     "Only used by Faster-Whisper": "Faster-Whisper에서만 사용",
+    "Open Download Folder in Finder": "Finder에서 다운로드 폴더 열기",
+    "Open Folder in Finder": "Finder에서 폴더 열기",
     "Open GitHub page": "GitHub 페이지 열기",
     "Open JSON folder": "JSON 폴더 열기",
+    "Open Log Folder in Finder": "Finder에서 로그 폴더 열기",
+    "Open Model Folder in Finder": "Finder에서 모델 폴더 열기",
+    "Open Output Folder in Finder": "Finder에서 출력 폴더 열기",
     "Open TCP connections to other computers (checked {time}, {n} process of this app):": [
       "다른 컴퓨터로 열린 TCP 연결({time}에 확인, 이 앱의 프로세스 {n}개):"
     ],
@@ -802,6 +815,7 @@
     "Queue is empty.  Go to the Transcribe tab and pick a file to add one.": "대기열이 비어 있습니다.  전사 탭에서 파일을 선택해 추가하세요.",
     "Quick start": "빠른 시작",
     "Quick start on the first launch, a \"Try it now\" sample clip, and quiet notices instead of message boxes": "첫 실행 시 빠른 시작, \"지금 사용해 보기\" 샘플 클립, 메시지 상자 대신 조용한 알림",
+    "Quit": "종료",
     "Quit with queued tasks": "대기 중인 작업이 있는 채로 끝내기",
     "Qwen2.5-1.5B-Instruct, download-on-first-use": "Qwen2.5-1.5B-Instruct, 처음 사용할 때 다운로드",
     "Re-detect hardware…": "하드웨어 다시 감지…",
@@ -1053,6 +1067,8 @@
     "The cloud backends above are the exception — they upload audio only when you choose one and start a job": "위의 클라우드 백엔드는 예외입니다 — 선택하고 작업을 시작할 때만 오디오를 업로드합니다",
     "The exact model id your endpoint expects, e.g. gpt-4o-mini or gpt-4o for the real OpenAI API, or a locally-loaded model's name for Ollama/LM Studio. This app does not pick one for you — different accounts/servers have different models available.": "엔드포인트가 기대하는 정확한 모델 id입니다. 예: 실제 OpenAI API라면 gpt-4o-mini 또는 gpt-4o, Ollama/LM Studio라면 로컬에 불러온 모델 이름. 이 앱은 대신 골라 주지 않습니다 — 계정/서버마다 사용 가능한 모델이 다릅니다.",
     "The finished pieces are kept; the same text and voice continue from there.": "완료된 조각은 유지되며, 같은 텍스트와 목소리로 거기서부터 이어집니다.",
+    "The interface language changes the next time you start the app.": "인터페이스 언어는 다음에 앱을 시작할 때 바뀝니다.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a reviewed translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "앱의 메뉴, 버튼, 메시지에 쓰이는 언어입니다. '자동'은 검토된 번역이 있으면 시스템 언어를, 없으면 영어를 사용합니다. '기계 번역'으로 표시된 언어는 컴퓨터가 번역했으며 아직 사람이 확인하지 않았습니다. 변경 사항은 다음에 앱을 시작할 때 적용됩니다.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "실시간 모델 '{model}'이(가) 모델 목록에 없습니다. 전사 탭의 모델({main_model})은 영어만 이해하므로 대신 사용할 수 없습니다. 인터넷 연결을 확인하고 다시 시작을 누르거나 모델 목록에서 다른 모델을 선택하세요.",
     "The live session could not be started.": "실시간 세션을 시작할 수 없습니다.",
     "The live transcript is empty.": "실시간 전사본이 비어 있습니다.",
@@ -1069,13 +1085,19 @@
     "The settings could not be saved:\n{error}\n\nClose other programs that may be using the settings file, then click Save again.": "설정을 저장할 수 없습니다:\n{error}\n\n설정 파일을 사용 중일 수 있는 다른 프로그램을 닫은 뒤 저장을 다시 클릭하세요.",
     "The settings run transcription on the CPU, so these are for {cpu}. Advanced > Re-detect hardware changes that.": "설정이 CPU로 전사하므로 이 값은 {cpu} 기준입니다. 고급 > 하드웨어 다시 감지에서 바꿀 수 있습니다.",
     "The settings run transcription on this computer's {where}, so the times are for it (Advanced settings > Re-detect hardware changes that).": "설정이 이 컴퓨터의 {where}에서 전사하므로 시간은 그 기준입니다(고급 설정 > 하드웨어 다시 감지에서 바꿀 수 있음).",
+    "The site still asks for a login: check that you are logged in to it in {browser} (on Windows, close {browser} completely if it keeps failing).": "사이트가 여전히 로그인을 요구합니다: {browser}에서 이 사이트에 로그인되어 있는지 확인하세요(Windows에서 계속 실패하면 {browser} 브라우저를 완전히 닫으세요).",
     "The speech model process stopped unexpectedly.": "음성 모델 프로세스가 예기치 않게 중지되었습니다.",
     "The subtitle file is no longer there:\n{path}": "자막 파일이 더 이상 그곳에 없습니다:\n{path}",
     "The tray icon libraries are missing.": "트레이 아이콘 라이브러리가 없습니다.",
     "The video downloader may be out of date. An update (about {size} MB) often fixes failing YouTube downloads.": "동영상 다운로더가 오래되었을 수 있습니다. 업데이트(약 {size} MB)하면 YouTube 다운로드 실패가 해결되는 경우가 많습니다.",
+    "The voice engine stopped responding (no sign of life for {n} minute) and was stopped. Click Generate to try again; if it happens again, restart the app.": [
+      "음성 엔진이 응답하지 않아({n}분 동안 동작 없음) 중지되었습니다. 생성을 클릭해 다시 시도하고, 또 발생하면 앱을 다시 시작하세요."
+    ],
+    "The voice-clone worker did not answer in time.": "목소리 복제 워커가 제때 응답하지 않았습니다.",
     "The web / LAN server could not start.\n\n{error}": "웹 / LAN 서버를 시작할 수 없습니다.\n\n{error}",
     "The web-standard subtitle format (HTML5 video, YouTube). Also supports per-word karaoke highlighting.": "웹 표준 자막 형식(HTML5 동영상, YouTube)입니다. 단어별 가라오케 강조도 지원합니다.",
     "The {engine} engine uses its own model. This picker only applies to the Faster-Whisper engine, so a change here would have no effect.": "{engine} 엔진은 자체 모델을 사용합니다. 이 선택기는 Faster-Whisper 엔진에만 적용되므로 여기서 바꿔도 효과가 없습니다.",
+    "The {variable} environment variable sets the interface language of this run. Your choice applies when the app starts without it.": "{variable} 환경 변수가 이번 실행의 인터페이스 언어를 정합니다. 선택한 언어는 이 변수 없이 앱을 시작할 때 적용됩니다.",
     "The {variable} environment variable turns the daily check off on this computer. Help → Check for updates… always works. The app never installs anything by itself.": "{variable} 환경 변수가 이 컴퓨터에서 매일 확인을 끕니다. 도움말 → 업데이트 확인…은 언제나 작동합니다. 앱은 스스로 아무것도 설치하지 않습니다.",
     "There are queued or running tasks. Exit anyway?": "대기 중이거나 실행 중인 작업이 있습니다. 그래도 종료하시겠습니까?",
     "There are queued or running tasks. Quit anyway?": "대기 중이거나 실행 중인 작업이 있습니다. 그래도 끝내시겠습니까?",
@@ -1098,7 +1120,9 @@
     "This is the FULL Google Cloud Speech-to-Text service. It signs in with a service-account JSON file you download from the Google Cloud console (NOT the simple API key the separate Gemini engine uses). New Google Cloud customers get 60 free minutes every month plus a $300 / 90-day credit.\n\nIt is the only engine here that combines all three: real word-level timestamps, speaker diarization, and a cheap Batch mode for long files — Batch costs about $0.004/minute (~75% less than Standard's ~$0.016/minute) and is usually ready within 24 hours.": "완전한 Google Cloud Speech-to-Text 서비스입니다. Google Cloud 콘솔에서 다운로드한 서비스 계정 JSON 파일로 로그인합니다(별도의 Gemini 엔진이 쓰는 간단한 API 키가 아님). 새 Google Cloud 고객은 매달 60분 무료와 $300 / 90일 크레딧을 받습니다.\n\n실제 단어 단위 타임스탬프, 화자 분리, 긴 파일을 위한 저렴한 Batch 모드의 세 가지를 모두 갖춘 유일한 엔진입니다 — Batch는 분당 약 $0.004(표준 ~$0.016/분보다 약 75% 저렴)이며 보통 24시간 이내에 완료됩니다.",
     "This looks like a credentials/config file, not a transcript JSON — pick the .json next to your audio/video.": "전사본 JSON이 아니라 자격 증명/설정 파일로 보입니다 — 오디오/동영상 옆에 있는 .json을 선택하세요.",
     "This model understands English only": "이 모델은 영어만 이해합니다",
+    "This needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "이 작업에는 인터넷이 필요하지만 오프라인 작업이 켜져 있어 앱이 네트워크에 연결하지 않습니다.\n\n지금 오프라인 작업을 끄시겠습니까?",
     "This release has no short summary. The full notes have the details.": "이 릴리스에는 짧은 요약이 없습니다. 전체 노트에 세부 내용이 있습니다.",
+    "This site wants you to be logged in: pick the browser you are logged in with under \"Log-in cookies\" and the link is checked again.": "이 사이트는 로그인이 필요합니다: '로그인 쿠키'에서 로그인되어 있는 브라우저를 선택하면 링크를 다시 확인합니다.",
     "This task has no SRT file on disk — add SRT to the output formats and run it again.": "이 작업에는 디스크에 SRT 파일이 없습니다 — 출력 형식에 SRT를 추가하고 다시 실행하세요.",
     "This task has no SRT file on disk. Add SRT to the output formats and run it again.\nLooked for:\n{path}": "이 작업에는 디스크에 SRT 파일이 없습니다. 출력 형식에 SRT를 추가하고 다시 실행하세요.\n찾아본 위치:\n{path}",
     "This text is too long for one audio file.": "이 텍스트는 오디오 파일 하나에 담기에 너무 깁니다.",
@@ -1182,6 +1206,7 @@
     "Updated {names} next to {json_name}.": "{json_name} 옆의 {names}을(를) 업데이트했습니다.",
     "Updates": "업데이트",
     "Updates come from yt-dlp's own GitHub releases (stable), are checked against their published checksums and go to a copy in your user folder; the app's own copy is never changed.": "업데이트는 yt-dlp 자체의 GitHub 릴리스(안정 버전)에서 받아 공개된 체크섬으로 확인한 뒤 사용자 폴더의 사본에 적용합니다. 앱 자체의 사본은 절대 바뀌지 않습니다.",
+    "Updating the video downloader needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "동영상 다운로더 업데이트에는 인터넷이 필요하지만 오프라인 작업이 켜져 있어 앱이 네트워크에 연결하지 않습니다.\n\n지금 오프라인 작업을 끄시겠습니까?",
     "Updating the video downloader…": "동영상 다운로더 업데이트 중…",
     "Urdu": "우르두어",
     "Usage statistics": "사용 통계",
@@ -1222,6 +1247,7 @@
     "Voice:": "목소리:",
     "WARNING  {connection}": "경고  {connection}",
     "WAV audio": "WAV 오디오",
+    "Wait for formats to load, then select a video format.": "형식을 불러올 때까지 기다린 뒤 동영상 형식을 선택하세요.",
     "Wait for formats to load, then select an audio format.": "형식을 불러올 때까지 기다린 뒤 오디오 형식을 선택하세요.",
     "Warning: the consent record was not saved (see the log).": "경고: 동의 기록이 저장되지 않았습니다(로그 참조).",
     "Watched folder": "감시 폴더",
@@ -1320,6 +1346,7 @@
       "약 {n}초"
     ],
     "allowed (this computer)": "허용됨(이 컴퓨터)",
+    "browser cookies\u0004(off)": "(끔)",
     "button\u0004Clear": "지우기",
     "button\u0004Close": "닫기",
     "button\u0004Download": "다운로드",
@@ -1468,6 +1495,7 @@
       "{languages} 외 {n}개"
     ],
     "{language} (automatic)": "{language}(자동)",
+    "{language} (machine translation)": "{language}(기계 번역)",
     "{language} (made by the uploader)": "{language}(업로더 제작)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "{language} 음성은 잘못된 영어 텍스트로 나옵니다: 지어낸 단어나 대략적인 영어 번역이며, 실제로 말한 내용이 아닙니다.",
     "{minutes} minute(s)": "{minutes}분",
@@ -1482,6 +1510,9 @@
     "{name} has edits that were not saved.\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.": "{name}에 저장하지 않은 편집 내용이 있습니다.\n\n예: 저장한 뒤 종료.\n아니요: 버리고 종료.\n취소: 앱에 머무르기.",
     "{name} has edits that were not saved.\nFolder: {folder}\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.": "{name}에 저장하지 않은 편집 내용이 있습니다.\n폴더: {folder}\n\n예: 저장한 뒤 종료.\n아니요: 버리고 종료.\n취소: 앱에 머무르기.",
     "{name} was changed or removed by something else after it was opened here.\n\nOverwrite it with the version in this window?": "{name}이(가) 여기서 열린 뒤 다른 곳에서 변경되거나 삭제되었습니다.\n\n이 창의 버전으로 덮어쓰시겠습니까?",
+    "{n} job": [
+      "작업 {n}개"
+    ],
     "{n} reference sample(s).": [
       "참조 샘플 {n}개."
     ],
@@ -1490,6 +1521,15 @@
     ],
     "{n} segment(s) could not be translated (the AI provider kept refusing or timed out) and are left empty in the file. Run it again to fill them.": [
       "구간 {n}개를 번역할 수 없어(AI 제공자가 계속 거부했거나 시간 초과) 파일에 비워 두었습니다. 채우려면 다시 실행하세요."
+    ],
+    "{n} transcription is running right now. Applying the new hardware setting now stops it immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nApply it now? Choose No to let it finish; the setting is then used after the app is restarted.": [
+      "지금 전사 {n}개가 실행 중입니다. 새 하드웨어 설정을 지금 적용하면 전사가 즉시 중지되며, 일반 취소보다 갑작스럽게 멈추므로 더 많은 진행 내용을 잃을 수 있습니다.\n\n지금 적용하시겠습니까? 끝까지 진행하려면 '아니요'를 선택하세요. 그러면 설정은 앱을 다시 시작한 뒤 사용됩니다."
+    ],
+    "{n} transcription is running right now. Changing the model stops it immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nChange it anyway?": [
+      "지금 전사 {n}개가 실행 중입니다. 모델을 바꾸면 전사가 즉시 중지되며, 일반 취소보다 갑작스럽게 멈추므로 더 많은 진행 내용을 잃을 수 있습니다.\n\n그래도 바꾸시겠습니까?"
+    ],
+    "{n} transcription is running right now. Switching engines stops it immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nSwitch anyway?": [
+      "지금 전사 {n}개가 실행 중입니다. 엔진을 전환하면 전사가 즉시 중지되며, 일반 취소보다 갑작스럽게 멈추므로 더 많은 진행 내용을 잃을 수 있습니다.\n\n그래도 전환하시겠습니까?"
     ],
     "{process} (pid {pid}) {protocol} incoming {remote}": "{process}(pid {pid}) {protocol} 들어옴 {remote}",
     "{process} (pid {pid}) {protocol} outgoing {remote}": "{process}(pid {pid}) {protocol} 나감 {remote}",

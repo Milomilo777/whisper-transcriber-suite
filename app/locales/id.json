@@ -107,6 +107,7 @@
     "Autodetect at first launch (CUDA / NPU / DirectML / CPU)": "Deteksi otomatis saat pertama dijalankan (CUDA / NPU / DirectML / CPU)",
     "Automatic": "Otomatis",
     "Automatic (fast enough for this computer)": "Otomatis (cukup cepat untuk komputer ini)",
+    "Automatic (system language)": "Otomatis (bahasa sistem)",
     "Automatically queues any new audio/video file dropped into this folder for transcription, using your current Transcribe settings — no need to open the app and browse for it.": "Otomatis memasukkan setiap berkas audio/video baru yang ditaruh di folder ini ke antrean transkripsi, dengan pengaturan Transkripsi Anda saat ini — tanpa perlu membuka aplikasi dan mencarinya.",
     "Automatically queues the downloaded file for transcription as soon as the download finishes, using the settings in the Transcribe tab.": "Otomatis memasukkan berkas yang diunduh ke antrean transkripsi begitu unduhan selesai, dengan pengaturan di tab Transkripsi.",
     "Automation": "Otomatisasi",
@@ -166,6 +167,7 @@
     "Check for updates": "Periksa pembaruan",
     "Check for updates...": "Periksa pembaruan...",
     "Check for updates...  ● {version} available": "Periksa pembaruan...  ● {version} tersedia",
+    "Checking for updates needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "Memeriksa pembaruan memerlukan internet, dan Kerja luring aktif, sehingga aplikasi tidak membuat koneksi jaringan.\n\nNonaktifkan Kerja luring sekarang?",
     "Checking this computer…": "Memeriksa komputer ini…",
     "Checking…": "Memeriksa…",
     "Checks for an NVIDIA GPU (CUDA), NPUs and DirectML and picks the fastest option. If an NVIDIA GPU can't be used yet it says why and can install the missing NVIDIA library.": "Memeriksa GPU NVIDIA (CUDA), NPU, dan DirectML lalu memilih opsi tercepat. Jika GPU NVIDIA belum dapat dipakai, alasannya ditampilkan dan pustaka NVIDIA yang kurang dapat diinstal.",
@@ -309,6 +311,7 @@
     "Downloading the Kokoro voice model (one time): {done} / {total} MB": "Mengunduh model suara Kokoro (sekali saja): {done} / {total} MB",
     "Downloading the live model ({model}) — one time only…": "Mengunduh model langsung ({model}) — hanya sekali…",
     "Downloading the live model ({model}) — {percent}%, one time only…": "Mengunduh model langsung ({model}) — {percent}%, hanya sekali…",
+    "Downloading this link needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "Mengunduh tautan ini memerlukan internet, dan Kerja luring aktif, sehingga aplikasi tidak membuat koneksi jaringan.\n\nNonaktifkan Kerja luring sekarang?",
     "Downloading…": "Mengunduh…",
     "Downloads": "Unduhan",
     "Downloads & new versions (GitHub releases)": "Unduhan & versi baru (rilis GitHub)",
@@ -338,6 +341,7 @@
     "Engine": "Mesin",
     "Engine:": "Mesin:",
     "English": "Inggris",
+    "Enjoying it? A star on GitHub helps other people find it.": "Suka? Bintang di GitHub membantu orang lain menemukannya.",
     "Enter a URL first.": "Masukkan URL dulu.",
     "Enter a URL to load available formats": "Masukkan URL untuk memuat format yang tersedia",
     "Enter a valid time: HH:MM:SS.mmm, MM:SS.mmm, or plain seconds.": "Masukkan waktu yang valid: HH:MM:SS.mmm, MM:SS.mmm, atau detik saja.",
@@ -365,6 +369,7 @@
     "Fast": "Cepat",
     "Fastest": "Tercepat",
     "Female": "Perempuan",
+    "Fetching the subtitles of this link needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "Mengambil subtitel tautan ini memerlukan internet, dan Kerja luring aktif, sehingga aplikasi tidak membuat koneksi jaringan.\n\nNonaktifkan Kerja luring sekarang?",
     "File missing": "Berkas hilang",
     "File → Recent files (last 10)": "Berkas → Berkas terbaru (10 terakhir)",
     "File → Statistics… — total minutes transcribed, etc.": "Berkas → Statistik… — total menit yang ditranskripsikan, dll.",
@@ -490,10 +495,12 @@
     "Installing GPU support (about 550 MB)… this can take a few minutes.": "Menginstal dukungan GPU (sekitar 550 MB)… ini dapat memakan beberapa menit.",
     "Installing Google Cloud libraries (one-time)...": "Menginstal pustaka Google Cloud (sekali saja)...",
     "Installing the YouTube helper (Deno, about {size} MB)…": "Menginstal pembantu YouTube (Deno, sekitar {size} MB)…",
+    "Installing the YouTube helper needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "Menginstal pembantu YouTube memerlukan internet, dan Kerja luring aktif, sehingga aplikasi tidak membuat koneksi jaringan.\n\nNonaktifkan Kerja luring sekarang?",
     "Installing the YouTube helper… {percent}%": "Menginstal pembantu YouTube… {percent}%",
     "Installing {feature}": "Menginstal {feature}",
     "Installs transformers/torch/librosa and downloads the model ahead of time, instead of waiting on the first transcription.": "Menginstal transformers/torch/librosa dan mengunduh model lebih awal, alih-alih menunggu transkripsi pertama.",
     "Interaction reminder": "Pengingat interaksi",
+    "Interface language:": "Bahasa antarmuka:",
     "Intro": "Intro",
     "Irish": "Irlandia",
     "It is the Transcribe tab's model: it understands other languages, and your graphics card runs it fast enough for live text.": "Ini model tab Transkripsi: mengerti bahasa lain, dan kartu grafis Anda menjalankannya cukup cepat untuk teks langsung.",
@@ -541,6 +548,7 @@
     "Leave empty to use an installed Subtitle Edit (found automatically). Choose SubtitleEdit.exe here only for a portable copy. The \"Open in Subtitle Edit\" button after a job uses it.": "Biarkan kosong untuk memakai Subtitle Edit yang terinstal (ditemukan otomatis). Pilih SubtitleEdit.exe di sini hanya untuk salinan portabel. Tombol “Buka di Subtitle Edit” setelah tugas memakainya.",
     "Let the model choose": "Biarkan model memilih",
     "Light / dark / system theme": "Tema terang / gelap / sistem",
+    "Like the app? A star on its GitHub page helps other people find it.": "Suka aplikasinya? Bintang di halaman GitHub-nya membantu orang lain menemukannya.",
     "Listening stopped because of a problem with the audio source or the speech model. The text so far is kept.": "Mendengarkan dihentikan karena masalah pada sumber audio atau model ucapan. Teks yang sudah ada tetap disimpan.",
     "Listening…": "Mendengarkan…",
     "Listening… no sound arrives from this device. Check that it is connected and selected.": "Mendengarkan… tidak ada suara dari perangkat ini. Periksa apakah perangkat terhubung dan dipilih.",
@@ -706,8 +714,13 @@
     "One click on the \"Web / LAN access\" tab opens a simple web page served by this app — no app to install on the other devices": "Satu klik pada tab “Akses Web / LAN” membuka halaman web sederhana yang disajikan aplikasi ini — tidak perlu menginstal aplikasi di perangkat lain",
     "Only needed for Batch mode above: the name of a Google Cloud Storage bucket YOU own, that this Google Cloud account has access to. Create one in the Cloud Storage section of the console if you don't have one yet.": "Hanya diperlukan untuk mode Batch di atas: nama bucket Google Cloud Storage milik ANDA, yang dapat diakses akun Google Cloud ini. Buat bucket di bagian Cloud Storage pada konsol jika Anda belum punya.",
     "Only used by Faster-Whisper": "Hanya dipakai oleh Faster-Whisper",
+    "Open Download Folder in Finder": "Buka folder unduhan di Finder",
+    "Open Folder in Finder": "Buka folder di Finder",
     "Open GitHub page": "Buka halaman GitHub",
     "Open JSON folder": "Buka folder JSON",
+    "Open Log Folder in Finder": "Buka folder log di Finder",
+    "Open Model Folder in Finder": "Buka folder model di Finder",
+    "Open Output Folder in Finder": "Buka folder keluaran di Finder",
     "Open TCP connections to other computers (checked {time}, {n} process of this app):": [
       "Koneksi TCP terbuka ke komputer lain (diperiksa {time}, {n} proses aplikasi ini):"
     ],
@@ -802,6 +815,7 @@
     "Queue is empty.  Go to the Transcribe tab and pick a file to add one.": "Antrean kosong.  Buka tab Transkripsi dan pilih berkas untuk menambahkannya.",
     "Quick start": "Mulai cepat",
     "Quick start on the first launch, a \"Try it now\" sample clip, and quiet notices instead of message boxes": "Mulai cepat saat pertama dijalankan, klip contoh “Coba sekarang”, dan pemberitahuan halus alih-alih kotak pesan",
+    "Quit": "Keluar",
     "Quit with queued tasks": "Keluar dengan tugas dalam antrean",
     "Qwen2.5-1.5B-Instruct, download-on-first-use": "Qwen2.5-1.5B-Instruct, diunduh saat pertama dipakai",
     "Re-detect hardware…": "Deteksi ulang perangkat keras…",
@@ -1053,6 +1067,8 @@
     "The cloud backends above are the exception — they upload audio only when you choose one and start a job": "Backend cloud di atas adalah pengecualian — backend itu mengunggah audio hanya jika Anda memilihnya dan memulai tugas",
     "The exact model id your endpoint expects, e.g. gpt-4o-mini or gpt-4o for the real OpenAI API, or a locally-loaded model's name for Ollama/LM Studio. This app does not pick one for you — different accounts/servers have different models available.": "ID model persis yang diharapkan endpoint Anda, mis. gpt-4o-mini atau gpt-4o untuk OpenAI API asli, atau nama model yang dimuat lokal untuk Ollama/LM Studio. Aplikasi ini tidak memilihkannya untuk Anda — akun/server yang berbeda memiliki model yang berbeda.",
     "The finished pieces are kept; the same text and voice continue from there.": "Bagian yang sudah selesai tetap disimpan; teks dan suara yang sama dilanjutkan dari sana.",
+    "The interface language changes the next time you start the app.": "Bahasa antarmuka berubah saat Anda memulai aplikasi berikutnya.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a reviewed translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Bahasa menu, tombol, dan pesan aplikasi. Otomatis menggunakan bahasa sistem Anda jika tersedia terjemahan yang sudah ditinjau untuk bahasa itu, jika tidak menggunakan bahasa Inggris. Bahasa yang ditandai \"terjemahan mesin\" diterjemahkan oleh komputer dan belum diperiksa oleh manusia. Perubahan berlaku saat Anda memulai aplikasi berikutnya.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Model langsung “{model}” tidak ada di daftar model. Model tab Transkripsi ({main_model}) hanya mengerti bahasa Inggris, jadi tidak dapat menggantikannya. Periksa koneksi internet dan tekan Mulai lagi, atau pilih model lain di daftar Model.",
     "The live session could not be started.": "Sesi langsung tidak dapat dimulai.",
     "The live transcript is empty.": "Transkrip langsung kosong.",
@@ -1069,13 +1085,19 @@
     "The settings could not be saved:\n{error}\n\nClose other programs that may be using the settings file, then click Save again.": "Pengaturan tidak dapat disimpan:\n{error}\n\nTutup program lain yang mungkin memakai berkas pengaturan, lalu klik Simpan lagi.",
     "The settings run transcription on the CPU, so these are for {cpu}. Advanced > Re-detect hardware changes that.": "Pengaturan menjalankan transkripsi di CPU, jadi ini untuk {cpu}. Lanjutan > Deteksi ulang perangkat keras dapat mengubahnya.",
     "The settings run transcription on this computer's {where}, so the times are for it (Advanced settings > Re-detect hardware changes that).": "Pengaturan menjalankan transkripsi di {where} komputer ini, jadi waktunya untuk itu (Pengaturan lanjutan > Deteksi ulang perangkat keras dapat mengubahnya).",
+    "The site still asks for a login: check that you are logged in to it in {browser} (on Windows, close {browser} completely if it keeps failing).": "Situs masih meminta login: pastikan Anda sudah login ke situs itu di {browser} (di Windows, tutup {browser} sepenuhnya jika terus gagal).",
     "The speech model process stopped unexpectedly.": "Proses model ucapan berhenti secara tak terduga.",
     "The subtitle file is no longer there:\n{path}": "Berkas subtitel sudah tidak ada:\n{path}",
     "The tray icon libraries are missing.": "Pustaka ikon baki sistem tidak ada.",
     "The video downloader may be out of date. An update (about {size} MB) often fixes failing YouTube downloads.": "Pengunduh video mungkin sudah usang. Pembaruan (sekitar {size} MB) sering memperbaiki unduhan YouTube yang gagal.",
+    "The voice engine stopped responding (no sign of life for {n} minute) and was stopped. Click Generate to try again; if it happens again, restart the app.": [
+      "Mesin suara berhenti merespons (tidak ada tanda aktivitas selama {n} menit) dan dihentikan. Klik Hasilkan ucapan untuk mencoba lagi; jika terjadi lagi, mulai ulang aplikasi."
+    ],
+    "The voice-clone worker did not answer in time.": "Pekerja kloning suara tidak menjawab tepat waktu.",
     "The web / LAN server could not start.\n\n{error}": "Server web / LAN tidak dapat dimulai.\n\n{error}",
     "The web-standard subtitle format (HTML5 video, YouTube). Also supports per-word karaoke highlighting.": "Format subtitel standar web (video HTML5, YouTube). Juga mendukung sorotan karaoke per kata.",
     "The {engine} engine uses its own model. This picker only applies to the Faster-Whisper engine, so a change here would have no effect.": "Mesin {engine} memakai modelnya sendiri. Pemilih ini hanya berlaku untuk mesin Faster-Whisper, jadi perubahan di sini tidak akan berpengaruh.",
+    "The {variable} environment variable sets the interface language of this run. Your choice applies when the app starts without it.": "Variabel lingkungan {variable} menetapkan bahasa antarmuka untuk sesi ini. Pilihan Anda berlaku saat aplikasi dimulai tanpa variabel itu.",
     "The {variable} environment variable turns the daily check off on this computer. Help → Check for updates… always works. The app never installs anything by itself.": "Variabel lingkungan {variable} menonaktifkan pemeriksaan harian di komputer ini. Bantuan → Periksa pembaruan… selalu berfungsi. Aplikasi tidak pernah menginstal apa pun sendiri.",
     "There are queued or running tasks. Exit anyway?": "Ada tugas dalam antrean atau sedang berjalan. Tetap keluar?",
     "There are queued or running tasks. Quit anyway?": "Ada tugas dalam antrean atau sedang berjalan. Tetap keluar?",
@@ -1098,7 +1120,9 @@
     "This is the FULL Google Cloud Speech-to-Text service. It signs in with a service-account JSON file you download from the Google Cloud console (NOT the simple API key the separate Gemini engine uses). New Google Cloud customers get 60 free minutes every month plus a $300 / 90-day credit.\n\nIt is the only engine here that combines all three: real word-level timestamps, speaker diarization, and a cheap Batch mode for long files — Batch costs about $0.004/minute (~75% less than Standard's ~$0.016/minute) and is usually ready within 24 hours.": "Ini adalah layanan Google Cloud Speech-to-Text yang LENGKAP. Masuk dengan berkas JSON akun layanan yang Anda unduh dari konsol Google Cloud (BUKAN kunci API sederhana yang dipakai mesin Gemini terpisah). Pelanggan Google Cloud baru mendapat 60 menit gratis setiap bulan plus kredit $300 / 90 hari.\n\nIni satu-satunya mesin di sini yang menggabungkan ketiganya: stempel waktu tingkat kata yang nyata, diarisasi pembicara, dan mode Batch murah untuk berkas panjang — Batch berbiaya sekitar $0.004/menit (~75% lebih murah daripada Standar ~$0.016/menit) dan biasanya siap dalam 24 jam.",
     "This looks like a credentials/config file, not a transcript JSON — pick the .json next to your audio/video.": "Ini tampak seperti berkas kredensial/konfigurasi, bukan JSON transkrip — pilih .json di samping audio/video Anda.",
     "This model understands English only": "Model ini hanya mengerti bahasa Inggris",
+    "This needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "Ini memerlukan internet, dan Kerja luring aktif, sehingga aplikasi tidak membuat koneksi jaringan.\n\nNonaktifkan Kerja luring sekarang?",
     "This release has no short summary. The full notes have the details.": "Rilis ini tidak punya ringkasan singkat. Catatan lengkapnya berisi detailnya.",
+    "This site wants you to be logged in: pick the browser you are logged in with under \"Log-in cookies\" and the link is checked again.": "Situs ini mengharuskan Anda login: pilih browser yang Anda gunakan untuk login di \"Cookie login\" dan tautan akan diperiksa lagi.",
     "This task has no SRT file on disk — add SRT to the output formats and run it again.": "Tugas ini tidak punya berkas SRT di disk — tambahkan SRT ke format keluaran dan jalankan lagi.",
     "This task has no SRT file on disk. Add SRT to the output formats and run it again.\nLooked for:\n{path}": "Tugas ini tidak punya berkas SRT di disk. Tambahkan SRT ke format keluaran dan jalankan lagi.\nYang dicari:\n{path}",
     "This text is too long for one audio file.": "Teks ini terlalu panjang untuk satu berkas audio.",
@@ -1182,6 +1206,7 @@
     "Updated {names} next to {json_name}.": "{names} di samping {json_name} diperbarui.",
     "Updates": "Pembaruan",
     "Updates come from yt-dlp's own GitHub releases (stable), are checked against their published checksums and go to a copy in your user folder; the app's own copy is never changed.": "Pembaruan berasal dari rilis GitHub resmi yt-dlp (stabil), diperiksa terhadap checksum yang dipublikasikan dan disimpan ke salinan di folder pengguna Anda; salinan milik aplikasi tidak pernah diubah.",
+    "Updating the video downloader needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "Memperbarui pengunduh video memerlukan internet, dan Kerja luring aktif, sehingga aplikasi tidak membuat koneksi jaringan.\n\nNonaktifkan Kerja luring sekarang?",
     "Updating the video downloader…": "Memperbarui pengunduh video…",
     "Urdu": "Urdu",
     "Usage statistics": "Statistik pemakaian",
@@ -1222,6 +1247,7 @@
     "Voice:": "Suara:",
     "WARNING  {connection}": "PERINGATAN  {connection}",
     "WAV audio": "Audio WAV",
+    "Wait for formats to load, then select a video format.": "Tunggu hingga format selesai dimuat, lalu pilih format video.",
     "Wait for formats to load, then select an audio format.": "Tunggu format dimuat, lalu pilih format audio.",
     "Warning: the consent record was not saved (see the log).": "Peringatan: catatan persetujuan tidak disimpan (lihat log).",
     "Watched folder": "Folder yang dipantau",
@@ -1320,6 +1346,7 @@
       "sekitar {n} detik"
     ],
     "allowed (this computer)": "diizinkan (komputer ini)",
+    "browser cookies\u0004(off)": "(nonaktif)",
     "button\u0004Clear": "Bersihkan",
     "button\u0004Close": "Tutup",
     "button\u0004Download": "Unduh",
@@ -1468,6 +1495,7 @@
       "{languages} dan {n} lainnya"
     ],
     "{language} (automatic)": "{language} (otomatis)",
+    "{language} (machine translation)": "{language} (terjemahan mesin)",
     "{language} (made by the uploader)": "{language} (dibuat oleh pengunggah)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Ucapan {language} akan keluar sebagai teks Inggris yang salah: kata-kata karangan atau terjemahan Inggris kasar, bukan yang sebenarnya diucapkan.",
     "{minutes} minute(s)": "{minutes} menit",
@@ -1482,6 +1510,9 @@
     "{name} has edits that were not saved.\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.": "{name} memiliki suntingan yang belum disimpan.\n\nYa: simpan, lalu keluar.\nTidak: keluar dan buang suntingan.\nBatal: tetap di aplikasi.",
     "{name} has edits that were not saved.\nFolder: {folder}\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.": "{name} memiliki suntingan yang belum disimpan.\nFolder: {folder}\n\nYa: simpan, lalu keluar.\nTidak: keluar dan buang suntingan.\nBatal: tetap di aplikasi.",
     "{name} was changed or removed by something else after it was opened here.\n\nOverwrite it with the version in this window?": "{name} diubah atau dihapus oleh hal lain setelah dibuka di sini.\n\nTimpa dengan versi di jendela ini?",
+    "{n} job": [
+      "{n} tugas"
+    ],
     "{n} reference sample(s).": [
       "{n} sampel referensi."
     ],
@@ -1490,6 +1521,15 @@
     ],
     "{n} segment(s) could not be translated (the AI provider kept refusing or timed out) and are left empty in the file. Run it again to fill them.": [
       "{n} segmen tidak dapat diterjemahkan (penyedia AI terus menolak atau waktu habis) dan dibiarkan kosong di berkas. Jalankan lagi untuk mengisinya."
+    ],
+    "{n} transcription is running right now. Applying the new hardware setting now stops it immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nApply it now? Choose No to let it finish; the setting is then used after the app is restarted.": [
+      "{n} transkripsi sedang berjalan saat ini. Menerapkan pengaturan perangkat keras baru sekarang akan langsung menghentikannya — lebih mendadak daripada Batal biasa, sehingga lebih banyak kemajuan bisa hilang.\n\nTerapkan sekarang? Pilih Tidak untuk membiarkannya selesai; pengaturan akan digunakan setelah aplikasi dimulai ulang."
+    ],
+    "{n} transcription is running right now. Changing the model stops it immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nChange it anyway?": [
+      "{n} transkripsi sedang berjalan saat ini. Mengganti model akan langsung menghentikannya — lebih mendadak daripada Batal biasa, sehingga lebih banyak kemajuan bisa hilang.\n\nTetap ganti?"
+    ],
+    "{n} transcription is running right now. Switching engines stops it immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nSwitch anyway?": [
+      "{n} transkripsi sedang berjalan saat ini. Mengganti mesin akan langsung menghentikannya — lebih mendadak daripada Batal biasa, sehingga lebih banyak kemajuan bisa hilang.\n\nTetap ganti?"
     ],
     "{process} (pid {pid}) {protocol} incoming {remote}": "{process} (pid {pid}) {protocol} masuk {remote}",
     "{process} (pid {pid}) {protocol} outgoing {remote}": "{process} (pid {pid}) {protocol} keluar {remote}",

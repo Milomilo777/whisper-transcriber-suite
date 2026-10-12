@@ -107,6 +107,7 @@
     "Autodetect at first launch (CUDA / NPU / DirectML / CPU)": "首次啟動時自動偵測（CUDA / NPU / DirectML / CPU）",
     "Automatic": "自動",
     "Automatic (fast enough for this computer)": "自動（對這台電腦來說夠快）",
+    "Automatic (system language)": "自動（系統語言）",
     "Automatically queues any new audio/video file dropped into this folder for transcription, using your current Transcribe settings — no need to open the app and browse for it.": "自動將放入此資料夾的任何新音訊/影片檔案加入轉錄佇列，使用目前的「轉錄」設定——不必開啟應用程式去瀏覽檔案。",
     "Automatically queues the downloaded file for transcription as soon as the download finishes, using the settings in the Transcribe tab.": "下載一完成就自動將檔案加入轉錄佇列，使用「轉錄」分頁中的設定。",
     "Automation": "自動化",
@@ -166,6 +167,7 @@
     "Check for updates": "檢查更新",
     "Check for updates...": "檢查更新...",
     "Check for updates...  ● {version} available": "檢查更新...  ● {version} 可用",
+    "Checking for updates needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "檢查更新需要連上網路，但「離線工作」已開啟，應用程式不會建立任何網路連線。\n\n現在關閉「離線工作」嗎？",
     "Checking this computer…": "正在檢查這台電腦…",
     "Checking…": "正在檢查…",
     "Checks for an NVIDIA GPU (CUDA), NPUs and DirectML and picks the fastest option. If an NVIDIA GPU can't be used yet it says why and can install the missing NVIDIA library.": "偵測 NVIDIA GPU（CUDA）、NPU 和 DirectML，並選擇最快的選項。如果 NVIDIA GPU 暫時無法使用，會說明原因並可安裝缺少的 NVIDIA 程式庫。",
@@ -309,6 +311,7 @@
     "Downloading the Kokoro voice model (one time): {done} / {total} MB": "正在下載 Kokoro 語音模型（僅一次）：{done} / {total} MB",
     "Downloading the live model ({model}) — one time only…": "正在下載即時模型（{model}）——僅此一次…",
     "Downloading the live model ({model}) — {percent}%, one time only…": "正在下載即時模型（{model}）——{percent}%，僅此一次…",
+    "Downloading this link needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "下載此連結需要連上網路，但「離線工作」已開啟，應用程式不會建立任何網路連線。\n\n現在關閉「離線工作」嗎？",
     "Downloading…": "正在下載…",
     "Downloads": "下載",
     "Downloads & new versions (GitHub releases)": "下載與新版本（GitHub 發行頁面）",
@@ -338,6 +341,7 @@
     "Engine": "引擎",
     "Engine:": "引擎：",
     "English": "英語",
+    "Enjoying it? A star on GitHub helps other people find it.": "喜歡嗎？在 GitHub 上給個星星，能幫助更多人找到它。",
     "Enter a URL first.": "請先輸入 URL。",
     "Enter a URL to load available formats": "輸入 URL 以載入可用格式",
     "Enter a valid time: HH:MM:SS.mmm, MM:SS.mmm, or plain seconds.": "請輸入有效的時間：HH:MM:SS.mmm、MM:SS.mmm 或純秒數。",
@@ -365,6 +369,7 @@
     "Fast": "快速",
     "Fastest": "最快",
     "Female": "女性",
+    "Fetching the subtitles of this link needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "取得此連結的字幕需要連上網路，但「離線工作」已開啟，應用程式不會建立任何網路連線。\n\n現在關閉「離線工作」嗎？",
     "File missing": "檔案遺失",
     "File → Recent files (last 10)": "檔案 → 最近的檔案（最近 10 個）",
     "File → Statistics… — total minutes transcribed, etc.": "檔案 → 統計資料… ——轉錄總分鐘數等",
@@ -490,10 +495,12 @@
     "Installing GPU support (about 550 MB)… this can take a few minutes.": "正在安裝 GPU 支援（約 550 MB）……可能需要幾分鐘。",
     "Installing Google Cloud libraries (one-time)...": "正在安裝 Google Cloud 程式庫（僅一次）...",
     "Installing the YouTube helper (Deno, about {size} MB)…": "正在安裝 YouTube 輔助元件（Deno，約 {size} MB）…",
+    "Installing the YouTube helper needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "安裝 YouTube 輔助元件需要連上網路，但「離線工作」已開啟，應用程式不會建立任何網路連線。\n\n現在關閉「離線工作」嗎？",
     "Installing the YouTube helper… {percent}%": "正在安裝 YouTube 輔助元件… {percent}%",
     "Installing {feature}": "正在安裝 {feature}",
     "Installs transformers/torch/librosa and downloads the model ahead of time, instead of waiting on the first transcription.": "預先安裝 transformers/torch/librosa 並下載模型，而不是等到第一次轉錄時再下載。",
     "Interaction reminder": "互動提醒",
+    "Interface language:": "介面語言：",
     "Intro": "片頭",
     "Irish": "愛爾蘭語",
     "It is the Transcribe tab's model: it understands other languages, and your graphics card runs it fast enough for live text.": "這是「轉錄」分頁的模型：它能理解其他語言，而且你的顯示卡執行它的速度足以即時出字。",
@@ -541,6 +548,7 @@
     "Leave empty to use an installed Subtitle Edit (found automatically). Choose SubtitleEdit.exe here only for a portable copy. The \"Open in Subtitle Edit\" button after a job uses it.": "留空則使用已安裝的 Subtitle Edit（自動尋找）。僅在使用可攜版時才在此選擇 SubtitleEdit.exe。任務完成後的「在 Subtitle Edit 中開啟」按鈕會使用它。",
     "Let the model choose": "讓模型選擇",
     "Light / dark / system theme": "淺色 / 深色 / 跟隨系統佈景主題",
+    "Like the app? A star on its GitHub page helps other people find it.": "喜歡這個應用程式嗎？在它的 GitHub 頁面上給個星星，能幫助更多人找到它。",
     "Listening stopped because of a problem with the audio source or the speech model. The text so far is kept.": "由於音訊來源或語音模型發生問題，收聽已停止。目前的文字已保留。",
     "Listening…": "正在收聽…",
     "Listening… no sound arrives from this device. Check that it is connected and selected.": "正在收聽……此裝置沒有傳來聲音。請檢查它是否已連接並已選取。",
@@ -706,8 +714,13 @@
     "One click on the \"Web / LAN access\" tab opens a simple web page served by this app — no app to install on the other devices": "在「網頁 / 區域網路存取」分頁上一鍵開啟由本應用程式提供的簡單網頁——其他裝置不需要安裝應用程式",
     "Only needed for Batch mode above: the name of a Google Cloud Storage bucket YOU own, that this Google Cloud account has access to. Create one in the Cloud Storage section of the console if you don't have one yet.": "僅上方的批次模式需要：一個由你擁有、且此 Google Cloud 帳戶有權存取的 Google Cloud Storage 值區名稱。如果還沒有，請在主控台的 Cloud Storage 區段建立一個。",
     "Only used by Faster-Whisper": "僅由 Faster-Whisper 使用",
+    "Open Download Folder in Finder": "在 Finder 中開啟下載資料夾",
+    "Open Folder in Finder": "在 Finder 中開啟資料夾",
     "Open GitHub page": "開啟 GitHub 頁面",
     "Open JSON folder": "開啟 JSON 所在資料夾",
+    "Open Log Folder in Finder": "在 Finder 中開啟記錄檔資料夾",
+    "Open Model Folder in Finder": "在 Finder 中開啟模型資料夾",
+    "Open Output Folder in Finder": "在 Finder 中開啟輸出資料夾",
     "Open TCP connections to other computers (checked {time}, {n} process of this app):": [
       "與其他電腦的已開啟 TCP 連線（檢查於 {time}，本應用程式的 {n} 個處理程序）："
     ],
@@ -802,6 +815,7 @@
     "Queue is empty.  Go to the Transcribe tab and pick a file to add one.": "佇列是空的。  請到「轉錄」分頁選擇檔案以加入。",
     "Quick start": "快速入門",
     "Quick start on the first launch, a \"Try it now\" sample clip, and quiet notices instead of message boxes": "首次啟動時的快速入門、「立即試用」範例片段，以及以不打擾的通知取代訊息方塊",
+    "Quit": "結束",
     "Quit with queued tasks": "在有排隊任務時結束",
     "Qwen2.5-1.5B-Instruct, download-on-first-use": "Qwen2.5-1.5B-Instruct，第一次使用時下載",
     "Re-detect hardware…": "重新偵測硬體…",
@@ -1053,6 +1067,8 @@
     "The cloud backends above are the exception — they upload audio only when you choose one and start a job": "上面的雲端後端是例外——只有在你選擇其中一個並開始任務時才會上傳音訊",
     "The exact model id your endpoint expects, e.g. gpt-4o-mini or gpt-4o for the real OpenAI API, or a locally-loaded model's name for Ollama/LM Studio. This app does not pick one for you — different accounts/servers have different models available.": "你的端點所需的確切模型 ID，例如真正的 OpenAI API 使用 gpt-4o-mini 或 gpt-4o，Ollama/LM Studio 則使用本機已載入模型的名稱。本應用程式不會替你選擇——不同的帳戶/伺服器可用的模型各不相同。",
     "The finished pieces are kept; the same text and voice continue from there.": "已完成的部分會保留；相同的文字和聲音會從那裡繼續。",
+    "The interface language changes the next time you start the app.": "介面語言會在下次啟動應用程式時變更。",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a reviewed translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "應用程式選單、按鈕和訊息所用的語言。「自動」會在有經過審閱的翻譯時使用系統語言，否則使用英文。標示為「機器翻譯」的語言由電腦翻譯，尚未經過人工檢查。變更會在下次啟動應用程式時套用。",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "即時模型「{model}」不在模型清單中。「轉錄」分頁的模型（{main_model}）只懂英語，無法代替它。請檢查網路連線後再按一次「開始」，或在「模型」清單中選擇其他模型。",
     "The live session could not be started.": "無法啟動即時工作階段。",
     "The live transcript is empty.": "即時逐字稿是空的。",
@@ -1069,13 +1085,19 @@
     "The settings could not be saved:\n{error}\n\nClose other programs that may be using the settings file, then click Save again.": "無法儲存設定：\n{error}\n\n請關閉可能正在使用設定檔的其他程式，然後再按一次「儲存」。",
     "The settings run transcription on the CPU, so these are for {cpu}. Advanced > Re-detect hardware changes that.": "目前設定在 CPU 上執行轉錄，因此這些時間針對 {cpu}。可透過「進階 > 重新偵測硬體」變更。",
     "The settings run transcription on this computer's {where}, so the times are for it (Advanced settings > Re-detect hardware changes that).": "目前設定在這台電腦的 {where} 上執行轉錄，因此時間是針對它的（可透過「進階設定 > 重新偵測硬體」變更）。",
+    "The site still asks for a login: check that you are logged in to it in {browser} (on Windows, close {browser} completely if it keeps failing).": "該網站仍要求登入：請確認你已在 {browser} 中登入該網站（在 Windows 上，如果一直失敗，請完全關閉 {browser}）。",
     "The speech model process stopped unexpectedly.": "語音模型處理程序意外停止。",
     "The subtitle file is no longer there:\n{path}": "字幕檔案已不在原處：\n{path}",
     "The tray icon libraries are missing.": "缺少系統匣圖示所需的程式庫。",
     "The video downloader may be out of date. An update (about {size} MB) often fixes failing YouTube downloads.": "影片下載器可能已過時。更新（約 {size} MB）通常可以修正 YouTube 下載失敗的問題。",
+    "The voice engine stopped responding (no sign of life for {n} minute) and was stopped. Click Generate to try again; if it happens again, restart the app.": [
+      "語音引擎停止回應（{n} 分鐘沒有任何動靜），已被停止。按一下「產生」重試；如果再次發生，請重新啟動應用程式。"
+    ],
+    "The voice-clone worker did not answer in time.": "聲音複製工作程序未及時回應。",
     "The web / LAN server could not start.\n\n{error}": "網頁 / 區域網路伺服器無法啟動。\n\n{error}",
     "The web-standard subtitle format (HTML5 video, YouTube). Also supports per-word karaoke highlighting.": "網頁標準字幕格式（HTML5 影片、YouTube）。也支援逐字卡拉 OK 醒目提示。",
     "The {engine} engine uses its own model. This picker only applies to the Faster-Whisper engine, so a change here would have no effect.": "{engine} 引擎使用自己的模型。此選擇器只適用於 Faster-Whisper 引擎，因此在這裡變更不會有任何效果。",
+    "The {variable} environment variable sets the interface language of this run. Your choice applies when the app starts without it.": "環境變數 {variable} 決定本次執行的介面語言。在不設定此變數的情況下啟動應用程式時，你的選擇才會套用。",
     "The {variable} environment variable turns the daily check off on this computer. Help → Check for updates… always works. The app never installs anything by itself.": "環境變數 {variable} 會在這台電腦上關閉每日檢查。「說明 → 檢查更新…」隨時可用。應用程式絕不會自行安裝任何東西。",
     "There are queued or running tasks. Exit anyway?": "有排隊中或執行中的任務。仍要結束嗎？",
     "There are queued or running tasks. Quit anyway?": "有排隊中或執行中的任務。仍要結束嗎？",
@@ -1098,7 +1120,9 @@
     "This is the FULL Google Cloud Speech-to-Text service. It signs in with a service-account JSON file you download from the Google Cloud console (NOT the simple API key the separate Gemini engine uses). New Google Cloud customers get 60 free minutes every month plus a $300 / 90-day credit.\n\nIt is the only engine here that combines all three: real word-level timestamps, speaker diarization, and a cheap Batch mode for long files — Batch costs about $0.004/minute (~75% less than Standard's ~$0.016/minute) and is usually ready within 24 hours.": "這是完整的 Google Cloud Speech-to-Text 服務。它使用從 Google Cloud 主控台下載的服務帳戶 JSON 檔案登入（不是獨立的 Gemini 引擎所用的簡單 API 金鑰）。Google Cloud 新客戶每月有 60 分鐘免費額度，外加 300 美元 / 90 天的抵用金。\n\n它是這裡唯一同時具備三者的引擎：真實的逐字時間戳記、說話者分段，以及適合長檔案的低價批次模式——批次模式約 $0.004/分鐘（比標準模式的約 $0.016/分鐘便宜約 75%），通常 24 小時內完成。",
     "This looks like a credentials/config file, not a transcript JSON — pick the .json next to your audio/video.": "這看起來是憑證/設定檔，而不是逐字稿 JSON——請選擇音訊/影片旁邊的 .json。",
     "This model understands English only": "此模型只懂英語",
+    "This needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "此操作需要連上網路，但「離線工作」已開啟，應用程式不會建立任何網路連線。\n\n現在關閉「離線工作」嗎？",
     "This release has no short summary. The full notes have the details.": "此版本沒有簡短摘要。完整說明中有詳細內容。",
+    "This site wants you to be logged in: pick the browser you are logged in with under \"Log-in cookies\" and the link is checked again.": "此網站需要登入：在「登入 Cookie」中選擇你已登入的瀏覽器，連結會重新檢查。",
     "This task has no SRT file on disk — add SRT to the output formats and run it again.": "此任務在磁碟上沒有 SRT 檔案——請將 SRT 加入輸出格式後重新執行。",
     "This task has no SRT file on disk. Add SRT to the output formats and run it again.\nLooked for:\n{path}": "此任務在磁碟上沒有 SRT 檔案。請將 SRT 加入輸出格式後重新執行。\n尋找位置：\n{path}",
     "This text is too long for one audio file.": "此文字太長，無法放入一個音訊檔案。",
@@ -1182,6 +1206,7 @@
     "Updated {names} next to {json_name}.": "已更新 {json_name} 旁的 {names}。",
     "Updates": "更新",
     "Updates come from yt-dlp's own GitHub releases (stable), are checked against their published checksums and go to a copy in your user folder; the app's own copy is never changed.": "更新來自 yt-dlp 自己的 GitHub 發行頁面（穩定版），會與其公布的總和檢查碼比對，並存放到你使用者資料夾中的複本；應用程式內附的複本永遠不會被變更。",
+    "Updating the video downloader needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "更新影片下載器需要連上網路，但「離線工作」已開啟，應用程式不會建立任何網路連線。\n\n現在關閉「離線工作」嗎？",
     "Updating the video downloader…": "正在更新影片下載器…",
     "Urdu": "烏爾都語",
     "Usage statistics": "使用統計",
@@ -1222,6 +1247,7 @@
     "Voice:": "聲音：",
     "WARNING  {connection}": "警告  {connection}",
     "WAV audio": "WAV 音訊",
+    "Wait for formats to load, then select a video format.": "請等待格式載入完成，然後選擇影片格式。",
     "Wait for formats to load, then select an audio format.": "請等待格式載入完成，然後選擇音訊格式。",
     "Warning: the consent record was not saved (see the log).": "警告：未能儲存許可紀錄（請查看記錄檔）。",
     "Watched folder": "監看資料夾",
@@ -1320,6 +1346,7 @@
       "約 {n} 秒"
     ],
     "allowed (this computer)": "已允許（本機）",
+    "browser cookies\u0004(off)": "（關閉）",
     "button\u0004Clear": "清除",
     "button\u0004Close": "關閉",
     "button\u0004Download": "下載",
@@ -1468,6 +1495,7 @@
       "{languages}及另外 {n} 種"
     ],
     "{language} (automatic)": "{language}（自動產生）",
+    "{language} (machine translation)": "{language}（機器翻譯）",
     "{language} (made by the uploader)": "{language}（由上傳者製作）",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "{language}語音會輸出為錯誤的英文文字：捏造的字詞或粗略的英文翻譯，而不是實際說的內容。",
     "{minutes} minute(s)": "{minutes} 分鐘",
@@ -1482,6 +1510,9 @@
     "{name} has edits that were not saved.\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.": "{name} 有未儲存的編輯。\n\n是：儲存後結束。\n否：結束並捨棄這些編輯。\n取消：留在應用程式中。",
     "{name} has edits that were not saved.\nFolder: {folder}\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.": "{name} 有未儲存的編輯。\n資料夾：{folder}\n\n是：儲存後結束。\n否：結束並捨棄這些編輯。\n取消：留在應用程式中。",
     "{name} was changed or removed by something else after it was opened here.\n\nOverwrite it with the version in this window?": "{name} 在此處開啟後已被其他程式變更或刪除。\n\n用此視窗中的版本覆寫它嗎？",
+    "{n} job": [
+      "{n} 個任務"
+    ],
     "{n} reference sample(s).": [
       "{n} 個參考樣本。"
     ],
@@ -1490,6 +1521,15 @@
     ],
     "{n} segment(s) could not be translated (the AI provider kept refusing or timed out) and are left empty in the file. Run it again to fill them.": [
       "{n} 個片段無法翻譯（AI 供應商一直拒絕或逾時），在檔案中留空。請再執行一次以填補。"
+    ],
+    "{n} transcription is running right now. Applying the new hardware setting now stops it immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nApply it now? Choose No to let it finish; the setting is then used after the app is restarted.": [
+      "目前有 {n} 個轉錄正在執行。現在套用新的硬體設定會立即停止轉錄——比一般的「取消」更突然，因此可能遺失更多進度。\n\n現在套用嗎？選擇「否」可讓轉錄完成；之後重新啟動應用程式時會使用此設定。"
+    ],
+    "{n} transcription is running right now. Changing the model stops it immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nChange it anyway?": [
+      "目前有 {n} 個轉錄正在執行。變更模型會立即停止轉錄——比一般的「取消」更突然，因此可能遺失更多進度。\n\n仍要變更嗎？"
+    ],
+    "{n} transcription is running right now. Switching engines stops it immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nSwitch anyway?": [
+      "目前有 {n} 個轉錄正在執行。切換引擎會立即停止轉錄——比一般的「取消」更突然，因此可能遺失更多進度。\n\n仍要切換嗎？"
     ],
     "{process} (pid {pid}) {protocol} incoming {remote}": "{process}（pid {pid}）{protocol} 傳入 {remote}",
     "{process} (pid {pid}) {protocol} outgoing {remote}": "{process}（pid {pid}）{protocol} 傳出 {remote}",
