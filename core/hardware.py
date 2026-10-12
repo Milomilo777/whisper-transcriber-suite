@@ -1593,9 +1593,12 @@ def diagnostics_report() -> str:
                 
                 if psapi.EnumProcessModules(hProcess, ctypes.byref(hMods), ctypes.sizeof(hMods), ctypes.byref(cbNeeded)):
                     loaded_dlls = []
-                    for i in range(cbNeeded.value // ctypes.sizeof(wintypes.HMODULE)):
+                    # cbNeeded can exceed the array when more than 1024 modules are loaded.
+                    count = min(cbNeeded.value // ctypes.sizeof(wintypes.HMODULE), len(hMods))
+                    for i in range(count):
                         mod_name = ctypes.create_unicode_buffer(1024)
-                        if psapi.GetModuleFileNameExW(hProcess, hMods[i], mod_name, ctypes.sizeof(mod_name)):
+                        # nSize is in characters, not bytes.
+                        if psapi.GetModuleFileNameExW(hProcess, hMods[i], mod_name, len(mod_name)):
                             if "onnxruntime" in os.path.normcase(mod_name.value):
                                 loaded_dlls.append(mod_name.value)
                     if loaded_dlls:
