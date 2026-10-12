@@ -160,6 +160,10 @@ def test_close_with_unsaved_viewers():
         app_obj.transcription_service.stop_all.assert_not_called()
     finally:
         app_module.confirm_unsaved_viewers_before_exit = original_confirm
+        # The cancelled exit leaves the window open. Destroy it here: a live root
+        # stays tkinter's default root, so later tests' ttk.Style() and sv_ttk
+        # calls would act on this window instead of their own.
+        app_obj.destroy()
 
 
 def test_close_with_model_download():
