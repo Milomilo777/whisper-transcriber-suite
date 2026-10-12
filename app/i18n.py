@@ -488,25 +488,81 @@ def _usable_locale_name(value: str | None) -> str | None:
     return cleaned
 
 
+_MAC_DEFAULTS = "/usr/bin/defaults"
+_MAC_DEFAULTS_TIMEOUT_S = 3.0
+# One entry of an old-style plist array: a quoted string ("zh-Hans-CN") or a bare word (en).
+_APPLE_LANGUAGE_ENTRY = re.compile(r'"((?:[^"\\]|\\.)*)"|([^\s,()"]+)')
+
+
+def parse_apple_languages(output: str) -> str | None:
+    """The first language of ``defaults read -g AppleLanguages`` output, or None.
+
+    The output is an old-style plist array, one entry per line: ``(\\n    "de-DE",\\n    en\\n)``
+    (entries with a hyphen are quoted, plain ones are not).
+    """
+    text = output.strip()
+    if len(text) < 2 or text[0] != "(" or text[-1] != ")":
+        return None
+    for m in _APPLE_LANGUAGE_ENTRY.finditer(text[1:-1]):
+        entry = (m.group(1) if m.group(1) is not None else m.group(2)).strip()
+        if entry:
+            return entry
+    return None
+
+
+def _mac_preferred_language() -> str | None:
+    """The first of the macOS user's preferred languages (System Settings > Language & Region).
+
+    A frozen app started from Finder has no LANG, and ``locale.getlocale()`` follows the region
+    format rather than the language list, so the list is read where macOS keeps it. None (with
+    one warning in the log) when it cannot be read.
+    """
+    import subprocess
+    try:
+        done = subprocess.run(
+            [_MAC_DEFAULTS, "read", "-g", "AppleLanguages"], capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=_MAC_DEFAULTS_TIMEOUT_S, check=False)
+    except (OSError, subprocess.SubprocessError) as e:
+        logger.warning("Could not read the macOS preferred languages (%s: %s); using the locale",
+                       type(e).__name__, e)
+        return None
+    if done.returncode != 0:
+        logger.warning("Reading the macOS preferred languages failed (exit %s: %s); using the locale",
+                       done.returncode, (done.stderr or "").strip()[:200])
+        return None
+    found = parse_apple_languages(done.stdout or "")
+    if found is None:
+        logger.warning("Unexpected macOS preferred languages %r; using the locale",
+                       (done.stdout or "")[:200])
+    return found
+
+
 def detect_os_language(
     *,
     platform: str | None = None,
     environ: Mapping[str, str] | None = None,
     windows_ui_language: Callable[[], int] | None = None,
     getlocale: Callable[[], tuple[str | None, str | None]] | None = None,
+    mac_preferred_language: Callable[[], str | None] | None = None,
 ) -> str | None:
     """The operating system's interface language as a tag like 'pt-BR', or None. Never raises.
 
     Windows: the user's display language (GetUserDefaultUILanguage) named through
-    ``locale.windows_locale``. Elsewhere: LC_ALL, LC_MESSAGES, LANG, then ``locale.getlocale()``.
-    The keyword arguments replace the real sources in tests.
+    ``locale.windows_locale``. macOS: the first preferred language (AppleLanguages). Then, and
+    on Linux: LC_ALL, LC_MESSAGES, LANG, then ``locale.getlocale()``. The keyword arguments
+    replace the real sources in tests.
     """
     try:
-        if (platform or sys.platform) == "win32":
+        current = platform or sys.platform
+        if current == "win32":
             langid = (windows_ui_language or _windows_ui_language)()
             name = locale.windows_locale.get(langid) if langid else None
             if name:
                 return name.replace("_", "-")
+        if current == "darwin":
+            found = _usable_locale_name((mac_preferred_language or _mac_preferred_language)())
+            if found:
+                return found
         env = os.environ if environ is None else environ
         for var in ("LC_ALL", "LC_MESSAGES", "LANG"):
             found = _usable_locale_name(env.get(var))
@@ -559,6 +615,27 @@ def current_direction() -> str:
     return _STATE.direction
 
 
+# The OS language once detected in this process: (it,) or empty. It does not change while the app
+# runs, and on macOS reading it starts a process.
+_OS_LANGUAGE: list[str | None] = []
+
+
+def _os_language(environ: Mapping[str, str] | None = None) -> str | None:
+    if environ is not None:
+        return detect_os_language(environ=environ)
+    if not _OS_LANGUAGE:
+        _OS_LANGUAGE.append(detect_os_language())
+    return _OS_LANGUAGE[0]
+
+
+def setting_language(value: object) -> str:
+    """The language ``ui_language`` = ``value`` gives at the next start, as :func:`init_language`
+    would choose it (a ``WTS_UI_LANGUAGE`` override aside). Compare it with
+    :func:`current_language` to tell whether a changed setting needs a restart."""
+    os_language = _os_language() if _is_auto(value) else None
+    return resolve_language(value, os_language=os_language, available=catalog_statuses())
+
+
 def init_language(load_config: Callable[[], Mapping[str, Any]] | None = None,
                   environ: Mapping[str, str] | None = None) -> str:
     """Choose and set the interface language at start-up; returns the code used. Never raises.
@@ -576,7 +653,7 @@ def init_language(load_config: Callable[[], Mapping[str, Any]] | None = None,
             except Exception:  # noqa: BLE001 - a config problem must not stop the app opening
                 logger.warning("Could not read ui_language from the config; using auto", exc_info=True)
                 value = "auto"
-        os_language = detect_os_language(environ=environ) if _is_auto(value) else None
+        os_language = _os_language(environ) if _is_auto(value) else None
         chosen = resolve_language(value, os_language=os_language, available=catalog_statuses())
         used = set_language(chosen)
         logger.info("Interface language: %s (setting %r, system %r)", used, value, os_language)
@@ -679,6 +756,6 @@ __all__ = [
     "N_", "PLURAL_RULES", "PSEUDO_LOCALE", "RTL_LAYOUT_READY", "SOURCE_LANGUAGE", "SUPPORTED_LANGUAGES",
     "SupportedLanguage", "_", "available_languages", "catalog_status", "catalog_statuses",
     "current_direction", "current_language", "detect_os_language", "init_language", "lazy",
-    "locales_dir", "ngettext", "pgettext", "plural_index", "pseudo_translate", "resolve_language",
-    "set_language", "translate",
+    "locales_dir", "ngettext", "parse_apple_languages", "pgettext", "plural_index",
+    "pseudo_translate", "resolve_language", "set_language", "setting_language", "translate",
 ]
