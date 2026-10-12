@@ -42,6 +42,7 @@ from app.i18n import N_, _, ngettext, pgettext, translate
 from app.theme import script_fonts
 from app.widgets.error_dialog import show_error
 from app.widgets.platform import open_async
+from app.widgets.tabs import translated_choice_var
 from app.widgets.tooltip import section_labelframe
 from app.theme import tokens
 from app.theme.bidi_display import ltr_base
@@ -125,6 +126,22 @@ def _design_label(value: str) -> str:
 def _engine_label(kokoro: bool) -> str:
     return translate(_ENGINE_KOKORO if kokoro else _ENGINE_OMNI)
 
+
+def _engine_labels() -> dict[str, str]:
+    """The engine picker: stored value ("kokoro" / "omnivoice") -> label shown, in order."""
+    return {"kokoro": _engine_label(True), "omnivoice": _engine_label(False)}
+
+
+def _language_labels() -> dict[str, str]:
+    """The language picker: stored value ("" = auto-detect, else the English name of
+    ``SUBTITLE_LANGUAGES``) -> label shown, in order."""
+    from app.domain.languages import SUBTITLE_LANGUAGES as _LANGS
+    from app.domain.languages import subtitle_language_label
+
+    labels = {"": _auto_lang_label()}
+    labels.update((n, subtitle_language_label(n)) for n, c in _LANGS if c)
+    return labels
+
 _PREVIEW_TEXT = {
     "US English": "Hello! This is how I sound. I can read any text you type.",
     "UK English": "Hello! This is how I sound. I can read any text you type.",
@@ -197,7 +214,11 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_recording_after_id = None
     app.vc_status_var = tk.StringVar(value=_("Idle."))
     cfg = app.app_config.setdefault("voice_clone", {})
-    app.vc_engine_var = tk.StringVar(value=_engine_label(cfg.get("engine") != "omnivoice"))
+    # The *_value_var variables keep stable values ("kokoro", an English language name); the
+    # pickers show translated labels through translated_choice_var.
+    app.vc_engine_value_var = tk.StringVar(
+        value="omnivoice" if cfg.get("engine") == "omnivoice" else "kokoro")
+    app.vc_engine_var = translated_choice_var(parent, app.vc_engine_value_var, _engine_labels())
     app.vc_mode_var = tk.StringVar(value=cfg.get("mode") or _MODE_CLONE)
     voice_labels = [v.label for v in tts_kokoro.VOICES]
     saved_voice = tts_kokoro.voice_by_key(str(cfg.get("kokoro_voice") or tts_kokoro.DEFAULT_VOICE))
@@ -207,7 +228,8 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_pitch_var = tk.StringVar(value=_any_label())
     app.vc_accent_var = tk.StringVar(value=_any_label())
     app.vc_whisper_var = tk.BooleanVar(value=False)
-    app.vc_lang_var = tk.StringVar(value=_auto_lang_label())
+    app.vc_lang_value_var = tk.StringVar(value="")
+    app.vc_lang_var = translated_choice_var(parent, app.vc_lang_value_var, _language_labels())
     app.vc_speed_var = tk.DoubleVar(value=1.0)
     app.vc_count_var = tk.StringVar(value="")
     # Never restored from the config: every session (and every change of
@@ -239,9 +261,8 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     eng.columnconfigure(1, weight=1)
     ttk.Label(eng, text=pgettext("speech model", "Model:")).grid(
         row=0, column=0, sticky="e", padx=8, pady=6)
-    # Index 0 is Kokoro, 1 OmniVoice (see _is_kokoro).
-    app.vc_engine_combo = _combo(eng, app.vc_engine_var,
-                                 [_engine_label(True), _engine_label(False)], 70)
+    # Index 0 is Kokoro, 1 OmniVoice; _is_kokoro reads the stored value, not the label.
+    app.vc_engine_combo = _combo(eng, app.vc_engine_var, list(_engine_labels().values()), 70)
     app.vc_engine_combo.grid(row=0, column=1, sticky="w", padx=8, pady=6)
     app.vc_engine_combo.bind("<<ComboboxSelected>>", lambda _e: _sync_engine(app))
     app.vc_engine_state = ttk.Label(eng, foreground=tokens.themed(tokens.TEXT_MUTED))
@@ -353,12 +374,12 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     opts.grid(row=1, column=0, columnspan=2, sticky="ew", padx=8, pady=(0, 8))
     app.vc_lang_label = ttk.Label(opts, text=_("Language:"))
     app.vc_lang_label.pack(side="left")
-    from app.domain.languages import SUBTITLE_LANGUAGES as _LANGS
-    app.vc_lang_combo = _combo(opts, app.vc_lang_var,
-                               [_auto_lang_label()] + [n for n, c in _LANGS if c], 18)
+    app.vc_lang_combo = _combo(opts, app.vc_lang_var, list(_language_labels().values()), 18)
     app.vc_lang_combo.pack(side="left", padx=(6, 18))
     # The language picks the font of Han lines: retag when it changes, not only on the next edit.
-    app.vc_lang_var.trace_add("write", lambda *_a: _retag_text(app))
+    # The trace sits on the stored value: Tcl runs the newest trace first, so one on the shown
+    # label would read the value before translated_choice_var has copied it.
+    app.vc_lang_value_var.trace_add("write", lambda *_a: _retag_text(app))
     ttk.Label(opts, text=_("Speed:")).pack(side="left")
     app.vc_speed_scale = ttk.Scale(
         opts, from_=0.5, to=2.0, variable=app.vc_speed_var, length=px(140),
@@ -424,9 +445,8 @@ def _speed_text(speed: float) -> str:
 
 
 def _is_kokoro(app: Any) -> bool:
-    # The picker shows the label in the interface language: compare with that, never
-    # with the English constant (the config stores "kokoro" / "omnivoice", see _save_prefs).
-    return app.vc_engine_var.get() == _engine_label(True)
+    # The stored value, never the label: the label depends on the interface language.
+    return app.vc_engine_value_var.get() == "kokoro"
 
 
 def _sync_engine(app: Any) -> None:
@@ -614,8 +634,8 @@ def _design_instruct(app: Any) -> str:
 def _language_code(app: Any) -> str:
     """The picked language's codes as the language list holds them
     ("zh-Hans,zh-CN" for Chinese); the font tagging reads them all."""
-    name = app.vc_lang_var.get()
-    if name == _auto_lang_label():
+    name = app.vc_lang_value_var.get()  # the English name; "" = auto-detect
+    if not name:
         return ""
     from app.domain.languages import SUBTITLE_LANGUAGES as _LANGS
     return next((c for n, c in _LANGS if n == name), "")

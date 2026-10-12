@@ -588,6 +588,7 @@ def test_quick_start_language_labels_map_to_the_same_codes_in_the_pseudo_locale(
         i18n.set_language("en")
     assert [code for _l, code in pseudo_options] == [code for _l, code in english_options]
     assert pseudo_options[0][1] == "" and is_pseudo_marked(pseudo_options[0][0])
+    assert all(is_pseudo_marked(label) for label, _c in pseudo_options)  # names too
     assert english_options[0][0] == qs.AUTO_LANGUAGE_LABEL
 
 
@@ -602,7 +603,9 @@ def _quick_start_config(root: Any, mp: pytest.MonkeyPatch, folder: Path, languag
                                 probe=lambda: (_cuda(), 4))
     if language_label is not None:
         values = list(quick.language_combo.tk.splitlist(quick.language_combo.cget("values")))
-        quick.language_combo.current(values.index(language_label))
+        from app.domain.languages import subtitle_language_label
+        # The English name picks the entry: shown translated in the current language.
+        quick.language_combo.current(values.index(subtitle_language_label(language_label)))
         quick.language_combo.event_generate("<<ComboboxSelected>>")
     else:
         quick.language_combo.current(0)  # the translated "several languages" label

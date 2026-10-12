@@ -398,8 +398,10 @@ def _english_only_prompt(
     from core.live_model import LIVE_MAIN
     from core.model_manager import approx_download_size_text
 
-    name = (app.live_lang_var.get() or "").strip()
-    language = "" if name.lower() == "auto" else name  # the stored value, always English
+    from app.domain.languages import subtitle_language_label
+
+    name = (app.live_lang_var.get() or "").strip()  # the stored value, always English
+    language = "" if name.lower() == "auto" else subtitle_language_label(name)
     # Whole sentences for "a named language" and "other languages" (auto-detect), so a
     # translation never has to fit a translated phrase into another sentence.
     if alt_value == LIVE_MAIN:
@@ -558,13 +560,15 @@ def build_live_tab(app: Any, parent: Any) -> None:
     # mean auto-detect, which "Auto" above already covers, and listing
     # both makes the dropdown look like it offers two different things.
     from app.domain.languages import SUBTITLE_LANGUAGES as _LANGS
-    # live_lang_var keeps the English "Auto" (see _selected_language_code); only the
-    # shown label is translated. Language names stay as the table has them.
-    auto_label = pgettext("language choice", "Auto")
+    from app.domain.languages import subtitle_language_label
+    # live_lang_var keeps the English "Auto" or language name (see _selected_language_code);
+    # only the shown labels are translated.
+    lang_labels = {"Auto": pgettext("language choice", "Auto")}
+    lang_labels.update((name, subtitle_language_label(name)) for name, code in _LANGS if code)
     app.live_lang_combo = ttk.Combobox(
-        src, textvariable=translated_choice_var(src, app.live_lang_var, {"Auto": auto_label}),
+        src, textvariable=translated_choice_var(src, app.live_lang_var, lang_labels),
         state="readonly", width=32,
-        values=[auto_label] + [name for name, code in _LANGS if code],
+        values=list(lang_labels.values()),
     )
     app.live_lang_combo.grid(row=2, column=1, sticky="w", padx=8, pady=6)
     app.live_lang_combo.bind(

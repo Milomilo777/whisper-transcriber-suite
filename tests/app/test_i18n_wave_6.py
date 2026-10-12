@@ -635,8 +635,10 @@ def _drive_settings(root: Any) -> dict[str, Any]:
     app.vc_lang_combo.current(0)
     auto_code = vct._language_code(app)
     names = list(app.vc_lang_combo.cget("values"))
-    app.vc_lang_combo.current(names.index("Japanese"))
+    from app.domain.languages import subtitle_language_label
+    app.vc_lang_combo.current(names.index(subtitle_language_label("Japanese")))
     japanese = vct._omni_language(app)
+    stored_language = app.vc_lang_value_var.get()
     kokoro_after = (vct._is_kokoro(app), )
     _set_engine(app, kokoro=True)
     kokoro_after += (vct._is_kokoro(app), )
@@ -646,6 +648,7 @@ def _drive_settings(root: Any) -> dict[str, Any]:
     settings = vct._voice_settings(app, "omnivoice")
     return {"config": json.loads(json.dumps(config)), "instruct": instruct,
             "any_instruct": any_instruct, "auto_code": auto_code, "japanese": japanese,
+            "stored_language": stored_language,
             "kokoro": list(kokoro_after), "settings": settings}
 
 
@@ -662,6 +665,7 @@ def test_saved_settings_and_model_input_do_not_depend_on_the_language(root, fake
                                                 "kokoro_voice": english["config"]["voice_clone"]["kokoro_voice"]}
     assert english["instruct"] and "female" in english["instruct"]
     assert english["auto_code"] == "" and english["japanese"] == "ja"
+    assert english["stored_language"] == "Japanese"
     assert english["kokoro"] == [False, True]
     assert pseudo == english
 

@@ -583,7 +583,7 @@ def _stored_values(mp: pytest.MonkeyPatch, root: tk.Tk) -> dict[str, Any]:
     speakers_combo.current(0)
     out["speakers after Auto"] = app.diarization_speakers_var.get()
     app.transcribe_lang_var.set("German")
-    out["language combo shows a set name"] = lang_combo.get()
+    out["language combo shows a set name"] = lang_combo.current()  # the label is translated
 
     app = _StubApp(root)
     frame = ttk.Frame(root)
@@ -594,6 +594,13 @@ def _stored_values(mp: pytest.MonkeyPatch, root: tk.Tk) -> dict[str, Any]:
     out["mode after the first choice"] = app.download_mode_var.get()
     app.download_mode_var.set("Audio")  # what the video-site tab does
     out["mode combo follows a stored value"] = app.download_mode_combo.current()
+    # The Subtitles language: the English name is stored (and saved as download_subtitle_lang).
+    app.subtitle_lang_combo.current(5)
+    out["subtitle language after a name"] = app.subtitle_lang_var.get()
+    app.subtitle_lang_combo.current(0)
+    out["subtitle language after Automatic"] = app.subtitle_lang_var.get()
+    app.subtitle_lang_var.set("German")
+    out["subtitle combo follows a stored name"] = app.subtitle_lang_combo.current()
 
     live = _live_app(root)
     frame = ttk.Frame(root)
@@ -646,4 +653,11 @@ def test_choices_store_the_same_values_in_every_language(
     assert english["live source after the second choice"] == live_tab._SOURCE_SYSTEM
     assert english["live device combo disabled for system audio"] == "disabled"
     assert english["live language after Auto"] == ("Auto", None)
+    from app.domain.languages import SUBTITLE_LANGUAGES
+    assert english["language after a name"] == SUBTITLE_LANGUAGES[2][0]
+    assert english["live language after a name"][0] in {n for n, _c in SUBTITLE_LANGUAGES}
+    assert english["subtitle language after a name"] == SUBTITLE_LANGUAGES[5][0]
+    assert english["subtitle language after Automatic"] == "Automatic"
+    names = [n for n, _c in SUBTITLE_LANGUAGES]
+    assert english["subtitle combo follows a stored name"] == names.index("German")
     assert english["live default device"] is None

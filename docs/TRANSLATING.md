@@ -61,7 +61,10 @@ Import what you need: `from app.i18n import _, ngettext, pgettext, N_, lazy, tra
   the text is shown with `translate(CONSTANT)`.
 - When a label doubles as a stored value (a combobox whose choice is saved in the config), keep
   the stored value in English and translate only what is displayed. Map the displayed text back
-  to the stored value; never save a translated label.
+  to the stored value; never save a translated label. `app.widgets.tabs.translated_choice_var`
+  does this for a combobox from an explicit `{stored value: label}` map.
+- Language names from `app/domain/languages.py` are stored and looked up in English; show them
+  with `subtitle_language_label(name)`.
 - Tooltips and other APIs that take a callable get `lazy("...")`.
 - Do not name a throwaway variable `_` (`for _ in ...`, `a, _ = ...`) in a function that calls
   `_()`: Python then treats `_` as a local name and the call fails. Use `_unused` or similar.

@@ -564,7 +564,7 @@ def _foreign_windowless(text: str) -> bool:
             text.replace("Whisper Transcriber Suite v9.9.9", ""))
         or text in eng.VALUE_TO_LABEL.values()
         or text.startswith("http://")
-        or text in ("CPU", app_mod.share_page.BUTTON_TEXT)  # share_page.py has its own wave
+        or text == "CPU"
         # File-type names in the open dialog are format names, not interface text.
         or text in ("SubRip", "WebVTT", "TSV", "Whisper JSON", "oTranscribe", "ELAN", "InqScribe")
     )
@@ -882,16 +882,11 @@ def test_tk_english_texts_match_the_capture(
 
 def test_tk_pseudo_locale_leaves_nothing_untranslated(
         pseudo: None, tk_root: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    from app.dialogs import share_page
-    from app.widgets import subtitle_edit as subtitle_edit_ui
-
-    from app import desktop_alert
     from core import star_invite
 
     states = capture_tk(monkeypatch, tmp_path)
-    # Other modules' texts (their own waves), the product name and the file names shown.
-    foreign = {share_page.BUTTON_TEXT, subtitle_edit_ui.BUTTON_TEXT, star_invite.ABOUT_LINE,
-               desktop_alert._DEFAULT_CHIME_LABEL, "Whisper Transcriber Suite"}
+    # Texts from core/ (untranslated by design), the product name and the file names shown.
+    foreign = {star_invite.ABOUT_LINE, "Whisper Transcriber Suite"}
     left = sorted({
         f"{name}: {text}" for name, rows in states.items() for text in rows
         if text.strip() and not is_pseudo_marked(text) and text not in foreign

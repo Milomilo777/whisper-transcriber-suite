@@ -227,3 +227,77 @@ def test_finder_label_callers_pass_two_translated_labels() -> None:
                 assert isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name) and \
                     arg.func.id == "_", (where, ast.unparse(arg))
     assert n >= 5
+
+
+# ---------------------------------------- N_() constants of one module shown by another
+
+_SHOWN_CONSTANTS = {
+    "app/dialogs/share_page.py": ("BUTTON_TEXT",),
+    "app/widgets/subtitle_edit.py": ("BUTTON_TEXT", "HELP_TEXT"),
+}
+
+
+def test_marked_constants_are_translated_wherever_they_are_shown() -> None:
+    names = {n for group in _SHOWN_CONSTANTS.values() for n in group}
+    uses = 0
+    for path in APP_FILES:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Attribute) and node.attr in names and \
+                    isinstance(node.ctx, ast.Load):
+                uses += 1
+                parent = parents[node]
+                assert isinstance(parent, ast.Call) and isinstance(parent.func, ast.Name) and \
+                    parent.func.id in ("translate", "lazy"), \
+                    f"{path.relative_to(ROOT)}:{node.lineno} shows {node.attr} untranslated"
+    assert uses >= 5
+
+
+# ------------------------------------------------------------- English-only model reasons
+
+def test_english_only_prompt_shows_the_language_name_translated(
+        pseudo: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.dialogs import english_only_model as dlg
+
+    prompts: list[Any] = []
+    monkeypatch.setattr(dlg, "ask_english_only", lambda _w, p: prompts.append(p) or dlg.CHOICE_CANCEL)
+    import core.model_manager as mm
+
+    monkeypatch.setattr(mm, "english_only_mismatch", lambda *_a: True)
+    monkeypatch.setattr(mm, "multilingual_counterpart", lambda *_a: "small")
+    monkeypatch.setattr(mm, "approx_download_size_text", lambda *_a: "")
+    monkeypatch.setattr(mm, "model_downloaded", lambda *_a: True)
+    logs: list[str] = []
+    stub = types.SimpleNamespace(
+        app_config={"whisper_model": "base.en"},
+        transcribe_lang_var=types.SimpleNamespace(get=lambda: "German"),
+        _selected_transcribe_language=lambda: "de",
+        _engine_uses_whisper_model=lambda: True,
+        log=logs.append,
+    )
+    assert App._confirm_english_only_model(stub) is False  # type: ignore[arg-type]
+    assert len(prompts) == 1
+    prompt = prompts[0]
+    assert prompt.language == i18n.pseudo_translate("German")
+    for text in (prompt.headline(), prompt.problem(), prompt.recommendation(), prompt.reason):
+        assert is_pseudo_marked(text), text
+
+
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_live_english_only_prompt_shows_the_language_name_translated(
+        pseudo: None, monkeypatch: pytest.MonkeyPatch, device: str) -> None:
+    import core.model_manager as mm
+    from app.widgets import live_tab
+    from core.live_model import LIVE_MAIN
+
+    monkeypatch.setattr(mm, "approx_download_size_text", lambda *_a: "")
+    monkeypatch.setattr(mm, "model_downloaded", lambda *_a: False)
+    for value in ("German", "Auto"):
+        app = types.SimpleNamespace(app_config={},
+                                    live_lang_var=types.SimpleNamespace(get=lambda v=value: v))
+        for alt in (LIVE_MAIN, "small"):
+            prompt = live_tab._english_only_prompt(app, "tiny.en", alt, "small", device)
+            assert prompt.language == ("" if value == "Auto" else i18n.pseudo_translate("German"))
+            for text in (prompt.problem(), prompt.recommendation(), prompt.reason):
+                assert is_pseudo_marked(text), text

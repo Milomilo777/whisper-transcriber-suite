@@ -1922,7 +1922,8 @@ class App(tk.Tk):
             segments = share_page.load_transcript(json_path)
         except (OSError, ValueError) as e:
             messagebox.showerror(
-                share_page.BUTTON_TEXT, _("Could not read {path}:\n{error}", path=json_path, error=e),
+                translate(share_page.BUTTON_TEXT),
+                _("Could not read {path}:\n{error}", path=json_path, error=e),
                 parent=self,
             )
             return
@@ -3714,7 +3715,9 @@ class App(tk.Tk):
             button.pack_forget()
             return
 
-        from app.domain.languages import SUBTITLE_LANGUAGES, resolve_caption_kind
+        from app.domain.languages import (
+            SUBTITLE_LANGUAGES, resolve_caption_kind, subtitle_language_label,
+        )
 
         sub_lang_name = self.subtitle_lang_var.get() if hasattr(self, "subtitle_lang_var") else ""
         lang_code_csv = next(
@@ -3729,7 +3732,10 @@ class App(tk.Tk):
             button.pack_forget()
             return
 
-        label = sub_lang_name if sub_lang_name and sub_lang_name != "Automatic" else (
+        # sub_lang_name is the stored English name: shown translated. The detected
+        # language is a caption code, shown as it is.
+        label = subtitle_language_label(sub_lang_name) if (
+            sub_lang_name and sub_lang_name != "Automatic") else (
             self.current_video_language
         )
         # Whole sentences: one with the language's name, one for "the detected language".
@@ -4224,7 +4230,9 @@ class App(tk.Tk):
         name = ""
         lang_var = getattr(self, "transcribe_lang_var", None)
         if language and lang_var is not None:
-            name = lang_var.get().strip()
+            # The variable keeps the English name (the stored value); show it translated.
+            from app.domain.languages import subtitle_language_label
+            name = subtitle_language_label(lang_var.get().strip())
         prompt = dlg.EnglishOnlyPrompt(
             model=slug, language=name, alternative=alt,
             reason=(_("About the same size and speed, and it understands {language}.",
@@ -5924,7 +5932,7 @@ class App(tk.Tk):
                 ),
             ).pack(side="left", padx=(8, 0))
             ttk.Button(
-                button_row, text=share_page.BUTTON_TEXT,
+                button_row, text=translate(share_page.BUTTON_TEXT),
                 command=lambda jp=json_output: self._save_shareable_page_for(
                     task.file_path, jp, task.language or task.detected_language
                 ),
@@ -5934,7 +5942,7 @@ class App(tk.Tk):
         subtitle_output = subtitle_edit.pick_subtitle_file(existing)
         if subtitle_output is not None and subtitle_edit.is_supported():
             ttk.Button(
-                button_row, text=subtitle_edit_ui.BUTTON_TEXT,
+                button_row, text=translate(subtitle_edit_ui.BUTTON_TEXT),
                 command=lambda sp=subtitle_output: subtitle_edit_ui.open_in_subtitle_edit(
                     self, self.app_config, sp
                 ),

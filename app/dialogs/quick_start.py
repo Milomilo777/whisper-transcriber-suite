@@ -51,13 +51,14 @@ def whisper_language_code(codes: str) -> str:
 def language_options() -> list[tuple[str, str]]:
     """``[(label, whisper code), ...]``; the first entry ("" = auto-detect) is the default.
 
-    The first label is translated; the dialog maps a label back to its code through this list,
+    The labels are translated; the dialog maps a label back to its code through this list,
     so only the code is ever saved.
     """
-    from app.domain.languages import SUBTITLE_LANGUAGES
+    from app.domain.languages import SUBTITLE_LANGUAGES, subtitle_language_label
 
     options = [(translate(AUTO_LANGUAGE_LABEL), "")]
-    options += [(name, whisper_language_code(codes)) for name, codes in SUBTITLE_LANGUAGES if codes]
+    options += [(subtitle_language_label(name), whisper_language_code(codes))
+                for name, codes in SUBTITLE_LANGUAGES if codes]
     return options
 
 

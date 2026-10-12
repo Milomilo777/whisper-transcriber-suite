@@ -13,7 +13,7 @@ from tkinter import ttk
 from typing import TYPE_CHECKING, Callable
 
 from app.domain.cookies import cookie_browser_choices, cookie_browser_label
-from app.domain.languages import SUBTITLE_LANGUAGES
+from app.domain.languages import SUBTITLE_LANGUAGES, subtitle_language_label
 from app.dpi import px
 from app.i18n import N_, _, pgettext, translate
 from app.theme import tokens
@@ -799,14 +799,15 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     opts_line2.pack(fill="x", pady=(6, 0))
 
     ttk.Label(opts_line1, text=_("Language:")).pack(side="left")
-    # transcribe_lang_var keeps the English "Auto" (App compares it); only the shown
-    # label is translated. Language names stay as the table has them.
+    # transcribe_lang_var keeps the English "Auto" or language name (App compares it and
+    # looks the code up by name); only the shown labels are translated.
     auto_label = pgettext("language choice", "Auto")
-    lang_values = [auto_label] + [name for name, _code in _LANGS]
+    lang_labels = {"Auto": auto_label}
+    lang_labels.update((name, subtitle_language_label(name)) for name, _code in _LANGS)
     lang_combo = ttk.Combobox(
         opts_line1,
-        textvariable=translated_choice_var(opts_line1, app.transcribe_lang_var, {"Auto": auto_label}),
-        values=lang_values,
+        textvariable=translated_choice_var(opts_line1, app.transcribe_lang_var, lang_labels),
+        values=list(lang_labels.values()),
         state="readonly",
         width=14,
     )
@@ -1326,12 +1327,15 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     saved_sub_lang = app.app_config.get("download_subtitle_lang") or SUBTITLE_LANGUAGES[0][0]
     if saved_sub_lang not in [name for name, _code in SUBTITLE_LANGUAGES]:
         saved_sub_lang = SUBTITLE_LANGUAGES[0][0]
+    # subtitle_lang_var keeps the English name (saved as download_subtitle_lang, looked up
+    # in SUBTITLE_LANGUAGES); the combobox shows the translated names.
     app.subtitle_lang_var = tk.StringVar(value=saved_sub_lang)
+    sub_labels = {name: subtitle_language_label(name) for name, _code in SUBTITLE_LANGUAGES}
     app.subtitle_lang_combo = ttk.Combobox(
         sub_frame,
-        textvariable=app.subtitle_lang_var,
+        textvariable=translated_choice_var(sub_frame, app.subtitle_lang_var, sub_labels),
         state="disabled",
-        values=[name for name, _code in SUBTITLE_LANGUAGES],
+        values=list(sub_labels.values()),
         width=24,
     )
     app.subtitle_lang_combo.pack(side="left", padx=(10, 0))
