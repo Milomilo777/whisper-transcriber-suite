@@ -1,0 +1,4662 @@
+{
+ "transcribe": [
+  [
+   ".!frame.!labelframe.!frame.!label",
+   "Pick a file, paste a link, or try the sample"
+  ],
+  [
+   ".!frame.!labelframe.!frame.!label2",
+   "To use a link, paste it into the Selected file box below and click Transcribe."
+  ],
+  [
+   ".!frame.!labelframe.!frame.!label3",
+   "Works with MP3, WAV, M4A, FLAC, OGG, MP4, MKV, MOV, WebM and most other audio and video formats."
+  ],
+  [
+   ".!frame.!labelframe.!frame.!button",
+   "Try it now (sample clip)"
+  ],
+  [
+   ".!frame.!labelframe.!frame2.!button",
+   "Browse files..."
+  ],
+  [
+   ".!frame.!labelframe.!frame2.!label",
+   " ⓘ "
+  ],
+  [
+   ".!frame.!frame.!label",
+   "Selected file:"
+  ],
+  [
+   ".!frame.!frame2.!frame.!label",
+   "Engine:"
+  ],
+  [
+   ".!frame.!frame2.!frame.!combobox:values",
+   "Faster-Whisper (offline)"
+  ],
+  [
+   ".!frame.!frame2.!frame.!combobox:values",
+   "Cloud engine  ⚠ unavailable"
+  ],
+  [
+   ".!frame.!frame2.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame.!frame2.!frame2.!label",
+   "Model:"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Tiny (English) — fastest, lowest accuracy (~0.075 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Tiny — fastest, lowest accuracy, multilingual (~0.075 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Base (English) — very fast, low accuracy (~0.145 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Base — very fast, low accuracy, multilingual (~0.145 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Small (English) — fast, moderate accuracy (~0.5 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Small — fast, moderate accuracy, multilingual (~0.5 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Medium (English) — slower, good accuracy (~1.5 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Medium — slower, good accuracy, multilingual (~1.5 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Large v1 — older large model, multilingual (~3 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Large v2 — high accuracy, multilingual (~3 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Large v3 — best accuracy (default, ~3 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Distil Small (English) — fast, English-only (~0.4 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Distil Medium (English) — fast, English-only (~0.8 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Distil Large v2 — fast, English-only (~1.5 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Distil Large v3 — fast, English-only (~1.5 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Distil Large v3.5 — fastest English-only (~1.5 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Large v3 Turbo — ~5x faster, similar accuracy (~1.6 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Large v3 Turbo (deepdml) — ~5x faster, multilingual (~1.6 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!button",
+   "Best for this PC…"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame.!frame3.!frame.!label",
+   "Language:"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Auto"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Automatic"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "English"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Afrikaans"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Albanian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Amharic"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Arabic"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Armenian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Azerbaijani"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Basque"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Belarusian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Bengali"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Bosnian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Bulgarian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Catalan"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Cebuano"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Chinese (Simplified)"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Chinese (Traditional)"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Corsican"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Croatian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Czech"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Danish"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Dutch"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Esperanto"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Estonian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Finnish"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "French"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Frisian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Galician"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Georgian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "German"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Greek"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Gujarati"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Haitian Creole"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Hausa"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Hawaiian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Hebrew"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Hindi"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Hmong"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Hungarian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Icelandic"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Igbo"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Indonesian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Irish"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Italian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Japanese"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Javanese"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Kannada"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Kazakh"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Khmer"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Korean"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Kurdish"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Kyrgyz"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Lao"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Latin"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Latvian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Lithuanian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Luxembourgish"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Macedonian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Malagasy"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Malay"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Malayalam"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Maltese"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Maori"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Marathi"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Mongolian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Myanmar (Burmese)"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Nepali"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Norwegian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Nyanja (Chichewa)"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Pashto"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Persian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Polish"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Portuguese (Portugal, Brazil)"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Punjabi"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Romanian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Russian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Samoan"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Scots Gaelic"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Serbian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Sesotho"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Shona"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Sindhi"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Sinhala (Sinhalese)"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Slovak"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Slovenian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Somali"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Spanish"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Sundanese"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Swahili"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Swedish"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Tagalog (Filipino)"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Tajik"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Tamil"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Telugu"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Thai"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Turkish"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Ukrainian"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Urdu"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Uzbek"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Vietnamese"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Welsh"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Xhosa"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Yiddish"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Yoruba"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:values",
+   "Zulu"
+  ],
+  [
+   ".!frame.!frame3.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame.!frame3.!frame.!checkbutton",
+   "Identify speakers (unavailable)"
+  ],
+  [
+   ".!frame.!frame3.!frame.!label3",
+   " ⓘ "
+  ],
+  [
+   ".!frame.!frame3.!frame.!checkbutton2",
+   "Per-word timestamps"
+  ],
+  [
+   ".!frame.!frame3.!frame.!label4",
+   " ⓘ "
+  ],
+  [
+   ".!frame.!frame3.!frame2.!label",
+   "Speakers:"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!combobox:values",
+   "Auto"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!combobox:values",
+   "2"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!combobox:values",
+   "3"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!combobox:values",
+   "4"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!combobox:values",
+   "5"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!combobox:values",
+   "6"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!combobox:values",
+   "7"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!combobox:values",
+   "8"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!combobox:values",
+   "9"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!combobox:values",
+   "10"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!label2",
+   "Time range:"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!label3",
+   "to"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!label4",
+   " ⓘ "
+  ],
+  [
+   ".!frame.!frame3.!frame2.!checkbutton",
+   "Output: English translation"
+  ],
+  [
+   ".!frame.!frame4.!button",
+   "▶    Transcribe"
+  ],
+  [
+   ".!frame.!frame4.!button2",
+   "Advanced settings…"
+  ],
+  [
+   ".!frame.!labelframe2.!frame.!label",
+   "Last result"
+  ],
+  [
+   ".!frame.!labelframe2.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame.!labelframe2.!label",
+   "No transcription finished yet. Drop a file above and click Transcribe."
+  ],
+  [
+   ".!frame.!frame2.!frame.!combobox:current",
+   "Faster-Whisper (offline)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:current",
+   "Large v3 — best accuracy (default, ~3 GB)"
+  ],
+  [
+   ".!frame.!frame3.!frame.!combobox:current",
+   "Auto"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!combobox:current",
+   "Auto"
+  ],
+  [
+   "help",
+   "Pick an audio or video file to transcribe locally (mp3, wav, mp4, mkv, and most other common formats). The file is processed on this machine and never leaves it unless you pick a cloud Engine below."
+  ],
+  [
+   "help",
+   "Which transcription engine to use. Offline engines (Faster-Whisper, whisper.cpp, NVIDIA Parakeet) run entirely on this machine; the two cloud engines upload your audio to Google. Set up keys/models for each in Advanced settings.\n\nENGINE SUMMARY"
+  ],
+  [
+   "tooltip",
+   "Checks this computer's NVIDIA GPU (and its memory) or CPU and RAM and suggests the fastest and the most accurate model that fit."
+  ],
+  [
+   "help",
+   "Which Whisper model size the Faster-Whisper engine loads — bigger models are more accurate but slower and use more RAM/VRAM. Not used by the cloud engines or NVIDIA Parakeet, which have their own model. Same picker as 'Whisper model' in Advanced settings."
+  ],
+  [
+   "help",
+   "Spoken language in the file. Auto detects it from the first few seconds of audio; picking it explicitly is faster and can be more accurate for short or noisy clips."
+  ],
+  [
+   "tooltip",
+   "Unavailable: sherpa-onnx not present"
+  ],
+  [
+   "help",
+   "Splits the transcript by who is speaking (SPEAKER_00, SPEAKER_01, ...). Adds processing time and needs the optional sherpa-onnx component to be installed."
+  ],
+  [
+   "tooltip",
+   "Force the detector to find exactly this many people, or leave on Auto."
+  ],
+  [
+   "help",
+   "Stores a start/end time for every individual word instead of only per sentence. Useful for karaoke-style captions or precise editing; makes the output file larger."
+  ],
+  [
+   "help",
+   "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file."
+  ],
+  [
+   "tooltip",
+   "Writes English text straight from the speech in one pass, using Whisper's own translate task (no extra AI model). Output files get an .en-translated name. Works with multilingual models only."
+  ],
+  [
+   "section",
+   "Last result"
+  ],
+  [
+   "help",
+   "The output files from the most recently finished transcription, with quick Open/Reveal actions. Stays empty until a job completes; see the Transcription Queue tab for jobs in progress."
+  ],
+  [
+   "badge",
+   "Open the Hardware wizard for accelerator details."
+  ]
+ ],
+ "transcribe_no_sample_no_speakers": [
+  [
+   ".!frame2.!labelframe.!frame.!label",
+   "Pick a file or paste a link"
+  ],
+  [
+   ".!frame2.!labelframe.!frame.!label2",
+   "To use a link, paste it into the Selected file box below and click Transcribe."
+  ],
+  [
+   ".!frame2.!labelframe.!frame.!label3",
+   "Works with MP3, WAV, M4A, FLAC, OGG, MP4, MKV, MOV, WebM and most other audio and video formats."
+  ],
+  [
+   ".!frame2.!labelframe.!frame2.!button",
+   "Browse files..."
+  ],
+  [
+   ".!frame2.!labelframe.!frame2.!label",
+   " ⓘ "
+  ],
+  [
+   ".!frame2.!frame.!label",
+   "Selected file:"
+  ],
+  [
+   ".!frame2.!frame2.!frame.!label",
+   "Engine:"
+  ],
+  [
+   ".!frame2.!frame2.!frame.!combobox:values",
+   "Faster-Whisper (offline)"
+  ],
+  [
+   ".!frame2.!frame2.!frame.!combobox:values",
+   "Cloud engine  ⚠ unavailable"
+  ],
+  [
+   ".!frame2.!frame2.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!label",
+   "Model:"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Tiny (English) — fastest, lowest accuracy (~0.075 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Tiny — fastest, lowest accuracy, multilingual (~0.075 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Base (English) — very fast, low accuracy (~0.145 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Base — very fast, low accuracy, multilingual (~0.145 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Small (English) — fast, moderate accuracy (~0.5 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Small — fast, moderate accuracy, multilingual (~0.5 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Medium (English) — slower, good accuracy (~1.5 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Medium — slower, good accuracy, multilingual (~1.5 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Large v1 — older large model, multilingual (~3 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Large v2 — high accuracy, multilingual (~3 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Large v3 — best accuracy (default, ~3 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Distil Small (English) — fast, English-only (~0.4 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Distil Medium (English) — fast, English-only (~0.8 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Distil Large v2 — fast, English-only (~1.5 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Distil Large v3 — fast, English-only (~1.5 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Distil Large v3.5 — fastest English-only (~1.5 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Large v3 Turbo — ~5x faster, similar accuracy (~1.6 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Large v3 Turbo (deepdml) — ~5x faster, multilingual (~1.6 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!button",
+   "Best for this PC…"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame2.!frame3.!frame.!label",
+   "Language:"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Auto"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Automatic"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "English"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Afrikaans"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Albanian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Amharic"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Arabic"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Armenian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Azerbaijani"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Basque"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Belarusian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Bengali"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Bosnian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Bulgarian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Catalan"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Cebuano"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Chinese (Simplified)"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Chinese (Traditional)"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Corsican"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Croatian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Czech"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Danish"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Dutch"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Esperanto"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Estonian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Finnish"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "French"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Frisian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Galician"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Georgian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "German"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Greek"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Gujarati"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Haitian Creole"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Hausa"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Hawaiian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Hebrew"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Hindi"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Hmong"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Hungarian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Icelandic"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Igbo"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Indonesian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Irish"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Italian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Japanese"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Javanese"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Kannada"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Kazakh"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Khmer"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Korean"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Kurdish"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Kyrgyz"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Lao"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Latin"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Latvian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Lithuanian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Luxembourgish"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Macedonian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Malagasy"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Malay"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Malayalam"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Maltese"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Maori"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Marathi"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Mongolian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Myanmar (Burmese)"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Nepali"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Norwegian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Nyanja (Chichewa)"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Pashto"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Persian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Polish"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Portuguese (Portugal, Brazil)"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Punjabi"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Romanian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Russian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Samoan"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Scots Gaelic"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Serbian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Sesotho"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Shona"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Sindhi"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Sinhala (Sinhalese)"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Slovak"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Slovenian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Somali"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Spanish"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Sundanese"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Swahili"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Swedish"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Tagalog (Filipino)"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Tajik"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Tamil"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Telugu"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Thai"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Turkish"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Ukrainian"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Urdu"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Uzbek"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Vietnamese"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Welsh"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Xhosa"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Yiddish"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Yoruba"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:values",
+   "Zulu"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame2.!frame3.!frame.!checkbutton",
+   "Identify speakers (unavailable)"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!label3",
+   " ⓘ "
+  ],
+  [
+   ".!frame2.!frame3.!frame.!checkbutton2",
+   "Per-word timestamps"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!label4",
+   " ⓘ "
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!label",
+   "Speakers:"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!combobox:values",
+   "Auto"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!combobox:values",
+   "2"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!combobox:values",
+   "3"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!combobox:values",
+   "4"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!combobox:values",
+   "5"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!combobox:values",
+   "6"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!combobox:values",
+   "7"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!combobox:values",
+   "8"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!combobox:values",
+   "9"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!combobox:values",
+   "10"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!label2",
+   "Time range:"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!label3",
+   "to"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!label4",
+   " ⓘ "
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!checkbutton",
+   "Output: English translation"
+  ],
+  [
+   ".!frame2.!frame4.!button",
+   "▶    Transcribe"
+  ],
+  [
+   ".!frame2.!frame4.!button2",
+   "Advanced settings…"
+  ],
+  [
+   ".!frame2.!labelframe2.!frame.!label",
+   "Last result"
+  ],
+  [
+   ".!frame2.!labelframe2.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame2.!labelframe2.!label",
+   "No transcription finished yet. Drop a file above and click Transcribe."
+  ],
+  [
+   ".!frame2.!frame2.!frame.!combobox:current",
+   "Faster-Whisper (offline)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:current",
+   "Large v3 — best accuracy (default, ~3 GB)"
+  ],
+  [
+   ".!frame2.!frame3.!frame.!combobox:current",
+   "Auto"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!combobox:current",
+   "Auto"
+  ],
+  [
+   "help",
+   "Pick an audio or video file to transcribe locally (mp3, wav, mp4, mkv, and most other common formats). The file is processed on this machine and never leaves it unless you pick a cloud Engine below."
+  ],
+  [
+   "help",
+   "Which transcription engine to use. Offline engines (Faster-Whisper, whisper.cpp, NVIDIA Parakeet) run entirely on this machine; the two cloud engines upload your audio to Google. Set up keys/models for each in Advanced settings.\n\nENGINE SUMMARY"
+  ],
+  [
+   "tooltip",
+   "Checks this computer's NVIDIA GPU (and its memory) or CPU and RAM and suggests the fastest and the most accurate model that fit."
+  ],
+  [
+   "help",
+   "Which Whisper model size the Faster-Whisper engine loads — bigger models are more accurate but slower and use more RAM/VRAM. Not used by the cloud engines or NVIDIA Parakeet, which have their own model. Same picker as 'Whisper model' in Advanced settings."
+  ],
+  [
+   "help",
+   "Spoken language in the file. Auto detects it from the first few seconds of audio; picking it explicitly is faster and can be more accurate for short or noisy clips."
+  ],
+  [
+   "tooltip",
+   "Unavailable: DIARIZATION REASON"
+  ],
+  [
+   "help",
+   "Splits the transcript by who is speaking (SPEAKER_00, SPEAKER_01, ...). Adds processing time and needs the optional sherpa-onnx component to be installed."
+  ],
+  [
+   "tooltip",
+   "Force the detector to find exactly this many people, or leave on Auto."
+  ],
+  [
+   "help",
+   "Stores a start/end time for every individual word instead of only per sentence. Useful for karaoke-style captions or precise editing; makes the output file larger."
+  ],
+  [
+   "help",
+   "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file."
+  ],
+  [
+   "tooltip",
+   "Writes English text straight from the speech in one pass, using Whisper's own translate task (no extra AI model). Output files get an .en-translated name. Works with multilingual models only."
+  ],
+  [
+   "section",
+   "Last result"
+  ],
+  [
+   "help",
+   "The output files from the most recently finished transcription, with quick Open/Reveal actions. Stays empty until a job completes; see the Transcription Queue tab for jobs in progress."
+  ]
+ ],
+ "transcribe_speakers_ready": [
+  [
+   ".!frame3.!labelframe.!frame.!label",
+   "Pick a file or paste a link"
+  ],
+  [
+   ".!frame3.!labelframe.!frame.!label2",
+   "To use a link, paste it into the Selected file box below and click Transcribe."
+  ],
+  [
+   ".!frame3.!labelframe.!frame.!label3",
+   "Works with MP3, WAV, M4A, FLAC, OGG, MP4, MKV, MOV, WebM and most other audio and video formats."
+  ],
+  [
+   ".!frame3.!labelframe.!frame2.!button",
+   "Browse files..."
+  ],
+  [
+   ".!frame3.!labelframe.!frame2.!label",
+   " ⓘ "
+  ],
+  [
+   ".!frame3.!frame.!label",
+   "Selected file:"
+  ],
+  [
+   ".!frame3.!frame2.!frame.!label",
+   "Engine:"
+  ],
+  [
+   ".!frame3.!frame2.!frame.!combobox:values",
+   "Faster-Whisper (offline)"
+  ],
+  [
+   ".!frame3.!frame2.!frame.!combobox:values",
+   "Cloud engine  ⚠ unavailable"
+  ],
+  [
+   ".!frame3.!frame2.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!label",
+   "Model:"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Tiny (English) — fastest, lowest accuracy (~0.075 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Tiny — fastest, lowest accuracy, multilingual (~0.075 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Base (English) — very fast, low accuracy (~0.145 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Base — very fast, low accuracy, multilingual (~0.145 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Small (English) — fast, moderate accuracy (~0.5 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Small — fast, moderate accuracy, multilingual (~0.5 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Medium (English) — slower, good accuracy (~1.5 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Medium — slower, good accuracy, multilingual (~1.5 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Large v1 — older large model, multilingual (~3 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Large v2 — high accuracy, multilingual (~3 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Large v3 — best accuracy (default, ~3 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Distil Small (English) — fast, English-only (~0.4 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Distil Medium (English) — fast, English-only (~0.8 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Distil Large v2 — fast, English-only (~1.5 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Distil Large v3 — fast, English-only (~1.5 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Distil Large v3.5 — fastest English-only (~1.5 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Large v3 Turbo — ~5x faster, similar accuracy (~1.6 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Large v3 Turbo (deepdml) — ~5x faster, multilingual (~1.6 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!button",
+   "Best for this PC…"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame3.!frame3.!frame.!label",
+   "Language:"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Auto"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Automatic"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "English"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Afrikaans"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Albanian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Amharic"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Arabic"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Armenian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Azerbaijani"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Basque"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Belarusian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Bengali"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Bosnian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Bulgarian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Catalan"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Cebuano"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Chinese (Simplified)"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Chinese (Traditional)"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Corsican"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Croatian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Czech"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Danish"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Dutch"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Esperanto"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Estonian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Finnish"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "French"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Frisian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Galician"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Georgian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "German"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Greek"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Gujarati"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Haitian Creole"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Hausa"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Hawaiian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Hebrew"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Hindi"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Hmong"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Hungarian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Icelandic"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Igbo"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Indonesian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Irish"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Italian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Japanese"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Javanese"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Kannada"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Kazakh"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Khmer"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Korean"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Kurdish"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Kyrgyz"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Lao"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Latin"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Latvian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Lithuanian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Luxembourgish"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Macedonian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Malagasy"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Malay"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Malayalam"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Maltese"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Maori"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Marathi"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Mongolian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Myanmar (Burmese)"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Nepali"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Norwegian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Nyanja (Chichewa)"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Pashto"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Persian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Polish"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Portuguese (Portugal, Brazil)"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Punjabi"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Romanian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Russian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Samoan"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Scots Gaelic"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Serbian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Sesotho"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Shona"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Sindhi"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Sinhala (Sinhalese)"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Slovak"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Slovenian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Somali"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Spanish"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Sundanese"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Swahili"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Swedish"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Tagalog (Filipino)"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Tajik"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Tamil"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Telugu"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Thai"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Turkish"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Ukrainian"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Urdu"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Uzbek"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Vietnamese"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Welsh"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Xhosa"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Yiddish"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Yoruba"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:values",
+   "Zulu"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame3.!frame3.!frame.!checkbutton",
+   "Identify speakers"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!label3",
+   " ⓘ "
+  ],
+  [
+   ".!frame3.!frame3.!frame.!checkbutton2",
+   "Per-word timestamps"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!label4",
+   " ⓘ "
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!label",
+   "Speakers:"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!combobox:values",
+   "Auto"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!combobox:values",
+   "2"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!combobox:values",
+   "3"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!combobox:values",
+   "4"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!combobox:values",
+   "5"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!combobox:values",
+   "6"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!combobox:values",
+   "7"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!combobox:values",
+   "8"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!combobox:values",
+   "9"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!combobox:values",
+   "10"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!label2",
+   "Time range:"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!label3",
+   "to"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!label4",
+   " ⓘ "
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!checkbutton",
+   "Output: English translation"
+  ],
+  [
+   ".!frame3.!frame4.!button",
+   "▶    Transcribe"
+  ],
+  [
+   ".!frame3.!frame4.!button2",
+   "Advanced settings…"
+  ],
+  [
+   ".!frame3.!labelframe2.!frame.!label",
+   "Last result"
+  ],
+  [
+   ".!frame3.!labelframe2.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame3.!labelframe2.!label",
+   "No transcription finished yet. Drop a file above and click Transcribe."
+  ],
+  [
+   ".!frame3.!frame2.!frame.!combobox:current",
+   "Faster-Whisper (offline)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:current",
+   "Large v3 — best accuracy (default, ~3 GB)"
+  ],
+  [
+   ".!frame3.!frame3.!frame.!combobox:current",
+   "Auto"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!combobox:current",
+   "Auto"
+  ],
+  [
+   "help",
+   "Pick an audio or video file to transcribe locally (mp3, wav, mp4, mkv, and most other common formats). The file is processed on this machine and never leaves it unless you pick a cloud Engine below."
+  ],
+  [
+   "help",
+   "Which transcription engine to use. Offline engines (Faster-Whisper, whisper.cpp, NVIDIA Parakeet) run entirely on this machine; the two cloud engines upload your audio to Google. Set up keys/models for each in Advanced settings.\n\nENGINE SUMMARY"
+  ],
+  [
+   "tooltip",
+   "Checks this computer's NVIDIA GPU (and its memory) or CPU and RAM and suggests the fastest and the most accurate model that fit."
+  ],
+  [
+   "help",
+   "Which Whisper model size the Faster-Whisper engine loads — bigger models are more accurate but slower and use more RAM/VRAM. Not used by the cloud engines or NVIDIA Parakeet, which have their own model. Same picker as 'Whisper model' in Advanced settings."
+  ],
+  [
+   "help",
+   "Spoken language in the file. Auto detects it from the first few seconds of audio; picking it explicitly is faster and can be more accurate for short or noisy clips."
+  ],
+  [
+   "help",
+   "Splits the transcript by who is speaking (SPEAKER_00, SPEAKER_01, ...). Adds processing time and needs the optional sherpa-onnx component to be installed."
+  ],
+  [
+   "tooltip",
+   "Force the detector to find exactly this many people, or leave on Auto."
+  ],
+  [
+   "help",
+   "Stores a start/end time for every individual word instead of only per sentence. Useful for karaoke-style captions or precise editing; makes the output file larger."
+  ],
+  [
+   "help",
+   "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file."
+  ],
+  [
+   "tooltip",
+   "Writes English text straight from the speech in one pass, using Whisper's own translate task (no extra AI model). Output files get an .en-translated name. Works with multilingual models only."
+  ],
+  [
+   "section",
+   "Last result"
+  ],
+  [
+   "help",
+   "The output files from the most recently finished transcription, with quick Open/Reveal actions. Stays empty until a job completes; see the Transcription Queue tab for jobs in progress."
+  ]
+ ],
+ "queue": [
+  [
+   ".!frame4.!frame.!label",
+   " ⓘ "
+  ],
+  [
+   ".!frame4.!frame.!button",
+   "Clear completed"
+  ],
+  [
+   ".!frame4.!label",
+   "Queue is empty.  Go to the Transcribe tab and pick a file to add one."
+  ],
+  [
+   ".!frame4.!frame4.!button",
+   "Pause"
+  ],
+  [
+   ".!frame4.!frame4.!button2",
+   "Resume"
+  ],
+  [
+   ".!frame4.!frame4.!button3",
+   "Cancel"
+  ],
+  [
+   ".!frame4.!frame4.!button4",
+   "Re-run"
+  ],
+  [
+   ".!frame4.!frame4.!button5",
+   "Remove"
+  ],
+  [
+   "help",
+   "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate."
+  ],
+  [
+   "heading:file",
+   "File"
+  ],
+  [
+   "heading:status",
+   "Status"
+  ],
+  [
+   "heading:progress",
+   "Progress"
+  ],
+  [
+   "heading:speed",
+   "Speed and time left"
+  ],
+  [
+   "heading:language",
+   "Language"
+  ],
+  [
+   "heading:time",
+   "Elapsed"
+  ]
+ ],
+ "download": [
+  [
+   ".!frame5.!frame.!label",
+   "URL"
+  ],
+  [
+   ".!frame5.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!label3",
+   "Log-in cookies"
+  ],
+  [
+   ".!frame5.!frame.!frame2.!combobox:values",
+   "(off)"
+  ],
+  [
+   ".!frame5.!frame.!frame2.!combobox:values",
+   "chrome"
+  ],
+  [
+   ".!frame5.!frame.!frame2.!combobox:values",
+   "edge"
+  ],
+  [
+   ".!frame5.!frame.!frame2.!combobox:values",
+   "firefox"
+  ],
+  [
+   ".!frame5.!frame.!frame2.!combobox:values",
+   "brave"
+  ],
+  [
+   ".!frame5.!frame.!frame2.!combobox:values",
+   "chromium"
+  ],
+  [
+   ".!frame5.!frame.!frame2.!combobox:values",
+   "opera"
+  ],
+  [
+   ".!frame5.!frame.!frame2.!combobox:values",
+   "vivaldi"
+  ],
+  [
+   ".!frame5.!frame.!frame2.!label",
+   "use my browser's log-in — for Instagram, Facebook, TikTok stories, age-gated videos"
+  ],
+  [
+   ".!frame5.!frame.!label4",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!label5",
+   "Folder"
+  ],
+  [
+   ".!frame5.!frame.!button",
+   "Browse"
+  ],
+  [
+   ".!frame5.!frame.!label6",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!label7",
+   "Mode"
+  ],
+  [
+   ".!frame5.!frame.!combobox:values",
+   "Audio and video"
+  ],
+  [
+   ".!frame5.!frame.!combobox:values",
+   "Audio"
+  ],
+  [
+   ".!frame5.!frame.!label8",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!label9",
+   "Audio"
+  ],
+  [
+   ".!frame5.!frame.!label10",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!label11",
+   "Video"
+  ],
+  [
+   ".!frame5.!frame.!label12",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!label13",
+   "Output"
+  ],
+  [
+   ".!frame5.!frame.!label14",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!labelframe.!frame.!label",
+   "Time range (optional)"
+  ],
+  [
+   ".!frame5.!frame.!labelframe.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!labelframe.!label",
+   "Start"
+  ],
+  [
+   ".!frame5.!frame.!labelframe.!label2",
+   "End"
+  ],
+  [
+   ".!frame5.!frame.!labelframe.!label3",
+   "format H:MM:SS — e.g. 0:00:51 to 0:01:25; leave at 0:00:00 for full video"
+  ],
+  [
+   ".!frame5.!frame.!label15",
+   "Subtitles"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!checkbutton",
+   "Download subtitles (auto + manual when present)"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Automatic"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "English"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Afrikaans"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Albanian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Amharic"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Arabic"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Armenian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Azerbaijani"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Basque"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Belarusian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Bengali"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Bosnian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Bulgarian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Catalan"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Cebuano"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Chinese (Simplified)"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Chinese (Traditional)"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Corsican"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Croatian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Czech"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Danish"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Dutch"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Esperanto"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Estonian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Finnish"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "French"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Frisian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Galician"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Georgian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "German"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Greek"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Gujarati"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Haitian Creole"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Hausa"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Hawaiian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Hebrew"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Hindi"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Hmong"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Hungarian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Icelandic"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Igbo"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Indonesian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Irish"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Italian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Japanese"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Javanese"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Kannada"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Kazakh"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Khmer"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Korean"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Kurdish"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Kyrgyz"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Lao"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Latin"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Latvian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Lithuanian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Luxembourgish"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Macedonian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Malagasy"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Malay"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Malayalam"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Maltese"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Maori"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Marathi"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Mongolian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Myanmar (Burmese)"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Nepali"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Norwegian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Nyanja (Chichewa)"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Pashto"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Persian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Polish"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Portuguese (Portugal, Brazil)"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Punjabi"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Romanian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Russian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Samoan"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Scots Gaelic"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Serbian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Sesotho"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Shona"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Sindhi"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Sinhala (Sinhalese)"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Slovak"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Slovenian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Somali"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Spanish"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Sundanese"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Swahili"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Swedish"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Tagalog (Filipino)"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Tajik"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Tamil"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Telugu"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Thai"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Turkish"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Ukrainian"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Urdu"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Uzbek"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Vietnamese"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Welsh"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Xhosa"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Yiddish"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Yoruba"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:values",
+   "Zulu"
+  ],
+  [
+   ".!frame5.!frame.!label16",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!frame4.!button",
+   "Use captions instead"
+  ],
+  [
+   ".!frame5.!frame.!frame5.!checkbutton",
+   "Transcribe after download"
+  ],
+  [
+   ".!frame5.!frame.!frame5.!label",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!frame5.!checkbutton2",
+   "Make subtitled video"
+  ],
+  [
+   ".!frame5.!frame.!frame5.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!frame6.!checkbutton",
+   "Download all parts of this series (SMTV)"
+  ],
+  [
+   ".!frame5.!frame.!frame6.!label",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!frame7.!label",
+   "Enter a URL to load available formats"
+  ],
+  [
+   ".!frame5.!frame.!frame7.!button",
+   "Install YouTube helper"
+  ],
+  [
+   ".!frame5.!frame.!button2",
+   "⬇    Download"
+  ],
+  [
+   ".!frame5.!frame3.!button",
+   "Pause"
+  ],
+  [
+   ".!frame5.!frame3.!button2",
+   "Resume"
+  ],
+  [
+   ".!frame5.!frame3.!button3",
+   "Cancel"
+  ],
+  [
+   ".!frame5.!frame3.!button4",
+   "Re-run"
+  ],
+  [
+   ".!frame5.!frame3.!button5",
+   "Remove"
+  ],
+  [
+   ".!frame5.!frame3.!button6",
+   "Open"
+  ],
+  [
+   ".!frame5.!frame3.!button7",
+   "Clear completed"
+  ],
+  [
+   ".!frame5.!frame3.!label",
+   "(Pause stops the download but keeps the partial file; Resume continues it)"
+  ],
+  [
+   ".!frame5.!frame.!frame2.!combobox:current",
+   "(off)"
+  ],
+  [
+   ".!frame5.!frame.!combobox:current",
+   "Audio and video"
+  ],
+  [
+   ".!frame5.!frame.!combobox4:current",
+   "mp4"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!combobox:current",
+   "Automatic"
+  ],
+  [
+   "help",
+   "Paste a link from YouTube or any other yt-dlp-supported site. Available formats and subtitles are looked up automatically as soon as you paste it."
+  ],
+  [
+   "help",
+   "Pick the browser you are logged in with. The download then uses that browser's log-in session, so videos that need an account (Instagram, Facebook, TikTok stories, age-restricted YouTube) work. The cookies are read on this computer only; nothing is uploaded. On Windows, close Chrome/Edge completely if it says it could not copy the cookie database. Same setting as Advanced › Downloads."
+  ],
+  [
+   "help",
+   "Where the downloaded file is saved. Defaults to the folder you last used; Browse to change it."
+  ],
+  [
+   "help",
+   "'Audio and video' downloads a normal video file. 'Audio' extracts just the audio track — smaller and faster if you only need the sound or plan to transcribe it."
+  ],
+  [
+   "help",
+   "Audio-only quality/codec choice, filled in once the URL is looked up. Higher bitrate means a larger file and better quality."
+  ],
+  [
+   "help",
+   "Video quality/resolution choice, filled in once the URL is looked up. Only used in 'Audio and video' mode."
+  ],
+  [
+   "help",
+   "Container format for the saved file (e.g. mp4). Changing it may re-encode the file instead of just repackaging it, which takes longer."
+  ],
+  [
+   "section",
+   "Time range (optional)"
+  ],
+  [
+   "help",
+   "Download (and optionally transcribe) only this portion of the video instead of the whole thing. Leave both at 0:00:00 for the full length."
+  ],
+  [
+   "help",
+   "Downloads the video's existing subtitles/captions (auto-generated or manual) in the chosen language, instead of transcribing the audio yourself. Only available when the site provides them."
+  ],
+  [
+   "help",
+   "Automatically queues the downloaded file for transcription as soon as the download finishes, using the settings in the Transcribe tab."
+  ],
+  [
+   "help",
+   "Downloads the video, transcribes it with the Transcribe tab's settings, then burns the subtitles into a new file named <title>-subbed.mp4 next to the download. The download and the transcript files are kept. Needs 'Audio and video'."
+  ],
+  [
+   "help",
+   "This episode has multiple parts on the source site. Checking this queues every part, not just the one you pasted."
+  ],
+  [
+   "tooltip",
+   "YouTube downloads need a small JavaScript engine (Deno, one-time download of about 40 MB from its official GitHub page, checked against its published checksum). Without it some or all YouTube formats are missing and downloads can fail."
+  ],
+  [
+   "heading:name",
+   "name"
+  ],
+  [
+   "heading:url",
+   "url"
+  ],
+  [
+   "heading:format",
+   "format"
+  ],
+  [
+   "heading:status",
+   "status"
+  ],
+  [
+   "heading:progress",
+   "progress"
+  ],
+  [
+   "heading:time",
+   "time"
+  ]
+ ],
+ "server": [
+  [
+   ".!frame6.!frame.!label",
+   "Web / LAN access"
+  ],
+  [
+   ".!frame6.!frame.!label2",
+   "Turn this on to open a simple web page that uses this app to transcribe. Open it in a browser on this computer, or share it with phones and other PCs on your network. It stays off until you start it, and there is nothing to install on the other devices."
+  ],
+  [
+   ".!frame6.!frame.!frame.!button",
+   "Start web access"
+  ],
+  [
+   ".!frame6.!frame.!frame.!button2",
+   "Open in browser"
+  ],
+  [
+   ".!frame6.!frame.!label3",
+   "Off"
+  ],
+  [
+   ".!frame6.!frame.!labelframe.!frame.!label",
+   "Options"
+  ],
+  [
+   ".!frame6.!frame.!labelframe.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame6.!frame.!labelframe.!frame2.!label",
+   "Port:"
+  ],
+  [
+   ".!frame6.!frame.!labelframe.!frame2.!label2",
+   "(the number after the address; leave the default if unsure)"
+  ],
+  [
+   ".!frame6.!frame.!labelframe.!checkbutton",
+   "Share on local network (other devices can use it)"
+  ],
+  [
+   ".!frame6.!frame.!labelframe.!label",
+   "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it."
+  ],
+  [
+   ".!frame6.!frame.!labelframe.!frame3.!label",
+   "Access password (optional):"
+  ],
+  [
+   ".!frame6.!frame.!labelframe.!label2",
+   "Leave blank for no password. If you set one, share it with the people you want to let in: they type it into the page's password box, or open the address with  ?token=YOURPASSWORD  added (letters and digits only; the page then removes it from the address bar)."
+  ],
+  [
+   ".!frame6.!frame.!labelframe.!checkbutton2",
+   "Use HTTPS (self-signed certificate)"
+  ],
+  [
+   ".!frame6.!frame.!labelframe.!label3",
+   "Off by default. When on, the address starts with https:// and the browser will warn that the certificate is not trusted the first time — that is expected; accept it once."
+  ],
+  [
+   ".!frame6.!frame.!labelframe.!frame4.!label",
+   "Webhook URL (optional):"
+  ],
+  [
+   ".!frame6.!frame.!labelframe.!label4",
+   "Leave blank for none. When set, the server POSTs a small JSON summary to this URL each time a job finishes (or fails). Loopback and private cloud-metadata addresses are refused."
+  ],
+  [
+   ".!frame6.!frame.!label5",
+   "Use this only on a network you trust (your home or office Wi-Fi). It has no accounts, and unless you turn on HTTPS above it is not encrypted — anyone who can reach the address (and knows the password, if you set one) can use it. The first time you turn it on it may need to download the speech model; jobs will wait for that."
+  ],
+  [
+   "section",
+   "Options"
+  ],
+  [
+   "help",
+   "Port, network sharing, and an optional access password for the web page this tab starts. Each field also has its own note below it."
+  ]
+ ],
+ "pure": [
+  [
+   "headline dnd=False sample=False",
+   "Pick a file or paste a link"
+  ],
+  [
+   "headline dnd=False sample=True",
+   "Pick a file, paste a link, or try the sample"
+  ],
+  [
+   "headline dnd=True sample=False",
+   "Drop a file here or paste a link"
+  ],
+  [
+   "headline dnd=True sample=True",
+   "Drop a file here, paste a link, or try the sample"
+  ],
+  [
+   "status waiting",
+   "⋯ waiting"
+  ],
+  [
+   "status running",
+   "▶ running"
+  ],
+  [
+   "status paused",
+   "⏸ paused"
+  ],
+  [
+   "status transcribing",
+   "✍ transcribing"
+  ],
+  [
+   "status burning",
+   "♨ burning"
+  ],
+  [
+   "status finished",
+   "✓ finished"
+  ],
+  [
+   "status error",
+   "✗ error"
+  ],
+  [
+   "status cancelled",
+   "⊘ cancelled"
+  ],
+  [
+   "status unknown-status",
+   "unknown-status"
+  ]
+ ],
+ "live_built": [
+  [
+   ".!frame7.!labelframe.!frame.!label",
+   "Audio source"
+  ],
+  [
+   ".!frame7.!labelframe.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame7.!labelframe.!label",
+   "Source:"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox:values",
+   "Microphone"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox:values",
+   "System audio (what you hear)"
+  ],
+  [
+   ".!frame7.!labelframe.!label2",
+   "Device:"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox2:values",
+   "Default input device"
+  ],
+  [
+   ".!frame7.!labelframe.!button",
+   "Refresh"
+  ],
+  [
+   ".!frame7.!labelframe.!label3",
+   "Language:"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Auto"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "English"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Afrikaans"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Albanian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Amharic"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Arabic"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Armenian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Azerbaijani"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Basque"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Belarusian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Bengali"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Bosnian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Bulgarian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Catalan"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Cebuano"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Chinese (Simplified)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Chinese (Traditional)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Corsican"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Croatian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Czech"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Danish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Dutch"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Esperanto"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Estonian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Finnish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "French"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Frisian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Galician"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Georgian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "German"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Greek"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Gujarati"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Haitian Creole"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Hausa"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Hawaiian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Hebrew"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Hindi"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Hmong"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Hungarian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Icelandic"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Igbo"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Indonesian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Irish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Italian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Japanese"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Javanese"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Kannada"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Kazakh"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Khmer"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Korean"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Kurdish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Kyrgyz"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Lao"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Latin"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Latvian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Lithuanian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Luxembourgish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Macedonian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Malagasy"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Malay"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Malayalam"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Maltese"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Maori"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Marathi"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Mongolian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Myanmar (Burmese)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Nepali"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Norwegian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Nyanja (Chichewa)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Pashto"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Persian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Polish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Portuguese (Portugal, Brazil)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Punjabi"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Romanian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Russian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Samoan"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Scots Gaelic"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Serbian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Sesotho"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Shona"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Sindhi"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Sinhala (Sinhalese)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Slovak"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Slovenian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Somali"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Spanish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Sundanese"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Swahili"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Swedish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Tagalog (Filipino)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Tajik"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Tamil"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Telugu"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Thai"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Turkish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Ukrainian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Urdu"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Uzbek"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Vietnamese"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Welsh"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Xhosa"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Yiddish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Yoruba"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Zulu"
+  ],
+  [
+   ".!frame7.!labelframe.!label4",
+   " ⓘ "
+  ],
+  [
+   ".!frame7.!labelframe.!label5",
+   "Model:"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton",
+   "Tiny — fastest, lowest accuracy, multilingual (~0.075 GB)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#0",
+   "Automatic (fast enough for this computer)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#1",
+   "Same as the Transcribe tab"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#3",
+   "Tiny (English) — fastest, lowest accuracy (~0.075 GB)   (English-only)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#4",
+   "Tiny — fastest, lowest accuracy, multilingual (~0.075 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#5",
+   "Base (English) — very fast, low accuracy (~0.145 GB)   (English-only)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#6",
+   "Base — very fast, low accuracy, multilingual (~0.145 GB)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#7",
+   "Small (English) — fast, moderate accuracy (~0.5 GB)   (English-only)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#8",
+   "Small — fast, moderate accuracy, multilingual (~0.5 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#9",
+   "Medium (English) — slower, good accuracy (~1.5 GB)   (English-only)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#10",
+   "Medium — slower, good accuracy, multilingual (~1.5 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#11",
+   "Large v1 — older large model, multilingual (~3 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#12",
+   "Large v2 — high accuracy, multilingual (~3 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#13",
+   "Large v3 — best accuracy (default, ~3 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#14",
+   "Distil Small (English) — fast, English-only (~0.4 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#15",
+   "Distil Medium (English) — fast, English-only (~0.8 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#16",
+   "Distil Large v2 — fast, English-only (~1.5 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#17",
+   "Distil Large v3 — fast, English-only (~1.5 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#18",
+   "Distil Large v3.5 — fastest English-only (~1.5 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#19",
+   "Large v3 Turbo — ~5x faster, similar accuracy (~1.6 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#20",
+   "Large v3 Turbo (deepdml) — ~5x faster, multilingual (~1.6 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!button",
+   "Download"
+  ],
+  [
+   ".!frame7.!labelframe.!label6",
+   " ⓘ "
+  ],
+  [
+   ".!frame7.!frame.!button",
+   "Start listening"
+  ],
+  [
+   ".!frame7.!frame.!button2",
+   "Stop"
+  ],
+  [
+   ".!frame7.!frame.!checkbutton",
+   "Keep the audio"
+  ],
+  [
+   ".!frame7.!frame.!label",
+   " ⓘ "
+  ],
+  [
+   ".!frame7.!frame.!label2",
+   "Idle."
+  ],
+  [
+   ".!frame7.!labelframe2.!frame.!label",
+   "Input level"
+  ],
+  [
+   ".!frame7.!labelframe2.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame7.!labelframe3.!frame.!label",
+   "Live transcript"
+  ],
+  [
+   ".!frame7.!labelframe3.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame7.!frame2.!button",
+   "Save transcript…"
+  ],
+  [
+   ".!frame7.!frame2.!button2",
+   "Copy all"
+  ],
+  [
+   ".!frame7.!frame2.!button3",
+   "Clear"
+  ],
+  [
+   ".!frame7.!frame2.!label",
+   "Uses its own copy of the speech model while listening, separate from the Transcribe queue."
+  ],
+  [
+   ".!frame7.!labelframe.!combobox:current",
+   "Microphone"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox2:current",
+   "Default input device"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:current",
+   "English"
+  ],
+  [
+   "section",
+   "Audio source"
+  ],
+  [
+   "help",
+   "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to."
+  ],
+  [
+   "help",
+   "Naming the language is more reliable than auto-detect for live audio: each chunk is short, and detection on a few seconds of speech can guess wrong and switch mid-session."
+  ],
+  [
+   "help",
+   "Live text only keeps up if the model transcribes faster than you speak. Tiny (the default) keeps up on any computer; bigger models are more accurate but several times too slow on a computer without a supported graphics card. Models already on this computer are shown in bold; greyed ones still need a one-time download -- use the Download button next to the picker."
+  ],
+  [
+   "help",
+   "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is."
+  ],
+  [
+   "section",
+   "Input level"
+  ],
+  [
+   "help",
+   "Live audio level while listening. The waves move with the sound coming in; the bar underneath is a peak meter (green = normal speech, yellow = loud, red = close to clipping) with the level in dB at the top right. When nothing moves, nothing is being captured."
+  ],
+  [
+   "section",
+   "Live transcript"
+  ],
+  [
+   "help",
+   "Text appears a few seconds behind the speech: the app waits for a natural pause before transcribing, so words are not cut in half."
+  ]
+ ],
+ "live_status": [
+  [
+   "status",
+   "Will stop once loading finishes…"
+  ],
+  [
+   "status",
+   "Listening…"
+  ],
+  [
+   "status",
+   "Listening… no sound arrives from this device. Check that it is connected and selected."
+  ],
+  [
+   "status",
+   "Listening… the device sends only silence. Check that it is not muted and that this app may use the microphone."
+  ],
+  [
+   "status",
+   "Listening…"
+  ],
+  [
+   "status",
+   "CORE WARNING"
+  ],
+  [
+   "status",
+   "Listening…"
+  ],
+  [
+   "status",
+   "Microphone off — transcribing what was already said…"
+  ],
+  [
+   "status",
+   "Microphone off — transcribing 1 remaining part… (Discard rest to skip)"
+  ],
+  [
+   "status",
+   "Microphone off — transcribing 3 remaining parts… (Discard rest to skip)"
+  ],
+  [
+   "status",
+   "Discarding the rest…"
+  ],
+  [
+   "status",
+   "Stopped."
+  ],
+  [
+   "status",
+   "Stopped: CORE STOP REASON"
+  ],
+  [
+   "status",
+   "Microphone off — transcribing what was already said…"
+  ],
+  [
+   "status",
+   "Stopped listening: CORE CAPTURE ERROR"
+  ],
+  [
+   "status",
+   "Microphone off — transcribing what was already said…"
+  ],
+  [
+   "status",
+   "Stopped listening: The speech model process stopped unexpectedly."
+  ],
+  [
+   "status",
+   "Microphone off — transcribing what was already said…"
+  ],
+  [
+   "status",
+   "Stopped listening: Transcription keeps failing: CORE FATAL"
+  ],
+  [
+   "status",
+   "Idle."
+  ],
+  [
+   "status",
+   "Downloading the live model (tiny) — one time only…"
+  ],
+  [
+   "status",
+   "Downloading the live model (tiny) — 50%, one time only…"
+  ],
+  [
+   "status",
+   "Loading the speech model…"
+  ],
+  [
+   "status",
+   "Downloading the live model (tiny) — one time only…"
+  ]
+ ],
+ "live_buttons": [
+  [
+   "draining: stop",
+   "Discard rest"
+  ],
+  [
+   "draining: download",
+   "Download"
+  ],
+  [
+   "draining: download status",
+   ""
+  ],
+  [
+   "stopped: stop",
+   "Stop"
+  ],
+  [
+   "stopped: download",
+   "Download"
+  ],
+  [
+   "stopped: download status",
+   ""
+  ],
+  [
+   "downloading: stop",
+   "Discard rest"
+  ],
+  [
+   "downloading: download",
+   "Downloading…"
+  ],
+  [
+   "downloading: download status",
+   "Starting…"
+  ],
+  [
+   "download failed: stop",
+   "Discard rest"
+  ],
+  [
+   "download failed: download",
+   "Download"
+  ],
+  [
+   "download failed: download status",
+   "Download failed."
+  ],
+  [
+   "downloaded: stop",
+   "Discard rest"
+  ],
+  [
+   "downloaded: download",
+   "Download"
+  ],
+  [
+   "downloaded: download status",
+   "Download failed."
+  ]
+ ],
+ "live_dialogs": [
+  [
+   "show_error.title",
+   "Live transcription stopped"
+  ],
+  [
+   "show_error.message",
+   "Listening stopped because of a problem with the audio source or the speech model. The text so far is kept."
+  ],
+  [
+   "show_error.title",
+   "Live transcription stopped"
+  ],
+  [
+   "show_error.message",
+   "Listening stopped because of a problem with the audio source or the speech model. The text so far is kept."
+  ],
+  [
+   "show_error.title",
+   "Live transcription stopped"
+  ],
+  [
+   "show_error.message",
+   "Listening stopped because of a problem with the audio source or the speech model. The text so far is kept."
+  ],
+  [
+   "show_error.title",
+   "Cannot listen yet"
+  ],
+  [
+   "show_error.message",
+   "This computer cannot capture that audio source yet."
+  ],
+  [
+   "show_error.title",
+   "Could not start listening"
+  ],
+  [
+   "show_error.message",
+   "The live session could not be started."
+  ],
+  [
+   "show_error.title",
+   "Could not download the model"
+  ],
+  [
+   "show_error.message",
+   "The 'tiny' model could not be downloaded."
+  ],
+  [
+   "show_error.title",
+   "Nothing to save"
+  ],
+  [
+   "show_error.message",
+   "The live transcript is empty."
+  ],
+  [
+   "asksaveasfilename.title",
+   "Save live transcript"
+  ],
+  [
+   "asksaveasfilename.filetype",
+   "Text file"
+  ],
+  [
+   "asksaveasfilename.filetype",
+   "All files"
+  ],
+  [
+   "show_error.title",
+   "Could not save the transcript"
+  ],
+  [
+   "show_error.message",
+   "Writing live.txt failed."
+  ],
+  [
+   "askyesnocancel.title",
+   "Unsaved live transcript"
+  ],
+  [
+   "askyesnocancel.message",
+   "The Live tab has a transcript that was not saved.\n\nSave it before exiting?"
+  ]
+ ],
+ "live_reasons": [
+  [
+   "reason Auto main cuda",
+   "It is the Transcribe tab's model: it understands other languages, and your graphics card runs it fast enough for live text."
+  ],
+  [
+   "reason Auto small cpu",
+   "It understands other languages and still keeps up with live speech on this computer."
+  ],
+  [
+   "reason Auto small cuda",
+   "About the same size and speed, and it understands other languages."
+  ],
+  [
+   "reason German main cuda",
+   "It is the Transcribe tab's model: it understands German, and your graphics card runs it fast enough for live text."
+  ],
+  [
+   "reason German small cpu",
+   "It understands German and still keeps up with live speech on this computer."
+  ],
+  [
+   "reason German small cuda",
+   "About the same size and speed, and it understands German."
+  ]
+ ],
+ "live_refused": [
+  [
+   "refused",
+   "Could not download the 'tiny' model (CORE OFFLINE). The Transcribe tab's model (large-v3) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list."
+  ],
+  [
+   "refused",
+   "The live model 'tiny' is not in the model list. The Transcribe tab's model (large-v3) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list."
+  ]
+ ],
+ "live_menu_after": [
+  [
+   ".!frame7.!labelframe.!frame.!label",
+   "Audio source"
+  ],
+  [
+   ".!frame7.!labelframe.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame7.!labelframe.!label",
+   "Source:"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox:values",
+   "Microphone"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox:values",
+   "System audio (what you hear)"
+  ],
+  [
+   ".!frame7.!labelframe.!label2",
+   "Device:"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox2:values",
+   "Default input device"
+  ],
+  [
+   ".!frame7.!labelframe.!button",
+   "Refresh"
+  ],
+  [
+   ".!frame7.!labelframe.!label3",
+   "Language:"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Auto"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "English"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Afrikaans"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Albanian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Amharic"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Arabic"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Armenian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Azerbaijani"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Basque"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Belarusian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Bengali"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Bosnian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Bulgarian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Catalan"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Cebuano"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Chinese (Simplified)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Chinese (Traditional)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Corsican"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Croatian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Czech"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Danish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Dutch"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Esperanto"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Estonian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Finnish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "French"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Frisian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Galician"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Georgian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "German"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Greek"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Gujarati"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Haitian Creole"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Hausa"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Hawaiian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Hebrew"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Hindi"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Hmong"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Hungarian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Icelandic"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Igbo"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Indonesian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Irish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Italian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Japanese"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Javanese"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Kannada"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Kazakh"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Khmer"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Korean"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Kurdish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Kyrgyz"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Lao"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Latin"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Latvian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Lithuanian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Luxembourgish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Macedonian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Malagasy"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Malay"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Malayalam"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Maltese"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Maori"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Marathi"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Mongolian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Myanmar (Burmese)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Nepali"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Norwegian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Nyanja (Chichewa)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Pashto"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Persian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Polish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Portuguese (Portugal, Brazil)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Punjabi"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Romanian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Russian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Samoan"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Scots Gaelic"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Serbian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Sesotho"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Shona"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Sindhi"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Sinhala (Sinhalese)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Slovak"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Slovenian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Somali"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Spanish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Sundanese"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Swahili"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Swedish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Tagalog (Filipino)"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Tajik"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Tamil"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Telugu"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Thai"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Turkish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Ukrainian"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Urdu"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Uzbek"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Vietnamese"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Welsh"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Xhosa"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Yiddish"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Yoruba"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:values",
+   "Zulu"
+  ],
+  [
+   ".!frame7.!labelframe.!label4",
+   " ⓘ "
+  ],
+  [
+   ".!frame7.!labelframe.!label5",
+   "Model:"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton",
+   "Tiny — fastest, lowest accuracy, multilingual (~0.075 GB)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#0",
+   "Automatic (fast enough for this computer)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#1",
+   "Same as the Transcribe tab"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#3",
+   "Tiny (English) — fastest, lowest accuracy (~0.075 GB)   (English-only)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#4",
+   "Tiny — fastest, lowest accuracy, multilingual (~0.075 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#5",
+   "Base (English) — very fast, low accuracy (~0.145 GB)   (English-only)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#6",
+   "Base — very fast, low accuracy, multilingual (~0.145 GB)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#7",
+   "Small (English) — fast, moderate accuracy (~0.5 GB)   (English-only)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#8",
+   "Small — fast, moderate accuracy, multilingual (~0.5 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#9",
+   "Medium (English) — slower, good accuracy (~1.5 GB)   (English-only)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#10",
+   "Medium — slower, good accuracy, multilingual (~1.5 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#11",
+   "Large v1 — older large model, multilingual (~3 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#12",
+   "Large v2 — high accuracy, multilingual (~3 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#13",
+   "Large v3 — best accuracy (default, ~3 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#14",
+   "Distil Small (English) — fast, English-only (~0.4 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#15",
+   "Distil Medium (English) — fast, English-only (~0.8 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#16",
+   "Distil Large v2 — fast, English-only (~1.5 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#17",
+   "Distil Large v3 — fast, English-only (~1.5 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#18",
+   "Distil Large v3.5 — fastest English-only (~1.5 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#19",
+   "Large v3 Turbo — ~5x faster, similar accuracy (~1.6 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#20",
+   "Large v3 Turbo (deepdml) — ~5x faster, multilingual (~1.6 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!button",
+   "Download"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!label",
+   "Download failed."
+  ],
+  [
+   ".!frame7.!labelframe.!label6",
+   " ⓘ "
+  ],
+  [
+   ".!frame7.!frame.!button",
+   "Start listening"
+  ],
+  [
+   ".!frame7.!frame.!button2",
+   "Discard rest"
+  ],
+  [
+   ".!frame7.!frame.!checkbutton",
+   "Keep the audio"
+  ],
+  [
+   ".!frame7.!frame.!label",
+   " ⓘ "
+  ],
+  [
+   ".!frame7.!frame.!label2",
+   "Downloading the live model (tiny) — one time only…"
+  ],
+  [
+   ".!frame7.!labelframe2.!frame.!label",
+   "Input level"
+  ],
+  [
+   ".!frame7.!labelframe2.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame7.!labelframe3.!frame.!label",
+   "Live transcript"
+  ],
+  [
+   ".!frame7.!labelframe3.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame7.!frame2.!button",
+   "Save transcript…"
+  ],
+  [
+   ".!frame7.!frame2.!button2",
+   "Copy all"
+  ],
+  [
+   ".!frame7.!frame2.!button3",
+   "Clear"
+  ],
+  [
+   ".!frame7.!frame2.!label",
+   "Uses its own copy of the speech model while listening, separate from the Transcribe queue."
+  ],
+  [
+   ".!frame7.!labelframe.!combobox:current",
+   "Microphone"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox2:current",
+   "Default input device"
+  ],
+  [
+   ".!frame7.!labelframe.!combobox3:current",
+   "German"
+  ]
+ ]
+}
