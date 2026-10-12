@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Callable
 from app.domain.cookies import cookie_browser_choices, cookie_browser_label
 from app.domain.languages import SUBTITLE_LANGUAGES
 from app.dpi import px
+from app.i18n import N_, _, pgettext, translate
 from app.theme import tokens
 from app.widgets.tooltip import bind_tooltip, help_icon, section_labelframe
 
@@ -45,6 +46,38 @@ class _AutoScrollbar(ttk.Scrollbar):
         except (ValueError, tk.TclError):
             pass
         super().set(first, last)
+
+
+def translated_choice_var(
+    master: tk.Misc, stored: tk.StringVar, labels: dict[str, str]
+) -> tk.StringVar:
+    """A variable for a combobox that shows translated labels while ``stored`` keeps the value.
+
+    ``labels`` maps a stored (English) value to the text shown for it; values without an
+    entry are shown as they are (language names, numbers). Code that reads or sets ``stored``
+    keeps working with the English values, and choosing a label in the combobox writes its
+    value to ``stored``. The two variables follow each other through write traces; the
+    returned variable stays alive through the trace callback that ``stored`` holds.
+    """
+    values = {label: value for value, label in labels.items()}
+    shown = tk.StringVar(master=master, value=labels.get(stored.get(), stored.get()))
+    busy: list[bool] = []
+
+    def _copy(source: tk.StringVar, target: tk.StringVar, table: dict[str, str]) -> None:
+        if busy:
+            return
+        busy.append(True)
+        try:
+            text = source.get()
+            new = table.get(text, text)
+            if target.get() != new:
+                target.set(new)
+        finally:
+            busy.clear()
+
+    stored.trace_add("write", lambda *_args: _copy(stored, shown, labels))
+    shown.trace_add("write", lambda *_args: _copy(shown, stored, values))
+    return shown
 
 
 # Widget classes that scroll themselves: the wheel over one of them must keep
@@ -298,9 +331,24 @@ def _fmt_bytes(n: int) -> str:
     return f"{n / (1024 * 1024 * 1024):.2f} GB"
 
 
+def _status_text(status: str) -> str:
+    """The shown word for a task status; the status value itself stays English."""
+    texts = {
+        "waiting": pgettext("task status", "waiting"),
+        "running": pgettext("task status", "running"),
+        "paused": pgettext("task status", "paused"),
+        "transcribing": pgettext("task status", "transcribing"),
+        "burning": pgettext("task status", "burning"),
+        "finished": pgettext("task status", "finished"),
+        "error": pgettext("task status", "error"),
+        "cancelled": pgettext("task status", "cancelled"),
+    }
+    return texts.get(status, status)
+
+
 def status_label(status: str) -> str:
     """Friendly status text for the Treeview's status column."""
-    return STATUS_ICON.get(status, "") + status
+    return STATUS_ICON.get(status, "") + _status_text(status)
 
 
 _PROGRESS_SEGMENTS = 10
@@ -425,8 +473,8 @@ def download_button_states_for_status(
     return states
 
 
-EMPTY_STATE_LINK_HINT = "To use a link, paste it into the Selected file box below and click Transcribe."
-EMPTY_STATE_FORMATS = (
+EMPTY_STATE_LINK_HINT = N_("To use a link, paste it into the Selected file box below and click Transcribe.")
+EMPTY_STATE_FORMATS = N_(
     "Works with MP3, WAV, M4A, FLAC, OGG, MP4, MKV, MOV, WebM and most other "
     "audio and video formats."
 )
@@ -437,13 +485,15 @@ def empty_state_headline(dnd_ready: bool, has_sample: bool) -> str:
 
     Drag-and-drop needs the optional tkinterdnd2 package and the sample clip needs
     its bundled file, so each phrase appears only when it works. Pure (no Tk).
+    One whole sentence per case, so a translation can order it freely.
     """
-    actions = ["Drop a file here" if dnd_ready else "Pick a file", "paste a link"]
+    if dnd_ready:
+        if has_sample:
+            return _("Drop a file here, paste a link, or try the sample")
+        return _("Drop a file here or paste a link")
     if has_sample:
-        actions.append("try the sample")
-    if len(actions) == 2:
-        return f"{actions[0]} or {actions[1]}"
-    return f"{actions[0]}, {actions[1]}, or {actions[2]}"
+        return _("Pick a file, paste a link, or try the sample")
+    return _("Pick a file or paste a link")
 
 
 def sync_transcribe_empty_state(app: "App") -> None:
@@ -511,7 +561,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         _diar_reason = _diar.availability_reason() if not _diar_available else ""
     except Exception:  # noqa: BLE001
         _diar_available = False
-        _diar_reason = "sherpa-onnx not present"
+        _diar_reason = _("sherpa-onnx not present")
     app.diarization_var = tk.BooleanVar(
         value=bool(_diar_available) and bool(app.app_config.get("diarization_enabled", False))
     )
@@ -557,33 +607,33 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     ).pack(fill="x")
     ttk.Label(
         empty_state,
-        text=EMPTY_STATE_LINK_HINT,
+        text=translate(EMPTY_STATE_LINK_HINT),
         foreground=tokens.themed(tokens.TEXT_MUTED),
         anchor="center",
         justify="center",
     ).pack(fill="x", pady=(2, 0))
     ttk.Label(
         empty_state,
-        text=EMPTY_STATE_FORMATS,
+        text=translate(EMPTY_STATE_FORMATS),
         foreground=tokens.themed(tokens.TEXT_MUTED),
         anchor="center",
         justify="center",
     ).pack(fill="x", pady=(2, 12))
     if app.transcribe_has_sample:
         ttk.Button(
-            empty_state, text="Try it now (sample clip)", command=app.try_sample_clip,
+            empty_state, text=_("Try it now (sample clip)"), command=app.try_sample_clip,
         ).pack(pady=(0, 12))
     empty_state.pack(fill="x")
     browse_row = ttk.Frame(drop_zone)
     app.transcribe_browse_row = browse_row
     browse_row.pack()
-    ttk.Button(browse_row, text="Browse files...", command=app.browse).pack(side="left")
+    ttk.Button(browse_row, text=_("Browse files..."), command=app.browse).pack(side="left")
     help_icon(
         browse_row,
-        "Pick an audio or video file to transcribe locally (mp3, wav, mp4, "
+        _("Pick an audio or video file to transcribe locally (mp3, wav, mp4, "
         "mkv, and most other common formats). The file is processed on "
         "this machine and never leaves it unless you pick a cloud Engine "
-        "below.",
+        "below."),
     ).pack(side="left", padx=(6, 0))
 
     # ── Row 1: file path display (always visible — shows what's selected) ─
@@ -592,7 +642,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         row=1, column=0, columnspan=3, sticky="ew",
         padx=15, pady=(2, 8),
     )
-    ttk.Label(file_row, text="Selected file:").pack(side="left")
+    ttk.Label(file_row, text=_("Selected file:")).pack(side="left")
     ttk.Entry(file_row, textvariable=app.fv).pack(
         side="left", fill="x", expand=True, padx=(8, 0)
     )
@@ -621,7 +671,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     model_row = ttk.Frame(engine_frame)
     model_row.pack(fill="x", pady=(6, 0))
 
-    ttk.Label(engine_row, text="Engine:").pack(side="left")
+    ttk.Label(engine_row, text=_("Engine:")).pack(side="left")
     # Cheap readiness only (no heavy backend imports on the UI thread); a
     # deep probe of the current pick refines this shortly after startup.
     _engine_options = _eng.engine_options(app.app_config, deep=False)
@@ -652,16 +702,16 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         engine_combo.configure(state="disabled")
     help_icon(
         engine_row,
-        lambda: (
+        lambda: _(
             "Which transcription engine to use. Offline engines "
             "(Faster-Whisper, whisper.cpp, NVIDIA Parakeet) run entirely on "
             "this machine; the two cloud engines upload your audio to "
-            "Google. Set up keys/models for each in Advanced settings.\n\n"
-            + _eng.engine_status_summary(
+            "Google. Set up keys/models for each in Advanced settings.\n\n{summary}",
+            summary=_eng.engine_status_summary(
                 app.app_config,
                 deep=False,
                 statuses=getattr(app, "_engine_deep_statuses", None),
-            )
+            ),
         ),
     ).pack(side="left", padx=(0, 8))
     engine_combo.bind("<<ComboboxSelected>>", lambda _e: app._on_engine_selected())
@@ -677,7 +727,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # above loads (tiny/base/.../large-v3/turbo/...). Same catalog + slug
     # as Advanced settings' "Whisper model" picker; either one can change
     # it and both stay in sync (see App._refresh_model_selector).
-    ttk.Label(model_row, text="Model:").pack(side="left")
+    ttk.Label(model_row, text=_("Model:")).pack(side="left")
     _model_labeled = catalog_models(app.app_config)
     app._transcribe_model_label_to_slug = {slug_lbl[1]: slug_lbl[0] for slug_lbl in _model_labeled}
     _model_slug_to_label = {slug: lbl for slug, lbl in _model_labeled}
@@ -701,23 +751,23 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # Owner idea (2026-09-23): recommend a model for this computer's GPU /
     # CPU / memory instead of leaving the size choice to guesswork.
     app.transcribe_model_advisor_btn = ttk.Button(
-        model_row, text="Best for this PC…", command=app.open_model_advisor,
+        model_row, text=_("Best for this PC…"), command=app.open_model_advisor,
     )
     app.transcribe_model_advisor_btn.pack(side="left", padx=(0, 8))
     bind_tooltip(
         app.transcribe_model_advisor_btn,
-        "Checks this computer's NVIDIA GPU (and its memory) or CPU and RAM "
-        "and suggests the fastest and the most accurate model that fit.",
+        _("Checks this computer's NVIDIA GPU (and its memory) or CPU and RAM "
+        "and suggests the fastest and the most accurate model that fit."),
     )
     # A disabled combobox still fires Enter/Leave, so this hover text is the
     # reason the picker is greyed out whenever the engine doesn't use it.
     bind_tooltip(model_combo, app._model_picker_disabled_reason)
     help_icon(
         model_row,
-        "Which Whisper model size the Faster-Whisper engine loads — bigger "
+        _("Which Whisper model size the Faster-Whisper engine loads — bigger "
         "models are more accurate but slower and use more RAM/VRAM. Not "
         "used by the cloud engines or NVIDIA Parakeet, which have their "
-        "own model. Same picker as 'Whisper model' in Advanced settings.",
+        "own model. Same picker as 'Whisper model' in Advanced settings."),
     ).pack(side="left", padx=(0, 8))
     model_combo.bind("<<ComboboxSelected>>", lambda _e: app._on_model_selected())
     app.model_status_var = tk.StringVar(value="")
@@ -748,11 +798,14 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     opts_line2 = ttk.Frame(quick_opts)
     opts_line2.pack(fill="x", pady=(6, 0))
 
-    ttk.Label(opts_line1, text="Language:").pack(side="left")
-    lang_values = ["Auto"] + [name for name, _ in _LANGS]
+    ttk.Label(opts_line1, text=_("Language:")).pack(side="left")
+    # transcribe_lang_var keeps the English "Auto" (App compares it); only the shown
+    # label is translated. Language names stay as the table has them.
+    auto_label = pgettext("language choice", "Auto")
+    lang_values = [auto_label] + [name for name, _code in _LANGS]
     lang_combo = ttk.Combobox(
         opts_line1,
-        textvariable=app.transcribe_lang_var,
+        textvariable=translated_choice_var(opts_line1, app.transcribe_lang_var, {"Auto": auto_label}),
         values=lang_values,
         state="readonly",
         width=14,
@@ -760,9 +813,9 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     lang_combo.pack(side="left", padx=(6, 4))
     help_icon(
         opts_line1,
-        "Spoken language in the file. Auto detects it from the first few "
+        _("Spoken language in the file. Auto detects it from the first few "
         "seconds of audio; picking it explicitly is faster and can be more "
-        "accurate for short or noisy clips.",
+        "accurate for short or noisy clips."),
     ).pack(side="left", padx=(0, 20))
     lang_combo.bind("<<ComboboxSelected>>", lambda _e: app._save_transcribe_prefs())
 
@@ -773,9 +826,9 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # The reason can carry a long file path; it goes in the hover text so the
     # row doesn't run off the window (it did at the default size).
     diar_label = (
-        "Identify speakers"
+        _("Identify speakers")
         if _diar_available
-        else "Identify speakers (unavailable)"
+        else _("Identify speakers (unavailable)")
     )
     def _on_diar_check_changed() -> None:
         app._save_transcribe_prefs()
@@ -789,23 +842,25 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     )
     if not _diar_available:
         app.diarization_check.state(["disabled"])
-        bind_tooltip(app.diarization_check, f"Unavailable: {_diar_reason}")
+        bind_tooltip(app.diarization_check, _("Unavailable: {reason}", reason=_diar_reason))
     app.diarization_check.pack(side="left", padx=(0, 4))
 
     app.diarization_help_icon = help_icon(
         opts_line1,
-        "Splits the transcript by who is speaking (SPEAKER_00, SPEAKER_01, "
+        _("Splits the transcript by who is speaking (SPEAKER_00, SPEAKER_01, "
         "...). Adds processing time and needs the optional sherpa-onnx "
-        "component to be installed.",
+        "component to be installed."),
     )
     app.diarization_help_icon.pack(side="left", padx=(0, 20))
 
-    app.diarization_speakers_label = ttk.Label(opts_line2, text="Speakers:")
+    app.diarization_speakers_label = ttk.Label(opts_line2, text=_("Speakers:"))
     app.diarization_speakers_label.pack(side="left")
-    speaker_values = ["Auto"] + [str(i) for i in range(2, 11)]
+    # diarization_speakers_var keeps "Auto" or a number (App saves it as -1 or the count).
+    speaker_values = [auto_label] + [str(i) for i in range(2, 11)]
     app.diarization_speakers_combo = ttk.Combobox(
         opts_line2,
-        textvariable=app.diarization_speakers_var,
+        textvariable=translated_choice_var(
+            opts_line2, app.diarization_speakers_var, {"Auto": auto_label}),
         values=speaker_values,
         state="readonly",
         width=5,
@@ -816,41 +871,41 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     )
     bind_tooltip(
         app.diarization_speakers_combo,
-        "Force the detector to find exactly this many people, or leave on Auto."
+        _("Force the detector to find exactly this many people, or leave on Auto.")
     )
 
     app._sync_diarization_speakers_option()
 
     ttk.Checkbutton(
         opts_line1,
-        text="Per-word timestamps",
+        text=_("Per-word timestamps"),
         variable=app.word_timestamps_var,
         command=app._save_transcribe_prefs,
     ).pack(side="left")
     help_icon(
         opts_line1,
-        "Stores a start/end time for every individual word instead of only "
+        _("Stores a start/end time for every individual word instead of only "
         "per sentence. Useful for karaoke-style captions or precise "
-        "editing; makes the output file larger.",
+        "editing; makes the output file larger."),
     ).pack(side="left", padx=(4, 0))
 
     # Optional time-slice — transcribe only a portion of a long file
     # (e.g. 5 minutes out of a 10-hour recording). 0:00:00 on a side means
     # "unset"; leaving both at 0:00:00 transcribes the whole file.
-    ttk.Label(opts_line2, text="Time range:").pack(side="left")
+    ttk.Label(opts_line2, text=_("Time range:")).pack(side="left")
     app.transcribe_start_time_var = tk.StringVar(value="0:00:00")
     ttk.Entry(opts_line2, textvariable=app.transcribe_start_time_var, width=9).pack(
         side="left", padx=(6, 2)
     )
-    ttk.Label(opts_line2, text="to").pack(side="left")
+    ttk.Label(opts_line2, text=pgettext("time range", "to")).pack(side="left")
     app.transcribe_end_time_var = tk.StringVar(value="0:00:00")
     ttk.Entry(opts_line2, textvariable=app.transcribe_end_time_var, width=9).pack(
         side="left", padx=(2, 0)
     )
     help_icon(
         opts_line2,
-        "Transcribe only this portion of the file (format H:MM:SS). Leave "
-        "both at 0:00:00 to transcribe the whole file.",
+        _("Transcribe only this portion of the file (format H:MM:SS). Leave "
+        "both at 0:00:00 to transcribe the whole file."),
     ).pack(side="left", padx=(4, 0))
 
     # Output in English: Whisper's own translate task (no AI model needed).
@@ -858,7 +913,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # engines, turbo, English-only models); see App._sync_translate_option.
     app.translate_check = ttk.Checkbutton(
         opts_line2,
-        text="Output: English translation",
+        text=_("Output: English translation"),
         variable=app.translate_var,
         command=app._save_transcribe_prefs,
     )
@@ -866,7 +921,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     bind_tooltip(
         app.translate_check,
         lambda: app._translate_unsupported_reason()
-        or (
+        or _(
             "Writes English text straight from the speech in one pass, using "
             "Whisper's own translate task (no extra AI model). Output files "
             "get an .en-translated name. Works with multilingual models only."
@@ -882,7 +937,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     )
     transcribe_btn = ttk.Button(
         cta_row,
-        text="▶    Transcribe",
+        text="▶    " + pgettext("button", "Transcribe"),
         command=app.add,
         style="Accent.TButton",
     )
@@ -893,7 +948,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     transcribe_btn.pack(side="left", ipadx=24, ipady=8)
 
     ttk.Button(
-        cta_row, text="Advanced settings…",
+        cta_row, text=_("Advanced settings…"),
         command=app.open_advanced_dialog,
     ).pack(side="right")
 
@@ -906,7 +961,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     )
     device_badge.pack(side="right", padx=(0, 16))
     app.register_device_badge_label(
-        device_badge, tier_label="Open the Hardware wizard for accelerator details."
+        device_badge, tier_label=_("Open the Hardware wizard for accelerator details.")
     )
 
     parent.columnconfigure(0, weight=1)
@@ -919,10 +974,10 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         padx=15, pady=(8, 6),
     )
     app.last_result_frame = section_labelframe(
-        parent, "Last result",
-        "The output files from the most recently finished transcription, "
+        parent, _("Last result"),
+        _("The output files from the most recently finished transcription, "
         "with quick Open/Reveal actions. Stays empty until a job "
-        "completes; see the Transcription Queue tab for jobs in progress.",
+        "completes; see the Transcription Queue tab for jobs in progress."),
         padding=10,
     )
     app.last_result_frame.grid(
@@ -933,7 +988,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # lower half of the tab (it previously expanded via rowconfigure
     # weight=1, which dominated the window).
     app.last_result_empty_var = tk.StringVar(
-        value="No transcription finished yet. Drop a file above and click Transcribe."
+        value=_("No transcription finished yet. Drop a file above and click Transcribe.")
     )
     app.last_result_empty_label = ttk.Label(
         app.last_result_frame,
@@ -951,14 +1006,14 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     top_row.pack(fill="x", padx=10, pady=6)
     help_icon(
         top_row,
-        "Every transcription job you start is tracked here. Use the "
+        _("Every transcription job you start is tracked here. Use the "
         "buttons below the list (or right-click a row) to pause, resume, "
         "cancel, re-run, or remove it; double-click a finished row to "
         "open its output folder. Speed: 4.8x means 4.8 seconds of audio "
         "were transcribed per second of work; below 1x is slower than the "
-        "recording plays. The time left is a rough estimate.",
+        "recording plays. The time left is a rough estimate."),
     ).pack(side="left")
-    ttk.Button(top_row, text="Clear completed", command=app.clear_completed).pack(
+    ttk.Button(top_row, text=_("Clear completed"), command=app.clear_completed).pack(
         side="right"
     )
 
@@ -969,12 +1024,12 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     tree_frame.columnconfigure(0, weight=1)
     app.tree = ttk.Treeview(tree_frame, columns=cols, show="headings")
     headings = {
-        "file": "File",
-        "status": "Status",
-        "progress": "Progress",
-        "speed": "Speed and time left",
-        "language": "Language",
-        "time": "Elapsed",
+        "file": pgettext("column", "File"),
+        "status": pgettext("column", "Status"),
+        "progress": pgettext("column", "Progress"),
+        "speed": pgettext("column", "Speed and time left"),
+        "language": pgettext("column", "Language"),
+        "time": pgettext("column", "Elapsed"),
     }
     for c in cols:
         app.tree.heading(c, text=headings[c])
@@ -991,7 +1046,7 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     # Empty-state hint shown on top of the Treeview when there are no
     # rows yet. App.refresh hides it as soon as a task is enqueued.
     app.queue_empty_var = tk.StringVar(
-        value="Queue is empty.  Go to the Transcribe tab and pick a file to add one."
+        value=_("Queue is empty.  Go to the Transcribe tab and pick a file to add one.")
     )
     app.queue_empty_label = ttk.Label(
         parent, textvariable=app.queue_empty_var, foreground=tokens.themed(tokens.TEXT_MUTED), anchor="center"
@@ -1030,23 +1085,23 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     action_bar.pack(fill="x", padx=10, pady=(0, 6))
     app.queue_action_buttons = {
         "pause": ttk.Button(
-            action_bar, text="Pause",
+            action_bar, text=pgettext("button", "Pause"),
             command=lambda: app._action_bar_apply(app.pause, active_only=True),
         ),
         "resume": ttk.Button(
-            action_bar, text="Resume",
+            action_bar, text=pgettext("button", "Resume"),
             command=app._action_bar_resume,
         ),
         "cancel": ttk.Button(
-            action_bar, text="Cancel",
+            action_bar, text=_("Cancel"),
             command=lambda: app._action_bar_apply(app.cancel, active_only=True),
         ),
         "rerun": ttk.Button(
-            action_bar, text="Re-run",
+            action_bar, text=_("Re-run"),
             command=lambda: app._action_bar_apply(app._rerun_task, active_only=False),
         ),
         "remove": ttk.Button(
-            action_bar, text="Remove",
+            action_bar, text=_("Remove"),
             command=lambda: app._action_bar_apply(app.remove_task, active_only=False),
         ),
     }
@@ -1063,9 +1118,9 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     top = ttk.Frame(parent, padding=10)
     top.pack(fill="x")
 
-    ttk.Label(top, text="URL").grid(row=0, column=0, sticky="w")
+    ttk.Label(top, text=pgettext("download form", "URL")).grid(row=0, column=0, sticky="w")
     app.download_url_var = tk.StringVar()
-    app.download_url_var.trace_add("write", lambda *_: app.format_service.schedule_lookup())
+    app.download_url_var.trace_add("write", lambda *_args: app.format_service.schedule_lookup())
     url_cell = ttk.Frame(top)
     url_cell.grid(row=0, column=1, columnspan=2, sticky="ew", padx=(6, 0))
     ttk.Entry(url_cell, textvariable=app.download_url_var, width=80).pack(fill="x")
@@ -1078,16 +1133,16 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     )
     help_icon(
         top,
-        "Paste a link from YouTube or any other yt-dlp-supported site. "
+        _("Paste a link from YouTube or any other yt-dlp-supported site. "
         "Available formats and subtitles are looked up automatically as "
-        "soon as you paste it.",
+        "soon as you paste it."),
     ).grid(row=0, column=3, sticky="w", padx=(6, 0))
 
     # Browser cookies right under the URL: login-walled sites (Instagram,
     # Facebook, TikTok stories, age-gated YouTube) need them, and the option
     # used to exist only in Advanced settings. Same config key, so the two
     # controls stay in sync (App.sync_cookies_browser_from_config).
-    ttk.Label(top, text="Log-in cookies").grid(row=1, column=0, sticky="w", pady=(8, 0))
+    ttk.Label(top, text=_("Log-in cookies")).grid(row=1, column=0, sticky="w", pady=(8, 0))
     cookies_row = ttk.Frame(top)
     cookies_row.grid(row=1, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(8, 0))
     current_cookies = str(app.app_config.get("cookies_from_browser") or "")
@@ -1105,52 +1160,58 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     )
     ttk.Label(
         cookies_row,
-        text="use my browser's log-in — for Instagram, Facebook, TikTok stories, age-gated videos",
+        text=_("use my browser's log-in — for Instagram, Facebook, TikTok stories, age-gated videos"),
         foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(side="left", padx=(10, 0))
     help_icon(
         top,
-        "Pick the browser you are logged in with. The download then uses "
+        _("Pick the browser you are logged in with. The download then uses "
         "that browser's log-in session, so videos that need an account "
         "(Instagram, Facebook, TikTok stories, age-restricted YouTube) work. "
         "The cookies are read on this computer only; nothing is uploaded. "
         "On Windows, close Chrome/Edge completely if it says it could not "
-        "copy the cookie database. Same setting as Advanced › Downloads.",
+        "copy the cookie database. Same setting as Advanced › Downloads."),
     ).grid(row=1, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
-    ttk.Label(top, text="Folder").grid(row=2, column=0, sticky="w", pady=(8, 0))
+    ttk.Label(top, text=pgettext("download form", "Folder")).grid(row=2, column=0, sticky="w", pady=(8, 0))
     app.download_folder_var = tk.StringVar(value=app.app_config.get("download_folder", ""))
     ttk.Entry(top, textvariable=app.download_folder_var, width=70).grid(
         row=2, column=1, sticky="ew", padx=(6, 0), pady=(8, 0)
     )
-    ttk.Button(top, text="Browse", command=app.browse_download_folder).grid(
+    ttk.Button(top, text=_("Browse"), command=app.browse_download_folder).grid(
         row=2, column=2, sticky="ew", padx=(6, 0), pady=(8, 0)
     )
     help_icon(
         top,
-        "Where the downloaded file is saved. Defaults to the folder "
-        "you last used; Browse to change it.",
+        _("Where the downloaded file is saved. Defaults to the folder "
+        "you last used; Browse to change it."),
     ).grid(row=2, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
-    ttk.Label(top, text="Mode").grid(row=3, column=0, sticky="w", pady=(8, 0))
+    ttk.Label(top, text=pgettext("download form", "Mode")).grid(row=3, column=0, sticky="w", pady=(8, 0))
+    # download_mode_var keeps the English mode (App, the download service and the
+    # video-site tab compare and set it); the combobox shows the translated labels.
     app.download_mode_var = tk.StringVar(value="Audio and video")
+    mode_labels = {
+        "Audio and video": pgettext("download mode", "Audio and video"),
+        "Audio": pgettext("download mode", "Audio"),
+    }
     app.download_mode_combo = ttk.Combobox(
         top,
-        textvariable=app.download_mode_var,
+        textvariable=translated_choice_var(top, app.download_mode_var, mode_labels),
         state="readonly",
-        values=("Audio and video", "Audio"),
+        values=tuple(mode_labels.values()),
         width=24,
     )
     app.download_mode_combo.grid(row=3, column=1, sticky="w", padx=(6, 0), pady=(8, 0))
     app.download_mode_combo.bind("<<ComboboxSelected>>", lambda _e: app.update_download_mode())
     help_icon(
         top,
-        "'Audio and video' downloads a normal video file. 'Audio' "
+        _("'Audio and video' downloads a normal video file. 'Audio' "
         "extracts just the audio track — smaller and faster if you only "
-        "need the sound or plan to transcribe it.",
+        "need the sound or plan to transcribe it."),
     ).grid(row=3, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
-    ttk.Label(top, text="Audio").grid(row=4, column=0, sticky="w", pady=(8, 0))
+    ttk.Label(top, text=pgettext("download form", "Audio")).grid(row=4, column=0, sticky="w", pady=(8, 0))
     app.audio_format_var = tk.StringVar()
     app.audio_format_combo = ttk.Combobox(
         top, textvariable=app.audio_format_var, state="readonly", width=76
@@ -1158,12 +1219,12 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.audio_format_combo.grid(row=4, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(8, 0))
     help_icon(
         top,
-        "Audio-only quality/codec choice, filled in once the URL is "
+        _("Audio-only quality/codec choice, filled in once the URL is "
         "looked up. Higher bitrate means a larger file and better "
-        "quality.",
+        "quality."),
     ).grid(row=4, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
-    ttk.Label(top, text="Video").grid(row=5, column=0, sticky="w", pady=(8, 0))
+    ttk.Label(top, text=pgettext("download form", "Video")).grid(row=5, column=0, sticky="w", pady=(8, 0))
     app.video_format_var = tk.StringVar()
     app.video_format_combo = ttk.Combobox(
         top, textvariable=app.video_format_var, state="readonly", width=76
@@ -1171,11 +1232,11 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.video_format_combo.grid(row=5, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(8, 0))
     help_icon(
         top,
-        "Video quality/resolution choice, filled in once the URL is "
-        "looked up. Only used in 'Audio and video' mode.",
+        _("Video quality/resolution choice, filled in once the URL is "
+        "looked up. Only used in 'Audio and video' mode."),
     ).grid(row=5, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
-    ttk.Label(top, text="Output").grid(row=6, column=0, sticky="w", pady=(8, 0))
+    ttk.Label(top, text=pgettext("download form", "Output")).grid(row=6, column=0, sticky="w", pady=(8, 0))
     app.output_format_var = tk.StringVar(value="mp4")
     app.output_format_combo = ttk.Combobox(
         top, textvariable=app.output_format_var, state="readonly", width=20
@@ -1183,9 +1244,9 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.output_format_combo.grid(row=6, column=1, sticky="w", padx=(6, 0), pady=(8, 0))
     help_icon(
         top,
-        "Container format for the saved file (e.g. mp4). Changing it may "
+        _("Container format for the saved file (e.g. mp4). Changing it may "
         "re-encode the file instead of just repackaging it, which takes "
-        "longer.",
+        "longer."),
     ).grid(row=6, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
     # --- Optional time-range slice (v1.0.3) -------------------------------
@@ -1196,21 +1257,21 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.download_start_time_var = tk.StringVar(value="0:00:00")
     app.download_end_time_var = tk.StringVar(value="0:00:00")
     trim_frame = section_labelframe(
-        top, "Time range (optional)",
-        "Download (and optionally transcribe) only this portion of the "
+        top, _("Time range (optional)"),
+        _("Download (and optionally transcribe) only this portion of the "
         "video instead of the whole thing. Leave both at 0:00:00 for the "
-        "full length.",
+        "full length."),
         padding=(8, 4),
     )
     trim_frame.grid(
         row=6, column=2, sticky="ew", padx=(12, 0), pady=(8, 0)
     )
-    ttk.Label(trim_frame, text="Start").grid(row=0, column=0, sticky="w")
+    ttk.Label(trim_frame, text=pgettext("time range", "Start")).grid(row=0, column=0, sticky="w")
     start_entry = ttk.Entry(
         trim_frame, textvariable=app.download_start_time_var, width=12
     )
     start_entry.grid(row=0, column=1, sticky="w", padx=(4, 8))
-    ttk.Label(trim_frame, text="End").grid(row=1, column=0, sticky="w", pady=(2, 0))
+    ttk.Label(trim_frame, text=pgettext("time range", "End")).grid(row=1, column=0, sticky="w", pady=(2, 0))
     end_entry = ttk.Entry(
         trim_frame, textvariable=app.download_end_time_var, width=12
     )
@@ -1243,7 +1304,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.download_end_scale.grid(row=1, column=2, sticky="ew", padx=(8, 0), pady=(2, 0))
     ttk.Label(
         trim_frame,
-        text="format H:MM:SS — e.g. 0:00:51 to 0:01:25; leave at 0:00:00 for full video",
+        text=_("format H:MM:SS — e.g. 0:00:51 to 0:01:25; leave at 0:00:00 for full video"),
         foreground=tokens.themed(tokens.TEXT_MUTED),
     ).grid(row=2, column=0, columnspan=3, sticky="w", pady=(4, 0))
     app.download_duration_var = tk.StringVar(value="")
@@ -1251,26 +1312,26 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         row=3, column=0, columnspan=3, sticky="w"
     )
 
-    ttk.Label(top, text="Subtitles").grid(row=7, column=0, sticky="w", pady=(8, 0))
+    ttk.Label(top, text=pgettext("download form", "Subtitles")).grid(row=7, column=0, sticky="w", pady=(8, 0))
     sub_frame = ttk.Frame(top)
     sub_frame.grid(row=7, column=1, columnspan=2, sticky="ew", padx=(6, 0), pady=(8, 0))
     saved_sub_enabled = bool(app.app_config.get("download_subtitles_enabled", False))
     app.download_subtitles_var = tk.BooleanVar(value=saved_sub_enabled)
     ttk.Checkbutton(
         sub_frame,
-        text="Download subtitles (auto + manual when present)",
+        text=_("Download subtitles (auto + manual when present)"),
         variable=app.download_subtitles_var,
         command=app.update_subtitle_state,
     ).pack(side="left")
     saved_sub_lang = app.app_config.get("download_subtitle_lang") or SUBTITLE_LANGUAGES[0][0]
-    if saved_sub_lang not in [name for name, _ in SUBTITLE_LANGUAGES]:
+    if saved_sub_lang not in [name for name, _code in SUBTITLE_LANGUAGES]:
         saved_sub_lang = SUBTITLE_LANGUAGES[0][0]
     app.subtitle_lang_var = tk.StringVar(value=saved_sub_lang)
     app.subtitle_lang_combo = ttk.Combobox(
         sub_frame,
         textvariable=app.subtitle_lang_var,
         state="disabled",
-        values=[name for name, _ in SUBTITLE_LANGUAGES],
+        values=[name for name, _code in SUBTITLE_LANGUAGES],
         width=24,
     )
     app.subtitle_lang_combo.pack(side="left", padx=(10, 0))
@@ -1280,10 +1341,10 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     )
     help_icon(
         top,
-        "Downloads the video's existing subtitles/captions (auto-"
+        _("Downloads the video's existing subtitles/captions (auto-"
         "generated or manual) in the chosen language, instead of "
         "transcribing the audio yourself. Only available when the site "
-        "provides them.",
+        "provides them."),
     ).grid(row=7, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
     app.subtitle_lang_combo.bind(
         "<<ComboboxSelected>>", lambda _e: app.update_caption_shortcut_state()
@@ -1307,7 +1368,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     ).pack(side="left")
     app.caption_shortcut_button = ttk.Button(
         caption_shortcut_frame,
-        text="Use captions instead",
+        text=_("Use captions instead"),
         command=app.download_service.enqueue_caption_only_from_form,
     )
     # Not packed here — update_caption_shortcut_state packs/unpacks it on
@@ -1322,15 +1383,15 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     after_frame.grid(row=9, column=1, columnspan=3, sticky="w", padx=(6, 0), pady=(4, 0))
     ttk.Checkbutton(
         after_frame,
-        text="Transcribe after download",
+        text=_("Transcribe after download"),
         variable=app.auto_transcribe_var,
         command=app._save_auto_transcribe_pref,
     ).pack(side="left")
     help_icon(
         after_frame,
-        "Automatically queues the downloaded file for transcription as "
+        _("Automatically queues the downloaded file for transcription as "
         "soon as the download finishes, using the settings in the "
-        "Transcribe tab.",
+        "Transcribe tab."),
     ).pack(side="left", padx=(6, 0))
 
     # "Make subtitled video": per job, not saved (a re-encode can take as
@@ -1338,15 +1399,15 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.make_subbed_video_var = tk.BooleanVar(value=False)
     ttk.Checkbutton(
         after_frame,
-        text="Make subtitled video",
+        text=_("Make subtitled video"),
         variable=app.make_subbed_video_var,
     ).pack(side="left", padx=(18, 0))
     help_icon(
         after_frame,
-        "Downloads the video, transcribes it with the Transcribe tab's "
+        _("Downloads the video, transcribes it with the Transcribe tab's "
         "settings, then burns the subtitles into a new file named "
         "<title>-subbed.mp4 next to the download. The download and the "
-        "transcript files are kept. Needs 'Audio and video'.",
+        "transcript files are kept. Needs 'Audio and video'."),
     ).pack(side="left", padx=(6, 0))
 
     # SMTV "all parts" toggle. Built always, shown only when an SMTV
@@ -1376,7 +1437,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     _toggle(visible=False)
     app._smtv_series_toggle = _toggle  # type: ignore[attr-defined]
 
-    app.format_status_var = tk.StringVar(value="Enter a URL to load available formats")
+    app.format_status_var = tk.StringVar(value=_("Enter a URL to load available formats"))
     app.format_lookup_error = ""
     status_frame = ttk.Frame(top)
     status_frame.grid(
@@ -1394,15 +1455,15 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     # and no Deno exists (App.update_js_runtime_prompt).
     app.js_runtime_button = ttk.Button(
         status_frame,
-        text="Install YouTube helper",
+        text=_("Install YouTube helper"),
         command=app.install_js_runtime,
     )
     bind_tooltip(
         app.js_runtime_button,
-        "YouTube downloads need a small JavaScript engine (Deno, one-time "
+        _("YouTube downloads need a small JavaScript engine (Deno, one-time "
         "download of about 40 MB from its official GitHub page, checked "
         "against its published checksum). Without it some or all YouTube "
-        "formats are missing and downloads can fail.",
+        "formats are missing and downloads can fail."),
     )
 
     # Primary CTA for the Download tab — same Accent style + larger
@@ -1411,7 +1472,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     # Spans the full row (columnspan=3) and sits at the bottom of the
     # form so it's the natural last step after filling URL + format.
     download_btn = ttk.Button(
-        top, text="⬇    Download",
+        top, text="⬇    " + pgettext("button", "Download"),
         command=app.add_download,
         style="Accent.TButton",
     )
@@ -1429,8 +1490,17 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     bottom.rowconfigure(0, weight=1)
     bottom.columnconfigure(0, weight=1)
     app.download_tree = ttk.Treeview(bottom, columns=cols, show="headings", height=8)
+    # Column ids stay English (App reads rows by id); the headings show the same words translated.
+    download_headings = {
+        "name": pgettext("download column", "name"),
+        "url": pgettext("download column", "url"),
+        "format": pgettext("download column", "format"),
+        "status": pgettext("download column", "status"),
+        "progress": pgettext("download column", "progress"),
+        "time": pgettext("download column", "time"),
+    }
     for c in cols:
-        app.download_tree.heading(c, text=c)
+        app.download_tree.heading(c, text=download_headings[c])
     app.download_tree.column("name", width=px(220))
     app.download_tree.column("url", width=px(420))
     app.download_tree.column("format", width=px(180))
@@ -1455,27 +1525,27 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     dl_action_bar.pack(fill="x")
     app.download_action_buttons = {
         "pause": ttk.Button(
-            dl_action_bar, text="Pause",
+            dl_action_bar, text=pgettext("button", "Pause"),
             command=lambda: app._download_action_apply(app.pause_download),
         ),
         "resume": ttk.Button(
-            dl_action_bar, text="Resume",
+            dl_action_bar, text=pgettext("button", "Resume"),
             command=lambda: app._download_action_apply(app.resume_download),
         ),
         "cancel": ttk.Button(
-            dl_action_bar, text="Cancel",
+            dl_action_bar, text=_("Cancel"),
             command=lambda: app._download_action_apply(app.cancel_download),
         ),
         "rerun": ttk.Button(
-            dl_action_bar, text="Re-run",
+            dl_action_bar, text=_("Re-run"),
             command=lambda: app._download_action_apply(app._rerun_download),
         ),
         "remove": ttk.Button(
-            dl_action_bar, text="Remove",
+            dl_action_bar, text=_("Remove"),
             command=lambda: app._download_action_apply(app.remove_download),
         ),
         "open": ttk.Button(
-            dl_action_bar, text="Open",
+            dl_action_bar, text=pgettext("button", "Open"),
             command=app._download_action_open,
         ),
     }
@@ -1486,12 +1556,12 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     # right like the Queue tab's own "Clear completed" -- mirrors that
     # button, which this tab was missing.
     ttk.Button(
-        dl_action_bar, text="Clear completed", command=app.clear_completed_downloads,
+        dl_action_bar, text=_("Clear completed"), command=app.clear_completed_downloads,
     ).pack(side="right")
     ttk.Label(
         dl_action_bar,
-        text="(Pause stops the download but keeps the partial file; "
-             "Resume continues it)",
+        text=_("(Pause stops the download but keeps the partial file; "
+             "Resume continues it)"),
         foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(side="left", padx=(8, 0))
     app.download_tree.bind(
@@ -1517,16 +1587,16 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     frame.pack(fill="both", expand=True)
 
     ttk.Label(
-        frame, text="Web / LAN access", font=("TkDefaultFont", 13, "bold"),
+        frame, text=_("Web / LAN access"), font=("TkDefaultFont", 13, "bold"),
     ).pack(anchor="w")
     ttk.Label(
         frame,
         text=(
-            "Turn this on to open a simple web page that uses this app to "
+            _("Turn this on to open a simple web page that uses this app to "
             "transcribe. Open it in a browser on this computer, or share it "
             "with phones and other PCs on your network. It stays off until "
             "you start it, and there is nothing to install on the other "
-            "devices."
+            "devices.")
         ),
         wraplength=px(620), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", pady=(4, 12))
@@ -1535,17 +1605,17 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     toggle_row = ttk.Frame(frame)
     toggle_row.pack(fill="x", pady=(0, 6))
     app.server_toggle_btn = ttk.Button(
-        toggle_row, text="Start web access", command=app.toggle_server,
+        toggle_row, text=_("Start web access"), command=app.toggle_server,
     )
     app.server_toggle_btn.pack(side="left")
     app.server_open_btn = ttk.Button(
-        toggle_row, text="Open in browser",
+        toggle_row, text=_("Open in browser"),
         command=app.open_server_in_browser, state="disabled",
     )
     app.server_open_btn.pack(side="left", padx=(8, 0))
 
     # Status line ("Off" / "Running...").
-    app.server_status_var = tk.StringVar(value="Off")
+    app.server_status_var = tk.StringVar(value=pgettext("web access status", "Off"))
     ttk.Label(
         frame, textvariable=app.server_status_var,
         font=("TkDefaultFont", 10, "bold"),
@@ -1562,10 +1632,10 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
 
     # --- options -------------------------------------------------------------
     opts = section_labelframe(
-        frame, "Options",
-        "Port, network sharing, and an optional access password for the "
+        frame, _("Options"),
+        _("Port, network sharing, and an optional access password for the "
         "web page this tab starts. Each field also has its own note "
-        "below it.",
+        "below it."),
         padding=12,
     )
     opts.pack(fill="x", pady=(0, 8))
@@ -1573,7 +1643,7 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     # Port.
     port_row = ttk.Frame(opts)
     port_row.pack(fill="x", pady=(0, 8))
-    ttk.Label(port_row, text="Port:").pack(side="left")
+    ttk.Label(port_row, text=_("Port:")).pack(side="left")
     saved_port = cfg.get("server_port", 8765)
     try:
         saved_port = int(saved_port)
@@ -1589,7 +1659,7 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     ).pack(side="left", padx=(8, 0))
     ttk.Label(
         port_row,
-        text="(the number after the address; leave the default if unsure)",
+        text=_("(the number after the address; leave the default if unsure)"),
         foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(side="left", padx=(8, 0))
 
@@ -1598,16 +1668,16 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
         value=bool(cfg.get("server_share_lan", False))
     )
     ttk.Checkbutton(
-        opts, text="Share on local network (other devices can use it)",
+        opts, text=_("Share on local network (other devices can use it)"),
         variable=app.server_share_lan_var,
         command=app._save_server_prefs,
     ).pack(anchor="w")
     ttk.Label(
         opts,
         text=(
-            "Off: only this computer can use it (no firewall prompt).\n"
+            _("Off: only this computer can use it (no firewall prompt).\n"
             "On: Windows may ask to allow it through the firewall — click "
-            "Allow. Anyone on your network will be able to use it."
+            "Allow. Anyone on your network will be able to use it.")
         ),
         wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", padx=(22, 0), pady=(0, 8))
@@ -1615,7 +1685,7 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     # Optional access password (the --token mechanism).
     pw_row = ttk.Frame(opts)
     pw_row.pack(fill="x")
-    ttk.Label(pw_row, text="Access password (optional):").pack(side="left")
+    ttk.Label(pw_row, text=_("Access password (optional):")).pack(side="left")
     app.server_token_var = tk.StringVar(value=str(cfg.get("server_token", "")))
     pw_entry = ttk.Entry(
         pw_row, textvariable=app.server_token_var, width=24, show="•",
@@ -1625,11 +1695,11 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Label(
         opts,
         text=(
-            "Leave blank for no password. If you set one, share it with the "
+            _("Leave blank for no password. If you set one, share it with the "
             "people you want to let in: they type it into the page's "
             "password box, or open the address with  ?token=YOURPASSWORD  "
             "added (letters and digits only; the page then removes it from "
-            "the address bar)."
+            "the address bar).")
         ),
         wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", padx=(0, 0), pady=(4, 0))
@@ -1639,16 +1709,16 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
         value=bool(cfg.get("server_https_enabled", False))
     )
     ttk.Checkbutton(
-        opts, text="Use HTTPS (self-signed certificate)",
+        opts, text=_("Use HTTPS (self-signed certificate)"),
         variable=app.server_https_enabled_var,
         command=app._save_server_prefs,
     ).pack(anchor="w", pady=(8, 0))
     ttk.Label(
         opts,
         text=(
-            "Off by default. When on, the address starts with https:// and "
+            _("Off by default. When on, the address starts with https:// and "
             "the browser will warn that the certificate is not trusted the "
-            "first time — that is expected; accept it once."
+            "first time — that is expected; accept it once.")
         ),
         wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", padx=(22, 0), pady=(0, 8))
@@ -1656,7 +1726,7 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     # Completion webhook.
     hook_row = ttk.Frame(opts)
     hook_row.pack(fill="x")
-    ttk.Label(hook_row, text="Webhook URL (optional):").pack(side="left")
+    ttk.Label(hook_row, text=_("Webhook URL (optional):")).pack(side="left")
     app.server_webhook_url_var = tk.StringVar(
         value=str(cfg.get("server_webhook_url", ""))
     )
@@ -1668,9 +1738,9 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Label(
         opts,
         text=(
-            "Leave blank for none. When set, the server POSTs a small JSON "
+            _("Leave blank for none. When set, the server POSTs a small JSON "
             "summary to this URL each time a job finishes (or fails). "
-            "Loopback and private cloud-metadata addresses are refused."
+            "Loopback and private cloud-metadata addresses are refused.")
         ),
         wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", padx=(0, 0), pady=(4, 0))
@@ -1679,12 +1749,12 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Label(
         frame,
         text=(
-            "Use this only on a network you trust (your home or office "
+            _("Use this only on a network you trust (your home or office "
             "Wi-Fi). It has no accounts, and unless you turn on HTTPS above "
             "it is not encrypted — anyone who can reach the address (and "
             "knows the password, if you set one) can use it. The first time "
             "you turn it on it may need to download the speech model; jobs "
-            "will wait for that."
+            "will wait for that.")
         ),
         wraplength=px(620), justify="left", foreground=tokens.themed(tokens.WARNING_TEXT),
     ).pack(anchor="w", pady=(10, 0))

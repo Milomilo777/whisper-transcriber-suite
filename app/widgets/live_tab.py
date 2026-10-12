@@ -27,8 +27,10 @@ from tkinter import filedialog, ttk
 from typing import Any, Callable
 
 from app.dpi import scaled
+from app.i18n import N_, _, ngettext, pgettext, translate
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
+from app.widgets.tabs import translated_choice_var
 from app.widgets.tooltip import help_icon, section_labelframe
 from core.writers.base import replace_lone_surrogates
 
@@ -36,8 +38,11 @@ logger = logging.getLogger(__name__)
 
 _POLL_MS = 200
 
-_SOURCE_MIC = "Microphone"
-_SOURCE_SYSTEM = "System audio (what you hear)"
+# Stored in live_source_var in English (compared below); the combobox shows them translated.
+_SOURCE_MIC = N_("Microphone")
+_SOURCE_SYSTEM = N_("System audio (what you hear)")
+# The device list's first entry; not a device name, so it is translated where it is shown.
+_DEFAULT_DEVICE = N_("Default input device")
 
 # Keys that never modify text -- letting these through even while the
 # transcript is "read-only" keeps navigation and selection-extend working
@@ -107,8 +112,8 @@ def _make_readonly_but_selectable(text: tk.Text) -> None:
         text.bind(virtual, lambda _e: "break")
 
 
-_MODEL_AUTO = "Automatic (fast enough for this computer)"
-_MODEL_MAIN = "Same as the Transcribe tab"
+_MODEL_AUTO = N_("Automatic (fast enough for this computer)")
+_MODEL_MAIN = N_("Same as the Transcribe tab")
 
 _MISSING_FG = tokens.TEXT_MISSING
 _MODEL_MISSING_STYLE = "LiveModelMissing.TMenubutton"
@@ -116,8 +121,12 @@ _MODEL_READY_STYLE = "LiveModelReady.TMenubutton"
 
 
 def _live_model_choices(app: Any) -> list[tuple[str, str]]:
-    """``[(label, live_model value), ...]`` for the Model picker."""
-    out = [(_MODEL_AUTO, "auto"), (_MODEL_MAIN, "main")]
+    """``[(label, live_model value), ...]`` for the Model picker.
+
+    The labels are what the picker shows (translated); the values are what the config
+    stores, so a translated label never reaches ``live_model``.
+    """
+    out = [(translate(_MODEL_AUTO), "auto"), (translate(_MODEL_MAIN), "main")]
     try:
         from core.model_manager import catalog_models
 
@@ -166,13 +175,19 @@ def _rebuild_model_menu(app: Any) -> None:
         kwargs: dict[str, Any] = {}
         shown = label
         if _is_catalog_slug(value):
-            if is_english_only(app.app_config, value) and "English-only" not in label:
-                shown = f"{label}   (English-only)"
-            if _slug_downloaded(app, value):
+            # The catalog label is English (core) and may already say "English-only".
+            english_only = bool(is_english_only(app.app_config, value)) and "English-only" not in label
+            downloaded = _slug_downloaded(app, value)
+            if downloaded:
                 kwargs["font"] = bold
             else:
                 kwargs["foreground"] = tokens.themed(_MISSING_FG)
-                shown = f"{shown}   (not downloaded)"
+            if english_only and not downloaded:
+                shown = _("{model}   (English-only)   (not downloaded)", model=label)
+            elif english_only:
+                shown = _("{model}   (English-only)", model=label)
+            elif not downloaded:
+                shown = _("{model}   (not downloaded)", model=label)
         menu.add_radiobutton(
             label=shown, value=label, variable=app.live_model_var,
             command=lambda: _on_live_model_selected(app), **kwargs,
@@ -232,8 +247,8 @@ def _download_live_model(app: Any) -> None:
     if model_cfg is None:
         return
     app._live_model_downloading = True
-    app.live_model_dl_btn.configure(state="disabled", text="Downloading\u2026")
-    app.live_model_dl_var.set("Starting\u2026")
+    app.live_model_dl_btn.configure(state="disabled", text=_("Downloading\u2026"))
+    app.live_model_dl_var.set(_("Starting\u2026"))
     app.live_start_btn.configure(state="disabled")
 
     def progress(payload: dict[str, Any]) -> None:
@@ -261,15 +276,15 @@ def _download_live_model(app: Any) -> None:
 def _download_finished(app: Any, slug: str, error: str | None) -> None:
     app._live_model_downloading = False
     try:
-        app.live_model_dl_btn.configure(state="normal", text="Download")
+        app.live_model_dl_btn.configure(state="normal", text=pgettext("button", "Download"))
         if getattr(app, "live_session", None) is None:
             app.live_start_btn.configure(state="normal")
     except Exception:  # noqa: BLE001
         logger.debug("Could not reset the download button", exc_info=True)
     if error is not None:
-        app.live_model_dl_var.set("Download failed.")
-        show_error(app, "Could not download the model",
-                   f"The '{slug}' model could not be downloaded.", detail=error)
+        app.live_model_dl_var.set(_("Download failed."))
+        show_error(app, _("Could not download the model"),
+                   _("The '{model}' model could not be downloaded.", model=slug), detail=error)
     else:
         app.log(f"Live: downloaded the '{slug}' model.")
     _rebuild_model_menu(app)
@@ -384,16 +399,26 @@ def _english_only_prompt(
     from core.model_manager import approx_download_size_text
 
     name = (app.live_lang_var.get() or "").strip()
-    language = "" if name.lower() == "auto" else name
-    understands = language or "other languages"
+    language = "" if name.lower() == "auto" else name  # the stored value, always English
+    # Whole sentences for "a named language" and "other languages" (auto-detect), so a
+    # translation never has to fit a translated phrase into another sentence.
     if alt_value == LIVE_MAIN:
-        reason = (f"It is the Transcribe tab's model: it understands {understands}, "
-                  "and your graphics card runs it fast enough for live text.")
+        reason = (_("It is the Transcribe tab's model: it understands {language}, "
+                    "and your graphics card runs it fast enough for live text.", language=language)
+                  if language else
+                  _("It is the Transcribe tab's model: it understands other languages, "
+                    "and your graphics card runs it fast enough for live text."))
     elif device == "cpu":
-        reason = (f"It understands {understands} and still keeps up with live "
-                  "speech on this computer.")
+        reason = (_("It understands {language} and still keeps up with live "
+                    "speech on this computer.", language=language)
+                  if language else
+                  _("It understands other languages and still keeps up with live "
+                    "speech on this computer."))
     else:
-        reason = f"About the same size and speed, and it understands {understands}."
+        reason = (_("About the same size and speed, and it understands {language}.",
+                    language=language)
+                  if language else
+                  _("About the same size and speed, and it understands other languages."))
     return EnglishOnlyPrompt(
         model=slug, language=language, alternative=alt_slug, reason=reason,
         size_text=approx_download_size_text(app.app_config, alt_slug),
@@ -473,18 +498,18 @@ def build_live_tab(app: Any, parent: Any) -> None:
     app._live_signal_hint = False
 
     app.live_source_var = tk.StringVar(value=_SOURCE_MIC)
-    app.live_device_var = tk.StringVar(value="Default input device")
+    app.live_device_var = tk.StringVar(value=translate(_DEFAULT_DEVICE))
     # English by default (owner request): naming the language is faster
     # and more reliable than auto-detect on short live chunks.
     app.live_lang_var = tk.StringVar(value="English")
-    app.live_status_var = tk.StringVar(value="Idle.")
+    app.live_status_var = tk.StringVar(value=_("Idle."))
     _choices = _live_model_choices(app)
     from core.live_model import LIVE_DEFAULT
 
     _saved = str(app.app_config.get("live_model") or LIVE_DEFAULT)
     app.live_model_var = tk.StringVar(value=next(
         (label for label, value in _choices if value == _saved),
-        next((label for label, value in _choices if value == LIVE_DEFAULT), _MODEL_AUTO),
+        next((label for label, value in _choices if value == LIVE_DEFAULT), _choices[0][0]),
     ))
     app.live_model_dl_var = tk.StringVar(value="")
     app._live_model_downloading = False
@@ -494,21 +519,23 @@ def build_live_tab(app: Any, parent: Any) -> None:
 
     # ── Source ────────────────────────────────────────────────────────
     src = section_labelframe(
-        parent, "Audio source",
-        "Choose what to listen to. 'Microphone' captures an input device; "
+        parent, _("Audio source"),
+        _("Choose what to listen to. 'Microphone' captures an input device; "
         "'System audio' captures whatever is currently playing on this "
         "computer — useful for a meeting, a video, or a call you are "
-        "listening to.",
+        "listening to."),
     )
     src.grid(row=0, column=0, sticky="ew", padx=15, pady=(15, 6))
     src.columnconfigure(1, weight=1)
 
-    ttk.Label(src, text="Source:").grid(row=0, column=0, sticky="e", padx=8, pady=6)
+    ttk.Label(src, text=_("Source:")).grid(row=0, column=0, sticky="e", padx=8, pady=6)
     sources = [_SOURCE_MIC]
     if _live.is_available("loopback"):
         sources.append(_SOURCE_SYSTEM)
+    source_labels = {value: translate(value) for value in sources}
     app.live_source_combo = ttk.Combobox(
-        src, textvariable=app.live_source_var, values=sources,
+        src, textvariable=translated_choice_var(src, app.live_source_var, source_labels),
+        values=list(source_labels.values()),
         state="readonly", width=32,
     )
     app.live_source_combo.grid(row=0, column=1, sticky="w", padx=8, pady=6)
@@ -516,24 +543,28 @@ def build_live_tab(app: Any, parent: Any) -> None:
         "<<ComboboxSelected>>", lambda _e: _sync_device_state(app)
     )
 
-    ttk.Label(src, text="Device:").grid(row=1, column=0, sticky="e", padx=8, pady=6)
+    ttk.Label(src, text=_("Device:")).grid(row=1, column=0, sticky="e", padx=8, pady=6)
     app.live_device_combo = ttk.Combobox(
         src, textvariable=app.live_device_var, state="readonly", width=48,
     )
     app.live_device_combo.grid(row=1, column=1, sticky="ew", padx=8, pady=6)
     ttk.Button(
-        src, text="Refresh", command=lambda: _refresh_devices(app),
+        src, text=pgettext("button", "Refresh"), command=lambda: _refresh_devices(app),
     ).grid(row=1, column=2, sticky="w", padx=(0, 8), pady=6)
 
-    ttk.Label(src, text="Language:").grid(row=2, column=0, sticky="e", padx=8, pady=6)
+    ttk.Label(src, text=_("Language:")).grid(row=2, column=0, sticky="e", padx=8, pady=6)
     # Same name->code table the Transcribe tab uses, so the two agree.
     # Entries with an empty code (yt-dlp's "Automatic") are dropped: they
     # mean auto-detect, which "Auto" above already covers, and listing
     # both makes the dropdown look like it offers two different things.
     from app.domain.languages import SUBTITLE_LANGUAGES as _LANGS
+    # live_lang_var keeps the English "Auto" (see _selected_language_code); only the
+    # shown label is translated. Language names stay as the table has them.
+    auto_label = pgettext("language choice", "Auto")
     app.live_lang_combo = ttk.Combobox(
-        src, textvariable=app.live_lang_var, state="readonly", width=32,
-        values=["Auto"] + [name for name, code in _LANGS if code],
+        src, textvariable=translated_choice_var(src, app.live_lang_var, {"Auto": auto_label}),
+        state="readonly", width=32,
+        values=[auto_label] + [name for name, code in _LANGS if code],
     )
     app.live_lang_combo.grid(row=2, column=1, sticky="w", padx=8, pady=6)
     app.live_lang_combo.bind(
@@ -542,12 +573,12 @@ def build_live_tab(app: Any, parent: Any) -> None:
     )
     help_icon(
         src,
-        "Naming the language is more reliable than auto-detect for live "
+        _("Naming the language is more reliable than auto-detect for live "
         "audio: each chunk is short, and detection on a few seconds of "
-        "speech can guess wrong and switch mid-session.",
+        "speech can guess wrong and switch mid-session."),
     ).grid(row=2, column=2, sticky="w", padx=(0, 8), pady=6)
 
-    ttk.Label(src, text="Model:").grid(row=3, column=0, sticky="e", padx=8, pady=6)
+    ttk.Label(src, text=_("Model:")).grid(row=3, column=0, sticky="e", padx=8, pady=6)
     _configure_model_styles(app, src)
     model_row = ttk.Frame(src)
     model_row.grid(row=3, column=1, sticky="ew", padx=8, pady=6)
@@ -557,7 +588,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
     app.live_model_btn.configure(menu=app.live_model_menu)
     app.live_model_btn.grid(row=0, column=0, sticky="ew")
     app.live_model_dl_btn = ttk.Button(
-        model_row, text="Download", command=lambda: _download_live_model(app),
+        model_row, text=pgettext("button", "Download"), command=lambda: _download_live_model(app),
     )
     app.live_model_dl_btn.grid(row=0, column=1, sticky="w", padx=(8, 0))
     ttk.Label(model_row, textvariable=app.live_model_dl_var, foreground=tokens.themed(tokens.TEXT_MUTED)).grid(
@@ -567,38 +598,38 @@ def build_live_tab(app: Any, parent: Any) -> None:
     _refresh_model_status(app)
     help_icon(
         src,
-        "Live text only keeps up if the model transcribes faster than you "
+        _("Live text only keeps up if the model transcribes faster than you "
         "speak. Tiny (the default) keeps up on any computer; bigger models "
         "are more accurate but several times too slow on a computer without "
         "a supported graphics card. Models already on this computer are "
         "shown in bold; greyed ones still need a one-time download -- use "
-        "the Download button next to the picker.",
+        "the Download button next to the picker."),
     ).grid(row=3, column=2, sticky="w", padx=(0, 8), pady=6)
 
     # ── Controls ──────────────────────────────────────────────────────
     ctl = ttk.Frame(parent)
     ctl.grid(row=1, column=0, sticky="ew", padx=15, pady=(0, 6))
     app.live_start_btn = ttk.Button(
-        ctl, text="Start listening", command=lambda: _start(app),
+        ctl, text=_("Start listening"), command=lambda: _start(app),
     )
     app.live_start_btn.pack(side="left")
     app.live_stop_btn = ttk.Button(
-        ctl, text="Stop", command=lambda: _stop(app), state="disabled",
+        ctl, text=pgettext("button", "Stop"), command=lambda: _stop(app), state="disabled",
     )
     app.live_stop_btn.pack(side="left", padx=(8, 0))
     app.live_keep_var = tk.BooleanVar(
         value=bool(app.app_config.get("live_keep_recording", False))
     )
     app.live_keep_check = ttk.Checkbutton(
-        ctl, text="Keep the audio", variable=app.live_keep_var,
+        ctl, text=_("Keep the audio"), variable=app.live_keep_var,
         command=lambda: _on_keep_toggled(app),
     )
     app.live_keep_check.pack(side="left", padx=(16, 0))
     help_icon(
         ctl,
-        "Off: the session's audio recording is deleted when you stop "
+        _("Off: the session's audio recording is deleted when you stop "
         "(it takes 100-350 MB per hour). On: it is kept, and the log says "
-        "where the file is.",
+        "where the file is."),
     ).pack(side="left", padx=(4, 0))
     ttk.Label(ctl, textvariable=app.live_status_var, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
         side="left", padx=(16, 0)
@@ -611,12 +642,12 @@ def build_live_tab(app: Any, parent: Any) -> None:
     from app.widgets.audio_visualizer import AudioVisualizer
 
     lvl = section_labelframe(
-        parent, "Input level",
-        "Live audio level while listening. The waves move with the sound "
+        parent, _("Input level"),
+        _("Live audio level while listening. The waves move with the sound "
         "coming in; the bar underneath is a peak meter (green = normal "
         "speech, yellow = loud, red = close to clipping) with the level in "
         "dB at the top right. When nothing moves, nothing is being "
-        "captured.",
+        "captured."),
     )
     lvl.grid(row=2, column=0, sticky="ew", padx=15, pady=(0, 6))
     lvl.columnconfigure(0, weight=1)
@@ -625,9 +656,9 @@ def build_live_tab(app: Any, parent: Any) -> None:
 
     # ── Transcript ────────────────────────────────────────────────────
     out = section_labelframe(
-        parent, "Live transcript",
-        "Text appears a few seconds behind the speech: the app waits for a "
-        "natural pause before transcribing, so words are not cut in half.",
+        parent, _("Live transcript"),
+        _("Text appears a few seconds behind the speech: the app waits for a "
+        "natural pause before transcribing, so words are not cut in half."),
     )
     out.grid(row=3, column=0, sticky="nsew", padx=15, pady=(0, 6))
     out.columnconfigure(0, weight=1)
@@ -643,16 +674,16 @@ def build_live_tab(app: Any, parent: Any) -> None:
 
     actions = ttk.Frame(parent)
     actions.grid(row=4, column=0, sticky="ew", padx=15, pady=(0, 15))
-    ttk.Button(actions, text="Save transcript…",
+    ttk.Button(actions, text=_("Save transcript…"),
                command=lambda: _save(app)).pack(side="left")
-    ttk.Button(actions, text="Copy all",
+    ttk.Button(actions, text=_("Copy all"),
                command=lambda: _copy(app)).pack(side="left", padx=(8, 0))
-    ttk.Button(actions, text="Clear",
+    ttk.Button(actions, text=pgettext("button", "Clear"),
                command=lambda: _clear(app)).pack(side="left", padx=(8, 0))
     ttk.Label(
         actions,
-        text=("Uses its own copy of the speech model while listening, "
-              "separate from the Transcribe queue."),
+        text=(_("Uses its own copy of the speech model while listening, "
+              "separate from the Transcribe queue.")),
         foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(side="right")
 
@@ -666,7 +697,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
 def _refresh_devices(app: Any) -> None:
     from core import live as _live
 
-    names = ["Default input device"]
+    names = [translate(_DEFAULT_DEVICE)]
     app.live_device_map = {}
     try:
         for dev in _live.list_input_devices():
@@ -742,15 +773,15 @@ def _start(app: Any) -> None:
     mode = "loopback" if app.live_source_var.get() == _SOURCE_SYSTEM else "mic"
     if not _live.is_available(mode):
         show_error(
-            app, "Cannot listen yet",
-            "This computer cannot capture that audio source yet.",
+            app, _("Cannot listen yet"),
+            _("This computer cannot capture that audio source yet."),
             detail=_live.availability_reason(mode),
         )
         return
     if not _confirm_model_language(app, on_start=True):
         return
 
-    app.live_status_var.set("Loading the speech model…")
+    app.live_status_var.set(_("Loading the speech model…"))
     app._live_cancel_pending = False
     app._live_stop_reason = ""
     app._live_signal_hint = False
@@ -824,22 +855,36 @@ def _start(app: Any) -> None:
     threading.Thread(target=worker, name="live-start", daemon=True).start()
 
 
-def _check_main_fallback(app: Any, language: str | None, why: str) -> None:
+def _check_main_fallback(
+    app: Any, language: str | None, slug: str, error: Exception | None = None
+) -> None:
     """Refuse to fall back to an English-only main model for other speech.
 
     The fallback keeps listening possible when the live model is missing,
     but onto an English-only model it would bring back the silent wrong
-    English text the English-only dialog exists to prevent.
+    English text the English-only dialog exists to prevent. ``error`` is the
+    download failure; without it the live model ``slug`` is not in the list.
     """
     from core.model_manager import DEFAULT_MODEL_SLUG, english_only_mismatch
 
     main = str(app.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG).strip()
-    if english_only_mismatch(app.app_config, main, language):
-        raise RuntimeError(
-            f"{why} The Transcribe tab's model ({main}) understands English only, "
-            "so it cannot stand in for it. Check the internet connection and press "
-            "Start again, or pick another model in the Model list."
+    if not english_only_mismatch(app.app_config, main, language):
+        return
+    if error is not None:
+        message = _(
+            "Could not download the '{model}' model ({error}). The Transcribe tab's model "
+            "({main_model}) understands English only, so it cannot stand in for it. Check the "
+            "internet connection and press Start again, or pick another model in the Model list.",
+            model=slug, error=error, main_model=main,
         )
+    else:
+        message = _(
+            "The live model '{model}' is not in the model list. The Transcribe tab's model "
+            "({main_model}) understands English only, so it cannot stand in for it. Check the "
+            "internet connection and press Start again, or pick another model in the Model list.",
+            model=slug, main_model=main,
+        )
+    raise RuntimeError(message)
 
 
 def _prepare_live_model(app: Any, language: str | None) -> str | None:
@@ -862,19 +907,20 @@ def _prepare_live_model(app: Any, language: str | None) -> str | None:
         return None
     model_cfg = _lm.live_model_config(app.app_config, slug)
     if model_cfg is None:
-        _check_main_fallback(app, language, f"The live model '{slug}' is not in the model list.")
+        _check_main_fallback(app, language, slug)
         app.post_to_main(lambda: app.log(
             f"Live: unknown model '{slug}'; using the Transcribe tab's model."
         ))
         return None
     if not _lm.is_downloaded(model_cfg):
         app.post_to_main(lambda: app.live_status_var.set(
-            f"Downloading the live model ({slug}) — one time only…"
+            _("Downloading the live model ({model}) — one time only…", model=slug)
         ))
         def progress(payload: dict[str, Any]) -> None:
             pct = payload.get("percent")
             if isinstance(pct, int) and pct:
-                text = f"Downloading the live model ({slug}) — {pct}%, one time only…"
+                text = _("Downloading the live model ({model}) — {percent}%, one time only…",
+                         model=slug, percent=pct)
                 app.post_to_main(lambda: app.live_status_var.set(text))
 
         try:
@@ -883,11 +929,12 @@ def _prepare_live_model(app: Any, language: str | None) -> str | None:
             ensure_model(model_cfg, progress_cb=progress)
         except Exception as e:  # noqa: BLE001
             logger.exception("Live model download failed")
-            _check_main_fallback(app, language, f"Could not download the '{slug}' model ({e}).")
+            _check_main_fallback(app, language, slug, e)
             msg = f"Live: could not download '{slug}' ({e}); using the Transcribe tab's model."
             app.post_to_main(lambda: app.log(msg))
             return None
-        app.post_to_main(lambda: app.live_status_var.set("Loading the speech model…"))
+        loading = _("Loading the speech model…")
+        app.post_to_main(lambda: app.live_status_var.set(loading))
     app.post_to_main(lambda: app.log(f"Live: using the '{slug}' model."))
     return slug
 
@@ -923,7 +970,7 @@ def _started(app: Any, transcriber: Any, session: Any) -> None:
 
     app.live_transcriber = transcriber
     app.live_session = session
-    app.live_status_var.set("Listening…")
+    app.live_status_var.set(_("Listening…"))
     app.log("Live transcription started.")
     try:
         viz = getattr(app, "live_visualizer", None)
@@ -939,7 +986,7 @@ def _start_failed(app: Any, error: Exception) -> None:
     app.live_session = None
     app.live_transcriber = None
     _set_running(app, False)
-    app.live_status_var.set("Idle.")
+    app.live_status_var.set(_("Idle."))
     try:
         viz = getattr(app, "live_visualizer", None)
         if viz is not None:
@@ -947,8 +994,8 @@ def _start_failed(app: Any, error: Exception) -> None:
     except Exception:  # noqa: BLE001
         logger.debug("Could not deactivate visualizer", exc_info=True)
     show_error(
-        app, "Could not start listening",
-        "The live session could not be started.", detail=str(error),
+        app, _("Could not start listening"),
+        _("The live session could not be started."), detail=str(error),
     )
 
 
@@ -964,7 +1011,7 @@ def _stop(app: Any) -> None:
         # request being silently dropped and the session running on
         # with Start re-enabled and no way left to stop it.
         app._live_cancel_pending = True
-        app.live_status_var.set("Will stop once loading finishes…")
+        app.live_status_var.set(_("Will stop once loading finishes…"))
         try:
             app.live_stop_btn.configure(state="disabled")
         except Exception:  # noqa: BLE001
@@ -985,10 +1032,10 @@ def _stop(app: Any) -> None:
     except Exception:  # noqa: BLE001
         logger.debug("Could not deactivate visualizer", exc_info=True)
     try:
-        app.live_stop_btn.configure(text="Discard rest")
+        app.live_stop_btn.configure(text=_("Discard rest"))
     except Exception:  # noqa: BLE001
         logger.debug("Could not update live controls", exc_info=True)
-    app.live_status_var.set("Microphone off — transcribing what was already said…")
+    app.live_status_var.set(_("Microphone off — transcribing what was already said…"))
     keep = _keep_recording(app)
 
     def worker() -> None:
@@ -1016,7 +1063,7 @@ def _discard_rest(app: Any, session: Any, transcriber: Any) -> None:
         app.live_stop_btn.configure(state="disabled")
     except Exception:  # noqa: BLE001
         logger.debug("Could not update live controls", exc_info=True)
-    app.live_status_var.set("Discarding the rest…")
+    app.live_status_var.set(_("Discarding the rest…"))
 
     def worker() -> None:
         try:
@@ -1057,12 +1104,12 @@ def _stopped(app: Any, kept: str = "") -> None:
     app.live_transcriber = None
     app._live_draining = False
     try:
-        app.live_stop_btn.configure(text="Stop")
+        app.live_stop_btn.configure(text=pgettext("button", "Stop"))
     except Exception:  # noqa: BLE001
         logger.debug("Could not update live controls", exc_info=True)
     _set_running(app, False)
     reason = getattr(app, "_live_stop_reason", "")
-    app.live_status_var.set(f"Stopped: {reason}" if reason else "Stopped.")
+    app.live_status_var.set(_("Stopped: {reason}", reason=reason) if reason else _("Stopped."))
     app.log("Live transcription stopped.")
     if kept:
         app.log(f"Live: the session audio was kept at {kept}")
@@ -1145,10 +1192,10 @@ def _poll(app: Any) -> None:
             _schedule_poll(app)
 
 
-_NO_AUDIO_HINT = ("Listening… no sound arrives from this device. "
-                  "Check that it is connected and selected.")
-_SILENT_HINT = ("Listening… the device sends only silence. Check that it is "
-                "not muted and that this app may use the microphone.")
+_NO_AUDIO_HINT = N_("Listening… no sound arrives from this device. "
+                    "Check that it is connected and selected.")
+_SILENT_HINT = N_("Listening… the device sends only silence. Check that it is "
+                  "not muted and that this app may use the microphone.")
 
 
 def _check_health(app: Any) -> None:
@@ -1165,7 +1212,7 @@ def _check_health(app: Any) -> None:
     if not reason and transcriber is not None:
         try:
             if not transcriber.is_running():
-                reason = "The speech model process stopped unexpectedly."
+                reason = _("The speech model process stopped unexpectedly.")
         except Exception:  # noqa: BLE001
             logger.debug("Could not read the worker state", exc_info=True)
     if reason:
@@ -1177,10 +1224,10 @@ def _check_health(app: Any) -> None:
         state = "ok"
     if state in ("no_audio", "silent"):
         app._live_signal_hint = True
-        app.live_status_var.set(_NO_AUDIO_HINT if state == "no_audio" else _SILENT_HINT)
+        app.live_status_var.set(translate(_NO_AUDIO_HINT if state == "no_audio" else _SILENT_HINT))
     elif getattr(app, "_live_signal_hint", False):
         app._live_signal_hint = False
-        app.live_status_var.set("Listening…")
+        app.live_status_var.set(_("Listening…"))
 
 
 def _fail_live(app: Any, reason: str) -> None:
@@ -1197,13 +1244,13 @@ def _fail_live(app: Any, reason: str) -> None:
     if getattr(app, "_live_draining", False):
         return  # already stopping; _stopped shows the reason
     _stop(app)
-    app.live_status_var.set(f"Stopped listening: {reason}")
+    app.live_status_var.set(_("Stopped listening: {reason}", reason=reason))
     # After the poll returns: a modal dialog inside the poll would hold
     # the transcript updates until it is closed.
     app.after(0, lambda: show_error(
-        app, "Live transcription stopped",
-        "Listening stopped because of a problem with the audio source or "
-        "the speech model. The text so far is kept.",
+        app, _("Live transcription stopped"),
+        _("Listening stopped because of a problem with the audio source or "
+        "the speech model. The text so far is kept."),
         detail=reason,
     ))
 
@@ -1226,19 +1273,20 @@ def _poll_once(app: Any) -> None:
         elif ev.kind == "error":
             app.log(f"Live error: {ev.detail}")
         elif ev.kind == "fatal":
-            _fail_live(app, f"Transcription keeps failing: {ev.detail}")
+            _fail_live(app, _("Transcription keeps failing: {error}", error=ev.detail))
         elif ev.kind == "state" and ev.detail == "started":
-            app.live_status_var.set("Listening…")
+            app.live_status_var.set(_("Listening…"))
     if getattr(app, "_live_draining", False):
         try:
             left = int(session.pending_chunks())
         except Exception:  # noqa: BLE001
             left = 0
         if left > 0:
-            app.live_status_var.set(
-                f"Microphone off — transcribing {left} remaining "
-                f"part{'s' if left != 1 else ''}… (Discard rest to skip)"
-            )
+            app.live_status_var.set(ngettext(
+                "Microphone off — transcribing {n} remaining part… (Discard rest to skip)",
+                "Microphone off — transcribing {n} remaining parts… (Discard rest to skip)",
+                left,
+            ))
 
 
 def _append_line(app: Any, text: str) -> None:
@@ -1289,13 +1337,13 @@ def _save(app: Any) -> bool:
     # lines while it is open, and those must stay "unsaved".
     count = len(getattr(app, "live_lines", []) or [])
     if not body:
-        show_error(app, "Nothing to save",
-                   "The live transcript is empty.")
+        show_error(app, _("Nothing to save"),
+                   _("The live transcript is empty."))
         return False
     path = filedialog.asksaveasfilename(
-        parent=app, title="Save live transcript",
+        parent=app, title=_("Save live transcript"),
         defaultextension=".txt",
-        filetypes=[("Text file", "*.txt"), ("All files", "*.*")],
+        filetypes=[(_("Text file"), "*.txt"), (_("All files"), "*.*")],
         initialfile="live-transcript.txt",
     )
     if not path:
@@ -1304,8 +1352,8 @@ def _save(app: Any) -> bool:
         with open(path, "w", encoding="utf-8") as fp:
             fp.write(body + "\n")
     except OSError as e:
-        show_error(app, "Could not save the transcript",
-                   f"Writing {os.path.basename(path)} failed.", detail=str(e))
+        show_error(app, _("Could not save the transcript"),
+                   _("Writing {file} failed.", file=os.path.basename(path)), detail=str(e))
         return False
     app._live_saved_count = count
     app.log(f"Live transcript saved to {path}")
@@ -1324,9 +1372,9 @@ def save_before_exit(app: Any) -> bool:
     from tkinter import messagebox
 
     answer = messagebox.askyesnocancel(
-        "Unsaved live transcript",
-        "The Live tab has a transcript that was not saved.\n\n"
-        "Save it before exiting?",
+        _("Unsaved live transcript"),
+        _("The Live tab has a transcript that was not saved.\n\n"
+        "Save it before exiting?"),
         parent=app,
     )
     if answer is None:

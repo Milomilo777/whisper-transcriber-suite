@@ -498,3 +498,152 @@ def test_english_texts_match_the_capture_made_before_translation(
         FIXTURE.write_text(json.dumps(states, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     expected = json.loads(FIXTURE.read_text(encoding="utf-8"))
     assert states == expected
+
+
+def _outside_texts() -> dict[str, str]:
+    """Texts the two files show but do not own, with the reason they stay untranslated here."""
+    from app.domain.cookies import cookie_browser_choices
+    from app.domain.languages import SUBTITLE_LANGUAGES
+    from core.model_manager import catalog_models
+
+    allowed: dict[str, str] = {}
+    for engine in _ENGINES:
+        allowed[engine.display_label] = "engine label from core/backends/availability.py"
+    for _slug, label in catalog_models({}):
+        allowed[label] = "model label from the core model catalog"
+    for name, _code in SUBTITLE_LANGUAGES:
+        allowed[name] = "language name from app/domain/languages.py"
+    for choice in cookie_browser_choices(""):
+        allowed[choice] = "cookie choice from app/domain/cookies.py"
+    for text in _VIDEO_SITE_TEXTS:
+        allowed[text] = "video-site feature: English only by design"
+    allowed["mp4"] = "a file format id"
+    allowed["CORE WARNING"] = "a warning the core live session sends"
+    allowed["unknown-status"] = "a status value the table does not know is shown as it is"
+    return allowed
+
+
+def test_pseudo_locale_leaves_no_tab_text_untranslated(
+        pseudo: None, root: tk.Tk, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    states = capture_all(monkeypatch, root, tmp_path)
+    allowed = _outside_texts()
+    left = sorted({(name, text) for name, rows in states.items() for _w, text in rows
+                   if text not in allowed and not is_pseudo_marked(text)})
+    assert left == []
+    # Placeholders keep the person's values inside the marked text.
+    statuses = [t for _w, t in states["live_status"]]
+    assert any("CORE STOP REASON" in t and t.startswith("[") for t in statuses)
+    assert any("3" in t and t.startswith("[") for t in statuses)
+
+
+def test_pseudo_locale_keeps_the_video_site_texts_english(
+        pseudo: None, root: tk.Tk, monkeypatch: pytest.MonkeyPatch) -> None:
+    states = capture_main_tabs(monkeypatch, root)
+    texts = {t for _w, t in states["download"]}
+    assert _VIDEO_SITE_TEXTS <= texts
+
+
+def test_headline_and_status_words_are_whole_translated_texts(pseudo: None) -> None:
+    for dnd in (False, True):
+        for sample in (False, True):
+            assert is_pseudo_marked(tabs.empty_state_headline(dnd, sample))
+    for status, icon in tabs.STATUS_ICON.items():
+        shown = tabs.status_label(status)
+        assert shown.startswith(icon) and is_pseudo_marked(shown[len(icon):])
+    assert tabs.status_label("unknown-status") == "unknown-status"
+
+
+# ----------------------------------------------------------------- stored values stay English
+
+
+def _stored_values(mp: pytest.MonkeyPatch, root: tk.Tk) -> dict[str, Any]:
+    """Pick choices by position (the same in every language) and return what gets stored."""
+    from core import live as _live
+    from core import model_manager as _mm
+
+    _patch_main_tabs(mp, diarization="ready", sample=False)
+    mp.setattr(_live, "is_available", lambda mode="mic": True)
+    mp.setattr(_live, "list_input_devices", lambda: [])
+    mp.setattr(_mm, "model_downloaded", lambda cfg, slug: True)
+    saved: list[dict[str, Any]] = []
+    mp.setattr("core.config.save_config", lambda cfg: saved.append(dict(cfg)))
+    out: dict[str, Any] = {}
+
+    app = _StubApp(root)
+    frame = ttk.Frame(root)
+    tabs.build_transcribe_tab(app, frame)
+    combos = [w for w in _descendants(frame) if w.winfo_class() == "TCombobox"]
+    lang_combo, speakers_combo = combos[2], combos[3]
+    lang_combo.current(3)
+    out["language after a name"] = app.transcribe_lang_var.get()
+    lang_combo.current(0)
+    out["language after Auto"] = app.transcribe_lang_var.get()
+    speakers_combo.current(4)
+    out["speakers after a count"] = app.diarization_speakers_var.get()
+    speakers_combo.current(0)
+    out["speakers after Auto"] = app.diarization_speakers_var.get()
+    app.transcribe_lang_var.set("German")
+    out["language combo shows a set name"] = lang_combo.get()
+
+    app = _StubApp(root)
+    frame = ttk.Frame(root)
+    tabs.build_download_tab(app, frame)
+    app.download_mode_combo.current(1)
+    out["mode after the second choice"] = app.download_mode_var.get()
+    app.download_mode_combo.current(0)
+    out["mode after the first choice"] = app.download_mode_var.get()
+    app.download_mode_var.set("Audio")  # what the video-site tab does
+    out["mode combo follows a stored value"] = app.download_mode_combo.current()
+
+    live = _live_app(root)
+    frame = ttk.Frame(root)
+    live_tab.build_live_tab(live, frame)
+    for index in (0, 1, 3):
+        live.live_model_menu.invoke(index)
+        out[f"live model entry {index}"] = live.app_config.get("live_model")
+    out["live saved configs"] = [c.get("live_model") for c in saved]
+    live.live_source_combo.current(1)
+    live.live_source_combo.event_generate("<<ComboboxSelected>>")
+    root.update()
+    out["live source after the second choice"] = live.live_source_var.get()
+    out["live device combo disabled for system audio"] = str(live.live_device_combo.cget("state"))
+    live.live_source_combo.current(0)
+    out["live source after the first choice"] = live.live_source_var.get()
+    live.live_lang_combo.current(0)
+    out["live language after Auto"] = (live.live_lang_var.get(),
+                                       live_tab._selected_language_code(live))
+    live.live_lang_combo.current(5)
+    out["live language after a name"] = (live.live_lang_var.get(),
+                                         live_tab._selected_language_code(live))
+    live.live_device_combo.current(0)
+    out["live default device"] = live_tab._selected_device_index(live)
+    return out
+
+
+def _descendants(w: tk.Misc) -> list[tk.Misc]:
+    out: list[tk.Misc] = []
+    for child in w.winfo_children():
+        out.append(child)
+        out.extend(_descendants(child))
+    return out
+
+
+def test_choices_store_the_same_values_in_every_language(
+        root: tk.Tk, monkeypatch: pytest.MonkeyPatch) -> None:
+    i18n.set_language("en")
+    try:
+        english = _stored_values(monkeypatch, root)
+        i18n.set_language(i18n.PSEUDO_LOCALE)
+        pseudo_values = _stored_values(monkeypatch, root)
+    finally:
+        i18n.set_language("en")
+    assert pseudo_values == english
+    assert english["language after Auto"] == "Auto"
+    assert english["speakers after Auto"] == "Auto"
+    assert english["mode after the second choice"] == "Audio"
+    assert english["mode combo follows a stored value"] == 1
+    assert english["live model entry 0"] == "auto" and english["live model entry 1"] == "main"
+    assert english["live source after the second choice"] == live_tab._SOURCE_SYSTEM
+    assert english["live device combo disabled for system audio"] == "disabled"
+    assert english["live language after Auto"] == ("Auto", None)
+    assert english["live default device"] is None
