@@ -1,0 +1,1564 @@
+{
+ "dialog": [
+  [
+   ".!advanceddialog",
+   "Advanced settings"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label",
+   "Jump to"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label2",
+   "Model & engine"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label3",
+   "Output formats"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label4",
+   "Silence & noise"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label5",
+   "Prompt & hotwords"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label6",
+   "AI Layer"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label7",
+   "App preferences"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label8",
+   "Watched folder"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label9",
+   "Downloads (yt-dlp)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label10",
+   "App behaviour"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!frame.!label",
+   "Model & engine"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!label",
+   "Whisper model"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Tiny (English) — fastest, lowest accuracy (~0.075 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Tiny — fastest, lowest accuracy, multilingual (~0.075 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Base (English) — very fast, low accuracy (~0.145 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Base — very fast, low accuracy, multilingual (~0.145 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Small (English) — fast, moderate accuracy (~0.5 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Small — fast, moderate accuracy, multilingual (~0.5 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Medium (English) — slower, good accuracy (~1.5 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Medium — slower, good accuracy, multilingual (~1.5 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Large v1 — older large model, multilingual (~3 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Large v2 — high accuracy, multilingual (~3 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Large v3 — best accuracy (default, ~3 GB)   [OK - downloaded]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Distil Small (English) — fast, English-only (~0.4 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Distil Medium (English) — fast, English-only (~0.8 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Distil Large v2 — fast, English-only (~1.5 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Distil Large v3 — fast, English-only (~1.5 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Distil Large v3.5 — fastest English-only (~1.5 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Large v3 Turbo — ~5x faster, similar accuracy (~1.6 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Large v3 Turbo (deepdml) — ~5x faster, multilingual (~1.6 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!button",
+   "?"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!button2",
+   "Download now"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!label2",
+   "Model folder"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!frame2.!button",
+   "Change..."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!frame2.!button2",
+   "Open folder"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!label3",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!label4",
+   "Engine"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox2:values",
+   "Faster-Whisper — offline, default"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox2:values",
+   "whisper.cpp — offline, low-end CPUs"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox2:values",
+   "NVIDIA Parakeet TDT v3 — local, multilingual (transformers)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox2:values",
+   "Gemini cloud — simple API key"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox2:values",
+   "Google Cloud Speech-to-Text — service account (60 min/mo free)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!button3",
+   "Get whisper.cpp model..."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!label5",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!label7",
+   "Hardware"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!button4",
+   "Re-detect hardware…"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!label8",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!checkbutton",
+   "Refine word timings with stable-ts (slower)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!label9",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame.!label",
+   "▸ Gemini cloud setup (optional — uploads audio to Google)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame.!frame.!labelframe.!frame.!label",
+   "Cloud Speech-to-Text (Gemini)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame.!frame.!labelframe.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame.!frame.!labelframe.!label",
+   "PRIVACY: the Gemini engine UPLOADS your audio to Google for transcription. This BREAKS the offline guarantee — only use it for content you may send to a cloud service. The default engines stay fully offline."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame.!frame.!labelframe.!label2",
+   "Google API key"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame.!frame.!labelframe.!button",
+   "Test key"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame.!frame.!labelframe.!label4",
+   "Get a free key at aistudio.google.com (paste it above)."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame.!frame.!labelframe.!label5",
+   "Model"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame.!frame.!labelframe.!label6",
+   "Default: gemini-3.5-flash (a current Gemini audio model)."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame.!frame.!labelframe.!label7",
+   "Cloud minutes used so far: 0.0 (counted on this computer). Real usage and any charges are only visible in Google's billing console:"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame.!frame.!labelframe.!label8",
+   "https://console.cloud.google.com/billing"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!label",
+   "▸ Google Cloud Speech-to-Text setup (optional — uploads audio)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!frame.!label",
+   "Google Cloud Speech-to-Text (service account)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!label",
+   "This is the FULL Google Cloud Speech-to-Text service. It signs in with a service-account JSON file you download from the Google Cloud console (NOT the simple API key the separate Gemini engine uses). New Google Cloud customers get 60 free minutes every month plus a $300 / 90-day credit.\n\nIt is the only engine here that combines all three: real word-level timestamps, speaker diarization, and a cheap Batch mode for long files — Batch costs about $0.004/minute (~75% less than Standard's ~$0.016/minute) and is usually ready within 24 hours."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!label2",
+   "Service-account JSON file:"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!label3",
+   "(none selected)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!button",
+   "Browse..."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!frame2.!button",
+   "How do I get this file?"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!frame2.!button2",
+   "Test connection"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!checkbutton",
+   "Batch mode (cheaper, slower)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!label5",
+   "Batch is ~75% cheaper (~$0.004/min vs ~$0.016/min) but can take up to ~24 hours and needs a Google Cloud Storage bucket you own."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!label6",
+   "Cloud Storage bucket:"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!label7",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!checkbutton2",
+   "Detect speakers (diarization)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!label8",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!label9",
+   "Core usage text (core.backends.google_cloud_stt.format_usage)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!label10",
+   "(local estimate — see Google Cloud Console for the real figure)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!label11",
+   "Open billing/usage console"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame2.!frame.!labelframe.!label12",
+   "Cloud transcription uploads your audio to Google (it is not offline)."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe2.!frame.!label",
+   "NVIDIA Parakeet (local, offline)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe2.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe2.!label",
+   "Runs ENTIRELY on this machine (no audio leaves the device). On first use, transformers + torch and the model download automatically (a few GB, one time). The default is NVIDIA's multilingual Parakeet TDT v3; you can point this at any Hugging Face automatic-speech-recognition model id or a local folder. (NVIDIA's exact Nemotron-3.5 .nemo checkpoint needs the NeMo toolkit and is not loadable here.)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe2.!label2",
+   "Model (HF id or local path)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe2.!label3",
+   "Default: nvidia/parakeet-tdt-0.6b-v3"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe2.!button",
+   "Prepare Parakeet model now..."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe2.!label4",
+   "Installs transformers/torch/librosa and downloads the model ahead of time, instead of waiting on the first transcription."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame.!label",
+   "Output formats"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame2.!checkbutton",
+   "ASS (styled subtitles / karaoke)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame2.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame3.!checkbutton",
+   "DOCX"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame3.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame4.!checkbutton",
+   "ELAN"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame4.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame5.!checkbutton",
+   "Express Scribe"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame5.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame6.!checkbutton",
+   "InqScribe"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame6.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame7.!checkbutton",
+   "JSON"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame7.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame8.!checkbutton",
+   "LRC"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame8.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame9.!checkbutton",
+   "MD"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame9.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame10.!checkbutton",
+   "OTR"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame10.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame11.!checkbutton",
+   "PDF"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame11.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame12.!checkbutton",
+   "SMTV transcription"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame12.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame13.!checkbutton",
+   "SRT"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame13.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame14.!checkbutton",
+   "TSV"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame14.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame15.!checkbutton",
+   "TXT"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame15.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame16.!checkbutton",
+   "VTT"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe3.!frame16.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!frame.!label",
+   "Silence & noise"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!frame2.!checkbutton",
+   "Enable VAD (skip silent segments)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!frame2.!label",
+   "▸ Fine-tune"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!label2",
+   "Min silence (ms)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!label3",
+   "500"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!label4",
+   "Threshold"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!label5",
+   "0.50"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!label6",
+   "Speech pad (ms)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!label7",
+   "400"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!checkbutton",
+   "Reduce background noise before transcribing"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!label8",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!label9",
+   "Strength:"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!combobox:values",
+   "auto"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!combobox:values",
+   "light"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!combobox:values",
+   "medium"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!combobox:values",
+   "strong"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!label10",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!checkbutton2",
+   "Pre-process noisy audio with Demucs vocals separation"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!label11",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!checkbutton3",
+   "Flag likely hallucinations (repetition + BoH heuristics)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!label12",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!button",
+   "Apply noisy-audio preset"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe4.!label13",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe5.!frame.!label",
+   "Prompt & hotwords"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe5.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe5.!label",
+   "Initial prompt"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe5.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe5.!label3",
+   "Hotwords (comma-separated)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe5.!label4",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!frame.!label",
+   "AI Layer (optional)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!checkbutton",
+   "Enable AI tools (summaries, Q&A, translation, chapter titles)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!label2",
+   "LLM provider"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!combobox:values",
+   "Local — offline, downloaded model"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!combobox:values",
+   "Remote — your own OpenAI-compatible API"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!label3",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!button",
+   "Install AI model…"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!label4",
+   "Downloads the offline model once (~1 GB); Local needs it before it works."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!label5",
+   "Base URL"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!label6",
+   "API key"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!label7",
+   "For the real OpenAI API, get a key at platform.openai.com. Leave blank for a local server that doesn't need one."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!label8",
+   "Model"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!label9",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!checkbutton2",
+   "Generate auto-chapter markers (writes <name>.chapters.json)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!label10",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe7.!frame.!label",
+   "Watched folder"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe7.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe7.!checkbutton",
+   "Auto-transcribe new files dropped here"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe7.!label",
+   "Folder"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe7.!button",
+   "Browse..."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!frame.!label",
+   "Downloads (yt-dlp)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!label",
+   "SponsorBlock — remove these segments:"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!checkbutton",
+   "Sponsor"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!checkbutton2",
+   "Intro"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!checkbutton3",
+   "Outro"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!checkbutton4",
+   "Interaction reminder"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!checkbutton5",
+   "Self-promo"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!checkbutton6",
+   "Preview/recap"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!checkbutton7",
+   "Filler tangent"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!label3",
+   "Cookies from browser (for login-walled sites — Facebook / Instagram / TikTok stories, some YouTube Shorts):"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!combobox:values",
+   "(off)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!combobox:values",
+   "chrome"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!combobox:values",
+   "edge"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!combobox:values",
+   "firefox"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!combobox:values",
+   "brave"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!combobox:values",
+   "chromium"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!combobox:values",
+   "opera"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!combobox:values",
+   "vivaldi"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!label4",
+   "Video downloader updates:"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!radiobutton",
+   "Ask me when a failed download suggests it is out of date"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!radiobutton2",
+   "Keep it up to date automatically (checks at most once a day, before a download)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!radiobutton3",
+   "Never update it"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!label5",
+   "Updates come from yt-dlp's own GitHub releases (stable), are checked against their published checksums and go to a copy in your user folder; the app's own copy is never changed."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!label6",
+   "When a video already has subtitles and I download it to transcribe:"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!radiobutton4",
+   "Ask me each time"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!radiobutton5",
+   "Use the subtitles (seconds) instead of transcribing"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe8.!radiobutton6",
+   "Always download and transcribe"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame.!label",
+   "App behaviour"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame2.!checkbutton",
+   "Minimise to system tray instead of exit"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame2.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!checkbutton",
+   "Send usage statistics (on by default; also in the Help menu)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame3.!checkbutton",
+   "Work offline (also in the File menu)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame3.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame4.!checkbutton",
+   "Text to Voice: no text length limit (advanced)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame4.!label",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame5.!label",
+   "Subtitle Edit program:"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame5.!button",
+   "Browse…"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame5.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!label",
+   "New versions:"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!radiobutton",
+   "Tell me when a new version is available (a quiet bar under the menu)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!radiobutton2",
+   "Don't check for updates"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!label2",
+   "Help → Check for updates… always works. The app never installs anything by itself."
+  ],
+  [
+   ".!advanceddialog.!frame.!frame2.!button",
+   "Cancel"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame2.!button2",
+   "Save"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame2.!button3",
+   "Restore transcription defaults"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame2.!label",
+   " ⓘ "
+  ]
+ ],
+ "tooltips": [
+  [
+   "tooltip#0",
+   "Which Whisper model and engine run the transcription, where downloaded models are kept, and an optional word-timing refinement pass. An engine that needs a key or its own download gets a setup section right below this one once picked."
+  ],
+  [
+   "tooltip#1",
+   "Where downloaded model files are stored (faster-whisper, whisper.cpp, NVIDIA Parakeet). Change it to send future downloads to a different drive -- for example one with more free space. Changing this does NOT move models you've already downloaded; point it at a folder that already has them to reuse it without re-downloading."
+  ],
+  [
+   "tooltip#2",
+   "Which engine runs the transcription. Faster-Whisper is the default; whisper.cpp helps on low-end CPUs. The two cloud engines and NVIDIA Parakeet need a one-time setup, which appears right below this section once you pick one. An engine that cannot run until you set it up is marked '⚠ unavailable' here. Same picker as the Engine dropdown on the Transcribe tab."
+  ],
+  [
+   "tooltip#3",
+   "Checks for an NVIDIA GPU (CUDA), NPUs and DirectML and picks the fastest option. If an NVIDIA GPU can't be used yet it says why and can install the missing NVIDIA library."
+  ],
+  [
+   "tooltip#4",
+   "After transcribing, re-aligns every word's start/end time against the audio (stable-ts, about ±50 ms) for sharper per-word timing, e.g. karaoke highlighting in ASS/VTT subtitles. Adds roughly 10-30% to the run time, and needs a one-time ~700 MB component that is offered the first time you transcribe with this on."
+  ],
+  [
+   "tooltip#5",
+   "Optional — paste a free Gemini API key to transcribe via Google's cloud instead of this machine. Uploads your audio; see the privacy warning below before turning it on."
+  ],
+  [
+   "tooltip#6",
+   "Optional — the full Google Cloud Speech-to-Text service, signed in with a downloaded service-account JSON file (not the simple API key the separate Gemini engine uses). The only engine in this app that natively combines real word-level timestamps, speaker diarization, AND a cheap Batch mode for long files (~$0.004/minute, usually ready within 24 hours). New accounts get 60 free minutes/month plus a $300/90-day credit. Uploads your audio to Google — not offline."
+  ],
+  [
+   "tooltip#7",
+   "Only needed for Batch mode above: the name of a Google Cloud Storage bucket YOU own, that this Google Cloud account has access to. Create one in the Cloud Storage section of the console if you don't have one yet."
+  ],
+  [
+   "tooltip#8",
+   "Labels which speaker said each part of the transcript (Speaker 1, Speaker 2, ...). Works in both modes above. In Batch mode, labels stay consistent across the whole file. In Standard (online) mode, audio is sent to Google in ~1-minute pieces and the speaker numbering restarts each time, so the same person can end up under a different label in different parts of the transcript."
+  ],
+  [
+   "tooltip#9",
+   "An alternative offline speech engine (multilingual FastConformer/Parakeet) that runs entirely on this machine — no audio ever leaves the device. Downloads transformers + torch + the model (a few GB) automatically on first use."
+  ],
+  [
+   "tooltip#10",
+   "Which transcript file types to write for every transcription (SRT/VTT subtitles, plain TXT, JSON with timestamps, etc.). You can check more than one — all checked formats are written for every job."
+  ],
+  [
+   "tooltip#11",
+   "Styled subtitles with per-word karaoke highlighting and text effects. Used by subtitle editors like Aegisub."
+  ],
+  [
+   "tooltip#12",
+   "A Microsoft Word document with the transcript text."
+  ],
+  [
+   "tooltip#13",
+   "For ELAN, a linguistics annotation tool used in language research and documentation."
+  ],
+  [
+   "tooltip#14",
+   "For Express Scribe, transcription software often paired with a foot pedal. Export-only."
+  ],
+  [
+   "tooltip#15",
+   "For InqScribe, a transcription-editing application."
+  ],
+  [
+   "tooltip#16",
+   "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read."
+  ],
+  [
+   "tooltip#17",
+   "Synced-lyrics format used by music players and some karaoke tools."
+  ],
+  [
+   "tooltip#18",
+   "Markdown with bold timestamps — readable on GitHub, Notion, or any Markdown viewer."
+  ],
+  [
+   "tooltip#19",
+   "Round-trips with the free otranscribe.com web transcript editor."
+  ],
+  [
+   "tooltip#20",
+   "A PDF of the transcript, ready to print or share."
+  ],
+  [
+   "tooltip#21",
+   "Fills the Supreme Master TV transcription team's exact Word template layout."
+  ],
+  [
+   "tooltip#22",
+   "The most common subtitle format. Works in VLC, YouTube uploads, and nearly every video player/editor."
+  ],
+  [
+   "tooltip#23",
+   "Tab-separated start/end/text — opens directly as an Audacity Labels track for lining the transcript up against a waveform."
+  ],
+  [
+   "tooltip#24",
+   "Plain text, one line per segment, no timestamps — for reading or pasting the transcript elsewhere."
+  ],
+  [
+   "tooltip#25",
+   "The web-standard subtitle format (HTML5 video, YouTube). Also supports per-word karaoke highlighting."
+  ],
+  [
+   "tooltip#26",
+   "How the audio is prepared before the model hears it: skip silent stretches (VAD), reduce background noise, or isolate vocals from music (Demucs) — plus flagging of lines that look hallucinated. 'Apply noisy-audio preset' at the bottom sets these for a typical non-studio recording."
+  ],
+  [
+   "tooltip#27",
+   "On (recommended): silent stretches are detected and skipped before the audio reaches the speech model — faster, and it stops Whisper from hallucinating text into pure silence.\n\nOff: the whole file is sent to the model as-is, silence included. The three sliders right below only matter while this is on.\n\nMin silence: how long a gap must be to count as silence. Threshold: how confident the detector must be that audio is speech (lower = more sensitive). Speech pad: extra padding kept around each detected speech chunk."
+  ],
+  [
+   "tooltip#28",
+   "Cleans hiss, hum and rumble out of the audio before the speech model hears it, which cuts hallucinated lines on noisy recordings.\n\nThe audio is measured first: recordings that are already clean are left completely untouched, because over-cleaning makes transcripts worse, not better. The result is checked afterwards too — if the filter removed speech instead of noise, the original audio is used.\n\nUses the bundled ffmpeg only: no download, no extra install, works offline. Costs roughly 20-40 seconds per hour of audio."
+  ],
+  [
+   "tooltip#29",
+   "Auto (recommended) measures each recording and picks the gentlest setting that helps — including doing nothing at all. Pick a fixed strength only to override that measurement on material you know well; a fixed strength is applied even to clean audio."
+  ],
+  [
+   "tooltip#30",
+   "Demucs isolates vocals from background music/noise before transcribing. Can improve accuracy on noisy recordings; adds processing time."
+  ],
+  [
+   "tooltip#31",
+   "Marks segments that look like Whisper's known failure modes on silence/noise: repeated phrases, or text matching common 'beginning of hallucination' (BoH) patterns. Flags them in the output rather than removing them."
+  ],
+  [
+   "tooltip#32",
+   "One click for a non-studio recording (street noise, a crowded room, a phone call): turns on VAD + denoise (fixed 'medium', not 'auto') + hallucination flagging, and raises the VAD threshold so background noise is less likely to be misread as speech. Does NOT turn on Demucs — that's a much heavier download/step, opt into it above separately if this preset alone isn't enough."
+  ],
+  [
+   "tooltip#33",
+   "Optional text fed to the model before it starts, and words to bias recognition toward."
+  ],
+  [
+   "tooltip#34",
+   "Optional text fed to the model as context before it starts — e.g. proper nouns or a punctuation/formatting style to nudge it toward. Leave blank for none."
+  ],
+  [
+   "tooltip#35",
+   "Words or short phrases (names, jargon, acronyms) the model should be biased toward recognizing correctly when it hears something close to them."
+  ],
+  [
+   "tooltip#36",
+   "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote)."
+  ],
+  [
+   "tooltip#37",
+   "Master switch for the transcript viewer's AI Tools tab (summarize, action items, ask, translate) and for sentence-like auto-chapter titles (without it, chapters get plain generic titles). 'LLM provider' below picks where the model runs."
+  ],
+  [
+   "tooltip#38",
+   "Local (default): a small offline model (Qwen2.5-1.5B) on this machine — nothing leaves it. Install it once with 'Install AI model…'.\n\nRemote: sends the same summarise/action-items/ask/translate requests to an OpenAI-compatible '/chat/completions' endpoint you configure instead — the real OpenAI API with your own key, or a self-hosted server (Ollama, LM Studio, vLLM) or proxy (OpenRouter) if you point the Base URL at one. Your transcript text is sent to whatever endpoint you configure — only use this with a provider you trust."
+  ],
+  [
+   "tooltip#39",
+   "The exact model id your endpoint expects, e.g. gpt-4o-mini or gpt-4o for the real OpenAI API, or a locally-loaded model's name for Ollama/LM Studio. This app does not pick one for you — different accounts/servers have different models available."
+  ],
+  [
+   "tooltip#40",
+   "Splits the transcript into chapters at natural long pauses and writes them to a separate <name>.chapters.json file next to the transcript. Titles are a short generic label by default, or a real sentence-like title when 'Enable AI tools' above is also on. Browse them from the transcript viewer's Chapters tab."
+  ],
+  [
+   "tooltip#41",
+   "Automatically queues any new audio/video file dropped into this folder for transcription, using your current Transcribe settings — no need to open the app and browse for it."
+  ],
+  [
+   "tooltip#42",
+   "Options for video downloads (Download Videos tab): which SponsorBlock segments get cut, browser cookies for login-walled sites, and how the video downloader stays up to date."
+  ],
+  [
+   "tooltip#43",
+   "SponsorBlock is a community-maintained database of skippable segments (ads, intros, self-promo, etc.) for the exact video. Checked categories are cut from the downloaded file automatically when the site has data for it."
+  ],
+  [
+   "tooltip#44",
+   "General app behaviour: whether closing the window minimises to the system tray instead of exiting, whether usage statistics (no audio or transcript content) are sent, whether the app works offline, and whether it tells you about a new version."
+  ],
+  [
+   "tooltip#45",
+   "When on, closing the main window (the X button) hides it to a small icon near the clock instead of quitting — any running or queued jobs keep going in the background. Click the tray icon to bring the window back, or use its right-click menu to Exit for real."
+  ],
+  [
+   "tooltip#46",
+   "When on, the app makes no network connection at all: no update check, no usage statistics, no online settings. Local transcription works with the models already on this computer. Anything that needs the internet (a link, a model download, a cloud engine) tells you so and offers to turn this off."
+  ],
+  [
+   "tooltip#47",
+   "Off by default: one Text to Voice job takes up to 100,000 characters (about 90 minutes of speech). When on, longer texts are accepted. A long job is still spoken piece by piece, so it can be cancelled and continued, and the time, file size and free disk space are still checked before it starts. A very long text can take many hours."
+  ],
+  [
+   "tooltip#48",
+   "Leave empty to use an installed Subtitle Edit (found automatically). Choose SubtitleEdit.exe here only for a portable copy. The \"Open in Subtitle Edit\" button after a job uses it."
+  ],
+  [
+   "tooltip#49",
+   "Resets the Silence & noise settings (VAD, denoise, Demucs, hallucination flagging), word-timing refinement and auto-chapters back to their defaults — plus GPU batch size, which no longer has a control of its own. Nothing is saved until you click Save, so Cancel undoes this too. Output formats, the hotwords/prompt text, model/engine choice, watched folder, and any cloud credentials are left untouched — those are deliberate choices, not per-job tuning knobs."
+  ]
+ ],
+ "model_combo_tooltip": [
+  [
+   "reason",
+   ""
+  ]
+ ],
+ "nav:whisper_cpp": [
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label",
+   "Jump to"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label11",
+   "Model & engine"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label12",
+   "Output formats"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label13",
+   "Silence & noise"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label14",
+   "Prompt & hotwords"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label15",
+   "AI Layer"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label16",
+   "App preferences"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label17",
+   "Watched folder"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label18",
+   "Downloads (yt-dlp)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label19",
+   "App behaviour"
+  ]
+ ],
+ "model_combo_tooltip:whisper_cpp": [
+  [
+   "reason",
+   "The whisper.cpp — offline, low-end CPUs engine uses its own model. This picker only applies to the Faster-Whisper engine, so a change here would have no effect."
+  ]
+ ],
+ "nav:cloud_stt": [
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label",
+   "Jump to"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label20",
+   "Model & engine"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label21",
+   "Gemini setup"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label22",
+   "Output formats"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label23",
+   "Silence & noise"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label24",
+   "Prompt & hotwords"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label25",
+   "AI Layer"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label26",
+   "App preferences"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label27",
+   "Watched folder"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label28",
+   "Downloads (yt-dlp)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label29",
+   "App behaviour"
+  ]
+ ],
+ "model_combo_tooltip:cloud_stt": [
+  [
+   "reason",
+   "The Gemini cloud — simple API key engine uses its own model. This picker only applies to the Faster-Whisper engine, so a change here would have no effect."
+  ]
+ ],
+ "nav:google_cloud_stt": [
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label",
+   "Jump to"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label30",
+   "Model & engine"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label31",
+   "Google Cloud setup"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label32",
+   "Output formats"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label33",
+   "Silence & noise"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label34",
+   "Prompt & hotwords"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label35",
+   "AI Layer"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label36",
+   "App preferences"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label37",
+   "Watched folder"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label38",
+   "Downloads (yt-dlp)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label39",
+   "App behaviour"
+  ]
+ ],
+ "model_combo_tooltip:google_cloud_stt": [
+  [
+   "reason",
+   "The Google Cloud Speech-to-Text — service account (60 min/mo free) engine uses its own model. This picker only applies to the Faster-Whisper engine, so a change here would have no effect."
+  ]
+ ],
+ "nav:nvidia_asr": [
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label",
+   "Jump to"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label40",
+   "Model & engine"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label41",
+   "Parakeet setup"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label42",
+   "Output formats"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label43",
+   "Silence & noise"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label44",
+   "Prompt & hotwords"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label45",
+   "AI Layer"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label46",
+   "App preferences"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label47",
+   "Watched folder"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label48",
+   "Downloads (yt-dlp)"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!frame.!label49",
+   "App behaviour"
+  ]
+ ],
+ "model_combo_tooltip:nvidia_asr": [
+  [
+   "reason",
+   "The NVIDIA Parakeet TDT v3 — local, multilingual (transformers) engine uses its own model. This picker only applies to the Faster-Whisper engine, so a change here would have no effect."
+  ]
+ ],
+ "header_open:cloud_stt": [
+  [
+   "header",
+   "▾ Gemini cloud setup (optional — uploads audio to Google)"
+  ]
+ ],
+ "header_open:google_cloud_stt": [
+  [
+   "header",
+   "▾ Google Cloud Speech-to-Text setup (optional — uploads audio)"
+  ]
+ ],
+ "fine_tune_open": [
+  [
+   "link",
+   "▾ Fine-tune"
+  ]
+ ],
+ "model_info": [
+  [
+   ".!advanceddialog.!toplevel",
+   "Model info"
+  ],
+  [
+   ".!advanceddialog.!toplevel.!frame.!label",
+   "Test model (core catalog)"
+  ],
+  [
+   ".!advanceddialog.!toplevel.!frame.!label2",
+   "Core catalog description.\n\nApprox. download size: ~1.5 GB"
+  ],
+  [
+   ".!advanceddialog.!toplevel.!frame.!button",
+   "Close"
+  ]
+ ],
+ "model_info_bare": [
+  [
+   ".!advanceddialog.!toplevel2",
+   "Model info"
+  ],
+  [
+   ".!advanceddialog.!toplevel2.!frame.!label",
+   "Bare"
+  ],
+  [
+   ".!advanceddialog.!toplevel2.!frame.!label2",
+   "No description available."
+  ],
+  [
+   ".!advanceddialog.!toplevel2.!frame.!button",
+   "Close"
+  ]
+ ],
+ "gcloud_help": [
+  [
+   ".!advanceddialog.!toplevel3",
+   "How to get a Google Cloud service-account JSON file"
+  ],
+  [
+   ".!advanceddialog.!toplevel3.!frame.!label",
+   "Follow these steps once. The links open the exact Google Cloud console pages (screenshots are not embedded)."
+  ],
+  [
+   ".!advanceddialog.!toplevel3.!frame.!frame.!label",
+   "1. Create or pick a Google Cloud project."
+  ],
+  [
+   ".!advanceddialog.!toplevel3.!frame.!frame.!label2",
+   "https://console.cloud.google.com/projectcreate"
+  ],
+  [
+   ".!advanceddialog.!toplevel3.!frame.!frame2.!label",
+   "2. Enable the Speech-to-Text API for that project."
+  ],
+  [
+   ".!advanceddialog.!toplevel3.!frame.!frame2.!label2",
+   "https://console.cloud.google.com/apis/library/speech.googleapis.com"
+  ],
+  [
+   ".!advanceddialog.!toplevel3.!frame.!frame3.!label",
+   "3. (Optional but recommended) Make sure billing is on to unlock the 60 free min/month + $300 credit."
+  ],
+  [
+   ".!advanceddialog.!toplevel3.!frame.!frame3.!label2",
+   "https://console.cloud.google.com/billing"
+  ],
+  [
+   ".!advanceddialog.!toplevel3.!frame.!frame4.!label",
+   "4. Create a service account, then give it the role 'Cloud Speech-to-Text User' (for Batch mode also 'Storage Object Admin' on your bucket)."
+  ],
+  [
+   ".!advanceddialog.!toplevel3.!frame.!frame4.!label2",
+   "https://console.cloud.google.com/iam-admin/serviceaccounts"
+  ],
+  [
+   ".!advanceddialog.!toplevel3.!frame.!frame5.!label",
+   "5. On that service account: Keys > Add key > Create new key > JSON > Download. Keep this file private."
+  ],
+  [
+   ".!advanceddialog.!toplevel3.!frame.!frame6.!label",
+   "6. Back here, click 'Browse...' and pick that downloaded .json file. Then click 'Test connection'."
+  ],
+  [
+   ".!advanceddialog.!toplevel3.!frame.!label2",
+   "Official guide: https://cloud.google.com/speech-to-text/docs/before-you-begin"
+  ],
+  [
+   ".!advanceddialog.!toplevel3.!frame.!button",
+   "Close"
+  ]
+ ],
+ "gemini_key_test": [
+  [
+   "status",
+   "Paste an API key first."
+  ],
+  [
+   "status",
+   "Testing key…"
+  ],
+  [
+   "status",
+   "OK — core says fine"
+  ],
+  [
+   "status",
+   "Testing key…"
+  ],
+  [
+   "status",
+   "FAILED — core says no"
+  ],
+  [
+   "status",
+   "Testing key…"
+  ],
+  [
+   "status",
+   "FAILED — Key check failed: boom"
+  ]
+ ],
+ "gcloud_connection_test": [
+  [
+   "status",
+   "Pick your service-account JSON file first (Browse...)."
+  ],
+  [
+   "status",
+   "Testing connection..."
+  ],
+  [
+   "status",
+   "Installing Google Cloud libraries (one-time)..."
+  ],
+  [
+   "status",
+   "FAILED — could not install the Google Cloud libraries. Check your internet connection and retry."
+  ],
+  [
+   "status",
+   "Testing connection..."
+  ],
+  [
+   "status",
+   "FAILED — core error text"
+  ],
+  [
+   "status",
+   "Testing connection..."
+  ],
+  [
+   "status",
+   "FAILED — client boom"
+  ],
+  [
+   "status",
+   "Testing connection..."
+  ],
+  [
+   "status",
+   "OK — service account accepted. The Speech-to-Text client initialised — you can transcribe with this backend."
+  ],
+  [
+   "status",
+   "Testing connection (using the build-bundled key)..."
+  ],
+  [
+   "status",
+   "OK — the build-bundled service account works. The Speech-to-Text client initialised — you can transcribe with this backend."
+  ],
+  [
+   "status",
+   "Testing connection (using the build-bundled key)..."
+  ],
+  [
+   "status",
+   "FAILED — connection test error: ctor boom"
+  ]
+ ],
+ "gcloud_path": [
+  [
+   "bundled",
+   "✓ Using the built-in Google Cloud key (loaded)"
+  ],
+  [
+   "none",
+   "(none selected)"
+  ]
+ ],
+ "gcloud_usage_unavailable": [
+  [
+   "usage",
+   "Usage unavailable: import of core.backends.google_cloud_stt halted; None in sys.modules"
+  ]
+ ],
+ "file_dialogs": [
+  [
+   "Choose SubtitleEdit.exe",
+   "[[\"Program\", \"*.exe\"], [\"All files\", \"*.*\"]]"
+  ],
+  [
+   "Choose a folder to watch",
+   "[]"
+  ],
+  [
+   "Pick your Google Cloud service-account JSON key file",
+   "[[\"JSON key file\", \"*.json\"], [\"All files\", \"*.*\"]]"
+  ]
+ ],
+ "save_failed": [
+  [
+   "Settings not saved",
+   "The settings could not be saved:\ndisk full\n\nClose other programs that may be using the settings file, then click Save again."
+  ]
+ ],
+ "dialog_variant_texts": [
+  [
+   "variant",
+   "This copy of the app cannot update its video downloader by itself; a new app version brings a newer one."
+  ],
+  [
+   "variant",
+   "The WTS_DISABLE_UPDATER environment variable turns the daily check off on this computer. Help → Check for updates… always works. The app never installs anything by itself."
+  ]
+ ],
+ "confirm_model_change": [
+  [
+   "confirm",
+   "action=Changing the model"
+  ],
+  [
+   "confirm",
+   "question=Change it anyway?"
+  ],
+  [
+   "confirm",
+   "title=Change the Whisper model?"
+  ]
+ ]
+}
