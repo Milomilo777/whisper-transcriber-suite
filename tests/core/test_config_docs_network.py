@@ -211,7 +211,9 @@ _NOTHING_IS_SENT = re.compile(
 
 
 def test_translated_readme_guard_controls() -> None:
-    assert len(_I18N_READMES) == 8  # de es fa fr ja ko pt zh-CN
+    # One per interface language (tools/make_i18n_readmes.py LANGS). The phrase list above covers
+    # the eight older translations; every file must still name the stats switch.
+    assert len(_I18N_READMES) == 41
     assert _NOTHING_IS_SENT.search("Alle Backends laufen lokal. Nichts wird hochgeladen, ...")
     assert _NOTHING_IS_SENT.search("sin coste por minuto, sin telemetría por defecto")
     assert _NOTHING_IS_SENT.search("... " + _FA_NOTHING_UPLOADED + " ...")

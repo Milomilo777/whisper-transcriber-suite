@@ -4,6 +4,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- **The project page in 42 languages**: `docs/i18n/` now has a README for every interface
+  language (33 new, machine-translated), and the 8 older translations are brought up to date
+  with the English page. Each file names the English commit it follows.
+
 ## [2.1.0] — 2026-10-12
 
 ### Added

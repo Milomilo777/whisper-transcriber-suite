@@ -1,129 +1,236 @@
 <div align="center">
 
-<img src="../img/hero.png" alt="Whisper Transcriber Suite" width="100%">
+<img src="../img/hero.png" alt="Whisper Transcriber Suite: sound in, text out. Free, open-source transcription that runs Whisper on your own computer." width="100%">
 
 # Whisper Transcriber Suite
 
-### Arraste um ficheiro de áudio ou vídeo. Receba uma **transcrição com marcação de tempo e formatada** — sem que o ficheiro saia do seu computador.
+**Transcrição e legendas gratuitas e offline para longas gravações no seu idioma — num portátil comum, sem necessidade de conta e sem envio de áudio.**
 
 [![CI](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/Milomilo777/whisper-transcriber-suite?label=release&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
-[![License: BSD-3](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](../../LICENSE)
-[![Stars](https://img.shields.io/github/stars/Milomilo777/whisper-transcriber-suite?style=flat&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite)
+[![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](../../LICENSE)
 
-### [⬇  Transferir para Windows](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
+### [Transferir para Windows](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
+
+macOS e Linux: consulte a secção [Transferir](#download).
+
+<!-- language-links:start -->
 
 <p>
-  <a href="../../README.md"><img src="https://flagcdn.com/16x12/us.png" alt="" width="16" height="12"> English</a> ∙
-  <a href="README.zh-CN.md"><img src="https://flagcdn.com/16x12/cn.png" alt="" width="16" height="12"> 简体中文</a> ∙
-  <a href="README.ja.md"><img src="https://flagcdn.com/16x12/jp.png" alt="" width="16" height="12"> 日本語</a> ∙
-  <a href="README.ko.md"><img src="https://flagcdn.com/16x12/kr.png" alt="" width="16" height="12"> 한국어</a> ∙
-  <a href="README.de.md"><img src="https://flagcdn.com/16x12/de.png" alt="" width="16" height="12"> Deutsch</a> ∙
-  <a href="README.es.md"><img src="https://flagcdn.com/16x12/es.png" alt="" width="16" height="12"> Español</a> ∙
-  <a href="README.fr.md"><img src="https://flagcdn.com/16x12/fr.png" alt="" width="16" height="12"> Français</a> ∙
-  <img src="https://flagcdn.com/16x12/pt.png" alt="" width="16" height="12">
-  <b>Português</b> ∙
-  <a href="README.fa.md"><img src="https://flagcdn.com/16x12/ir.png" alt="" width="16" height="12"> فارسی</a>
+<a href="../../README.md">English</a> ·
+<a href="README.de.md">Deutsch</a> ·
+<a href="README.fr.md">Français</a> ·
+<a href="README.es.md">Español</a> ·
+<a href="README.it.md">Italiano</a> ·
+<a href="README.pt-BR.md">Português (Brasil)</a> ·
+<b>Português (Portugal)</b> ·
+<a href="README.nl.md">Nederlands</a> ·
+<a href="README.pl.md">Polski</a> ·
+<a href="README.ru.md">Русский</a> ·
+<a href="README.uk.md">Українська</a> ·
+<a href="README.tr.md">Türkçe</a> ·
+<a href="README.cs.md">Čeština</a> ·
+<a href="README.sk.md">Slovenčina</a> ·
+<a href="README.hu.md">Magyar</a> ·
+<a href="README.ro.md">Română</a> ·
+<a href="README.bg.md">Български</a> ·
+<a href="README.el.md">Ελληνικά</a> ·
+<a href="README.sv.md">Svenska</a> ·
+<a href="README.da.md">Dansk</a> ·
+<a href="README.nb.md">Norsk bokmål</a> ·
+<a href="README.fi.md">Suomi</a> ·
+<a href="README.hr.md">Hrvatski</a> ·
+<a href="README.sr.md">Српски</a> ·
+<a href="README.sl.md">Slovenščina</a> ·
+<a href="README.lt.md">Lietuvių</a> ·
+<a href="README.zh-CN.md">简体中文</a> ·
+<a href="README.zh-TW.md">繁體中文</a> ·
+<a href="README.ja.md">日本語</a> ·
+<a href="README.ko.md">한국어</a> ·
+<a href="README.vi.md">Tiếng Việt</a> ·
+<a href="README.th.md">ไทย</a> ·
+<a href="README.id.md">Bahasa Indonesia</a> ·
+<a href="README.ms.md">Bahasa Melayu</a> ·
+<a href="README.hi.md">हिन्दी</a> ·
+<a href="README.ar.md">العربية</a> ·
+<a href="README.fa.md">فارسی</a> ·
+<a href="README.he.md">עברית</a> ·
+<a href="README.lv.md">Latviešu</a> ·
+<a href="README.ca.md">Català</a> ·
+<a href="README.bn.md">বাংলা</a> ·
+<a href="README.fil.md">Filipino</a>
 </p>
+
+<!-- language-links:end -->
+
+<!-- translated from README.md at commit 66585d5 -->
 
 </div>
 
----
+## A quem se destina
 
-Uma aplicação de ambiente de trabalho que executa o modelo Whisper da OpenAI **localmente**, através do [faster-whisper](https://github.com/SYSTRAN/faster-whisper), pelo que transcrever não custa nada por minuto, funciona num avião e nunca envia a sua gravação para ninguém. Largue um ficheiro e serão escritos `.srt`, `.vtt`, `.txt`, `.json`, `.docx`, `.pdf` e mais, ao lado do original. Também descarrega de qualquer site suportado pelo `yt-dlp`, identifica oradores, processa uma fila de trabalhos e pode transformar-se numa página de transcrição para os outros dispositivos da sua rede.
+Legendadores, tradutores, investigadores e jornalistas que convertem longas
+gravações (entrevistas, palestras, conferências, vídeos) em texto ou legendas.
+Arraste um ficheiro de áudio ou vídeo e a transcrição será guardada junto ao mesmo. O motor de reconhecimento de voz é executado no seu próprio computador, portanto não há
+custos por minuto e, uma vez transferido o modelo, não é necessária ligação
+à internet.
 
-Sem conta. Sem chave de API. Sem subscrição. Os seus ficheiros ficam no seu disco.
+<div align="center">
+<img src="../img/screenshot-transcribe.png" alt="O separador Transcribe: uma área para largar ficheiros, seletores de motor e idioma, e opções de etiquetas de orador e de marcas temporais por palavra" width="80%">
+</div>
 
-- 🔒 **Corre na sua máquina** — faster-whisper (CTranslate2) por omissão, mais whisper.cpp e NVIDIA Parakeet
-- 📝 **14 formatos de saída** — `srt` `vtt` `ass` `tsv` `txt` `json` `lrc` `md` `docx` `pdf`, mais oTranscribe / ELAN / InqScribe / Express Scribe
-- 🎙️ **Transcrição em direto** — microfone ou som do sistema, enquanto se fala → [LIVE.md](../LIVE.md)
-- 🗣️ **Identificação de oradores** — diarização offline, marcação de tempo por palavra e corte por intervalo
-- 🎬 **Descargas** — qualquer site suportado pelo `yt-dlp`, com transcrição automática no fim se quiser
-- 🧹 **Redução de ruído adaptativa** — mede o áudio e só o limpa quando isso ajuda → [DENOISE.md](../DENOISE.md)
-- 🌐 **Modo de rede local** — torne esta máquina numa página de transcrição para os seus outros dispositivos
-- 💸 **Gratuito e com licença BSD-3** — sem custo por minuto, sem subscrição
+## Novidades na versão 2.0
 
-## Transferência
+- **Velocidade e tempo restante:** o separador "Queue" (Fila) mostra a velocidade de cada tarefa e uma estimativa do tempo restante.
+- **Vídeo legendado a partir de um link:** transfira, transcreva e incorpore as legendas numa única tarefa ([docs/SUBTITLED_VIDEO.md](../SUBTITLED_VIDEO.md)).
+- **Transcrição como página web:** um ficheiro `.html` com pesquisa e reprodução ao clicar, que funciona offline em qualquer navegador.
+- **Modo offline verificável:** com a opção "Work offline" ativa, uma linha de estado mostra se a aplicação ou um processo iniciado por ela tem ligação à rede.
+- **Tradução para inglês:** discurso noutros idiomas é convertido em legendas em inglês de uma só vez.
+- **Início rápido:** as novas instalações fazem três perguntas, e um clipe de amostra de 18 segundos mostra o resultado imediatamente.
+- **Reportar um problema** através do menu Help, sem necessidade de conta no GitHub.
+- **macOS:** menu da aplicação com Settings (Comando-vírgula), modos Claro e Escuro que seguem o sistema, notificações. **Windows:** progresso na barra de tarefas e barras de título escuras.
 
-Obtenha a versão mais recente na **[página de releases](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)**:
-
-| Ficheiro | Tamanho | Indicado para |
-|---|---|---|
-| **`WhisperTranscriberSuite-…-Setup-Standard.exe`** | ~215 MB | **A maioria das pessoas.** Um instalador normal: atalho no menu Iniciar, atualiza por cima de uma versão anterior, ficheiros visíveis no disco. |
-| **`WhisperTranscriberSuite-…-Portable.zip`** | ~330 MB | Descompactar e executar. Sem instalação, sem permissões de administrador, funciona numa pen USB. |
-| **`WhisperTranscriberSuite-…-macOS-*.dmg`** | ~400 MB | macOS (x64 e arm64 são publicados em separado). |
-
-Está tudo incluído — um Python integrado, `ffmpeg`, `ffprobe` e `yt-dlp`. A única coisa transferida depois é o próprio modelo de voz (**1–3 GB, uma só vez**, no primeiro arranque); a partir daí a aplicação funciona totalmente offline.
+Lista completa: [CHANGELOG](../CHANGELOG.md).
 
 ## Funcionalidades
 
-<div align="center">
+- **Motores locais:** [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
+  (padrão), whisper.cpp e NVIDIA Parakeet, para os muitos idiomas que o Whisper
+  reconhece. Utiliza uma GPU NVIDIA
+  através do CUDA quando possível, caso contrário utiliza o processador (CPU).
+- **A aplicação no seu idioma:** Menus, botões e mensagens em 42 idiomas (tradução
+  automática, assinalada como tal; as correções são bem-vindas). Segue o idioma do
+  seu sistema, ou pode escolher um em Definições avançadas. O persa, o árabe e o
+  hebraico estão, para já, disponíveis no Windows.
+- **14 formatos de saída:** SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX e
+  PDF, para além dos formatos oTranscribe, ELAN, InqScribe e Express Scribe. Os formatos DOCX
+  e PDF renderizam todas as escritas corretamente, e persa, árabe e urdu são lidos da direita para a esquerda
+  com letras unidas.
+- **Página web partilhável:** guarde uma transcrição concluída como um único ficheiro `.html` que
+  funciona offline em qualquer navegador; clique numa palavra para a ouvir, pesquise, salte entre
+  capítulos.
+- **Identificação de oradores** sem necessidade de conta no Hugging Face, com carimbos de data/hora palavra a palavra e
+  recorte de intervalos de tempo.
+- **Retoma de tarefas interrompidas** a partir do último ponto de restauro, em vez de recomeçar
+  do zero (motor padrão).
+- **Vídeos online:** transfira de qualquer site suportado pelo [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+  e transcreva assim que a transferência for concluída.
+- **Link para vídeo legendado:** basta uma seleção para converter um link em `<title>-subbed.mp4`
+  com as legendas incorporadas: transfira, transcreva e incorpore numa única tarefa em fila de espera
+  ([docs/SUBTITLED_VIDEO.md](../SUBTITLED_VIDEO.md)).
+- **Ao vivo:** transcreva o microfone, ou o áudio do sistema no Windows, em tempo
+  real ([docs/LIVE.md](../LIVE.md)).
+- **Fila de tarefas em lote e pasta monitorizada** para vários ficheiros em simultâneo.
+- **Modo de rede local:** uma página de transcrição e uma API compatível com OpenAI para
+  os restantes dispositivos na sua rede ([docs/SERVER.md](../SERVER.md)).
+- **Opcional, desativado por padrão:** ferramentas de IA para uma transcrição concluída (resumo,
+  perguntas, SRT bilingue), e texto para voz offline com clonagem de voz.
 
-<img src="../img/features.png" alt="" width="100%">
+Como se compara ao Subtitle Edit, Vibe, Buzz, noScribe e aTrain,
+incluindo em que situações outra aplicação poderá ser a melhor escolha:
+**[docs/COMPARISON.md](../COMPARISON.md)**.
 
-</div>
+<a id="download"></a>
 
-| | |
+## Transferir
+
+Último lançamento: **[página de lançamentos](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)**.
+
+| Ficheiro | Para |
 |---|---|
-| **Transcrição local** | Whisper `large-v3` por omissão, mais `large-v3-turbo` e `distil-large-v3.5`. |
-| **Muitos formatos de saída** | `srt` `vtt` `ass` `tsv` `txt` `json` `lrc` `md` `docx` `pdf` — escritos ao lado do ficheiro de entrada. |
-| **Transcrição em direto** | Transcreve um microfone — ou o que esta máquina estiver a reproduzir — em tempo real. Os cortes caem em pausas naturais, pelo que as palavras nunca ficam partidas ao meio. |
-| **Diarização de oradores** | «Identificar oradores» opcional, mais marcação de tempo por palavra e corte por intervalo. |
-| **Redução de ruído adaptativa** | Mede cada gravação primeiro e só a limpa quando a medição o justifica; verifica o próprio resultado e descarta-o se tiver removido voz. |
-| **Fila de processamento** | Estado em direto de cada trabalho pendente e em curso, com **Pausar / Retomar / Cancelar / Repetir / Remover** sempre a um clique. |
-| **Descargas** | Tudo o que o `yt-dlp` consegue. As descargas retomam em vez de recomeçar. |
-| **Modo de rede local** | Um servidor web feito só com a biblioteca padrão, para que outros dispositivos transcrevam através desta máquina — palavra-passe opcional, desligado até o iniciar. |
+| `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 ou 11, 64 bits. A maioria dos utilizadores necessita deste. |
+| `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows sem instalação: extrair e executar. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Macs com Apple Silicon, macOS 14 ou mais recente. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Macs com processadores Intel, macOS 10.15 ou mais recente. |
 
-## Como funciona
+Linux executa-se a partir do código fonte: [platform/linux/README.md](../../platform/linux/README.md).
 
-<div align="center">
+O executável FFmpeg incluído é uma compilação GPL. O seu código fonte correspondente encontra-se anexado a cada versão como ficheiros
+`WhisperTranscriberSuite-vX.Y.Z-source-ffmpeg-*`; os links exatos estão presentes em
+[THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md).
 
-<img src="../img/how-it-works.png" alt="" width="100%">
+ffmpeg e yt-dlp vêm incluídos. Ao abrir pela primeira vez, uma janela de início rápido permite escolher
+o modelo de voz para o seu idioma: Rápido (Small, cerca de 500 MB) ou Melhor
+qualidade (até cerca de 3 GB); será transferido uma única vez, na primeira utilização. Planeie cerca de 8 GB
+de memória RAM; no processador (CPU) os modelos Large demoram aproximadamente 1.5 a 2.5 vezes a duração do
+áudio e os Small demoram cerca de metade. Uma placa gráfica (GPU) NVIDIA é bastante mais rápida. As compilações do Windows não são assinadas e as do Mac não são
+notarizadas, pelo que o SmartScreen e o Gatekeeper poderão apresentar avisos na primeira vez que o executar;
+[docs/INSTALL.md](../INSTALL.md) demonstra os passos necessários para avançar. Para atualizar, execute simplesmente o
+novo instalador por cima do antigo; as suas definições serão mantidas.
 
-</div>
+**Transferências por versão** (cada emblema contabiliza apenas a própria versão — as versões antigas mantêm-se publicadas e os seus contadores nunca são repostos a zero):
 
-A interface Tk corre no processo principal. Cada trabalho de transcrição corre num subprocesso de longa duração que mantém o modelo Whisper em memória e responde por JSON delimitado por linhas em stdin/stdout; o `yt-dlp` recebe um subprocesso próprio por descarga. Um token UUID por worker e um sinal de vida de 5 segundos tornam esse encaminhamento robusto face à reutilização de identificadores de processo e permitem à interface detetar um worker bloqueado em vez de bloquear com ele.
+[![v2.1.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v2.1.0/total?label=v2.1.0&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.1.0)
+[![v2.0.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v2.0.0/total?label=v2.0.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.0.0)
+[![v1.9.3](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.9.3/total?label=v1.9.3&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.3)
+[![v1.9.1](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.9.1/total?label=v1.9.1&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.1)
+[![v1.9.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.9.0/total?label=v1.9.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.0)
+[![v1.8.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.8.0/total?label=v1.8.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.8.0)
+[![v1.7.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.7.0/total?label=v1.7.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.7.0)
+[![v1.6.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.6.0/total?label=v1.6.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.6.0)
+[![v1.5.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.5.0/total?label=v1.5.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.5.0)
 
-## Local por omissão
+## O que sai do seu computador
 
-Todos os backends por omissão correm na sua máquina: o áudio e as transcrições ficam nela, não existe conta e, depois de o modelo ser transferido, a aplicação funciona com a rede desligada. Por omissão, a aplicação envia estatísticas de utilização depois de cada transcrição concluída (modelo, idioma, duração do áudio e da transcrição, número de palavras, versão da aplicação, sistema operativo, CPU e tamanho da memória, região; nunca o nome do ficheiro); pode desativá-las em **Help → Usage statistics**.
+Com as definições por omissão, os seus ficheiros áudio e transcrições permanecem sempre no seu computador.
+A aplicação utiliza a rede para:
 
-> [!IMPORTANT]
-> Dois backends **opcionais** quebram essa garantia e ambos estão desligados a menos que vá a **Advanced → Backend** e os escolha. Use-os apenas com conteúdo que esteja disposto a enviar a terceiros.
->
-> - **`cloud_stt`** — Google Gemini API → [CLOUD_STT.md](../CLOUD_STT.md)
-> - **`google_cloud_stt`** — Google Cloud Speech-to-Text → [CLOUD_STT_GOOGLE.md](../CLOUD_STT_GOOGLE.md)
+- transferir um modelo ou um componente opcional da primeira vez que for necessário;
+- configurações iniciais e uma verificação diária de atualizações no GitHub, que
+  serve apenas para o notificar de uma nova versão;
+- estatísticas de utilização, ativas por omissão, após cada transcrição terminada: modelo utilizado,
+  idioma, durações, contagem de palavras, versão da aplicação, sistema operativo, tamanho da CPU e da
+  memória RAM, além da região, mas nunca o nome do ficheiro. Poderá desativar esta opção em
+  **Help → Usage statistics**.
 
-## Compilar a partir do código
+O texto da transcrição e o ficheiro áudio só serão enviados para a internet se optar ativamente por um motor em nuvem (API Gemini
+ou Google Cloud Speech-to-Text) ou associar um provedor de IA remoto. O modo
+**File → Work offline** desativa imediatamente qualquer ligação. Todas as ligações encontram-se descritas em
+[docs/CONFIG.md](../CONFIG.md#network-use).
 
-```bash
+## Documentação
+
+[Instalação](../INSTALL.md) · [Configuração](../CONFIG.md) ·
+[Transcrição ao vivo](../LIVE.md) · [Modo de rede local e API](../SERVER.md) ·
+[Motores na nuvem](../CLOUD_STT.md) · [Arquitetura](../ARCHITECTURE.md) ·
+[Changelog](../CHANGELOG.md) · [Toda a documentação](../README.md)
+
+## Compilar através do código fonte
+
+```cmd
 git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
 cd whisper-transcriber-suite
 pip install -r requirements.txt
 python gui.py
 ```
 
-## Documentação
+Necessita de Python 3.11 ou mais recente. Pipelines de compilação: [docs/BUILD.md](../BUILD.md). Testes e pull requests:
+[CONTRIBUTING.md](../../CONTRIBUTING.md).
 
-| Documento | Conteúdo |
-|---|---|
-| [INSTALL.md](../INSTALL.md) | Instalação e resolução de problemas |
-| [LIVE.md](../LIVE.md) | O separador Live |
-| [DENOISE.md](../DENOISE.md) | Redução de ruído adaptativa |
-| [SERVER.md](../SERVER.md) | Modo servidor web / rede local |
-| [CONFIG.md](../CONFIG.md) | Todas as chaves de configuração |
-| [BUILD.md](../BUILD.md) | Compilar por si próprio |
-| [CHANGELOG.md](../CHANGELOG.md) | Histórico de versões |
+## Contribuição e contacto
 
-> A documentação completa está em inglês. Esta página é um resumo; consulte os documentos em inglês para os detalhes.
+- **Bugs e sugestões de funcionalidades:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
+- **Dúvidas e ideias:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
+- **Quaisquer outros assuntos:** via correio eletrónico, através da
+  [Secção de contacto do site](https://whisper-transcriber-suite.pages.dev/#contact)
+- **Relatórios de segurança:** [SECURITY.md](../../SECURITY.md)
+
+Este projeto segue o [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md).
+Se a aplicação lhe poupar tempo, deixar uma Estrela (Star) no topo desta página poderá ajudar outros utilizadores
+a encontrá-la mais rapidamente.
+
+## Como este projeto é concebido
+
+O mantenedor (maintainer) desenvolve o projeto com considerável auxílio de assistentes virtuais de IA (essencialmente o Claude). As verificações de tipo
+e os testes unitários necessitam de ser concluídos com sucesso antes de cada alteração de código (commit), e o sistema de integração contínua (CI) volta a executá-los para Windows e Linux após
+cada submissão (push). A [lista de verificação de lançamentos](../RELEASE_PROCESS.md) inclui uma etapa manual para testar a instalação num computador
+físico. Atualmente, sempre que um submissão é realizado em conjunto com um assistente de IA, o respetivo modelo é mencionado na linha `Assisted-by:`; as submissões mais
+antigas têm antes uma linha `Co-Authored-By: Claude`.
 
 ## Licença
 
-O código próprio deste projeto está sob a **licença BSD 3-Clause** — ver [LICENSE](../../LICENSE). Os binários incluídos (`ffmpeg`, `ffprobe`, `yt-dlp`), o ambiente Python fornecido e os seus pacotes, e o próprio modelo Whisper mantêm as suas licenças originais; [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) resume-as.
-
----
-
-<div align="center">
-<sub>transcrição offline · Whisper local com interface · gerador de legendas · diarização · Windows · macOS</sub>
-</div>
+Copyright (c) 2026 translation-robot (co-autor). O projeto é desenvolvido e mantido neste repositório,
+[Milomilo777/whisper-transcriber-suite](https://github.com/Milomilo777/whisper-transcriber-suite).
+O código fonte do projeto encontra-se licenciado sob os termos da [Licença BSD 3-Clause](../../LICENSE). As ferramentas incorporadas,
+o ambiente de execução Python e os modelos mantêm, respetivamente, as suas próprias licenças; consulte a secção
+[THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md).
