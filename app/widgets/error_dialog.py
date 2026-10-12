@@ -10,7 +10,7 @@ import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk
 from app.dpi import px
-from app.i18n import _
+from app.i18n import _, plain
 from app.theme import tokens
 
 
@@ -101,7 +101,7 @@ def show_error(
         def _copy_detail() -> None:
             try:
                 top.clipboard_clear()
-                top.clipboard_append(detail or "")
+                top.clipboard_append(plain(detail or ""))
             except tk.TclError:
                 pass
 

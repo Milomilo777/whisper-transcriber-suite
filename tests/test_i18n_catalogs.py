@@ -19,6 +19,8 @@ from app import i18n
 ROOT = Path(__file__).resolve().parent.parent
 LOCALES = ROOT / "app" / "locales"
 EXTRACTOR = ROOT / "tools" / "i18n_extract.py"
+# LRM, RLM, LRE..RLO, LRI..PDI
+BIDI_MARKS = frozenset(chr(c) for c in (0x200E, 0x200F, *range(0x202A, 0x202F), *range(0x2066, 0x206A)))
 
 
 def _fields(text: str) -> set[str] | None:
@@ -81,6 +83,14 @@ def catalog_problems(path: Path, source: dict[str, Any]) -> tuple[list[str], lis
                 continue
             if value and _fields(value) != _fields(msgid):
                 problems.append(f"{key!r}: placeholders {_fields(value)} differ from {_fields(msgid)}")
+    # Direction marks are added by app.i18n where Tk needs them (docs/TRANSLATING.md); one typed
+    # into a translation doubles them, and Tk on Windows draws the isolates as boxes.
+    for key, value in messages.items():
+        forms = value if isinstance(value, list) else [value]
+        found = {f"U+{ord(ch):04X}" for form in forms if isinstance(form, str) for ch in form
+                 if ch in BIDI_MARKS}
+        if found:
+            problems.append(f"{key!r} has direction marks {sorted(found)}; the app adds them itself")
     if code == "en":
         for key, value in messages.items():
             want = source.get(key)
@@ -157,6 +167,9 @@ def test_validator_accepts_a_good_partial_catalog(tmp_path: Path) -> None:
     ("de", {}, {"plural": "pl"}, "plural"),
     ("de", {}, {"direction": "rtl"}, "direction"),
     ("xx", {}, {}, "not in SUPPORTED_LANGUAGES"),
+    ("fa", {"Save": chr(0x202B) + "ذخیره" + chr(0x202C)}, {}, "direction marks"),
+    ("fa", {"Save": "ذخیره" + chr(0x200F)}, {}, "direction marks"),
+    ("he", {"{n} file": ["{n} קובץ", "x" + chr(0x2067), "y"]}, {}, "direction marks"),
 ])
 def test_validator_catches(tmp_path: Path, code: str, messages: Any, meta: dict[str, Any],
                            needle: str) -> None:

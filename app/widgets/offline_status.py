@@ -24,7 +24,7 @@ import tkinter as tk
 from collections.abc import Callable, Sequence
 from tkinter import ttk
 
-from app.i18n import N_, _, ngettext, pgettext, translate
+from app.i18n import N_, _, ngettext, pgettext, plain, translate
 from app.theme import tokens
 from core import offline
 
@@ -226,7 +226,7 @@ class NetworkLogWindow(tk.Toplevel):
 
     def copy_all(self) -> None:
         self.clipboard_clear()
-        self.clipboard_append(self.content())
+        self.clipboard_append(plain(self.content()))
 
     def verify(self) -> None:
         """Run :func:`core.offline.self_test` off the Tk thread, then show the result."""

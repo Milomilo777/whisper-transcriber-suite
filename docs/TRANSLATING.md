@@ -18,8 +18,8 @@ translated yet; see [Not translated yet](#not-translated-yet).
 - The language is chosen once at start-up, before any window is built (`app.run()` calls
   `i18n.init_language()`). Changing it needs a restart.
   - The config key `ui_language` (see [CONFIG.md](CONFIG.md)) is `"auto"` or a language code.
-  - `"auto"` uses the operating system's display language only when its catalog has status
-    `"reviewed"`; otherwise English. A region falls back to its language (`pt-BR`, then `pt`);
+  - `"auto"` uses the operating system's display language when a catalog for it ships, reviewed
+    or machine-translated; otherwise English. A region falls back to its language (`pt-BR`, then `pt`);
     `zh-TW` and `zh-HK` map to `zh-Hant`, `zh-CN` and `zh-SG` to `zh-Hans`. The display
     language is Windows' display language, on macOS the first of the preferred languages
     (System Settings > Language & Region), on Linux `LC_ALL`, `LC_MESSAGES` or `LANG`.
@@ -106,8 +106,8 @@ and expects an empty list, plus a test that its English texts did not change.
   (system language)" and every catalog in `app/locales`, each language by its own name. Pick
   one, click Save and start the app again (a notice in the main window says so when the
   language will change). A catalog with status `"machine"` is listed as "<name> (machine
-  translation)"; `"auto"` never chooses it. Right-to-left catalogs are not listed yet (see the
-  note at the end of the next section); load them with `WTS_UI_LANGUAGE`.
+  translation)"; `"auto"` never chooses it. Right-to-left catalogs are listed on Windows only
+  (see the note at the end of the next section); elsewhere load them with `WTS_UI_LANGUAGE`.
 - **For one run**, without touching the setting: set `WTS_UI_LANGUAGE` to the code, then start
   from source. It wins over the saved setting; while it is set, the picker's notice says so.
 
@@ -143,8 +143,8 @@ and expects an empty list, plus a test that its English texts did not change.
    `east_slavic` rule has three forms (one, few, many) and `none` has one.
 6. Keys that contain `\u0004` carry a context before that character; translate only the value.
 7. Status: `"machine"` for an unreviewed machine translation, `"reviewed"` once a person who
-   speaks the language has checked it. `"auto"` never picks a machine translation: a person
-   gets one only by choosing it. The language picker lists it with the note
+   speaks the language has checked it. `"auto"` picks either kind for a matching display
+   language. The language picker lists a machine translation with the note
    "(machine translation)" after the language's name; a reviewed catalog shows the name alone.
 8. Run `python -m pytest tests/test_i18n_catalogs.py` (it reports untranslated messages as
    warnings and fails on broken placeholders, wrong plural counts or keys `en.json` lacks), then
@@ -152,10 +152,26 @@ and expects an empty list, plus a test that its English texts did not change.
 
 Files are UTF-8 with LF line endings; `.gitattributes` keeps them LF on Windows checkouts.
 
-Right-to-left languages: the layer records the direction (`i18n.current_direction()`), but the
-Tk widgets are not mirrored yet. Until they are (`i18n.RTL_LAYOUT_READY` is `False`), the
-language picker does not offer an `rtl` catalog; `WTS_UI_LANGUAGE` or an explicit `ui_language`
-code still loads one. Check how an `rtl` catalog looks before setting `"reviewed"`.
+Right-to-left languages (Arabic, Persian, Hebrew): Tk draws every text with a left-to-right base
+direction, so a Persian line with a Latin word or a number in it, or ending in `:` or `)`, would
+come out in the wrong order. On Windows the layer therefore wraps each line of a right-to-left
+translation in two invisible direction marks (RIGHT-TO-LEFT EMBEDDING U+202B and POP DIRECTIONAL
+FORMATTING U+202C), so the line reads right to left. The English fallback of a missing
+translation gets no marks. The layout itself is not mirrored: labels and buttons keep their
+left-to-right places.
+
+- Never add direction marks (U+200E, U+200F, U+202A to U+202E, U+2066 to U+2069) to a
+  translation yourself: the layer adds the ones Tk needs, and Tk on Windows draws the isolates
+  U+2066 to U+2069 as boxes. `tests/test_i18n_catalogs.py` fails on a catalog that has them.
+  Keep the line breaks (`\n`) of the English text: each line gets its own pair of marks.
+- The language picker offers right-to-left catalogs on Windows only (`i18n.rtl_layout_ready()`;
+  the platforms are `i18n.RTL_PLATFORMS`), and `"auto"` chooses one only there. macOS and Linux
+  get them once someone has checked how they look there; until then `WTS_UI_LANGUAGE` or an
+  explicit `ui_language` code still loads one, without the marks.
+- In code, a translated text that leaves the screen (the log file, the clipboard, a file) goes
+  through `i18n.plain()`, which removes the marks. `App.log` does this for the log file.
+
+Check how an `rtl` catalog looks on Windows before setting `"reviewed"`.
 
 ## Not translated yet
 
