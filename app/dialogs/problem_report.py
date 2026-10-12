@@ -13,6 +13,7 @@ from tkinter import ttk
 from typing import Any
 
 from app.dpi import place_over
+from app.i18n import _, pgettext
 from app.theme import tokens
 from core import problem_report as pr
 from core._threads import safe_thread
@@ -24,7 +25,7 @@ _GRAB_TRIES = 40  # about two seconds
 
 def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str) -> tk.Toplevel:
     dlg = tk.Toplevel(parent)
-    dlg.title("Report a problem")
+    dlg.title(_("Report a problem"))
     dlg.transient(parent.winfo_toplevel())
     dlg.resizable(True, True)
     body = ttk.Frame(dlg, padding=(16, 14, 16, 8))
@@ -32,14 +33,14 @@ def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str
     body.columnconfigure(0, weight=1)
     body.rowconfigure(2, weight=1)
 
-    ttk.Label(body, text="What went wrong?", font=("TkDefaultFont", 11, "bold")).grid(
+    ttk.Label(body, text=_("What went wrong?"), font=("TkDefaultFont", 11, "bold")).grid(
         row=0, column=0, sticky="w")
     ttk.Label(
         body, wraplength=460, justify="left",
         foreground=tokens.themed(tokens.TEXT_MUTED),
-        text=("Describe what you did and what happened. Your message is sent to the project with "
-              "the app version and your operating system only: no file names, no logs, no "
-              "settings. There is no reply; for a conversation, use GitHub."),
+        text=_("Describe what you did and what happened. Your message is sent to the project with "
+               "the app version and your operating system only: no file names, no logs, no "
+               "settings. There is no reply; for a conversation, use GitHub."),
     ).grid(row=1, column=0, sticky="w", pady=(4, 8))
 
     text = tk.Text(body, width=60, height=8, wrap="word", undo=True)
@@ -47,9 +48,9 @@ def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str
     info = ttk.Frame(body)
     info.grid(row=3, column=0, sticky="ew", pady=(6, 0))
     info.columnconfigure(0, weight=1)
-    ttk.Label(info, text="Sent with: " + pr.system_summary(),
+    ttk.Label(info, text=_("Sent with: {system}", system=pr.system_summary()),
               foreground=tokens.themed(tokens.TEXT_MUTED)).grid(row=0, column=0, sticky="w")
-    count_var = tk.StringVar(master=dlg, value=f"0 / {pr.MAX_CHARS}")
+    count_var = tk.StringVar(master=dlg, value=_("{count} / {limit}", count=0, limit=pr.MAX_CHARS))
     count = ttk.Label(info, textvariable=count_var, foreground=tokens.themed(tokens.TEXT_MUTED))
     count.grid(row=0, column=1, sticky="e", padx=(12, 0))
     status_var = tk.StringVar(master=dlg, value="")
@@ -58,13 +59,13 @@ def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str
 
     footer = ttk.Frame(dlg, padding=(16, 4, 16, 14))
     footer.pack(fill="x")
-    gh = ttk.Label(footer, text="Have a GitHub account? Report it there",
+    gh = ttk.Label(footer, text=_("Have a GitHub account? Report it there"),
                    foreground=tokens.themed(tokens.LINK), cursor="hand2")
     gh.pack(side="left")
     gh.bind("<Button-1>", lambda _e: webbrowser.open(github_url))
-    send_btn = ttk.Button(footer, text="Send", style="Accent.TButton")
+    send_btn = ttk.Button(footer, text=_("Send"), style="Accent.TButton")
     send_btn.pack(side="right")
-    ttk.Button(footer, text="Cancel", command=dlg.destroy).pack(side="right", padx=(0, 8))
+    ttk.Button(footer, text=_("Cancel"), command=dlg.destroy).pack(side="right", padx=(0, 8))
 
     def _current() -> str:
         return text.get("1.0", "end-1c")
@@ -72,7 +73,10 @@ def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str
     def _update_count(_e: object = None) -> None:
         n = len(pr.clean_text(_current()))
         raw = len(" ".join(_current().split()))
-        count_var.set(f"{n} / {pr.MAX_CHARS}" + ("  (the rest is cut)" if raw > pr.MAX_CHARS else ""))
+        if raw > pr.MAX_CHARS:
+            count_var.set(_("{count} / {limit}  (the rest is cut)", count=n, limit=pr.MAX_CHARS))
+        else:
+            count_var.set(_("{count} / {limit}", count=n, limit=pr.MAX_CHARS))
         send_btn.state(["!disabled"] if n else ["disabled"])
 
     def _on_modified(_e: object = None) -> None:
@@ -93,7 +97,7 @@ def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str
         except pr.ProblemReportError as e:
             results.put(str(e))
         except Exception as e:  # noqa: BLE001 - any failure is shown, never raised into Tk
-            results.put(f"Could not send the report: {e}")
+            results.put(_("Could not send the report: {error}", error=e))
 
     def _poll() -> None:
         try:
@@ -105,9 +109,9 @@ def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str
         if not dlg.winfo_exists():
             return
         if outcome is None:
-            status_var.set("Thank you. Your report was sent.")
+            status_var.set(_("Thank you. Your report was sent."))
             status.configure(foreground=tokens.themed(tokens.SUCCESS_TEXT))
-            send_btn.configure(text="Close", command=dlg.destroy)
+            send_btn.configure(text=pgettext("button", "Close"), command=dlg.destroy)
             send_btn.state(["!disabled"])
             text.configure(state="disabled")
         else:
@@ -126,7 +130,7 @@ def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str
             return
         send_btn.state(["disabled"])
         text.configure(state="disabled")  # no edits (and no re-enabled Send) while sending
-        status_var.set("Sending…")
+        status_var.set(_("Sending…"))
         status.configure(foreground=tokens.themed(tokens.TEXT_MUTED))
         safe_thread(_worker, args=(message,), name="problem-report")
         dlg.after(_POLL_MS, _poll)

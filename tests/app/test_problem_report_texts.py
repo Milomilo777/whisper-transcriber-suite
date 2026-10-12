@@ -98,5 +98,26 @@ def capture_states(mp: pytest.MonkeyPatch) -> dict[str, list[list[str]]]:
 
 
 def test_english_texts_match_the_capture_made_before_translation(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app import i18n
+    i18n.set_language("en")
     expected = json.loads(FIXTURE.read_text(encoding="utf-8"))
     assert capture_states(monkeypatch) == expected
+
+
+def test_pseudo_locale_leaves_no_dialog_text_untranslated(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Built in qps-ploc every text the dialog owns is marked; only core messages are not."""
+    from app import i18n
+    from tests.app.i18n_walk import is_pseudo_marked
+
+    try:
+        assert i18n.set_language(i18n.PSEUDO_LOCALE) == i18n.PSEUDO_LOCALE
+        states = capture_states(monkeypatch)
+    finally:
+        i18n.set_language("en")
+    # Texts that come from core/ (not translated yet) or are empty.
+    core_texts = {"", "Please describe the problem first.", "The server refused the report (HTTP 500)."}
+    untranslated = sorted({t for rows in states.values() for _w, t in rows
+                           if t not in core_texts and not is_pseudo_marked(t)})
+    assert untranslated == []
+    sent_with = [t for _w, t in states["empty"] if SYSTEM in t]
+    assert len(sent_with) == 1  # the placeholder value is kept inside the marked text

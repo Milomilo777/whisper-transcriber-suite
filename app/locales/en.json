@@ -6,5 +6,19 @@
   "plural": "one_other",
   "status": "source"
  },
- "messages": {}
+ "messages": {
+  "Cancel": "Cancel",
+  "Could not send the report: {error}": "Could not send the report: {error}",
+  "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system only: no file names, no logs, no settings. There is no reply; for a conversation, use GitHub.": "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system only: no file names, no logs, no settings. There is no reply; for a conversation, use GitHub.",
+  "Have a GitHub account? Report it there": "Have a GitHub account? Report it there",
+  "Report a problem": "Report a problem",
+  "Send": "Send",
+  "Sending…": "Sending…",
+  "Sent with: {system}": "Sent with: {system}",
+  "Thank you. Your report was sent.": "Thank you. Your report was sent.",
+  "What went wrong?": "What went wrong?",
+  "button\u0004Close": "Close",
+  "{count} / {limit}": "{count} / {limit}",
+  "{count} / {limit}  (the rest is cut)": "{count} / {limit}  (the rest is cut)"
+ }
 }
