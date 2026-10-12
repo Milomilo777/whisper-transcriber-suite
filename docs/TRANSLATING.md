@@ -158,12 +158,12 @@ come out in the wrong order. On Windows the layer therefore wraps each line of a
 translation in two invisible direction marks (RIGHT-TO-LEFT EMBEDDING U+202B and POP DIRECTIONAL
 FORMATTING U+202C), so the line reads right to left. The English fallback of a missing
 translation gets no marks. The layout itself is not mirrored: labels and buttons keep their
-left-to-right places, and a long label that Tk wraps over several lines keeps the
-right-to-left order only on its first line.
+left-to-right places.
 
 - Never add direction marks (U+200E, U+200F, U+202A to U+202E, U+2066 to U+2069) to a
   translation yourself: the layer adds the ones Tk needs, and Tk on Windows draws the isolates
-  U+2066 to U+2069 as boxes. Start a new line with `\n` where a sentence should break.
+  U+2066 to U+2069 as boxes. `tests/test_i18n_catalogs.py` fails on a catalog that has them.
+  Keep the line breaks (`\n`) of the English text: each line gets its own pair of marks.
 - The language picker offers right-to-left catalogs on Windows only (`i18n.rtl_layout_ready()`;
   the platforms are `i18n.RTL_PLATFORMS`), and `"auto"` chooses one only there. macOS and Linux
   get them once someone has checked how they look there; until then `WTS_UI_LANGUAGE` or an
