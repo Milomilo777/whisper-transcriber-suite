@@ -30,7 +30,6 @@ from app import i18n
 
 # Texts the app shows that do not go through the translation layer, with the reason.
 ALLOWED: dict[str, str] = {
-    "Supreme Master TV": "the video-site tab's own name (English-only by design)",
     "Download all parts of this series (SMTV)": "the video-site option on the Download tab "
                                                 "(English-only by design)",
 }
