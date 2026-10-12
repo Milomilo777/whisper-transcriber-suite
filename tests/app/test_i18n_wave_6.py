@@ -259,6 +259,8 @@ def capture_tab(mp: pytest.MonkeyPatch, root: Any, fakes: Any, tmp_path: Path) -
     vct._finish_adding_sample(app, "d.wav", None)
     vct._validate_and_add_sample(app, "e.wav")
     mark("samples")
+    # The limit text is only reached when a microphone exists; a CI machine has none.
+    mp.setattr(recorder, "mic_available", lambda: True)
     vct._record_sample(app)  # still at the limit
     app.vc_samples[:] = []
     mp.setattr(recorder, "mic_available", lambda: False)
@@ -592,8 +594,9 @@ def test_tab_english_texts_match_the_capture_made_before_translation(
         FIXTURE.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n",
                            encoding="utf-8", newline="\n")
     expected = json.loads(FIXTURE.read_text(encoding="utf-8"))["tab"]
-    for key in expected:
-        assert got.get(key) == expected[key], key
+    # Every differing state at once, so one run shows all of them.
+    differ = [key for key in expected if got.get(key) != expected[key]]
+    assert {k: got.get(k) for k in differ} == {k: expected[k] for k in differ}
     assert sorted(got) == sorted(expected)
 
 

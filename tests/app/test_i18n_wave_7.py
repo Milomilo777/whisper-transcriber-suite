@@ -18,6 +18,7 @@ marked, apart from the listed exceptions.
 from __future__ import annotations
 
 import json
+import ntpath
 import os
 import re
 import threading
@@ -40,7 +41,36 @@ CAPTURE = (os.environ.get("WTS_CAPTURE_I18N") == "1"
            or FIXTURE.with_name("CAPTURE_WAVE_7").exists())
 # The video-site feature stays English-only and never reaches a catalog (or this fixture).
 _VIDEO_SITE = "Supreme " + "Master"
-MEDIA = os.path.join(os.sep, "media", "talks", "talk one.mp4")
+
+# The English captures were made on Windows, so the made-up paths the tests hand to the app are
+# written there as ``\media\talks\...``. ``_fake`` builds such a path in the running platform's
+# form (the app splits and joins it with ``os.path``) and remembers its Windows form, which
+# ``_windows_form`` puts back into the texts the app showed, before they are compared.
+_FAKE_PATHS: dict[str, str] = {}
+
+
+def _fake(*parts: str) -> str:
+    here = os.path.join(os.sep, *parts)
+    # The stem, without the extension: the app also shows the media file's ".srt" sibling.
+    _FAKE_PATHS[os.path.splitext(here)[0]] = ntpath.splitext(ntpath.join("\\", *parts))[0]
+    return here
+
+
+def _windows_form(value: Any) -> Any:
+    if isinstance(value, str):
+        if os.sep == "\\":
+            return value
+        for here, windows in sorted(_FAKE_PATHS.items(), key=lambda kv: -len(kv[0])):
+            value = re.sub(re.escape(here) + r"(?!\w)", lambda _m, w=windows: w, value)
+        return value
+    if isinstance(value, dict):
+        return {key: _windows_form(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_windows_form(item) for item in value]
+    return value
+
+
+MEDIA = _fake("media", "talks", "talk one.mp4")
 
 Rows = list[list[str]]
 
@@ -262,16 +292,16 @@ def capture_windowless(mp: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Rows
     stub = _stub(shown)
     mp.setattr(app_mod, "task_srt_output", lambda _t: None)
     App._burn_subs_for(stub, task)  # type: ignore[arg-type]
-    mp.setattr(app_mod, "task_srt_output", lambda _t: os.path.join(os.sep, "x.srt"))
+    mp.setattr(app_mod, "task_srt_output", lambda _t: _fake("x.srt"))
     App._burn_subs_for(stub, task)  # type: ignore[arg-type]
     App._burn_subs_failed(stub, "ffmpeg stopped")  # type: ignore[arg-type]
     states["burn_subs"] = shown.take()
 
     # View transcript when no JSON was saved; a page that cannot be read; a missing recent file.
-    App.open_transcript_viewer_for(stub, os.path.join(os.sep, "nowhere", "gone.mp4"))  # type: ignore[arg-type]
+    App.open_transcript_viewer_for(stub, _fake("nowhere", "gone.mp4"))  # type: ignore[arg-type]
     mp.setattr(app_mod.share_page, "load_transcript", lambda _p: (_ for _ in ()).throw(OSError("nope")))
-    App._save_shareable_page_for(stub, MEDIA, os.path.join(os.sep, "x.json"))  # type: ignore[arg-type]
-    App._open_recent(stub, os.path.join(os.sep, "nowhere", "gone.mp4"))  # type: ignore[arg-type]
+    App._save_shareable_page_for(stub, MEDIA, _fake("x.json"))  # type: ignore[arg-type]
+    App._open_recent(stub, _fake("nowhere", "gone.mp4"))  # type: ignore[arg-type]
     states["viewer_and_recent"] = shown.take()
 
     # Work offline: a failed save, then the "needs the internet" question.
@@ -335,7 +365,7 @@ def capture_windowless(mp: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Rows
 
     def _install(progress_cb: Callable[[int], None]) -> str:
         progress_cb(45)
-        return os.path.join(os.sep, "deno")
+        return _fake("deno")
 
     mp.setattr("core.js_runtime.install_deno", _install)
     mp.setattr("core.js_runtime.DENO_DOWNLOAD_MB", 40)
@@ -498,7 +528,7 @@ def capture_windowless(mp: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Rows
                       _exit_from_tray=True, _exit_prompt_open=False)
         App.on_exit(leave)  # type: ignore[arg-type]
     mp.setattr(shortcuts, "is_mac", lambda: False)
-    app_mod._warn_exports_not_updated(_stub(shown), [os.path.join(os.sep, "w", "talk.docx")])
+    app_mod._warn_exports_not_updated(_stub(shown), [_fake("w", "talk.docx")])
     states["exit_and_cancel"] = shown.take()
 
     # Convert transcript: a parse error, a write error, success (Windows and macOS wording).
@@ -535,7 +565,7 @@ def capture_windowless(mp: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Rows
         App.try_sample_clip(_stub(shown))  # type: ignore[arg-type]
     states["sample_clip"] = shown.take()
     assert not shown.rows
-    return states
+    return _windows_form(states)
 
 
 def _english_rows(states: dict[str, Rows]) -> list[str]:
@@ -549,8 +579,9 @@ def test_windowless_english_texts_match_the_capture(
         _save_part("windowless", states)
     expected = _load_fixture()["windowless"]
     assert sorted(states) == sorted(expected)
-    for name in expected:
-        assert states[name] == expected[name], name
+    # Every differing state at once, so one run shows all of them.
+    differ = [name for name in expected if states[name] != expected[name]]
+    assert {n: states[n] for n in differ} == {n: expected[n] for n in differ}
 
 
 # Texts the windowless states show that do not belong to app/app.py's catalog entries: the
@@ -689,6 +720,17 @@ def _menu_texts(menu: Any) -> list[str]:
     return [text for _path, text in _menu_labels(menu)]
 
 
+def _cascade_menus(host: Any, menubar: Any) -> list[Any]:
+    """The submenus of a menu bar's cascade entries, in order.
+
+    ``tk.Menu(parent)`` has a tear-off entry at index 0 in Tk 8.6 (it has no ``-menu`` option
+    and raises ``TclError`` on ``entrycget``) and none in Tk 9, where tear-off is off by default.
+    Counting only the cascades gives the same names and order on both.
+    """
+    return [host.nametowidget(str(menubar.entrycget(i, "menu")))
+            for i in range(int(menubar.index("end")) + 1) if menubar.type(i) == "cascade"]
+
+
 def capture_tk(mp: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, list[str]]:
     """Build the parts of the main window app/app.py owns on a real Tk host."""
     from app.widgets import tabs
@@ -707,9 +749,8 @@ def capture_tk(mp: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, list[str]]:
         # The menu bar (Windows / Linux form) and the recent-files submenu.
         host._build_menu()
         states["menubar"] = _menu_texts(host._menubar)
-        for i in range(int(host._menubar.index("end")) + 1):
-            sub = host.nametowidget(host._menubar.entrycget(i, "menu"))
-            states[f"menu_{i}"] = _menu_texts(sub)
+        for n, sub in enumerate(_cascade_menus(host, host._menubar)):
+            states[f"menu_{n}"] = _menu_texts(sub)
         host._populate_recent_menu()
         states["recent_empty"] = _menu_texts(host._recent_menu)
         host.history = types.SimpleNamespace(list_transcriptions=lambda limit=10: [
@@ -794,7 +835,7 @@ def capture_tk(mp: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, list[str]]:
             dlg.destroy()
 
         mp.setattr(host, "wait_window", _wait)
-        host._ask_convert_format(os.path.join(os.sep, "x", "talk.srt"))
+        host._ask_convert_format(_fake("x", "talk.srt"))
         states["convert_picker"] = picker.pop()
 
         # The optional install window (and its Cancel).
@@ -856,7 +897,7 @@ def capture_tk(mp: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, list[str]]:
         states["tray_notice"] = [_strip_path(t, str(tmp_path)) for t in tray]
     finally:
         host.destroy()
-    return states
+    return _windows_form(states)
 
 
 def _walk(widget: Any) -> Iterator[Any]:
@@ -876,8 +917,9 @@ def test_tk_english_texts_match_the_capture(
         _save_part("tk", states)
     expected = _load_fixture()["tk"]
     assert sorted(states) == sorted(expected)
-    for name in expected:
-        assert states[name] == expected[name], name
+    # Every differing state at once, so one run shows all of them.
+    differ = [name for name in expected if states[name] != expected[name]]
+    assert {n: states[n] for n in differ} == {n: expected[n] for n in differ}
 
 
 def test_tk_pseudo_locale_leaves_nothing_untranslated(
@@ -903,7 +945,7 @@ def test_tk_the_theme_menu_stores_english_values(
     host = _new_host(monkeypatch)
     try:
         host._build_menu()
-        view = host.nametowidget(host._menubar.entrycget(1, "menu"))
+        view = _cascade_menus(host, host._menubar)[1]
         radios = [i for i in range(int(view.index("end")) + 1) if view.type(i) == "radiobutton"]
         assert [str(view.entrycget(i, "value")) for i in radios] == ["light", "dark", "system"]
         assert all(is_pseudo_marked(str(view.entrycget(i, "label"))) for i in radios)

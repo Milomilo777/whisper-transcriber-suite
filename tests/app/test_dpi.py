@@ -234,6 +234,9 @@ def test_an_unshown_dialog_measures_the_monitor_of_its_parent(monkeypatch):
             seen.append(self.hwnd)
             raise RuntimeError("stop here: only the window asked about is under test")
 
+    # ctypes.windll exists on Windows only; the stand-in lets the code reach the window id.
+    user32 = types.SimpleNamespace(GetMonitorInfoW=types.SimpleNamespace())
+    monkeypatch.setattr(ctypes, "windll", types.SimpleNamespace(user32=user32), raising=False)
     parent = Win(1, True)
     assert dpi._windows_work_area(Win(2, False, master=parent)) is None
     assert dpi._windows_work_area(Win(3, True, master=parent)) is None
