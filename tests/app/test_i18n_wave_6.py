@@ -18,17 +18,19 @@ Regenerate the fixture (only when a text is meant to change) with ``WTS_CAPTURE_
 """
 from __future__ import annotations
 
-import dataclasses
 import json
 import os
 import types
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pytest
 
 from app.widgets import voice_clone_tab as vct
 from core import tts_plan
+# Fixtures: a real Tk root (hidden; these tests run on the test machine, never at a desk)
+# and the hermetic fakes of the voice-tab tests.
+from tests.app.test_voice_clone_tab import fakes, root  # noqa: F401
 
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "i18n" / "i18n_wave_6_en.json"
 CAPTURE = os.environ.get("WTS_CAPTURE_I18N") == "1"
@@ -506,7 +508,7 @@ def _marked(text: str) -> bool:
 _ALLOWED_PREFIX = "CORE: "  # messages the fakes pass in as core/ would (engine errors, issues)
 
 
-def _allowed(text: str, app: Any) -> bool:
+def _allowed(text: str) -> bool:
     from app.domain.languages import SUBTITLE_LANGUAGES
     from core import offline, tts_kokoro
 
@@ -548,7 +550,6 @@ def test_pure_english_texts_match_the_capture_made_before_translation() -> None:
 
 def test_pure_pseudo_locale_marks_every_text() -> None:
     from app import i18n
-    from tests.app.i18n_walk import is_pseudo_marked
     try:
         assert i18n.set_language(i18n.PSEUDO_LOCALE) == i18n.PSEUDO_LOCALE
         got = capture_pure()
@@ -556,7 +557,37 @@ def test_pure_pseudo_locale_marks_every_text() -> None:
         i18n.set_language("en")
     texts = [t for t in _all_texts(got) if t.strip()]
     assert texts
-    assert [t for t in texts if not is_pseudo_marked(t)] == []
+    assert [t for t in texts if not _marked(t)] == []
+
+
+def test_count_texts_keep_their_one_english_form_for_a_count_of_one() -> None:
+    """The counts below used one English form for every number ("1 of 1 pieces"); the
+    capture has no count of one, so the singular msgid is checked here against the old
+    f-string text (ngettext shows the singular only for one)."""
+    from app import i18n
+    i18n.set_language("en")
+    app = types.SimpleNamespace(vc_samples=["a.wav"])
+    assert vct._samples_changed_status(app, False) == "1 reference sample(s)."
+    assert vct._kept_text((1, 1)) == (
+        " 1 of 1 pieces are kept: press Generate with the same text and voice to continue.")
+    one = _plan(estimate=_estimate(measured=True), job=_job(1, total=1), resume_done=1)
+    one.job.pending = lambda: [0]
+    lines = vct._confirm_text(one).split("\n")
+    assert lines[0] == ("Unfinished job found for this text and voice: 1 of 1 pieces are "
+                        "done. Continue it, or start over.")
+    assert lines[1].startswith("Time left for the 1 unfinished pieces on this computer: ")
+    for estimate, middle in ((_estimate(known=False), ": not known yet for this device; "),
+                             (_estimate(), ", estimated from a reference computer; "),):
+        one = _plan(estimate=estimate, job=_job(0, total=1), resume_done=1)
+        assert vct._confirm_text(one).split("\n")[1].startswith(
+            "Time left for the 1 unfinished pieces")
+        assert middle in vct._confirm_text(one).split("\n")[1]
+    piece = getattr(vct, "_piece_status", None)
+    if piece is not None:  # converted tab: the piece-by-piece status line
+        assert piece(None, 1, 1, None) == "Generating: piece 1 of 1..."
+        assert piece("Heart", 1, 1, None) == "Speaking as Heart: piece 1 of 1..."
+        assert piece(None, 1, 1, 30.0).startswith("Generating: piece 1 of 1, ")
+        assert piece("Heart", 1, 1, 30.0).startswith("Speaking as Heart: piece 1 of 1, ")
 
 
 def test_tab_english_texts_match_the_capture_made_before_translation(
@@ -578,7 +609,6 @@ def test_tab_english_texts_match_the_capture_made_before_translation(
 
 def test_tab_pseudo_locale_leaves_no_text_untranslated(monkeypatch, root, fakes, tmp_path) -> None:
     from app import i18n
-    from tests.app.i18n_walk import is_pseudo_marked
     try:
         assert i18n.set_language(i18n.PSEUDO_LOCALE) == i18n.PSEUDO_LOCALE
         got = capture_tab(monkeypatch, root, fakes, tmp_path)
@@ -586,7 +616,7 @@ def test_tab_pseudo_locale_leaves_no_text_untranslated(monkeypatch, root, fakes,
         i18n.set_language("en")
     texts = [t for t in _all_texts(got) if isinstance(t, str) and t.strip()]
     assert len(texts) > 100
-    left = sorted({t for t in texts if not _marked(t) and not _allowed(t, None)})
+    left = sorted({t for t in texts if not _marked(t) and not _allowed(t)})
     assert left == []
     # The fakes' core messages still reach the person, inside the marked sentence or alone.
     assert any("CORE: busy elsewhere" in t for t in texts)
@@ -672,7 +702,3 @@ def test_every_design_value_has_a_marked_label() -> None:
     finally:
         i18n.set_language("en")
     assert [vct._design_label(v) for v in values] == [v[:1].upper() + v[1:] for v in values]
-
-
-# Real Tk root and the hermetic fakes of the voice-tab tests (a hidden window; never local).
-from tests.app.test_voice_clone_tab import fakes, root  # noqa: E402,F401

@@ -1114,15 +1114,7 @@ def _time_line(plan: _JobPlan, resumed: bool) -> str:
                 "Time left for the {n} unfinished pieces on this computer: {time} "
                 "(measured on this computer).", left, time=span)
         return _("Time on this computer: {time} (measured on this computer).", time=span)
-    if _can_measure(plan):
-        if resumed:
-            return ngettext(
-                "Time left for the {n} unfinished pieces: {time} on a typical computer. "
-                "Measure this computer's speed first (about 10 seconds, done once) for its "
-                "own range.",
-                "Time left for the {n} unfinished pieces: {time} on a typical computer. "
-                "Measure this computer's speed first (about 10 seconds, done once) for its "
-                "own range.", left, time=span)
+    if _can_measure(plan) and not resumed:  # a continued job is never offered the measuring run
         return _("Time: {time} on a typical computer. Measure this computer's speed first "
                  "(about 10 seconds, done once) for its own range.", time=span)
     if resumed:

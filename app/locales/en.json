@@ -153,10 +153,6 @@
    "Time left for the {n} unfinished pieces: not known yet for this device; the first run with at least {seconds} seconds of speech measures this computer.",
    "Time left for the {n} unfinished pieces: not known yet for this device; the first run with at least {seconds} seconds of speech measures this computer."
   ],
-  "Time left for the {n} unfinished pieces: {time} on a typical computer. Measure this computer's speed first (about 10 seconds, done once) for its own range.": [
-   "Time left for the {n} unfinished pieces: {time} on a typical computer. Measure this computer's speed first (about 10 seconds, done once) for its own range.",
-   "Time left for the {n} unfinished pieces: {time} on a typical computer. Measure this computer's speed first (about 10 seconds, done once) for its own range."
-  ],
   "Time left for the {n} unfinished pieces: {time}, estimated from a reference computer; the first run with at least {seconds} seconds of speech measures this computer.": [
    "Time left for the {n} unfinished pieces: {time}, estimated from a reference computer; the first run with at least {seconds} seconds of speech measures this computer.",
    "Time left for the {n} unfinished pieces: {time}, estimated from a reference computer; the first run with at least {seconds} seconds of speech measures this computer."
