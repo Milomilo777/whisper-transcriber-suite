@@ -1173,8 +1173,8 @@ def test_queue_and_download_menus_pick_their_wording_from_the_helper() -> None:
 
     queue_src = inspect.getsource(App.menu_row)
     download_src = inspect.getsource(App.download_menu_row)
-    assert 'folder_action_label("Open output folder"' in queue_src
-    assert 'folder_action_label("Open download folder"' in download_src
+    assert 'folder_action_label(_("Open output folder")' in queue_src
+    assert 'folder_action_label(_("Open download folder")' in download_src
     assert "reveal_label(" not in queue_src + download_src
 
 

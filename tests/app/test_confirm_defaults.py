@@ -18,8 +18,7 @@ APP = pathlib.Path(__file__).resolve().parents[2] / "app"
 # "Yes" (or the dialog's first button) stops, discards, overwrites or quits: the safe answer
 # must be the default. The value is what ``default=`` has to be.
 DESTRUCTIVE = {
-    ("app/app.py", "f'{shortcuts.quit_label()} with queued tasks'"): "no",
-    ("app/app.py", "title"): "no",                    # stop running jobs to switch engine
+    ("app/app.py", "title"): "no",                    # switch engine; exit with queued tasks
     ("app/app.py", "'Cancel transcription?'"): "no",
     ("app/app.py", "'Cancel download?'"): "no",
     ("app/dialogs/transcript_viewer.py", "'Discard changes?'"): "no",
@@ -32,7 +31,7 @@ HARMLESS = {
     ("app/app.py", "'Convert transcript'"),
     ("app/app.py", "'View transcript'"),
     ("app/app.py", "'Offline mode is on'"),
-    ("app/app.py", "f'{friendly} needs a download'"),
+    ("app/app.py", "'{feature} needs a download'"),
     ("app/app.py", "'Resume interrupted transcriptions?'"),
     ("app/app.py", "'Whisper model required'"),
     ("app/app.py", "'Check for updates'"),

@@ -1,0 +1,1705 @@
+{
+ "tk": {
+  "about_text": [
+   "What's new in this version",
+   "Highlights",
+   "• Make a subtitled video: burn the subtitles into a copy of the video, with progress and a Stop button",
+   "• Translate speech straight to English, and share a transcript as a single web page",
+   "• Work offline: one switch that keeps the app off the network",
+   "• Speed and time left for every job, and taskbar progress on Windows",
+   "• A more native Mac app: Open With, the Dock, the menus and notifications, and a video downloader that updates itself",
+   "• Quick start on the first launch, a \"Try it now\" sample clip, and quiet notices instead of message boxes",
+   "Transcription engine",
+   "Input",
+   "• Any audio or video file ffmpeg can read",
+   "• Drag-and-drop one or many files onto the window",
+   "• Browse… (Ctrl+O) for single or multi-select",
+   "• Recent-files submenu (last 10 from history)",
+   "Models",
+   "• Whisper Large v3 (default, ~3 GB)",
+   "• Whisper Large v3 Turbo (~5× faster, ~1.6 GB)",
+   "• Distil Large v3.5 (fastest English-only, ~1.5 GB)",
+   "• Picker lives in the Advanced dialog",
+   "Backends (pluggable)",
+   "• Local Whisper via faster-whisper — the default, runs offline once its model is downloaded, your audio never leaves your computer",
+   "• whisper.cpp via pywhispercpp — optional, quantised, kinder to weak CPUs",
+   "• NVIDIA Parakeet TDT v3 via transformers — optional, local, multilingual",
+   "• Switch in the Advanced dialog under Backend",
+   "Cloud transcription (optional, uploads your audio)",
+   "• Off by default. These send your audio to Google, so they break the offline guarantee — only use them on purpose.",
+   "• Gemini (simple API key): paste one free key from aistudio.google.com and it just works. Free tier is about 60 minutes a month.",
+   "• Google Cloud Speech-to-Text (service account): a purpose-built transcription service with real word timestamps and speaker labels — the only engine here that combines all three: real word-level timestamps, speaker diarization, and a cheap Batch mode for long files. New accounts get 60 free minutes a month plus a $300 / 90-day credit.",
+   "• It needs a service-account JSON file — set it under Advanced › Backend, where a \"How do I get this file?\" button walks you through it step by step.",
+   "• Batch mode (Cloud Speech-to-Text): about 75% cheaper (~$0.004/minute vs ~$0.016/minute standard) but slower — usually ready within 24 hours — and needs a Cloud Storage bucket. Good for large jobs you are not waiting on.",
+   "Hardware",
+   "• Autodetect at first launch (CUDA / NPU / DirectML / CPU)",
+   "• Choice persisted in hardware.json",
+   "• Manual override in the Advanced dialog",
+   "Quality controls",
+   "• Voice Activity Detection (Silero VAD), tunable",
+   "• Word-level timestamps (opt-in)",
+   "• Optional stable-ts word-alignment refinement",
+   "• Optional Demucs vocal-separation pre-processing",
+   "Output formats",
+   "Files written next to your source",
+   "• SubRip — .srt",
+   "• WebVTT — .vtt",
+   "• Whisper JSON — .json (segments + word-level data)",
+   "• Plain text — .txt",
+   "• Tab-separated — .tsv",
+   "• LRC lyrics — .lrc",
+   "• Markdown — .md",
+   "• Microsoft Word — .docx",
+   "• PDF — via reportlab",
+   "Round-trip",
+   "• oTranscribe import (.otr → .srt)",
+   "• oTranscribe export (.srt → .otr) for manual editing",
+   "• ELAN import/export (.eaf)",
+   "• InqScribe import/export (.inqscr / [hh:mm:ss.ff])",
+   "• Express Scribe export (.txt / [hh:mm:ss]) — export only",
+   "Templating",
+   "• output_filename_template config key with tokens {base} {ext} {lang} {date} {speaker_count}",
+   "• Sibling subdirectories created on the fly",
+   "Post-processing",
+   "Per-file extras",
+   "• Speaker diarisation (sherpa-onnx, no HF token)",
+   "• Auto-chapter markers (long-silence heuristic)",
+   "• Hallucination detector — flags suspect segments in the viewer (red rows)",
+   "Optional local LLM",
+   "• Qwen2.5-1.5B-Instruct, download-on-first-use",
+   "• Summaries, Q&A, AI-generated chapter titles",
+   "• Off by default; opt in from the Advanced dialog",
+   "Video download",
+   "Sources",
+   "• Any URL yt-dlp supports (YouTube, Vimeo, …)",
+   "Pipeline options",
+   "• Format/quality picker per URL",
+   "• Audio-only mode (MP3 / m4a / opus)",
+   "• Subtitle download + burn-in to video",
+   "• SponsorBlock category skipping",
+   "• Auto-transcribe after download",
+   "• Cookies from browser — download login-walled / age-gated content (Facebook / Instagram / TikTok, some YouTube Shorts)",
+   "Web / LAN access",
+   "Share transcription from a browser",
+   "• One click on the \"Web / LAN access\" tab opens a simple web page served by this app — no app to install on the other devices",
+   "• Loopback by default: only this computer can reach it (no firewall prompt)",
+   "• Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)",
+   "• Optional access password if you want to limit who can use it",
+   "• Use it only on a network you trust — it is not encrypted",
+   "Transcript viewer",
+   "Open via",
+   "• Help → Open transcript viewer…",
+   "• Last-Result card → View transcript",
+   "Editing",
+   "• Find / replace (Ctrl+F), case-insensitive default",
+   "• Speaker rename — rewrites every same-labelled segment",
+   "• Remove fillers — strips uh/um/er… with whole-word regex",
+   "• Atomic save (Ctrl+S)",
+   "Playback",
+   "• Embedded VLC when python-vlc + libvlc are installed",
+   "• Click-to-seek on any segment",
+   "• Karaoke — active word wrapped in [brackets] as VLC plays",
+   "Display",
+   "• Word-confidence colour coding (green ≥ 0.85, amber ≥ 0.6, red below)",
+   "• Type-as-you-search filter",
+   "Workflow + system integration",
+   "Queue",
+   "• Multi-file batch with per-file progress",
+   "• Parallel workers (configurable, default 2)",
+   "• Right-click any item for Pause, Resume, Cancel, Re-run, and Remove — per task",
+   "• Cancel a running job (Esc)",
+   "Automation",
+   "• Watched folder — auto-enqueue files dropped in",
+   "• Windows Explorer right-click \"Transcribe with Whisper Transcriber Suite\" (optional install task)",
+   "• Per-folder .whisperproject.json overrides",
+   "Desktop",
+   "• System tray + minimise-to-tray (opt-in)",
+   "• Native Windows toast on completion + chime",
+   "• High-DPI scaling",
+   "• Light / dark / system theme",
+   "Reliability",
+   "• Crash-auto-resume — re-enqueues interrupted files",
+   "• Worker subprocess with 5 s heartbeat + 30 s watchdog",
+   "• history.db opens in WAL mode + integrity check",
+   "• --safe-mode CLI flag backs up config and re-runs first-run",
+   "Updates",
+   "Staying current",
+   "• Daily check against GitHub for a newer version (on by default) — it only tells you; it never downloads or installs on its own",
+   "• A newer version shows a quiet bar under the menu: What's new, Download (the file for this kind of install), Later (again in 3, 7, then 14 days, then about once a month; never while a job runs) or Skip this version",
+   "• Run it any time from Help → Check for updates…; turn the daily check off in Advanced → App behaviour",
+   "• When you install the newer Setup it upgrades in place over the old version — you do NOT need to uninstall first",
+   "Search + statistics",
+   "History",
+   "• Every finished job recorded in SQLite history.db",
+   "• File → Recent files (last 10)",
+   "• File → Statistics… — total minutes transcribed, etc.",
+   "Keyboard shortcuts",
+   "Global",
+   "• Ctrl+O — Browse for files",
+   "• Ctrl+Enter — Transcribe selected",
+   "• Esc — Cancel running job",
+   "• Ctrl+Q — Exit (bypasses minimise-to-tray)",
+   "Viewer",
+   "• Ctrl+F — Find / replace",
+   "• Ctrl+S — Save edits",
+   "Privacy",
+   "Default",
+   "• Local engines transcribe on this computer; your audio is not uploaded",
+   "• The cloud backends above are the exception — they upload audio only when you choose one and start a job",
+   "• Network use: update check, online app settings, model downloads on first use, usage statistics — the full list is in the project's docs on GitHub (docs/CONFIG.md, Network use)",
+   "• File → Work offline stops all network use; anything that needs the internet then says so (config: work_offline)",
+   "Usage statistics",
+   "• Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)",
+   "• What is sent: model, language, audio length, processing time, job status, word count, app version, OS name/version, CPU and memory size, and the two-letter country of the OS region setting; the payload never includes the file's name or folder, the computer name or an IP address",
+   "• Launch ping and Sentry crash reports: only when WHISPER_TELEMETRY_URL / SENTRY_DSN are set",
+   "Helpful links",
+   "• Downloads & new versions (GitHub releases)",
+   "• Get a free Gemini API key — aistudio.google.com",
+   "• Google Cloud console (service account, billing)",
+   "• Cloud setup guide — Gemini (paste a key)",
+   "• Cloud setup guide — Google Cloud Speech-to-Text"
+  ],
+  "about_window": [
+   "About Whisper Transcriber Suite",
+   "Whisper Transcriber Suite",
+   "A desktop app that turns audio and video into subtitles on your own computer. Powered by OpenAI Whisper via faster-whisper. No account and no API key needed.",
+   "Version 2.1.0 is available. Help → Check for updates… shows it.",
+   "Like the app? A star on its GitHub page helps other people find it.",
+   "github.com/Milomilo777/whisper-transcriber-suite  ·  co-author: translation-robot",
+   "OK",
+   "Report a problem…"
+  ],
+  "convert_picker": [
+   "Convert transcript",
+   "Source: talk.srt",
+   "Convert to format:",
+   "srt (.srt)",
+   "vtt (.vtt)",
+   "txt (.txt)",
+   "json (.json)",
+   "ass (.ass)",
+   "elan (.eaf)",
+   "express_scribe (.txt)",
+   "inqscribe (.inqscr)",
+   "lrc (.lrc)",
+   "md (.md)",
+   "otr (.otr)",
+   "smtv_docx (.docx)",
+   "tsv (.tsv)",
+   "Convert",
+   "Cancel"
+  ],
+  "download_menu_bulk": [
+   "Cancel selected (2)",
+   "Re-run selected (3)",
+   "Remove selected (3)"
+  ],
+  "download_menu_cancelled": [
+   "Open download folder",
+   "Re-run",
+   "Remove"
+  ],
+  "download_menu_finished": [
+   "Open file",
+   "Open download folder",
+   "Re-run",
+   "Remove"
+  ],
+  "download_menu_paused": [
+   "Resume",
+   "Cancel"
+  ],
+  "download_menu_running": [
+   "Pause",
+   "Cancel"
+  ],
+  "download_menu_waiting": [
+   "Cancel"
+  ],
+  "exit_wait": [
+   "Whisper Transcriber Suite",
+   "Finishing exports before closing…",
+   "Your transcripts are saved. The other files next to them are being updated with the same text; the app closes as soon as they are done."
+  ],
+  "install_window": [
+   "Installing Word-timestamp alignment",
+   "Downloading and installing Word-timestamp alignment (~700 MB).\nThis happens once and can take a few minutes…",
+   "Cancel",
+   "Installing Word-timestamp alignment",
+   "Downloading and installing Word-timestamp alignment (~700 MB).\nThis happens once and can take a few minutes…",
+   "Cancelling…"
+  ],
+  "last_result_no_files": [
+   "✓ talk one.mp4",
+   "(no output files were found on disk — re-run the task?)",
+   "Open folder"
+  ],
+  "last_result_one_file": [
+   "✓ talk one.mp4",
+   "No speech was recognised in this file, so the output files are empty.",
+   "Saved 1 output file in <tmp>",
+   "• talk one.srt  (3 B)",
+   "Open",
+   "Open folder"
+  ],
+  "last_result_two_files": [
+   "✓ talk one.mp4",
+   "Saved 2 output files in <tmp>",
+   "• talk one.srt  (3 B)",
+   "Open",
+   "• talk one.json  (2 B)",
+   "Open",
+   "Open folder",
+   "View transcript",
+   "Save shareable page"
+  ],
+  "menu_0": [
+   "Browse...                          Ctrl+O",
+   "Recent files",
+   "Convert transcript...",
+   "Statistics...",
+   "Work offline",
+   "Exit                                  Ctrl+Q"
+  ],
+  "menu_1": [
+   "Light",
+   "Dark",
+   "System",
+   "Chime on completion"
+  ],
+  "menu_2": [
+   "Open transcript viewer...",
+   "Search transcripts...",
+   "Import oTranscribe (.otr) → SRT...",
+   "Open oTranscribe website...",
+   "Open log folder",
+   "Check for updates...",
+   "Usage statistics",
+   "Report a problem…",
+   "About"
+  ],
+  "menubar": [
+   "File",
+   "View",
+   "Help"
+  ],
+  "queue_menu_bulk": [
+   "Cancel selected (2)",
+   "Re-run selected (3)",
+   "Resume selected (1)",
+   "Remove selected (3)"
+  ],
+  "queue_menu_cancelled": [
+   "Resume",
+   "Re-run",
+   "Remove"
+  ],
+  "queue_menu_error": [
+   "Re-run",
+   "Remove"
+  ],
+  "queue_menu_finished": [
+   "Export → oTranscribe (.otr)",
+   "Burn subtitles into video...",
+   "View transcript",
+   "Open output folder",
+   "Re-run",
+   "Remove"
+  ],
+  "queue_menu_paused": [
+   "Resume",
+   "Cancel"
+  ],
+  "queue_menu_running": [
+   "Pause",
+   "Cancel"
+  ],
+  "queue_menu_waiting": [
+   "Cancel"
+  ],
+  "recent_empty": [
+   "(no recent files)"
+  ],
+  "recent_list": [
+   "Clear list"
+  ],
+  "tabs": [
+   "Transcribe",
+   "Transcription Queue",
+   "Download Videos",
+   "Live",
+   "Clone Your Voice / Text to Voice",
+   "Web / LAN access"
+  ],
+  "text_field_menu": [
+   "Cut",
+   "Copy",
+   "Paste",
+   "Select all"
+  ],
+  "tray_notice": [
+   "Whisper Transcriber Suite — transcription done",
+   "Wrote 2 output files for talk one.mp4",
+   "Whisper Transcriber Suite — transcription done",
+   "Wrote 1 output file for talk one.mp4",
+   "Whisper Transcriber Suite — transcription done",
+   "Wrote 0 output files for talk one.mp4"
+  ],
+  "update_signs": [
+   "Help ●",
+   "Check for updates...  ● 2.1.0 available"
+  ]
+ },
+ "windowless": {
+  "about_links": [
+   [
+    "about.link",
+    "Downloads & new versions (GitHub releases)"
+   ],
+   [
+    "about.link",
+    "Get a free Gemini API key — aistudio.google.com"
+   ],
+   [
+    "about.link",
+    "Google Cloud console (service account, billing)"
+   ],
+   [
+    "about.link",
+    "Cloud setup guide — Gemini (paste a key)"
+   ],
+   [
+    "about.link",
+    "Cloud setup guide — Google Cloud Speech-to-Text"
+   ]
+  ],
+  "about_sections": [
+   [
+    "about.section",
+    "What's new in this version"
+   ],
+   [
+    "about.subsection",
+    "Highlights"
+   ],
+   [
+    "about.bullet",
+    "Make a subtitled video: burn the subtitles into a copy of the video, with progress and a Stop button"
+   ],
+   [
+    "about.bullet",
+    "Translate speech straight to English, and share a transcript as a single web page"
+   ],
+   [
+    "about.bullet",
+    "Work offline: one switch that keeps the app off the network"
+   ],
+   [
+    "about.bullet",
+    "Speed and time left for every job, and taskbar progress on Windows"
+   ],
+   [
+    "about.bullet",
+    "A more native Mac app: Open With, the Dock, the menus and notifications, and a video downloader that updates itself"
+   ],
+   [
+    "about.bullet",
+    "Quick start on the first launch, a \"Try it now\" sample clip, and quiet notices instead of message boxes"
+   ],
+   [
+    "about.section",
+    "Transcription engine"
+   ],
+   [
+    "about.subsection",
+    "Input"
+   ],
+   [
+    "about.bullet",
+    "Any audio or video file ffmpeg can read"
+   ],
+   [
+    "about.bullet",
+    "Drag-and-drop one or many files onto the window"
+   ],
+   [
+    "about.bullet",
+    "Browse… (Ctrl+O) for single or multi-select"
+   ],
+   [
+    "about.bullet",
+    "Recent-files submenu (last 10 from history)"
+   ],
+   [
+    "about.subsection",
+    "Models"
+   ],
+   [
+    "about.bullet",
+    "Whisper Large v3 (default, ~3 GB)"
+   ],
+   [
+    "about.bullet",
+    "Whisper Large v3 Turbo (~5× faster, ~1.6 GB)"
+   ],
+   [
+    "about.bullet",
+    "Distil Large v3.5 (fastest English-only, ~1.5 GB)"
+   ],
+   [
+    "about.bullet",
+    "Picker lives in the Advanced dialog"
+   ],
+   [
+    "about.subsection",
+    "Backends (pluggable)"
+   ],
+   [
+    "about.bullet",
+    "Local Whisper via faster-whisper — the default, runs offline once its model is downloaded, your audio never leaves your computer"
+   ],
+   [
+    "about.bullet",
+    "whisper.cpp via pywhispercpp — optional, quantised, kinder to weak CPUs"
+   ],
+   [
+    "about.bullet",
+    "NVIDIA Parakeet TDT v3 via transformers — optional, local, multilingual"
+   ],
+   [
+    "about.bullet",
+    "Switch in the Advanced dialog under Backend"
+   ],
+   [
+    "about.subsection",
+    "Cloud transcription (optional, uploads your audio)"
+   ],
+   [
+    "about.bullet",
+    "Off by default. These send your audio to Google, so they break the offline guarantee — only use them on purpose."
+   ],
+   [
+    "about.bullet",
+    "Gemini (simple API key): paste one free key from aistudio.google.com and it just works. Free tier is about 60 minutes a month."
+   ],
+   [
+    "about.bullet",
+    "Google Cloud Speech-to-Text (service account): a purpose-built transcription service with real word timestamps and speaker labels — the only engine here that combines all three: real word-level timestamps, speaker diarization, and a cheap Batch mode for long files. New accounts get 60 free minutes a month plus a $300 / 90-day credit."
+   ],
+   [
+    "about.bullet",
+    "It needs a service-account JSON file — set it under Advanced › Backend, where a \"How do I get this file?\" button walks you through it step by step."
+   ],
+   [
+    "about.bullet",
+    "Batch mode (Cloud Speech-to-Text): about 75% cheaper (~$0.004/minute vs ~$0.016/minute standard) but slower — usually ready within 24 hours — and needs a Cloud Storage bucket. Good for large jobs you are not waiting on."
+   ],
+   [
+    "about.subsection",
+    "Hardware"
+   ],
+   [
+    "about.bullet",
+    "Autodetect at first launch (CUDA / NPU / DirectML / CPU)"
+   ],
+   [
+    "about.bullet",
+    "Choice persisted in hardware.json"
+   ],
+   [
+    "about.bullet",
+    "Manual override in the Advanced dialog"
+   ],
+   [
+    "about.subsection",
+    "Quality controls"
+   ],
+   [
+    "about.bullet",
+    "Voice Activity Detection (Silero VAD), tunable"
+   ],
+   [
+    "about.bullet",
+    "Word-level timestamps (opt-in)"
+   ],
+   [
+    "about.bullet",
+    "Optional stable-ts word-alignment refinement"
+   ],
+   [
+    "about.bullet",
+    "Optional Demucs vocal-separation pre-processing"
+   ],
+   [
+    "about.section",
+    "Output formats"
+   ],
+   [
+    "about.subsection",
+    "Files written next to your source"
+   ],
+   [
+    "about.bullet",
+    "SubRip — .srt"
+   ],
+   [
+    "about.bullet",
+    "WebVTT — .vtt"
+   ],
+   [
+    "about.bullet",
+    "Whisper JSON — .json (segments + word-level data)"
+   ],
+   [
+    "about.bullet",
+    "Plain text — .txt"
+   ],
+   [
+    "about.bullet",
+    "Tab-separated — .tsv"
+   ],
+   [
+    "about.bullet",
+    "LRC lyrics — .lrc"
+   ],
+   [
+    "about.bullet",
+    "Markdown — .md"
+   ],
+   [
+    "about.bullet",
+    "Microsoft Word — .docx"
+   ],
+   [
+    "about.bullet",
+    "PDF — via reportlab"
+   ],
+   [
+    "about.subsection",
+    "Round-trip"
+   ],
+   [
+    "about.bullet",
+    "oTranscribe import (.otr → .srt)"
+   ],
+   [
+    "about.bullet",
+    "oTranscribe export (.srt → .otr) for manual editing"
+   ],
+   [
+    "about.bullet",
+    "ELAN import/export (.eaf)"
+   ],
+   [
+    "about.bullet",
+    "InqScribe import/export (.inqscr / [hh:mm:ss.ff])"
+   ],
+   [
+    "about.bullet",
+    "Express Scribe export (.txt / [hh:mm:ss]) — export only"
+   ],
+   [
+    "about.subsection",
+    "Templating"
+   ],
+   [
+    "about.bullet",
+    "output_filename_template config key with tokens {base} {ext} {lang} {date} {speaker_count}"
+   ],
+   [
+    "about.bullet",
+    "Sibling subdirectories created on the fly"
+   ],
+   [
+    "about.section",
+    "Post-processing"
+   ],
+   [
+    "about.subsection",
+    "Per-file extras"
+   ],
+   [
+    "about.bullet",
+    "Speaker diarisation (sherpa-onnx, no HF token)"
+   ],
+   [
+    "about.bullet",
+    "Auto-chapter markers (long-silence heuristic)"
+   ],
+   [
+    "about.bullet",
+    "Hallucination detector — flags suspect segments in the viewer (red rows)"
+   ],
+   [
+    "about.subsection",
+    "Optional local LLM"
+   ],
+   [
+    "about.bullet",
+    "Qwen2.5-1.5B-Instruct, download-on-first-use"
+   ],
+   [
+    "about.bullet",
+    "Summaries, Q&A, AI-generated chapter titles"
+   ],
+   [
+    "about.bullet",
+    "Off by default; opt in from the Advanced dialog"
+   ],
+   [
+    "about.section",
+    "Video download"
+   ],
+   [
+    "about.subsection",
+    "Sources"
+   ],
+   [
+    "about.bullet",
+    "Any URL yt-dlp supports (YouTube, Vimeo, …)"
+   ],
+   [
+    "about.subsection",
+    "Pipeline options"
+   ],
+   [
+    "about.bullet",
+    "Format/quality picker per URL"
+   ],
+   [
+    "about.bullet",
+    "Audio-only mode (MP3 / m4a / opus)"
+   ],
+   [
+    "about.bullet",
+    "Subtitle download + burn-in to video"
+   ],
+   [
+    "about.bullet",
+    "SponsorBlock category skipping"
+   ],
+   [
+    "about.bullet",
+    "Auto-transcribe after download"
+   ],
+   [
+    "about.bullet",
+    "Cookies from browser — download login-walled / age-gated content (Facebook / Instagram / TikTok, some YouTube Shorts)"
+   ],
+   [
+    "about.section",
+    "Web / LAN access"
+   ],
+   [
+    "about.subsection",
+    "Share transcription from a browser"
+   ],
+   [
+    "about.bullet",
+    "One click on the \"Web / LAN access\" tab opens a simple web page served by this app — no app to install on the other devices"
+   ],
+   [
+    "about.bullet",
+    "Loopback by default: only this computer can reach it (no firewall prompt)"
+   ],
+   [
+    "about.bullet",
+    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)"
+   ],
+   [
+    "about.bullet",
+    "Optional access password if you want to limit who can use it"
+   ],
+   [
+    "about.bullet",
+    "Use it only on a network you trust — it is not encrypted"
+   ],
+   [
+    "about.section",
+    "Transcript viewer"
+   ],
+   [
+    "about.subsection",
+    "Open via"
+   ],
+   [
+    "about.bullet",
+    "Help → Open transcript viewer…"
+   ],
+   [
+    "about.bullet",
+    "Last-Result card → View transcript"
+   ],
+   [
+    "about.subsection",
+    "Editing"
+   ],
+   [
+    "about.bullet",
+    "Find / replace (Ctrl+F), case-insensitive default"
+   ],
+   [
+    "about.bullet",
+    "Speaker rename — rewrites every same-labelled segment"
+   ],
+   [
+    "about.bullet",
+    "Remove fillers — strips uh/um/er… with whole-word regex"
+   ],
+   [
+    "about.bullet",
+    "Atomic save (Ctrl+S)"
+   ],
+   [
+    "about.subsection",
+    "Playback"
+   ],
+   [
+    "about.bullet",
+    "Embedded VLC when python-vlc + libvlc are installed"
+   ],
+   [
+    "about.bullet",
+    "Click-to-seek on any segment"
+   ],
+   [
+    "about.bullet",
+    "Karaoke — active word wrapped in [brackets] as VLC plays"
+   ],
+   [
+    "about.subsection",
+    "Display"
+   ],
+   [
+    "about.bullet",
+    "Word-confidence colour coding (green ≥ 0.85, amber ≥ 0.6, red below)"
+   ],
+   [
+    "about.bullet",
+    "Type-as-you-search filter"
+   ],
+   [
+    "about.section",
+    "Workflow + system integration"
+   ],
+   [
+    "about.subsection",
+    "Queue"
+   ],
+   [
+    "about.bullet",
+    "Multi-file batch with per-file progress"
+   ],
+   [
+    "about.bullet",
+    "Parallel workers (configurable, default 2)"
+   ],
+   [
+    "about.bullet",
+    "Right-click any item for Pause, Resume, Cancel, Re-run, and Remove — per task"
+   ],
+   [
+    "about.bullet",
+    "Cancel a running job (Esc)"
+   ],
+   [
+    "about.subsection",
+    "Automation"
+   ],
+   [
+    "about.bullet",
+    "Watched folder — auto-enqueue files dropped in"
+   ],
+   [
+    "about.bullet",
+    "Windows Explorer right-click \"Transcribe with Whisper Transcriber Suite\" (optional install task)"
+   ],
+   [
+    "about.bullet",
+    "Per-folder .whisperproject.json overrides"
+   ],
+   [
+    "about.subsection",
+    "Desktop"
+   ],
+   [
+    "about.bullet",
+    "System tray + minimise-to-tray (opt-in)"
+   ],
+   [
+    "about.bullet",
+    "Native Windows toast on completion + chime"
+   ],
+   [
+    "about.bullet",
+    "High-DPI scaling"
+   ],
+   [
+    "about.bullet",
+    "Light / dark / system theme"
+   ],
+   [
+    "about.subsection",
+    "Reliability"
+   ],
+   [
+    "about.bullet",
+    "Crash-auto-resume — re-enqueues interrupted files"
+   ],
+   [
+    "about.bullet",
+    "Worker subprocess with 5 s heartbeat + 30 s watchdog"
+   ],
+   [
+    "about.bullet",
+    "history.db opens in WAL mode + integrity check"
+   ],
+   [
+    "about.bullet",
+    "--safe-mode CLI flag backs up config and re-runs first-run"
+   ],
+   [
+    "about.section",
+    "Updates"
+   ],
+   [
+    "about.subsection",
+    "Staying current"
+   ],
+   [
+    "about.bullet",
+    "Daily check against GitHub for a newer version (on by default) — it only tells you; it never downloads or installs on its own"
+   ],
+   [
+    "about.bullet",
+    "A newer version shows a quiet bar under the menu: What's new, Download (the file for this kind of install), Later (again in 3, 7, then 14 days, then about once a month; never while a job runs) or Skip this version"
+   ],
+   [
+    "about.bullet",
+    "Run it any time from Help → Check for updates…; turn the daily check off in Advanced → App behaviour"
+   ],
+   [
+    "about.bullet",
+    "When you install the newer Setup it upgrades in place over the old version — you do NOT need to uninstall first"
+   ],
+   [
+    "about.section",
+    "Search + statistics"
+   ],
+   [
+    "about.subsection",
+    "History"
+   ],
+   [
+    "about.bullet",
+    "Every finished job recorded in SQLite history.db"
+   ],
+   [
+    "about.bullet",
+    "File → Recent files (last 10)"
+   ],
+   [
+    "about.bullet",
+    "File → Statistics… — total minutes transcribed, etc."
+   ],
+   [
+    "about.section",
+    "Keyboard shortcuts"
+   ],
+   [
+    "about.subsection",
+    "Global"
+   ],
+   [
+    "about.bullet",
+    "Ctrl+O — Browse for files"
+   ],
+   [
+    "about.bullet",
+    "Ctrl+Enter — Transcribe selected"
+   ],
+   [
+    "about.bullet",
+    "Esc — Cancel running job"
+   ],
+   [
+    "about.bullet",
+    "Ctrl+Q — Exit (bypasses minimise-to-tray)"
+   ],
+   [
+    "about.subsection",
+    "Viewer"
+   ],
+   [
+    "about.bullet",
+    "Ctrl+F — Find / replace"
+   ],
+   [
+    "about.bullet",
+    "Ctrl+S — Save edits"
+   ],
+   [
+    "about.section",
+    "Privacy"
+   ],
+   [
+    "about.subsection",
+    "Default"
+   ],
+   [
+    "about.bullet",
+    "Local engines transcribe on this computer; your audio is not uploaded"
+   ],
+   [
+    "about.bullet",
+    "The cloud backends above are the exception — they upload audio only when you choose one and start a job"
+   ],
+   [
+    "about.bullet",
+    "Network use: update check, online app settings, model downloads on first use, usage statistics — the full list is in the project's docs on GitHub (docs/CONFIG.md, Network use)"
+   ],
+   [
+    "about.bullet",
+    "File → Work offline stops all network use; anything that needs the internet then says so (config: work_offline)"
+   ],
+   [
+    "about.subsection",
+    "Usage statistics"
+   ],
+   [
+    "about.bullet",
+    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)"
+   ],
+   [
+    "about.bullet",
+    "What is sent: model, language, audio length, processing time, job status, word count, app version, OS name/version, CPU and memory size, and the two-letter country of the OS region setting; the payload never includes the file's name or folder, the computer name or an IP address"
+   ],
+   [
+    "about.bullet",
+    "Launch ping and Sentry crash reports: only when WHISPER_TELEMETRY_URL / SENTRY_DSN are set"
+   ]
+  ],
+  "backend_switch": [
+   [
+    "askyesno.title",
+    "Switch transcription engine?"
+   ],
+   [
+    "askyesno.message",
+    "1 transcription is running right now. Switching engines stops it immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nSwitch anyway?"
+   ],
+   [
+    "askyesno.title",
+    "Change the Whisper model?"
+   ],
+   [
+    "askyesno.message",
+    "1 transcription is running right now. Changing the model stops it immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nChange it anyway?"
+   ],
+   [
+    "askyesno.title",
+    "Switch transcription engine?"
+   ],
+   [
+    "askyesno.message",
+    "3 transcriptions are running right now. Switching engines stops them immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nSwitch anyway?"
+   ],
+   [
+    "askyesno.title",
+    "Change the Whisper model?"
+   ],
+   [
+    "askyesno.message",
+    "3 transcriptions are running right now. Changing the model stops them immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nChange it anyway?"
+   ]
+  ],
+  "burn_subs": [
+   [
+    "showwarning.title",
+    "No SRT found"
+   ],
+   [
+    "showwarning.message",
+    "This task has no SRT file on disk. Add SRT to the output formats and run it again.\nLooked for:\n\\media\\talks\\talk one.srt"
+   ],
+   [
+    "asksaveasfilename.title",
+    "Save burned-in video as..."
+   ],
+   [
+    "asksaveasfilename.filetype",
+    "MP4 video"
+   ],
+   [
+    "asksaveasfilename.filetype",
+    "All files"
+   ],
+   [
+    "showerror.title",
+    "Burn subtitles failed"
+   ],
+   [
+    "showerror.message",
+    "ffmpeg stopped"
+   ]
+  ],
+  "caption_shortcut": [
+   [
+    "status",
+    "Captions (creator-provided) are already available in \"German\" -- skip downloading and transcribing?"
+   ],
+   [
+    "status",
+    "Captions (creator-provided) are already available in \"fr\" -- skip downloading and transcribing?"
+   ],
+   [
+    "status",
+    "Captions (creator-provided) are already available in \"the detected language\" -- skip downloading and transcribing?"
+   ],
+   [
+    "status",
+    "Auto-generated captions are already available in \"German\" -- skip downloading and transcribing? (may be less accurate than a real transcription)"
+   ],
+   [
+    "status",
+    "Auto-generated captions are already available in \"fr\" -- skip downloading and transcribing? (may be less accurate than a real transcription)"
+   ],
+   [
+    "status",
+    "Auto-generated captions are already available in \"the detected language\" -- skip downloading and transcribing? (may be less accurate than a real transcription)"
+   ]
+  ],
+  "convert": [
+   [
+    "askopenfilename.title",
+    "Convert transcript — pick the source file"
+   ],
+   [
+    "askopenfilename.filetype",
+    "Transcripts"
+   ],
+   [
+    "askopenfilename.filetype",
+    "SubRip"
+   ],
+   [
+    "askopenfilename.filetype",
+    "WebVTT"
+   ],
+   [
+    "askopenfilename.filetype",
+    "TSV"
+   ],
+   [
+    "askopenfilename.filetype",
+    "Whisper JSON"
+   ],
+   [
+    "askopenfilename.filetype",
+    "oTranscribe"
+   ],
+   [
+    "askopenfilename.filetype",
+    "ELAN"
+   ],
+   [
+    "askopenfilename.filetype",
+    "InqScribe"
+   ],
+   [
+    "askopenfilename.filetype",
+    "All files"
+   ],
+   [
+    "showerror.title",
+    "Convert transcript"
+   ],
+   [
+    "showerror.message",
+    "Not a subtitle file."
+   ],
+   [
+    "askopenfilename.title",
+    "Convert transcript — pick the source file"
+   ],
+   [
+    "askopenfilename.filetype",
+    "Transcripts"
+   ],
+   [
+    "askopenfilename.filetype",
+    "SubRip"
+   ],
+   [
+    "askopenfilename.filetype",
+    "WebVTT"
+   ],
+   [
+    "askopenfilename.filetype",
+    "TSV"
+   ],
+   [
+    "askopenfilename.filetype",
+    "Whisper JSON"
+   ],
+   [
+    "askopenfilename.filetype",
+    "oTranscribe"
+   ],
+   [
+    "askopenfilename.filetype",
+    "ELAN"
+   ],
+   [
+    "askopenfilename.filetype",
+    "InqScribe"
+   ],
+   [
+    "askopenfilename.filetype",
+    "All files"
+   ],
+   [
+    "showerror.title",
+    "Convert transcript"
+   ],
+   [
+    "showerror.message",
+    "Could not write the output file: read-only folder"
+   ],
+   [
+    "askopenfilename.title",
+    "Convert transcript — pick the source file"
+   ],
+   [
+    "askopenfilename.filetype",
+    "Transcripts"
+   ],
+   [
+    "askopenfilename.filetype",
+    "SubRip"
+   ],
+   [
+    "askopenfilename.filetype",
+    "WebVTT"
+   ],
+   [
+    "askopenfilename.filetype",
+    "TSV"
+   ],
+   [
+    "askopenfilename.filetype",
+    "Whisper JSON"
+   ],
+   [
+    "askopenfilename.filetype",
+    "oTranscribe"
+   ],
+   [
+    "askopenfilename.filetype",
+    "ELAN"
+   ],
+   [
+    "askopenfilename.filetype",
+    "InqScribe"
+   ],
+   [
+    "askopenfilename.filetype",
+    "All files"
+   ],
+   [
+    "askyesno.title",
+    "Convert transcript"
+   ],
+   [
+    "askyesno.message",
+    "Wrote:\nout.srt\n\nOpen its folder?"
+   ],
+   [
+    "askopenfilename.title",
+    "Convert transcript — pick the source file"
+   ],
+   [
+    "askopenfilename.filetype",
+    "Transcripts"
+   ],
+   [
+    "askopenfilename.filetype",
+    "SubRip"
+   ],
+   [
+    "askopenfilename.filetype",
+    "WebVTT"
+   ],
+   [
+    "askopenfilename.filetype",
+    "TSV"
+   ],
+   [
+    "askopenfilename.filetype",
+    "Whisper JSON"
+   ],
+   [
+    "askopenfilename.filetype",
+    "oTranscribe"
+   ],
+   [
+    "askopenfilename.filetype",
+    "ELAN"
+   ],
+   [
+    "askopenfilename.filetype",
+    "InqScribe"
+   ],
+   [
+    "askopenfilename.filetype",
+    "All files"
+   ],
+   [
+    "askyesno.title",
+    "Convert transcript"
+   ],
+   [
+    "askyesno.message",
+    "Wrote:\nout.srt\n\nReveal it in Finder?"
+   ]
+  ],
+  "device_badge": [
+   [
+    "hover",
+    "Transcribing on cuda (float16)"
+   ],
+   [
+    "hover",
+    "Transcribing on cuda"
+   ],
+   [
+    "hover",
+    "Transcribing on cpu (int8). CPU is much slower than a GPU. If you have an NVIDIA card, open Advanced > Re-detect hardware: it says why the GPU is not used and can install the missing NVIDIA library."
+   ],
+   [
+    "hover",
+    "Transcribing on cpu. CPU is much slower than a GPU. If you have an NVIDIA card, open Advanced > Re-detect hardware: it says why the GPU is not used and can install the missing NVIDIA library."
+   ],
+   [
+    "hover",
+    "Requested cuda but it was unavailable. Transcribing on cpu (int8). CPU is much slower than a GPU. If you have an NVIDIA card, open Advanced > Re-detect hardware: it says why the GPU is not used and can install the missing NVIDIA library."
+   ],
+   [
+    "hover",
+    "Transcribing on cpu. CPU is much slower than a GPU. If you have an NVIDIA card, open Advanced > Re-detect hardware: it says why the GPU is not used and can install the missing NVIDIA library."
+   ],
+   [
+    "showwarning.title",
+    "Running on CPU (slower)"
+   ],
+   [
+    "showwarning.message",
+    "Your GPU could not be used, so transcription is running on the CPU — this is much slower.\n\nThis usually means an NVIDIA library (cuBLAS) is missing or the GPU needs a newer driver (not a corrupt model). Open Advanced > Re-detect hardware for the exact reason and a fix."
+   ],
+   [
+    "showwarning.title",
+    "Running on CPU (slower)"
+   ],
+   [
+    "showwarning.message",
+    "An NVIDIA GPU was detected but cannot be used yet, so transcription is running on the CPU — this is much slower.\n\nOpen Advanced > Re-detect hardware: it shows the exact reason and can install the missing NVIDIA library."
+   ]
+  ],
+  "download_range": [
+   [
+    "status",
+    "video length 1:02:05 — drag to set the range"
+   ]
+  ],
+  "downloader_update": [
+   [
+    "bar",
+    "The video downloader may be out of date. An update (about 18 MB) often fixes failing YouTube downloads."
+   ],
+   [
+    "bar",
+    "A download is running. Click Update it again when it has finished."
+   ],
+   [
+    "bar",
+    "Updating the video downloader…"
+   ]
+  ],
+  "engine_model_lines": [
+   [
+    "hover",
+    "The whisper.cpp — offline, low-end CPUs engine uses its own model. This picker only applies to the Faster-Whisper engine, so a change here would have no effect."
+   ],
+   [
+    "status",
+    "Only used by Faster-Whisper"
+   ],
+   [
+    "status",
+    "✓ Downloaded"
+   ],
+   [
+    "status",
+    "Downloads automatically on first use"
+   ],
+   [
+    "status",
+    "Checking…"
+   ]
+  ],
+  "exit_and_cancel": [
+   [
+    "askyesno.title",
+    "Cancel transcription?"
+   ],
+   [
+    "askyesno.message",
+    "A transcription is running (talk one.mp4). Cancel it?"
+   ],
+   [
+    "askyesno.title",
+    "Cancel download?"
+   ],
+   [
+    "askyesno.message",
+    "A download is running. Cancel it?"
+   ],
+   [
+    "askyesno.title",
+    "Exit with queued tasks"
+   ],
+   [
+    "askyesno.message",
+    "There are queued or running tasks. Exit anyway?"
+   ],
+   [
+    "askyesno.title",
+    "Quit with queued tasks"
+   ],
+   [
+    "askyesno.message",
+    "There are queued or running tasks. Quit anyway?"
+   ],
+   [
+    "showwarning.title",
+    "Some files were not updated"
+   ],
+   [
+    "showwarning.message",
+    "Your transcript was saved, but these files were still being rebuilt when the app had to close, so they still hold the old text:\n\n  talk.docx\n\nTo update them, open the transcript again and save it once more. The transcript (JSON) and the other files are saved."
+   ]
+  ],
+  "model_setup": [
+   [
+    "status",
+    "Model loaded"
+   ],
+   [
+    "status",
+    "Model is required"
+   ],
+   [
+    "askyesno.title",
+    "Whisper model required"
+   ],
+   [
+    "askyesno.message",
+    "The Whisper model must be downloaded before the first transcription. Download it now? (about 1.5 GB, one time only)"
+   ],
+   [
+    "askyesno.title",
+    "Whisper model required"
+   ],
+   [
+    "askyesno.message",
+    "The Whisper model must be downloaded before the first transcription. Download it now? (one time only)"
+   ],
+   [
+    "askyesno.title",
+    "Word-timestamp alignment needs a download"
+   ],
+   [
+    "askyesno.message",
+    "Word-timestamp alignment needs a one-time download of about 700 MB (PyTorch + support files).\n\nDownload and install it now?\nChoose No to continue this time without it."
+   ]
+  ],
+  "not_updated": [
+   [
+    "showwarning.message",
+    "Your transcript was saved, but these files were still being rebuilt when the app had to close, so they still hold the old text:\n\n  talk.docx\n\nTo update them, open the transcript again and save it once more. The transcript (JSON) and the other files are saved."
+   ],
+   [
+    "showwarning.message",
+    "Your transcript was saved, but these files were still being rebuilt when the app had to close, so they still hold the old text:\n\n  talk.docx (a)\n  talk.docx (b)\n\nTo update them, open the transcript again and save it once more. The transcript (JSON) and the other files are saved."
+   ],
+   [
+    "showwarning.message",
+    "Your transcript was saved, but these files were still being rebuilt when the app had to close, so they still hold the old text:\n\n  part0.srt\n  part1.srt\n  part2.srt\n  part3.srt\n  part4.srt\n  part5.srt\n  part6.srt\n  part7.srt\n  ...and 3 more\n\nTo update them, open the transcript again and save it once more. The transcript (JSON) and the other files are saved."
+   ]
+  ],
+  "resume_prompt": [
+   [
+    "askyesno.message",
+    "We found 1 transcription that was interrupted when the app was closed. Resume it now?"
+   ],
+   [
+    "askyesno.message",
+    "We found 1 transcription that was interrupted by a previous crash. Resume it now?"
+   ],
+   [
+    "askyesno.message",
+    "We found 2 transcriptions that were interrupted when the app was closed. Resume them now?"
+   ],
+   [
+    "askyesno.message",
+    "We found 3 transcriptions that were interrupted by a previous crash. Resume them now?"
+   ],
+   [
+    "askyesno.message",
+    "We found 2 transcriptions that were interrupted the last time the app ran. Resume them now?"
+   ],
+   [
+    "askyesno.message",
+    "We found 3 transcriptions that were interrupted the last time the app ran. Resume them now?"
+   ]
+  ],
+  "sample_clip": [
+   [
+    "show_error.title",
+    "Sample clip unavailable"
+   ],
+   [
+    "show_error.message",
+    "Could not copy the sample clip into your data folder."
+   ],
+   [
+    "show_error.title",
+    "Sample clip missing"
+   ],
+   [
+    "show_error.message",
+    "The sample clip could not be found in this install."
+   ]
+  ],
+  "updates": [
+   [
+    "notify.warning",
+    "Could not reach the update server. Please check your internet connection and try again later."
+   ],
+   [
+    "notify.success",
+    "You're on the latest version (9.9.9)."
+   ],
+   [
+    "askyesno.title",
+    "Check for updates"
+   ],
+   [
+    "askyesno.message",
+    "Version 99.0.0 is available. You chose to skip it.\n\nShow it again?"
+   ],
+   [
+    "menu",
+    "Help ●"
+   ],
+   [
+    "menu",
+    "Check for updates...  ● 2.1.0 available"
+   ],
+   [
+    "menu",
+    "Help"
+   ],
+   [
+    "menu",
+    "Check for updates..."
+   ]
+  ],
+  "viewer_and_recent": [
+   [
+    "askyesno.title",
+    "View transcript"
+   ],
+   [
+    "askyesno.message",
+    "No transcript .json was saved for gone.mp4: the viewer opens .json files only. Turn on \"Whisper JSON\" in the output formats to get one next time. Choose a .json file yourself?"
+   ],
+   [
+    "showerror.title",
+    "Save shareable page"
+   ],
+   [
+    "showerror.message",
+    "Could not read \\x.json:\nnope"
+   ],
+   [
+    "showwarning.title",
+    "File missing"
+   ],
+   [
+    "showwarning.message",
+    "That file is no longer at:\n\\nowhere\\gone.mp4"
+   ]
+  ],
+  "web_access": [
+   [
+    "showerror.title",
+    "Could not start web access"
+   ],
+   [
+    "showerror.message",
+    "The web / LAN server could not start.\n\nPort 8765 is in use."
+   ],
+   [
+    "status",
+    "Starting..."
+   ],
+   [
+    "status",
+    "Stopping..."
+   ],
+   [
+    "status",
+    "Running. On this PC and on your network."
+   ],
+   [
+    "status",
+    "Running. Network sharing on, but your network address couldn't be detected."
+   ],
+   [
+    "status",
+    "Running on this computer."
+   ],
+   [
+    "status",
+    "Off"
+   ],
+   [
+    "status",
+    "Off"
+   ],
+   [
+    "status",
+    "This PC:  http://127.0.0.1:8765/\nNetwork:  http://192.168.1.5:8765/"
+   ],
+   [
+    "status",
+    "http://127.0.0.1:8765/"
+   ],
+   [
+    "status",
+    "http://127.0.0.1:8765/"
+   ],
+   [
+    "button",
+    "Stop web access"
+   ],
+   [
+    "button",
+    "Stop web access"
+   ],
+   [
+    "button",
+    "Stop web access"
+   ],
+   [
+    "button",
+    "Start web access"
+   ],
+   [
+    "button",
+    "Start web access"
+   ]
+  ],
+  "window_title": [
+   [
+    "window.title",
+    "Whisper Transcriber Suite v9.9.9"
+   ],
+   [
+    "window.title",
+    "Whisper Transcriber Suite v9.9.9 — 34% transcribing talk one.mp4"
+   ],
+   [
+    "window.title",
+    "Whisper Transcriber Suite v9.9.9 — 12% downloading A talk about rivers"
+   ],
+   [
+    "window.title",
+    "Whisper Transcriber Suite v9.9.9 — 12% downloading https://example.invalid/v/2"
+   ],
+   [
+    "window.title",
+    "Whisper Transcriber Suite v9.9.9 — 3 tasks (avg 32%)"
+   ],
+   [
+    "window.title",
+    "Whisper Transcriber Suite v9.9.9 — Work offline"
+   ],
+   [
+    "window.title",
+    "Whisper Transcriber Suite v9.9.9 — Work offline — 34% transcribing talk one.mp4"
+   ],
+   [
+    "window.title",
+    "Whisper Transcriber Suite v9.9.9 — Work offline — 12% downloading A talk about rivers"
+   ],
+   [
+    "window.title",
+    "Whisper Transcriber Suite v9.9.9 — Work offline — 12% downloading https://example.invalid/v/2"
+   ],
+   [
+    "window.title",
+    "Whisper Transcriber Suite v9.9.9 — Work offline — 3 tasks (avg 32%)"
+   ]
+  ],
+  "work_offline": [
+   [
+    "notify.warning",
+    "Could not save the Work offline choice (disk full); a transcription that starts a new worker follows the old setting."
+   ],
+   [
+    "askyesno.title",
+    "Offline mode is on"
+   ],
+   [
+    "askyesno.message",
+    "Checking for updates needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?"
+   ],
+   [
+    "askyesno.title",
+    "Offline mode is on"
+   ],
+   [
+    "askyesno.message",
+    "Installing the YouTube helper needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?"
+   ],
+   [
+    "askyesno.title",
+    "Offline mode is on"
+   ],
+   [
+    "askyesno.message",
+    "Updating the video downloader needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?"
+   ]
+  ],
+  "youtube_helper": [
+   [
+    "status",
+    "Installing the YouTube helper (Deno, about 40 MB)…"
+   ],
+   [
+    "status",
+    "Installing the YouTube helper… 45%"
+   ],
+   [
+    "status",
+    "YouTube helper installed."
+   ],
+   [
+    "status",
+    "Could not install the YouTube helper: HTTP 404"
+   ]
+  ]
+ }
+}

@@ -21,6 +21,7 @@ from app.dialogs.model_download import ModelDownloadDialog
 from app.dialogs.quick_start import QuickStartChoice, QuickStartDialog, apply_choice, should_show
 from app.dialogs import share_page
 from app import desktop_alert, mac_native, shortcuts
+from app.i18n import N_, _, ngettext, pgettext, translate
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
 from app.dialogs.transcript_viewer import dirty_viewers as _dirty_viewers_now
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
@@ -83,10 +84,18 @@ from core.watcher import FolderWatcher
 logger = logging.getLogger(__name__)
 
 # Menu labels the update notice decorates with a dot (_refresh_update_signs).
-_HELP_MENU_LABEL = "Help"
-_CHECK_FOR_UPDATES_LABEL = "Check for updates..."
-_ABOUT_MENU_LABEL = "About"
-_WORK_OFFLINE_LABEL = "Work offline"
+# English msgids (N_): translate() them where they are shown. The menus remember the index of
+# each item, so no lookup ever goes by the (translated) label.
+_HELP_MENU_LABEL = N_("Help")
+_CHECK_FOR_UPDATES_LABEL = N_("Check for updates...")
+_ABOUT_MENU_LABEL = N_("About")
+_WORK_OFFLINE_LABEL = N_("Work offline")
+# The actions this module names to ensure_online(), which shows them translated.
+_ONLINE_ACTIONS = (
+    N_("Checking for updates"),
+    N_("Installing the YouTube helper"),
+    N_("Updating the video downloader"),
+)
 # An app left open keeps checking about once a day (the date throttle in
 # _maybe_quiet_update_check still applies).
 _UPDATE_RECHECK_MS = 24 * 60 * 60 * 1000
@@ -209,18 +218,24 @@ def _resume_prompt_text(rows: list[dict[str, Any]]) -> str:
     """
     n = len(rows)
     closed = sum(1 for r in rows if (r.get("error") or "") == EXIT_REASON)
-    # Pluralise verb + noun together so the message reads
-    # correctly for both n=1 and n>1.
-    noun = "transcription" if n == 1 else "transcriptions"
-    verb = "was" if n == 1 else "were"
-    pronoun = "it" if n == 1 else "them"
+    # One whole sentence per cause, each with its plural forms.
     if closed == n:
-        cause = "interrupted when the app was closed"
-    elif closed == 0:
-        cause = "interrupted by a previous crash"
-    else:
-        cause = "interrupted the last time the app ran"
-    return f"We found {n} {noun} that {verb} {cause}. Resume {pronoun} now?"
+        return ngettext(
+            "We found {n} transcription that was interrupted when the app was closed. "
+            "Resume it now?",
+            "We found {n} transcriptions that were interrupted when the app was closed. "
+            "Resume them now?", n)
+    if closed == 0:
+        return ngettext(
+            "We found {n} transcription that was interrupted by a previous crash. "
+            "Resume it now?",
+            "We found {n} transcriptions that were interrupted by a previous crash. "
+            "Resume them now?", n)
+    return ngettext(
+        "We found {n} transcription that was interrupted the last time the app ran. "
+        "Resume it now?",
+        "We found {n} transcriptions that were interrupted the last time the app ran. "
+        "Resume them now?", n)
 
 
 def _record_exit_interruptions(history: Any, active: list[Any]) -> None:
@@ -505,254 +520,259 @@ def build_about_sections() -> list[AboutSection]:
     exhaustive. Pure data: no Tk, no I/O — safe to call from a test.
     """
     return [
-        ("What's new in this version", [
-            ("Highlights", [
-                "Make a subtitled video: burn the subtitles into a copy of "
-                "the video, with progress and a Stop button",
-                "Translate speech straight to English, and share a "
-                "transcript as a single web page",
-                "Work offline: one switch that keeps the app off the network",
-                "Speed and time left for every job, and taskbar progress on "
-                "Windows",
-                "A more native Mac app: Open With, the Dock, the menus and "
-                "notifications, and a video downloader that updates itself",
-                "Quick start on the first launch, a \"Try it now\" sample "
-                "clip, and quiet notices instead of message boxes",
+        (_("What's new in this version"), [
+            (_("Highlights"), [
+                _("Make a subtitled video: burn the subtitles into a copy of "
+                "the video, with progress and a Stop button"),
+                _("Translate speech straight to English, and share a "
+                "transcript as a single web page"),
+                _("Work offline: one switch that keeps the app off the network"),
+                _("Speed and time left for every job, and taskbar progress on "
+                "Windows"),
+                _("A more native Mac app: Open With, the Dock, the menus and "
+                "notifications, and a video downloader that updates itself"),
+                _("Quick start on the first launch, a \"Try it now\" sample "
+                "clip, and quiet notices instead of message boxes"),
             ]),
         ]),
-        ("Transcription engine", [
-            ("Input", [
-                "Any audio or video file ffmpeg can read",
-                "Drag-and-drop one or many files onto the window",
-                f"Browse… ({shortcuts.accel_text('o')}) for single or multi-select",
-                "Recent-files submenu (last 10 from history)",
+        (_("Transcription engine"), [
+            (_("Input"), [
+                _("Any audio or video file ffmpeg can read"),
+                _("Drag-and-drop one or many files onto the window"),
+                _("Browse… ({shortcut}) for single or multi-select",
+                  shortcut=shortcuts.accel_text('o')),
+                _("Recent-files submenu (last 10 from history)"),
             ]),
-            ("Models", [
-                "Whisper Large v3 (default, ~3 GB)",
-                "Whisper Large v3 Turbo (~5× faster, ~1.6 GB)",
-                "Distil Large v3.5 (fastest English-only, ~1.5 GB)",
-                "Picker lives in the Advanced dialog",
+            (_("Models"), [
+                _("Whisper Large v3 (default, ~3 GB)"),
+                _("Whisper Large v3 Turbo (~5× faster, ~1.6 GB)"),
+                _("Distil Large v3.5 (fastest English-only, ~1.5 GB)"),
+                _("Picker lives in the Advanced dialog"),
             ]),
-            ("Backends (pluggable)", [
-                "Local Whisper via faster-whisper — the default, runs "
+            (_("Backends (pluggable)"), [
+                _("Local Whisper via faster-whisper — the default, runs "
                 "offline once its model is downloaded, your audio never "
-                "leaves your computer",
-                "whisper.cpp via pywhispercpp — optional, quantised, "
-                "kinder to weak CPUs",
-                "NVIDIA Parakeet TDT v3 via transformers — optional, "
-                "local, multilingual",
-                "Switch in the Advanced dialog under Backend",
+                "leaves your computer"),
+                _("whisper.cpp via pywhispercpp — optional, quantised, "
+                "kinder to weak CPUs"),
+                _("NVIDIA Parakeet TDT v3 via transformers — optional, "
+                "local, multilingual"),
+                _("Switch in the Advanced dialog under Backend"),
             ]),
-            ("Cloud transcription (optional, uploads your audio)", [
-                "Off by default. These send your audio to Google, so they "
-                "break the offline guarantee — only use them on purpose.",
-                "Gemini (simple API key): paste one free key from "
+            (_("Cloud transcription (optional, uploads your audio)"), [
+                _("Off by default. These send your audio to Google, so they "
+                "break the offline guarantee — only use them on purpose."),
+                _("Gemini (simple API key): paste one free key from "
                 "aistudio.google.com and it just works. Free tier is about "
-                "60 minutes a month.",
-                "Google Cloud Speech-to-Text (service account): a "
+                "60 minutes a month."),
+                _("Google Cloud Speech-to-Text (service account): a "
                 "purpose-built transcription service with real word "
                 "timestamps and speaker labels — the only engine here "
                 "that combines all three: real word-level timestamps, "
                 "speaker diarization, and a cheap Batch mode for long "
                 "files. New accounts get 60 free minutes a month plus a "
-                "$300 / 90-day credit.",
-                "It needs a service-account JSON file — set it under "
+                "$300 / 90-day credit."),
+                _("It needs a service-account JSON file — set it under "
                 "Advanced › Backend, where a \"How do I get this file?\" "
-                "button walks you through it step by step.",
-                "Batch mode (Cloud Speech-to-Text): about 75% cheaper "
+                "button walks you through it step by step."),
+                _("Batch mode (Cloud Speech-to-Text): about 75% cheaper "
                 "(~$0.004/minute vs ~$0.016/minute standard) but slower — "
                 "usually ready within 24 hours — and needs a Cloud "
                 "Storage bucket. Good for large jobs you are not waiting "
-                "on.",
+                "on."),
             ]),
-            ("Hardware", [
-                "Autodetect at first launch (CUDA / NPU / DirectML / CPU)",
-                "Choice persisted in hardware.json",
-                "Manual override in the Advanced dialog",
+            (_("Hardware"), [
+                _("Autodetect at first launch (CUDA / NPU / DirectML / CPU)"),
+                _("Choice persisted in hardware.json"),
+                _("Manual override in the Advanced dialog"),
             ]),
-            ("Quality controls", [
-                "Voice Activity Detection (Silero VAD), tunable",
-                "Word-level timestamps (opt-in)",
-                "Optional stable-ts word-alignment refinement",
-                "Optional Demucs vocal-separation pre-processing",
-            ]),
-        ]),
-        ("Output formats", [
-            ("Files written next to your source", [
-                "SubRip — .srt",
-                "WebVTT — .vtt",
-                "Whisper JSON — .json (segments + word-level data)",
-                "Plain text — .txt",
-                "Tab-separated — .tsv",
-                "LRC lyrics — .lrc",
-                "Markdown — .md",
-                "Microsoft Word — .docx",
-                "PDF — via reportlab",
-            ]),
-            ("Round-trip", [
-                "oTranscribe import (.otr → .srt)",
-                "oTranscribe export (.srt → .otr) for manual editing",
-                "ELAN import/export (.eaf)",
-                "InqScribe import/export (.inqscr / [hh:mm:ss.ff])",
-                "Express Scribe export (.txt / [hh:mm:ss]) — export only",
-            ]),
-            ("Templating", [
-                "output_filename_template config key with tokens "
-                "{base} {ext} {lang} {date} {speaker_count}",
-                "Sibling subdirectories created on the fly",
+            (_("Quality controls"), [
+                _("Voice Activity Detection (Silero VAD), tunable"),
+                _("Word-level timestamps (opt-in)"),
+                _("Optional stable-ts word-alignment refinement"),
+                _("Optional Demucs vocal-separation pre-processing"),
             ]),
         ]),
-        ("Post-processing", [
-            ("Per-file extras", [
-                "Speaker diarisation (sherpa-onnx, no HF token)",
-                "Auto-chapter markers (long-silence heuristic)",
-                "Hallucination detector — flags suspect segments "
-                "in the viewer (red rows)",
+        (_("Output formats"), [
+            (_("Files written next to your source"), [
+                _("SubRip — .srt"),
+                _("WebVTT — .vtt"),
+                _("Whisper JSON — .json (segments + word-level data)"),
+                _("Plain text — .txt"),
+                _("Tab-separated — .tsv"),
+                _("LRC lyrics — .lrc"),
+                _("Markdown — .md"),
+                _("Microsoft Word — .docx"),
+                _("PDF — via reportlab"),
             ]),
-            ("Optional local LLM", [
-                "Qwen2.5-1.5B-Instruct, download-on-first-use",
-                "Summaries, Q&A, AI-generated chapter titles",
-                "Off by default; opt in from the Advanced dialog",
+            (_("Round-trip"), [
+                _("oTranscribe import (.otr → .srt)"),
+                _("oTranscribe export (.srt → .otr) for manual editing"),
+                _("ELAN import/export (.eaf)"),
+                _("InqScribe import/export (.inqscr / [hh:mm:ss.ff])"),
+                _("Express Scribe export (.txt / [hh:mm:ss]) — export only"),
+            ]),
+            (_("Templating"), [
+                _("output_filename_template config key with tokens "
+                "{base} {ext} {lang} {date} {speaker_count}"),
+                _("Sibling subdirectories created on the fly"),
             ]),
         ]),
-        ("Video download", [
-            ("Sources", [
-                "Any URL yt-dlp supports (YouTube, Vimeo, …)",
+        (_("Post-processing"), [
+            (_("Per-file extras"), [
+                _("Speaker diarisation (sherpa-onnx, no HF token)"),
+                _("Auto-chapter markers (long-silence heuristic)"),
+                _("Hallucination detector — flags suspect segments "
+                "in the viewer (red rows)"),
+            ]),
+            (_("Optional local LLM"), [
+                _("Qwen2.5-1.5B-Instruct, download-on-first-use"),
+                _("Summaries, Q&A, AI-generated chapter titles"),
+                _("Off by default; opt in from the Advanced dialog"),
+            ]),
+        ]),
+        (_("Video download"), [
+            (_("Sources"), [
+                _("Any URL yt-dlp supports (YouTube, Vimeo, …)"),
+                # The video-site feature stays English-only: never wrapped, never in a catalog.
                 "Supreme Master TV episode pages "
                 "(multi-quality + article text + series parts)",
             ]),
-            ("Pipeline options", [
-                "Format/quality picker per URL",
-                "Audio-only mode (MP3 / m4a / opus)",
-                "Subtitle download + burn-in to video",
-                "SponsorBlock category skipping",
-                "Auto-transcribe after download",
-                "Cookies from browser — download login-walled / "
+            (_("Pipeline options"), [
+                _("Format/quality picker per URL"),
+                _("Audio-only mode (MP3 / m4a / opus)"),
+                _("Subtitle download + burn-in to video"),
+                _("SponsorBlock category skipping"),
+                _("Auto-transcribe after download"),
+                _("Cookies from browser — download login-walled / "
                 "age-gated content (Facebook / Instagram / TikTok, "
-                "some YouTube Shorts)",
+                "some YouTube Shorts)"),
             ]),
         ]),
-        ("Web / LAN access", [
-            ("Share transcription from a browser", [
-                "One click on the \"Web / LAN access\" tab opens a simple "
+        (_("Web / LAN access"), [
+            (_("Share transcription from a browser"), [
+                _("One click on the \"Web / LAN access\" tab opens a simple "
                 "web page served by this app — no app to install on the "
-                "other devices",
-                "Loopback by default: only this computer can reach it "
-                "(no firewall prompt)",
-                "Optional \"Share on local network\" so phones and other "
+                "other devices"),
+                _("Loopback by default: only this computer can reach it "
+                "(no firewall prompt)"),
+                _("Optional \"Share on local network\" so phones and other "
                 "PCs can use it (Windows may ask to allow the firewall — "
-                "click Allow)",
-                "Optional access password if you want to limit who can use it",
-                "Use it only on a network you trust — it is not encrypted",
+                "click Allow)"),
+                _("Optional access password if you want to limit who can use it"),
+                _("Use it only on a network you trust — it is not encrypted"),
             ]),
         ]),
-        ("Transcript viewer", [
-            ("Open via", [
-                "Help → Open transcript viewer…",
-                "Last-Result card → View transcript",
+        (_("Transcript viewer"), [
+            (_("Open via"), [
+                _("Help → Open transcript viewer…"),
+                _("Last-Result card → View transcript"),
             ]),
-            ("Editing", [
-                f"Find / replace ({shortcuts.accel_text('f')}), case-insensitive default",
-                "Speaker rename — rewrites every same-labelled segment",
-                "Remove fillers — strips uh/um/er… with whole-word regex",
-                f"Atomic save ({shortcuts.accel_text('s')})",
+            (_("Editing"), [
+                _("Find / replace ({shortcut}), case-insensitive default",
+                  shortcut=shortcuts.accel_text('f')),
+                _("Speaker rename — rewrites every same-labelled segment"),
+                _("Remove fillers — strips uh/um/er… with whole-word regex"),
+                _("Atomic save ({shortcut})", shortcut=shortcuts.accel_text('s')),
             ]),
-            ("Playback", [
-                "Embedded VLC when python-vlc + libvlc are installed",
-                "Click-to-seek on any segment",
-                "Karaoke — active word wrapped in [brackets] as VLC plays",
+            (_("Playback"), [
+                _("Embedded VLC when python-vlc + libvlc are installed"),
+                _("Click-to-seek on any segment"),
+                _("Karaoke — active word wrapped in [brackets] as VLC plays"),
             ]),
-            ("Display", [
-                "Word-confidence colour coding "
-                "(green ≥ 0.85, amber ≥ 0.6, red below)",
-                "Type-as-you-search filter",
-            ]),
-        ]),
-        ("Workflow + system integration", [
-            ("Queue", [
-                "Multi-file batch with per-file progress",
-                "Parallel workers (configurable, default 2)",
-                "Right-click any item for Pause, Resume, Cancel, "
-                "Re-run, and Remove — per task",
-                "Cancel a running job (Esc)",
-            ]),
-            ("Automation", [
-                "Watched folder — auto-enqueue files dropped in",
-                "Windows Explorer right-click "
-                "\"Transcribe with Whisper Transcriber Suite\" (optional install task)",
-                "Per-folder .whisperproject.json overrides",
-            ]),
-            ("Desktop", [
-                "System tray + minimise-to-tray (opt-in)",
-                "Native Windows toast on completion + chime",
-                "High-DPI scaling",
-                "Light / dark / system theme",
-            ]),
-            ("Reliability", [
-                "Crash-auto-resume — re-enqueues interrupted files",
-                "Worker subprocess with 5 s heartbeat + 30 s watchdog",
-                "history.db opens in WAL mode + integrity check",
-                "--safe-mode CLI flag backs up config and re-runs first-run",
+            (_("Display"), [
+                _("Word-confidence colour coding "
+                "(green ≥ 0.85, amber ≥ 0.6, red below)"),
+                _("Type-as-you-search filter"),
             ]),
         ]),
-        ("Updates", [
-            ("Staying current", [
-                "Daily check against GitHub for a newer version (on by "
+        (_("Workflow + system integration"), [
+            (_("Queue"), [
+                _("Multi-file batch with per-file progress"),
+                _("Parallel workers (configurable, default 2)"),
+                _("Right-click any item for Pause, Resume, Cancel, "
+                "Re-run, and Remove — per task"),
+                _("Cancel a running job (Esc)"),
+            ]),
+            (_("Automation"), [
+                _("Watched folder — auto-enqueue files dropped in"),
+                _("Windows Explorer right-click "
+                "\"Transcribe with Whisper Transcriber Suite\" (optional install task)"),
+                _("Per-folder .whisperproject.json overrides"),
+            ]),
+            (_("Desktop"), [
+                _("System tray + minimise-to-tray (opt-in)"),
+                _("Native Windows toast on completion + chime"),
+                _("High-DPI scaling"),
+                _("Light / dark / system theme"),
+            ]),
+            (_("Reliability"), [
+                _("Crash-auto-resume — re-enqueues interrupted files"),
+                _("Worker subprocess with 5 s heartbeat + 30 s watchdog"),
+                _("history.db opens in WAL mode + integrity check"),
+                _("--safe-mode CLI flag backs up config and re-runs first-run"),
+            ]),
+        ]),
+        (_("Updates"), [
+            (_("Staying current"), [
+                _("Daily check against GitHub for a newer version (on by "
                 "default) — it only "
-                "tells you; it never downloads or installs on its own",
-                "A newer version shows a quiet bar under the menu: What's "
+                "tells you; it never downloads or installs on its own"),
+                _("A newer version shows a quiet bar under the menu: What's "
                 "new, Download (the file for this kind of install), Later "
                 "(again in 3, 7, then 14 days, then about once a month; "
-                "never while a job runs) or Skip this version",
-                "Run it any time from Help → Check for updates…; turn the "
-                "daily check off in Advanced → App behaviour",
-                "When you install the newer Setup it upgrades in place over "
-                "the old version — you do NOT need to uninstall first",
+                "never while a job runs) or Skip this version"),
+                _("Run it any time from Help → Check for updates…; turn the "
+                "daily check off in Advanced → App behaviour"),
+                _("When you install the newer Setup it upgrades in place over "
+                "the old version — you do NOT need to uninstall first"),
             ]),
         ]),
-        ("Search + statistics", [
-            ("History", [
-                "Every finished job recorded in SQLite history.db",
-                "File → Recent files (last 10)",
-                "File → Statistics… — total minutes transcribed, etc.",
+        (_("Search + statistics"), [
+            (_("History"), [
+                _("Every finished job recorded in SQLite history.db"),
+                _("File → Recent files (last 10)"),
+                _("File → Statistics… — total minutes transcribed, etc."),
             ]),
         ]),
-        ("Keyboard shortcuts", [
-            ("Global", [
-                f"{shortcuts.accel_text('o')} — Browse for files",
-                f"{shortcuts.accel_text('Return')} — Transcribe selected",
-                "Esc — Cancel running job",
-                f"{shortcuts.accel_text('q')} — {shortcuts.quit_label()} (bypasses minimise-to-tray)",
+        (_("Keyboard shortcuts"), [
+            (_("Global"), [
+                _("{shortcut} — Browse for files", shortcut=shortcuts.accel_text('o')),
+                _("{shortcut} — Transcribe selected", shortcut=shortcuts.accel_text('Return')),
+                _("Esc — Cancel running job"),
+                (_("{shortcut} — Quit (bypasses minimise-to-tray)", shortcut=shortcuts.accel_text('q'))
+                 if shortcuts.is_mac() else
+                 _("{shortcut} — Exit (bypasses minimise-to-tray)", shortcut=shortcuts.accel_text('q'))),
             ]),
-            ("Viewer", [
-                f"{shortcuts.accel_text('f')} — Find / replace",
-                f"{shortcuts.accel_text('s')} — Save edits",
+            (_("Viewer"), [
+                _("{shortcut} — Find / replace", shortcut=shortcuts.accel_text('f')),
+                _("{shortcut} — Save edits", shortcut=shortcuts.accel_text('s')),
             ]),
         ]),
-        ("Privacy", [
-            ("Default", [
-                "Local engines transcribe on this computer; your audio "
-                "is not uploaded",
-                "The cloud backends above are the exception — they upload "
-                "audio only when you choose one and start a job",
-                "Network use: update check, online app settings, model "
+        (_("Privacy"), [
+            (_("Default"), [
+                _("Local engines transcribe on this computer; your audio "
+                "is not uploaded"),
+                _("The cloud backends above are the exception — they upload "
+                "audio only when you choose one and start a job"),
+                _("Network use: update check, online app settings, model "
                 "downloads on first use, usage statistics — the full list "
                 "is in the project's docs on GitHub (docs/CONFIG.md, "
-                "Network use)",
-                "File → Work offline stops all network use; anything that "
-                "needs the internet then says so (config: work_offline)",
+                "Network use)"),
+                _("File → Work offline stops all network use; anything that "
+                "needs the internet then says so (config: work_offline)"),
             ]),
-            ("Usage statistics", [
-                "Sent after each finished transcription; on by default. "
+            (_("Usage statistics"), [
+                _("Sent after each finished transcription; on by default. "
                 "Switch: Help → Usage statistics, or Advanced → App "
-                "behaviour (config: telemetry_opt_in)",
-                "What is sent: model, language, audio length, processing "
+                "behaviour (config: telemetry_opt_in)"),
+                _("What is sent: model, language, audio length, processing "
                 "time, job status, word count, app version, OS name/version, "
                 "CPU and memory size, and the two-letter country of the OS "
                 "region setting; the payload never includes the file's name "
-                "or folder, the computer name or an IP address",
-                "Launch ping and Sentry crash reports: only when "
-                "WHISPER_TELEMETRY_URL / SENTRY_DSN are set",
+                "or folder, the computer name or an IP address"),
+                _("Launch ping and Sentry crash reports: only when "
+                "WHISPER_TELEMETRY_URL / SENTRY_DSN are set"),
             ]),
         ]),
     ]
@@ -768,15 +788,15 @@ def build_about_links() -> list[tuple[str, str]]:
     from core.updates import RELEASES_PAGE_URL
 
     return [
-        ("Downloads & new versions (GitHub releases)", RELEASES_PAGE_URL),
-        ("Get a free Gemini API key — aistudio.google.com",
+        (_("Downloads & new versions (GitHub releases)"), RELEASES_PAGE_URL),
+        (_("Get a free Gemini API key — aistudio.google.com"),
          "https://aistudio.google.com/apikey"),
-        ("Google Cloud console (service account, billing)",
+        (_("Google Cloud console (service account, billing)"),
          "https://console.cloud.google.com"),
-        ("Cloud setup guide — Gemini (paste a key)",
+        (_("Cloud setup guide — Gemini (paste a key)"),
          "https://github.com/Milomilo777/whisper-transcriber-suite"
          "/blob/master/docs/CLOUD_STT.md"),
-        ("Cloud setup guide — Google Cloud Speech-to-Text",
+        (_("Cloud setup guide — Google Cloud Speech-to-Text"),
          "https://github.com/Milomilo777/whisper-transcriber-suite"
          "/blob/master/docs/CLOUD_STT_GOOGLE.md"),
     ]
@@ -804,13 +824,14 @@ def _not_updated_message(left: list[str]) -> str:
     shown = labels[:_MAX_FILES_LISTED]
     lines = [f"  {label}" for label in shown]
     if len(labels) > len(shown):
-        lines.append(f"  ...and {len(labels) - len(shown)} more")
-    return (
+        rest = len(labels) - len(shown)
+        lines.append("  " + ngettext("...and {n} more", "...and {n} more", rest))
+    return _(
         "Your transcript was saved, but these files were still being rebuilt when the "
-        "app had to close, so they still hold the old text:\n\n"
-        + "\n".join(lines)
-        + "\n\nTo update them, open the transcript again and save it once more. "
-        "The transcript (JSON) and the other files are saved."
+        "app had to close, so they still hold the old text:\n\n{files}\n\n"
+        "To update them, open the transcript again and save it once more. "
+        "The transcript (JSON) and the other files are saved.",
+        files="\n".join(lines),
     )
 
 
@@ -834,7 +855,7 @@ def _warn_exports_not_updated(app: Any, left: list[str]) -> None:
     app._exit_prompt_open = True  # a second close press must not stack another exit
     try:
         messagebox.showwarning(
-            "Some files were not updated", _not_updated_message(left),
+            _("Some files were not updated"), _not_updated_message(left),
             parent=_viewable_parent(app))
     except Exception:  # noqa: BLE001 - never block the exit
         logger.exception("Could not show the 'exports not updated' message")
@@ -894,17 +915,17 @@ def _open_exit_wait_dialog(app: tk.Misc) -> tk.Toplevel | None:
     """
     try:
         dlg = tk.Toplevel(app)
-        dlg.title("Whisper Transcriber Suite")
+        dlg.title("Whisper Transcriber Suite")  # the product name is not translated
         dlg.resizable(False, False)
         dlg.protocol("WM_DELETE_WINDOW", lambda: None)  # it closes itself
         body = ttk.Frame(dlg, padding=20)
         body.pack(fill="both", expand=True)
-        ttk.Label(body, text="Finishing exports before closing…",
+        ttk.Label(body, text=_("Finishing exports before closing…"),
                   font=("TkDefaultFont", 11, "bold")).pack(anchor="w")
         ttk.Label(
             body, justify="left", wraplength=360,
-            text="Your transcripts are saved. The other files next to them are being "
-                 "updated with the same text; the app closes as soon as they are done.",
+            text=_("Your transcripts are saved. The other files next to them are being "
+                   "updated with the same text; the app closes as soon as they are done."),
         ).pack(anchor="w", pady=(6, 10))
         bar = ttk.Progressbar(body, mode="indeterminate", length=320)
         bar.pack(fill="x")
@@ -1152,7 +1173,7 @@ class App(tk.Tk):
         self.download_queue: list[VideoDownloadTask] = []
         self.download_current: VideoDownloadTask | None = None
 
-        self.status_var = tk.StringVar(value="Initializing...")
+        self.status_var = tk.StringVar(value=_("Initializing..."))
         # R3: device badge state created up-front so a worker "ready" event
         # firing before the tabs are built can't AttributeError. The Labels
         # register themselves in tabs.py; apply_device_badge recolours them.
@@ -1185,7 +1206,7 @@ class App(tk.Tk):
         # reporter and the launch ping, which both ask it).
         offline.set_offline(offline.flag_from(self.app_config))
         if offline.is_offline():
-            self.title(f"{self._base_title} — Work offline")
+            self.title(_("{title} — Work offline", title=self._base_title))
         setup_logging(self.app_config.get("log_level", "INFO"))
         init_sentry()
         send_launch_ping_async()
@@ -1513,24 +1534,24 @@ class App(tk.Tk):
         aqua = mac_native.is_aqua(self)
         m = tk.Menu(self)
         f = tk.Menu(m, tearoff=0)
-        f.add_command(**shortcuts.menu_item("Browse...", "o", gap=26), command=self.browse)
+        f.add_command(**shortcuts.menu_item(_("Browse..."), "o", gap=26), command=self.browse)
         # Recent files submenu — populated from history.db at menu-open
         # time so it always reflects the latest run. Skips when history
         # is None (SQLite init failed) and shows a single disabled
         # "(no recent files)" placeholder.
         self._recent_menu = tk.Menu(f, tearoff=0, postcommand=self._populate_recent_menu)
-        f.add_cascade(label="Recent files", menu=self._recent_menu)
+        f.add_cascade(label=_("Recent files"), menu=self._recent_menu)
         f.add_separator()
-        f.add_command(label="Convert transcript...", command=self.convert_transcript)
+        f.add_command(label=_("Convert transcript..."), command=self.convert_transcript)
         f.add_separator()
-        f.add_command(label="Statistics...", command=self.show_statistics)
+        f.add_command(label=_("Statistics..."), command=self.show_statistics)
         f.add_separator()
         # Work offline (core.offline): no network connection at all while
         # ticked. Same config key as the Advanced → App behaviour checkbox;
         # open_advanced_dialog re-syncs this item after the dialog closes.
         self.work_offline_var = tk.BooleanVar(value=offline.is_offline())
         f.add_checkbutton(
-            label=_WORK_OFFLINE_LABEL,
+            label=translate(_WORK_OFFLINE_LABEL),
             variable=self.work_offline_var,
             command=self._toggle_work_offline,
         )
@@ -1540,19 +1561,22 @@ class App(tk.Tk):
             # user explicitly clicks Exit they mean exit; the redirect is
             # only for the window-close (X) button. macOS has no Exit item
             # here: the app menu already carries "Quit <App>".
-            f.add_command(**shortcuts.menu_item("Exit", "q", gap=34),
+            f.add_command(**shortcuts.menu_item(_("Exit"), "q", gap=34),
                           command=self._force_exit)
         if aqua:
             # Command-W closes the front secondary window (viewer, dialog) with
             # its own close handler; it never closes the main window.
             f.add_separator()
             f.add_command(
-                **shortcuts.menu_item("Close Window", "w"),
+                **shortcuts.menu_item(_("Close Window"), "w"),
                 command=lambda: mac_native.close_front_window(self),
             )
 
         v = tk.Menu(m, tearoff=0)
-        for label, value in (("Light", "light"), ("Dark", "dark"), ("System", "system")):
+        # The label is display only; the radio button stores the English value.
+        for label, value in ((pgettext("theme", "Light"), "light"),
+                             (pgettext("theme", "Dark"), "dark"),
+                             (pgettext("theme", "System"), "system")):
             v.add_radiobutton(label=label, value=value, variable=self.theme_var, command=self.apply_theme)
         v.add_separator()
         # Audible-cue toggle. Stored in app_config so the user's choice
@@ -1568,8 +1592,8 @@ class App(tk.Tk):
         )
 
         h = tk.Menu(m, tearoff=0, **mac_native.help_menu_kwargs(self))
-        h.add_command(label="Open transcript viewer...", command=self._open_transcript_viewer_picker)
-        h.add_command(label="Search transcripts...", command=self._open_search_dialog)
+        h.add_command(label=_("Open transcript viewer..."), command=self._open_transcript_viewer_picker)
+        h.add_command(label=_("Search transcripts..."), command=self._open_search_dialog)
         h.add_separator()
         # oTranscribe round-trip — used to be a button on the Transcribe
         # tab; moved here in the UI simplification pass because it's a
@@ -1577,13 +1601,13 @@ class App(tk.Tk):
         # transcription apps (MacWhisper, Buzz, Aiko) keep
         # secondary imports under a menu.
         h.add_command(
-            label="Import oTranscribe (.otr) → SRT...",
+            label=_("Import oTranscribe (.otr) → SRT..."),
             command=self.integrations_service.import_otr_to_srt,
         )
-        h.add_command(label="Open oTranscribe website...",
+        h.add_command(label=_("Open oTranscribe website..."),
                       command=self.integrations_service.open_otranscribe)
         h.add_separator()
-        h.add_command(label=folder_label("Open log folder", "Log Folder"),
+        h.add_command(label=folder_label(_("Open log folder"), "Log Folder"),
                       command=self.open_log_folder)
         h.add_separator()
         # Manual update check — always runs (ignores the once-per-day
@@ -1592,7 +1616,7 @@ class App(tk.Tk):
         # the silent launch check. Never downloads/installs anything.
         # _refresh_update_signs adds a dot to this item (and, off macOS, to the
         # "Help" title) while a newer version is known (the passive sign).
-        h.add_command(label=_CHECK_FOR_UPDATES_LABEL,
+        h.add_command(label=translate(_CHECK_FOR_UPDATES_LABEL),
                       command=self._check_for_updates_manual)
         self._help_menu = h
         self._check_updates_index = h.index("end")
@@ -1605,7 +1629,7 @@ class App(tk.Tk):
             value=bool(self.app_config.get("telemetry_opt_in", True))
         )
         h.add_checkbutton(
-            label="Usage statistics",
+            label=_("Usage statistics"),
             variable=self.telemetry_opt_in_var,
             command=self._save_telemetry_pref,
         )
@@ -1614,20 +1638,22 @@ class App(tk.Tk):
         # menu instead ("About <App>", wired to tkAboutDialog by
         # mac_native.install), so Help does not repeat it.
         h.add_separator()
-        h.add_command(label="Report a problem…",
+        h.add_command(label=_("Report a problem…"),
                       command=lambda: self._open_problem_report(self))
         if not aqua:
-            h.add_command(label=_ABOUT_MENU_LABEL, command=self._show_about)
-        m.add_cascade(label="File", menu=f)
-        m.add_cascade(label="View", menu=v)
+            h.add_command(label=translate(_ABOUT_MENU_LABEL), command=self._show_about)
+        m.add_cascade(label=pgettext("menu", "File"), menu=f)
+        m.add_cascade(label=pgettext("menu", "View"), menu=v)
         if aqua:
             # The standard Window menu: Minimize, Zoom, Bring All to Front and
             # the list of open windows are added by macOS itself.
             m.add_cascade(
-                label="Window",
+                label=pgettext("menu", "Window"),
                 menu=tk.Menu(m, tearoff=0, **mac_native.window_menu_kwargs(self)),
             )
-        m.add_cascade(label=_HELP_MENU_LABEL, menu=h)
+        # macOS adds its search field only to a Help menu titled exactly "Help" (see
+        # _refresh_update_signs), so the Aqua title stays English.
+        m.add_cascade(label=_HELP_MENU_LABEL if aqua else translate(_HELP_MENU_LABEL), menu=h)
         self._menubar = m
         self._help_cascade_index = m.index("end")
         self.config(menu=m)
@@ -1655,7 +1681,7 @@ class App(tk.Tk):
         # this app manages) because HistoryDB has no clear method.
         dismissed: set[str] = set(self.app_config.get("recent_files_dismissed") or [])
         if not rows:
-            menu.add_command(label="(no recent files)", state="disabled")
+            menu.add_command(label=_("(no recent files)"), state="disabled")
             return
         seen: set[str] = set()
         added = 0
@@ -1676,10 +1702,10 @@ class App(tk.Tk):
             # Every history row is currently dismissed (the user clicked
             # "Clear list"); show the empty placeholder instead of a lone
             # "Clear list" that has nothing to clear.
-            menu.add_command(label="(no recent files)", state="disabled")
+            menu.add_command(label=_("(no recent files)"), state="disabled")
             return
         menu.add_separator()
-        menu.add_command(label="Clear list", command=self._clear_recent)
+        menu.add_command(label=_("Clear list"), command=self._clear_recent)
 
     def _burn_subs_for(self, task: TranscriptionTask) -> None:
         """Burn the task's SRT into a new MP4.
@@ -1692,13 +1718,13 @@ class App(tk.Tk):
         """
         from core import burn_subs
 
-        base, _ = os.path.splitext(task.file_path)
+        base, _unused = os.path.splitext(task.file_path)
         srt_path = task_srt_output(task)
         if srt_path is None:
             messagebox.showwarning(
-                "No SRT found",
-                "This task has no SRT file on disk. Add SRT to the output "
-                f"formats and run it again.\nLooked for:\n{base}.srt",
+                _("No SRT found"),
+                _("This task has no SRT file on disk. Add SRT to the output "
+                  "formats and run it again.\nLooked for:\n{path}", path=f"{base}.srt"),
                 parent=self,
             )
             return
@@ -1706,11 +1732,11 @@ class App(tk.Tk):
         suggested = base + "-subbed.mp4"
         out_path = filedialog.asksaveasfilename(
             parent=self,
-            title="Save burned-in video as...",
+            title=_("Save burned-in video as..."),
             initialdir=os.path.dirname(os.path.abspath(task.file_path)),
             initialfile=os.path.basename(suggested),
             defaultextension=".mp4",
-            filetypes=[("MP4 video", "*.mp4"), ("All files", "*.*")],
+            filetypes=[(_("MP4 video"), "*.mp4"), (_("All files"), "*.*")],
         )
         if not out_path:
             return
@@ -1754,7 +1780,7 @@ class App(tk.Tk):
 
     def _burn_subs_failed(self, msg: str) -> None:
         self.log(f"Burn-subs failed: {msg}")
-        messagebox.showerror("Burn subtitles failed", msg, parent=self)
+        messagebox.showerror(_("Burn subtitles failed"), msg, parent=self)
 
     def _open_transcript_viewer_picker(self) -> None:
         """Open the transcript viewer with a file picker."""
@@ -1792,7 +1818,7 @@ class App(tk.Tk):
                 self, json_path, language=language, media_path=file_path
             )
             return
-        base, _ = os.path.splitext(file_path)
+        base, _unused = os.path.splitext(file_path)
         guessed = base + ".json"
         if os.path.isfile(guessed):
             _open_transcript_viewer(
@@ -1803,11 +1829,11 @@ class App(tk.Tk):
             # just srt/vtt/... (json not among the formats) has nothing to open.
             # Say so, and still let the user pick a .json by hand.
             if messagebox.askyesno(
-                "View transcript",
-                f"No transcript .json was saved for {os.path.basename(file_path)}: "
-                "the viewer opens .json files only. Turn on \"Whisper JSON\" in the "
-                "output formats to get one next time. "
-                "Choose a .json file yourself?",
+                _("View transcript"),
+                _("No transcript .json was saved for {name}: "
+                  "the viewer opens .json files only. Turn on \"Whisper JSON\" in the "
+                  "output formats to get one next time. "
+                  "Choose a .json file yourself?", name=os.path.basename(file_path)),
                 parent=self,
             ):
                 _open_transcript_viewer(self, None)
@@ -1821,7 +1847,8 @@ class App(tk.Tk):
             segments = share_page.load_transcript(json_path)
         except (OSError, ValueError) as e:
             messagebox.showerror(
-                share_page.BUTTON_TEXT, f"Could not read {json_path}:\n{e}", parent=self
+                share_page.BUTTON_TEXT, _("Could not read {path}:\n{error}", path=json_path, error=e),
+                parent=self,
             )
             return
         share_page.save_shareable_page(
@@ -1848,8 +1875,8 @@ class App(tk.Tk):
     def _open_recent(self, path: str) -> None:
         if not os.path.isfile(path):
             messagebox.showwarning(
-                "File missing",
-                f"That file is no longer at:\n{path}",
+                _("File missing"),
+                _("That file is no longer at:\n{path}", path=path),
                 parent=self,
             )
             return
@@ -1937,9 +1964,9 @@ class App(tk.Tk):
             save_config(self.app_config)
         except Exception as e:  # noqa: BLE001
             logger.exception("Failed to save the Work offline choice")
-            text = (
-                f"Could not save the Work offline choice ({e}); a transcription "
-                "that starts a new worker follows the old setting."
+            text = _(
+                "Could not save the Work offline choice ({error}); a transcription "
+                "that starts a new worker follows the old setting.", error=e,
             )
             self.log(text)
             notify(self, text, "warning")
@@ -2007,16 +2034,19 @@ class App(tk.Tk):
     def ensure_online(self, what: str) -> bool:
         """True when ``what`` may use the network; asks to turn Work offline off first.
 
-        ``what`` names the action, e.g. "Downloading this link". Saying no
-        leaves the switch on and the action is not started.
+        ``what`` names the action in English, e.g. "Downloading this link" (mark it with
+        ``N_`` where it is written so it reaches the catalog): the question shows it
+        translated, the log line keeps the English. Saying no leaves the switch on and the
+        action is not started.
         """
         if not offline.is_offline():
             return True
         from tkinter import messagebox
         if not messagebox.askyesno(
-            "Offline mode is on",
-            f"{what} needs the internet, and Work offline is on, so the app "
-            "makes no network connection.\n\nTurn Work offline off now?",
+            _("Offline mode is on"),
+            _("{action} needs the internet, and Work offline is on, so the app "
+              "makes no network connection.\n\nTurn Work offline off now?",
+              action=translate(what)),
             parent=self,
         ):
             self.log(offline.refused(what.lower()[:1] + what[1:]))
@@ -2033,7 +2063,7 @@ class App(tk.Tk):
         reference and is intentionally exhaustive.
         """
         dlg = tk.Toplevel(self)
-        dlg.title("About Whisper Transcriber Suite")
+        dlg.title(_("About Whisper Transcriber Suite"))
         dlg.transient(self)
         about_w, about_h = scaled_size(dlg, 680, 620)
         dlg.geometry("%dx%d" % (about_w, about_h))
@@ -2051,7 +2081,7 @@ class App(tk.Tk):
         ).pack(anchor="w")
         ttk.Label(
             header,
-            text=(
+            text=_(
                 "A desktop app that turns audio and video into "
                 "subtitles on your own computer. Powered by OpenAI "
                 "Whisper via faster-whisper. No account and no API key "
@@ -2067,7 +2097,8 @@ class App(tk.Tk):
         if newer:
             ttk.Label(
                 header,
-                text=f"Version {newer} is available. Help → Check for updates… shows it.",
+                text=_("Version {version} is available. Help → Check for updates… shows it.",
+                   version=newer),
             ).pack(anchor="w", pady=(4, 0))
         # One quiet line: the repo page (never /stargazers, it has no Star button).
         from core import star_invite as _star
@@ -2118,7 +2149,7 @@ class App(tk.Tk):
             "link", foreground=tokens.themed(tokens.LINK), underline=True,
             lmargin1=28, lmargin2=42, spacing1=1, spacing3=1,
         )
-        text.insert("end", "Helpful links\n", "section")
+        text.insert("end", _("Helpful links") + "\n", "section")
         for idx, (label, url) in enumerate(build_about_links()):
             tag = f"link-{idx}"
             text.tag_configure(tag)
@@ -2145,14 +2176,15 @@ class App(tk.Tk):
         credit_row.pack(fill="x")
         footer = ttk.Frame(dlg, padding=(16, 6, 16, 14))
         footer.pack(fill="x")
-        ttk.Button(footer, text="OK", command=dlg.destroy).pack(side="right")
-        ttk.Button(footer, text="Report a problem…",
+        ttk.Button(footer, text=_("OK"), command=dlg.destroy).pack(side="right")
+        ttk.Button(footer, text=_("Report a problem…"),
                    command=lambda: self._open_problem_report(dlg)).pack(side="right", padx=(0, 8))
         # The project's home is this repository; translation-robot co-wrote it.
         credit = ttk.Label(
             credit_row,
-            text="github.com/Milomilo777/whisper-transcriber-suite  ·  "
-                 "co-author: translation-robot",
+            text=_("{site}  ·  co-author: {author}",
+                   site="github.com/Milomilo777/whisper-transcriber-suite",
+                   author="translation-robot"),
             foreground=tokens.themed(tokens.LINK), cursor="hand2",
         )
         credit.pack(side="left")
@@ -2193,9 +2225,9 @@ class App(tk.Tk):
 
         in_path = filedialog.askopenfilename(
             parent=self,
-            title="Convert transcript — pick the source file",
+            title=_("Convert transcript — pick the source file"),
             filetypes=[
-                ("Transcripts", "*.json *.srt *.vtt *.tsv *.otr *.eaf *.inqscr *.txt"),
+                (_("Transcripts"), "*.json *.srt *.vtt *.tsv *.otr *.eaf *.inqscr *.txt"),
                 ("SubRip", "*.srt"),
                 ("WebVTT", "*.vtt"),
                 ("TSV", "*.tsv"),
@@ -2203,7 +2235,7 @@ class App(tk.Tk):
                 ("oTranscribe", "*.otr"),
                 ("ELAN", "*.eaf"),
                 ("InqScribe", "*.inqscr *.txt"),
-                ("All files", "*.*"),
+                (_("All files"), "*.*"),
             ],
         )
         if not in_path:
@@ -2216,21 +2248,21 @@ class App(tk.Tk):
         try:
             out_path = _convert.convert_file(in_path, fmt)
         except _convert.ConvertError as e:
-            messagebox.showerror("Convert transcript", str(e), parent=self)
+            messagebox.showerror(_("Convert transcript"), str(e), parent=self)
             return
         except OSError as e:
             messagebox.showerror(
-                "Convert transcript",
-                f"Could not write the output file: {e}",
+                _("Convert transcript"),
+                _("Could not write the output file: {error}", error=e),
                 parent=self,
             )
             return
 
         self.log(f"Converted {os.path.basename(in_path)} -> {out_path}")
         if messagebox.askyesno(
-            "Convert transcript",
-            f"Wrote:\n{out_path}\n\n"
-            + ("Reveal it in Finder?" if shortcuts.is_mac() else "Open its folder?"),
+            _("Convert transcript"),
+            _("Wrote:\n{path}\n\nReveal it in Finder?", path=out_path) if shortcuts.is_mac()
+            else _("Wrote:\n{path}\n\nOpen its folder?", path=out_path),
             parent=self,
         ):
             try:
@@ -2271,7 +2303,7 @@ class App(tk.Tk):
             default = ordered[0]
 
         dlg = tk.Toplevel(self)
-        dlg.title("Convert transcript")
+        dlg.title(_("Convert transcript"))
         dlg.transient(self)
         dlg.resizable(False, False)
         result: dict[str, str | None] = {"fmt": None}
@@ -2279,10 +2311,10 @@ class App(tk.Tk):
         body = ttk.Frame(dlg, padding=16)
         body.pack(fill="both", expand=True)
         ttk.Label(
-            body, text=f"Source: {os.path.basename(in_path)}",
+            body, text=_("Source: {name}", name=os.path.basename(in_path)),
             foreground=tokens.themed(tokens.TEXT_MUTED),
         ).pack(anchor="w", pady=(0, 8))
-        ttk.Label(body, text="Convert to format:").pack(anchor="w")
+        ttk.Label(body, text=_("Convert to format:")).pack(anchor="w")
         fmt_var = tk.StringVar(value=labels[default])
         ttk.Combobox(
             body, textvariable=fmt_var, state="readonly",
@@ -2299,8 +2331,8 @@ class App(tk.Tk):
 
         btns = ttk.Frame(body)
         btns.pack(fill="x")
-        ttk.Button(btns, text="Convert", command=_ok).pack(side="right")
-        ttk.Button(btns, text="Cancel", command=_cancel).pack(
+        ttk.Button(btns, text=_("Convert"), command=_ok).pack(side="right")
+        ttk.Button(btns, text=_("Cancel"), command=_cancel).pack(
             side="right", padx=(0, 8)
         )
         dlg.protocol("WM_DELETE_WINDOW", _cancel)
@@ -2426,10 +2458,17 @@ class App(tk.Tk):
         ]
         if active or active_downloads:
             self._exit_prompt_open = True
+            # Quit on macOS, Exit elsewhere (shortcuts.quit_label), as whole sentences.
+            if shortcuts.is_mac():
+                title = _("Quit with queued tasks")
+                question = _("There are queued or running tasks. Quit anyway?")
+            else:
+                title = _("Exit with queued tasks")
+                question = _("There are queued or running tasks. Exit anyway?")
             try:
                 confirmed = messagebox.askyesno(
-                    f"{shortcuts.quit_label()} with queued tasks",
-                    f"There are queued or running tasks. {shortcuts.quit_label()} anyway?",
+                    title,
+                    question,
                     parent=self,
                     default="no",
                 )
@@ -2660,10 +2699,10 @@ class App(tk.Tk):
         # capture), then the standalone tools, then settings-like tabs.
         # The Supreme Master TV introduction is ALWAYS the last tab --
         # keep it last when adding a new one.
-        self.nb.add(self.t1, text="Transcribe")
-        self.nb.add(self.t2, text="Transcription Queue")
-        self.nb.add(self.t3, text="Download Videos")
-        self.nb.add(self.t6, text="Live")
+        self.nb.add(self.t1, text=pgettext("tab", "Transcribe"))
+        self.nb.add(self.t2, text=_("Transcription Queue"))
+        self.nb.add(self.t3, text=_("Download Videos"))
+        self.nb.add(self.t6, text=pgettext("tab", "Live"))
         # Clone Your Voice / Text to Voice is opt-in at install time
         # (no_voice_clone.flag via voice_clone_tab_enabled); it is simply
         # not added when disabled. The voice-clone worker is spawned
@@ -2671,8 +2710,9 @@ class App(tk.Tk):
         # tear down.
         self._voice_clone_tab_visible = voice_clone_tab_enabled()
         if self._voice_clone_tab_visible:
-            self.nb.add(self.t7, text="Clone Your Voice / Text to Voice")
-        self.nb.add(self.t5, text="Web / LAN access")
+            self.nb.add(self.t7, text=_("Clone Your Voice / Text to Voice"))
+        self.nb.add(self.t5, text=_("Web / LAN access"))
+        # The video-site tab stays English-only (never wrapped, never in a catalog).
         self.nb.add(self.t8, text="Supreme Master TV")
         # The taller tabs scroll when the window is shorter than their
         # content (e.g. a 768 px laptop screen) instead of cutting it off;
@@ -2846,9 +2886,9 @@ class App(tk.Tk):
         self,
         parent: "tk.Misc | None" = None,
         *,
-        title: str = "Switch transcription engine?",
-        action: str = "Switching engines",
-        question: str = "Switch anyway?",
+        title: str = N_("Switch transcription engine?"),
+        action: str = N_("Switching engines"),
+        question: str = N_("Switch anyway?"),
     ) -> bool:
         """True if it's safe to stop_all() workers for an engine switch.
 
@@ -2858,6 +2898,9 @@ class App(tk.Tk):
         lose more progress than a normal Cancel would, with no warning.
         Asks first when any worker has an assigned task; returns True with
         no prompt when nothing is actually running.
+
+        ``title``, ``action`` and ``question`` are English msgids (marked with ``N_`` by the
+        caller); they are translated here.
         """
         svc = getattr(self, "transcription_service", None)
         if svc is None:
@@ -2867,14 +2910,17 @@ class App(tk.Tk):
             return True
         from tkinter import messagebox
         n = len(busy)
+        title = translate(title)
         return messagebox.askyesno(
             title,
-            (
-                f"{n} transcription{'s are' if n != 1 else ' is'} running "
-                f"right now. {action} stops "
-                f"{'them' if n != 1 else 'it'} immediately -- more "
-                "abruptly than a normal Cancel, so more progress may be "
-                f"lost.\n\n{question}"
+            ngettext(
+                "{n} transcription is running right now. {action} stops it immediately "
+                "-- more abruptly than a normal Cancel, so more progress may be lost."
+                "\n\n{question}",
+                "{n} transcriptions are running right now. {action} stops them immediately "
+                "-- more abruptly than a normal Cancel, so more progress may be lost."
+                "\n\n{question}",
+                n, action=translate(action), question=translate(question),
             ),
             parent=parent or self,
             default="no",
@@ -2941,7 +2987,7 @@ class App(tk.Tk):
 
             # 1) Immediate, cheap, non-blocking paint — "Checking…" so the
             #    user sees something right away while the real probe runs.
-            var.set("Checking…")
+            var.set(_("Checking…"))
             lbl = getattr(self, "engine_status_label", None)
             if lbl is not None:
                 try:
@@ -2990,7 +3036,7 @@ class App(tk.Tk):
         if var is None:
             return
         try:
-            if var.get() != "Checking…":
+            if var.get() != _("Checking…"):
                 return
             from core.backends import availability as _eng
 
@@ -3232,9 +3278,9 @@ class App(tk.Tk):
         # stop_all() below is a hard stop: never kill a running transcription
         # without asking (the engine picker already asked; this one did not).
         if not self._confirm_backend_switch(
-            title="Change the Whisper model?",
-            action="Changing the model",
-            question="Change it anyway?",
+            title=N_("Change the Whisper model?"),
+            action=N_("Changing the model"),
+            question=N_("Change it anyway?"),
         ):
             slug_to_label = {s: lbl for lbl, s in label_to_slug.items()}
             mvar.set(slug_to_label.get(old_slug, mvar.get()))
@@ -3325,10 +3371,10 @@ class App(tk.Tk):
         if value is None:
             value = _eng.normalise_engine(self.app_config.get("transcribe_backend"))
         engine_label = _eng.VALUE_TO_LABEL.get(value, value)
-        return (
-            f"The {engine_label} engine uses its own model. This picker only "
+        return _(
+            "The {engine} engine uses its own model. This picker only "
             "applies to the Faster-Whisper engine, so a change here would "
-            "have no effect."
+            "have no effect.", engine=engine_label,
         )
 
     def _refresh_model_status(self) -> None:
@@ -3345,16 +3391,16 @@ class App(tk.Tk):
             return
         try:
             if not self._engine_uses_whisper_model():
-                var.set("Only used by Faster-Whisper")
+                var.set(_("Only used by Faster-Whisper"))
                 return
 
             from core.model_manager import DEFAULT_MODEL_SLUG, model_downloaded
 
             slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG)
             if model_downloaded(self.app_config, slug):
-                var.set("✓ Downloaded")
+                var.set(_("✓ Downloaded"))
             else:
-                var.set("Downloads automatically on first use")
+                var.set(_("Downloads automatically on first use"))
         except Exception:  # noqa: BLE001
             try:
                 var.set("")
@@ -3520,13 +3566,13 @@ class App(tk.Tk):
             except tk.TclError:
                 pass
         self.format_status_var.set(
-            f"Installing the YouTube helper (Deno, about {DENO_DOWNLOAD_MB} MB)…"
+            _("Installing the YouTube helper (Deno, about {size} MB)…", size=DENO_DOWNLOAD_MB)
         )
 
         def _progress(pct: int) -> None:
             if pct % 5 == 0:
                 self.post_to_main(lambda: self.format_status_var.set(
-                    f"Installing the YouTube helper… {pct}%"
+                    _("Installing the YouTube helper… {percent}%", percent=pct)
                 ))
 
         def _work() -> None:
@@ -3550,7 +3596,7 @@ class App(tk.Tk):
             except tk.TclError:
                 pass
         if error:
-            self.format_status_var.set(f"Could not install the YouTube helper: {error}")
+            self.format_status_var.set(_("Could not install the YouTube helper: {error}", error=error))
             self.log(f"YouTube helper (Deno) install failed: {error}")
             return
         self.log(f"YouTube helper installed: {path}")
@@ -3559,7 +3605,7 @@ class App(tk.Tk):
         if url_var is not None and url_var.get().strip():
             self.format_service.schedule_lookup()  # look the link up again with Deno
         else:
-            self.format_status_var.set("YouTube helper installed.")
+            self.format_status_var.set(_("YouTube helper installed."))
 
     def update_caption_bar(self) -> None:
         """Show which subtitles the looked-up video has under the link field.
@@ -3624,19 +3670,24 @@ class App(tk.Tk):
             return
 
         label = sub_lang_name if sub_lang_name and sub_lang_name != "Automatic" else (
-            self.current_video_language or "the detected language"
+            self.current_video_language
         )
-        if kind == "manual":
-            status_var.set(
-                f'Captions (creator-provided) are already available in "{label}" '
-                "-- skip downloading and transcribing?"
-            )
+        # Whole sentences: one with the language's name, one for "the detected language".
+        if kind == "manual" and label:
+            text = _('Captions (creator-provided) are already available in "{language}" '
+                     "-- skip downloading and transcribing?", language=label)
+        elif kind == "manual":
+            text = _('Captions (creator-provided) are already available in "the detected '
+                     'language" -- skip downloading and transcribing?')
+        elif label:
+            text = _('Auto-generated captions are already available in "{language}" -- '
+                     "skip downloading and transcribing? (may be less accurate than "
+                     "a real transcription)", language=label)
         else:
-            status_var.set(
-                f'Auto-generated captions are already available in "{label}" -- '
-                "skip downloading and transcribing? (may be less accurate than "
-                "a real transcription)"
-            )
+            text = _('Auto-generated captions are already available in "the detected '
+                     'language" -- skip downloading and transcribing? (may be less '
+                     "accurate than a real transcription)")
+        status_var.set(text)
         button.pack(side="left", padx=(10, 0))
 
     def model_status(self, msg: str) -> None:
@@ -3676,17 +3727,26 @@ class App(tk.Tk):
         req = str(worker.get("requested_device") or "")
         ct = str(worker.get("compute_type") or "")
         dev = str(worker.get("device") or "")
-        tip = f"Transcribing on {dev or 'cpu'}"
-        if ct:
-            tip += f" ({ct})"
-        if kind in ("cpu", "cpu_downgraded"):
-            tip += (
-                ". CPU is much slower than a GPU. If you have an NVIDIA card, "
-                "open Advanced > Re-detect hardware: it says why the GPU is "
-                "not used and can install the missing NVIDIA library."
-            )
+        # The device and its compute type are data ("cuda (float16)"); each hover text is one
+        # whole message.
+        device = f"{dev or 'cpu'} ({ct})" if ct else (dev or "cpu")
         if kind == "cpu_downgraded" and req:
-            tip = f"Requested {req} but it was unavailable. " + tip
+            tip = _(
+                "Requested {requested} but it was unavailable. Transcribing on {device}. "
+                "CPU is much slower than a GPU. If you have an NVIDIA card, "
+                "open Advanced > Re-detect hardware: it says why the GPU is "
+                "not used and can install the missing NVIDIA library.",
+                requested=req, device=device,
+            )
+        elif kind in ("cpu", "cpu_downgraded"):
+            tip = _(
+                "Transcribing on {device}. CPU is much slower than a GPU. If you have an "
+                "NVIDIA card, open Advanced > Re-detect hardware: it says why the GPU is "
+                "not used and can install the missing NVIDIA library.",
+                device=device,
+            )
+        else:
+            tip = _("Transcribing on {device}", device=device)
         self.device_badge_tip = tip
         for label in self.device_badge_labels:
             try:
@@ -3714,7 +3774,7 @@ class App(tk.Tk):
         (a CUDA->CPU downgrade, or a GPU detected-but-unusable). Kept short.
         """
         if downgraded:
-            msg = (
+            msg = _(
                 "Your GPU could not be used, so transcription is running on "
                 "the CPU — this is much slower.\n\n"
                 "This usually means an NVIDIA library (cuBLAS) is missing or "
@@ -3722,7 +3782,7 @@ class App(tk.Tk):
                 "Advanced > Re-detect hardware for the exact reason and a fix."
             )
         else:
-            msg = (
+            msg = _(
                 "An NVIDIA GPU was detected but cannot be used yet, so "
                 "transcription is running on the CPU — this is much slower.\n\n"
                 "Open Advanced > Re-detect hardware: it shows the exact reason "
@@ -3730,14 +3790,14 @@ class App(tk.Tk):
             )
         self.log(msg.replace("\n\n", " "))
         try:
-            messagebox.showwarning("Running on CPU (slower)", msg, parent=self)
+            messagebox.showwarning(_("Running on CPU (slower)"), msg, parent=self)
         except Exception:  # noqa: BLE001
             pass
 
     # Modal model setup -------------------------------------------------------
     def ensure_model_with_modal(self, mandatory: bool = False) -> bool:
         if self.model_ready:
-            self.status_var.set("Model loaded")
+            self.status_var.set(_("Model loaded"))
             return True
         return self._open_model_download_modal(mandatory=mandatory)
 
@@ -3777,7 +3837,7 @@ class App(tk.Tk):
             self._refresh_engine_status()
             return True
         self.model_ready = False
-        self.status_var.set("Model is required")
+        self.status_var.set(_("Model is required"))
         if mandatory:
             self.log("Model setup was cancelled or failed.")
         return False
@@ -3798,23 +3858,25 @@ class App(tk.Tk):
             self.log(f"{friendly}: not included in this app -- continuing without it. "
                      + optional_deps.FROZEN_INSTALL_MESSAGE)
             return False
+        # ``friendly`` is an English msgid (N_ at the call); the log lines keep it English.
+        name = translate(friendly)
         if not messagebox.askyesno(
-            f"{friendly} needs a download",
-            f"{friendly} needs a one-time download of about {size_hint} "
-            f"(PyTorch + support files).\n\nDownload and install it now?\n"
-            f"Choose No to continue this time without it.",
+            _("{feature} needs a download", feature=name),
+            _("{feature} needs a one-time download of about {size} "
+              "(PyTorch + support files).\n\nDownload and install it now?\n"
+              "Choose No to continue this time without it.", feature=name, size=size_hint),
             parent=self,
         ):
             self.log(f"{friendly}: skipped the optional download — continuing without it.")
             return False
         win = tk.Toplevel(self)
-        win.title(f"Installing {friendly}")
+        win.title(_("Installing {feature}", feature=name))
         win.transient(self)
         win.resizable(False, False)
         ttk.Label(
             win,
-            text=(f"Downloading and installing {friendly} (~{size_hint}).\n"
-                  "This happens once and can take a few minutes…"),
+            text=_("Downloading and installing {feature} (~{size}).\n"
+                   "This happens once and can take a few minutes…", feature=name, size=size_hint),
             justify="left",
         ).pack(padx=18, pady=(16, 8))
         bar = ttk.Progressbar(win, mode="indeterminate", length=px(340))
@@ -3831,11 +3893,11 @@ class App(tk.Tk):
             # stalled download.
             cancel_event.set()
             try:
-                cancel_btn.config(state="disabled", text="Cancelling…")
+                cancel_btn.config(state="disabled", text=_("Cancelling…"))
             except tk.TclError:
                 pass
 
-        cancel_btn = ttk.Button(win, text="Cancel", command=_request_cancel)
+        cancel_btn = ttk.Button(win, text=_("Cancel"), command=_request_cancel)
         cancel_btn.pack(pady=(0, 14))
         win.protocol("WM_DELETE_WINDOW", _request_cancel)
         place_over(win, self)
@@ -3950,15 +4012,15 @@ class App(tk.Tk):
         except OSError as e:
             self.log(f"Could not prepare the sample clip: {e}")
             show_error(
-                self, "Sample clip unavailable",
-                "Could not copy the sample clip into your data folder.", detail=str(e),
+                self, _("Sample clip unavailable"),
+                _("Could not copy the sample clip into your data folder."), detail=str(e),
             )
             return
         if path is None:
             self.log("The sample clip is missing from this install.")
             show_error(
-                self, "Sample clip missing",
-                "The sample clip could not be found in this install."
+                self, _("Sample clip missing"),
+                _("The sample clip could not be found in this install.")
             )
             return
         if any(
@@ -4012,9 +4074,8 @@ class App(tk.Tk):
                 self.log("Model download already in progress — please wait.")
                 return False
             if not messagebox.askyesno(
-                "Whisper model required",
-                "The Whisper model must be downloaded before the first transcription. "
-                f"Download it now? ({self._model_download_size_hint()}one time only)",
+                _("Whisper model required"),
+                self._model_download_question(),
                 parent=self,
             ):
                 self.log("Transcription cancelled: the Whisper model is required.")
@@ -4027,7 +4088,7 @@ class App(tk.Tk):
         # worker spawns so the worker activates with it present. Declining
         # is fine — the worker skips alignment gracefully.
         if self.app_config.get("alignment") == "stable_ts":
-            self._offer_optional_install("alignment", "Word-timestamp alignment", "700 MB")
+            self._offer_optional_install("alignment", N_("Word-timestamp alignment"), "700 MB")
         if not self.transcription_service.ensure_worker_ready(self):
             self.log("Transcription cancelled: model load was cancelled")
             return False
@@ -4045,6 +4106,15 @@ class App(tk.Tk):
         except Exception:  # noqa: BLE001 -- a size hint must never block the prompt
             text = ""
         return f"{text}, " if text else ""
+
+    def _model_download_question(self) -> str:
+        """The "Whisper model required" question, with the download size when it is known."""
+        size = self._model_download_size_hint().rstrip(", ")
+        if size:
+            return _("The Whisper model must be downloaded before the first transcription. "
+                     "Download it now? ({size}, one time only)", size=size)
+        return _("The Whisper model must be downloaded before the first transcription. "
+                 "Download it now? (one time only)")
 
     def _selected_transcribe_language(self) -> str | None:
         """The Transcribe-tab language as a code, or None for auto-detect."""
@@ -4097,8 +4167,9 @@ class App(tk.Tk):
             name = lang_var.get().strip()
         prompt = dlg.EnglishOnlyPrompt(
             model=slug, language=name, alternative=alt,
-            reason=(f"About the same size and speed, and it understands "
-                    f"{name or 'other languages'}."),
+            reason=(_("About the same size and speed, and it understands {language}.",
+                      language=name) if name
+                    else _("About the same size and speed, and it understands other languages.")),
             size_text=approx_download_size_text(self.app_config, alt),
             downloaded=model_downloaded(self.app_config, alt),
         )
@@ -4402,23 +4473,23 @@ class App(tk.Tk):
         )
         m = tk.Menu(self, tearoff=0)
         if states["pause"]:
-            m.add_command(label="Pause", command=lambda: self.pause(task))
+            m.add_command(label=_("Pause"), command=lambda: self.pause(task))
         if states["resume"] and task.status == "paused":
-            m.add_command(label="Resume", command=lambda: self.resume(task))
+            m.add_command(label=_("Resume"), command=lambda: self.resume(task))
         if states["cancel"]:
-            m.add_command(label="Cancel", command=lambda: self.cancel(task))
+            m.add_command(label=_("Cancel"), command=lambda: self.cancel(task))
         if task.status in ("finished", "cancelled", "error"):
             if task.status == "finished":
                 m.add_command(
-                    label="Export → oTranscribe (.otr)",
+                    label=_("Export → oTranscribe (.otr)"),
                     command=lambda: self.integrations_service.export_task_to_otr(task),
                 )
                 m.add_command(
-                    label="Burn subtitles into video...",
+                    label=_("Burn subtitles into video..."),
                     command=lambda: self._burn_subs_for(task),
                 )
                 m.add_command(
-                    label="View transcript",
+                    label=_("View transcript"),
                     command=lambda: self.open_transcript_viewer_for(
                         task.file_path, self._task_json_output(task),
                         task.language or task.detected_language,
@@ -4426,7 +4497,7 @@ class App(tk.Tk):
                 )
                 out_file = task_output_file(task)
                 m.add_command(
-                    label=folder_action_label("Open output folder", "Output Folder", out_file),
+                    label=folder_action_label(_("Open output folder"), "Output Folder", out_file),
                     command=lambda: self._open_folder(task_output_folder(task), select=out_file),
                 )
                 m.add_separator()
@@ -4436,13 +4507,13 @@ class App(tk.Tk):
             # potentially stale partial.
             if states["resume"] and task.status == "cancelled":
                 m.add_command(
-                    label="Resume",
+                    label=_("Resume"),
                     command=lambda: self.resume_task(task),
                 )
             if states["rerun"]:
-                m.add_command(label="Re-run", command=lambda: self._rerun_task(task))
+                m.add_command(label=_("Re-run"), command=lambda: self._rerun_task(task))
             if states["remove"]:
-                m.add_command(label="Remove", command=lambda: self.remove_task(task))
+                m.add_command(label=_("Remove"), command=lambda: self.remove_task(task))
         m.tk_popup(e.x_root, e.y_root)
 
     def _task_has_checkpoint(self, task: TranscriptionTask) -> bool:
@@ -4498,25 +4569,25 @@ class App(tk.Tk):
             # (cancel_download unlinks + cancels transcription_task).
             # "burning" = the subtitled-video burn; Cancel kills its ffmpeg.
             if dstates["pause"]:
-                m.add_command(label="Pause", command=lambda: self.pause_download(task))
-            m.add_command(label="Cancel", command=lambda: self.cancel_download(task))
+                m.add_command(label=_("Pause"), command=lambda: self.pause_download(task))
+            m.add_command(label=_("Cancel"), command=lambda: self.cancel_download(task))
         elif task.status == "paused":
-            m.add_command(label="Resume", command=lambda: self.resume_download(task))
-            m.add_command(label="Cancel", command=lambda: self.cancel_download(task))
+            m.add_command(label=_("Resume"), command=lambda: self.resume_download(task))
+            m.add_command(label=_("Cancel"), command=lambda: self.cancel_download(task))
         elif task.status in ("finished", "cancelled", "error"):
             saved = getattr(task, "saved_path", None)
             if task.status == "finished" and saved and os.path.isfile(saved):
                 m.add_command(
-                    label="Open file",
+                    label=_("Open file"),
                     command=lambda p=saved: self._open_file(p),
                 )
             reveal_target = saved if task.status == "finished" and saved and os.path.isfile(saved) else None
             m.add_command(
-                label=folder_action_label("Open download folder", "Download Folder", reveal_target),
+                label=folder_action_label(_("Open download folder"), "Download Folder", reveal_target),
                 command=lambda: self._open_folder(task.folder, select=reveal_target),
             )
-            m.add_command(label="Re-run", command=lambda: self._rerun_download(task))
-            m.add_command(label="Remove", command=lambda: self.remove_download(task))
+            m.add_command(label=_("Re-run"), command=lambda: self._rerun_download(task))
+            m.add_command(label=_("Remove"), command=lambda: self.remove_download(task))
         m.tk_popup(e.x_root, e.y_root)
 
     # --- bulk (multi-select) queue actions -----------------------------------
@@ -4624,16 +4695,16 @@ class App(tk.Tk):
             return
         m = tk.Menu(self, tearoff=0)
         if active:
-            m.add_command(label=f"Cancel selected ({len(active)})",
+            m.add_command(label=_("Cancel selected ({count})", count=len(active)),
                           command=lambda ts=active: self._bulk_apply(ts, self.cancel))
         if terminal:
-            m.add_command(label=f"Re-run selected ({len(terminal)})",
+            m.add_command(label=_("Re-run selected ({count})", count=len(terminal)),
                           command=lambda ts=terminal: self._bulk_rerun(ts))
             resumable = self._resumable_tasks(terminal)
             if resumable:
-                m.add_command(label=f"Resume selected ({len(resumable)})",
+                m.add_command(label=_("Resume selected ({count})", count=len(resumable)),
                               command=lambda ts=resumable: self._bulk_resume(ts))
-            m.add_command(label=f"Remove selected ({len(terminal)})",
+            m.add_command(label=_("Remove selected ({count})", count=len(terminal)),
                           command=lambda ts=terminal: self._bulk_apply(ts, self.remove_task))
         m.tk_popup(e.x_root, e.y_root)
 
@@ -4644,12 +4715,12 @@ class App(tk.Tk):
             return
         m = tk.Menu(self, tearoff=0)
         if active:
-            m.add_command(label=f"Cancel selected ({len(active)})",
+            m.add_command(label=_("Cancel selected ({count})", count=len(active)),
                           command=lambda ts=active: self._bulk_apply(ts, self.cancel_download))
         if terminal:
-            m.add_command(label=f"Re-run selected ({len(terminal)})",
+            m.add_command(label=_("Re-run selected ({count})", count=len(terminal)),
                           command=lambda ts=terminal: self._bulk_apply(ts, self._rerun_download))
-            m.add_command(label=f"Remove selected ({len(terminal)})",
+            m.add_command(label=_("Remove selected ({count})", count=len(terminal)),
                           command=lambda ts=terminal: self._bulk_apply(ts, self.remove_download))
         m.tk_popup(e.x_root, e.y_root)
 
@@ -4758,7 +4829,7 @@ class App(tk.Tk):
         if getattr(self, "download_duration_var", None) is not None:
             from app.services.download_service import _fmt_timecode
             self.download_duration_var.set(
-                f"video length {_fmt_timecode(dur)} — drag to set the range"
+                _("video length {length} — drag to set the range", length=_fmt_timecode(dur))
                 if dur > 0 else ""
             )
 
@@ -5273,7 +5344,7 @@ class App(tk.Tk):
 
         self._server_busy = True
         self.server_toggle_btn.config(state="disabled")
-        self.server_status_var.set("Starting...")
+        self.server_status_var.set(_("Starting..."))
         self.server_url_var.set("")
 
         def _work() -> None:
@@ -5315,7 +5386,7 @@ class App(tk.Tk):
         handle = self._server_handle
         self._server_busy = True
         self.server_toggle_btn.config(state="disabled")
-        self.server_status_var.set("Stopping...")
+        self.server_status_var.set(_("Stopping..."))
 
         def _work() -> None:
             try:
@@ -5351,14 +5422,15 @@ class App(tk.Tk):
         except (tk.TclError, ValueError):
             pass
         self.server_toggle_btn.config(
-            text="Stop web access", state="normal")
+            text=_("Stop web access"), state="normal")
         self.server_open_btn.config(state="normal")
         primary = urls[0] if urls else f"http://127.0.0.1:{port}/"
         if share_lan and len(urls) > 1:
             self.server_status_var.set(
-                "Running. On this PC and on your network.")
+                _("Running. On this PC and on your network."))
             self.server_url_var.set(
-                f"This PC:  {urls[0]}\nNetwork:  {urls[1]}")
+                _("This PC:  {local_url}\nNetwork:  {network_url}",
+                  local_url=urls[0], network_url=urls[1]))
         elif share_lan:
             # LAN sharing was requested but the network address could not be
             # determined (LAN-IP detection failed — no active network
@@ -5367,32 +5439,32 @@ class App(tk.Tk):
             # PC's IP; we just can't display it. Say so distinctly instead of
             # the misleading "Running on this computer." (local-only) line.
             self.server_status_var.set(
-                "Running. Network sharing on, but your network address "
-                "couldn't be detected.")
+                _("Running. Network sharing on, but your network address "
+                  "couldn't be detected."))
             self.server_url_var.set(primary)
         else:
-            self.server_status_var.set("Running on this computer.")
+            self.server_status_var.set(_("Running on this computer."))
             self.server_url_var.set(primary)
         self.log(f"Web / LAN access started: {primary}")
 
     def _on_server_failed(self, message: str) -> None:
         self._server_busy = False
         self._server_handle = None
-        self.server_toggle_btn.config(text="Start web access", state="normal")
+        self.server_toggle_btn.config(text=_("Start web access"), state="normal")
         self.server_open_btn.config(state="disabled")
-        self.server_status_var.set("Off")
+        self.server_status_var.set(pgettext("web access", "Off"))
         self.server_url_var.set("")
         messagebox.showerror(
-            "Could not start web access",
-            f"The web / LAN server could not start.\n\n{message}",
+            _("Could not start web access"),
+            _("The web / LAN server could not start.\n\n{error}", error=message),
             parent=self,
         )
 
     def _on_server_stopped(self) -> None:
         self._server_busy = False
-        self.server_toggle_btn.config(text="Start web access", state="normal")
+        self.server_toggle_btn.config(text=_("Start web access"), state="normal")
         self.server_open_btn.config(state="disabled")
-        self.server_status_var.set("Off")
+        self.server_status_var.set(pgettext("web access", "Off"))
         self.server_url_var.set("")
         self.log("Web / LAN access stopped.")
 
@@ -5640,7 +5712,7 @@ class App(tk.Tk):
         """
         base = self._base_title
         if offline.is_offline():
-            base = f"{base} — Work offline"
+            base = _("{title} — Work offline", title=base)
         running = [t for t in self.queue if t.status == "running"]
         running_dl = [
             d for d in self.download_queue if d.status == "running"
@@ -5656,22 +5728,20 @@ class App(tk.Tk):
             return
         if running and not running_dl and len(running) == 1:
             t = running[0]
-            self.title(
-                f"{base} — {t.progress}% transcribing "
-                f"{os.path.basename(t.file_path)}"
-            )
+            self.title(_("{title} — {percent}% transcribing {name}", title=base,
+                         percent=t.progress, name=os.path.basename(t.file_path)))
             return
         if running_dl and not running and len(running_dl) == 1:
             d = running_dl[0]
-            self.title(
-                f"{base} — {d.progress}% downloading "
-                f"{d.title[:40] if d.title else d.url[:40]}"
-            )
+            self.title(_("{title} — {percent}% downloading {name}", title=base,
+                         percent=d.progress, name=d.title[:40] if d.title else d.url[:40]))
             return
         total = len(running) + len(running_dl)
         all_p = [t.progress for t in running] + [d.progress for d in running_dl]
         avg = sum(all_p) // len(all_p) if all_p else 0
-        self.title(f"{base} — {total} tasks (avg {avg}%)")
+        self.title(ngettext("{title} — {n} task (avg {percent}%)",
+                            "{title} — {n} tasks (avg {percent}%)", total,
+                            title=base, percent=avg))
 
     def show_last_result(self, task: "TranscriptionTask") -> None:
         """Populate the Transcribe-tab Last Result card.
@@ -5701,7 +5771,7 @@ class App(tk.Tk):
         except Exception:  # noqa: BLE001
             pass
 
-        base, _ = os.path.splitext(task.file_path)
+        base, _unused = os.path.splitext(task.file_path)
         # The outputs' folder, not the source's: an output template can
         # write somewhere else, and "Open folder" must show the new files.
         folder = task_output_folder(task)
@@ -5734,14 +5804,14 @@ class App(tk.Tk):
         if getattr(task, "no_speech", False):
             ttk.Label(
                 self.last_result_body,
-                text="No speech was recognised in this file, so the output files are empty.",
+                text=_("No speech was recognised in this file, so the output files are empty."),
                 foreground=tokens.themed(tokens.WARNING_TEXT),
             ).pack(anchor="w", pady=(2, 0))
         if existing:
             ttk.Label(
                 self.last_result_body,
-                text=f"Saved {len(existing)} output file"
-                     f"{'' if len(existing) == 1 else 's'} in {folder}",
+                text=ngettext("Saved {n} output file in {folder}",
+                              "Saved {n} output files in {folder}", len(existing), folder=folder),
                 foreground=tokens.themed(tokens.TEXT_MUTED),
             ).pack(anchor="w", pady=(2, 6))
 
@@ -5757,7 +5827,7 @@ class App(tk.Tk):
                         row, text=ltr_base(f"• {os.path.basename(path)}  ({size})")
                     ).pack(side="left")
                     ttk.Button(
-                        row, text="Open",
+                        row, text=pgettext("file", "Open"),
                         command=lambda p=path: self._open_file(p),
                     ).pack(side="right")
 
@@ -5767,7 +5837,7 @@ class App(tk.Tk):
         else:
             ttk.Label(
                 self.last_result_body,
-                text="(no output files were found on disk — re-run the task?)",
+                text=_("(no output files were found on disk — re-run the task?)"),
                 foreground=tokens.themed(tokens.DANGER_TEXT),
             ).pack(anchor="w")
 
@@ -5776,7 +5846,7 @@ class App(tk.Tk):
         ttk.Button(
             button_row,
             text=folder_action_label(
-                "Open folder", "Folder", existing[0] if existing else None),
+                _("Open folder"), "Folder", existing[0] if existing else None),
             command=lambda: self._open_folder(
                 folder, select=existing[0] if existing else None),
         ).pack(side="left")
@@ -5786,7 +5856,7 @@ class App(tk.Tk):
         json_output = pick_transcript_json(existing, task.file_path)
         if json_output is not None:
             ttk.Button(
-                button_row, text="View transcript",
+                button_row, text=_("View transcript"),
                 command=lambda jp=json_output: self.open_transcript_viewer_for(
                     task.file_path, jp, task.language or task.detected_language
                 ),
@@ -5823,13 +5893,10 @@ class App(tk.Tk):
         # Pillow aren't installed (tray controller is None) or the
         # user disabled tray support.
         if self.tray is not None:
-            body = (
-                f"Wrote {len(existing)} output file"
-                f"{'' if len(existing) == 1 else 's'} for "
-                f"{os.path.basename(task.file_path)}"
-            )
+            body = ngettext("Wrote {n} output file for {name}", "Wrote {n} output files for {name}",
+                            len(existing), name=os.path.basename(task.file_path))
             try:
-                self.tray.notify("Whisper Transcriber Suite — transcription done", body)
+                self.tray.notify(_("Whisper Transcriber Suite — transcription done"), body)
             except Exception:  # noqa: BLE001
                 pass
         # macOS has no tray: a desktop notification while the window is in the background.
@@ -6055,8 +6122,8 @@ class App(tk.Tk):
             if manual:
                 notify(
                     self,
-                    "Could not reach the update server. Please check your "
-                    "internet connection and try again later.",
+                    _("Could not reach the update server. Please check your "
+                      "internet connection and try again later."),
                     "warning",
                 )
             return
@@ -6084,7 +6151,8 @@ class App(tk.Tk):
             if manual:
                 notify(
                     self,
-                    f"You're on the latest version ({_updates.version_label(_APP_VERSION)}).",
+                    _("You're on the latest version ({version}).",
+                      version=_updates.version_label(_APP_VERSION)),
                     "success",
                 )
             return
@@ -6107,9 +6175,9 @@ class App(tk.Tk):
         if manual:
             if _updates.is_skipped(self.app_config, info.latest_tag):
                 if messagebox.askyesno(
-                    "Check for updates",
-                    f"Version {version} is available. You chose to skip it.\n\n"
-                    "Show it again?",
+                    _("Check for updates"),
+                    _("Version {version} is available. You chose to skip it.\n\n"
+                      "Show it again?", version=version),
                     parent=self,
                 ):
                     _updates.stop_skipping(self.app_config)
@@ -6343,8 +6411,9 @@ class App(tk.Tk):
         logger.info("Offering a yt-dlp update after: %s", reason)
         self._yt_dlp_offer_open = True
         self._ensure_yt_dlp_bar().show_offer(
-            "The video downloader may be out of date. An update (about "
-            f"{yt_dlp_update.download_mb()} MB) often fixes failing YouTube downloads.",
+            _("The video downloader may be out of date. An update (about "
+              "{size} MB) often fixes failing YouTube downloads.",
+              size=yt_dlp_update.download_mb()),
             before=self.nb,
         )
 
@@ -6375,12 +6444,12 @@ class App(tk.Tk):
         bar = self._ensure_yt_dlp_bar()
         if yt_dlp_update.downloads_running():
             bar.show_result(
-                "A download is running. Click Update it again when it has finished.",
+                _("A download is running. Click Update it again when it has finished."),
                 before=self.nb, can_retry=True,
             )
             return
         self._yt_dlp_updating = True
-        bar.show_progress("Updating the video downloader…", before=self.nb)
+        bar.show_progress(_("Updating the video downloader…"), before=self.nb)
         self.log("Updating the video downloader (yt-dlp)…")
 
         def _work() -> None:
@@ -6508,10 +6577,11 @@ class App(tk.Tk):
         try:
             version = _updates.passive_sign_version(self.app_config, _APP_VERSION)
             if version:
-                help_label = f"{_HELP_MENU_LABEL} ●"
-                item_label = f"{_CHECK_FOR_UPDATES_LABEL}  ● {version} available"
+                help_label = f"{translate(_HELP_MENU_LABEL)} ●"
+                item_label = _("Check for updates...  ● {version} available", version=version)
             else:
-                help_label, item_label = _HELP_MENU_LABEL, _CHECK_FOR_UPDATES_LABEL
+                help_label = translate(_HELP_MENU_LABEL)
+                item_label = translate(_CHECK_FOR_UPDATES_LABEL)
             if not mac_native.is_aqua(self):
                 # On macOS the Help title must stay exactly "Help": macOS adds
                 # its search field only to a menu with that title, so the dot
@@ -6703,7 +6773,7 @@ class App(tk.Tk):
                 unique.append(r)
         n = len(unique)
         if not messagebox.askyesno(
-            "Resume interrupted transcriptions?",
+            _("Resume interrupted transcriptions?"),
             _resume_prompt_text(unique),
             parent=self,
         ):
@@ -6870,11 +6940,11 @@ class App(tk.Tk):
                         pass
 
             menu = tk.Menu(w, tearoff=0)
-            menu.add_command(label="Cut", command=lambda: w.event_generate("<<Cut>>"))
-            menu.add_command(label="Copy", command=lambda: w.event_generate("<<Copy>>"))
-            menu.add_command(label="Paste", command=lambda: w.event_generate("<<Paste>>"))
+            menu.add_command(label=_("Cut"), command=lambda: w.event_generate("<<Cut>>"))
+            menu.add_command(label=_("Copy"), command=lambda: w.event_generate("<<Copy>>"))
+            menu.add_command(label=_("Paste"), command=lambda: w.event_generate("<<Paste>>"))
             menu.add_separator()
-            menu.add_command(label="Select all", command=_select_all)
+            menu.add_command(label=_("Select all"), command=_select_all)
             try:
                 w.focus_set()
                 menu.tk_popup(event.x_root, event.y_root)
@@ -7120,8 +7190,9 @@ class App(tk.Tk):
         for t in self.queue:
             if t.status == "running":
                 if messagebox.askyesno(
-                    "Cancel transcription?",
-                    f"A transcription is running ({os.path.basename(t.file_path)}). Cancel it?",
+                    _("Cancel transcription?"),
+                    _("A transcription is running ({name}). Cancel it?",
+                      name=os.path.basename(t.file_path)),
                     parent=self,
                     default="no",
                 ):
@@ -7130,8 +7201,8 @@ class App(tk.Tk):
         for d in self.download_queue:
             if d.status == "running":
                 if messagebox.askyesno(
-                    "Cancel download?",
-                    "A download is running. Cancel it?",
+                    _("Cancel download?"),
+                    _("A download is running. Cancel it?"),
                     parent=self,
                     default="no",
                 ):

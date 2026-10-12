@@ -408,8 +408,9 @@ def test_file_menu_has_the_work_offline_item():
 
     src = inspect.getsource(App._build_menu)
     item = src[src.index("f.add_checkbutton("):]
-    item = item[: item.index(")") + 1]
-    assert "label=_WORK_OFFLINE_LABEL" in item and _WORK_OFFLINE_LABEL == "Work offline"
+    end = "command=self._toggle_work_offline"
+    item = item[: item.index(end) + len(end)]
+    assert "label=translate(_WORK_OFFLINE_LABEL)" in item and _WORK_OFFLINE_LABEL == "Work offline"
     assert "variable=self.work_offline_var" in item
     assert "command=self._toggle_work_offline" in item
     assert "tk.BooleanVar(value=offline.is_offline())" in src
