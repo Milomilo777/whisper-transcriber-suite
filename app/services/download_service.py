@@ -817,7 +817,7 @@ class DownloadService:
                             "cannot be downloaded yet:\n\n{reason}", reason=reason)
             app.log(f"Download blocked -- format lookup failed: {reason}")
         elif video:
-            message = _("Wait for formats to load, then select an video format.")
+            message = _("Wait for formats to load, then select a video format.")
         else:
             message = _("Wait for formats to load, then select an audio format.")
         title = _("Missing video format") if video else _("Missing audio format")
