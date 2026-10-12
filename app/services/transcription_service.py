@@ -23,6 +23,8 @@ from core._proc import kill_process_tree, new_session_kwargs
 from core.speed_meter import apply_final_speed, apply_live_speed, reset_speed
 from core.translate_task import TRANSLATED_SUFFIX
 
+from app.i18n import _, ngettext
+
 if TYPE_CHECKING:
     import tkinter as tk
 
@@ -274,7 +276,7 @@ class TranscriptionService:
         self.app.model_loading = not self.app.worker_ready
         if ready_count:
             self.app.status_var.set(
-                f"Model ready ({ready_count} worker{'s' if ready_count != 1 else ''})"
+                ngettext("Model ready ({n} worker)", "Model ready ({n} workers)", ready_count)
             )
         self._refresh_device_badge()
 
@@ -310,13 +312,15 @@ class TranscriptionService:
 
         if device == "cuda":
             kind = "gpu"
-            text = f"GPU - CUDA {compute_type}".strip()
+            text = (_("GPU - CUDA {compute_type}", compute_type=compute_type.strip())
+                    if compute_type.strip() else _("GPU - CUDA"))
         elif downgraded:
             kind = "cpu_downgraded"
-            text = f"GPU unavailable, using CPU - {compute_type or 'int8'} (slower)"
+            text = _("GPU unavailable, using CPU - {compute_type} (slower)",
+                     compute_type=compute_type or "int8")
         else:
             kind = "cpu"
-            text = f"CPU - {compute_type or 'int8'} (slower)"
+            text = _("CPU - {compute_type} (slower)", compute_type=compute_type or "int8")
 
         apply = getattr(app, "apply_device_badge", None)
         if callable(apply):
@@ -634,7 +638,7 @@ class TranscriptionService:
         app.model_loading = True
         worker["ready"] = False
         worker["task"] = None
-        app.status_var.set(f"Loading model worker {worker['id']}...")
+        app.status_var.set(_("Loading model worker {number}...", number=worker["id"]))
 
         if getattr(sys, "frozen", False):
             cmd = [sys.executable, "--worker"]
@@ -1389,11 +1393,11 @@ class TranscriptionService:
                                 from app.widgets.error_dialog import show_error
                                 show_error(
                                     app,
-                                    "Transcription engine failed to start",
-                                    f"The selected engine ({label}) could not "
-                                    "start. Check its model/key settings in "
-                                    "Advanced > Backend, or switch back to the "
-                                    "default Faster-Whisper engine.",
+                                    _("Transcription engine failed to start"),
+                                    _("The selected engine ({engine}) could not "
+                                      "start. Check its model/key settings in "
+                                      "Advanced > Backend, or switch back to the "
+                                      "default Faster-Whisper engine.", engine=label),
                                     detail=detail,
                                 )
                             except Exception:  # noqa: BLE001

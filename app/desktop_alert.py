@@ -43,6 +43,7 @@ import tkinter as tk
 from typing import Any
 
 from app import mac_native
+from app.i18n import N_, _, ngettext, translate
 
 logger = logging.getLogger(__name__)
 
@@ -52,12 +53,13 @@ OSASCRIPT = "/usr/bin/osascript"
 OSASCRIPT_TIMEOUT_S = 15
 
 #: Short on purpose: a banner cuts a title at about 35 characters, and its icon is Script Editor's,
-#: so the app's name is what tells the person whose notification this is.
+#: so the app's name is what tells the person whose notification this is. A product name: not
+#: translated.
 APP_TITLE = "Whisper Transcriber Suite"
 
 #: View-menu wording on macOS, where the setting also controls the notification.
-MAC_CHIME_LABEL = "Chime and notify on completion"
-_DEFAULT_CHIME_LABEL = "Chime on completion"
+MAC_CHIME_LABEL = N_("Chime and notify on completion")
+_DEFAULT_CHIME_LABEL = N_("Chime on completion")
 
 #: Two jobs further apart than this (finish to start) are not the same queue run.
 BATCH_GAP_S = 120
@@ -271,15 +273,17 @@ def job_done(app: Any, task: Any, output_count: int) -> None:
         if window_has_focus(app):
             return
         if not busy and total >= 2:
-            post_notification(f"Queue done: {total} files transcribed", APP_TITLE)
+            post_notification(ngettext("Queue done: {n} file transcribed",
+                                       "Queue done: {n} files transcribed", total), APP_TITLE)
             return
         name = os.path.basename(str(getattr(task, "file_path", "")))
         if getattr(task, "no_speech", False):
-            text = f"Finished, but no speech was recognised: {name}"
+            text = _("Finished, but no speech was recognised: {name}", name=name)
         elif output_count == 0:
-            text = f"Finished, but no output files were found: {name}"
+            text = _("Finished, but no output files were found: {name}", name=name)
         else:
-            text = f"Done: {name} ({output_count} output file{'' if output_count == 1 else 's'})"
+            text = ngettext("Done: {name} ({n} output file)", "Done: {name} ({n} output files)",
+                            output_count, name=name)
         post_notification(text, APP_TITLE)
     except Exception:  # noqa: BLE001 - a notification must never break the result card
         logger.exception("Desktop notification failed")
@@ -305,7 +309,7 @@ def _notify_if_away(app: Any, text: str) -> None:
 
 def download_done(app: Any, saved_path: str) -> None:
     """A download finished and nothing (no transcription) follows it. Never raises."""
-    _notify_if_away(app, f"Downloaded: {os.path.basename(str(saved_path))}")
+    _notify_if_away(app, _("Downloaded: {name}", name=os.path.basename(str(saved_path))))
 
 
 def chain_failed(app: Any, dl: Any, error: str) -> None:
@@ -313,10 +317,10 @@ def chain_failed(app: Any, dl: Any, error: str) -> None:
     this is the job's only banner). Never raises."""
     try:
         name = os.path.basename(str(getattr(dl, "saved_path", "") or "")) or str(getattr(dl, "title", "") or "")
-        if str(error).startswith("No speech"):
-            text = f"Subtitled video not made, no speech was found: {name}"
+        if str(error).startswith("No speech"):  # the English history note (app.services.subbed_video)
+            text = _("Subtitled video not made, no speech was found: {name}", name=name)
         else:
-            text = f"Subtitled video not made: {name}"
+            text = _("Subtitled video not made: {name}", name=name)
         _notify_if_away(app, text)
     except Exception:  # noqa: BLE001 - a notification must never break the chain's closing
         logger.exception("Desktop notification failed")
@@ -324,9 +328,9 @@ def chain_failed(app: Any, dl: Any, error: str) -> None:
 
 def burn_done(app: Any, out_path: str) -> None:
     """A subtitle burn finished (the last stage of a chained download, or a manual burn)."""
-    _notify_if_away(app, f"Subtitled video ready: {os.path.basename(str(out_path))}")
+    _notify_if_away(app, _("Subtitled video ready: {name}", name=os.path.basename(str(out_path))))
 
 
 def chime_menu_label(widget: Any) -> str:
     """The View-menu text of the completion-cue setting: neutral wording on macOS only."""
-    return MAC_CHIME_LABEL if mac_native.is_aqua(widget) else _DEFAULT_CHIME_LABEL
+    return translate(MAC_CHIME_LABEL if mac_native.is_aqua(widget) else _DEFAULT_CHIME_LABEL)

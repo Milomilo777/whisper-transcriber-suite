@@ -1,0 +1,718 @@
+{
+ "alert_burned": [
+  [
+   "notification",
+   "Subtitled video ready: clip-subbed.mp4"
+  ],
+  [
+   "notification_title",
+   "Whisper Transcriber Suite"
+  ]
+ ],
+ "alert_chain_failed": [
+  [
+   "notification",
+   "Subtitled video not made: clip.mp4"
+  ],
+  [
+   "notification_title",
+   "Whisper Transcriber Suite"
+  ]
+ ],
+ "alert_chain_no_speech": [
+  [
+   "notification",
+   "Subtitled video not made, no speech was found: clip.mp4"
+  ],
+  [
+   "notification_title",
+   "Whisper Transcriber Suite"
+  ]
+ ],
+ "alert_done_none": [
+  [
+   "notification",
+   "Finished, but no output files were found: talk.mp4"
+  ],
+  [
+   "notification_title",
+   "Whisper Transcriber Suite"
+  ]
+ ],
+ "alert_done_one": [
+  [
+   "notification",
+   "Done: talk.mp4 (1 output file)"
+  ],
+  [
+   "notification_title",
+   "Whisper Transcriber Suite"
+  ]
+ ],
+ "alert_done_three": [
+  [
+   "notification",
+   "Done: talk.mp4 (3 output files)"
+  ],
+  [
+   "notification_title",
+   "Whisper Transcriber Suite"
+  ]
+ ],
+ "alert_downloaded": [
+  [
+   "notification",
+   "Downloaded: clip.mp4"
+  ],
+  [
+   "notification_title",
+   "Whisper Transcriber Suite"
+  ]
+ ],
+ "alert_no_speech": [
+  [
+   "notification",
+   "Finished, but no speech was recognised: talk.mp4"
+  ],
+  [
+   "notification_title",
+   "Whisper Transcriber Suite"
+  ]
+ ],
+ "alert_queue_five": [
+  [
+   "notification",
+   "Queue done: 5 files transcribed"
+  ],
+  [
+   "notification_title",
+   "Whisper Transcriber Suite"
+  ]
+ ],
+ "alert_queue_two": [
+  [
+   "notification",
+   "Queue done: 2 files transcribed"
+  ],
+  [
+   "notification_title",
+   "Whisper Transcriber Suite"
+  ]
+ ],
+ "badge_cpu": [
+  [
+   "status",
+   "Model ready (1 worker)"
+  ],
+  [
+   "device_badge",
+   "CPU - int8 (slower)"
+  ]
+ ],
+ "badge_cpu_typed": [
+  [
+   "status",
+   "Model ready (1 worker)"
+  ],
+  [
+   "device_badge",
+   "CPU - int8_float32 (slower)"
+  ]
+ ],
+ "badge_downgraded": [
+  [
+   "status",
+   "Model ready (1 worker)"
+  ],
+  [
+   "device_badge",
+   "GPU unavailable, using CPU - int8 (slower)"
+  ]
+ ],
+ "badge_gpu": [
+  [
+   "status",
+   "Model ready (1 worker)"
+  ],
+  [
+   "device_badge",
+   "GPU - CUDA float16"
+  ]
+ ],
+ "badge_gpu_no_type": [
+  [
+   "status",
+   "Model ready (1 worker)"
+  ],
+  [
+   "device_badge",
+   "GPU - CUDA"
+  ]
+ ],
+ "caption_line_many": [
+  [
+   "caption_line",
+   "Subtitles available: Russian (automatic), English (automatic), German (automatic), French (automatic), Spanish (automatic), Italian (automatic) and 2 more"
+  ]
+ ],
+ "caption_line_mixed": [
+  [
+   "caption_line",
+   "Subtitles available: German (made by the uploader), French (automatic), Portuguese (automatic)"
+  ]
+ ],
+ "caption_line_one": [
+  [
+   "caption_line",
+   "Subtitles available: English (made by the uploader)"
+  ]
+ ],
+ "caption_line_one_more": [
+  [
+   "caption_line",
+   "Subtitles available: English (made by the uploader), German (made by the uploader), French (made by the uploader), Spanish (made by the uploader), Italian (made by the uploader), Dutch (made by the uploader) and 1 more"
+  ]
+ ],
+ "caption_line_original": [
+  [
+   "caption_line",
+   "Subtitles available: Spanish (automatic)"
+  ]
+ ],
+ "caption_line_unknown_code": [
+  [
+   "caption_line",
+   "Subtitles available: xx (made by the uploader)"
+  ]
+ ],
+ "captions_cancelled": [
+  [
+   "subtitle_status",
+   "fetching captions (en)..."
+  ],
+  [
+   "subtitle_status",
+   "cancelled"
+  ]
+ ],
+ "captions_failed": [
+  [
+   "subtitle_status",
+   "fetching captions (en)..."
+  ],
+  [
+   "subtitle_status",
+   "failed (rc=1)"
+  ]
+ ],
+ "captions_folder_unavailable": [
+  [
+   "showwarning",
+   "Folder unavailable"
+  ],
+  [
+   "showwarning",
+   "Cannot create or write the download folder:\n/tmp/folder\n\nAccess is denied"
+  ]
+ ],
+ "captions_no_folder": [
+  [
+   "showwarning",
+   "Missing folder"
+  ],
+  [
+   "showwarning",
+   "Select a download folder first."
+  ]
+ ],
+ "captions_no_language": [
+  [
+   "subtitle_status",
+   "no language detected"
+  ]
+ ],
+ "captions_no_target": [
+  [
+   "subtitle_status",
+   "fetching captions (en)..."
+  ],
+  [
+   "subtitle_status",
+   "conversion failed"
+  ]
+ ],
+ "captions_no_url": [
+  [
+   "showwarning",
+   "Missing URL"
+  ],
+  [
+   "showwarning",
+   "Enter a URL first."
+  ]
+ ],
+ "captions_none_available": [
+  [
+   "subtitle_status",
+   "fetching captions (en)..."
+  ],
+  [
+   "subtitle_status",
+   "no captions available"
+  ]
+ ],
+ "captions_none_found": [
+  [
+   "showwarning",
+   "No captions found"
+  ],
+  [
+   "showwarning",
+   "No existing captions were found for this video in the selected language."
+  ]
+ ],
+ "captions_nothing_written": [
+  [
+   "subtitle_status",
+   "fetching captions (en)..."
+  ],
+  [
+   "subtitle_status",
+   "completed (no files written)"
+  ]
+ ],
+ "captions_one_format": [
+  [
+   "subtitle_status",
+   "fetching captions (en)..."
+  ],
+  [
+   "subtitle_status",
+   "captions converted to 1 format"
+  ]
+ ],
+ "captions_paused": [
+  [
+   "subtitle_status",
+   "fetching captions (en)..."
+  ],
+  [
+   "subtitle_status",
+   "paused"
+  ]
+ ],
+ "captions_two_formats": [
+  [
+   "subtitle_status",
+   "fetching captions (en)..."
+  ],
+  [
+   "subtitle_status",
+   "captions converted to 2 formats"
+  ]
+ ],
+ "captions_unreadable": [
+  [
+   "subtitle_status",
+   "fetching captions (en)..."
+  ],
+  [
+   "subtitle_status",
+   "conversion failed"
+  ]
+ ],
+ "chime_labels": [
+  [
+   "menu",
+   "Chime and notify on completion"
+  ],
+  [
+   "menu",
+   "Chime on completion"
+  ]
+ ],
+ "choice_detected": [
+  [
+   "caption_choice",
+   "Spanish"
+  ]
+ ],
+ "choice_detected_unknown": [
+  [
+   "caption_choice",
+   "xx"
+  ]
+ ],
+ "choice_named": [
+  [
+   "caption_choice",
+   "German"
+  ]
+ ],
+ "crash_no_folder": [
+  [
+   "crash_box",
+   "The app stopped because of an unexpected error:\n\nValueError: boom\n\nThe details are in app.log in the app's log folder."
+  ]
+ ],
+ "crash_with_folder": [
+  [
+   "crash_box",
+   "The app stopped because of an unexpected error:\n\nValueError: boom\n\nThe details are in app.log in /logs."
+  ]
+ ],
+ "engine_failed": [
+  [
+   "show_error",
+   "Transcription engine failed to start"
+  ],
+  [
+   "show_error",
+   "The selected engine (whisper.cpp — offline, low-end CPUs) could not start. Check its model/key settings in Advanced > Backend, or switch back to the default Faster-Whisper engine."
+  ]
+ ],
+ "form_folder_unavailable": [
+  [
+   "showwarning",
+   "Folder unavailable"
+  ],
+  [
+   "showwarning",
+   "Cannot create or write the download folder:\n/tmp/folder\n\nAccess is denied"
+  ]
+ ],
+ "form_lookup_failed": [
+  [
+   "showwarning",
+   "Missing video format"
+  ],
+  [
+   "showwarning",
+   "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\nHTTP 404"
+  ]
+ ],
+ "form_lookup_failed_audio": [
+  [
+   "showwarning",
+   "Missing audio format"
+  ],
+  [
+   "showwarning",
+   "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\nHTTP 404"
+  ]
+ ],
+ "form_no_audio_format": [
+  [
+   "showwarning",
+   "Missing audio format"
+  ],
+  [
+   "showwarning",
+   "Wait for formats to load, then select an audio format."
+  ]
+ ],
+ "form_no_folder": [
+  [
+   "showwarning",
+   "Missing folder"
+  ],
+  [
+   "showwarning",
+   "Select a download folder first."
+  ]
+ ],
+ "form_no_output": [
+  [
+   "showwarning",
+   "Missing output"
+  ],
+  [
+   "showwarning",
+   "Select an output format."
+  ]
+ ],
+ "form_no_url": [
+  [
+   "showwarning",
+   "Missing URL"
+  ],
+  [
+   "showwarning",
+   "Enter a URL first."
+  ]
+ ],
+ "form_no_video_format": [
+  [
+   "showwarning",
+   "Missing video format"
+  ],
+  [
+   "showwarning",
+   "Wait for formats to load, then select an video format."
+  ]
+ ],
+ "form_subbed_audio_only": [
+  [
+   "showwarning",
+   "Video needed"
+  ],
+  [
+   "showwarning",
+   "A subtitled video needs the picture. Choose 'Audio and video', or untick 'Make subtitled video'."
+  ]
+ ],
+ "format_loaded": [
+  [
+   "combobox",
+   "Best audio"
+  ],
+  [
+   "combobox",
+   "140 | m4a | 128k | a:mp4a"
+  ],
+  [
+   "combobox",
+   "Best video"
+  ],
+  [
+   "combobox",
+   "137 | mp4 | 1920x1080 | 30fps | v:avc1"
+  ],
+  [
+   "format_status",
+   "2 audio and 2 video formats loaded"
+  ]
+ ],
+ "format_loading": [
+  [
+   "format_status",
+   "Loading formats..."
+  ]
+ ],
+ "format_no_url": [
+  [
+   "format_status",
+   "Enter a URL to load available formats"
+  ]
+ ],
+ "format_unreadable": [
+  [
+   "format_status",
+   "Could not read formats for this URL"
+  ]
+ ],
+ "import_choose": [
+  [
+   "askopenfilename",
+   "Choose an .otr file"
+  ],
+  [
+   "askopenfilename:filetype",
+   "oTranscribe files"
+  ],
+  [
+   "askopenfilename:filetype",
+   "All files"
+  ]
+ ],
+ "import_done": [
+  [
+   "askopenfilename",
+   "Choose an .otr file"
+  ],
+  [
+   "askopenfilename:filetype",
+   "oTranscribe files"
+  ],
+  [
+   "askopenfilename:filetype",
+   "All files"
+  ],
+  [
+   "asksaveasfilename",
+   "Save SRT as..."
+  ],
+  [
+   "asksaveasfilename:filetype",
+   "SubRip subtitle"
+  ],
+  [
+   "asksaveasfilename:filetype",
+   "All files"
+  ],
+  [
+   "status",
+   "Saved out.srt"
+  ]
+ ],
+ "import_failed": [
+  [
+   "askopenfilename",
+   "Choose an .otr file"
+  ],
+  [
+   "askopenfilename:filetype",
+   "oTranscribe files"
+  ],
+  [
+   "askopenfilename:filetype",
+   "All files"
+  ],
+  [
+   "asksaveasfilename",
+   "Save SRT as..."
+  ],
+  [
+   "asksaveasfilename:filetype",
+   "SubRip subtitle"
+  ],
+  [
+   "asksaveasfilename:filetype",
+   "All files"
+  ],
+  [
+   "show_error",
+   "Import failed"
+  ],
+  [
+   "show_error",
+   "Could not convert that .otr file to SRT."
+  ]
+ ],
+ "model_ready_one": [
+  [
+   "status",
+   "Model ready (1 worker)"
+  ]
+ ],
+ "model_ready_two": [
+  [
+   "status",
+   "Model ready (2 workers)"
+  ]
+ ],
+ "otr_export_failed": [
+  [
+   "askyesnocancel",
+   "Replace .otr file?"
+  ],
+  [
+   "askyesnocancel",
+   "talk.otr already exists and may hold your oTranscribe edits.\n\nYes: replace it\nNo: keep it and save a new file\nCancel: do nothing"
+  ],
+  [
+   "show_error",
+   "Export failed"
+  ],
+  [
+   "show_error",
+   "Could not create the oTranscribe (.otr) file."
+  ]
+ ],
+ "otr_exported": [
+  [
+   "askyesnocancel",
+   "Replace .otr file?"
+  ],
+  [
+   "askyesnocancel",
+   "talk.otr already exists and may hold your oTranscribe edits.\n\nYes: replace it\nNo: keep it and save a new file\nCancel: do nothing"
+  ],
+  [
+   "status",
+   "Saved talk.otr"
+  ]
+ ],
+ "otr_no_srt": [
+  [
+   "showwarning",
+   "Cannot export"
+  ],
+  [
+   "showwarning",
+   "This task has no SRT file on disk — add SRT to the output formats and run it again."
+  ]
+ ],
+ "otr_replace_question": [
+  [
+   "askyesnocancel",
+   "Replace .otr file?"
+  ],
+  [
+   "askyesnocancel",
+   "talk.otr already exists and may hold your oTranscribe edits.\n\nYes: replace it\nNo: keep it and save a new file\nCancel: do nothing"
+  ]
+ ],
+ "subs_cancelled": [
+  [
+   "subtitle_status",
+   "fetching subtitles (en)..."
+  ],
+  [
+   "subtitle_status",
+   "cancelled"
+  ]
+ ],
+ "subs_failed": [
+  [
+   "subtitle_status",
+   "fetching subtitles (en)..."
+  ],
+  [
+   "subtitle_status",
+   "failed (rc=2)"
+  ]
+ ],
+ "subs_no_language": [
+  [
+   "subtitle_status",
+   "no language detected"
+  ]
+ ],
+ "subs_none_available": [
+  [
+   "subtitle_status",
+   "fetching subtitles (en)..."
+  ],
+  [
+   "subtitle_status",
+   "no captions available"
+  ]
+ ],
+ "subs_nothing_written": [
+  [
+   "subtitle_status",
+   "fetching subtitles (en)..."
+  ],
+  [
+   "subtitle_status",
+   "completed (no files written)"
+  ]
+ ],
+ "subs_one_file": [
+  [
+   "subtitle_status",
+   "fetching subtitles (en)..."
+  ],
+  [
+   "subtitle_status",
+   "✓ saved 1 subtitle file"
+  ]
+ ],
+ "subs_two_files": [
+  [
+   "subtitle_status",
+   "fetching subtitles (en)..."
+  ],
+  [
+   "subtitle_status",
+   "✓ saved 2 subtitle files"
+  ]
+ ],
+ "worker_loading": [
+  [
+   "status",
+   "Loading model worker 1..."
+  ]
+ ]
+}

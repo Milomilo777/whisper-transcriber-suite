@@ -59,8 +59,16 @@ def _calls() -> list[tuple[str, int, str, dict[str, Any]]]:
                     and node.func.attr in _ASKS and node.args):
                 kwargs = {k.arg: ast.literal_eval(k.value) for k in node.keywords
                           if k.arg == "default" and isinstance(k.value, ast.Constant)}
-                found.append((rel, node.lineno, ast.unparse(node.args[0]), kwargs))
+                found.append((rel, node.lineno, ast.unparse(_untranslated(node.args[0])), kwargs))
     return found
+
+
+def _untranslated(title: ast.expr) -> ast.expr:
+    """A title wrapped in ``_("...")`` (app/i18n.py) is keyed by its English literal."""
+    if (isinstance(title, ast.Call) and isinstance(title.func, ast.Name)
+            and title.func.id == "_" and title.args):
+        return title.args[0]
+    return title
 
 
 def test_the_scan_sees_the_dialogs() -> None:
