@@ -233,7 +233,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Work offline: one switch that keeps the app off the network.** **File → Work offline** (also
   in **Advanced → App behaviour**, `work_offline`) stops every network use: the online config,
   the update check, usage statistics and crash reports are skipped, and a link lookup, a download,
-  a model or component download, a cloud engine, the remote AI provider or SMTV says "Offline
+  a model or component download, a cloud engine, the remote AI provider or the site-specific download says "Offline
   mode is on" and names the switch (the download, update and helper buttons offer to turn it
   off). Models already on disk keep working. Each app process
   also refuses any other outbound connection or name lookup while it is on (`core.offline`), and
@@ -259,7 +259,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   a separate menu bar entry.
 - **The Download tab says which subtitles a video already has.** After a link lookup a line under the
   link field names them ("Subtitles available: English (made by the uploader), Spanish (automatic)"),
-  uploader-made and automatic told apart; it is hidden when there are none and for SMTV episodes. With
+  uploader-made and automatic told apart; it is hidden when there are none and for site-specific download pages. With
   "Transcribe after download" on and subtitles in the chosen language, **Download** asks "Use the existing
   subtitles (seconds) or transcribe (minutes)?" with a "Don't ask again" box (`download_caption_choice`,
   also in Advanced settings > Downloads). YouTube's automatic translations no longer count as subtitles
@@ -539,7 +539,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   before the choice is saved.** It now asks like an engine switch does and restarts the worker only
   after the save worked; a failed save (also from "Download now") puts the previous model back.
 - **An SRT cue with an absurdly long timecode no longer stops the oTranscribe import.** That cue is skipped and the others are read.
-- **A Supreme Master TV download named like a Windows device with spaces (`LPT1 .txt`) is now renamed too,** as `LPT1.txt` already was, so it cannot be routed to the device.
+- **A site-specific download named like a Windows device with spaces (`LPT1 .txt`) is now renamed too,** as `LPT1.txt` already was, so it cannot be routed to the device.
 - **A damaged macOS preferences file no longer hides the country from the usage statistics.** The region lookup now falls back to the locale environment instead of returning nothing.
 - **One damaged history row no longer stops the search re-index.** A row whose saved output list was not a list aborted the walk, so every later transcript stayed unindexed; the row is now skipped.
 - **A model size of `Infinity` or NaN in the model catalog no longer breaks the download.** It used to crash the start of a download (`Infinity`) or show "about nan GB"; such a size now counts as unknown.
@@ -585,7 +585,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   stops after 30 minutes with a clear message, like the cloud engines.
 - **Word and PDF transcripts show a real total time when the last segment has no end time.** The
   header said `00:00:00 total`; it now counts up to that segment's start.
-- **The SMTV Word template now reads right-to-left for Persian, Arabic and Hebrew.** The transcript
+- **The site-specific Word template now reads right-to-left for Persian, Arabic and Hebrew.** The transcript
   cells were left-to-right, so closing punctuation landed on the wrong side; a segment whose text is
   the number 0 was also dropped from that file.
 - **A caption with null text no longer becomes the word "None" in Convert.** The rolling-caption
@@ -687,7 +687,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   and the same title as the transcription. The check at open and the rebuild after Save run in
   worker threads (a Word file of 20,000 segments froze the window for 18 s each time); the JSON is
   written first. A file edited elsewhere (any Word part), a link, a file that changed while it was
-  rebuilt, a PDF, the SMTV document and a file whose writer failed are named in a notice, say that
+  rebuilt, a PDF, the site-specific Word document and a file whose writer failed are named in a notice, say that
   they still hold the old text, and are left as they are; bilingual subtitles and the chapters
   file are named as not rebuilt.
   Quitting the app waits up to 30 seconds for a rebuild in progress, then names what was not rebuilt.
@@ -818,7 +818,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   cannot pin a connection. Job folders this version created and an earlier run left are removed
   at start (older than 6 hours), history rows point at a kept copy of the outputs, a link download can be cancelled and
   has a 4 GB / 2 hour limit, and the job list, webhook and error text no longer carry a link's
-  query string. `docx` and `smtv_docx` in one job both surface; the detected language is set
+  query string. `docx` and the site-specific DOCX layout in one job both surface; the detected language is set
   before a job reads as finished.
 - **Cloud engines keep what they already paid for.** A rate limit, server error or timeout is
   retried with a growing wait (never a bad key), and a run that fails after some chunks keeps
@@ -944,8 +944,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Smaller download fixes.** Time-range downloads get their own file name (`… (clip
   0.00.51-0.01.25).mp4`), so a re-run no longer reports the earlier full video; links with
   invisible direction or zero-width marks at either end (copied from right-to-left pages) are
-  recognised; Supreme Master TV "Download all parts" looks the parts up without freezing the
-  window, and an unknown page charset or a cut-off page now gives the normal SMTV error.
+  recognised; the site-specific download's "Download all parts" looks the parts up without freezing the
+  window, and an unknown page charset or a cut-off page now gives that download's normal error.
 - **Transcript search finds Persian, Arabic and CJK words.** Chinese and Japanese words inside
   an unspaced sentence ("天气") are found through a trigram index, with a substring scan for
   one- and two-character words. Arabic kaf, yeh and alef maksura match the Persian kaf and yeh, a word typed without the ZWNJ
@@ -975,7 +975,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Plain formats keep the speaker.** TXT, LRC, TSV and oTranscribe output now start a diarised
   segment's text with its `Speaker: ` label, as SRT, VTT, Markdown, DOCX and PDF already did; TSV
   keeps its three columns, and a label never splits a line or hangs on an empty segment.
-- **SMTV header names traditional Chinese.** `zh-TW`, `zh-HK` and `zh-Hant` codes no longer show
+- **The site-specific Word layout's header names traditional Chinese.** `zh-TW`, `zh-HK` and `zh-Hant` codes no longer show
   as "Chinese (simplified)": the full tag and its longer prefixes are looked up before the base
   code.
 - **Edits in the transcript viewer reach every subtitle format.** VTT and ASS wrote the
@@ -1286,7 +1286,7 @@ Windows, macOS and Linux. (There is no 1.9.2.)
   quick status after 15 s).
 - **Changing the model while a transcription runs asks first** instead of
   stopping it silently.
-- **The SMTV "Download all parts" checkbox no longer overlaps the format
+- **The site-specific download's "Download all parts" checkbox no longer overlaps the format
   status line.**
 - **Frozen builds call `multiprocessing.freeze_support()`** before anything
   else.
@@ -1374,10 +1374,6 @@ were built later from master and also include the first block below.
 
 #### Added
 
-- **New "Supreme Master TV" tab** — an introduction to the channel (watch
-  live, about, schedule) plus its video library: search, program shortcuts,
-  28 site languages, thumbnail cards with Watch / Download / Transcribe.
-  Nothing is fetched until the tab is first opened.
 - **Live tab: its own "Model:" choice**, defaulting to Tiny (keeps up on any
   computer). Downloaded models show in bold, missing ones greyed with a
   Download button right there. "Automatic" and any catalog model can be
@@ -1394,8 +1390,7 @@ were built later from master and also include the first block below.
   (green/yellow/red, peak hold, dB readout) instead of bars (ported from
   SiriWave, MIT).
 - **Tab order**: Transcribe, Queue, Download Videos, Live, Clone Your Voice
-  / Text to Voice, Video Tiling, Web / LAN access, and Supreme Master TV
-  always last.
+  / Text to Voice, Video Tiling, Web / LAN access.
 - **Live tab auto-detect locks the language after the first confident
   chunk**, instead of re-detecting on every chunk (which doubled the time
   each chunk took).
@@ -1803,8 +1798,8 @@ were built later from master and also include the first block below.
 
 ## [1.5.0] — 2026-07-03
 
-> SMTV release. The SMTV docx header now shows the detected language, SMTV
-> and oTranscribe join the Convert-transcript targets, and the format
+> The site-specific DOCX layout's header now shows the detected language,
+> that layout and oTranscribe join the Convert-transcript targets, and the format
 > picker shows each target's real file extension in a curated
 > (common-first) order. The project (and its GitHub repo) is renamed to
 > `whisper_app`.
@@ -1812,13 +1807,13 @@ were built later from master and also include the first block below.
 
 ### Added
 
-- **SMTV docx header now shows the detected language.** Row 2 / column 3
+- **The site-specific DOCX layout's header now shows the detected language.** Row 2 / column 3
   used to always read the literal "Foreign Language"; it is now replaced
   with the language faster-whisper detected (e.g. "Korean"), matching the
   title row and the "[... starts]" cue that already did this. With no
   detected language the header keeps its original generic text.
-- **SMTV added to File → Convert transcript.** The format picker now
-  offers `smtv_docx` alongside the existing text targets. Since a generic
+- **The site-specific DOCX layout added to File → Convert transcript.** The
+  format picker now offers it alongside the existing text targets. Since a generic
   transcript file carries no language metadata, the emitted docx is filled
   the same way the writer already treats "no language detected" (neutral
   cue labels); the work title is taken from the source file's name.
@@ -1830,7 +1825,7 @@ were built later from master and also include the first block below.
   `core.integrations.otranscribe.segments_to_otr()`) closes that gap.
 - **Convert-format picker is more user-friendly.** A human-simulation pass
   on the dialog found the combobox showed bare internal registry names
-  (`elan`, `smtv_docx`, `otr`, …) in plain alphabetical order, so there was
+  (`elan`, `otr`, …) in plain alphabetical order, so there was
   no way to tell what file extension a pick would actually produce, and the
   four formats almost everyone wants (`srt`/`vtt`/`txt`/`json`) were buried
   among niche ones. It now shows `name (.ext)` for every target (via a new
@@ -1868,14 +1863,15 @@ were built later from master and also include the first block below.
   (2026-07-18) — `builddmg.command` / `compileall-whisper-mac.sh` derive
   x64/arm64 from `uname -m`, so a single-arch build can no longer ship
   under an arch-less (or "universal") name.
-- **SMTV docx filename was not actually fixed** — a colleague reported the
-  "Convert transcript" / transcription SMTV output "sometimes" landing under
+- **The site-specific DOCX filename was not actually fixed** — a colleague
+  reported the "Convert transcript" / transcription output in that layout
+  "sometimes" landing under
   an unexpected `(1)`/`(2)`-suffixed name. Root cause: `_write_outputs`
   computed one shared re-run-safety index across ALL requested formats,
-  including `smtv_docx` — so a pre-existing `.srt`/`.json` from an earlier
-  run pushed the SMTV file to a numbered suffix on its very first write,
-  even though no SMTV file had been written for that source before.
-  `smtv_docx` is now excluded from the shared index and always resolves to
+  including that layout — so a pre-existing `.srt`/`.json` from an earlier
+  run pushed its file to a numbered suffix on its very first write,
+  even though no such file had been written for that source before.
+  The layout is now excluded from the shared index and always resolves to
   its documented fixed, recognisable filename (overwriting in place on
   re-run, which is the intended "one canonical team file" behaviour).
 - **`stats_url` hyphen/underscore mismatch** — the published
@@ -1919,7 +1915,7 @@ were built later from master and also include the first block below.
 > engine in favour of the working transformers-based one, adds a "Prepare
 > model now" button for it, stops a handful of app-level config keys from
 > ever being persisted to disk, makes the Windows installers silently clean
-> up the previous version before upgrading, and fixes the SMTV docx output's
+> up the previous version before upgrading, and fixes the site-specific DOCX output's
 > stale modified timestamp. pyright `app/ core/` 0/0/0; hermetic suite green.
 
 ### Added
@@ -1960,7 +1956,7 @@ were built later from master and also include the first block below.
 
 ### Fixed
 
-- The SMTV transcription `.docx` output's "modified" document property no
+- The site-specific transcription `.docx` output's "modified" document property no
   longer carries straight through from the bundled template — every
   generated docx now reports the actual transcription time instead of
   whenever the template was last authored.
@@ -2024,7 +2020,7 @@ were built later from master and also include the first block below.
   not take effect until the process restarted; both the picker and the Advanced
   dialog now stop the worker on a backend change.
 - **CLI** `transcribe --formats` choices come from the writer registry (so
-  `smtv_docx` is accepted) and the CLI reports the real written paths + live
+  the site-specific DOCX layout is accepted) and the CLI reports the real written paths + live
   progress.
 - The Advanced dialog refuses to save the unsupported Google Cloud STT +
   diarization combination.
@@ -2051,7 +2047,7 @@ were built later from master and also include the first block below.
 
 > Hardening release on top of v1.3.7: the Phase 1–6 feature work (Google
 > Cloud / Gemini cloud STT, the optional LAN/web server, transcript-format
-> conversion, the SMTV team `.docx`, the multi-monitor Video Tiling rewrite,
+> conversion, the site-specific team `.docx` layout, the multi-monitor Video Tiling rewrite,
 > three-level merged config, multi-model picker, ffplay
 > auto-download, and macOS groundwork) **plus a 44-finding adversarial audit
 > fixpack** — every finding independently confirmed by skeptic review and
@@ -2063,7 +2059,7 @@ were built later from master and also include the first block below.
 - **Data loss:** transcript-format conversion overwrote the source file in
   place on a case-only extension difference (Windows); cloud STT collapsed a
   whole file into one chunk when the duration was unreadable (truncating long
-  transcripts); the SMTV `.docx` writer rendered a literal `"None"` for a null
+  transcripts); the site-specific `.docx` writer rendered a literal `"None"` for a null
   segment.
 - **Crashes / launch failures:** a non-finite (`Infinity`) numeric in a
   hand-edited config crashed startup; a non-string `model.name` crashed config
@@ -2082,8 +2078,8 @@ were built later from master and also include the first block below.
   (now streamed); JSON bodies and the online-config fetch are now size-capped;
   `stats_url` and URL-job hosts get scheme / SSRF validation; aborted optional
   pip installs no longer orphan their child tree.
-- **Smaller correctness:** LRC timestamps no longer emit `:60.00`; SMTV episode
-  URLs with a query string / fragment are recognised; per-chunk cloud
+- **Smaller correctness:** LRC timestamps no longer emit `:60.00`; site-specific
+  episode URLs with a query string / fragment are recognised; per-chunk cloud
   diarization labels stay consistent; cloud RPCs have timeouts and honour
   cancel; the multi-monitor index is now a stable total order.
 
@@ -2125,7 +2121,7 @@ were built later from master and also include the first block below.
   click on the status cell to toggle), so the controls are discoverable
   without the right-click menu (which, with Esc, still works). Download
   "pause" is **stop-and-continue**: it keeps the `.part` and resumes via
-  yt-dlp `-c`/`--continue`; pause is disabled for Supreme Master TV
+  yt-dlp `-c`/`--continue`; pause is disabled for site-specific
   downloads, which have no resume point.
 - **Multi-monitor Video Tiling.** The Tiling tab was rewritten from a
   single-screen `ffplay tile=NxN` into a Tk-free multi-monitor engine
@@ -2214,9 +2210,8 @@ were built later from master and also include the first block below.
   the cloud / alternate backends are deliberately NOT per-job switchable
   over the web — a remote submitter can't redirect your audio to a cloud
   backend.)*
-- **"SMTV transcription" docx output format** (registry key `smtv_docx`,
-  UI label **"SMTV transcription"**). It fills the transcription team's
-  bundled Word template (`core/writers/templates/smtv_template.docx`) — a
+- **A site-specific transcription docx output format.** It fills a
+  transcription team's bundled Word template — a
   4-column table (auto row number; `Time Code` as `HH:MM:SS.m`; `Foreign
   Language` = the transcript text; `English Translation` left empty for the
   human translator), with a title line
@@ -2663,7 +2658,7 @@ hit while using the app on a Persian keyboard.
 
 Maintenance release — bug fixes plus one opt-in feature. Restores audio
 in video downloads, removes several UI freezes and nags, makes the
-model-hub and download-folder choices stick, fails a truncated SMTV
+model-hub and download-folder choices stick, fails a truncated site-specific
 download instead of shipping a corrupt file, and adds browser-cookie
 support so login-walled sites (Facebook / Instagram / TikTok stories,
 age-gated YouTube Shorts) can download.
@@ -2710,7 +2705,7 @@ age-gated YouTube Shorts) can download.
   permanently. The cleared value is no longer persisted while the drive
   is merely unmounted — the folder returns when the drive does. (Same
   class as the `model_path` fix above.)
-- **A truncated Supreme Master TV download was treated as success.** If
+- **A truncated site-specific download was treated as success.** If
   the CDN dropped the connection mid-transfer, the partial file was
   renamed to the final name and auto-transcribed — a clean-looking but
   corrupt result. The download now fails and reports an error when fewer
@@ -2737,10 +2732,10 @@ idle launches don't pay for ~2 GB of RAM the user may never use.
   `trim 0:51 → 1:25` badge so it's obvious which jobs are
   partial. The transcribe step naturally runs proportionally
   faster — most of the savings come from the smaller audio,
-  not the smaller download. Supreme Master TV URLs are not
-  sliced in this release (the SMTV scraper has no slicing path);
-  one clear WARN log line + a known-limitation note in
-  `docs/integrations/smtv-brief.md`.
+  not the smaller download. Links of the site-specific download are
+  not sliced in this release (its scraper has no slicing path);
+  one clear WARN log line + a known-limitation note in that
+  integration's design brief.
 - **Lazy Whisper-model load.** The app no longer preloads the
   3 GB Whisper model on launch. Idle RAM drops by ~2 GB.
   The first transcribe of a session shows a modal "Loading
@@ -2759,7 +2754,7 @@ idle launches don't pay for ~2 GB of RAM the user may never use.
 
 ### Documentation
 
-- `docs/integrations/smtv-brief.md` — added the time-range
+- The site-specific download's design brief — added the time-range
   limitation note.
 
 ### Shipped artefacts
@@ -2935,7 +2930,7 @@ fresh-install model re-download race caught during verification.
 ### Tests
 
 535 unit + integration tests (+260 from 0.7.x baseline of 275).
-10/10 real-file end-to-end against the SMTV reference clip. 7/7
+10/10 real-file end-to-end against the reference test clip. 7/7
 smoke + end-to-end against the real Whisper model. pyright `app/
 core/` 0 errors, 0 warnings, 0 informations.
 
@@ -2992,11 +2987,11 @@ new feature surface (backends, viewer enhancements, tray, …).
   - **Method C — Setup-Standard** (`WhisperProject-v0.7.0-Setup-Standard.exe`, ~153 MB). Embeds a full `cpython-3.11.15+20260510-x86_64-pc-windows-msvc-install_only` distribution from [python-build-standalone](https://github.com/astral-sh/python-build-standalone), pip-installs `requirements.txt` into the bundle, copies the source tree, and wraps it via `installer_embed.iss`. Shortcuts launch `pythonw.exe gui.py`; the source is browsable on disk after install.
   - `build_embed_installer.bat` orchestrates the Method C tree.
   - All three pass `tests/smoke/test_exe_real_e2e.py::test_exe_worker_transcribes_real_video` on a clean install location with a real video, confirmed via the dual-launcher conftest fixture (`WHISPER_SMOKE_GUI` env var selects the embeddable-Python flavour).
-- **Session 11** — Supreme Master TV download integration. New module `core/integrations/smtv.py` (stdlib only) scrapes any `/{lang}1/v/<id>.html` episode page for video qualities (1080p/720p/396p), the MP3 audio file, the article-text transcript, and the sibling-parts playlist; the Download tab automatically routes SMTV URLs through this module instead of yt-dlp. Sub-features:
-  - **Series download.** When a multi-part episode is pasted, a "Download all parts of this series (SMTV)" checkbox appears (default ON) and enqueues one task per sibling part.
-  - **MP3 audio mode.** SMTV serves real MP3 files directly; the Audio mode dropdown shows `MP3 (audio only)` and the download path skips ffmpeg entirely.
+- **Session 11** — Site-specific video download integration. A new stdlib-only module scrapes the site's episode pages for video qualities (1080p/720p/396p), the MP3 audio file, the article-text transcript, and the sibling-parts playlist; the Download tab automatically routes those links through this module instead of yt-dlp. Sub-features:
+  - **Series download.** When a multi-part episode is pasted, a "Download all parts of this series" checkbox appears (default ON) and enqueues one task per sibling part.
+  - **MP3 audio mode.** The site serves real MP3 files directly; the Audio mode dropdown shows `MP3 (audio only)` and the download path skips ffmpeg entirely.
   - **Transcript persistence.** The page's article-text body is saved next to the media as `<base>.txt` (UTF-8). Auto-transcribe-after-download still runs unchanged on top, so users get two transcript surfaces — the site's editorial transcript and whisper's SRT/JSON.
-  - 23 unit tests under `tests/integrations/test_smtv.py` against three HTML fixtures; 2 live-network smoke tests under `tests/smoke/test_smtv_smoke.py` (skipped offline). `docs/integrations/smtv-research.md`, `smtv-brief.md`, `smtv-acceptance.md` document the URL contract and SMTV-T1..T8 verification tokens.
+  - 23 unit tests against three HTML fixtures; 2 live-network smoke tests (skipped offline). Research, brief and acceptance notes documented the URL contract and eight verification tokens.
 - **Session 8** — `tests/smoke/` integration suite for the compiled exe. Three pytest files (`test_exe_real_e2e.py`, `test_app_headless.py`, plus a `conftest.py` with skip-guards for missing model / video / exe) and a `README.md` explaining why these tests have to live alongside the unit suite — packaging bugs are invisible from source-side. `test_exe_real_e2e.py` spawns `WhisperProject.exe --worker`, sends the actual JSON `transcribe` command, and asserts SRT + JSON land on disk; `test_app_headless.py` drives the Tk App in a withdrawn window through every service. Regression guards `test_exe_bundles_silero_vad_asset` and `test_exe_bundles_ffmpeg` lock in the Session 8 packaging fix.
 - **Session 8** — `docs/SESSION_8_PACKAGING_FIX.md` documenting the silero_vad_v6.onnx packaging bug and why source-side tests didn't catch it.
 - **Session 7** — `docs/architecture-diagrams.md` (Mermaid simple overview + SVG embed + pointer to prose ARCHITECTURE.md). Hyphenated filename to avoid a case-insensitive Windows clash with the existing `ARCHITECTURE.md`. The Mermaid view uses the same color palette as the SVG so the two diagrams feel related at a glance. README now links to it as the first "Project documentation" entry.
@@ -3017,8 +3012,8 @@ new feature surface (backends, viewer enhancements, tray, …).
 - **Session 12** — `tests/smoke/conftest.py` and `tests/smoke/test_exe_real_e2e.py` gained dual-launcher support. The new `gui_script` fixture reads `WHISPER_SMOKE_GUI` and, when set, makes the worker subprocess launch as `[pythonw, gui.py, "--worker"]` instead of `[exe, "--worker"]` — required to verify Method C without writing a third smoke file.
 - **Session 12** — `installer_embed.iss` carries a `[UninstallDelete]` block that sweeps `__pycache__` and the install subdirectories on uninstall. Inno Setup otherwise leaves Python's runtime-generated `*.pyc` files behind because they weren't recorded in the install manifest.
 - **Session 12** — Repo cleanup: nine phase-acceptance plans + briefs + session writeups (PHASE_0/1/1B/2A/3A/NEXT acceptance, PHASE_1 brief, PHASE_NEXT brief, NEXT_SESSION_HANDOFF, SESSION_8_PACKAGING_FIX, SESSION_SINGLE_FILE_EXE, SESSION_DUAL_DELIVERABLE) moved into `docs/history/` to keep the active docs surface at-a-glance. README rewritten 190 → ~60 lines. BUILD.md rewritten to cover all three pipelines.
-- **Session 11** — `app/services/format_service.py` and `app/services/download_service.py` now branch on SMTV URLs (`core.integrations.smtv.parse_episode_id` and a `kind: "smtv"` marker on the format dict) and bypass the yt-dlp probe / spawn entirely. No behaviour change for YouTube or any other URL.
-- **Session 11** — Both PyInstaller specs (`whisper_project_onefile.spec` and `whisper_project_onedir.spec`) gain `core.integrations.smtv` in `hiddenimports` so the module survives onefile bundling and onedir-via-installer packaging.
+- **Session 11** — `app/services/format_service.py` and `app/services/download_service.py` now branch on the site-specific download's URLs (an episode-id parser and a marker on the format dict) and bypass the yt-dlp probe / spawn entirely. No behaviour change for YouTube or any other URL.
+- **Session 11** — Both PyInstaller specs (`whisper_project_onefile.spec` and `whisper_project_onedir.spec`) gain the site-specific download module in `hiddenimports` so the module survives onefile bundling and onedir-via-installer packaging.
 - **Session 7** — `docs/MANUAL_STEPS.md` scrubbed: the `## A. Security` block that named two leaked GitHub PAT prefixes was removed. Sections re-lettered (B → A through H → G) so the file still reads cleanly. The Summary was rewritten to drop the "two human-required items" framing; there's now exactly one open human decision — which Phase to ship next.
 - **Session 7** — `README.md` "Project documentation" footer now points at `architecture-diagrams.md` first, then the direct SVG link, then the prose ARCHITECTURE.md, so a new reader hits the visuals before the prose.
 

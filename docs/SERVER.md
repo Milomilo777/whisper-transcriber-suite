@@ -586,11 +586,11 @@ Behaviour to know:
   server is about to refuse as too large.
 - **Busy port.** A second server cannot bind a port that is already in use
   (an exclusive bind on Windows); the command line reports the error.
-- **Supreme Master TV (SMTV) scraping is not reachable through this
-  server.** A URL job (`POST /api/jobs` with `{url: ...}`) always goes
+- **The site-specific download's page scraping is not reachable through
+  this server.** A URL job (`POST /api/jobs` with `{url: ...}`) always goes
   through the yt-dlp download path (`core.server.jobs.JobManager`'s
-  `_download` callback); `core.integrations.smtv`'s page-scraping is
-  wired only into the desktop GUI's Download tab. A remote LAN/web
+  `_download` callback); that integration's page scraping is wired
+  only into the desktop GUI's Download tab. A remote LAN/web
   client cannot trigger it, so this server's threat model does not need
   to account for that scraper's regex-based HTML parsing.
 

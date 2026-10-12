@@ -49,7 +49,8 @@ at a glance whether the project is still green.
     dismissal.
   - `tests\core\test_enqueue_after_download_async.py` — the non-blocking
     "transcribe after download" worker scheduling.
-  - `tests\core\test_smtv_stream.py` — SMTV truncated-download handling.
+  - `tests\core\test_smtv_stream.py` — truncated-download handling of the
+    site-specific download integration.
 
 - **`tests\smoke\`** — *real-resource* tests. They need the Whisper
   model, a test video, and (for some) a live network, so they are

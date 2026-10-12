@@ -114,7 +114,6 @@ traffic, stars, forks and downloads, plus the audit's category scores.
 ## Completed integrations
 
 - **oTranscribe** (Session 4) — bidirectional `.otr` ↔ SRT round-trip, Export/Import UI, `Help → Open oTranscribe`. Code: `core/integrations/otranscribe.py`.
-- **Supreme Master TV download** (Session 11) — Download tab auto-detects SMTV episode URLs (`/{lang}1/v/<id>.html`), reads `videoPlayerData` from the page, exposes 1080p/720p/396p MP4 plus an MP3 audio mode in the existing dropdowns. Multi-part series get a "Download all parts" checkbox (default on). Page-embedded article transcript is saved as `<base>.txt` next to the media; auto-transcribe-after-download still runs on top for the whisper SRT/JSON. No new dependencies, stdlib only. Code: `core/integrations/smtv.py`.
 
 ---
 
@@ -305,7 +304,7 @@ These features take us from "wraps faster-whisper with defaults" to "comparable 
 
 - **Source:** faster-whisper docs
 - **Effort:** S
-- **Why:** Domain accuracy on names like "Supreme Master Ching Hai", "Loving Hut", proper nouns and jargon improves dramatically. Cheap to expose.
+- **Why:** Domain accuracy on personal and organisation names, other proper nouns and jargon improves dramatically. Cheap to expose.
 - **Implementation:** a multi-line text field for `initial_prompt` and a single-line field for `hotwords`. Saved per-preset (2.10).
 
 ### 2.9 Translate-to-English toggle
@@ -320,7 +319,7 @@ These features take us from "wraps faster-whisper with defaults" to "comparable 
 - **Source:** dsymbol/yt-dlp-gui, Stacher
 - **Effort:** M
 - **Why:** Save a named bundle of settings (model, VAD params, initial_prompt, hotwords, output formats, output folder template) and apply with one click. Critical for the BMD workflow.
-- **Implementation:** `~/.config/whisper-transcriber-suite/presets/<name>.toml`. Preset picker in the main UI. Ship 3-4 starter presets: "Supreme Master TV (Persian)", "Podcast English", "Music video", "Meeting notes".
+- **Implementation:** `~/.config/whisper-transcriber-suite/presets/<name>.toml`. Preset picker in the main UI. Ship 3 starter presets: "Podcast English", "Music video", "Meeting notes".
 
 ### 2.11 Subtitle splitting heuristics
 
@@ -582,7 +581,7 @@ These are the items that take the project beyond "best-in-class for our niche" i
 
 - **Source:** CheshireCC (Demucs), Whisper-WebUI (UVR)
 - **Effort:** L
-- **Why:** Massively improves transcription quality on music videos and clips with heavy background music. Especially useful for the user's Supreme Master TV workflow where some content is musical.
+- **Why:** Massively improves transcription quality on music videos and clips with heavy background music.
 - **Implementation:** `demucs` is pip-installable but adds heavy deps. Opt-in. Pre-process the audio file before passing to Whisper.
 
 ### 5.3 Live microphone transcription

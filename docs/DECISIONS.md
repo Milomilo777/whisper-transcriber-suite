@@ -384,8 +384,8 @@ under heavy allocation pressure — and proved that no amount of
 per-function `gc.disable()` hardening can guarantee this can't happen,
 because `gc.disable()` is process-global and cannot protect the process
 from a thread it was never applied to. `tests/core/test_v08_real_file_e2e.py`
-self-gates on the real SMTV clip fixture + the real ~3 GB Whisper model
-both being present (`pytest.mark.skipif(not SMTV_CLIP.exists(), ...)`) —
+self-gates on a real test-clip fixture + the real ~3 GB Whisper model
+both being present (a `pytest.mark.skipif` on the clip file existing) —
 on THIS dev machine both are present, so it always ran for real as part
 of `run_tests.bat`'s ~700-test "hermetic" suite
 (`pytest tests/ --ignore=tests/smoke`), loading and transcribing with the

@@ -1,7 +1,7 @@
 # Integrations
 
-Interoperability with third-party tools. Both integrations below are shipped;
-the design notes, implementation briefs and acceptance plans that led to them
+Interoperability with third-party tools; the table gives each one's status.
+The design notes, implementation briefs and acceptance plans that led to them
 are no longer kept in the repository.
 
 ## Index
@@ -9,8 +9,7 @@ are no longer kept in the repository.
 | Integration | Status | Code | Tests |
 |---|---|---|---|
 | oTranscribe (web app for manual transcription): bidirectional `.otr` converter, Export/Import UI, `Help -> Open oTranscribe` | shipped | [`core/integrations/otranscribe.py`](../../core/integrations/otranscribe.py) | `tests/integrations/test_otranscribe.py` |
-| Supreme Master TV (multi-quality download + transcript) | shipped | [`core/integrations/smtv.py`](../../core/integrations/smtv.py) | `tests/integrations/test_smtv.py` |
-| machine-translate-docx (sibling translator tool, SMTV docx compatibility) | researched, not scoped | none | none |
+| machine-translate-docx (sibling translator tool, compatibility with the project-specific DOCX layout) | researched, not scoped | none | none |
 
 ## How to add a new integration
 

@@ -105,7 +105,7 @@ Vibe, Buzz, noScribe and aTrain.
 | Linux from source with an install script | [`platform/linux/README.md`](../platform/linux/README.md) |
 | Speech engines: faster-whisper (default), whisper.cpp, NVIDIA Parakeet TDT v3 (any Hugging Face transformers speech model can replace it), Gemini API, Google Cloud Speech-to-Text | [`core/backends/availability.py`](../core/backends/availability.py), [`core/backends/nvidia_asr.py`](../core/backends/nvidia_asr.py) |
 | NVIDIA CUDA for faster-whisper and Parakeet; faster-whisper on the CPU otherwise (OpenVINO, DirectML and Snapdragon NPU tiers are only listed, as "backend not bundled") | [`core/hardware.py`](../core/hardware.py), [`core/backends/faster_whisper_be.py`](../core/backends/faster_whisper_be.py), [`core/backends/nvidia_asr.py`](../core/backends/nvidia_asr.py) |
-| 14 output formats (the registry also holds a 15th entry, `smtv_docx`, a project-specific layout of the DOCX output) | [`core/writers/__init__.py`](../core/writers/__init__.py) |
+| 14 output formats (the registry also holds a 15th entry, a project-specific layout of the DOCX output) | [`core/writers/__init__.py`](../core/writers/__init__.py) |
 | Live microphone; system audio on Windows (WASAPI loopback) | [`core/recorder.py`](../core/recorder.py), [LIVE.md](LIVE.md) |
 | Online video downloads with yt-dlp | [`app/services/download_service.py`](../app/services/download_service.py) |
 | Watched folder | [`core/watcher.py`](../core/watcher.py) |

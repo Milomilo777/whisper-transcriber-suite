@@ -5,7 +5,7 @@ into the picture, ready to share or play anywhere.
 
 ## How to use it
 
-1. Paste a link (any site yt-dlp supports, or a Supreme Master TV page) and wait for the formats.
+1. Paste a link (any site yt-dlp supports, or a page the site-specific download handles) and wait for the formats.
 2. Keep **Audio and video** as the mode (an audio-only download has no picture to draw on).
 3. Tick **Make subtitled video** and click **Download**.
 
@@ -35,8 +35,8 @@ starts, and that placeholder is removed again if no video is made.
 ## Details
 
 - The transcription always runs, even with **Transcribe after download** off, and it skips the
-  "use the site's captions instead" offer: the burn needs Whisper's timings. For a Supreme Master
-  TV link the article text is not used (it has no timings); Whisper transcribes the video.
+  "use the site's captions instead" offer: the burn needs Whisper's timings. For a link of the
+  site-specific download the article text is not used (it has no timings); Whisper transcribes the video.
 - The SRT is always written for this job, even when SRT is not among the chosen output formats.
 - The burn uses the SRT the transcription really wrote (for example `name (1).srt` on a re-run),
   never a guessed name.

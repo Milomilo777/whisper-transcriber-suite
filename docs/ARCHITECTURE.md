@@ -74,7 +74,7 @@ core/
 ├── yt_dlp_update.py        user-writable, self-updating yt-dlp copy
 ├── optional_deps.py        on-demand optional packages
 ├── server/                 optional HTTP job server
-└── integrations/           oTranscribe, SMTV
+└── integrations/           oTranscribe, a site-specific video download
 bin/                        ffmpeg, ffprobe, yt-dlp, Deno (gitignored; see BUILD.md)
 tests/                      hermetic suite; tests/smoke/ needs real resources
 ```
@@ -111,7 +111,7 @@ tests/                      hermetic suite; tests/smoke/ needs real resources
 
 1. `App.add_download()` calls `DownloadService.enqueue_from_form()`, which validates the form and appends one or more `VideoDownloadTask` items to `App.download_queue`.
 2. `App.loop` also calls `DownloadService.process_queue`. Only one download runs at a time (`App.download_current`); the next waiting task starts a `download-task` daemon thread running `_run_task`.
-3. `_run_task` first checks Work offline and, in the automatic update mode, updates the user-writable yt-dlp copy at most once a day (`core.yt_dlp_update`; the bundled binary is never written, and `App.yt_dlp_path()` returns the newer of the two). Then it runs the optional subtitle phase (`--skip-download --write-auto-subs --write-subs`), then the media phase (`-f <selector> --merge-output-format <ext>`). SMTV links and the caption-only shortcut take their own branches (`_run_smtv_task`, `_run_caption_only_task`).
+3. `_run_task` first checks Work offline and, in the automatic update mode, updates the user-writable yt-dlp copy at most once a day (`core.yt_dlp_update`; the bundled binary is never written, and `App.yt_dlp_path()` returns the newer of the two). Then it runs the optional subtitle phase (`--skip-download --write-auto-subs --write-subs`), then the media phase (`-f <selector> --merge-output-format <ext>`). Links of the site-specific download integration take their own branch, as does the caption-only shortcut (`_run_caption_only_task`).
 4. The thread reads each yt-dlp stdout line, passes it through `parse_progress_line` and `parse_destination_line`, and pushes `(kind, task, payload)` tuples onto `download_events`. The kinds are `progress`, `log`, `subtitle_status`, `done`, `done_full` and `error`.
 5. Cancellation: `App.cancel_download(task)` sets `task.cancelled`, tree-kills `task.process` and, for a task that has no running thread (paused or waiting), cleans up directly. A running download's thread sees the flag after yt-dlp exits and posts `("done", task, "cancelled")`. Pause (`App.pause_download`) is stop-and-continue: the process is killed, the partial files stay, and resume starts a fresh run on the same task.
 6. When a download finishes (`DownloadService._finish`) and auto-transcribe or "Make subtitled video" is on, the file is queued for transcription (`App.enqueue_transcription_from_download`) and the download row shows `transcribing` while it runs.

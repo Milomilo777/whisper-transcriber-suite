@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "whisper-transcriber-suite"
 version = "2.1.0"
-description = "Local Whisper desktop app — offline transcription + yt-dlp/SMTV download + oTranscribe round-trip"
+description = "Local Whisper desktop app — offline transcription + yt-dlp download + oTranscribe round-trip"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "BSD-3-Clause" }
