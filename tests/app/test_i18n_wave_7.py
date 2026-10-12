@@ -579,7 +579,9 @@ def _foreign_windowless(text: str) -> bool:
             text.replace("Whisper Transcriber Suite v9.9.9", ""))
         or text in eng.VALUE_TO_LABEL.values()
         or text.startswith("http://")
-        or text in ("CPU",)
+        or text in ("CPU", app_mod.share_page.BUTTON_TEXT)  # share_page.py has its own wave
+        # File-type names in the open dialog are format names, not interface text.
+        or text in ("SubRip", "WebVTT", "TSV", "Whisper JSON", "oTranscribe", "ELAN", "InqScribe")
     )
 
 
@@ -909,6 +911,8 @@ def test_tk_pseudo_locale_leaves_nothing_untranslated(
         f"{name}: {text}" for name, rows in states.items() for text in rows
         if text.strip() and not is_pseudo_marked(text) and text not in foreign
         and not text.startswith(("✓ talk one.mp4", "• talk one."))
+        # The format picker lists format ids with their extension ("srt (.srt)").
+        and not (name == "convert_picker" and re.fullmatch(r"\w+ \(\.\w+\)", text))
     })
     assert left == []
 
