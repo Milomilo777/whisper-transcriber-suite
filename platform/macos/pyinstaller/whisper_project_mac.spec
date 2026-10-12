@@ -333,6 +333,7 @@ a = Analysis(
         *_npstack_datas,
     ],
     hiddenimports=[
+        'core.server.mcp',
     'core.diarization_worker',
         *_fw_hidden,
         *whisper_cpp_hidden,

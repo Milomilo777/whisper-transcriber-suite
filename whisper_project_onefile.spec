@@ -169,6 +169,7 @@ a = Analysis(
         *_rtl_datas,
     ],
     hiddenimports=[
+        'core.server.mcp',
     'core.diarization_worker',
         *whisper_cpp_hidden,
         *alignment_hidden,

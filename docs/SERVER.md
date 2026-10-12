@@ -265,6 +265,63 @@ or `host.docker.internal` as `<host>`; any other host name needs a password
 WebUI versions. The `/v1` calls above were tested with `curl`; this page has
 not been run against a live Open WebUI.
 
+## MCP (for AI assistants)
+
+The server is also a [Model Context Protocol](https://modelcontextprotocol.io)
+(MCP) server, so an AI assistant or agent that can use remote MCP servers can
+queue transcriptions and read the results as tools.
+
+- Endpoint: `POST /mcp` on the same address and port as the rest of the API
+  (default `http://127.0.0.1:8765/mcp`).
+- Protocol: MCP revision 2025-06-18 (2025-03-26 is accepted too) over the
+  Streamable HTTP transport. Every POST gets one JSON response; there is no
+  SSE stream (`GET /mcp` answers 405) and no session id.
+- Auth: exactly as for `/api/jobs`. When a token is set, send it as
+  `X-Auth-Token: <token>` or `Authorization: Bearer <token>`.
+- A request whose `Origin` header names another site is refused with 403,
+  even with a valid token. Desktop and command-line clients send no `Origin`.
+- `Content-Type: application/json` is required (415 otherwise), and the body
+  cap is 1 MB.
+
+Tools:
+
+| Tool | Arguments | Returns |
+|------|-----------|---------|
+| `transcribe_url` | `url` (required), `language`, `formats`, `clip_start`, `clip_end` | `{"job_id": ...}` |
+| `job_status` | `job_id` | status, progress, error and outputs, as `GET /api/jobs/<id>` |
+| `get_result` | `job_id`, `format` (default `txt`) | the text of that output |
+| `list_jobs` | none | `{"jobs": [...]}`, as `GET /api/jobs` |
+| `cancel_job` | `job_id` | `{"cancelled": <job_id>}` |
+
+`transcribe_url` validates like `POST /api/jobs` but refuses a value that the
+JSON API would quietly replace: an unknown format or language, or a clip
+window that is not a positive range, is a tool error and no job is queued.
+`formats` defaults to `["txt"]`. Binary formats (`docx`, `pdf`) are not
+returned by `get_result`; it names the `/api/jobs/<id>/result?fmt=` route to
+download them from. Results are JSON in `structuredContent` with the same
+JSON as text in `content`.
+
+No tool takes a path on this computer. The server only transcribes uploads
+and links, so a remote assistant cannot make it read local files; links to
+this computer itself are refused (see [Security caveats](#security-caveats)).
+
+Checked with the official MCP Python SDK (`mcp` 2.3.0) against a local
+server:
+
+```python
+from mcp import ClientSession
+from mcp.client.streamable_http import streamable_http_client
+import httpx2  # installed with mcp 2.x
+
+client = httpx2.AsyncClient(headers={"X-Auth-Token": "mysecret"})
+async with streamable_http_client("http://127.0.0.1:8765/mcp",
+                                  http_client=client) as streams:
+    async with ClientSession(streams[0], streams[1]) as session:
+        await session.initialize()
+        job = await session.call_tool(
+            "transcribe_url", {"url": "https://example.com/talk.mp4"})
+```
+
 ## JSON job API
 
 For scripts that prefer submit-then-poll. All paths need the token when one is
@@ -286,6 +343,7 @@ set, except `GET /` (the page itself).
 | POST | `/api/jobs/<id>/resume` | resume a paused job |
 | GET  | `/v1/models` | OpenAI-compatible model list |
 | POST | `/v1/audio/transcriptions` | OpenAI-compatible transcription (above) |
+| POST | `/mcp` | Model Context Protocol endpoint |
 
 `status` is one of `queued`, `downloading`, `running`, `finished`, `error`,
 `cancelled`. Cancel, pause and resume answer 404 `no such active job` for a

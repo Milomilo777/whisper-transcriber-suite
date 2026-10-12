@@ -91,6 +91,7 @@ from core.server.jobs import (
     JobManager,
     QueueFull,
 )
+from core.server import mcp
 from core.writers import get_writer, supported_formats
 
 
@@ -272,6 +273,8 @@ def parse_route(method: str, raw_path: str) -> Route:
             and parts[3] in ("result", "cancel", "pause", "resume",
                              "outputs")):
         return Route(m, parts[3], parts[2], query)
+    if parts == ["mcp"]:
+        return Route(m, "mcp", "", query)
     # OpenAI-compatible surface (see the module docstring). The real API
     # lives under /v1, so tools configured with a .../v1 base URL hit these.
     if parts == ["v1", "models"]:
@@ -1558,6 +1561,16 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 })
         elif route.name == "result":
             self._serve_result(route)
+        elif route.name == "mcp":
+            # Streamable HTTP lets a server refuse the optional SSE stream
+            # (GET) with 405; this server only answers POSTs with JSON.
+            body = json.dumps({"error": "MCP requires POST"}).encode("utf-8")
+            self.send_response(HTTPStatus.METHOD_NOT_ALLOWED)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Allow", "POST")
+            self.end_headers()
+            self.wfile.write(body)
         else:
             self._send_error_json(HTTPStatus.NOT_FOUND, "not found")
 
@@ -1634,6 +1647,14 @@ class JobRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         route = self._route()
         problem = self._browser_guard_problem()
+        if (not problem and route.name == "mcp"
+                and not origin_allowed(
+                    self.headers.get("Origin"), self.headers.get("Host"),
+                    https=self._srv.ssl_context is not None)):
+            # The MCP spec requires every request's Origin to be validated
+            # (DNS rebinding), so unlike /api/jobs a token in a header does
+            # not excuse a foreign Origin here.
+            problem = "cross-origin request refused"
         if problem:
             if route.name == "openai_transcriptions":
                 self._reject_openai_post_early(
@@ -1654,7 +1675,9 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 self._reject_post_early(
                     HTTPStatus.UNAUTHORIZED, "auth required")
             return
-        if route.name == "jobs":
+        if route.name == "mcp":
+            self._mcp_dispatch()
+        elif route.name == "jobs":
             self._create_job()
         elif route.name == "openai_transcriptions":
             self._openai_transcribe()
@@ -2207,6 +2230,52 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             self._send_error_json(HTTPStatus.SERVICE_UNAVAILABLE, str(e), retry_after=30)
             return
         self._send_json(HTTPStatus.ACCEPTED, {"job_id": job_id})
+
+    def _mcp_dispatch(self) -> None:
+        """POST /mcp: one JSON-RPC message in, one JSON response out.
+
+        MCP Streamable HTTP (revision 2025-06-18) without the optional SSE
+        stream or session. Auth, the browser guard and the Origin check ran
+        in do_POST; the body checks match POST /api/jobs.
+        """
+        body = self._read_json_body()
+        if body is None:
+            return  # error already sent (JSON cap exceeded)
+        if not is_json_content_type(self.headers.get("Content-Type")):
+            # A cross-site form or fetch can send text/plain without a CORS
+            # preflight; application/json it cannot.
+            self._send_error_json(
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                "send JSON-RPC with Content-Type: application/json")
+            return
+        version = self.headers.get("MCP-Protocol-Version")
+        if version is not None and version.strip() not in mcp.PROTOCOL_VERSIONS:
+            # The spec's rule for an unsupported version header.
+            self._send_error_json(
+                HTTPStatus.BAD_REQUEST,
+                f"unsupported MCP-Protocol-Version {version.strip()!r}; "
+                f"supported: {', '.join(mcp.PROTOCOL_VERSIONS)}")
+            return
+        try:
+            data = json.loads(body.decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            self._send_json(HTTPStatus.BAD_REQUEST, mcp.error_response(
+                None, mcp.PARSE_ERROR, "Parse error: body is not JSON"))
+            return
+        response = mcp.handle(data, self._srv.manager, app_version=__version__)
+        if response is None:
+            # A notification or a client's response: 202 with an explicit
+            # empty body, so a keep-alive client does not wait for one.
+            self.send_response(HTTPStatus.ACCEPTED)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        # An error that could not be tied to a request id means the body was
+        # not a usable request: say so at the HTTP level too.
+        status = (HTTPStatus.BAD_REQUEST
+                  if "error" in response and response.get("id") is None
+                  else HTTPStatus.OK)
+        self._send_json(status, response)
 
     # --- OpenAI-compatible surface -------------------------------------------
 

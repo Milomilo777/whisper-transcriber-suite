@@ -12,6 +12,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   running and the queue limit, and every "queue is full" 503 reply carries `Retry-After: 30`, so scripts can
   wait instead of guessing.
 
+- **Local API: MCP endpoint for AI assistants**: `POST /mcp` lets an assistant that supports remote MCP
+  servers queue a link for transcription, follow the job and read the text, with the same password and
+  checks as the JSON API. See "MCP (for AI assistants)" in docs/SERVER.md.
+
 - **Speakers option on the Transcribe tab**: next to Identify speakers you can now tell the app how many people
   talk (2 to 10) instead of leaving it on Auto. It is greyed out while speaker detection is off.
 
