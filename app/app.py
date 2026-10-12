@@ -7336,7 +7336,7 @@ class App(tk.Tk):
 
     def log(self, msg: str) -> None:
         # The log file gets the text without the right-to-left marks; the panel keeps them.
-        self._ui_logger.info(plain(msg))
+        self._ui_logger.info(plain(msg) if isinstance(msg, str) else msg)
         if hasattr(self, "txt") and self.txt is not None:
             insert_log_line(self.txt, msg)
 

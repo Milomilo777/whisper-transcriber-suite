@@ -304,6 +304,10 @@ def test_app_log_writes_the_plain_text_to_the_log_file(fa_windows: None,
     with caplog.at_level(logging.INFO, logger="test.rtl.ui"):
         App.log(SimpleNamespace(_ui_logger=log, txt=None), msg)  # type: ignore[arg-type]
     assert [r.getMessage() for r in caplog.records] == ["report.txt ذخیره شد"]
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="test.rtl.ui"):  # not a text: logged as before
+        App.log(SimpleNamespace(_ui_logger=log, txt=None), RuntimeError("boom"))  # type: ignore[arg-type]
+    assert [r.getMessage() for r in caplog.records] == ["boom"]
 
 
 def test_a_lost_notice_is_logged_plain(fa_windows: None, monkeypatch: pytest.MonkeyPatch,

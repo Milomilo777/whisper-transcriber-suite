@@ -243,4 +243,4 @@ def notify(widget: tk.Misc, text: str, kind: Kind = "info") -> None:
     try:
         host_for(widget).post(text, kind)
     except tk.TclError:
-        logger.info("notice not shown (window closing): %s", plain(text))
+        logger.info("notice not shown (window closing): %s", plain(str(text)))

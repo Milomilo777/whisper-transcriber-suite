@@ -2796,7 +2796,7 @@ class TranscriptViewer(tk.Toplevel):
         try:
             notify(self, text, kind)
         except Exception:  # noqa: BLE001
-            logger.warning("Could not show the notice: %s", plain(text), exc_info=True)
+            logger.warning("Could not show the notice: %s", plain(str(text)), exc_info=True)
 
     def destroy(self) -> None:
         # Also reached when the main window goes away with the viewer open.
