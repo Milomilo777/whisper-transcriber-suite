@@ -125,6 +125,12 @@ if errorlevel 8 (
   echo [embed] copying core\ failed
   exit /b 12
 )
+REM app\locales\ (interface catalogs, app\i18n.py) comes with app\; without it every
+REM language falls back to English, so a tree without the source catalog is a broken copy.
+if not exist "%BUILD%\app\locales\en.json" (
+  echo [embed] app\locales\en.json is missing from the tree
+  exit /b 12
+)
 xcopy /E /I /Y "%ROOT%bin" "%BUILD%\bin" >nul
 copy "%ROOT%gui.py" "%BUILD%\" >nul
 

@@ -161,6 +161,9 @@ a = Analysis(
         # exact table styling). Resolved at runtime via
         # core.paths.resource_base -> core/writers/templates/.
         ('core/writers/templates', 'core/writers/templates'),
+        # Interface translation catalogs (app/i18n.py), found through
+        # core.paths.resource_base -> app/locales/.
+        ('app/locales', 'app/locales'),
         *faster_whisper_datas,
         *whisper_cpp_datas,
         *alignment_datas,
