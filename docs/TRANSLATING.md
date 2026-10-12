@@ -113,9 +113,9 @@ and expects an empty list, plus a test that its English texts did not change.
    `east_slavic` rule has three forms (one, few, many) and `none` has one.
 6. Keys that contain `\u0004` carry a context before that character; translate only the value.
 7. Status: `"machine"` for an unreviewed machine translation, `"reviewed"` once a person who
-   speaks the language has checked it. Machine translations are never offered to people: the
-   language list shows them only with `WTS_UI_SHOW_UNREVIEWED=1`, and `"auto"` never picks them.
-   An explicit `ui_language` code still loads them, for reviewers.
+   speaks the language has checked it. `"auto"` never picks a machine translation: a person
+   gets one only by choosing it. The language picker lists it with the note
+   "(machine translation)" after the language's name; a reviewed catalog shows the name alone.
 8. Run `python -m pytest tests/test_i18n_catalogs.py` (it reports untranslated messages as
    warnings and fails on broken placeholders, wrong plural counts or keys `en.json` lacks), then
    look at the app with `WTS_UI_LANGUAGE=<code>`.
@@ -123,4 +123,6 @@ and expects an empty list, plus a test that its English texts did not change.
 Files are UTF-8 with LF line endings; `.gitattributes` keeps them LF on Windows checkouts.
 
 Right-to-left languages: the layer records the direction (`i18n.current_direction()`), but the
-Tk widgets are not mirrored yet. Check how an `rtl` catalog looks before setting `"reviewed"`.
+Tk widgets are not mirrored yet. Until they are (`i18n.RTL_LAYOUT_READY` is `False`), the
+language picker does not offer an `rtl` catalog; `WTS_UI_LANGUAGE` or an explicit `ui_language`
+code still loads one. Check how an `rtl` catalog looks before setting `"reviewed"`.

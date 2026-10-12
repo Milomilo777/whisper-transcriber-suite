@@ -18,7 +18,6 @@ def _english_and_fresh_warnings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
     monkeypatch.setattr(i18n, "_WARNED", set())
     monkeypatch.setattr(i18n, "_DOC_CACHE", {})
     monkeypatch.delenv(i18n.ENV_LANGUAGE, raising=False)
-    monkeypatch.delenv(i18n.ENV_SHOW_UNREVIEWED, raising=False)
     i18n.set_language("en")
     yield
     i18n.set_language("en")
@@ -323,17 +322,35 @@ def test_pseudo_locale_is_never_listed(locales: Path) -> None:
 
 # --- available_languages -------------------------------------------------------------------
 
-def test_available_lists_english_and_reviewed_only(locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_available_lists_english_reviewed_and_machine_catalogs(locales: Path) -> None:
     write_catalog(locales, "de", {}, status="reviewed")
     write_catalog(locales, "fr", {}, status="machine")
     (locales / "it.json").write_text("{broken", encoding="utf-8")
-    codes = [lang.code for lang in i18n.available_languages()]
-    assert codes == ["en", "de"]
-    monkeypatch.setenv(i18n.ENV_SHOW_UNREVIEWED, "1")
+    (locales / "xx.json").write_text("{}", encoding="utf-8")  # not a supported code
     listed = i18n.available_languages()
     assert [lang.code for lang in listed] == ["en", "de", "fr"]
     assert listed[2] == i18n.LanguageInfo("fr", "Français", "ltr", "machine")
-    assert listed[0].status == "source"
+
+
+def test_available_offers_rtl_catalogs_only_once_the_layout_is_mirrored(
+        locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    write_catalog(locales, "de", {}, status="machine")
+    write_catalog(locales, "ar", {}, status="reviewed")
+    write_catalog(locales, "he", {}, status="machine")
+    monkeypatch.setattr(i18n, "RTL_LAYOUT_READY", False)
+    assert [lang.code for lang in i18n.available_languages()] == ["en", "de"]
+    monkeypatch.setattr(i18n, "RTL_LAYOUT_READY", True)
+    listed = i18n.available_languages()
+    assert [lang.code for lang in listed] == ["en", "de", "ar", "he"]
+    assert {lang.direction for lang in listed if lang.code in ("ar", "he")} == {"rtl"}
+    # An explicit setting still loads an rtl catalog while the picker hides it (translators).
+    monkeypatch.setattr(i18n, "RTL_LAYOUT_READY", False)
+    assert i18n.resolve_language("he", os_language=None, available=i18n.catalog_statuses()) == "he"
+
+
+def test_rtl_layout_is_not_ready_in_this_release() -> None:
+    # Flipping this offers Arabic and Hebrew in the picker; do it only with the mirrored layout.
+    assert i18n.RTL_LAYOUT_READY is False
 
 
 # --- R5 choosing the language --------------------------------------------------------------

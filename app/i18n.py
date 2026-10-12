@@ -43,9 +43,11 @@ PSEUDO_LOCALE = "qps-ploc"
 CONTEXT_SEPARATOR = "\x04"
 #: Overrides the ``ui_language`` config key (tests, translators checking their work).
 ENV_LANGUAGE = "WTS_UI_LANGUAGE"
-#: "1" lists catalogs with status "machine" in :func:`available_languages` (for reviewers).
-ENV_SHOW_UNREVIEWED = "WTS_UI_SHOW_UNREVIEWED"
 STATUSES = ("source", "machine", "reviewed")
+#: True once the Tk layout is mirrored for right-to-left languages. Until then
+#: :func:`available_languages` (the language picker) offers no "rtl" catalog; an explicit
+#: ``ui_language`` code still loads one, for translators checking their work.
+RTL_LAYOUT_READY = False
 
 
 class SupportedLanguage(NamedTuple):
@@ -373,25 +375,22 @@ def catalog_statuses() -> Mapping[str, str]:
     return _CatalogStatuses()
 
 
-def _show_unreviewed(environ: Mapping[str, str] | None = None) -> bool:
-    env = os.environ if environ is None else environ
-    return env.get(ENV_SHOW_UNREVIEWED, "").strip() == "1"
+def available_languages() -> list[LanguageInfo]:
+    """The languages the picker offers, in ``SUPPORTED_LANGUAGES`` order.
 
-
-def available_languages(environ: Mapping[str, str] | None = None) -> list[LanguageInfo]:
-    """The languages to offer: English and every catalog with status "reviewed".
-
-    Catalogs with status "machine" (unreviewed machine translation) are listed only when
-    ``WTS_UI_SHOW_UNREVIEWED=1`` is set, for the people who review them. The pseudo-locale is
-    never listed.
+    English and every usable catalog: status "reviewed", and status "machine" (unreviewed
+    machine translation; the picker marks it as such, and "auto" never chooses it, so nobody
+    gets one without picking it). A right-to-left catalog is offered only once
+    ``RTL_LAYOUT_READY`` is True. The pseudo-locale is never listed.
     """
-    show_machine = _show_unreviewed(environ)
     out: list[LanguageInfo] = []
     for lang in SUPPORTED_LANGUAGES:
+        if lang.direction == "rtl" and not RTL_LAYOUT_READY:
+            continue
         status = catalog_status(lang.code) if (
             lang.code == SOURCE_LANGUAGE or (locales_dir() / f"{lang.code}.json").is_file()) else None
-        if status == "source" or status == "reviewed" or (status == "machine" and show_machine):
-            out.append(LanguageInfo(lang.code, lang.endonym, lang.direction, status))
+        if status in STATUSES:
+            out.append(LanguageInfo(lang.code, lang.endonym, lang.direction, str(status)))
     return out
 
 
@@ -676,8 +675,8 @@ def lazy(msgid: str, **kwargs: Any) -> Callable[[], str]:
 
 
 __all__ = [
-    "CONTEXT_SEPARATOR", "ENV_LANGUAGE", "ENV_SHOW_UNREVIEWED", "LANGUAGES_BY_CODE", "LanguageInfo",
-    "N_", "PLURAL_RULES", "PSEUDO_LOCALE", "SOURCE_LANGUAGE", "SUPPORTED_LANGUAGES",
+    "CONTEXT_SEPARATOR", "ENV_LANGUAGE", "LANGUAGES_BY_CODE", "LanguageInfo",
+    "N_", "PLURAL_RULES", "PSEUDO_LOCALE", "RTL_LAYOUT_READY", "SOURCE_LANGUAGE", "SUPPORTED_LANGUAGES",
     "SupportedLanguage", "_", "available_languages", "catalog_status", "catalog_statuses",
     "current_direction", "current_language", "detect_os_language", "init_language", "lazy",
     "locales_dir", "ngettext", "pgettext", "plural_index", "pseudo_translate", "resolve_language",
