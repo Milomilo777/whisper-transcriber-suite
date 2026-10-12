@@ -25,6 +25,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Any, Callable
 
 from app.dpi import px
+from app.i18n import N_, _, translate
 from app.theme import tokens
 from core import hardware as _hw
 from core import hub as _hub
@@ -32,8 +33,10 @@ from core.language_defaults import recommended_model
 
 logger = logging.getLogger(__name__)
 
-AUTO_LANGUAGE_LABEL = "Several languages / not sure"
-MODES = (("fast", "Fast"), ("best", "Best quality"))
+#: Shown with translate(); the code saved for it is "" (auto-detect), never the label.
+AUTO_LANGUAGE_LABEL = N_("Several languages / not sure")
+#: (stored mode, label shown with translate())
+MODES = (("fast", N_("Fast")), ("best", N_("Best quality")))
 
 # (GPU status, physical cores) or (GPU status, physical cores, RAM in GB; 0 = unknown).
 Probe = Callable[[], "tuple[_hw.CudaStatus, int] | tuple[_hw.CudaStatus, int, float]"]
@@ -46,10 +49,14 @@ def whisper_language_code(codes: str) -> str:
 
 
 def language_options() -> list[tuple[str, str]]:
-    """``[(label, whisper code), ...]``; the first entry ("" = auto-detect) is the default."""
+    """``[(label, whisper code), ...]``; the first entry ("" = auto-detect) is the default.
+
+    The first label is translated; the dialog maps a label back to its code through this list,
+    so only the code is ever saved.
+    """
     from app.domain.languages import SUBTITLE_LANGUAGES
 
-    options = [(AUTO_LANGUAGE_LABEL, "")]
+    options = [(translate(AUTO_LANGUAGE_LABEL), "")]
     options += [(name, whisper_language_code(codes)) for name, codes in SUBTITLE_LANGUAGES if codes]
     return options
 
@@ -81,12 +88,14 @@ def short_model_name(config: dict[str, Any], slug: str) -> str:
 def format_per_minute(seconds: float) -> str:
     """Decode time for one minute of audio, rounded the way a person would say it."""
     if seconds < 10:
-        return "under 10 seconds"
+        return _("under 10 seconds")
     nearest_five = int(round(seconds / 5.0)) * 5
     if nearest_five < 60:
-        return f"about {nearest_five} seconds"
+        return _("about {seconds} seconds", seconds=nearest_five)
     minutes, rest = divmod(int(round(seconds / 15.0)) * 15, 60)
-    return f"about {minutes} min" if rest == 0 else f"about {minutes} min {rest} s"
+    if rest == 0:
+        return _("about {minutes} min", minutes=minutes)
+    return _("about {minutes} min {seconds} s", minutes=minutes, seconds=rest)
 
 
 @dataclass(frozen=True)
@@ -163,7 +172,7 @@ class QuickStartDialog(tk.Toplevel):
         on_done: Callable[[QuickStartChoice | None], None],
         probe: Probe | None,
     ) -> None:
-        self.title("Quick start")
+        self.title(_("Quick start"))
         self.transient(master)  # type: ignore[arg-type]
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.skip)
@@ -181,8 +190,8 @@ class QuickStartDialog(tk.Toplevel):
         self.language_var = tk.StringVar(master=self, value=self._languages[0][0])
         self.mode_var = tk.StringVar(master=self, value="fast")
         self.folder_var = tk.StringVar(master=self, value=default_output_folder(config))
-        self.mode_detail_vars = {m: tk.StringVar(master=self) for m, _ in MODES}
-        self.hardware_var = tk.StringVar(master=self, value="Checking this computer…")
+        self.mode_detail_vars = {m: tk.StringVar(master=self) for m, _label in MODES}
+        self.hardware_var = tk.StringVar(master=self, value=_("Checking this computer…"))
         self._build()
         self._refresh_details()
 
@@ -205,13 +214,13 @@ class QuickStartDialog(tk.Toplevel):
         body = ttk.Frame(self, padding=16)
         body.pack(fill="both", expand=True)
         ttk.Label(
-            body, text="Welcome! Three quick choices", font=("TkDefaultFont", 11, "bold"),
+            body, text=_("Welcome! Three quick choices"), font=("TkDefaultFont", 11, "bold"),
         ).pack(anchor="w")
         ttk.Label(
-            body, text="You can change each of them later.", foreground=tokens.themed(tokens.TEXT_MUTED),
+            body, text=_("You can change each of them later."), foreground=tokens.themed(tokens.TEXT_MUTED),
         ).pack(anchor="w", pady=(0, 12))
 
-        ttk.Label(body, text="1. Main language you will transcribe").pack(anchor="w")
+        ttk.Label(body, text=_("1. Main language you will transcribe")).pack(anchor="w")
         self.language_combo = ttk.Combobox(
             body, textvariable=self.language_var, state="readonly", width=34,
             values=[label for label, _code in self._languages],
@@ -219,10 +228,10 @@ class QuickStartDialog(tk.Toplevel):
         self.language_combo.pack(anchor="w", pady=(4, 12))
         self.language_combo.bind("<<ComboboxSelected>>", lambda _e: self._refresh_details())
 
-        ttk.Label(body, text="2. Speed or quality").pack(anchor="w")
+        ttk.Label(body, text=_("2. Speed or quality")).pack(anchor="w")
         for mode, title in MODES:
             ttk.Radiobutton(
-                body, text=title, value=mode, variable=self.mode_var,
+                body, text=translate(title), value=mode, variable=self.mode_var,
             ).pack(anchor="w", pady=(4, 0))
             ttk.Label(
                 body, textvariable=self.mode_detail_vars[mode], foreground=tokens.themed(tokens.TEXT_MUTED),
@@ -232,21 +241,21 @@ class QuickStartDialog(tk.Toplevel):
             wraplength=px(500), justify="left",
         ).pack(anchor="w", pady=(6, 12))
 
-        ttk.Label(body, text="3. Save downloaded videos and audio in").pack(anchor="w")
+        ttk.Label(body, text=_("3. Save downloaded videos and audio in")).pack(anchor="w")
         row = ttk.Frame(body)
         row.pack(fill="x", pady=(4, 12))
         ttk.Entry(row, textvariable=self.folder_var, width=52).pack(
             side="left", fill="x", expand=True,
         )
-        ttk.Button(row, text="Browse…", command=self._browse).pack(side="left", padx=(6, 0))
+        ttk.Button(row, text=_("Browse…"), command=self._browse).pack(side="left", padx=(6, 0))
 
         hub = str(self._config.get("hub_folder") or "").strip() or str(_hub.default_hub_folder())
         ttk.Label(
             body,
-            text=(
+            text=_(
                 "Transcripts are saved next to the file they come from. The model "
                 "downloads the first time you transcribe and is kept in "
-                f"{hub} (Advanced settings > Model folder can move it)."
+                "{folder} (Advanced settings > Model folder can move it).", folder=hub,
             ),
             foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(500), justify="left",
         ).pack(anchor="w", pady=(0, 12))
@@ -254,13 +263,13 @@ class QuickStartDialog(tk.Toplevel):
         actions = ttk.Frame(body)
         actions.pack(fill="x")
         ttk.Button(
-            actions, text="Finish", command=self.finish, style="Accent.TButton",
+            actions, text=_("Finish"), command=self.finish, style="Accent.TButton",
         ).pack(side="right")
         if self._on_try_sample is not None:
             ttk.Button(
-                actions, text="Finish and try it now", command=self.finish_and_try_sample,
+                actions, text=_("Finish and try it now"), command=self.finish_and_try_sample,
             ).pack(side="right", padx=(0, 8))
-        ttk.Button(actions, text="Skip", command=self.skip).pack(side="right", padx=(0, 8))
+        ttk.Button(actions, text=_("Skip"), command=self.skip).pack(side="right", padx=(0, 8))
 
     def _center_on(self, master: "tk.Misc") -> None:
         try:
@@ -299,43 +308,53 @@ class QuickStartDialog(tk.Toplevel):
             slug = _hw.fit_model_to_ram(wanted, self._ram_gb)
             parts = [short_model_name(self._config, slug)]
             size = approx_download_size_text(self._config, slug)
+            # Each part is a whole phrase; " · " lists them.
             if size:
-                parts.append(f"{size} download")
+                parts.append(_("{size} download", size=size))
             if self._hardware is not None:
                 status, cores = self._hardware
                 seconds = _hw.estimate_seconds_per_audio_minute(
                     slug, status, physical_cores=cores, force_cpu=self._force_cpu,
                 )
                 if seconds is not None:
-                    parts.append(f"{format_per_minute(seconds)} per minute of audio")
+                    parts.append(_("{time} per minute of audio", time=format_per_minute(seconds)))
             if slug != wanted:
-                parts.append(f"sized for this computer's {self._ram_gb:.0f} GB of memory")
+                parts.append(_("sized for this computer's {ram} GB of memory",
+                               ram=f"{self._ram_gb:.0f}"))
             self.mode_detail_vars[mode].set(" · ".join(parts))
 
     def _hardware_text(self, status: _hw.CudaStatus, cores: int) -> str:
-        where = f"{cores}-core processor" if cores else "processor"
+        # {where} is one of two whole phrases, set into the sentences below.
+        where = _("{cores}-core processor", cores=cores) if cores else _("processor")
         if self._force_cpu:
-            return (
-                f"The settings run transcription on this computer's {where}, so the times "
-                "are for it (Advanced settings > Re-detect hardware changes that)."
+            return _(
+                "The settings run transcription on this computer's {where}, so the times "
+                "are for it (Advanced settings > Re-detect hardware changes that).", where=where,
             )
         if status.usable:
-            gpu = status.gpu_name or "your NVIDIA GPU"
-            memory = f" ({status.memory_mb / 1024:.0f} GB)" if status.memory_mb else ""
-            return (
-                f"Times are rough estimates for {gpu}{memory}, from faster-whisper's "
+            gpu = status.gpu_name or _("your NVIDIA GPU")
+            if status.memory_mb:
+                return _(
+                    "Times are rough estimates for {gpu} ({memory} GB), from faster-whisper's "
+                    "published GPU benchmark; a model too large for its memory runs on the "
+                    "{where} and shows that slower time.",
+                    gpu=gpu, memory=f"{status.memory_mb / 1024:.0f}", where=where,
+                )
+            return _(
+                "Times are rough estimates for {gpu}, from faster-whisper's "
                 "published GPU benchmark; a model too large for its memory runs on the "
-                f"{where} and shows that slower time."
+                "{where} and shows that slower time.", gpu=gpu, where=where,
             )
         if status.gpu_present:
-            return (
-                f"{status.gpu_name or 'Your NVIDIA GPU'} cannot be used yet, so the times are "
-                f"for this computer's {where} (Advanced settings > Re-detect hardware "
-                "explains why)."
+            return _(
+                "{gpu} cannot be used yet, so the times are "
+                "for this computer's {where} (Advanced settings > Re-detect hardware "
+                "explains why).", gpu=status.gpu_name or _("Your NVIDIA GPU"), where=where,
             )
-        return (
-            f"Times are rough estimates for this computer's {where}, measured on a "
-            "4-core desktop processor; a newer processor is faster, an older laptop slower."
+        return _(
+            "Times are rough estimates for this computer's {where}, measured on a "
+            "4-core desktop processor; a newer processor is faster, an older laptop slower.",
+            where=where,
         )
 
     # ---------- background check ------------------------------------------
@@ -353,7 +372,7 @@ class QuickStartDialog(tk.Toplevel):
         if self._closed:
             return
         if "error" in self._result:
-            self.hardware_var.set("Could not check this computer, so no time estimate is shown.")
+            self.hardware_var.set(_("Could not check this computer, so no time estimate is shown."))
             return
         if "done" not in self._result:
             self._poll_id = self.after(100, self._poll)
@@ -370,7 +389,7 @@ class QuickStartDialog(tk.Toplevel):
     def _browse(self) -> None:
         initial = self.folder_var.get().strip()
         folder = filedialog.askdirectory(
-            parent=self, title="Folder for downloaded videos and audio",
+            parent=self, title=_("Folder for downloaded videos and audio"),
             initialdir=initial if os.path.isdir(initial) else None, mustexist=False,
         )
         if folder:
@@ -384,7 +403,7 @@ class QuickStartDialog(tk.Toplevel):
         choice = self.choice()
         if not choice.output_folder:
             messagebox.showwarning(
-                "Pick a folder", "Choose a folder for downloaded videos and audio.", parent=self,
+                _("Pick a folder"), _("Choose a folder for downloaded videos and audio."), parent=self,
             )
             return
         try:
@@ -395,8 +414,9 @@ class QuickStartDialog(tk.Toplevel):
             choice = replace(choice, output_folder=folder)
         except (OSError, ValueError) as e:  # ValueError: e.g. a NUL character
             messagebox.showwarning(
-                "Folder unavailable",
-                f"Cannot create or use this folder:\n{choice.output_folder}\n\n{e}",
+                _("Folder unavailable"),
+                _("Cannot create or use this folder:\n{folder}\n\n{error}",
+                  folder=choice.output_folder, error=e),
                 parent=self,
             )
             return

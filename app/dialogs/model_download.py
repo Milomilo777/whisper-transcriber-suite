@@ -10,6 +10,7 @@ from tkinter import messagebox, ttk
 from typing import Any
 
 from app.dpi import place_over, px
+from app.i18n import _
 from core.config import load_config, save_config
 from core.model_manager import (
     DownloadCancelled,
@@ -40,7 +41,7 @@ def fmt_duration(seconds: float | int | None) -> str:
 class ModelDownloadDialog(tk.Toplevel):
     def __init__(self, master: "tk.Tk | tk.Toplevel") -> None:
         super().__init__(master)
-        self.title("Preparing Whisper model")
+        self.title(_("Preparing Whisper model"))
         self.resizable(False, False)
         self.transient(master)
         try:
@@ -65,12 +66,12 @@ class ModelDownloadDialog(tk.Toplevel):
         self.not_writable_reason = "permission"
         self.started = time.time()
 
-        self.status_var = tk.StringVar(value="Starting model setup...")
+        self.status_var = tk.StringVar(value=_("Starting model setup..."))
         self.detail_var = tk.StringVar(value="")
-        self.elapsed_var = tk.StringVar(value="Elapsed: 00:00")
-        self.remaining_var = tk.StringVar(value="Remaining: --:--")
-        self.speed_var = tk.StringVar(value="Speed: --")
-        self.size_var = tk.StringVar(value="Total: unknown")
+        self.elapsed_var = tk.StringVar(value=_("Elapsed: {time}", time=fmt_duration(0)))
+        self.remaining_var = tk.StringVar(value=_("Remaining: {time}", time=fmt_duration(None)))
+        self.speed_var = tk.StringVar(value=_("Speed: --"))
+        self.size_var = tk.StringVar(value=_("Total: unknown"))
 
         body = ttk.Frame(self, padding=18)
         body.grid(row=0, column=0, sticky="nsew")
@@ -78,7 +79,7 @@ class ModelDownloadDialog(tk.Toplevel):
         # "Segoe UI" doesn't exist on macOS; fall back to the platform's
         # default UI font there while keeping the Windows look unchanged.
         _title_font = ("TkDefaultFont", 11, "bold") if sys.platform == "darwin" else ("Segoe UI", 11, "bold")
-        ttk.Label(body, text="Downloading required model", font=_title_font).grid(
+        ttk.Label(body, text=_("Downloading required model"), font=_title_font).grid(
             row=0, column=0, columnspan=2, sticky="w"
         )
         ttk.Label(body, textvariable=self.status_var).grid(
@@ -94,7 +95,7 @@ class ModelDownloadDialog(tk.Toplevel):
         ttk.Label(body, textvariable=self.speed_var).grid(row=5, column=0, sticky="w")
         ttk.Label(body, textvariable=self.size_var).grid(row=5, column=1, sticky="e")
 
-        self.cancel_btn = ttk.Button(body, text="Cancel", command=self.cancel)
+        self.cancel_btn = ttk.Button(body, text=_("Cancel"), command=self.cancel)
         self.cancel_btn.grid(row=6, column=1, sticky="e", pady=(14, 0))
 
         body.columnconfigure(0, weight=1)
@@ -176,7 +177,7 @@ class ModelDownloadDialog(tk.Toplevel):
 
     def cancel(self) -> None:
         self.cancel_event.set()
-        self.status_var.set("Cancelling download...")
+        self.status_var.set(_("Cancelling download..."))
         self.cancel_btn.configure(state="disabled")
 
     def _poll(self) -> None:
@@ -198,19 +199,19 @@ class ModelDownloadDialog(tk.Toplevel):
                     # Offer a writable folder instead of the raw OS error.
                     if self._handle_not_writable(self.not_writable_dir):
                         # User picked a new folder — retry the download.
-                        self.status_var.set("Retrying with the new folder...")
+                        self.status_var.set(_("Retrying with the new folder..."))
                         self._start_worker()
                         self.after(100, self._poll)
                         return
                     self.destroy()
                     return
                 if self.error:
-                    messagebox.showerror("Model setup failed", self.error, parent=self)
+                    messagebox.showerror(_("Model setup failed"), self.error, parent=self)
                 self.destroy()
                 return
 
         elapsed = time.time() - self.started
-        self.elapsed_var.set(f"Elapsed: {fmt_duration(elapsed)}")
+        self.elapsed_var.set(_("Elapsed: {time}", time=fmt_duration(elapsed)))
         self.after(100, self._poll)
 
     def _handle_not_writable(self, directory: str) -> bool:
@@ -221,20 +222,20 @@ class ModelDownloadDialog(tk.Toplevel):
         shows a clear, actionable message — never the raw OS string.
         """
         if getattr(self, "not_writable_reason", "permission") == "missing":
-            title = "Model folder not available"
-            body = (
-                f"The model folder is not available:\n\n{directory}\n\n"
+            title = _("Model folder not available")
+            body = _(
+                "The model folder is not available:\n\n{folder}\n\n"
                 "Its drive may be unplugged or disconnected. Reconnect it "
                 "and try again, or choose a different folder.\n\n"
-                "Pick a different folder now?"
+                "Pick a different folder now?", folder=directory,
             )
         else:
-            title = "Model folder not writable"
-            body = (
-                f"Whisper could not write to:\n\n{directory}\n\n"
+            title = _("Model folder not writable")
+            body = _(
+                "Whisper could not write to:\n\n{folder}\n\n"
                 "It may need administrator rights, or you can choose a "
                 "different folder under your user profile.\n\n"
-                "Pick a different folder now?"
+                "Pick a different folder now?", folder=directory,
             )
         retry = messagebox.askyesno(title, body, parent=self)
         if not retry:
@@ -247,8 +248,8 @@ class ModelDownloadDialog(tk.Toplevel):
             from app.dialogs.hub_setup import HubSetupDialog
         except Exception as e:  # noqa: BLE001
             messagebox.showerror(
-                "Model setup failed",
-                f"Could not open the folder picker: {e}",
+                _("Model setup failed"),
+                _("Could not open the folder picker: {error}", error=e),
                 parent=self,
             )
             return False
@@ -285,10 +286,10 @@ class ModelDownloadDialog(tk.Toplevel):
         remaining = payload.get("remaining")
 
         if total:
-            self.size_var.set(f"Total: {fmt_bytes(total)}")
+            self.size_var.set(_("Total: {size}", size=fmt_bytes(total)))
         if downloaded is not None and total:
-            self.size_var.set(f"Total: {fmt_bytes(downloaded)} / {fmt_bytes(total)}")
+            self.size_var.set(_("Total: {done} / {total}", done=fmt_bytes(downloaded), total=fmt_bytes(total)))
         if speed:
-            self.speed_var.set(f"Speed: {fmt_bytes(speed)}/s")
+            self.speed_var.set(_("Speed: {size}/s", size=fmt_bytes(speed)))
         if "remaining" in payload:
-            self.remaining_var.set(f"Remaining: {fmt_duration(remaining)}")
+            self.remaining_var.set(_("Remaining: {time}", time=fmt_duration(remaining)))

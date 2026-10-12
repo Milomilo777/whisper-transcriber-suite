@@ -20,6 +20,7 @@ from tkinter import ttk
 from typing import Any
 
 from app.dpi import place_over, px, scaled_size
+from app.i18n import _, ngettext, pgettext
 from app.theme import script_fonts
 from app.theme import tokens
 from app.theme.bidi_display import ltr_base
@@ -46,7 +47,7 @@ class SearchDialog(tk.Toplevel):
 
     def __init__(self, master: "tk.Tk | tk.Toplevel") -> None:
         super().__init__(master)
-        self.title("Search transcripts")
+        self.title(_("Search transcripts"))
         width, height = scaled_size(self, 820, 520)
         self.geometry(f"{width}x{height}")
         self.minsize(width, height)
@@ -77,17 +78,17 @@ class SearchDialog(tk.Toplevel):
 
         topbar = ttk.Frame(outer)
         topbar.pack(fill="x", pady=(0, 6))
-        ttk.Label(topbar, text="Search:").pack(side="left")
+        ttk.Label(topbar, text=_("Search:")).pack(side="left")
         self.query_var = tk.StringVar()
         entry = ttk.Entry(topbar, textvariable=self.query_var, width=40)
         entry.pack(side="left", padx=(4, 4))
         entry.bind("<Return>", lambda _e: self._run_search())
-        ttk.Button(topbar, text="Search", command=self._run_search).pack(side="left")
+        ttk.Button(topbar, text=pgettext("button", "Search"), command=self._run_search).pack(side="left")
         self._reindex_btn = ttk.Button(
-            topbar, text="Reindex now", command=self._reindex
+            topbar, text=_("Reindex now"), command=self._reindex
         )
         self._reindex_btn.pack(side="left", padx=(12, 0))
-        self.status_var = tk.StringVar(value="Indexing…")
+        self.status_var = tk.StringVar(value=_("Indexing…"))
         ttk.Label(topbar, textvariable=self.status_var, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
             side="right"
         )
@@ -96,9 +97,9 @@ class SearchDialog(tk.Toplevel):
         tree_frame.pack(fill="both", expand=True, pady=(0, 6))
         cols = ("file", "time", "text")
         self.tree = ttk.Treeview(tree_frame, columns=cols, show="headings")
-        self.tree.heading("file", text="File")
-        self.tree.heading("time", text="Time")
-        self.tree.heading("text", text="Match")
+        self.tree.heading("file", text=pgettext("column", "File"))
+        self.tree.heading("time", text=pgettext("column", "Time"))
+        self.tree.heading("text", text=pgettext("column", "Match"))
         self.tree.column("file", width=px(220), anchor="w")
         self.tree.column("time", width=px(70), anchor="w")
         self.tree.column("text", width=px(460))
@@ -112,13 +113,13 @@ class SearchDialog(tk.Toplevel):
 
         btns = ttk.Frame(outer)
         btns.pack(fill="x")
-        ttk.Button(btns, text="Open at result", command=self._open_selected).pack(
+        ttk.Button(btns, text=_("Open at result"), command=self._open_selected).pack(
             side="left"
         )
         ttk.Label(
             btns,
-            text="Double-click a row, or select it and click Open, to jump "
-                 "straight to that moment in the transcript viewer.",
+            text=_("Double-click a row, or select it and click Open, to jump "
+                   "straight to that moment in the transcript viewer."),
             foreground=tokens.themed(tokens.TEXT_MUTED),
         ).pack(side="left", padx=(10, 0))
 
@@ -142,16 +143,18 @@ class SearchDialog(tk.Toplevel):
             return
         self._reindexing = True
         self._reindex_btn.state(["disabled"])
-        self.status_var.set("Indexing…")
+        self.status_var.set(_("Indexing…"))
 
         def _worker() -> None:
             from core import search as _search
             try:
                 count = _search.reindex_all_history()
-                message = f"Indexed — {count} segment(s) up to date"
+                # Both forms keep the English "segment(s)"; other languages get real plurals.
+                message = ngettext("Indexed — {n} segment(s) up to date",
+                                   "Indexed — {n} segment(s) up to date", count)
             except Exception as e:  # noqa: BLE001
                 logger.warning("Transcript reindex failed: %s", e)
-                message = f"Indexing failed: {e}"
+                message = _("Indexing failed: {error}", error=e)
             self._post_to_main(lambda: self._finish_reindex(message))
 
         from core._threads import safe_thread
@@ -180,7 +183,7 @@ class SearchDialog(tk.Toplevel):
         self._hits = []
         if not query:
             return
-        self.status_var.set("Searching…")
+        self.status_var.set(_("Searching…"))
         self._search_seq += 1
         seq = self._search_seq
 
@@ -207,7 +210,7 @@ class SearchDialog(tk.Toplevel):
             # the row list a faster, newer query already populated.
             return
         if error:
-            self.status_var.set(f"Search failed: {error}")
+            self.status_var.set(_("Search failed: {error}", error=error))
             return
         self._hits = hits
         for i, hit in enumerate(hits):
@@ -217,7 +220,7 @@ class SearchDialog(tk.Toplevel):
                 values=(ltr_base(name), _fmt_hms(hit.start_seconds), hit.text),
                 tags=script_fonts.tree_row_tags(self.tree, name, hit.text),
             )
-        self.status_var.set(f"{len(hits)} result(s)")
+        self.status_var.set(ngettext("{n} result(s)", "{n} result(s)", len(hits)))
 
     # -- opening a result ---------------------------------------------------
 
@@ -235,8 +238,8 @@ class SearchDialog(tk.Toplevel):
         if not os.path.isfile(hit.json_path):
             from tkinter import messagebox
             messagebox.showerror(
-                "Transcript missing",
-                f"That transcript's JSON file no longer exists:\n{hit.json_path}",
+                _("Transcript missing"),
+                _("That transcript's JSON file no longer exists:\n{path}", path=hit.json_path),
                 parent=self,
             )
             return

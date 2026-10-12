@@ -28,6 +28,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from app.dpi import px
+from app.i18n import _
 from app.theme import tokens
 
 
@@ -76,7 +77,7 @@ class ModelLoadingDialog(tk.Toplevel):
 
     def __init__(self, master: "tk.Tk | tk.Toplevel") -> None:
         super().__init__(master)
-        self.title("Loading Whisper model")
+        self.title(_("Loading Whisper model"))
         self.resizable(False, False)
         self.transient(master)
         self.protocol("WM_DELETE_WINDOW", self.cancel)
@@ -98,13 +99,13 @@ class ModelLoadingDialog(tk.Toplevel):
         _title_font = ("TkDefaultFont", 11, "bold") if sys.platform == "darwin" else ("Segoe UI", 11, "bold")
         ttk.Label(
             body,
-            text="Loading the Whisper model — this takes a few seconds…",
+            text=_("Loading the Whisper model — this takes a few seconds…"),
             font=_title_font,
         ).grid(row=0, column=0, sticky="w")
 
         ttk.Label(
             body,
-            text=(
+            text=_(
                 "The model loads once per session. "
                 "Subsequent transcriptions start instantly."
             ),
@@ -117,7 +118,7 @@ class ModelLoadingDialog(tk.Toplevel):
         # user has visual confirmation the app isn't frozen.
         self.pb.start(10)
 
-        self.cancel_btn = ttk.Button(body, text="Cancel", command=self.cancel)
+        self.cancel_btn = ttk.Button(body, text=_("Cancel"), command=self.cancel)
         self.cancel_btn.grid(row=3, column=0, sticky="e")
 
         body.columnconfigure(0, weight=1)

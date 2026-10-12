@@ -15,12 +15,14 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Any
 
 from app.dpi import place_over, px
+from app.i18n import N_, _, translate
 from app.theme import tokens
 from app.widgets.platform import open_async
 from core.paths import same_file
 from core.writers import html_transcript
 
-BUTTON_TEXT = "Save shareable page"
+#: Button label and window title; shown with translate(BUTTON_TEXT).
+BUTTON_TEXT = N_("Save shareable page")
 
 ACTION_SAVE = "save"
 ACTION_SAVE_OPEN = "open"
@@ -31,10 +33,10 @@ def load_transcript(json_path: str) -> list[dict[str, Any]]:
     with open(json_path, "r", encoding="utf-8-sig") as f:
         payload = json.load(f)
     if not isinstance(payload, list):
-        raise ValueError("This file is not a transcript JSON (its root is not a list).")
+        raise ValueError(_("This file is not a transcript JSON (its root is not a list)."))
     segments = [item for item in payload if isinstance(item, dict)]
     if payload and not segments:
-        raise ValueError("This JSON list holds no transcript segments.")
+        raise ValueError(_("This JSON list holds no transcript segments."))
     return segments
 
 
@@ -53,28 +55,29 @@ def load_chapters(json_path: str) -> list[dict[str, Any]]:
 
 def privacy_note(media_path: str | None) -> str:
     """What the page holds and how its audio works, in plain words."""
-    note = (
+    note = _(
         "Saves one .html file that opens in any web browser, with no install and no "
         "internet connection. The page contains the full transcript text, the speaker "
         "names and the chapter titles, so share it only with people who may read them."
     )
     if media_path:
-        note += (
-            f"\n\nThe audio is not copied into the page: it plays "
-            f"“{os.path.basename(media_path)}” from where that file is now, and "
+        audio = _(
+            "The audio is not copied into the page: it plays "
+            "“{file_name}” from where that file is now, and "
             "it records the way there (the folder names between the page and the media). "
             "Keep the page and the media file together (for example in one folder) when "
-            "you move or send them."
+            "you move or send them.",
+            file_name=os.path.basename(media_path),
         )
     else:
-        note += "\n\nNo media file was found for this transcript, so the page has no player."
-    return note
+        audio = _("No media file was found for this transcript, so the page has no player.")
+    return note + "\n\n" + audio  # two whole paragraphs
 
 
 def ask_options(master: "tk.Misc", *, media_path: str | None) -> tuple[str, bool] | None:
     """Modal question: ``(action, footer)`` or None when cancelled."""
     dialog = tk.Toplevel(master)
-    dialog.title(BUTTON_TEXT)
+    dialog.title(translate(BUTTON_TEXT))
     dialog.transient(master)  # type: ignore[arg-type]
     dialog.resizable(False, False)
     result: dict[str, Any] = {"action": None}
@@ -87,7 +90,7 @@ def ask_options(master: "tk.Misc", *, media_path: str | None) -> tuple[str, bool
     body = ttk.Frame(dialog, padding=16)
     body.pack(fill="both", expand=True)
     ttk.Label(
-        body, text="Save the transcript as a web page you can share",
+        body, text=_("Save the transcript as a web page you can share"),
         font=("TkDefaultFont", 10, "bold"),
     ).pack(anchor="w")
     ttk.Label(
@@ -95,17 +98,18 @@ def ask_options(master: "tk.Misc", *, media_path: str | None) -> tuple[str, bool
         wraplength=px(460), justify="left",
     ).pack(anchor="w", pady=(6, 10))
     ttk.Checkbutton(
-        body, text=f"Add a “{html_transcript.FOOTER_TEXT}” link at the bottom",
+        # FOOTER_TEXT is what the page itself shows; it stays as core/ writes it.
+        body, text=_("Add a “{footer}” link at the bottom", footer=html_transcript.FOOTER_TEXT),
         variable=footer,
     ).pack(anchor="w")
     actions = ttk.Frame(body)
     actions.pack(fill="x", pady=(12, 0))
-    ttk.Button(actions, text="Cancel", command=lambda: pick(None)).pack(side="right")
+    ttk.Button(actions, text=_("Cancel"), command=lambda: pick(None)).pack(side="right")
     ttk.Button(
-        actions, text="Save and open in browser", style="Accent.TButton",
+        actions, text=_("Save and open in browser"), style="Accent.TButton",
         command=lambda: pick(ACTION_SAVE_OPEN),
     ).pack(side="right", padx=(0, 8))
-    ttk.Button(actions, text="Save…", command=lambda: pick(ACTION_SAVE)).pack(
+    ttk.Button(actions, text=_("Save…"), command=lambda: pick(ACTION_SAVE)).pack(
         side="right", padx=(0, 8)
     )
     dialog.protocol("WM_DELETE_WINDOW", lambda: pick(None))
@@ -128,8 +132,9 @@ def open_in_browser(path: str, master: "tk.Misc") -> None:
     """
     def done(error: BaseException | None) -> None:
         if error is not None:
-            messagebox.showerror(BUTTON_TEXT, f"The page was saved to\n{path}\n"
-                                 f"but could not be opened:\n{error}",
+            messagebox.showerror(translate(BUTTON_TEXT),
+                                 _("The page was saved to\n{path}\n"
+                                   "but could not be opened:\n{error}", path=path, error=error),
                                  parent=master)  # type: ignore[arg-type]
 
     open_async(path, master, done)
@@ -147,7 +152,7 @@ def save_shareable_page(
     """Ask, pick the file name, write the page; the saved path or None."""
     media = media_path if media_path and os.path.isfile(media_path) else None
     if not any(isinstance(s, dict) and str(s.get("text") or "").strip() for s in segments):
-        messagebox.showinfo(BUTTON_TEXT, "This transcript has no text to put on a page.",
+        messagebox.showinfo(translate(BUTTON_TEXT), _("This transcript has no text to put on a page."),
                             parent=master)  # type: ignore[arg-type]
         return None
     answer = ask_options(master, media_path=media)
@@ -158,19 +163,19 @@ def save_shareable_page(
     stem = os.path.splitext(os.path.basename(json_path))[0]
     path = filedialog.asksaveasfilename(
         parent=master,  # type: ignore[arg-type]
-        title=BUTTON_TEXT,
+        title=translate(BUTTON_TEXT),
         initialdir=folder,
         initialfile=stem + ".html",
         defaultextension=".html",
-        filetypes=[("Web page", "*.html"), ("All files", "*.*")],
+        filetypes=[(_("Web page"), "*.html"), (_("All files"), "*.*")],
     )
     if not path:
         return None
     # "All files" lets any name through: never replace the transcript or the media.
     # Ask the filesystem (os.path.normcase folds no case on macOS, whose volumes do).
     if any(same_file(path, p) for p in (json_path, media) if p):
-        messagebox.showerror(BUTTON_TEXT, "Choose another file name: this one is the "
-                             "transcript or media file itself.",
+        messagebox.showerror(translate(BUTTON_TEXT), _("Choose another file name: this one is the "
+                                                     "transcript or media file itself."),
                              parent=master)  # type: ignore[arg-type]
         return None
     try:
@@ -179,7 +184,7 @@ def save_shareable_page(
             footer=footer, title=stem,
         )
     except OSError as e:
-        messagebox.showerror(BUTTON_TEXT, f"Could not save the page:\n{e}",
+        messagebox.showerror(translate(BUTTON_TEXT), _("Could not save the page:\n{error}", error=e),
                              parent=master)  # type: ignore[arg-type]
         return None
     # Only a web page is handed to the system opener: "All files" lets the user type

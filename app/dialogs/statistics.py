@@ -10,6 +10,7 @@ from tkinter import ttk
 from typing import TYPE_CHECKING
 
 from app.dpi import place_over, px
+from app.i18n import _, pgettext
 from app.widgets.error_dialog import show_error
 from app.widgets.notice import notify
 
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 
 def show_statistics(app: "App") -> None:
     if not app.history:
-        notify(app, "Statistics are unavailable: history.db could not be opened.", "warning")
+        notify(app, _("Statistics are unavailable: history.db could not be opened."), "warning")
         return
     try:
         s = app.history.stats()
@@ -29,14 +30,14 @@ def show_statistics(app: "App") -> None:
         # which Tk reports only to stderr — the user sees the menu item do
         # nothing at all. Surface it like every other history failure.
         show_error(
-            app, "Statistics",
-            "Could not read the transcription history.",
+            app, _("Statistics"),
+            _("Could not read the transcription history."),
             detail=str(e),
         )
         return
 
     top = tk.Toplevel(app)
-    top.title("Statistics")
+    top.title(_("Statistics"))
     top.transient(app)
     top.resizable(False, False)
     body = ttk.Frame(top, padding=16)
@@ -44,20 +45,25 @@ def show_statistics(app: "App") -> None:
 
     rows = [
         (
-            "Downloads",
-            f"{s['downloads_finished']} / {s['downloads_total']} finished",
+            _("Downloads"),
+            _("{finished} / {total} finished",
+              finished=s["downloads_finished"], total=s["downloads_total"]),
         ),
         (
-            "Transcriptions",
-            f"{s['transcriptions_finished']} / {s['transcriptions_total']} finished",
+            _("Transcriptions"),
+            _("{finished} / {total} finished",
+              finished=s["transcriptions_finished"], total=s["transcriptions_total"]),
         ),
         (
-            "Total transcription time",
-            f"{s['transcription_minutes']} minute(s)",
+            _("Total transcription time"),
+            # A decimal (12.5): one form fits every count, so not ngettext.
+            _("{minutes} minute(s)", minutes=s["transcription_minutes"]),
         ),
         (
-            "Top languages",
-            ", ".join(f"{lang} ({c})" for lang, c in s["top_languages"]) or "none",
+            _("Top languages"),
+            # Language codes and counts from the history: data, not interface text.
+            ", ".join(f"{lang} ({c})" for lang, c in s["top_languages"])
+            or pgettext("no languages", "none"),
         ),
     ]
     for i, (label, value) in enumerate(rows):
@@ -68,7 +74,7 @@ def show_statistics(app: "App") -> None:
             body, text=value, wraplength=px(280), justify="left",
         ).grid(row=i, column=1, sticky="w", pady=4)
 
-    ttk.Button(body, text="Close", command=top.destroy).grid(
+    ttk.Button(body, text=pgettext("button", "Close"), command=top.destroy).grid(
         row=len(rows), column=0, columnspan=2, sticky="e", pady=(14, 0)
     )
 
