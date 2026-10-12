@@ -34,8 +34,9 @@ def _stub(var_value: bool, cfg: dict) -> SimpleNamespace:
 def test_help_menu_has_the_stats_check_item_bound_to_the_config_key():
     src = inspect.getsource(App._build_menu)
     item = src[src.index("h.add_checkbutton("):]
-    item = item[: item.index(")") + 1]
-    assert 'label="Usage statistics"' in item
+    end = "command=self._save_telemetry_pref"
+    item = item[: item.index(end) + len(end)]
+    assert 'label=_("Usage statistics")' in item
     assert "variable=self.telemetry_opt_in_var" in item
     assert "command=self._save_telemetry_pref" in item
     assert 'self.app_config.get("telemetry_opt_in", True)' in src

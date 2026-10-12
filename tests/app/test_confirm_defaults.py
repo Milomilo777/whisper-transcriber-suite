@@ -18,8 +18,7 @@ APP = pathlib.Path(__file__).resolve().parents[2] / "app"
 # "Yes" (or the dialog's first button) stops, discards, overwrites or quits: the safe answer
 # must be the default. The value is what ``default=`` has to be.
 DESTRUCTIVE = {
-    ("app/app.py", "f'{shortcuts.quit_label()} with queued tasks'"): "no",
-    ("app/app.py", "title"): "no",                    # stop running jobs to switch engine
+    ("app/app.py", "title"): "no",                    # switch engine; exit with queued tasks
     ("app/app.py", "'Cancel transcription?'"): "no",
     ("app/app.py", "'Cancel download?'"): "no",
     ("app/dialogs/transcript_viewer.py", "'Discard changes?'"): "no",
@@ -32,7 +31,7 @@ HARMLESS = {
     ("app/app.py", "'Convert transcript'"),
     ("app/app.py", "'View transcript'"),
     ("app/app.py", "'Offline mode is on'"),
-    ("app/app.py", "f'{friendly} needs a download'"),
+    ("app/app.py", "'{feature} needs a download'"),
     ("app/app.py", "'Resume interrupted transcriptions?'"),
     ("app/app.py", "'Whisper model required'"),
     ("app/app.py", "'Check for updates'"),
@@ -47,6 +46,15 @@ HARMLESS = {
 }
 
 _ASKS = ("askyesno", "askyesnocancel", "askokcancel", "askretrycancel", "askquestion")
+_TRANSLATE = ("_", "translate", "pgettext")
+
+
+def _title(node: ast.expr) -> str:
+    """The title as written: a translated title (``_("...")``) is listed by its English text."""
+    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            and node.func.id in _TRANSLATE and node.args):
+        return ast.unparse(node.args[-1] if node.func.id == "pgettext" else node.args[0])
+    return ast.unparse(node)
 
 
 def _calls() -> list[tuple[str, int, str, dict[str, Any]]]:
@@ -59,7 +67,7 @@ def _calls() -> list[tuple[str, int, str, dict[str, Any]]]:
                     and node.func.attr in _ASKS and node.args):
                 kwargs = {k.arg: ast.literal_eval(k.value) for k in node.keywords
                           if k.arg == "default" and isinstance(k.value, ast.Constant)}
-                found.append((rel, node.lineno, ast.unparse(node.args[0]), kwargs))
+                found.append((rel, node.lineno, _title(node.args[0]), kwargs))
     return found
 
 
