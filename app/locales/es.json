@@ -840,7 +840,7 @@
     "Remove": "Quitar",
     "Remove fillers": "Quitar muletillas",
     "Remove fillers needs the transcript's language, and it is unknown here.": "Quitar muletillas necesita el idioma de la transcripción, que aquí es desconocido.",
-    "Remove fillers — strips uh/um/er… with whole-word regex": "Quitar muletillas: elimina eh/em/este… con una regex de palabras completas",
+    "Remove fillers — strips uh/um/er… with whole-word regex": "Quitar muletillas: elimina eh/em/mmm… con una regex de palabras completas",
     "Remove selected": "Quitar seleccionados",
     "Remove selected ({count})": "Quitar seleccionados ({count})",
     "Remove these filler words from every segment?\n\n{words}": "¿Quitar estas muletillas de cada segmento?\n\n{words}",

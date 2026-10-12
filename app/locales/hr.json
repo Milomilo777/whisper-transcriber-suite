@@ -852,7 +852,7 @@
     "Remove": "Ukloni",
     "Remove fillers": "Ukloni poštapalice",
     "Remove fillers needs the transcript's language, and it is unknown here.": "Uklanjanje poštapalica treba jezik transkripcije, a on ovdje nije poznat.",
-    "Remove fillers — strips uh/um/er… with whole-word regex": "Ukloni poštapalice – uklanja ovaj/ono/hm… regularnim izrazom za cijele riječi",
+    "Remove fillers — strips uh/um/er… with whole-word regex": "Ukloni poštapalice – uklanja uh/um/er… regularnim izrazom za cijele riječi",
     "Remove selected": "Ukloni odabrano",
     "Remove selected ({count})": "Ukloni odabrane ({count})",
     "Remove these filler words from every segment?\n\n{words}": "Ukloniti ove poštapalice iz svakog segmenta?\n\n{words}",

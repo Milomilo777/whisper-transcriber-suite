@@ -840,7 +840,7 @@
     "Remove": "Fjern",
     "Remove fillers": "Fjern fyllord",
     "Remove fillers needs the transcript's language, and it is unknown here.": "Fjern fyllord trenger språket til transkripsjonen, og det er ukjent her.",
-    "Remove fillers — strips uh/um/er… with whole-word regex": "Fjern fyllord – fjerner eh/øh/hm… med regex for hele ord",
+    "Remove fillers — strips uh/um/er… with whole-word regex": "Fjern fyllord – fjerner eh/øh/øhm… med regex for hele ord",
     "Remove selected": "Fjern valgte",
     "Remove selected ({count})": "Fjern valgte ({count})",
     "Remove these filler words from every segment?\n\n{words}": "Vil du fjerne disse fyllordene fra hvert segment?\n\n{words}",

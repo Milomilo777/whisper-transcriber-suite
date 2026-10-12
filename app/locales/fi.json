@@ -840,7 +840,7 @@
     "Remove": "Poista",
     "Remove fillers": "Poista täytesanat",
     "Remove fillers needs the transcript's language, and it is unknown here.": "Täytesanojen poisto tarvitsee litteroinnin kielen, ja se on tässä tuntematon.",
-    "Remove fillers — strips uh/um/er… with whole-word regex": "Poista täytesanat – poistaa öö/tota/niinku… kokonaisten sanojen säännöllisellä lausekkeella",
+    "Remove fillers — strips uh/um/er… with whole-word regex": "Poista täytesanat – poistaa uh/um/er… kokonaisten sanojen säännöllisellä lausekkeella",
     "Remove selected": "Poista valitut",
     "Remove selected ({count})": "Poista valitut ({count})",
     "Remove these filler words from every segment?\n\n{words}": "Poistetaanko nämä täytesanat jokaisesta segmentistä?\n\n{words}",
