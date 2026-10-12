@@ -8,9 +8,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
-- **Groundwork for a translated interface**: the app's own text can now be translated. The new config
-  key `ui_language` (`"auto"` by default) picks the language at start-up; for now English is the only one
-  that ships, so nothing changes on screen. Contributors: see docs/TRANSLATING.md.
+- **The app in your language**: menus, buttons and messages come in 42 languages. The app follows the
+  system language, or you pick one under Advanced settings > App behaviour > Interface language (takes
+  effect after a restart; config key `ui_language`). Every language except English is a machine
+  translation and is marked "(machine translation)" in the list; corrections are welcome. Persian, Arabic
+  and Hebrew are offered on Windows for now (text reads right to left; the window layout is not mirrored
+  yet). Contributors: see docs/TRANSLATING.md.
 
 - **Local API: queue status and Retry-After**: `GET /api/health` now reports how many jobs are queued and
   running and the queue limit, and every "queue is full" 503 reply carries `Retry-After: 30`, so scripts can
