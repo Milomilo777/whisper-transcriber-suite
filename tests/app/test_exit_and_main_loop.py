@@ -270,7 +270,10 @@ def test_on_exit_still_destroys_the_hidden_window_when_teardown_fails(
     assert order[-1] == "destroy"
 
     order.clear()
+    fake._closing = False
     fake._shutdown_server_on_exit = _server_fails
-    with pytest.raises(RuntimeError, match="server stop failed"):
+    with caplog.at_level(logging.ERROR, logger="app.app"):
         App.on_exit(fake)  # type: ignore[arg-type]
+    assert "Could not stop LAN server on exit" in caplog.text
+    assert "server stop failed" in caplog.text
     assert order[-1] == "destroy"

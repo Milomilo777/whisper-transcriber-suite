@@ -2398,6 +2398,8 @@ class App(tk.Tk):
         # hiding the window would take the open question with it.
         if getattr(self, "_exit_prompt_open", False):
             return
+        if getattr(self, "_closing", False):
+            return
 
         # Optional minimise-to-tray: when the user has enabled tray
         # support in the Advanced dialog and the tray icon is running,
@@ -2531,18 +2533,21 @@ class App(tk.Tk):
                     self.tray.stop()
                 except Exception:  # noqa: BLE001
                     pass
-            for task in self.download_queue:
-                # Snapshot once (see cancel_download): a worker thread may null
-                # task.process between the test and the poll(), which would raise
-                # AttributeError mid-teardown.
-                proc = task.process
-                if proc is not None and proc.poll() is None:
-                    # Tree-kill so yt-dlp's ffmpeg merge child dies too (a bare
-                    # terminate() orphans it, holding the .part/output handle).
-                    try:
-                        kill_process_tree(proc, force=False)
-                    except Exception:  # noqa: BLE001
-                        pass
+            try:
+                for task in self.download_queue:
+                    # Snapshot once (see cancel_download): a worker thread may null
+                    # task.process between the test and the poll(), which would raise
+                    # AttributeError mid-teardown.
+                    proc = task.process
+                    if proc is not None and proc.poll() is None:
+                        # Tree-kill so yt-dlp's ffmpeg merge child dies too (a bare
+                        # terminate() orphans it, holding the .part/output handle).
+                        try:
+                            kill_process_tree(proc, force=False)
+                        except Exception:  # noqa: BLE001
+                            pass
+            except Exception:  # noqa: BLE001
+                logger.exception("Could not stop downloads on exit")
             # A running subtitle burn (a chained download's, or the manual
             # "Burn subtitles" one) runs on a daemon thread that dies with the
             # process: stop its ffmpeg and remove the hidden .burn-* partial,
@@ -2570,23 +2575,32 @@ class App(tk.Tk):
             # A pip install (any window's) is stopped like a Cancel, then waited
             # for: its merge phase cannot be interrupted, and the process ends
             # right after this teardown.
-            _stop_installs_on_exit()
+            try:
+                _stop_installs_on_exit()
+            except Exception:  # noqa: BLE001
+                logger.exception("Could not stop installs on exit")
             # Stop the in-process web / LAN server so its socket + worker
             # thread don't linger after the window closes.
-            self._shutdown_server_on_exit()
+            try:
+                self._shutdown_server_on_exit()
+            except Exception:  # noqa: BLE001
+                logger.exception("Could not stop LAN server on exit")
             # The user confirmed: record these jobs as closed on purpose, so the
             # next launch does not call them a crash. Their rows are still
             # 'running'; the resume offer and the checkpoint stay as they are.
             # The prompts above pump the event loop, so a job (a watched folder's
             # file) may have started since `active` was taken: it is stopped by
             # this exit too.
-            started_meanwhile = [
-                t for t in self.queue
-                if t.status not in ("finished", "cancelled", "error")
-                and not any(t is known for known in active)
-            ]
-            _record_exit_interruptions(
-                getattr(self, "history", None), active + started_meanwhile)
+            try:
+                started_meanwhile = [
+                    t for t in self.queue
+                    if t.status not in ("finished", "cancelled", "error")
+                    and not any(t is known for known in active)
+                ]
+                _record_exit_interruptions(
+                    getattr(self, "history", None), active + started_meanwhile)
+            except Exception:  # noqa: BLE001
+                logger.exception("Could not record exit interruptions")
             try:
                 # Cancel first: the worker then saves its resume checkpoint.
                 self.transcription_service.stop_all(cancel_running=True)

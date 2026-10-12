@@ -103,6 +103,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Easier-to-read colours**: success and warning text, the GPU/CPU badge and the names of models that are
   not downloaded yet now reach WCAG AA contrast (4.5:1) on the light theme, secondary captions and
   separators are darker too, and the CPU badge gets its own lighter amber on the dark theme.
+- **Closing the app finishes its shutdown even when one step fails**: an error while stopping downloads,
+  installs or the local server no longer skips stopping the running transcription, which saves its resume
+  point; a second close click during shutdown is ignored.
 
 ## [2.0.0] — 2026-10-10
 
