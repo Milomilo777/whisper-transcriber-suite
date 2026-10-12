@@ -173,6 +173,22 @@ left-to-right places.
 
 Check how an `rtl` catalog looks on Windows before setting `"reviewed"`.
 
+## The translated READMEs
+
+`docs/i18n/README.<code>.md` is the project page in each interface language (the file code is
+the catalog code, except `zh-CN`, `zh-TW` and `pt` for `zh-Hans`, `zh-Hant` and `pt-PT`). They
+are ordinary files: edit the translation directly.
+
+- Each file says which English text it follows:
+  `<!-- translated from README.md at commit <sha> -->`. `git diff <sha> -- README.md` lists
+  what changed since; port it and update the sha.
+- Keep links, badges, images, code blocks and headings in step with `README.md`. In-page links
+  go to `#download`, which every file defines with `<a id="download"></a>` above its Download
+  heading.
+- The language links near the top belong to `tools/make_i18n_readmes.py`: add a language there
+  (and its file), then run `python tools/make_i18n_readmes.py`. `tests/test_i18n_readmes.py`
+  fails when a block is stale, a link is broken or an interface language has no README.
+
 ## Not translated yet
 
 These texts reach the screen in English in every language; changing that needs work outside

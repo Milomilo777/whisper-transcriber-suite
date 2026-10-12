@@ -10,6 +10,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   language (33 new, machine-translated), and the 8 older translations are brought up to date
   with the English page. Each file names the English commit it follows.
 
+### Changed
+
+- `tools/make_i18n_readmes.py` now only writes the block of language links in `README.md` and the
+  translations (text links, no flag images); the translations are edited directly instead of
+  being generated from tables inside the script. A test keeps the links current.
+
 ## [2.1.0] — 2026-10-12
 
 ### Added
