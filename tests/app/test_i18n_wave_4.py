@@ -503,7 +503,6 @@ def test_english_texts_match_the_capture_made_before_translation(
 def _outside_texts() -> dict[str, str]:
     """Texts the two files show but do not own, with the reason they stay untranslated here."""
     from app.domain.cookies import cookie_browser_choices
-    from app.domain.languages import SUBTITLE_LANGUAGES
     from core.model_manager import catalog_models
 
     allowed: dict[str, str] = {}
@@ -511,8 +510,6 @@ def _outside_texts() -> dict[str, str]:
         allowed[engine.display_label] = "engine label from core/backends/availability.py"
     for _slug, label in catalog_models({}):
         allowed[label] = "model label from the core model catalog"
-    for name, _code in SUBTITLE_LANGUAGES:
-        allowed[name] = "language name from app/domain/languages.py"
     for choice in cookie_browser_choices(""):
         allowed[choice] = "cookie choice from app/domain/cookies.py"
     for text in _VIDEO_SITE_TEXTS:

@@ -524,23 +524,15 @@ def test_pure_english_texts_match_the_capture(tmp_path: Path, english: None) -> 
 
 # ----------------------------------------------------------------------------- pseudo-locale
 
-def _language_names() -> set[str]:
-    from app.domain.languages import SUBTITLE_LANGUAGES
-    return {name for name, _codes in SUBTITLE_LANGUAGES}
-
-
 def _unmarked(states: States) -> list[str]:
     """Texts with a letter outside a pseudo segment and outside a «data» value.
 
-    Allowed: the language names of app.domain.languages (combobox values and the label the test
-    selects; that module is not converted in this wave), and the kind prefixes this test adds.
+    Allowed: the kind prefixes this test adds. (Language names are translated too: the
+    Quick start picker shows them through subtitle_language_label.)
     """
-    names = _language_names()
     out: list[str] = []
     for key, rows in states.items():
         for text in rows:
-            if text in names:
-                continue
             parts = [_DATA.sub("", part) for part in text.split(" | ")]
             if parts and parts[0] in ("showerror", "showwarning", "showinfo", "askyesno",
                                       "askdirectory", "asksaveasfilename", "show_error",

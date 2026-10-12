@@ -502,15 +502,12 @@ _ALLOWED_PREFIX = "CORE: "  # messages the fakes pass in as core/ would (engine 
 
 
 def _allowed(text: str) -> bool:
-    from app.domain.languages import SUBTITLE_LANGUAGES
     from core import offline, tts_kokoro
 
     if text.startswith(_ALLOWED_PREFIX):
         return True
     if text in {v.label for v in tts_kokoro.VOICES}:
         return True  # Kokoro voice names come from core/tts_kokoro.py
-    if text in {n for n, _c in SUBTITLE_LANGUAGES}:
-        return True  # language names come from app/domain/languages.py (another wave)
     if text == offline.message("downloading the speech model software"):
         return True  # the offline sentence is built in core/offline.py
     return False
