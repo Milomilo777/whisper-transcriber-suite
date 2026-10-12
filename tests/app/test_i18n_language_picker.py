@@ -424,8 +424,8 @@ def test_tk_windows_fonts_follow_the_shown_name(harness: Any, locales: Path) -> 
     if "Malgun Gothic" in installed:
         assert family() == "Malgun Gothic"
     _pick(dlg, AUTO_LABEL)
-    if "Segoe UI" in installed:
-        assert family() == "Segoe UI"
-        popdown = str(combo.tk.call("ttk::combobox::PopdownWindow", str(combo)))
-        list_font = combo.tk.call(f"{popdown}.f.l", "cget", "-font")
-        assert tkfont.Font(root=combo, font=list_font).actual("family") == "Segoe UI"
+    assert "Segoe UI" in installed  # every Windows since Vista: the checks above did run
+    assert family() == "Segoe UI"
+    popdown = str(combo.tk.call("ttk::combobox::PopdownWindow", str(combo)))
+    list_font = combo.tk.call(f"{popdown}.f.l", "cget", "-font")
+    assert tkfont.Font(root=combo, font=list_font).actual("family") == "Segoe UI"
