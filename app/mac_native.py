@@ -31,6 +31,8 @@ import tkinter as tk
 import unicodedata
 from typing import Any, Callable
 
+from app.i18n import N_
+
 logger = logging.getLogger(__name__)
 
 # Tk treats a menu as the Window or Help menu by the last part of its path name.
@@ -41,8 +43,9 @@ HELP_MENU_NAME = "help"
 DRAIN_POLL_MS = 400
 OPEN_BATCH_MS = 350  # quiet time that ends one Finder open batch
 
-#: Wording on macOS for the actions that open a folder in the file manager.
-REVEAL_LABEL = "Reveal in Finder"
+#: Wording on macOS for the actions that open a folder in the file manager (marked for the
+#: catalog; show it with ``app.i18n.translate``).
+REVEAL_LABEL = N_("Reveal in Finder")
 
 
 def is_aqua(widget: Any) -> bool:

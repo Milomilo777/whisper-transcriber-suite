@@ -9,6 +9,7 @@ from tkinter import filedialog, messagebox
 from typing import TYPE_CHECKING
 
 from app.domain.task_outputs import task_srt_output
+from app.i18n import _
 from app.widgets.error_dialog import show_error
 from core.integrations.otranscribe import otr_to_srt, srt_to_otr
 
@@ -61,9 +62,9 @@ class IntegrationsService:
         srt_path = task_srt_output(task)
         if srt_path is None:
             messagebox.showwarning(
-                "Cannot export",
-                "This task has no SRT file on disk — add SRT to the output "
-                "formats and run it again.",
+                _("Cannot export"),
+                _("This task has no SRT file on disk — add SRT to the output "
+                  "formats and run it again."),
                 parent=self.app,
             )
             return
@@ -73,10 +74,11 @@ class IntegrationsService:
             # The user may have edited this file in oTranscribe; never
             # replace it without asking.
             choice = messagebox.askyesnocancel(
-                "Replace .otr file?",
-                f"{os.path.basename(otr_path)} already exists and may hold "
-                "your oTranscribe edits.\n\nYes: replace it\n"
-                "No: keep it and save a new file\nCancel: do nothing",
+                _("Replace .otr file?"),
+                _("{name} already exists and may hold "
+                  "your oTranscribe edits.\n\nYes: replace it\n"
+                  "No: keep it and save a new file\nCancel: do nothing",
+                  name=os.path.basename(otr_path)),
                 parent=self.app,
                 default="cancel",
             )
@@ -90,27 +92,27 @@ class IntegrationsService:
         except Exception as e:  # noqa: BLE001
             logger.exception("Export to .otr failed")
             show_error(
-                self.app, "Export failed",
-                "Could not create the oTranscribe (.otr) file.", detail=str(e),
+                self.app, _("Export failed"),
+                _("Could not create the oTranscribe (.otr) file."), detail=str(e),
             )
             return
         self.app.log(f"Saved {otr_path}")
-        self.app.status_var.set(f"Saved {os.path.basename(otr_path)}")
+        self.app.status_var.set(_("Saved {name}", name=os.path.basename(otr_path)))
 
     def import_otr_to_srt(self) -> None:
         otr_path = filedialog.askopenfilename(
-            title="Choose an .otr file",
-            filetypes=[("oTranscribe files", "*.otr"), ("All files", "*.*")],
+            title=_("Choose an .otr file"),
+            filetypes=[(_("oTranscribe files"), "*.otr"), (_("All files"), "*.*")],
             parent=self.app,
         )
         if not otr_path:
             return
         suggested = Path(otr_path).with_suffix(".srt").name
         srt_path = filedialog.asksaveasfilename(
-            title="Save SRT as...",
+            title=_("Save SRT as..."),
             defaultextension=".srt",
             initialfile=suggested,
-            filetypes=[("SubRip subtitle", "*.srt"), ("All files", "*.*")],
+            filetypes=[(_("SubRip subtitle"), "*.srt"), (_("All files"), "*.*")],
             parent=self.app,
         )
         if not srt_path:
@@ -121,9 +123,9 @@ class IntegrationsService:
         except Exception as e:  # noqa: BLE001
             logger.exception("Import .otr → SRT failed")
             show_error(
-                self.app, "Import failed",
-                "Could not convert that .otr file to SRT.", detail=str(e),
+                self.app, _("Import failed"),
+                _("Could not convert that .otr file to SRT."), detail=str(e),
             )
             return
         self.app.log(f"Wrote {srt_path}")
-        self.app.status_var.set(f"Saved {os.path.basename(srt_path)}")
+        self.app.status_var.set(_("Saved {name}", name=os.path.basename(srt_path)))

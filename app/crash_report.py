@@ -14,9 +14,11 @@ import sys
 from types import TracebackType
 from typing import Callable
 
+from app.i18n import _
+
 logger = logging.getLogger(__name__)
 
-_TITLE = "Whisper Transcriber Suite"
+_TITLE = "Whisper Transcriber Suite"  # the product name: not translated
 
 
 def _ensure_log_file() -> None:
@@ -30,12 +32,27 @@ def _ensure_log_file() -> None:
         pass
 
 
-def _log_folder() -> str:
+def _log_folder() -> str | None:
     try:
         from core.config import user_log_dir
         return str(user_log_dir())
     except Exception:  # noqa: BLE001
-        return "the app's log folder"
+        return None
+
+
+def crash_message(exc_type: type[BaseException], exc: BaseException) -> str:
+    """The message the user sees (the log keeps the English traceback).
+
+    The translation layer is a pure lookup that falls back to English, so it is
+    safe even when the crash came before the interface language was chosen.
+    """
+    error = f"{exc_type.__name__}: {exc}"
+    folder = _log_folder()
+    if folder is None:
+        return _("The app stopped because of an unexpected error:\n\n{error}\n\n"
+                 "The details are in app.log in the app's log folder.", error=error)
+    return _("The app stopped because of an unexpected error:\n\n{error}\n\n"
+             "The details are in app.log in {folder}.", error=error, folder=folder)
 
 
 def show_error_box(message: str) -> None:
@@ -68,11 +85,7 @@ def install_excepthook(notify: Callable[[str], None] | None = None) -> None:
             logger.critical("The app stopped because of an unhandled error",
                             exc_info=(exc_type, exc, tb))
             try:
-                show(
-                    "The app stopped because of an unexpected error:\n\n"
-                    f"{exc_type.__name__}: {exc}\n\n"
-                    f"The details are in app.log in {_log_folder()}."
-                )
+                show(crash_message(exc_type, exc))
             except Exception:  # noqa: BLE001 - e.g. no display; the log has it
                 logger.debug("Could not show the crash message", exc_info=True)
         previous(exc_type, exc, tb)

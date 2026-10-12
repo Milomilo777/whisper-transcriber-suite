@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import queue
+import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -523,3 +524,109 @@ def test_english_texts_match_the_capture_made_before_translation(
                            encoding="utf-8", newline="\n")
     expected = json.loads(FIXTURE.read_text(encoding="utf-8"))
     assert states == expected
+
+
+# ------------------------------------------------------------------------- pseudo-locale
+
+# Texts these files show but do not own, each with the reason it stays as it is.
+_NOT_OURS = {
+    "Whisper Transcriber Suite",  # the product name (notification title)
+    "140 | m4a | 128k | a:mp4a",  # a yt-dlp format id, extension and codecs
+    "137 | mp4 | 1920x1080 | 30fps | v:avc1",  # the same for a video stream
+    "xx",  # a caption code the language table does not know, shown as the code
+}
+
+
+_INNERMOST_SEGMENT = re.compile(r"\[[^\[\]]*? ~+\]")
+
+
+def _marked(text: str) -> bool:
+    """``i18n_walk.is_pseudo_marked`` for nested segments too: the caption line puts a
+    translated language name inside a translated entry inside a translated sentence."""
+    while True:
+        stripped = _INNERMOST_SEGMENT.sub("", text)
+        if stripped == text:
+            return not any(c.isalpha() for c in text)
+        text = stripped
+
+
+@pytest.fixture
+def pseudo() -> Any:
+    from app import i18n
+    try:
+        assert i18n.set_language(i18n.PSEUDO_LOCALE) == i18n.PSEUDO_LOCALE
+        yield i18n
+    finally:
+        i18n.set_language("en")
+
+
+def test_pseudo_locale_leaves_no_text_untranslated(
+        pseudo: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    states = capture_states(monkeypatch, tmp_path)
+    assert set(states) == set(json.loads(FIXTURE.read_text(encoding="utf-8")))
+    untranslated = sorted({(name, t) for name, rows in states.items() for _c, t in rows
+                           if t not in _NOT_OURS and not _marked(t)})
+    assert untranslated == []
+    # Placeholder values survive inside the marked text.
+    assert "talk.otr" in states["otr_replace_question"][1][1]
+    assert "ValueError: boom" in states["crash_with_folder"][0][1]
+
+
+def test_subtitle_language_names_stay_english_values(pseudo: Any) -> None:
+    """The Subtitles choice is stored and looked up by its English name: only the label changes."""
+    from app.domain import languages as lang
+
+    assert lang.SUBTITLE_LANGUAGES[0] == ("Automatic", "")
+    assert ("German", "de") in lang.SUBTITLE_LANGUAGES
+    assert lang.caption_language_name("zh-Hans") == "Chinese"
+    assert lang.subtitle_language_label("German").startswith("[")
+    assert lang.subtitle_language_label("Chinese").startswith("[")
+    assert lang.subtitle_language_label("pt-BR") == "pt-BR"  # a code, not a name
+
+
+def test_best_format_labels_stay_keys_of_their_maps(
+        pseudo: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The translated "Best audio" label is what the combobox shows AND the key the
+    download looks up, so a download started in any language finds its format."""
+    states = _format(monkeypatch)
+    shown = [t for c, t in states["format_loaded"] if c == "combobox"]
+    assert shown[0].startswith("[") and shown[2].startswith("[")
+
+
+def test_errors_for_the_log_and_history_stay_english(
+        pseudo: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """A caption-only failure: the status line is translated, the error event (log and
+    history row) and the format lookup reason stay English."""
+    from app.services import download_service as mod
+    from app.services import format_service as fmt
+    from core import _threads, offline
+
+    app = _download_app([])
+    service = mod.DownloadService(app)  # type: ignore[arg-type]
+    monkeypatch.setattr(service, "_fetch_subtitles", lambda *_a: ([], True, 0))
+    service._run_caption_only_task(SimpleNamespace(  # type: ignore[arg-type]
+        subtitle_lang="en", detected_language="", cancelled=False, paused=False))
+    events = []
+    while not app.download_events.empty():
+        events.append(app.download_events.get_nowait())
+    assert ("error", "Could not fetch captions for this video: no captions available") in [
+        (k, p) for k, _t, p in events]
+    assert all(p.startswith("[") for k, _t, p in events if k == "subtitle_status")
+
+    monkeypatch.setattr(offline, "is_offline", lambda *_a, **_k: False)
+    monkeypatch.setattr(_threads, "safe_thread", lambda *_a, **_k: None)
+    out: list[Record] = []
+    url = "https://example.invalid/watch"
+    fapp = SimpleNamespace(download_url_var=fake_tk.FakeVar(value=url), format_events=queue.Queue(),
+                           format_status_var=_Var(out, "status"), after=lambda *_a: None)
+    fapp.format_events.put(("formats", url, ["not", "a", "dict"]))
+    fmt.FormatService(fapp).poll()  # type: ignore[arg-type]
+    assert fapp.format_lookup_error == "Could not read formats for this URL"
+    assert out[-1][1].startswith("[")
+
+
+def test_no_speech_banner_still_matches_the_english_note(
+        pseudo: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    states = _alerts(monkeypatch)
+    assert states["alert_chain_no_speech"][0][1] != states["alert_chain_failed"][0][1]
+    assert "šþééçĥ" in states["alert_chain_no_speech"][0][1]

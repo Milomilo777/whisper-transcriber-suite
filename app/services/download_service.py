@@ -86,6 +86,7 @@ from queue import Empty
 from typing import TYPE_CHECKING, Any
 
 from app import desktop_alert
+from app.i18n import _, ngettext, pgettext
 from app.domain.cookies import (
     COOKIE_BROWSERS,
     COOKIE_EXTRACTION_ERROR_RE,
@@ -806,15 +807,21 @@ class DownloadService:
 
         app = self.app
         reason = getattr(app, "format_lookup_error", "")
+        video = kind == "video"
         if reason:
-            message = (
-                f"This URL's {kind} formats could not be loaded, so it "
-                f"cannot be downloaded yet:\n\n{reason}"
-            )
+            if video:
+                message = _("This URL's video formats could not be loaded, so it "
+                            "cannot be downloaded yet:\n\n{reason}", reason=reason)
+            else:
+                message = _("This URL's audio formats could not be loaded, so it "
+                            "cannot be downloaded yet:\n\n{reason}", reason=reason)
             app.log(f"Download blocked -- format lookup failed: {reason}")
+        elif video:
+            message = _("Wait for formats to load, then select an video format.")
         else:
-            message = f"Wait for formats to load, then select an {kind} format."
-        messagebox.showwarning(f"Missing {kind} format", message, parent=app)
+            message = _("Wait for formats to load, then select an audio format.")
+        title = _("Missing video format") if video else _("Missing audio format")
+        messagebox.showwarning(title, message, parent=app)
 
     def _caption_choice(self) -> str:
         """Subtitles or transcription? ``""`` = no question applies.
@@ -833,6 +840,7 @@ class DownloadService:
         )
         from app.domain.languages import (
             SUBTITLE_LANGUAGES, caption_language_name, resolve_caption_kind,
+            subtitle_language_label,
         )
 
         app = self.app
@@ -860,8 +868,13 @@ class DownloadService:
         remembered = remembered_choice(app.app_config)
         if remembered != "ask":
             return remembered
-        language = sub_lang_name if sub_lang_name and sub_lang_name != "Automatic" else (
-            caption_language_name(detected) if detected else "the detected language"
+        # Shown in the question only: the stored choice and the codes stay English.
+        language = (
+            subtitle_language_label(sub_lang_name)
+            if sub_lang_name and sub_lang_name != "Automatic" else (
+                subtitle_language_label(caption_language_name(detected)) if detected
+                else _("the detected language")
+            )
         )
         answer, dont_ask = ask_caption_choice(app, kind=kind, language=language)
         if dont_ask and answer != CHOICE_CANCEL:
@@ -886,10 +899,11 @@ class DownloadService:
         video_label = app.video_format_var.get()
         output = app.output_format_var.get()
         if not url:
-            messagebox.showwarning("Missing URL", "Enter a URL first.", parent=app)
+            messagebox.showwarning(_("Missing URL"), _("Enter a URL first."), parent=app)
             return
         if not folder:
-            messagebox.showwarning("Missing folder", "Select a download folder first.", parent=app)
+            messagebox.showwarning(_("Missing folder"), _("Select a download folder first."),
+                                   parent=app)
             return
         was_offline = offline.is_offline()
         if not _may_go_online(app, "Downloading this link"):
@@ -908,9 +922,9 @@ class DownloadService:
         make_subbed = _make_subbed_video_requested(app)
         if make_subbed and mode == "Audio":
             messagebox.showwarning(
-                "Video needed",
-                "A subtitled video needs the picture. Choose "
-                "'Audio and video', or untick 'Make subtitled video'.",
+                _("Video needed"),
+                _("A subtitled video needs the picture. Choose "
+                  "'Audio and video', or untick 'Make subtitled video'."),
                 parent=app,
             )
             return
@@ -965,7 +979,7 @@ class DownloadService:
             self._warn_format_missing("video")
             return
         if not output:
-            messagebox.showwarning("Missing output", "Select an output format.", parent=app)
+            messagebox.showwarning(_("Missing output"), _("Select an output format."), parent=app)
             return
 
         # The saved folder can have gone stale (a USB/network drive that is
@@ -977,8 +991,9 @@ class DownloadService:
             os.makedirs(folder, exist_ok=True)
         except OSError as e:
             messagebox.showwarning(
-                "Folder unavailable",
-                f"Cannot create or write the download folder:\n{folder}\n\n{e}",
+                _("Folder unavailable"),
+                _("Cannot create or write the download folder:\n{folder}\n\n{error}",
+                  folder=folder, error=e),
                 parent=app,
             )
             return
@@ -1181,10 +1196,11 @@ class DownloadService:
         url = smtv_mod.clean_url(app.download_url_var.get())
         folder = app.download_folder_var.get().strip()
         if not url:
-            messagebox.showwarning("Missing URL", "Enter a URL first.", parent=app)
+            messagebox.showwarning(_("Missing URL"), _("Enter a URL first."), parent=app)
             return
         if not folder:
-            messagebox.showwarning("Missing folder", "Select a download folder first.", parent=app)
+            messagebox.showwarning(_("Missing folder"), _("Select a download folder first."),
+                                   parent=app)
             return
         if not _may_go_online(app, "Fetching the subtitles of this link"):
             return
@@ -1203,9 +1219,9 @@ class DownloadService:
         )
         if not kind:
             messagebox.showwarning(
-                "No captions found",
-                "No existing captions were found for this video in the "
-                "selected language.",
+                _("No captions found"),
+                _("No existing captions were found for this video in the "
+                  "selected language."),
                 parent=app,
             )
             return
@@ -1214,8 +1230,9 @@ class DownloadService:
             os.makedirs(folder, exist_ok=True)
         except OSError as e:
             messagebox.showwarning(
-                "Folder unavailable",
-                f"Cannot create or write the download folder:\n{folder}\n\n{e}",
+                _("Folder unavailable"),
+                _("Cannot create or write the download folder:\n{folder}\n\n{error}",
+                  folder=folder, error=e),
                 parent=app,
             )
             return
@@ -1341,7 +1358,7 @@ class DownloadService:
                 if _superseded():
                     return
                 if task.cancelled:
-                    app.download_events.put(("subtitle_status", task, "cancelled"))
+                    app.download_events.put(("subtitle_status", task, pgettext("subtitles", "cancelled")))
                     app.download_events.put(("done", task, "cancelled"))
                     return
                 if getattr(task, "paused", False):
@@ -1440,7 +1457,7 @@ class DownloadService:
                 if task.cancelled:
                     self.remove_partial_files(task)
                     if not reported_cancel:
-                        app.download_events.put(("subtitle_status", task, "cancelled"))
+                        app.download_events.put(("subtitle_status", task, pgettext("subtitles", "cancelled")))
                         app.download_events.put(("done", task, "cancelled"))
                     return
                 if getattr(task, "paused", False):
@@ -1911,11 +1928,12 @@ class DownloadService:
         app = self.app
         sub_lang = self.resolve_subtitle_lang(task)
         if not sub_lang:
-            app.download_events.put(("subtitle_status", task, "no language detected"))
+            app.download_events.put(("subtitle_status", task, _("no language detected")))
             app.download_events.put(("log", task, "Skipping subtitles: original language could not be detected."))
             return False
 
-        app.download_events.put(("subtitle_status", task, f"fetching subtitles ({sub_lang})..."))
+        app.download_events.put(
+            ("subtitle_status", task, _("fetching subtitles ({language})...", language=sub_lang)))
         app.download_events.put(("log", task, f"--- Subtitle phase: requesting {sub_lang} ---"))
         wrote_files, no_subs_warning, sub_rc = self._fetch_subtitles(
             task, sub_lang, run_generation
@@ -1930,7 +1948,7 @@ class DownloadService:
                     app.download_events.put(
                         ("log", task, f"Could not remove partial subtitle file {partial}: {e}")
                     )
-            app.download_events.put(("subtitle_status", task, "cancelled"))
+            app.download_events.put(("subtitle_status", task, pgettext("subtitles", "cancelled")))
             app.download_events.put(("done", task, "cancelled"))
             return True
         if wrote_files:
@@ -1938,7 +1956,8 @@ class DownloadService:
                 (
                     "subtitle_status",
                     task,
-                    f"✓ saved {len(wrote_files)} subtitle file{'s' if len(wrote_files) != 1 else ''}",
+                    ngettext("✓ saved {n} subtitle file", "✓ saved {n} subtitle files",
+                             len(wrote_files)),
                 )
             )
             app.download_events.put(("log", task, f"--- Subtitle phase: wrote {len(wrote_files)} file(s) ---"))
@@ -1968,15 +1987,16 @@ class DownloadService:
                 for extra in extras:
                     app.download_events.put(("log", task, f"Also wrote: {extra}"))
         elif no_subs_warning:
-            app.download_events.put(("subtitle_status", task, "no captions available"))
+            app.download_events.put(("subtitle_status", task, _("no captions available")))
             app.download_events.put(("log", task, "--- Subtitle phase: no captions available for the requested language ---"))
         elif sub_rc:
-            app.download_events.put(("subtitle_status", task, f"failed (rc={sub_rc})"))
+            app.download_events.put(
+                ("subtitle_status", task, _("failed (rc={code})", code=sub_rc)))
             app.download_events.put(
                 ("log", task, f"--- Subtitle phase: yt-dlp exit code {sub_rc} (continuing with media) ---")
             )
         else:
-            app.download_events.put(("subtitle_status", task, "completed (no files written)"))
+            app.download_events.put(("subtitle_status", task, _("completed (no files written)")))
             app.download_events.put(("log", task, "--- Subtitle phase: completed without writing files ---"))
         return False
 
@@ -1996,13 +2016,14 @@ class DownloadService:
         app = self.app
         sub_lang = self.resolve_subtitle_lang(task)
         if not sub_lang:
-            app.download_events.put(("subtitle_status", task, "no language detected"))
+            app.download_events.put(("subtitle_status", task, _("no language detected")))
             app.download_events.put(
                 ("error", task, "Could not resolve a caption language for this video.")
             )
             return
 
-        app.download_events.put(("subtitle_status", task, f"fetching captions ({sub_lang})..."))
+        app.download_events.put(
+            ("subtitle_status", task, _("fetching captions ({language})...", language=sub_lang)))
         app.download_events.put(("log", task, f"--- Caption-only phase: requesting {sub_lang} ---"))
         wrote_files, no_subs_warning, sub_rc = self._fetch_subtitles(
             task, sub_lang, run_generation
@@ -2025,7 +2046,7 @@ class DownloadService:
                         os.unlink(partial)
                 except OSError:
                     pass
-            app.download_events.put(("subtitle_status", task, "cancelled"))
+            app.download_events.put(("subtitle_status", task, pgettext("subtitles", "cancelled")))
             app.download_events.put(("done", task, "cancelled"))
             return
 
@@ -2035,16 +2056,19 @@ class DownloadService:
             # the failure branch below would flip it to "error" and lose the
             # Resume action; resume re-runs this same task (yt-dlp skips the
             # already-fetched caption).
-            app.download_events.put(("subtitle_status", task, "paused"))
+            app.download_events.put(("subtitle_status", task, pgettext("subtitles", "paused")))
             return
 
         if not wrote_files:
-            reason = (
-                "no captions available" if no_subs_warning
-                else f"failed (rc={sub_rc})" if sub_rc
-                else "completed (no files written)"
-            )
-            app.download_events.put(("subtitle_status", task, reason))
+            # The reason goes to the log and the history in English; the
+            # status line shows it in the interface language.
+            if no_subs_warning:
+                reason, shown = "no captions available", _("no captions available")
+            elif sub_rc:
+                reason, shown = f"failed (rc={sub_rc})", _("failed (rc={code})", code=sub_rc)
+            else:
+                reason, shown = "completed (no files written)", _("completed (no files written)")
+            app.download_events.put(("subtitle_status", task, shown))
             app.download_events.put(
                 ("error", task, f"Could not fetch captions for this video: {reason}")
             )
@@ -2067,7 +2091,7 @@ class DownloadService:
                 and getattr(task, "_run_generation", run_generation) != run_generation
             ):
                 return
-            app.download_events.put(("subtitle_status", task, "conversion failed"))
+            app.download_events.put(("subtitle_status", task, _("conversion failed")))
             app.download_events.put(
                 ("error", task, f"Captions were downloaded but could not be read: {e}")
             )
@@ -2136,11 +2160,11 @@ class DownloadService:
                         os.unlink(partial)
                 except OSError:
                     pass
-            app.download_events.put(("subtitle_status", task, "cancelled"))
+            app.download_events.put(("subtitle_status", task, pgettext("subtitles", "cancelled")))
             app.download_events.put(("done", task, "cancelled"))
             return
         if getattr(task, "paused", False):
-            app.download_events.put(("subtitle_status", task, "paused"))
+            app.download_events.put(("subtitle_status", task, pgettext("subtitles", "paused")))
             return
 
         if skipped:
@@ -2151,7 +2175,7 @@ class DownloadService:
             ))
 
         if not written:
-            app.download_events.put(("subtitle_status", task, "conversion failed"))
+            app.download_events.put(("subtitle_status", task, _("conversion failed")))
             app.download_events.put((
                 "error", task,
                 "Captions were downloaded but none of the selected output "
@@ -2161,7 +2185,8 @@ class DownloadService:
 
         app.download_events.put((
             "subtitle_status", task,
-            f"captions converted to {len(written)} format{'s' if len(written) != 1 else ''}",
+            ngettext("captions converted to {n} format", "captions converted to {n} formats",
+                     len(written)),
         ))
         app.download_events.put((
             "log", task,

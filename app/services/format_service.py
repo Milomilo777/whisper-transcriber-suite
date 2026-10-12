@@ -16,6 +16,7 @@ import subprocess
 from queue import Empty
 from typing import TYPE_CHECKING, Any
 
+from app.i18n import _
 from app.domain.cookies import (
     cookies_from_browser_args,
     is_cookie_extraction_error,
@@ -108,7 +109,7 @@ class FormatService:
         if callable(prompt):
             prompt(url)
         if not url:
-            self.app.format_status_var.set("Enter a URL to load available formats")
+            self.app.format_status_var.set(_("Enter a URL to load available formats"))
             return
         if offline.is_offline():
             # The lookup runs yt-dlp (or SMTV) against the site at once.
@@ -121,7 +122,7 @@ class FormatService:
             self._lookup_smtv(url)
             return
 
-        self.app.format_status_var.set("Loading formats...")
+        self.app.format_status_var.set(_("Loading formats..."))
         # Read on the Tk thread; the lookup thread only uses the copy.
         cookie_args = cookies_from_browser_args(
             self.app.app_config.get("cookies_from_browser", "")
@@ -313,7 +314,8 @@ class FormatService:
                         "format poll: error handling %r event for %r", kind, url
                     )
                     try:
-                        app.format_status_var.set("Could not read formats for this URL")
+                        app.format_status_var.set(_("Could not read formats for this URL"))
+                        # English: also the reason the download warning and the log quote.
                         app.format_lookup_error = "Could not read formats for this URL"
                     except Exception:  # noqa: BLE001
                         pass
@@ -357,10 +359,13 @@ class FormatService:
             # future event source must not be able to crash the handler.
             raise RuntimeError(f"format payload is not a dict: {type(payload).__name__}")
 
-        audio_values = ["Best audio"]
-        video_values = ["Best video"]
-        app.audio_format_map = {"Best audio": {"kind": "best_audio"}}
-        app.video_format_map = {"Best video": {"kind": "best_video"}}
+        # The labels are only this lookup's map keys (the choice is never saved
+        # or matched by its text elsewhere), so the shown label can be translated.
+        best_audio, best_video = _("Best audio"), _("Best video")
+        audio_values = [best_audio]
+        video_values = [best_video]
+        app.audio_format_map = {best_audio: {"kind": "best_audio"}}
+        app.video_format_map = {best_video: {"kind": "best_video"}}
         app.current_video_title = payload.get("title", "")
         lang = payload.get("language") or ""
         if not lang:
@@ -415,9 +420,10 @@ class FormatService:
             pass
         app.update_download_mode()
         if audio_values or video_values:
-            app.format_status_var.set(
-                f"{len(audio_values)} audio and {len(video_values)} video formats loaded"
-            )
+            app.format_status_var.set(_(
+                "{audio} audio and {video} video formats loaded",
+                audio=len(audio_values), video=len(video_values),
+            ))
         else:
-            app.format_status_var.set("No formats found")
+            app.format_status_var.set(_("No formats found"))
         app.update_caption_shortcut_state()

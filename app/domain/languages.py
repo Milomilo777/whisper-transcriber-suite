@@ -4,115 +4,121 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
+from app.i18n import N_, _, ngettext, pgettext, translate
+
 # Display name → comma-separated yt-dlp subtitle language codes.
+# The names are English and stable: they are the stored value of the Download
+# tab's Subtitles choice (config ``download_subtitle_lang``) and are looked up
+# by name, so they are never translated in place. ``N_`` only marks them for the
+# catalog; show one with :func:`subtitle_language_label`.
 # Order: Automatic, English, then alphabetical by display name. Multi-variant
 # entries collapse the codes YouTube actually uses (e.g. zh-Hans + zh-CN).
 SUBTITLE_LANGUAGES: list[tuple[str, str]] = [
-    ("Automatic", ""),
-    ("English", "en"),
-    ("Afrikaans", "af"),
-    ("Albanian", "sq"),
-    ("Amharic", "am"),
-    ("Arabic", "ar"),
-    ("Armenian", "hy"),
-    ("Azerbaijani", "az"),
-    ("Basque", "eu"),
-    ("Belarusian", "be"),
-    ("Bengali", "bn"),
-    ("Bosnian", "bs"),
-    ("Bulgarian", "bg"),
-    ("Catalan", "ca"),
-    ("Cebuano", "ceb"),
-    ("Chinese (Simplified)", "zh-Hans,zh-CN"),
-    ("Chinese (Traditional)", "zh-Hant,zh-TW"),
-    ("Corsican", "co"),
-    ("Croatian", "hr"),
-    ("Czech", "cs"),
-    ("Danish", "da"),
-    ("Dutch", "nl"),
-    ("Esperanto", "eo"),
-    ("Estonian", "et"),
-    ("Finnish", "fi"),
-    ("French", "fr"),
-    ("Frisian", "fy"),
-    ("Galician", "gl"),
-    ("Georgian", "ka"),
-    ("German", "de"),
-    ("Greek", "el"),
-    ("Gujarati", "gu"),
-    ("Haitian Creole", "ht"),
-    ("Hausa", "ha"),
-    ("Hawaiian", "haw"),
-    ("Hebrew", "iw"),
-    ("Hindi", "hi"),
-    ("Hmong", "hmn"),
-    ("Hungarian", "hu"),
-    ("Icelandic", "is"),
-    ("Igbo", "ig"),
-    ("Indonesian", "id"),
-    ("Irish", "ga"),
-    ("Italian", "it"),
-    ("Japanese", "ja"),
-    ("Javanese", "jv"),
-    ("Kannada", "kn"),
-    ("Kazakh", "kk"),
-    ("Khmer", "km"),
-    ("Korean", "ko"),
-    ("Kurdish", "ku"),
-    ("Kyrgyz", "ky"),
-    ("Lao", "lo"),
-    ("Latin", "la"),
-    ("Latvian", "lv"),
-    ("Lithuanian", "lt"),
-    ("Luxembourgish", "lb"),
-    ("Macedonian", "mk"),
-    ("Malagasy", "mg"),
-    ("Malay", "ms"),
-    ("Malayalam", "ml"),
-    ("Maltese", "mt"),
-    ("Maori", "mi"),
-    ("Marathi", "mr"),
-    ("Mongolian", "mn"),
-    ("Myanmar (Burmese)", "my"),
-    ("Nepali", "ne"),
-    ("Norwegian", "no"),
-    ("Nyanja (Chichewa)", "ny"),
-    ("Pashto", "ps"),
-    ("Persian", "fa"),
-    ("Polish", "pl"),
-    ("Portuguese (Portugal, Brazil)", "pt"),
-    ("Punjabi", "pa"),
-    ("Romanian", "ro"),
-    ("Russian", "ru"),
-    ("Samoan", "sm"),
-    ("Scots Gaelic", "gd"),
-    ("Serbian", "sr"),
-    ("Sesotho", "st"),
-    ("Shona", "sn"),
-    ("Sindhi", "sd"),
-    ("Sinhala (Sinhalese)", "si"),
-    ("Slovak", "sk"),
-    ("Slovenian", "sl"),
-    ("Somali", "so"),
-    ("Spanish", "es"),
-    ("Sundanese", "su"),
-    ("Swahili", "sw"),
-    ("Swedish", "sv"),
-    ("Tagalog (Filipino)", "tl"),
-    ("Tajik", "tg"),
-    ("Tamil", "ta"),
-    ("Telugu", "te"),
-    ("Thai", "th"),
-    ("Turkish", "tr"),
-    ("Ukrainian", "uk"),
-    ("Urdu", "ur"),
-    ("Uzbek", "uz"),
-    ("Vietnamese", "vi"),
-    ("Welsh", "cy"),
-    ("Xhosa", "xh"),
-    ("Yiddish", "yi"),
-    ("Yoruba", "yo"),
-    ("Zulu", "zu"),
+    (N_("Automatic"), ""),
+    (N_("English"), "en"),
+    (N_("Afrikaans"), "af"),
+    (N_("Albanian"), "sq"),
+    (N_("Amharic"), "am"),
+    (N_("Arabic"), "ar"),
+    (N_("Armenian"), "hy"),
+    (N_("Azerbaijani"), "az"),
+    (N_("Basque"), "eu"),
+    (N_("Belarusian"), "be"),
+    (N_("Bengali"), "bn"),
+    (N_("Bosnian"), "bs"),
+    (N_("Bulgarian"), "bg"),
+    (N_("Catalan"), "ca"),
+    (N_("Cebuano"), "ceb"),
+    (N_("Chinese (Simplified)"), "zh-Hans,zh-CN"),
+    (N_("Chinese (Traditional)"), "zh-Hant,zh-TW"),
+    (N_("Corsican"), "co"),
+    (N_("Croatian"), "hr"),
+    (N_("Czech"), "cs"),
+    (N_("Danish"), "da"),
+    (N_("Dutch"), "nl"),
+    (N_("Esperanto"), "eo"),
+    (N_("Estonian"), "et"),
+    (N_("Finnish"), "fi"),
+    (N_("French"), "fr"),
+    (N_("Frisian"), "fy"),
+    (N_("Galician"), "gl"),
+    (N_("Georgian"), "ka"),
+    (N_("German"), "de"),
+    (N_("Greek"), "el"),
+    (N_("Gujarati"), "gu"),
+    (N_("Haitian Creole"), "ht"),
+    (N_("Hausa"), "ha"),
+    (N_("Hawaiian"), "haw"),
+    (N_("Hebrew"), "iw"),
+    (N_("Hindi"), "hi"),
+    (N_("Hmong"), "hmn"),
+    (N_("Hungarian"), "hu"),
+    (N_("Icelandic"), "is"),
+    (N_("Igbo"), "ig"),
+    (N_("Indonesian"), "id"),
+    (N_("Irish"), "ga"),
+    (N_("Italian"), "it"),
+    (N_("Japanese"), "ja"),
+    (N_("Javanese"), "jv"),
+    (N_("Kannada"), "kn"),
+    (N_("Kazakh"), "kk"),
+    (N_("Khmer"), "km"),
+    (N_("Korean"), "ko"),
+    (N_("Kurdish"), "ku"),
+    (N_("Kyrgyz"), "ky"),
+    (N_("Lao"), "lo"),
+    (N_("Latin"), "la"),
+    (N_("Latvian"), "lv"),
+    (N_("Lithuanian"), "lt"),
+    (N_("Luxembourgish"), "lb"),
+    (N_("Macedonian"), "mk"),
+    (N_("Malagasy"), "mg"),
+    (N_("Malay"), "ms"),
+    (N_("Malayalam"), "ml"),
+    (N_("Maltese"), "mt"),
+    (N_("Maori"), "mi"),
+    (N_("Marathi"), "mr"),
+    (N_("Mongolian"), "mn"),
+    (N_("Myanmar (Burmese)"), "my"),
+    (N_("Nepali"), "ne"),
+    (N_("Norwegian"), "no"),
+    (N_("Nyanja (Chichewa)"), "ny"),
+    (N_("Pashto"), "ps"),
+    (N_("Persian"), "fa"),
+    (N_("Polish"), "pl"),
+    (N_("Portuguese (Portugal, Brazil)"), "pt"),
+    (N_("Punjabi"), "pa"),
+    (N_("Romanian"), "ro"),
+    (N_("Russian"), "ru"),
+    (N_("Samoan"), "sm"),
+    (N_("Scots Gaelic"), "gd"),
+    (N_("Serbian"), "sr"),
+    (N_("Sesotho"), "st"),
+    (N_("Shona"), "sn"),
+    (N_("Sindhi"), "sd"),
+    (N_("Sinhala (Sinhalese)"), "si"),
+    (N_("Slovak"), "sk"),
+    (N_("Slovenian"), "sl"),
+    (N_("Somali"), "so"),
+    (N_("Spanish"), "es"),
+    (N_("Sundanese"), "su"),
+    (N_("Swahili"), "sw"),
+    (N_("Swedish"), "sv"),
+    (N_("Tagalog (Filipino)"), "tl"),
+    (N_("Tajik"), "tg"),
+    (N_("Tamil"), "ta"),
+    (N_("Telugu"), "te"),
+    (N_("Thai"), "th"),
+    (N_("Turkish"), "tr"),
+    (N_("Ukrainian"), "uk"),
+    (N_("Urdu"), "ur"),
+    (N_("Uzbek"), "uz"),
+    (N_("Vietnamese"), "vi"),
+    (N_("Welsh"), "cy"),
+    (N_("Xhosa"), "xh"),
+    (N_("Yiddish"), "yi"),
+    (N_("Yoruba"), "yo"),
+    (N_("Zulu"), "zu"),
 ]
 
 
@@ -182,6 +188,20 @@ def lang_code_matches(wanted: str, code: str) -> bool:
     return re.fullmatch(_lang_pattern(wanted), code or "", re.IGNORECASE) is not None
 
 
+# The short names ``caption_language_name`` returns for the entries with a
+# qualifier in brackets ("Chinese (Simplified)" -> "Chinese").
+_SHORT_NAMES = (
+    N_("Chinese"), N_("Myanmar"), N_("Nyanja"), N_("Portuguese"), N_("Sinhala"), N_("Tagalog"),
+)
+_KNOWN_NAMES = frozenset([name for name, _codes in SUBTITLE_LANGUAGES] + list(_SHORT_NAMES))
+
+
+def subtitle_language_label(name: str) -> str:
+    """``name`` as shown to the user: a name of ``SUBTITLE_LANGUAGES`` (or its short form)
+    in the interface language; anything else (a bare caption code) unchanged."""
+    return translate(name) if name in _KNOWN_NAMES else name
+
+
 CAPTION_BAR_MAX_LANGUAGES = 6
 _AUTO_ORIGINAL_SUFFIX = "-orig"
 
@@ -234,24 +254,29 @@ def caption_availability_text(
     caption_langs = real_caption_langs(caption_langs)
     manual = [c for c, kind in caption_langs.items() if kind == "manual"]
     automatic = [c for c, kind in caption_langs.items() if kind == "auto"]
-    entries: list[tuple[str, str]] = []
+    entries: list[tuple[str, bool]] = []  # (English name, made by the uploader)
     seen: set[str] = set()
-    for codes, label in ((manual, "made by the uploader"), (automatic, "automatic")):
+    for codes, by_uploader in ((manual, True), (automatic, False)):
         for code in codes:
             name = caption_language_name(code)
             if name not in seen:
                 seen.add(name)
-                entries.append((name, label))
+                entries.append((name, by_uploader))
     if not entries:
         return ""
     wanted = [caption_language_name(code) for code in prefer if code]
     entries.sort(key=lambda e: wanted.index(e[0]) if e[0] in wanted else len(wanted))
     shown = entries[:CAPTION_BAR_MAX_LANGUAGES]
-    text = ", ".join(f"{name} ({label})" for name, label in shown)
+    text = pgettext("list separator", ", ").join(
+        _("{language} (made by the uploader)", language=subtitle_language_label(name))
+        if by_uploader else _("{language} (automatic)", language=subtitle_language_label(name))
+        for name, by_uploader in shown
+    )
     extra = len(entries) - len(shown)
     if extra > 0:
-        text += f" and {extra} more"
-    return f"Subtitles available: {text}"
+        text = ngettext("{languages} and {n} more", "{languages} and {n} more", extra,
+                        languages=text)
+    return _("Subtitles available: {languages}", languages=text)
 
 
 def resolve_caption_kind(
