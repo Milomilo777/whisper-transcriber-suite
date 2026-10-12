@@ -360,3 +360,234 @@ def test_capture_or_compare_english_texts(harness: _Harness) -> None:
                            encoding="utf-8", newline="\n")
     expected = json.loads(FIXTURE.read_text(encoding="utf-8"))
     assert states == expected
+
+
+# --- the pseudo-locale --------------------------------------------------------------------------
+
+# Texts the dialog shows that do not go through the translation layer, with the reason.
+_NOT_OURS_REASONS = {
+    "engine names": "the Engine picker's labels come from core.backends.availability (core/)",
+    "cookie browsers": "the cookies picker's values come from app.domain.cookies (another file)",
+    "format ids": "output format ids (SRT, VTT, ...) and product names (Express Scribe, InqScribe)",
+    "video-site export": "the video-site team's export label and help stay English-only",
+    "urls": "links show the URL itself",
+    "core texts": "the model catalog's label/description and the usage line come from core/",
+    "confirm action": "App._confirm_backend_switch splices this fragment into its own sentence",
+}
+
+
+def _not_ours() -> set[str]:
+    from app.dialogs import advanced as adv
+    from app.domain.cookies import cookie_browser_choices
+    from core.backends.availability import ENGINE_CHOICES
+    from core.writers import supported_formats
+
+    texts = {label for label, _value in ENGINE_CHOICES}
+    texts |= set(cookie_browser_choices(""))
+    texts |= {name.upper() for name in supported_formats() if name not in adv._FORMAT_LABELS}
+    texts |= {adv._FORMAT_LABELS[n] for n in adv._UNTRANSLATED_FORMAT_LABELS}
+    texts.add(adv._FORMAT_HELP["smtv_docx"])
+    texts |= {MODEL_INFO["label"], MODEL_INFO["info"], "Bare", CORE_USAGE}
+    texts.add("action=Changing the model")
+    return texts
+
+
+def _flat_texts(states: dict[str, list[list[str]]]) -> list[tuple[str, str]]:
+    out: list[tuple[str, str]] = []
+    for state, rows in states.items():
+        for row in rows:
+            if state == "file_dialogs":
+                out.append((state, row[0]))
+                out.extend((state, label) for label, _pattern in json.loads(row[1]))
+            elif state == "confirm_model_change" and not row[1].startswith("action="):
+                out.append((state, row[1].split("=", 1)[1]))
+            else:
+                out.extend((state, t) for t in row[1:])
+    return out
+
+
+def test_pseudo_locale_leaves_no_dialog_text_untranslated(harness: _Harness) -> None:
+    from app import i18n
+    from tests.app.i18n_walk import is_pseudo_marked
+
+    try:
+        assert i18n.set_language(i18n.PSEUDO_LOCALE) == i18n.PSEUDO_LOCALE
+        states = capture_states(harness)
+    finally:
+        i18n.set_language("en")
+    allowed = _not_ours()
+    left = sorted({(state, t) for state, t in _flat_texts(states)
+                   if t.strip() and not is_pseudo_marked(t) and t not in allowed
+                   and not t.startswith("https://")})
+    assert left == []
+    # Placeholder values survive inside the marked text.
+    assert any("core says fine" in t for _s, t in _flat_texts(states))
+
+
+def _pick_and_save(h: _Harness, language: str) -> dict[str, Any]:
+    """Pick the 2nd LLM provider, the 4th denoise strength and the 2nd model by POSITION, save."""
+    from app import i18n
+    from app.dialogs import advanced as adv
+
+    i18n.set_language(language)
+    try:
+        dlg = h.make(llm_provider="local", denoise_level="auto", denoise_enabled=True)
+        dlg._llm_provider_display.set(adv._llm_provider_labels()[1])
+        dlg._sync_llm_provider_rows()
+        dlg._denoise_level_combo.current(3)
+        dlg._on_denoise_level_selected()
+        dlg._model_combo.current(1)
+        h.saved.clear()
+        dlg._save_and_close()
+        assert len(h.saved) == 1
+        return h.saved[0]
+    finally:
+        i18n.set_language("en")
+
+
+def test_saving_in_the_pseudo_locale_writes_the_same_config(harness: _Harness) -> None:
+    english = _pick_and_save(harness, "en")
+    pseudo = _pick_and_save(harness, "qps-ploc")
+    assert english["llm_provider"] == "remote"
+    assert english["denoise_level"] == "strong"
+    assert english == pseudo
+
+
+def test_denoise_picker_shows_labels_and_keeps_stored_values(harness: _Harness) -> None:
+    from app import i18n
+    from app.dialogs import advanced as adv
+    from tests.app.i18n_walk import is_pseudo_marked
+
+    try:
+        i18n.set_language(i18n.PSEUDO_LOCALE)
+        dlg = harness.make(denoise_level="light", denoise_enabled=True)
+        shown = dlg._denoise_level_display.get()
+        assert is_pseudo_marked(shown) and dlg._denoise_level.get() == "light"
+        dlg._apply_noisy_audio_preset()  # stores "medium"
+        assert dlg._denoise_level.get() == "medium"
+        assert dlg._denoise_level_display.get() == adv._denoise_level_labels()["medium"]
+        dlg._restore_transcription_defaults()
+        assert dlg._denoise_level.get() == "auto"
+        assert dlg._denoise_level_display.get() == adv._denoise_level_labels()["auto"]
+    finally:
+        i18n.set_language("en")
+
+
+# --- windowless (no Tk root): the label <-> value maps ---------------------------------------
+
+@pytest.fixture
+def pseudo():
+    from app import i18n
+    try:
+        i18n.set_language(i18n.PSEUDO_LOCALE)
+        yield
+    finally:
+        i18n.set_language("en")
+
+
+def test_windowless_llm_provider_labels_map_back_to_stored_values(pseudo: None) -> None:
+    from app.dialogs import advanced as adv
+    from tests.app.i18n_walk import is_pseudo_marked
+
+    labels = adv._llm_provider_labels()
+    assert all(is_pseudo_marked(label) for label in labels)
+    for (english, value), shown in zip(adv._LLM_PROVIDER_CHOICES, labels):
+        assert adv._llm_provider_value(shown) == value
+        assert adv._llm_provider_value(english) == value  # an English label still maps
+        assert adv._llm_provider_label(value) == shown
+    assert adv._llm_provider_value("something else") == "local"
+
+
+def test_windowless_denoise_labels_map_back_to_stored_values(pseudo: None) -> None:
+    from app.dialogs import advanced as adv
+    from tests.app.i18n_walk import is_pseudo_marked
+
+    labels = adv._denoise_level_labels()
+    assert list(labels) == list(adv._DENOISE_LEVELS)
+    for value, shown in labels.items():
+        assert is_pseudo_marked(shown)
+        assert adv._denoise_level_value(shown) == value
+        assert adv._denoise_level_value(value) == value
+    assert adv._denoise_level_value("extreme") == "extreme"  # a hand-edited value survives
+
+
+def test_windowless_format_labels(pseudo: None) -> None:
+    from app.dialogs import advanced as adv
+    from tests.app.i18n_walk import is_pseudo_marked
+
+    assert is_pseudo_marked(adv._format_label("ass"))
+    assert adv._format_label("srt") == "SRT"
+    assert adv._format_label("smtv_docx") == adv._FORMAT_LABELS["smtv_docx"]
+    assert adv._format_label("inqscribe") == "InqScribe"
+    assert is_pseudo_marked(adv._format_help("srt"))
+    assert adv._format_help("smtv_docx") == adv._FORMAT_HELP["smtv_docx"]
+    assert is_pseudo_marked(adv._model_choice_label("Tiny (~75 MB)", True))
+
+
+class _V:
+    """A Tk variable stand-in: .get()/.set() on one slot."""
+
+    def __init__(self, value: Any) -> None:
+        self._value = value
+
+    def get(self) -> Any:
+        return self._value
+
+    def set(self, value: Any) -> None:
+        self._value = value
+
+
+def _fake_dialog(app: Any, provider_label: str) -> types.SimpleNamespace:
+    """What _save_and_close reads, as plain objects (see tests/core/test_advanced_simplified.py)."""
+    return types.SimpleNamespace(
+        app=app, _vad_enabled=_V(True), _vad_min_silence=_V(500), _vad_threshold=_V(0.5),
+        _vad_speech_pad=_V(400), _format_vars={"srt": _V(True)}, _reset_hidden_tuning=False,
+        _initial_prompt=_V(""), _hotwords=_V(""), _sb_vars={}, _cookies_browser=_V("(off)"),
+        _cookies_browser_initial="(off)", _backend_display=_V("Faster-Whisper — offline, default"),
+        _cloud_api_key=_V(""), _cloud_model=_V("gemini-3.5-flash"), _gcloud_credentials=_V(""),
+        _gcloud_batch_mode=_V(False), _gcloud_bucket=_V(""), _gcloud_diarization=_V(False),
+        _nvidia_model_id=_V(""), _alignment_enabled=_V(False), _hallucination_detect=_V(True),
+        _demucs_enabled=_V(False), _denoise_enabled=_V(True), _denoise_level=_V("strong"),
+        _ai_enabled=_V(True), _llm_provider_display=_V(provider_label),
+        _llm_remote_base_url=_V("https://api.openai.com/v1"), _llm_remote_api_key=_V(""),
+        _llm_remote_model=_V(""), _auto_chapters_enabled=_V(True), _model_display=_V("Large-v3"),
+        _model_label_to_slug={"Large-v3": "large-v3"}, _telemetry_opt_in=_V(False),
+        _work_offline=_V(False), _update_check_enabled=_V(True), _yt_dlp_update_mode=_V("ask"),
+        _caption_choice_var=_V("ask"), _minimise_to_tray=_V(False), _tts_no_text_limit=_V(False),
+        _subtitle_edit_path=_V(""), _watched_folder=_V(""), _watched_folder_enabled=_V(False),
+        _sync_vad_controls_state=lambda: None, _sync_denoise_level_state=lambda: None,
+        _teardown_mousewheel=lambda: None, destroy=lambda: None,
+    )
+
+
+def test_windowless_save_writes_the_same_config_in_every_language(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    from app import i18n
+    from app.dialogs import advanced as adv
+
+    saved: list[dict[str, Any]] = []
+    monkeypatch.setattr(adv, "save_config", lambda cfg: saved.append(dict(cfg)))
+
+    def save(language: str) -> dict[str, Any]:
+        i18n.set_language(language)
+        try:
+            cfg = {"whisper_model": "large-v3", "transcribe_backend": "faster_whisper"}
+            app = types.SimpleNamespace(
+                app_config=cfg, log=lambda _m: None,
+                transcription_service=types.SimpleNamespace(stop_all=lambda: None))
+            adv.AdvancedDialog._save_and_close(  # type: ignore[arg-type]
+                _fake_dialog(app, adv._llm_provider_labels()[1]))
+            return saved[-1]
+        finally:
+            i18n.set_language("en")
+
+    english = save("en")
+    assert english["llm_provider"] == "remote" and english["denoise_level"] == "strong"
+    assert save(i18n.PSEUDO_LOCALE) == english
+
+
+def test_windowless_video_site_texts_never_reach_the_catalog() -> None:
+    catalog = (Path(__file__).resolve().parents[2] / "app" / "locales" / "en.json").read_text(
+        encoding="utf-8")
+    for word in ("SMTV", "Supreme Master", "suprememastertv"):
+        assert word not in catalog
