@@ -1885,7 +1885,7 @@ class AdvancedDialog(tk.Toplevel):
         help_icon(
             row,
             _("The language of the app's menus, buttons and messages. Automatic uses the "
-              "language of your system when a reviewed translation for it is available, "
+              "language of your system when a translation for it is available, "
               "otherwise English. A language marked \"machine translation\" was translated by a "
               "computer and not yet checked by a person. A change applies the next time you "
               "start the app."),
