@@ -900,7 +900,7 @@
   "quick_calls": [
    "askdirectory | Folder for downloaded videos and audio",
    "showwarning | Pick a folder | Choose a folder for downloaded videos and audio.",
-   "showwarning | Folder unavailable | Cannot create or use this folder:\nbad\u0000name\n\nmkdir: embedded null character in path"
+   "showwarning | Folder unavailable | Cannot create or use this folder:\nbad\u0000name\n\n<os error>"
   ]
  }
 }
