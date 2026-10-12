@@ -355,6 +355,7 @@ def test_region_falls_back_to_the_base_language() -> None:
 @pytest.mark.parametrize("value,expected", [
     ("de", "de"), ("fr", "fr"), ("FR", "fr"), ("pt_br", "pt-BR"), ("qps-ploc", "qps-ploc"),
     ("en", "en"), ("ja", "en"), ("xx", "en"), (5, "en"), ("", "en"), (None, "en"),
+    ("de-AT", "de"), ("en-US", "en"), ("zh-TW", "zh-Hant"), ("zh", "zh-Hans"),
 ])
 def test_explicit_code_uses_any_status_else_english(value: object, expected: str) -> None:
     assert i18n.resolve_language(value, os_language="ja-JP", available=AVAILABLE) == expected

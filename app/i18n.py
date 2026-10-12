@@ -465,11 +465,11 @@ def resolve_language(value: object, *, os_language: str | None, available: Mappi
         return SOURCE_LANGUAGE
     if value.strip().lower() == PSEUDO_LOCALE:
         return PSEUDO_LOCALE
-    code = _canonical(value)
-    if code == SOURCE_LANGUAGE:
-        return SOURCE_LANGUAGE
-    if code is not None and code in available:
-        return code
+    for code in _candidates(value):  # 'de-AT' -> 'de-AT', then 'de'
+        if code == SOURCE_LANGUAGE:
+            return SOURCE_LANGUAGE
+        if code in LANGUAGES_BY_CODE and code in available:
+            return code
     _warn_once(("ui_language", value), "ui_language %r has no interface catalog; using English", value)
     return SOURCE_LANGUAGE
 
