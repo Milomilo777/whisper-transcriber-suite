@@ -575,6 +575,20 @@ def test_viewer_texts_are_translated_in_the_pseudo_locale(
     # The same branches ran: one text per English text, in the same places.
     expected = _fixture()
     assert _shape(got) == {k: [w for w, _t in expected[k]] for k in got}
+    # Nothing the viewer wrote takes a translated word: file names and the saved JSON.
+    written = sorted(p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*") if p.is_file())
+    assert written == WRITTEN_FILES
+    saved = json.loads((tmp_path / "main" / "demo.json").read_text(encoding="utf-8"))
+    assert [s.get("speaker") for s in saved] == ["Narrator", "Speaker 01", None]
+    assert [s["text"] for s in saved] == ["Hello world", "Second segment", "Third with no speaker"]
+
+
+# Every file capture_viewer leaves behind, the same in every interface language.
+WRITTEN_FILES = [
+    "ai/demo.bilingual.german.srt", "ai/demo.json", "dict/demo.json",
+    "main/demo.json", "main/demo.srt",
+    "media/demo.chapters.json", "media/demo.json", "media/demo.mp4", "numbers/demo.json",
+]
 
 
 def test_placeholder_values_survive_in_the_pseudo_locale(
@@ -585,12 +599,3 @@ def test_placeholder_values_survive_in_the_pseudo_locale(
                  "a.chapters.json"):
         assert name in notices
     assert "m-1" in dict(got["ai_config"])["status:remote_model"]
-
-
-def test_saved_values_stay_english_in_the_pseudo_locale(
-        tmp_path: Path, pseudo: Any) -> None:
-    """File names the viewer writes never take a translated word."""
-    assert tv._bilingual_lang_slug("German") == "german"
-    assert tv._bilingual_lang_slug("") == "translated"
-    for fmt, suffix in viewer_exports.SIBLING_FILES:
-        assert suffix.isascii() and fmt.isascii()
