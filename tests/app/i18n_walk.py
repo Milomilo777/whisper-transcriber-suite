@@ -11,6 +11,7 @@ not go through the translation layer shows up here.
 """
 from __future__ import annotations
 
+import os
 import re
 import tkinter as tk
 
@@ -18,12 +19,27 @@ _TEXT_CLASSES = {
     "Label", "Button", "Checkbutton", "Radiobutton", "Labelframe", "Menubutton", "Message",
     "TLabel", "TButton", "TCheckbutton", "TRadiobutton", "TLabelframe", "TMenubutton",
 }
+# A path below the test folder ("<tmp>/dir/file.json"), up to the next space, colon or quote.
+_TMP_PATH = re.compile(r"<tmp>(?:/[^/\s:'\"]+)+")
 # The end of one pseudo-locale segment: "[" + text + " " + "~~~" + "]" (app.i18n.pseudo_translate).
 _SEGMENT_END = re.compile(r" ~+\]")
 # The shortcut app.shortcuts.menu_item puts after a menu label ("Ctrl+O", "Cmd+O", the command
 # symbol): key names, never translated. Only one, only at the very end, right after a space or
 # the end of a segment.
 _TRAILING_SHORTCUT = re.compile(r"(?<=[\s\]])(?:(?:Ctrl|Cmd)\+|" + chr(0x2318) + r")\S+$")
+
+
+def windows_paths(text: str, folder: str) -> str:
+    """``text`` with the test folder shown as ``<tmp>`` and its paths written the Windows way.
+
+    The English captures were made on Windows, where a path under ``folder`` has backslashes.
+    On another platform the separators below ``<tmp>`` are turned into backslashes, so the same
+    capture compares equal; on Windows the text is unchanged apart from the folder name.
+    """
+    text = text.replace(folder, "<tmp>")
+    if os.sep == "\\":
+        return text
+    return _TMP_PATH.sub(lambda m: m.group(0).replace("/", "\\"), text)
 
 
 def unmarked_rest(text: str) -> str:

@@ -32,7 +32,7 @@ from typing import Any, Callable, Iterator
 import pytest
 
 from app import i18n
-from tests.app.i18n_walk import is_pseudo_marked
+from tests.app.i18n_walk import is_pseudo_marked, windows_paths
 
 FIXTURE_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "i18n"
 FIXTURE = FIXTURE_DIR / "i18n_wave_1_en.json"
@@ -447,7 +447,7 @@ def tk_states(root: Any, mp: pytest.MonkeyPatch, tmp_path: Path) -> States:
     states["search_results_1"] = _texts(search)
     search.tree.focus("0")
     search._open_selected()
-    states["search_missing"] = [row.replace(str(tmp_path), "<tmp>") for row in calls.take()]
+    states["search_missing"] = [windows_paths(row, str(tmp_path)) for row in calls.take()]
 
     def broken_search(_q: str, limit: int = 100) -> list[Any]:
         raise RuntimeError("«bad query»")

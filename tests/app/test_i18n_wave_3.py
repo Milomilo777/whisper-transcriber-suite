@@ -28,6 +28,7 @@ tk = pytest.importorskip("tkinter")
 
 from app.dialogs import transcript_viewer as tv  # noqa: E402
 from app.dialogs import viewer_exports  # noqa: E402
+from tests.app.i18n_walk import windows_paths  # noqa: E402
 
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "i18n" / "i18n_wave_3_en.json"
 CAPTURE_SENTINEL = FIXTURE.with_name(".capture_wave_3")
@@ -80,6 +81,8 @@ def capture_pure(mp: pytest.MonkeyPatch) -> States:
             raise RuntimeError("no instance")
 
         m.setitem(sys.modules, "vlc", types.SimpleNamespace(Instance=_boom))
+        # The capture was made on Windows, and the hint names the platform it is shown on.
+        m.setattr(tv, "sys", types.SimpleNamespace(platform="win32"))
         states["vlc_hints"].append(["load:start_failed", tv._try_load_vlc()[1]])
 
     rows: Rows = []
@@ -127,7 +130,7 @@ class _Log:
         self.answers: dict[str, Any] = {}
 
     def norm(self, text: Any) -> str:
-        return str(text).replace(self.tmp, "<tmp>")
+        return windows_paths(str(text), self.tmp)
 
     def add(self, where: str, *texts: Any) -> None:
         for i, text in enumerate(texts):
@@ -157,6 +160,8 @@ def _widget_texts(log: _Log, w: tk.Misc) -> Rows:
 
 def _patch_viewer_world(mp: pytest.MonkeyPatch, log: _Log, pending: list[Callable[[], None]]) -> None:
     mp.setattr(tv, "_try_load_vlc", lambda: (None, tv._vlc_missing_hint("win32")))
+    # The Subtitle Edit button exists on Windows only; the capture was made there.
+    mp.setattr(tv.subtitle_edit, "is_supported", lambda *_a: True)
     mp.setattr(tv, "notify", lambda _w, text, kind="info", **_k: log.add(f"notify:{kind}", text))
     mp.setattr(tv, "show_error",
                lambda _p, title, message, detail=None: log.add("show_error", title, message))
