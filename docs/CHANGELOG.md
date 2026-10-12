@@ -28,6 +28,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   progress report (the overall time limit still applies), and the helper process is always stopped if anything
   goes wrong while waiting for it.
 
+- **whisper.cpp and cloud engines resume only the final steps** after a crash in them (speaker detection,
+  exports): their finished transcript was saved, but resume ignored it and transcribed the whole file again,
+  which for a cloud engine meant paying for it twice.
+
 - **Local API: a request with an absurdly long `Content-Length` now gets a 413** instead of a dropped
   connection, and multipart uploads with spaces after a boundary line (allowed by RFC 2046) are read again.
 

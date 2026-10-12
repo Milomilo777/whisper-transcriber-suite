@@ -410,6 +410,42 @@ def test_resume_of_a_complete_transcript_only_redoes_the_post_steps(t, monkeypat
     assert any("already complete" in m for m in logs)
 
 
+@pytest.mark.parametrize("completed", [True, False])
+def test_a_complete_transcript_from_another_backend_is_resumed_not_rerun(t, monkeypatch, tmp_path, completed):
+    # whisper.cpp / cloud engines write the same "transcription_completed" checkpoint before the post
+    # steps; resume used to refuse every non-faster_whisper backend first, so a crash in the post
+    # steps re-transcribed (and for a cloud engine re-billed) the whole file. A partial checkpoint of
+    # such a backend still cannot be resumed (no slicer).
+    from core import _checkpoint
+    audio = tmp_path / "talk.wav"
+    audio.write_bytes(b"\0" * 16)
+    monkeypatch.setitem(t.config, "transcribe_backend", "whisper_cpp")  # as in the run that wrote it
+    done = [{"start": 0.0, "end": 2.0, "text": "one"}, {"start": 2.0, "end": 4.0, "text": "two"}]
+    task = _write_prior_checkpoint(t, audio, done, 4.0)
+    data = _checkpoint.load_checkpoint(str(audio))
+    assert data is not None
+    data["backend"] = "whisper_cpp"
+    data["transcription_completed"] = completed
+    _checkpoint.checkpoint_path(str(audio)).write_text(json.dumps(data), encoding="utf-8")
+    engine = Engine()
+    _slices, written = _wire(t, monkeypatch, tmp_path, engine)
+    post: list[list[str]] = []
+    monkeypatch.setattr(t, "_run_post_pipeline",
+                        lambda task_, segs, *a, **k: post.append([s["text"] for s in segs]) or 0)
+
+    logs: list[str] = []
+    resumed = t.resume_transcription(task, lambda p: None, logs.append)
+
+    assert engine.calls == []
+    if completed:
+        assert resumed is True
+        assert post == [["one", "two"]]
+        assert [s["text"] for s in written["segs"]] == ["one", "two"]
+        assert any("already complete" in m for m in logs)
+    else:
+        assert resumed is False and post == []
+
+
 def test_resumed_tail_is_saved_as_complete_and_cancel_keeps_it(t, monkeypatch, tmp_path):
     from core import _checkpoint
 

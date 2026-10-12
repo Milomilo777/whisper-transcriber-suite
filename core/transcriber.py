@@ -2989,7 +2989,10 @@ def resume_transcription(
         # faster_whisper run of this file can still resume it if the
         # fallback crashes before writing anything.
         backend_for_check = backend
-        if backend and backend != "faster_whisper":
+        # A COMPLETED checkpoint needs no slicer: only the post steps are
+        # redone, so every backend may use it (a cloud engine would
+        # otherwise bill the whole file a second time).
+        if backend and backend != "faster_whisper" and not data.get("transcription_completed"):
             log(
                 f"Resume: backend={backend!r} does not support resume; "
                 "falling back to full re-run.",
