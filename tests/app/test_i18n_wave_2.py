@@ -367,7 +367,7 @@ def test_capture_or_compare_english_texts(harness: _Harness) -> None:
 # Texts the dialog shows that do not go through the translation layer, with the reason.
 _NOT_OURS_REASONS = {
     "engine names": "the Engine picker's labels come from core.backends.availability (core/)",
-    "cookie browsers": "the cookies picker's values come from app.domain.cookies (another file)",
+    "cookie browsers": "the cookies picker's browser ids (chrome, edge, ...) are product ids",
     "format ids": "output format ids (SRT, VTT, ...) and product names (Express Scribe, InqScribe)",
     "video-site export": "the video-site team's export label and help stay English-only",
     "urls": "links show the URL itself",
@@ -384,7 +384,7 @@ def _not_ours() -> set[str]:
     from core.writers import supported_formats
 
     texts = {label for label, _value in ENGINE_CHOICES}
-    texts |= set(cookie_browser_choices(""))
+    texts |= set(cookie_browser_choices("")[1:])  # browser ids; [0] is the translated "(off)"
     texts |= {name.upper() for name in supported_formats() if name not in adv._FORMAT_LABELS}
     texts |= {adv._FORMAT_LABELS[n] for n in adv._UNTRANSLATED_FORMAT_LABELS}
     texts.add(adv._FORMAT_HELP["smtv_docx"])

@@ -19,6 +19,7 @@ import time
 import uuid
 from typing import Any, Callable, Optional
 
+from app.i18n import _, ngettext
 from core._proc import kill_process_tree, new_session_kwargs
 
 logger = logging.getLogger(__name__)
@@ -149,7 +150,7 @@ class VoiceCloneWorker:
         except subprocess.TimeoutExpired:
             kill_process_tree(proc, force=True)
 
-    def _abandon_worker(self, reason: str) -> None:
+    def _abandon_worker(self, reason: str, *, log_reason: str = "") -> None:
         """Make the session terminal after a request is given up on.
 
         A timed-out generation cannot be cancelled cooperatively, and
@@ -165,7 +166,7 @@ class VoiceCloneWorker:
         self._fail_all_pending(reason)
         if proc is None:
             return
-        logger.info("Voice-clone worker abandoned (%s); terminating tree", reason)
+        logger.info("Voice-clone worker abandoned (%s); terminating tree", log_reason or reason)
         self._kill_process_tree(proc)
         if self._process is proc:
             self._process = None
@@ -235,18 +236,26 @@ class VoiceCloneWorker:
         deadline = sent + max(GENERATE_TIMEOUT_S, timeout_s)
         while not done.wait(timeout=self.WAIT_POLL_S):
             now = time.monotonic()
+            # The reason is shown to the person (interface language); the log says why in
+            # English.
             if now >= deadline:
-                reason = "The voice-clone worker did not answer in time."
+                log_reason = "no answer in time"
+                reason = _("The voice-clone worker did not answer in time.")
             elif now - max(self._last_seen, sent) >= self.SILENCE_TIMEOUT_S:
                 minutes = max(1, round(self.SILENCE_TIMEOUT_S / 60))
-                reason = (
-                    "The voice engine stopped responding (no sign of life for "
-                    f"{minutes} minute{'s' if minutes != 1 else ''}) and was stopped. "
-                    "Click Generate to try again; if it happens again, restart the app."
+                log_reason = f"no sign of life for {minutes} min"
+                reason = ngettext(
+                    "The voice engine stopped responding (no sign of life for {n} minute) and "
+                    "was stopped. Click Generate to try again; if it happens again, restart "
+                    "the app.",
+                    "The voice engine stopped responding (no sign of life for {n} minutes) and "
+                    "was stopped. Click Generate to try again; if it happens again, restart "
+                    "the app.",
+                    minutes,
                 )
             else:
                 continue
-            self._abandon_worker(reason)
+            self._abandon_worker(reason, log_reason=log_reason)
             raise VoiceCloneWorkerError(reason)
         if slot["error"]:
             raise VoiceCloneWorkerError(str(slot["error"]))

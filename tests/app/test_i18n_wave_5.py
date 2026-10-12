@@ -274,7 +274,6 @@ DATA = (
     "NVIDIA CUDA — NVIDIA GPU",  # product names on the "needs setup" row
     "The driver is too old. Update it.",  # core.hardware's CudaStatus.summary()
     "pip broke", "read-only disk", "no psutil",
-    "Exit",  # shortcuts.quit_label() (app/shortcuts.py, not this wave)
     "Caller title", "Caller message.", "Traceback", "Caller notice", "Caller help",
     "offer", "progress", "result",  # the bar texts come from app.py
     "Faster start", "One thing", "Another",  # release-note headline and highlights

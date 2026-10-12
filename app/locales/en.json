@@ -825,6 +825,7 @@
   "Queue is empty.  Go to the Transcribe tab and pick a file to add one.": "Queue is empty.  Go to the Transcribe tab and pick a file to add one.",
   "Quick start": "Quick start",
   "Quick start on the first launch, a \"Try it now\" sample clip, and quiet notices instead of message boxes": "Quick start on the first launch, a \"Try it now\" sample clip, and quiet notices instead of message boxes",
+  "Quit": "Quit",
   "Quit with queued tasks": "Quit with queued tasks",
   "Qwen2.5-1.5B-Instruct, download-on-first-use": "Qwen2.5-1.5B-Instruct, download-on-first-use",
   "Re-detect hardware…": "Re-detect hardware…",
@@ -1100,10 +1101,16 @@
   "The settings could not be saved:\n{error}\n\nClose other programs that may be using the settings file, then click Save again.": "The settings could not be saved:\n{error}\n\nClose other programs that may be using the settings file, then click Save again.",
   "The settings run transcription on the CPU, so these are for {cpu}. Advanced > Re-detect hardware changes that.": "The settings run transcription on the CPU, so these are for {cpu}. Advanced > Re-detect hardware changes that.",
   "The settings run transcription on this computer's {where}, so the times are for it (Advanced settings > Re-detect hardware changes that).": "The settings run transcription on this computer's {where}, so the times are for it (Advanced settings > Re-detect hardware changes that).",
+  "The site still asks for a login: check that you are logged in to it in {browser} (on Windows, close {browser} completely if it keeps failing).": "The site still asks for a login: check that you are logged in to it in {browser} (on Windows, close {browser} completely if it keeps failing).",
   "The speech model process stopped unexpectedly.": "The speech model process stopped unexpectedly.",
   "The subtitle file is no longer there:\n{path}": "The subtitle file is no longer there:\n{path}",
   "The tray icon libraries are missing.": "The tray icon libraries are missing.",
   "The video downloader may be out of date. An update (about {size} MB) often fixes failing YouTube downloads.": "The video downloader may be out of date. An update (about {size} MB) often fixes failing YouTube downloads.",
+  "The voice engine stopped responding (no sign of life for {n} minute) and was stopped. Click Generate to try again; if it happens again, restart the app.": [
+   "The voice engine stopped responding (no sign of life for {n} minute) and was stopped. Click Generate to try again; if it happens again, restart the app.",
+   "The voice engine stopped responding (no sign of life for {n} minutes) and was stopped. Click Generate to try again; if it happens again, restart the app."
+  ],
+  "The voice-clone worker did not answer in time.": "The voice-clone worker did not answer in time.",
   "The web / LAN server could not start.\n\n{error}": "The web / LAN server could not start.\n\n{error}",
   "The web-standard subtitle format (HTML5 video, YouTube). Also supports per-word karaoke highlighting.": "The web-standard subtitle format (HTML5 video, YouTube). Also supports per-word karaoke highlighting.",
   "The {engine} engine uses its own model. This picker only applies to the Faster-Whisper engine, so a change here would have no effect.": "The {engine} engine uses its own model. This picker only applies to the Faster-Whisper engine, so a change here would have no effect.",
@@ -1132,6 +1139,7 @@
   "This model understands English only": "This model understands English only",
   "This needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "This needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?",
   "This release has no short summary. The full notes have the details.": "This release has no short summary. The full notes have the details.",
+  "This site wants you to be logged in: pick the browser you are logged in with under \"Log-in cookies\" and the link is checked again.": "This site wants you to be logged in: pick the browser you are logged in with under \"Log-in cookies\" and the link is checked again.",
   "This task has no SRT file on disk — add SRT to the output formats and run it again.": "This task has no SRT file on disk — add SRT to the output formats and run it again.",
   "This task has no SRT file on disk. Add SRT to the output formats and run it again.\nLooked for:\n{path}": "This task has no SRT file on disk. Add SRT to the output formats and run it again.\nLooked for:\n{path}",
   "This text is too long for one audio file.": "This text is too long for one audio file.",
@@ -1367,6 +1375,7 @@
    "about {n} seconds"
   ],
   "allowed (this computer)": "allowed (this computer)",
+  "browser cookies\u0004(off)": "(off)",
   "button\u0004Clear": "Clear",
   "button\u0004Close": "Close",
   "button\u0004Download": "Download",
@@ -1535,6 +1544,10 @@
   "{name} has edits that were not saved.\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.": "{name} has edits that were not saved.\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.",
   "{name} has edits that were not saved.\nFolder: {folder}\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.": "{name} has edits that were not saved.\nFolder: {folder}\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.",
   "{name} was changed or removed by something else after it was opened here.\n\nOverwrite it with the version in this window?": "{name} was changed or removed by something else after it was opened here.\n\nOverwrite it with the version in this window?",
+  "{n} job": [
+   "{n} job",
+   "{n} jobs"
+  ],
   "{n} reference sample(s).": [
    "{n} reference sample(s).",
    "{n} reference sample(s)."
