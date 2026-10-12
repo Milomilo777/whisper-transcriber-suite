@@ -36,6 +36,17 @@ def root():
     r.destroy()
 
 
+@pytest.fixture(autouse=True)
+def _no_player(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests cover the saved files, not playback: keep the real libvlc out.
+
+    With VLC installed, a viewer whose media file exists builds a libvlc player on the
+    1-byte stand-in media; after ~100 viewer tests from other files in the same pytest
+    process that aborted the process natively (exit code 3, no Python traceback).
+    """
+    monkeypatch.setattr(tv, "_try_load_vlc", lambda: (None, "no player in this test"))
+
+
 @pytest.fixture
 def notices(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str]]:
     got: list[tuple[str, str]] = []
