@@ -1,0 +1,306 @@
+{
+ "empty": [
+  [
+   "Toplevel#0",
+   "Report a problem"
+  ],
+  [
+   "Label#2",
+   "What went wrong?"
+  ],
+  [
+   "Label#3",
+   "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system only: no file names, no logs, no settings. There is no reply; for a conversation, use GitHub."
+  ],
+  [
+   "Label#6",
+   "Sent with: Whisper Transcriber Suite 9.9.9 on Windows 10 (AMD64)"
+  ],
+  [
+   "Label#7",
+   "0 / 50"
+  ],
+  [
+   "Label#8",
+   ""
+  ],
+  [
+   "Label#10",
+   "Have a GitHub account? Report it there"
+  ],
+  [
+   "Button#11",
+   "Send"
+  ],
+  [
+   "Button#12",
+   "Cancel"
+  ]
+ ],
+ "empty_send": [
+  [
+   "Toplevel#0",
+   "Report a problem"
+  ],
+  [
+   "Label#2",
+   "What went wrong?"
+  ],
+  [
+   "Label#3",
+   "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system only: no file names, no logs, no settings. There is no reply; for a conversation, use GitHub."
+  ],
+  [
+   "Label#6",
+   "Sent with: Whisper Transcriber Suite 9.9.9 on Windows 10 (AMD64)"
+  ],
+  [
+   "Label#7",
+   "0 / 50"
+  ],
+  [
+   "Label#8",
+   "Please describe the problem first."
+  ],
+  [
+   "Label#10",
+   "Have a GitHub account? Report it there"
+  ],
+  [
+   "Button#11",
+   "Send"
+  ],
+  [
+   "Button#12",
+   "Cancel"
+  ]
+ ],
+ "failed_refused": [
+  [
+   "Toplevel#0",
+   "Report a problem"
+  ],
+  [
+   "Label#2",
+   "What went wrong?"
+  ],
+  [
+   "Label#3",
+   "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system only: no file names, no logs, no settings. There is no reply; for a conversation, use GitHub."
+  ],
+  [
+   "Label#6",
+   "Sent with: Whisper Transcriber Suite 9.9.9 on Windows 10 (AMD64)"
+  ],
+  [
+   "Label#7",
+   "50 / 50  (the rest is cut)"
+  ],
+  [
+   "Label#8",
+   "The server refused the report (HTTP 500)."
+  ],
+  [
+   "Label#10",
+   "Have a GitHub account? Report it there"
+  ],
+  [
+   "Button#11",
+   "Send"
+  ],
+  [
+   "Button#12",
+   "Cancel"
+  ]
+ ],
+ "failed_unexpected": [
+  [
+   "Toplevel#0",
+   "Report a problem"
+  ],
+  [
+   "Label#2",
+   "What went wrong?"
+  ],
+  [
+   "Label#3",
+   "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system only: no file names, no logs, no settings. There is no reply; for a conversation, use GitHub."
+  ],
+  [
+   "Label#6",
+   "Sent with: Whisper Transcriber Suite 9.9.9 on Windows 10 (AMD64)"
+  ],
+  [
+   "Label#7",
+   "50 / 50  (the rest is cut)"
+  ],
+  [
+   "Label#8",
+   "Could not send the report: boom"
+  ],
+  [
+   "Label#10",
+   "Have a GitHub account? Report it there"
+  ],
+  [
+   "Button#11",
+   "Send"
+  ],
+  [
+   "Button#12",
+   "Cancel"
+  ]
+ ],
+ "over_limit": [
+  [
+   "Toplevel#0",
+   "Report a problem"
+  ],
+  [
+   "Label#2",
+   "What went wrong?"
+  ],
+  [
+   "Label#3",
+   "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system only: no file names, no logs, no settings. There is no reply; for a conversation, use GitHub."
+  ],
+  [
+   "Label#6",
+   "Sent with: Whisper Transcriber Suite 9.9.9 on Windows 10 (AMD64)"
+  ],
+  [
+   "Label#7",
+   "50 / 50  (the rest is cut)"
+  ],
+  [
+   "Label#8",
+   ""
+  ],
+  [
+   "Label#10",
+   "Have a GitHub account? Report it there"
+  ],
+  [
+   "Button#11",
+   "Send"
+  ],
+  [
+   "Button#12",
+   "Cancel"
+  ]
+ ],
+ "sending": [
+  [
+   "Toplevel#0",
+   "Report a problem"
+  ],
+  [
+   "Label#2",
+   "What went wrong?"
+  ],
+  [
+   "Label#3",
+   "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system only: no file names, no logs, no settings. There is no reply; for a conversation, use GitHub."
+  ],
+  [
+   "Label#6",
+   "Sent with: Whisper Transcriber Suite 9.9.9 on Windows 10 (AMD64)"
+  ],
+  [
+   "Label#7",
+   "50 / 50  (the rest is cut)"
+  ],
+  [
+   "Label#8",
+   "Sending…"
+  ],
+  [
+   "Label#10",
+   "Have a GitHub account? Report it there"
+  ],
+  [
+   "Button#11",
+   "Send"
+  ],
+  [
+   "Button#12",
+   "Cancel"
+  ]
+ ],
+ "sent": [
+  [
+   "Toplevel#0",
+   "Report a problem"
+  ],
+  [
+   "Label#2",
+   "What went wrong?"
+  ],
+  [
+   "Label#3",
+   "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system only: no file names, no logs, no settings. There is no reply; for a conversation, use GitHub."
+  ],
+  [
+   "Label#6",
+   "Sent with: Whisper Transcriber Suite 9.9.9 on Windows 10 (AMD64)"
+  ],
+  [
+   "Label#7",
+   "50 / 50  (the rest is cut)"
+  ],
+  [
+   "Label#8",
+   "Thank you. Your report was sent."
+  ],
+  [
+   "Label#10",
+   "Have a GitHub account? Report it there"
+  ],
+  [
+   "Button#11",
+   "Close"
+  ],
+  [
+   "Button#12",
+   "Cancel"
+  ]
+ ],
+ "typed": [
+  [
+   "Toplevel#0",
+   "Report a problem"
+  ],
+  [
+   "Label#2",
+   "What went wrong?"
+  ],
+  [
+   "Label#3",
+   "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system only: no file names, no logs, no settings. There is no reply; for a conversation, use GitHub."
+  ],
+  [
+   "Label#6",
+   "Sent with: Whisper Transcriber Suite 9.9.9 on Windows 10 (AMD64)"
+  ],
+  [
+   "Label#7",
+   "8 / 50"
+  ],
+  [
+   "Label#8",
+   ""
+  ],
+  [
+   "Label#10",
+   "Have a GitHub account? Report it there"
+  ],
+  [
+   "Button#11",
+   "Send"
+  ],
+  [
+   "Button#12",
+   "Cancel"
+  ]
+ ]
+}
