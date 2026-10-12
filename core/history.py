@@ -75,6 +75,27 @@ def default_db_path() -> Path:
     return user_data_dir() / "history.db"
 
 
+def _archive_stamp() -> str:
+    """Local time stamp for a corrupt-DB archive name (second resolution)."""
+    return time.strftime("%Y%m%d-%H%M%S")
+
+
+def _unique_archive_path(db_path: str) -> str:
+    """Return ``<db_path>.corrupt.<stamp>`` (``-2``, ``-3``, ... appended when
+    taken) such that neither it nor its ``-wal`` / ``-shm`` sidecar names
+    exist yet. ``os.replace`` overwrites silently, so a name that is only
+    unique to the second would let two recoveries within one second destroy
+    the first archive."""
+    import os as _os
+    base = f"{db_path}.corrupt.{_archive_stamp()}"
+    candidate = base
+    n = 1
+    while any(_os.path.lexists(candidate + ext) for ext in ("", "-wal", "-shm")):
+        n += 1
+        candidate = f"{base}-{n}"
+    return candidate
+
+
 def _is_transient_lock_error(exc: sqlite3.Error) -> bool:
     """True when ``exc`` is lock contention, NOT on-disk corruption.
 
@@ -240,7 +261,8 @@ class HistoryDB:
 
     def _check_integrity_or_recover(self) -> None:
         """Run ``PRAGMA integrity_check``. On a non-``ok`` result, close the
-        connection, rename the DB to ``.corrupt``, and recreate it fresh. The
+        connection, move the DB aside to ``history.db.corrupt.<timestamp>``
+        (see :func:`_unique_archive_path`), and recreate it fresh. The
         user loses history but the app launches; trade-off chosen over a
         launch crash.
 
@@ -288,8 +310,8 @@ class HistoryDB:
         if result == "ok":
             return
         logger.error(
-            "history.db failed integrity_check (%s); renaming to "
-            ".corrupt and recreating.", result,
+            "history.db failed integrity_check (%s); moving it aside and "
+            "recreating.", result,
         )
         self._recover_corrupt_db(result)
 
@@ -304,13 +326,17 @@ class HistoryDB:
         except sqlite3.Error:
             pass
         import os as _os
-        corrupt_path = str(self.path) + ".corrupt"
+        # Never overwrite an earlier archive: a second corruption must not
+        # cost the user the first damaged copy (it may still be salvageable).
+        corrupt_path = _unique_archive_path(str(self.path))
         moved_main = False
         try:
-            if _os.path.exists(corrupt_path):
-                _os.unlink(corrupt_path)
             _os.replace(str(self.path), corrupt_path)
             moved_main = True
+            logger.warning(
+                "history.db was corrupt (%s); moved aside to %s, starting "
+                "a fresh history.", reason, corrupt_path,
+            )
         except OSError as e:
             logger.error("Could not move corrupt history.db aside: %s", e)
         # WAL mode was enabled before the integrity check, so the

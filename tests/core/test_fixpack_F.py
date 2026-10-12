@@ -172,7 +172,7 @@ def test_recovery_moves_orphan_wal_shm_sidecars_aside(tmp_path, monkeypatch):
 
     db = HistoryDB(path)  # must not raise
     try:
-        assert (tmp_path / "history.db.corrupt").exists()
+        assert list(tmp_path.glob("history.db.corrupt*"))
         # Orphan sidecars relocated next to the corrupt file (or removed) —
         # in either case they no longer poison the fresh DB.
         live_wal = tmp_path / "history.db-wal"
@@ -201,7 +201,7 @@ def test_recovery_survives_garbage_file_without_crashing(tmp_path):
     _corrupt_file(path)
     db = HistoryDB(path)  # must not raise DatabaseError
     try:
-        assert (tmp_path / "history.db.corrupt").exists()
+        assert list(tmp_path.glob("history.db.corrupt*"))
         rid = db.insert_download("https://x")
         assert rid > 0
     finally:

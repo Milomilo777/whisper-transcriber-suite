@@ -333,7 +333,7 @@ def test_locked_integrity_check_does_not_rotate_db(tmp_path, monkeypatch):
     db = HistoryDB(path)  # must not rotate the DB aside
     try:
         assert state["wrapped"] is True
-        assert not (tmp_path / "history.db.corrupt").exists()
+        assert not list(tmp_path.glob("history.db.corrupt*"))
         assert db.list_transcriptions()[0]["file_path"] == "/tmp/keep.wav"
     finally:
         db.close()
