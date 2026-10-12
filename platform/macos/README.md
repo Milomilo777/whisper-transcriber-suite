@@ -57,7 +57,7 @@ code is Tk-free stdlib + REST; the only OS-specific bits — `taskkill` vs
 - **Cloud STT backends** — Google Gemini (paste an API key) and Google Cloud
   Speech-to-Text v2 (a service-account JSON). Both decode audio with the
   bundled `ffmpeg` and upload over HTTPS.
-- **SMTV transcription `.docx`** export (the team's 4-column table template).
+- **Project-specific transcription `.docx`** export (a team's 4-column table template).
 - **Format conversion** — File > Convert transcript between
   SRT / VTT / TSV / JSON / TXT (and import `.otr`).
 

@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest a feature for the desktop app, the SMTV integration, or the build pipeline.
+description: Suggest a feature for the desktop app, an integration, or the build pipeline.
 title: "[feature] "
 labels: ["enhancement"]
 body:

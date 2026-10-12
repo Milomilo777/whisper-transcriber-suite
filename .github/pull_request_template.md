@@ -11,7 +11,7 @@ or developer-visible thing is different after this PR? -->
       (`tests/smoke/test_app_headless.py`)
 - [ ] If transcribe path changed: real-video smoke
       (`tests/smoke/test_exe_real_e2e.py::test_exe_worker_transcribes_real_video`)
-- [ ] If SMTV path changed: live SMTV smoke
+- [ ] If the site-specific download path changed: its live smoke
       (`tests/smoke/test_smtv_download_e2e.py`)
 
 ## Doc updates
