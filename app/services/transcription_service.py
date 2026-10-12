@@ -52,6 +52,10 @@ def output_formats_for(task: Any, configured: Any) -> list[str]:
 # History note for a finished run that recognised no speech (empty outputs).
 NO_SPEECH_NOTE = "No speech recognised (check the audio track, or the file may be music only)"
 
+# History note for a job stopped because its transcription process stopped
+# responding (no progress or heartbeat for too long) and was restarted.
+HUNG_WORKER_NOTE = "Stopped because the transcription stopped responding; try the file again"
+
 
 def _reported_language(task: Any) -> str:
     """Return the detected language, clearing it if no speech was found."""
@@ -1619,6 +1623,9 @@ class TranscriptionService:
         app = self.app
         if w["task"]:
             w["task"].status = "error"
+            # Without a note the history row of this error was blank, so
+            # the record never said why the job failed.
+            w["task"].recovery_note = HUNG_WORKER_NOTE
             self.finish_task(w, keep_status=True)
         # finish_task() retires (and un-registers) a temporary
         # worker when no waiting task is left. restart_worker()
@@ -1716,6 +1723,10 @@ class TranscriptionService:
             t.progress = 0
             # A re-run starts a fresh speed meter; never show the last run's.
             reset_speed(t)
+            # Nor the last attempt's history note: finish_task records
+            # recovery_note on error rows too, so a stale one would label
+            # this attempt with the previous attempt's failure.
+            t.recovery_note = ""
             t.start_time = _time.time()
             # Clear any prior end_time (re-run path) so the freshly-
             # restarted task counter doesn't immediately freeze.
@@ -1930,11 +1941,13 @@ class TranscriptionService:
                     language=_reported_language(task),
                     word_count=word_count,
                     # A finished run with empty outputs keeps a note in the
-                    # row, so the record says why it has no words.
+                    # row, so the record says why it has no words. Any other
+                    # run records its recovery_note (set during this attempt
+                    # only: dispatch clears it), e.g. why a hung job failed.
                     error=(
                         NO_SPEECH_NOTE
                         if newly_finished and getattr(task, "no_speech", False)
-                        else str(getattr(task, "recovery_note", "") or "") if newly_finished else ""
+                        else str(getattr(task, "recovery_note", "") or "")
                     ),
                     # How fast the run went, with what model on what device
                     # (worker-reported; 0 / "" when not measured).

@@ -95,6 +95,9 @@ class TranscriptionTask:
         # True when a finished run recognised no speech at all (the outputs
         # are written but empty); the result card and history say so.
         self.no_speech: bool = False
+        # Why this attempt ended the way it did (a salvaged crash, a hung
+        # worker), stored in its history row; cleared at every dispatch.
+        self.recovery_note: str = ""
         # Speed meter (core.speed_meter). ``live_*`` are the smoothed speed
         # (x real time) and time left while the decode runs, None until
         # there is enough data; carried on the worker's "progress" events.
