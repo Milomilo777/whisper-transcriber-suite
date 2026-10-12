@@ -5522,7 +5522,7 @@ class App(tk.Tk):
         self._server_handle = None
         self.server_toggle_btn.config(text=_("Start web access"), state="normal")
         self.server_open_btn.config(state="disabled")
-        self.server_status_var.set(pgettext("web access", "Off"))
+        self.server_status_var.set(pgettext("web access status", "Off"))
         self.server_url_var.set("")
         messagebox.showerror(
             _("Could not start web access"),
@@ -5534,7 +5534,7 @@ class App(tk.Tk):
         self._server_busy = False
         self.server_toggle_btn.config(text=_("Start web access"), state="normal")
         self.server_open_btn.config(state="disabled")
-        self.server_status_var.set(pgettext("web access", "Off"))
+        self.server_status_var.set(pgettext("web access status", "Off"))
         self.server_url_var.set("")
         self.log("Web / LAN access stopped.")
 

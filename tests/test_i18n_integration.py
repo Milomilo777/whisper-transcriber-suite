@@ -301,3 +301,27 @@ def test_live_english_only_prompt_shows_the_language_name_translated(
             assert prompt.language == ("" if value == "Auto" else i18n.pseudo_translate("German"))
             for text in (prompt.problem(), prompt.recommendation(), prompt.reason):
                 assert is_pseudo_marked(text), text
+
+
+# -------------------------------------------------- the same text, the same msgid / context
+
+def test_web_access_off_uses_one_context_everywhere() -> None:
+    contexts = set()
+    for where, call in _calls("pgettext"):
+        if len(call.args) == 2 and isinstance(call.args[1], ast.Constant) and \
+                call.args[1].value == "Off" and isinstance(call.args[0], ast.Constant):
+            if where in ("app/app.py", "app/widgets/tabs.py"):
+                contexts.add(call.args[0].value)
+    assert contexts == {"web access status"}
+
+
+def test_texts_set_by_two_files_are_the_same_msgid() -> None:
+    def literals(where: str) -> set[str]:
+        return {c.args[0].value for w, c in _calls("_") if w == where and c.args
+                and isinstance(c.args[0], ast.Constant)}
+
+    app_py, tabs_py = literals("app/app.py"), literals("app/widgets/tabs.py")
+    fmt_py = literals("app/services/format_service.py")
+    assert {"Start web access", "Stop web access"} <= app_py
+    assert "Start web access" in tabs_py
+    assert "Enter a URL to load available formats" in tabs_py & fmt_py
