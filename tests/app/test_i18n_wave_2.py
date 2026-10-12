@@ -372,6 +372,8 @@ _NOT_OURS_REASONS = {
     "video-site export": "the video-site team's export label and help stay English-only",
     "urls": "links show the URL itself",
     "core texts": "the model catalog's label/description and the usage line come from core/",
+    "language names": "the interface-language picker shows each language by its own name, in its "
+                      "own script, in every interface language",
 }
 
 
@@ -391,9 +393,14 @@ def _not_ours() -> set[str]:
 
 
 def _flat_texts(states: dict[str, list[list[str]]]) -> list[tuple[str, str]]:
+    from app import i18n
+
+    names = {lang.endonym for lang in i18n.SUPPORTED_LANGUAGES}
     out: list[tuple[str, str]] = []
     for state, rows in states.items():
         for row in rows:
+            if row[0].endswith(":values") and row[1] in names:
+                continue  # "language names" in _NOT_OURS_REASONS (combobox values only)
             if state == "file_dialogs":
                 out.append((state, row[0]))
                 out.extend((state, label) for label, _pattern in json.loads(row[1]))
