@@ -108,6 +108,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   point; a second close click during shutdown is ignored.
 - **A download that fails because the disk is full now says so** ("your disk is full: clear some space and
   try again") after yt-dlp's error line, on Windows as well as on macOS and Linux.
+- **Model downloads explain a refused or full-disk download**: a model that huggingface.co refuses with 401
+  or 403 now says it needs authentication or is gated, a download that fills the disk deletes its partial
+  file so the space comes back, and the free-space check before a download also works when the model is
+  set by its short name (such as `tiny`).
 
 ## [2.0.0] — 2026-10-10
 

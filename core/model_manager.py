@@ -166,6 +166,14 @@ def _describe_download_error(exc: BaseException, folder: Path, source: str) -> s
     names: set[str] = set()
     for e in chain:
         names |= _class_names(e)
+        response = getattr(e, "response", None)
+        if response is not None:
+            status = getattr(response, "status_code", None)
+            if status in (401, 403):
+                return (
+                    f"Access denied ({status}): {source} requires authentication or "
+                    f"this is a gated model. [{raw}]"
+                )
     if names & _REPO_ERROR_NAMES:
         return f"{source} does not offer this model to the app. [{raw}]"
     if names & _NETWORK_ERROR_NAMES:
@@ -748,9 +756,13 @@ def _hf_repo_for(config: dict[str, Any], model: dict[str, Any]) -> str | None:
 
 
 def _approx_model_bytes(config: dict[str, Any], name: str) -> int:
-    """Catalog download size of the model called ``name`` (0 = unknown)."""
-    for entry in _merged_catalog(config).values():
-        if entry.get("name") == name:
+    """Catalog download size of the model called ``name`` (0 = unknown).
+
+    ``name`` is a folder name (``faster-whisper-tiny``) or a catalog slug
+    (``tiny``), as a hand-edited config or an API override may set it.
+    """
+    for slug, entry in _merged_catalog(config).items():
+        if entry.get("name") == name or slug == name:
             gb = entry.get("approx_size_gb") or 0.0
             if isinstance(gb, (int, float)) and not isinstance(gb, bool):
                 try:
@@ -824,6 +836,22 @@ def _download_via_huggingface(
     try:
         download_model(ref, output_dir=str(model_path))
     except Exception as e:  # noqa: BLE001
+        if any(_is_disk_full(x) for x in _cause_chain(e)):
+            # A resumable partial blob is worth keeping, except when it filled the
+            # disk: delete the .incomplete files so the space comes back.
+            partial_dir = model_path / ".cache" / "huggingface" / "download"
+            try:
+                partials = list(partial_dir.rglob("*.incomplete"))
+            except OSError as list_error:
+                partials = []
+                if status_cb:
+                    status_cb(f"Could not list partial downloads in {partial_dir}: {list_error}")
+            for partial in partials:
+                try:
+                    partial.unlink(missing_ok=True)
+                except OSError as unlink_error:
+                    if status_cb:
+                        status_cb(f"Could not delete partial download {partial}: {unlink_error}")
         if status_cb:
             status_cb(f"Hugging Face download failed: {e}")
         if cancel_event and cancel_event.is_set():
