@@ -47,6 +47,15 @@ HARMLESS = {
 }
 
 _ASKS = ("askyesno", "askyesnocancel", "askokcancel", "askretrycancel", "askquestion")
+# Translation calls around a title (app/i18n.py): the dialog is listed by its English text.
+_MARKERS = {"_": 0, "translate": 0, "pgettext": 1}
+
+
+def _title(node: ast.expr) -> str:
+    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            and node.func.id in _MARKERS and len(node.args) > _MARKERS[node.func.id]):
+        return ast.unparse(node.args[_MARKERS[node.func.id]])
+    return ast.unparse(node)
 
 
 def _calls() -> list[tuple[str, int, str, dict[str, Any]]]:
@@ -59,7 +68,7 @@ def _calls() -> list[tuple[str, int, str, dict[str, Any]]]:
                     and node.func.attr in _ASKS and node.args):
                 kwargs = {k.arg: ast.literal_eval(k.value) for k in node.keywords
                           if k.arg == "default" and isinstance(k.value, ast.Constant)}
-                found.append((rel, node.lineno, ast.unparse(node.args[0]), kwargs))
+                found.append((rel, node.lineno, _title(node.args[0]), kwargs))
     return found
 
 
