@@ -19,6 +19,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   translations (text links, no flag images); the translations are edited directly instead of
   being generated from tables inside the script. A test keeps the links current.
 
+### Fixed
+
+- **A possible crash while closing the app (Windows code 0x80000003)**: the main window could be
+  freed by Python's garbage collector on a background thread after the window closed, and Tcl then
+  stopped the whole process. The window now stays referenced until the app exits, and closing it
+  also stops the tray icon. This was also the intermittent Windows CI crash.
+
 ## [2.1.0] — 2026-10-12
 
 ### Added
