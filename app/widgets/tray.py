@@ -219,16 +219,34 @@ class TrayController:
             except Exception:  # noqa: BLE001
                 pass
 
-    def stop(self) -> None:
+    def stop(self, wait: bool = True) -> None:
+        """Stop the icon. ``wait=False`` only asks the loop to end (used
+        by App.destroy(), which must not stall); on_exit keeps waiting so
+        an in-flight menu callback finishes first."""
         # Deliberate teardown: tell the runner's finally NOT to re-show
         # the window (the app is exiting).
         self._stopping = True
         if self._icon is None:
             return
-        try:
-            self._icon.stop()
-        except Exception:  # noqa: BLE001
-            pass
+        # pystray's Xorg backend can block inside icon.stop() while its
+        # loop thread holds the X display (no system tray, so docking
+        # never finishes). stop() runs on every App.destroy(), so call it
+        # on a helper thread and bound the wait: closing must never hang.
+        icon = self._icon
+
+        def _stop_icon() -> None:
+            try:
+                icon.stop()
+            except Exception:  # noqa: BLE001
+                pass
+
+        stopper = threading.Thread(target=_stop_icon, name="tray-stop", daemon=True)
+        stopper.start()
+        if not wait:
+            self._icon = None
+            self._thread = None
+            return
+        stopper.join(timeout=2.0)
         # Wait briefly for the daemon thread to exit so any in-flight
         # menu-callback bounce to Tk completes BEFORE on_exit's
         # destroy(). Without this join, a tray click that landed

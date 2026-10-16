@@ -7,6 +7,65 @@ import types
 import pytest
 
 
+def test_stop_returns_even_when_the_icon_stop_blocks():
+    """stop() runs on every App.destroy(), so it must never hang the exit.
+
+    pystray's Xorg backend can block inside icon.stop() while its loop
+    thread holds the X display (no system tray, docking never finishes);
+    Linux CI timed out in App.destroy() exactly there.
+    """
+    import threading
+
+    from app.widgets import tray as tray_mod
+
+    release = threading.Event()
+
+    class _BlockingIcon:
+        def stop(self):
+            release.wait(30)
+
+    fake_app = types.SimpleNamespace(post_to_main=lambda fn: None)
+    c = tray_mod.TrayController(fake_app)  # type: ignore[arg-type]
+    c._icon = _BlockingIcon()
+    caller = threading.Thread(target=c.stop, daemon=True)
+    caller.start()
+    caller.join(timeout=6)
+    try:
+        assert not caller.is_alive(), "TrayController.stop() hung on a blocking icon.stop()"
+        assert c._icon is None
+    finally:
+        release.set()
+
+
+def test_stop_without_wait_returns_at_once_and_still_asks_the_icon_to_stop():
+    """App.destroy() uses stop(wait=False): no waiting at all, but the
+    icon loop must still be told to end (it holds a reference to the App)."""
+    import threading
+    import time
+
+    from app.widgets import tray as tray_mod
+
+    asked = threading.Event()
+    release = threading.Event()
+
+    class _BlockingIcon:
+        def stop(self):
+            asked.set()
+            release.wait(30)
+
+    fake_app = types.SimpleNamespace(post_to_main=lambda fn: None)
+    c = tray_mod.TrayController(fake_app)  # type: ignore[arg-type]
+    c._icon = _BlockingIcon()
+    t0 = time.monotonic()
+    try:
+        c.stop(wait=False)
+        assert time.monotonic() - t0 < 0.5
+        assert c._icon is None
+        assert asked.wait(2), "icon.stop() was never called"
+    finally:
+        release.set()
+
+
 def test_is_available_returns_false_without_pystray(monkeypatch):
     # Force pystray import to fail.
     monkeypatch.setitem(sys.modules, "pystray", None)

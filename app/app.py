@@ -2746,10 +2746,12 @@ class App(tk.Tk):
         # Stop the tray icon thread on every teardown path, not only
         # on_exit (idempotent there). A live pystray loop keeps its own
         # message thread plus a reference to this App alive after destroy.
+        # wait=False: on Linux without a system tray icon.stop() can block,
+        # and destroy() must never stall (on_exit already waited if needed).
         tray = getattr(self, "tray", None)
         if tray is not None:
             try:
-                tray.stop()
+                tray.stop(wait=False)
             except Exception:  # noqa: BLE001
                 logger.exception("Could not stop the tray icon")
         # Cancel every pending after() callback before tearing down the

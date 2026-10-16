@@ -65,11 +65,13 @@ def test_destroy_stops_the_tray_icon_thread() -> None:
     """
     root = _bare_app()
     calls: list[str] = []
-    root.tray = types.SimpleNamespace(stop=lambda: calls.append("stop"))  # type: ignore[attr-defined]
+    root.tray = types.SimpleNamespace(  # type: ignore[attr-defined]
+        stop=lambda wait=True: calls.append(f"stop wait={wait}"))
 
     root.destroy()
 
-    assert calls == ["stop"]
+    # wait=False: destroy() must never stall on a tray that cannot stop.
+    assert calls == ["stop wait=False"]
 
 
 def test_cancel_pending_after_callbacks_leaves_owners_commands_alone() -> None:
