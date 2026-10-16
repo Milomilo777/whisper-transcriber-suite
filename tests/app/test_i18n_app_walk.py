@@ -150,6 +150,10 @@ def build_app(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     monkeypatch.setattr(tk.Misc, "wait_window", lambda *_a, **_k: None)
     import webbrowser
     monkeypatch.setattr(webbrowser, "open", lambda *_a, **_k: True)
+    # The search dialog starts a reindex thread that holds the dialog (and so
+    # the App) alive; a real reindex can outlive the test and release the
+    # destroyed root on that worker thread, where GC freeing it aborts Tcl.
+    monkeypatch.setattr("core.search.reindex_all_history", lambda: 0)
     monkeypatch.setattr("app.app.voice_clone_tab_enabled", lambda *_a, **_k: True)
     monkeypatch.setattr("core.backends.google_cloud_stt.format_usage", lambda *_a, **_k: CORE_USAGE)
 
