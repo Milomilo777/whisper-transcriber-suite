@@ -241,6 +241,20 @@ Upload to your private channel:
 * If the changelog mentioned migration notes (Step 3), repeat
   them in the announcement.
 
+## Step 8b — Point the previous release at the new one
+
+Search engines and AI assistants keep linking to old release pages, so every
+older release starts with a "newer version" banner that links to
+`releases/latest`. Add it to the release this one replaces (edit the notes
+text only; never touch its assets):
+
+```
+<!-- newer-version-banner -->
+> **There's a newer version.** Get the latest one here: https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest
+```
+
+Then check that `gh release list` still shows the new version as `Latest`.
+
 ## Step 9 — Bump `pyproject.toml` to the next `-dev`
 
 ```
