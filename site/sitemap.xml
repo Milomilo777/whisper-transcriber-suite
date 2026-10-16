@@ -24,4 +24,22 @@
       <image:loc>https://whisper-transcriber-suite.pages.dev/assets/shots/web.webp</image:loc>
     </image:image>
   </url>
+  <url>
+    <loc>https://whisper-transcriber-suite.pages.dev/youtube-to-text/</loc>
+    <lastmod>2026-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whisper-transcriber-suite.pages.dev/video-to-srt/</loc>
+    <lastmod>2026-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whisper-transcriber-suite.pages.dev/speaker-labels/</loc>
+    <lastmod>2026-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
 </urlset>

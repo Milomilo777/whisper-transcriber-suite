@@ -9,6 +9,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **The project page in 42 languages**: `docs/i18n/` now has a README for every interface
   language (33 new, machine-translated), and the 8 older translations are brought up to date
   with the English page. Each file names the English commit it follows.
+- **Website: three step-by-step guides**: YouTube video to text, video to SRT subtitles, and
+  transcripts with speaker labels, each at its own address, linked from the home page and listed
+  in the sitemap, `llms.txt` and the IndexNow ping. A test keeps every guide listed and linked.
 
 ### Changed
 

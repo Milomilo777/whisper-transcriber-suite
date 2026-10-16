@@ -11,6 +11,11 @@ Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscri
 - [All releases](https://github.com/Milomilo777/whisper-transcriber-suite/releases): full version history, every past release kept published with its own changelog.
 - [Support the project — Buy Me a Coffee](https://buymeacoffee.com/mehraz1358): funds continued cross-platform development and testing.
 
+## Guides
+- [Transcribe a YouTube video to text](https://whisper-transcriber-suite.pages.dev/youtube-to-text/): paste a link, download with yt-dlp, transcribe locally, save TXT, DOCX, PDF or SRT.
+- [Convert a video to SRT subtitles](https://whisper-transcriber-suite.pages.dev/video-to-srt/): SRT, VTT or ASS from a file or a link, correcting them, and burning them into the video.
+- [Transcribe with speaker labels](https://whisper-transcriber-suite.pages.dev/speaker-labels/): who said what in an interview, renaming speakers, Word and PDF export.
+
 ## Docs
 - [Full text for AI assistants](https://whisper-transcriber-suite.pages.dev/llms-full.txt): this summary plus the complete FAQ and README in one plain-text file.
 - [GitHub repository](https://github.com/Milomilo777/whisper-transcriber-suite): source code, issue tracker, discussions.
