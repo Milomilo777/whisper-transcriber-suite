@@ -57,6 +57,21 @@ def test_destroy_survives_a_child_that_keeps_its_own_after_loop() -> None:
         root.winfo_exists()  # and so was the root
 
 
+def test_destroy_stops_the_tray_icon_thread() -> None:
+    """Every destroy path stops the tray loop, not only on_exit.
+
+    A pystray loop left running keeps its own thread and a reference to the
+    destroyed App alive, which later lets GC free the root off the Tk thread.
+    """
+    root = _bare_app()
+    calls: list[str] = []
+    root.tray = types.SimpleNamespace(stop=lambda: calls.append("stop"))  # type: ignore[attr-defined]
+
+    root.destroy()
+
+    assert calls == ["stop"]
+
+
 def test_cancel_pending_after_callbacks_leaves_owners_commands_alone() -> None:
     root = tk.Tk()
     try:

@@ -22,6 +22,9 @@ if TYPE_CHECKING:
 
 __all__ = ["run", "App"]
 
+# The running App, pinned by run() until the process exits (see there).
+_app_keepalive: object = None
+
 
 def run(open_paths: list[str] | None = None) -> None:
     """Launch the Tk app. Used by ``gui.py`` and the frozen exe entry point.
@@ -46,6 +49,14 @@ def run(open_paths: list[str] | None = None) -> None:
     i18n.init_language(lambda: load_config(fetch_online=False))
     from .app import App
     app = App()
+    # Keep the root referenced until the process ends. The App sits in
+    # reference cycles; once run() returns, the cyclic GC may free it on
+    # whatever thread allocates next (end_process flushes on a daemon
+    # thread, workers may still run). Freeing the Tcl interpreter off its
+    # own thread makes Tcl abort the process ("Tcl_AsyncDelete: async
+    # handler deleted by the wrong thread", Windows code 0x80000003).
+    global _app_keepalive
+    _app_keepalive = app
     if open_paths:
         paths = list(open_paths)
         app.after_idle(lambda: app.open_paths(paths))

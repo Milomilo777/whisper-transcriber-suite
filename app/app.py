@@ -2743,6 +2743,15 @@ class App(tk.Tk):
 
     def destroy(self) -> None:  # type: ignore[override]
         win_taskbar.shutdown()
+        # Stop the tray icon thread on every teardown path, not only
+        # on_exit (idempotent there). A live pystray loop keeps its own
+        # message thread plus a reference to this App alive after destroy.
+        tray = getattr(self, "tray", None)
+        if tray is not None:
+            try:
+                tray.stop()
+            except Exception:  # noqa: BLE001
+                logger.exception("Could not stop the tray icon")
         # Cancel every pending after() callback before tearing down the
         # Tcl interpreter. Otherwise the service poll loops fire one last
         # time after destroy() and spam the console with
