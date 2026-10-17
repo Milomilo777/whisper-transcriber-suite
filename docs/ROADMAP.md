@@ -782,6 +782,12 @@ Every chunky choice gets a short ADR in `docs/decisions/NNNN-title.md`. Start no
 - **Persian (fa): strongly recommend `mehdi-hf/nemotron-asr-streaming-farsi`** to users who pick Persian. Nemotron 3.5 ASR fine-tuned on 1,181 h of Persian; reported WER on FLEURS 8.8% (vs 10.6% for Shenava, 24.2% for NVIDIA's earlier Persian model); conversational speech (YouTube/film) ~26% vs 54%; streaming with ~0.3-1 s latency; ~10x real-time on an M1 laptop; runs on NeMo and HF Transformers (needs transformers >= 5.14, already verified for nemotron-3.5-asr here). Model: https://huggingface.co/mehdi-hf/nemotron-asr-streaming-farsi , code: https://github.com/mallahyari/nemotron-asr-streaming-farsi . Figures come from the author's own benchmark tests (owner trusts them); before shipping only check the licence and run a quick smoke test on our Persian samples.
 - **Per-language recommender:** deep-scan Hugging Face for the best open ASR model per target language (WER on FLEURS/Common Voice, licence, size, CPU/Apple-Silicon speed) keep only models clearly more accurate than Whisper for that language, add them to the app as selectable engines, and recommend them automatically when the user picks that language. Next session: research + design.
 
+### 7.7 Website in all 42 UI languages (idea; added 2026-10-17, planned for the next session)
+
+- Translate the project website (`site/`) into the same 42 languages the app UI ships, using Gemini web.
+- Every translated page must be approved by both Gemini and ChatGPT (cross-review) before it is published.
+- Pick the default language from the visitor's country (IP geolocation, e.g. the Cloudflare `CF-IPCountry` header on Pages), with a visible language switcher and a remembered manual choice that always wins; keep `hreflang` tags for search engines.
+
 ## What we explicitly are NOT doing
 
 - **Migrating to Electron / web UI.** Cost is enormous, no clear user benefit, breaks the lightweight desktop story.
