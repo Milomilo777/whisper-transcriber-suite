@@ -1,6 +1,6 @@
 <div align="center" dir="rtl">
 
-<img src="../img/hero.png" alt="Whisper Transcriber Suite: sound in, text out. Free, open-source transcription that runs Whisper on your own computer." width="100%">
+<img src="../img/promo-hero.svg" alt="Whisper Transcriber Suite: sound in, text out. Free, open-source transcription that runs Whisper on your own computer." width="100%">
 
 # Whisper Transcriber Suite
 

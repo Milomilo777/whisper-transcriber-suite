@@ -111,9 +111,9 @@ It runs the model locally via faster-whisper by default, so there is no per-minu
 
 Yes, Web/LAN access mode turns this machine into a transcription page the other devices on the network can use.
 
-### What is new in version 2.0?
+### What is new in version 2.1?
 
-The queue shows each transcription's speed and time left; a Make subtitled video option turns a link into an MP4 with the subtitles burned in; a finished transcript can be saved as one offline web page; Work offline shows whether anything is connected; speech can be translated straight to English; the Mac app has native menus, Dark mode and notifications; the Windows app shows taskbar progress and dark title bars. The Video Tiling tab was removed.
+Menus, buttons and messages come in 42 languages (machine-translated and marked as such); speaker labels reach the end of long recordings and you can set how many people talk; transcripts, exports and subtitles are fully written to disk before they replace the old file; online features work on every Mac. Version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English.
 
 ### Can it turn a video link into a video with subtitles?
 
@@ -151,18 +151,15 @@ Drop in an audio or video file and the transcript is written next to it. The spe
 no per-minute cost and, once the model is downloaded, no internet connection
 is needed.
 
-## What's new in 2.0
+## What's new in 2.1
 
-- **Speed and time left:** the Queue tab shows each job's speed and a rough time left.
-- **Subtitled video from a link:** download, transcribe and burn in the subtitles as one job ([docs/SUBTITLED_VIDEO.md](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SUBTITLED_VIDEO.md)).
-- **Transcript as a web page:** one `.html` file with search and click-to-play that works offline in any browser.
-- **Work offline you can check:** with Work offline on, a status line shows whether the app or a process it started has a network connection.
-- **Translate to English:** non-English speech becomes English subtitles in one pass.
-- **Quick start:** new installs ask three questions, and an 18-second sample clip shows a result at once.
-- **Report a problem** from Help, without a GitHub account.
-- **macOS:** app menu with Settings (Command-comma), Light and Dark that follow the system, notifications. **Windows:** taskbar progress and dark title bars.
+- **The app in your language:** menus, buttons and messages in 42 languages (39 on macOS and Linux), machine-translated and marked as such. It follows your system language, or you pick one in Advanced settings.
+- **Speaker labels you can trust:** names reach the end of long recordings, and you can set how many people talk (2 to 10) instead of Auto.
+- **Your work is safer:** transcripts, exports and subtitles are fully written to disk before they replace the old file.
+- **Online features work on every Mac:** the update check and problem reports no longer fail with "certificate verify failed".
+- **Word counts for Chinese, Japanese, Thai, Lao, Khmer and Burmese** count characters or syllables.
 
-Full list: [CHANGELOG](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md).
+Version 2.0 added the queue's speed and time left, [subtitled video from a link](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SUBTITLED_VIDEO.md), transcripts as an offline web page, a checkable Work offline mode and translation to English. Full list: [CHANGELOG](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md).
 
 ## Features
 

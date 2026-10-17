@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="../img/hero.png" alt="Whisper Transcriber Suite: звук улази, текст излази. Бесплатна транскрипција отвореног кода која покреће Whisper на вашем рачунару." width="100%">
+<img src="../img/promo-hero.svg" alt="Whisper Transcriber Suite: звук улази, текст излази. Бесплатна транскрипција отвореног кода која покреће Whisper на вашем рачунару." width="100%">
 
 # Whisper Transcriber Suite
 

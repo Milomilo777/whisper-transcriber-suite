@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="../img/hero.png" alt="Whisper Transcriber Suite: sunet la intrare, text la ieșire. Transcriere gratuită, open-source, care rulează Whisper pe propriul tău calculator." width="100%">
+<img src="../img/promo-hero.svg" alt="Whisper Transcriber Suite: sunet la intrare, text la ieșire. Transcriere gratuită, open-source, care rulează Whisper pe propriul tău calculator." width="100%">
 
 # Whisper Transcriber Suite
 

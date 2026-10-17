@@ -1,0 +1,817 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="100%" height="100%" role="img" aria-labelledby="promo-title promo-desc">
+  <title id="promo-title">Whisper Transcriber Suite — Sound in. Text out. Your audio stays on your computer.</title>
+  <desc id="promo-desc">Animated promo where the Whisper W logo acts as a local optical prism, refracting raw sound into Speaker 1 and Speaker 2 timestamps and 14 transcript formats offline.</desc>
+
+  <defs>
+    
+    <linearGradient id="prism-grad" x1="0%" y1="0%" x2="98%" y2="18%">
+      <stop offset="0%" stop-color="#0c9d95" />
+      <stop offset="55%" stop-color="#6a5cf0" />
+      <stop offset="100%" stop-color="#f2604c" />
+    </linearGradient>
+
+    
+    <radialGradient id="wash-tl" cx="8%" cy="10%" r="60%">
+      <stop offset="0%" stop-color="#0c9d95" stop-opacity="0.11" />
+      <stop offset="55%" stop-color="#6a5cf0" stop-opacity="0.04" />
+      <stop offset="100%" stop-color="#0a0f24" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="wash-br" cx="90%" cy="88%" r="58%">
+      <stop offset="0%" stop-color="#6a5cf0" stop-opacity="0.11" />
+      <stop offset="55%" stop-color="#f2604c" stop-opacity="0.04" />
+      <stop offset="100%" stop-color="#0a0f24" stop-opacity="0" />
+    </radialGradient>
+
+    
+    <clipPath id="left-of-w">
+      <polygon points="0,0 695,0 695,640 0,640" />
+    </clipPath>
+  </defs>
+
+  <style><![CDATA[
+@font-face{font-family:'Sora';font-weight:400 800;src:url(data:font/woff2;base64,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) format('woff2');}
+@font-face{font-family:'Sora';font-weight:400 800;src:url(data:font/woff2;base64,d09GMgABAAAAAAKAABIAAAAABcQAAAIfAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGyAcKj9IVkFSOgZgP1NUQVRUADQvRBEICgEsMCoBNgIkAwgLBgAEIAWDeAcgDAcbrgQILgpsY+jkIT5ovdhiiAzFujQWv17Ew+/3bc59b8UkLSYaxUKhW1oqnogbNxM1kggRklgo4t++X9NNWEVHZZ4MsCNWCO6Q/wWs7/gqVTaqOSiaGgD5z1no85yLR8M12D6uwUY6grS46ucF0iD3RjbQ63p+gGlwus2zKzCGjBFDPKTn7qmCdpNyIgfniwPSamgABO3m5EW1ZJlrHLORld8NAgbBRgAEnYJhEWHvEAXhazsooS63Io80Ue6Uc4ATmCRX0MxeBCoCvkH+abybRdXr/x/qVxkCAmW4vMGsmIhWwaA4JkWvKyqLQKtBpCyCkjqPEEhTOZehubzkkZZqFlBQYVCsYtssqNWC2QYwNN4FJvWKikFxrV1Uj8gjKj2I1DTSxBT5Zjqk0qL+T6RBDyigBgDYDkHAuCi+G9A6H+2a5u3FvK+3CQpflt/Vnp3fWqvqK7ytlQfA519nEQDQrIDwhtjq4rNqKIJw+yNLTIRdnR6rpG7DAhmi1QKKbouorPaG2qgfNBn3LzYbzaAkdGYlat0W0aQ3W9GsNUdfq0V/zmLiuC9fU1RGmuoaWshBlcje8Tmy8R1dEhgZhUzViMDPuzYxN2irqVG0vSvkqwTHqgnM+Ypn0k8IuWmzQv0lO0kJTc5vqqofizpW69WsczNesWxuRsxJKgRaaYbYRzNWztJYh/aSpY0dU8Tu2ZP5HAljglVj63U+TaMn9X0AAA==) format('woff2');}
+@font-face{font-family:'Geist';font-weight:100 900;src:url(data:font/woff2;base64,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) format('woff2');}
+@font-face{font-family:'Geist';font-weight:100 900;src:url(data:font/woff2;base64,d09GMgABAAAAAANwABMAAAAACJgAAAMKAAHMzQAAAAAAAAAAAAAAAAAAAAAAAAAAGyAcKj9IVkFSRD9NVkFSPAZgP1NUQVSBOAA0L34RCAoBLDAqATYCJAMICwYABCAFh1gHIAwHG3IHKC4G7Ib6hsjCMCziojVMm7r6acTDz/3nnJt8ygLlc/ZtlrkIpNqVJVXWqFu3qsAKyFUiOyJ7fm0NeIJK/BHxKOZ1Xd4imcvhKL6/7b3P3nggTVRewBpXV9n5z1kIRZzJl2c8AouhpBWoQt7xiJffhypYrkX7UqkBa8T6k30iFcdC7EyvXhEzk5Mks8dOKmh0BnLMtrshq4b/AYLGGusUtFzulpMcFOgvhIAWhwEI5go6Ud7wBjjCCAoK4qMhKCFgVNE9FLgA+26VACnUxGSqiobhRl2O7TFDlAfmAnDytpDLtJsl8t8D4Lx9usO/Xr9+/i/1EQ0jUBbPm+g1IkYVtBqsUu66NIrhxpe3YmtEq7fJAU5ww7F8/AmkdQ0IZMLbCGSqTahQlDxGeQWBdP2CQAZzAQikh6xYPc6qdX91JUrWUoqCCq1K0Kr1qNWC/rd6/v9cYNVCRbTGNNeWDgnyGNX9EGlxDWS8CbxNJpsim8h0M5nCma0jv5ClDSgXQJbVyzfJ8lZQ9WRlq6juJ6tF/mcBKKDm1HAZBAEzCpgBo3enMXS3I+BuH93zE+T9D9b8N1I/8od8o4nqO/j6WeUK8M2fJADAsALCjzSUCwCy3wEApVyg6C8EBUD4oa7zJKQew9MciMbTFPM9Q2Wb56jN+IYhM9GwNeMKc7OL1miOYFzbCZqwL2FS3x1MafIY0yZ6PJsxaj6zjers/Sw11SsMLOxDlun6it5owXLtjLLC4ulYaTBbWKUpp7DaxJzHGnPLLfFaeD77TLk8XwGdSkOYHbbZYZfeOTQy5ngyXYgwZwi4DDIRYY4UIRpXIMSscwNCPKGOrba6ns6OjwjqruayNdxJFhDJLAl6Hq25jstBSu2veCFTRSy8QMsWB9hmm4Od52Jqp5uZVdMwroXpoSDVmzOmftBKPYOX5dxodI5MEOyb+yAB3s46cX/U3zrlmT2ZRBextTvU9RmbbsJlkXBP0BeGEo7sS/uR/AkLT2RaGH0ja4Rn0YkuXDaeIwH8vx28/oX+b3/9MA==) format('woff2');}
+
+    /* Typography & Base Poster Defaults (Reduced-Motion Poster = Bar 5 Hero Lockup) */
+    text {
+      font-family: "Sora", "Geist", system-ui, sans-serif;
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+    }
+
+    .uf {
+      transform-box: fill-box;
+      transform-origin: 50% 100%;
+    }
+
+    #w-prism {
+      transform-box: view-box;
+      transform-origin: 580px 319px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-469.2px, -221px) scale(0.06316);
+    }
+
+    #bar1-sound,
+    #bar2-valleys,
+    #bar3-engines,
+    #bar4-dispersion {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    #bar1-carrier {
+      transform-box: view-box;
+      transform-origin: 0px 0px;
+    }
+
+    #bar5-hero,
+    #bar5-badge-tile,
+    #b5-badge-details,
+    #bar5-brand,
+    #b5-h1,
+    #b5-h2,
+    #b5-ledger {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #bar5-badge-tile {
+      transform-box: fill-box;
+      transform-origin: 50% 50%;
+    }
+
+    #bar5-brand {
+      transform-box: fill-box;
+      transform-origin: 0% 50%;
+    }
+
+    .ray-teal,
+    .ray-violet,
+    .ray-coral {
+      stroke-dasharray: 320 1200;
+      stroke-dashoffset: 340;
+    }
+
+    .disp-ray-1,
+    .disp-ray-2,
+    .disp-ray-3 {
+      stroke-dasharray: 700;
+      stroke-dashoffset: 700;
+    }
+
+    /* Full 16s Seamless Choreography for Viewers with Motion Enabled */
+    @media all {
+      #bar1-sound,
+      #bar2-valleys,
+      #bar3-engines,
+      #bar4-dispersion,
+      #w-prism {
+        visibility: visible;
+      }
+
+      #w-prism {
+        animation: wPrismPose 16s infinite both;
+      }
+
+      /* Bar 1: Raw sound enters left flank of the W */
+      #bar1-sound {
+        animation: bar1Vis 16s infinite both;
+      }
+      #bar1-carrier {
+        animation: bar1Move 16s infinite both;
+      }
+      .arc-1 {
+        transform-box: fill-box;
+        transform-origin: 0% 50%;
+        animation: arcPulse1 16s infinite both;
+      }
+      .arc-2 {
+        transform-box: fill-box;
+        transform-origin: 0% 50%;
+        animation: arcPulse2 16s infinite both;
+      }
+      .arc-3 {
+        transform-box: fill-box;
+        transform-origin: 0% 50%;
+        animation: arcPulse3 16s infinite both;
+      }
+
+      /* Refraction pulses along the W vertices */
+      .ray-teal {
+        animation: rayTealAnim 16s infinite both;
+      }
+      .ray-violet {
+        animation: rayVioletAnim 16s infinite both;
+      }
+      .ray-coral {
+        animation: rayCoralAnim 16s infinite both;
+      }
+
+      /* Bar 2: Valley speakers & apex timestamp */
+      #bar2-valleys {
+        animation: bar2Vis 16s infinite both;
+      }
+      #b2-spk1 {
+        animation: b2Spk1Anim 16s infinite both;
+      }
+      #b2-time {
+        animation: b2TimeAnim 16s infinite both;
+      }
+      #b2-spk2 {
+        animation: b2Spk2Anim 16s infinite both;
+      }
+
+      /* Bar 3: Local Silicon Acceleration Inside the Crystal */
+      #bar3-engines {
+        animation: bar3Vis 16s infinite both;
+      }
+      #b3-speed {
+        animation: b3SpeedAnim 16s infinite both;
+      }
+      #b3-stack {
+        animation: b3StackAnim 16s infinite both;
+      }
+
+      /* Bar 4: Spectral Dispersion Out the Right Flank */
+      #bar4-dispersion {
+        animation: bar4Vis 16s infinite both;
+      }
+      .disp-ray-1 {
+        animation: dispRay1Anim 16s infinite both;
+      }
+      .disp-ray-2 {
+        animation: dispRay2Anim 16s infinite both;
+      }
+      .disp-ray-3 {
+        animation: dispRay3Anim 16s infinite both;
+      }
+      #b4-head {
+        animation: b4HeadAnim 16s infinite both;
+      }
+      #b4-srt {
+        animation: b4SrtAnim 16s infinite both;
+      }
+      #b4-docx {
+        animation: b4DocxAnim 16s infinite both;
+      }
+      #b4-pdf {
+        animation: b4PdfAnim 16s infinite both;
+      }
+      #b4-sub {
+        animation: b4SubAnim 16s infinite both;
+      }
+
+      /* Bar 5: Climax Hero Lockup & Canonical Logo */
+      #bar5-hero {
+        animation: bar5Vis 16s infinite both;
+      }
+      #bar5-badge-tile {
+        animation: b5BadgeAnim 16s infinite both;
+      }
+      #b5-badge-details {
+        animation: b5BadgeDetailsAnim 16s infinite both;
+      }
+      #bar5-brand {
+        animation: b5BrandAnim 16s infinite both;
+      }
+      #b5-h1 {
+        animation: b5H1Anim 16s infinite both;
+      }
+      #b5-h2 {
+        animation: b5H2Anim 16s infinite both;
+      }
+      #b5-ledger {
+        animation: b5LedgerAnim 16s infinite both;
+      }
+    }
+
+    /* Explicit Reduced-Motion Override Rule */
+    @media not all {
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
+      #bar1-sound,
+      #bar2-valleys,
+      #bar3-engines,
+      #bar4-dispersion,
+      #w-prism {
+        opacity: 0 !important;
+        visibility: hidden !important;
+      }
+      #bar5-hero,
+      #bar5-badge-tile,
+      #b5-badge-details,
+      #bar5-brand,
+      #b5-h1,
+      #b5-h2,
+      #b5-ledger {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+      }
+    }
+
+    /* ==========================================================================
+       KEYFRAMES (16.0s loop, 0% === 100%)
+       ========================================================================== */
+
+    /* Monumental W Prism spatial choreography */
+    @keyframes wPrismPose {
+      0%, 50% {
+        opacity: 1;
+        transform: translate(340px, 14px) scale(0.92);
+        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+      }
+      54.5%, 66.67% {
+        opacity: 1;
+        transform: translate(-250px, -4px) scale(0.82);
+        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+      }
+      71% {
+        opacity: 1;
+        transform: translate(-469.2px, -221px) scale(0.06316);
+        animation-timing-function: steps(1, end);
+      }
+      71.01%, 91.66% {
+        opacity: 0;
+        transform: translate(-469.2px, -221px) scale(0.06316);
+        animation-timing-function: steps(1, end);
+      }
+      91.67% {
+        opacity: 1;
+        transform: translate(-469.2px, -221px) scale(0.06316);
+        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+      }
+      97.5%, 100% {
+        opacity: 1;
+        transform: translate(340px, 14px) scale(0.92);
+      }
+    }
+
+    /* Bar 1: Sound wave holds >=1.5s then enters left flank */
+    @keyframes bar1Vis {
+      0% { opacity: 1; animation-timing-function: steps(1, end); }
+      16.5%, 100% { opacity: 0; }
+    }
+    @keyframes bar1Move {
+      0%, 10.5% {
+        transform: translateX(0px);
+        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+      }
+      16.25%, 100% {
+        transform: translateX(620px);
+      }
+    }
+    @keyframes arcPulse1 {
+      0%, 100% { transform: scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+      4.5% { transform: scale(1.08); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+      9% { transform: scale(1); }
+    }
+    @keyframes arcPulse2 {
+      0%, 1.5%, 100% { transform: scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+      6% { transform: scale(1.1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+      10% { transform: scale(1); }
+    }
+    @keyframes arcPulse3 {
+      0%, 3%, 100% { transform: scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+      7.5% { transform: scale(1.12); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+      10.5% { transform: scale(1); }
+    }
+
+    /* Internal optical refraction rays along #w-prism (pathLength = 1200) */
+    @keyframes rayTealAnim {
+      0%, 15.8% {
+        stroke-dashoffset: 340;
+        opacity: 0;
+        animation-timing-function: steps(1, end);
+      }
+      16% {
+        stroke-dashoffset: 340;
+        opacity: 1;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      29%, 32.5% {
+        stroke-dashoffset: -120;
+        opacity: 1;
+        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+      }
+      40% {
+        stroke-dashoffset: -1240;
+        opacity: 1;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      48%, 66.5% {
+        stroke-dashoffset: 40;
+        opacity: 1;
+        animation-timing-function: steps(1, end);
+      }
+      66.67%, 100% {
+        stroke-dashoffset: 340;
+        opacity: 0;
+      }
+    }
+
+    @keyframes rayVioletAnim {
+      0%, 17.8% {
+        stroke-dashoffset: 340;
+        opacity: 0;
+        animation-timing-function: steps(1, end);
+      }
+      18% {
+        stroke-dashoffset: 340;
+        opacity: 1;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      30%, 32.5% {
+        stroke-dashoffset: -440;
+        opacity: 1;
+        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+      }
+      41% {
+        stroke-dashoffset: -1240;
+        opacity: 1;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      49%, 66.5% {
+        stroke-dashoffset: -440;
+        opacity: 1;
+        animation-timing-function: steps(1, end);
+      }
+      66.67%, 100% {
+        stroke-dashoffset: 340;
+        opacity: 0;
+      }
+    }
+
+    @keyframes rayCoralAnim {
+      0%, 19.5% {
+        stroke-dashoffset: 340;
+        opacity: 0;
+        animation-timing-function: steps(1, end);
+      }
+      19.7% {
+        stroke-dashoffset: 340;
+        opacity: 1;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      31%, 32.5% {
+        stroke-dashoffset: -880;
+        opacity: 1;
+        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+      }
+      42% {
+        stroke-dashoffset: -1240;
+        opacity: 1;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      50%, 66.5% {
+        stroke-dashoffset: -880;
+        opacity: 1;
+        animation-timing-function: steps(1, end);
+      }
+      66.67%, 100% {
+        stroke-dashoffset: 340;
+        opacity: 0;
+      }
+    }
+
+    /* Bar 2: Valley Speaker & Timestamp Unfolds (holds still 23%..32.5% = 1.52s) */
+    @keyframes bar2Vis {
+      0%, 16.66% { opacity: 0; animation-timing-function: steps(1, end); }
+      16.67% { opacity: 1; animation-timing-function: steps(1, end); }
+      36.25%, 100% { opacity: 0; }
+    }
+    @keyframes b2Spk1Anim {
+      0%, 16.67% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      20.42%, 32.5% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      36.25%, 100% {
+        transform: scaleY(0);
+      }
+    }
+    @keyframes b2TimeAnim {
+      0%, 18% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      21.75%, 32.5% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      36.25%, 100% {
+        transform: scaleY(0);
+      }
+    }
+    @keyframes b2Spk2Anim {
+      0%, 19.25% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      23%, 32.5% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      36.25%, 100% {
+        transform: scaleY(0);
+      }
+    }
+
+    /* Bar 3: Local Silicon Acceleration (unfolds 36.25%..40%, holds still 40%..50% = 1.6s) */
+    @keyframes bar3Vis {
+      0%, 36.24% { opacity: 0; animation-timing-function: steps(1, end); }
+      36.25% { opacity: 1; animation-timing-function: steps(1, end); }
+      53.75%, 100% { opacity: 0; }
+    }
+    @keyframes b3SpeedAnim {
+      0%, 36.25% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      40%, 50% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      53.75%, 100% {
+        transform: scaleY(0);
+      }
+    }
+    @keyframes b3StackAnim {
+      0%, 36.25% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      40%, 50% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      53.75%, 100% {
+        transform: scaleY(0);
+      }
+    }
+
+    /* Bar 4: Spectral Dispersion Out the Right Flank (holds still 57.5%..66.67%) */
+    @keyframes bar4Vis {
+      0%, 53.74% { opacity: 0; animation-timing-function: steps(1, end); }
+      53.75% { opacity: 1; animation-timing-function: steps(1, end); }
+      69.8%, 100% { opacity: 0; }
+    }
+    @keyframes dispRay1Anim {
+      0%, 53.75% {
+        stroke-dashoffset: 700;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      57.5%, 66.67% {
+        stroke-dashoffset: 0;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      69.8%, 100% {
+        stroke-dashoffset: -700;
+      }
+    }
+    @keyframes dispRay2Anim {
+      0%, 53.75% {
+        stroke-dashoffset: 700;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      57.5%, 66.67% {
+        stroke-dashoffset: 0;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      69.8%, 100% {
+        stroke-dashoffset: -700;
+      }
+    }
+    @keyframes dispRay3Anim {
+      0%, 53.75% {
+        stroke-dashoffset: 700;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      57.5%, 66.67% {
+        stroke-dashoffset: 0;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      69.8%, 100% {
+        stroke-dashoffset: -700;
+      }
+    }
+    @keyframes b4HeadAnim {
+      0%, 53.75% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      57.5%, 66.67% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      69.8%, 100% {
+        transform: scaleY(0);
+      }
+    }
+    @keyframes b4SrtAnim {
+      0%, 53.75% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      57.5%, 66.67% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      69.8%, 100% {
+        transform: scaleY(0);
+      }
+    }
+    @keyframes b4DocxAnim {
+      0%, 53.75% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      57.5%, 66.67% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      69.8%, 100% {
+        transform: scaleY(0);
+      }
+    }
+    @keyframes b4PdfAnim {
+      0%, 53.75% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      57.5%, 66.67% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      69.8%, 100% {
+        transform: scaleY(0);
+      }
+    }
+    @keyframes b4SubAnim {
+      0%, 53.75% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      57.5%, 66.67% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      69.8%, 100% {
+        transform: scaleY(0);
+      }
+    }
+
+    /* Bar 5: Climax Hero Lockup & Canonical Logo (100% still 74.2%..91.67%) */
+    @keyframes bar5Vis {
+      0%, 67.4% { opacity: 0; animation-timing-function: steps(1, end); }
+      67.5%, 95.8% { opacity: 1; animation-timing-function: steps(1, end); }
+      95.9%, 100% { opacity: 0; }
+    }
+    @keyframes b5BadgeAnim {
+      0%, 67.5% {
+        transform: scale(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      70%, 91.67% {
+        transform: scale(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      95.5%, 100% {
+        transform: scale(0);
+      }
+    }
+    @keyframes b5BadgeDetailsAnim {
+      0%, 71% {
+        opacity: 0;
+        animation-timing-function: steps(1, end);
+      }
+      71.01%, 91.66% {
+        opacity: 1;
+        animation-timing-function: steps(1, end);
+      }
+      91.67%, 100% {
+        opacity: 0;
+      }
+    }
+    @keyframes b5BrandAnim {
+      0%, 70.2% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      74%, 91.67% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      95.5%, 100% {
+        transform: scaleY(0);
+      }
+    }
+    @keyframes b5H1Anim {
+      0%, 70.4% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      74.1%, 91.67% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      95.5%, 100% {
+        transform: scaleY(0);
+      }
+    }
+    @keyframes b5H2Anim {
+      0%, 70.5% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      74.2%, 91.67% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      95.5%, 100% {
+        transform: scaleY(0);
+      }
+    }
+    @keyframes b5LedgerAnim {
+      0%, 70.5% {
+        transform: scaleY(0);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      74.2%, 91.67% {
+        transform: scaleY(1);
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      95.5%, 100% {
+        transform: scaleY(0);
+      }
+    }
+  
+* { animation-iteration-count: 0.85 !important; animation-fill-mode: forwards !important; }
+]]></style>
+
+  
+  <rect width="1280" height="640" rx="24" fill="#0a0f24" />
+  <rect width="1280" height="640" rx="24" fill="url(#wash-tl)" />
+  <rect width="1280" height="640" rx="24" fill="url(#wash-br)" />
+  <rect x="1" y="1" width="1278" height="638" rx="23" fill="none" stroke="#eef2ff" stroke-opacity="0.16" stroke-width="2" />
+
+  
+  <line x1="88" y1="68" x2="1192" y2="68" stroke="#eef2ff" stroke-opacity="0.05" stroke-width="1" />
+  <line x1="88" y1="572" x2="1192" y2="572" stroke="#eef2ff" stroke-opacity="0.05" stroke-width="1" />
+
+  
+  <g id="bar1-sound" clip-path="url(#left-of-w)">
+    <g id="bar1-carrier">
+      <text x="88" y="340" font-size="96" font-weight="800" fill="#eef2ff" letter-spacing="-2">Sound in.</text>
+      
+      <g fill="none" stroke="#0c9d95" stroke-width="12" stroke-linecap="round">
+        <path class="arc-1" d="M 552.00 279.91 A 34.06 34.06 0 0 1 552.00 332.09" />
+        <path class="arc-2" d="M 573.71 254.04 A 67.85 67.85 0 0 1 573.71 357.96" />
+        <path class="arc-3" d="M 595.45 228.14 A 101.64 101.64 0 0 1 595.45 383.86" />
+      </g>
+    </g>
+  </g>
+
+  
+  <g id="bar2-valleys">
+    
+    <g id="b2-spk1" class="uf">
+      <text x="380" y="564" font-size="54" font-weight="800" fill="#0c9d95">Speaker 1</text>
+    </g>
+    
+    <g id="b2-time" class="uf">
+      <text x="780" y="108" text-anchor="middle" font-size="44" font-weight="700" fill="#6a5cf0">00:00:04,120 → 00:00:06,880</text>
+    </g>
+    
+    <g id="b2-spk2" class="uf">
+      <text x="860" y="564" font-size="54" font-weight="800" fill="#f2604c">Speaker 2</text>
+    </g>
+  </g>
+
+  
+  <g id="bar3-engines">
+    <g id="b3-speed" class="uf">
+      <text x="88" y="336" font-size="72" font-weight="800" fill="#eef2ff" letter-spacing="-2">4.8x · Offline</text>
+    </g>
+    <g id="b3-stack" class="uf">
+      <text x="640" y="568" text-anchor="middle" font-size="44" font-weight="700" fill="#0c9d95">faster-whisper · whisper.cpp · Parakeet</text>
+    </g>
+  </g>
+
+  
+  <g id="bar4-dispersion">
+    
+    <line class="disp-ray-1" x1="486" y1="160" x2="850" y2="210" stroke="#0c9d95" stroke-width="6" stroke-linecap="butt" pathLength="700" />
+    <line class="disp-ray-2" x1="486" y1="160" x2="850" y2="330" stroke="#6a5cf0" stroke-width="6" stroke-linecap="butt" pathLength="700" />
+    <line class="disp-ray-3" x1="486" y1="160" x2="850" y2="450" stroke="#f2604c" stroke-width="6" stroke-linecap="butt" pathLength="700" />
+
+    <g id="b4-head" class="uf">
+      <text x="530" y="130" font-size="96" font-weight="800" fill="#eef2ff" letter-spacing="-2">Text out.</text>
+    </g>
+    <g id="b4-srt" class="uf">
+      <text x="876" y="226" font-size="68" font-weight="800" fill="#0c9d95">.srt</text>
+    </g>
+    <g id="b4-docx" class="uf">
+      <text x="876" y="346" font-size="68" font-weight="800" fill="#6a5cf0">.docx</text>
+    </g>
+    <g id="b4-pdf" class="uf">
+      <text x="876" y="466" font-size="68" font-weight="800" fill="#f2604c">.pdf</text>
+    </g>
+    <g id="b4-sub" class="uf">
+      <text x="760" y="556" font-size="46" font-weight="700" fill="#eef2ff">14 formats · $0</text>
+    </g>
+  </g>
+
+  
+  <g id="bar5-hero">
+    
+    <g id="bar5-badge-tile">
+      <rect x="88" y="68" width="60" height="60" rx="7.5" fill="#0c9d95" />
+      <g id="b5-badge-details">
+        <polyline points="98.80,86.00 103.20,110.00 109.00,95.00 118.80,110.00 122.80,86.00" fill="none" stroke="#ffffff" stroke-width="4.22" stroke-linejoin="round" stroke-linecap="butt" />
+        <path d="M137.13 95.22A3.63 3.63 0 0 1 137.13 100.78" fill="none" stroke="#ffffff" stroke-width="3.28" stroke-linecap="round" />
+        <path d="M139.45 92.46A7.23 7.23 0 0 1 139.45 103.54" fill="none" stroke="#ffffff" stroke-width="3.28" stroke-linecap="round" />
+        <path d="M141.76 89.71A10.83 10.83 0 0 1 141.76 106.29" fill="none" stroke="#ffffff" stroke-width="3.28" stroke-linecap="round" />
+      </g>
+    </g>
+
+    <g id="bar5-brand">
+      <text x="172" y="112" font-size="42" font-weight="700" fill="#eef2ff">Whisper Transcriber Suite</text>
+    </g>
+
+    
+    <g id="b5-h1" class="uf">
+      <text x="88" y="242" font-size="96" font-weight="800" fill="#eef2ff" letter-spacing="-3">Sound in. Text out.</text>
+    </g>
+    <g id="b5-h2" class="uf">
+      <text x="88" y="338" font-size="48" font-weight="800" fill="url(#prism-grad)" letter-spacing="-1">Your audio stays on your computer.</text>
+    </g>
+
+    
+    <g id="b5-ledger" class="uf">
+      <text x="88" y="448" font-size="42" font-weight="700" fill="#6a5cf0">00:00:04,120 → 00:00:06,880</text>
+      <text x="88" y="534" font-size="46" font-weight="800" fill="#0c9d95">.srt</text>
+      <text x="256" y="534" font-size="46" font-weight="800" fill="#6a5cf0">.docx</text>
+      <text x="452" y="534" font-size="46" font-weight="800" fill="#f2604c">.pdf</text>
+      <text x="624" y="534" font-size="44" font-weight="700" fill="#eef2ff">No cloud · $0</text>
+    </g>
+  </g>
+
+  
+  <g id="w-prism">
+    
+    <polyline points="390,130 460,508 552,272 706,508 770,130" fill="none" stroke="#eef2ff" stroke-width="22" stroke-linejoin="round" stroke-linecap="butt" pathLength="1200" />
+    
+    <polyline class="ray-teal" points="390,130 460,508 552,272 706,508 770,130" fill="none" stroke="#0c9d95" stroke-width="22" stroke-linejoin="round" stroke-linecap="butt" pathLength="1200" />
+    <polyline class="ray-violet" points="390,130 460,508 552,272 706,508 770,130" fill="none" stroke="#6a5cf0" stroke-width="22" stroke-linejoin="round" stroke-linecap="butt" pathLength="1200" />
+    <polyline class="ray-coral" points="390,130 460,508 552,272 706,508 770,130" fill="none" stroke="#f2604c" stroke-width="22" stroke-linejoin="round" stroke-linecap="butt" pathLength="1200" />
+  </g>
+</svg>

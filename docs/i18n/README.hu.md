@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="../img/hero.png" alt="Whisper Transcriber Suite: hang be, szöveg ki. Ingyenes, nyílt forráskódú átíró, amely a Whispert futtatja saját számítógépén." width="100%">
+<img src="../img/promo-hero.svg" alt="Whisper Transcriber Suite: hang be, szöveg ki. Ingyenes, nyílt forráskódú átíró, amely a Whispert futtatja saját számítógépén." width="100%">
 
 # Whisper Transcriber Suite
 

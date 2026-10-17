@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="../img/hero.png" alt="Whisper Transcriber Suite: garsas įeina, tekstas išeina. Nemokama, atvirojo kodo transkribavimo programa, kuri naudoja Whisper jūsų pačių kompiuteryje." width="100%">
+<img src="../img/promo-hero.svg" alt="Whisper Transcriber Suite: garsas įeina, tekstas išeina. Nemokama, atvirojo kodo transkribavimo programa, kuri naudoja Whisper jūsų pačių kompiuteryje." width="100%">
 
 # Whisper Transcriber Suite
 

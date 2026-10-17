@@ -1,7 +1,7 @@
 """Render the README / social graphics from tools/graphics/graphics.html.
 
 Needs Google Chrome (headless). Writes:
-    docs/img/hero.png            1280x460   README banner
+    docs/img/hero.png            1280x460   old README banner (the README now uses promo-hero.svg)
     docs/img/features.png        1280x500   README "what's inside"
     docs/img/how-it-works.png    1360x520   README architecture strip
     docs/img/social-preview.png  1280x640   GitHub repo social preview (upload in

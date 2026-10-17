@@ -12,8 +12,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Website: three step-by-step guides**: YouTube video to text, video to SRT subtitles, and
   transcripts with speaker labels, each at its own address, linked from the home page and listed
   in the sitemap, `llms.txt` and the IndexNow ping. A test keeps every guide listed and linked.
+- **Animated banners on the project page**: `docs/img/promo-hero.svg` replaces the old screenshot
+  banner at the top of the README and every translation, and `docs/img/promo-features.svg` opens
+  the Features section, and `docs/img/promo-release.svg` heads the release page. They play once
+  and stop on their last frame; fonts are embedded.
 
 ### Changed
+
+- **"What's new" now describes 2.1** on the website (section and FAQ) and in the README; the 2.0
+  cards stay below, marked as 2.0.
 
 - `tools/make_i18n_readmes.py` now only writes the block of language links in `README.md` and the
   translations (text links, no flag images); the translations are edited directly instead of

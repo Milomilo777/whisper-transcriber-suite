@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/img/hero.png" alt="Whisper Transcriber Suite: sound in, text out. Free, open-source transcription that runs Whisper on your own computer." width="100%">
+<img src="docs/img/promo-hero.svg" alt="Whisper Transcriber Suite: sound in, text out. Interviews with speaker labels, timed lecture subtitles, subtitled video from a link and live captions, all on your own computer." width="100%">
 
 # Whisper Transcriber Suite
 
@@ -36,20 +36,21 @@ is needed.
 <img src="docs/img/screenshot-transcribe.png" alt="The Transcribe tab: a drop target, engine and language pickers, speaker-label and word-timestamp options" width="80%">
 </div>
 
-## What's new in 2.0
+## What's new in 2.1
 
-- **Speed and time left:** the Queue tab shows each job's speed and a rough time left.
-- **Subtitled video from a link:** download, transcribe and burn in the subtitles as one job ([docs/SUBTITLED_VIDEO.md](docs/SUBTITLED_VIDEO.md)).
-- **Transcript as a web page:** one `.html` file with search and click-to-play that works offline in any browser.
-- **Work offline you can check:** with Work offline on, a status line shows whether the app or a process it started has a network connection.
-- **Translate to English:** non-English speech becomes English subtitles in one pass.
-- **Quick start:** new installs ask three questions, and an 18-second sample clip shows a result at once.
-- **Report a problem** from Help, without a GitHub account.
-- **macOS:** app menu with Settings (Command-comma), Light and Dark that follow the system, notifications. **Windows:** taskbar progress and dark title bars.
+- **The app in your language:** menus, buttons and messages in 42 languages (39 on macOS and Linux), machine-translated and marked as such. It follows your system language, or you pick one in Advanced settings.
+- **Speaker labels you can trust:** names reach the end of long recordings, and you can set how many people talk (2 to 10) instead of Auto.
+- **Your work is safer:** transcripts, exports and subtitles are fully written to disk before they replace the old file.
+- **Online features work on every Mac:** the update check and problem reports no longer fail with "certificate verify failed".
+- **Word counts for Chinese, Japanese, Thai, Lao, Khmer and Burmese** count characters or syllables.
 
-Full list: [CHANGELOG](docs/CHANGELOG.md).
+Version 2.0 added the queue's speed and time left, [subtitled video from a link](docs/SUBTITLED_VIDEO.md), transcripts as an offline web page, a checkable Work offline mode and translation to English. Full list: [CHANGELOG](docs/CHANGELOG.md).
 
 ## Features
+
+<div align="center">
+<img src="docs/img/promo-features.svg" alt="Speaker labels, local engines faster-whisper, whisper.cpp and Parakeet, 14 transcript formats, no cloud and no cost." width="80%">
+</div>
 
 - **Local engines:** [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
   (default), whisper.cpp and NVIDIA Parakeet, for the many languages Whisper
