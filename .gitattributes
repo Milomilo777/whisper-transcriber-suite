@@ -20,3 +20,6 @@
 
 # Interface catalogs: the extractor writes LF and --check compares bytes.
 app/locales/*.json text eol=lf
+
+# The OSS Scanner Dockerfile runs on Linux: CRLF would break its line continuations.
+.oss-scanner/Dockerfile text eol=lf

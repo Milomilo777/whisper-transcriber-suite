@@ -1,0 +1,34 @@
+name: OSS Scanner image
+
+# Builds .oss-scanner/Dockerfile the way Anthropic's OSS Scanner does (repository root as the build
+# context), so a broken dependency or Dockerfile is seen here before the scanner reports a failed build.
+# The image runs the hermetic test suite as its last step but never fails on it (see the Dockerfile).
+
+on:
+  push:
+    paths:
+      - ".oss-scanner/**"
+      - "requirements*.txt"
+      - ".github/workflows/oss-scanner-image.yml"
+  pull_request:
+    paths:
+      - ".oss-scanner/**"
+      - "requirements*.txt"
+      - ".github/workflows/oss-scanner-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: docker build
+    runs-on: ubuntu-latest
+    # The build installs the dependencies and then runs the hermetic suite (about 15-25 minutes in CI).
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Build the scanner image
+        run: docker build -f .oss-scanner/Dockerfile -t oss-scanner-check .

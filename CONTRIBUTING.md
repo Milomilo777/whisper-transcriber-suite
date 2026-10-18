@@ -48,6 +48,10 @@ Both must be clean before opening a PR:
 - **repo hygiene** (CI job): `python tools/check_repo_hygiene.py` fails when a path that
   was moved out of the tree (session notes, agent briefs, generated repo maps, local notes)
   is tracked again, or when the repository root holds more than 24 files.
+- **OSS Scanner image** (CI job, only when `.oss-scanner/` or `requirements*.txt` change): builds
+  `.oss-scanner/Dockerfile`, the Linux image Anthropic's [OSS Scanner](https://github.com/anthropics/oss-scanner)
+  builds to audit the code; `.oss-scanner/threat_model.md` tells it what matters. Keep both current when
+  dependencies or the server's security behaviour change.
 
 New code needs new tests in the same style as its neighbors (every
 `core/writers/*.py` and `core/integrations/*.py` module has a matching
