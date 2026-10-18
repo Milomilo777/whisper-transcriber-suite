@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -16,7 +17,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "site"
 BASE = "https://whisper-transcriber-suite.pages.dev/"
-GUIDES = sorted(p.parent.name for p in SITE.glob("*/index.html"))
+sys.path.insert(0, str(ROOT / "tools"))
+from site_i18n import LANGS, url_dir  # noqa: E402
+
+# site/<lang>/ folders hold the built translations of every page (tools/site_i18n.py), not guides.
+LANG_DIRS = {url_dir(code) for code, _name in LANGS}
+GUIDES = sorted(p.parent.name for p in SITE.glob("*/index.html") if p.parent.name not in LANG_DIRS)
 
 
 def _read(path: Path) -> str:

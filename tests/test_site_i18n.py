@@ -76,6 +76,8 @@ def test_translated_page_language_direction_and_urls(monkeypatch):
     assert 'href="#features"' in built  # in-page anchors stay
     assert 'href="/?lang=en"' in built  # "View in English" is never localised
     assert '<meta property="og:locale" content="fa_IR">' in built
+    assert 'as="font"' not in built and 'as="font"' in doc  # no Latin font preload for a non-Latin script
+    assert 'as="font"' in S.build_page(doc, "de", "/")
     guide = S.build_page(PAGES[1][2], "fa", "/youtube-to-text/")
     assert 'href="/fa/"' in guide and 'href="/fa/#download"' in guide and 'src="/assets/logo.svg"' in guide
 
@@ -134,6 +136,14 @@ def test_unpublished_languages_are_not_built(monkeypatch):
     monkeypatch.setattr(S, "_ACTIVE", None)
     monkeypatch.setattr(S, "load_catalog", lambda code: {})
     assert S.active_langs() == [S.LANGS[0]]
+    monkeypatch.setattr(S, "_ACTIVE", None)
+
+
+def test_staged_rollout_limits_published_languages(monkeypatch):
+    with_catalog(monkeypatch, lambda src: "Ü " + src)
+    monkeypatch.setenv("SITE_I18N_ONLY", "fa, de")
+    monkeypatch.setattr(S, "_ACTIVE", None)
+    assert [c for c, _n in S.active_langs()] == ["en", "de", "fa"]
     monkeypatch.setattr(S, "_ACTIVE", None)
 
 

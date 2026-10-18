@@ -46,6 +46,7 @@ sys.path.insert(0, ROOT)
 from make_i18n_readmes import LANGS  # noqa: E402  (code, endonym) for the 42 app languages
 
 RTL = {"ar", "fa", "he"}
+NON_LATIN = {"ru", "uk", "bg", "sr", "el", "zh-CN", "zh-TW", "ja", "ko", "th", "hi", "ar", "fa", "he", "bn"}
 OG_LOCALE = {
     "en": "en_US", "de": "de_DE", "fr": "fr_FR", "es": "es_ES", "it": "it_IT", "pt-BR": "pt_BR",
     "pt": "pt_PT", "nl": "nl_NL", "pl": "pl_PL", "ru": "ru_RU", "uk": "uk_UA", "tr": "tr_TR",
@@ -143,9 +144,10 @@ class Seg:
 
 
 def _skip_marked(tag: str) -> bool:
-    """translate="no", data-auto (release facts) and data-i18n-skip keep an element untouched."""
+    """translate="no", data-auto (release facts) and data-i18n-skip keep an element untouched.
+    data-auto-href only marks a link's address, so its text is still translated."""
     for n, v, _s, _e in parse_attrs(tag):
-        if n in ("data-auto", "data-auto-href", "data-i18n-skip"):
+        if n in ("data-auto", "data-i18n-skip"):
             return True
         if n == "translate" and (v or "").lower() == "no":
             return True
@@ -595,12 +597,16 @@ _ACTIVE: list[tuple[str, str]] | None = None
 
 
 def active_langs() -> list[tuple[str, str]]:
-    """English plus every language whose catalog covers PUBLISH_SHARE of the segments, in LANGS order."""
+    """English plus every language whose catalog covers PUBLISH_SHARE of the segments, in LANGS order.
+    SITE_I18N_ONLY="fa,de" (environment) limits publishing to those languages, for a staged rollout."""
     global _ACTIVE
     if _ACTIVE is None:
         segs = all_segments()
         active = [LANGS[0]]
+        only = {c.strip() for c in os.environ.get("SITE_I18N_ONLY", "").split(",") if c.strip()}
         for c, n in LANGS[1:]:
+            if only and c not in only:
+                continue
             cat = load_catalog(c)
             done = sum(1 for s in segs if lookup(cat, s.src) is not None)
             if segs and done / len(segs) >= PUBLISH_SHARE:
@@ -661,7 +667,11 @@ def build_page(doc: str, code: str, path: str) -> str:
         for k in range(1, len(parts), 2):  # the opening tag of a script (src=…) still needs its URL
             parts[k] = re.sub(r"^<script\b[^>]*>", lambda m: render_tag(m.group(0), cat, path, code), parts[k])
         out = "".join(parts)
-        # 4) document language, direction, canonical
+        # 4) pages in a non-Latin script do not preload the Latin fonts; @font-face unicode-range
+        #    still fetches them if Latin words (product names) are on screen
+        if code in NON_LATIN:
+            out = re.sub(r'<link rel="preload" href="[^"]*\.woff2" as="font"[^>]*>\n', "", out)
+        # 5) document language, direction, canonical
         lang_attr = f'lang="{code}"' + (' dir="rtl"' if code in RTL else "")
         out = re.sub(r'<html lang="en"', f"<html {lang_attr}", out, count=1)
         out = re.sub(r'(<link rel="canonical" href=")([^"]*)(")',

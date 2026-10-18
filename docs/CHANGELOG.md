@@ -39,6 +39,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Website on phones and for screen readers**: the download cards no longer run off the screen on a
+  phone, the header buttons sit at the edge again when the menu is hidden, low-contrast link and badge
+  colours now reach 4.5:1, the carousel dots are 24-pixel targets, the footer logo link and the language
+  menu have names, a revealed contact address gets focus, and the guides' structured data names their
+  author and publisher. Phones load a 640-pixel hero image instead of the 1180-pixel one, the fonts keep
+  their week-long cache, and a small script no longer waits for the stylesheet.
 - **A possible crash while closing the app (Windows code 0x80000003)**: the main window could be
   freed by Python's garbage collector on a background thread after the window closed, and Tcl then
   stopped the whole process. The window now stays referenced until the app exits, and closing it

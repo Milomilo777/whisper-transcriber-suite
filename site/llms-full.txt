@@ -73,7 +73,7 @@ Yes. It's BSD-3-Clause licensed, with no subscription and no per-minute cost. Th
 
 ### Does it upload my audio or video anywhere?
 
-No, not by default. Every default backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — runs locally on your machine. Two backends are opt-in only (cloud_stt via the Gemini API, and google_cloud_stt), and both stay off until you turn them on yourself in Advanced to Backend. Usage statistics (no audio, no file names) are on by default and can be turned off under Help > Usage statistics, the app checks GitHub once a day for a new version, and File > Work offline stops all network use.
+No, not by default. Every default backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — runs locally on your machine. Two backends are opt-in only (cloud_stt via the Gemini API, and google_cloud_stt), and both stay off until you turn them on yourself in Advanced settings → Backend. Usage statistics (no audio, no file names) are on by default and can be turned off under Help > Usage statistics, the app checks GitHub once a day for a new version, and File > Work offline stops all network use.
 
 ### What platforms does it run on?
 

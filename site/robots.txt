@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 # Generative / AI-answer crawlers — explicitly allowed on purpose.
 User-agent: GPTBot
@@ -118,5 +119,4 @@ Disallow: /api/
 Sitemap: https://whisper-transcriber-suite.pages.dev/sitemap.xml
 
 # Content Signals Policy (https://contentsignals.org) — emerging convention, 2025.
-# This project is BSD-3-Clause and wants to be found, quoted and trained on.
-Content-Signal: search=yes, ai-input=yes, ai-train=yes
+# This project is BSD-3-Clause and wants to be found, quoted and trained on. The Content-Signal line sits in the User-agent: * group at the top.

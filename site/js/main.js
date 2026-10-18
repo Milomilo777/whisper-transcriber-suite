@@ -88,8 +88,8 @@
         const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
         return;
       }
-      btn.textContent = 'Copied'; btn.classList.add('is-done');
-      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('is-done'); }, 1800);
+      const label = btn.textContent; btn.textContent = t('Copied'); btn.classList.add('is-done');
+      setTimeout(() => { btn.textContent = label; btn.classList.remove('is-done'); }, 1800);
     });
   });
 
@@ -377,7 +377,8 @@
     };
     const next = () => { target = (Math.round(target / step) - 1) * step; kick(); };
     const prev = () => { target = (Math.round(target / step) + 1) * step; kick(); };
-    const takeOver = () => { userTook = Date.now(); };
+    // announce slide changes only once the visitor drives the carousel (not every auto-rotation)
+    const takeOver = () => { userTook = Date.now(); const live = $('[data-reel-live]', reel); if (live) live.setAttribute('aria-live', 'polite'); };
 
     const schedule = () => {
       clearTimeout(auto);
@@ -470,6 +471,7 @@
       }
     };
     const ask = async (t) => {
+      await new Promise((r) => setTimeout(r, 0)); // let "One moment…" paint first
       const n = await solve(t);
       const r = await fetch('/api/contact', {
         method: 'POST',
@@ -503,6 +505,7 @@
         out.replaceChildren(link);
         out.hidden = false;
         btn.hidden = true;
+        link.focus();
       } catch (e) {
         btn.textContent = t('Could not load it. Try again');
         btn.disabled = false;

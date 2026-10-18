@@ -23,9 +23,11 @@ import urllib.request
 HOST = "whisper-transcriber-suite.pages.dev"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 URLS = ["/", "/llms.txt", "/llms-full.txt", "/sitemap.xml"] + sorted(
-    # Guide pages live at site/<slug>/index.html and are served as /<slug>/.
-    f"/{os.path.basename(os.path.dirname(p))}/"
-    for p in glob.glob(os.path.join(ROOT, "site", "*", "index.html"))
+    # Guide pages live at site/<slug>/index.html, translations at site/<lang>/[<slug>/]index.html;
+    # each is served as its folder path.
+    "/" + os.path.relpath(os.path.dirname(p), os.path.join(ROOT, "site")).replace(os.sep, "/") + "/"
+    for p in glob.glob(os.path.join(ROOT, "site", "**", "index.html"), recursive=True)
+    if os.path.dirname(p) != os.path.join(ROOT, "site")
 )
 # Cloudflare answers 403 to urllib's default "Python-urllib" user agent.
 UA = {"User-Agent": "whisper-transcriber-suite-indexnow/1.0 (+https://github.com/Milomilo777/whisper-transcriber-suite)"}
