@@ -1,12 +1,31 @@
-This directory bundles three font families, each licensed under the SIL
+This directory bundles these font families, each licensed under the SIL
 Open Font License, Version 1.1. Each project's own copyright notice is
-listed below; the license text that follows applies to all three.
+listed below; the license text that follows applies to all of them.
 
 Sora:
 Copyright 2019 The Sora Project Authors (https://github.com/sora-xor/sora-font)
 
 Geist and Geist Mono:
 Copyright 2024 The Geist Project Authors (https://github.com/vercel/geist-font.git)
+
+Vazirmatn:
+Copyright 2015 The Vazirmatn Project Authors (https://github.com/rastikerdar/vazirmatn)
+
+Noto Sans Arabic, Noto Sans Devanagari, Noto Sans Thai:
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/arabic,
+https://github.com/notofonts/devanagari, https://github.com/notofonts/thai)
+
+Noto Sans Bengali:
+Copyright 2025 The Noto Project Authors (https://github.com/notofonts/bengali)
+
+Heebo:
+Copyright 2014 The Heebo Project Authors (https://github.com/OdedEzer/heebo)
+
+Manrope:
+Copyright 2019 The Manrope Project Authors (https://github.com/sharanda/manrope)
+
+Inter:
+Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

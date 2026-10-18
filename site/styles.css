@@ -7,6 +7,23 @@
 @font-face { font-family: "Geist"; font-style: normal; font-weight: 300 700; font-display: swap; src: url("assets/fonts/geist-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 @font-face { font-family: "Geist Mono"; font-style: normal; font-weight: 400 600; font-display: swap; src: url("assets/fonts/geist-mono-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: "Geist Mono"; font-style: normal; font-weight: 400 600; font-display: swap; src: url("assets/fonts/geist-mono-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+/* Per-script fonts (OFL, Google Fonts subsets): loaded only by pages whose language uses them, see the end. */
+@font-face { font-family: "Vazirmatn"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("assets/fonts/vazirmatn-arabic.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC, U+102E0-102FB, U+10E60-10E7E, U+10EC2-10EC7, U+10EC9-10EEE, U+10EF0-10EFF, U+1EE00-1EE03, U+1EE05-1EE1F, U+1EE21-1EE22, U+1EE24, U+1EE27, U+1EE29-1EE32, U+1EE34-1EE37, U+1EE39, U+1EE3B, U+1EE42, U+1EE47, U+1EE49, U+1EE4B, U+1EE4D-1EE4F, U+1EE51-1EE52, U+1EE54, U+1EE57, U+1EE59, U+1EE5B, U+1EE5D, U+1EE5F, U+1EE61-1EE62, U+1EE64, U+1EE67-1EE6A, U+1EE6C-1EE72, U+1EE74-1EE77, U+1EE79-1EE7C, U+1EE7E, U+1EE80-1EE89, U+1EE8B-1EE9B, U+1EEA1-1EEA3, U+1EEA5-1EEA9, U+1EEAB-1EEBB, U+1EEF0-1EEF1; }
+@font-face { font-family: "Noto Sans Arabic"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("assets/fonts/noto-sans-arabic-arabic.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC, U+102E0-102FB, U+10E60-10E7E, U+10EC2-10EC7, U+10EC9-10EEE, U+10EF0-10EFF, U+1EE00-1EE03, U+1EE05-1EE1F, U+1EE21-1EE22, U+1EE24, U+1EE27, U+1EE29-1EE32, U+1EE34-1EE37, U+1EE39, U+1EE3B, U+1EE42, U+1EE47, U+1EE49, U+1EE4B, U+1EE4D-1EE4F, U+1EE51-1EE52, U+1EE54, U+1EE57, U+1EE59, U+1EE5B, U+1EE5D, U+1EE5F, U+1EE61-1EE62, U+1EE64, U+1EE67-1EE6A, U+1EE6C-1EE72, U+1EE74-1EE77, U+1EE79-1EE7C, U+1EE7E, U+1EE80-1EE89, U+1EE8B-1EE9B, U+1EEA1-1EEA3, U+1EEA5-1EEA9, U+1EEAB-1EEBB, U+1EEF0-1EEF1; }
+@font-face { font-family: "Heebo"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("assets/fonts/heebo-hebrew.woff2") format("woff2"); unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: "Noto Sans Devanagari"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("assets/fonts/noto-sans-devanagari-devanagari.woff2") format("woff2"); unicode-range: U+0900-097F, U+1CD0-1CF4, U+1CF7-1CF9, U+200C-200D, U+20A8, U+20B9, U+20F0, U+25CC, U+A830-A839, U+A8E0-A8FF, U+11B00-11B0A; }
+@font-face { font-family: "Noto Sans Bengali"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("assets/fonts/noto-sans-bengali-bengali.woff2") format("woff2"); unicode-range: U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0, U+1CD2, U+1CD5-1CD6, U+1CD8, U+1CE1, U+1CEA, U+1CED, U+1CF2, U+1CF5-1CF7, U+200C-200D, U+20B9, U+25CC, U+A8F1, U+11DF0-11DF1; }
+@font-face { font-family: "Noto Sans Thai"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("assets/fonts/noto-sans-thai-thai.woff2") format("woff2"); unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC; }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("assets/fonts/manrope-cyrillic.woff2") format("woff2"); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("assets/fonts/manrope-greek.woff2") format("woff2"); unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF; }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("assets/fonts/manrope-vietnamese.woff2") format("woff2"); unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB; }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("assets/fonts/manrope-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("assets/fonts/manrope-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("assets/fonts/inter-cyrillic.woff2") format("woff2"); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("assets/fonts/inter-greek.woff2") format("woff2"); unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF; }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("assets/fonts/inter-vietnamese.woff2") format("woff2"); unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB; }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("assets/fonts/inter-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("assets/fonts/inter-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 
 /* ---------- Tokens ---------- */
 :root {
@@ -560,6 +577,10 @@ html[data-motion="off"] .rail-pulse { transform: translateX(380px); }
 .site-nav a, .brand-name { white-space: nowrap; }
 /* below this width the one-line menu and the header buttons no longer fit side by side */
 @media (max-width: 1240px) { .site-nav { display: none; } .site-nav + .header-cta { margin-inline-start: auto; } }
+/* set by js/lang.js while a translated header row does not fit */
+.hdr-no-name .site-header .brand-name { display: none; }
+.hdr-no-nav .site-header .site-nav { display: none; }
+.hdr-no-nav .site-header .site-nav + .header-cta { margin-inline-start: auto; }
 @media (max-width: 1500px) {
   /* the globe alone: the header row has no room for a language name next to the menu */
   .lang-current { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -578,6 +599,36 @@ html[lang="en"] .mt-note { display: none; }
 [dir="rtl"] .i-trail, [dir="rtl"] .text-link .i { transform: scaleX(-1); }
 [dir="rtl"] .btn:hover .i-trail { transform: scaleX(-1) translateX(3px); }
 [dir="rtl"] .text-link:hover .i { transform: scaleX(-1) translateX(4px); }
+
+/* ---------- Per-language fonts: the usual web font of each script ---------- */
+/* Keyed on the page's own language (html:lang), so the language menu, which names every language
+   in its own script, does not load every font. Sora/Geist keep the Latin words (product names). */
+html:lang(fa) { --font-display: "Vazirmatn", "Sora", Tahoma, sans-serif; --font-body: "Vazirmatn", "Geist", Tahoma, sans-serif; --font-mono: "Vazirmatn", "Geist Mono", monospace; }
+html:lang(ar) { --font-display: "Noto Sans Arabic", "Sora", Tahoma, sans-serif; --font-body: "Noto Sans Arabic", "Geist", Tahoma, sans-serif; --font-mono: "Noto Sans Arabic", "Geist Mono", monospace; }
+html:lang(he) { --font-display: "Heebo", "Sora", Arial, sans-serif; --font-body: "Heebo", "Geist", Arial, sans-serif; --font-mono: "Heebo", "Geist Mono", monospace; }
+html:lang(hi) { --font-display: "Noto Sans Devanagari", "Sora", "Nirmala UI", sans-serif; --font-body: "Noto Sans Devanagari", "Geist", "Nirmala UI", sans-serif; --font-mono: "Noto Sans Devanagari", "Geist Mono", monospace; }
+html:lang(bn) { --font-display: "Noto Sans Bengali", "Sora", "Nirmala UI", sans-serif; --font-body: "Noto Sans Bengali", "Geist", "Nirmala UI", sans-serif; --font-mono: "Noto Sans Bengali", "Geist Mono", monospace; }
+html:lang(th) { --font-display: "Noto Sans Thai", "Sora", "Leelawadee UI", sans-serif; --font-body: "Noto Sans Thai", "Geist", "Leelawadee UI", sans-serif; --font-mono: "Noto Sans Thai", "Geist Mono", monospace; }
+/* Cyrillic, Greek and Vietnamese: Sora and Geist lack these letters, so the whole page switches to
+   Manrope (headings) and Inter (text) instead of mixing two fonts inside one word. */
+html:lang(ru), html:lang(uk), html:lang(bg), html:lang(sr), html:lang(el), html:lang(vi) {
+  --font-display: "Manrope", ui-sans-serif, system-ui, sans-serif; --font-body: "Inter", ui-sans-serif, system-ui, sans-serif; --font-mono: "Inter", ui-monospace, monospace;
+}
+/* Chinese, Japanese, Korean: the system fonts every site uses (web fonts would be megabytes). */
+html:lang(zh-CN) { --font-display: "Sora", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", sans-serif; --font-body: "Geist", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", sans-serif; --font-mono: "Geist Mono", "PingFang SC", "Microsoft YaHei", monospace; }
+html:lang(zh-TW) { --font-display: "Sora", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "Source Han Sans TC", sans-serif; --font-body: "Geist", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "Source Han Sans TC", sans-serif; --font-mono: "Geist Mono", "PingFang TC", "Microsoft JhengHei", monospace; }
+html:lang(ja) { --font-display: "Sora", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", sans-serif; --font-body: "Geist", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", sans-serif; --font-mono: "Geist Mono", "Hiragino Sans", "Yu Gothic UI", Meiryo, monospace; }
+html:lang(ko) { --font-display: "Sora", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; --font-body: "Geist", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; --font-mono: "Geist Mono", "Apple SD Gothic Neo", "Malgun Gothic", monospace; }
+/* Tight Latin tracking breaks joined scripts (Arabic letters pull apart) and crowds the others;
+   their tall marks need more line height than Latin headings. */
+html:lang(fa) *, html:lang(ar) *, html:lang(he) *, html:lang(hi) *, html:lang(bn) *, html:lang(th) *,
+html:lang(zh-CN) *, html:lang(zh-TW) *, html:lang(ja) *, html:lang(ko) * { letter-spacing: normal !important; }
+html:lang(fa) :is(h1, h2, h3, .hero-title, .proof strong), html:lang(ar) :is(h1, h2, h3, .hero-title, .proof strong),
+html:lang(hi) :is(h1, h2, h3, .hero-title, .proof strong), html:lang(bn) :is(h1, h2, h3, .hero-title, .proof strong),
+html:lang(th) :is(h1, h2, h3, .hero-title, .proof strong) { line-height: 1.4; }
+html:lang(fa) .hero-title, html:lang(ar) .hero-title { line-height: 1.25; }
+html:lang(he) :is(h1, h2, h3, .hero-title), html:lang(zh-CN) :is(h1, h2, h3, .hero-title), html:lang(zh-TW) :is(h1, h2, h3, .hero-title),
+html:lang(ja) :is(h1, h2, h3, .hero-title), html:lang(ko) :is(h1, h2, h3, .hero-title) { line-height: 1.25; }
 [dir="rtl"] .bar i.run { transform-origin: right; }
 /* carousel dots: a 24px target around the 9px dot (WCAG 2.5.8) */
 .reel-dots button { box-sizing: border-box; width: 24px; height: 24px; padding: 7.5px; background-clip: content-box; }

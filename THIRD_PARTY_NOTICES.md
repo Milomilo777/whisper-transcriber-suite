@@ -154,8 +154,9 @@ installs only if you opt into that specific feature.
 
 ## Website (`site/`)
 
-The landing page bundles these third-party files under `site/assets/` so the
-page makes no third-party network requests:
+The landing page bundles these third-party files under `site/assets/` instead of loading them from
+other servers. The only outside request is Cloudflare Web Analytics, a cookieless visitor counter
+that the hosting platform adds to each page:
 
 | Component | License | Notes |
 |---|---|---|
@@ -163,8 +164,13 @@ page makes no third-party network requests:
 | **Sora** (`assets/fonts/sora-*.woff2`) | SIL Open Font License 1.1 | Display typeface. |
 | **Geist** (`assets/fonts/geist-*.woff2`) | SIL Open Font License 1.1 | Body typeface. |
 | **Geist Mono** (`assets/fonts/geist-mono-*.woff2`) | SIL Open Font License 1.1 | Chips / timestamps. |
+| **Vazirmatn** (`assets/fonts/vazirmatn-*.woff2`) | SIL Open Font License 1.1 | Persian pages. |
+| **Noto Sans Arabic / Devanagari / Bengali / Thai** (`assets/fonts/noto-sans-*.woff2`) | SIL Open Font License 1.1 | Arabic, Hindi, Bengali and Thai pages. |
+| **Heebo** (`assets/fonts/heebo-*.woff2`) | SIL Open Font License 1.1 | Hebrew pages. |
+| **Manrope** and **Inter** (`assets/fonts/manrope-*.woff2`, `inter-*.woff2`) | SIL Open Font License 1.1 | Cyrillic, Greek and Vietnamese pages. |
 
-Full OFL text for all three font families is in `assets/fonts/OFL.txt`.
+The new font files are the Google Fonts subsets of each family. Full OFL text and every family's
+copyright line are in `assets/fonts/OFL.txt`.
 
 ## Adapted source code
 

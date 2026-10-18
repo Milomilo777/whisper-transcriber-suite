@@ -23,6 +23,22 @@
     if (ev.key === 'Escape' && menu && menu.open) { menu.open = false; menu.querySelector('summary')?.focus(); }
   });
 
+  // The one-line menu fits English down to 1240 px (styles.css); longer translations need more room.
+  // While the header row overflows, drop the product name next to the logo first, then the menu.
+  const row = document.querySelector('.site-header .header-row');
+  if (row && 'ResizeObserver' in window) {
+    const root = document.documentElement;
+    const over = () => row.scrollWidth > row.clientWidth + 1;
+    const fit = () => {
+      root.classList.remove('hdr-no-name', 'hdr-no-nav');
+      if (!over()) return;
+      root.classList.add('hdr-no-name');
+      if (over()) root.classList.add('hdr-no-nav');
+    };
+    new ResizeObserver(fit).observe(row);
+    if (document.fonts) document.fonts.ready.then(fit);
+  }
+
   const q = new URLSearchParams(location.search);
   if (!q.has('auto') && !q.has('lang')) return;
   if (q.get('lang') === 'en') remember('en');
