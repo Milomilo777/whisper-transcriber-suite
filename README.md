@@ -100,6 +100,10 @@ Latest release: **[releases page](https://github.com/Milomilo777/whisper-transcr
 
 Linux runs from source: [platform/linux/README.md](platform/linux/README.md).
 
+<div align="center">
+<img src="docs/img/promo-release.svg" alt="The words Sound in become a timed transcript of two speakers, saved as SRT, DOCX and PDF, with no account and no upload." width="80%">
+</div>
+
 The bundled FFmpeg is a GPL build. Its corresponding source is attached to each release as
 `WhisperTranscriberSuite-vX.Y.Z-source-ffmpeg-*` files; the exact links are in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
@@ -144,6 +148,10 @@ Audio or transcript text is sent only if you choose a cloud engine (Gemini API
 or Google Cloud Speech-to-Text) or connect a remote AI provider yourself.
 **File → Work offline** stops all of it. Every connection is listed in
 [docs/CONFIG.md](docs/CONFIG.md#network-use).
+
+<div align="center">
+<img src="docs/img/promo-loom.svg" alt="Per-word timed subtitles, English subtitles offline with faster-whisper, whisper.cpp and Parakeet, 14 transcript formats, no account, BSD-3-Clause." width="80%">
+</div>
 
 ## Documentation
 

@@ -12,10 +12,14 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Website: three step-by-step guides**: YouTube video to text, video to SRT subtitles, and
   transcripts with speaker labels, each at its own address, linked from the home page and listed
   in the sitemap, `llms.txt` and the IndexNow ping. A test keeps every guide listed and linked.
-- **Animated banners on the project page**: `docs/img/promo-hero.svg` replaces the old screenshot
-  banner at the top of the README and every translation, and `docs/img/promo-features.svg` opens
-  the Features section, and `docs/img/promo-release.svg` heads the release page. They play once
-  and stop on their last frame; fonts are embedded.
+- **Animated banners on the project page and the website**: `docs/img/promo-hero.svg` replaces
+  the old screenshot banner at the top of the README and every translation; three more
+  (`promo-features`, `promo-release`, `promo-loom`) sit in the README's Features, Download and
+  privacy sections, and `promo-release` also heads the release page. The website shows the same
+  four in its tour, Features, How it works and Download sections: a still frame first, and the
+  animation only when the section is on screen and animations are not paused. They play once and
+  stop on their last frame; fonts are embedded. The site footer now links all 41 README
+  translations instead of 8.
 
 ### Changed
 

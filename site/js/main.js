@@ -140,6 +140,27 @@
     liveEls.forEach((el) => el.classList.add('is-live'));
   }
 
+  /* Animated banners: a still frame first; the play-once SVG loads when half of it is on screen.
+     The SVG ends on the same frame as the still, so "off" (or no JS) simply keeps the still. */
+  const promos = $$('img[data-anim]');
+  const playPromo = (img) => { if (motion() !== 'off' && !img.dataset.played) { img.dataset.played = '1'; img.src = img.dataset.anim; } };
+  if (hasIO) {
+    const promoIO = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting || motion() === 'off') continue;
+        playPromo(e.target);
+        promoIO.unobserve(e.target);
+      }
+    }, { threshold: 0.5 });
+    promos.forEach((img) => promoIO.observe(img));
+    onMotionChange((m) => {
+      promos.forEach((img) => {
+        if (m === 'off') img.src = img.dataset.still;
+        else if (!img.dataset.played) promoIO.observe(img);
+      });
+    });
+  }
+
   /* Cursor spotlight + gentle 3D tilt on cards. */
   const bento = $('[data-spotlight]');
   if (bento && canHover) {
