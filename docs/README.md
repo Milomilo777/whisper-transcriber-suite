@@ -18,6 +18,7 @@ fits into one of five buckets.
 - [MANUAL_STEPS.md](MANUAL_STEPS.md) — release-time human checklist
 - [RELEASE_PROCESS.md](RELEASE_PROCESS.md) — how to ship a new version
 - [TRANSLATING.md](TRANSLATING.md) — translating the interface: rules for code, catalogs, the extractor and the pseudo-locale
+- [WEBSITE_I18N.md](WEBSITE_I18N.md) — the website in other languages: catalogs, building the pages, the first-visit language redirect
 - [TESTING.md](TESTING.md) — how to run the tests (hermetic suite vs. smoke) and the app
 - [architecture-diagrams.md](architecture-diagrams.md) — Mermaid + SVG diagrams, a visual companion to ARCHITECTURE.md
 

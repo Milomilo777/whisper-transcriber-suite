@@ -533,6 +533,40 @@ html[data-motion="off"] .rail-pulse { transform: translateX(380px); }
 .promo img { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; border-radius: var(--r-lg); border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--surface-2); }
 .promo-after { margin: clamp(28px, 4vw, 48px) auto 0; }
 
+/* ---------- Language menu + "shown in your language" notice (js/lang.js, tools/site_i18n.py) ---------- */
+.lang-menu { position: relative; }
+.lang-menu > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.lang-menu > summary::-webkit-details-marker { display: none; }
+.lang-menu > summary .i { width: 16px; height: 16px; }
+.lang-list {
+  position: absolute; inset-inline-end: 0; top: calc(100% + 8px); z-index: 60;
+  width: min(560px, calc(100vw - 32px)); max-height: min(70vh, 520px); overflow: auto;
+  margin: 0; padding: 10px; list-style: none;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r); box-shadow: var(--shadow-lg);
+}
+.lang-list a { display: block; padding: 6px 10px; border-radius: var(--r-sm); color: var(--ink); text-decoration: none; font-size: 0.95rem; }
+.lang-list a:hover, .lang-list a:focus-visible { background: var(--bg-2); color: var(--ink); }
+.lang-list a[aria-current] { background: var(--teal-soft); font-weight: 600; }
+.lang-notice {
+  position: fixed; inset-inline: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 70;
+  max-width: 680px; margin-inline: auto; background: var(--surface); border: 1px solid var(--line-2);
+  border-radius: var(--r); box-shadow: var(--shadow-lg);
+}
+.lang-notice-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; }
+.lang-notice p { margin: 0; font-size: 0.95rem; }
+@media (max-width: 640px) {
+  .lang-current { display: none; }
+  .lang-list { position: fixed; inset-inline: 12px; top: 64px; width: auto; }
+}
+
+html[lang="en"] .mt-note { display: none; }
+
+/* ---------- Right-to-left languages (ar, fa, he) ---------- */
+[dir="rtl"] body { font-family: var(--font-body), "Segoe UI", Tahoma, sans-serif; }
+[dir="rtl"] .i-arrow, [dir="rtl"] .reel-btn .i { transform: scaleX(-1); }
+[dir="rtl"] code, [dir="rtl"] pre, [dir="rtl"] kbd { direction: ltr; unicode-bidi: isolate; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1080px) {
   .site-nav { display: none; }

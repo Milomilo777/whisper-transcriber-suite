@@ -36,6 +36,7 @@ jobs:
         run: |
           python tools/update_site_data.py
           python tools/build_llms_full.py
+          python tools/site_i18n.py build
       - name: Commit if changed
         id: commit
         run: |

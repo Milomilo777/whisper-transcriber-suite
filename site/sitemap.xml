@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+<urlset xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://whisper-transcriber-suite.pages.dev/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.pages.dev/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.pages.dev/"/>
     <lastmod>2026-10-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -26,20 +28,29 @@
   </url>
   <url>
     <loc>https://whisper-transcriber-suite.pages.dev/youtube-to-text/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.pages.dev/youtube-to-text/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.pages.dev/youtube-to-text/"/>
     <lastmod>2026-10-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whisper-transcriber-suite.pages.dev/video-to-srt/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.pages.dev/video-to-srt/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.pages.dev/video-to-srt/"/>
     <lastmod>2026-10-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whisper-transcriber-suite.pages.dev/speaker-labels/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.pages.dev/speaker-labels/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.pages.dev/speaker-labels/"/>
     <lastmod>2026-10-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
+  <!-- i18n:sitemap:start -->
+
+  <!-- i18n:sitemap:end -->
 </urlset>

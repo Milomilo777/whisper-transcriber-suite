@@ -10,6 +10,10 @@
 <meta name="color-scheme" content="light">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <link rel="canonical" href="https://whisper-transcriber-suite.pages.dev/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.pages.dev/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.pages.dev/">
+<!-- i18n:hreflang:end -->
 <meta name="google-site-verification" content="_vMQaHCYUqaePsjuk_lmQ9Df32M03uPPZnXEFVr8ttU">
 <meta name="msvalidate.01" content="86B7B178FB8DB5F45F03295F6D2A8F4A">
 <meta name="msvalidate.01" content="C5065B95AD10AB4D2845E441E3D9FA37">
@@ -207,6 +211,7 @@
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
     <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
     <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m0 0-5-5m5 5-5 5"/></symbol>
@@ -244,6 +249,12 @@
       <a href="#contact">Contact</a>
     </nav>
     <div class="header-cta">
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Language"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->English<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/" hreflang="en" lang="en" data-lang-pick="en" aria-current="true">English</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
       <button class="btn-icon" type="button" data-motion-toggle aria-pressed="false" title="Pause or play animations">
         <svg class="i i-when-on" aria-hidden="true"><use href="#i-pause"/></svg>
         <svg class="i i-when-off" aria-hidden="true"><use href="#i-play"/></svg>
@@ -256,6 +267,13 @@
     </div>
   </div>
 </header>
+
+<div class="lang-notice" data-lang-notice hidden>
+  <div class="wrap lang-notice-row">
+    <p>This page is in your language because of where you are visiting from. <a href="/?lang=en" data-lang-pick="en">View in English</a></p>
+    <button class="btn-icon" type="button" data-lang-notice-close aria-label="Close"><span aria-hidden="true">×</span></button>
+  </div>
+</div>
 
 <main id="main">
 
@@ -748,6 +766,7 @@ python gui.py</code></pre>
       <p class="muted">Maintained by one independent developer, <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Source licensed under BSD-3-Clause.</p>
       <p class="muted"><a href="#contact">Contact</a></p>
       <p class="site-stats" data-site-stats hidden><span data-stat="visits" hidden><strong></strong> visits</span><span data-stat="downloads" hidden><strong></strong> downloads</span></p>
+      <p class="muted small mt-note">This page was translated from English by a machine and checked by a second one. Something reads wrong? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">Tell us on GitHub</a>.</p>
     </div>
     <nav class="footer-nav" aria-label="Footer">
       <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a>
@@ -775,6 +794,27 @@ python gui.py</code></pre>
   </div>
 </div>
 
+<script type="application/json" id="i18n-strings">
+{
+ "Play animations": "Play animations",
+ "Pause animations": "Pause animations",
+ "Install on macOS": "Install on macOS",
+ "Get it for Linux": "Get it for Linux",
+ "Get it for your computer": "Get it for your computer",
+ "Show %s": "Show %s",
+ "Please write to us on GitHub Discussions": "Please write to us on GitHub Discussions",
+ "One moment…": "One moment…",
+ "Could not load it. Try again": "Could not load it. Try again",
+ "so the words appear as you speak": "so the words appear as you speak",
+ "cuts land on natural pauses": "cuts land on natural pauses",
+ "and no word is ever split in two": "and no word is ever split in two",
+ "Your audio stays on your computer.": "Your audio stays on your computer.",
+ "No account. No per-minute cost.": "No account. No per-minute cost.",
+ "Whisper runs on your own computer.": "Whisper runs on your own computer.",
+ "Fourteen formats, one click.": "Fourteen formats, one click."
+}
+</script>
 <script src="js/main.js?v=20261018a" defer></script>
+<script src="js/lang.js?v=20261018a" defer></script>
 </body>
 </html>

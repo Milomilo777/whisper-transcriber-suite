@@ -9,6 +9,9 @@
   const motion = () => root.dataset.motion || 'on';
   const listeners = new Set();
   const onMotionChange = (fn) => listeners.add(fn);
+  // Words this script writes, translated per page (tools/site_i18n.py fills #i18n-strings).
+  const strings = (() => { try { return JSON.parse($('#i18n-strings').textContent); } catch (e) { return {}; } })();
+  const t = (s) => strings[s] || s;
 
   /* Motion toggle: stored per browser, falls back to the OS preference. */
   const toggle = $('[data-motion-toggle]');
@@ -16,7 +19,7 @@
     if (!toggle) return;
     const off = motion() === 'off';
     toggle.setAttribute('aria-pressed', String(off));
-    const label = off ? 'Play animations' : 'Pause animations';
+    const label = off ? t('Play animations') : t('Pause animations');
     toggle.title = label;
     const sr = $('[data-motion-label]', toggle);
     if (sr) sr.textContent = label;
@@ -62,9 +65,9 @@
   const ctaLabel = $('[data-os-label]');
   if (cta && ctaLabel) {
     // The CTA links straight to the Windows installer; send everyone else to the cards.
-    if (platform === 'mac') { ctaLabel.textContent = 'Install on macOS'; cta.href = '#mac-install'; cta.removeAttribute('rel'); }
-    if (platform === 'linux') { ctaLabel.textContent = 'Get it for Linux'; cta.href = '#download'; cta.removeAttribute('rel'); }
-    if (platform === 'mobile') { ctaLabel.textContent = 'Get it for your computer'; cta.href = '#download'; cta.removeAttribute('rel'); }
+    if (platform === 'mac') { ctaLabel.textContent = t('Install on macOS'); cta.href = '#mac-install'; cta.removeAttribute('rel'); }
+    if (platform === 'linux') { ctaLabel.textContent = t('Get it for Linux'); cta.href = '#download'; cta.removeAttribute('rel'); }
+    if (platform === 'mobile') { ctaLabel.textContent = t('Get it for your computer'); cta.href = '#download'; cta.removeAttribute('rel'); }
   }
   const recCard = $(`.dl-card[data-os="${platform === 'mobile' ? 'windows' : platform}"]`);
   if (recCard && platform !== 'mobile') {
@@ -144,6 +147,7 @@
      The SVG ends on the same frame as the still, so "off" (or no JS) simply keeps the still. */
   const promos = $$('img[data-anim]');
   const playPromo = (img) => { if (motion() !== 'off' && !img.dataset.played) { img.dataset.played = '1'; img.src = img.dataset.anim; } };
+  promos.forEach((img) => img.addEventListener('error', () => { if (img.src !== img.dataset.still) img.src = img.dataset.still; }));
   if (hasIO) {
     const promoIO = new IntersectionObserver((entries) => {
       for (const e of entries) {
@@ -153,10 +157,14 @@
       }
     }, { threshold: 0.5 });
     promos.forEach((img) => promoIO.observe(img));
+    // "Pause" shows the still; "Play" plays each banner again the next time it is on screen
+    // (re-observing reports a banner already in view at once).
     onMotionChange((m) => {
       promos.forEach((img) => {
-        if (m === 'off') img.src = img.dataset.still;
-        else if (!img.dataset.played) promoIO.observe(img);
+        promoIO.unobserve(img);
+        if (m === 'off') { img.src = img.dataset.still; return; }
+        delete img.dataset.played;
+        promoIO.observe(img);
       });
     });
   }
@@ -207,8 +215,8 @@
     onMotionChange((m) => { stop(); el.textContent = phrases[p]; c = phrases[p].length; dir = -1; if (m !== 'off') start(); });
   };
   const typer = $('[data-typer]');
-  makeTyper(typer, ['so the words appear as you speak', 'cuts land on natural pauses', 'and no word is ever split in two'], typer && typer.closest('[data-live]'));
-  makeTyper($('[data-hero-typer]'), ['Your audio stays on your computer.', 'No account. No per-minute cost.', 'Whisper runs on your own computer.', 'Fourteen formats, one click.']);
+  makeTyper(typer, [t('so the words appear as you speak'), t('cuts land on natural pauses'), t('and no word is ever split in two')], typer && typer.closest('[data-live]'));
+  makeTyper($('[data-hero-typer]'), [t('Your audio stays on your computer.'), t('No account. No per-minute cost.'), t('Whisper runs on your own computer.'), t('Fourteen formats, one click.')]);
 
   /* Denoise before/after waveforms (deterministic, so the art never changes between visits). */
   const noisy = $('[data-wave="noisy"]');
@@ -328,7 +336,7 @@
     const dots = cards.map((c, i) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.setAttribute('aria-label', `Show ${c.dataset.title}`);
+      b.setAttribute('aria-label', t('Show %s').replace('%s', c.dataset.title));
       b.addEventListener('click', () => { takeOver(); goTo(i); });
       dotsEl.appendChild(b);
       return b;
@@ -484,9 +492,9 @@
     const supported = 'fetch' in window && window.crypto && crypto.subtle && 'TextEncoder' in window;
     btn.addEventListener('click', async (ev) => {
       if (!ev.isTrusted || btn.disabled) return;
-      if (!supported) { btn.textContent = 'Please write to us on GitHub Discussions'; btn.disabled = true; return; }
+      if (!supported) { btn.textContent = t('Please write to us on GitHub Discussions'); btn.disabled = true; return; }
       btn.disabled = true;
-      btn.textContent = 'One moment…';
+      btn.textContent = t('One moment…');
       try {
         const addr = await reveal();
         const link = document.createElement('a');
@@ -496,7 +504,7 @@
         out.hidden = false;
         btn.hidden = true;
       } catch (e) {
-        btn.textContent = 'Could not load it. Try again';
+        btn.textContent = t('Could not load it. Try again');
         btn.disabled = false;
       }
     });

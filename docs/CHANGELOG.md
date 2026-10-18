@@ -21,6 +21,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   stop on their last frame; fonts are embedded. The site footer now links all 41 README
   translations instead of 8.
 
+- **Website in other languages (groundwork)**: `tools/site_i18n.py` builds `site/<lang>/` from the
+  English pages and per-language catalogs in `site-i18n/`, with a language menu, hreflang links,
+  sitemap entries and a machine-translation note; a language goes live once 90 % of it is
+  translated. `site/functions/index.js` sends a first-time visitor of the home page to their
+  language by country (English stays one click away, a picked language is remembered, search
+  engines are never redirected). How it works: `docs/WEBSITE_I18N.md`, ADR 0013.
+
 ### Changed
 
 - **"What's new" now describes 2.1** on the website (section and FAQ) and in the README; the 2.0
