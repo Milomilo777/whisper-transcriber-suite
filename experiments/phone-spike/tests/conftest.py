@@ -1,5 +1,4 @@
 """Keep imports and all test scratch inside the spike, from either working directory."""
-import os
 from pathlib import Path
 import sys
 import shutil
@@ -7,7 +6,7 @@ import uuid
 
 import pytest
 
-SPIKE = Path(os.path.relpath(Path(__file__).parent.parent))
+SPIKE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SPIKE))
 
 

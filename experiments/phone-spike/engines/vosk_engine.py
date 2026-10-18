@@ -1,10 +1,9 @@
 from pathlib import Path
-import os
 import json
 import wave
 from .engine_registry import Engine, EngineUnavailable, register
 
-ROOT = Path(os.path.relpath(Path(__file__).parent.parent))
+ROOT = Path(__file__).resolve().parent.parent
 
 
 @register("vosk-small-fa")

@@ -4,7 +4,6 @@ The CLI reloads on every call. This is explicitly not a resident-model benchmark
 see README before comparing it with resident Vosk or sherpa-onnx runners.
 """
 from pathlib import Path
-import os
 import re
 import subprocess
 import sys
@@ -12,7 +11,7 @@ import threading
 from .engine_registry import Engine, EngineUnavailable, register
 from runtime import windows_peak_rss_mb
 
-ROOT = Path(os.path.relpath(Path(__file__).parent.parent))
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def find_binary(name):

@@ -1,5 +1,4 @@
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -7,7 +6,7 @@ from pathlib import Path
 import pytest
 from summarize import aggregate_metric, bootstrap_ci, build_summary, paired_comparison
 
-SPIKE = Path(os.path.relpath(Path(__file__).parent.parent))
+SPIKE = Path(__file__).resolve().parent.parent
 
 def test_summarize(tmp_path):
     data = {
@@ -179,3 +178,47 @@ def test_missing_references_and_failed_runs_are_not_perfect_scores():
     assert "missing runtime" in text
     assert "Two reference/hypothesis pairs unavailable" in text
     assert "No engine runs found" in build_summary({"env": {}})
+
+
+def main_table_row(text, name):
+    lines = [line for line in text.splitlines() if line.startswith("| ")]
+    headings = [part.strip() for part in lines[0].strip("|").split("|")]
+    row = next(line for line in lines if line.startswith(f"| {name} |"))
+    return dict(zip(headings, [part.strip() for part in row.strip("|").split("|")]))
+
+
+def test_summary_partial_status_counts_and_metrics_use_good_rows_only():
+    data = small_fixture()
+    run = data["engine-a"]["4"]
+    run.update(status="PARTIAL", failed=True, error="one bad reference",
+               counts={"good": 2, "bad": 1, "total": 3},
+               short_counts={"good": 1, "bad": 1, "total": 2})
+    run["files"]["two"].update(error="one bad reference", rtf=999)
+    text = build_summary(data)
+    row = main_table_row(text, "engine-a")
+    assert row["Status"] == "PARTIAL"
+    assert row["Metric threads"] == "4"
+    assert row["Good short files"] == "1" and row["Bad short files"] == "1"
+    assert row["Agg WER"] == row["Median WER"] == "0.250"
+    assert row["Agg CER"] == row["Median CER"] == "0.200"
+    assert row["WER ZWNJ space"] == "0.600"
+    assert row["Median RTF 4"] == "0.040"
+    assert row["Median RTF 1"] == "0.200"
+    assert "good rows only" in text
+    assert "Threads 4: PARTIAL; good/bad short files 1/1" in text
+    assert "one bad reference" in text
+    assert "| engine-a | 4 | 0.500 |" in text  # Good long form survives a short-file failure.
+
+
+@pytest.mark.parametrize("statuses,expected", [
+    (["UNAVAILABLE"], "UNAVAILABLE"), (["UNAVAILABLE", "UNAVAILABLE"], "UNAVAILABLE"),
+    (["FAILED", "UNAVAILABLE"], "FAILED"), (["OK", "UNAVAILABLE"], "PARTIAL"),
+])
+def test_summary_distinguishes_unavailable_from_failed_in_main_table(statuses, expected):
+    runs = {str(i + 1): {"status": status, "failed": status != "OK", "files": {},
+                         "error": "missing runtime" if status == "UNAVAILABLE" else "failed job"}
+            for i, status in enumerate(statuses)}
+    text = build_summary({"unavailable-fixture": runs})
+    assert main_table_row(text, "unavailable-fixture")["Status"] == expected
+    for i, status in enumerate(statuses):
+        assert f"Threads {i + 1}: {status}" in text

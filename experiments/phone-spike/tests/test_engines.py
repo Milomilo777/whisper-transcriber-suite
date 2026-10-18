@@ -45,8 +45,12 @@ def test_sherpa_int8_files_and_cpu_defaults_are_explicit(monkeypatch, tmp_path):
     for filename in ("tiny-encoder.int8.onnx", "tiny-decoder.int8.onnx", "tiny-tokens.txt"):
         (model / filename).write_bytes(b"123")
     captured = {}
-    def factory(**kwargs):
-        captured.update(kwargs)
+    # Match sherpa-onnx 1.13.2 exactly: unknown keywords must fail this test.
+    def factory(encoder, decoder, tokens, language='en', task='transcribe', num_threads=1,
+                decoding_method='greedy_search', debug=False, provider='cpu', tail_paddings=-1,
+                enable_token_timestamps=False, enable_segment_timestamps=False, rule_fsts='',
+                rule_fars='', hr_dict_dir='', hr_rule_fsts='', hr_lexicon=''):
+        captured.update(locals())
         return object()
     monkeypatch.setitem(sys.modules, "sherpa_onnx", SimpleNamespace(OfflineRecognizer=SimpleNamespace(from_whisper=factory)))
     monkeypatch.setitem(sys.modules, "numpy", SimpleNamespace())
@@ -56,9 +60,11 @@ def test_sherpa_int8_files_and_cpu_defaults_are_explicit(monkeypatch, tmp_path):
     assert captured["encoder"].endswith("tiny-encoder.int8.onnx")
     assert captured["decoder"].endswith("tiny-decoder.int8.onnx")
     assert captured["tokens"].endswith("tiny-tokens.txt")
-    assert {key: captured[key] for key in engine.settings} == {
+    assert engine.settings == {
         "num_threads": 4, "language": "fa", "task": "transcribe", "provider": "cpu",
         "decoding_method": "greedy_search", "sample_rate": 16000, "feature_dim": 80, "debug": False}
+    for key in ("num_threads", "language", "task", "provider", "decoding_method", "debug"):
+        assert captured[key] == engine.settings[key]
     assert engine.get_info()["model_size_mb"] == 9/(1024*1024)
 
 

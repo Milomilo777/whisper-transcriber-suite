@@ -18,7 +18,7 @@ from engines.engine_registry import Engine
 from runtime import audio_duration, environment_info, peak_rss_mb
 from summarize import build_summary
 
-SPIKE = Path(os.path.relpath(Path(__file__).parent.parent))
+SPIKE = Path(__file__).resolve().parent.parent
 
 
 def write_wav(path, frames=1600, channels=1, rate=16000):
@@ -261,3 +261,209 @@ def test_platform_memory_and_environment():
         assert "Windows" in source
         assert env["ram_mb"] > 0
         assert env["governor"] == "unknown"
+
+
+def scripted_runner(tmp_path, class_body, engine_name):
+    """Register a test-only engine in a real isolated child, without packages."""
+    script = tmp_path / "fixture_runner.py"
+    script.write_text(
+        "import os\nimport sys\nfrom pathlib import Path\n"
+        f"sys.path.insert(0, {str(SPIKE)!r})\n"
+        "import runner\nfrom engines.fake_engine import FakeEngine\n" + class_body +
+        f"\nrunner.REGISTRY[{engine_name!r}] = TestEngine\n"
+        "raise SystemExit(runner.main())\n", encoding="utf-8")
+    return script
+
+
+def test_partial_job_scores_nine_good_files_when_one_decode_fails(monkeypatch, tmp_path):
+    files = [tmp_path / f"clip-{i:02}.wav" for i in range(10)]
+    for path in files:
+        write_wav(path)
+    refs = {path.stem: "fake " + path.stem for path in files}
+    script = scripted_runner(tmp_path,
+        "class TestEngine(FakeEngine):\n"
+        "    def transcribe(self, path):\n"
+        "        if Path(path).stem == 'clip-07':\n"
+        "            raise ValueError('fixture decode error on file 7')\n"
+        "        return super().transcribe(path)\n", "one-bad")
+    monkeypatch.setattr(bench, "RUNNER", script)
+    run = bench.run_engine("one-bad", 1, files, {p.stem: .1 for p in files}, refs, 30)
+    assert sum("wer" in item for item in run["files"].values()) == 9
+    assert run["status"] == "PARTIAL" and run["failed"]
+    assert run["counts"] == {"good": 9, "bad": 1, "total": 10}
+    assert run["short_counts"] == run["counts"]
+    for key, item in run["files"].items():
+        if key == "clip-07":
+            assert "fixture decode error" in item["error"]
+            assert not set(bench.SCORE_KEYS) & item.keys()
+        else:
+            assert item["hyp"] == refs[key]
+            assert item["wer"] == item["cer"] == 0
+            assert item["rtf"] >= 0 and "error" not in item
+
+
+def runner_output(messages):
+    return "\n".join(json.dumps(item) for item in messages)
+
+
+@pytest.mark.parametrize("termination", ["crash", "timeout"])
+def test_partial_crash_or_timeout_keeps_completed_scores(monkeypatch, termination):
+    output = runner_output([
+        {"status": "ready", "pid": 123, "load_s": .1, "info": {}},
+        {"status": "file", "audio": "a.wav", "hyp": "first", "wall_s": .1},
+        {"status": "file", "audio": "b.wav", "hyp": "second", "wall_s": .2}])
+    def invoke(*args, **kwargs):
+        if termination == "timeout":
+            raise subprocess.TimeoutExpired(args[0], 2, output=output.encode(), stderr=b"stopped")
+        return subprocess.CompletedProcess([], 9, output, "stopped")
+    monkeypatch.setattr(bench.subprocess, "run", invoke)
+    run = bench.run_engine("fake", 1, [Path("a.wav"), Path("b.wav"), Path("c.wav")],
+                           {"a": 1, "b": 2, "c": 3}, {"a": "first", "b": "second", "c": "third"}, 2)
+    assert run["files"]["a"].get("wer") == run["files"]["b"].get("wer") == 0
+    assert run["status"] == "PARTIAL" and run["failed"]
+    assert run["counts"] == {"good": 2, "bad": 1, "total": 3}
+    assert run["files"]["c"]["error"]
+    assert "timed out" in run["error"] if termination == "timeout" else "exit code 9" in run["error"]
+
+
+@pytest.mark.parametrize("hyp,reason", [("", "empty"), ("same output", "identical")])
+def test_partial_errors_do_not_bypass_a5_sanity(monkeypatch, hyp, reason):
+    output = runner_output([
+        {"status": "ready", "pid": 123, "load_s": .1, "info": {}},
+        {"status": "file", "audio": "a.wav", "hyp": hyp, "wall_s": .1},
+        {"status": "file", "audio": "b.wav", "hyp": hyp, "wall_s": .1},
+        {"status": "file", "audio": "c.wav", "error": "decode failed"},
+        {"status": "done", "peak_rss_mb": 1}])
+    monkeypatch.setattr(bench.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess([], 0, output, ""))
+    run = bench.run_engine("fake", 1, [Path("a.wav"), Path("b.wav"), Path("c.wav")],
+                           {"a": 1, "b": 1, "c": 1}, {"a": "first", "b": "second", "c": "third"}, 30)
+    assert f"All hypotheses were {reason}" in run["error"]
+    assert run["status"] == "FAILED"
+    assert all(not set(bench.SCORE_KEYS) & item.keys() for item in run["files"].values())
+
+
+def test_one_bad_reference_does_not_remove_other_scores(monkeypatch):
+    output = runner_output([
+        {"status": "ready", "pid": 123, "load_s": .1, "info": {}},
+        {"status": "file", "audio": "a.wav", "hyp": "first", "wall_s": .1},
+        {"status": "file", "audio": "b.wav", "hyp": "second", "wall_s": .1},
+        {"status": "done", "peak_rss_mb": 1}])
+    monkeypatch.setattr(bench.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess([], 0, output, ""))
+    run = bench.run_engine("fake", 1, [Path("a.wav"), Path("b.wav")],
+                           {"a": 1, "b": 1}, {"a": "first", "b": "!!!"}, 30)
+    assert run["files"]["a"].get("wer") == 0
+    assert "Empty reference" in run["files"]["b"]["error"]
+    assert run["status"] == "PARTIAL"
+
+
+def test_bad_reference_does_not_hide_identical_hypotheses_from_a5(monkeypatch):
+    output = runner_output([
+        {"status": "ready", "pid": 123, "load_s": .1, "info": {}},
+        {"status": "file", "audio": "a.wav", "hyp": "same output", "wall_s": .1},
+        {"status": "file", "audio": "b.wav", "hyp": "same output", "wall_s": .1},
+        {"status": "done", "peak_rss_mb": 1}])
+    monkeypatch.setattr(bench.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess([], 0, output, ""))
+    run = bench.run_engine("fake", 1, [Path("a.wav"), Path("b.wav")],
+                           {"a": 1, "b": 1}, {"a": "reference text", "b": "!!!"}, 30)
+    assert run["status"] == "FAILED"
+    assert "All hypotheses were identical" in run["error"]
+    assert all(not set(bench.SCORE_KEYS) & item.keys() for item in run["files"].values())
+
+
+def test_native_fd1_logs_are_separate_from_protocol_in_load_and_transcribe(tmp_path):
+    files = [tmp_path / "first.wav", tmp_path / "second.wav"]
+    for path in files:
+        write_wav(path)
+    script = scripted_runner(tmp_path,
+        "class TestEngine(FakeEngine):\n"
+        "    def load(self, threads):\n"
+        "        os.write(1, b'native load log\\n')\n"
+        "        print('python load log')\n"
+        "        super().load(threads)\n"
+        "    def transcribe(self, path):\n"
+        "        os.write(1, b'native decode log\\n')\n"
+        "        return super().transcribe(path)\n", "native-logs")
+    child = subprocess.run([sys.executable, "-S", str(script), "--engine", "native-logs", "--threads", "1"],
+                           input=json.dumps({"files": [str(p) for p in files]}),
+                           capture_output=True, text=True, encoding="utf-8", timeout=30)
+    assert child.returncode == 0, child.stderr
+    messages = [json.loads(line) for line in child.stdout.splitlines()]
+    assert [msg["status"] for msg in messages] == ["ready", "warmup_complete", "file", "file", "done"]
+    assert child.stderr.count("native load log") == 1
+    assert child.stderr.count("native decode log") == 7
+    assert "python load log" in child.stderr
+
+
+@pytest.mark.parametrize("log", ["native diagnostic", "[native log]", '"JSON string log"', '{"message": "log"}'])
+def test_non_json_stdout_is_stderr_text_not_a_failed_job(monkeypatch, log):
+    output = runner_output([
+        {"status": "ready", "pid": 123, "load_s": .1, "info": {}},
+        {"status": "file", "audio": "a.wav", "hyp": "first", "wall_s": .1},
+        {"status": "file", "audio": "b.wav", "hyp": "second", "wall_s": .1},
+        {"status": "done", "peak_rss_mb": 1}])
+    monkeypatch.setattr(bench.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess([], 0, log + "\n" + output, "stderr log"))
+    run = bench.run_engine("fake", 1, [Path("a.wav"), Path("b.wav")],
+                           {"a": 1, "b": 1}, {"a": "first", "b": "second"}, 30)
+    assert run["status"] == "OK" and not run["failed"]
+    assert run["files"]["a"]["wer"] == run["files"]["b"]["wer"] == 0
+    assert log in run["stderr"] and "stderr log" in run["stderr"]
+
+
+@pytest.mark.parametrize("override", [None, 17.5])
+def test_default_timeout_scales_with_all_audio_calls_and_records_override(monkeypatch, tmp_path, override):
+    audio = tmp_path / "budget-audio"
+    audio.mkdir()
+    for name in ("a", "b", "long_form"):
+        (audio / f"{name}.wav").touch()
+    durations = {"a": 1000, "b": 2000, "long_form": 300}
+    monkeypatch.setattr(bench, "audio_duration", lambda path: durations[path.stem])
+    observed = []
+    def invoke(command, **kwargs):
+        observed.append(kwargs["timeout"])
+        files = json.loads(kwargs["input"])["files"]
+        messages = [{"status": "ready", "pid": 123, "load_s": 0, "info": {}}]
+        messages += [{"status": "file", "audio": p, "hyp": "hyp " + Path(p).stem, "wall_s": 1} for p in files]
+        messages.append({"status": "done", "peak_rss_mb": 1})
+        return subprocess.CompletedProcess(command, 0, runner_output(messages), "")
+    monkeypatch.setattr(bench.subprocess, "run", invoke)
+    output = tmp_path / "budget.json"
+    args = ["bench.py", "--audio-dir", str(audio), "--engines", "fake", "--threads", "1", "--out", str(output)]
+    if override is not None:
+        args += ["--timeout", str(override)]
+    monkeypatch.setattr(sys, "argv", args)
+    assert bench.main() == 0
+    run = json.loads(output.read_text(encoding="utf-8"))["fake"]["1"]
+    # 3 repetitions of every clip, including long form, plus the first clip's warm-up.
+    expected = 10 * (3 * (1000 + 2000 + 300) + 1000) if override is None else override
+    assert observed == [expected]
+    assert run["timeout_s"] == expected
+    assert run["timeout_source"] == ("scaled" if override is None else "override")
+
+
+def test_default_timeout_has_a_floor_for_short_jobs(audio_fixture, tmp_path):
+    audio, refs = audio_fixture
+    output = tmp_path / "floor.json"
+    result = subprocess.run([sys.executable, "-S", str(SPIKE / "bench.py"), "--audio-dir", str(audio),
+                             "--refs", str(refs), "--engines", "fake", "--threads", "1", "--out", str(output)],
+                            capture_output=True, text=True, encoding="utf-8", timeout=30)
+    assert result.returncode == 0, result.stderr
+    run = json.loads(output.read_text(encoding="utf-8"))["fake"]["1"]
+    assert run["timeout_s"] == 3600
+    assert run["timeout_source"] == "scaled"
+
+
+@pytest.mark.parametrize("override", [None, "17.5"])
+def test_run_all_preserves_scaled_default_or_forwards_timeout_override(monkeypatch, override):
+    import run_all
+    calls = []
+    monkeypatch.setattr(run_all.subprocess, "run", lambda command, **kwargs: calls.append(command))
+    args = ["run_all.py", "--engines", "fake", "--no-refs"]
+    if override:
+        args += ["--timeout", override]
+    monkeypatch.setattr(sys, "argv", args)
+    run_all.main()
+    assert len(calls) == 2
+    if override:
+        assert calls[0][calls[0].index("--timeout") + 1] == override
+    else:
+        assert "--timeout" not in calls[0]

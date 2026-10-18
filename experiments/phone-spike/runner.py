@@ -10,11 +10,13 @@ import time
 
 from engines import REGISTRY
 from engines.engine_registry import EngineUnavailable
-from runtime import audio_duration, peak_rss_mb
+from runtime import TIMED_REPEATS, audio_duration, peak_rss_mb
+
+_PROTOCOL = None
 
 
 def emit(message):
-    print(json.dumps(message, ensure_ascii=False, allow_nan=False), flush=True)
+    print(json.dumps(message, ensure_ascii=False, allow_nan=False), file=_PROTOCOL, flush=True)
 
 
 def timed_transcribe(engine, audio):
@@ -58,7 +60,7 @@ def run_job(engine_name, threads, job):
             try:
                 audio_duration(audio)
                 runs = []
-                for _ in range(3):
+                for _ in range(TIMED_REPEATS):
                     run = timed_transcribe(engine, audio)
                     calls += 1
                     runs.append(run)
@@ -75,7 +77,7 @@ def run_job(engine_name, threads, job):
             rss = max(rss or 0.0, nested_rss)
             source += " (max runner and CLI child)"
         emit({"status": "done", "pid": os.getpid(), "peak_rss_mb": rss,
-              "rss_source": source, "transcribe_calls": calls, "repeats": 3})
+              "rss_source": source, "transcribe_calls": calls, "repeats": TIMED_REPEATS})
         return 0
     except Exception as error:
         unavailable = isinstance(error, (EngineUnavailable, ImportError))
@@ -88,7 +90,7 @@ def run_job(engine_name, threads, job):
                 engine.unload()
 
 
-def main():
+def _main():
     for stream in (sys.stdin, sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8")
@@ -104,6 +106,20 @@ def main():
         emit({"status": "FAILED", "error": str(error)})
         return 2
     return run_job(args.engine, args.threads, job)
+
+
+def main():
+    global _PROTOCOL
+    # Keep the original stdout pipe exclusively for JSON, including when native
+    # libraries bypass Python's stdout and write directly to file descriptor 1.
+    sys.stdout.flush()
+    with os.fdopen(os.dup(1), "w", encoding="utf-8", buffering=1) as protocol:
+        os.dup2(2, 1)
+        _PROTOCOL = protocol
+        try:
+            return _main()
+        finally:
+            _PROTOCOL = None
 
 
 if __name__ == "__main__":

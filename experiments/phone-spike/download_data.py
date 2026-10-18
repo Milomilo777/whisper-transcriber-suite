@@ -3,7 +3,6 @@ import argparse
 from array import array
 import csv
 import io
-import os
 from pathlib import Path
 import random
 import sys
@@ -11,7 +10,7 @@ import wave
 
 from runtime import audio_duration, write_json, write_text
 
-ROOT = Path(os.path.relpath(Path(__file__).parent))
+ROOT = Path(__file__).resolve().parent
 
 
 def sampled_indices(total, size=300, seed=1234):

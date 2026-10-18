@@ -13,7 +13,7 @@ import zipfile
 
 from runtime import write_text
 
-ROOT = Path(os.path.relpath(Path(__file__).parent))
+ROOT = Path(__file__).resolve().parent
 WHISPER_TAG = "v1.7.1"
 
 

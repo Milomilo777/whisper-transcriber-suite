@@ -82,7 +82,16 @@ def _normal_files(run):
 
 
 def _successful(run):
+    # The historical `failed` flag records any error; PARTIAL retains usable rows.
+    if run.get("status") == "PARTIAL":
+        return True
     return not run.get("failed", False) and run.get("status", "OK") not in ("FAILED", "UNAVAILABLE")
+
+
+def _short_counts(run):
+    files = [value for key, value in run.get("files", {}).items() if key != "long_form"]
+    bad = sum("error" in item for item in files)
+    return len(files) - bad, bad
 
 
 def _median_metric(metric):
@@ -109,11 +118,13 @@ def build_summary(data):
           f"Headline WER/CER = sum edits / sum reference lengths. Utterance bootstrap: {count} resamples, "
           f"seed {seed}, percentile 95% CI (conservatively includes the point). MB means 1024 squared bytes. "
           "Short-file metrics exclude long_form. Metrics use 4 threads when successful, otherwise 1 "
-          "or the lowest successful thread count, identified below. Missing references are unknown.", "",
-          "| Engine/model/quant | Status | Metric threads | Model MB | Agg WER | WER 95% CI | Median WER | "
+          "or the lowest successful thread count, identified below. Missing references are unknown. "
+          "PARTIAL jobs aggregate over good rows only. Table good/bad short-file counts refer to the "
+          "metric thread; each thread's counts and status appear beside its numbers in the trace.", "",
+          "| Engine/model/quant | Status | Metric threads | Good short files | Bad short files | Model MB | Agg WER | WER 95% CI | Median WER | "
           "Agg CER | CER 95% CI | Median CER | WER ZWNJ space | Median RTF 1 | Median RTF 4 | Peak RSS MB | "
           "Runtime licence | Model licence | Android binding (link) | Integration notes |",
-          "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+          "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     rows = []
     for name, runs in sorted(data.items()):
         if name == "env":
@@ -137,8 +148,13 @@ def build_summary(data):
             rss_values += [v["peak_rss_mb"] for v in run.get("files", {}).values() if v.get("peak_rss_mb") is not None]
             if run.get("peak_rss_mb") is not None:
                 rss_values.append(run["peak_rss_mb"])
-        status = "FAILED" if not good else "PARTIAL" if len(good) != len(runs) else "OK"
-        values = [name, status, selected, _fmt(info.get("model_size_mb")), _fmt(w["rate"]), interval(w),
+        if not good:
+            status = "UNAVAILABLE" if runs and all(r.get("status") == "UNAVAILABLE" for r in runs.values()) else "FAILED"
+        else:
+            status = "PARTIAL" if len(good) != len(runs) or any(r.get("status") == "PARTIAL" for r in good.values()) else "OK"
+        good_count, bad_count = _short_counts(anchor) if selected else (None, None)
+        values = [name, status, selected, good_count, bad_count,
+                  _fmt(info.get("model_size_mb")), _fmt(w["rate"]), interval(w),
                   _fmt(_median_metric(w)), _fmt(c["rate"]), interval(c), _fmt(_median_metric(c)),
                   _fmt(z["rate"]), _fmt(_rtf(good.get("1"))), _fmt(_rtf(good.get("4"))),
                   _fmt(max(rss_values) if rss_values else None), info.get("runtime_license", "unknown"),
@@ -158,11 +174,18 @@ def build_summary(data):
                                         ("ZWNJ-space edits/words", "z")) if row[key]["pairs"]]
             md.append("; ".join(parts) + "." if parts else "Accuracy unknown: no scored references.")
         for threads, run in sorted(row["runs"].items(), key=lambda pair: int(pair[0])):
+            status = run.get("status", "FAILED" if run.get("failed") else "OK")
+            good_count, bad_count = _short_counts(run)
+            prefix = f"- Threads {threads}: {status}; good/bad short files {good_count}/{bad_count}; "
             if not _successful(run):
-                md.append(f"- Threads {threads}: FAILED ({_cell(run.get('status', 'FAILED'))}): {_cell(run.get('error'))}")
+                md.append(prefix + _cell(run.get("error")))
             else:
-                md.append(f"- Threads {threads}: load seconds {_fmt(run.get('load_s'))}; "
+                md.append(prefix + f"load seconds {_fmt(run.get('load_s'))}; "
                           f"median short-file RTF {_fmt(_rtf(run))}; RSS source {_cell(run.get('rss_source'))}.")
+                if run.get("error"):
+                    md.append("Errors: " + _cell(run["error"]))
+            if run.get("timeout_s") is not None:
+                md.append(f"Timeout seconds {_fmt(run['timeout_s'])} ({_cell(run.get('timeout_source'))}).")
         if row["info"].get("timing_notes"):
             md.append("Timing caveat: " + _cell(row["info"]["timing_notes"]))
         md.append("")

@@ -53,7 +53,7 @@ directory ACLs do not exclude a restricted Windows process.
 Latest Windows test summary (updated after the final check):
 
 ```text
-190 passed in 3.58s
+257 passed in 6.27s
 ```
 
 ## Future real benchmark setup (not run here)
@@ -87,7 +87,9 @@ Alternatively, from an activated environment, `bash experiments/phone-spike/setu
 and `bash experiments/phone-spike/run_all.sh` wrap the Python equivalents. The
 wrappers and Python tools work from either this folder or the repository root.
 All relative input/output paths passed as arguments are relative to the calling
-working directory; default models, data and build paths are relative to this folder.
+working directory. Scripts locate default models, data, builds and the runner using
+absolute paths derived from their own resolved file locations, so the calling
+directory can be on a different Windows drive.
 
 `setup.py` has explicit `--install`, `--build`, `--models` and `--hashes` actions;
 no arguments only prints help. `--all` does these in that order. It checks the
@@ -144,7 +146,7 @@ The benchmark, runners and summarizer perform no network requests. Private audio
 references and hypotheses remain local. Audio must already be 16 kHz mono PCM16;
 other formats and zero-length WAVs are rejected. An explicitly supplied missing or
 incomplete refs TSV is an input error. Empty normalized references raise ValueError
-in metrics and are recorded as a failed benchmark job rather than scored as zero.
+in metrics and are recorded as errors on those rows rather than scored as zero.
 
 For each engine and thread count a fresh runner child loads the engine, makes one
 extra warm-up transcription on the first WAV and discards it, then transcribes
@@ -153,9 +155,28 @@ from that same repetition; all three timings and hypotheses are retained.
 Warm-up is not a scored row. Load seconds, child PID, decoding settings, audio/wall
 seconds, RTF, model MB, errors and memory source are saved. The controller persists
 each completed engine/thread job atomically before reporting completion.
-A failed/unavailable job retains evidence and errors; its WER/CER fields are
-removed. The controller returns normally after recording engine failures, so
-inspect the JSON statuses or the summary. `--timeout` bounds a whole job in seconds.
+An individual file error, crash or timeout preserves the completed good rows and
+their scores; only bad rows lose score fields. A job with usable rows and an error
+is `PARTIAL`; a job with no usable rows is `FAILED` (or `UNAVAILABLE` for a missing
+engine, dependency or model). A5 sanity failures invalidate the whole job. Raw JSON
+records `counts` (all rows, including long form) and `short_counts`, each with
+`good`, `bad`, and `total`. The historical `failed` flag remains true whenever any
+error occurred, including a `PARTIAL` job; use `status` to distinguish usability.
+The controller returns normally after recording engine failures, so inspect the
+JSON statuses or the summary.
+
+`--timeout SECONDS` explicitly overrides the whole engine/thread job budget in
+both `bench.py` and `run_all.py`. Without an override the budget is
+`max(3600, 10 * (3 * sum(all WAV durations) + first WAV duration))` seconds: ten
+wall seconds per audio second processed, counting all timed repeats, long form,
+and the single warm-up, with a one-hour floor. This is a generous deadline, not a
+predicted runtime. Each job records the exact `timeout_s` and `timeout_source`
+(`scaled` or `override`), also shown in the summary trace.
+
+The runner reserves a duplicate of stdout for JSON lines and redirects file
+descriptor 1 to stderr before loading an engine. Python and native engine logs
+therefore go to stderr. The controller also retains stray non-JSON stdout lines
+as stderr diagnostics; they do not invalidate otherwise complete results.
 
 On Linux/macOS peak RAM is the maximum `ru_maxrss` of the isolated runner and any
 CLI child (macOS uses byte units; Linux uses KiB). On Windows the runner uses
@@ -186,12 +207,30 @@ Unknown RAM stays unknown.
 
 ## Scores and report traceability
 
-Normalization uses NFC, Persian yeh/keheh, harakat/tatweel removal, ASCII digits,
-punctuation removal, Latin lowercase and collapsed whitespace. Headline ZWNJ is
-**deleted**; ZWNJ-to-space WER is a separate sensitivity score. Whole Persian
-cardinal phrases from zero through 9999, including compact ZWNJ forms, are
-converted to ASCII digits on both sides. Unrelated adjacent numbers are not summed;
-ordinals, negative/decimal expressions and larger numbers are outside this grammar.
+The R1 normalization rules apply to both reference and hypothesis: NFC, Persian
+yeh/keheh, harakat/tatweel removal, ASCII digits, punctuation removal, Latin
+lowercase and collapsed whitespace. Headline ZWNJ is **deleted** under A2;
+ZWNJ-to-space WER is a separate sensitivity score. Added punctuation/numeric rules:
+
+- Ellipsis U+2026, en/em dashes U+2013/U+2014, quotation marks U+2018-U+201D,
+  and Arabic percent U+066A become spaces, just like the existing ASCII and
+  Persian punctuation. They cannot stay glued to words.
+- Direction marks U+200E/U+200F and BOM U+FEFF are deleted.
+- Between digits, Arabic thousands separator U+066C, ASCII comma and Arabic
+  comma U+060C are deleted so digit groups form one number (`۱٬۲۰۰` -> `1200`).
+  Outside digit pairs these separators become spaces.
+- Arabic decimal separator U+066B between digits becomes an ASCII decimal point
+  (`۳٫۵` -> `3.5`); an ASCII point between digits is preserved too. Other points
+  and decimal separators become spaces. These rules run after digit conversion.
+
+Whole Persian cardinal phrases from zero through **999999**, including compact
+ZWNJ forms and hundreds-valued multipliers of thousands, become ASCII digits on
+both sides. Unrelated adjacent numbers are not summed. This extends A2's minimum
+range of 9999 as requested in BRIEF item 8. A2 specifies cardinal conversion
+without a colloquial spelling inventory, so the grammar retains the standard
+spellings `هجده` and `پانصد`; `هیجده` and `پونصد` are left unchanged. Ordinals,
+negative/decimal number words, millions and larger phrases remain outside the
+grammar; digit-written decimal values still normalize as described above.
 
 WER/CER use Levenshtein edits divided by reference words/characters; CER omits
 spaces. They can exceed 1 for many insertions. The headline is **sum edits / sum
@@ -205,14 +244,19 @@ mean per-utterance WER difference and paired bootstrap CI.
 
 SUMMARY has one row per engine/model/quant, separate median RTF columns for
 1/4 threads, peak RAM, licences, Android binding links and integration notes.
-Accuracy is taken from the successful four-thread job when available, otherwise
-one thread or the lowest available count, explicitly identified. Long form is
+Accuracy is taken from the usable four-thread job when available, otherwise
+one thread or the lowest available count, explicitly identified. A `PARTIAL` job
+is usable: aggregate WER/CER, bootstrap intervals, medians and timing use **good
+rows only**. The main table shows `PARTIAL` and the selected job's good/bad short
+row counts; the trace lists status and counts for every thread beside its numbers.
+Missing-runtime/model engines show `UNAVAILABLE` in the main table. Long form is
 excluded from short-file scores/timing and gets its own WER, repeated-trigram
 hypothesis/reference counts and aligned deletion diagnostics. Natural repetition
 and aligned deletions do not by themselves prove hallucination or dropped speech.
 
 All-empty or all-identical normalized short-file hypotheses mark a multi-file job
-FAILED; long_form cannot mask that condition. A single file cannot establish an
+FAILED, with all scores removed even when other rows have errors; long_form cannot
+mask that condition. A single file cannot establish an
 all-files identity failure. Two sample reference/hypothesis pairs are shown per
 engine where available; missing data and unmeasured accuracy are `unknown`, never
 perfect zero scores. Failed engines remain in the table with their errors.

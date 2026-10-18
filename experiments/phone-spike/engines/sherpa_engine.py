@@ -1,9 +1,8 @@
 from pathlib import Path
-import os
 import wave
 from .engine_registry import Engine, EngineUnavailable, register
 
-ROOT = Path(os.path.relpath(Path(__file__).parent.parent))
+ROOT = Path(__file__).resolve().parent.parent
 
 
 class SherpaEngineBase(Engine):
@@ -28,7 +27,9 @@ class SherpaEngineBase(Engine):
                          "provider": "cpu", "decoding_method": "greedy_search",
                          "sample_rate": 16000, "feature_dim": 80, "debug": False}
         self.recognizer = sherpa_onnx.OfflineRecognizer.from_whisper(
-            encoder=str(encoder), decoder=str(decoder), tokens=str(tokens), **self.settings)
+            encoder=str(encoder), decoder=str(decoder), tokens=str(tokens),
+            **{key: self.settings[key] for key in
+               ("language", "task", "num_threads", "decoding_method", "debug", "provider")})
         self.model_files = (encoder, decoder, tokens)
 
     def transcribe(self, audio_path):

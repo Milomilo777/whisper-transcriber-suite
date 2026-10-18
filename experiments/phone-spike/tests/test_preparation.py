@@ -1,7 +1,6 @@
 import hashlib
 import importlib.util
 import json
-import os
 from pathlib import Path
 import struct
 import sys
@@ -14,7 +13,7 @@ import pytest
 import download_data
 from runtime import audio_duration
 
-SPIKE = Path(os.path.relpath(Path(__file__).parent.parent))
+SPIKE = Path(__file__).resolve().parent.parent
 spec = importlib.util.spec_from_file_location("phone_spike_setup", SPIKE / "setup.py")
 setup = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(setup)

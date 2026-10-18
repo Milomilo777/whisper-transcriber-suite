@@ -101,7 +101,7 @@ def test_numbers_do_not_consume_unrelated_words_or_lists():
     assert words_to_digits("من سیب و دوست دارم") == "من سیب و دوست دارم"
     assert words_to_digits("یک دو سه") == "1 2 3"
     assert words_to_digits("دو و سه کتاب") == "2 و 3 کتاب"
-    assert words_to_digits("ده هزار") == "ده هزار"
+    assert words_to_digits("ده هزار") == "10000"
     assert words_to_digits("صد و کتاب") == "100 و کتاب"
     assert normalize_fa("يک كتاب و بيست‌وسه سیب") == "1 کتاب و 23 سیب"
 
@@ -147,3 +147,57 @@ def test_edit_distance_and_long_form_diagnostics():
     assert repeated_ngrams("a b") == 0
     assert word_error_counts("a b c", "a c") == {
         "edits": 1, "substitutions": 0, "deletions": 1, "insertions": 0}
+
+
+@pytest.mark.parametrize("punctuation", list("\u2026\u2013\u2014\u2018\u2019\u201a\u201b\u201c\u201d\u066a"))
+def test_unicode_punctuation_does_not_glue_words(punctuation):
+    assert normalize_fa("کتاب" + punctuation + "خوب") == "کتاب خوب"
+    assert wer("کتاب" + punctuation + "خوب", "کتاب خوب") == 0
+    assert cer("کتاب خوب", "کتاب" + punctuation + "خوب") == 0
+
+
+@pytest.mark.parametrize("mark", ["\u200e", "\u200f", "\ufeff"])
+def test_direction_marks_and_bom_are_deleted(mark):
+    assert normalize_fa("س" + mark + "لام دنیا") == "سلام دنیا"
+    assert wer("سلام" + mark + " دنیا", "سلام دنیا") == 0
+    assert cer("سلام دنیا", "سلام" + mark + " دنیا") == 0
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("سلام…", "سلام"), ("تهران–شیراز", "تهران شیراز"),
+    ("۱٬۲۰۰", "1200"), ("١٬٢٠٠", "1200"), ("1,200", "1200"),
+    ("۱،۲۰۰", "1200"), ("1,234,567", "1234567"),
+    ("۳٫۵", "3.5"), ("٣٫٥", "3.5"), ("3.5", "3.5"),
+    ("۱٬۲۳۴٫۵۶", "1234.56"), ("۱۲٪", "12"),
+    ("۱۲٬ کتاب", "12 کتاب"), ("کتاب٫خوب", "کتاب خوب"),
+])
+def test_unicode_numeric_normalization_on_reference_and_hypothesis(text, expected):
+    assert normalize_fa(text) == expected
+    assert wer(text, expected) == wer(expected, text) == 0
+    assert cer(text, expected) == cer(expected, text) == 0
+
+
+@pytest.mark.parametrize("word,value", [
+    ("ده هزار", 10000), ("بیست و پنج هزار", 25000),
+    ("بیست و پنج هزار و یک", 25001), ("نود و نه هزار و نهصد و نود و نه", 99999),
+    ("صد هزار", 100000), ("یک صد و نود و نه هزار و یک صد و نود و نه", 199199),
+    ("دویست و سی و چهار هزار پانصد و شصت و هفت", 234567),
+    ("نهصد و نود و نه هزار و نهصد و نود و نه", 999999),
+    ("بیست‌وپنج‌هزار", 25000), ("نهصدونودونههزارونهصدونودونه", 999999),
+])
+def test_number_grammar_through_999999(word, value):
+    assert words_to_digits(word) == str(value)
+    assert normalize_fa(word) == str(value)
+    assert wer(word, str(value)) == wer(str(value), word) == 0
+    assert cer(word, str(value)) == cer(str(value), word) == 0
+    assert words_to_digits("من " + word + " کتاب دارم") == f"من {value} کتاب دارم"
+
+
+def test_number_extension_keeps_cardinal_boundaries_and_standard_spellings():
+    assert words_to_digits("بیست و پنج هزار دو هزار") == "25000 2000"
+    assert words_to_digits("بیست و پنج هزار بیست و پنج هزار") == "25000 25000"
+    assert words_to_digits("هزار هزار") == "1000 1000"
+    assert words_to_digits("صد هزار و کتاب") == "100000 و کتاب"
+    assert words_to_digits("صفر هزار") == "0 1000"
+    # A2 specifies cardinals, without a colloquial spelling expansion.
+    assert words_to_digits("هیجده پونصد") == "هیجده پونصد"

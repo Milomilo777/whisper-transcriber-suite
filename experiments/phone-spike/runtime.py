@@ -9,6 +9,8 @@ import sys
 import tempfile
 import wave
 
+TIMED_REPEATS = 3
+
 
 def windows_peak_rss_mb(handle=None):
     class ProcessMemoryCounters(ctypes.Structure):
@@ -82,7 +84,7 @@ def environment_info():
             "ram_mb": physical_ram_mb(), "python": platform.python_version(),
             "affinity": sorted(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else "uncontrolled",
             "statistics": {"bootstrap_resamples": 1000, "seed": 1234},
-            "measurement": {"warmup_calls": 1, "repeats": 3, "mb_bytes": 1024 * 1024}}
+            "measurement": {"warmup_calls": 1, "repeats": TIMED_REPEATS, "mb_bytes": 1024 * 1024}}
 
 
 def audio_duration(path):

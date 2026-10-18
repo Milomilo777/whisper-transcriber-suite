@@ -2,16 +2,16 @@
 import argparse
 import csv
 import json
-import os
+import math
 from pathlib import Path
 import statistics
 import subprocess
 import sys
 
 from metrics import cer_edits, normalize_fa, repeated_ngrams, wer_edits, word_error_counts
-from runtime import audio_duration, environment_info, write_json
+from runtime import TIMED_REPEATS, audio_duration, environment_info, write_json
 
-RUNNER = Path(os.path.relpath(Path(__file__).with_name("runner.py")))
+RUNNER = Path(__file__).resolve().with_name("runner.py")
 SCORE_KEYS = ("wer", "cer", "wer_edits", "wer_words", "cer_edits", "cer_chars",
               "wer_zwnj_space", "wer_zwnj_edits", "wer_zwnj_words")
 
@@ -48,7 +48,8 @@ def score_file(result, ref, long_form=False):
 
 
 def check_sanity(run):
-    short = [v for key, v in run["files"].items() if key != "long_form" and "hyp" in v]
+    short = [v for key, v in run["files"].items()
+             if key != "long_form" and isinstance(v.get("hyp"), str)]
     hyps = [normalize_fa(item["hyp"]) for item in short]
     if not hyps or not any(hyps):
         return "All hypotheses were empty"
@@ -57,14 +58,30 @@ def check_sanity(run):
     return None
 
 
-def run_engine(engine, threads, files, durations, refs, timeout):
-    run = {"files": {}, "info": None, "failed": False, "status": "OK"}
+def default_timeout(files, durations):
+    """Allow ten wall seconds per audio second processed, with a one-hour floor."""
+    audio_work_s = TIMED_REPEATS * sum(durations[path.stem] for path in files)
+    if files:
+        audio_work_s += durations[files[0].stem]  # One discarded warm-up call.
+    return max(3600.0, 10.0 * audio_work_s)
+
+
+def file_counts(files):
+    bad = sum("error" in item for item in files.values())
+    return {"good": len(files) - bad, "bad": bad, "total": len(files)}
+
+
+def run_engine(engine, threads, files, durations, refs, timeout=None):
+    source = "scaled" if timeout is None else "override"
+    timeout = default_timeout(files, durations) if timeout is None else timeout
+    run = {"files": {}, "info": None, "failed": False, "status": "OK",
+           "timeout_s": timeout, "timeout_source": source}
     command = [sys.executable] + (["-S"] if sys.flags.no_site else [])
     command += [str(RUNNER), "--engine", engine, "--threads", str(threads)]
     errors = []
     try:
         proc = subprocess.run(command, input=json.dumps({"files": [str(p) for p in files]}),
-                              capture_output=True, text=True, encoding="utf-8",
+                              capture_output=True, text=True, encoding="utf-8", errors="replace",
                               timeout=timeout)
         output, stderr = proc.stdout, proc.stderr
         if proc.returncode:
@@ -82,9 +99,17 @@ def run_engine(engine, threads, files, durations, refs, timeout):
         errors.append(str(error))
     ready = done = False
     by_path = {str(p): p for p in files}
+    logs = [stderr] if stderr.strip() else []
     for line in output.splitlines():
         try:
             msg = json.loads(line)
+        except ValueError:
+            logs.append(line)
+            continue
+        if not isinstance(msg, dict) or "status" not in msg:
+            logs.append(line)
+            continue
+        try:
             status = msg.get("status")
             if status == "ready":
                 ready = True
@@ -95,9 +120,15 @@ def run_engine(engine, threads, files, durations, refs, timeout):
                 path = by_path[msg["audio"]]
                 result = {key: value for key, value in msg.items() if key not in ("status", "audio")}
                 result["audio_s"] = durations[path.stem]
+                if refs is not None:
+                    result["ref"] = refs[path.stem]
                 if "error" in result:
                     errors.append(f"{path.name}: {result['error']}")
                 else:
+                    if not isinstance(result["hyp"], str):
+                        raise ValueError("Engine hypothesis must be a string")
+                    if not math.isfinite(result["wall_s"]) or result["wall_s"] < 0:
+                        raise ValueError("Invalid wall time")
                     result["rtf"] = result["wall_s"] / result["audio_s"]
                     if path.stem == "long_form":
                         result["repeated_ngrams"] = repeated_ngrams(result["hyp"])
@@ -125,27 +156,36 @@ def run_engine(engine, threads, files, durations, refs, timeout):
         if path.stem not in run["files"]:
             run["files"][path.stem] = {"audio_s": durations[path.stem],
                                       "error": errors[0] if errors else "Runner omitted file"}
-    if not errors:
-        sanity = check_sanity(run)
-        if sanity:
-            errors.append(sanity)
+            if refs is not None:
+                run["files"][path.stem]["ref"] = refs[path.stem]
+            errors.append(f"{path.name}: {run['files'][path.stem]['error']}")
+    sanity = check_sanity(run) if any(isinstance(item.get("hyp"), str)
+                                     for item in run["files"].values()) else None
+    if sanity:
+        errors.append(sanity)
+        for result in run["files"].values():
+            result.setdefault("error", sanity)
     for result in run["files"].values():
         result["peak_rss_mb"] = run.get("peak_rss_mb")
+        if "error" in result:
+            for key in SCORE_KEYS:
+                result.pop(key, None)
     if (run.get("info") or {}).get("model_load_is_deferred"):
         run["setup_s"] = run.pop("load_s", None)
         loads = [v["model_load_s"] for v in run["files"].values() if "model_load_s" in v]
         run["load_s"] = statistics.median(loads) if loads else None
     if errors:
         run["failed"] = True
-        if run["status"] != "UNAVAILABLE":
+        if not sanity and any("error" not in result for result in run["files"].values()):
+            run["status"] = "PARTIAL"
+        elif run["status"] != "UNAVAILABLE":
             run["status"] = "FAILED"
         run["error"] = "; ".join(errors)
-        # A5: keep evidence/hypotheses and timing, but never publish failed scores.
-        for result in run["files"].values():
-            for key in SCORE_KEYS:
-                result.pop(key, None)
-    if stderr.strip():
-        run["stderr"] = stderr.strip()
+    run["counts"] = file_counts(run["files"])
+    run["short_counts"] = file_counts({key: value for key, value in run["files"].items()
+                                       if key != "long_form"})
+    if logs:
+        run["stderr"] = "\n".join(log.strip() for log in logs).strip()
     return run
 
 
@@ -156,12 +196,14 @@ def main():
     parser.add_argument("--engines", required=True, help="Comma-separated registry names")
     parser.add_argument("--threads", default="1,4")
     parser.add_argument("--out", required=True)
-    parser.add_argument("--timeout", type=float, default=3600, help="Seconds per engine/thread job")
+    parser.add_argument("--timeout", type=float, help="Override seconds per engine/thread job; "
+                        "default: max(3600, 10 * audio seconds including repeats and warm-up)")
     args = parser.parse_args()
     try:
         engines = list(dict.fromkeys(name.strip() for name in args.engines.split(",") if name.strip()))
         threads = list(dict.fromkeys(int(item) for item in args.threads.split(",")))
-        if not engines or not threads or min(threads) < 1 or args.timeout <= 0:
+        if (not engines or not threads or min(threads) < 1 or
+                (args.timeout is not None and (not math.isfinite(args.timeout) or args.timeout <= 0))):
             raise ValueError("Engines, positive threads and positive timeout are required")
         files = sorted(Path(args.audio_dir).glob("*.wav"))
         if not files:

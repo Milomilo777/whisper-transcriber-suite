@@ -11,7 +11,10 @@ _TENS = dict(zip("بیست سی چهل پنجاه شصت هفتاد هشتاد �
 _HUNDREDS = dict(zip("صد دویست سیصد چهارصد پانصد ششصد هفتصد هشتصد نهصد".split(), range(100, 1000, 100)))
 _HUNDREDS["یکصد"] = 100
 _DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
-_PUNCTUATION = str.maketrans({c: " " for c in string.punctuation + "،؛؟«»"})
+_PUNCTUATION = str.maketrans({c: " " for c in
+    string.punctuation + "،؛؟«»\u2026\u2013\u2014\u2018\u2019\u201a\u201b\u201c\u201d\u066a\u066b\u066c"
+    if c != "."})
+_DIRECTION_MARKS = str.maketrans("", "", "\u200e\u200f\ufeff")
 
 
 def _under_100(text):
@@ -47,8 +50,8 @@ def _number(text):
     if text.count("هزار") != 1:
         return None
     before, after = text.split("هزار")
-    thousands = 1 if not before else _SMALL.get(before)
-    if thousands is None or not 1 <= thousands <= 9:
+    thousands = 1 if not before else _under_1000(before)
+    if thousands is None or not 1 <= thousands <= 999:
         return None
     if not after:
         return thousands * 1000
@@ -59,23 +62,27 @@ def _number(text):
 
 
 def words_to_digits(text):
-    """Convert whole cardinal phrases 0..9999, including compact/ZWNJ forms.
+    """Convert whole cardinal phrases 0..999999, including compact/ZWNJ forms.
 
     Longest grammatical match wins. Unrelated adjacent numbers are not added.
-    Ordinals, negatives, decimals and larger numbers are outside this grammar.
+    Ordinals, negatives, decimals, colloquial spellings and larger numbers are
+    outside this grammar.
     """
     words = text.split()
     out = []
     i = 0
     while i < len(words):
-        if i + 1 < len(words) and words[i + 1] == "هزار":
-            prefix = _under_1000(words[i].replace("\u200c", ""))
-            if prefix is not None and prefix >= 10:
-                out.extend(words[i:i + 2])
-                i += 2
-                continue
-        for end in range(min(len(words), i + 12), i, -1):
-            value = _number("".join(words[i:end]).replace("\u200c", ""))
+        for end in range(min(len(words), i + 16), i, -1):
+            phrase = "".join(words[i:end]).replace("\u200c", "")
+            # Do not consume any part of an adjacent thousands multiplier.
+            _, unit, rest = phrase.partition("هزار")
+            if unit and rest:
+                following = (rest + "".join(words[end:end + 8])).replace("\u200c", "")
+                multiplier, next_unit, _ = following.partition("هزار")
+                value = _under_1000(multiplier.removeprefix("و"))
+                if next_unit and value is not None and value > 0:
+                    continue
+            value = _number(phrase)
             if value is not None:
                 out.append(str(value))
                 i = end
@@ -93,7 +100,12 @@ def normalize_fa(text, zwnj_to_space=False):
     text = text.translate(str.maketrans({"ي": "ی", "ى": "ی", "ك": "ک"}))
     text = re.sub(r"[\u064b-\u065f\u0670\u0640]", "", text)
     text = text.replace("\u200c", " " if zwnj_to_space else "")
-    text = text.translate(_DIGITS).translate(_PUNCTUATION).lower()
+    text = text.translate(_DIGITS).translate(_DIRECTION_MARKS)
+    # Grouping separators join digits; decimals retain a dot on both sides of scoring.
+    text = re.sub(r"(?<=[0-9])[,\u060c\u066c](?=[0-9])", "", text)
+    text = re.sub(r"(?<=[0-9])\u066b(?=[0-9])", ".", text)
+    text = text.translate(_PUNCTUATION)
+    text = re.sub(r"(?<![0-9])\.|\.(?![0-9])", " ", text).lower()
     return " ".join(words_to_digits(text).split())
 
 
