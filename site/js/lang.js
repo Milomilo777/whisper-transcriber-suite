@@ -14,11 +14,13 @@
     if (ev.target.closest && ev.target.closest('[data-lang-notice-close]')) {
       const note = document.querySelector('[data-lang-notice]');
       if (note) note.hidden = true;
+      // closing the notice keeps this language, so "/" does not redirect and ask again
+      if (document.documentElement.lang) remember(document.documentElement.lang);
     }
   });
   document.addEventListener('keydown', (ev) => {
     const menu = document.querySelector('[data-lang-menu]');
-    if (ev.key === 'Escape' && menu && menu.open) { menu.open = false; menu.querySelector('summary').focus(); }
+    if (ev.key === 'Escape' && menu && menu.open) { menu.open = false; menu.querySelector('summary')?.focus(); }
   });
 
   const q = new URLSearchParams(location.search);

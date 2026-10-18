@@ -2,17 +2,31 @@
 //
 //   1. ?lang=en (the "View in English" link) -> remember English, show the English page.
 //   2. A wts_lang cookie (set when someone picks a language in the menu) wins over everything else.
-//   3. Search engines, link previews and scripts always get the English page, never a redirect.
+//   3. Search engines, link previews and scripts (no Accept-Language) always get the English page.
 //   4. Otherwise the visitor's country (request.cf.country) gives candidate languages
-//      (COUNTRY_LANGS, from Unicode CLDR); the browser's Accept-Language picks among them, else the
-//      first one. English, an unknown country or a language not yet published -> the English page.
+//      (COUNTRY_LANGS, from Unicode CLDR); the browser's Accept-Language picks among them, and a
+//      published language other than English that the browser prefers wins over them. No match ->
+//      English where it is a candidate, else the country's first language. English, an unknown
+//      country or a language not yet published -> the English page.
 //
 // A redirect is a 302 to /<lang>/?auto=1 (the page then says why it is in that language) and is never
 // cached, because it depends on the visitor. Every language page stays reachable at its own address
 // for everyone, and nothing is stored on the server. Any error falls back to the English page.
 
-// "bot" must end a word: Googlebot/2.1 and bingbot/ match, a phone model such as CUBOT_X30 does not
-const BOT_UA = /bot\b|crawl|spider|slurp|preview|headless|lighthouse|monitor|curl|wget|python|httpclient|facebookexternalhit|whatsapp|embedly|pinterest|vkshare|quora/i;
+// "bot" must end a word and not be the phone brand Cubot: Googlebot/2.1 and bingbot/ match,
+// "CUBOT X30" does not. The named fetchers carry no "bot" in their User-Agent; names that also
+// appear in the in-app browsers of real people (KakaoTalk, Daum, Viber, Tumblr) are left out.
+const BOT_UA = new RegExp([
+  '(?<!cu)bot\\b', 'crawl', 'spider', 'slurp', 'preview', 'headless', 'lighthouse', 'monitor',
+  'google-(inspectiontool|extended|read-aloud|pagerenderer|site-verification|safety)', 'googleother',
+  'apis-google', 'mediapartners-google', 'feedfetcher-google', 'chatgpt-user', 'claude-(user|web|searchbot)',
+  'anthropic-ai', 'perplexity-user', 'meta-external', 'cohere-ai', '\\byeti\\b', 'daumoa', 'qwantify',
+  'yandex(images|metrika|direct|webmaster)', 'mastodon/', 'cardyb', 'kakaotalk-scrap', 'slack-imgproxy',
+  'iframely', 'flipboardproxy', 'github-camo', 'pingdom', 'statuscake', 'gtmetrix', 'ptst/', 'newsblur',
+  'wkhtml', 'phantomjs', 'jsdom', 'w3c_validator', 'curl', 'wget', 'python[-/]', 'httpclient', 'okhttp',
+  'axios', 'node-fetch', 'undici', 'libwww', 'scrapy', 'postman', 'httpie', 'go-http-client', '^java/',
+  'facebookexternalhit', 'whatsapp', 'embedly', 'pinterest', 'vkshare', 'quora',
+].join('|'), 'i');
 const COOKIE = 'wts_lang';
 const YEAR = 60 * 60 * 24 * 365;
 
@@ -181,8 +195,9 @@ const COUNTRY_LANGS = {
 
 // Browser language tag -> website language code.
 function siteCode(tag) {
-  const t = tag.toLowerCase();
-  if (/^zh-(tw|hk|mo|hant)/.test(t)) return 'zh-TW';
+  const t = tag.toLowerCase().replace(/_/g, '-');
+  if (/^zh-(.*-)?(tw|hk|mo|hant)\b/.test(t) || /^yue\b/.test(t)) return 'zh-TW';
+  if (t === 'zh') return 'zh'; // a bare "zh" takes the country's script, see pickLanguage
   if (t.startsWith('zh')) return 'zh-CN';
   if (t === 'pt-br') return 'pt-BR';
   if (t.startsWith('pt')) return 'pt';
@@ -199,35 +214,59 @@ function acceptLanguages(header) {
     .split(',')
     .map((part, i) => {
       const [tag, ...params] = part.trim().split(';');
-      const q = params.map((p) => p.trim()).find((p) => p.startsWith('q='));
-      return { tag: tag.trim(), q: q ? parseFloat(q.slice(2)) || 0 : 1, i };
+      const q = params.map((p) => p.trim().match(/^q\s*=\s*(.*)$/i)).find(Boolean);
+      return { tag: tag.trim(), q: q ? Math.min(1, parseFloat(q[1]) || 0) : 1, i };
     })
     .filter((x) => x.tag && x.tag !== '*' && x.q > 0)
     .sort((a, b) => b.q - a.q || a.i - b.i)
     .map((x) => siteCode(x.tag));
 }
 
-function cookieValue(header, name) {
+// Every value of the cookie, in header order (a browser may send two with different paths).
+function cookieValues(header, name) {
+  const out = [];
   for (const part of (header || '').split(';')) {
     const [k, ...v] = part.trim().split('=');
-    if (k === name) return decodeURIComponent(v.join('='));
+    if (k === name) {
+      try {
+        out.push(decodeURIComponent(v.join('=')));
+      } catch (e) {
+        // a malformed value counts as no choice
+      }
+    }
   }
-  return null;
+  return out;
 }
 
 // The language "/" should show: a published code, 'en' meaning the English page itself.
+// Codes compare case-insensitively (a cookie may say zh-tw); the published spelling is returned.
+// cookie is one value or a list of them; the first published one counts.
 export function pickLanguage({ country, acceptLanguage, cookie, userAgent, published = PUBLISHED, table = COUNTRY_LANGS }) {
-  if (cookie && published.includes(cookie)) return cookie;
-  if (!userAgent || BOT_UA.test(userAgent)) return 'en';
-  const candidates = (table[(country || '').toUpperCase()] || []).filter((c) => c === 'en' || published.includes(c));
-  if (!candidates.length) return 'en';
-  // a candidate pt-BR also matches a browser that only says "pt", and the other way round
-  const loose = (c) => (c === 'pt-BR' ? 'pt' : c);
+  const pub = new Map(['en', ...published].map((c) => [c.toLowerCase(), c]));
+  const saved = [].concat(cookie || []).find((c) => pub.has(String(c).toLowerCase()));
+  if (saved) return pub.get(String(saved).toLowerCase());
+  // every browser sends Accept-Language; crawlers and link checkers often do not
+  if (!userAgent || !acceptLanguage || BOT_UA.test(userAgent)) return 'en';
+  // the table leaves out countries whose only language is English (US, AU, ...); XX and T1 = unknown
+  const cc = (country || '').toUpperCase();
+  const langs = table[cc] || (/^[A-Z]{2}$/.test(cc) && cc !== 'XX' ? ['en'] : []);
+  // pt-BR also matches a browser that only says "pt", zh-TW one that only says "zh", and the other way round
+  const loose = (c) => c.toLowerCase().replace(/^(pt|zh)-.*/, '$1');
   for (const want of acceptLanguages(acceptLanguage)) {
-    const hit = candidates.find((c) => c === want || loose(c) === loose(want));
-    if (hit) return hit;
+    const w = want.toLowerCase();
+    const exact = langs.find((c) => c.toLowerCase() === w);
+    const near = langs.find((c) => loose(c) === loose(w));
+    // a published language the browser asks for wins over the country, except English: many people
+    // use an English browser in a country whose language they read, which is why "/" asks the country
+    const own = langs.length && w !== 'en' ? (w === 'zh' ? 'zh-cn' : w) : null;
+    // a bare "pt" or "zh" means this country's variant; "pt-br" means itself
+    const order = w.includes('-') ? [exact, own, near] : [exact, near, own];
+    // a language not published yet: the next choice, then the browser's next language
+    const found = order.find((c) => c && pub.has(c.toLowerCase()));
+    if (found) return pub.get(found.toLowerCase());
   }
-  return candidates[0];
+  if (!langs.length || langs.includes('en')) return 'en';
+  return pub.get(langs[0].toLowerCase()) || 'en';
 }
 
 export async function onRequestGet({ request, next }) {
@@ -240,14 +279,21 @@ export async function onRequestGet({ request, next }) {
       out.headers.set('Cache-Control', 'private, no-store');
       return out;
     }
+    const cookie = cookieValues(request.headers.get('Cookie'), COOKIE);
     const code = pickLanguage({
       country: request.cf && request.cf.country,
       acceptLanguage: request.headers.get('Accept-Language'),
-      cookie: cookieValue(request.headers.get('Cookie'), COOKIE),
+      cookie,
       userAgent: request.headers.get('User-Agent') || '',
     });
-    if (code === 'en') return next();
-    const fromCookie = cookieValue(request.headers.get('Cookie'), COOKIE) === code;
+    if (code === 'en') {
+      // the English page is also an answer that depends on these headers
+      const res = await next();
+      const out = new Response(res.body, res);
+      out.headers.set('Vary', 'Cookie, Accept-Language');
+      return out;
+    }
+    const fromCookie = cookie.some((c) => c.toLowerCase() === code.toLowerCase());
     // keep the visitor's other query parameters (campaign tags, ?motion=off)
     const query = new URLSearchParams(url.search);
     query.delete('lang');
@@ -262,3 +308,6 @@ export async function onRequestGet({ request, next }) {
     return next();
   }
 }
+
+// a HEAD request gets the same answer as GET (Pages would otherwise serve the static page)
+export const onRequestHead = onRequestGet;
