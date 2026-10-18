@@ -554,6 +554,7 @@ html[data-motion="off"] .rail-pulse { transform: translateX(380px); }
 
 /* ---------- Language menu + "shown in your language" notice (js/lang.js, tools/site_i18n.py) ---------- */
 .lang-menu { position: relative; }
+.lang-en { white-space: nowrap; font-weight: 600; }
 .lang-menu > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .lang-menu > summary::-webkit-details-marker { display: none; }
 .lang-menu > summary .i { width: 16px; height: 16px; }
@@ -666,4 +667,14 @@ html:lang(ja) :is(h1, h2, h3, .hero-title), html:lang(ko) :is(h1, h2, h3, .hero-
 }
 @media (max-width: 420px) {
   .brand-name { display: none; }
+  /* translated pages add the English button: tighter gaps keep the row on a 360 px phone */
+  .site-header .header-row { gap: 10px; }
+  .header-cta { gap: 6px; }
+  .header-cta .btn-sm { padding-inline: 10px; }
+  .lang-en { padding-inline: 8px; }
+}
+@media (max-width: 340px) {
+  .header-cta { gap: 4px; }
+  .header-cta .btn-sm { padding-inline: 8px; font-size: 0.82rem; }
+  .lang-en { padding-inline: 6px; }
 }
