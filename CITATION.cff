@@ -8,6 +8,7 @@ type: software
 url: "https://whisper-transcriber-suite.com/"
 contact:
   - name: "Whisper Transcriber Suite"
+    email: "admin@whisper-transcriber-suite.com"
     website: "https://whisper-transcriber-suite.com/#contact"
 repository-code: "https://github.com/Milomilo777/whisper-transcriber-suite"
 license: BSD-3-Clause

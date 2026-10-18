@@ -498,14 +498,17 @@
       btn.disabled = true;
       btn.textContent = t('One moment…');
       try {
-        const addr = await reveal();
-        const link = document.createElement('a');
-        link.href = `mailto:${addr}`;
-        link.textContent = addr;
-        out.replaceChildren(link);
+        // One or more addresses, separated by spaces; the first is the main one.
+        const links = (await reveal()).split(/\s+/).filter(Boolean).map((addr) => {
+          const link = document.createElement('a');
+          link.href = `mailto:${addr}`;
+          link.textContent = addr;
+          return link;
+        });
+        out.replaceChildren(...links.flatMap((link, i) => (i ? [document.createTextNode(' · '), link] : [link])));
         out.hidden = false;
         btn.hidden = true;
-        link.focus();
+        links[0].focus();
       } catch (e) {
         btn.textContent = t('Could not load it. Try again');
         btn.disabled = false;

@@ -11,13 +11,16 @@
 // must have done a small proof-of-work: SHA-256("<t>:<n>") starts with BITS
 // zero bits. The reply is never cached or indexed.
 //
-// Source of the address: the CONTACT_EMAIL variable of the Pages project
-// (Settings -> Variables and Secrets). FALLBACK is used while it is unset.
+// Source of the addresses: the CONTACT_EMAIL variable of the Pages project
+// (Settings -> Variables and Secrets; several addresses separated by spaces).
+// While it is unset: PRIMARY (the project domain's address), then FALLBACK
+// (the earlier address, kept working).
 
 const BITS = 14;
 const WINDOW_MS = 10 * 60 * 1000;
 const BOT_UA = /bot|crawl|spider|slurp|scrap|fetch|preview|headless|lighthouse|monitor|curl|wget|python|java\/|go-http|node|axios|httpclient|libwww|okhttp|gpt|claude|anthropic|perplexity|cohere|bytedance|diffbot|omgili|facebookexternal|meta-external/i;
 const FALLBACK_KEY = 0x5a;
+const PRIMARY = [55, 53, 57, 116, 63, 46, 51, 47, 41, 119, 40, 63, 56, 51, 40, 57, 41, 52, 59, 40, 46, 119, 40, 63, 42, 41, 51, 50, 45, 26, 53, 60, 52, 51];
 const FALLBACK = [55, 53, 57, 116, 54, 51, 59, 55, 61, 26, 63, 46, 51, 47, 41, 116, 40, 63, 56, 51, 40, 57, 41, 52, 59, 40, 46, 116, 40, 63, 42, 41, 51, 50, 45];
 
 const HEADERS = {
@@ -31,7 +34,8 @@ const json = (status, body) => new Response(JSON.stringify(body), { status, head
 function address(env) {
   const set = env && typeof env.CONTACT_EMAIL === 'string' ? env.CONTACT_EMAIL.trim() : '';
   if (set.includes('@')) return set;
-  return FALLBACK.map((c) => String.fromCharCode(c ^ FALLBACK_KEY)).reverse().join('');
+  const decode = (codes) => codes.map((c) => String.fromCharCode(c ^ FALLBACK_KEY)).reverse().join('');
+  return `${decode(PRIMARY)} ${decode(FALLBACK)}`;
 }
 
 function leadingZeroBits(bytes) {

@@ -20,6 +20,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **"What's new" in the README now describes 2.1.**
 
+- **The website moved to [whisper-transcriber-suite.com](https://whisper-transcriber-suite.com)**; the
+  old pages.dev and .online addresses redirect there, path for path. The project now has its own
+  email addresses: admin@whisper-transcriber-suite.com is listed in the README, SECURITY.md and
+  CITATION.cff, and the website's contact button shows info@ first, with the earlier address kept.
+
 - **Hindi interface reviewed by a native speaker** (#11): natural terms for time range, filler
   words, silent stretches, the update banner and the Stop button; the catalog is marked
   "reviewed". A catalog test now rejects Chinese/Japanese punctuation outside those catalogs (one
