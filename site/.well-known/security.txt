@@ -1,5 +1,5 @@
 Contact: https://github.com/Milomilo777/whisper-transcriber-suite/security/advisories/new
 Expires: 2027-09-27T00:00:00.000Z
 Preferred-Languages: en
-Canonical: https://whisper-transcriber-suite.pages.dev/.well-known/security.txt
+Canonical: https://whisper-transcriber-suite.com/.well-known/security.txt
 Policy: https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md

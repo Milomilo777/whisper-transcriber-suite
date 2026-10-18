@@ -194,7 +194,7 @@ python gui.py
 - **錯誤回報與功能請求：** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **問題與想法討論：** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **其他所有事宜：** 請透過電子郵件，或網站的
-  [聯絡區塊 (Contact section)](https://whisper-transcriber-suite.pages.dev/#contact) 聯繫
+  [聯絡區塊 (Contact section)](https://whisper-transcriber-suite.com/#contact) 聯繫
 - **安全性通報：** [../../SECURITY.md](../../SECURITY.md)
 
 本專案遵循 [貢獻者公約 (Contributor Covenant)](../../.github/CODE_OF_CONDUCT.md)。

@@ -116,7 +116,7 @@ User-agent: PetalBot
 Allow: /
 Disallow: /api/
 
-Sitemap: https://whisper-transcriber-suite.pages.dev/sitemap.xml
+Sitemap: https://whisper-transcriber-suite.com/sitemap.xml
 
 # Content Signals Policy (https://contentsignals.org) — emerging convention, 2025.
 # This project is BSD-3-Clause and wants to be found, quoted and trained on. The Content-Signal line sits in the User-agent: * group at the top.

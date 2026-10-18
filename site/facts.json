@@ -23,13 +23,13 @@
     "account_required": false
   },
   "links": {
-    "website": "https://whisper-transcriber-suite.pages.dev",
+    "website": "https://whisper-transcriber-suite.com",
     "repository": "https://github.com/Milomilo777/whisper-transcriber-suite",
     "releases": "https://github.com/Milomilo777/whisper-transcriber-suite/releases",
     "issues": "https://github.com/Milomilo777/whisper-transcriber-suite/issues",
     "discussions": "https://github.com/Milomilo777/whisper-transcriber-suite/discussions",
-    "llms_txt": "https://whisper-transcriber-suite.pages.dev/llms.txt",
-    "llms_full_txt": "https://whisper-transcriber-suite.pages.dev/llms-full.txt",
+    "llms_txt": "https://whisper-transcriber-suite.com/llms.txt",
+    "llms_full_txt": "https://whisper-transcriber-suite.com/llms-full.txt",
     "comparison": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md",
     "server_api_docs": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SERVER.md"
   }

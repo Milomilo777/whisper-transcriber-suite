@@ -172,7 +172,7 @@ Python 3.11 या इसके बाद के संस्करण की �
 
 - **बग और सुविधा अनुरोध:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **प्रश्न और विचार:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
-- **बाकी सब कुछ:** ईमेल द्वारा, [वेबसाइट के संपर्क अनुभाग](https://whisper-transcriber-suite.pages.dev/#contact) के माध्यम से
+- **बाकी सब कुछ:** ईमेल द्वारा, [वेबसाइट के संपर्क अनुभाग](https://whisper-transcriber-suite.com/#contact) के माध्यम से
 - **सुरक्षा रिपोर्ट:** [SECURITY.md](../../SECURITY.md)
 
 यह प्रोजेक्ट [योगदानकर्ता नियम (Contributor Covenant)](../../.github/CODE_OF_CONDUCT.md) का पालन करता है।

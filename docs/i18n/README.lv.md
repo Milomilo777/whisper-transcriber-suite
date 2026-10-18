@@ -213,7 +213,7 @@ Nepieciešama Python 3.11 vai jaunāka versija. Būvēšanas konveijeri: [../BUI
 - **Kļūdu ziņojumi un funkciju pieprasījumi:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Jautājumi un idejas:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Viss pārējais:** pa e-pastu, izmantojot
-  [mājaslapas saziņas sadaļu](https://whisper-transcriber-suite.pages.dev/#contact)
+  [mājaslapas saziņas sadaļu](https://whisper-transcriber-suite.com/#contact)
 - **Drošības ziņojumi:** [../../SECURITY.md](../../SECURITY.md)
 
 Šis projekts ievēro [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md).

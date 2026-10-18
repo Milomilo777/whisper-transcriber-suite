@@ -212,7 +212,7 @@ python gui.py
 - **באגים ובקשות לתכונות חדשות:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **שאלות ורעיונות:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **כל דבר אחר:** במייל, דרך 
-  [אזור צור קשר (Contact) באתר האינטרנט](https://whisper-transcriber-suite.pages.dev/#contact)
+  [אזור צור קשר (Contact) באתר האינטרנט](https://whisper-transcriber-suite.com/#contact)
 - **דיווחי אבטחה:** [../../SECURITY.md](../../SECURITY.md)
 
 פרויקט זה פועל לפי [קוד ההתנהגות של תורמים (Contributor Covenant)](../../.github/CODE_OF_CONDUCT.md).

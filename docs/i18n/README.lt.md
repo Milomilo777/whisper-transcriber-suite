@@ -210,7 +210,7 @@ Reikia „Python“ 3.11 ar naujesnės versijos. Kompiliavimo procesai: [docs/BU
 - **Klaidos ir naujų funkcijų užklausos:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Klausimai ir idėjos:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Visa kita:** el. paštu, per
-  [svetainės „Contact“ skiltį](https://whisper-transcriber-suite.pages.dev/#contact)
+  [svetainės „Contact“ skiltį](https://whisper-transcriber-suite.com/#contact)
 - **Saugumo ataskaitos:** [SECURITY.md](../../SECURITY.md)
 
 Šis projektas laikosi [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md).

@@ -212,7 +212,7 @@ Memerlukan Python 3.11 atau lebih baru. Talian paip binaan: [../BUILD.md](../BUI
 - **Laporan pepijat dan permintaan ciri:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Soalan dan idea:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Hal-hal lain:** melalui e-mel, menerusi
-  [Contact section of the website](https://whisper-transcriber-suite.pages.dev/#contact)
+  [Contact section of the website](https://whisper-transcriber-suite.com/#contact)
 - **Laporan keselamatan:** [../../SECURITY.md](../../SECURITY.md)
 
 Projek ini mengikut [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md).

@@ -211,7 +211,7 @@ python gui.py
 - **Бубе (bugs) и захтеви за нове функције:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Питања и идеје:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Све остало:** путем е-поште, преко
-  [секције Contact на веб сајту](https://whisper-transcriber-suite.pages.dev/#contact)
+  [секције Contact на веб сајту](https://whisper-transcriber-suite.com/#contact)
 - **Пријаве безбедносних пропуста:** [../../SECURITY.md](../../SECURITY.md)
 
 Овај пројекат прати [Завет сарадника (Contributor Covenant)](../../.github/CODE_OF_CONDUCT.md).

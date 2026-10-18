@@ -185,7 +185,7 @@ python gui.py
 
 - **الأخطاء وطلبات الميزات:** [مشكلات GitHub](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **الأسئلة والأفكار:** [نقاشات GitHub](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
-- **كل شيء آخر:** عبر البريد الإلكتروني، من خلال [قسم التواصل في الموقع](https://whisper-transcriber-suite.pages.dev/#contact)
+- **كل شيء آخر:** عبر البريد الإلكتروني، من خلال [قسم التواصل في الموقع](https://whisper-transcriber-suite.com/#contact)
 - **تقارير الأمان:** [SECURITY.md](../../SECURITY.md)
 
 يتبع هذا المشروع [ميثاق المساهمين](../../.github/CODE_OF_CONDUCT.md).

@@ -211,7 +211,7 @@ Vereist Python 3.11 of nieuwer. Bouwpijplijnen: [../BUILD.md](../BUILD.md). Test
 - **Bugs en functieverzoeken:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Vragen en ideeën:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Al het andere:** per e-mail, via de
-  [Contact section van de website](https://whisper-transcriber-suite.pages.dev/#contact)
+  [Contact section van de website](https://whisper-transcriber-suite.com/#contact)
 - **Beveiligingsmeldingen:** [../../SECURITY.md](../../SECURITY.md)
 
 Dit project volgt het [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md).

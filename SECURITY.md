@@ -11,7 +11,7 @@ Please use GitHub's private reporting —
 [**Report a vulnerability**](https://github.com/Milomilo777/whisper-transcriber-suite/security/advisories/new)
 — rather than a public issue, and give it a few days before disclosing. If
 you can't use GitHub's form, write by email instead: the address is shown on
-request in the [Contact section of the website](https://whisper-transcriber-suite.pages.dev/#contact).
+request in the [Contact section of the website](https://whisper-transcriber-suite.com/#contact).
 
 Helpful to include: the version, the OS, what an attacker would gain, and the
 smallest file, URL or configuration that reproduces it.

@@ -204,7 +204,7 @@ python gui.py
 - **รายงานบั๊กและขอฟีเจอร์ใหม่:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **คำถามและไอเดีย:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **ช่องทางอื่นๆ:** ทางอีเมล ผ่านทาง
-  [ส่วน Contact ในหน้าเว็บไซต์](https://whisper-transcriber-suite.pages.dev/#contact)
+  [ส่วน Contact ในหน้าเว็บไซต์](https://whisper-transcriber-suite.com/#contact)
 - **การรายงานความปลอดภัย:** [../../SECURITY.md](../../SECURITY.md)
 
 โปรเจ็กต์นี้ปฏิบัติตาม [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md)

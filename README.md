@@ -14,7 +14,7 @@
 
 macOS and Linux: see [Download](#download).
 
-Step-by-step guides: [YouTube video to text](https://whisper-transcriber-suite.pages.dev/youtube-to-text/) · [video to SRT subtitles](https://whisper-transcriber-suite.pages.dev/video-to-srt/) · [transcripts with speaker labels](https://whisper-transcriber-suite.pages.dev/speaker-labels/)
+Step-by-step guides: [YouTube video to text](https://whisper-transcriber-suite.com/youtube-to-text/) · [video to SRT subtitles](https://whisper-transcriber-suite.com/video-to-srt/) · [transcripts with speaker labels](https://whisper-transcriber-suite.com/speaker-labels/)
 
 <!-- language-links:start -->
 
@@ -177,7 +177,7 @@ Needs Python 3.11 or newer. Build pipelines: [docs/BUILD.md](docs/BUILD.md). Tes
 - **Bugs and feature requests:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Questions and ideas:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Everything else:** by email, through the
-  [Contact section of the website](https://whisper-transcriber-suite.pages.dev/#contact)
+  [Contact section of the website](https://whisper-transcriber-suite.com/#contact)
 - **Security reports:** [SECURITY.md](SECURITY.md)
 
 This project follows the [Contributor Covenant](.github/CODE_OF_CONDUCT.md).

@@ -197,7 +197,7 @@ Python 3.11 veya daha yeni bir sürüm gerektirir. Derleme süreçleri: [../BUIL
 
 - **Hatalar (Bugs) ve yeni özellik istekleri:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Sorular ve fikirler:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
-- **Diğer her şey:** web sitesinin [İletişim bölümü (Contact)](https://whisper-transcriber-suite.pages.dev/#contact) üzerinden e-posta yoluyla
+- **Diğer her şey:** web sitesinin [İletişim bölümü (Contact)](https://whisper-transcriber-suite.com/#contact) üzerinden e-posta yoluyla
 - **Güvenlik bildirimleri:** [../../SECURITY.md](../../SECURITY.md)
 
 Bu proje [Katılımcı Sözleşmesi'ni (Contributor Covenant)](../../.github/CODE_OF_CONDUCT.md) takip eder.

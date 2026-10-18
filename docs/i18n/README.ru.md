@@ -168,7 +168,7 @@ python gui.py
 
 - **Ошибки и запросы новых функций:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Вопросы и идеи:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
-- **Всё остальное:** по электронной почте, через [раздел контактов на сайте](https://whisper-transcriber-suite.pages.dev/#contact)
+- **Всё остальное:** по электронной почте, через [раздел контактов на сайте](https://whisper-transcriber-suite.com/#contact)
 - **Сообщения об уязвимостях:** [../../SECURITY.md](../../SECURITY.md)
 
 Этот проект следует [Кодексу поведения](../../.github/CODE_OF_CONDUCT.md). Если приложение экономит ваше время, звездочка (Star) в верхней части этой страницы поможет другим людям найти его.

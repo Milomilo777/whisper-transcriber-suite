@@ -213,7 +213,7 @@ Vaatii Python 3.11:n tai uudemman. Rakennusputket: [../BUILD.md](../BUILD.md). T
 - **Bugeista ilmoittaminen ja ominaisuuspyynnöt:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Kysymykset ja ideat:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Kaikki muu:** sähköpostitse,
-  [verkkosivuston yhteystieto-osion kautta](https://whisper-transcriber-suite.pages.dev/#contact)
+  [verkkosivuston yhteystieto-osion kautta](https://whisper-transcriber-suite.com/#contact)
 - **Turvallisuusraportit:** [../../SECURITY.md](../../SECURITY.md)
 
 Tämä projekti noudattaa [Contributor Covenant -käytännesääntöjä](../../.github/CODE_OF_CONDUCT.md).

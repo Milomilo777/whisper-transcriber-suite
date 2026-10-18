@@ -212,7 +212,7 @@ Kinakailangan ang Python 3.11 o mas bago. Build pipelines: [../BUILD.md](../BUIL
 - **Bugs at feature requests:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Mga katanungan at ideya:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Iba pang katanungan:** sa pamamagitan ng email, gamit ang
-  [Contact section ng website](https://whisper-transcriber-suite.pages.dev/#contact)
+  [Contact section ng website](https://whisper-transcriber-suite.com/#contact)
 - **Mga ulat sa seguridad:** [../../SECURITY.md](../../SECURITY.md)
 
 Sumusunod ang proyektong ito sa [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md).

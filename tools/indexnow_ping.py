@@ -20,7 +20,7 @@ import time
 import urllib.error
 import urllib.request
 
-HOST = "whisper-transcriber-suite.pages.dev"
+HOST = "whisper-transcriber-suite.com"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 URLS = ["/", "/llms.txt", "/llms-full.txt", "/sitemap.xml"] + sorted(
     # Guide pages live at site/<slug>/index.html, translations at site/<lang>/[<slug>/]index.html;
