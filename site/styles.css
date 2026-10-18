@@ -604,17 +604,20 @@ html[lang="en"] .mt-note { display: none; }
 /* ---------- Per-language fonts: the usual web font of each script ---------- */
 /* Keyed on the page's own language (html:lang), so the language menu, which names every language
    in its own script, does not load every font. Sora/Geist keep the Latin words (product names). */
-html:lang(fa) { --font-display: "Vazirmatn", "Sora", Tahoma, sans-serif; --font-body: "Vazirmatn", "Geist", Tahoma, sans-serif; --font-mono: "Vazirmatn", "Geist Mono", monospace; }
-html:lang(ar) { --font-display: "Noto Sans Arabic", "Sora", Tahoma, sans-serif; --font-body: "Noto Sans Arabic", "Geist", Tahoma, sans-serif; --font-mono: "Noto Sans Arabic", "Geist Mono", monospace; }
-html:lang(he) { --font-display: "Heebo", "Sora", Arial, sans-serif; --font-body: "Heebo", "Geist", Arial, sans-serif; --font-mono: "Heebo", "Geist Mono", monospace; }
-html:lang(hi) { --font-display: "Noto Sans Devanagari", "Sora", "Nirmala UI", sans-serif; --font-body: "Noto Sans Devanagari", "Geist", "Nirmala UI", sans-serif; --font-mono: "Noto Sans Devanagari", "Geist Mono", monospace; }
-html:lang(bn) { --font-display: "Noto Sans Bengali", "Sora", "Nirmala UI", sans-serif; --font-body: "Noto Sans Bengali", "Geist", "Nirmala UI", sans-serif; --font-mono: "Noto Sans Bengali", "Geist Mono", monospace; }
-html:lang(th) { --font-display: "Noto Sans Thai", "Sora", "Leelawadee UI", sans-serif; --font-body: "Noto Sans Thai", "Geist", "Leelawadee UI", sans-serif; --font-mono: "Noto Sans Thai", "Geist Mono", monospace; }
+html:lang(fa) { --font-display: "Vazirmatn", "Sora", Tahoma, sans-serif; --font-body: "Vazirmatn", "Geist", Tahoma, sans-serif; --font-mono: "Geist Mono", "Vazirmatn", monospace; }
+html:lang(ar) { --font-display: "Noto Sans Arabic", "Sora", Tahoma, sans-serif; --font-body: "Noto Sans Arabic", "Geist", Tahoma, sans-serif; --font-mono: "Geist Mono", "Noto Sans Arabic", monospace; }
+html:lang(he) { --font-display: "Heebo", "Sora", Arial, sans-serif; --font-body: "Heebo", "Geist", Arial, sans-serif; --font-mono: "Geist Mono", "Heebo", monospace; }
+html:lang(hi) { --font-display: "Noto Sans Devanagari", "Sora", "Nirmala UI", sans-serif; --font-body: "Noto Sans Devanagari", "Geist", "Nirmala UI", sans-serif; --font-mono: "Geist Mono", "Noto Sans Devanagari", monospace; }
+html:lang(bn) { --font-display: "Noto Sans Bengali", "Sora", "Nirmala UI", sans-serif; --font-body: "Noto Sans Bengali", "Geist", "Nirmala UI", sans-serif; --font-mono: "Geist Mono", "Noto Sans Bengali", monospace; }
+html:lang(th) { --font-display: "Noto Sans Thai", "Sora", "Leelawadee UI", sans-serif; --font-body: "Noto Sans Thai", "Geist", "Leelawadee UI", sans-serif; --font-mono: "Geist Mono", "Noto Sans Thai", monospace; }
 /* Cyrillic, Greek and Vietnamese: Sora and Geist lack these letters, so the whole page switches to
    Manrope (headings) and Inter (text) instead of mixing two fonts inside one word. */
 html:lang(ru), html:lang(uk), html:lang(bg), html:lang(sr), html:lang(el), html:lang(vi) {
   --font-display: "Manrope", ui-sans-serif, system-ui, sans-serif; --font-body: "Inter", ui-sans-serif, system-ui, sans-serif; --font-mono: "Inter", ui-monospace, monospace;
 }
+/* Cyrillic and Greek words have no Geist Mono glyphs and switch whole to Inter; Vietnamese words would mix
+   two fonts letter by letter, so vi keeps Inter for mono text */
+html:lang(ru), html:lang(uk), html:lang(bg), html:lang(sr), html:lang(el) { --font-mono: "Geist Mono", "Inter", ui-monospace, monospace; }
 /* Chinese, Japanese, Korean: the system fonts every site uses (web fonts would be megabytes). */
 html:lang(zh-CN) { --font-display: "Sora", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", sans-serif; --font-body: "Geist", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", sans-serif; --font-mono: "Geist Mono", "PingFang SC", "Microsoft YaHei", monospace; }
 html:lang(zh-TW) { --font-display: "Sora", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "Source Han Sans TC", sans-serif; --font-body: "Geist", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "Source Han Sans TC", sans-serif; --font-mono: "Geist Mono", "PingFang TC", "Microsoft JhengHei", monospace; }
@@ -624,12 +627,12 @@ html:lang(ko) { --font-display: "Sora", "Apple SD Gothic Neo", "Malgun Gothic", 
    their tall marks need more line height than Latin headings. */
 html:lang(fa) *, html:lang(ar) *, html:lang(he) *, html:lang(hi) *, html:lang(bn) *, html:lang(th) *,
 html:lang(zh-CN) *, html:lang(zh-TW) *, html:lang(ja) *, html:lang(ko) * { letter-spacing: normal !important; }
-html:lang(fa) :is(h1, h2, h3, .hero-title, .proof strong), html:lang(ar) :is(h1, h2, h3, .hero-title, .proof strong),
-html:lang(hi) :is(h1, h2, h3, .hero-title, .proof strong), html:lang(bn) :is(h1, h2, h3, .hero-title, .proof strong),
-html:lang(th) :is(h1, h2, h3, .hero-title, .proof strong) { line-height: 1.4; }
+html:lang(fa) :where(h1, h2, h3, .hero-title, .proof strong), html:lang(ar) :where(h1, h2, h3, .hero-title, .proof strong),
+html:lang(hi) :where(h1, h2, h3, .hero-title, .proof strong), html:lang(bn) :where(h1, h2, h3, .hero-title, .proof strong),
+html:lang(th) :where(h1, h2, h3, .hero-title, .proof strong) { line-height: 1.4; }
 html:lang(fa) .hero-title, html:lang(ar) .hero-title { line-height: 1.25; }
-html:lang(he) :is(h1, h2, h3, .hero-title), html:lang(zh-CN) :is(h1, h2, h3, .hero-title), html:lang(zh-TW) :is(h1, h2, h3, .hero-title),
-html:lang(ja) :is(h1, h2, h3, .hero-title), html:lang(ko) :is(h1, h2, h3, .hero-title) { line-height: 1.25; }
+html:lang(he) :where(h1, h2, h3, .hero-title), html:lang(zh-CN) :where(h1, h2, h3, .hero-title), html:lang(zh-TW) :where(h1, h2, h3, .hero-title),
+html:lang(ja) :where(h1, h2, h3, .hero-title), html:lang(ko) :where(h1, h2, h3, .hero-title) { line-height: 1.25; }
 [dir="rtl"] .bar i.run { transform-origin: right; }
 /* carousel dots: a 24px target around the 9px dot (WCAG 2.5.8) */
 .reel-dots button { box-sizing: border-box; width: 24px; height: 24px; padding: 7.5px; background-clip: content-box; }

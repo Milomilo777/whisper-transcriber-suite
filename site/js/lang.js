@@ -29,14 +29,18 @@
   if (row && 'ResizeObserver' in window) {
     const root = document.documentElement;
     const over = () => row.scrollWidth > row.clientWidth + 1;
-    const fit = () => {
+    let lastWidth = -1;
+    const fit = (force) => {
+      // only a new row width (or late fonts) can change the answer; height changes from our own classes do not
+      if (force !== true && row.clientWidth === lastWidth) return;
+      lastWidth = row.clientWidth;
       root.classList.remove('hdr-no-name', 'hdr-no-nav');
       if (!over()) return;
       root.classList.add('hdr-no-name');
       if (over()) root.classList.add('hdr-no-nav');
     };
-    new ResizeObserver(fit).observe(row);
-    if (document.fonts) document.fonts.ready.then(fit);
+    new ResizeObserver(() => fit()).observe(row);
+    if (document.fonts) document.fonts.ready.then(() => fit(true));
   }
 
   const q = new URLSearchParams(location.search);
@@ -44,6 +48,9 @@
   if (q.get('lang') === 'en') remember('en');
   const note = document.querySelector('[data-lang-notice]');
   if (note && q.has('auto')) note.hidden = false;
+  // a visitor who stays on the language "/" chose for them keeps it (the notice and the English button
+  // switch away), so the next visit of "/" neither redirects again nor repeats the notice
+  if (q.has('auto') && document.documentElement.lang) remember(document.documentElement.lang);
   q.delete('auto');
   q.delete('lang');
   const rest = q.toString();

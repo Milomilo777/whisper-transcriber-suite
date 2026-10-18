@@ -25,7 +25,9 @@ const BOT_UA = new RegExp([
   'iframely', 'flipboardproxy', 'github-camo', 'pingdom', 'statuscake', 'gtmetrix', 'ptst/', 'newsblur',
   'wkhtml', 'phantomjs', 'jsdom', 'w3c_validator', 'curl', 'wget', 'python[-/]', 'httpclient', 'okhttp',
   'axios', 'node-fetch', 'undici', 'libwww', 'scrapy', 'postman', 'httpie', 'go-http-client', '^java/',
-  'facebookexternalhit', 'whatsapp', 'embedly', 'pinterest', 'vkshare', 'quora',
+  // WhatsApp's preview fetcher starts its UA with "WhatsApp/"; Pinterest and Quora app browsers are people
+  // (their fetchers say "Pinterestbot" / "Quora Link Preview", caught above)
+  'facebookexternalhit', '^whatsapp/', 'embedly', 'vkshare',
 ].join('|'), 'i');
 const COOKIE = 'wts_lang';
 const YEAR = 60 * 60 * 24 * 365;
@@ -196,6 +198,7 @@ const COUNTRY_LANGS = {
 // Browser language tag -> website language code.
 function siteCode(tag) {
   const t = tag.toLowerCase().replace(/_/g, '-');
+  if (/^zh-(.*-)?hans\b/.test(t)) return 'zh-CN'; // the script decides before the region (zh-Hans-HK)
   if (/^zh-(.*-)?(tw|hk|mo|hant)\b/.test(t) || /^yue\b/.test(t)) return 'zh-TW';
   if (t === 'zh') return 'zh'; // a bare "zh" takes the country's script, see pickLanguage
   if (t.startsWith('zh')) return 'zh-CN';
