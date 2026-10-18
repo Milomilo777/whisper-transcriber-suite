@@ -11,7 +11,8 @@
 // cached, because it depends on the visitor. Every language page stays reachable at its own address
 // for everyone, and nothing is stored on the server. Any error falls back to the English page.
 
-const BOT_UA = /bot|crawl|spider|slurp|preview|headless|lighthouse|monitor|curl|wget|python|httpclient|facebookexternalhit|whatsapp|embedly|pinterest|vkshare|quora/i;
+// "bot" must end a word: Googlebot/2.1 and bingbot/ match, a phone model such as CUBOT_X30 does not
+const BOT_UA = /bot\b|crawl|spider|slurp|preview|headless|lighthouse|monitor|curl|wget|python|httpclient|facebookexternalhit|whatsapp|embedly|pinterest|vkshare|quora/i;
 const COOKIE = 'wts_lang';
 const YEAR = 60 * 60 * 24 * 365;
 
@@ -247,7 +248,12 @@ export async function onRequestGet({ request, next }) {
     });
     if (code === 'en') return next();
     const fromCookie = cookieValue(request.headers.get('Cookie'), COOKIE) === code;
-    const target = `/${code.toLowerCase()}/${fromCookie ? '' : '?auto=1'}`;
+    // keep the visitor's other query parameters (campaign tags, ?motion=off)
+    const query = new URLSearchParams(url.search);
+    query.delete('lang');
+    if (!fromCookie) query.set('auto', '1');
+    const qs = query.toString();
+    const target = `/${code.toLowerCase()}/${qs ? `?${qs}` : ''}`;
     return new Response(null, {
       status: 302,
       headers: { Location: target, 'Cache-Control': 'private, no-store', Vary: 'Cookie, Accept-Language' },

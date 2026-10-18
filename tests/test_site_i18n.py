@@ -105,6 +105,8 @@ def test_json_ld_and_strings_are_translated(monkeypatch):
     ("<1>a <2>b</2></1>", "<1>a <2>b</1></2>", False),
     ("Plain", "Plain <b>bold</b>", False),
     ("<1/> text", "text", False),
+    ("Use <1>this</1> or <2>that</2> now", "Benutze <1>dies <2>oder jenes</2></1> jetzt", False),  # <a> in <a>
+    ("<1>a <2/></1> b", "<1>a</1> <2/> b", False),  # atomic moved out of its pair
 ])
 def test_placeholder_check(src, tr, ok):
     assert (S.check_placeholders(src, tr) is None) is ok
@@ -113,6 +115,38 @@ def test_placeholder_check(src, tr, ok):
 def test_render_text_escapes_and_restores_tags():
     places = {1: ('<a href="#x">', "</a>"), 2: ("<br>", None)}
     assert S.render_text("Tom & <1>Jerry</1> <2/> a<b", places) == 'Tom &amp; <a href="#x">Jerry</a> <br> a&lt;b'
+
+
+def test_srcset_urls_are_localised(monkeypatch):
+    with_catalog(monkeypatch, lambda src: "Ü " + src)
+    home = S.build_page(PAGES[0][2], "de", "/")
+    guide = S.build_page(PAGES[1][2], "de", "/youtube-to-text/")
+    for built in (home, guide):
+        for value in re.findall(r'(?:srcset|imagesrcset)="([^"]*)"', built):
+            for cand in value.split(","):
+                assert cand.strip().startswith("/assets/"), cand
+    assert 'srcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w"' in home
+
+
+def test_attribute_and_json_translations_are_validated(monkeypatch):
+    evil = '</script><img src=x onerror=alert(1)>'
+    with_catalog(monkeypatch, lambda src: evil if "<" not in src else "Ü " + src)
+    built = S.build_page(PAGES[0][2], "de", "/")
+    assert "onerror" not in built  # rejected everywhere, so the English text stays
+    with_catalog(monkeypatch, lambda src: "L'appli « x » & fin" if "<" not in src else src)
+    built = S.build_page(PAGES[0][2], "de", "/")
+    assert 'alt="L&#39;appli « x » &amp; fin"' in built  # an apostrophe cannot end an attribute
+    for body in re.findall(r'<script type="application/ld\+json">(.*?)</script>', built, flags=re.S):
+        json.loads(body)
+    # defence in depth: even a JSON value holding "</" cannot close the script element
+    out = S.translate_json('{"description": "a"}', {S.key_of("a"): {"src": "a", "tr": "b"}}, "/", "de", False)
+    assert "</" not in S.translate_json('{"text": "x"}', {}, "/", "de", False) and '"b"' in out
+
+
+def test_nbsp_survives_and_english_menu_link_skips_the_redirect():
+    segs = S.extract(PAGES[0][2])
+    assert any(" " in s.src for s in segs)
+    assert 'href="/?lang=en" hreflang="en"' in PAGES[0][2]
 
 
 def test_bad_translation_falls_back_to_english(monkeypatch):
@@ -201,10 +235,12 @@ import('file:///{fn.lstrip('/')}').then(m => {{
     c({{country: null}}),
     c({{country: 'IR', published: ['en']}}),
     c({{country: 'IR', cookie: 'xx'}}),
+    c({{country: 'IR', userAgent: 'Mozilla/5.0 (Linux; Android 13; CUBOT_X30) Chrome/120'}}),
+    c({{country: 'IR', userAgent: 'Mozilla/5.0 (compatible; bingbot/2.0)'}}),
   ]));
 }});
 """
     r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, r.stderr
     assert json.loads(r.stdout.strip().splitlines()[-1]) == [
-        "fa", "en", "hi", "fr", "de", "pt-BR", "zh-TW", "en", "fa", "en", "en", "en", "en", "en", "fa"]
+        "fa", "en", "hi", "fr", "de", "pt-BR", "zh-TW", "en", "fa", "en", "en", "en", "en", "en", "fa", "fa", "en"]

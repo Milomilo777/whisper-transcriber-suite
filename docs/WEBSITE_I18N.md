@@ -18,7 +18,9 @@ from a translation catalog per language in `site-i18n/<lang>.json`. Why it works
   When an English sentence changes, only that sentence needs a new translation; until then it
   shows in English on the translated page.
 - **Publishing.** A language is built only when its catalog covers at least 90 % of the segments
-  (`PUBLISH_SHARE`). The build also writes the language menu, the `hreflang` links, the sitemap
+  (`PUBLISH_SHARE`); once its folder exists it stays published until it drops below 50 %
+  (`KEEP_SHARE`), so an English edit cannot orphan its pages. `SITE_I18N_ONLY=fa,de` limits a build
+  to those languages. The build also writes the language menu, the `hreflang` links, the sitemap
   entries and the list of published languages in `site/functions/index.js`, for English too.
 - **First visit.** `site/functions/index.js` answers requests for `/`: it sends a visitor to their
   language by country (see the comment at the top of the file); `js/lang.js` remembers a language

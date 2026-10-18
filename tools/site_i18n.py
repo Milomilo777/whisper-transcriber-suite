@@ -122,7 +122,8 @@ def attr_value(tag: str, name: str) -> str | None:
 
 
 def norm(text: str) -> str:
-    return re.sub(r"\s+", " ", text).strip()
+    """Collapse ASCII whitespace; a non-breaking space (&nbsp; in "1-3&nbsp;GB") is kept."""
+    return re.sub(r"[ \t\r\n\f\v]+", " ", text).strip(" \t\r\n\f\v")
 
 
 def key_of(src: str) -> str:
@@ -397,32 +398,37 @@ PLACE = re.compile(r"<(/?)(\d+)(/?)>")
 def check_placeholders(src: str, tr: str) -> str | None:
     """None when tr uses exactly the placeholders of src, properly nested; else the problem."""
     def scan(s: str):
-        items, stack = [], []
+        """(sorted placeholders, {placeholder: enclosing pair}, error)."""
+        items, stack, parent = [], [], {}
         for m in PLACE.finditer(s):
             closing, num, selfc = m.group(1), m.group(2), m.group(3)
             if selfc:
                 items.append(f"<{num}/>")
+                parent[num] = stack[-1] if stack else None
             elif closing:
                 if not stack or stack[-1] != num:
-                    return None, f"unbalanced </{num}>"
+                    return None, None, f"unbalanced </{num}>"
                 stack.pop()
                 items.append(f"</{num}>")
             else:
+                parent[num] = stack[-1] if stack else None
                 stack.append(num)
                 items.append(f"<{num}>")
         if stack:
-            return None, f"unclosed <{stack[-1]}>"
-        return sorted(items), None
+            return None, None, f"unclosed <{stack[-1]}>"
+        return sorted(items), parent, None
 
-    a, err = scan(src)
+    a, pa, err = scan(src)
     if err:
         return "source: " + err
-    b, err = scan(tr)
+    b, pb, err = scan(tr)
     if err:
         return err
     assert a is not None and b is not None
     if a != b:
         return f"placeholders differ: {sorted(set(a) ^ set(b))}"
+    if pa != pb:  # moving a link inside another link would nest <a> in <a>
+        return "placeholders nested differently from the English text"
     if re.search(r"<(?!/?\d+/?>)[A-Za-z/!]", tr):
         return "raw HTML tag in translation"
     return None
@@ -448,7 +454,8 @@ def _esc_text(s: str) -> str:
 
 
 def _esc_attr(s: str) -> str:
-    return html.unescape(s).replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+    return (html.unescape(s).replace("&", "&amp;").replace('"', "&quot;").replace("'", "&#39;")
+            .replace("<", "&lt;").replace(">", "&gt;"))
 
 
 # ---------------------------------------------------------------- build
@@ -469,8 +476,10 @@ def save_catalog(code: str, cat: dict) -> None:
 
 
 def lookup(cat: dict, src: str) -> str | None:
+    """The translation of src, or None when there is none or it fails check_placeholders (also for
+    attribute and JSON values: a hand-edited catalog must not inject markup)."""
     e = cat.get(key_of(src))
-    if e and e.get("src") == src and e.get("tr"):
+    if e and e.get("src") == src and e.get("tr") and check_placeholders(src, e["tr"]) is None:
         return e["tr"]
     return None
 
@@ -525,6 +534,16 @@ def render_tag(tag: str, cat: dict, page_path: str, code: str) -> str:
             u = localise_url(v, page_path, code)
             if u != v:
                 new = u
+        if code != "en" and n in ("srcset", "imagesrcset"):
+            # "a.webp 640w, b.webp 1180w": each candidate URL, keeping its width/density descriptor
+            parts = []
+            for cand in v.split(","):
+                bits = cand.strip().split(None, 1)
+                if bits:
+                    parts.append(" ".join([localise_url(bits[0], page_path, code)] + bits[1:]))
+            u = ", ".join(parts)
+            if u != v:
+                new = u
         if new is not None and new != v:
             edits.append((s, e, new))
     for s, e, new in reversed(edits):
@@ -572,7 +591,8 @@ def translate_json(body: str, cat: dict, page_path: str, code: str, flat: bool) 
         walk(obj, None)
     if not changed:
         return body
-    return "\n" + json.dumps(obj, ensure_ascii=False, indent=2) + "\n"
+    # "</" inside a JSON string would end the <script> element early; "<\/" means the same in JSON
+    return "\n" + json.dumps(obj, ensure_ascii=False, indent=2).replace("</", "<\\/") + "\n"
 
 
 MARK = {
@@ -593,6 +613,7 @@ def _replace_block(doc: str, which: str, inner: str) -> str:
 # A language is published only once this share of the English segments is translated, so no page
 # carries a language tag over mostly English text.
 PUBLISH_SHARE = 0.9
+KEEP_SHARE = 0.5
 _ACTIVE: list[tuple[str, str]] | None = None
 
 
@@ -609,7 +630,10 @@ def active_langs() -> list[tuple[str, str]]:
                 continue
             cat = load_catalog(c)
             done = sum(1 for s in segs if lookup(cat, s.src) is not None)
-            if segs and done / len(segs) >= PUBLISH_SHARE:
+            # an already published language (its folder exists) stays until it drops below KEEP_SHARE,
+            # so one English edit cannot orphan its pages
+            need = KEEP_SHARE if os.path.isdir(os.path.join(SITE, url_dir(c))) else PUBLISH_SHARE
+            if segs and done / len(segs) >= need:
                 active.append((c, n))
         _ACTIVE = active
     return _ACTIVE
@@ -628,7 +652,8 @@ def generated_blocks(doc: str, code: str, path: str, nl: str) -> str:
     doc = _replace_block(doc, "hreflang", ind + ind.join(links) + ind)
     items = []
     for c, n in langs:
-        href = path if c == "en" else f"/{url_dir(c)}{path}"
+        # English home gets ?lang=en so the "/" redirect keeps it English even without the JS cookie
+        href = (path + "?lang=en" if path == "/" else path) if c == "en" else f"/{url_dir(c)}{path}"
         cur = ' aria-current="true"' if c == code else ""
         rtl = ' dir="rtl"' if c in RTL else ""
         items.append(f'<li><a href="{href}" hreflang="{c}" lang="{c}"{rtl} data-lang-pick="{c}"{cur}>{html.escape(n)}</a></li>')
