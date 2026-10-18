@@ -9,29 +9,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **The project page in 42 languages**: `docs/i18n/` now has a README for every interface
   language (33 new, machine-translated), and the 8 older translations are brought up to date
   with the English page. Each file names the English commit it follows.
-- **Website: three step-by-step guides**: YouTube video to text, video to SRT subtitles, and
-  transcripts with speaker labels, each at its own address, linked from the home page and listed
-  in the sitemap, `llms.txt` and the IndexNow ping. A test keeps every guide listed and linked.
-- **Animated banners on the project page and the website**: `docs/img/promo-hero.svg` replaces
-  the old screenshot banner at the top of the README and every translation; three more
-  (`promo-features`, `promo-release`, `promo-loom`) sit in the README's Features, Download and
-  privacy sections, and `promo-release` also heads the release page. The website shows the same
-  four in its tour, Features, How it works and Download sections: a still frame first, and the
-  animation only when the section is on screen and animations are not paused. They play once and
-  stop on their last frame; fonts are embedded. The site footer now links all 41 README
-  translations instead of 8.
-
-- **Website in other languages (groundwork)**: `tools/site_i18n.py` builds `site/<lang>/` from the
-  English pages and per-language catalogs in `site-i18n/`, with a language menu, hreflang links,
-  sitemap entries and a machine-translation note; a language goes live once 90 % of it is
-  translated. `site/functions/index.js` sends a first-time visitor of the home page to their
-  language by country (English stays one click away, a picked language is remembered, search
-  engines are never redirected). How it works: `docs/WEBSITE_I18N.md`, ADR 0013.
+- **Animated banners on the project page**: `docs/img/promo-hero.svg` replaces the old screenshot
+  banner at the top of the README and every translation; three more (`promo-features`,
+  `promo-release`, `promo-loom`) sit in the README's Features, Download and privacy sections, and
+  `promo-release` also heads the release page. They play once and stop on their last frame; fonts
+  are embedded.
 
 ### Changed
 
-- **"What's new" now describes 2.1** on the website (section and FAQ) and in the README; the 2.0
-  cards stay below, marked as 2.0.
+- **"What's new" in the README now describes 2.1.**
 
 - **Hindi interface reviewed by a native speaker** (#11): natural terms for time range, filler
   words, silent stretches, the update banner and the Stop button; the catalog is marked
@@ -44,12 +30,6 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
-- **Website on phones and for screen readers**: the download cards no longer run off the screen on a
-  phone, the header buttons sit at the edge again when the menu is hidden, low-contrast link and badge
-  colours now reach 4.5:1, the carousel dots are 24-pixel targets, the footer logo link and the language
-  menu have names, a revealed contact address gets focus, and the guides' structured data names their
-  author and publisher. Phones load a 640-pixel hero image instead of the 1180-pixel one, the fonts keep
-  their week-long cache, and a small script no longer waits for the stylesheet.
 - **A possible crash while closing the app (Windows code 0x80000003)**: the main window could be
   freed by Python's garbage collector on a background thread after the window closed, and Tcl then
   stopped the whole process. The window now stays referenced until the app exits, and closing it

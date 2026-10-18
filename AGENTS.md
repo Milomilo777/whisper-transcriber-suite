@@ -18,10 +18,9 @@ local HTTP API. User docs: `README.md` and `docs/README.md`; code map: `docs/ARC
 | `core/` | Engine: `transcriber.py`, `worker.py` (transcription subprocess), `backends/` (ASR engines), `writers/` (output formats), `server/` (HTTP API), `integrations/`, `config.py` |
 | `tests/` | Hermetic suite; `tests/smoke/` needs real resources |
 | `docs/` | User and maintainer docs; translated READMEs in `docs/i18n/` |
-| `site/` | Project website and `llms.txt`; `site/<lang>/` pages are built by `tools/site_i18n.py` |
-| `site-i18n/` | Website translation catalogs, one JSON per language (see `docs/WEBSITE_I18N.md`) |
+| `site/` | Project website and `llms.txt` (built output; deployed from `master`) |
 | `platform/` | Per-OS packaging (`windows/`, `macos/`, `linux/`) and the stats server |
-| `tools/` | Maintenance scripts (site data, graphics, e2e checks) |
+| `tools/` | Maintenance scripts (graphics, translations, e2e checks) |
 | `bin/` | Bundled binaries (ffmpeg, yt-dlp, deno); not tracked, see `docs/BUILD.md` |
 
 ## Build and test

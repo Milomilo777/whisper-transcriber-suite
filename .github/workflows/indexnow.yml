@@ -1,8 +1,7 @@
 name: IndexNow
 
 # After the website changes, tell IndexNow search engines (Bing, Yandex,
-# Seznam, Naver, Yep) to recrawl it. Commits made by the "Website data"
-# workflow ping from there instead (GITHUB_TOKEN pushes don't trigger this).
+# Seznam, Naver, Yep) to recrawl it.
 
 on:
   push:
