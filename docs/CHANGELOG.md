@@ -9,6 +9,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Files for Anthropic's OSS Scanner**: `.oss-scanner/Dockerfile` (a Linux image with the dependencies and the
   hermetic test suite), `.oss-scanner/threat_model.md` (trust boundaries and severity guidance) and a workflow
   that builds the image when those files or `requirements*.txt` change.
+- **A documentation check in the test suite**: `tools/docs_check.py` flags broken relative links,
+  stray control characters and malformed decision/experiment records in the tracked Markdown files;
+  `tests/test_docs_check.py` runs it.
 
 - **The project page in 42 languages**: `docs/i18n/` now has a README for every interface
   language (33 new, machine-translated), and the 8 older translations are brought up to date
