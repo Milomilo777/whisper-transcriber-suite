@@ -113,118 +113,118 @@
       }
 
       #w-prism {
-        animation: wPrismPose 16s infinite both;
+        animation: wPrismPose 33.6s infinite both;
       }
 
       /* Bar 1: Raw sound enters left flank of the W */
       #bar1-sound {
-        animation: bar1Vis 16s infinite both;
+        animation: bar1Vis 33.6s infinite both;
       }
       #bar1-carrier {
-        animation: bar1Move 16s infinite both;
+        animation: bar1Move 33.6s infinite both;
       }
       .arc-1 {
         transform-box: fill-box;
         transform-origin: 0% 50%;
-        animation: arcPulse1 16s infinite both;
+        animation: arcPulse1 33.6s infinite both;
       }
       .arc-2 {
         transform-box: fill-box;
         transform-origin: 0% 50%;
-        animation: arcPulse2 16s infinite both;
+        animation: arcPulse2 33.6s infinite both;
       }
       .arc-3 {
         transform-box: fill-box;
         transform-origin: 0% 50%;
-        animation: arcPulse3 16s infinite both;
+        animation: arcPulse3 33.6s infinite both;
       }
 
       /* Refraction pulses along the W vertices */
       .ray-teal {
-        animation: rayTealAnim 16s infinite both;
+        animation: rayTealAnim 33.6s infinite both;
       }
       .ray-violet {
-        animation: rayVioletAnim 16s infinite both;
+        animation: rayVioletAnim 33.6s infinite both;
       }
       .ray-coral {
-        animation: rayCoralAnim 16s infinite both;
+        animation: rayCoralAnim 33.6s infinite both;
       }
 
       /* Bar 2: Valley speakers & apex timestamp */
       #bar2-valleys {
-        animation: bar2Vis 16s infinite both;
+        animation: bar2Vis 33.6s infinite both;
       }
       #b2-spk1 {
-        animation: b2Spk1Anim 16s infinite both;
+        animation: b2Spk1Anim 33.6s infinite both;
       }
       #b2-time {
-        animation: b2TimeAnim 16s infinite both;
+        animation: b2TimeAnim 33.6s infinite both;
       }
       #b2-spk2 {
-        animation: b2Spk2Anim 16s infinite both;
+        animation: b2Spk2Anim 33.6s infinite both;
       }
 
       /* Bar 3: Local Silicon Acceleration Inside the Crystal */
       #bar3-engines {
-        animation: bar3Vis 16s infinite both;
+        animation: bar3Vis 33.6s infinite both;
       }
       #b3-speed {
-        animation: b3SpeedAnim 16s infinite both;
+        animation: b3SpeedAnim 33.6s infinite both;
       }
       #b3-stack {
-        animation: b3StackAnim 16s infinite both;
+        animation: b3StackAnim 33.6s infinite both;
       }
 
       /* Bar 4: Spectral Dispersion Out the Right Flank */
       #bar4-dispersion {
-        animation: bar4Vis 16s infinite both;
+        animation: bar4Vis 33.6s infinite both;
       }
       .disp-ray-1 {
-        animation: dispRay1Anim 16s infinite both;
+        animation: dispRay1Anim 33.6s infinite both;
       }
       .disp-ray-2 {
-        animation: dispRay2Anim 16s infinite both;
+        animation: dispRay2Anim 33.6s infinite both;
       }
       .disp-ray-3 {
-        animation: dispRay3Anim 16s infinite both;
+        animation: dispRay3Anim 33.6s infinite both;
       }
       #b4-head {
-        animation: b4HeadAnim 16s infinite both;
+        animation: b4HeadAnim 33.6s infinite both;
       }
       #b4-srt {
-        animation: b4SrtAnim 16s infinite both;
+        animation: b4SrtAnim 33.6s infinite both;
       }
       #b4-docx {
-        animation: b4DocxAnim 16s infinite both;
+        animation: b4DocxAnim 33.6s infinite both;
       }
       #b4-pdf {
-        animation: b4PdfAnim 16s infinite both;
+        animation: b4PdfAnim 33.6s infinite both;
       }
       #b4-sub {
-        animation: b4SubAnim 16s infinite both;
+        animation: b4SubAnim 33.6s infinite both;
       }
 
       /* Bar 5: Climax Hero Lockup & Canonical Logo */
       #bar5-hero {
-        animation: bar5Vis 16s infinite both;
+        animation: bar5Vis 33.6s infinite both;
       }
       #bar5-badge-tile {
-        animation: b5BadgeAnim 16s infinite both;
+        animation: b5BadgeAnim 33.6s infinite both;
       }
       #b5-badge-details {
-        animation: b5BadgeDetailsAnim 16s infinite both;
+        animation: b5BadgeDetailsAnim 33.6s infinite both;
       }
       #bar5-brand {
-        animation: b5BrandAnim 16s infinite both;
+        animation: b5BrandAnim 33.6s infinite both;
       }
       #b5-h1 {
-        animation: b5H1Anim 16s infinite both;
+        animation: b5H1Anim 33.6s infinite both;
       }
       #b5-h2 {
-        animation: b5H2Anim 16s infinite both;
+        animation: b5H2Anim 33.6s infinite both;
       }
       #b5-ledger {
-        animation: b5LedgerAnim 16s infinite both;
+        animation: b5LedgerAnim 33.6s infinite both;
       }
     }
 
@@ -260,441 +260,54 @@
        ========================================================================== */
 
     /* Monumental W Prism spatial choreography */
-    @keyframes wPrismPose {
-      0%, 50% {
-        opacity: 1;
-        transform: translate(340px, 14px) scale(0.92);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      54.5%, 66.67% {
-        opacity: 1;
-        transform: translate(-250px, -4px) scale(0.82);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      71% {
-        opacity: 1;
-        transform: translate(-469.2px, -221px) scale(0.06316);
-        animation-timing-function: steps(1, end);
-      }
-      71.01%, 91.66% {
-        opacity: 0;
-        transform: translate(-469.2px, -221px) scale(0.06316);
-        animation-timing-function: steps(1, end);
-      }
-      91.67% {
-        opacity: 1;
-        transform: translate(-469.2px, -221px) scale(0.06316);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      97.5%, 100% {
-        opacity: 1;
-        transform: translate(340px, 14px) scale(0.92);
-      }
-    }
+    @keyframes wPrismPose { 0% { opacity: 1; transform: translate(340px, 14px) scale(0.92); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 23.8095% { opacity: 1; transform: translate(340px, 14px) scale(0.92); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 25.9524% { opacity: 1; transform: translate(-250px, -4px) scale(0.82); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 31.7476% { opacity: 1; transform: translate(-250px, -4px) scale(0.82); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 33.8095% { opacity: 1; transform: translate(-469.2px, -221px) scale(0.06316); animation-timing-function: steps(1, end) } 33.8143% { opacity: 0; transform: translate(-469.2px, -221px) scale(0.06316); animation-timing-function: steps(1, end) } 40.4762%, 100% { opacity: 0; transform: translate(-469.2px, -221px) scale(0.06316) } }
 
     /* Bar 1: Sound wave holds >=1.5s then enters left flank */
-    @keyframes bar1Vis {
-      0% { opacity: 1; animation-timing-function: steps(1, end); }
-      16.5%, 100% { opacity: 0; }
-    }
-    @keyframes bar1Move {
-      0%, 10.5% {
-        transform: translateX(0px);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      16.25%, 100% {
-        transform: translateX(620px);
-      }
-    }
-    @keyframes arcPulse1 {
-      0%, 100% { transform: scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-      4.5% { transform: scale(1.08); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-      9% { transform: scale(1); }
-    }
-    @keyframes arcPulse2 {
-      0%, 1.5%, 100% { transform: scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-      6% { transform: scale(1.1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-      10% { transform: scale(1); }
-    }
-    @keyframes arcPulse3 {
-      0%, 3%, 100% { transform: scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-      7.5% { transform: scale(1.12); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-      10.5% { transform: scale(1); }
-    }
+    @keyframes bar1Vis { 0% { opacity: 1; animation-timing-function: steps(1, end) } 7.8571% { opacity: 0 } 40.4762%, 100% { opacity: 0 } }
+    @keyframes bar1Move { 0% { transform: translateX(0px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 5% { transform: translateX(0px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 7.7381% { transform: translateX(620px) } 40.4762%, 100% { transform: translateX(620px) } }
+    @keyframes arcPulse1 { 0% { transform: scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 2.1429% { transform: scale(1.08); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 4.2857% { transform: scale(1) } 40.4762%, 100% { transform: scale(1) } }
+    @keyframes arcPulse2 { 0% { transform: scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 0.7143% { transform: scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 2.8571% { transform: scale(1.1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 4.7619% { transform: scale(1) } 40.4762%, 100% { transform: scale(1) } }
+    @keyframes arcPulse3 { 0% { transform: scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 1.4286% { transform: scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 3.5714% { transform: scale(1.12); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 5% { transform: scale(1) } 40.4762%, 100% { transform: scale(1) } }
 
     /* Internal optical refraction rays along #w-prism (pathLength = 1200) */
-    @keyframes rayTealAnim {
-      0%, 15.8% {
-        stroke-dashoffset: 340;
-        opacity: 0;
-        animation-timing-function: steps(1, end);
-      }
-      16% {
-        stroke-dashoffset: 340;
-        opacity: 1;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      29%, 32.5% {
-        stroke-dashoffset: -120;
-        opacity: 1;
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      40% {
-        stroke-dashoffset: -1240;
-        opacity: 1;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      48%, 66.5% {
-        stroke-dashoffset: 40;
-        opacity: 1;
-        animation-timing-function: steps(1, end);
-      }
-      66.67%, 100% {
-        stroke-dashoffset: 340;
-        opacity: 0;
-      }
-    }
+    @keyframes rayTealAnim { 0% { stroke-dashoffset: 340; opacity: 0; animation-timing-function: steps(1, end) } 7.5238% { stroke-dashoffset: 340; opacity: 0; animation-timing-function: steps(1, end) } 7.619% { stroke-dashoffset: 340; opacity: 1; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 13.8095% { stroke-dashoffset: -120; opacity: 1; animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 15.4762% { stroke-dashoffset: -120; opacity: 1; animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 19.0476% { stroke-dashoffset: -1240; opacity: 1; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 22.8571% { stroke-dashoffset: 40; opacity: 1; animation-timing-function: steps(1, end) } 31.6667% { stroke-dashoffset: 40; opacity: 1; animation-timing-function: steps(1, end) } 31.7476% { stroke-dashoffset: 340; opacity: 0 } 40.4762%, 100% { opacity: 0; stroke-dashoffset: 340 } }
 
-    @keyframes rayVioletAnim {
-      0%, 17.8% {
-        stroke-dashoffset: 340;
-        opacity: 0;
-        animation-timing-function: steps(1, end);
-      }
-      18% {
-        stroke-dashoffset: 340;
-        opacity: 1;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      30%, 32.5% {
-        stroke-dashoffset: -440;
-        opacity: 1;
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      41% {
-        stroke-dashoffset: -1240;
-        opacity: 1;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      49%, 66.5% {
-        stroke-dashoffset: -440;
-        opacity: 1;
-        animation-timing-function: steps(1, end);
-      }
-      66.67%, 100% {
-        stroke-dashoffset: 340;
-        opacity: 0;
-      }
-    }
+    @keyframes rayVioletAnim { 0% { stroke-dashoffset: 340; opacity: 0; animation-timing-function: steps(1, end) } 8.4762% { stroke-dashoffset: 340; opacity: 0; animation-timing-function: steps(1, end) } 8.5714% { stroke-dashoffset: 340; opacity: 1; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 14.2857% { stroke-dashoffset: -440; opacity: 1; animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 15.4762% { stroke-dashoffset: -440; opacity: 1; animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 19.5238% { stroke-dashoffset: -1240; opacity: 1; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 23.3333% { stroke-dashoffset: -440; opacity: 1; animation-timing-function: steps(1, end) } 31.6667% { stroke-dashoffset: -440; opacity: 1; animation-timing-function: steps(1, end) } 31.7476% { stroke-dashoffset: 340; opacity: 0 } 40.4762%, 100% { opacity: 0; stroke-dashoffset: 340 } }
 
-    @keyframes rayCoralAnim {
-      0%, 19.5% {
-        stroke-dashoffset: 340;
-        opacity: 0;
-        animation-timing-function: steps(1, end);
-      }
-      19.7% {
-        stroke-dashoffset: 340;
-        opacity: 1;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      31%, 32.5% {
-        stroke-dashoffset: -880;
-        opacity: 1;
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      42% {
-        stroke-dashoffset: -1240;
-        opacity: 1;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      50%, 66.5% {
-        stroke-dashoffset: -880;
-        opacity: 1;
-        animation-timing-function: steps(1, end);
-      }
-      66.67%, 100% {
-        stroke-dashoffset: 340;
-        opacity: 0;
-      }
-    }
+    @keyframes rayCoralAnim { 0% { stroke-dashoffset: 340; opacity: 0; animation-timing-function: steps(1, end) } 9.2857% { stroke-dashoffset: 340; opacity: 0; animation-timing-function: steps(1, end) } 9.381% { stroke-dashoffset: 340; opacity: 1; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 14.7619% { stroke-dashoffset: -880; opacity: 1; animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 15.4762% { stroke-dashoffset: -880; opacity: 1; animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 20% { stroke-dashoffset: -1240; opacity: 1; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 23.8095% { stroke-dashoffset: -880; opacity: 1; animation-timing-function: steps(1, end) } 31.6667% { stroke-dashoffset: -880; opacity: 1; animation-timing-function: steps(1, end) } 31.7476% { stroke-dashoffset: 340; opacity: 0 } 40.4762%, 100% { opacity: 0; stroke-dashoffset: 340 } }
 
     /* Bar 2: Valley Speaker & Timestamp Unfolds (holds still 23%..32.5% = 1.52s) */
-    @keyframes bar2Vis {
-      0%, 16.66% { opacity: 0; animation-timing-function: steps(1, end); }
-      16.67% { opacity: 1; animation-timing-function: steps(1, end); }
-      36.25%, 100% { opacity: 0; }
-    }
-    @keyframes b2Spk1Anim {
-      0%, 16.67% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      20.42%, 32.5% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      36.25%, 100% {
-        transform: scaleY(0);
-      }
-    }
-    @keyframes b2TimeAnim {
-      0%, 18% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      21.75%, 32.5% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      36.25%, 100% {
-        transform: scaleY(0);
-      }
-    }
-    @keyframes b2Spk2Anim {
-      0%, 19.25% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      23%, 32.5% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      36.25%, 100% {
-        transform: scaleY(0);
-      }
-    }
+    @keyframes bar2Vis { 0% { opacity: 0; animation-timing-function: steps(1, end) } 7.9333% { opacity: 0; animation-timing-function: steps(1, end) } 7.9381% { opacity: 1; animation-timing-function: steps(1, end) } 17.2619% { opacity: 0 } 40.4762%, 100% { opacity: 0 } }
+    @keyframes b2Spk1Anim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 7.9381% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 9.7238% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 15.4762% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 17.2619% { transform: scaleY(0) } 40.4762%, 100% { transform: scaleY(0) } }
+    @keyframes b2TimeAnim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 8.5714% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 10.3571% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 15.4762% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 17.2619% { transform: scaleY(0) } 40.4762%, 100% { transform: scaleY(0) } }
+    @keyframes b2Spk2Anim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 9.1667% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 10.9524% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 15.4762% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 17.2619% { transform: scaleY(0) } 40.4762%, 100% { transform: scaleY(0) } }
 
     /* Bar 3: Local Silicon Acceleration (unfolds 36.25%..40%, holds still 40%..50% = 1.6s) */
-    @keyframes bar3Vis {
-      0%, 36.24% { opacity: 0; animation-timing-function: steps(1, end); }
-      36.25% { opacity: 1; animation-timing-function: steps(1, end); }
-      53.75%, 100% { opacity: 0; }
-    }
-    @keyframes b3SpeedAnim {
-      0%, 36.25% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      40%, 50% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      53.75%, 100% {
-        transform: scaleY(0);
-      }
-    }
-    @keyframes b3StackAnim {
-      0%, 36.25% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      40%, 50% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      53.75%, 100% {
-        transform: scaleY(0);
-      }
-    }
+    @keyframes bar3Vis { 0% { opacity: 0; animation-timing-function: steps(1, end) } 17.2571% { opacity: 0; animation-timing-function: steps(1, end) } 17.2619% { opacity: 1; animation-timing-function: steps(1, end) } 25.5952% { opacity: 0 } 40.4762%, 100% { opacity: 0 } }
+    @keyframes b3SpeedAnim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 17.2619% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 19.0476% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 23.8095% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 25.5952% { transform: scaleY(0) } 40.4762%, 100% { transform: scaleY(0) } }
+    @keyframes b3StackAnim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 17.2619% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 19.0476% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 23.8095% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 25.5952% { transform: scaleY(0) } 40.4762%, 100% { transform: scaleY(0) } }
 
     /* Bar 4: Spectral Dispersion Out the Right Flank (holds still 57.5%..66.67%) */
-    @keyframes bar4Vis {
-      0%, 53.74% { opacity: 0; animation-timing-function: steps(1, end); }
-      53.75% { opacity: 1; animation-timing-function: steps(1, end); }
-      69.8%, 100% { opacity: 0; }
-    }
-    @keyframes dispRay1Anim {
-      0%, 53.75% {
-        stroke-dashoffset: 700;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      57.5%, 66.67% {
-        stroke-dashoffset: 0;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      69.8%, 100% {
-        stroke-dashoffset: -700;
-      }
-    }
-    @keyframes dispRay2Anim {
-      0%, 53.75% {
-        stroke-dashoffset: 700;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      57.5%, 66.67% {
-        stroke-dashoffset: 0;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      69.8%, 100% {
-        stroke-dashoffset: -700;
-      }
-    }
-    @keyframes dispRay3Anim {
-      0%, 53.75% {
-        stroke-dashoffset: 700;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      57.5%, 66.67% {
-        stroke-dashoffset: 0;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      69.8%, 100% {
-        stroke-dashoffset: -700;
-      }
-    }
-    @keyframes b4HeadAnim {
-      0%, 53.75% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      57.5%, 66.67% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      69.8%, 100% {
-        transform: scaleY(0);
-      }
-    }
-    @keyframes b4SrtAnim {
-      0%, 53.75% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      57.5%, 66.67% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      69.8%, 100% {
-        transform: scaleY(0);
-      }
-    }
-    @keyframes b4DocxAnim {
-      0%, 53.75% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      57.5%, 66.67% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      69.8%, 100% {
-        transform: scaleY(0);
-      }
-    }
-    @keyframes b4PdfAnim {
-      0%, 53.75% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      57.5%, 66.67% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      69.8%, 100% {
-        transform: scaleY(0);
-      }
-    }
-    @keyframes b4SubAnim {
-      0%, 53.75% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      57.5%, 66.67% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      69.8%, 100% {
-        transform: scaleY(0);
-      }
-    }
+    @keyframes bar4Vis { 0% { opacity: 0; animation-timing-function: steps(1, end) } 25.5905% { opacity: 0; animation-timing-function: steps(1, end) } 25.5952% { opacity: 1; animation-timing-function: steps(1, end) } 33.2381% { opacity: 0 } 40.4762%, 100% { opacity: 0 } }
+    @keyframes dispRay1Anim { 0% { stroke-dashoffset: 700; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 25.5952% { stroke-dashoffset: 700; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 27.381% { stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 31.7476% { stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 33.2381% { stroke-dashoffset: -700 } 40.4762%, 100% { stroke-dashoffset: -700 } }
+    @keyframes dispRay2Anim { 0% { stroke-dashoffset: 700; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 25.5952% { stroke-dashoffset: 700; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 27.381% { stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 31.7476% { stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 33.2381% { stroke-dashoffset: -700 } 40.4762%, 100% { stroke-dashoffset: -700 } }
+    @keyframes dispRay3Anim { 0% { stroke-dashoffset: 700; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 25.5952% { stroke-dashoffset: 700; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 27.381% { stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 31.7476% { stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 33.2381% { stroke-dashoffset: -700 } 40.4762%, 100% { stroke-dashoffset: -700 } }
+    @keyframes b4HeadAnim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 25.5952% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 27.381% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 31.7476% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 33.2381% { transform: scaleY(0) } 40.4762%, 100% { transform: scaleY(0) } }
+    @keyframes b4SrtAnim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 25.5952% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 27.381% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 31.7476% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 33.2381% { transform: scaleY(0) } 40.4762%, 100% { transform: scaleY(0) } }
+    @keyframes b4DocxAnim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 25.5952% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 27.381% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 31.7476% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 33.2381% { transform: scaleY(0) } 40.4762%, 100% { transform: scaleY(0) } }
+    @keyframes b4PdfAnim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 25.5952% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 27.381% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 31.7476% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 33.2381% { transform: scaleY(0) } 40.4762%, 100% { transform: scaleY(0) } }
+    @keyframes b4SubAnim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 25.5952% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 27.381% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 31.7476% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 33.2381% { transform: scaleY(0) } 40.4762%, 100% { transform: scaleY(0) } }
 
     /* Bar 5: Climax Hero Lockup & Canonical Logo (100% still 74.2%..91.67%) */
-    @keyframes bar5Vis {
-      0%, 67.4% { opacity: 0; animation-timing-function: steps(1, end); }
-      67.5%, 95.8% { opacity: 1; animation-timing-function: steps(1, end); }
-      95.9%, 100% { opacity: 0; }
-    }
-    @keyframes b5BadgeAnim {
-      0%, 67.5% {
-        transform: scale(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      70%, 91.67% {
-        transform: scale(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      95.5%, 100% {
-        transform: scale(0);
-      }
-    }
-    @keyframes b5BadgeDetailsAnim {
-      0%, 71% {
-        opacity: 0;
-        animation-timing-function: steps(1, end);
-      }
-      71.01%, 91.66% {
-        opacity: 1;
-        animation-timing-function: steps(1, end);
-      }
-      91.67%, 100% {
-        opacity: 0;
-      }
-    }
-    @keyframes b5BrandAnim {
-      0%, 70.2% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      74%, 91.67% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      95.5%, 100% {
-        transform: scaleY(0);
-      }
-    }
-    @keyframes b5H1Anim {
-      0%, 70.4% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      74.1%, 91.67% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      95.5%, 100% {
-        transform: scaleY(0);
-      }
-    }
-    @keyframes b5H2Anim {
-      0%, 70.5% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      74.2%, 91.67% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      95.5%, 100% {
-        transform: scaleY(0);
-      }
-    }
-    @keyframes b5LedgerAnim {
-      0%, 70.5% {
-        transform: scaleY(0);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      74.2%, 91.67% {
-        transform: scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      95.5%, 100% {
-        transform: scaleY(0);
-      }
-    }
+    @keyframes bar5Vis { 0% { opacity: 0; animation-timing-function: steps(1, end) } 32.0952% { opacity: 0; animation-timing-function: steps(1, end) } 32.1429% { opacity: 1; animation-timing-function: steps(1, end) } 40.4762%, 100% { opacity: 1 } }
+    @keyframes b5BadgeAnim { 0% { transform: scale(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 32.1429% { transform: scale(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 33.3333% { transform: scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 40.4762%, 100% { transform: scale(1) } }
+    @keyframes b5BadgeDetailsAnim { 0% { opacity: 0; animation-timing-function: steps(1, end) } 33.8095% { opacity: 0; animation-timing-function: steps(1, end) } 33.8143% { opacity: 1; animation-timing-function: steps(1, end) } 40.4762%, 100% { opacity: 1 } }
+    @keyframes b5BrandAnim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 33.4286% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 35.2381% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 40.4762%, 100% { transform: scaleY(1) } }
+    @keyframes b5H1Anim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 33.5238% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 35.2857% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 40.4762%, 100% { transform: scaleY(1) } }
+    @keyframes b5H2Anim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 33.5714% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 35.3333% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 40.4762%, 100% { transform: scaleY(1) } }
+    @keyframes b5LedgerAnim { 0% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 33.5714% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 35.3333% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 40.4762%, 100% { transform: scaleY(1) } }
   
-* { animation-iteration-count: 0.85 !important; animation-fill-mode: forwards !important; }
+
 ]]></style>
 
   

@@ -137,118 +137,118 @@
 
       /* 1. Persistent Brand Vessel (#207a80 Monolith Square <-> Pill <-> Card Spine) */
       #brand-vessel {
-        animation: vessel-morph 15s infinite both;
+        animation: vessel-morph 35s infinite both;
       }
 
       /* 2. Vector Logo Mark (W + 3 Arcs) in State 1 and State 7->1 resolution */
       #logo-vector-group {
-        animation: logo-vec-visibility 15s infinite both;
+        animation: logo-vec-visibility 35s infinite both;
       }
       #logo-w-stroke {
         stroke-dasharray: 400;
         stroke-dashoffset: 0;
-        animation: logo-stroke-draw 15s infinite both;
+        animation: logo-stroke-draw 35s infinite both;
       }
       .logo-arc-stroke {
         stroke-dasharray: 120;
         stroke-dashoffset: 0;
-        animation: logo-arc-draw 15s infinite both;
+        animation: logo-arc-draw 35s infinite both;
       }
 
       /* 3. Right Hero Text Drum (State 1 & State 7) */
       #hero-drum-s1 {
-        animation: drum-s1-scroll 15s infinite both;
+        animation: drum-s1-scroll 35s infinite both;
       }
       #hero-drum-s7 {
-        animation: drum-s7-scroll 15s infinite both;
+        animation: drum-s7-scroll 35s infinite both;
       }
 
       /* 4. State 2: Header Pill Text + 2 Speaker Cards (stretched from arcs) */
       #s2-layer {
-        animation: s2-layer-vis 15s infinite both;
+        animation: s2-layer-vis 35s infinite both;
       }
       #s2-pill-content {
-        animation: s2-pill-drum 15s infinite both;
+        animation: s2-pill-drum 35s infinite both;
       }
       #s2-card-1 {
-        animation: s2-card1-morph 15s infinite both;
+        animation: s2-card1-morph 35s infinite both;
       }
       #s2-card-2 {
-        animation: s2-card2-morph 15s infinite both;
+        animation: s2-card2-morph 35s infinite both;
       }
       #s2-text-1, #s2-text-2 {
-        animation: s2-text-drum 15s infinite both;
+        animation: s2-text-drum 35s infinite both;
       }
 
       /* 5. State 3: Centered Timed Subtitle Card */
       #s3-layer {
-        animation: s3-layer-vis 15s infinite both;
+        animation: s3-layer-vis 35s infinite both;
       }
       #s3-card-vessel {
-        animation: s3-card-morph 15s infinite both;
+        animation: s3-card-morph 35s infinite both;
       }
       #s3-text-drum {
-        animation: s3-drum-scroll 15s infinite both;
+        animation: s3-drum-scroll 35s infinite both;
       }
 
       /* 6. State 4 & 5: Dark Studio Vessel (16:9 Video Player -> Compresses to Live Bar) */
       #s4-layer {
-        animation: s45-layer-vis 15s infinite both;
+        animation: s45-layer-vis 35s infinite both;
       }
       #dark-studio-vessel {
-        animation: dark-vessel-morph 15s infinite both;
+        animation: dark-vessel-morph 35s infinite both;
       }
       #s4-video-ui {
-        animation: s4-ui-drum 15s infinite both;
+        animation: s4-ui-drum 35s infinite both;
       }
       #s5-layer {
-        animation: s5-layer-vis 15s infinite both;
+        animation: s5-layer-vis 35s infinite both;
       }
       #s5-live-ui {
-        animation: s5-ui-drum 15s infinite both;
+        animation: s5-ui-drum 35s infinite both;
       }
       #meter-bar-1 {
-        animation: meter-pulse-1 15s infinite both;
+        animation: meter-pulse-1 35s infinite both;
       }
       #meter-bar-2 {
-        animation: meter-pulse-2 15s infinite both;
+        animation: meter-pulse-2 35s infinite both;
       }
       #meter-bar-3 {
-        animation: meter-pulse-3 15s infinite both;
+        animation: meter-pulse-3 35s infinite both;
       }
 
       /* 7. State 6: Saved Next to Your File + Source Card + 4 Format Chips */
       #s6-layer {
-        animation: s6-layer-vis 15s infinite both;
+        animation: s6-layer-vis 35s infinite both;
       }
       #s6-headline-drum {
-        animation: s6-head-scroll 15s infinite both;
+        animation: s6-head-scroll 35s infinite both;
       }
       #s6-source-card {
-        animation: s6-source-morph 15s infinite both;
+        animation: s6-source-morph 35s infinite both;
       }
       #chip-srt {
-        animation: chip-srt-morph 15s infinite both;
+        animation: chip-srt-morph 35s infinite both;
       }
       #chip-vtt {
-        animation: chip-vtt-morph 15s infinite both;
+        animation: chip-vtt-morph 35s infinite both;
       }
       #chip-docx {
-        animation: chip-docx-morph 15s infinite both;
+        animation: chip-docx-morph 35s infinite both;
       }
       #chip-pdf {
-        animation: chip-pdf-morph 15s infinite both;
+        animation: chip-pdf-morph 35s infinite both;
       }
       .s6-chip-label {
-        animation: s6-label-vis 15s infinite both;
+        animation: s6-label-vis 35s infinite both;
       }
 
       /* 8. State 7: Geist Mono ASCII Art inside Monolith */
       #s7-ascii-layer {
-        animation: s7-ascii-vis 15s infinite both;
+        animation: s7-ascii-vis 35s infinite both;
       }
       #ascii-row-1, #ascii-row-2, #ascii-row-3 {
-        animation: s7-ascii-spine 15s infinite both;
+        animation: s7-ascii-spine 35s infinite both;
       }
     }
 
@@ -263,286 +263,42 @@
        - 24%-28%: Slides down into lecture card center & hides behind white card
        - 82%-86%: Coalesces from format chips back to Square (104,210, 220x220)
        - 86%-100%: Hold Square (104,210, 220x220) */
-    @keyframes vessel-morph {
-      0%, 10% {
-        opacity: 1;
-        transform: translate(104px, 210px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      14%, 24% {
-        opacity: 1;
-        transform: translate(104px, 118px) scale(3.5636, 0.3273);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      28% {
-        opacity: 1;
-        transform: translate(104px, 220px) scale(4.8727, 0.9091);
-        animation-timing-function: steps(1, end);
-      }
-      28.01%, 85.99% {
-        opacity: 0;
-        transform: translate(104px, 210px) scale(1, 1);
-        animation-timing-function: steps(1, end);
-      }
-      86%, 100% {
-        opacity: 1;
-        transform: translate(104px, 210px) scale(1, 1);
-      }
-    }
+    @keyframes vessel-morph { 0% { opacity: 1; transform: translate(104px, 210px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 4.2857% { opacity: 1; transform: translate(104px, 210px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 6% { opacity: 1; transform: translate(104px, 118px) scale(3.5636, 0.3273); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 10.2857% { opacity: 1; transform: translate(104px, 118px) scale(3.5636, 0.3273); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 12% { opacity: 1; transform: translate(104px, 220px) scale(4.8727, 0.9091); animation-timing-function: steps(1, end) } 12.0043% { opacity: 0; transform: translate(104px, 210px) scale(1, 1); animation-timing-function: steps(1, end) } 36.8529% { opacity: 0; transform: translate(104px, 210px) scale(1, 1); animation-timing-function: steps(1, end) } 36.8571% { opacity: 1; transform: translate(104px, 210px) scale(1, 1) } 42.8571%, 100% { opacity: 1; transform: translate(104px, 210px) scale(1, 1) } }
 
     /* Vector Logo visibility & transform out during State 1 -> 2 */
-    @keyframes logo-vec-visibility {
-      0%, 10% {
-        opacity: 1;
-        transform: translate(104px, 210px) scale(0.859375);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      13.99% {
-        opacity: 1;
-        transform: translate(104px, 126px) scale(0.859375, 0.22);
-        animation-timing-function: steps(1, end);
-      }
-      14%, 95.99% {
-        opacity: 0;
-        transform: translate(104px, 210px) scale(0.859375);
-        animation-timing-function: steps(1, end);
-      }
-      96%, 100% {
-        opacity: 1;
-        transform: translate(104px, 210px) scale(0.859375);
-      }
-    }
+    @keyframes logo-vec-visibility { 0% { opacity: 1; transform: translate(104px, 210px) scale(0.859375); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 4.2857% { opacity: 1; transform: translate(104px, 210px) scale(0.859375); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 5.9957% { opacity: 1; transform: translate(104px, 126px) scale(0.859375, 0.22); animation-timing-function: steps(1, end) } 6% { opacity: 0; transform: translate(104px, 210px) scale(0.859375); animation-timing-function: steps(1, end) } 41.1386% { opacity: 0; transform: translate(104px, 210px) scale(0.859375); animation-timing-function: steps(1, end) } 41.1429% { opacity: 1; transform: translate(104px, 210px) scale(0.859375) } 42.8571%, 100% { opacity: 1; transform: translate(104px, 210px) scale(0.859375) } }
 
-    @keyframes logo-stroke-draw {
-      0%, 10% {
-        stroke-dashoffset: 0;
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      14%, 95.99% {
-        stroke-dashoffset: 400;
-        animation-timing-function: steps(1, end);
-      }
-      96% {
-        stroke-dashoffset: 400;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      100% {
-        stroke-dashoffset: 0;
-      }
-    }
+    @keyframes logo-stroke-draw { 0% { stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 4.2857% { stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 6% { stroke-dashoffset: 400; animation-timing-function: steps(1, end) } 41.1386% { stroke-dashoffset: 400; animation-timing-function: steps(1, end) } 41.1429% { stroke-dashoffset: 400; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 42.8571%, 100% { stroke-dashoffset: 0 } }
 
-    @keyframes logo-arc-draw {
-      0%, 10% {
-        stroke-dashoffset: 0;
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      14%, 95.99% {
-        stroke-dashoffset: 120;
-        animation-timing-function: steps(1, end);
-      }
-      96% {
-        stroke-dashoffset: 120;
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      100% {
-        stroke-dashoffset: 0;
-      }
-    }
+    @keyframes logo-arc-draw { 0% { stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 4.2857% { stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 6% { stroke-dashoffset: 120; animation-timing-function: steps(1, end) } 41.1386% { stroke-dashoffset: 120; animation-timing-function: steps(1, end) } 41.1429% { stroke-dashoffset: 120; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 42.8571%, 100% { stroke-dashoffset: 0 } }
 
     /* Right Hero Text Drum: State 1 (0%-10%, 96%-100%) */
-    @keyframes drum-s1-scroll {
-      0%, 10% {
-        opacity: 1;
-        transform: translateY(0px);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      14% {
-        opacity: 1;
-        transform: translateY(-270px);
-        animation-timing-function: steps(1, end);
-      }
-      14.01%, 95.99% {
-        opacity: 0;
-        transform: translateY(270px);
-        animation-timing-function: steps(1, end);
-      }
-      96% {
-        opacity: 1;
-        transform: translateY(270px);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0px);
-      }
-    }
+    @keyframes drum-s1-scroll { 0% { opacity: 1; transform: translateY(0px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 4.2857% { opacity: 1; transform: translateY(0px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 6% { opacity: 1; transform: translateY(-270px); animation-timing-function: steps(1, end) } 6.0043% { opacity: 0; transform: translateY(270px); animation-timing-function: steps(1, end) } 41.1386% { opacity: 0; transform: translateY(270px); animation-timing-function: steps(1, end) } 41.1429% { opacity: 1; transform: translateY(270px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 42.8571%, 100% { opacity: 1; transform: translateY(0px) } }
 
     /* Right Hero Text Drum: State 7 (82%-96%) */
-    @keyframes drum-s7-scroll {
-      0%, 81.99% {
-        opacity: 0;
-        transform: translateY(270px);
-        animation-timing-function: steps(1, end);
-      }
-      82% {
-        opacity: 1;
-        transform: translateY(270px);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      86%, 96% {
-        opacity: 1;
-        transform: translateY(0px);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      99.99% {
-        opacity: 1;
-        transform: translateY(-270px);
-        animation-timing-function: steps(1, end);
-      }
-      100% {
-        opacity: 0;
-        transform: translateY(270px);
-      }
-    }
+    @keyframes drum-s7-scroll { 0% { opacity: 0; transform: translateY(270px); animation-timing-function: steps(1, end) } 35.1386% { opacity: 0; transform: translateY(270px); animation-timing-function: steps(1, end) } 35.1429% { opacity: 1; transform: translateY(270px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 36.8571% { opacity: 1; transform: translateY(0px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 41.1429% { opacity: 1; transform: translateY(0px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 42.8529% { opacity: 1; transform: translateY(-270px); animation-timing-function: steps(1, end) } 42.8571%, 100% { opacity: 0; transform: translateY(270px) } }
 
     /* State 2 Layer & Speaker Cards (10% -> 28%) */
-    @keyframes s2-layer-vis {
-      0%, 9.99% {
-        opacity: 0;
-        transform: translateY(0px);
-        animation-timing-function: steps(1, end);
-      }
-      10%, 27.99% {
-        opacity: 1;
-        transform: translateY(0px);
-        animation-timing-function: steps(1, end);
-      }
-      28%, 100% {
-        opacity: 0;
-        transform: translateY(0px);
-      }
-    }
+    @keyframes s2-layer-vis { 0% { opacity: 0; transform: translateY(0px); animation-timing-function: steps(1, end) } 4.2814% { opacity: 0; transform: translateY(0px); animation-timing-function: steps(1, end) } 4.2857% { opacity: 1; transform: translateY(0px); animation-timing-function: steps(1, end) } 11.9957% { opacity: 1; transform: translateY(0px); animation-timing-function: steps(1, end) } 12% { opacity: 0; transform: translateY(0px) } 42.8571%, 100% { opacity: 0; transform: translateY(0px) } }
 
-    @keyframes s2-pill-drum {
-      0%, 10% {
-        transform: translateY(76px);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      14%, 24% {
-        transform: translateY(0px);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      28%, 100% {
-        transform: translateY(-76px);
-      }
-    }
+    @keyframes s2-pill-drum { 0% { transform: translateY(76px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 4.2857% { transform: translateY(76px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 6% { transform: translateY(0px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 10.2857% { transform: translateY(0px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 12% { transform: translateY(-76px) } 42.8571%, 100% { transform: translateY(-76px) } }
 
     /* 3 White Arcs stretch rightward from logo (x=280, y=280) into 2 Speaker Cards */
-    @keyframes s2-card1-morph {
-      0%, 10% {
-        transform: translate(276px, 286px) scale(0.035, 0.36);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      14%, 24% {
-        transform: translate(104px, 220px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      28%, 100% {
-        transform: translate(104px, 262px) scale(1, 1.03);
-      }
-    }
+    @keyframes s2-card1-morph { 0% { transform: translate(276px, 286px) scale(0.035, 0.36); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 4.2857% { transform: translate(276px, 286px) scale(0.035, 0.36); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 6% { transform: translate(104px, 220px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 10.2857% { transform: translate(104px, 220px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 12% { transform: translate(104px, 262px) scale(1, 1.03) } 42.8571%, 100% { transform: translate(104px, 262px) scale(1, 1.03) } }
 
-    @keyframes s2-card2-morph {
-      0%, 10% {
-        transform: translate(284px, 312px) scale(0.035, 0.48);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      14%, 24% {
-        transform: translate(104px, 360px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      28%, 100% {
-        transform: translate(104px, 262px) scale(1, 1.03);
-      }
-    }
+    @keyframes s2-card2-morph { 0% { transform: translate(284px, 312px) scale(0.035, 0.48); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 4.2857% { transform: translate(284px, 312px) scale(0.035, 0.48); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 6% { transform: translate(104px, 360px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 10.2857% { transform: translate(104px, 360px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 12% { transform: translate(104px, 262px) scale(1, 1.03) } 42.8571%, 100% { transform: translate(104px, 262px) scale(1, 1.03) } }
 
-    @keyframes s2-text-drum {
-      0%, 11% {
-        transform: translateY(120px);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      14%, 24% {
-        transform: translateY(0px);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      27%, 100% {
-        transform: translateY(-120px);
-      }
-    }
+    @keyframes s2-text-drum { 0% { transform: translateY(120px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 4.7143% { transform: translateY(120px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 6% { transform: translateY(0px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 10.2857% { transform: translateY(0px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 11.5714% { transform: translateY(-120px) } 42.8571%, 100% { transform: translateY(-120px) } }
 
     /* State 3 Layer: Lecture Becomes Timed Subtitles (24% -> 42%) */
-    @keyframes s3-layer-vis {
-      0%, 23.99% {
-        opacity: 0;
-        transform: translateY(0px);
-        animation-timing-function: steps(1, end);
-      }
-      24%, 41.99% {
-        opacity: 1;
-        transform: translateY(0px);
-        animation-timing-function: steps(1, end);
-      }
-      42%, 100% {
-        opacity: 0;
-        transform: translateY(0px);
-      }
-    }
+    @keyframes s3-layer-vis { 0% { opacity: 0; transform: translateY(0px); animation-timing-function: steps(1, end) } 10.2814% { opacity: 0; transform: translateY(0px); animation-timing-function: steps(1, end) } 10.2857% { opacity: 1; transform: translateY(0px); animation-timing-function: steps(1, end) } 17.9957% { opacity: 1; transform: translateY(0px); animation-timing-function: steps(1, end) } 18% { opacity: 0; transform: translateY(0px) } 42.8571%, 100% { opacity: 0; transform: translateY(0px) } }
 
-    @keyframes s3-card-morph {
-      0%, 24% {
-        transform: translate(104px, 220px) scale(1, 0.4833);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      27%, 38% {
-        transform: translate(104px, 200px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      42%, 100% {
-        transform: translate(104px, 108px) scale(1, 1.7667);
-      }
-    }
+    @keyframes s3-card-morph { 0% { transform: translate(104px, 220px) scale(1, 0.4833); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 10.2857% { transform: translate(104px, 220px) scale(1, 0.4833); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 11.5714% { transform: translate(104px, 200px) scale(1, 1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 16.2857% { transform: translate(104px, 200px) scale(1, 1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 18% { transform: translate(104px, 108px) scale(1, 1.7667) } 42.8571%, 100% { transform: translate(104px, 108px) scale(1, 1.7667) } }
 
-    @keyframes s3-drum-scroll {
-      0%, 24.5% {
-        transform: translateY(240px);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      27%, 38% {
-        transform: translateY(0px);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      41%, 100% {
-        transform: translateY(-240px);
-      }
-    }
+    @keyframes s3-drum-scroll { 0% { transform: translateY(240px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 10.5% { transform: translateY(240px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 11.5714% { transform: translateY(0px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 16.2857% { transform: translateY(0px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 17.5714% { transform: translateY(-240px) } 42.8571%, 100% { transform: translateY(-240px) } }
 
     /* State 4 & 5 Dark Studio Vessel (38% -> 71%) */
-    @keyframes s45-layer-vis {
-      0%, 37.99% {
-        opacity: 0;
-        transform: translateY(0px);
-        animation-timing-function: steps(1, end);
-      }
-      38%, 70.99% {
-        opacity: 1;
-        transform: translateY(0px);
-        animation-timing-function: steps(1, end);
-      }
-      71%, 100% {
-        opacity: 0;
-        transform: translateY(0px);
-      }
-    }
+    @keyframes s45-layer-vis { 0% { opacity: 0; transform: translateY(0px); animation-timing-function: steps(1, end) } 16.2814% { opacity: 0; transform: translateY(0px); animation-timing-function: steps(1, end) } 16.2857% { opacity: 1; transform: translateY(0px); animation-timing-function: steps(1, end) } 30.4243% { opacity: 1; transform: translateY(0px); animation-timing-function: steps(1, end) } 30.4286% { opacity: 0; transform: translateY(0px) } 42.8571%, 100% { opacity: 0; transform: translateY(0px) } }
 
     /* Dark Vessel:
        - 38%-42%: Expands from S3 card (104,200, 1072x240) to 16:9 Player (104,108, 1072x424)
@@ -550,262 +306,45 @@
        - 52%-55%: Compresses vertically to Live Studio Bar (104,220, 1072x200)
        - 55%-66%: Hold Live Studio Bar
        - 66%-71%: Compresses to Source Card position (104,276, 420x116) */
-    @keyframes dark-vessel-morph {
-      0%, 38% {
-        transform: translate(104px, 200px) scale(1, 0.566);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      42%, 52% {
-        transform: translate(104px, 108px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      55%, 66% {
-        transform: translate(104px, 220px) scale(1, 0.4717);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      71%, 100% {
-        transform: translate(104px, 276px) scale(0.3918, 0.2736);
-      }
-    }
+    @keyframes dark-vessel-morph { 0% { transform: translate(104px, 200px) scale(1, 0.566); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 16.2857% { transform: translate(104px, 200px) scale(1, 0.566); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 18% { transform: translate(104px, 108px) scale(1, 1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 22.2857% { transform: translate(104px, 108px) scale(1, 1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 23.5714% { transform: translate(104px, 220px) scale(1, 0.4717); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 28.2857% { transform: translate(104px, 220px) scale(1, 0.4717); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 30.4286% { transform: translate(104px, 276px) scale(0.3918, 0.2736) } 42.8571%, 100% { transform: translate(104px, 276px) scale(0.3918, 0.2736) } }
 
-    @keyframes s4-ui-drum {
-      0%, 39% {
-        transform: translateY(430px);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      42%, 52% {
-        transform: translateY(0px);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      54%, 100% {
-        transform: translateY(-430px);
-      }
-    }
+    @keyframes s4-ui-drum { 0% { transform: translateY(430px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 16.7143% { transform: translateY(430px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 18% { transform: translateY(0px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 22.2857% { transform: translateY(0px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 23.1429% { transform: translateY(-430px) } 42.8571%, 100% { transform: translateY(-430px) } }
 
     /* State 5 Live Microphone Captions UI (52% -> 71%) */
-    @keyframes s5-layer-vis {
-      0%, 51.99% {
-        opacity: 0;
-        transform: translateY(0px);
-        animation-timing-function: steps(1, end);
-      }
-      52%, 70.99% {
-        opacity: 1;
-        transform: translateY(0px);
-        animation-timing-function: steps(1, end);
-      }
-      71%, 100% {
-        opacity: 0;
-        transform: translateY(0px);
-      }
-    }
+    @keyframes s5-layer-vis { 0% { opacity: 0; transform: translateY(0px); animation-timing-function: steps(1, end) } 22.2814% { opacity: 0; transform: translateY(0px); animation-timing-function: steps(1, end) } 22.2857% { opacity: 1; transform: translateY(0px); animation-timing-function: steps(1, end) } 30.4243% { opacity: 1; transform: translateY(0px); animation-timing-function: steps(1, end) } 30.4286% { opacity: 0; transform: translateY(0px) } 42.8571%, 100% { opacity: 0; transform: translateY(0px) } }
 
-    @keyframes s5-ui-drum {
-      0%, 52% {
-        transform: translateY(150px);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      54.5%, 66% {
-        transform: translateY(0px);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      69.5%, 100% {
-        transform: translateY(-210px);
-      }
-    }
+    @keyframes s5-ui-drum { 0% { transform: translateY(150px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 22.2857% { transform: translateY(150px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 23.3571% { transform: translateY(0px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 28.2857% { transform: translateY(0px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 29.7857% { transform: translateY(-210px) } 42.8571%, 100% { transform: translateY(-210px) } }
 
     /* Subtle geometric meter bar level motion during State 5 */
-    @keyframes meter-pulse-1 {
-      0%, 55% {
-        transform: translate(420px, 292px) scaleY(1);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      60% {
-        transform: translate(420px, 280px) scaleY(1.42);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      64%, 100% {
-        transform: translate(420px, 292px) scaleY(1);
-      }
-    }
+    @keyframes meter-pulse-1 { 0% { transform: translate(420px, 292px) scaleY(1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 23.5714% { transform: translate(420px, 292px) scaleY(1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 25.7143% { transform: translate(420px, 280px) scaleY(1.42); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 27.4286% { transform: translate(420px, 292px) scaleY(1) } 42.8571%, 100% { transform: translate(420px, 292px) scaleY(1) } }
 
-    @keyframes meter-pulse-2 {
-      0%, 55% {
-        transform: translate(435px, 276px) scaleY(1);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      60% {
-        transform: translate(435px, 290px) scaleY(0.68);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      64%, 100% {
-        transform: translate(435px, 276px) scaleY(1);
-      }
-    }
+    @keyframes meter-pulse-2 { 0% { transform: translate(435px, 276px) scaleY(1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 23.5714% { transform: translate(435px, 276px) scaleY(1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 25.7143% { transform: translate(435px, 290px) scaleY(0.68); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 27.4286% { transform: translate(435px, 276px) scaleY(1) } 42.8571%, 100% { transform: translate(435px, 276px) scaleY(1) } }
 
-    @keyframes meter-pulse-3 {
-      0%, 55% {
-        transform: translate(450px, 286px) scaleY(1);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      60% {
-        transform: translate(450px, 274px) scaleY(1.35);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      64%, 100% {
-        transform: translate(450px, 286px) scaleY(1);
-      }
-    }
+    @keyframes meter-pulse-3 { 0% { transform: translate(450px, 286px) scaleY(1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 23.5714% { transform: translate(450px, 286px) scaleY(1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 25.7143% { transform: translate(450px, 274px) scaleY(1.35); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 27.4286% { transform: translate(450px, 286px) scaleY(1) } 42.8571%, 100% { transform: translate(450px, 286px) scaleY(1) } }
 
     /* State 6: Saved Next to Your File + 4 Format Chips (66% -> 86%) */
-    @keyframes s6-layer-vis {
-      0%, 65.99% {
-        opacity: 0;
-        transform: translateY(0px);
-        animation-timing-function: steps(1, end);
-      }
-      66%, 85.99% {
-        opacity: 1;
-        transform: translateY(0px);
-        animation-timing-function: steps(1, end);
-      }
-      86%, 100% {
-        opacity: 0;
-        transform: translateY(0px);
-      }
-    }
+    @keyframes s6-layer-vis { 0% { opacity: 0; transform: translateY(0px); animation-timing-function: steps(1, end) } 28.2814% { opacity: 0; transform: translateY(0px); animation-timing-function: steps(1, end) } 28.2857% { opacity: 1; transform: translateY(0px); animation-timing-function: steps(1, end) } 36.8529% { opacity: 1; transform: translateY(0px); animation-timing-function: steps(1, end) } 36.8571% { opacity: 0; transform: translateY(0px) } 42.8571%, 100% { opacity: 0; transform: translateY(0px) } }
 
-    @keyframes s6-head-scroll {
-      0%, 66% {
-        transform: translateY(96px);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      71%, 82% {
-        transform: translateY(0px);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      85.5%, 100% {
-        transform: translateY(-96px);
-      }
-    }
+    @keyframes s6-head-scroll { 0% { transform: translateY(96px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 28.2857% { transform: translateY(96px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 30.4286% { transform: translateY(0px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 35.1429% { transform: translateY(0px); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 36.6429% { transform: translateY(-96px) } 42.8571%, 100% { transform: translateY(-96px) } }
 
-    @keyframes s6-source-morph {
-      0%, 66% {
-        transform: translate(104px, 220px) scale(2.5524, 1.724);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      71%, 82% {
-        transform: translate(104px, 276px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      86%, 100% {
-        transform: translate(104px, 210px) scale(0.5238, 1.8966);
-      }
-    }
+    @keyframes s6-source-morph { 0% { transform: translate(104px, 220px) scale(2.5524, 1.724); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 28.2857% { transform: translate(104px, 220px) scale(2.5524, 1.724); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 30.4286% { transform: translate(104px, 276px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 35.1429% { transform: translate(104px, 276px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 36.8571% { transform: translate(104px, 210px) scale(0.5238, 1.8966) } 42.8571%, 100% { transform: translate(104px, 210px) scale(0.5238, 1.8966) } }
 
     /* 4 Format Chips split out from source bar (66%->71%), hold (71%->82%),
        then slide left and coalesce into the 220x220 Monolith at (104,210) (82%->86%) */
-    @keyframes chip-srt-morph {
-      0%, 66% {
-        transform: translate(348px, 262px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      71%, 82% {
-        transform: translate(536px, 276px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      86%, 100% {
-        transform: translate(104px, 210px) scale(1.4865, 1.8966);
-      }
-    }
+    @keyframes chip-srt-morph { 0% { transform: translate(348px, 262px) scale(1, 1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 28.2857% { transform: translate(348px, 262px) scale(1, 1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 30.4286% { transform: translate(536px, 276px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 35.1429% { transform: translate(536px, 276px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 36.8571% { transform: translate(104px, 210px) scale(1.4865, 1.8966) } 42.8571%, 100% { transform: translate(104px, 210px) scale(1.4865, 1.8966) } }
 
-    @keyframes chip-vtt-morph {
-      0%, 66% {
-        transform: translate(500px, 262px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      71%, 82% {
-        transform: translate(696px, 276px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      86%, 100% {
-        transform: translate(104px, 210px) scale(1.4865, 1.8966);
-      }
-    }
+    @keyframes chip-vtt-morph { 0% { transform: translate(500px, 262px) scale(1, 1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 28.2857% { transform: translate(500px, 262px) scale(1, 1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 30.4286% { transform: translate(696px, 276px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 35.1429% { transform: translate(696px, 276px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 36.8571% { transform: translate(104px, 210px) scale(1.4865, 1.8966) } 42.8571%, 100% { transform: translate(104px, 210px) scale(1.4865, 1.8966) } }
 
-    @keyframes chip-docx-morph {
-      0%, 66% {
-        transform: translate(652px, 262px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      71%, 82% {
-        transform: translate(856px, 276px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      86%, 100% {
-        transform: translate(104px, 210px) scale(1.2791, 1.8966);
-      }
-    }
+    @keyframes chip-docx-morph { 0% { transform: translate(652px, 262px) scale(1, 1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 28.2857% { transform: translate(652px, 262px) scale(1, 1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 30.4286% { transform: translate(856px, 276px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 35.1429% { transform: translate(856px, 276px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 36.8571% { transform: translate(104px, 210px) scale(1.2791, 1.8966) } 42.8571%, 100% { transform: translate(104px, 210px) scale(1.2791, 1.8966) } }
 
-    @keyframes chip-pdf-morph {
-      0%, 66% {
-        transform: translate(804px, 262px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      71%, 82% {
-        transform: translate(1040px, 276px) scale(1, 1);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      86%, 100% {
-        transform: translate(104px, 210px) scale(1.4865, 1.8966);
-      }
-    }
+    @keyframes chip-pdf-morph { 0% { transform: translate(804px, 262px) scale(1, 1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 28.2857% { transform: translate(804px, 262px) scale(1, 1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 30.4286% { transform: translate(1040px, 276px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 35.1429% { transform: translate(1040px, 276px) scale(1, 1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 36.8571% { transform: translate(104px, 210px) scale(1.4865, 1.8966) } 42.8571%, 100% { transform: translate(104px, 210px) scale(1.4865, 1.8966) } }
 
-    @keyframes s6-label-vis {
-      0%, 67.99% {
-        opacity: 0;
-        animation-timing-function: steps(1, end);
-      }
-      68%, 82.49% {
-        opacity: 1;
-        animation-timing-function: steps(1, end);
-      }
-      82.5%, 100% {
-        opacity: 0;
-      }
-    }
+    @keyframes s6-label-vis { 0% { opacity: 0; animation-timing-function: steps(1, end) } 29.1386% { opacity: 0; animation-timing-function: steps(1, end) } 29.1429% { opacity: 1; animation-timing-function: steps(1, end) } 35.3529% { opacity: 1; animation-timing-function: steps(1, end) } 35.3571% { opacity: 0 } 42.8571%, 100% { opacity: 0 } }
 
     /* State 7: Geist Mono ASCII Art inside the 220x220 Monolith (82% -> 100%) */
-    @keyframes s7-ascii-vis {
-      0%, 82.99% {
-        opacity: 0;
-        transform: translateY(0px);
-        animation-timing-function: steps(1, end);
-      }
-      83%, 98.5% {
-        opacity: 1;
-        transform: translateY(0px);
-        animation-timing-function: steps(1, end);
-      }
-      98.51%, 100% {
-        opacity: 0;
-        transform: translateY(0px);
-      }
-    }
+    @keyframes s7-ascii-vis { 0% { opacity: 0; transform: translateY(0px); animation-timing-function: steps(1, end) } 35.5671% { opacity: 0; transform: translateY(0px); animation-timing-function: steps(1, end) } 35.5714% { opacity: 1; transform: translateY(0px); animation-timing-function: steps(1, end) } 42.2143% { opacity: 1; transform: translateY(0px); animation-timing-function: steps(1, end) } 42.2186% { opacity: 0; transform: translateY(0px) } 42.8571%, 100% { opacity: 0; transform: translateY(0px) } }
 
-    @keyframes s7-ascii-spine {
-      0%, 82% {
-        transform: translateY(180px) scaleY(1);
-        animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      86%, 96% {
-        transform: translateY(0px) scaleY(1);
-        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      100% {
-        transform: translateY(0px) scaleY(0.15);
-      }
-    }
+    @keyframes s7-ascii-spine { 0% { transform: translateY(180px) scaleY(1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 35.1429% { transform: translateY(180px) scaleY(1); animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1) } 36.8571% { transform: translateY(0px) scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 41.1429% { transform: translateY(0px) scaleY(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 42.8571%, 100% { transform: translateY(0px) scaleY(0.15) } }
 
     /* Explicit Reduced-Motion Compliance Rule */
     @media not all {
@@ -838,7 +377,7 @@
       }
     }
   
-* { animation-iteration-count: 1 !important; animation-fill-mode: forwards !important; }
+
 ]]></style>
 
   

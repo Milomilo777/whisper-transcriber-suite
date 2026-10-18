@@ -12,8 +12,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Animated banners on the project page**: `docs/img/promo-hero.svg` replaces the old screenshot
   banner at the top of the README and every translation; three more (`promo-features`,
   `promo-release`, `promo-loom`) sit in the README's Features, Download and privacy sections, and
-  `promo-release` also heads the release page. They play once and stop on their last frame; fonts
-  are embedded.
+  `promo-release` also heads the release page. Each plays for about 15 seconds, rests on its final
+  frame for 20 seconds and starts again, so a banner further down the page is still moving when a
+  reader scrolls to it; clicking a banner opens it on its own and replays it. Fonts are embedded.
 
 ### Changed
 
