@@ -21,6 +21,9 @@ LOCALES = ROOT / "app" / "locales"
 EXTRACTOR = ROOT / "tools" / "i18n_extract.py"
 # LRM, RLM, LRE..RLO, LRI..PDI
 BIDI_MARKS = frozenset(chr(c) for c in (0x200E, 0x200F, *range(0x202A, 0x202F), *range(0x2066, 0x206A)))
+# Ideographic comma and full stop; only Chinese and Japanese text uses them.
+CJK_PUNCT = frozenset("、。")
+CJK_PUNCT_CODES = frozenset({"ja", "zh-Hans", "zh-Hant"})
 
 
 def _fields(text: str) -> set[str] | None:
@@ -91,6 +94,12 @@ def catalog_problems(path: Path, source: dict[str, Any]) -> tuple[list[str], lis
                  if ch in BIDI_MARKS}
         if found:
             problems.append(f"{key!r} has direction marks {sorted(found)}; the app adds them itself")
+    # A stray ideographic full stop slips in when a line is edited with a CJK input method on.
+    if code not in CJK_PUNCT_CODES:
+        for key, value in messages.items():
+            forms = value if isinstance(value, list) else [value]
+            if any(ch in CJK_PUNCT for form in forms if isinstance(form, str) for ch in form):
+                problems.append(f"{key!r} has CJK punctuation (U+3001/U+3002) outside a CJK catalog")
     if code == "en":
         for key, value in messages.items():
             want = source.get(key)
@@ -155,6 +164,11 @@ def test_validator_accepts_a_good_partial_catalog(tmp_path: Path) -> None:
     assert sorted(missing) == ["Save", "menu\x04Open"]
 
 
+def test_validator_accepts_cjk_punctuation_in_japanese(tmp_path: Path) -> None:
+    path = _write(tmp_path, "ja", {"Save": "保存します。"})
+    assert catalog_problems(path, SOURCE)[0] == []
+
+
 @pytest.mark.parametrize("code,messages,meta,needle", [
     ("de", {"Unknown": "x"}, {}, "not in en.json"),
     ("de", {"Saved {name}": "Gespeichert {nom}"}, {}, "placeholders"),
@@ -170,6 +184,8 @@ def test_validator_accepts_a_good_partial_catalog(tmp_path: Path) -> None:
     ("fa", {"Save": chr(0x202B) + "ذخیره" + chr(0x202C)}, {}, "direction marks"),
     ("fa", {"Save": "ذخیره" + chr(0x200F)}, {}, "direction marks"),
     ("he", {"{n} file": ["{n} קובץ", "x" + chr(0x2067), "y"]}, {}, "direction marks"),
+    ("hi", {"Save": "सहेजें" + chr(0x3002)}, {}, "CJK punctuation"),
+    ("de", {"{n} file": ["{n} Datei", "{n} Dateien" + chr(0x3001)]}, {}, "CJK punctuation"),
 ])
 def test_validator_catches(tmp_path: Path, code: str, messages: Any, meta: dict[str, Any],
                            needle: str) -> None:

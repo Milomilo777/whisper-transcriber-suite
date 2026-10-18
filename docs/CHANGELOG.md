@@ -33,6 +33,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **"What's new" now describes 2.1** on the website (section and FAQ) and in the README; the 2.0
   cards stay below, marked as 2.0.
 
+- **Hindi interface reviewed by a native speaker** (#11): natural terms for time range, filler
+  words, silent stretches, the update banner and the Stop button; the catalog is marked
+  "reviewed". A catalog test now rejects Chinese/Japanese punctuation outside those catalogs (one
+  slipped into a Hindi line).
+
 - `tools/make_i18n_readmes.py` now only writes the block of language links in `README.md` and the
   translations (text links, no flag images); the translations are edited directly instead of
   being generated from tables inside the script. A test keeps the links current.
