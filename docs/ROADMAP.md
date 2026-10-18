@@ -22,9 +22,16 @@ Effort labels:
 | Phase 2a — Whisper as serious transcription tool | **DONE** (Session 5) | VAD on by default + tunable; word timestamps opt-in; `BatchedInferencePipeline` on CUDA; multi-format writers (SRT/VTT/TSV/TXT/JSON/LRC); language detection in queue; Advanced settings dialog. Phase 2b (UI for `initial_prompt` / `hotwords`, model picker, presets) deferred. |
 | Phase 2-oTranscribe — file-format compatibility | **DONE** (Session 4) | Tier 1 + Tier 2 shipped: bidirectional `.otr` converter, Export/Import UI, `Help → Open oTranscribe`. See [docs/integrations/](integrations/README.md). Tier 3 (vendored fork, in-app editor, forced alignment) deferred — see Phase 5 backlog. |
 | Phase 3a — yt-dlp as serious downloader | **DONE** (Session 5) | `--progress-template` JSON; SQLite history DB + `Statistics` menu; SponsorBlock category list in Advanced dialog; auto-transcribe-after-download fully wired; right-click `Open output folder` + `Re-run`. |
-| Phase 4 — editor and viewer | TODO | Click-word→audio, edit-back-to-subtitle, gap detection, speaker rename, filler removal (re-prioritized after Session 6 research) |
-| Phase 5 — power features | TODO | Diarization, vocal separation, live mic, REST, CLI |
-| Phase 6 — CJK polish + backend abstraction | NEW (Session 6 research) | SenseVoice + Parakeet backends, Chinese punctuation post-processor, CJK line splitting, simplified↔traditional normalization. |
+| Phase 4 — editor and viewer | **PARTIAL** (checked 2026-10-18) | Shipped: transcript viewer with click-word→audio (4.1), edit-back with timestamps (4.2), speaker rename (4.4), filler removal per language (4.5), word-confidence colours (4.7). Open: gap/silence panel (4.3); the subtitle linter `core/subtitle_qc.py` exists but is not wired into the app (4.6). |
+| Phase 5 — power features | **DONE** except 5.1b (checked 2026-10-18) | Shipped: speaker diarization, vocal separation, Live tab (mic), local HTTP API (stdlib `core/server/`, OpenAI-compatible routes, MCP), CLI (`gui.py transcribe/serve`), installer builds, backend abstraction (faster-whisper, whisper.cpp, cloud engines), text-to-speech (Kokoro, OmniVoice). Update check is notify-only by design (5.7). Open: system-wide dictation hotkey (5.1b). |
+| Phase 6 — CJK polish + backend abstraction | **PARTIAL** (checked 2026-10-18) | Shipped: pluggable backends incl. NVIDIA Parakeet (6.1, no SenseVoice), hallucination/repetition cleanup (6.6), stable-ts alignment (6.7). Open: Chinese punctuation (6.2), OpenCC simplified↔traditional (6.4), CJK numerals (6.5), sound-event tags (6.8); CJK line splitting exists in `core/subtitle_qc.py` but is not used by the writers (6.3). |
+| Phase 7 — hardening and operations | ongoing | 42 UI languages shipped in 2.1.0 (7.4). |
+
+> **Note (2026-10-18):** parts of the long text below predate later releases and contradict the product: 7.4 and
+> 6.x call Persian/Arabic out of scope (both UI locales ship); "What we explicitly are NOT doing" lists cloud
+> transcription and model serving, but opt-in cloud engines and the HTTP API exist; 5.4 names FastAPI in
+> `app/server/` (the code is stdlib in `core/server/`); 5.9 says "no TTS" (Kokoro and OmniVoice ship); the
+> oTranscribe "Tier 3 in-app editor deferred" line is stale (the viewer edits). The table above is current.
 
 Integrations (see [`docs/integrations/`](integrations/README.md)) follow a separate cadence from the numbered phases — each was a single hands-off session.
 
