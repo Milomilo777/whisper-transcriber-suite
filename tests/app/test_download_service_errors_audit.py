@@ -70,7 +70,14 @@ def run_test_case(monkeypatch, tmp_path, service, fake_app, case_script_content)
     return events, task
 
 
-def test_http_403(monkeypatch, tmp_path, service, fake_app):
+@pytest.mark.parametrize("self_update", [False, True])
+def test_http_403(monkeypatch, tmp_path, service, fake_app, self_update):
+    # Whether yt-dlp can update itself depends on the machine (a bin/yt-dlp.exe
+    # in a source checkout can); pin it, or the result follows the developer's PC.
+    from core import yt_dlp_update
+
+    monkeypatch.setattr(yt_dlp_update, "can_self_update", lambda *a, **k: self_update)
+    monkeypatch.setattr(service, "_offer_yt_dlp_update", lambda reason: None)
     events, _ = run_test_case(monkeypatch, tmp_path, service, fake_app, """
 import sys
 print("ERROR: unable to download video data: HTTP Error 403: Forbidden")
@@ -79,7 +86,8 @@ sys.exit(1)
     errors = [e[2] for e in events if e[0] == "error"]
     assert len(errors) == 1
     assert "HTTP Error 403: Forbidden" in errors[0]
-    assert "video downloader in this app may be out of date" in errors[0]
+    # A copy that can update itself shows the "Update it" bar instead of this advice.
+    assert ("video downloader in this app may be out of date" in errors[0]) is (not self_update)
 
 
 def test_sign_in_bot(monkeypatch, tmp_path, service, fake_app):
