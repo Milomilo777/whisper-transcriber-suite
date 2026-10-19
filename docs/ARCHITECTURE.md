@@ -72,6 +72,8 @@ core/
 ├── model_manager.py, hub.py   model catalog, Hub download, model folders
 ├── history.py              SQLite history of downloads and transcriptions
 ├── transcript_qa.py        grounding core for questions about a transcript (retrieval, evidence ids)
+├── llama_runtime.py        pinned llama.cpp server download, safe unpack, install (ADR 0013)
+├── verified_download.py    resumable download checked against a pinned size + SHA-256
 ├── yt_dlp_update.py        user-writable, self-updating yt-dlp copy
 ├── optional_deps.py        on-demand optional packages
 ├── server/                 optional HTTP job server

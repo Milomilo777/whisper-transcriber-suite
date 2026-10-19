@@ -131,6 +131,13 @@ installs only if you opt into that specific feature.
   the latest PyPI release at install time). Its ~2GB model weights
   (`k2-fsa/OmniVoice` on Hugging Face) are fetched separately by the
   package itself, also on first use.
+- **llama.cpp** (`llama-server` and its libraries; ggml-org/llama.cpp) — MIT. The offline
+  question-answering engine. Downloaded from the official GitHub release pinned in
+  `core/llama_runtime.py` (tag, size and SHA-256) into the user cache when that feature is turned
+  on; never in the installer. It vendors nlohmann/json (MIT, the tag's `licenses/LICENSE-jsonhpp`).
+  The Windows build includes **libomp** (LLVM OpenMP runtime) under the Apache License v2.0 with
+  LLVM Exceptions (`LICENSE-LLVM-OpenMP` in the downloaded folder). On Windows the app may copy
+  its own Microsoft Visual C++ runtime files (see above) beside `llama-server`.
 
 ## Models
 

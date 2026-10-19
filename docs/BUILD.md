@@ -427,6 +427,30 @@ public, so this no longer burns paid private-repo macOS minutes.
 
 </details>
 
+## llama.cpp runtime pins
+
+The offline question-answering engine is not part of any build: the app downloads llama.cpp's
+`llama-server` on demand (ADR 0013). `core/llama_runtime.py` pins it in code: `LLAMA_CPP_TAG` and,
+in `ASSETS`, per OS/CPU the release asset's name, byte size and SHA-256. Never pin `latest`
+(llama.cpp's `releases/latest` points at an old dummy release, and every `bNNNNN` build is a
+prerelease).
+
+To bump the pin:
+
+1. Pick a tag and read its asset list with digests:
+   `gh release view <tag> -R ggml-org/llama.cpp --json assets --jq '.assets[] | [.name, .size, .digest] | @tsv'`
+   (the assets `bin-win-cpu-x64.zip`, `bin-win-cpu-arm64.zip`, `bin-macos-arm64.tar.gz`,
+   `bin-macos-x64.tar.gz`, `bin-ubuntu-x64.tar.gz`).
+2. Download each one and check its build provenance:
+   `gh attestation verify <file> -R ggml-org/llama.cpp`. Every asset must pass.
+3. Update `LLAMA_CPP_TAG` and all `ASSETS` rows; name the tag and the attestation result in the
+   commit message.
+4. On each OS (Windows on a PC without Visual Studio, macOS 13.3+ on a real Mac or VM, Linux):
+   install through `core.llama_runtime.install_runtime()` and run `server_version()` on the result.
+   On Windows also check the Visual C++ runtime path: with the system copy hidden, the app's own
+   copy (`python\msvcp140.dll` and friends) must still start the server.
+5. Re-read the tag's `licenses/` folder and update `THIRD_PARTY_NOTICES.md` if it changed.
+
 ## Sanity check after any build
 
 ```cmd

@@ -446,6 +446,8 @@ a = Analysis(
         'core.backends.availability',
         'core.chapters',
         'core.llm',
+        'core.llama_runtime',
+        'core.verified_download',
         'core.recorder',
         'core.sample_clip',
         'core.search',

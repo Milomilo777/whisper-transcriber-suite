@@ -29,6 +29,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   that answer a question (BM25 over words and character 3-grams, Persian/Arabic spelling folded), numbers
   them as evidence for a local model, keeps only the line ids it was shown, and renders the app's own
   `[mm:ss]` links. Not used by the interface yet.
+- **Installer for the offline question-answering engine**: `core/llama_runtime.py` downloads a pinned
+  llama.cpp `llama-server` build (tag, size and SHA-256 per OS in the code), unpacks it without letting any
+  path or link escape its folder and moves it into the user cache in one rename; on Windows it puts the
+  app's own Visual C++ runtime beside it when the system's is missing or older. Downloads go through the
+  new `core/verified_download.py` (resume, cancel, free-space check, Work offline refusal). Not used by
+  the interface yet.
 
 ### Changed
 

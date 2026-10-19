@@ -575,3 +575,53 @@ transcription too); the linked transcription task reports a success on its own. 
 - A user whose start crashed in the set-up sees no taskbar features until the next app version.
 - Another instance that starts at the very moment the first one holds the marker also stays off.
 - The AppUserModelID is unchanged (a pinned or grouped taskbar button is not touched).
+
+## 0013 — llama.cpp runtime: a pinned `llama-server` in the user cache, run as a child
+
+**Status:** Accepted
+
+**Date:** 2026-10-20
+
+**Context:** Answering questions about a transcript offline needs a local language-model
+runtime that runs on CPU-only PCs, on Windows (embed build, not frozen), macOS (frozen `.app`) and
+Linux, and picks up new model architectures soon after they appear. The existing local path in
+`core/llm.py` (`llama-cpp-python` in-process) cannot be installed by users of the shipped builds:
+PyPI has only an sdist for Windows, the last macOS x64 wheel is old, and a native crash would take
+the worker with it. Measured on a 4-core, 16 GB reference PC: llama.cpp's `llama-server` streams,
+cancels when the connection closes and reuses its prompt cache across follow-up questions.
+
+**Options considered:**
+1. `llama-cpp-python` in the worker (keep as is). Not installable in the shipped builds; lags upstream.
+2. Ollama. About 1.4 GB, macOS 14+, a shared system service on a fixed port the app does not control.
+3. llamafile, KoboldCpp, onnxruntime-genai, mistral.rs, MLC-LLM. Lag, AGPL, no macOS x64, or
+   per-model compilation.
+4. The official llama.cpp `llama-server` release build, pinned, downloaded on demand. Chosen.
+
+**Decision:** `core/llama_runtime.py` pins one llama.cpp tag and, per OS/CPU, the release asset's
+name, byte size and SHA-256 (the GitHub asset digest; every pinned asset passed
+`gh attestation verify` against `ggml-org/llama.cpp`). Never `releases/latest` (it points at an old
+dummy release). The download goes through `core/verified_download.py` (Work offline refusal,
+free-space check, `.part` file with HTTP Range resume, cancel, size and SHA-256 checked before the
+file gets its real name). Extraction checks every member first: no absolute paths, drive letters,
+`..`, `:` or links in a zip; tar links must resolve inside the folder and device files are refused;
+tar extraction also uses Python's `data` filter where it exists. The archive is unpacked into a
+staging folder and moved to `user_cache_dir()/tools/llama.cpp/<tag>/` in one rename, so a failed
+install leaves no half folder. The whole folder is kept (the executables are stubs over shared
+libraries).
+Windows: the build needs the Visual C++ 2015-2022 runtime (`msvcp140.dll`, `vcruntime140.dll`,
+`vcruntime140_1.dll`), which the archive does not contain. The Windows builds of this app already
+ship Microsoft's files app-local beside the bundled Python (see `THIRD_PARTY_NOTICES.md`). The
+installer copies the app's copy beside `llama-server` only when it is newer than the system's or
+the system has none, because a DLL beside the program wins over the system one and an older
+runtime than the build expects fails to load. A loader failure on start (DLL or entry point not
+found) is shown with the Microsoft download link. Copying the files from the app's own folder into
+the app's own cache does not distribute them further. macOS: the official builds need macOS 13.3+;
+older Macs are told so (an own build for them is separate work).
+
+**Consequences:**
+- About 12-20 MB per platform, downloaded only when the user turns the feature on.
+- A pin bump is manual work: new sizes and digests, attestation check, a real install and
+  `llama-server --version` run on each OS (docs/BUILD.md, "llama.cpp runtime pins").
+- Older pinned folders stay in the cache after a bump until removal is built.
+- Starting and stopping the server (a managed child bound to 127.0.0.1 with a per-session key, no
+  orphan processes) is a separate step that builds on this module.
