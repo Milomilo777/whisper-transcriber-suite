@@ -330,6 +330,57 @@ def _work_offline_off(monkeypatch):
         _offline.uninstall_network_guard()
 
 
+class _NoOsTrayIcon:
+    """Stand-in for ``pystray.Icon`` that never touches the notification area.
+
+    Every test that builds a real ``App`` starts its tray icon. A real icon
+    whose process ends without removing it stays behind as a dead icon in the
+    Windows notification area, so a full suite left hundreds of them there.
+    """
+
+    no_os_tray = True
+
+    def __init__(self, name, icon=None, title=None, menu=None, **_kwargs):
+        import threading
+
+        self.name, self.icon, self.title, self.menu = name, icon, title, menu
+        self.visible = False
+        self._stopped = threading.Event()
+
+    def run(self, setup=None):
+        self.visible = True
+        if setup is not None:
+            setup(self)
+        self._stopped.wait()
+        self.visible = False
+
+    def stop(self):
+        self._stopped.set()
+
+    def notify(self, message, title=None):
+        pass
+
+    def remove_notification(self):
+        pass
+
+    def update_menu(self):
+        pass
+
+
+@pytest.fixture(autouse=True)
+def _no_os_tray_icon(monkeypatch):
+    """Keep tests from adding real icons to the system tray.
+
+    Tests that need another pystray (a fake module, or none at all) patch
+    ``app.widgets.tray._try_load_pystray`` or ``sys.modules`` themselves.
+    """
+    try:
+        import pystray  # type: ignore[import-not-found]
+    except Exception:  # noqa: BLE001 - no pystray, no real icons either
+        return
+    monkeypatch.setattr(pystray, "Icon", _NoOsTrayIcon)
+
+
 @pytest.fixture(autouse=True)
 def _reset_install_stop_flag():
     """``App.on_exit`` asks every package install to stop for good (process-wide).

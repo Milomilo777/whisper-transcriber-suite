@@ -340,3 +340,27 @@ def test_tray_is_unsupported_on_macos_even_with_the_libraries(monkeypatch):
     monkeypatch.setattr(sys, "platform", "darwin")
     c = tray_mod.TrayController(types.SimpleNamespace(post_to_main=lambda fn: None))  # type: ignore[arg-type]
     assert c.is_supported() is False
+
+
+def test_tests_never_add_real_icons_to_the_system_tray(monkeypatch):
+    """A real App started by a test must not add an icon to the OS tray.
+
+    Icons left behind by test processes piled up as hundreds of dead icons in
+    the Windows notification area; tests/conftest.py swaps pystray.Icon out.
+    """
+    pystray = pytest.importorskip("pystray")
+    pytest.importorskip("PIL")
+    from app.widgets import tray as tray_mod
+
+    assert getattr(pystray.Icon, "no_os_tray", False)
+    monkeypatch.setattr(sys, "platform", "win32")
+    c = tray_mod.TrayController(types.SimpleNamespace(post_to_main=lambda fn: None))  # type: ignore[arg-type]
+    c.start()
+    try:
+        assert getattr(c._icon, "no_os_tray", False)
+    finally:
+        thread = c._thread
+        c.stop()
+    assert thread is not None
+    thread.join(timeout=2.0)
+    assert not thread.is_alive()
