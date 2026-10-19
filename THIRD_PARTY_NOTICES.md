@@ -145,6 +145,10 @@ installs only if you opt into that specific feature.
   `Systran/faster-whisper-large-v3`) are distributed under the model's own
   license (Whisper is MIT from OpenAI). The model is downloaded at first
   run, not bundled in the installer.
+- **NVIDIA Parakeet TDT 0.6B v3** (`nvidia/parakeet-tdt-0.6b-v3`, the default model of the optional
+  NVIDIA ASR engine) — CC-BY-4.0, © NVIDIA Corporation
+  (https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3). Downloaded from Hugging Face only when that
+  engine is used, never bundled.
 - The two **speaker-diarization models** in `bin/diarization/` are bundled in the Windows
   installer, the Portable ZIP and the macOS app (`platform/windows/build-deps.json` pins them):
   - `segmentation.onnx`: **pyannote segmentation 3.0**, MIT. The license is declared in the model
