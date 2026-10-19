@@ -582,6 +582,7 @@ html[data-motion="off"] .rail-pulse { transform: translateX(380px); }
 .hdr-no-name .site-header .brand-name { display: none; }
 .hdr-no-nav .site-header .site-nav { display: none; }
 .hdr-no-nav .site-header .site-nav + .header-cta { margin-inline-start: auto; }
+.hdr-no-lang .site-header .lang-current { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 1500px) {
   /* the globe alone: the header row has no room for a language name next to the menu */
   .lang-current { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
