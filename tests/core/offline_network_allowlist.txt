@@ -33,3 +33,5 @@ core/server/__init__.py::find_available_port  binds local ports; no connection
 core/server/jobs.py::post_webhook  only reached from _fire_webhook(), which skips it while offline
 core/stats.py::_post  only reached from the stats sender, which skips it while offline
 core/tts_kokoro.py::_fetch_archive  only reached after require_online("downloading the Kokoro voice model")
+core/local_llm_server.py::LocalLLMServer._health  connects only to 127.0.0.1 (LOOPBACK), the app's own llama-server child
+core/local_llm_server.py::LocalLLMServer.open_chat  connects only to 127.0.0.1 (LOOPBACK), the app's own llama-server child

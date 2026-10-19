@@ -266,6 +266,7 @@ a = Analysis(
         'core.chapters',
         'core.llm',
         'core.llama_runtime',
+        'core.local_llm_server',
         'core.verified_download',
         'core.recorder',
         'core.sample_clip',

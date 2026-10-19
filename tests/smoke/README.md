@@ -31,6 +31,7 @@ against the exe.
 |---|---|
 | `test_app_headless.py` | The `App` Tk root + every service can be instantiated and driven without UI clicks. Catches Python-source regressions across services, writers, dialogs, oTranscribe round-trip, theme switching. |
 | `test_exe_real_e2e.py` | `dist/WhisperTranscriberSuite/WhisperTranscriberSuite.exe --worker` actually transcribes a real video. Catches **PyInstaller packaging bugs** (missing data files, hidden imports, DLLs that don't resolve at runtime). |
+| `test_local_llm_server_smoke.py` | The real `llama-server` starts as a managed child, answers three questions, cancels mid-answer, refuses requests without the key, gives other sites no CORS permission, opens no outside connection and is gone after `stop()`. Needs `WHISPER_SMOKE_LLAMA_RUNTIME` + `WHISPER_SMOKE_LLAMA_MODEL` (see `docs/TESTING.md`). |
 
 ## How to run
 

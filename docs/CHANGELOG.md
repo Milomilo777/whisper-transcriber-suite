@@ -35,6 +35,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   app's own Visual C++ runtime beside it when the system's is missing or older. Downloads go through the
   new `core/verified_download.py` (resume, cancel, free-space check, Work offline refusal). Not used by
   the interface yet.
+- **Running the offline question-answering engine**: `core/local_llm_server.py` starts `llama-server` on
+  127.0.0.1 with a random port and a fresh API key per start (passed in the environment, never logged),
+  refuses to start when free memory is short, and streams answers with a cancel that works from any thread.
+  The server never outlives the app: a Windows Job Object ends it with the app, and on every OS the next start
+  stops a leftover server after checking its pid, start time and program path. Not used by the interface yet.
 
 ### Changed
 

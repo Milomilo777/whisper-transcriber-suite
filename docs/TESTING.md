@@ -65,6 +65,16 @@ at a glance whether the project is still green.
 
   See `docs\BUILD.md` for the full build + smoke instructions.
 
+  The offline question-answering engine has its own smoke test against
+  the real `llama-server` (installed runtime + a GGUF model; it loads the
+  model once, ~3 GB of memory):
+
+  ```
+  set WHISPER_SMOKE_LLAMA_RUNTIME=%LOCALAPPDATA%\WhisperTranscriberSuite\Cache\tools\llama.cpp\b11514
+  set WHISPER_SMOKE_LLAMA_MODEL=C:\models\gemma-4-E2B-it-Q4_K_M.gguf
+  python -m pytest tests\smoke\test_local_llm_server_smoke.py
+  ```
+
 ## Run the app from source
 
 ```

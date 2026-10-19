@@ -397,7 +397,7 @@ VC_REDIST_URL = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
 _VC_MARKER = ".app-vc-runtime"
 # Process exit codes of a program Windows could not load: DLL not found,
 # entry point not found (an older DLL), wrong image format.
-_LOADER_FAILURES = frozenset({0xC0000135, 0xC0000139, 0xC000007B})
+LOADER_FAILURES = frozenset({0xC0000135, 0xC0000139, 0xC000007B})
 
 
 def _file_version(path: Path) -> tuple[int, int, int, int] | None:
@@ -584,7 +584,7 @@ def server_version(exe: Path) -> str:
         res = subprocess.run([str(exe), "--version"], **kwargs)  # type: ignore[call-overload]
     except (OSError, subprocess.SubprocessError) as e:
         raise RuntimeError(f"Could not start llama-server: {e}") from e
-    if sys.platform == "win32" and (res.returncode & 0xFFFFFFFF) in _LOADER_FAILURES:
+    if sys.platform == "win32" and (res.returncode & 0xFFFFFFFF) in LOADER_FAILURES:
         raise RuntimeError(vc_runtime_message([]))
     output = f"{res.stdout or ''}\n{res.stderr or ''}"
     if res.returncode != 0:
