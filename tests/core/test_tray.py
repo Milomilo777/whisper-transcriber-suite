@@ -191,6 +191,146 @@ def test_successful_retry_after_a_failed_start_reports_supported(monkeypatch):
     assert c.is_supported() is True
 
 
+def _xorg_pystray(created: list[str]):
+    """A fake pystray whose Icon class claims to be the Xorg backend's."""
+
+    class _FakeMenu:
+        SEPARATOR = object()
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class _XorgIcon:
+        def __init__(self, *args, **kwargs):
+            created.append("icon")
+
+    _XorgIcon.__module__ = "pystray._xorg"
+    return types.SimpleNamespace(Menu=_FakeMenu, MenuItem=lambda *a, **k: None, Icon=_XorgIcon)
+
+
+def _fake_xlib(monkeypatch, owner):
+    """Install fake Xlib.display / Xlib.X modules; the tray selection owner is ``owner``."""
+    calls: list[str] = []
+
+    class _Display:
+        def get_default_screen(self):
+            return 0
+
+        def intern_atom(self, name):
+            calls.append(name)
+            return 42
+
+        def get_selection_owner(self, atom):
+            return owner
+
+        def close(self):
+            calls.append("close")
+
+    xlib = types.ModuleType("Xlib")
+    display_mod = types.ModuleType("Xlib.display")
+    display_mod.Display = _Display  # type: ignore[attr-defined]
+    x_mod = types.ModuleType("Xlib.X")
+    x_mod.NONE = 0  # type: ignore[attr-defined]
+    xlib.display = display_mod  # type: ignore[attr-defined]
+    xlib.X = x_mod  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "Xlib", xlib)
+    monkeypatch.setitem(sys.modules, "Xlib.display", display_mod)
+    monkeypatch.setitem(sys.modules, "Xlib.X", x_mod)
+    return calls
+
+
+def _no_loop(monkeypatch):
+    import threading as _threading
+
+    monkeypatch.setattr("core._threads.safe_thread",
+                        lambda fn, name=None: _threading.Thread(target=lambda: None, daemon=True))
+
+
+def test_no_x11_system_tray_keeps_the_icon_off(monkeypatch):
+    """Xvfb and trayless X11 desktops: pystray's Xorg backend can never dock
+    there, and its loop thread left Tk's destroy() hanging on Linux CI (the X
+    server stopped answering). No tray owner -> no icon, and minimise-to-tray
+    must not hide the window."""
+    from app.widgets import tray as tray_mod
+
+    created: list[str] = []
+    monkeypatch.setattr(tray_mod, "_try_load_pystray", lambda: (_xorg_pystray(created), object()))
+    calls = _fake_xlib(monkeypatch, owner=0)
+    _no_loop(monkeypatch)
+    monkeypatch.setattr(sys, "platform", "linux")
+    c = tray_mod.TrayController(types.SimpleNamespace(post_to_main=lambda fn: None))  # type: ignore[arg-type]
+    c.start()
+    assert created == []
+    assert c._icon is None
+    assert c.is_supported() is False
+    assert calls == ["_NET_SYSTEM_TRAY_S0", "close"]
+
+
+def test_an_x11_system_tray_lets_the_icon_start(monkeypatch):
+    from app.widgets import tray as tray_mod
+
+    created: list[str] = []
+    monkeypatch.setattr(tray_mod, "_try_load_pystray", lambda: (_xorg_pystray(created), object()))
+    _fake_xlib(monkeypatch, owner=types.SimpleNamespace(id=7))
+    _no_loop(monkeypatch)
+    monkeypatch.setattr(sys, "platform", "linux")
+    c = tray_mod.TrayController(types.SimpleNamespace(post_to_main=lambda fn: None))  # type: ignore[arg-type]
+    c.start()
+    assert created == ["icon"]
+    assert c.is_supported() is True
+
+
+def test_the_tray_check_is_retried_on_the_next_start(monkeypatch):
+    """A panel that starts after the app (login) must still get the icon."""
+    from app.widgets import tray as tray_mod
+
+    created: list[str] = []
+    monkeypatch.setattr(tray_mod, "_try_load_pystray", lambda: (_xorg_pystray(created), object()))
+    _no_loop(monkeypatch)
+    monkeypatch.setattr(sys, "platform", "linux")
+    c = tray_mod.TrayController(types.SimpleNamespace(post_to_main=lambda fn: None))  # type: ignore[arg-type]
+    _fake_xlib(monkeypatch, owner=0)
+    c.start()
+    assert c.is_supported() is False
+    _fake_xlib(monkeypatch, owner=types.SimpleNamespace(id=7))
+    c.start()
+    assert created == ["icon"] and c.is_supported() is True
+
+
+def test_other_backends_skip_the_x11_tray_check(monkeypatch):
+    from app.widgets import tray as tray_mod
+
+    created: list[str] = []
+    fake = _xorg_pystray(created)
+    fake.Icon.__module__ = "pystray._appindicator"
+    monkeypatch.setattr(tray_mod, "_try_load_pystray", lambda: (fake, object()))
+    calls = _fake_xlib(monkeypatch, owner=0)
+    _no_loop(monkeypatch)
+    monkeypatch.setattr(sys, "platform", "linux")
+    c = tray_mod.TrayController(types.SimpleNamespace(post_to_main=lambda fn: None))  # type: ignore[arg-type]
+    c.start()
+    assert created == ["icon"] and calls == []
+
+
+def test_an_x11_error_during_the_check_does_not_block_the_icon(monkeypatch):
+    """The check only exists to avoid a known hang; if it cannot ask X, behave as before."""
+    from app.widgets import tray as tray_mod
+
+    created: list[str] = []
+    monkeypatch.setattr(tray_mod, "_try_load_pystray", lambda: (_xorg_pystray(created), object()))
+    _fake_xlib(monkeypatch, owner=0)
+
+    def boom(self):
+        raise OSError("cannot open display")
+
+    monkeypatch.setattr(sys.modules["Xlib.display"].Display, "__init__", boom)
+    _no_loop(monkeypatch)
+    monkeypatch.setattr(sys, "platform", "linux")
+    c = tray_mod.TrayController(types.SimpleNamespace(post_to_main=lambda fn: None))  # type: ignore[arg-type]
+    c.start()
+    assert created == ["icon"]
+
+
 def test_tray_is_unsupported_on_macos_even_with_the_libraries(monkeypatch):
     """pystray's AppKit backend needs the main thread, which Tk owns, so the
     tray is off on macOS (the app lives in the Dock)."""

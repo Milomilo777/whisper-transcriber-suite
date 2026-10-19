@@ -145,10 +145,42 @@ class TrayController:
 
     # -- icon lifecycle --------------------------------------------------
 
+    def _no_x11_system_tray(self) -> bool:
+        """True when pystray would use its Xorg backend and X has no system tray.
+
+        Without a ``_NET_SYSTEM_TRAY_S<n>`` selection owner (Xvfb, an X11
+        desktop without a panel tray) the icon can never dock, and its loop
+        thread was seen leaving the X server unresponsive, which hung Tk's own
+        ``destroy()`` on Linux CI. Asked on a short-lived connection of our own.
+        Any error while asking keeps the old behaviour (start the icon).
+        """
+        icon_cls = getattr(self._pystray, "Icon", None)
+        if not str(getattr(icon_cls, "__module__", "")).endswith("._xorg"):
+            return False
+        try:
+            import Xlib.X  # type: ignore[import-not-found]
+            import Xlib.display  # type: ignore[import-not-found]
+
+            display = Xlib.display.Display()
+            try:
+                atom = display.intern_atom(f"_NET_SYSTEM_TRAY_S{display.get_default_screen()}")
+                return display.get_selection_owner(atom) == Xlib.X.NONE
+            finally:
+                display.close()
+        except Exception as e:  # noqa: BLE001
+            logger.info("Could not ask X for a system tray (%s); starting the tray icon anyway", e)
+            return False
+
     def start(self) -> None:
         if self._icon is not None:
             return
         if not self._libs_available():
+            return
+        if self._no_x11_system_tray():
+            # Counted as a failed start: minimise-to-tray stays off, and a
+            # later start() asks again (a panel that appears after login).
+            logger.info("No system tray on this X11 desktop; the tray icon stays off")
+            self._start_failed = True
             return
         try:
             menu = self._pystray.Menu(

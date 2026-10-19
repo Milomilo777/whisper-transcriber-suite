@@ -90,7 +90,9 @@ Tcl read error; the file is fine and the test passes alone). The same fault can 
 those errors at most 3 times in total; each retry is printed and the pytest summary shows `tk.Tk() init.tcl retries: N`.
 Any other `TclError` fails the test as usual.
 
-On Linux CI, a Python 3.12 run sometimes hangs in Tk's `destroy` while the pystray icon thread waits on X
-(Xvfb has no system tray). `.github/workflows/tray-hang-diag.yml` (manual trigger) runs the suite with and
-without the tray icon and, when a test stops making progress, records whether the X server still answers and
-native stacks of the stuck process (`gh workflow run tray-hang-diag.yml`).
+On Linux CI, Python 3.12 runs used to hang in Tk's `destroy` while the pystray icon thread waited on X (Xvfb
+has no system tray). `.github/workflows/tray-hang-diag.yml` (manual trigger) runs the suite with and without
+the tray icon and, when a test stops making progress, records whether the X server still answers and native
+stacks of the stuck process (`gh workflow run tray-hang-diag.yml`). Its first run hung once in 4 runs with the
+tray, never without, and at the hang the X server did not answer; the tray icon now stays off when X has no
+system tray (`TrayController._no_x11_system_tray`).

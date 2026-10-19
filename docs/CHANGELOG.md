@@ -60,6 +60,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Linux without a system tray**: on an X11 desktop with no tray (or a virtual display), the app no
+  longer starts a tray icon that can never appear. Its background thread could leave the display
+  unresponsive and hang closing the window; "minimise to tray" now also stays off there, so the window
+  cannot be hidden with no icon to bring it back.
 - **A possible crash while closing the app (Windows code 0x80000003)**: the main window could be
   freed by Python's garbage collector on a background thread after the window closed, and Tcl then
   stopped the whole process. The window now stays referenced until the app exits, and closing it
