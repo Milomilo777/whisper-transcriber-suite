@@ -13,6 +13,8 @@
     "srt", "vtt", "ass", "tsv", "txt", "json", "lrc", "md", "docx", "pdf",
     "otr", "elan", "inqscribe", "express_scribe"
   ],
+  "interface_languages": 42,
+  "website_languages": ["en", "de", "fr", "es", "it", "pt-br", "pt", "nl", "pl", "ru", "uk", "tr", "cs", "sk", "hu", "ro", "bg", "el", "sv", "da", "nb", "fi", "hr", "sr", "sl", "lt", "zh-cn", "zh-tw", "ja", "ko", "vi", "th", "id", "ms", "hi", "ar", "fa", "he", "lv", "ca", "bn", "fil"],
   "engines": {
     "local": ["faster_whisper", "whisper_cpp", "nvidia_asr"],
     "cloud_opt_in": ["cloud_stt", "google_cloud_stt"]
