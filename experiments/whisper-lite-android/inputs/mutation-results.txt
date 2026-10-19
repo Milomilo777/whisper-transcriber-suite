@@ -1,0 +1,11 @@
+Mutation run on audio/src/main/kotlin/PcmMath.kt (each mutant must make a test fail):
+KILLED  floatToPcm16 rounding  floor(scaled + 0.5f) -> floor(scaled)
+KILLED  Blackman window in the polyphase table path -> w = 1.0
+SURVIVED Blackman window in the direct (non-table) path -> w = 1.0   (no test uses a ratio that falls back to the direct path)
+KILLED  anti-alias cut-off fc -> 0.5
+KILLED  flush() output count -1
+KILLED  downmix without division
+KILLED  pcm16ToFloat negative scale 32767
+KILLED  polyphase tap scaled by 1.01
+KILLED  polyphase table index without polyOffset
+KILLED  history trim off by the radius

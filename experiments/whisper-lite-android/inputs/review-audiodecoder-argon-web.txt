@@ -1,0 +1,81 @@
+Bugs & Risks (Ranked by Severity)
+
+[CRITICAL] Output sample rate changes are ignored (AudioDecoder.kt, lines 62, 99–120)
+
+Failing scenario: Any HE-AAC (.m4a) voice memo with Spectral Band Replication (SBR). extractor.getTrackFormat() reports the base rate (e.g., 24 kHz) in inputFormat, while decoder.outputFormat switches KEY_SAMPLE_RATE to 48 kHz upon INFO_OUTPUT_FORMAT_CHANGED. Because Resampler is initialized once at line 62 from inputFormat and never updated at lines 99–107, 48 kHz PCM is fed into a 24 kHz to 16 kHz resampler—producing half-speed, pitch-shifted audio that is 2x too long. Also, headerless MP3 streams missing KEY_SAMPLE_RATE in inputFormat throw NullPointerException at line 62.
+
+Fix: Read KEY_SAMPLE_RATE from decoder.outputFormat in INFO_OUTPUT_FORMAT_CHANGED (and the initial fallback block). When the rate changes from resampler's input rate, flush the old Resampler to disk and instantiate Resampler(newSampleRate, 16000).
+
+[HIGH] Coroutine cancellation is swallowed as a failure (AudioDecoder.kt, lines 71, 183)
+
+Failing scenario: The caller cancels the parent CoroutineScope or Job instead of flipping the custom isCancelled lambda (or onProgress throws CancellationException). Line 183 (catch (e: Exception)) catches CancellationException, violating structured concurrency and returning DecodeResult.Failed instead of DecodeResult.Cancelled or rethrowing.
+
+Fix: Call coroutineContext.ensureActive() inside the while loop, and add catch (e: CancellationException) before catch (e: Exception) to delete out and rethrow (or return DecodeResult.Cancelled if that is your contract).
+
+[HIGH] Partial output file leaked on disk (AudioDecoder.kt, lines 142, 183–191)
+
+Failing scenario:
+
+An 8-bit or 24-bit .wav triggers return@withContext DecodeResult.Failed(...) at line 142. Execution jumps to finally, closing fos without calling out.delete(), leaving a partial/empty file on disk. It also skips decoder.releaseOutputBuffer(outputBufferIndex, false).
+
+An OutOfMemoryError inside Resampler (a Throwable, not an Exception) bypasses catch (e: Exception) and leaves out on disk.
+
+In catch, out.delete() runs before fos?.close() in finally.
+
+Fix: Track var succeeded = false (set true right before returning DecodeResult.Ok). In finally, close fos first, then run if (!succeeded) out.delete().
+
+[HIGH] 8-bit, 24-bit, and 32-bit WAV files fail (AudioDecoder.kt, lines 55–57, 126–144)
+
+Failing scenario: A 24-bit packed, 32-bit int, or 8-bit PCM .wav file (mime = "audio/raw"). Android's raw decoder passes the source KEY_PCM_ENCODING (ENCODING_PCM_24BIT_PACKED, ENCODING_PCM_32BIT, or ENCODING_PCM_8BIT) straight to outputFormat, hitting line 142 (Unsupported PCM encoding). Unsure whether every OEM ROM exposes a MediaCodec raw decoder for all uncompressed WAV subformats—bypassing MediaCodec or parsing RIFF/WAV headers directly is safer if createDecoderByType("audio/raw") fails on stripped OEM builds.
+
+Fix: Set inputFormat.setInteger(MediaFormat.KEY_PCM_ENCODING, AudioFormat.ENCODING_PCM_FLOAT) before decoder.configure(...) as a hint, and add conversion branches in when (currentPcmEncoding) for ENCODING_PCM_8BIT (API 3), ENCODING_PCM_24BIT_PACKED (API 31), and ENCODING_PCM_32BIT (API 31).
+
+[HIGH] Extreme boxing, array copying, trig CPU burn, and unbuffered I/O (PcmMath.kt, lines 59, 69–72, 102–116, 125; AudioDecoder.kt, lines 61, 146–150)
+
+Failing scenario: Decoding a 60-minute 48 kHz file on a mid-range phone:
+
+private val outBuffer = ArrayList in Resampler boxes every sample into a java.lang.Float object (57.6 million boxed objects).
+
+process() and trim() allocate two new FloatArray copies of history per codec buffer (~180,000 array allocations).
+
+computeSample() evaluates two cos() and one sin() inside a 97-tap loop per output sample (~16.7 billion trig evaluations per hour of audio).
+
+FileOutputStream(out) at line 61 is unbuffered, issuing ~180,000 raw write() syscalls.
+
+Fix: Wrap FileOutputStream in BufferedOutputStream(FileOutputStream(out), 65536). Replace ArrayList in Resampler with a primitive FloatArray buffer, use a circular buffer for history, precompute a polyphase windowed-sinc table, and reuse conversion buffers (ShortArray, ByteArray, ByteBuffer) across loop iterations.
+
+[MEDIUM] Free-space check silently skipped or crashes on relative/missing parent path (AudioDecoder.kt, lines 47–53, 60)
+
+Failing scenario: Passing File("out.pcm") makes out.parentFile evaluate to null, and a non-existent parent directory makes usableSpace return 0L. Because line 50 checks freeBytes greater than 0, 0L silently skips the space check; if the parent directory does not exist, line 60 (FileOutputStream(out)) throws FileNotFoundException.
+
+Fix: Use val parent = out.absoluteFile.parentFile, call parent?.mkdirs(), and fail if parent == null || parent.usableSpace less than neededBytes.
+
+[MEDIUM] Infinite loop risk if decoder drops output EOS (AudioDecoder.kt, lines 71, 96–98)
+
+Failing scenario: A truncated MP3/Ogg stream or buggy OEM hardware codec consumes input EOS (inputDone = true) and drains its buffers, but repeatedly returns INFO_TRY_AGAIN_LATER without ever emitting BUFFER_FLAG_END_OF_STREAM. while (!outputDone) spins forever on Dispatchers.IO.
+
+Fix: Track consecutive INFO_TRY_AGAIN_LATER responses after inputDone == true and abort after a threshold (e.g., 100 timeouts / 1 second).
+
+[LOW] Codec-config output buffers, ByteBuffer limit ordering, and onProgress spam (AudioDecoder.kt, lines 86, 121–124, 155–157)
+
+Failing scenario:
+
+If a legacy codec emits an output buffer with BUFFER_FLAG_CODEC_CONFIG and size greater than 0, line 121 interprets header bytes as PCM audio (audible pop).
+
+Calling outputBuffer.position(bufferInfo.offset) before outputBuffer.limit(...) throws IllegalArgumentException if a prior limit was below offset.
+
+If extractor.sampleTime returns -1L on a malformed packet (line 86), passing -1L to queueInputBuffer is invalid.
+
+onProgress fires ~50–100 times per audio second without throttling.
+
+Fix: Skip PCM extraction when (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0. Call outputBuffer.clear() before setting position and limit. Clamp presentationTimeUs with max(0L, extractor.sampleTime). Throttle onProgress to >= 0.01f deltas.
+
+What Is Fine
+
+Compilation: Both files compile cleanly against Android SDK 26–35 and kotlinx-coroutines-core with no missing imports or API-level mismatches (KEY_PCM_ENCODING is API 24+, ENCODING_PCM_FLOAT is API 21+).
+
+Resampler sample accounting & flushing: Non-empty final buffers carrying BUFFER_FLAG_END_OF_STREAM are processed before exiting the loop (lines 121–163), and resampler.flush() is properly written out afterward (lines 167–175).
+
+Endianness & PCM math: pcm16ToFloat, floatToPcm16, downmixToMono, native-order ByteBuffer reads, and little-endian ShortBuffer writes are mathematically sound.
+
+Resource cleanup structure: Separate try/catch blocks in finally for codec?.stop(), codec?.release(), extractor.release(), and fos?.close() ensure a throwing stop() does not prevent release().

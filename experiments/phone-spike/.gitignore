@@ -1,0 +1,12 @@
+data/
+models/
+build/
+__pycache__/
+*.pyc
+results/*
+!results/.gitkeep
+data_all/
+tests/.tmp/
+.pytest_cache/
+.venv/
+private-wavs/
