@@ -54,6 +54,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   email addresses: admin@whisper-transcriber-suite.com is listed in the README, SECURITY.md and
   CITATION.cff, and the website's contact button shows info@ first, with the earlier address kept.
 
+- **A GitHub button in the website header**: a round GitHub-mark button next to the language and
+  animation buttons replaces the old "Star" link that phones never showed. On the narrowest phones in
+  languages that also show the "English" button, the header drops it last when space runs out. The
+  logo no longer shrinks in a crowded header.
+
 - **Hindi interface reviewed by a native speaker** (#11): natural terms for time range, filler
   words, silent stretches, the update banner and the Stop button; the catalog is marked
   "reviewed". A catalog test now rejects Chinese/Japanese punctuation outside those catalogs (one

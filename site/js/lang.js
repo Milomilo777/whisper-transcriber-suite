@@ -25,7 +25,7 @@
 
   // The one-line menu fits English down to 1240 px (styles.css); longer translations need more room.
   // While the header row overflows, drop the product name next to the logo first, then the language name next to
-  // the globe (shown above 1500 px), then the menu.
+  // the globe (shown above 1500 px), then the menu, and last the GitHub icon (phones with the "English" button).
   const row = document.querySelector('.site-header .header-row');
   if (row && 'ResizeObserver' in window) {
     const root = document.documentElement;
@@ -35,8 +35,8 @@
       // only a new row width (or late fonts) can change the answer; height changes from our own classes do not
       if (force !== true && row.clientWidth === lastWidth) return;
       lastWidth = row.clientWidth;
-      root.classList.remove('hdr-no-name', 'hdr-no-lang', 'hdr-no-nav');
-      for (const step of ['hdr-no-name', 'hdr-no-lang', 'hdr-no-nav']) {
+      root.classList.remove('hdr-no-name', 'hdr-no-lang', 'hdr-no-nav', 'hdr-no-gh');
+      for (const step of ['hdr-no-name', 'hdr-no-lang', 'hdr-no-nav', 'hdr-no-gh']) {
         if (!over()) return;
         root.classList.add(step);
       }
