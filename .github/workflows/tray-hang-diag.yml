@@ -71,7 +71,9 @@ jobs:
             if [ $still -ge 150 ]; then
               stalled=1
               echo "== STALL after: $(tail -n 2 /tmp/pytest.log | tr '\n' ' ')"
-              timeout 10 xdpyinfo -display :99 >/dev/null 2>&1; echo "== xdpyinfo exit=$? (124 = X server not answering)"
+              # `|| xrc=$?` keeps bash -e from ending the step before the dumps below.
+              xrc=0; timeout 10 xdpyinfo -display :99 >/dev/null 2>&1 || xrc=$?
+              echo "== xdpyinfo exit=$xrc (124 = X server not answering)"
               timeout 10 xprop -display :99 -root _NET_SUPPORTING_WM_CHECK 2>&1 | head -3
               timeout 10 xlsclients -display :99 -l 2>&1 | head -20
               for p in $(pgrep -f "pytest tests/"); do
@@ -82,7 +84,7 @@ jobs:
               break
             fi
           done
-          wait $PID; rc=$?
+          rc=0; wait $PID || rc=$?
           echo "== pytest exit=$rc stalled=$stalled"
           grep -E "^(FAILED|ERROR)|[0-9]+ (passed|failed)" /tmp/pytest.log | tail -15
           if [ $stalled = 1 ]; then exit 3; fi
