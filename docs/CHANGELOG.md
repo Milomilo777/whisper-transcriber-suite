@@ -22,6 +22,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   `promo-release` also heads the release page. Each plays for about 15 seconds, rests on its final
   frame for 20 seconds and starts again, so a banner further down the page is still moving when a
   reader scrolls to it; clicking a banner opens it on its own and replays it. Fonts are embedded.
+- **A speed hint for Large v3 on the CPU**: once the app knows transcription runs on the CPU, the status
+  line beside the Transcribe-tab model picker says "Faster on this CPU: Large v3 Turbo (about 1.6x)" and
+  the log explains it once. Not shown when English translation is on, since turbo cannot translate.
 
 ### Changed
 

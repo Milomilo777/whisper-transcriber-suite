@@ -1420,6 +1420,23 @@ _GPU_SECONDS_PER_AUDIO_SECOND_LARGE = 63.0 / (13 * 60)
 # shown, since a model that does not fit ends up on the CPU.
 _GPU_MIN_MEMORY_GB = {"large-v3": 7.5, "large-v3-turbo": 3.5}
 
+# A lighter model with nearly the same accuracy, suggested when the slow one runs on the
+# CPU. Usage statistics showed most large-v3 runs on CPUs taking about twice the audio
+# length (turbo runs: about 1.3x), in line with the benchmark ratio 2.24 / 1.41.
+_FASTER_ON_CPU = {"large-v3": "large-v3-turbo"}
+
+
+def faster_cpu_model(slug: str, *, translate: bool = False) -> tuple[str, float] | None:
+    """``(faster slug, speed-up)`` to suggest when ``slug`` runs on the CPU, else None.
+
+    None when ``slug`` has no measured lighter twin, or when the English translation
+    task is on: turbo was not trained for translation (core.translate_task).
+    """
+    faster = _FASTER_ON_CPU.get(slug)
+    if faster is None or (translate and "turbo" in faster):
+        return None
+    return faster, CPU_SECONDS_PER_AUDIO_SECOND[slug] / CPU_SECONDS_PER_AUDIO_SECOND[faster]
+
 
 def runs_on_gpu(slug: str, status: CudaStatus, *, force_cpu: bool = False) -> bool:
     """True when ``slug`` is expected to run on the usable NVIDIA GPU of ``status``

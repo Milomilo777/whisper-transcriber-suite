@@ -2908,6 +2908,7 @@ class App(tk.Tk):
         translate_var = _inst_attr(self, "translate_var")
         if translate_var is not None:
             self.app_config["translate_to_english"] = bool(translate_var.get())
+            self._refresh_model_status()  # the CPU speed hint never suggests turbo for translation
         if _inst_attr(self, "diarization_var") is not None:
             self.app_config["diarization_enabled"] = bool(self.diarization_var.get())
 
@@ -3474,14 +3475,44 @@ class App(tk.Tk):
 
             slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG)
             if model_downloaded(self.app_config, slug):
-                var.set(_("✓ Downloaded"))
+                text = _("✓ Downloaded")
             else:
-                var.set(_("Downloads automatically on first use"))
+                text = _("Downloads automatically on first use")
+            # The picker's own labels already say "[needs download]", so on a slow
+            # CPU the narrow status line carries the speed hint instead.
+            var.set(self._cpu_speed_hint(slug) or text)
         except Exception:  # noqa: BLE001
             try:
                 var.set("")
             except Exception:  # noqa: BLE001
                 pass
+
+    def _cpu_speed_hint(self, slug: str) -> str:
+        """"Faster on this CPU: …" once a worker has reported the CPU and ``slug`` has a
+        lighter twin (core.hardware.faster_cpu_model); "" otherwise. The log gets the
+        full sentence once per model and session."""
+        if not self.__dict__.get("_runs_on_cpu"):
+            return ""
+        from core import hardware as _hw
+        from core.model_manager import MODEL_REGISTRY
+
+        pick = _hw.faster_cpu_model(
+            slug, translate=bool(self.app_config.get("translate_to_english")),
+        )
+        if pick is None:
+            return ""
+        faster, ratio = pick
+        name = str(MODEL_REGISTRY[faster]["label"]).split(" — ")[0]
+        logged: set[str] = self.__dict__.setdefault("_cpu_speed_hint_logged", set())
+        if slug not in logged:
+            logged.add(slug)
+            self.log(_(
+                "Transcription runs on the CPU here, where the {model} model takes about "
+                "twice as long as the audio. {faster} is about {ratio}x faster with nearly "
+                "the same accuracy: pick it in the Model list, or use Best for this PC.",
+                model=slug, faster=name, ratio=f"{ratio:.1f}",
+            ))
+        return _("Faster on this CPU: {model} (about {ratio}x)", model=name, ratio=f"{ratio:.1f}")
 
     def _translate_unsupported_reason(self) -> str:
         """One-line reason the English-translation option cannot run with the
@@ -3829,6 +3860,10 @@ class App(tk.Tk):
         else:
             tip = _("Transcribing on {device}", device=device)
         self.device_badge_tip = tip
+        on_cpu = kind in ("cpu", "cpu_downgraded")
+        if on_cpu != bool(self.__dict__.get("_runs_on_cpu")):
+            self.__dict__["_runs_on_cpu"] = on_cpu
+            self._refresh_model_status()
         for label in self.device_badge_labels:
             try:
                 if colour:
