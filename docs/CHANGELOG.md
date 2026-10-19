@@ -27,6 +27,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **"What's new" in the README now describes 2.1.**
 
+- **The roadmap matches the shipped app**: `docs/ROADMAP.md` was checked item by item against the 2.1.0 code
+  and now lists only what shipped, what is still open and what the project does not do; the original plan stays
+  in git history.
+
 - **The website moved to [whisper-transcriber-suite.com](https://whisper-transcriber-suite.com)**; the
   old pages.dev and .online addresses redirect there, path for path. The project now has its own
   email addresses: admin@whisper-transcriber-suite.com is listed in the README, SECURITY.md and
