@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="fil">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whisper Transcriber Suite — Libreng Offline na Transcription</title>
+<meta name="description" content="Libreng desktop app na nagpapatakbo ng OpenAI Whisper sa sarili mong computer. I-transcribe ang audio at video patungong SRT, VTT, DOCX at PDF. Windows, macOS at Linux.">
+<meta name="author" content="translation-robot">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://whisper-transcriber-suite.com/fil/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/">
+<link rel="alternate" hreflang="de" href="https://whisper-transcriber-suite.com/de/">
+<link rel="alternate" hreflang="fr" href="https://whisper-transcriber-suite.com/fr/">
+<link rel="alternate" hreflang="es" href="https://whisper-transcriber-suite.com/es/">
+<link rel="alternate" hreflang="it" href="https://whisper-transcriber-suite.com/it/">
+<link rel="alternate" hreflang="pt-BR" href="https://whisper-transcriber-suite.com/pt-br/">
+<link rel="alternate" hreflang="pt" href="https://whisper-transcriber-suite.com/pt/">
+<link rel="alternate" hreflang="nl" href="https://whisper-transcriber-suite.com/nl/">
+<link rel="alternate" hreflang="pl" href="https://whisper-transcriber-suite.com/pl/">
+<link rel="alternate" hreflang="ru" href="https://whisper-transcriber-suite.com/ru/">
+<link rel="alternate" hreflang="uk" href="https://whisper-transcriber-suite.com/uk/">
+<link rel="alternate" hreflang="tr" href="https://whisper-transcriber-suite.com/tr/">
+<link rel="alternate" hreflang="cs" href="https://whisper-transcriber-suite.com/cs/">
+<link rel="alternate" hreflang="sk" href="https://whisper-transcriber-suite.com/sk/">
+<link rel="alternate" hreflang="hu" href="https://whisper-transcriber-suite.com/hu/">
+<link rel="alternate" hreflang="ro" href="https://whisper-transcriber-suite.com/ro/">
+<link rel="alternate" hreflang="bg" href="https://whisper-transcriber-suite.com/bg/">
+<link rel="alternate" hreflang="el" href="https://whisper-transcriber-suite.com/el/">
+<link rel="alternate" hreflang="sv" href="https://whisper-transcriber-suite.com/sv/">
+<link rel="alternate" hreflang="da" href="https://whisper-transcriber-suite.com/da/">
+<link rel="alternate" hreflang="nb" href="https://whisper-transcriber-suite.com/nb/">
+<link rel="alternate" hreflang="fi" href="https://whisper-transcriber-suite.com/fi/">
+<link rel="alternate" hreflang="hr" href="https://whisper-transcriber-suite.com/hr/">
+<link rel="alternate" hreflang="sr" href="https://whisper-transcriber-suite.com/sr/">
+<link rel="alternate" hreflang="sl" href="https://whisper-transcriber-suite.com/sl/">
+<link rel="alternate" hreflang="lt" href="https://whisper-transcriber-suite.com/lt/">
+<link rel="alternate" hreflang="zh-CN" href="https://whisper-transcriber-suite.com/zh-cn/">
+<link rel="alternate" hreflang="zh-TW" href="https://whisper-transcriber-suite.com/zh-tw/">
+<link rel="alternate" hreflang="ja" href="https://whisper-transcriber-suite.com/ja/">
+<link rel="alternate" hreflang="ko" href="https://whisper-transcriber-suite.com/ko/">
+<link rel="alternate" hreflang="vi" href="https://whisper-transcriber-suite.com/vi/">
+<link rel="alternate" hreflang="th" href="https://whisper-transcriber-suite.com/th/">
+<link rel="alternate" hreflang="id" href="https://whisper-transcriber-suite.com/id/">
+<link rel="alternate" hreflang="ms" href="https://whisper-transcriber-suite.com/ms/">
+<link rel="alternate" hreflang="hi" href="https://whisper-transcriber-suite.com/hi/">
+<link rel="alternate" hreflang="ar" href="https://whisper-transcriber-suite.com/ar/">
+<link rel="alternate" hreflang="fa" href="https://whisper-transcriber-suite.com/fa/">
+<link rel="alternate" hreflang="he" href="https://whisper-transcriber-suite.com/he/">
+<link rel="alternate" hreflang="lv" href="https://whisper-transcriber-suite.com/lv/">
+<link rel="alternate" hreflang="ca" href="https://whisper-transcriber-suite.com/ca/">
+<link rel="alternate" hreflang="bn" href="https://whisper-transcriber-suite.com/bn/">
+<link rel="alternate" hreflang="fil" href="https://whisper-transcriber-suite.com/fil/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/">
+<!-- i18n:hreflang:end -->
+<meta name="google-site-verification" content="_vMQaHCYUqaePsjuk_lmQ9Df32M03uPPZnXEFVr8ttU">
+<meta name="google-site-verification" content="uC9kBtANn2fSf-oX8ubTOv1cgtEQabzbnLz61epFOcc">
+<meta name="msvalidate.01" content="86B7B178FB8DB5F45F03295F6D2A8F4A">
+<meta name="msvalidate.01" content="C5065B95AD10AB4D2845E441E3D9FA37">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Whisper Transcriber Suite — Libreng, Offline na Audio &amp; Video Transcription">
+<meta property="og:description" content="Nagpapatakbo ng OpenAI Whisper nang lokal. Mananatili ang iyong audio sa iyong computer, walang account na kailangan. 14 output format, live na transcription, mga label ng speaker, mga download sa YouTube. Libre, BSD-3-Clause, para sa Windows, macOS at Linux.">
+<meta property="og:url" content="https://whisper-transcriber-suite.com/fil/">
+<meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — libreng, offline na audio at video transcription para sa Windows, macOS at Linux.">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="fil_PH">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Whisper Transcriber Suite — Libreng, Offline na Audio &amp; Video Transcription">
+<meta name="twitter:description" content="Nagpapatakbo ng OpenAI Whisper nang lokal. Mananatili ang iyong audio sa iyong computer, walang account na kailangan. 14 output format, live na transcription, mga label ng speaker, mga download sa YouTube.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="alternate" type="text/plain" title="Buod ng LLM" href="/llms.txt">
+
+<link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
+<script src="/js/motion-init.js?v=20260927b"></script>
+<link rel="stylesheet" href="/styles.css?v=20261019a">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://whisper-transcriber-suite.com/#org",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://github.com/Milomilo777/whisper-transcriber-suite/issues",
+        "availableLanguage": [
+          "English"
+        ]
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite",
+        "https://buymeacoffee.com/mehraz1358"
+      ],
+      "description": "Libreng desktop app na open-source na nagpapatakbo ng OpenAI Whisper nang lokal para sa audio at video transcription."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://whisper-transcriber-suite.com/#app",
+      "name": "Whisper Transcriber Suite",
+      "alternateName": "WhisperTranscriberSuite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "image": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+      "screenshot": [
+        "https://whisper-transcriber-suite.com/assets/shots/transcribe.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/live.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/download.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/queue.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/voice.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/web.webp"
+      ],
+      "description": "Desktop app na nagpapatakbo ng modelong Whisper ng OpenAI nang lokal sa pamamagitan ng faster-whisper, whisper.cpp o NVIDIA Parakeet. Ni-transcribe ang audio at video patungong SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX at PDF. Mananatili ang iyong audio sa iyong computer at walang account na kailangan.",
+      "softwareVersion": "2.1.0",
+      "datePublished": "2026-05-11",
+      "dateModified": "2026-10-12",
+      "operatingSystem": "Windows, macOS, Linux",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "Speech-to-text transcription",
+      "featureList": [
+        "Offline na speech-to-text gamit ang faster-whisper, whisper.cpp o NVIDIA Parakeet",
+        "14 format ng transcript kabilang ang SRT, VTT, DOCX at PDF",
+        "Live na transcription ng mikropono at system-audio",
+        "Diarisation ng speaker na may per-word na timestamps",
+        "Batch na pila na may i-pause, resume at re-run",
+        "Mga download ng video at audio mula sa anumang site na sinusuportahan ng yt-dlp",
+        "Adaptive na denoise",
+        "Opsyonal na mga buod ng AI, action items at bilingual na SRT",
+        "Opsyonal na offline na voice cloning",
+        "Mode ng pag-access sa Web / LAN",
+        "Ipinapakita ng Pila ang bilis at natitirang oras ng bawat transcription",
+        "Gumawa ng video na may subtitle: mag-download, mag-transcribe at magsunog ng subtitles sa isang MP4",
+        "I-save ang isang transcript bilang isang offline na web page",
+        "Switch para gumana nang offline na may nakikitang status ng network",
+        "Isalin ang pananalita diretso sa Ingles"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isAccessibleForFree": true,
+      "interactionStatistic": {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/DownloadAction",
+        "userInteractionCount": 2694
+      },
+      "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
+      "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
+      "releaseNotes": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md",
+      "installUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md",
+      "codeRepository": "https://github.com/Milomilo777/whisper-transcriber-suite",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://whisper-transcriber-suite.com/#author"
+      },
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite"
+      ],
+      "softwareRequirements": "Windows 10 or 11 (64-bit); macOS 10.15 or later (Intel build) or macOS 14 or later (Apple Silicon build); Linux from source with Python 3.11+",
+      "memoryRequirements": "At least 8 GB RAM; an NVIDIA GPU with CUDA is optional"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://whisper-transcriber-suite.com/#website",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "inLanguage": "fil",
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://whisper-transcriber-suite.com/#author",
+      "name": "translation-robot",
+      "url": "https://github.com/translation-robot",
+      "sameAs": [
+        "https://github.com/translation-robot"
+      ],
+      "description": "Independent na developer na nagpapanatili ng Whisper Transcriber Suite bilang isang open-source na proyekto."
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://whisper-transcriber-suite.com/fil/#webpage",
+      "url": "https://whisper-transcriber-suite.com/fil/",
+      "name": "Whisper Transcriber Suite — Libreng Offline na Transcription",
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/fil/#website"
+      },
+      "about": {
+        "@id": "https://whisper-transcriber-suite.com/fil/#app"
+      },
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": [
+          ".hero-lede",
+          ".faq-a p"
+        ]
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Libre ba ang Whisper Transcriber Suite?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oo. Ito ay may lisensyang BSD-3-Clause, walang subscription at walang bayad kada minuto. Ang modelong Whisper mismo ay magda-download nang isang beses (mga 1-3 GB) sa unang paglunsad; pagkatapos nito, gumagana ang transcription nang walang koneksyon sa internet."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Nag-a-upload ba ito ng aking audio o video kahit saan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Hindi, hindi bilang default. Bawat default na backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — ay tumatakbo nang lokal sa iyong makina. Dalawang backend ay opt-in lamang (cloud_stt sa pamamagitan ng Gemini API, at google_cloud_stt), at parehong nananatili naka-off hanggang ikaw mismo ang bumukas nito sa Mga advanced na setting → Backend. Ang mga istatistika ng paggamit (walang audio, walang mga pangalan ng file) ay naka-on bilang default at maaaring i-off sa ilalim ng Tulong > Mga istatistika ng paggamit, sinusuri ng app ang GitHub isang beses sa isang araw para sa bagong bersyon, at ang File > Gumana nang offline ay humahinto sa lahat ng paggamit ng network."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Anong mga platform ito?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Windows, macOS at Linux. Ang mga nai-publish na download ay isang installer ng Windows, isang portable na ZIP ng Windows, at isang DMG ng macOS; ang Linux ay tumatakbo mula sa source."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Anong mga format ng transcript ang maaaring nito'y gawin?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX at PDF, kasama ang oTranscribe, ELAN, InqScribe at Express Scribe."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Maaari ba nitong i-label kung sino ang nagsasalita?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oo, opsyonal na diarisation ng speaker (Tukuyin ang mga speaker), na may per-word na timestamps at time-range clipping."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Maaari ba itong mag-transcribe ng live na mikropono o system audio?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oo, mula sa tab na Live: isang mikropono o ang system audio, na transcribe habang nangyayari ito."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Maaari ba itong mag-download at mag-transcribe ng mga online na video, hal. mula sa YouTube?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oo, anumang site na sinusuportahan ng yt-dlp, na may opsyonal na hakbang na transcribe-on-finish."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Maaari ba itong magbuod ng isang transcript, kunin ang mga action item, o sumagot ng mga tanong tungkol dito?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oo, sa pamamagitan ng opsyonal na tab ng Mga AI Tool sa viewer ng transcript: magbuod, mga action item, magtanong, at isang per-segment na translate pass na sumusulat ng bilingual na SRT. Ito ay naka-off bilang default."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Maaari ba itong mag-clone ng boses at paghimulin itong magsabi ng bagong text?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oo, sa pamamagitan ng opsyonal na tab na I-clone ang Iyong Boses, gamit ang OmniVoice (Apache-2.0) na ganap sa iyong makina. Naka-off bilang default; mag-opt in sa oras ng pag-install."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Paano ito nagkaiba sa direktang pagtawag sa Whisper API?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tumatakbo ito ng modelo nang lokal sa pamamagitan ng faster-whisper bilang default, kaya walang bayad sa API kada minuto at walang audio na lumalabas sa iyong makina, maliban kung tahasang mag-opt in ka sa isa sa dalawang cloud backend."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Maaari bang gamitin ng ilang tao sa parehong network ito nang walang pag-install nito sa bawat makina?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oo, ang mode ng pag-access sa Web/LAN ay ginagawang pahina ng transcription ang makina na magagamit ng iba pang device sa network."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Anong bago sa bersyon 2.1?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ang mga menu, button at mensahe ay nasa 42 wika (machine-translated at minarkahan bilang ganoon); ang mga label ng speaker ay umabot sa dulo ng mahahabang recording at maaari mong itakda kung ilang tao ang nagsasalita; ang mga transcript, export at subtitle ay lubusang isusulat sa disk bago palitan ang lumang file; gumagana ang mga online na feature sa bawat Mac. Nagdagdag ang bersyon 2.0 ng bilis at natitirang oras ng pila, video na may subtitle mula sa link, mga transcript bilang isang offline na web page, isang checkable na mode na Gumana nang offline at pagsasalin sa Ingles."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Maaari ba nitong gawing video na may subtitle ang isang link ng video?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oo. Sa tab na Mag-download ng Video, lagyan ng tsek ang Gumawa ng video na may subtitle: magda-download ang app ng video, i-transcribe ito gamit ang Whisper at isusunog ang mga subtitle gamit ang ffmpeg, na lumilikha ng file na ipinangalan sa video na may -subbed.mp4. Ang download at ang transcript ay pinapanatili, at ang isang umiiral na -subbed.mp4 ay hindi kailanman pinapalitan."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Maaari ko bang panatilihing buong naka-off ang app mula sa network?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oo. Ang File > Gumana nang offline ay humahinto sa pagsusuri ng update, mga istatistika ng paggamit, mga download ng modelo at mga remote na provider ng AI. Habang ito ay naka-on, isang linya sa ibaba ng window ang magsasabi kung bukas ang isang koneksyon, at ang Suriin ang offline ngayon ay nagpapakita ng mga sinusubukang koneksyon na tinatanggihan. Kapag naka-off ito, nakikipag-ugnayan lang ang app sa network para sa mga online na setting nito sa startup, ang pang-araw-araw na pagsusuri ng update, mga istatistika ng paggamit (na maaaring i-off sa ilalim ng Tulong > Mga istatistika ng paggamit) at mga download na simulan mo."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Paano ako makikipag-ugnayan sa proyekto?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ang mga bug at kahilingan ng feature ay napupunta sa GitHub Issues, ang mga tanong sa GitHub Discussions, at anumang iba pa sa pamamagitan ng email (ang address ay ipinapakita sa kahilingan sa seksyon ng Contact). Ang mga ulat ng seguridad ay dadaan sa pribadong pag-uulat ng kahinaan ng GitHub."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m0 0-5-5m5 5-5 5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m12 4-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m8 4 6 6-6 6"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 20 20"><path fill="currentColor" d="M2 3.6 8.4 2.7v6.6H2zm7.3-1 8.7-1.2v7.9H9.3zM2 10.2h6.4v6.7L2 16zm7.3 0H18v8.4l-8.7-1.2z"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 20 20"><path fill="currentColor" d="M13.6 10.6c0-1.9 1.6-2.8 1.6-2.9-.9-1.3-2.3-1.5-2.8-1.5-1.2-.1-2.3.7-2.9.7-.6 0-1.5-.7-2.5-.7-1.3 0-2.5.8-3.2 1.9-1.4 2.4-.4 5.9 1 7.8.6.9 1.4 2 2.4 1.9 1-.1 1.3-.6 2.5-.6s1.5.6 2.5.6c1 0 1.7-.9 2.3-1.9.7-1.1 1-2.1 1-2.2 0 0-1.9-.8-1.9-3.1zM11.7 4.9c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-1 1.5-.8 2.4.9.1 1.8-.4 2.4-1.1z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14v11H3zM6 8.5l2 1.5-2 1.5M10 12h4"/></symbol>
+    <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+    <symbol id="i-cup" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 7h10v4.5A4.5 4.5 0 0 1 9.5 16h-1A4.5 4.5 0 0 1 4 11.5zm10 1.5h1.2a2.3 2.3 0 0 1 0 4.6H14M7 2.5v2m3-2v2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 5h14v10H3zm0 0 7 6 7-6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4h14v9H8l-4 3v-3H3z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7 7a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM3 10h4m6 0h4M4 5l3 2m9-2-3 2M4 15l3-2m9 2-3-2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 20 20"><path fill="currentColor" d="M6 4v12l10-6z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 20 20"><path fill="currentColor" d="M5 4h3.5v12H5zm6.5 0H15v12h-3.5z"/></symbol>
+  </defs>
+</svg> <a class="skip-link" href="#main">Laktawan ang content</a>
+
+<header class="site-header" data-header>
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — home">
+      <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
+    </a>
+    <nav class="site-nav" aria-label="Pangunahin">
+      <a href="#showreel">Tour</a> <a href="#features">Mga Feature</a> <a href="#how-it-works">Paano ito gumagana</a> <a href="#download">I-download</a> <a href="#compare">Ihambing</a> <a href="#faq">FAQ</a> <a href="#contact">Contact</a>
+    </nav>
+    <div class="header-cta">
+      <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Wika" aria-label="Wika"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->Filipino<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/?lang=en" hreflang="en" lang="en" data-lang-pick="en">English</a></li>
+<li><a href="/de/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
+<li><a href="/fr/" hreflang="fr" lang="fr" data-lang-pick="fr">Français</a></li>
+<li><a href="/es/" hreflang="es" lang="es" data-lang-pick="es">Español</a></li>
+<li><a href="/it/" hreflang="it" lang="it" data-lang-pick="it">Italiano</a></li>
+<li><a href="/pt-br/" hreflang="pt-BR" lang="pt-BR" data-lang-pick="pt-BR">Português (Brasil)</a></li>
+<li><a href="/pt/" hreflang="pt" lang="pt" data-lang-pick="pt">Português (Portugal)</a></li>
+<li><a href="/nl/" hreflang="nl" lang="nl" data-lang-pick="nl">Nederlands</a></li>
+<li><a href="/pl/" hreflang="pl" lang="pl" data-lang-pick="pl">Polski</a></li>
+<li><a href="/ru/" hreflang="ru" lang="ru" data-lang-pick="ru">Русский</a></li>
+<li><a href="/uk/" hreflang="uk" lang="uk" data-lang-pick="uk">Українська</a></li>
+<li><a href="/tr/" hreflang="tr" lang="tr" data-lang-pick="tr">Türkçe</a></li>
+<li><a href="/cs/" hreflang="cs" lang="cs" data-lang-pick="cs">Čeština</a></li>
+<li><a href="/sk/" hreflang="sk" lang="sk" data-lang-pick="sk">Slovenčina</a></li>
+<li><a href="/hu/" hreflang="hu" lang="hu" data-lang-pick="hu">Magyar</a></li>
+<li><a href="/ro/" hreflang="ro" lang="ro" data-lang-pick="ro">Română</a></li>
+<li><a href="/bg/" hreflang="bg" lang="bg" data-lang-pick="bg">Български</a></li>
+<li><a href="/el/" hreflang="el" lang="el" data-lang-pick="el">Ελληνικά</a></li>
+<li><a href="/sv/" hreflang="sv" lang="sv" data-lang-pick="sv">Svenska</a></li>
+<li><a href="/da/" hreflang="da" lang="da" data-lang-pick="da">Dansk</a></li>
+<li><a href="/nb/" hreflang="nb" lang="nb" data-lang-pick="nb">Norsk bokmål</a></li>
+<li><a href="/fi/" hreflang="fi" lang="fi" data-lang-pick="fi">Suomi</a></li>
+<li><a href="/hr/" hreflang="hr" lang="hr" data-lang-pick="hr">Hrvatski</a></li>
+<li><a href="/sr/" hreflang="sr" lang="sr" data-lang-pick="sr">Српски</a></li>
+<li><a href="/sl/" hreflang="sl" lang="sl" data-lang-pick="sl">Slovenščina</a></li>
+<li><a href="/lt/" hreflang="lt" lang="lt" data-lang-pick="lt">Lietuvių</a></li>
+<li><a href="/zh-cn/" hreflang="zh-CN" lang="zh-CN" data-lang-pick="zh-CN">简体中文</a></li>
+<li><a href="/zh-tw/" hreflang="zh-TW" lang="zh-TW" data-lang-pick="zh-TW">繁體中文</a></li>
+<li><a href="/ja/" hreflang="ja" lang="ja" data-lang-pick="ja">日本語</a></li>
+<li><a href="/ko/" hreflang="ko" lang="ko" data-lang-pick="ko">한국어</a></li>
+<li><a href="/vi/" hreflang="vi" lang="vi" data-lang-pick="vi">Tiếng Việt</a></li>
+<li><a href="/th/" hreflang="th" lang="th" data-lang-pick="th">ไทย</a></li>
+<li><a href="/id/" hreflang="id" lang="id" data-lang-pick="id">Bahasa Indonesia</a></li>
+<li><a href="/ms/" hreflang="ms" lang="ms" data-lang-pick="ms">Bahasa Melayu</a></li>
+<li><a href="/hi/" hreflang="hi" lang="hi" data-lang-pick="hi">हिन्दी</a></li>
+<li><a href="/ar/" hreflang="ar" lang="ar" dir="rtl" data-lang-pick="ar">العربية</a></li>
+<li><a href="/fa/" hreflang="fa" lang="fa" dir="rtl" data-lang-pick="fa">فارسی</a></li>
+<li><a href="/he/" hreflang="he" lang="he" dir="rtl" data-lang-pick="he">עברית</a></li>
+<li><a href="/lv/" hreflang="lv" lang="lv" data-lang-pick="lv">Latviešu</a></li>
+<li><a href="/ca/" hreflang="ca" lang="ca" data-lang-pick="ca">Català</a></li>
+<li><a href="/bn/" hreflang="bn" lang="bn" data-lang-pick="bn">বাংলা</a></li>
+<li><a href="/fil/" hreflang="fil" lang="fil" data-lang-pick="fil" aria-current="true">Filipino</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
+      <button class="btn-icon" type="button" data-motion-toggle aria-pressed="false" title="I-pause o i-play ang mga animation">
+        <svg class="i i-when-on" aria-hidden="true"><use href="#i-pause"/></svg> <svg class="i i-when-off" aria-hidden="true"><use href="#i-play"/></svg> <span class="sr-only" data-motion-label>I-pause ang mga animation</span>
+      </button>
+      <a class="btn btn-ghost btn-sm hide-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" aria-label="I-star ang Whisper Transcriber Suite sa GitHub"> <svg class="i" aria-hidden="true"><use href="#i-star"/></svg>I-star </a> <a class="btn btn-primary btn-sm" href="#download">I-download</a>
+    </div>
+  </div>
+</header>
+
+<div class="lang-notice" data-lang-notice hidden>
+  <div class="wrap lang-notice-row">
+    <p>Ang pahinang ito ay nasa iyong wika dahil kung saan ka nagmumula. <a href="/?lang=en" data-lang-pick="en">Tingnan sa Ingles</a></p>
+    <button class="btn-icon" type="button" data-lang-notice-close aria-label="Isara"><span aria-hidden="true">×</span></button>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <canvas class="hero-waves" data-waves aria-hidden="true"></canvas>
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="kicker reveal" style="--d:0"><span class="kicker-dot" aria-hidden="true"></span>Libre &amp; open source · BSD-3-Clause · <span data-auto="version">v2.1.0</span></p>
+        <h1 class="hero-title" id="hero-title">
+          <span class="line"><span class="rise" style="--d:1">Pumasok ang tunog.</span></span> <span class="line"><span class="rise" style="--d:2">Lumabas ang text.</span></span> <span class="line"><span class="rise grad-text" style="--d:3">Nananatili ang iyong audio sa iyong computer.</span></span>
+        </h1>
+        <p class="hero-lede reveal" style="--d:4">Tumatakbo ang Whisper Transcriber Suite ng modelong Whisper ng OpenAI nang ganap sa sarili mong computer — sa pamamagitan ng faster-whisper, whisper.cpp o NVIDIA Parakeet. I-drag ang audio o video at makakuha ng may oras na transcript pabalik. Walang cloud, walang account, walang bayad kada minuto.</p>
+        <div class="hero-actions reveal" style="--d:5">
+          <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>I-download para sa Windows</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">Tingnan ang tour<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </div>
+        <ul class="proof reveal" style="--d:6" aria-label="Sa isang sulyap">
+          <li><strong data-count="14">14</strong><span>format ng transcript</span></li>
+          <li><strong data-auto="downloads">2,600+</strong><span>download hanggang ngayon</span></li>
+          <li><strong>0</strong><span>upload ng audio bilang default</span></li>
+          <li><strong>$0</strong><span>magpakailanman</span></li>
+        </ul>
+      </div>
+
+      <div class="hero-scene" data-scene aria-hidden="true">
+        <div class="scene-rig" data-rig>
+          <div class="float-layer l-back">
+            <figure class="win win-sm win-a"><div class="win-bar"><i></i><i></i><i></i><span>Live</span></div><img src="/assets/shots/live-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-mid">
+            <figure class="win win-sm win-b"><div class="win-bar"><i></i><i></i><i></i><span>Mag-download ng Video</span></div><img src="/assets/shots/download-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-front">
+            <figure class="win win-main"><div class="win-bar"><i></i><i></i><i></i><span>Whisper Transcriber Suite</span></div><img src="/assets/shots/transcribe.webp" srcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" sizes="(max-width: 1080px) 72vw, 480px" alt="" width="1180" height="668" fetchpriority="high"></figure>
+          </div>
+          <div class="float-layer l-pop1">
+            <div class="chip-card wave-card"><span class="rec"></span><span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+          </div>
+          <div class="float-layer l-pop2">
+            <div class="chip-card srt-card">
+              <p class="srt-ts">00:00:04,120 → 00:00:06,880</p>
+              <p class="srt-line"><span data-hero-typer>Nananatili ang iyong audio sa iyong computer.</span><span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="float-layer l-pop3">
+            <div class="chip-card fmt-card"><b>.srt</b><b>.vtt</b><b>.docx</b><b>.pdf</b></div>
+          </div>
+          <div class="float-layer l-pop4">
+            <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Offline na transcription</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Diarisasyon ng speaker</span> <span>Live na mic</span> <span>Pag-clone ng boses</span> <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Diarisasyon ng speaker</span> <span>Live na mic</span> <span>Pag-clone ng boses</span>
+    </div>
+  </div>
+
+  <!-- ============ SHOWREEL (3D carousel) ============ -->
+  <section class="section showreel" id="showreel" aria-labelledby="reel-title">
+    <div class="reel-glow" aria-hidden="true"></div>
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Tour ng produkto</p>
+        <h2 id="reel-title">Isang window. <span class="h2-soft">Anim na tool.</span></h2>
+        <p class="section-lede">I-drop ang file, piliin ang iyong mga opsyon, at pindutin ang I-transcribe. Ang lahat ng iba pa — ang pila, mga download, live capture, pag-clone ng boses, at pagbabahagi sa LAN — ay nasa isang tab. I-drag ang ring, o gamitin ang mga arrow.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/showreel-still.webp" data-still="/assets/promo/showreel-still.webp" data-anim="/assets/promo/showreel.svg" alt="Animasyon: isang pakikipanayam na may dalawang naka-label na speaker, isang lektura na naging subtitle na may oras, isang link ng video na naging video na may subtitle, mga live na caption mula sa mikropono, at ang transcript na nai-save sa tabi ng file bilang SRT, VTT, DOCX, at PDF." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="reel" data-reel>
+        <div class="reel-viewport" data-reel-viewport>
+          <div class="reel-ring" data-reel-ring>
+            <figure class="reel-card" data-title="I-transcribe" data-caption="Isang drop target, at mga tagapili ng engine, model, at wika, kasama ang mga opsyon para sa speaker-label at timestamp ng bawat salita."><div class="win-bar"><i></i><i></i><i></i><span>I-transcribe</span></div><img src="/assets/shots/transcribe-640.webp" alt="Tab ng I-transcribe: drop target, mga tagapili ng engine, model, at wika, at mga opsyon para sa speaker-label at timestamp ng salita" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Live" data-caption="I-transcribe ang isang mikropono — o kung ano man ang pinapatugtog ng makina — habang nangyayari ito, kasama ang isang input-level meter."><div class="win-bar"><i></i><i></i><i></i><span>Live</span></div><img src="/assets/shots/live-640.webp" alt="Live na tab: mikropono o system-audio na source, mga tagapili ng wika at model, input level meter, at isang live na transcript pane" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Mag-download ng Video" data-caption="Pumili ng format, i-clip ang time range, tingnan kung anong subtitle ang mayroon na ang video, at opsyonal na i-transcribe ito o i-burn ang subtitle sa isang bagong MP4."><div class="win-bar"><i></i><i></i><i></i><span>Mag-download ng Video</span></div><img src="/assets/shots/download-640.webp" alt="Tab ng Mag-download ng Video: URL na may linyang Subtitles available, browser log-in cookies, format, time range, Gamitin na lang ang caption, I-transcribe pagkatapos ng download, at Gumawa ng video na may subtitle" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Pila ng Transcription" data-caption="Mga batch job na may live na progress, bilis, at natitirang oras — i-pause, i-resume, kanselahin, ulitin, o alisin ang anumang hilera."><div class="win-bar"><i></i><i></i><i></i><span>Pila ng Transcription</span></div><img src="/assets/shots/queue-640.webp" alt="Tab ng Pila ng Transcription: file, status, progress, bilis at natitirang oras, wika, at mga column ng lumipas na oras na may pause, resume, kanselahin, ulitin, at alisin" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="I-clone ang Iyong Boses" data-caption="Opsyonal, ganap na offline: mag-clone ng boses mula sa maikling sample, o bumuo ng isa, at patapusin ito ng bagong text."><div class="win-bar"><i></i><i></i><i></i><span>I-clone ang Iyong Boses</span></div><img src="/assets/shots/voice-640.webp" alt="Tab ng I-clone ang Iyong Boses / Text to Voice: model na OmniVoice, sample ng boses, text na sasabihin, wika, at bilis" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Web / LAN access" data-caption="Isang pindot ang gagawing pahina ng transcription ang makina na ito para sa iba pang mga device sa iyong network."><div class="win-bar"><i></i><i></i><i></i><span>Web / LAN access</span></div><img src="/assets/shots/web-640.webp" alt="Tab ng Web / LAN access: simulan ang web access, port, ibahagi sa local network, password ng access, at mga opsyon ng HTTPS" width="640" height="362" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+        <div class="reel-controls">
+          <button class="reel-btn" type="button" data-reel-prev aria-label="Nakaraang screen"><svg class="i" aria-hidden="true"><use href="#i-left"/></svg></button>
+          <div class="reel-meta" aria-live="off" data-reel-live>
+            <p class="reel-title" data-reel-title>I-transcribe</p>
+            <p class="reel-caption" data-reel-caption>Isang drop target, at mga tagapili ng engine, model, at wika, kasama ang mga opsyon para sa speaker-label at timestamp ng bawat salita.</p>
+          </div>
+          <button class="reel-btn" type="button" data-reel-next aria-label="Susunod na screen"><svg class="i" aria-hidden="true"><use href="#i-right"/></svg></button>
+        </div>
+        <div class="reel-dots" data-reel-dots role="group" aria-label="Pumili ng screen"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Bago sa 2.1</p>
+        <h2 id="new-title">Ano ang bago sa 2.1. <span class="h2-soft">Ngayon sa iyong wika.</span></h2>
+        <p class="section-lede">Ang app sa 42 wika, mga label ng speaker na umabot hanggang sa dulo ng mahahabang recording, mga file na nakaligtas sa power cut, at mga online feature na gumagana sa bawat Mac. Sa ibaba nito, kung ano ang idinagdag ng 2.0.</p>
+      </header>
+
+      <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Lahat ng platform</p>
+          <h3>Ang app sa iyong wika</h3>
+          <p>Ang mga menu, button, at mensahe ay nasa 42 wika (39 sa macOS at Linux). Sinusunod ng app ang wika ng iyong system, o maaari kang pumili ng isa sa <em>Mga advanced na setting</em>. Bawat wika maliban sa Ingles ay machine translation at minarkahan bilang ganito; ang Persian, Arabe, at Hebreo ay inaalok sa Windows sa ngayon.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Lahat ng platform</p>
+          <h3>Mga label ng speaker na mapagkakatiwalaan</h3>
+          <p>Ang mga pangalan ng speaker ay umabot na ngayon hanggang sa dulo ng mahahabang recording, hindi na makakasira ng transcription ang pag-detect ng speaker, at sa tabi ng <em>Tukuyin ang mga speaker</em> maaari mong itakda kung ilang tao ang nagsasalita (2 hanggang 10) sa halip na iwanan ito sa Auto.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Lahat ng platform</p>
+          <h3>Mas ligtas ang iyong trabaho</h3>
+          <p>Mga transcript, export, at subtitle ay ganap na isusulat sa disk bago palitan ang lumang file, kaya hindi mag-iiwan ng walang laman na file ang isang power cut. Ang isang transcription na ang worker ay huminto pagkatapos isulat ang lahat ng file nito ay itinuturing na tapos.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · macOS</p>
+          <h3>Mga online feature sa bawat Mac</h3>
+          <p>Ang pag-check ng update, mga ulat ng problema, at iba pang web lookup ay hindi na mabibigo nang may <em>certificate verify failed</em>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Lahat ng platform</p>
+          <h3>Bilis at natitirang oras</h3>
+          <p>Ipinapakita ng tab ng Pila ng Transcription kung gaano kabilis tumakbo ang bawat transcription at halos kung gaano katagal ang natitira, halimbawa <em>mga 4.8x, 6 min na lang</em>. Nag-uulat ang result card ng bilis, model, at device kapag tapos na ang trabaho.</p>
+          <figure class="new-shot"><img src="/assets/shots/queue-640.webp" alt="Tab ng Pila ng Transcription na may column ng Bilis at natitirang oras na nagpapakita ng mga 6.8x, 2 min na lang para sa tumatakbong trabaho" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Lahat ng platform</p>
+          <h3>Gumawa ng video na may subtitle</h3>
+          <p>Lagyan ng tsek sa tab ng Mag-download ng Video at ang isang link ay magiging <code>&lt;title&gt;-subbed.mp4</code> kasama ang mga subtitle na nai-burn in: i-download, i-transcribe, at i-burn in bilang isang naka-pilang trabaho na may progress at gumaganang Kanselahin. Ang download at transcript ay pinapanatili.</p>
+          <figure class="new-shot"><img src="/assets/shots/download-640.webp" alt="Tab ng Mag-download ng Video na nagpapakita ng linyang Subtitles available: Ingles at Aleman, ang button na Gamitin na lang ang caption, at ang tick box na Gumawa ng video na may subtitle" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Lahat ng platform</p>
+          <h3>Ibahagi ang isang transcript bilang isang web page</h3>
+          <p>I-save ang isang tapos na transcript bilang isang <code>.html</code> file na magbubukas sa anumang browser nang walang install at walang internet connection: mga timestamp, speaker, kabanata, at isang search box. I-click ang isang salita at magpe-play ang media mula roon.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Lahat ng platform</p>
+          <h3>Gumana nang offline, ginawang nakikita</h3>
+          <p>Isang switch sa ilalim ng File ang nagpapanatili sa app na wala sa network. Isang linya sa ibaba ng window ang nagsasabi kung bukas ang isang connection, at ang <em>Suriin ang offline ngayon</em> ay nagpapakita ng mga connection na sinusubok na tinatanggihan. Ang usage statistics ay naka-on bilang default at maaaring i-off sa ilalim ng Tulong.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Lahat ng platform</p>
+          <h3>Isalin ang pananalita sa Ingles</h3>
+          <p>Isang opsyon na <em>Output: salin sa Ingles</em> ang nagbabago ng pananalitang hindi Ingles tungong subtitle sa Ingles sa isang pass, gamit ang sariling translate task ng Whisper. Nakapatay ito bilang default at hindi available para sa lahat ng engine o model.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · macOS</p>
+          <h3>Isang Mac na parang Mac</h3>
+          <p>Isang app menu na may Settings (Command-comma), Light at Dark na sumusunod sa macOS, ang system font, mga file na binuksan mula sa Finder o nilagay sa icon ng Dock, at isang notification kapag tapos na ang trabaho habang nasa background ang app.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Windows</p>
+          <h3>Progreso ng taskbar at mga dark na title bar</h3>
+          <p>Ipinapakita ng taskbar button ang progreso, ang bilang ng mga nakapilang at tumatakbong trabaho, at kumukislap kapag tapos na ang isang trabaho. Sumusunod ang mga title bar sa Dark theme, at mananatiling maliwanag ang text sa 125% at 150% display scaling.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Unang pagbukas</p>
+          <h3>Isang mabilis na pagsisimula at isang sample clip</h3>
+          <p>Hihilingin ng bagong install ang iyong wika, Mabilis o Pinakamahusay na kalidad, at isang folder, at ipapakita ang laki ng model bago mag-download ng kahit ano. Papayagan ka ng isang 18-segundong public-domain clip na makakita ng tunay na transcript bago ka pumili ng sarili mong file.</p>
+        </article>
+      </div>
+      <p class="feature-more sr">Bago rin sa 2.0: Binabasa ng Text to Voice ang mga text na hanggang 100,000 karakter nang piraso-piraso, nagre-refresh ang <em>I-update ito</em> button sa video downloader nang walang administrator rights, at pumapalit ang isang tahimik na update bar sa update dialog. Wala na ang Video Tiling tab. Nasa <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">changelog</a> ang lahat.</p>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section features" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Mga feature</p>
+        <h2 id="features-title">Lahat ng gusto mo mula sa isang transcription tool. <span class="h2-soft">Tumatakbo sa iyong makina.</span></h2>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/prism-still.webp" data-still="/assets/promo/prism-still.webp" data-anim="/assets/promo/prism.svg" alt="Animasyon: Hinihiwalay ng malaking W ang dalawang speaker, ipinapakita ang mga lokal na engine na faster-whisper, whisper.cpp at Parakeet na tumatakbo offline, at lumalawak sa 14 format ng transcript." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="bento" data-spotlight>
+        <article class="cell cell-engines tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
+            <h3>Lokal at pribadong transcription</h3>
+            <p>Whisper <code>large-v3</code> bilang default, kasama ang <code>large-v3-turbo</code> at <code>distil-large-v3.5</code>. Piliin ang backend na akma sa iyong hardware.</p>
+          </div>
+          <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
+          <div class="viz viz-engines" aria-hidden="true">
+            <div class="engine-list">
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">faster-whisper</span><span class="engine-tag">default</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">whisper.cpp</span><span class="engine-tag">local</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">NVIDIA Parakeet</span><span class="engine-tag">local</span></div>
+            </div>
+            <div class="offline-badge"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Tumatakbo offline pagkatapos ng isang beses na pag-download ng model</div>
+          </div>
+        </article>
+
+        <article class="cell cell-formats tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">14 format</p>
+            <h3>Bawat format ng transcript na kakailanganin mo</h3>
+            <p>Isusulat katabi ng iyong input file — kasama ang oTranscribe, ELAN, InqScribe at Express Scribe para sa mga propesyonal na workflow ng transcript.</p>
+          </div>
+          <div class="viz viz-formats" aria-hidden="true">
+            <span>srt</span> <span>vtt</span> <span>ass</span> <span>tsv</span> <span>txt</span> <span>json</span> <span>lrc</span> <span>md</span> <span>docx</span> <span>pdf</span> <span class="wide">oTranscribe</span> <span class="wide">ELAN</span> <span class="wide">InqScribe</span> <span class="wide">Express Scribe</span>
+          </div>
+        </article>
+
+        <article class="cell cell-live tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Mic · system audio</p>
+            <h3>Live na transcription</h3>
+            <p>Tina-transcribe nito ang mikropono — o anumang pinapatugtog ng makina — habang nangyayari ito. Ang mga pagputol ay ginagawa sa mga natural na pag-pause kaya hindi napuputol ang mga salita.</p>
+          </div>
+          <div class="viz viz-live" aria-hidden="true">
+            <div class="live-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="live-text"><span class="live-rec"></span><span data-typer>kaya lumalabas ang mga salita habang nagsasalita ka</span><span class="caret"></span></p>
+          </div>
+        </article>
+
+        <article class="cell cell-speakers tone-sun sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Timestamp kada salita</p>
+            <h3>Speaker diarisation</h3>
+            <p>Opsyonal na "Tukuyin ang mga speaker" pass, kasama ang timestamp kada salita at time-range clipping para sa pag-edit ng mga tumpak na segment.</p>
+          </div>
+          <div class="viz viz-speakers" aria-hidden="true">
+            <div class="utt"><span class="ts">00:04.2</span><span class="spk s1">Speaker 1</span><span class="words"><b>Kaya</b> <b>saan</b> <b>ba</b> <b>tayo</b> <b>mag-uumpisa?</b></span></div>
+            <div class="utt"><span class="ts">00:06.9</span><span class="spk s2">Speaker 2</span><span class="words"><b>Gamit</b> <b>ang</b> <b>recording</b> <b>mismo.</b></span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-queue tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">I-pause · ipagpatuloy · ulitin</p>
+            <h3>Batch queue</h3>
+            <p>Live na status para sa bawat nakabinbing at tumatakbong trabaho, na may buong kontrol sa bawat hilera na laging isang click lang ang layo.</p>
+          </div>
+          <div class="viz viz-queue" aria-hidden="true">
+            <div class="job"><span class="job-name">interview-03.mp4</span><span class="bar"><i style="--p:100%"></i></span><span class="job-state done">tapos na</span></div>
+            <div class="job"><span class="job-name">lecture-week-2.m4a</span><span class="bar"><i class="run"></i></span><span class="job-state">tumatakbo</span></div>
+            <div class="job"><span class="job-name">podcast-ep-41.wav</span><span class="bar"><i style="--p:0%"></i></span><span class="job-state">nakapila</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-download tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Pinapagana ng yt-dlp</p>
+            <h3>Mga download ng video at audio</h3>
+            <p>Anumang hinahawakan ng <code>yt-dlp</code>, na may opsyonal na transcribe-on-finish. Nagpapatuloy ang mga download sa halip na mag-restart.</p>
+          </div>
+          <div class="viz viz-dl" aria-hidden="true">
+            <div class="url"><span class="url-dot"></span>https://…/watch?v=…</div>
+            <div class="dl-steps"><span class="st st-1">I-download</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-2">I-transcribe</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-3">.srt</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-denoise tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Sinusukat bago i-filter</p>
+            <h3>Adaptive na denoise</h3>
+            <p>Sinusukat muna bawat recording at nililinis lamang kapag nakatulong ito — tinitingnan ang sarili nitong output at binabalik kung may natanggal na pananalita.</p>
+          </div>
+          <div class="viz viz-denoise" aria-hidden="true">
+            <svg class="wave wave-noisy" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="noisy"/></svg> <svg class="wave wave-clean" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="clean"/></svg> <span class="sweep"></span> <span class="wave-label l-before">bago</span><span class="wave-label l-after">pagkatapos</span>
+          </div>
+        </article>
+      </div>
+
+      <p class="feature-more sr">Kasama ang mga AI tool (mga buod, action items, isang bilingual SRT pass), isang opsyonal na offline voice-cloning tab, at isang local-network mode — higit pa sa <a href="https://github.com/Milomilo777/whisper-transcriber-suite#features" rel="noopener">README</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="section how" id="how-it-works" aria-labelledby="how-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Paano ito gumagana</p>
+        <h2 id="how-title">Tumatakbo sa iyong computer. <span class="h2-soft">Nandoon lang ang iyong audio.</span></h2>
+        <p class="section-lede">Tumatakbo ang transcription sa sarili mong computer. Ang iyong audio ay naa-upload lamang kung bubuhayin mo ang isa sa dalawang opsyonal na cloud engine, at ang text ng transcript ay lalabas lamang kung ikaw mismo ang kumonekta ng isang remote AI model.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/loom-still.webp" data-still="/assets/promo/loom-still.webp" data-anim="/assets/promo/loom.svg" alt="Animasyon: nagiging per-word timed subtitles ang time line, mga subtitle sa Ingles na ginawa offline gamit ang faster-whisper, whisper.cpp o Parakeet, at 14 format ng transcript na walang account." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <ol class="pipeline">
+        <li class="step sr">
+          <span class="step-num">01</span>
+          <h3>I-drop ang file, o mag-paste ng link</h3>
+          <p>Audio o video mula sa disk, o anumang makuha ng <code>yt-dlp</code>. Tumatakbo ang Tk interface sa main process at nagpapila ng trabaho agad-agad.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">02</span>
+          <h3>Hawak ng worker ang model</h3>
+          <p>Tumatakbo ang bawat trabaho sa sarili nitong long-lived worker subprocess na nag-iingat sa Whisper sa memory at nag-stream ng progreso pabalik sa pamamagitan ng newline-delimited JSON — kaya hindi kailanman na-freeze ang window.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">03</span>
+          <h3>Lalabas ang transcript katabi ng iyong file</h3>
+          <p>Ang per-worker token at heartbeat ay nagpapanatili ng matibay na routing at nagpapahintulot sa app na matukoy ang na-stuck na worker sa halip na mag-hang kasama nito.</p>
+        </li>
+      </ol>
+      <p class="built-on sr">Binuo sa ibabaw ng <a href="https://arxiv.org/abs/2212.04356" rel="noopener">Whisper speech-recognition model</a> ng OpenAI, na tumatakbo nang lokal sa pamamagitan ng <a href="https://github.com/SYSTRAN/faster-whisper" rel="noopener">faster-whisper</a>, <a href="https://github.com/ggml-org/whisper.cpp" rel="noopener">whisper.cpp</a> o <a href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3" rel="noopener">NVIDIA Parakeet</a>, kasama ang <a href="https://github.com/yt-dlp/yt-dlp" rel="noopener">yt-dlp</a> at <a href="https://ffmpeg.org/" rel="noopener">FFmpeg</a> para sa pangangasiwa ng media.</p>
+      <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
+      <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Basahin ang buong architecture<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <p class="muted guide-links">Mga step-by-step na gabay: <a href="/fil/youtube-to-text/">YouTube video patungong text</a> · <a href="/fil/video-to-srt/">video patungong SRT subtitles</a> · <a href="/fil/speaker-labels/">mga transcript na may label ng speaker</a></p>
+    </div>
+  </section>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="section download" id="download" aria-labelledby="download-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">I-download · <span data-auto="version">v2.1.0</span> · inilabas noong <span data-auto="released">2026-10-12</span></p>
+        <h2 id="download-title">I-download. <span class="h2-soft">I-transcribe ngayong gabi.</span></h2>
+        <p class="section-lede">Lahat ng kailangan ay naka-bundle na — isang pribadong Python runtime, ffmpeg, ffprobe at yt-dlp. Ang model ng pananalita lamang ang magda-download mamaya (mga 1–3 GB, nang isang beses); pagkatapos nito, gagana ang transcription nang walang internet connection.</p>
+      </header>
+
+      <div class="dl-grid">
+        <article class="dl-card sr" data-os="windows" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows <span class="dl-badge" data-rec-badge hidden>Inirerekomenda para sa iyo</span></p>
+          <h3>Installer <code>.exe</code></h3>
+          <p class="dl-size" data-auto="size-installer">~238&nbsp;MB</p>
+          <p class="dl-desc">Karamihan — normal na installer, Simulan-menu shortcut, mga upgrade na in-place. Hindi code-signed ang app, kaya maaaring magbabala nang isang beses ang Windows SmartScreen: <b>More info → Run anyway</b>.</p>
+          <a class="btn btn-primary" data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Kunin ang installer</a>
+        </article>
+        <article class="dl-card sr" data-os="windows-portable" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows portable</p>
+          <h3>Portable <code>.zip</code></h3>
+          <p class="dl-size" data-auto="size-portable">~360&nbsp;MB</p>
+          <p class="dl-desc">I-unzip at i-run. Walang install, walang admin rights, gumagana sa USB stick.</p>
+          <a class="btn btn-ghost" data-auto-href="portable" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Portable-Windows-v2.1.0.zip" rel="noopener">Kunin ang ZIP</a>
+        </article>
+        <article class="dl-card sr" data-os="mac" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS <span class="dl-badge" data-rec-badge hidden>Inirerekomenda para sa iyo</span></p>
+          <h3>Disk image <code>.dmg</code></h3>
+          <p class="dl-size"><span data-auto="size-mac-arm64">~275&nbsp;MB</span> · <span data-auto="size-mac-x64">~333&nbsp;MB</span></p>
+          <p class="dl-desc">Pinakamadali: isang linya sa Terminal — pipiliin nito ang tamang build at lalaktawan ang babala sa seguridad. O kunin ang disk image para sa Apple Silicon o Intel.</p>
+          <a class="btn btn-primary" href="#mac-install"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Pag-install sa isang linya</a>
+          <div class="dl-pair"><a class="btn btn-ghost" data-auto-href="mac-arm64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-arm64.dmg" rel="noopener">Apple Silicon</a><a class="btn btn-ghost" data-auto-href="mac-x64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-x64.dmg" rel="noopener">Intel</a></div>
+        </article>
+        <article class="dl-card dl-card-source sr" data-os="linux" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Linux &amp; source <span class="dl-badge" data-rec-badge hidden>Inirerekomenda para sa iyo</span></p>
+          <h3>I-build mula sa source</h3>
+          <p class="dl-size">Python 3.11+</p>
+          <pre class="dl-code"><code>git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
+pip install -r requirements.txt
+python gui.py</code></pre>
+          <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite#build-from-source" rel="noopener">Gabay sa source</a>
+        </article>
+      </div>
+
+      <figure class="promo sr promo-after"><img src="/assets/promo/vise-still.webp" data-still="/assets/promo/vise-still.webp" data-anim="/assets/promo/vise.svg" alt="Animasyon: ang mga salitang Sound in ay nagiging naka-time na transcript ng dalawang speaker, na nai-save bilang SRT, DOCX at PDF, nang walang account at walang upload." width="1280" height="640" loading="lazy" decoding="async"></figure>
+      <div class="mac-install sr" id="mac-install">
+        <div class="mac-install-head">
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — pag-install sa isang linya</p>
+          <h3>I-paste sa Terminal. Iyon lang.</h3>
+          <p>Nagda-download ng tamang build para sa iyong Mac (Apple Silicon sa macOS 14+, kung hindi Intel sa pamamagitan ng Rosetta), kinokopya ang app papunta sa <code>Applications</code> at binubuksan ito. Hindi nakakarantina ang mga file na nakuha ng <code>curl</code>, kaya walang babala na "unidentified developer" na kailangan mong i-click.</p>
+        </div>
+        <div class="code-box">
+          <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopyahin</button>
+          <pre><code id="mac-cmd" data-auto="mac-oneliner">A=x64; [ "$(uname -m)" = arm64 ] &amp;&amp; [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 14 ] &amp;&amp; A=arm64; curl -fL -o /tmp/wts.dmg "https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-$A.dmg" &amp;&amp; hdiutil attach -nobrowse -quiet -mountpoint /tmp/wts-dmg /tmp/wts.dmg &amp;&amp; cp -R "/tmp/wts-dmg/Whisper Transcriber Suite.app" /Applications/ &amp;&amp; hdiutil detach -quiet /tmp/wts-dmg &amp;&amp; rm /tmp/wts.dmg &amp;&amp; open "/Applications/Whisper Transcriber Suite.app"</code></pre>
+        </div>
+        <p class="mac-note">Mas gusto ang karaniwang paraan? Buksan ang <code>.dmg</code> at i-drag ang app papunta sa Applications; ang unang paglulunsad ay nangangailangan ng right-click → <b>Open</b> (macOS 14 at mas luma) o System Settings → Privacy &amp; Security → <b>Open Anyway</b> (macOS 15+).</p>
+      </div>
+      <p class="dl-note sr">Lahat ng release, kasama ang mga tala, ay nasa <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Gabay sa pag-install</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section class="section compare" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Ihambing</p>
+        <h2 id="compare-title">Paano ito ihinahambing sa iba pang mga Whisper app?</h2>
+        <p class="section-lede">Ang Whisper Transcriber Suite ay isa sa ilang libreng, open-source na desktop app na nagta-transcribe sa sarili mong computer. Narito kung paano ito ihinahambing sa Subtitle Edit, Vibe at Buzz, kabilang kung kailan mas angkop ang ibang app. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Basahin ang buong paghahambing</a>, na may source para sa bawat katotohanan at dalawa pang app, noScribe at aTrain.</p>
+      </header>
+      <div class="table-wrap sr">
+        <table class="compare-table">
+          <caption>Sinuri noong 2026-10-05 laban sa sariling README, docs at releases ng bawat proyekto. Mabilis magbago ang mga app: tingnan ang <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">buong paghahambing</a> para sa mga source.</caption>
+          <thead>
+            <tr><th scope="col"><span class="sr-only">Katangian</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Presyo, lisensya</th><td>Libre, BSD-3-Clause</td><td>Libre, MIT</td><td>Libre, MIT</td><td>Libre, MIT</td></tr>
+            <tr><th scope="row">Mga download</th><td>Windows installer at portable ZIP, macOS (Apple silicon, Intel); Linux mula sa source</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 ang huli para sa Intel Macs), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
+            <tr><th scope="row">Pagpapabilis ng GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Naka-sign na Windows installer</th><td>Hindi</td><td>Hindi nakasaad</td><td>Oo, base sa docs nito</td><td>Hindi</td></tr>
+            <tr><th scope="row">Mga wika ng interface</th><td>42 (machine-translated)</td><td>35</td><td>22</td><td>16</td></tr>
+            <tr><th scope="row">Piliin ito kung</th><td>Gusto mo rin ng live na mikropono, mga pag-download ng video, 14 na format ng output at isang local-network mode na may OpenAI-compatible na route</td><td>Gusto mo ng maraming speech engine (Parakeet, Canary, Qwen3-ASR at higit pa) o isang notarized na Mac app</td><td>Gusto mo ng Windows installer na sinasabi sa docs nito ay naka-sign, o GPU support na binanggit ang AMD at Intel</td><td>Gusto mo ng mga Linux package (Flatpak, Snap, AppImage) o PyPI install</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section class="section faq" id="faq" aria-labelledby="faq-title">
+    <div class="wrap faq-grid">
+      <header class="faq-head sr">
+        <p class="eyebrow">FAQ</p>
+        <h2 id="faq-title">Mga madalas itanong</h2>
+        <p class="section-lede">May iba ka pang naisip? Magtanong sa <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">GitHub Discussions</a>.</p>
+      </header>
+      <div class="faq-list sr">
+        <article class="qa"><h3>Libre ba ang Whisper Transcriber Suite?</h3><div class="faq-a"><p>Oo. Ito ay may lisensyang BSD-3-Clause, walang subscription at walang bayad kada minuto. Ang modelong Whisper mismo ay magda-download nang isang beses (mga 1-3 GB) sa unang paglunsad; pagkatapos nito, gumagana ang transcription nang walang koneksyon sa internet.</p></div></article>
+        <article class="qa"><h3>Nag-a-upload ba ito ng aking audio o video kahit saan?</h3><div class="faq-a"><p>Hindi, hindi bilang default. Bawat default na backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — ay tumatakbo nang lokal sa iyong makina. Dalawang backend ay opt-in lamang (isang cloud Gemini-API backend, at Google Cloud Speech-to-Text), at parehong nananatiling nakapatay hanggang i-enable mo ito sa Advanced → Backend. Ang mga istatistika ng paggamit (walang audio, walang mga pangalan ng file) ay naka-on bilang default at maaaring i-off sa ilalim ng Tulong → Mga istatistika ng paggamit, sinusuri ng app ang GitHub minsan sa isang araw para sa bagong bersyon, at <b>File → Gumana nang offline</b> ang pumipigil sa lahat ng paggamit ng network.</p></div></article>
+        <article class="qa"><h3>Anong mga platform ito?</h3><div class="faq-a"><p>Windows, macOS at Linux. Ang mga nai-publish na download ay isang installer ng Windows, isang portable na ZIP ng Windows, at isang DMG ng macOS; ang Linux ay tumatakbo mula sa source.</p></div></article>
+        <article class="qa"><h3>Anong mga format ng transcript ang maaaring nito'y gawin?</h3><div class="faq-a"><p><code>srt</code> <code>vtt</code> <code>ass</code> <code>tsv</code> <code>txt</code> <code>json</code> <code>lrc</code> <code>md</code> <code>docx</code> <code>pdf</code>, plus oTranscribe, ELAN, InqScribe at Express Scribe.</p></div></article>
+        <article class="qa"><h3>Maaari ba nitong i-label kung sino ang nagsasalita?</h3><div class="faq-a"><p>Oo — opsyonal na speaker diarisation ("Tukuyin ang mga speaker"), na may per-word na timestamps at time-range clipping.</p></div></article>
+        <article class="qa"><h3>Maaari ba itong mag-transcribe ng live na mikropono o system audio?</h3><div class="faq-a"><p>Oo, mula sa Live tab — isang mikropono o ang system audio, na na-transcribe habang nangyayari ito.</p></div></article>
+        <article class="qa"><h3>Maaari ba itong mag-download at mag-transcribe ng mga online na video, hal. mula sa YouTube?</h3><div class="faq-a"><p>Oo, anumang site na sinusuportahan ng yt-dlp, na may opsyonal na hakbang na transcribe-on-finish.</p></div></article>
+        <article class="qa"><h3>Maaari ba itong magbuod ng isang transcript, kunin ang mga action item, o sumagot ng mga tanong tungkol dito?</h3><div class="faq-a"><p>Oo, sa pamamagitan ng opsyonal na tab ng Mga AI Tool sa transcript viewer — magbuod, mga action item, magtanong, at isang per-segment na translate pass na sumusulat ng bilingual na <code>.srt</code>. Nakapatay ito bilang default.</p></div></article>
+        <article class="qa"><h3>Maaari ba itong mag-clone ng boses at paghimulin itong magsabi ng bagong text?</h3><div class="faq-a"><p>Oo, sa pamamagitan ng opsyonal na I-clone ang Iyong Boses tab, gamit ang OmniVoice (Apache-2.0) na ganap sa iyong makina. Nakapatay bilang default; mag-opt in sa oras ng pag-install, at kailangan mong kumpirmahin na mayroon kang pahintulot na i-clone ang reference na boses.</p></div></article>
+        <article class="qa"><h3>Paano ito nagkaiba sa direktang pagtawag sa Whisper API?</h3><div class="faq-a"><p>Tumatakbo ang modelo nang lokal sa pamamagitan ng faster-whisper bilang default, kaya walang per-minute na gastos sa API at walang audio na lumalabas sa iyong makina — maliban kung tahasan kang mag-opt in sa isa sa dalawang cloud backends.</p></div></article>
+        <article class="qa"><h3>Maaari bang gamitin ng ilang tao sa parehong network ito nang walang pag-install nito sa bawat makina?</h3><div class="faq-a"><p>Oo — ang Web/LAN access mode ay ginagawang pahina ng transcription ang makinang ito na magagamit ng iba pang mga device sa network.</p></div></article>
+        <article class="qa"><h3>Anong bago sa bersyon 2.1?</h3><div class="faq-a"><p>Ang mga menu, button at mensahe ay nasa 42 na wika (machine-translated at minarkahan bilang ganoon); umaabot ang mga label ng speaker hanggang sa dulo ng mahahabang recording at maaari mong itakda kung ilang tao ang nag-uusap; ang mga transcript, export at subtitle ay ganap na isinusulat sa disk bago palitan ang lumang file; gumagana ang mga online feature sa bawat Mac. Nagdagdag ang Version 2.0 ng bilis at natitirang oras ng pila, subtitled video mula sa link, mga transcript bilang isang offline na web page, isang checkable na Gumana nang offline mode at pagsasalin sa Ingles. Tingnan ang <a href="#whats-new">Ano ang bago sa 2.1</a> at ang <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">changelog</a>.</p></div></article>
+        <article class="qa"><h3>Maaari ba nitong gawing video na may subtitle ang isang link ng video?</h3><div class="faq-a"><p>Oo. Sa tab na Mag-download ng Video, lagyan ng tsek ang <b>Gumawa ng video na may subtitle</b>: ida-download ng app ang video, i-transcribe ito gamit ang Whisper at i-burn ang subtitle gamit ang ffmpeg, na lumilikha ng file na ipinangalan sa video na may <code>-subbed.mp4</code>. Pinapanatili ang download at transcript, at ang umiiral na <code>-subbed.mp4</code> ay hindi kailanman pinapalitan.</p></div></article>
+        <article class="qa"><h3>Maaari ko bang panatilihing buong naka-off ang app mula sa network?</h3><div class="faq-a"><p>Oo. <b>File → Gumana nang offline</b> ang pumipigil sa pag-check ng update, mga istatistika ng paggamit, mga pag-download ng modelo at mga remote AI provider. Habang naka-on ito, isang linya sa ibaba ng window ang nagsasabi kung bukas ang isang koneksyon, at <em>Suriin ang offline ngayon</em> ay nagpapakita ng mga sinusubukang koneksyon na tinatanggihan. Kapag naka-off ito, nakikipag-ugnayan lang ang app sa network para sa mga online setting nito sa startup, ang pang-araw-araw na pag-check ng update, mga istatistika ng paggamit (na maaaring i-off sa ilalim ng Tulong → Mga istatistika ng paggamit) at mga download na sinimulan mo.</p></div></article>
+        <article class="qa"><h3>Paano ako makikipag-ugnayan sa proyekto?</h3><div class="faq-a"><p>Ang mga bug at kahilingan ng feature ay pupunta sa <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, ang mga tanong sa <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, at anumang iba pa sa pamamagitan ng email (ang address ay ipinapakita kapag hiniiling sa <a href="#contact">Contact section</a>). Ang mga ulat ng seguridad ay dadaan sa pribadong pag-uulat ng vulnerability ng GitHub.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT + SUPPORT ============ -->
+  <section class="section contact" id="contact" aria-labelledby="contact-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Pakikipag-ugnayan at suporta</p>
+        <h2 id="contact-title">Makipag-usap sa amin. <span class="h2-soft">Tulungan itong lumago.</span></h2>
+      </header>
+      <div class="contact-grid">
+        <div class="contact-card sr" data-tilt-card data-contact>
+          <span class="contact-ic tone-teal"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg></span>
+          <h3>Email</h3>
+          <p class="contact-val"><button type="button" class="contact-reveal" data-contact-reveal>Ipakita ang email address</button><span data-contact-out aria-live="polite" hidden></span><noscript> (nangangailangan ng JavaScript)</noscript></p>
+          <p>Press, mga partnership, o anumang hindi report ng bug.</p>
+        </div>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-coral"><svg class="i" aria-hidden="true"><use href="#i-bug"/></svg></span>
+          <h3>I-report ang bug</h3>
+          <p class="contact-val">Mga isyu sa GitHub</p>
+          <p>Isama ang iyong bersyon, OS, at ang pinakamaliit na file na muling naglalabas nito.</p>
+        </a>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-violet"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span>
+          <h3>Magtanong</h3>
+          <p class="contact-val">Mga Talakayan sa GitHub</p>
+          <p>Tulong sa pag-setup, mga ideya, at mga pagbabahagi ng ibang user.</p>
+        </a>
+      </div>
+
+      <div class="support-card sr">
+        <div class="support-orbit" aria-hidden="true"><img src="/assets/logo.svg" alt="" width="88" height="88"><span></span><span></span><span></span></div>
+        <div class="support-copy">
+          <h3 id="support">Suportahan ang proyekto</h3>
+          <p>Libre at lisensyado sa ilalim ng BSD-3-Clause ang Whisper Transcriber Suite, at pinapanatili nang bukas. Kung nakapagtipid ito ng oras mo, ang pagbibigay ng star sa GitHub ay makakatulong sa iba na matagpuan ito — at palaging pinapahalagahan ang kape.</p>
+          <div class="support-actions">
+            <a class="btn btn-coffee btn-lg" href="https://buymeacoffee.com/mehraz1358" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-cup"/></svg>Bumili ng kape para sa akin</a> <a class="btn btn-light btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>I-star sa GitHub</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div class="footer-brand">
+      <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — home"><img class="brand-logo" src="/assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
+      <p class="muted">Pinapanatili ng isang malayang developer, <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Lisensyado ang source code sa ilalim ng BSD-3-Clause.</p>
+      <p class="muted"><a href="#contact">Makipag-ugnayan</a></p>
+      <p class="site-stats" data-site-stats hidden><span data-stat="visits" hidden><strong></strong> pagbisita</span><span data-stat="downloads" hidden><strong></strong> pag-download</span></p>
+      <p class="muted small mt-note">Isinalin ang pahinang ito mula sa Ingles ng makina at sinusuri ng isa pang makina. May maling pagbasa? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">Sabihin sa amin sa GitHub</a>.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Footer">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Gabay sa pag-install</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Changelog</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Mga Talakayan</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Seguridad</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">Lisensya</a> <a href="/fil/youtube-to-text/">YouTube patungong teksto</a> <a href="/fil/video-to-srt/">Video patungong SRT</a> <a href="/fil/speaker-labels/">Mga label ng nagsasalita</a> <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+  <div class="wrap">
+    <p class="muted small">Mababasa rin sa <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.de.md" rel="noopener" lang="de">Deutsch</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fr.md" rel="noopener" lang="fr">Français</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.es.md" rel="noopener" lang="es">Español</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.it.md" rel="noopener" lang="it">Italiano</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt-BR.md" rel="noopener" lang="pt-BR">Português (Brasil)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt.md" rel="noopener" lang="pt">Português (Portugal)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nl.md" rel="noopener" lang="nl">Nederlands</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pl.md" rel="noopener" lang="pl">Polski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ru.md" rel="noopener" lang="ru">Русский</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.uk.md" rel="noopener" lang="uk">Українська</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.tr.md" rel="noopener" lang="tr">Türkçe</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.cs.md" rel="noopener" lang="cs">Čeština</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sk.md" rel="noopener" lang="sk">Slovenčina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hu.md" rel="noopener" lang="hu">Magyar</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ro.md" rel="noopener" lang="ro">Română</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bg.md" rel="noopener" lang="bg">Български</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.el.md" rel="noopener" lang="el">Ελληνικά</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sv.md" rel="noopener" lang="sv">Svenska</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.da.md" rel="noopener" lang="da">Dansk</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nb.md" rel="noopener" lang="nb">Norsk bokmål</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fi.md" rel="noopener" lang="fi">Suomi</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hr.md" rel="noopener" lang="hr">Hrvatski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sr.md" rel="noopener" lang="sr">Српски</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sl.md" rel="noopener" lang="sl">Slovenščina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lt.md" rel="noopener" lang="lt">Lietuvių</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-CN.md" rel="noopener" lang="zh-CN">简体中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-TW.md" rel="noopener" lang="zh-TW">繁體中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ja.md" rel="noopener" lang="ja">日本語</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ko.md" rel="noopener" lang="ko">한국어</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.vi.md" rel="noopener" lang="vi">Tiếng Việt</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.th.md" rel="noopener" lang="th">ไทย</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.id.md" rel="noopener" lang="id">Bahasa Indonesia</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ms.md" rel="noopener" lang="ms">Bahasa Melayu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hi.md" rel="noopener" lang="hi">हिन्दी</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ar.md" rel="noopener" lang="ar">العربية</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fa.md" rel="noopener" lang="fa">فارسی</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.he.md" rel="noopener" lang="he">עברית</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lv.md" rel="noopener" lang="lv">Latviešu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ca.md" rel="noopener" lang="ca">Català</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bn.md" rel="noopener" lang="bn">বাংলা</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fil.md" rel="noopener" lang="fil">Filipino</a>.</p>
+  </div>
+</footer>
+
+<div class="star-toast" data-star-toast role="status" hidden>
+  <p><b>Salamat sa pag-download!</b> Habang nagda-download — kung nakapagtipid ng oras ang app, ang pagbibigay ng ⭐ sa GitHub ay paraan para matagpuan ito ng ibang tao. Isang click, libre.</p>
+  <div class="star-toast-actions">
+    <a class="btn btn-primary btn-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" data-star-go><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>I-star sa GitHub</a>
+    <button class="star-toast-close" type="button" data-star-close aria-label="Itigil">×</button>
+  </div>
+</div>
+
+<script type="application/json" id="i18n-strings">
+{
+  "Play animations": "I-play ang mga animasyon",
+  "Pause animations": "I-pause ang mga animasyon",
+  "Install on macOS": "I-install sa macOS",
+  "Get it for Linux": "Kunin para sa Linux",
+  "Get it for your computer": "Kunin para sa iyong computer",
+  "Show %s": "Ipakita ang %s",
+  "Please write to us on GitHub Discussions": "Mangyaring sumulat sa amin sa Mga Talakayan sa GitHub",
+  "One moment…": "Sandali…",
+  "Could not load it. Try again": "Hindi mai-load. Subukan muli",
+  "so the words appear as you speak": "lumalabas ang mga salita habang nagsasalita ka",
+  "cuts land on natural pauses": "ang mga pagputol ay nasa likas na paghinto",
+  "and no word is ever split in two": "at walang salitang naputol sa dalawa",
+  "Your audio stays on your computer.": "Nasa sarili mong computer ang iyong audio.",
+  "No account. No per-minute cost.": "Walang account. Walang bayad bawat minuto.",
+  "Whisper runs on your own computer.": "Tumatakbo ang Whisper sa sarili mong computer.",
+  "Fourteen formats, one click.": "Labing-apat na format, isang click.",
+  "Copy": "Kopyahin",
+  "Copied": "Nakopya"
+}
+</script>
+<script src="/js/main.js?v=20261018b" defer></script>
+<script src="/js/lang.js?v=20261019a" defer></script>
+</body>
+</html>

@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whisper Transcriber Suite — бесплатная офлайн-транскрибация</title>
+<meta name="description" content="Бесплатное приложение для ПК, запускающее OpenAI Whisper на вашем собственном компьютере. Транскрибируйте аудио и видео в форматы SRT, VTT, DOCX и PDF. Windows, macOS и Linux.">
+<meta name="author" content="translation-robot">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://whisper-transcriber-suite.com/ru/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/">
+<link rel="alternate" hreflang="de" href="https://whisper-transcriber-suite.com/de/">
+<link rel="alternate" hreflang="fr" href="https://whisper-transcriber-suite.com/fr/">
+<link rel="alternate" hreflang="es" href="https://whisper-transcriber-suite.com/es/">
+<link rel="alternate" hreflang="it" href="https://whisper-transcriber-suite.com/it/">
+<link rel="alternate" hreflang="pt-BR" href="https://whisper-transcriber-suite.com/pt-br/">
+<link rel="alternate" hreflang="pt" href="https://whisper-transcriber-suite.com/pt/">
+<link rel="alternate" hreflang="nl" href="https://whisper-transcriber-suite.com/nl/">
+<link rel="alternate" hreflang="pl" href="https://whisper-transcriber-suite.com/pl/">
+<link rel="alternate" hreflang="ru" href="https://whisper-transcriber-suite.com/ru/">
+<link rel="alternate" hreflang="uk" href="https://whisper-transcriber-suite.com/uk/">
+<link rel="alternate" hreflang="tr" href="https://whisper-transcriber-suite.com/tr/">
+<link rel="alternate" hreflang="cs" href="https://whisper-transcriber-suite.com/cs/">
+<link rel="alternate" hreflang="sk" href="https://whisper-transcriber-suite.com/sk/">
+<link rel="alternate" hreflang="hu" href="https://whisper-transcriber-suite.com/hu/">
+<link rel="alternate" hreflang="ro" href="https://whisper-transcriber-suite.com/ro/">
+<link rel="alternate" hreflang="bg" href="https://whisper-transcriber-suite.com/bg/">
+<link rel="alternate" hreflang="el" href="https://whisper-transcriber-suite.com/el/">
+<link rel="alternate" hreflang="sv" href="https://whisper-transcriber-suite.com/sv/">
+<link rel="alternate" hreflang="da" href="https://whisper-transcriber-suite.com/da/">
+<link rel="alternate" hreflang="nb" href="https://whisper-transcriber-suite.com/nb/">
+<link rel="alternate" hreflang="fi" href="https://whisper-transcriber-suite.com/fi/">
+<link rel="alternate" hreflang="hr" href="https://whisper-transcriber-suite.com/hr/">
+<link rel="alternate" hreflang="sr" href="https://whisper-transcriber-suite.com/sr/">
+<link rel="alternate" hreflang="sl" href="https://whisper-transcriber-suite.com/sl/">
+<link rel="alternate" hreflang="lt" href="https://whisper-transcriber-suite.com/lt/">
+<link rel="alternate" hreflang="zh-CN" href="https://whisper-transcriber-suite.com/zh-cn/">
+<link rel="alternate" hreflang="zh-TW" href="https://whisper-transcriber-suite.com/zh-tw/">
+<link rel="alternate" hreflang="ja" href="https://whisper-transcriber-suite.com/ja/">
+<link rel="alternate" hreflang="ko" href="https://whisper-transcriber-suite.com/ko/">
+<link rel="alternate" hreflang="vi" href="https://whisper-transcriber-suite.com/vi/">
+<link rel="alternate" hreflang="th" href="https://whisper-transcriber-suite.com/th/">
+<link rel="alternate" hreflang="id" href="https://whisper-transcriber-suite.com/id/">
+<link rel="alternate" hreflang="ms" href="https://whisper-transcriber-suite.com/ms/">
+<link rel="alternate" hreflang="hi" href="https://whisper-transcriber-suite.com/hi/">
+<link rel="alternate" hreflang="ar" href="https://whisper-transcriber-suite.com/ar/">
+<link rel="alternate" hreflang="fa" href="https://whisper-transcriber-suite.com/fa/">
+<link rel="alternate" hreflang="he" href="https://whisper-transcriber-suite.com/he/">
+<link rel="alternate" hreflang="lv" href="https://whisper-transcriber-suite.com/lv/">
+<link rel="alternate" hreflang="ca" href="https://whisper-transcriber-suite.com/ca/">
+<link rel="alternate" hreflang="bn" href="https://whisper-transcriber-suite.com/bn/">
+<link rel="alternate" hreflang="fil" href="https://whisper-transcriber-suite.com/fil/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/">
+<!-- i18n:hreflang:end -->
+<meta name="google-site-verification" content="_vMQaHCYUqaePsjuk_lmQ9Df32M03uPPZnXEFVr8ttU">
+<meta name="google-site-verification" content="uC9kBtANn2fSf-oX8ubTOv1cgtEQabzbnLz61epFOcc">
+<meta name="msvalidate.01" content="86B7B178FB8DB5F45F03295F6D2A8F4A">
+<meta name="msvalidate.01" content="C5065B95AD10AB4D2845E441E3D9FA37">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Whisper Transcriber Suite — бесплатная офлайн-транскрибация аудио и видео">
+<meta property="og:description" content="Запускает OpenAI Whisper локально. Ваше аудио остается на компьютере, аккаунт не требуется. 14 форматов экспорта, транскрибация в реальном времени, метки говорящих, скачивание с YouTube. Бесплатно, лицензия BSD-3-Clause, для Windows, macOS и Linux.">
+<meta property="og:url" content="https://whisper-transcriber-suite.com/ru/">
+<meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — бесплатная офлайн-транскрибация аудио и видео для Windows, macOS и Linux.">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Whisper Transcriber Suite — бесплатная офлайн-транскрибация аудио и видео">
+<meta name="twitter:description" content="Запускает OpenAI Whisper локально. Ваше аудио остается на компьютере, аккаунт не требуется. 14 форматов экспорта, транскрибация в реальном времени, метки говорящих, скачивание с YouTube.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="alternate" type="text/plain" title="Краткая сводка с помощью LLM" href="/llms.txt">
+
+<link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
+<script src="/js/motion-init.js?v=20260927b"></script>
+<link rel="stylesheet" href="/styles.css?v=20261019a">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://whisper-transcriber-suite.com/#org",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://github.com/Milomilo777/whisper-transcriber-suite/issues",
+        "availableLanguage": [
+          "English"
+        ]
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite",
+        "https://buymeacoffee.com/mehraz1358"
+      ],
+      "description": "Бесплатное приложение с открытым исходным кодом для ПК, запускающее OpenAI Whisper локально для транскрибации аудио и видео."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://whisper-transcriber-suite.com/#app",
+      "name": "Whisper Transcriber Suite",
+      "alternateName": "WhisperTranscriberSuite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "image": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+      "screenshot": [
+        "https://whisper-transcriber-suite.com/assets/shots/transcribe.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/live.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/download.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/queue.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/voice.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/web.webp"
+      ],
+      "description": "Приложение для ПК, запускающее модель Whisper от OpenAI локально через faster-whisper, whisper.cpp или NVIDIA Parakeet. Транскрибирует аудио и видео в форматы SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX и PDF. Ваше аудио остается на компьютере, а аккаунт не требуется.",
+      "softwareVersion": "2.1.0",
+      "datePublished": "2026-05-11",
+      "dateModified": "2026-10-12",
+      "operatingSystem": "Windows, macOS, Linux",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "Speech-to-text transcription",
+      "featureList": [
+        "Офлайн-преобразование речи в текст с помощью faster-whisper, whisper.cpp или NVIDIA Parakeet",
+        "14 форматов транскриптов, включая SRT, VTT, DOCX и PDF",
+        "Транскрибация с микрофона и системного звука в реальном времени",
+        "Диаризация спикеров с пословными временными метками",
+        "Пакетная очередь с возможностью паузы, возобновления и повторного запуска",
+        "Скачивание видео и аудио с любого сайта, поддерживаемого yt-dlp",
+        "Адаптивное шумоподавление",
+        "Опциональные ИИ-сводки, списки задач и двуязычные SRT",
+        "Опциональное офлайн-клонирование голоса",
+        "Режим «Веб / LAN-доступ»",
+        "Очередь отображает скорость и оставшееся время для каждой транскрибации",
+        "Создать видео с субтитрами: скачивание, транскрибация и вшивание субтитров в MP4",
+        "Сохранение транскрипта в виде одной офлайн-веб-страницы",
+        "Переключатель «Работать офлайн» с наглядным отображением статуса сети",
+        "Прямой перевод речи на английский язык"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isAccessibleForFree": true,
+      "interactionStatistic": {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/DownloadAction",
+        "userInteractionCount": 2694
+      },
+      "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
+      "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
+      "releaseNotes": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md",
+      "installUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md",
+      "codeRepository": "https://github.com/Milomilo777/whisper-transcriber-suite",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://whisper-transcriber-suite.com/#author"
+      },
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite"
+      ],
+      "softwareRequirements": "Windows 10 or 11 (64-bit); macOS 10.15 or later (Intel build) or macOS 14 or later (Apple Silicon build); Linux from source with Python 3.11+",
+      "memoryRequirements": "At least 8 GB RAM; an NVIDIA GPU with CUDA is optional"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://whisper-transcriber-suite.com/#website",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "inLanguage": "ru",
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://whisper-transcriber-suite.com/#author",
+      "name": "translation-robot",
+      "url": "https://github.com/translation-robot",
+      "sameAs": [
+        "https://github.com/translation-robot"
+      ],
+      "description": "Независимый разработчик, развивающий Whisper Transcriber Suite как проект с открытым исходным кодом."
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://whisper-transcriber-suite.com/ru/#webpage",
+      "url": "https://whisper-transcriber-suite.com/ru/",
+      "name": "Whisper Transcriber Suite — бесплатная офлайн-транскрибация",
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/ru/#website"
+      },
+      "about": {
+        "@id": "https://whisper-transcriber-suite.com/ru/#app"
+      },
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": [
+          ".hero-lede",
+          ".faq-a p"
+        ]
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Бесплатна ли программа Whisper Transcriber Suite?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Да. Приложение лицензировано под BSD-3-Clause, без подписок и поминутной оплаты. Сама модель Whisper скачивается один раз (около 1–3 ГБ) при первом запуске, после чего транскрибация работает без подключения к интернету."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Отправляет ли приложение мое аудио или видео куда-либо?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Нет, по умолчанию ничего не отправляется. Все стандартные бэкенды — faster-whisper, whisper.cpp, NVIDIA Parakeet — работают локально на вашем компьютере. Два бэкенда подключаются только вручную (cloud_stt через Gemini API и google_cloud_stt) и остаются выключенными, пока вы сами не включите их в разделе Расширенные настройки → Бэкенд. Статистика использования (без аудио и имен файлов) по умолчанию включена, но ее можно отключить в меню Справка > Статистика использования. Приложение проверяет наличие новой версии на GitHub раз в день, а команда Файл > Работать офлайн полностью прекращает использование сети."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "На каких платформах работает приложение?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Windows, macOS и Linux. Для загрузки доступны установщик для Windows, портативный архив ZIP для Windows и образ DMG для macOS; в Linux приложение запускается из исходного кода."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Какие форматы транскриптов поддерживает приложение?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX и PDF, а также oTranscribe, ELAN, InqScribe и Express Scribe."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Может ли приложение определять, кто говорит?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Да, есть опциональная диаризация спикеров (Определить говорящих) с пословными временными метками и обрезкой по диапазону времени."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Может ли приложение транскрибировать звук с микрофона или системное аудио в реальном времени?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Да, на вкладке «В реальном времени»: звук с микрофона или системное аудио транскрибируются сразу по мере звучания."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Может ли приложение скачивать и транскрибировать онлайн-видео, например с YouTube?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Да, с любого сайта, поддерживаемого yt-dlp, с возможностью автоматической транскрибации после скачивания."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Может ли приложение составить краткую сводку транскрипта, выделить задачи или ответить на вопросы по тексту?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Да, через опциональную вкладку Инструменты ИИ в окне просмотра транскрипта: создание сводки, списка задач, ответы на вопросы и пофразовый перевод с сохранением двуязычного SRT. По умолчанию эта функция отключена."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Может ли приложение клонировать голос и озвучивать им новый текст?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Да, на дополнительной вкладке «Клонирование голоса» с использованием библиотеки OmniVoice (Apache-2.0) полностью на вашем компьютере. По умолчанию отключено; функцию можно подключить при установке."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Чем это отличается от прямого обращения к Whisper API?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "По умолчанию модель запускается локально через faster-whisper, поэтому здесь нет поминутной оплаты API и аудиозаписи не покидают ваш компьютер, если только вы явно не выберете один из двух облачных бэкендов."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Могут ли несколько человек в одной локальной сети использовать приложение без установки на каждый компьютер?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Да, режим «Веб / LAN-доступ» превращает этот компьютер в страницу транскрибации, к которой могут обращаться другие устройства в сети."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Что нового в версии 2.1?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Меню, кнопки и сообщения доступны на 42 языках (машинный перевод с соответствующей пометкой); метки говорящих сохраняются до самого конца длинных записей, а также можно указать количество говорящих; транскрипты, файлы экспорта и субтитры полностью записываются на диск перед заменой старого файла; онлайн-функции работают на каждом Mac. В версии 2.0 были добавлены отображение скорости и оставшегося времени в очереди, создание видео с субтитрами по ссылке, сохранение транскрипта в виде единой офлайн-веб-страницы, переключаемый режим «Работать офлайн» и перевод на английский язык."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Может ли приложение превратить ссылку на видео в видео с субтитрами?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Да. На вкладке Скачать видео отметьте пункт Создать видео с субтитрами: приложение скачает видео, транскрибирует его с помощью Whisper и вошьет субтитры через ffmpeg, создав файл с именем исходного видео и суффиксом -subbed.mp4. Скачанное видео и транскрипт сохраняются, а существующий файл -subbed.mp4 никогда не перезаписывается."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Можно ли полностью отключить доступ приложения к сети?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Да. Пункт меню Файл > Работать офлайн отключает проверку обновлений, статистику использования, скачивание моделей и удаленных провайдеров ИИ. При активном режиме строка внизу окна сообщает, есть ли открытые соединения, а Проверить офлайн сейчас показывает, что тестовые подключения отклоняются. При выключенном режиме приложение выходит в сеть только для получения онлайн-настроек при запуске, ежедневной проверки обновлений, отправки статистики использования (ее можно отключить в Справка > Статистика использования) и загрузок, которые вы запускаете сами."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Как связаться с авторами проекта?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Сообщения об ошибках и пожелания принимаются в GitHub Issues, вопросы — в GitHub Discussions, а по всем остальным поводам пишите на электронную почту (адрес отображается по запросу в разделе «Контакты»). Отчеты об уязвимостях направляются через приватные отчеты об уязвимостях GitHub."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m0 0-5-5m5 5-5 5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m12 4-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m8 4 6 6-6 6"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 20 20"><path fill="currentColor" d="M2 3.6 8.4 2.7v6.6H2zm7.3-1 8.7-1.2v7.9H9.3zM2 10.2h6.4v6.7L2 16zm7.3 0H18v8.4l-8.7-1.2z"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 20 20"><path fill="currentColor" d="M13.6 10.6c0-1.9 1.6-2.8 1.6-2.9-.9-1.3-2.3-1.5-2.8-1.5-1.2-.1-2.3.7-2.9.7-.6 0-1.5-.7-2.5-.7-1.3 0-2.5.8-3.2 1.9-1.4 2.4-.4 5.9 1 7.8.6.9 1.4 2 2.4 1.9 1-.1 1.3-.6 2.5-.6s1.5.6 2.5.6c1 0 1.7-.9 2.3-1.9.7-1.1 1-2.1 1-2.2 0 0-1.9-.8-1.9-3.1zM11.7 4.9c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-1 1.5-.8 2.4.9.1 1.8-.4 2.4-1.1z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14v11H3zM6 8.5l2 1.5-2 1.5M10 12h4"/></symbol>
+    <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+    <symbol id="i-cup" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 7h10v4.5A4.5 4.5 0 0 1 9.5 16h-1A4.5 4.5 0 0 1 4 11.5zm10 1.5h1.2a2.3 2.3 0 0 1 0 4.6H14M7 2.5v2m3-2v2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 5h14v10H3zm0 0 7 6 7-6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4h14v9H8l-4 3v-3H3z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7 7a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM3 10h4m6 0h4M4 5l3 2m9-2-3 2M4 15l3-2m9 2-3-2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 20 20"><path fill="currentColor" d="M6 4v12l10-6z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 20 20"><path fill="currentColor" d="M5 4h3.5v12H5zm6.5 0H15v12h-3.5z"/></symbol>
+  </defs>
+</svg> <a class="skip-link" href="#main">Перейти к содержимому</a>
+
+<header class="site-header" data-header>
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — главная">
+      <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
+    </a>
+    <nav class="site-nav" aria-label="Основное">
+      <a href="#showreel">Обзор</a> <a href="#features">Возможности</a> <a href="#how-it-works">Как это работает</a> <a href="#download">Скачать</a> <a href="#compare">Сравнение</a> <a href="#faq">FAQ</a> <a href="#contact">Контакты</a>
+    </nav>
+    <div class="header-cta">
+      <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Язык" aria-label="Язык"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->Русский<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/?lang=en" hreflang="en" lang="en" data-lang-pick="en">English</a></li>
+<li><a href="/de/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
+<li><a href="/fr/" hreflang="fr" lang="fr" data-lang-pick="fr">Français</a></li>
+<li><a href="/es/" hreflang="es" lang="es" data-lang-pick="es">Español</a></li>
+<li><a href="/it/" hreflang="it" lang="it" data-lang-pick="it">Italiano</a></li>
+<li><a href="/pt-br/" hreflang="pt-BR" lang="pt-BR" data-lang-pick="pt-BR">Português (Brasil)</a></li>
+<li><a href="/pt/" hreflang="pt" lang="pt" data-lang-pick="pt">Português (Portugal)</a></li>
+<li><a href="/nl/" hreflang="nl" lang="nl" data-lang-pick="nl">Nederlands</a></li>
+<li><a href="/pl/" hreflang="pl" lang="pl" data-lang-pick="pl">Polski</a></li>
+<li><a href="/ru/" hreflang="ru" lang="ru" data-lang-pick="ru" aria-current="true">Русский</a></li>
+<li><a href="/uk/" hreflang="uk" lang="uk" data-lang-pick="uk">Українська</a></li>
+<li><a href="/tr/" hreflang="tr" lang="tr" data-lang-pick="tr">Türkçe</a></li>
+<li><a href="/cs/" hreflang="cs" lang="cs" data-lang-pick="cs">Čeština</a></li>
+<li><a href="/sk/" hreflang="sk" lang="sk" data-lang-pick="sk">Slovenčina</a></li>
+<li><a href="/hu/" hreflang="hu" lang="hu" data-lang-pick="hu">Magyar</a></li>
+<li><a href="/ro/" hreflang="ro" lang="ro" data-lang-pick="ro">Română</a></li>
+<li><a href="/bg/" hreflang="bg" lang="bg" data-lang-pick="bg">Български</a></li>
+<li><a href="/el/" hreflang="el" lang="el" data-lang-pick="el">Ελληνικά</a></li>
+<li><a href="/sv/" hreflang="sv" lang="sv" data-lang-pick="sv">Svenska</a></li>
+<li><a href="/da/" hreflang="da" lang="da" data-lang-pick="da">Dansk</a></li>
+<li><a href="/nb/" hreflang="nb" lang="nb" data-lang-pick="nb">Norsk bokmål</a></li>
+<li><a href="/fi/" hreflang="fi" lang="fi" data-lang-pick="fi">Suomi</a></li>
+<li><a href="/hr/" hreflang="hr" lang="hr" data-lang-pick="hr">Hrvatski</a></li>
+<li><a href="/sr/" hreflang="sr" lang="sr" data-lang-pick="sr">Српски</a></li>
+<li><a href="/sl/" hreflang="sl" lang="sl" data-lang-pick="sl">Slovenščina</a></li>
+<li><a href="/lt/" hreflang="lt" lang="lt" data-lang-pick="lt">Lietuvių</a></li>
+<li><a href="/zh-cn/" hreflang="zh-CN" lang="zh-CN" data-lang-pick="zh-CN">简体中文</a></li>
+<li><a href="/zh-tw/" hreflang="zh-TW" lang="zh-TW" data-lang-pick="zh-TW">繁體中文</a></li>
+<li><a href="/ja/" hreflang="ja" lang="ja" data-lang-pick="ja">日本語</a></li>
+<li><a href="/ko/" hreflang="ko" lang="ko" data-lang-pick="ko">한국어</a></li>
+<li><a href="/vi/" hreflang="vi" lang="vi" data-lang-pick="vi">Tiếng Việt</a></li>
+<li><a href="/th/" hreflang="th" lang="th" data-lang-pick="th">ไทย</a></li>
+<li><a href="/id/" hreflang="id" lang="id" data-lang-pick="id">Bahasa Indonesia</a></li>
+<li><a href="/ms/" hreflang="ms" lang="ms" data-lang-pick="ms">Bahasa Melayu</a></li>
+<li><a href="/hi/" hreflang="hi" lang="hi" data-lang-pick="hi">हिन्दी</a></li>
+<li><a href="/ar/" hreflang="ar" lang="ar" dir="rtl" data-lang-pick="ar">العربية</a></li>
+<li><a href="/fa/" hreflang="fa" lang="fa" dir="rtl" data-lang-pick="fa">فارسی</a></li>
+<li><a href="/he/" hreflang="he" lang="he" dir="rtl" data-lang-pick="he">עברית</a></li>
+<li><a href="/lv/" hreflang="lv" lang="lv" data-lang-pick="lv">Latviešu</a></li>
+<li><a href="/ca/" hreflang="ca" lang="ca" data-lang-pick="ca">Català</a></li>
+<li><a href="/bn/" hreflang="bn" lang="bn" data-lang-pick="bn">বাংলা</a></li>
+<li><a href="/fil/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
+      <button class="btn-icon" type="button" data-motion-toggle aria-pressed="false" title="Приостановить или воспроизвести анимацию">
+        <svg class="i i-when-on" aria-hidden="true"><use href="#i-pause"/></svg> <svg class="i i-when-off" aria-hidden="true"><use href="#i-play"/></svg> <span class="sr-only" data-motion-label>Приостановить анимацию</span>
+      </button>
+      <a class="btn btn-ghost btn-sm hide-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" aria-label="Поставить звезду Whisper Transcriber Suite на GitHub"> <svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Поставить звезду </a> <a class="btn btn-primary btn-sm" href="#download">Скачать</a>
+    </div>
+  </div>
+</header>
+
+<div class="lang-notice" data-lang-notice hidden>
+  <div class="wrap lang-notice-row">
+    <p>Эта страница отображается на вашем языке с учетом вашего местоположения. <a href="/?lang=en" data-lang-pick="en">Посмотреть на английском</a></p>
+    <button class="btn-icon" type="button" data-lang-notice-close aria-label="Закрыть"><span aria-hidden="true">×</span></button>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <canvas class="hero-waves" data-waves aria-hidden="true"></canvas>
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="kicker reveal" style="--d:0"><span class="kicker-dot" aria-hidden="true"></span>Бесплатно и с открытым исходным кодом · BSD-3-Clause · <span data-auto="version">v2.1.0</span></p>
+        <h1 class="hero-title" id="hero-title">
+          <span class="line"><span class="rise" style="--d:1">Звук на входе.</span></span> <span class="line"><span class="rise" style="--d:2">Текст на выходе.</span></span> <span class="line"><span class="rise grad-text" style="--d:3">Ваше аудио остается на вашем компьютере.</span></span>
+        </h1>
+        <p class="hero-lede reveal" style="--d:4">Whisper Transcriber Suite запускает модель Whisper от OpenAI полностью на вашем компьютере — через faster-whisper, whisper.cpp или NVIDIA Parakeet. Просто перетащите аудио или видеофайл и получите готовый транскрипт с временными метками. Без облака, без аккаунта, без поминутной оплаты.</p>
+        <div class="hero-actions reveal" style="--d:5">
+          <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Скачать для Windows</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">Посмотреть обзор<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </div>
+        <ul class="proof reveal" style="--d:6" aria-label="Коротко о главном">
+          <li><strong data-count="14">14</strong><span>форматов расшифровки</span></li>
+          <li><strong data-auto="downloads">2,600+</strong><span>скачиваний на данный момент</span></li>
+          <li><strong>0</strong><span>отправок аудио по умолчанию</span></li>
+          <li><strong>$0</strong><span>навсегда</span></li>
+        </ul>
+      </div>
+
+      <div class="hero-scene" data-scene aria-hidden="true">
+        <div class="scene-rig" data-rig>
+          <div class="float-layer l-back">
+            <figure class="win win-sm win-a"><div class="win-bar"><i></i><i></i><i></i><span>В реальном времени</span></div><img src="/assets/shots/live-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-mid">
+            <figure class="win win-sm win-b"><div class="win-bar"><i></i><i></i><i></i><span>Скачать видео</span></div><img src="/assets/shots/download-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-front">
+            <figure class="win win-main"><div class="win-bar"><i></i><i></i><i></i><span>Whisper Transcriber Suite</span></div><img src="/assets/shots/transcribe.webp" srcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" sizes="(max-width: 1080px) 72vw, 480px" alt="" width="1180" height="668" fetchpriority="high"></figure>
+          </div>
+          <div class="float-layer l-pop1">
+            <div class="chip-card wave-card"><span class="rec"></span><span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+          </div>
+          <div class="float-layer l-pop2">
+            <div class="chip-card srt-card">
+              <p class="srt-ts">00:00:04,120 → 00:00:06,880</p>
+              <p class="srt-line"><span data-hero-typer>Ваше аудио остаётся на вашем компьютере.</span><span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="float-layer l-pop3">
+            <div class="chip-card fmt-card"><b>.srt</b><b>.vtt</b><b>.docx</b><b>.pdf</b></div>
+          </div>
+          <div class="float-layer l-pop4">
+            <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Офлайн-транскрипция</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Диаризация спикеров</span> <span>Микрофон в реальном времени</span> <span>Клонирование голоса</span> <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Диаризация спикеров</span> <span>Микрофон в реальном времени</span> <span>Клонирование голоса</span>
+    </div>
+  </div>
+
+  <!-- ============ SHOWREEL (3D carousel) ============ -->
+  <section class="section showreel" id="showreel" aria-labelledby="reel-title">
+    <div class="reel-glow" aria-hidden="true"></div>
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Обзор возможностей</p>
+        <h2 id="reel-title">Одно окно. <span class="h2-soft">Шесть инструментов.</span></h2>
+        <p class="section-lede">Перетащите файл, настройте параметры и нажмите «Транскрибировать». Все остальные возможности — очередь, загрузка видео, запись в реальном времени, клонирование голоса и доступ по локальной сети — находятся на соседних вкладках. Перетаскивайте кольцо или используйте стрелки.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/showreel-still.webp" data-still="/assets/promo/showreel-still.webp" data-anim="/assets/promo/showreel.svg" alt="Анимация: интервью с двумя отмеченными спикерами, лекция, преобразованная в субтитры с таймкодами, ссылка на видео, превращенная в видео с субтитрами, субтитры с микрофона в реальном времени и расшифровка, сохраненная рядом с файлом в форматах SRT, VTT, DOCX и PDF." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="reel" data-reel>
+        <div class="reel-viewport" data-reel-viewport>
+          <div class="reel-ring" data-reel-ring>
+            <figure class="reel-card" data-title="Транскрибировать" data-caption="Область для перетаскивания файлов, выбор движка, модели и языка, параметры разметки спикеров и пословных таймкодов."><div class="win-bar"><i></i><i></i><i></i><span>Транскрибировать</span></div><img src="/assets/shots/transcribe-640.webp" alt="Вкладка «Транскрибировать»: область для перетаскивания файлов, выбор движка, модели и языка, параметры разметки спикеров и пословных таймкодов" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="В реальном времени" data-caption="Транскрибируйте звук с микрофона — или любое воспроизводимое на компьютере аудио — прямо в реальном времени с индикатором уровня входного сигнала."><div class="win-bar"><i></i><i></i><i></i><span>В реальном времени</span></div><img src="/assets/shots/live-640.webp" alt="Вкладка «В реальном времени»: источник (микрофон или системный звук), выбор языка и модели, индикатор уровня входного сигнала и панель расшифровки в реальном времени" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Скачать видео" data-caption="Выберите формат, укажите временной интервал, узнайте, какие субтитры уже есть у видео, и при необходимости транскрибируйте его или встройте субтитры в новый MP4."><div class="win-bar"><i></i><i></i><i></i><span>Скачать видео</span></div><img src="/assets/shots/download-640.webp" alt="Вкладка «Скачать видео»: URL со строкой «Субтитры доступны», «Cookies для входа» из браузера, формат, временной диапазон, параметры «Использовать субтитры», «Транскрибировать после загрузки» и «Создать видео с субтитрами»" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Очередь транскрипции" data-caption="Пакетная обработка задач с отображением прогресса в реальном времени, скорости и оставшегося времени — приостанавливайте, возобновляйте, отменяйте, перезапускайте или удаляйте любую строку."><div class="win-bar"><i></i><i></i><i></i><span>Очередь транскрипции</span></div><img src="/assets/shots/queue-640.webp" alt="Вкладка «Очередь транскрипции»: столбцы файла, статуса, прогресса, скорости и оставшегося времени, языка и прошедшего времени с возможностью приостановки, возобновления, отмены, перезапуска и удаления" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Клонирование голоса" data-caption="Необязательно и полностью офлайн: клонируйте голос по короткому образцу или создайте новый, чтобы озвучить нужный текст."><div class="win-bar"><i></i><i></i><i></i><span>Клонирование голоса</span></div><img src="/assets/shots/voice-640.webp" alt="Вкладка «Клонирование голоса» / «Текст в речь»: модель OmniVoice, образец голоса, текст для озвучивания, язык и скорость" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Веб / LAN-доступ" data-caption="Одна кнопка превращает этот компьютер в страницу транскрипции для других устройств в вашей сети."><div class="win-bar"><i></i><i></i><i></i><span>Веб / LAN-доступ</span></div><img src="/assets/shots/web-640.webp" alt="Вкладка «Веб / LAN-доступ»: запуск веб-доступа, порт, общий доступ в локальной сети, пароль доступа и параметры HTTPS" width="640" height="362" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+        <div class="reel-controls">
+          <button class="reel-btn" type="button" data-reel-prev aria-label="Предыдущий экран"><svg class="i" aria-hidden="true"><use href="#i-left"/></svg></button>
+          <div class="reel-meta" aria-live="off" data-reel-live>
+            <p class="reel-title" data-reel-title>Транскрибировать</p>
+            <p class="reel-caption" data-reel-caption>Область для перетаскивания файлов, выбор движка, модели и языка, параметры разметки спикеров и пословных таймкодов.</p>
+          </div>
+          <button class="reel-btn" type="button" data-reel-next aria-label="Следующий экран"><svg class="i" aria-hidden="true"><use href="#i-right"/></svg></button>
+        </div>
+        <div class="reel-dots" data-reel-dots role="group" aria-label="Выберите экран"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Новое в 2.1</p>
+        <h2 id="new-title">Что нового в 2.1. <span class="h2-soft">Теперь на вашем языке.</span></h2>
+        <p class="section-lede">Приложение на 42 языках, разметка спикеров до самого конца длинных записей, сохранность файлов при отключении питания и онлайн-функции, работающие на каждом Mac. Ниже — всё, что появилось в версии 2.0.</p>
+      </header>
+
+      <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Все платформы</p>
+          <h3>Приложение на вашем языке</h3>
+          <p>Меню, кнопки и сообщения доступны на 42 языках (39 на macOS и Linux). Приложение следует языку системы, либо вы можете выбрать язык в разделе <em>Расширенные настройки</em>. Все языки, кроме английского, переведены автоматически и помечены как машинный перевод; персидский, арабский и иврит пока доступны только на Windows.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Все платформы</p>
+          <h3>Разметка спикеров, которой можно доверять</h3>
+          <p>Имена спикеров теперь определяются до самого конца длинных записей, распознавание спикеров больше не приводит к сбою транскрипции, а рядом с пунктом <em>Определить говорящих</em> можно указать количество участников (от 2 до 10) вместо режима «Авто».</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Все платформы</p>
+          <h3>Ваша работа в безопасности</h3>
+          <p>Расшифровки, экспортированные файлы и субтитры полностью записываются на диск перед заменой старого файла, поэтому внезапное отключение питания не оставит пустой файл. Транскрипция, рабочий процесс которой остановился после записи всех файлов, считается завершенной.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · macOS</p>
+          <h3>Онлайн-функции на каждом Mac</h3>
+          <p>Проверка обновлений, отправка отчетов об ошибках и другие сетевые запросы больше не завершаются ошибкой <em>certificate verify failed</em>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Все платформы</p>
+          <h3>Скорость и оставшееся время</h3>
+          <p>На вкладке «Очередь транскрипции» отображается скорость выполнения и примерное оставшееся время, например <em>около 4.8x, осталось 6 мин</em>. В карточке с результатами после завершения задачи указываются скорость, модель и устройство.</p>
+          <figure class="new-shot"><img src="/assets/shots/queue-640.webp" alt="Вкладка «Очередь транскрипции» со столбцом «Скорость и оставшееся время», где для выполняемой задачи отображается «около 6.8x, осталось 2 мин»" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Все платформы</p>
+          <h3>Создать видео с субтитрами</h3>
+          <p>Отметьте этот пункт на вкладке «Скачать видео», и ссылка превратится в <code>&lt;title&gt;-subbed.mp4</code> со вшитыми субтитрами: скачивание, транскрипция и вшивание субтитров выполняются как одна задача в очереди с отображением прогресса и работающей кнопкой «Отмена». Скачанный файл и расшифровка сохраняются.</p>
+          <figure class="new-shot"><img src="/assets/shots/download-640.webp" alt="Вкладка «Скачать видео» со строкой «Доступны субтитры: английский и немецкий», кнопкой «Использовать субтитры» и флажком «Создать видео с субтитрами»" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Все платформы</p>
+          <h3>Поделитесь расшифровкой в виде одной веб-страницы</h3>
+          <p>Сохраняйте готовую расшифровку в виде одного файла <code>.html</code>, который открывается в любом браузере без установки программ и подключения к интернету: таймкоды, спикеры, главы и поиск. Нажмите на любое слово, и воспроизведение начнется с этого момента.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Все платформы</p>
+          <h3>Наглядный режим «Работать офлайн»</h3>
+          <p>Один переключатель в меню «Файл» полностью отключает приложению доступ к сети. Строка в нижней части окна показывает, активно ли соединение, а кнопка <em>Проверить офлайн сейчас</em> наглядно подтверждает блокировку тестовых подключений. Статистика использования включена по умолчанию, но ее можно отключить в меню «Справка».</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Все платформы</p>
+          <h3>Перевод речи на английский</h3>
+          <p>Параметр <em>Результат: перевод на английский</em> преобразует речь на других языках в английские субтитры за один проход с помощью собственной задачи перевода Whisper. По умолчанию он выключен и доступен не для всех движков и моделей.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · macOS</p>
+          <h3>Mac, который ощущается как Mac</h3>
+          <p>Меню приложения с «Настройками» (Command-comma), светлая и тёмная темы вслед за macOS, системный шрифт, открытие файлов из Finder или перетаскиванием на значок в Dock и уведомление по завершении задачи в фоновом режиме.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Windows</p>
+          <h3>Индикатор на панели задач и тёмные заголовки окон</h3>
+          <p>Кнопка на панели задач показывает прогресс и число задач в очереди и в работе, а также мигает при завершении задачи. Заголовки окон адаптируются под тёмную тему, а текст остаётся чётким при масштабировании экрана 125% и 150%.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Первый запуск</p>
+          <h3>Быстрый старт и демонстрационный ролик</h3>
+          <p>При новой установке приложение предлагает выбрать язык, режим («Быстро» или «Лучшее качество») и папку, показывая размер модели до начала загрузки. 18-секундный общедоступный ролик позволяет увидеть готовую транскрипцию ещё до выбора собственного файла.</p>
+        </article>
+      </div>
+      <p class="feature-more sr">Также в 2.0: функция «Текст в речь» читает тексты длиной до 100 000 символов по частям, кнопка <em>Обновить</em> обновляет загрузчик видео без прав администратора, а ненавязчивая панель обновления заменила отдельное диалоговое окно. Вкладка Video Tiling удалена. Все подробности — в <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">списке изменений</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section features" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Возможности</p>
+        <h2 id="features-title">Всё, что нужно от инструмента транскрипции. <span class="h2-soft">Работает прямо на вашем компьютере.</span></h2>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/prism-still.webp" data-still="/assets/promo/prism-still.webp" data-anim="/assets/promo/prism.svg" alt="Анимация: большая буква W разделяет двух говорящих, показывает локальные движки faster-whisper, whisper.cpp и Parakeet, работающие офлайн, и веером раскрывает 14 форматов транскрипции." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="bento" data-spotlight>
+        <article class="cell cell-engines tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
+            <h3>Локальная и конфиденциальная транскрипция</h3>
+            <p>Whisper <code>large-v3</code> по умолчанию, а также <code>large-v3-turbo</code> и <code>distil-large-v3.5</code>. Выберите бэкенд, подходящий для вашего оборудования.</p>
+          </div>
+          <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
+          <div class="viz viz-engines" aria-hidden="true">
+            <div class="engine-list">
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">faster-whisper</span><span class="engine-tag">по умолчанию</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">whisper.cpp</span><span class="engine-tag">локально</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">NVIDIA Parakeet</span><span class="engine-tag">локально</span></div>
+            </div>
+            <div class="offline-badge"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Работает офлайн после однократного скачивания модели</div>
+          </div>
+        </article>
+
+        <article class="cell cell-formats tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">14 форматов</p>
+            <h3>Все необходимые форматы транскрипции</h3>
+            <p>Сохраняются прямо рядом с исходным файлом — плюс форматы oTranscribe, ELAN, InqScribe и Express Scribe для профессиональной работы с транскрипцией.</p>
+          </div>
+          <div class="viz viz-formats" aria-hidden="true">
+            <span>srt</span> <span>vtt</span> <span>ass</span> <span>tsv</span> <span>txt</span> <span>json</span> <span>lrc</span> <span>md</span> <span>docx</span> <span>pdf</span> <span class="wide">oTranscribe</span> <span class="wide">ELAN</span> <span class="wide">InqScribe</span> <span class="wide">Express Scribe</span>
+          </div>
+        </article>
+
+        <article class="cell cell-live tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Микрофон · системный звук</p>
+            <h3>Транскрипция в реальном времени</h3>
+            <p>Транскрибирует запись с микрофона — или всё, что воспроизводится на компьютере, — в реальном времени. Разбивка выполняется по естественным паузам, поэтому слова никогда не разрываются.</p>
+          </div>
+          <div class="viz viz-live" aria-hidden="true">
+            <div class="live-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="live-text"><span class="live-rec"></span><span data-typer>слова появляются по мере того, как вы говорите</span><span class="caret"></span></p>
+          </div>
+        </article>
+
+        <article class="cell cell-speakers tone-sun sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Метки времени для каждого слова</p>
+            <h3>Диаризация говорящих</h3>
+            <p>Дополнительный этап «Определить говорящих», а также метки времени для каждого слова и обрезка по диапазону времени для точного редактирования сегментов.</p>
+          </div>
+          <div class="viz viz-speakers" aria-hidden="true">
+            <div class="utt"><span class="ts">00:04.2</span><span class="spk s1">Говорящий 1</span><span class="words"><b>Итак,</b> <b>с</b> <b>чего</b> <b>мы</b> <b>начнём?</b></span></div>
+            <div class="utt"><span class="ts">00:06.9</span><span class="spk s2">Говорящий 2</span><span class="words"><b>Прямо</b> <b>с</b> <b>самой</b> <b>записи.</b></span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-queue tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Пауза · возобновление · перезапуск</p>
+            <h3>Пакетная очередь</h3>
+            <p>Статус в реальном времени для каждой ожидающей и выполняющейся задачи, а полный контроль над каждой строкой — всегда в один клик.</p>
+          </div>
+          <div class="viz viz-queue" aria-hidden="true">
+            <div class="job"><span class="job-name">interview-03.mp4</span><span class="bar"><i style="--p:100%"></i></span><span class="job-state done">готово</span></div>
+            <div class="job"><span class="job-name">lecture-week-2.m4a</span><span class="bar"><i class="run"></i></span><span class="job-state">выполняется</span></div>
+            <div class="job"><span class="job-name">podcast-ep-41.wav</span><span class="bar"><i style="--p:0%"></i></span><span class="job-state">в очереди</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-download tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">На базе yt-dlp</p>
+            <h3>Загрузки видео и аудио</h3>
+            <p>Всё, что поддерживает <code>yt-dlp</code>, с возможностью автоматической транскрипции по завершении. Загрузки возобновляются, а не начинаются заново.</p>
+          </div>
+          <div class="viz viz-dl" aria-hidden="true">
+            <div class="url"><span class="url-dot"></span>https://…/watch?v=…</div>
+            <div class="dl-steps"><span class="st st-1">Скачать</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-2">Транскрибировать</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-3">.srt</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-denoise tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Сначала измеряет, затем фильтрует</p>
+            <h3>Адаптивное шумоподавление</h3>
+            <p>Сначала измеряет параметры каждой записи и очищает её только тогда, когда это действительно нужно: проверяет результат своей работы и отменяет фильтрацию, если она удалила часть речи.</p>
+          </div>
+          <div class="viz viz-denoise" aria-hidden="true">
+            <svg class="wave wave-noisy" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="noisy"/></svg> <svg class="wave wave-clean" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="clean"/></svg> <span class="sweep"></span> <span class="wave-label l-before">до</span><span class="wave-label l-after">после</span>
+          </div>
+        </article>
+      </div>
+
+      <p class="feature-more sr">А также инструменты ИИ (краткие сводки, списки задач, создание двуязычных SRT), дополнительная вкладка офлайн-клонирования голоса и режим работы по локальной сети — подробнее в <a href="https://github.com/Milomilo777/whisper-transcriber-suite#features" rel="noopener">README</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="section how" id="how-it-works" aria-labelledby="how-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Как это работает</p>
+        <h2 id="how-title">Работает на вашем компьютере. <span class="h2-soft">Ваше аудио остаётся у вас.</span></h2>
+        <p class="section-lede">Транскрипция выполняется на вашем собственном компьютере. Ваше аудио загружается в сеть только в том случае, если вы включите один из двух дополнительных облачных движков, а текст транскрипции покидает устройство, только если вы сами подключите внешнюю модель ИИ.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/loom-still.webp" data-still="/assets/promo/loom-still.webp" data-anim="/assets/promo/loom.svg" alt="Анимация: шкала времени превращается в субтитры с метками времени для каждого слова, субтитры на английском создаются офлайн через faster-whisper, whisper.cpp или Parakeet, и 14 форматов транскрипции без создания аккаунта." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <ol class="pipeline">
+        <li class="step sr">
+          <span class="step-num">01</span>
+          <h3>Перетащите файл или вставьте ссылку</h3>
+          <p>Аудио или видео с диска либо всё, что может скачать <code>yt-dlp</code>. Интерфейс на Tk работает в основном процессе и мгновенно ставит задачу в очередь.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">02</span>
+          <h3>Воркер держит модель в памяти</h3>
+          <p>Каждая задача выполняется в отдельном долгоживущем подпроцессе, который держит Whisper в памяти и передаёт данные о прогрессе через строки JSON (newline-delimited JSON) — поэтому окно никогда не зависает.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">03</span>
+          <h3>Транскрипция сохраняется рядом с вашим файлом</h3>
+          <p>Токен для каждого воркера и сигналы проверки активности (heartbeat) обеспечивают надёжную маршрутизацию и позволяют приложению вовремя обнаружить зависший процесс, а не зависать вместе с ним.</p>
+        </li>
+      </ol>
+      <p class="built-on sr">Создано на базе разработанной OpenAI <a href="https://arxiv.org/abs/2212.04356" rel="noopener">модели распознавания речи Whisper</a>, работает локально через <a href="https://github.com/SYSTRAN/faster-whisper" rel="noopener">faster-whisper</a>, <a href="https://github.com/ggml-org/whisper.cpp" rel="noopener">whisper.cpp</a> или <a href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3" rel="noopener">NVIDIA Parakeet</a>, используя <a href="https://github.com/yt-dlp/yt-dlp" rel="noopener">yt-dlp</a> и <a href="https://ffmpeg.org/" rel="noopener">FFmpeg</a> для обработки медиафайлов.</p>
+      <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
+      <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Подробнее об архитектуре<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <p class="muted guide-links">Пошаговые руководства: <a href="/ru/youtube-to-text/">видео с YouTube в текст</a> · <a href="/ru/video-to-srt/">видео в субтитры SRT</a> · <a href="/ru/speaker-labels/">транскрипции с метками говорящих</a></p>
+    </div>
+  </section>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="section download" id="download" aria-labelledby="download-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Скачать · <span data-auto="version">v2.1.0</span> · выпущено <span data-auto="released">2026-10-12</span></p>
+        <h2 id="download-title">Скачать. <span class="h2-soft">Транскрибируйте уже сегодня вечером.</span></h2>
+        <p class="section-lede">Всё необходимое уже включено в комплект: изолированная среда Python, ffmpeg, ffprobe и yt-dlp. Позже скачивается только сама модель распознавания речи (около 1–3 GB, один раз); после этого транскрипция работает без подключения к интернету.</p>
+      </header>
+
+      <div class="dl-grid">
+        <article class="dl-card sr" data-os="windows" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows <span class="dl-badge" data-rec-badge hidden>Рекомендуется для вас</span></p>
+          <h3>Установщик <code>.exe</code></h3>
+          <p class="dl-size" data-auto="size-installer">~238&nbsp;MB</p>
+          <p class="dl-desc">Для большинства — обычный установщик, ярлык в меню «Пуск» и обновление поверх. Приложение не имеет цифровой подписи, поэтому Windows SmartScreen может один раз предупредить: <b>Подробнее → Выполнить в любом случае</b>.</p>
+          <a class="btn btn-primary" data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Скачать установщик</a>
+        </article>
+        <article class="dl-card sr" data-os="windows-portable" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Портативная версия для Windows</p>
+          <h3>Портативная версия <code>.zip</code></h3>
+          <p class="dl-size" data-auto="size-portable">~360&nbsp;MB</p>
+          <p class="dl-desc">Распакуйте и запускайте. Без установки, без прав администратора, отлично работает прямо с флешки.</p>
+          <a class="btn btn-ghost" data-auto-href="portable" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Portable-Windows-v2.1.0.zip" rel="noopener">Скачать ZIP</a>
+        </article>
+        <article class="dl-card sr" data-os="mac" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS <span class="dl-badge" data-rec-badge hidden>Рекомендуется для вас</span></p>
+          <h3>Образ диска <code>.dmg</code></h3>
+          <p class="dl-size"><span data-auto="size-mac-arm64">~275&nbsp;MB</span> · <span data-auto="size-mac-x64">~333&nbsp;MB</span></p>
+          <p class="dl-desc">Проще всего: одна строка в Терминале — выберет нужную сборку и пропустит предупреждение системы безопасности. Или скачайте образ диска для Apple Silicon или Intel.</p>
+          <a class="btn btn-primary" href="#mac-install"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Установка одной командой</a>
+          <div class="dl-pair"><a class="btn btn-ghost" data-auto-href="mac-arm64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-arm64.dmg" rel="noopener">Apple Silicon</a><a class="btn btn-ghost" data-auto-href="mac-x64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-x64.dmg" rel="noopener">Intel</a></div>
+        </article>
+        <article class="dl-card dl-card-source sr" data-os="linux" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Linux и исходный код <span class="dl-badge" data-rec-badge hidden>Рекомендуется для вас</span></p>
+          <h3>Сборка из исходного кода</h3>
+          <p class="dl-size">Python 3.11+</p>
+          <pre class="dl-code"><code>git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
+pip install -r requirements.txt
+python gui.py</code></pre>
+          <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite#build-from-source" rel="noopener">Руководство по сборке из исходного кода</a>
+        </article>
+      </div>
+
+      <figure class="promo sr promo-after"><img src="/assets/promo/vise-still.webp" data-still="/assets/promo/vise-still.webp" data-anim="/assets/promo/vise.svg" alt="Анимация: слова «Sound in» превращаются в расшифровку двух говорящих с таймкодами, сохранённую в форматах SRT, DOCX и PDF, без создания аккаунта и без отправки данных в сеть." width="1280" height="640" loading="lazy" decoding="async"></figure>
+      <div class="mac-install sr" id="mac-install">
+        <div class="mac-install-head">
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — установка одной командой</p>
+          <h3>Вставьте в Терминал. И всё.</h3>
+          <p>Скачивает подходящую сборку для вашего Mac (Apple Silicon на macOS 14+, в остальных случаях Intel через Rosetta), копирует приложение в <code>Applications</code> и открывает его. Файлы, загруженные через <code>curl</code>, не помещаются в карантин, поэтому вам не придётся закрывать предупреждение о «неустановленном разработчике».</p>
+        </div>
+        <div class="code-box">
+          <button class="copy-btn" type="button" data-copy="#mac-cmd">Копировать</button>
+          <pre><code id="mac-cmd" data-auto="mac-oneliner">A=x64; [ "$(uname -m)" = arm64 ] &amp;&amp; [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 14 ] &amp;&amp; A=arm64; curl -fL -o /tmp/wts.dmg "https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-$A.dmg" &amp;&amp; hdiutil attach -nobrowse -quiet -mountpoint /tmp/wts-dmg /tmp/wts.dmg &amp;&amp; cp -R "/tmp/wts-dmg/Whisper Transcriber Suite.app" /Applications/ &amp;&amp; hdiutil detach -quiet /tmp/wts-dmg &amp;&amp; rm /tmp/wts.dmg &amp;&amp; open "/Applications/Whisper Transcriber Suite.app"</code></pre>
+        </div>
+        <p class="mac-note">Предпочитаете привычный способ? Откройте <code>.dmg</code> и перетащите приложение в Applications; при первом запуске потребуется нажать правой кнопкой мыши → <b>Открыть</b> (macOS 14 и ранее) или перейти в Системные настройки → Конфиденциальность и безопасность → <b>Всё равно открыть</b> (macOS 15+).</p>
+      </div>
+      <p class="dl-note sr">Все релизы с описанием изменений доступны в <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Инструкция по установке</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section class="section compare" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Сравнение</p>
+        <h2 id="compare-title">Как приложение выглядит в сравнении с другими программами на базе Whisper?</h2>
+        <p class="section-lede">Whisper Transcriber Suite — одно из нескольких бесплатных приложений с открытым исходным кодом, выполняющих транскрибацию прямо на вашем компьютере. Ниже показано, как оно соотносится с Subtitle Edit, Vibe и Buzz, а также в каких случаях лучше подойдёт другое приложение. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Ознакомьтесь с полным сравнением</a>, где указан источник каждого факта и рассмотрены ещё две программы — noScribe и aTrain.</p>
+      </header>
+      <div class="table-wrap sr">
+        <table class="compare-table">
+          <caption>Проверено 2026-10-05 по README, документации и релизам каждого проекта. Приложения быстро меняются: ссылки на источники смотрите в <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">полном сравнении</a>.</caption>
+          <thead>
+            <tr><th scope="col"><span class="sr-only">Функция</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Цена, лицензия</th><td>Бесплатно, BSD-3-Clause</td><td>Бесплатно, MIT</td><td>Бесплатно, MIT</td><td>Бесплатно, MIT</td></tr>
+            <tr><th scope="row">Загрузки</th><td>Установщик для Windows и портативный ZIP, macOS (Apple silicon, Intel); Linux из исходного кода</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 — последняя версия для Mac с Intel), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
+            <tr><th scope="row">Ускорение на GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Подписанный установщик для Windows</th><td>Нет</td><td>Не указано</td><td>Да, согласно документации</td><td>Нет</td></tr>
+            <tr><th scope="row">Языки интерфейса</th><td>42 (машинный перевод)</td><td>35</td><td>22</td><td>16</td></tr>
+            <tr><th scope="row">Выбирайте его, если</th><td>Вам также нужны транскрибация с микрофона в реальном времени, скачивание видео, 14 форматов вывода и режим работы в локальной сети с OpenAI-совместимым маршрутом</td><td>Вам требуется множество речевых движков (Parakeet, Canary, Qwen3-ASR и др.) или приложение для Mac, прошедшее нотаризацию Apple</td><td>Вам нужен установщик для Windows, который, согласно документации, имеет цифровую подпись, или поддержка GPU с явным указанием AMD и Intel</td><td>Вам нужны пакеты для Linux (Flatpak, Snap, AppImage) или установка через PyPI</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section class="section faq" id="faq" aria-labelledby="faq-title">
+    <div class="wrap faq-grid">
+      <header class="faq-head sr">
+        <p class="eyebrow">Частые вопросы</p>
+        <h2 id="faq-title">Часто задаваемые вопросы</h2>
+        <p class="section-lede">Остались вопросы? Спросите в <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">GitHub Discussions</a>.</p>
+      </header>
+      <div class="faq-list sr">
+        <article class="qa"><h3>Бесплатна ли программа Whisper Transcriber Suite?</h3><div class="faq-a"><p>Да. Приложение лицензировано под BSD-3-Clause, без подписок и поминутной оплаты. Сама модель Whisper скачивается один раз (около 1–3 ГБ) при первом запуске, после чего транскрибация работает без подключения к интернету.</p></div></article>
+        <article class="qa"><h3>Отправляет ли приложение мое аудио или видео куда-либо?</h3><div class="faq-a"><p>Нет, по умолчанию — нет. Все стандартные бэкенды — faster-whisper, whisper.cpp, NVIDIA Parakeet — работают локально на вашем компьютере. Два бэкенда подключаются только вручную (облачный бэкенд на базе Gemini-API и Google Cloud Speech-to-Text), и оба остаются выключенными, пока вы сами не включите их в разделе Расширенные настройки → Бэкенд. Статистика использования (без аудио, без имён файлов) по умолчанию включена и может быть отключена в меню Справка → Статистика использования; раз в день приложение проверяет GitHub на наличие новой версии, а пункт <b>Файл → Работать офлайн</b> полностью прекращает работу с сетью.</p></div></article>
+        <article class="qa"><h3>На каких платформах работает приложение?</h3><div class="faq-a"><p>Windows, macOS и Linux. Для загрузки доступны установщик для Windows, портативный архив ZIP для Windows и образ DMG для macOS; в Linux приложение запускается из исходного кода.</p></div></article>
+        <article class="qa"><h3>Какие форматы транскриптов поддерживает приложение?</h3><div class="faq-a"><p><code>srt</code> <code>vtt</code> <code>ass</code> <code>tsv</code> <code>txt</code> <code>json</code> <code>lrc</code> <code>md</code> <code>docx</code> <code>pdf</code>, а также oTranscribe, ELAN, InqScribe и Express Scribe.</p></div></article>
+        <article class="qa"><h3>Может ли приложение определять, кто говорит?</h3><div class="faq-a"><p>Да — опциональная диаризация спикеров («Определить говорящих») с пословными временными метками и обрезкой по временным интервалам.</p></div></article>
+        <article class="qa"><h3>Может ли приложение транскрибировать звук с микрофона или системное аудио в реальном времени?</h3><div class="faq-a"><p>Да, на вкладке «В реальном времени» — звук с микрофона или системное аудио транскрибируются сразу по мере звучания.</p></div></article>
+        <article class="qa"><h3>Может ли приложение скачивать и транскрибировать онлайн-видео, например с YouTube?</h3><div class="faq-a"><p>Да, с любого сайта, поддерживаемого yt-dlp, с возможностью автоматической транскрибации после скачивания.</p></div></article>
+        <article class="qa"><h3>Может ли приложение составить краткую сводку транскрипта, выделить задачи или ответить на вопросы по тексту?</h3><div class="faq-a"><p>Да, через дополнительную вкладку «Инструменты ИИ» в окне просмотра расшифровки — краткое содержание, задачи, вопросы и ответы, а также посегментный перевод с формированием двуязычного <code>.srt</code>. По умолчанию функция отключена.</p></div></article>
+        <article class="qa"><h3>Может ли приложение клонировать голос и озвучивать им новый текст?</h3><div class="faq-a"><p>Да, через дополнительную вкладку «Клонирование голоса» с помощью OmniVoice (Apache-2.0) — полностью на вашем компьютере. По умолчанию функция отключена; её можно включить во время установки, при этом необходимо подтвердить наличие разрешения на клонирование образца голоса.</p></div></article>
+        <article class="qa"><h3>Чем это отличается от прямого обращения к Whisper API?</h3><div class="faq-a"><p>По умолчанию модель запускается локально через faster-whisper, поэтому нет поминутной оплаты за API, а аудио не покидает ваш компьютер — если только вы сами явно не выберете один из двух облачных бэкендов.</p></div></article>
+        <article class="qa"><h3>Могут ли несколько человек в одной локальной сети использовать приложение без установки на каждый компьютер?</h3><div class="faq-a"><p>Да — режим «Веб / LAN-доступ» превращает этот компьютер в страницу транскрибации, которой могут пользоваться другие устройства в сети.</p></div></article>
+        <article class="qa"><h3>Что нового в версии 2.1?</h3><div class="faq-a"><p>Меню, кнопки и сообщения доступны на 42 языках (машинный перевод с соответствующей пометкой); метки говорящих сохраняются до самого конца длинных записей, а количество участников можно настроить; расшифровки, экспортированные файлы и субтитры полностью записываются на диск перед заменой старого файла; онлайн-функции работают на любом Mac. В версии 2.0 появились отображение скорости очереди и оставшегося времени, создание видео с субтитрами по ссылке, расшифровки в виде единой офлайн-веб-страницы, переключаемый режим «Работать офлайн» и перевод на английский язык. Смотрите раздел <a href="#whats-new">Что нового в 2.1</a> и <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">журнал изменений</a>.</p></div></article>
+        <article class="qa"><h3>Может ли приложение превратить ссылку на видео в видео с субтитрами?</h3><div class="faq-a"><p>Да. На вкладке «Скачать видео» отметьте <b>Создать видео с субтитрами</b>: приложение скачает видео, расшифрует его с помощью Whisper и встроит субтитры через ffmpeg, создав файл с именем исходного видео и <code>-subbed.mp4</code>. Исходная загрузка и расшифровка сохраняются, а существующий <code>-subbed.mp4</code> никогда не перезаписывается.</p></div></article>
+        <article class="qa"><h3>Можно ли полностью отключить доступ приложения к сети?</h3><div class="faq-a"><p>Да. Пункт <b>Файл → Работать офлайн</b> отключает проверку обновлений, статистику использования, загрузку моделей и обращение к удалённым провайдерам ИИ. Пока этот режим включён, строка в нижней части окна показывает, есть ли открытые соединения, а кнопка <em>Проверить офлайн сейчас</em> подтверждает отклонение тестовых подключений. Когда он выключен, приложение обращается к сети только для проверки онлайн-настроек при запуске, ежедневной проверки обновлений, статистики использования (которую можно отключить в меню Справка → Статистика использования) и для начатых вами загрузок.</p></div></article>
+        <article class="qa"><h3>Как связаться с авторами проекта?</h3><div class="faq-a"><p>Сообщения об ошибках и запросы новых функций принимаются в <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, вопросы — в <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, а всё остальное — по электронной почте (адрес отображается по запросу в <a href="#contact">разделе «Контакты»</a>). Отчёты об уязвимостях отправляются через приватный механизм сообщений об уязвимостях GitHub.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT + SUPPORT ============ -->
+  <section class="section contact" id="contact" aria-labelledby="contact-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Контакты и поддержка</p>
+        <h2 id="contact-title">Свяжитесь с нами. <span class="h2-soft">Помогите проекту расти.</span></h2>
+      </header>
+      <div class="contact-grid">
+        <div class="contact-card sr" data-tilt-card data-contact>
+          <span class="contact-ic tone-teal"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg></span>
+          <h3>Электронная почта</h3>
+          <p class="contact-val"><button type="button" class="contact-reveal" data-contact-reveal>Показать адрес электронной почты</button><span data-contact-out aria-live="polite" hidden></span><noscript> (требуется JavaScript)</noscript></p>
+          <p>Пресса, сотрудничество и любые вопросы, кроме сообщений об ошибках.</p>
+        </div>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-coral"><svg class="i" aria-hidden="true"><use href="#i-bug"/></svg></span>
+          <h3>Сообщить об ошибке</h3>
+          <p class="contact-val">GitHub Issues</p>
+          <p>Укажите вашу версию, ОС и наименьший файл, на котором воспроизводится ошибка.</p>
+        </a>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-violet"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span>
+          <h3>Задать вопрос</h3>
+          <p class="contact-val">GitHub Discussions</p>
+          <p>Помощь в настройке, идеи и примеры от других пользователей.</p>
+        </a>
+      </div>
+
+      <div class="support-card sr">
+        <div class="support-orbit" aria-hidden="true"><img src="/assets/logo.svg" alt="" width="88" height="88"><span></span><span></span><span></span></div>
+        <div class="support-copy">
+          <h3 id="support">Поддержать проект</h3>
+          <p>Whisper Transcriber Suite — бесплатная программа с лицензией BSD-3-Clause, которая разрабатывается открыто. Если она сэкономила вам время, звёздочка на GitHub поможет другим найти её — а чашечке кофе мы всегда рады.</p>
+          <div class="support-actions">
+            <a class="btn btn-coffee btn-lg" href="https://buymeacoffee.com/mehraz1358" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-cup"/></svg>Угостить кофе</a> <a class="btn btn-light btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Поставить звезду на GitHub</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div class="footer-brand">
+      <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — главная"><img class="brand-logo" src="/assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
+      <p class="muted">Проект разрабатывается одним независимым разработчиком — <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Исходный код лицензирован под BSD-3-Clause.</p>
+      <p class="muted"><a href="#contact">Контакты</a></p>
+      <p class="site-stats" data-site-stats hidden><span data-stat="visits" hidden><strong></strong> посещений</span><span data-stat="downloads" hidden><strong></strong> скачиваний</span></p>
+      <p class="muted small mt-note">Эта страница переведена с английского машиной и проверена второй. Что-то звучит не так? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">Сообщите нам на GitHub</a>.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Подвал">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Инструкция по установке</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Список изменений</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Обсуждения</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Безопасность</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">Лицензия</a> <a href="/ru/youtube-to-text/">YouTube в текст</a> <a href="/ru/video-to-srt/">Видео в SRT</a> <a href="/ru/speaker-labels/">Метки говорящих</a> <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+  <div class="wrap">
+    <p class="muted small">Также доступно на <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.de.md" rel="noopener" lang="de">Deutsch</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fr.md" rel="noopener" lang="fr">Français</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.es.md" rel="noopener" lang="es">Español</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.it.md" rel="noopener" lang="it">Italiano</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt-BR.md" rel="noopener" lang="pt-BR">Português (Brasil)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt.md" rel="noopener" lang="pt">Português (Portugal)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nl.md" rel="noopener" lang="nl">Nederlands</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pl.md" rel="noopener" lang="pl">Polski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ru.md" rel="noopener" lang="ru">Русский</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.uk.md" rel="noopener" lang="uk">Українська</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.tr.md" rel="noopener" lang="tr">Türkçe</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.cs.md" rel="noopener" lang="cs">Čeština</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sk.md" rel="noopener" lang="sk">Slovenčina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hu.md" rel="noopener" lang="hu">Magyar</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ro.md" rel="noopener" lang="ro">Română</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bg.md" rel="noopener" lang="bg">Български</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.el.md" rel="noopener" lang="el">Ελληνικά</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sv.md" rel="noopener" lang="sv">Svenska</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.da.md" rel="noopener" lang="da">Dansk</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nb.md" rel="noopener" lang="nb">Norsk bokmål</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fi.md" rel="noopener" lang="fi">Suomi</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hr.md" rel="noopener" lang="hr">Hrvatski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sr.md" rel="noopener" lang="sr">Српски</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sl.md" rel="noopener" lang="sl">Slovenščina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lt.md" rel="noopener" lang="lt">Lietuvių</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-CN.md" rel="noopener" lang="zh-CN">简体中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-TW.md" rel="noopener" lang="zh-TW">繁體中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ja.md" rel="noopener" lang="ja">日本語</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ko.md" rel="noopener" lang="ko">한국어</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.vi.md" rel="noopener" lang="vi">Tiếng Việt</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.th.md" rel="noopener" lang="th">ไทย</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.id.md" rel="noopener" lang="id">Bahasa Indonesia</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ms.md" rel="noopener" lang="ms">Bahasa Melayu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hi.md" rel="noopener" lang="hi">हिन्दी</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ar.md" rel="noopener" lang="ar">العربية</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fa.md" rel="noopener" lang="fa">فارسی</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.he.md" rel="noopener" lang="he">עברית</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lv.md" rel="noopener" lang="lv">Latviešu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ca.md" rel="noopener" lang="ca">Català</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bn.md" rel="noopener" lang="bn">বাংলা</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fil.md" rel="noopener" lang="fil">Filipino</a>.</p>
+  </div>
+</footer>
+
+<div class="star-toast" data-star-toast role="status" hidden>
+  <p><b>Спасибо за скачивание!</b> Пока идёт загрузка — если приложение сэкономит вам время, ⭐ на GitHub поможет другим найти его. Один клик, бесплатно.</p>
+  <div class="star-toast-actions">
+    <a class="btn btn-primary btn-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" data-star-go><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Поставить звезду на GitHub</a>
+    <button class="star-toast-close" type="button" data-star-close aria-label="Закрыть">×</button>
+  </div>
+</div>
+
+<script type="application/json" id="i18n-strings">
+{
+  "Play animations": "Включить анимацию",
+  "Pause animations": "Приостановить анимацию",
+  "Install on macOS": "Установить на macOS",
+  "Get it for Linux": "Скачать для Linux",
+  "Get it for your computer": "Скачать для вашего компьютера",
+  "Show %s": "Показать %s",
+  "Please write to us on GitHub Discussions": "Пожалуйста, напишите нам в GitHub Discussions",
+  "One moment…": "Один момент…",
+  "Could not load it. Try again": "Не удалось загрузить. Попробуйте снова",
+  "so the words appear as you speak": "чтобы слова появлялись по мере речи",
+  "cuts land on natural pauses": "разбивка приходится на естественные паузы",
+  "and no word is ever split in two": "и ни одно слово не делится пополам",
+  "Your audio stays on your computer.": "Ваше аудио остаётся на вашем компьютере.",
+  "No account. No per-minute cost.": "Без аккаунта. Без поминутной оплаты.",
+  "Whisper runs on your own computer.": "Whisper работает на вашем компьютере.",
+  "Fourteen formats, one click.": "Четырнадцать форматов в один клик.",
+  "Copy": "Копировать",
+  "Copied": "Скопировано"
+}
+</script>
+<script src="/js/main.js?v=20261018b" defer></script>
+<script src="/js/lang.js?v=20261019a" defer></script>
+</body>
+</html>

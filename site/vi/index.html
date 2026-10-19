@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whisper Transcriber Suite — Chép lời ngoại tuyến miễn phí</title>
+<meta name="description" content="Ứng dụng màn hình nền miễn phí chạy OpenAI Whisper ngay trên máy tính của bạn. Chép lời âm thanh và video sang SRT, VTT, DOCX và PDF. Windows, macOS và Linux.">
+<meta name="author" content="translation-robot">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://whisper-transcriber-suite.com/vi/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/">
+<link rel="alternate" hreflang="de" href="https://whisper-transcriber-suite.com/de/">
+<link rel="alternate" hreflang="fr" href="https://whisper-transcriber-suite.com/fr/">
+<link rel="alternate" hreflang="es" href="https://whisper-transcriber-suite.com/es/">
+<link rel="alternate" hreflang="it" href="https://whisper-transcriber-suite.com/it/">
+<link rel="alternate" hreflang="pt-BR" href="https://whisper-transcriber-suite.com/pt-br/">
+<link rel="alternate" hreflang="pt" href="https://whisper-transcriber-suite.com/pt/">
+<link rel="alternate" hreflang="nl" href="https://whisper-transcriber-suite.com/nl/">
+<link rel="alternate" hreflang="pl" href="https://whisper-transcriber-suite.com/pl/">
+<link rel="alternate" hreflang="ru" href="https://whisper-transcriber-suite.com/ru/">
+<link rel="alternate" hreflang="uk" href="https://whisper-transcriber-suite.com/uk/">
+<link rel="alternate" hreflang="tr" href="https://whisper-transcriber-suite.com/tr/">
+<link rel="alternate" hreflang="cs" href="https://whisper-transcriber-suite.com/cs/">
+<link rel="alternate" hreflang="sk" href="https://whisper-transcriber-suite.com/sk/">
+<link rel="alternate" hreflang="hu" href="https://whisper-transcriber-suite.com/hu/">
+<link rel="alternate" hreflang="ro" href="https://whisper-transcriber-suite.com/ro/">
+<link rel="alternate" hreflang="bg" href="https://whisper-transcriber-suite.com/bg/">
+<link rel="alternate" hreflang="el" href="https://whisper-transcriber-suite.com/el/">
+<link rel="alternate" hreflang="sv" href="https://whisper-transcriber-suite.com/sv/">
+<link rel="alternate" hreflang="da" href="https://whisper-transcriber-suite.com/da/">
+<link rel="alternate" hreflang="nb" href="https://whisper-transcriber-suite.com/nb/">
+<link rel="alternate" hreflang="fi" href="https://whisper-transcriber-suite.com/fi/">
+<link rel="alternate" hreflang="hr" href="https://whisper-transcriber-suite.com/hr/">
+<link rel="alternate" hreflang="sr" href="https://whisper-transcriber-suite.com/sr/">
+<link rel="alternate" hreflang="sl" href="https://whisper-transcriber-suite.com/sl/">
+<link rel="alternate" hreflang="lt" href="https://whisper-transcriber-suite.com/lt/">
+<link rel="alternate" hreflang="zh-CN" href="https://whisper-transcriber-suite.com/zh-cn/">
+<link rel="alternate" hreflang="zh-TW" href="https://whisper-transcriber-suite.com/zh-tw/">
+<link rel="alternate" hreflang="ja" href="https://whisper-transcriber-suite.com/ja/">
+<link rel="alternate" hreflang="ko" href="https://whisper-transcriber-suite.com/ko/">
+<link rel="alternate" hreflang="vi" href="https://whisper-transcriber-suite.com/vi/">
+<link rel="alternate" hreflang="th" href="https://whisper-transcriber-suite.com/th/">
+<link rel="alternate" hreflang="id" href="https://whisper-transcriber-suite.com/id/">
+<link rel="alternate" hreflang="ms" href="https://whisper-transcriber-suite.com/ms/">
+<link rel="alternate" hreflang="hi" href="https://whisper-transcriber-suite.com/hi/">
+<link rel="alternate" hreflang="ar" href="https://whisper-transcriber-suite.com/ar/">
+<link rel="alternate" hreflang="fa" href="https://whisper-transcriber-suite.com/fa/">
+<link rel="alternate" hreflang="he" href="https://whisper-transcriber-suite.com/he/">
+<link rel="alternate" hreflang="lv" href="https://whisper-transcriber-suite.com/lv/">
+<link rel="alternate" hreflang="ca" href="https://whisper-transcriber-suite.com/ca/">
+<link rel="alternate" hreflang="bn" href="https://whisper-transcriber-suite.com/bn/">
+<link rel="alternate" hreflang="fil" href="https://whisper-transcriber-suite.com/fil/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/">
+<!-- i18n:hreflang:end -->
+<meta name="google-site-verification" content="_vMQaHCYUqaePsjuk_lmQ9Df32M03uPPZnXEFVr8ttU">
+<meta name="google-site-verification" content="uC9kBtANn2fSf-oX8ubTOv1cgtEQabzbnLz61epFOcc">
+<meta name="msvalidate.01" content="86B7B178FB8DB5F45F03295F6D2A8F4A">
+<meta name="msvalidate.01" content="C5065B95AD10AB4D2845E441E3D9FA37">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Whisper Transcriber Suite — Chép lời Âm thanh &amp; video ngoại tuyến miễn phí">
+<meta property="og:description" content="Chạy OpenAI Whisper cục bộ. Âm thanh của bạn nằm trên máy tính, không cần tài khoản. 14 định dạng đầu ra, chép lời trực tiếp, nhãn người nói, tải video YouTube. Miễn phí, BSD-3-Clause, cho Windows, macOS và Linux.">
+<meta property="og:url" content="https://whisper-transcriber-suite.com/vi/">
+<meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — chép lời âm thanh và video ngoại tuyến miễn phí cho Windows, macOS và Linux.">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="vi_VN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Whisper Transcriber Suite — Chép lời Âm thanh &amp; video ngoại tuyến miễn phí">
+<meta name="twitter:description" content="Chạy OpenAI Whisper cục bộ. Âm thanh của bạn nằm trên máy tính, không cần tài khoản. 14 định dạng đầu ra, chép lời trực tiếp, nhãn người nói, tải video YouTube.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="alternate" type="text/plain" title="Tóm tắt LLM" href="/llms.txt">
+
+<link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
+<script src="/js/motion-init.js?v=20260927b"></script>
+<link rel="stylesheet" href="/styles.css?v=20261019a">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://whisper-transcriber-suite.com/#org",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://github.com/Milomilo777/whisper-transcriber-suite/issues",
+        "availableLanguage": [
+          "English"
+        ]
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite",
+        "https://buymeacoffee.com/mehraz1358"
+      ],
+      "description": "Ứng dụng màn hình nền mã nguồn mở, miễn phí, chạy OpenAI Whisper cục bộ để chép lời âm thanh và video."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://whisper-transcriber-suite.com/#app",
+      "name": "Whisper Transcriber Suite",
+      "alternateName": "WhisperTranscriberSuite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "image": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+      "screenshot": [
+        "https://whisper-transcriber-suite.com/assets/shots/transcribe.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/live.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/download.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/queue.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/voice.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/web.webp"
+      ],
+      "description": "Ứng dụng Màn hình nền chạy Mô hình Whisper của OpenAI cục bộ thông qua faster-whisper, whisper.cpp hoặc NVIDIA Parakeet. Chép lời âm thanh và video sang SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX và PDF. Âm thanh của bạn nằm trên máy tính và không cần tài khoản.",
+      "softwareVersion": "2.1.0",
+      "datePublished": "2026-05-11",
+      "dateModified": "2026-10-12",
+      "operatingSystem": "Windows, macOS, Linux",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "Speech-to-text transcription",
+      "featureList": [
+        "Chuyển giọng nói thành văn bản ngoại tuyến với faster-whisper, whisper.cpp hoặc NVIDIA Parakeet",
+        "14 định dạng bản chép lời bao gồm SRT, VTT, DOCX và PDF",
+        "Chép lời trực tiếp từ micrô và âm thanh hệ thống",
+        "Phân biệt người nói với dấu thời gian theo từng từ",
+        "Hàng đợi theo lô với tạm dừng, tiếp tục và chạy lại",
+        "Tải xuống video và âm thanh từ bất kỳ trang nào được yt-dlp hỗ trợ",
+        "Khử tiếng ồn thích ứng",
+        "Tóm tắt AI tùy chọn, mục hành động và SRT song ngữ",
+        "Nhân bản giọng nói ngoại tuyến tùy chọn",
+        "Chế độ Truy cập Web / LAN",
+        "Hàng đợi hiển thị tốc độ và thời gian còn lại của mỗi lần chép lời",
+        "Tạo video có phụ đề: tải xuống, chép lời và ghi phụ đề vào tệp MP4",
+        "Lưu bản chép lời dưới dạng một trang web ngoại tuyến",
+        "Chuyển đổi Làm việc ngoại tuyến với trạng thái mạng hiển thị",
+        "Dịch giọng nói trực tiếp sang Tiếng Anh"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isAccessibleForFree": true,
+      "interactionStatistic": {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/DownloadAction",
+        "userInteractionCount": 2694
+      },
+      "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
+      "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
+      "releaseNotes": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md",
+      "installUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md",
+      "codeRepository": "https://github.com/Milomilo777/whisper-transcriber-suite",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://whisper-transcriber-suite.com/#author"
+      },
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite"
+      ],
+      "softwareRequirements": "Windows 10 or 11 (64-bit); macOS 10.15 or later (Intel build) or macOS 14 or later (Apple Silicon build); Linux from source with Python 3.11+",
+      "memoryRequirements": "At least 8 GB RAM; an NVIDIA GPU with CUDA is optional"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://whisper-transcriber-suite.com/#website",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "inLanguage": "vi",
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://whisper-transcriber-suite.com/#author",
+      "name": "translation-robot",
+      "url": "https://github.com/translation-robot",
+      "sameAs": [
+        "https://github.com/translation-robot"
+      ],
+      "description": "Nhà phát triển độc lập duy trì Whisper Transcriber Suite như một dự án mã nguồn mở."
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://whisper-transcriber-suite.com/vi/#webpage",
+      "url": "https://whisper-transcriber-suite.com/vi/",
+      "name": "Whisper Transcriber Suite — Chép lời ngoại tuyến miễn phí",
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/vi/#website"
+      },
+      "about": {
+        "@id": "https://whisper-transcriber-suite.com/vi/#app"
+      },
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": [
+          ".hero-lede",
+          ".faq-a p"
+        ]
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Whisper Transcriber Suite có miễn phí không?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Có. Nó được cấp phép BSD-3-Clause, không có gói đăng ký và không tính phí theo phút. Bản thân Mô hình Whisper chỉ tải xuống một lần (khoảng 1-3 GB) khi khởi chạy lần đầu; sau đó, việc chép lời sẽ hoạt động mà không cần kết nối Internet."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Nó có tải âm thanh hoặc video của tôi lên đâu đó không?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Không, không theo mặc định. Mọi backend mặc định — faster-whisper, whisper.cpp, NVIDIA Parakeet — đều chạy cục bộ trên máy của bạn. Hai backend chỉ bật khi chọn (cloud_stt qua Gemini API và google_cloud_stt), và cả hai đều tắt cho đến khi bạn tự bật chúng trong Cài đặt nâng cao → Backend. Thống kê sử dụng (không có âm thanh, không có tên tệp) được bật theo mặc định và có thể tắt trong Trợ giúp > Thống kê sử dụng, ứng dụng kiểm tra GitHub một lần mỗi ngày để tìm phiên bản mới, và Tệp > Làm việc ngoại tuyến sẽ dừng mọi sử dụng mạng."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Nó chạy trên những nền tảng nào?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Windows, macOS và Linux. Các bản tải xuống được phát hành là bộ cài đặt Windows, tệp ZIP di động Windows và tệp DMG cho macOS; Linux chạy từ mã nguồn."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Nó có thể tạo ra những định dạng bản chép lời nào?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX và PDF, cộng với oTranscribe, ELAN, InqScribe và Express Scribe."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Nó có thể gắn nhãn người đang nói không?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Có, phân biệt người nói tùy chọn (Nhận diện người nói), với dấu thời gian theo từng từ và cắt theo phạm vi thời gian."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Nó có thể chép lời từ micrô trực tiếp hoặc âm thanh hệ thống không?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Có, từ tab Trực tiếp: micrô hoặc âm thanh hệ thống, được chép lời ngay khi có âm thanh."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Nó có thể tải xuống và chép lời các video trực tuyến, ví dụ: từ YouTube không?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Có, bất kỳ trang nào mà yt-dlp hỗ trợ, với bước chép lời tùy chọn khi hoàn tất."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Nó có thể tóm tắt bản chép lời, trích xuất các mục hành động hoặc trả lời câu hỏi về nó không?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Có, thông qua tab Công cụ AI tùy chọn trong trình xem bản chép lời: tóm tắt, mục hành động, hỏi-đáp và quá trình dịch theo từng phân đoạn để tạo SRT song ngữ. Tính năng này tắt theo mặc định."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Nó có thể nhân bản giọng nói và khiến giọng đó đọc văn bản mới không?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Có, thông qua tab Nhân bản Giọng nói của bạn tùy chọn, sử dụng OmniVoice (Apache-2.0) hoàn toàn trên máy của bạn. Tắt theo mặc định; chọn tham gia tại thời điểm cài đặt."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Điều này khác gì so với việc gọi trực tiếp Whisper API?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Nó chạy mô hình cục bộ thông qua faster-whisper theo mặc định, do đó không có chi phí API tính theo phút và không có âm thanh nào rời khỏi máy của bạn, trừ khi bạn chọn tham gia rõ ràng vào một trong hai backend đám mây."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Nhiều người trên cùng một mạng có thể sử dụng nó mà không cần cài đặt trên mọi máy không?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Có, chế độ Truy cập Web/LAN biến máy này thành một trang chép lời mà các thiết bị khác trên mạng có thể sử dụng."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Có gì mới trong phiên bản 2.1?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Menu, nút và thông báo có 42 ngôn ngữ (dịch bằng máy và được đánh dấu như vậy); nhãn người nói kéo dài đến cuối các bản ghi dài và bạn có thể đặt số người nói; bản chép lời, bản xuất và phụ đề được ghi hoàn toàn vào ổ đĩa trước khi chúng thay thế tệp cũ; các tính năng trực tuyến hoạt động trên mọi máy Mac. Phiên bản 2.0 đã thêm tốc độ và thời gian còn lại của hàng đợi, video có phụ đề từ một liên kết, bản chép lời dưới dạng một trang web ngoại tuyến, chế độ Làm việc ngoại tuyến có thể đánh dấu và dịch sang Tiếng Anh."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Nó có thể biến một liên kết video thành video có phụ đề không?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Có. Trên tab Tải video, đánh dấu vào Tạo video có phụ đề: ứng dụng Tải xuống video, chép lời bằng Whisper và ghi phụ đề vào bằng ffmpeg, tạo ra một tệp được đặt tên theo video với hậu tố -subbed.mp4. Bản Tải xuống và bản chép lời được giữ lại, và một tệp -subbed.mp4 hiện có sẽ không bao giờ bị thay thế."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Tôi có thể giữ ứng dụng hoàn toàn ngoại tuyến không?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Có. Tệp > Làm việc ngoại tuyến dừng kiểm tra bản cập nhật, thống kê sử dụng, tải xuống mô hình và các nhà cung cấp AI từ xa. Khi bật, một dòng ở dưới cùng cửa sổ sẽ cho biết liệu kết nối có đang mở hay không, và Kiểm tra ngoại tuyến ngay sẽ hiển thị các kết nối thử nghiệm bị từ chối. Khi tắt, ứng dụng chỉ kết nối mạng cho các cài đặt trực tuyến khi khởi động, kiểm tra cập nhật hàng ngày, thống kê sử dụng (có thể tắt trong Trợ giúp > Thống kê sử dụng) và các bản tải xuống mà bạn bắt đầu."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Tôi có thể liên hệ với dự án như thế nào?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Lỗi và yêu cầu tính năng gửi đến GitHub Issues, câu hỏi gửi đến GitHub Discussions, và bất cứ thứ gì khác qua email (địa chỉ được hiển thị theo yêu cầu trong phần Liên hệ). Báo cáo bảo mật đi qua tính năng báo cáo lỗ hổng riêng tư của GitHub."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m0 0-5-5m5 5-5 5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m12 4-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m8 4 6 6-6 6"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 20 20"><path fill="currentColor" d="M2 3.6 8.4 2.7v6.6H2zm7.3-1 8.7-1.2v7.9H9.3zM2 10.2h6.4v6.7L2 16zm7.3 0H18v8.4l-8.7-1.2z"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 20 20"><path fill="currentColor" d="M13.6 10.6c0-1.9 1.6-2.8 1.6-2.9-.9-1.3-2.3-1.5-2.8-1.5-1.2-.1-2.3.7-2.9.7-.6 0-1.5-.7-2.5-.7-1.3 0-2.5.8-3.2 1.9-1.4 2.4-.4 5.9 1 7.8.6.9 1.4 2 2.4 1.9 1-.1 1.3-.6 2.5-.6s1.5.6 2.5.6c1 0 1.7-.9 2.3-1.9.7-1.1 1-2.1 1-2.2 0 0-1.9-.8-1.9-3.1zM11.7 4.9c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-1 1.5-.8 2.4.9.1 1.8-.4 2.4-1.1z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14v11H3zM6 8.5l2 1.5-2 1.5M10 12h4"/></symbol>
+    <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+    <symbol id="i-cup" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 7h10v4.5A4.5 4.5 0 0 1 9.5 16h-1A4.5 4.5 0 0 1 4 11.5zm10 1.5h1.2a2.3 2.3 0 0 1 0 4.6H14M7 2.5v2m3-2v2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 5h14v10H3zm0 0 7 6 7-6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4h14v9H8l-4 3v-3H3z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7 7a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM3 10h4m6 0h4M4 5l3 2m9-2-3 2M4 15l3-2m9 2-3-2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 20 20"><path fill="currentColor" d="M6 4v12l10-6z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 20 20"><path fill="currentColor" d="M5 4h3.5v12H5zm6.5 0H15v12h-3.5z"/></symbol>
+  </defs>
+</svg> <a class="skip-link" href="#main">Bỏ qua tới nội dung</a>
+
+<header class="site-header" data-header>
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — trang chủ">
+      <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
+    </a>
+    <nav class="site-nav" aria-label="Chính">
+      <a href="#showreel">Hướng dẫn</a> <a href="#features">Tính năng</a> <a href="#how-it-works">Cách hoạt động</a> <a href="#download">Tải xuống</a> <a href="#compare">So sánh</a> <a href="#faq">FAQ</a> <a href="#contact">Liên hệ</a>
+    </nav>
+    <div class="header-cta">
+      <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Ngôn ngữ" aria-label="Ngôn ngữ"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->Tiếng Việt<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/?lang=en" hreflang="en" lang="en" data-lang-pick="en">English</a></li>
+<li><a href="/de/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
+<li><a href="/fr/" hreflang="fr" lang="fr" data-lang-pick="fr">Français</a></li>
+<li><a href="/es/" hreflang="es" lang="es" data-lang-pick="es">Español</a></li>
+<li><a href="/it/" hreflang="it" lang="it" data-lang-pick="it">Italiano</a></li>
+<li><a href="/pt-br/" hreflang="pt-BR" lang="pt-BR" data-lang-pick="pt-BR">Português (Brasil)</a></li>
+<li><a href="/pt/" hreflang="pt" lang="pt" data-lang-pick="pt">Português (Portugal)</a></li>
+<li><a href="/nl/" hreflang="nl" lang="nl" data-lang-pick="nl">Nederlands</a></li>
+<li><a href="/pl/" hreflang="pl" lang="pl" data-lang-pick="pl">Polski</a></li>
+<li><a href="/ru/" hreflang="ru" lang="ru" data-lang-pick="ru">Русский</a></li>
+<li><a href="/uk/" hreflang="uk" lang="uk" data-lang-pick="uk">Українська</a></li>
+<li><a href="/tr/" hreflang="tr" lang="tr" data-lang-pick="tr">Türkçe</a></li>
+<li><a href="/cs/" hreflang="cs" lang="cs" data-lang-pick="cs">Čeština</a></li>
+<li><a href="/sk/" hreflang="sk" lang="sk" data-lang-pick="sk">Slovenčina</a></li>
+<li><a href="/hu/" hreflang="hu" lang="hu" data-lang-pick="hu">Magyar</a></li>
+<li><a href="/ro/" hreflang="ro" lang="ro" data-lang-pick="ro">Română</a></li>
+<li><a href="/bg/" hreflang="bg" lang="bg" data-lang-pick="bg">Български</a></li>
+<li><a href="/el/" hreflang="el" lang="el" data-lang-pick="el">Ελληνικά</a></li>
+<li><a href="/sv/" hreflang="sv" lang="sv" data-lang-pick="sv">Svenska</a></li>
+<li><a href="/da/" hreflang="da" lang="da" data-lang-pick="da">Dansk</a></li>
+<li><a href="/nb/" hreflang="nb" lang="nb" data-lang-pick="nb">Norsk bokmål</a></li>
+<li><a href="/fi/" hreflang="fi" lang="fi" data-lang-pick="fi">Suomi</a></li>
+<li><a href="/hr/" hreflang="hr" lang="hr" data-lang-pick="hr">Hrvatski</a></li>
+<li><a href="/sr/" hreflang="sr" lang="sr" data-lang-pick="sr">Српски</a></li>
+<li><a href="/sl/" hreflang="sl" lang="sl" data-lang-pick="sl">Slovenščina</a></li>
+<li><a href="/lt/" hreflang="lt" lang="lt" data-lang-pick="lt">Lietuvių</a></li>
+<li><a href="/zh-cn/" hreflang="zh-CN" lang="zh-CN" data-lang-pick="zh-CN">简体中文</a></li>
+<li><a href="/zh-tw/" hreflang="zh-TW" lang="zh-TW" data-lang-pick="zh-TW">繁體中文</a></li>
+<li><a href="/ja/" hreflang="ja" lang="ja" data-lang-pick="ja">日本語</a></li>
+<li><a href="/ko/" hreflang="ko" lang="ko" data-lang-pick="ko">한국어</a></li>
+<li><a href="/vi/" hreflang="vi" lang="vi" data-lang-pick="vi" aria-current="true">Tiếng Việt</a></li>
+<li><a href="/th/" hreflang="th" lang="th" data-lang-pick="th">ไทย</a></li>
+<li><a href="/id/" hreflang="id" lang="id" data-lang-pick="id">Bahasa Indonesia</a></li>
+<li><a href="/ms/" hreflang="ms" lang="ms" data-lang-pick="ms">Bahasa Melayu</a></li>
+<li><a href="/hi/" hreflang="hi" lang="hi" data-lang-pick="hi">हिन्दी</a></li>
+<li><a href="/ar/" hreflang="ar" lang="ar" dir="rtl" data-lang-pick="ar">العربية</a></li>
+<li><a href="/fa/" hreflang="fa" lang="fa" dir="rtl" data-lang-pick="fa">فارسی</a></li>
+<li><a href="/he/" hreflang="he" lang="he" dir="rtl" data-lang-pick="he">עברית</a></li>
+<li><a href="/lv/" hreflang="lv" lang="lv" data-lang-pick="lv">Latviešu</a></li>
+<li><a href="/ca/" hreflang="ca" lang="ca" data-lang-pick="ca">Català</a></li>
+<li><a href="/bn/" hreflang="bn" lang="bn" data-lang-pick="bn">বাংলা</a></li>
+<li><a href="/fil/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
+      <button class="btn-icon" type="button" data-motion-toggle aria-pressed="false" title="Tạm dừng hoặc phát hoạt ảnh">
+        <svg class="i i-when-on" aria-hidden="true"><use href="#i-pause"/></svg> <svg class="i i-when-off" aria-hidden="true"><use href="#i-play"/></svg> <span class="sr-only" data-motion-label>Tạm dừng hoạt ảnh</span>
+      </button>
+      <a class="btn btn-ghost btn-sm hide-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" aria-label="Đánh dấu sao Whisper Transcriber Suite trên GitHub"> <svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Đánh dấu sao </a> <a class="btn btn-primary btn-sm" href="#download">Tải xuống</a>
+    </div>
+  </div>
+</header>
+
+<div class="lang-notice" data-lang-notice hidden>
+  <div class="wrap lang-notice-row">
+    <p>Trang này bằng ngôn ngữ của bạn dựa trên vị trí bạn truy cập. <a href="/?lang=en" data-lang-pick="en">Xem bằng Tiếng Anh</a></p>
+    <button class="btn-icon" type="button" data-lang-notice-close aria-label="Đóng"><span aria-hidden="true">×</span></button>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <canvas class="hero-waves" data-waves aria-hidden="true"></canvas>
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="kicker reveal" style="--d:0"><span class="kicker-dot" aria-hidden="true"></span>Miễn phí &amp; mã nguồn mở · BSD-3-Clause · <span data-auto="version">v2.1.0</span></p>
+        <h1 class="hero-title" id="hero-title">
+          <span class="line"><span class="rise" style="--d:1">Âm thanh vào.</span></span> <span class="line"><span class="rise" style="--d:2">Văn bản ra.</span></span> <span class="line"><span class="rise grad-text" style="--d:3">Âm thanh của bạn nằm trên máy tính.</span></span>
+        </h1>
+        <p class="hero-lede reveal" style="--d:4">Whisper Transcriber Suite chạy hoàn toàn Mô hình Whisper của OpenAI trên máy tính của bạn — thông qua faster-whisper, whisper.cpp hoặc NVIDIA Parakeet. Kéo thả âm thanh hoặc video vào và nhận lại bản chép lời có thời gian. Không đám mây, không tài khoản, không tính phí theo phút.</p>
+        <div class="hero-actions reveal" style="--d:5">
+          <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Tải xuống cho Windows</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">Xem hướng dẫn<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </div>
+        <ul class="proof reveal" style="--d:6" aria-label="Tổng quan nhanh">
+          <li><strong data-count="14">14</strong><span>định dạng bản chép lời</span></li>
+          <li><strong data-auto="downloads">2,600+</strong><span>lượt tải xuống</span></li>
+          <li><strong>0</strong><span>tệp âm thanh tải lên mặc định</span></li>
+          <li><strong>$0</strong><span>mãi mãi</span></li>
+        </ul>
+      </div>
+
+      <div class="hero-scene" data-scene aria-hidden="true">
+        <div class="scene-rig" data-rig>
+          <div class="float-layer l-back">
+            <figure class="win win-sm win-a"><div class="win-bar"><i></i><i></i><i></i><span>Trực tiếp</span></div><img src="/assets/shots/live-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-mid">
+            <figure class="win win-sm win-b"><div class="win-bar"><i></i><i></i><i></i><span>Tải video</span></div><img src="/assets/shots/download-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-front">
+            <figure class="win win-main"><div class="win-bar"><i></i><i></i><i></i><span>Whisper Transcriber Suite</span></div><img src="/assets/shots/transcribe.webp" srcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" sizes="(max-width: 1080px) 72vw, 480px" alt="" width="1180" height="668" fetchpriority="high"></figure>
+          </div>
+          <div class="float-layer l-pop1">
+            <div class="chip-card wave-card"><span class="rec"></span><span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+          </div>
+          <div class="float-layer l-pop2">
+            <div class="chip-card srt-card">
+              <p class="srt-ts">00:00:04,120 → 00:00:06,880</p>
+              <p class="srt-line"><span data-hero-typer>Âm thanh của bạn luôn nằm trên máy tính của bạn.</span><span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="float-layer l-pop3">
+            <div class="chip-card fmt-card"><b>.srt</b><b>.vtt</b><b>.docx</b><b>.pdf</b></div>
+          </div>
+          <div class="float-layer l-pop4">
+            <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Chép lời ngoại tuyến</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Nhận diện người nói</span> <span>Mic trực tiếp</span> <span>Sao chép Giọng nói</span> <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Nhận diện người nói</span> <span>Mic trực tiếp</span> <span>Sao chép Giọng nói</span>
+    </div>
+  </div>
+
+  <!-- ============ SHOWREEL (3D carousel) ============ -->
+  <section class="section showreel" id="showreel" aria-labelledby="reel-title">
+    <div class="reel-glow" aria-hidden="true"></div>
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Hướng dẫn sản phẩm</p>
+        <h2 id="reel-title">Một cửa sổ. <span class="h2-soft">Sáu công cụ.</span></h2>
+        <p class="section-lede">Thả tệp vào, chọn tùy chọn, nhấn Chép lời. Mọi thứ khác — hàng đợi, tải xuống, ghi trực tiếp, sao chép giọng nói và chia sẻ LAN — chỉ cách một tab. Kéo vòng tròn, hoặc dùng các mũi tên.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/showreel-still.webp" data-still="/assets/promo/showreel-still.webp" data-anim="/assets/promo/showreel.svg" alt="Hoạt hình: một buổi phỏng vấn với hai người nói được gắn nhãn, một bài giảng được chuyển thành phụ đề có thời gian, một liên kết video được chuyển thành video có phụ đề, phụ đề trực tiếp từ micro, và bản chép lời được lưu cạnh tệp dưới dạng SRT, VTT, DOCX và PDF." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="reel" data-reel>
+        <div class="reel-viewport" data-reel-viewport>
+          <div class="reel-ring" data-reel-ring>
+            <figure class="reel-card" data-title="Chép lời" data-caption="Vùng thả tệp, bộ chọn bộ máy, mô hình và ngôn ngữ, tùy chọn nhãn người nói và thời gian từng từ."><div class="win-bar"><i></i><i></i><i></i><span>Chép lời</span></div><img src="/assets/shots/transcribe-640.webp" alt="Tab Chép lời: vùng thả tệp, bộ chọn bộ máy, mô hình và ngôn ngữ, tùy chọn nhãn người nói và thời gian từng từ" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Trực tiếp" data-caption="Chép lời từ micro — hoặc bất cứ gì máy này đang phát — theo thời gian thực, kèm thước đo mức âm đầu vào."><div class="win-bar"><i></i><i></i><i></i><span>Trực tiếp</span></div><img src="/assets/shots/live-640.webp" alt="Tab Trực tiếp: nguồn micro hoặc âm thanh hệ thống, bộ chọn ngôn ngữ và mô hình, thước đo mức âm đầu vào và bảng chép lời trực tiếp" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Tải video" data-caption="Chọn định dạng, cắt một khoảng thời gian, xem video đã có phụ đề nào, và tùy chọn chép lời hoặc ghép phụ đề vào MP4 mới."><div class="win-bar"><i></i><i></i><i></i><span>Tải video</span></div><img src="/assets/shots/download-640.webp" alt="Tab Tải video: URL với dòng Có phụ đề, cookie đăng nhập trình duyệt, định dạng, khoảng thời gian, Dùng phụ đề thay thế, Chép lời sau khi Tải xuống và Tạo video có phụ đề" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Hàng đợi chép lời" data-caption="Xử lý hàng loạt với tiến độ trực tiếp, tốc độ và thời gian còn lại — tạm dừng, tiếp tục, hủy, chạy lại hoặc xóa bất kỳ hàng nào."><div class="win-bar"><i></i><i></i><i></i><span>Hàng đợi chép lời</span></div><img src="/assets/shots/queue-640.webp" alt="Tab Hàng đợi chép lời: các cột tệp, trạng thái, tiến độ, tốc độ và thời gian còn lại, ngôn ngữ và thời gian đã trôi qua, với tạm dừng, tiếp tục, hủy, chạy lại và xóa" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Sao chép Giọng nói của bạn" data-caption="Tùy chọn, hoàn toàn ngoại tuyến: sao chép giọng nói từ một mẫu ngắn, hoặc thiết kế một giọng, và để giọng đó đọc văn bản mới."><div class="win-bar"><i></i><i></i><i></i><span>Sao chép Giọng nói của bạn</span></div><img src="/assets/shots/voice-640.webp" alt="Tab Sao chép Giọng nói của bạn / Văn bản thành Giọng nói: mô hình OmniVoice, mẫu giọng nói, văn bản cần đọc, ngôn ngữ và tốc độ" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Truy cập Web / LAN" data-caption="Một nút biến máy này thành trang chép lời cho các thiết bị khác trong mạng của bạn."><div class="win-bar"><i></i><i></i><i></i><span>Truy cập Web / LAN</span></div><img src="/assets/shots/web-640.webp" alt="Tab Truy cập Web / LAN: khởi động truy cập web, cổng, chia sẻ trên mạng cục bộ, mật khẩu truy cập và tùy chọn HTTPS" width="640" height="362" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+        <div class="reel-controls">
+          <button class="reel-btn" type="button" data-reel-prev aria-label="Màn hình trước"><svg class="i" aria-hidden="true"><use href="#i-left"/></svg></button>
+          <div class="reel-meta" aria-live="off" data-reel-live>
+            <p class="reel-title" data-reel-title>Chép lời</p>
+            <p class="reel-caption" data-reel-caption>Vùng thả tệp, bộ chọn bộ máy, mô hình và ngôn ngữ, tùy chọn nhãn người nói và thời gian từng từ.</p>
+          </div>
+          <button class="reel-btn" type="button" data-reel-next aria-label="Màn hình tiếp theo"><svg class="i" aria-hidden="true"><use href="#i-right"/></svg></button>
+        </div>
+        <div class="reel-dots" data-reel-dots role="group" aria-label="Chọn màn hình"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Mới trong 2.1</p>
+        <h2 id="new-title">Có gì mới trong 2.1. <span class="h2-soft">Giờ đã có ngôn ngữ của bạn.</span></h2>
+        <p class="section-lede">Ứng dụng với 42 ngôn ngữ, nhãn người nói kéo dài đến hết bản ghi dài, tệp không hỏng khi mất điện, và các tính năng trực tuyến hoạt động trên mọi Mac. Bên dưới là những gì 2.0 thêm vào.</p>
+      </header>
+
+      <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Tất cả nền tảng</p>
+          <h3>Ứng dụng bằng ngôn ngữ của bạn</h3>
+          <p>Menu, nút và thông báo có 42 ngôn ngữ (39 trên macOS và Linux). Ứng dụng theo ngôn ngữ hệ thống của bạn, hoặc bạn chọn trong <em>Cài đặt nâng cao</em>. Mọi ngôn ngữ trừ Tiếng Anh đều là bản dịch máy và được đánh dấu như vậy; Tiếng Ba Tư, Tiếng Ả Rập và Tiếng Do Thái hiện chỉ có trên Windows.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Tất cả nền tảng</p>
+          <h3>Nhãn người nói đáng tin cậy</h3>
+          <p>Tên người nói giờ kéo dài đến hết bản ghi dài, nhận diện người nói không còn làm chép lời bị sập, và bên cạnh <em>Nhận diện người nói</em> bạn có thể đặt số người nói (2 đến 10) thay vì để Tự động.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Tất cả nền tảng</p>
+          <h3>Công việc của bạn an toàn hơn</h3>
+          <p>Bản chép lời, bản xuất và phụ đề được ghi hoàn toàn vào ổ đĩa trước khi thay thế tệp cũ, nên mất điện không thể để lại tệp rỗng. Một tác vụ chép lời có worker dừng sau khi ghi xong tất cả tệp được tính là hoàn thành.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · macOS</p>
+          <h3>Tính năng trực tuyến trên mọi Mac</h3>
+          <p>Kiểm tra cập nhật, báo cáo vấn đề và các tra cứu web khác không còn lỗi <em>certificate verify failed</em>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Tất cả nền tảng</p>
+          <h3>Tốc độ và thời gian còn lại</h3>
+          <p>Tab Hàng đợi chép lời hiển thị tốc độ mỗi tác vụ chép lời và khoảng thời gian còn lại, ví dụ <em>khoảng 4.8x, còn 6 phút</em>. Thẻ kết quả báo cáo tốc độ, mô hình và thiết bị khi hoàn thành.</p>
+          <figure class="new-shot"><img src="/assets/shots/queue-640.webp" alt="Tab Hàng đợi chép lời với cột Tốc độ và thời gian còn lại hiển thị khoảng 6.8x, còn 2 phút cho tác vụ đang chạy" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Tất cả nền tảng</p>
+          <h3>Tạo video có phụ đề</h3>
+          <p>Đánh dấu trong tab Tải video và một liên kết trở thành <code>&lt;title&gt;-subbed.mp4</code> có phụ đề ghép sẵn: Tải xuống, chép lời và ghép phụ đề trong một tác vụ hàng đợi có tiến độ và nút Hủy hoạt động. Bản Tải xuống và bản chép lời được giữ lại.</p>
+          <figure class="new-shot"><img src="/assets/shots/download-640.webp" alt="Tab Tải video hiển thị dòng Có phụ đề: Tiếng Anh và Tiếng Đức, nút Dùng phụ đề thay thế và hộp đánh dấu Tạo video có phụ đề" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Tất cả nền tảng</p>
+          <h3>Chia sẻ bản chép lời dưới dạng một trang web</h3>
+          <p>Lưu bản chép lời hoàn thành dưới dạng một tệp <code>.html</code> mở trong bất kỳ trình duyệt nào không cần cài đặt và không cần internet: dấu thời gian, người nói, chương và ô tìm kiếm. Nhấp vào một từ và media phát từ vị trí đó.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Tất cả nền tảng</p>
+          <h3>Làm việc ngoại tuyến, hiển thị rõ ràng</h3>
+          <p>Một công tắc trong File giữ ứng dụng ngoài mạng. Một dòng ở cuối cửa sổ cho biết kết nối có đang mở hay không, và <em>Kiểm tra ngoại tuyến ngay</em> hiển thị các kết nối thử nghiệm bị từ chối. Thống kê sử dụng bật mặc định và có thể tắt trong Trợ giúp.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Tất cả nền tảng</p>
+          <h3>Dịch giọng nói sang Tiếng Anh</h3>
+          <p>Tùy chọn <em>Đầu ra: bản dịch Tiếng Anh</em> chuyển giọng nói không phải Tiếng Anh thành phụ đề Tiếng Anh trong một lần, sử dụng tác vụ translate của Whisper. Nó tắt mặc định và không khả dụng cho mọi bộ máy hay mô hình.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · macOS</p>
+          <h3>Một chiếc Mac mang đúng chất Mac</h3>
+          <p>Menu ứng dụng với Cài đặt (Command-dấu phẩy), giao diện Sáng và Tối theo macOS, phông chữ hệ thống, các tệp được mở từ Finder hoặc thả vào biểu tượng Dock, và thông báo khi một tác vụ hoàn tất trong khi ứng dụng đang chạy ở nền.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Windows</p>
+          <h3>Tiến trình trên thanh tác vụ và thanh tiêu đề tối</h3>
+          <p>Nút trên thanh tác vụ hiển thị tiến trình, số lượng tác vụ đang chờ và đang chạy, đồng thời nhấp nháy khi một tác vụ hoàn tất. Thanh tiêu đề theo chủ đề Tối, và chữ vẫn sắc nét ở mức thu phóng hiển thị 125% và 150%.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Lần khởi động đầu tiên</p>
+          <h3>Khởi động nhanh và một đoạn cắt mẫu</h3>
+          <p>Một bản cài đặt mới sẽ hỏi ngôn ngữ của bạn, Nhanh hay Chất lượng tốt nhất, và một thư mục, đồng thời hiển thị kích thước mô hình trước khi tải xuống bất cứ thứ gì. Một đoạn cắt 18 giây thuộc phạm vi công cộng cho phép bạn xem bản chép lời thực tế trước khi bạn tự chọn tệp của mình.</p>
+        </article>
+      </div>
+      <p class="feature-more sr">Cũng mới trong 2.0: Văn bản thành Giọng nói đọc các văn bản lên đến 100.000 ký tự từng phần một, nút <em>Cập nhật</em> làm mới trình tải xuống video mà không cần quyền quản trị viên, và một thanh cập nhật im lặng thay thế hộp thoại cập nhật. Tab Video Tiling đã bị loại bỏ. Mọi thứ có trong <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">nhật ký thay đổi</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section features" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Tính năng</p>
+        <h2 id="features-title">Mọi thứ bạn cần từ một công cụ chép lời. <span class="h2-soft">Chạy ngay trên máy của bạn.</span></h2>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/prism-still.webp" data-still="/assets/promo/prism-still.webp" data-anim="/assets/promo/prism.svg" alt="Hoạt ảnh: chữ W lớn chia tách hai người nói, hiển thị các engine cục bộ faster-whisper, whisper.cpp và Parakeet chạy ngoại tuyến, và tỏa ra thành 14 định dạng chép lời." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="bento" data-spotlight>
+        <article class="cell cell-engines tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
+            <h3>Chép lời cục bộ, riêng tư</h3>
+            <p>Whisper <code>large-v3</code> theo mặc định, cộng thêm <code>large-v3-turbo</code> và <code>distil-large-v3.5</code>. Chọn backend phù hợp với phần cứng của bạn.</p>
+          </div>
+          <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
+          <div class="viz viz-engines" aria-hidden="true">
+            <div class="engine-list">
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">faster-whisper</span><span class="engine-tag">mặc định</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">whisper.cpp</span><span class="engine-tag">cục bộ</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">NVIDIA Parakeet</span><span class="engine-tag">cục bộ</span></div>
+            </div>
+            <div class="offline-badge"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Chạy ngoại tuyến sau khi tải xuống mô hình một lần</div>
+          </div>
+        </article>
+
+        <article class="cell cell-formats tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">14 định dạng</p>
+            <h3>Mọi định dạng chép lời bạn cần</h3>
+            <p>Được ghi ngay cạnh tệp đầu vào của bạn — cộng thêm oTranscribe, ELAN, InqScribe và Express Scribe cho quy trình chép lời chuyên nghiệp.</p>
+          </div>
+          <div class="viz viz-formats" aria-hidden="true">
+            <span>srt</span> <span>vtt</span> <span>ass</span> <span>tsv</span> <span>txt</span> <span>json</span> <span>lrc</span> <span>md</span> <span>docx</span> <span>pdf</span> <span class="wide">oTranscribe</span> <span class="wide">ELAN</span> <span class="wide">InqScribe</span> <span class="wide">Express Scribe</span>
+          </div>
+        </article>
+
+        <article class="cell cell-live tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Mic · âm thanh hệ thống</p>
+            <h3>Chép lời trực tiếp</h3>
+            <p>Chép lời từ micrô — hoặc bất cứ thứ gì máy này đang phát — ngay khi diễn ra. Cắt tại những khoảng dừng tự nhiên để từ không bao giờ bị chia cắt.</p>
+          </div>
+          <div class="viz viz-live" aria-hidden="true">
+            <div class="live-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="live-text"><span class="live-rec"></span><span data-typer>để các từ hiện ra khi bạn nói</span><span class="caret"></span></p>
+          </div>
+        </article>
+
+        <article class="cell cell-speakers tone-sun sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Dấu thời gian từng từ</p>
+            <h3>Phân định người nói</h3>
+            <p>Quá trình "Nhận diện người nói" tùy chọn, cùng với dấu thời gian từng từ và cắt theo khoảng thời gian để chỉnh sửa các phân đoạn chính xác.</p>
+          </div>
+          <div class="viz viz-speakers" aria-hidden="true">
+            <div class="utt"><span class="ts">00:04.2</span><span class="spk s1">Người nói 1</span><span class="words"><b>Vậy</b> <b>bắt</b> <b>đầu</b> <b>từ</b> <b>đâu?</b></span></div>
+            <div class="utt"><span class="ts">00:06.9</span><span class="spk s2">Người nói 2</span><span class="words"><b>Từ</b> <b>chính</b> <b>bản</b> <b>ghi âm.</b></span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-queue tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Tạm dừng · tiếp tục · chạy lại</p>
+            <h3>Hàng đợi theo lô</h3>
+            <p>Trạng thái trực tiếp cho mọi tác vụ đang chờ và đang chạy, với quyền kiểm soát hoàn toàn từng dòng luôn chỉ cách một cú nhấp.</p>
+          </div>
+          <div class="viz viz-queue" aria-hidden="true">
+            <div class="job"><span class="job-name">interview-03.mp4</span><span class="bar"><i style="--p:100%"></i></span><span class="job-state done">hoàn tất</span></div>
+            <div class="job"><span class="job-name">lecture-week-2.m4a</span><span class="bar"><i class="run"></i></span><span class="job-state">đang chạy</span></div>
+            <div class="job"><span class="job-name">podcast-ep-41.wav</span><span class="bar"><i style="--p:0%"></i></span><span class="job-state">đang chờ</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-download tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Chạy bằng yt-dlp</p>
+            <h3>Tải xuống video &amp; âm thanh</h3>
+            <p>Bất cứ thứ gì <code>yt-dlp</code> xử lý được, kèm tùy chọn chép lời khi hoàn tất. Việc Tải xuống sẽ tiếp tục thay vì bắt đầu lại.</p>
+          </div>
+          <div class="viz viz-dl" aria-hidden="true">
+            <div class="url"><span class="url-dot"></span>https://…/watch?v=…</div>
+            <div class="dl-steps"><span class="st st-1">Tải xuống</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-2">Chép lời</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-3">.srt</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-denoise tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Đo lường trước khi lọc</p>
+            <h3>Khử tiếng ồn thích ứng</h3>
+            <p>Đo lường từng bản ghi âm trước và chỉ làm sạch khi điều đó hữu ích — kiểm tra đầu ra của chính nó và hoàn nguyên nếu nó làm mất đi giọng nói.</p>
+          </div>
+          <div class="viz viz-denoise" aria-hidden="true">
+            <svg class="wave wave-noisy" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="noisy"/></svg> <svg class="wave wave-clean" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="clean"/></svg> <span class="sweep"></span> <span class="wave-label l-before">trước</span><span class="wave-label l-after">sau</span>
+          </div>
+        </article>
+      </div>
+
+      <p class="feature-more sr">Cộng thêm các công cụ AI (tóm tắt, mục hành động, quy trình SRT song ngữ), một tab nhân bản giọng nói ngoại tuyến tùy chọn, và chế độ mạng cục bộ — xem thêm trong <a href="https://github.com/Milomilo777/whisper-transcriber-suite#features" rel="noopener">README</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="section how" id="how-it-works" aria-labelledby="how-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Cách hoạt động</p>
+        <h2 id="how-title">Chạy trên máy của bạn. <span class="h2-soft">Âm thanh của bạn luôn nằm lại đó.</span></h2>
+        <p class="section-lede">Việc chép lời chạy trên máy tính của chính bạn. Âm thanh của bạn chỉ được tải lên nếu bạn bật một trong hai engine đám mây tùy chọn, và văn bản chép lời chỉ rời đi nếu bạn tự kết nối một mô hình AI từ xa.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/loom-still.webp" data-still="/assets/promo/loom-still.webp" data-anim="/assets/promo/loom.svg" alt="Hoạt ảnh: một dòng thời gian trở thành phụ đề định thời từng từ, phụ đề Tiếng Anh được tạo ngoại tuyến bằng faster-whisper, whisper.cpp hoặc Parakeet, và 14 định dạng chép lời mà không cần tài khoản." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <ol class="pipeline">
+        <li class="step sr">
+          <span class="step-num">01</span>
+          <h3>Thả một tệp, hoặc dán một liên kết</h3>
+          <p>Âm thanh hoặc video từ ổ đĩa, hoặc bất cứ thứ gì <code>yt-dlp</code> có thể lấy. Giao diện Tk chạy trong tiến trình chính và đưa tác vụ vào hàng đợi ngay lập tức.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">02</span>
+          <h3>Một worker giữ mô hình</h3>
+          <p>Mọi tác vụ chạy trong tiến trình con worker tồn tại lâu dài của riêng nó, giữ Whisper trong bộ nhớ và truyền tiến trình trở lại qua JSON phân tách bằng dấu xuống dòng — để cửa sổ không bao giờ bị đóng băng.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">03</span>
+          <h3>Bản chép lời được đặt cạnh tệp của bạn</h3>
+          <p>Một token cho mỗi worker và một tín hiệu nhịp tim giữ cho việc định tuyến ổn định, cho phép ứng dụng phát hiện worker bị treo thay vì bị treo cùng nó.</p>
+        </li>
+      </ol>
+      <p class="built-on sr">Được xây dựng trên <a href="https://arxiv.org/abs/2212.04356" rel="noopener">mô hình nhận dạng giọng nói Whisper</a> của OpenAI, chạy cục bộ thông qua <a href="https://github.com/SYSTRAN/faster-whisper" rel="noopener">faster-whisper</a>, <a href="https://github.com/ggml-org/whisper.cpp" rel="noopener">whisper.cpp</a> hoặc <a href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3" rel="noopener">NVIDIA Parakeet</a>, với <a href="https://github.com/yt-dlp/yt-dlp" rel="noopener">yt-dlp</a> và <a href="https://ffmpeg.org/" rel="noopener">FFmpeg</a> để xử lý phương tiện.</p>
+      <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
+      <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Đọc kiến trúc đầy đủ<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <p class="muted guide-links">Hướng dẫn từng bước: <a href="/vi/youtube-to-text/">Chuyển video YouTube thành văn bản</a> · <a href="/vi/video-to-srt/">chuyển video thành phụ đề SRT</a> · <a href="/vi/speaker-labels/">chép lời kèm nhãn người nói</a></p>
+    </div>
+  </section>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="section download" id="download" aria-labelledby="download-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Tải xuống · <span data-auto="version">v2.1.0</span> · phát hành <span data-auto="released">2026-10-12</span></p>
+        <h2 id="download-title">Tải xuống. <span class="h2-soft">Chép lời ngay tối nay.</span></h2>
+        <p class="section-lede">Mọi thứ cần thiết đã được đóng gói — một môi trường Python riêng tư, ffmpeg, ffprobe và yt-dlp. Chỉ bản thân mô hình giọng nói mới được tải xuống sau (khoảng 1–3 GB, một lần); sau đó, việc chép lời hoạt động mà không cần kết nối internet.</p>
+      </header>
+
+      <div class="dl-grid">
+        <article class="dl-card sr" data-os="windows" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows <span class="dl-badge" data-rec-badge hidden>Khuyên dùng cho bạn</span></p>
+          <h3>Trình cài đặt <code>.exe</code></h3>
+          <p class="dl-size" data-auto="size-installer">~238&nbsp;MB</p>
+          <p class="dl-desc">Dành cho hầu hết mọi người — trình cài đặt thông thường, lối tắt menu Bắt đầu, nâng cấp tại chỗ. Ứng dụng không được ký mã, vì vậy Windows SmartScreen có thể cảnh báo một lần: <b>Thông tin thêm → Chạy bằng mọi giá</b>.</p>
+          <a class="btn btn-primary" data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Tải trình cài đặt</a>
+        </article>
+        <article class="dl-card sr" data-os="windows-portable" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows bản portable</p>
+          <h3>Bản portable <code>.zip</code></h3>
+          <p class="dl-size" data-auto="size-portable">~360&nbsp;MB</p>
+          <p class="dl-desc">Giải nén và chạy. Không cần cài đặt, không cần quyền quản trị, hoạt động tốt trên USB.</p>
+          <a class="btn btn-ghost" data-auto-href="portable" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Portable-Windows-v2.1.0.zip" rel="noopener">Tải tệp ZIP</a>
+        </article>
+        <article class="dl-card sr" data-os="mac" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS <span class="dl-badge" data-rec-badge hidden>Khuyên dùng cho bạn</span></p>
+          <h3>Ảnh đĩa <code>.dmg</code></h3>
+          <p class="dl-size"><span data-auto="size-mac-arm64">~275&nbsp;MB</span> · <span data-auto="size-mac-x64">~333&nbsp;MB</span></p>
+          <p class="dl-desc">Đơn giản nhất: một dòng trong Terminal — tự chọn bản build phù hợp và bỏ qua cảnh báo bảo mật. Hoặc tải ảnh đĩa cho Apple Silicon hoặc Intel.</p>
+          <a class="btn btn-primary" href="#mac-install"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Cài đặt một dòng</a>
+          <div class="dl-pair"><a class="btn btn-ghost" data-auto-href="mac-arm64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-arm64.dmg" rel="noopener">Apple Silicon</a><a class="btn btn-ghost" data-auto-href="mac-x64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-x64.dmg" rel="noopener">Intel</a></div>
+        </article>
+        <article class="dl-card dl-card-source sr" data-os="linux" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Linux &amp; mã nguồn <span class="dl-badge" data-rec-badge hidden>Khuyên dùng cho bạn</span></p>
+          <h3>Build từ mã nguồn</h3>
+          <p class="dl-size">Python 3.11+</p>
+          <pre class="dl-code"><code>git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
+pip install -r requirements.txt
+python gui.py</code></pre>
+          <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite#build-from-source" rel="noopener">Hướng dẫn mã nguồn</a>
+        </article>
+      </div>
+
+      <figure class="promo sr promo-after"><img src="/assets/promo/vise-still.webp" data-still="/assets/promo/vise-still.webp" data-anim="/assets/promo/vise.svg" alt="Hoạt ảnh: dòng chữ &quot;Sound in&quot; trở thành bản ghi có thời gian của hai người nói, được lưu thành SRT, DOCX và PDF, không cần tài khoản, không tải lên." width="1280" height="640" loading="lazy" decoding="async"></figure>
+      <div class="mac-install sr" id="mac-install">
+        <div class="mac-install-head">
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — cài đặt một dòng</p>
+          <h3>Dán vào Terminal. Xong.</h3>
+          <p>Tải xuống bản build phù hợp với Mac của bạn (Apple Silicon trên macOS 14+, nếu không thì Intel qua Rosetta), sao chép ứng dụng vào <code>Applications</code> và mở nó. Các tệp do <code>curl</code> Tải xuống không bị cách ly, nên không có cảnh báo "nhà phát triển không xác định" để bấm qua.</p>
+        </div>
+        <div class="code-box">
+          <button class="copy-btn" type="button" data-copy="#mac-cmd">Sao chép</button>
+          <pre><code id="mac-cmd" data-auto="mac-oneliner">A=x64; [ "$(uname -m)" = arm64 ] &amp;&amp; [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 14 ] &amp;&amp; A=arm64; curl -fL -o /tmp/wts.dmg "https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-$A.dmg" &amp;&amp; hdiutil attach -nobrowse -quiet -mountpoint /tmp/wts-dmg /tmp/wts.dmg &amp;&amp; cp -R "/tmp/wts-dmg/Whisper Transcriber Suite.app" /Applications/ &amp;&amp; hdiutil detach -quiet /tmp/wts-dmg &amp;&amp; rm /tmp/wts.dmg &amp;&amp; open "/Applications/Whisper Transcriber Suite.app"</code></pre>
+        </div>
+        <p class="mac-note">Thích cách thông thường? Mở <code>.dmg</code> và kéo ứng dụng vào Applications; lần mở đầu tiên cần nhấp chuột phải → <b>Open</b> (macOS 14 trở xuống) hoặc System Settings → Quyền riêng tư &amp; Security → <b>Open Anyway</b> (macOS 15+).</p>
+      </div>
+      <p class="dl-note sr">Mỗi bản phát hành, kèm ghi chú, đều có trên <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Hướng dẫn cài đặt</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section class="section compare" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">So sánh</p>
+        <h2 id="compare-title">So với các ứng dụng Whisper khác thì sao?</h2>
+        <p class="section-lede">Whisper Transcriber Suite là một trong số các ứng dụng desktop mã nguồn mở, miễn phí chép lời ngay trên máy của bạn. Dưới đây là so sánh với Subtitle Edit, Vibe và Buzz, kể cả khi ứng dụng khác phù hợp hơn. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Đọc bài so sánh đầy đủ</a>, có nguồn cho từng thông tin và thêm hai ứng dụng nữa, noScribe và aTrain.</p>
+      </header>
+      <div class="table-wrap sr">
+        <table class="compare-table">
+          <caption>Đã kiểm tra 2026-10-05 với README, tài liệu và bản phát hành của từng dự án. Ứng dụng thay đổi nhanh: xem <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">bài so sánh đầy đủ</a> để biết nguồn.</caption>
+          <thead>
+            <tr><th scope="col"><span class="sr-only">Tính năng</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Giá, giấy phép</th><td>Miễn phí, BSD-3-Clause</td><td>Miễn phí, MIT</td><td>Miễn phí, MIT</td><td>Miễn phí, MIT</td></tr>
+            <tr><th scope="row">Tải xuống</th><td>Bộ cài Windows và ZIP di động, macOS (Apple silicon, Intel); Linux từ mã nguồn</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 là bản cuối cho Mac Intel), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
+            <tr><th scope="row">Tăng tốc GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Bộ cài Windows có chữ ký</th><td>Không</td><td>Không ghi rõ</td><td>Có, theo tài liệu</td><td>Không</td></tr>
+            <tr><th scope="row">Ngôn ngữ giao diện</th><td>42 (dịch máy)</td><td>35</td><td>22</td><td>16</td></tr>
+            <tr><th scope="row">Chọn nếu</th><td>Bạn cũng muốn micro trực tiếp, tải video, 14 định dạng đầu ra và chế độ mạng cục bộ với route tương thích OpenAI</td><td>Bạn muốn nhiều engine nhận dạng giọng nói (Parakeet, Canary, Qwen3-ASR và hơn thế) hoặc ứng dụng Mac được notarize</td><td>Bạn muốn bộ cài Windows mà tài liệu nói là có chữ ký, hoặc hỗ trợ GPU cho AMD và Intel</td><td>Bạn muốn gói Linux (Flatpak, Snap, AppImage) hoặc cài qua PyPI</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section class="section faq" id="faq" aria-labelledby="faq-title">
+    <div class="wrap faq-grid">
+      <header class="faq-head sr">
+        <p class="eyebrow">Câu hỏi thường gặp</p>
+        <h2 id="faq-title">Các câu hỏi thường gặp</h2>
+        <p class="section-lede">Còn thắc mắc khác? Hỏi trong <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">GitHub Discussions</a>.</p>
+      </header>
+      <div class="faq-list sr">
+        <article class="qa"><h3>Whisper Transcriber Suite có miễn phí không?</h3><div class="faq-a"><p>Có. Nó được cấp phép BSD-3-Clause, không có gói đăng ký và không tính phí theo phút. Bản thân Mô hình Whisper chỉ tải xuống một lần (khoảng 1-3 GB) khi khởi chạy lần đầu; sau đó, việc chép lời sẽ hoạt động mà không cần kết nối Internet.</p></div></article>
+        <article class="qa"><h3>Nó có tải âm thanh hoặc video của tôi lên đâu đó không?</h3><div class="faq-a"><p>Không, không theo mặc định. Mọi backend mặc định — faster-whisper, whisper.cpp, NVIDIA Parakeet — đều chạy cục bộ trên máy của bạn. Hai backend chỉ bật khi chọn (một backend đám mây Gemini-API, và Google Cloud Speech-to-Text), và cả hai đều tắt cho đến khi bạn tự bật trong Advanced → Backend. Thống kê sử dụng (không có âm thanh, không có tên tệp) được bật mặc định và có thể tắt trong Trợ giúp → Thống kê sử dụng, ứng dụng kiểm tra GitHub hàng ngày để tìm phiên bản mới, và <b>File → Làm việc ngoại tuyến</b> dừng mọi kết nối mạng.</p></div></article>
+        <article class="qa"><h3>Nó chạy trên những nền tảng nào?</h3><div class="faq-a"><p>Windows, macOS và Linux. Các bản tải xuống được phát hành là bộ cài đặt Windows, tệp ZIP di động Windows và tệp DMG cho macOS; Linux chạy từ mã nguồn.</p></div></article>
+        <article class="qa"><h3>Nó có thể tạo ra những định dạng bản chép lời nào?</h3><div class="faq-a"><p><code>srt</code> <code>vtt</code> <code>ass</code> <code>tsv</code> <code>txt</code> <code>json</code> <code>lrc</code> <code>md</code> <code>docx</code> <code>pdf</code>, cùng với oTranscribe, ELAN, InqScribe và Express Scribe.</p></div></article>
+        <article class="qa"><h3>Nó có thể gắn nhãn người đang nói không?</h3><div class="faq-a"><p>Có — phân biệt người nói tùy chọn ("Nhận diện người nói"), kèm thời gian từng từ và cắt theo khoảng thời gian.</p></div></article>
+        <article class="qa"><h3>Nó có thể chép lời từ micrô trực tiếp hoặc âm thanh hệ thống không?</h3><div class="faq-a"><p>Có, từ tab Live — micro hoặc âm thanh hệ thống, được phiên âm theo thời gian thực.</p></div></article>
+        <article class="qa"><h3>Nó có thể tải xuống và chép lời các video trực tuyến, ví dụ: từ YouTube không?</h3><div class="faq-a"><p>Có, bất kỳ trang nào mà yt-dlp hỗ trợ, với bước chép lời tùy chọn khi hoàn tất.</p></div></article>
+        <article class="qa"><h3>Nó có thể tóm tắt bản chép lời, trích xuất các mục hành động hoặc trả lời câu hỏi về nó không?</h3><div class="faq-a"><p>Có, qua tab Công cụ AI tùy chọn trong trình xem bản ghi — tóm tắt, mục hành động, hỏi-đáp, và lượt dịch từng đoạn tạo <code>.srt</code> song ngữ. Mặc định tắt.</p></div></article>
+        <article class="qa"><h3>Nó có thể nhân bản giọng nói và khiến giọng đó đọc văn bản mới không?</h3><div class="faq-a"><p>Có, qua tab Clone Your Giọng nói tùy chọn, dùng OmniVoice (Apache-2.0) hoàn toàn trên máy của bạn. Mặc định tắt; bật khi cài đặt, và bạn phải xác nhận có quyền nhân bản Giọng nói tham chiếu.</p></div></article>
+        <article class="qa"><h3>Điều này khác gì so với việc gọi trực tiếp Whisper API?</h3><div class="faq-a"><p>Nó chạy mô hình cục bộ qua faster-whisper theo mặc định, nên không có chi phí API tính theo phút và âm thanh không rời máy của bạn — trừ khi bạn chủ động bật một trong hai backend đám mây.</p></div></article>
+        <article class="qa"><h3>Nhiều người trên cùng một mạng có thể sử dụng nó mà không cần cài đặt trên mọi máy không?</h3><div class="faq-a"><p>Có — chế độ truy cập Web/LAN biến máy này thành trang phiên âm để các thiết bị khác trên mạng dùng.</p></div></article>
+        <article class="qa"><h3>Có gì mới trong phiên bản 2.1?</h3><div class="faq-a"><p>Menu, nút và thông điệp có 42 ngôn ngữ (dịch máy và được đánh dấu); nhãn người nói vẫn được gán đến cuối bản ghi dài và bạn có thể đặt số người nói; bản ghi, bản xuất và phụ đề được ghi đầy đủ vào đĩa trước khi thay tệp cũ; các tính năng trực tuyến hoạt động trên mọi Mac. Phiên bản 2.0 thêm tốc độ và thời gian còn lại của hàng đợi, video có phụ đề từ đường dẫn, bản ghi thành một trang web ngoại tuyến, chế độ Làm việc ngoại tuyến có thể kiểm tra và dịch sang Tiếng Anh. Xem <a href="#whats-new">Có gì mới trong 2.1</a> và <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">nhật ký thay đổi</a>.</p></div></article>
+        <article class="qa"><h3>Nó có thể biến một liên kết video thành video có phụ đề không?</h3><div class="faq-a"><p>Có. Trong tab Tải video, đánh dấu <b>Tạo video có phụ đề</b>: ứng dụng Tải xuống video, phiên âm bằng Whisper và ghi phụ đề vào bằng ffmpeg, tạo tệp đặt theo tên video với <code>-subbed.mp4</code>. Bản Tải xuống và bản ghi được giữ lại, và <code>-subbed.mp4</code> sẵn có không bao giờ bị thay.</p></div></article>
+        <article class="qa"><h3>Tôi có thể giữ ứng dụng hoàn toàn ngoại tuyến không?</h3><div class="faq-a"><p>Có. <b>File → Làm việc ngoại tuyến</b> dừng kiểm tra cập nhật, thống kê sử dụng, tải mô hình và nhà cung cấp AI từ xa. Khi bật, một dòng dưới cửa sổ cho biết kết nối có đang mở hay không, và <em>Kiểm tra ngoại tuyến ngay</em> cho thấy các kết nối thử bị từ chối. Khi tắt, ứng dụng chỉ kết nối mạng cho cài đặt trực tuyến khi khởi động, kiểm tra cập nhật hàng ngày, thống kê sử dụng (có thể tắt trong Trợ giúp → Thống kê sử dụng) và các lượt tải bạn khởi tạo.</p></div></article>
+        <article class="qa"><h3>Tôi có thể liên hệ với dự án như thế nào?</h3><div class="faq-a"><p>Lỗi và yêu cầu tính năng gửi đến <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, câu hỏi đến <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, và còn lại qua email (địa chỉ hiện khi yêu cầu trong <a href="#contact">phần Liên hệ</a>). Báo cáo bảo mật gửi qua tính năng báo lỗ hổng riêng tư của GitHub.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT + SUPPORT ============ -->
+  <section class="section contact" id="contact" aria-labelledby="contact-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Liên hệ &amp; hỗ trợ</p>
+        <h2 id="contact-title">Liên hệ với chúng tôi. <span class="h2-soft">Trợ giúp dự án phát triển.</span></h2>
+      </header>
+      <div class="contact-grid">
+        <div class="contact-card sr" data-tilt-card data-contact>
+          <span class="contact-ic tone-teal"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg></span>
+          <h3>Email</h3>
+          <p class="contact-val"><button type="button" class="contact-reveal" data-contact-reveal>Hiện địa chỉ email</button><span data-contact-out aria-live="polite" hidden></span><noscript> (cần JavaScript)</noscript></p>
+          <p>Báo chí, đối tác, hoặc bất kỳ điều gì không phải báo cáo lỗi.</p>
+        </div>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-coral"><svg class="i" aria-hidden="true"><use href="#i-bug"/></svg></span>
+          <h3>Báo cáo lỗi</h3>
+          <p class="contact-val">GitHub Issues</p>
+          <p>Kèm theo phiên bản, hệ điều hành và tệp nhỏ nhất có thể tái hiện lỗi.</p>
+        </a>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-violet"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span>
+          <h3>Hỏi một câu hỏi</h3>
+          <p class="contact-val">GitHub Discussions</p>
+          <p>Trợ giúp cài đặt, ý tưởng và chia sẻ từ những người dùng khác.</p>
+        </a>
+      </div>
+
+      <div class="support-card sr">
+        <div class="support-orbit" aria-hidden="true"><img src="/assets/logo.svg" alt="" width="88" height="88"><span></span><span></span><span></span></div>
+        <div class="support-copy">
+          <h3 id="support">Ủng hộ dự án</h3>
+          <p>Whisper Transcriber Suite là phần mềm miễn phí, mã nguồn mở theo giấy phép BSD-3-Clause và được duy trì công khai. Nếu nó giúp bạn tiết kiệm thời gian, một lượt star trên GitHub sẽ giúp người khác tìm thấy nó — và một ly cà phê luôn được trân trọng.</p>
+          <div class="support-actions">
+            <a class="btn btn-coffee btn-lg" href="https://buymeacoffee.com/mehraz1358" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-cup"/></svg>Mời tôi ly cà phê</a> <a class="btn btn-light btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Star trên GitHub</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div class="footer-brand">
+      <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — trang chủ"><img class="brand-logo" src="/assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
+      <p class="muted">Được duy trì bởi một lập trình viên độc lập, <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Mã nguồn được cấp phép theo BSD-3-Clause.</p>
+      <p class="muted"><a href="#contact">Liên hệ</a></p>
+      <p class="site-stats" data-site-stats hidden><span data-stat="visits" hidden><strong></strong> lượt truy cập</span><span data-stat="downloads" hidden><strong></strong> lượt tải xuống</span></p>
+      <p class="muted small mt-note">Trang này được dịch từ Tiếng Anh bằng máy và được kiểm tra bởi một máy khác. Có chỗ nào đọc sai không? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">Cho chúng tôi biết trên GitHub</a>.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Chân trang">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Hướng dẫn cài đặt</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Nhật ký thay đổi</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Thảo luận</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Bảo mật</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">Giấy phép</a> <a href="/vi/youtube-to-text/">YouTube thành văn bản</a> <a href="/vi/video-to-srt/">Video thành SRT</a> <a href="/vi/speaker-labels/">Nhãn người nói</a> <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+  <div class="wrap">
+    <p class="muted small">Cũng có thể đọc bằng <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.de.md" rel="noopener" lang="de">Deutsch</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fr.md" rel="noopener" lang="fr">Français</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.es.md" rel="noopener" lang="es">Español</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.it.md" rel="noopener" lang="it">Italiano</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt-BR.md" rel="noopener" lang="pt-BR">Português (Brasil)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt.md" rel="noopener" lang="pt">Português (Portugal)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nl.md" rel="noopener" lang="nl">Nederlands</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pl.md" rel="noopener" lang="pl">Polski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ru.md" rel="noopener" lang="ru">Русский</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.uk.md" rel="noopener" lang="uk">Українська</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.tr.md" rel="noopener" lang="tr">Türkçe</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.cs.md" rel="noopener" lang="cs">Čeština</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sk.md" rel="noopener" lang="sk">Slovenčina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hu.md" rel="noopener" lang="hu">Magyar</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ro.md" rel="noopener" lang="ro">Română</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bg.md" rel="noopener" lang="bg">Български</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.el.md" rel="noopener" lang="el">Ελληνικά</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sv.md" rel="noopener" lang="sv">Svenska</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.da.md" rel="noopener" lang="da">Dansk</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nb.md" rel="noopener" lang="nb">Norsk bokmål</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fi.md" rel="noopener" lang="fi">Suomi</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hr.md" rel="noopener" lang="hr">Hrvatski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sr.md" rel="noopener" lang="sr">Српски</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sl.md" rel="noopener" lang="sl">Slovenščina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lt.md" rel="noopener" lang="lt">Lietuvių</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-CN.md" rel="noopener" lang="zh-CN">简体中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-TW.md" rel="noopener" lang="zh-TW">繁體中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ja.md" rel="noopener" lang="ja">日本語</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ko.md" rel="noopener" lang="ko">한국어</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.vi.md" rel="noopener" lang="vi">Tiếng Việt</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.th.md" rel="noopener" lang="th">ไทย</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.id.md" rel="noopener" lang="id">Bahasa Indonesia</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ms.md" rel="noopener" lang="ms">Bahasa Melayu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hi.md" rel="noopener" lang="hi">हिन्दी</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ar.md" rel="noopener" lang="ar">العربية</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fa.md" rel="noopener" lang="fa">فارسی</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.he.md" rel="noopener" lang="he">עברית</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lv.md" rel="noopener" lang="lv">Latviešu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ca.md" rel="noopener" lang="ca">Català</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bn.md" rel="noopener" lang="bn">বাংলা</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fil.md" rel="noopener" lang="fil">Filipino</a>.</p>
+  </div>
+</footer>
+
+<div class="star-toast" data-star-toast role="status" hidden>
+  <p><b>Cảm ơn đã tải xuống!</b> Trong lúc tải — nếu ứng dụng giúp bạn tiết kiệm thời gian, một ⭐ trên GitHub là cách để người khác tìm thấy nó. Chỉ một cú nhấp, hoàn toàn miễn phí.</p>
+  <div class="star-toast-actions">
+    <a class="btn btn-primary btn-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" data-star-go><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Star trên GitHub</a>
+    <button class="star-toast-close" type="button" data-star-close aria-label="Bỏ qua">×</button>
+  </div>
+</div>
+
+<script type="application/json" id="i18n-strings">
+{
+  "Play animations": "Phát hoạt ảnh",
+  "Pause animations": "Tạm dừng hoạt ảnh",
+  "Install on macOS": "Cài đặt trên macOS",
+  "Get it for Linux": "Tải xuống cho Linux",
+  "Get it for your computer": "Tải xuống cho máy tính của bạn",
+  "Show %s": "Hiển thị %s",
+  "Please write to us on GitHub Discussions": "Vui lòng viết cho chúng tôi trên GitHub Discussions",
+  "One moment…": "Một lát…",
+  "Could not load it. Try again": "Không thể tải. Thử lại",
+  "so the words appear as you speak": "để các từ hiện ra khi bạn nói",
+  "cuts land on natural pauses": "các điểm cắt rơi vào khoảng dừng tự nhiên",
+  "and no word is ever split in two": "và không một từ nào bị cắt làm hai",
+  "Your audio stays on your computer.": "Âm thanh của bạn vẫn nằm trên máy tính của bạn.",
+  "No account. No per-minute cost.": "Không cần tài khoản. Không tính phí theo phút.",
+  "Whisper runs on your own computer.": "Whisper chạy ngay trên máy tính của bạn.",
+  "Fourteen formats, one click.": "Mười bốn định dạng, chỉ một cú nhấp.",
+  "Copy": "Sao chép",
+  "Copied": "Đã sao chép"
+}
+</script>
+<script src="/js/main.js?v=20261018b" defer></script>
+<script src="/js/lang.js?v=20261019a" defer></script>
+</body>
+</html>

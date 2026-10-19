@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whisper Transcriber Suite — Transcriere offline gratuită</title>
+<meta name="description" content="Aplicație desktop gratuită care rulează OpenAI Whisper pe propriul computer. Transcrieți conținut audio și video în SRT, VTT, DOCX și PDF. Windows, macOS și Linux.">
+<meta name="author" content="translation-robot">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://whisper-transcriber-suite.com/ro/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/">
+<link rel="alternate" hreflang="de" href="https://whisper-transcriber-suite.com/de/">
+<link rel="alternate" hreflang="fr" href="https://whisper-transcriber-suite.com/fr/">
+<link rel="alternate" hreflang="es" href="https://whisper-transcriber-suite.com/es/">
+<link rel="alternate" hreflang="it" href="https://whisper-transcriber-suite.com/it/">
+<link rel="alternate" hreflang="pt-BR" href="https://whisper-transcriber-suite.com/pt-br/">
+<link rel="alternate" hreflang="pt" href="https://whisper-transcriber-suite.com/pt/">
+<link rel="alternate" hreflang="nl" href="https://whisper-transcriber-suite.com/nl/">
+<link rel="alternate" hreflang="pl" href="https://whisper-transcriber-suite.com/pl/">
+<link rel="alternate" hreflang="ru" href="https://whisper-transcriber-suite.com/ru/">
+<link rel="alternate" hreflang="uk" href="https://whisper-transcriber-suite.com/uk/">
+<link rel="alternate" hreflang="tr" href="https://whisper-transcriber-suite.com/tr/">
+<link rel="alternate" hreflang="cs" href="https://whisper-transcriber-suite.com/cs/">
+<link rel="alternate" hreflang="sk" href="https://whisper-transcriber-suite.com/sk/">
+<link rel="alternate" hreflang="hu" href="https://whisper-transcriber-suite.com/hu/">
+<link rel="alternate" hreflang="ro" href="https://whisper-transcriber-suite.com/ro/">
+<link rel="alternate" hreflang="bg" href="https://whisper-transcriber-suite.com/bg/">
+<link rel="alternate" hreflang="el" href="https://whisper-transcriber-suite.com/el/">
+<link rel="alternate" hreflang="sv" href="https://whisper-transcriber-suite.com/sv/">
+<link rel="alternate" hreflang="da" href="https://whisper-transcriber-suite.com/da/">
+<link rel="alternate" hreflang="nb" href="https://whisper-transcriber-suite.com/nb/">
+<link rel="alternate" hreflang="fi" href="https://whisper-transcriber-suite.com/fi/">
+<link rel="alternate" hreflang="hr" href="https://whisper-transcriber-suite.com/hr/">
+<link rel="alternate" hreflang="sr" href="https://whisper-transcriber-suite.com/sr/">
+<link rel="alternate" hreflang="sl" href="https://whisper-transcriber-suite.com/sl/">
+<link rel="alternate" hreflang="lt" href="https://whisper-transcriber-suite.com/lt/">
+<link rel="alternate" hreflang="zh-CN" href="https://whisper-transcriber-suite.com/zh-cn/">
+<link rel="alternate" hreflang="zh-TW" href="https://whisper-transcriber-suite.com/zh-tw/">
+<link rel="alternate" hreflang="ja" href="https://whisper-transcriber-suite.com/ja/">
+<link rel="alternate" hreflang="ko" href="https://whisper-transcriber-suite.com/ko/">
+<link rel="alternate" hreflang="vi" href="https://whisper-transcriber-suite.com/vi/">
+<link rel="alternate" hreflang="th" href="https://whisper-transcriber-suite.com/th/">
+<link rel="alternate" hreflang="id" href="https://whisper-transcriber-suite.com/id/">
+<link rel="alternate" hreflang="ms" href="https://whisper-transcriber-suite.com/ms/">
+<link rel="alternate" hreflang="hi" href="https://whisper-transcriber-suite.com/hi/">
+<link rel="alternate" hreflang="ar" href="https://whisper-transcriber-suite.com/ar/">
+<link rel="alternate" hreflang="fa" href="https://whisper-transcriber-suite.com/fa/">
+<link rel="alternate" hreflang="he" href="https://whisper-transcriber-suite.com/he/">
+<link rel="alternate" hreflang="lv" href="https://whisper-transcriber-suite.com/lv/">
+<link rel="alternate" hreflang="ca" href="https://whisper-transcriber-suite.com/ca/">
+<link rel="alternate" hreflang="bn" href="https://whisper-transcriber-suite.com/bn/">
+<link rel="alternate" hreflang="fil" href="https://whisper-transcriber-suite.com/fil/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/">
+<!-- i18n:hreflang:end -->
+<meta name="google-site-verification" content="_vMQaHCYUqaePsjuk_lmQ9Df32M03uPPZnXEFVr8ttU">
+<meta name="google-site-verification" content="uC9kBtANn2fSf-oX8ubTOv1cgtEQabzbnLz61epFOcc">
+<meta name="msvalidate.01" content="86B7B178FB8DB5F45F03295F6D2A8F4A">
+<meta name="msvalidate.01" content="C5065B95AD10AB4D2845E441E3D9FA37">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Whisper Transcriber Suite — Transcriere audio și video gratuită, offline">
+<meta property="og:description" content="Rulează OpenAI Whisper local. Conținutul audio rămâne pe computerul dumneavoastră, fără cont necesar. 14 formate de ieșire, transcriere live, etichete pentru vorbitori, descărcări YouTube. Gratuit, BSD-3-Clause, pentru Windows, macOS și Linux.">
+<meta property="og:url" content="https://whisper-transcriber-suite.com/ro/">
+<meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — transcriere audio și video gratuită, offline, pentru Windows, macOS și Linux.">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="ro_RO">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Whisper Transcriber Suite — Transcriere audio și video gratuită, offline">
+<meta name="twitter:description" content="Rulează OpenAI Whisper local. Conținutul audio rămâne pe computerul dumneavoastră, fără cont necesar. 14 formate de ieșire, transcriere live, etichete pentru vorbitori, descărcări YouTube.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="alternate" type="text/plain" title="Rezumat LLM" href="/llms.txt">
+
+<link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
+<script src="/js/motion-init.js?v=20260927b"></script>
+<link rel="stylesheet" href="/styles.css?v=20261019a">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://whisper-transcriber-suite.com/#org",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://github.com/Milomilo777/whisper-transcriber-suite/issues",
+        "availableLanguage": [
+          "English"
+        ]
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite",
+        "https://buymeacoffee.com/mehraz1358"
+      ],
+      "description": "Aplicație desktop gratuită și open-source care rulează OpenAI Whisper local pentru transcrierea fișierelor audio și video."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://whisper-transcriber-suite.com/#app",
+      "name": "Whisper Transcriber Suite",
+      "alternateName": "WhisperTranscriberSuite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "image": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+      "screenshot": [
+        "https://whisper-transcriber-suite.com/assets/shots/transcribe.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/live.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/download.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/queue.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/voice.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/web.webp"
+      ],
+      "description": "Aplicație desktop care rulează local modelul Whisper de la OpenAI prin faster-whisper, whisper.cpp sau NVIDIA Parakeet. Transcrie conținut audio și video în SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX și PDF. Conținutul audio rămâne pe computerul dumneavoastră și nu este nevoie de niciun cont.",
+      "softwareVersion": "2.1.0",
+      "datePublished": "2026-05-11",
+      "dateModified": "2026-10-12",
+      "operatingSystem": "Windows, macOS, Linux",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "Speech-to-text transcription",
+      "featureList": [
+        "Conversie vorbire în text offline cu faster-whisper, whisper.cpp sau NVIDIA Parakeet",
+        "14 formate de transcriere, inclusiv SRT, VTT, DOCX și PDF",
+        "Transcriere live de la microfon și din sunetul de sistem",
+        "Diarizare a vorbitorilor cu marcaje temporale la nivel de cuvânt",
+        "Coadă de procesare în lot cu pauză, reluare și reexecutare",
+        "Descărcări video și audio de pe orice site acceptat de yt-dlp",
+        "Reducere adaptivă a zgomotului",
+        "Rezumate AI opționale, puncte de acțiune și SRT bilingv",
+        "Clonare de voce offline opțională",
+        "Mod de acces web / LAN",
+        "Coada afișează viteza și timpul rămas pentru fiecare transcriere",
+        "Creează videoclip subtitrat: descărcați, transcrieți și încorporați subtitrările într-un MP4",
+        "Salvați o transcriere sub forma unei singure pagini web offline",
+        "Comutator Lucru offline cu stare vizibilă a rețelei",
+        "Traduceți vorbirea direct în Engleză"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isAccessibleForFree": true,
+      "interactionStatistic": {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/DownloadAction",
+        "userInteractionCount": 2694
+      },
+      "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
+      "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
+      "releaseNotes": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md",
+      "installUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md",
+      "codeRepository": "https://github.com/Milomilo777/whisper-transcriber-suite",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://whisper-transcriber-suite.com/#author"
+      },
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite"
+      ],
+      "softwareRequirements": "Windows 10 or 11 (64-bit); macOS 10.15 or later (Intel build) or macOS 14 or later (Apple Silicon build); Linux from source with Python 3.11+",
+      "memoryRequirements": "At least 8 GB RAM; an NVIDIA GPU with CUDA is optional"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://whisper-transcriber-suite.com/#website",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "inLanguage": "ro",
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://whisper-transcriber-suite.com/#author",
+      "name": "translation-robot",
+      "url": "https://github.com/translation-robot",
+      "sameAs": [
+        "https://github.com/translation-robot"
+      ],
+      "description": "Dezvoltator independent care menține Whisper Transcriber Suite ca proiect open-source."
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://whisper-transcriber-suite.com/ro/#webpage",
+      "url": "https://whisper-transcriber-suite.com/ro/",
+      "name": "Whisper Transcriber Suite — Transcriere offline gratuită",
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/ro/#website"
+      },
+      "about": {
+        "@id": "https://whisper-transcriber-suite.com/ro/#app"
+      },
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": [
+          ".hero-lede",
+          ".faq-a p"
+        ]
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Este Whisper Transcriber Suite gratuit?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da. Este licențiat sub BSD-3-Clause, fără abonamente și fără costuri pe minut. Modelul Whisper se descarcă o singură dată (aproximativ 1-3 GB) la prima lansare; după aceea, transcrierea funcționează fără conexiune la internet."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Încarcă fișierele mele audio sau video undeva?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Nu, nu în mod implicit. Fiecare backend implicit — faster-whisper, whisper.cpp, NVIDIA Parakeet — rulează local pe computerul dumneavoastră. Două backend-uri sunt strict opționale (cloud_stt prin Gemini API și google_cloud_stt) și ambele rămân dezactivate până când le activați personal în Setări avansate → Backend. Statisticile de utilizare (fără conținut audio, fără nume de fișiere) sunt activate în mod implicit și pot fi dezactivate din Ajutor > Statistici de utilizare, aplicația verifică pe GitHub o dată pe zi dacă există o versiune nouă, iar Fișier > Lucru offline oprește complet utilizarea rețelei."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pe ce platforme rulează?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Windows, macOS și Linux. Descărcările publicate sunt un program de instalare pentru Windows, o arhivă ZIP portabilă pentru Windows și un fișier DMG pentru macOS; Linux rulează din sursă."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Ce formate de transcriere poate genera?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX și PDF, plus oTranscribe, ELAN, InqScribe și Express Scribe."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Poate eticheta cine vorbește?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da, diarizare opțională a vorbitorilor (Identifică vorbitorii), cu marcaje temporale pentru fiecare cuvânt și decupare pe intervale de timp."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Poate transcrie live un microfon sau sunetul de sistem?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da, din fila Live: un microfon sau sunetul de sistem, transcrise pe măsură ce au loc."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Poate descărca și transcrie videoclipuri online, de exemplu de pe YouTube?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da, de pe orice site acceptat de yt-dlp, cu o etapă opțională de transcriere la finalizare."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Poate rezuma o transcriere, extrage puncte de acțiune sau răspunde la întrebări despre aceasta?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da, prin fila opțională Instrumente AI din vizualizatorul de transcrieri: rezumare, puncte de acțiune, adresarea unei întrebări și o etapă de traducere pe segmente care generează un fișier SRT bilingv. Este dezactivată în mod implicit."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Poate clona o voce pentru a o face să rostească un text nou?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da, prin fila opțională Clonează-ți vocea, folosind OmniVoice (Apache-2.0) în întregime pe computerul dumneavoastră. Dezactivată în mod implicit; poate fi activată la instalare."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Prin ce diferă acest lucru de apelarea directă a API-ului Whisper?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Rulează modelul local prin faster-whisper în mod implicit, astfel încât nu există costuri pe minut pentru API și niciun conținut audio nu părăsește computerul dumneavoastră, cu excepția cazului în care alegeți explicit unul dintre cele două backend-uri în cloud."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pot mai multe persoane din aceeași rețea să o folosească fără a o instala pe fiecare computer?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da, modul Acces web / LAN transformă acest computer într-o pagină de transcriere pe care celelalte dispozitive din rețea o pot utiliza."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Ce este nou în versiunea 2.1?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Meniurile, butoanele și mesajele sunt disponibile în 42 de limbi (traduse automat și marcate ca atare); etichetele pentru vorbitori ajung până la sfârșitul înregistrărilor lungi și puteți seta câte persoane vorbesc; transcrierile, exporturile și subtitrările sunt scrise complet pe disc înainte de a înlocui fișierul vechi; funcțiile online funcționează pe orice Mac. Versiunea 2.0 a adăugat viteza și timpul rămas în coadă, videoclip subtitrat dintr-un link, transcrieri sub forma unei singure pagini web offline, un mod verificabil Lucru offline și traducerea în Engleză."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Poate transforma un link video într-un videoclip cu subtitrări?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da. În fila Descărcare videoclipuri, bifați Creează videoclip subtitrat: aplicația descarcă videoclipul, îl transcrie cu Whisper și încorporează subtitrările cu ffmpeg, generând un fișier denumit după videoclip cu -subbed.mp4. Descărcarea și transcrierea sunt păstrate, iar un fișier -subbed.mp4 existent nu este înlocuit niciodată."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pot păstra aplicația complet deconectată de la rețea?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da. Fișier > Lucru offline oprește verificarea actualizărilor, statisticile de utilizare, descărcarea modelelor și furnizorii externi de AI. Cât timp este activat, o linie din partea de jos a ferestrei indică dacă o conexiune este deschisă, iar Verificați offline acum arată conexiunile de testare ca fiind refuzate. Când este dezactivat, aplicația accesează rețeaua doar pentru setările sale online la pornire, verificarea zilnică a actualizărilor, statisticile de utilizare (care pot fi dezactivate din Ajutor > Statistici de utilizare) și descărcările pe care le inițiați."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Cum pot contacta proiectul?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Raportările de erori și solicitările de funcționalități se trimit pe GitHub Issues, întrebările pe GitHub Discussions, iar orice altceva prin e-mail (adresa este afișată la cerere în secțiunea Contact). Rapoartele de securitate se trimit prin sistemul privat de raportare a vulnerabilităților de pe GitHub."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m0 0-5-5m5 5-5 5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m12 4-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m8 4 6 6-6 6"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 20 20"><path fill="currentColor" d="M2 3.6 8.4 2.7v6.6H2zm7.3-1 8.7-1.2v7.9H9.3zM2 10.2h6.4v6.7L2 16zm7.3 0H18v8.4l-8.7-1.2z"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 20 20"><path fill="currentColor" d="M13.6 10.6c0-1.9 1.6-2.8 1.6-2.9-.9-1.3-2.3-1.5-2.8-1.5-1.2-.1-2.3.7-2.9.7-.6 0-1.5-.7-2.5-.7-1.3 0-2.5.8-3.2 1.9-1.4 2.4-.4 5.9 1 7.8.6.9 1.4 2 2.4 1.9 1-.1 1.3-.6 2.5-.6s1.5.6 2.5.6c1 0 1.7-.9 2.3-1.9.7-1.1 1-2.1 1-2.2 0 0-1.9-.8-1.9-3.1zM11.7 4.9c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-1 1.5-.8 2.4.9.1 1.8-.4 2.4-1.1z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14v11H3zM6 8.5l2 1.5-2 1.5M10 12h4"/></symbol>
+    <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+    <symbol id="i-cup" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 7h10v4.5A4.5 4.5 0 0 1 9.5 16h-1A4.5 4.5 0 0 1 4 11.5zm10 1.5h1.2a2.3 2.3 0 0 1 0 4.6H14M7 2.5v2m3-2v2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 5h14v10H3zm0 0 7 6 7-6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4h14v9H8l-4 3v-3H3z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7 7a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM3 10h4m6 0h4M4 5l3 2m9-2-3 2M4 15l3-2m9 2-3-2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 20 20"><path fill="currentColor" d="M6 4v12l10-6z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 20 20"><path fill="currentColor" d="M5 4h3.5v12H5zm6.5 0H15v12h-3.5z"/></symbol>
+  </defs>
+</svg> <a class="skip-link" href="#main">Omiteți și treceți la conținut</a>
+
+<header class="site-header" data-header>
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — pagina principală">
+      <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
+    </a>
+    <nav class="site-nav" aria-label="Principală">
+      <a href="#showreel">Tur</a> <a href="#features">Funcționalități</a> <a href="#how-it-works">Cum funcționează</a> <a href="#download">Descărcați</a> <a href="#compare">Comparație</a> <a href="#faq">Întrebări frecvente</a> <a href="#contact">Contact</a>
+    </nav>
+    <div class="header-cta">
+      <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Limbă" aria-label="Limbă"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->Română<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/?lang=en" hreflang="en" lang="en" data-lang-pick="en">English</a></li>
+<li><a href="/de/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
+<li><a href="/fr/" hreflang="fr" lang="fr" data-lang-pick="fr">Français</a></li>
+<li><a href="/es/" hreflang="es" lang="es" data-lang-pick="es">Español</a></li>
+<li><a href="/it/" hreflang="it" lang="it" data-lang-pick="it">Italiano</a></li>
+<li><a href="/pt-br/" hreflang="pt-BR" lang="pt-BR" data-lang-pick="pt-BR">Português (Brasil)</a></li>
+<li><a href="/pt/" hreflang="pt" lang="pt" data-lang-pick="pt">Português (Portugal)</a></li>
+<li><a href="/nl/" hreflang="nl" lang="nl" data-lang-pick="nl">Nederlands</a></li>
+<li><a href="/pl/" hreflang="pl" lang="pl" data-lang-pick="pl">Polski</a></li>
+<li><a href="/ru/" hreflang="ru" lang="ru" data-lang-pick="ru">Русский</a></li>
+<li><a href="/uk/" hreflang="uk" lang="uk" data-lang-pick="uk">Українська</a></li>
+<li><a href="/tr/" hreflang="tr" lang="tr" data-lang-pick="tr">Türkçe</a></li>
+<li><a href="/cs/" hreflang="cs" lang="cs" data-lang-pick="cs">Čeština</a></li>
+<li><a href="/sk/" hreflang="sk" lang="sk" data-lang-pick="sk">Slovenčina</a></li>
+<li><a href="/hu/" hreflang="hu" lang="hu" data-lang-pick="hu">Magyar</a></li>
+<li><a href="/ro/" hreflang="ro" lang="ro" data-lang-pick="ro" aria-current="true">Română</a></li>
+<li><a href="/bg/" hreflang="bg" lang="bg" data-lang-pick="bg">Български</a></li>
+<li><a href="/el/" hreflang="el" lang="el" data-lang-pick="el">Ελληνικά</a></li>
+<li><a href="/sv/" hreflang="sv" lang="sv" data-lang-pick="sv">Svenska</a></li>
+<li><a href="/da/" hreflang="da" lang="da" data-lang-pick="da">Dansk</a></li>
+<li><a href="/nb/" hreflang="nb" lang="nb" data-lang-pick="nb">Norsk bokmål</a></li>
+<li><a href="/fi/" hreflang="fi" lang="fi" data-lang-pick="fi">Suomi</a></li>
+<li><a href="/hr/" hreflang="hr" lang="hr" data-lang-pick="hr">Hrvatski</a></li>
+<li><a href="/sr/" hreflang="sr" lang="sr" data-lang-pick="sr">Српски</a></li>
+<li><a href="/sl/" hreflang="sl" lang="sl" data-lang-pick="sl">Slovenščina</a></li>
+<li><a href="/lt/" hreflang="lt" lang="lt" data-lang-pick="lt">Lietuvių</a></li>
+<li><a href="/zh-cn/" hreflang="zh-CN" lang="zh-CN" data-lang-pick="zh-CN">简体中文</a></li>
+<li><a href="/zh-tw/" hreflang="zh-TW" lang="zh-TW" data-lang-pick="zh-TW">繁體中文</a></li>
+<li><a href="/ja/" hreflang="ja" lang="ja" data-lang-pick="ja">日本語</a></li>
+<li><a href="/ko/" hreflang="ko" lang="ko" data-lang-pick="ko">한국어</a></li>
+<li><a href="/vi/" hreflang="vi" lang="vi" data-lang-pick="vi">Tiếng Việt</a></li>
+<li><a href="/th/" hreflang="th" lang="th" data-lang-pick="th">ไทย</a></li>
+<li><a href="/id/" hreflang="id" lang="id" data-lang-pick="id">Bahasa Indonesia</a></li>
+<li><a href="/ms/" hreflang="ms" lang="ms" data-lang-pick="ms">Bahasa Melayu</a></li>
+<li><a href="/hi/" hreflang="hi" lang="hi" data-lang-pick="hi">हिन्दी</a></li>
+<li><a href="/ar/" hreflang="ar" lang="ar" dir="rtl" data-lang-pick="ar">العربية</a></li>
+<li><a href="/fa/" hreflang="fa" lang="fa" dir="rtl" data-lang-pick="fa">فارسی</a></li>
+<li><a href="/he/" hreflang="he" lang="he" dir="rtl" data-lang-pick="he">עברית</a></li>
+<li><a href="/lv/" hreflang="lv" lang="lv" data-lang-pick="lv">Latviešu</a></li>
+<li><a href="/ca/" hreflang="ca" lang="ca" data-lang-pick="ca">Català</a></li>
+<li><a href="/bn/" hreflang="bn" lang="bn" data-lang-pick="bn">বাংলা</a></li>
+<li><a href="/fil/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
+      <button class="btn-icon" type="button" data-motion-toggle aria-pressed="false" title="Pauză sau redare a animațiilor">
+        <svg class="i i-when-on" aria-hidden="true"><use href="#i-pause"/></svg> <svg class="i i-when-off" aria-hidden="true"><use href="#i-play"/></svg> <span class="sr-only" data-motion-label>Pauză animații</span>
+      </button>
+      <a class="btn btn-ghost btn-sm hide-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" aria-label="Acordați o stea proiectului Whisper Transcriber Suite pe GitHub"> <svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Stea </a> <a class="btn btn-primary btn-sm" href="#download">Descărcați</a>
+    </div>
+  </div>
+</header>
+
+<div class="lang-notice" data-lang-notice hidden>
+  <div class="wrap lang-notice-row">
+    <p>Această pagină este afișată în limba dumneavoastră pe baza locației de unde o vizitați. <a href="/?lang=en" data-lang-pick="en">Vizualizați în Engleză</a></p>
+    <button class="btn-icon" type="button" data-lang-notice-close aria-label="Închideți"><span aria-hidden="true">×</span></button>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <canvas class="hero-waves" data-waves aria-hidden="true"></canvas>
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="kicker reveal" style="--d:0"><span class="kicker-dot" aria-hidden="true"></span>Gratuit &amp; open-source · BSD-3-Clause · <span data-auto="version">v2.1.0</span></p>
+        <h1 class="hero-title" id="hero-title">
+          <span class="line"><span class="rise" style="--d:1">Intră sunet.</span></span> <span class="line"><span class="rise" style="--d:2">Iese text.</span></span> <span class="line"><span class="rise grad-text" style="--d:3">Conținutul audio rămâne pe computerul dumneavoastră.</span></span>
+        </h1>
+        <p class="hero-lede reveal" style="--d:4">Whisper Transcriber Suite rulează modelul Whisper de la OpenAI în întregime pe propriul computer — prin faster-whisper, whisper.cpp sau NVIDIA Parakeet. Trageți fișiere audio sau video și primiți o transcriere cu marcaje temporale. Fără cloud, fără cont, fără costuri pe minut.</p>
+        <div class="hero-actions reveal" style="--d:5">
+          <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Descărcați pentru Windows</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">Faceți turul<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </div>
+        <ul class="proof reveal" style="--d:6" aria-label="Dintr-o privire">
+          <li><strong data-count="14">14</strong><span>formate de transcriere</span></li>
+          <li><strong data-auto="downloads">2,600+</strong><span>descărcări până acum</span></li>
+          <li><strong>0</strong><span>încărcări audio în mod implicit</span></li>
+          <li><strong>$0</strong><span>pentru totdeauna</span></li>
+        </ul>
+      </div>
+
+      <div class="hero-scene" data-scene aria-hidden="true">
+        <div class="scene-rig" data-rig>
+          <div class="float-layer l-back">
+            <figure class="win win-sm win-a"><div class="win-bar"><i></i><i></i><i></i><span>Live</span></div><img src="/assets/shots/live-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-mid">
+            <figure class="win win-sm win-b"><div class="win-bar"><i></i><i></i><i></i><span>Descărcare videoclipuri</span></div><img src="/assets/shots/download-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-front">
+            <figure class="win win-main"><div class="win-bar"><i></i><i></i><i></i><span>Whisper Transcriber Suite</span></div><img src="/assets/shots/transcribe.webp" srcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" sizes="(max-width: 1080px) 72vw, 480px" alt="" width="1180" height="668" fetchpriority="high"></figure>
+          </div>
+          <div class="float-layer l-pop1">
+            <div class="chip-card wave-card"><span class="rec"></span><span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+          </div>
+          <div class="float-layer l-pop2">
+            <div class="chip-card srt-card">
+              <p class="srt-ts">00:00:04,120 → 00:00:06,880</p>
+              <p class="srt-line"><span data-hero-typer>Conținutul audio rămâne pe computerul dumneavoastră.</span><span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="float-layer l-pop3">
+            <div class="chip-card fmt-card"><b>.srt</b><b>.vtt</b><b>.docx</b><b>.pdf</b></div>
+          </div>
+          <div class="float-layer l-pop4">
+            <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Transcriere offline</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Diarizare vorbitori</span> <span>Microfon live</span> <span>Clonare vocală</span> <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Diarizare vorbitori</span> <span>Microfon live</span> <span>Clonare vocală</span>
+    </div>
+  </div>
+
+  <!-- ============ SHOWREEL (3D carousel) ============ -->
+  <section class="section showreel" id="showreel" aria-labelledby="reel-title">
+    <div class="reel-glow" aria-hidden="true"></div>
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Turul produsului</p>
+        <h2 id="reel-title">O singură fereastră. <span class="h2-soft">Șase instrumente.</span></h2>
+        <p class="section-lede">Trageți un fișier, alegeți opțiunile și apăsați Transcrieți. Tot restul — coada, descărcările, captarea live, clonarea vocală și partajarea în LAN — se află la o filă distanță. Trageți de inel sau folosiți săgețile.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/showreel-still.webp" data-still="/assets/promo/showreel-still.webp" data-anim="/assets/promo/showreel.svg" alt="Animație: un interviu cu doi vorbitori etichetați, o prelegere transformată în subtitrări sincronizate, un link video transformat într-un videoclip subtitrat, subtitrări live de la un microfon, iar transcrierea salvată lângă fișier ca SRT, VTT, DOCX și PDF." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="reel" data-reel>
+        <div class="reel-viewport" data-reel-viewport>
+          <div class="reel-ring" data-reel-ring>
+            <figure class="reel-card" data-title="Transcrieți" data-caption="O zonă de plasare, selectoare pentru motor, model și limbă, opțiuni pentru etichetarea vorbitorilor și marcaje temporale la nivel de cuvânt."><div class="win-bar"><i></i><i></i><i></i><span>Transcrieți</span></div><img src="/assets/shots/transcribe-640.webp" alt="Fila Transcrieți: zonă de plasare, selectoare pentru motor, model și limbă, opțiuni pentru etichetarea vorbitorilor și marcaje temporale pentru cuvinte" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Live" data-caption="Transcrie de la microfon — sau orice redă acest computer — în timp real, cu un indicator al nivelului de intrare."><div class="win-bar"><i></i><i></i><i></i><span>Live</span></div><img src="/assets/shots/live-640.webp" alt="Fila Live: sursă audio de la microfon sau din sistem, selectoare pentru limbă și model, indicator al nivelului de intrare și un panou de transcriere live" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Descărcare videoclipuri" data-caption="Alegeți un format, decupați un interval de timp, vedeți ce subtitrări are deja videoclipul și, opțional, transcrieți-l sau încorporați subtitrările într-un nou MP4."><div class="win-bar"><i></i><i></i><i></i><span>Descărcare videoclipuri</span></div><img src="/assets/shots/download-640.webp" alt="Fila Descărcare videoclipuri: URL cu linia Subtitrări disponibile, cookie-uri de autentificare din browser, format, interval de timp, Folosiți subtitrările, Transcrie după descărcare și Creează videoclip subtitrat" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Coadă de transcriere" data-caption="Sarcini în serie cu progres în timp real, viteză și timp rămas — puneți pe pauză, reluați, anulați, relansați sau eliminați orice rând."><div class="win-bar"><i></i><i></i><i></i><span>Coadă de transcriere</span></div><img src="/assets/shots/queue-640.webp" alt="Fila Coadă de transcriere: coloane pentru fișier, stare, progres, viteză și timp rămas, limbă și timp scurs, cu pauză, reluare, anulare, relansare și eliminare" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Clonează-ți vocea" data-caption="Opțional, complet offline: clonați o voce dintr-un scurt eșantion sau creați una nouă și puneți-o să citească un text nou."><div class="win-bar"><i></i><i></i><i></i><span>Clonează-ți vocea</span></div><img src="/assets/shots/voice-640.webp" alt="Fila Clonează-ți vocea / Text în voce: modelul OmniVoice, eșantion de voce, text de rostit, limbă și viteză" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Acces web / LAN" data-caption="Un singur buton transformă acest computer într-o pagină de transcriere pentru celelalte dispozitive din rețeaua dumneavoastră."><div class="win-bar"><i></i><i></i><i></i><span>Acces web / LAN</span></div><img src="/assets/shots/web-640.webp" alt="Fila Acces web / LAN: pornire acces web, port, partajare în rețeaua locală, parolă de acces și opțiuni HTTPS" width="640" height="362" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+        <div class="reel-controls">
+          <button class="reel-btn" type="button" data-reel-prev aria-label="Ecranul anterior"><svg class="i" aria-hidden="true"><use href="#i-left"/></svg></button>
+          <div class="reel-meta" aria-live="off" data-reel-live>
+            <p class="reel-title" data-reel-title>Transcrieți</p>
+            <p class="reel-caption" data-reel-caption>O zonă de plasare, selectoare pentru motor, model și limbă, opțiuni pentru etichetarea vorbitorilor și marcaje temporale la nivel de cuvânt.</p>
+          </div>
+          <button class="reel-btn" type="button" data-reel-next aria-label="Ecranul următor"><svg class="i" aria-hidden="true"><use href="#i-right"/></svg></button>
+        </div>
+        <div class="reel-dots" data-reel-dots role="group" aria-label="Alegeți un ecran"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Noutăți în 2.1</p>
+        <h2 id="new-title">Noutăți în 2.1. <span class="h2-soft">Acum în limba ta.</span></h2>
+        <p class="section-lede">Aplicația în 42 de limbi, etichete de vorbitor care ajung până la sfârșitul înregistrărilor lungi, fișiere care rezistă unei pene de curent și funcții online care funcționează pe orice Mac. Mai jos, noutățile aduse de versiunea 2.0.</p>
+      </header>
+
+      <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Toate platformele</p>
+          <h3>Aplicația în limba ta</h3>
+          <p>Meniurile, butoanele și mesajele sunt disponibile în 42 de limbi (39 pe macOS și Linux). Aplicația preia limba sistemului sau puteți alege una din <em>Setări avansate</em>. Fiecare limbă, cu excepția limbii engleze, este o traducere automată și este marcată ca atare; persana, araba și ebraica sunt oferite deocamdată pe Windows.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Toate platformele</p>
+          <h3>Etichete de vorbitor pe care vă puteți baza</h3>
+          <p>Numele vorbitorilor ajung acum până la sfârșitul înregistrărilor lungi, detectarea vorbitorilor nu mai poate bloca o transcriere, iar lângă <em>Identifică vorbitorii</em> puteți stabili numărul de persoane care vorbesc (de la 2 la 10), în loc să lăsați opțiunea pe Auto.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Toate platformele</p>
+          <h3>Munca dumneavoastră este mai în siguranță</h3>
+          <p>Transcrierile, exporturile și subtitrările sunt scrise complet pe disc înainte de a înlocui fișierul vechi, astfel încât o pană de curent nu poate lăsa un fișier gol. O transcriere al cărei proces s-a oprit după scrierea tuturor fișierelor este considerată finalizată.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · macOS</p>
+          <h3>Funcții online pe orice Mac</h3>
+          <p>Verificarea actualizărilor, rapoartele de probleme și alte interogări web nu mai eșuează cu <em>certificate verify failed</em>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Toate platformele</p>
+          <h3>Viteză și timp rămas</h3>
+          <p>Fila Coadă de transcriere arată cât de rapid rulează fiecare transcriere și cu aproximație cât timp a mai rămas, de exemplu <em>aproximativ 4.8x, 6 min rămase</em>. Cardul de rezultat afișează viteza, modelul și dispozitivul la finalizarea sarcinii.</p>
+          <figure class="new-shot"><img src="/assets/shots/queue-640.webp" alt="Fila Coadă de transcriere cu o coloană Viteză și timp rămas care indică aproximativ 6.8x, 2 min rămase pentru sarcina în curs de rulare" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Toate platformele</p>
+          <h3>Creează videoclip subtitrat</h3>
+          <p>Bifați opțiunea în fila Descărcare videoclipuri, iar linkul devine <code>&lt;title&gt;-subbed.mp4</code> cu subtitrările încorporate: descărcare, transcriere și încorporare ca o singură sarcină în coadă, cu progres și un buton funcțional Anulați. Descărcarea și transcrierea sunt păstrate.</p>
+          <figure class="new-shot"><img src="/assets/shots/download-640.webp" alt="Fila Descărcare videoclipuri afișând linia Subtitrări disponibile: Engleză și Germană, butonul Folosiți subtitrările și caseta de bifare Creează videoclip subtitrat" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Toate platformele</p>
+          <h3>Partajați o transcriere ca o singură pagină web</h3>
+          <p>Salvați o transcriere finalizată ca un singur fișier <code>.html</code> care se deschide în orice browser, fără instalare și fără conexiune la internet: marcaje temporale, vorbitori, capitole și o casetă de căutare. Faceți clic pe un cuvânt și redarea media începe de acolo.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Toate platformele</p>
+          <h3>Lucru offline, făcut vizibil</h3>
+          <p>Un singur comutator din meniul Fișier menține aplicația deconectată de la rețea. O linie din partea de jos a ferestrei indică dacă o conexiune este deschisă, iar <em>Verificați offline acum</em> arată cum conexiunile de test sunt respinse. Opțiunea Statistici de utilizare este activată în mod implicit și poate fi dezactivată din meniul Ajutor.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Toate platformele</p>
+          <h3>Traducerea vorbirii în engleză</h3>
+          <p>Opțiunea <em>Ieșire: traducere în engleză</em> transformă vorbirea în alte limbi decât engleza în subtitrări în limba engleză dintr-un singur pas, folosind funcția proprie de traducere din Whisper. Aceasta este dezactivată în mod implicit și nu este disponibilă pentru toate motoarele sau modelele.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · macOS</p>
+          <h3>Un Mac care se simte ca un Mac</h3>
+          <p>Un meniu al aplicației cu Setări (Command-comma), mod luminos și întunecat care urmează macOS, fontul sistemului, fișiere deschise din Finder sau plasate pe pictograma din Dock și o notificare când o sarcină se finalizează în timp ce aplicația este în fundal.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Windows</p>
+          <h3>Progres în bara de activități și bare de titlu întunecate</h3>
+          <p>Butonul din bara de activități arată progresul, numărul de sarcini în așteptare și în derulare, și clipește când o sarcină se finalizează. Barele de titlu respectă tema întunecată, iar textul rămâne clar la o scalare a afișajului de 125% și 150%.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Prima lansare</p>
+          <h3>O pornire rapidă și un clip demonstrativ</h3>
+          <p>O instalare nouă vă solicită limba, Rapid sau Cea mai bună calitate, și un dosar, afișând dimensiunea modelului înainte de a descărca ceva. Un clip de 18 secunde din domeniul public vă permite să vedeți o transcriere reală înainte de a alege un fișier propriu.</p>
+        </article>
+      </div>
+      <p class="feature-more sr">De asemenea nou în 2.0: Text to Voice citește texte de până la 100.000 de caractere bucată cu bucată, un buton <em>Actualizați-l</em> actualizează modulul de descărcare video fără drepturi de administrator, iar o bară discretă de actualizare înlocuiește caseta de dialog de actualizare. Fila Video Tiling a fost eliminată. Totul se află în <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">jurnalul de modificări</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section features" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Funcționalități</p>
+        <h2 id="features-title">Tot ce vă doriți de la un instrument de transcriere. <span class="h2-soft">Rulând pe propriul computer.</span></h2>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/prism-still.webp" data-still="/assets/promo/prism-still.webp" data-anim="/assets/promo/prism.svg" alt="Animație: un W mare separă doi vorbitori, arată motoarele locale faster-whisper, whisper.cpp și Parakeet rulând offline și se ramifică în 14 formate de transcriere." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="bento" data-spotlight>
+        <article class="cell cell-engines tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
+            <h3>Transcriere locală și privată</h3>
+            <p>Whisper <code>large-v3</code> în mod implicit, plus <code>large-v3-turbo</code> și <code>distil-large-v3.5</code>. Alegeți backend-ul care se potrivește hardware-ului dumneavoastră.</p>
+          </div>
+          <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
+          <div class="viz viz-engines" aria-hidden="true">
+            <div class="engine-list">
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">faster-whisper</span><span class="engine-tag">implicit</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">whisper.cpp</span><span class="engine-tag">local</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">NVIDIA Parakeet</span><span class="engine-tag">local</span></div>
+            </div>
+            <div class="offline-badge"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Rulează offline după descărcarea unică a modelului</div>
+          </div>
+        </article>
+
+        <article class="cell cell-formats tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">14 formate</p>
+            <h3>Toate formatele de transcriere de care aveți nevoie</h3>
+            <p>Salvate chiar lângă fișierul de intrare — plus oTranscribe, ELAN, InqScribe și Express Scribe pentru fluxuri profesionale de transcriere.</p>
+          </div>
+          <div class="viz viz-formats" aria-hidden="true">
+            <span>srt</span> <span>vtt</span> <span>ass</span> <span>tsv</span> <span>txt</span> <span>json</span> <span>lrc</span> <span>md</span> <span>docx</span> <span>pdf</span> <span class="wide">oTranscribe</span> <span class="wide">ELAN</span> <span class="wide">InqScribe</span> <span class="wide">Express Scribe</span>
+          </div>
+        </article>
+
+        <article class="cell cell-live tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Microfon · sunet de sistem</p>
+            <h3>Transcriere în timp real</h3>
+            <p>Transcrie de la microfon — sau orice redă acest computer — pe măsură ce se întâmplă. Segmentarea se face la pauze naturale, astfel încât cuvintele nu sunt niciodată despărțite.</p>
+          </div>
+          <div class="viz viz-live" aria-hidden="true">
+            <div class="live-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="live-text"><span class="live-rec"></span><span data-typer>astfel încât cuvintele să apară pe măsură ce vorbiți</span><span class="caret"></span></p>
+          </div>
+        </article>
+
+        <article class="cell cell-speakers tone-sun sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Marcaje temporale pe cuvânt</p>
+            <h3>Diarizarea vorbitorilor</h3>
+            <p>Etapă opțională „Identifică vorbitorii”, plus marcaje temporale pe cuvânt și decupare pe intervale de timp pentru editarea unor segmente precise.</p>
+          </div>
+          <div class="viz viz-speakers" aria-hidden="true">
+            <div class="utt"><span class="ts">00:04.2</span><span class="spk s1">Vorbitor 1</span><span class="words"><b>Deci</b> <b>de</b> <b>unde</b> <b>să</b> <b>începem?</b></span></div>
+            <div class="utt"><span class="ts">00:06.9</span><span class="spk s2">Vorbitor 2</span><span class="words"><b>Cu</b> <b>înregistrarea</b> <b>în</b> <b>sine.</b></span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-queue tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Pauză · reluare · relansare</p>
+            <h3>Coadă de procesare în lot</h3>
+            <p>Stare în timp real pentru fiecare sarcină în așteptare și în derulare, cu control complet asupra fiecărui rând la un singur clic distanță.</p>
+          </div>
+          <div class="viz viz-queue" aria-hidden="true">
+            <div class="job"><span class="job-name">interview-03.mp4</span><span class="bar"><i style="--p:100%"></i></span><span class="job-state done">finalizat</span></div>
+            <div class="job"><span class="job-name">lecture-week-2.m4a</span><span class="bar"><i class="run"></i></span><span class="job-state">în derulare</span></div>
+            <div class="job"><span class="job-name">podcast-ep-41.wav</span><span class="bar"><i style="--p:0%"></i></span><span class="job-state">în așteptare</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-download tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Bazat pe yt-dlp</p>
+            <h3>Descărcări video &amp; audio</h3>
+            <p>Orice poate gestiona <code>yt-dlp</code>, cu transcriere opțională la finalizare. Descărcările se reiau în loc să reînceapă.</p>
+          </div>
+          <div class="viz viz-dl" aria-hidden="true">
+            <div class="url"><span class="url-dot"></span>https://…/watch?v=…</div>
+            <div class="dl-steps"><span class="st st-1">Descărcați</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-2">Transcrieți</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-3">.srt</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-denoise tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Măsoară înainte de a filtra</p>
+            <h3>Reducere adaptivă a zgomotului</h3>
+            <p>Măsoară mai întâi fiecare înregistrare și o curăță doar dacă acest lucru ajută — își verifică propriul rezultat și revine la starea inițială dacă a eliminat vorbire.</p>
+          </div>
+          <div class="viz viz-denoise" aria-hidden="true">
+            <svg class="wave wave-noisy" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="noisy"/></svg> <svg class="wave wave-clean" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="clean"/></svg> <span class="sweep"></span> <span class="wave-label l-before">înainte</span><span class="wave-label l-after">după</span>
+          </div>
+        </article>
+      </div>
+
+      <p class="feature-more sr">Plus instrumente AI (rezumate, puncte de acțiune, o etapă SRT bilingvă), o filă opțională offline pentru clonarea vocii și un mod pentru rețeaua locală — mai multe în <a href="https://github.com/Milomilo777/whisper-transcriber-suite#features" rel="noopener">README</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="section how" id="how-it-works" aria-labelledby="how-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Cum funcționează</p>
+        <h2 id="how-title">Rulează pe computerul dumneavoastră. <span class="h2-soft">Fișierele audio rămân acolo.</span></h2>
+        <p class="section-lede">Transcrierea rulează pe propriul computer. Fișierele audio sunt încărcate doar dacă activați unul dintre cele două motoare cloud opționale, iar textul transcrierii este transmis doar dacă conectați personal un model AI la distanță.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/loom-still.webp" data-still="/assets/promo/loom-still.webp" data-anim="/assets/promo/loom.svg" alt="Animație: o cronologie devine subtitrări cu marcaje temporale pe cuvânt, subtitrări în engleză create offline cu faster-whisper, whisper.cpp sau Parakeet și 14 formate de transcriere fără cont." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <ol class="pipeline">
+        <li class="step sr">
+          <span class="step-num">01</span>
+          <h3>Trageți un fișier sau lipiți un link</h3>
+          <p>Fișiere audio sau video de pe disc sau orice poate prelua <code>yt-dlp</code>. Interfața Tk rulează în procesul principal și adaugă sarcina în coadă instantaneu.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">02</span>
+          <h3>Un worker păstrează modelul</h3>
+          <p>Fiecare sarcină rulează în propriul subproces worker de lungă durată, care păstrează Whisper în memorie și transmite progresul prin JSON delimitat prin linii noi — astfel încât fereastra nu se blochează niciodată.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">03</span>
+          <h3>Transcrierea este salvată chiar lângă fișierul dumneavoastră</h3>
+          <p>Un token per worker și un semnal de tip heartbeat mențin rutarea robustă și permit aplicației să detecteze un worker blocat în loc să se blocheze odată cu el.</p>
+        </li>
+      </ol>
+      <p class="built-on sr">Dezvoltat pe baza <a href="https://arxiv.org/abs/2212.04356" rel="noopener">modelului de recunoaștere a vorbirii Whisper</a> de la OpenAI, rulat local prin <a href="https://github.com/SYSTRAN/faster-whisper" rel="noopener">faster-whisper</a>, <a href="https://github.com/ggml-org/whisper.cpp" rel="noopener">whisper.cpp</a> sau <a href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3" rel="noopener">NVIDIA Parakeet</a>, cu <a href="https://github.com/yt-dlp/yt-dlp" rel="noopener">yt-dlp</a> și <a href="https://ffmpeg.org/" rel="noopener">FFmpeg</a> pentru gestionarea fișierelor media.</p>
+      <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
+      <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Citiți arhitectura completă<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <p class="muted guide-links">Ghiduri pas cu pas: <a href="/ro/youtube-to-text/">video YouTube în text</a> · <a href="/ro/video-to-srt/">video în subtitrări SRT</a> · <a href="/ro/speaker-labels/">transcrieri cu etichete pentru vorbitori</a></p>
+    </div>
+  </section>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="section download" id="download" aria-labelledby="download-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Descărcați · <span data-auto="version">v2.1.0</span> · lansat <span data-auto="released">2026-10-12</span></p>
+        <h2 id="download-title">Descărcați. <span class="h2-soft">Transcrieți diseară.</span></h2>
+        <p class="section-lede">Tot ce este necesar este inclus — un mediu de execuție Python privat, ffmpeg, ffprobe și yt-dlp. Doar modelul vocal se descarcă ulterior (aproximativ 1–3 GB, o singură dată); după aceea, transcrierea funcționează fără conexiune la internet.</p>
+      </header>
+
+      <div class="dl-grid">
+        <article class="dl-card sr" data-os="windows" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows <span class="dl-badge" data-rec-badge hidden>Recomandat pentru dumneavoastră</span></p>
+          <h3>Program de instalare <code>.exe</code></h3>
+          <p class="dl-size" data-auto="size-installer">~238&nbsp;MB</p>
+          <p class="dl-desc">Pentru majoritatea utilizatorilor — program de instalare obișnuit, comandă rapidă în meniul Start, actualizări pe loc. Aplicația nu este semnată digital, așa că Windows SmartScreen poate afișa un avertisment o singură dată: <b>Mai multe informații → Rulați oricum</b>.</p>
+          <a class="btn btn-primary" data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Descărcați programul de instalare</a>
+        </article>
+        <article class="dl-card sr" data-os="windows-portable" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows portabil</p>
+          <h3>Portabil <code>.zip</code></h3>
+          <p class="dl-size" data-auto="size-portable">~360&nbsp;MB</p>
+          <p class="dl-desc">Dezarhivați și rulați. Fără instalare, fără drepturi de administrator, rulează fără probleme de pe un stick USB.</p>
+          <a class="btn btn-ghost" data-auto-href="portable" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Portable-Windows-v2.1.0.zip" rel="noopener">Descărcați arhiva ZIP</a>
+        </article>
+        <article class="dl-card sr" data-os="mac" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS <span class="dl-badge" data-rec-badge hidden>Recomandat pentru dvs.</span></p>
+          <h3>Imagine de disc <code>.dmg</code></h3>
+          <p class="dl-size"><span data-auto="size-mac-arm64">~275&nbsp;MB</span> · <span data-auto="size-mac-x64">~333&nbsp;MB</span></p>
+          <p class="dl-desc">Cel mai simplu: o singură linie în Terminal — alege versiunea potrivită și omite avertismentul de securitate. Sau descărcați imaginea de disc pentru Apple Silicon ori Intel.</p>
+          <a class="btn btn-primary" href="#mac-install"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Instalare printr-o singură linie</a>
+          <div class="dl-pair"><a class="btn btn-ghost" data-auto-href="mac-arm64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-arm64.dmg" rel="noopener">Apple Silicon</a><a class="btn btn-ghost" data-auto-href="mac-x64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-x64.dmg" rel="noopener">Intel</a></div>
+        </article>
+        <article class="dl-card dl-card-source sr" data-os="linux" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Linux &amp; surse <span class="dl-badge" data-rec-badge hidden>Recomandat pentru dvs.</span></p>
+          <h3>Compilare din surse</h3>
+          <p class="dl-size">Python 3.11+</p>
+          <pre class="dl-code"><code>git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
+pip install -r requirements.txt
+python gui.py</code></pre>
+          <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite#build-from-source" rel="noopener">Ghid pentru surse</a>
+        </article>
+      </div>
+
+      <figure class="promo sr promo-after"><img src="/assets/promo/vise-still.webp" data-still="/assets/promo/vise-still.webp" data-anim="/assets/promo/vise.svg" alt="Animație: cuvintele Sound in devin o transcriere sincronizată a doi vorbitori, salvată ca SRT, DOCX și PDF, fără cont și fără încărcare." width="1280" height="640" loading="lazy" decoding="async"></figure>
+      <div class="mac-install sr" id="mac-install">
+        <div class="mac-install-head">
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — instalare printr-o singură linie</p>
+          <h3>Lipiți în Terminal. Asta e tot.</h3>
+          <p>Descarcă versiunea potrivită pentru Mac-ul dvs. (Apple Silicon pe macOS 14+, altfel Intel prin Rosetta), copiază aplicația în <code>Applications</code> și o deschide. Fișierele descărcate prin <code>curl</code> nu sunt puse în carantină, așa că nu există niciun avertisment „unidentified developer” peste care să trebuiască să treceți.</p>
+        </div>
+        <div class="code-box">
+          <button class="copy-btn" type="button" data-copy="#mac-cmd">Copiați</button>
+          <pre><code id="mac-cmd" data-auto="mac-oneliner">A=x64; [ "$(uname -m)" = arm64 ] &amp;&amp; [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 14 ] &amp;&amp; A=arm64; curl -fL -o /tmp/wts.dmg "https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-$A.dmg" &amp;&amp; hdiutil attach -nobrowse -quiet -mountpoint /tmp/wts-dmg /tmp/wts.dmg &amp;&amp; cp -R "/tmp/wts-dmg/Whisper Transcriber Suite.app" /Applications/ &amp;&amp; hdiutil detach -quiet /tmp/wts-dmg &amp;&amp; rm /tmp/wts.dmg &amp;&amp; open "/Applications/Whisper Transcriber Suite.app"</code></pre>
+        </div>
+        <p class="mac-note">Preferați metoda obișnuită? Deschideți <code>.dmg</code> și trageți aplicația în Applications; la prima lansare este apoi necesar clic dreapta → <b>Open</b> (macOS 14 și versiunile mai vechi) sau System Settings → Privacy &amp; Security → <b>Open Anyway</b> (macOS 15+).</p>
+      </div>
+      <p class="dl-note sr">Fiecare versiune, împreună cu notele aferente, este disponibilă pe <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Ghid de instalare</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section class="section compare" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Comparație</p>
+        <h2 id="compare-title">Cum se compară cu alte aplicații Whisper?</h2>
+        <p class="section-lede">Whisper Transcriber Suite este una dintre numeroasele aplicații desktop gratuite și open-source care transcriu pe propriul dvs. computer. Iată cum se compară cu Subtitle Edit, Vibe și Buzz, inclusiv situațiile în care o altă aplicație este mai potrivită. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Citiți comparația completă</a>, cu o sursă pentru fiecare afirmație și încă două aplicații, noScribe și aTrain.</p>
+      </header>
+      <div class="table-wrap sr">
+        <table class="compare-table">
+          <caption>Verificat la 2026-10-05 pe baza propriilor fișiere README, a documentației și a versiunilor fiecărui proiect. Aplicațiile se schimbă rapid: consultați <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">comparația completă</a> pentru surse.</caption>
+          <thead>
+            <tr><th scope="col"><span class="sr-only">Funcționalitate</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Preț, licență</th><td>Gratuit, BSD-3-Clause</td><td>Gratuit, MIT</td><td>Gratuit, MIT</td><td>Gratuit, MIT</td></tr>
+            <tr><th scope="row">Descărcări</th><td>Program de instalare și ZIP portabil pentru Windows, macOS (Apple silicon, Intel); Linux din surse</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 este ultima versiune pentru Mac-urile cu Intel), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
+            <tr><th scope="row">Accelerare GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Program de instalare Windows semnat</th><td>Nu</td><td>Nespecificat</td><td>Da, conform documentației sale</td><td>Nu</td></tr>
+            <tr><th scope="row">Limbile interfeței</th><td>42 (traduse automat)</td><td>35</td><td>22</td><td>16</td></tr>
+            <tr><th scope="row">Alegeți-o dacă</th><td>Doriți și microfon în timp real, descărcare de videoclipuri, 14 formate de ieșire și un mod de rețea locală cu o rută compatibilă cu OpenAI</td><td>Doriți multe motoare de recunoaștere a vorbirii (Parakeet, Canary, Qwen3-ASR și altele) sau o aplicație Mac notarizată</td><td>Doriți un program de instalare pentru Windows despre care documentația afirmă că este semnat, sau suport GPU care menționează AMD și Intel</td><td>Doriți pachete Linux (Flatpak, Snap, AppImage) sau o instalare prin PyPI</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section class="section faq" id="faq" aria-labelledby="faq-title">
+    <div class="wrap faq-grid">
+      <header class="faq-head sr">
+        <p class="eyebrow">FAQ</p>
+        <h2 id="faq-title">Întrebări frecvente</h2>
+        <p class="section-lede">Aveți și alte întrebări? Întrebați în <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">GitHub Discussions</a>.</p>
+      </header>
+      <div class="faq-list sr">
+        <article class="qa"><h3>Este Whisper Transcriber Suite gratuit?</h3><div class="faq-a"><p>Da. Este licențiat sub BSD-3-Clause, fără abonamente și fără costuri pe minut. Modelul Whisper se descarcă o singură dată (aproximativ 1-3 GB) la prima lansare; după aceea, transcrierea funcționează fără conexiune la internet.</p></div></article>
+        <article class="qa"><h3>Încarcă fișierele mele audio sau video undeva?</h3><div class="faq-a"><p>Nu, nu în mod implicit. Fiecare backend implicit — faster-whisper, whisper.cpp, NVIDIA Parakeet — rulează local pe computerul dvs. Două backend-uri sunt strict opționale (un backend cloud Gemini-API și Google Cloud Speech-to-Text), și ambele rămân dezactivate până când le activați dvs. în Advanced → Backend. Statisticile de utilizare (fără conținut audio, fără nume de fișiere) sunt activate în mod implicit și pot fi dezactivate din Ajutor → Statistici de utilizare; aplicația verifică pe GitHub o dată pe zi dacă există o versiune nouă, iar <b>Fișier → Lucru offline</b> oprește orice utilizare a rețelei.</p></div></article>
+        <article class="qa"><h3>Pe ce platforme rulează?</h3><div class="faq-a"><p>Windows, macOS și Linux. Descărcările publicate sunt un program de instalare pentru Windows, o arhivă ZIP portabilă pentru Windows și un fișier DMG pentru macOS; Linux rulează din sursă.</p></div></article>
+        <article class="qa"><h3>Ce formate de transcriere poate genera?</h3><div class="faq-a"><p><code>srt</code> <code>vtt</code> <code>ass</code> <code>tsv</code> <code>txt</code> <code>json</code> <code>lrc</code> <code>md</code> <code>docx</code> <code>pdf</code>, plus oTranscribe, ELAN, InqScribe și Express Scribe.</p></div></article>
+        <article class="qa"><h3>Poate eticheta cine vorbește?</h3><div class="faq-a"><p>Da — diarizare opțională a vorbitorilor („Identifică vorbitorii”), cu marcaje temporale pentru fiecare cuvânt și decupare pe intervale de timp.</p></div></article>
+        <article class="qa"><h3>Poate transcrie live un microfon sau sunetul de sistem?</h3><div class="faq-a"><p>Da, din fila Live — un microfon sau sunetul sistemului, transcrise în timp real.</p></div></article>
+        <article class="qa"><h3>Poate descărca și transcrie videoclipuri online, de exemplu de pe YouTube?</h3><div class="faq-a"><p>Da, de pe orice site acceptat de yt-dlp, cu o etapă opțională de transcriere la finalizare.</p></div></article>
+        <article class="qa"><h3>Poate rezuma o transcriere, extrage puncte de acțiune sau răspunde la întrebări despre aceasta?</h3><div class="faq-a"><p>Da, prin fila opțională Instrumente AI din vizualizatorul de transcriere — rezumare, acțiuni de urmat, adresarea unei întrebări și o etapă de traducere segment cu segment care generează un <code>.srt</code> bilingv. Este dezactivată în mod implicit.</p></div></article>
+        <article class="qa"><h3>Poate clona o voce pentru a o face să rostească un text nou?</h3><div class="faq-a"><p>Da, prin fila opțională Clonează-ți vocea, folosind OmniVoice (Apache-2.0) în întregime pe computerul dvs. Este dezactivată în mod implicit; o puteți activa la instalare și trebuie să confirmați că aveți permisiunea de a clona vocea de referință.</p></div></article>
+        <article class="qa"><h3>Prin ce diferă acest lucru de apelarea directă a API-ului Whisper?</h3><div class="faq-a"><p>Rulează modelul local prin faster-whisper în mod implicit, astfel că nu există costuri API pe minut și niciun conținut audio nu părăsește computerul dvs. — cu excepția cazului în care activați explicit unul dintre cele două backend-uri din cloud.</p></div></article>
+        <article class="qa"><h3>Pot mai multe persoane din aceeași rețea să o folosească fără a o instala pe fiecare computer?</h3><div class="faq-a"><p>Da — modul de acces Web/LAN transformă acest computer într-o pagină de transcriere pe care o pot utiliza și celelalte dispozitive din rețea.</p></div></article>
+        <article class="qa"><h3>Ce este nou în versiunea 2.1?</h3><div class="faq-a"><p>Meniurile, butoanele și mesajele sunt disponibile în 42 de limbi (traduse automat și marcate ca atare); etichetele vorbitorilor ajung până la sfârșitul înregistrărilor lungi și puteți seta câte persoane vorbesc; transcrierile, exporturile și subtitrările sunt scrise complet pe disc înainte de a înlocui fișierul vechi; funcțiile online funcționează pe orice Mac. Versiunea 2.0 a adăugat viteza cozii de procesare și timpul rămas, videoclip subtitrat dintr-un link, transcrieri ca pagină web offline unică, un mod Lucru offline ce poate fi bifat și traducere în engleză. Vedeți <a href="#whats-new">Noutăți în 2.1</a> și <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">jurnalul de modificări</a>.</p></div></article>
+        <article class="qa"><h3>Poate transforma un link video într-un videoclip cu subtitrări?</h3><div class="faq-a"><p>Da. În fila Descărcare videoclipuri, bifați <b>Creează videoclip subtitrat</b>: aplicația descarcă videoclipul, îl transcrie cu Whisper și încorporează subtitrările cu ffmpeg, generând un fișier denumit după videoclip cu <code>-subbed.mp4</code>. Descărcarea și transcrierea sunt păstrate, iar un <code>-subbed.mp4</code> existent nu este înlocuit niciodată.</p></div></article>
+        <article class="qa"><h3>Pot păstra aplicația complet deconectată de la rețea?</h3><div class="faq-a"><p>Da. <b>Fișier → Lucru offline</b> oprește verificarea actualizărilor, statisticile de utilizare, descărcările de modele și furnizorii AI la distanță. Cât timp este activat, o linie din partea de jos a ferestrei indică dacă o conexiune este deschisă, iar <em>Verificați offline acum</em> arată cum conexiunile de test sunt refuzate. Când este dezactivat, aplicația accesează rețeaua doar pentru setările sale online la pornire, verificarea zilnică a actualizărilor, statisticile de utilizare (care pot fi dezactivate din Ajutor → Statistici de utilizare) și descărcările pe care le inițiați.</p></div></article>
+        <article class="qa"><h3>Cum pot contacta proiectul?</h3><div class="faq-a"><p>Raportările de erori și propunerile de funcționalități se trimit pe <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, întrebările pe <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, iar orice altceva prin e-mail (adresa este afișată la cerere în <a href="#contact">secțiunea Contact</a>). Rapoartele de securitate se transmit prin sistemul privat de raportare a vulnerabilităților de pe GitHub.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT + SUPPORT ============ -->
+  <section class="section contact" id="contact" aria-labelledby="contact-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Contact și asistență</p>
+        <h2 id="contact-title">Vorbiți cu noi. <span class="h2-soft">Ajutați-l să crească.</span></h2>
+      </header>
+      <div class="contact-grid">
+        <div class="contact-card sr" data-tilt-card data-contact>
+          <span class="contact-ic tone-teal"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg></span>
+          <h3>E-mail</h3>
+          <p class="contact-val"><button type="button" class="contact-reveal" data-contact-reveal>Afișați adresa de e-mail</button><span data-contact-out aria-live="polite" hidden></span><noscript> (necesită JavaScript)</noscript></p>
+          <p>Presă, parteneriate sau orice altceva ce nu este o raportare de eroare.</p>
+        </div>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-coral"><svg class="i" aria-hidden="true"><use href="#i-bug"/></svg></span>
+          <h3>Raportați o eroare</h3>
+          <p class="contact-val">GitHub Issues</p>
+          <p>Includeți versiunea, sistemul de operare și cel mai mic fișier care reproduce problema.</p>
+        </a>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-violet"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span>
+          <h3>Puneți o întrebare</h3>
+          <p class="contact-val">GitHub Discussions</p>
+          <p>Ajutor pentru configurare, idei și prezentări de la alți utilizatori.</p>
+        </a>
+      </div>
+
+      <div class="support-card sr">
+        <div class="support-orbit" aria-hidden="true"><img src="/assets/logo.svg" alt="" width="88" height="88"><span></span><span></span><span></span></div>
+        <div class="support-copy">
+          <h3 id="support">Susțineți proiectul</h3>
+          <p>Whisper Transcriber Suite este gratuit și cu licență BSD-3-Clause, dezvoltat în mod deschis. Dacă v-a economisit timp, o stea pe GitHub îi ajută pe alții să-l găsească — iar o cafea este întotdeauna apreciată.</p>
+          <div class="support-actions">
+            <a class="btn btn-coffee btn-lg" href="https://buymeacoffee.com/mehraz1358" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-cup"/></svg>Cumpără-mi o cafea</a> <a class="btn btn-light btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Stea pe GitHub</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div class="footer-brand">
+      <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — pagina principală"><img class="brand-logo" src="/assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
+      <p class="muted">Menținut de un singur dezvoltator independent, <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Cod sursă sub licență BSD-3-Clause.</p>
+      <p class="muted"><a href="#contact">Contact</a></p>
+      <p class="site-stats" data-site-stats hidden><span data-stat="visits" hidden><strong></strong> vizite</span><span data-stat="downloads" hidden><strong></strong> descărcări</span></p>
+      <p class="muted small mt-note">Această pagină a fost tradusă automat din engleză și verificată de un al doilea sistem. Ceva nu sună bine? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">Spuneți-ne pe GitHub</a>.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Subsol">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Ghid de instalare</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Jurnal de modificări</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discuții</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Securitate</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">Licență</a> <a href="/ro/youtube-to-text/">YouTube în text</a> <a href="/ro/video-to-srt/">Video în SRT</a> <a href="/ro/speaker-labels/">Etichete vorbitori</a> <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+  <div class="wrap">
+    <p class="muted small">Disponibil și în <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.de.md" rel="noopener" lang="de">Deutsch</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fr.md" rel="noopener" lang="fr">Français</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.es.md" rel="noopener" lang="es">Español</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.it.md" rel="noopener" lang="it">Italiano</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt-BR.md" rel="noopener" lang="pt-BR">Português (Brasil)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt.md" rel="noopener" lang="pt">Português (Portugal)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nl.md" rel="noopener" lang="nl">Nederlands</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pl.md" rel="noopener" lang="pl">Polski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ru.md" rel="noopener" lang="ru">Русский</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.uk.md" rel="noopener" lang="uk">Українська</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.tr.md" rel="noopener" lang="tr">Türkçe</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.cs.md" rel="noopener" lang="cs">Čeština</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sk.md" rel="noopener" lang="sk">Slovenčina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hu.md" rel="noopener" lang="hu">Magyar</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ro.md" rel="noopener" lang="ro">Română</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bg.md" rel="noopener" lang="bg">Български</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.el.md" rel="noopener" lang="el">Ελληνικά</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sv.md" rel="noopener" lang="sv">Svenska</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.da.md" rel="noopener" lang="da">Dansk</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nb.md" rel="noopener" lang="nb">Norsk bokmål</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fi.md" rel="noopener" lang="fi">Suomi</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hr.md" rel="noopener" lang="hr">Hrvatski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sr.md" rel="noopener" lang="sr">Српски</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sl.md" rel="noopener" lang="sl">Slovenščina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lt.md" rel="noopener" lang="lt">Lietuvių</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-CN.md" rel="noopener" lang="zh-CN">简体中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-TW.md" rel="noopener" lang="zh-TW">繁體中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ja.md" rel="noopener" lang="ja">日本語</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ko.md" rel="noopener" lang="ko">한국어</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.vi.md" rel="noopener" lang="vi">Tiếng Việt</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.th.md" rel="noopener" lang="th">ไทย</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.id.md" rel="noopener" lang="id">Bahasa Indonesia</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ms.md" rel="noopener" lang="ms">Bahasa Melayu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hi.md" rel="noopener" lang="hi">हिन्दी</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ar.md" rel="noopener" lang="ar">العربية</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fa.md" rel="noopener" lang="fa">فارسی</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.he.md" rel="noopener" lang="he">עברית</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lv.md" rel="noopener" lang="lv">Latviešu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ca.md" rel="noopener" lang="ca">Català</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bn.md" rel="noopener" lang="bn">বাংলা</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fil.md" rel="noopener" lang="fil">Filipino</a>.</p>
+  </div>
+</footer>
+
+<div class="star-toast" data-star-toast role="status" hidden>
+  <p><b>Vă mulțumim pentru descărcare!</b> În timp ce se descarcă — dacă aplicația vă economisește timp, o ⭐ pe GitHub este modul în care alții o pot găsi. Un singur clic, gratuit.</p>
+  <div class="star-toast-actions">
+    <a class="btn btn-primary btn-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" data-star-go><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Stea pe GitHub</a>
+    <button class="star-toast-close" type="button" data-star-close aria-label="Închideți">×</button>
+  </div>
+</div>
+
+<script type="application/json" id="i18n-strings">
+{
+  "Play animations": "Redați animațiile",
+  "Pause animations": "Pauză animații",
+  "Install on macOS": "Instalați pe macOS",
+  "Get it for Linux": "Obțineți pentru Linux",
+  "Get it for your computer": "Obțineți pentru computerul dumneavoastră",
+  "Show %s": "Afișați %s",
+  "Please write to us on GitHub Discussions": "Vă rugăm să ne scrieți pe GitHub Discussions",
+  "One moment…": "Un moment…",
+  "Could not load it. Try again": "Nu s-a putut încărca. Încercați din nou",
+  "so the words appear as you speak": "astfel încât cuvintele să apară pe măsură ce vorbiți",
+  "cuts land on natural pauses": "segmentarea se face la pauze naturale",
+  "and no word is ever split in two": "iar niciun cuvânt nu este despărțit în două",
+  "Your audio stays on your computer.": "Conținutul audio rămâne pe computerul dumneavoastră.",
+  "No account. No per-minute cost.": "Fără cont. Fără costuri pe minut.",
+  "Whisper runs on your own computer.": "Whisper rulează direct pe computerul dumneavoastră.",
+  "Fourteen formats, one click.": "Paisprezece formate, un singur clic.",
+  "Copy": "Copiați",
+  "Copied": "Copiat"
+}
+</script>
+<script src="/js/main.js?v=20261018b" defer></script>
+<script src="/js/lang.js?v=20261019a" defer></script>
+</body>
+</html>

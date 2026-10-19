@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whisper Transcriber Suite — Transcripció gratuïta sense connexió</title>
+<meta name="description" content="Aplicació d&#39;escriptori gratuïta que executa OpenAI Whisper al vostre propi ordinador. Transcriu àudio i vídeo a SRT, VTT, DOCX i PDF. Windows, macOS i Linux.">
+<meta name="author" content="translation-robot">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://whisper-transcriber-suite.com/ca/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/">
+<link rel="alternate" hreflang="de" href="https://whisper-transcriber-suite.com/de/">
+<link rel="alternate" hreflang="fr" href="https://whisper-transcriber-suite.com/fr/">
+<link rel="alternate" hreflang="es" href="https://whisper-transcriber-suite.com/es/">
+<link rel="alternate" hreflang="it" href="https://whisper-transcriber-suite.com/it/">
+<link rel="alternate" hreflang="pt-BR" href="https://whisper-transcriber-suite.com/pt-br/">
+<link rel="alternate" hreflang="pt" href="https://whisper-transcriber-suite.com/pt/">
+<link rel="alternate" hreflang="nl" href="https://whisper-transcriber-suite.com/nl/">
+<link rel="alternate" hreflang="pl" href="https://whisper-transcriber-suite.com/pl/">
+<link rel="alternate" hreflang="ru" href="https://whisper-transcriber-suite.com/ru/">
+<link rel="alternate" hreflang="uk" href="https://whisper-transcriber-suite.com/uk/">
+<link rel="alternate" hreflang="tr" href="https://whisper-transcriber-suite.com/tr/">
+<link rel="alternate" hreflang="cs" href="https://whisper-transcriber-suite.com/cs/">
+<link rel="alternate" hreflang="sk" href="https://whisper-transcriber-suite.com/sk/">
+<link rel="alternate" hreflang="hu" href="https://whisper-transcriber-suite.com/hu/">
+<link rel="alternate" hreflang="ro" href="https://whisper-transcriber-suite.com/ro/">
+<link rel="alternate" hreflang="bg" href="https://whisper-transcriber-suite.com/bg/">
+<link rel="alternate" hreflang="el" href="https://whisper-transcriber-suite.com/el/">
+<link rel="alternate" hreflang="sv" href="https://whisper-transcriber-suite.com/sv/">
+<link rel="alternate" hreflang="da" href="https://whisper-transcriber-suite.com/da/">
+<link rel="alternate" hreflang="nb" href="https://whisper-transcriber-suite.com/nb/">
+<link rel="alternate" hreflang="fi" href="https://whisper-transcriber-suite.com/fi/">
+<link rel="alternate" hreflang="hr" href="https://whisper-transcriber-suite.com/hr/">
+<link rel="alternate" hreflang="sr" href="https://whisper-transcriber-suite.com/sr/">
+<link rel="alternate" hreflang="sl" href="https://whisper-transcriber-suite.com/sl/">
+<link rel="alternate" hreflang="lt" href="https://whisper-transcriber-suite.com/lt/">
+<link rel="alternate" hreflang="zh-CN" href="https://whisper-transcriber-suite.com/zh-cn/">
+<link rel="alternate" hreflang="zh-TW" href="https://whisper-transcriber-suite.com/zh-tw/">
+<link rel="alternate" hreflang="ja" href="https://whisper-transcriber-suite.com/ja/">
+<link rel="alternate" hreflang="ko" href="https://whisper-transcriber-suite.com/ko/">
+<link rel="alternate" hreflang="vi" href="https://whisper-transcriber-suite.com/vi/">
+<link rel="alternate" hreflang="th" href="https://whisper-transcriber-suite.com/th/">
+<link rel="alternate" hreflang="id" href="https://whisper-transcriber-suite.com/id/">
+<link rel="alternate" hreflang="ms" href="https://whisper-transcriber-suite.com/ms/">
+<link rel="alternate" hreflang="hi" href="https://whisper-transcriber-suite.com/hi/">
+<link rel="alternate" hreflang="ar" href="https://whisper-transcriber-suite.com/ar/">
+<link rel="alternate" hreflang="fa" href="https://whisper-transcriber-suite.com/fa/">
+<link rel="alternate" hreflang="he" href="https://whisper-transcriber-suite.com/he/">
+<link rel="alternate" hreflang="lv" href="https://whisper-transcriber-suite.com/lv/">
+<link rel="alternate" hreflang="ca" href="https://whisper-transcriber-suite.com/ca/">
+<link rel="alternate" hreflang="bn" href="https://whisper-transcriber-suite.com/bn/">
+<link rel="alternate" hreflang="fil" href="https://whisper-transcriber-suite.com/fil/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/">
+<!-- i18n:hreflang:end -->
+<meta name="google-site-verification" content="_vMQaHCYUqaePsjuk_lmQ9Df32M03uPPZnXEFVr8ttU">
+<meta name="google-site-verification" content="uC9kBtANn2fSf-oX8ubTOv1cgtEQabzbnLz61epFOcc">
+<meta name="msvalidate.01" content="86B7B178FB8DB5F45F03295F6D2A8F4A">
+<meta name="msvalidate.01" content="C5065B95AD10AB4D2845E441E3D9FA37">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Whisper Transcriber Suite — Transcripció d&#39;àudio i vídeo gratuïta i sense connexió">
+<meta property="og:description" content="Executa OpenAI Whisper localment. El vostre àudio es queda al vostre ordinador, sense necessitat de compte. 14 formats de sortida, transcripció en directe, etiquetes de parlants, baixades de YouTube. Gratuït, BSD-3-Clause, per a Windows, macOS i Linux.">
+<meta property="og:url" content="https://whisper-transcriber-suite.com/ca/">
+<meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — transcripció d&#39;àudio i vídeo gratuïta i sense connexió per a Windows, macOS i Linux.">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="ca_ES">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Whisper Transcriber Suite — Transcripció d&#39;àudio i vídeo gratuïta i sense connexió">
+<meta name="twitter:description" content="Executa OpenAI Whisper localment. El vostre àudio es queda al vostre ordinador, sense necessitat de compte. 14 formats de sortida, transcripció en directe, etiquetes de parlants, baixades de YouTube.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="alternate" type="text/plain" title="Resum amb LLM" href="/llms.txt">
+
+<link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
+<script src="/js/motion-init.js?v=20260927b"></script>
+<link rel="stylesheet" href="/styles.css?v=20261019a">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://whisper-transcriber-suite.com/#org",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://github.com/Milomilo777/whisper-transcriber-suite/issues",
+        "availableLanguage": [
+          "English"
+        ]
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite",
+        "https://buymeacoffee.com/mehraz1358"
+      ],
+      "description": "Aplicació d'escriptori gratuïta i de codi obert que executa OpenAI Whisper localment per a la transcripció d'àudio i vídeo."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://whisper-transcriber-suite.com/#app",
+      "name": "Whisper Transcriber Suite",
+      "alternateName": "WhisperTranscriberSuite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "image": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+      "screenshot": [
+        "https://whisper-transcriber-suite.com/assets/shots/transcribe.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/live.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/download.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/queue.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/voice.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/web.webp"
+      ],
+      "description": "Aplicació d'escriptori que executa el Model de Whisper d'OpenAI localment a través de faster-whisper, whisper.cpp o NVIDIA Parakeet. Transcriu àudio i vídeo a SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX i PDF. El vostre àudio es queda al vostre ordinador i no cal cap compte.",
+      "softwareVersion": "2.1.0",
+      "datePublished": "2026-05-11",
+      "dateModified": "2026-10-12",
+      "operatingSystem": "Windows, macOS, Linux",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "Speech-to-text transcription",
+      "featureList": [
+        "Reconeixement de veu a text sense connexió amb faster-whisper, whisper.cpp o NVIDIA Parakeet",
+        "14 formats de transcripció, incloent-hi SRT, VTT, DOCX i PDF",
+        "Transcripció en directe de micròfon i àudio del sistema",
+        "Diarització de parlants amb marques de temps per paraula",
+        "Cua per lots amb pausa, represa i tornar a executar",
+        "Baixades de vídeo i àudio de qualsevol lloc compatible amb yt-dlp",
+        "Reducció de soroll adaptativa",
+        "Resums amb IA, elements d'acció i SRT bilingüe opcionals",
+        "Clonació de veu sense connexió opcional",
+        "Mode d'Accés web / LAN",
+        "La cua mostra la velocitat i el temps restant de cada transcripció",
+        "Crea un vídeo subtitulat: baixa, transcriu i incrusta els subtítols en un MP4",
+        "Desa una transcripció com a una sola pàgina web sense connexió",
+        "Interruptor Treballa sense connexió amb un estat de la xarxa visible",
+        "Tradueix la veu directament a l'anglès"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isAccessibleForFree": true,
+      "interactionStatistic": {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/DownloadAction",
+        "userInteractionCount": 2694
+      },
+      "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
+      "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
+      "releaseNotes": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md",
+      "installUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md",
+      "codeRepository": "https://github.com/Milomilo777/whisper-transcriber-suite",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://whisper-transcriber-suite.com/#author"
+      },
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite"
+      ],
+      "softwareRequirements": "Windows 10 or 11 (64-bit); macOS 10.15 or later (Intel build) or macOS 14 or later (Apple Silicon build); Linux from source with Python 3.11+",
+      "memoryRequirements": "At least 8 GB RAM; an NVIDIA GPU with CUDA is optional"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://whisper-transcriber-suite.com/#website",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "inLanguage": "ca",
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://whisper-transcriber-suite.com/#author",
+      "name": "translation-robot",
+      "url": "https://github.com/translation-robot",
+      "sameAs": [
+        "https://github.com/translation-robot"
+      ],
+      "description": "Desenvolupador independent que manté Whisper Transcriber Suite com a projecte de codi obert."
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://whisper-transcriber-suite.com/ca/#webpage",
+      "url": "https://whisper-transcriber-suite.com/ca/",
+      "name": "Whisper Transcriber Suite — Transcripció gratuïta sense connexió",
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/ca/#website"
+      },
+      "about": {
+        "@id": "https://whisper-transcriber-suite.com/ca/#app"
+      },
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": [
+          ".hero-lede",
+          ".faq-a p"
+        ]
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "És gratuït Whisper Transcriber Suite?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí. Té llicència BSD-3-Clause, sense subscripció i sense cost per minut. El Model de Whisper es baixa una vegada (uns 1-3 GB) en el primer inici; després d'això, la transcripció funciona sense connexió a Internet."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Puja el meu àudio o vídeo enlloc?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No, no per defecte. Tots els motors per defecte — faster-whisper, whisper.cpp, NVIDIA Parakeet — s'executen localment al vostre ordinador. Hi ha dos motors que només s'activen sota demanda (cloud_stt a través de l'API de Gemini, i google_cloud_stt), i tots dos es mantenen desactivats fins que els activeu vós mateix a Configuració avançada → Backend. Les estadístiques d'ús (sense àudio, sense noms de fitxer) estan activades per defecte i es poden desactivar a Ajuda > Estadístiques d'ús, l'aplicació comprova a GitHub un cop al dia si hi ha una versió nova, i Fitxer > Treballa sense connexió atura tot l'ús de la xarxa."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "En quines plataformes funciona?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Windows, macOS i Linux. Les baixades publicades són un instal·lador de Windows, un ZIP portàtil de Windows i un DMG de macOS; Linux s'executa des del codi font."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Quins formats de transcripció pot produir?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX i PDF, a més d'oTranscribe, ELAN, InqScribe i Express Scribe."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pot etiquetar qui està parlant?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí, diarització de parlants opcional (Identifica els parlants), amb marques de temps per paraula i retallat d'intervals de temps."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pot transcriure un micròfon en directe o l'àudio del sistema?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí, des de la pestanya En directe: un micròfon o l'àudio del sistema, transcrit a mesura que es produeix."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pot baixar i transcriure vídeos en línia, per exemple, de YouTube?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí, qualsevol lloc compatible amb yt-dlp, amb un pas opcional de transcriure en acabar."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pot resumir una transcripció, extreure'n elements d'acció o respondre preguntes sobre ella?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí, a través de la pestanya opcional Eines d'IA al visualitzador de transcripcions: resumir, elements d'acció, fer una pregunta i un pas de traducció per segment que escriu un SRT bilingüe. Està desactivat per defecte."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pot clonar una veu i fer que digui un text nou?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí, a través de la pestanya opcional Clona la teva veu, utilitzant OmniVoice (Apache-2.0) completament al vostre ordinador. Desactivat per defecte; cal optar-hi en el moment de la instal·lació."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "En què es diferencia això de cridar directament l'API de Whisper?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Executa el model localment a través de faster-whisper per defecte, de manera que no hi ha cap cost d'API per minut i cap àudio surt del vostre ordinador, tret que opteu explícitament per un dels dos motors al núvol."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Diverses persones a la mateixa xarxa poden utilitzar-lo sense instal·lar-lo a cada ordinador?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí, el mode d'accés web / LAN converteix aquest ordinador en una pàgina de transcripció que els altres dispositius de la xarxa poden utilitzar."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Què hi ha de nou a la versió 2.1?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Els menús, els botons i els missatges estan disponibles en 42 idiomes (traduïts automàticament i marcats com a tals); les etiquetes de parlants arriben al final de les gravacions llargues i podeu establir quantes persones parlen; les transcripcions, les exportacions i els subtítols s'escriuen completament al disc abans de substituir el fitxer antic; les funcions en línia funcionen a tots els Mac. La versió 2.0 va afegir la velocitat i el temps restant de la cua, vídeo subtitulat des d'un enllaç, transcripcions com a una sola pàgina web sense connexió, un mode Treballa sense connexió que es pot comprovar i traducció a l'anglès."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pot convertir un enllaç de vídeo en un vídeo amb subtítols?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí. A la pestanya Baixa vídeos, marqueu Crea un vídeo subtitulat: l'aplicació baixa el vídeo, el transcriu amb Whisper i hi incrusta els subtítols amb ffmpeg, produint un fitxer amb el nom del vídeo amb -subbed.mp4. Es conserven la baixada i la transcripció, i un fitxer -subbed.mp4 existent mai no se substitueix."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Puc mantenir l'aplicació completament fora de la xarxa?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí. Fitxer > Treballa sense connexió atura la comprovació d'actualitzacions, les estadístiques d'ús, les baixades de models i els proveïadors d'IA remots. Mentre està activat, una línia a la part inferior de la finestra indica si hi ha una connexió oberta, i Verifica ara el mode sense connexió mostra que les connexions de prova es rebutgen. Amb el mode desactivat, l'aplicació només contacta amb la xarxa per a la seva configuració en línia a l'inici, la comprovació diària d'actualitzacions, les estadístiques d'ús (que es poden desactivar a Ajuda > Estadístiques d'ús) i les baixades que inicieu."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Com puc contactar amb el projecte?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Els errors i les peticions de funcions van a GitHub Issues, les preguntes a GitHub Discussions, i qualsevol altra cosa per correu electrònic (l'adreça es mostra a petició a la secció de Contacte). Els informes de seguretat es tramiten a través de l'informe de vulnerabilitats privades de GitHub."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m0 0-5-5m5 5-5 5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m12 4-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m8 4 6 6-6 6"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 20 20"><path fill="currentColor" d="M2 3.6 8.4 2.7v6.6H2zm7.3-1 8.7-1.2v7.9H9.3zM2 10.2h6.4v6.7L2 16zm7.3 0H18v8.4l-8.7-1.2z"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 20 20"><path fill="currentColor" d="M13.6 10.6c0-1.9 1.6-2.8 1.6-2.9-.9-1.3-2.3-1.5-2.8-1.5-1.2-.1-2.3.7-2.9.7-.6 0-1.5-.7-2.5-.7-1.3 0-2.5.8-3.2 1.9-1.4 2.4-.4 5.9 1 7.8.6.9 1.4 2 2.4 1.9 1-.1 1.3-.6 2.5-.6s1.5.6 2.5.6c1 0 1.7-.9 2.3-1.9.7-1.1 1-2.1 1-2.2 0 0-1.9-.8-1.9-3.1zM11.7 4.9c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-1 1.5-.8 2.4.9.1 1.8-.4 2.4-1.1z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14v11H3zM6 8.5l2 1.5-2 1.5M10 12h4"/></symbol>
+    <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+    <symbol id="i-cup" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 7h10v4.5A4.5 4.5 0 0 1 9.5 16h-1A4.5 4.5 0 0 1 4 11.5zm10 1.5h1.2a2.3 2.3 0 0 1 0 4.6H14M7 2.5v2m3-2v2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 5h14v10H3zm0 0 7 6 7-6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4h14v9H8l-4 3v-3H3z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7 7a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM3 10h4m6 0h4M4 5l3 2m9-2-3 2M4 15l3-2m9 2-3-2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 20 20"><path fill="currentColor" d="M6 4v12l10-6z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 20 20"><path fill="currentColor" d="M5 4h3.5v12H5zm6.5 0H15v12h-3.5z"/></symbol>
+  </defs>
+</svg> <a class="skip-link" href="#main">Omet i vés al contingut</a>
+
+<header class="site-header" data-header>
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — inici">
+      <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
+    </a>
+    <nav class="site-nav" aria-label="Principal">
+      <a href="#showreel">Recorregut</a> <a href="#features">Funcions</a> <a href="#how-it-works">Com funciona</a> <a href="#download">Baixa</a> <a href="#compare">Compara</a> <a href="#faq">PMF</a> <a href="#contact">Contacte</a>
+    </nav>
+    <div class="header-cta">
+      <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Idioma" aria-label="Idioma"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->Català<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/?lang=en" hreflang="en" lang="en" data-lang-pick="en">English</a></li>
+<li><a href="/de/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
+<li><a href="/fr/" hreflang="fr" lang="fr" data-lang-pick="fr">Français</a></li>
+<li><a href="/es/" hreflang="es" lang="es" data-lang-pick="es">Español</a></li>
+<li><a href="/it/" hreflang="it" lang="it" data-lang-pick="it">Italiano</a></li>
+<li><a href="/pt-br/" hreflang="pt-BR" lang="pt-BR" data-lang-pick="pt-BR">Português (Brasil)</a></li>
+<li><a href="/pt/" hreflang="pt" lang="pt" data-lang-pick="pt">Português (Portugal)</a></li>
+<li><a href="/nl/" hreflang="nl" lang="nl" data-lang-pick="nl">Nederlands</a></li>
+<li><a href="/pl/" hreflang="pl" lang="pl" data-lang-pick="pl">Polski</a></li>
+<li><a href="/ru/" hreflang="ru" lang="ru" data-lang-pick="ru">Русский</a></li>
+<li><a href="/uk/" hreflang="uk" lang="uk" data-lang-pick="uk">Українська</a></li>
+<li><a href="/tr/" hreflang="tr" lang="tr" data-lang-pick="tr">Türkçe</a></li>
+<li><a href="/cs/" hreflang="cs" lang="cs" data-lang-pick="cs">Čeština</a></li>
+<li><a href="/sk/" hreflang="sk" lang="sk" data-lang-pick="sk">Slovenčina</a></li>
+<li><a href="/hu/" hreflang="hu" lang="hu" data-lang-pick="hu">Magyar</a></li>
+<li><a href="/ro/" hreflang="ro" lang="ro" data-lang-pick="ro">Română</a></li>
+<li><a href="/bg/" hreflang="bg" lang="bg" data-lang-pick="bg">Български</a></li>
+<li><a href="/el/" hreflang="el" lang="el" data-lang-pick="el">Ελληνικά</a></li>
+<li><a href="/sv/" hreflang="sv" lang="sv" data-lang-pick="sv">Svenska</a></li>
+<li><a href="/da/" hreflang="da" lang="da" data-lang-pick="da">Dansk</a></li>
+<li><a href="/nb/" hreflang="nb" lang="nb" data-lang-pick="nb">Norsk bokmål</a></li>
+<li><a href="/fi/" hreflang="fi" lang="fi" data-lang-pick="fi">Suomi</a></li>
+<li><a href="/hr/" hreflang="hr" lang="hr" data-lang-pick="hr">Hrvatski</a></li>
+<li><a href="/sr/" hreflang="sr" lang="sr" data-lang-pick="sr">Српски</a></li>
+<li><a href="/sl/" hreflang="sl" lang="sl" data-lang-pick="sl">Slovenščina</a></li>
+<li><a href="/lt/" hreflang="lt" lang="lt" data-lang-pick="lt">Lietuvių</a></li>
+<li><a href="/zh-cn/" hreflang="zh-CN" lang="zh-CN" data-lang-pick="zh-CN">简体中文</a></li>
+<li><a href="/zh-tw/" hreflang="zh-TW" lang="zh-TW" data-lang-pick="zh-TW">繁體中文</a></li>
+<li><a href="/ja/" hreflang="ja" lang="ja" data-lang-pick="ja">日本語</a></li>
+<li><a href="/ko/" hreflang="ko" lang="ko" data-lang-pick="ko">한국어</a></li>
+<li><a href="/vi/" hreflang="vi" lang="vi" data-lang-pick="vi">Tiếng Việt</a></li>
+<li><a href="/th/" hreflang="th" lang="th" data-lang-pick="th">ไทย</a></li>
+<li><a href="/id/" hreflang="id" lang="id" data-lang-pick="id">Bahasa Indonesia</a></li>
+<li><a href="/ms/" hreflang="ms" lang="ms" data-lang-pick="ms">Bahasa Melayu</a></li>
+<li><a href="/hi/" hreflang="hi" lang="hi" data-lang-pick="hi">हिन्दी</a></li>
+<li><a href="/ar/" hreflang="ar" lang="ar" dir="rtl" data-lang-pick="ar">العربية</a></li>
+<li><a href="/fa/" hreflang="fa" lang="fa" dir="rtl" data-lang-pick="fa">فارسی</a></li>
+<li><a href="/he/" hreflang="he" lang="he" dir="rtl" data-lang-pick="he">עברית</a></li>
+<li><a href="/lv/" hreflang="lv" lang="lv" data-lang-pick="lv">Latviešu</a></li>
+<li><a href="/ca/" hreflang="ca" lang="ca" data-lang-pick="ca" aria-current="true">Català</a></li>
+<li><a href="/bn/" hreflang="bn" lang="bn" data-lang-pick="bn">বাংলা</a></li>
+<li><a href="/fil/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
+      <button class="btn-icon" type="button" data-motion-toggle aria-pressed="false" title="Pausa o reprodueix animacions">
+        <svg class="i i-when-on" aria-hidden="true"><use href="#i-pause"/></svg> <svg class="i i-when-off" aria-hidden="true"><use href="#i-play"/></svg> <span class="sr-only" data-motion-label>Pausa les animacions</span>
+      </button>
+      <a class="btn btn-ghost btn-sm hide-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" aria-label="Posa una estrella a Whisper Transcriber Suite a GitHub"> <svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Destaca </a> <a class="btn btn-primary btn-sm" href="#download">Baixa</a>
+    </div>
+  </div>
+</header>
+
+<div class="lang-notice" data-lang-notice hidden>
+  <div class="wrap lang-notice-row">
+    <p>Aquesta pàgina és en el vostre idioma a causa del lloc des d'on us connecteu. <a href="/?lang=en" data-lang-pick="en">Visualitza en anglès</a></p>
+    <button class="btn-icon" type="button" data-lang-notice-close aria-label="Tanca"><span aria-hidden="true">×</span></button>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <canvas class="hero-waves" data-waves aria-hidden="true"></canvas>
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="kicker reveal" style="--d:0"><span class="kicker-dot" aria-hidden="true"></span>Gratuït i de codi obert · BSD-3-Clause · <span data-auto="version">v2.1.0</span></p>
+        <h1 class="hero-title" id="hero-title">
+          <span class="line"><span class="rise" style="--d:1">Entra àudio.</span></span> <span class="line"><span class="rise" style="--d:2">Surt text.</span></span> <span class="line"><span class="rise grad-text" style="--d:3">El vostre àudio es queda al vostre ordinador.</span></span>
+        </h1>
+        <p class="hero-lede reveal" style="--d:4">Whisper Transcriber Suite executa el Model de Whisper d'OpenAI completament al vostre propi ordinador — a través de faster-whisper, whisper.cpp o NVIDIA Parakeet. Arrossegueu-hi àudio o vídeo i obteniu una transcripció cronometrada. Sense núvol, sense compte, sense cost per minut.</p>
+        <div class="hero-actions reveal" style="--d:5">
+          <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Baixa per a Windows</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">Fes el recorregut<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </div>
+        <ul class="proof reveal" style="--d:6" aria-label="D&#39;un cop d&#39;ull">
+          <li><strong data-count="14">14</strong><span>formats de transcripció</span></li>
+          <li><strong data-auto="downloads">2,600+</strong><span>baixades fins ara</span></li>
+          <li><strong>0</strong><span>pujades d'àudio per defecte</span></li>
+          <li><strong>$0</strong><span>per sempre</span></li>
+        </ul>
+      </div>
+
+      <div class="hero-scene" data-scene aria-hidden="true">
+        <div class="scene-rig" data-rig>
+          <div class="float-layer l-back">
+            <figure class="win win-sm win-a"><div class="win-bar"><i></i><i></i><i></i><span>En directe</span></div><img src="/assets/shots/live-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-mid">
+            <figure class="win win-sm win-b"><div class="win-bar"><i></i><i></i><i></i><span>Baixa vídeos</span></div><img src="/assets/shots/download-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-front">
+            <figure class="win win-main"><div class="win-bar"><i></i><i></i><i></i><span>Whisper Transcriber Suite</span></div><img src="/assets/shots/transcribe.webp" srcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" sizes="(max-width: 1080px) 72vw, 480px" alt="" width="1180" height="668" fetchpriority="high"></figure>
+          </div>
+          <div class="float-layer l-pop1">
+            <div class="chip-card wave-card"><span class="rec"></span><span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+          </div>
+          <div class="float-layer l-pop2">
+            <div class="chip-card srt-card">
+              <p class="srt-ts">00:00:04,120 → 00:00:06,880</p>
+              <p class="srt-line"><span data-hero-typer>El teu àudio es manté al teu ordinador.</span><span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="float-layer l-pop3">
+            <div class="chip-card fmt-card"><b>.srt</b><b>.vtt</b><b>.docx</b><b>.pdf</b></div>
+          </div>
+          <div class="float-layer l-pop4">
+            <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Transcripció sense connexió</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Diarització de parlants</span> <span>Micròfon en directe</span> <span>Clonació de veu</span> <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Diarització de parlants</span> <span>Micròfon en directe</span> <span>Clonació de veu</span>
+    </div>
+  </div>
+
+  <!-- ============ SHOWREEL (3D carousel) ============ -->
+  <section class="section showreel" id="showreel" aria-labelledby="reel-title">
+    <div class="reel-glow" aria-hidden="true"></div>
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Recorregut pel producte</p>
+        <h2 id="reel-title">Una finestra. <span class="h2-soft">Sis eines.</span></h2>
+        <p class="section-lede">Arrossega un fitxer, tria les teves opcions, prem Transcriu. Tota la resta (la cua, les baixades, la captura en directe, la clonació de veu i la compartició per LAN) es troba a una pestanya de distància. Arrossega l'anell, o utilitza les fletxes.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/showreel-still.webp" data-still="/assets/promo/showreel-still.webp" data-anim="/assets/promo/showreel.svg" alt="Animació: una entrevista amb dos parlants etiquetats, una conferència convertida en subtítols amb temps, un enllaç de vídeo convertit en un vídeo subtitulat, subtítols en directe des d&#39;un micròfon, i la transcripció desada al costat del fitxer com a SRT, VTT, DOCX i PDF." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="reel" data-reel>
+        <div class="reel-viewport" data-reel-viewport>
+          <div class="reel-ring" data-reel-ring>
+            <figure class="reel-card" data-title="Transcriu" data-caption="Una zona per arrossegar, selectors de motor, model i idioma, i opcions per a etiquetes de parlant i marques de temps per paraula."><div class="win-bar"><i></i><i></i><i></i><span>Transcriu</span></div><img src="/assets/shots/transcribe-640.webp" alt="Pestanya Transcriu: zona per arrossegar, selectors de motor, model i idioma, i opcions per a etiquetes de parlant i marques de temps per paraula" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="En directe" data-caption="Transcriu un micròfon (o el que sigui que aquest ordinador estigui reproduint) mentre passa, amb un mesurador de nivell d&#39;entrada."><div class="win-bar"><i></i><i></i><i></i><span>En directe</span></div><img src="/assets/shots/live-640.webp" alt="Pestanya En directe: micròfon o font d&#39;àudio del sistema, selectors d&#39;idioma i de model, mesurador del nivell d&#39;entrada i un panell de transcripció en directe" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Baixa vídeos" data-caption="Tria un format, retalla un interval de temps, mira quins subtítols ja té el vídeo, i opcionalment transcriu-lo o incrusta els subtítols en un MP4 nou."><div class="win-bar"><i></i><i></i><i></i><span>Baixa vídeos</span></div><img src="/assets/shots/download-640.webp" alt="Pestanya Baixa vídeos: URL amb la línia Subtítols disponibles, galetes d&#39;inici de sessió del navegador, format, interval de temps, Utilitza els subtítols en lloc d&#39;això, Transcriu després de baixar i Crea un vídeo subtitulat" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Cua de transcripció" data-caption="Tasques per lots amb progrés en directe, velocitat i temps restant: fes una pausa, reprèn, cancel·la, torna a executar o elimina qualsevol fila."><div class="win-bar"><i></i><i></i><i></i><span>Cua de transcripció</span></div><img src="/assets/shots/queue-640.webp" alt="Pestanya Cua de transcripció: fitxer, estat, progrés, velocitat i temps restant, idioma i columnes de temps transcorregut amb pausa, reprèn, cancel·la, torna a executar i suprimeix" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Clona la teva veu" data-caption="Opcional, totalment fora de línia: clona una veu d&#39;una mostra curta, o dissenya&#39;n una, i fes que llegeixi text nou."><div class="win-bar"><i></i><i></i><i></i><span>Clona la teva veu</span></div><img src="/assets/shots/voice-640.webp" alt="Pestanya Clona la teva veu / Text a veu: model OmniVoice, mostra de veu, text per llegir, idioma i velocitat" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Accés web / LAN" data-caption="Un sol botó converteix aquesta màquina en una pàgina de transcripció per a la resta de dispositius de la vostra xarxa."><div class="win-bar"><i></i><i></i><i></i><span>Accés web / LAN</span></div><img src="/assets/shots/web-640.webp" alt="Pestanya Accés web / LAN: inicia l&#39;accés web, port, comparteix a la xarxa local, contrasenya d&#39;accés i opcions HTTPS" width="640" height="362" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+        <div class="reel-controls">
+          <button class="reel-btn" type="button" data-reel-prev aria-label="Pantalla anterior"><svg class="i" aria-hidden="true"><use href="#i-left"/></svg></button>
+          <div class="reel-meta" aria-live="off" data-reel-live>
+            <p class="reel-title" data-reel-title>Transcriu</p>
+            <p class="reel-caption" data-reel-caption>Una zona per arrossegar, selectors de motor, model i idioma, i opcions per a etiquetes de parlant i marques de temps per paraula.</p>
+          </div>
+          <button class="reel-btn" type="button" data-reel-next aria-label="Pantalla següent"><svg class="i" aria-hidden="true"><use href="#i-right"/></svg></button>
+        </div>
+        <div class="reel-dots" data-reel-dots role="group" aria-label="Tria una pantalla"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Novetats a 2.1</p>
+        <h2 id="new-title">Novetats a la 2.1. <span class="h2-soft">Ara en el teu idioma.</span></h2>
+        <p class="section-lede">L'aplicació en 42 idiomes, etiquetes de parlant que arriben al final de gravacions llargues, fitxers que sobreviuen a un tall d'energia, i funcions en línia que funcionen en tots els Mac. A continuació, el que va afegir 2.0.</p>
+      </header>
+
+      <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Totes les plataformes</p>
+          <h3>L'aplicació en el teu idioma</h3>
+          <p>Els menús, els botons i els missatges estan disponibles en 42 idiomes (39 a macOS i Linux). L'aplicació segueix l'idioma del teu sistema, o en tries un a <em>Configuració avançada</em>. Tots els idiomes excepte l'anglès són una traducció automàtica i estan marcats com a tal; el persa, l'àrab i l'hebreu s'ofereixen a Windows per ara.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Totes les plataformes</p>
+          <h3>Etiquetes de parlant en les quals pots confiar</h3>
+          <p>Els noms dels parlants ara arriben al final de gravacions llargues, la detecció de parlants ja no pot penjar una transcripció, i al costat de <em>Identifica els parlants</em> pots configurar quanta gent parla (de 2 a 10) en lloc de deixar-ho en Auto.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Totes les plataformes</p>
+          <h3>El teu treball està més segur</h3>
+          <p>Les transcripcions, les exportacions i els subtítols s'escriuen completament al disc abans que substitueixin l'antic fitxer, de manera que un tall de corrent no pot deixar un arxiu buit. Una transcripció d'un treballador que s'ha aturat un cop escrits tots els seus fitxers es considera finalitzada.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · macOS</p>
+          <h3>Funcions en línia a cada Mac</h3>
+          <p>La comprovació d'actualitzacions, els informes de problemes i d'altres cerques web ja no fallen amb <em>certificate verify failed</em>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Totes les plataformes</p>
+          <h3>Velocitat i temps restant</h3>
+          <p>La pestanya Cua de transcripció mostra la velocitat d'execució de cada transcripció i, aproximadament, el temps que li queda, per exemple <em>al voltant de 4.8x, queden 6 min</em>. La targeta de resultat informa de la velocitat, el model i el dispositiu en el moment que la feina s'ha acabat.</p>
+          <figure class="new-shot"><img src="/assets/shots/queue-640.webp" alt="Pestanya Cua de transcripció amb una columna de Velocitat i temps restant que mostra aproximadament 6.8x, 2 minuts per al treball en execució" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Totes les plataformes</p>
+          <h3>Crea un vídeo subtitulat</h3>
+          <p>Marca-ho a la pestanya Baixa vídeos i un enllaç es converteix en un <code>&lt;title&gt;-subbed.mp4</code> amb els subtítols incrustats: baixa, transcriu i incrusta en una sola feina a la cua amb progrés i un Cancel·la funcional. Es mantenen la baixada i la transcripció.</p>
+          <figure class="new-shot"><img src="/assets/shots/download-640.webp" alt="Pestanya Baixa vídeos on hi ha la línia Subtítols disponibles: anglès i alemany, el botó Utilitza els subtítols en lloc d&#39;això i la casella Crea un vídeo subtitulat" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Totes les plataformes</p>
+          <h3>Comparteix una transcripció com a pàgina web</h3>
+          <p>Desa una transcripció completada com un sol fitxer <code>.html</code> que s'obre a qualsevol navegador sense instal·lació i sense connexió a Internet: marques de temps, parlants, capítols i un quadre de cerca. Fes clic en una paraula i el contingut multimèdia es reproduirà a partir d'allà.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Totes les plataformes</p>
+          <h3>Treballa sense connexió, més visible</h3>
+          <p>Un commutador a Fitxer manté l'aplicació fora de la xarxa. Una línia a la part inferior de la finestra indica si hi ha una connexió oberta i <em>Verifica ara el mode sense connexió</em> mostra les connexions de prova que estan sent rebutjades. Les estadístiques d'ús estan activades per defecte i es poden desactivar a Ajuda.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Totes les plataformes</p>
+          <h3>Traduir el discurs a l'anglès</h3>
+          <p>Una opció de <em>Sortida: traducció a l'anglès</em> converteix un discurs en un idioma diferent de l'anglès en subtítols en anglès en un sol pas, utilitzant la mateixa tasca de traducció de Whisper. Està desactivada per defecte i no està disponible per a cada motor o model.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · macOS</p>
+          <h3>Un Mac que se sent com un Mac</h3>
+          <p>Un menú de l'aplicació amb Configuració (Ordre-coma), Clar i Fosc que segueixen el macOS, el tipus de lletra del sistema, fitxers oberts des del Finder o deixats anar a la icona del Dock, i una notificació quan acaba una feina mentre l'aplicació està en segon pla.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Windows</p>
+          <h3>Progrés a la barra de tasques i barres de títol fosques</h3>
+          <p>El botó de la barra de tasques mostra el progrés, el nombre de treballs a la cua i en execució, i parpelleja quan acaba un treball. Les barres de títol segueixen el tema fosc i el text es manté nítid amb una escala de visualització del 125% i del 150%.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Primer inici</p>
+          <h3>Un inici ràpid i un clip de mostra</h3>
+          <p>Una nova instal·lació demana l'idioma, Ràpid o Màxima qualitat i una carpeta, i mostra la mida del model abans que es baixi res. Un clip de domini públic de 18 segons et permet veure una transcripció real abans de triar un fitxer propi.</p>
+        </article>
+      </div>
+      <p class="feature-more sr">També a la 2.0: De text a veu llegeix texts de fins a 100.000 caràcters per fragments, un botó d'<em>Actualitza'l</em> actualitza el descarregador de vídeos sense drets d'administrador i una barra d'actualitzacions silenciosa substitueix al diàleg d'actualitzacions. La pestanya per enrajolar el vídeo ja no hi és. Ho trobaràs tot al <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">registre de canvis</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section features" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Funcions</p>
+        <h2 id="features-title">Tot allò que voldries d'una eina per a transcripcions. <span class="h2-soft">En execució al teu ordinador.</span></h2>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/prism-still.webp" data-still="/assets/promo/prism-still.webp" data-anim="/assets/promo/prism.svg" alt="Animació: una W grossa divideix en dos als parlants, ensenya els motors locals faster-whisper, whisper.cpp i Parakeet executant-se fora de línia, i es plega a 14 formats de transcripció." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="bento" data-spotlight>
+        <article class="cell cell-engines tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
+            <h3>Transcripció local i privada</h3>
+            <p><code>large-v3</code> de Whisper per defecte, a més de <code>large-v3-turbo</code> i <code>distil-large-v3.5</code>. Escull el backend que encaixi amb el teu maquinari.</p>
+          </div>
+          <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
+          <div class="viz viz-engines" aria-hidden="true">
+            <div class="engine-list">
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">faster-whisper</span><span class="engine-tag">per defecte</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">whisper.cpp</span><span class="engine-tag">local</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">NVIDIA Parakeet</span><span class="engine-tag">local</span></div>
+            </div>
+            <div class="offline-badge"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>S'executa fora de línia després de descarregar el model una sola vegada</div>
+          </div>
+        </article>
+
+        <article class="cell cell-formats tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">14 formats</p>
+            <h3>Tots els formats de transcripció que puguis necessitar</h3>
+            <p>Escrits just al costat del teu fitxer de sortida, més oTranscribe, ELAN, InqScribe i Express Scribe per a fluxos de treball de transcripció professionals.</p>
+          </div>
+          <div class="viz viz-formats" aria-hidden="true">
+            <span>srt</span> <span>vtt</span> <span>ass</span> <span>tsv</span> <span>txt</span> <span>json</span> <span>lrc</span> <span>md</span> <span>docx</span> <span>pdf</span> <span class="wide">oTranscribe</span> <span class="wide">ELAN</span> <span class="wide">InqScribe</span> <span class="wide">Express Scribe</span>
+          </div>
+        </article>
+
+        <article class="cell cell-live tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Micròfon · àudio del sistema</p>
+            <h3>Transcripció en directe</h3>
+            <p>Transcriu un micròfon — o sigui què el que està tocant en aquest ordinador — a mesura que passa. Es fan talls a pauses naturals de manera que les paraules mai s'escurcen.</p>
+          </div>
+          <div class="viz viz-live" aria-hidden="true">
+            <div class="live-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="live-text"><span class="live-rec"></span><span data-typer>les paraules apareixen a mesura que les pronuncies</span><span class="caret"></span></p>
+          </div>
+        </article>
+
+        <article class="cell cell-speakers tone-sun sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Marques de temps per paraula</p>
+            <h3>Diarització de parlants</h3>
+            <p>Pas opcional "Identifica els parlants", més marques de temps per paraula i escurçament de períodes de temps per editar segments precisos.</p>
+          </div>
+          <div class="viz viz-speakers" aria-hidden="true">
+            <div class="utt"><span class="ts">00:04.2</span><span class="spk s1">Parlant 1</span><span class="words"><b>Llavors,</b> <b>per</b> <b>on</b> <b>podem</b> <b>començar?</b></span></div>
+            <div class="utt"><span class="ts">00:06.9</span><span class="spk s2">Parlant 2</span><span class="words"><b>Amb</b> <b>la</b> <b>mateixa</b> <b>gravació.</b></span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-queue tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Pausa · reprèn · torna a executar</p>
+            <h3>Cua per lots</h3>
+            <p>Estat en directe per a cada treball pendent i en execució, amb un control total sobre cada fila sempre a un clic de distància.</p>
+          </div>
+          <div class="viz viz-queue" aria-hidden="true">
+            <div class="job"><span class="job-name">interview-03.mp4</span><span class="bar"><i style="--p:100%"></i></span><span class="job-state done">fet</span></div>
+            <div class="job"><span class="job-name">lecture-week-2.m4a</span><span class="bar"><i class="run"></i></span><span class="job-state">en execució</span></div>
+            <div class="job"><span class="job-name">podcast-ep-41.wav</span><span class="bar"><i style="--p:0%"></i></span><span class="job-state">a la cua</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-download tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Impulsat per yt-dlp</p>
+            <h3>Baixades de vídeo i àudio</h3>
+            <p>Qualsevol cosa que <code>yt-dlp</code> sàpiga gestionar, amb una transcripció opcional un cop finalitzat. Les baixades es reprenen en lloc de reiniciar-se.</p>
+          </div>
+          <div class="viz viz-dl" aria-hidden="true">
+            <div class="url"><span class="url-dot"></span>https://…/watch?v=…</div>
+            <div class="dl-steps"><span class="st st-1">Baixa</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-2">Transcriu</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-3">.srt</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-denoise tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Mesura abans de filtrar</p>
+            <h3>Reducció de soroll adaptativa</h3>
+            <p>Primer mesura cada gravació i només la neteja si això ajuda; comprova el seu propi resultat i ho reverteix si n'ha suprimit la parla.</p>
+          </div>
+          <div class="viz viz-denoise" aria-hidden="true">
+            <svg class="wave wave-noisy" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="noisy"/></svg> <svg class="wave wave-clean" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="clean"/></svg> <span class="sweep"></span> <span class="wave-label l-before">abans</span><span class="wave-label l-after">després</span>
+          </div>
+        </article>
+      </div>
+
+      <p class="feature-more sr">A més d'eines d'IA (resums, elements d'acció, un pas bilingüe SRT), una pestanya opcional de clonació de veu sense connexió i un mode de xarxa local (més detalls al <a href="https://github.com/Milomilo777/whisper-transcriber-suite#features" rel="noopener">LLEGEIX-ME</a>).</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="section how" id="how-it-works" aria-labelledby="how-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Com funciona</p>
+        <h2 id="how-title">S'executa a l'ordinador. <span class="h2-soft">El teu àudio es queda allà.</span></h2>
+        <p class="section-lede">La transcripció s'executa al teu propi ordinador. El teu àudio només es puja si actives un dels dos motors al núvol opcionals, i el text de la transcripció només surt si et connectes manualment a un model d'IA remot.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/loom-still.webp" data-still="/assets/promo/loom-still.webp" data-anim="/assets/promo/loom.svg" alt="Animació: una línia de temps es converteix en subtítols amb temps per paraula, subtítols en anglès fets sense connexió amb faster-whisper, whisper.cpp o Parakeet, i 14 formats de transcripció sense cap compte." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <ol class="pipeline">
+        <li class="step sr">
+          <span class="step-num">01</span>
+          <h3>Arrossega un fitxer o enganxa'n un enllaç</h3>
+          <p>Àudio o vídeo del disc, o qualsevol cosa que el <code>yt-dlp</code> pugui baixar. La interfície Tk s'executa en el procés principal i posa el treball a la cua a l'instant.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">02</span>
+          <h3>Un treballador conté el model</h3>
+          <p>Cada tasca s'executa en el seu propi subprocés de treballador de llarga durada que manté el Whisper a la memòria i n'envia el progrés a través de JSON delimitat per salts de línia; de manera que la finestra mai no es congela.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">03</span>
+          <h3>La transcripció aterra al costat del teu fitxer</h3>
+          <p>Un testimoni per treballador i un senyal de vida fan que l'encaminament sigui sòlid i permetin a l'aplicació detectar un treballador bloquejat en lloc de quedar-s'hi penjada.</p>
+        </li>
+      </ol>
+      <p class="built-on sr">Creat amb base del model de reconeixement de la parla <a href="https://arxiv.org/abs/2212.04356" rel="noopener">Whisper</a> d'OpenAI, executat de forma local a través de <a href="https://github.com/SYSTRAN/faster-whisper" rel="noopener">faster-whisper</a>, <a href="https://github.com/ggml-org/whisper.cpp" rel="noopener">whisper.cpp</a> o <a href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3" rel="noopener">NVIDIA Parakeet</a>, amb el <a href="https://github.com/yt-dlp/yt-dlp" rel="noopener">yt-dlp</a> i el <a href="https://ffmpeg.org/" rel="noopener">FFmpeg</a> per la gestió de contingut multimèdia.</p>
+      <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
+      <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Llegeix l'arquitectura completa<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <p class="muted guide-links">Guies pas a pas: <a href="/ca/youtube-to-text/">Vídeo de YouTube a text</a> · <a href="/ca/video-to-srt/">Vídeo a subtítols SRT</a> · <a href="/ca/speaker-labels/">Transcripcions amb etiquetes de parlant</a></p>
+    </div>
+  </section>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="section download" id="download" aria-labelledby="download-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Baixa · <span data-auto="version">v2.1.0</span> · publicat fa <span data-auto="released">2026-10-12</span></p>
+        <h2 id="download-title">Baixa'l. <span class="h2-soft">Transcriu aquesta mateixa nit.</span></h2>
+        <p class="section-lede">Tot el necessari ve inclòs: un entorn d'execució Python privat, ffmpeg, ffprobe i yt-dlp. Només el model de veu en si es baixarà més tard (aproximadament 1–3 GB, una sola vegada); després d'això, la transcripció funcionarà sense connexió a Internet.</p>
+      </header>
+
+      <div class="dl-grid">
+        <article class="dl-card sr" data-os="windows" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows <span class="dl-badge" data-rec-badge hidden>Recomanat per a tu</span></p>
+          <h3>Instal·lador <code>.exe</code></h3>
+          <p class="dl-size" data-auto="size-installer">~238&nbsp;MB</p>
+          <p class="dl-desc">La majoria de les persones: instal·lador normal, drecera al menú Inici, actualitzacions directes. L'aplicació no està signada per codi, així que el Windows SmartScreen pot emetre un avís inicial: <b>Més informació → Executa de totes maneres</b>.</p>
+          <a class="btn btn-primary" data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Aconsegueix l'instal·lador</a>
+        </article>
+        <article class="dl-card sr" data-os="windows-portable" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows portable</p>
+          <h3>Portable <code>.zip</code></h3>
+          <p class="dl-size" data-auto="size-portable">~360&nbsp;MB</p>
+          <p class="dl-desc">Descomprimeix i executa-ho. Cap instal·lació, cap permís d'administració, feliç a dins d'una memòria USB.</p>
+          <a class="btn btn-ghost" data-auto-href="portable" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Portable-Windows-v2.1.0.zip" rel="noopener">Obtén el ZIP</a>
+        </article>
+        <article class="dl-card sr" data-os="mac" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS <span class="dl-badge" data-rec-badge hidden>Recomanat per a tu</span></p>
+          <h3>Imatge de disc <code>.dmg</code></h3>
+          <p class="dl-size"><span data-auto="size-mac-arm64">~275&nbsp;MB</span> · <span data-auto="size-mac-x64">~333&nbsp;MB</span></p>
+          <p class="dl-desc">El més fàcil: una línia al Terminal — tria la versió correcta i es salta l'avís de seguretat. O agafa la imatge de disc per a Apple Silicon o Intel.</p>
+          <a class="btn btn-primary" href="#mac-install"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Instal·lació d'una sola línia</a>
+          <div class="dl-pair"><a class="btn btn-ghost" data-auto-href="mac-arm64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-arm64.dmg" rel="noopener">Apple Silicon</a><a class="btn btn-ghost" data-auto-href="mac-x64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-x64.dmg" rel="noopener">Intel</a></div>
+        </article>
+        <article class="dl-card dl-card-source sr" data-os="linux" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Linux i codi font <span class="dl-badge" data-rec-badge hidden>Recomanat per a tu</span></p>
+          <h3>Compila a partir del codi font</h3>
+          <p class="dl-size">Python 3.11+</p>
+          <pre class="dl-code"><code>git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
+pip install -r requirements.txt
+python gui.py</code></pre>
+          <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite#build-from-source" rel="noopener">Guia del codi font</a>
+        </article>
+      </div>
+
+      <figure class="promo sr promo-after"><img src="/assets/promo/vise-still.webp" data-still="/assets/promo/vise-still.webp" data-anim="/assets/promo/vise.svg" alt="Animació: les paraules Entrada de so es converteixen en una transcripció amb temps de dos parlants, desada com a SRT, DOCX i PDF, sense compte i sense pujada." width="1280" height="640" loading="lazy" decoding="async"></figure>
+      <div class="mac-install sr" id="mac-install">
+        <div class="mac-install-head">
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — instal·lació d'una sola línia</p>
+          <h3>Enganxa al Terminal. I ja està.</h3>
+          <p>Baixa la versió correcta per al teu Mac (Apple Silicon per a macOS 14+, o Intel via Rosetta), copia l'aplicació a <code>Applications</code> i l'obre. Els fitxers recuperats per <code>curl</code> no queden en quarantena, de manera que no hi ha cap advertiment de "desenvolupador no identificat" que hagis de passar.</p>
+        </div>
+        <div class="code-box">
+          <button class="copy-btn" type="button" data-copy="#mac-cmd">Copia</button>
+          <pre><code id="mac-cmd" data-auto="mac-oneliner">A=x64; [ "$(uname -m)" = arm64 ] &amp;&amp; [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 14 ] &amp;&amp; A=arm64; curl -fL -o /tmp/wts.dmg "https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-$A.dmg" &amp;&amp; hdiutil attach -nobrowse -quiet -mountpoint /tmp/wts-dmg /tmp/wts.dmg &amp;&amp; cp -R "/tmp/wts-dmg/Whisper Transcriber Suite.app" /Applications/ &amp;&amp; hdiutil detach -quiet /tmp/wts-dmg &amp;&amp; rm /tmp/wts.dmg &amp;&amp; open "/Applications/Whisper Transcriber Suite.app"</code></pre>
+        </div>
+        <p class="mac-note">Prefereixes la manera habitual? Obre la <code>.dmg</code> i arrossega l'aplicació cap a Aplicacions; el primer llançament necessita llavors un clic dret → <b>Obre</b> (macOS 14 i versions anteriors) o bé Configuració del sistema → Privadesa i seguretat → <b>Obre de totes maneres</b> (macOS 15+).</p>
+      </div>
+      <p class="dl-note sr">Cada llançament, amb notes, es troba a <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">Versions a GitHub</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Guia d'instal·lació</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section class="section compare" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Compara</p>
+        <h2 id="compare-title">Com es compara amb altres aplicacions per a Whisper?</h2>
+        <p class="section-lede">Whisper Transcriber Suite és una de les diferents aplicacions d'escriptori gratuïtes i de codi obert que transcriuen al teu propi ordinador. Aquí pots veure com es compara amb Subtitle Edit, Vibe i Buzz, incloent-hi quan és millor triar una altra aplicació. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Llegeix tota la comparació</a>, amb fonts per a cada dada, a més d'altres dues aplicacions, noScribe i aTrain.</p>
+      </header>
+      <div class="table-wrap sr">
+        <table class="compare-table">
+          <caption>S'ha comprovat el 2026-10-05 amb el LLEGEIX-ME, els documents i els llançaments propis de cada projecte. Les aplicacions canvien ràpid: consulta la <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">comparació completa</a> on trobaràs les fonts.</caption>
+          <thead>
+            <tr><th scope="col"><span class="sr-only">Funció</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Preu i llicència</th><td>Gratuït, BSD-3-Clause</td><td>Gratuït, MIT</td><td>Gratuït, MIT</td><td>Gratuït, MIT</td></tr>
+            <tr><th scope="row">Baixades</th><td>Instal·lador i ZIP portable de Windows, macOS (Apple silicon, Intel); Linux a partir de codi font</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (la 1.4.5 és la darrera per als Mac amb processador Intel), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
+            <tr><th scope="row">Acceleració GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Instal·lador de Windows signat</th><td>No</td><td>No s'indica</td><td>Sí, segons els seus documents</td><td>No</td></tr>
+            <tr><th scope="row">Idiomes de la interfície</th><td>42 (traduït automàticament)</td><td>35</td><td>22</td><td>16</td></tr>
+            <tr><th scope="row">Escull-la si</th><td>També vols un micròfon en directe, baixades de vídeo, 14 formats de sortida i un mode de xarxa local amb una ruta compatible amb OpenAI</td><td>Vols molts motors de veu (Parakeet, Canary, Qwen3-ASR i d'altres) o una aplicació de Mac que estigui notariada</td><td>Vols un instal·lador de Windows que segons la seva documentació estigui signat, o un suport GPU que especifiqui ser compatible amb AMD i Intel</td><td>Vols els paquets per a Linux (Flatpak, Snap, AppImage) o bé instal·lar a través del PyPI</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section class="section faq" id="faq" aria-labelledby="faq-title">
+    <div class="wrap faq-grid">
+      <header class="faq-head sr">
+        <p class="eyebrow">PMF</p>
+        <h2 id="faq-title">Preguntes més freqüents</h2>
+        <p class="section-lede">Tens alguna altra cosa al cap? Pregunta als <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Debats a GitHub</a>.</p>
+      </header>
+      <div class="faq-list sr">
+        <article class="qa"><h3>És gratuït Whisper Transcriber Suite?</h3><div class="faq-a"><p>Sí. Té llicència BSD-3-Clause, sense subscripció i sense cost per minut. El Model de Whisper es baixa una vegada (uns 1-3 GB) en el primer inici; després d'això, la transcripció funciona sense connexió a Internet.</p></div></article>
+        <article class="qa"><h3>Puja el meu àudio o vídeo enlloc?</h3><div class="faq-a"><p>No, per defecte no. Cada rerefons per defecte (faster-whisper, whisper.cpp, NVIDIA Parakeet) s'executa localment al teu ordinador. Hi ha dos rerefons opcionals (un rerefons del núvol basat en la Gemini-API i Google Cloud Speech-to-Text), i cap dels dos s'activarà fins que tu mateix ho facis a Configuració avançada → Rerefons. Les estadístiques d'ús (cap tipus d'àudio o de nom de fitxer) venen activades per defecte, tot i que es poden desactivar anant a Ajuda → Estadístiques d'ús, l'aplicació comprova una vegada al dia a GitHub si hi ha alguna versió nova i <b>Fitxer → Treballa sense connexió</b> deté qualsevol tipus de connexió de xarxa.</p></div></article>
+        <article class="qa"><h3>En quines plataformes funciona?</h3><div class="faq-a"><p>Windows, macOS i Linux. Les baixades publicades són un instal·lador de Windows, un ZIP portàtil de Windows i un DMG de macOS; Linux s'executa des del codi font.</p></div></article>
+        <article class="qa"><h3>Quins formats de transcripció pot produir?</h3><div class="faq-a"><p><code>srt</code> <code>vtt</code> <code>ass</code> <code>tsv</code> <code>txt</code> <code>json</code> <code>lrc</code> <code>md</code> <code>docx</code> <code>pdf</code>, i també oTranscribe, ELAN, InqScribe i Express Scribe.</p></div></article>
+        <article class="qa"><h3>Pot etiquetar qui està parlant?</h3><div class="faq-a"><p>Sí: hi ha una diarització opcional de parlants ("Identifica els parlants"), amb marques de temps per paraula i amb escurçament de períodes de temps.</p></div></article>
+        <article class="qa"><h3>Pot transcriure un micròfon en directe o l'àudio del sistema?</h3><div class="faq-a"><p>Sí, des de la pestanya En directe: un micròfon o l'àudio del sistema, transcrits en el moment que ocorre.</p></div></article>
+        <article class="qa"><h3>Pot baixar i transcriure vídeos en línia, per exemple, de YouTube?</h3><div class="faq-a"><p>Sí, qualsevol lloc compatible amb yt-dlp, amb un pas opcional de transcriure en acabar.</p></div></article>
+        <article class="qa"><h3>Pot resumir una transcripció, extreure'n elements d'acció o respondre preguntes sobre ella?</h3><div class="faq-a"><p>Sí, a través de la pestanya opcional Eines d'IA que trobaràs dins el visor de transcripcions: l'aplicació és capaç de resumir, proposar elements d'acció, preguntar un dubte o fer una passada de traducció per a cada segment escrivint un <code>.srt</code> bilingüe. Aquesta funció està desactivada per defecte.</p></div></article>
+        <article class="qa"><h3>Pot clonar una veu i fer que digui un text nou?</h3><div class="faq-a"><p>Sí, a través de la pestanya opcional de Clona la teva veu, fent servir OmniVoice (Apache-2.0) al complet al teu ordinador. Està desactivat per defecte; demana-ho en el moment d'instal·lar i hauràs de confirmar que disposes de permís per clonar la veu de referència.</p></div></article>
+        <article class="qa"><h3>En què es diferencia això de cridar directament l'API de Whisper?</h3><div class="faq-a"><p>L'aplicació executa el model localment via faster-whisper per defecte, així que no cal fer cap desembossament pel preu de cada minut a l'API i no hi ha cap àudio que surti del teu ordinador, excepte si en tries voluntàriament un dels dos rerefons que tenen suport al núvol.</p></div></article>
+        <article class="qa"><h3>Diverses persones a la mateixa xarxa poden utilitzar-lo sense instal·lar-lo a cada ordinador?</h3><div class="faq-a"><p>Sí, el mode d'Accés web / LAN converteix aquest ordinador en una pàgina per transcriure l'àudio a la resta de dispositius a la xarxa, els quals ho poden fer servir.</p></div></article>
+        <article class="qa"><h3>Què hi ha de nou a la versió 2.1?</h3><div class="faq-a"><p>Els menús, els botons i els missatges estan disponibles en 42 idiomes (traduït de manera automàtica i marcat com a tal); les etiquetes dels parlants arriben fins al final de les gravacions llargues i tu tries la quantitat de parlants; les transcripcions, les exportacions i els subtítols s'escriuen completament en el disc abans de reemplaçar l'arxiu vell; les característiques en línia funcionen a cada Mac. La versió 2.0 va afegir la velocitat i temps restants a la cua, vídeos subtitulats des d'un enllaç, transcripcions com si es tractés d'una sola pàgina web sense connexió, un mode comprova-ho en Treballa sense connexió i traducció a l'anglès. Consulta les <a href="#whats-new">Novetats a la 2.1</a> i el <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">registre de canvis</a>.</p></div></article>
+        <article class="qa"><h3>Pot convertir un enllaç de vídeo en un vídeo amb subtítols?</h3><div class="faq-a"><p>Sí. A la pestanya de Baixa vídeos, marca <b>Crea un vídeo subtitulat</b>: l'aplicació descarrega el vídeo, el transcriu usant Whisper i hi incrusta els subtítols amb ffmpeg, obtenint un arxiu amb el nom del vídeo acompanyat d'un <code>-subbed.mp4</code>. Es mantenen la baixada i la transcripció, i mai se sobreescriu un <code>-subbed.mp4</code> existent.</p></div></article>
+        <article class="qa"><h3>Puc mantenir l'aplicació completament fora de la xarxa?</h3><div class="faq-a"><p>Sí. <b>Fitxer → Treballa sense connexió</b> atura la comprovació d'actualitzacions, les estadístiques d'ús, les descàrregues de models i els proveïdors d'IA remots. Mentre està actiu, una línia a la part inferior de la finestra indica si hi ha una connexió oberta i <em>Verifica ara el mode sense connexió</em> mostra que es rebutgen les connexions de prova. Si el desactives, l'aplicació es connectarà a la xarxa per buscar els paràmetres en línia a l'inici, per a la comprovació d'actualitzacions diària, per a les estadístiques d'ús (les quals poden desactivar-se a Ajuda → Estadístiques d'ús) i per a les baixades que tu iniciïs.</p></div></article>
+        <article class="qa"><h3>Com puc contactar amb el projecte?</h3><div class="faq-a"><p>Pels errors i peticions de funcions dirigiu-vos als <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">Problemes a GitHub</a>, per a preguntes als <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Debats</a>, i qualsevol altra cosa via correu electrònic (l'adreça es mostra sota petició a la <a href="#contact">Secció de contacte</a>). Els informes de seguretat van a través dels informes de vulnerabilitats privats a GitHub.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT + SUPPORT ============ -->
+  <section class="section contact" id="contact" aria-labelledby="contact-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Contacte i assistència</p>
+        <h2 id="contact-title">Parla amb nosaltres. <span class="h2-soft">Ajuda'l a créixer.</span></h2>
+      </header>
+      <div class="contact-grid">
+        <div class="contact-card sr" data-tilt-card data-contact>
+          <span class="contact-ic tone-teal"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg></span>
+          <h3>Correu electrònic</h3>
+          <p class="contact-val"><button type="button" class="contact-reveal" data-contact-reveal>Mostra l'adreça electrònica</button><span data-contact-out aria-live="polite" hidden></span><noscript> (necessita JavaScript)</noscript></p>
+          <p>Premsa, associacions o qualsevol cosa que no sigui un informe d'error.</p>
+        </div>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-coral"><svg class="i" aria-hidden="true"><use href="#i-bug"/></svg></span>
+          <h3>Informa d'un error</h3>
+          <p class="contact-val">Problemes a GitHub</p>
+          <p>Inclou la teva versió, el sistema operatiu i l'arxiu més petit amb què passi.</p>
+        </a>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-violet"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span>
+          <h3>Fes una pregunta</h3>
+          <p class="contact-val">Debats a GitHub</p>
+          <p>Ajuda a la configuració, idees i aparador d'altres usuaris.</p>
+        </a>
+      </div>
+
+      <div class="support-card sr">
+        <div class="support-orbit" aria-hidden="true"><img src="/assets/logo.svg" alt="" width="88" height="88"><span></span><span></span><span></span></div>
+        <div class="support-copy">
+          <h3 id="support">Dona suport al projecte</h3>
+          <p>Whisper Transcriber Suite és gratuït i sota la llicència BSD-3-Clause, i el seu manteniment és obert. Si t'ha estalviat temps, una estrella a GitHub ajudarà als altres a trobar-lo, i sempre s'agraeix un cafè.</p>
+          <div class="support-actions">
+            <a class="btn btn-coffee btn-lg" href="https://buymeacoffee.com/mehraz1358" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-cup"/></svg>Compra'm un cafè</a> <a class="btn btn-light btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Posa-hi una estrella a GitHub</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div class="footer-brand">
+      <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — inici"><img class="brand-logo" src="/assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
+      <p class="muted">Mantinguda per un desenvolupador independent, <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Codi font llicenciat sota BSD-3-Clause.</p>
+      <p class="muted"><a href="#contact">Contacte</a></p>
+      <p class="site-stats" data-site-stats hidden><span data-stat="visits" hidden><strong></strong> visites</span><span data-stat="downloads" hidden><strong></strong> baixades</span></p>
+      <p class="muted small mt-note">Aquesta pàgina l'ha traduït una màquina des de l'anglès i ha sigut revisada per una segona màquina. Hi ha alguna cosa que soni malament? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">Informa'ns a GitHub</a>.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Peu de pàgina">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Guia d'instal·lació</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Registre de canvis</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Debats</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Seguretat</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">Llicència</a> <a href="/ca/youtube-to-text/">De YouTube a text</a> <a href="/ca/video-to-srt/">De vídeo a SRT</a> <a href="/ca/speaker-labels/">Etiquetes de parlant</a> <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+  <div class="wrap">
+    <p class="muted small">També disponible en <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.de.md" rel="noopener" lang="de">Deutsch</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fr.md" rel="noopener" lang="fr">Français</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.es.md" rel="noopener" lang="es">Español</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.it.md" rel="noopener" lang="it">Italiano</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt-BR.md" rel="noopener" lang="pt-BR">Português (Brasil)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt.md" rel="noopener" lang="pt">Português (Portugal)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nl.md" rel="noopener" lang="nl">Nederlands</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pl.md" rel="noopener" lang="pl">Polski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ru.md" rel="noopener" lang="ru">Русский</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.uk.md" rel="noopener" lang="uk">Українська</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.tr.md" rel="noopener" lang="tr">Türkçe</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.cs.md" rel="noopener" lang="cs">Čeština</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sk.md" rel="noopener" lang="sk">Slovenčina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hu.md" rel="noopener" lang="hu">Magyar</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ro.md" rel="noopener" lang="ro">Română</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bg.md" rel="noopener" lang="bg">Български</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.el.md" rel="noopener" lang="el">Ελληνικά</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sv.md" rel="noopener" lang="sv">Svenska</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.da.md" rel="noopener" lang="da">Dansk</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nb.md" rel="noopener" lang="nb">Norsk bokmål</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fi.md" rel="noopener" lang="fi">Suomi</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hr.md" rel="noopener" lang="hr">Hrvatski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sr.md" rel="noopener" lang="sr">Српски</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sl.md" rel="noopener" lang="sl">Slovenščina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lt.md" rel="noopener" lang="lt">Lietuvių</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-CN.md" rel="noopener" lang="zh-CN">简体中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-TW.md" rel="noopener" lang="zh-TW">繁體中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ja.md" rel="noopener" lang="ja">日本語</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ko.md" rel="noopener" lang="ko">한국어</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.vi.md" rel="noopener" lang="vi">Tiếng Việt</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.th.md" rel="noopener" lang="th">ไทย</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.id.md" rel="noopener" lang="id">Bahasa Indonesia</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ms.md" rel="noopener" lang="ms">Bahasa Melayu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hi.md" rel="noopener" lang="hi">हिन्दी</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ar.md" rel="noopener" lang="ar">العربية</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fa.md" rel="noopener" lang="fa">فارسی</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.he.md" rel="noopener" lang="he">עברית</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lv.md" rel="noopener" lang="lv">Latviešu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ca.md" rel="noopener" lang="ca">Català</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bn.md" rel="noopener" lang="bn">বাংলা</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fil.md" rel="noopener" lang="fil">Filipino</a>.</p>
+  </div>
+</footer>
+
+<div class="star-toast" data-star-toast role="status" hidden>
+  <p><b>Gràcies per la descàrrega!</b> Mentre baixa: si l'aplicació t'acaba estalviant temps, un ⭐ a GitHub és la forma en què la resta de gent el pot trobar. Un sol clic, gratis.</p>
+  <div class="star-toast-actions">
+    <a class="btn btn-primary btn-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" data-star-go><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Posa-hi una estrella a GitHub</a>
+    <button class="star-toast-close" type="button" data-star-close aria-label="Descarta">×</button>
+  </div>
+</div>
+
+<script type="application/json" id="i18n-strings">
+{
+  "Play animations": "Reprodueix animacions",
+  "Pause animations": "Atura animacions",
+  "Install on macOS": "Instal·la a macOS",
+  "Get it for Linux": "Aconsegueix-ho per a Linux",
+  "Get it for your computer": "Aconsegueix-ho pel teu ordinador",
+  "Show %s": "Mostra el %s",
+  "Please write to us on GitHub Discussions": "Escriu-nos als Debats de GitHub",
+  "One moment…": "Un moment…",
+  "Could not load it. Try again": "No s'ha pogut carregar. Torna-ho a provar",
+  "so the words appear as you speak": "les paraules apareixen a mesura que les pronuncies",
+  "cuts land on natural pauses": "els talls es fan en pauses naturals",
+  "and no word is ever split in two": "i cap paraula s'escurça mai",
+  "Your audio stays on your computer.": "El teu àudio es manté al teu ordinador.",
+  "No account. No per-minute cost.": "Sense compte. Sense cap preu per minut.",
+  "Whisper runs on your own computer.": "Whisper s'executa al teu propi ordinador.",
+  "Fourteen formats, one click.": "Catorze formats, un clic.",
+  "Copy": "Copia",
+  "Copied": "Copiat"
+}
+</script>
+<script src="/js/main.js?v=20261018b" defer></script>
+<script src="/js/lang.js?v=20261019a" defer></script>
+</body>
+</html>

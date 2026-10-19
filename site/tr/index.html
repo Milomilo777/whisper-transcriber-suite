@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whisper Transcriber Suite — Ücretsiz Çevrimdışı Yazıya Dökme</title>
+<meta name="description" content="OpenAI Whisper&#39;ı kendi bilgisayarınızda çalıştıran ücretsiz masaüstü uygulaması. Ses ve videoları SRT, VTT, DOCX ve PDF olarak yazıya dökün. Windows, macOS ve Linux.">
+<meta name="author" content="translation-robot">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://whisper-transcriber-suite.com/tr/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/">
+<link rel="alternate" hreflang="de" href="https://whisper-transcriber-suite.com/de/">
+<link rel="alternate" hreflang="fr" href="https://whisper-transcriber-suite.com/fr/">
+<link rel="alternate" hreflang="es" href="https://whisper-transcriber-suite.com/es/">
+<link rel="alternate" hreflang="it" href="https://whisper-transcriber-suite.com/it/">
+<link rel="alternate" hreflang="pt-BR" href="https://whisper-transcriber-suite.com/pt-br/">
+<link rel="alternate" hreflang="pt" href="https://whisper-transcriber-suite.com/pt/">
+<link rel="alternate" hreflang="nl" href="https://whisper-transcriber-suite.com/nl/">
+<link rel="alternate" hreflang="pl" href="https://whisper-transcriber-suite.com/pl/">
+<link rel="alternate" hreflang="ru" href="https://whisper-transcriber-suite.com/ru/">
+<link rel="alternate" hreflang="uk" href="https://whisper-transcriber-suite.com/uk/">
+<link rel="alternate" hreflang="tr" href="https://whisper-transcriber-suite.com/tr/">
+<link rel="alternate" hreflang="cs" href="https://whisper-transcriber-suite.com/cs/">
+<link rel="alternate" hreflang="sk" href="https://whisper-transcriber-suite.com/sk/">
+<link rel="alternate" hreflang="hu" href="https://whisper-transcriber-suite.com/hu/">
+<link rel="alternate" hreflang="ro" href="https://whisper-transcriber-suite.com/ro/">
+<link rel="alternate" hreflang="bg" href="https://whisper-transcriber-suite.com/bg/">
+<link rel="alternate" hreflang="el" href="https://whisper-transcriber-suite.com/el/">
+<link rel="alternate" hreflang="sv" href="https://whisper-transcriber-suite.com/sv/">
+<link rel="alternate" hreflang="da" href="https://whisper-transcriber-suite.com/da/">
+<link rel="alternate" hreflang="nb" href="https://whisper-transcriber-suite.com/nb/">
+<link rel="alternate" hreflang="fi" href="https://whisper-transcriber-suite.com/fi/">
+<link rel="alternate" hreflang="hr" href="https://whisper-transcriber-suite.com/hr/">
+<link rel="alternate" hreflang="sr" href="https://whisper-transcriber-suite.com/sr/">
+<link rel="alternate" hreflang="sl" href="https://whisper-transcriber-suite.com/sl/">
+<link rel="alternate" hreflang="lt" href="https://whisper-transcriber-suite.com/lt/">
+<link rel="alternate" hreflang="zh-CN" href="https://whisper-transcriber-suite.com/zh-cn/">
+<link rel="alternate" hreflang="zh-TW" href="https://whisper-transcriber-suite.com/zh-tw/">
+<link rel="alternate" hreflang="ja" href="https://whisper-transcriber-suite.com/ja/">
+<link rel="alternate" hreflang="ko" href="https://whisper-transcriber-suite.com/ko/">
+<link rel="alternate" hreflang="vi" href="https://whisper-transcriber-suite.com/vi/">
+<link rel="alternate" hreflang="th" href="https://whisper-transcriber-suite.com/th/">
+<link rel="alternate" hreflang="id" href="https://whisper-transcriber-suite.com/id/">
+<link rel="alternate" hreflang="ms" href="https://whisper-transcriber-suite.com/ms/">
+<link rel="alternate" hreflang="hi" href="https://whisper-transcriber-suite.com/hi/">
+<link rel="alternate" hreflang="ar" href="https://whisper-transcriber-suite.com/ar/">
+<link rel="alternate" hreflang="fa" href="https://whisper-transcriber-suite.com/fa/">
+<link rel="alternate" hreflang="he" href="https://whisper-transcriber-suite.com/he/">
+<link rel="alternate" hreflang="lv" href="https://whisper-transcriber-suite.com/lv/">
+<link rel="alternate" hreflang="ca" href="https://whisper-transcriber-suite.com/ca/">
+<link rel="alternate" hreflang="bn" href="https://whisper-transcriber-suite.com/bn/">
+<link rel="alternate" hreflang="fil" href="https://whisper-transcriber-suite.com/fil/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/">
+<!-- i18n:hreflang:end -->
+<meta name="google-site-verification" content="_vMQaHCYUqaePsjuk_lmQ9Df32M03uPPZnXEFVr8ttU">
+<meta name="google-site-verification" content="uC9kBtANn2fSf-oX8ubTOv1cgtEQabzbnLz61epFOcc">
+<meta name="msvalidate.01" content="86B7B178FB8DB5F45F03295F6D2A8F4A">
+<meta name="msvalidate.01" content="C5065B95AD10AB4D2845E441E3D9FA37">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Whisper Transcriber Suite — Ücretsiz, Çevrimdışı Ses ve Video Yazıya Dökme">
+<meta property="og:description" content="OpenAI Whisper&#39;ı yerel olarak çalıştırır. Sesiniz bilgisayarınızda kalır, hesap gerekmez. 14 çıktı formatı, canlı yazıya dökme, konuşmacı etiketleri, YouTube indirmeleri. Ücretsiz, BSD-3-Clause lisanslı, Windows, macOS ve Linux için.">
+<meta property="og:url" content="https://whisper-transcriber-suite.com/tr/">
+<meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — Windows, macOS ve Linux için ücretsiz, çevrimdışı ses ve video yazıya dökme.">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="tr_TR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Whisper Transcriber Suite — Ücretsiz, Çevrimdışı Ses ve Video Yazıya Dökme">
+<meta name="twitter:description" content="OpenAI Whisper&#39;ı yerel olarak çalıştırır. Sesiniz bilgisayarınızda kalır, hesap gerekmez. 14 çıktı formatı, canlı yazıya dökme, konuşmacı etiketleri, YouTube indirmeleri.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="alternate" type="text/plain" title="LLM özeti" href="/llms.txt">
+
+<link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
+<script src="/js/motion-init.js?v=20260927b"></script>
+<link rel="stylesheet" href="/styles.css?v=20261019a">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://whisper-transcriber-suite.com/#org",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://github.com/Milomilo777/whisper-transcriber-suite/issues",
+        "availableLanguage": [
+          "English"
+        ]
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite",
+        "https://buymeacoffee.com/mehraz1358"
+      ],
+      "description": "Ses ve videoları yazıya dökmek için OpenAI Whisper'ı yerel olarak çalıştıran ücretsiz, açık kaynaklı masaüstü uygulaması."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://whisper-transcriber-suite.com/#app",
+      "name": "Whisper Transcriber Suite",
+      "alternateName": "WhisperTranscriberSuite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "image": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+      "screenshot": [
+        "https://whisper-transcriber-suite.com/assets/shots/transcribe.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/live.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/download.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/queue.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/voice.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/web.webp"
+      ],
+      "description": "OpenAI'ın Whisper modelini faster-whisper, whisper.cpp veya NVIDIA Parakeet aracılığıyla yerel olarak çalıştıran masaüstü uygulaması. Ses ve videoları SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX ve PDF formatlarında yazıya döker. Sesiniz bilgisayarınızda kalır ve hesap gerekmez.",
+      "softwareVersion": "2.1.0",
+      "datePublished": "2026-05-11",
+      "dateModified": "2026-10-12",
+      "operatingSystem": "Windows, macOS, Linux",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "Speech-to-text transcription",
+      "featureList": [
+        "faster-whisper, whisper.cpp veya NVIDIA Parakeet ile çevrimdışı sesten metne dönüştürme",
+        "SRT, VTT, DOCX ve PDF dahil 14 transkript formatı",
+        "Canlı mikrofon ve sistem sesi yazıya dökme",
+        "Kelime düzeyinde zaman damgalarıyla konuşmacı ayrımı",
+        "Duraklatma, devam ettirme ve yeniden çalıştırma özellikli toplu işlem kuyruğu",
+        "yt-dlp destekli herhangi bir siteden video ve ses indirme",
+        "Uyarlanabilir gürültü azaltma",
+        "İsteğe bağlı AI özetleri, eylem maddeleri ve iki dilli SRT",
+        "İsteğe bağlı çevrimdışı ses klonlama",
+        "Web / LAN erişim modu",
+        "Kuyruk, her bir yazıya dökme işleminin hızını ve kalan süresini gösterir",
+        "Altyazılı video oluştur: İndirin, yazıya dökün ve altyazıları bir MP4 dosyasına gömün",
+        "Transkripti tek bir çevrimdışı web sayfası olarak kaydedin",
+        "Görünür ağ durumuna sahip Çevrimdışı çalış anahtarı",
+        "Konuşmayı doğrudan İngilizceye çevirin"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isAccessibleForFree": true,
+      "interactionStatistic": {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/DownloadAction",
+        "userInteractionCount": 2694
+      },
+      "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
+      "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
+      "releaseNotes": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md",
+      "installUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md",
+      "codeRepository": "https://github.com/Milomilo777/whisper-transcriber-suite",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://whisper-transcriber-suite.com/#author"
+      },
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite"
+      ],
+      "softwareRequirements": "Windows 10 or 11 (64-bit); macOS 10.15 or later (Intel build) or macOS 14 or later (Apple Silicon build); Linux from source with Python 3.11+",
+      "memoryRequirements": "At least 8 GB RAM; an NVIDIA GPU with CUDA is optional"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://whisper-transcriber-suite.com/#website",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "inLanguage": "tr",
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://whisper-transcriber-suite.com/#author",
+      "name": "translation-robot",
+      "url": "https://github.com/translation-robot",
+      "sameAs": [
+        "https://github.com/translation-robot"
+      ],
+      "description": "Whisper Transcriber Suite'i açık kaynaklı bir proje olarak geliştiren bağımsız geliştirici."
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://whisper-transcriber-suite.com/tr/#webpage",
+      "url": "https://whisper-transcriber-suite.com/tr/",
+      "name": "Whisper Transcriber Suite — Ücretsiz Çevrimdışı Yazıya Dökme",
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/tr/#website"
+      },
+      "about": {
+        "@id": "https://whisper-transcriber-suite.com/tr/#app"
+      },
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": [
+          ".hero-lede",
+          ".faq-a p"
+        ]
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Whisper Transcriber Suite ücretsiz mi?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Evet. BSD-3-Clause lisanslıdır; abonelik veya dakika başına ücret yoktur. Whisper modelinin kendisi ilk başlatmada bir defaya mahsus indirilir (yaklaşık 1-3 GB); sonrasında yazıya dökme işlemi internet bağlantısı olmadan çalışır."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Ses veya videolarımı herhangi bir yere yüklüyor mu?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Hayır, varsayılan olarak yüklemez. Varsayılan tüm arka uçlar — faster-whisper, whisper.cpp, NVIDIA Parakeet — yerel olarak makinenizde çalışır. İki arka uç yalnızca isteğe bağlıdır (Gemini API üzerinden cloud_stt ve google_cloud_stt) ve her ikisi de Gelişmiş ayarlar → Arka uç kısmından siz açana kadar kapalı kalır. Kullanım istatistikleri (ses veya dosya adı içermez) varsayılan olarak açıktır ve Yardım > Kullanım istatistikleri altından kapatılabilir; uygulama yeni bir sürüm için günde bir kez GitHub'ı kontrol eder ve Dosya > Çevrimdışı çalış seçeneği tüm ağ kullanımını durdurur."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Hangi platformlarda çalışır?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Windows, macOS ve Linux. Yayınlanan indirmeler bir Windows yükleyicisi, taşınabilir bir Windows ZIP dosyası ve bir macOS DMG dosyasıdır; Linux kaynak koddan çalışır."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Hangi transkript formatlarını üretebilir?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX ve PDF; ayrıca oTranscribe, ELAN, InqScribe ve Express Scribe."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kimin konuştuğunu etiketleyebilir mi?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Evet, kelime düzeyinde zaman damgaları ve zaman aralığı kırpma özellikli isteğe bağlı konuşmacı ayrımı (Konuşmacıları belirle)."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Canlı bir mikrofonu veya sistem sesini yazıya dökebilir mi?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Evet, Canlı sekmesinden: Bir mikrofon veya sistem sesi, gerçekleştiği anda yazıya dökülür."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Çevrimiçi videoları (örneğin YouTube'dan) indirip yazıya dökebilir mi?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Evet, yt-dlp'nin desteklediği herhangi bir siteden; isteğe bağlı tamamlandığında yazıya dökme adımıyla birlikte."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bir transkripti özetleyebilir, eylem maddelerini çıkarabilir veya transkriptle ilgili soruları yanıtlayabilir mi?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Evet, transkript görüntüleyicideki isteğe bağlı AI Araçları sekmesi aracılığıyla: Özetleme, eylem maddeleri, soru sorma ve iki dilli SRT oluşturan segment bazlı çeviri adımı. Varsayılan olarak kapalıdır."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bir sesi klonlayıp yeni bir metni seslendirmesini sağlayabilir mi?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Evet, tamamen makinenizde çalışan OmniVoice (Apache-2.0) kullanan isteğe bağlı Sesinizi Klonlayın sekmesi aracılığıyla. Varsayılan olarak kapalıdır; kurulum sırasında isteğe bağlı olarak etkinleştirilir."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bunun doğrudan Whisper API'sini çağırmaktan farkı nedir?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Modeli varsayılan olarak faster-whisper aracılığıyla yerel olarak çalıştırır; bu sayede siz açıkça iki bulut arka ucundan birini seçmediğiniz sürece dakika başına API maliyeti olmaz ve hiçbir ses makinenizden ayrılmaz."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Aynı ağdaki birden fazla kişi, uygulamayı her makineye yüklemek zorunda kalmadan kullanabilir mi?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Evet, Web / LAN erişim modu bu makineyi ağdaki diğer cihazların kullanabileceği bir yazıya dökme sayfasına dönüştürür."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Sürüm 2.1'de neler yeni?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Menüler, düğmeler ve mesajlar 42 dilde sunulur (makine çevirisi yapılmış ve bu şekilde işaretlenmiştir); konuşmacı etiketleri uzun kayıtların sonuna kadar ulaşır ve kaç kişinin konuştuğunu ayarlayabilirsiniz; transkriptler, dışa aktarmalar ve altyazılar eski dosyanın yerini almadan önce diske eksiksiz yazılır; çevrimiçi özellikler her Mac'te çalışır. Sürüm 2.0 ise kuyruk hızı ve kalan süreyi, bağlantıdan altyazılı video oluşturmayı, transkriptleri tek bir çevrimdışı web sayfası olarak kaydetmeyi, kontrol edilebilir Çevrimdışı çalış modunu ve İngilizceye çeviriyi getirmişti."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bir video bağlantısını altyazılı bir videoya dönüştürebilir mi?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Evet. Video İndir sekmesinde Altyazılı video oluştur seçeneğini işaretleyin: Uygulama videoyu indirir, Whisper ile yazıya döker ve altyazıları ffmpeg ile videoya gömerek videonun adını taşıyan -subbed.mp4 uzantılı bir dosya oluşturur. İndirilen dosya ve transkript korunur; mevcut bir -subbed.mp4 dosyasının üzerine asla yazılmaz."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Uygulamanın ağ erişimini tamamen kapatabilir miyim?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Evet. Dosya > Çevrimdışı çalış seçeneği güncelleme denetimini, kullanım istatistiklerini, model indirmelerini ve uzak AI sağlayıcılarını durdurur. Bu seçenek etkinken pencerenin altındaki bir satır bir bağlantının açık olup olmadığını gösterir ve Çevrimdışını şimdi doğrula özelliği test bağlantılarının reddedildiğini gösterir. Bu seçenek devre dışıyken ise uygulama ağa yalnızca başlangıçtaki çevrimiçi ayarları, günlük güncelleme denetimi, kullanım istatistikleri (Yardım > Kullanım istatistikleri altından kapatılabilir) ve sizin başlattığınız indirmeler için bağlanır."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Projeyle nasıl iletişime geçebilirim?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Hata bildirimleri ve özellik talepleri GitHub Issues'a, sorular GitHub Discussions'a, diğer konular ise e-posta ile iletilir (adres, İletişim bölümünde talep üzerine gösterilir). Güvenlik bildirimleri GitHub'ın özel güvenlik açığı bildirme sistemi üzerinden yapılır."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m0 0-5-5m5 5-5 5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m12 4-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m8 4 6 6-6 6"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 20 20"><path fill="currentColor" d="M2 3.6 8.4 2.7v6.6H2zm7.3-1 8.7-1.2v7.9H9.3zM2 10.2h6.4v6.7L2 16zm7.3 0H18v8.4l-8.7-1.2z"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 20 20"><path fill="currentColor" d="M13.6 10.6c0-1.9 1.6-2.8 1.6-2.9-.9-1.3-2.3-1.5-2.8-1.5-1.2-.1-2.3.7-2.9.7-.6 0-1.5-.7-2.5-.7-1.3 0-2.5.8-3.2 1.9-1.4 2.4-.4 5.9 1 7.8.6.9 1.4 2 2.4 1.9 1-.1 1.3-.6 2.5-.6s1.5.6 2.5.6c1 0 1.7-.9 2.3-1.9.7-1.1 1-2.1 1-2.2 0 0-1.9-.8-1.9-3.1zM11.7 4.9c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-1 1.5-.8 2.4.9.1 1.8-.4 2.4-1.1z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14v11H3zM6 8.5l2 1.5-2 1.5M10 12h4"/></symbol>
+    <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+    <symbol id="i-cup" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 7h10v4.5A4.5 4.5 0 0 1 9.5 16h-1A4.5 4.5 0 0 1 4 11.5zm10 1.5h1.2a2.3 2.3 0 0 1 0 4.6H14M7 2.5v2m3-2v2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 5h14v10H3zm0 0 7 6 7-6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4h14v9H8l-4 3v-3H3z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7 7a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM3 10h4m6 0h4M4 5l3 2m9-2-3 2M4 15l3-2m9 2-3-2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 20 20"><path fill="currentColor" d="M6 4v12l10-6z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 20 20"><path fill="currentColor" d="M5 4h3.5v12H5zm6.5 0H15v12h-3.5z"/></symbol>
+  </defs>
+</svg> <a class="skip-link" href="#main">İçeriğe atla</a>
+
+<header class="site-header" data-header>
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — ana sayfa">
+      <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
+    </a>
+    <nav class="site-nav" aria-label="Birincil">
+      <a href="#showreel">Tur</a> <a href="#features">Özellikler</a> <a href="#how-it-works">Nasıl çalışır</a> <a href="#download">İndir</a> <a href="#compare">Karşılaştır</a> <a href="#faq">SSS</a> <a href="#contact">İletişim</a>
+    </nav>
+    <div class="header-cta">
+      <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Dil" aria-label="Dil"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->Türkçe<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/?lang=en" hreflang="en" lang="en" data-lang-pick="en">English</a></li>
+<li><a href="/de/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
+<li><a href="/fr/" hreflang="fr" lang="fr" data-lang-pick="fr">Français</a></li>
+<li><a href="/es/" hreflang="es" lang="es" data-lang-pick="es">Español</a></li>
+<li><a href="/it/" hreflang="it" lang="it" data-lang-pick="it">Italiano</a></li>
+<li><a href="/pt-br/" hreflang="pt-BR" lang="pt-BR" data-lang-pick="pt-BR">Português (Brasil)</a></li>
+<li><a href="/pt/" hreflang="pt" lang="pt" data-lang-pick="pt">Português (Portugal)</a></li>
+<li><a href="/nl/" hreflang="nl" lang="nl" data-lang-pick="nl">Nederlands</a></li>
+<li><a href="/pl/" hreflang="pl" lang="pl" data-lang-pick="pl">Polski</a></li>
+<li><a href="/ru/" hreflang="ru" lang="ru" data-lang-pick="ru">Русский</a></li>
+<li><a href="/uk/" hreflang="uk" lang="uk" data-lang-pick="uk">Українська</a></li>
+<li><a href="/tr/" hreflang="tr" lang="tr" data-lang-pick="tr" aria-current="true">Türkçe</a></li>
+<li><a href="/cs/" hreflang="cs" lang="cs" data-lang-pick="cs">Čeština</a></li>
+<li><a href="/sk/" hreflang="sk" lang="sk" data-lang-pick="sk">Slovenčina</a></li>
+<li><a href="/hu/" hreflang="hu" lang="hu" data-lang-pick="hu">Magyar</a></li>
+<li><a href="/ro/" hreflang="ro" lang="ro" data-lang-pick="ro">Română</a></li>
+<li><a href="/bg/" hreflang="bg" lang="bg" data-lang-pick="bg">Български</a></li>
+<li><a href="/el/" hreflang="el" lang="el" data-lang-pick="el">Ελληνικά</a></li>
+<li><a href="/sv/" hreflang="sv" lang="sv" data-lang-pick="sv">Svenska</a></li>
+<li><a href="/da/" hreflang="da" lang="da" data-lang-pick="da">Dansk</a></li>
+<li><a href="/nb/" hreflang="nb" lang="nb" data-lang-pick="nb">Norsk bokmål</a></li>
+<li><a href="/fi/" hreflang="fi" lang="fi" data-lang-pick="fi">Suomi</a></li>
+<li><a href="/hr/" hreflang="hr" lang="hr" data-lang-pick="hr">Hrvatski</a></li>
+<li><a href="/sr/" hreflang="sr" lang="sr" data-lang-pick="sr">Српски</a></li>
+<li><a href="/sl/" hreflang="sl" lang="sl" data-lang-pick="sl">Slovenščina</a></li>
+<li><a href="/lt/" hreflang="lt" lang="lt" data-lang-pick="lt">Lietuvių</a></li>
+<li><a href="/zh-cn/" hreflang="zh-CN" lang="zh-CN" data-lang-pick="zh-CN">简体中文</a></li>
+<li><a href="/zh-tw/" hreflang="zh-TW" lang="zh-TW" data-lang-pick="zh-TW">繁體中文</a></li>
+<li><a href="/ja/" hreflang="ja" lang="ja" data-lang-pick="ja">日本語</a></li>
+<li><a href="/ko/" hreflang="ko" lang="ko" data-lang-pick="ko">한국어</a></li>
+<li><a href="/vi/" hreflang="vi" lang="vi" data-lang-pick="vi">Tiếng Việt</a></li>
+<li><a href="/th/" hreflang="th" lang="th" data-lang-pick="th">ไทย</a></li>
+<li><a href="/id/" hreflang="id" lang="id" data-lang-pick="id">Bahasa Indonesia</a></li>
+<li><a href="/ms/" hreflang="ms" lang="ms" data-lang-pick="ms">Bahasa Melayu</a></li>
+<li><a href="/hi/" hreflang="hi" lang="hi" data-lang-pick="hi">हिन्दी</a></li>
+<li><a href="/ar/" hreflang="ar" lang="ar" dir="rtl" data-lang-pick="ar">العربية</a></li>
+<li><a href="/fa/" hreflang="fa" lang="fa" dir="rtl" data-lang-pick="fa">فارسی</a></li>
+<li><a href="/he/" hreflang="he" lang="he" dir="rtl" data-lang-pick="he">עברית</a></li>
+<li><a href="/lv/" hreflang="lv" lang="lv" data-lang-pick="lv">Latviešu</a></li>
+<li><a href="/ca/" hreflang="ca" lang="ca" data-lang-pick="ca">Català</a></li>
+<li><a href="/bn/" hreflang="bn" lang="bn" data-lang-pick="bn">বাংলা</a></li>
+<li><a href="/fil/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
+      <button class="btn-icon" type="button" data-motion-toggle aria-pressed="false" title="Animasyonları duraklat veya oynat">
+        <svg class="i i-when-on" aria-hidden="true"><use href="#i-pause"/></svg> <svg class="i i-when-off" aria-hidden="true"><use href="#i-play"/></svg> <span class="sr-only" data-motion-label>Animasyonları duraklat</span>
+      </button>
+      <a class="btn btn-ghost btn-sm hide-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" aria-label="Whisper Transcriber Suite&#39;e GitHub&#39;da yıldız verin"> <svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Yıldız ver </a> <a class="btn btn-primary btn-sm" href="#download">İndir</a>
+    </div>
+  </div>
+</header>
+
+<div class="lang-notice" data-lang-notice hidden>
+  <div class="wrap lang-notice-row">
+    <p>Bu sayfa, ziyaret ettiğiniz konum nedeniyle dilinizde gösterilmektedir. <a href="/?lang=en" data-lang-pick="en">İngilizce görüntüle</a></p>
+    <button class="btn-icon" type="button" data-lang-notice-close aria-label="Kapat"><span aria-hidden="true">×</span></button>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <canvas class="hero-waves" data-waves aria-hidden="true"></canvas>
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="kicker reveal" style="--d:0"><span class="kicker-dot" aria-hidden="true"></span>Ücretsiz &amp; açık kaynak · BSD-3-Clause · <span data-auto="version">v2.1.0</span></p>
+        <h1 class="hero-title" id="hero-title">
+          <span class="line"><span class="rise" style="--d:1">Ses girer.</span></span> <span class="line"><span class="rise" style="--d:2">Metin çıkar.</span></span> <span class="line"><span class="rise grad-text" style="--d:3">Sesiniz bilgisayarınızda kalır.</span></span>
+        </h1>
+        <p class="hero-lede reveal" style="--d:4">Whisper Transcriber Suite, OpenAI'ın Whisper modelini faster-whisper, whisper.cpp veya NVIDIA Parakeet aracılığıyla tamamen kendi bilgisayarınızda çalıştırır. Ses veya videoyu sürükleyip bırakın ve zaman damgalı transkriptinizi alın. Bulut yok, hesap yok, dakika başına ücret yok.</p>
+        <div class="hero-actions reveal" style="--d:5">
+          <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Windows için indir</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">Tura katılın<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </div>
+        <ul class="proof reveal" style="--d:6" aria-label="Bir bakışta">
+          <li><strong data-count="14">14</strong><span>transkript formatı</span></li>
+          <li><strong data-auto="downloads">2,600+</strong><span>şu ana kadar indirme</span></li>
+          <li><strong>0</strong><span>varsayılan olarak ses yüklemesi</span></li>
+          <li><strong>$0</strong><span>sonsuza dek</span></li>
+        </ul>
+      </div>
+
+      <div class="hero-scene" data-scene aria-hidden="true">
+        <div class="scene-rig" data-rig>
+          <div class="float-layer l-back">
+            <figure class="win win-sm win-a"><div class="win-bar"><i></i><i></i><i></i><span>Canlı</span></div><img src="/assets/shots/live-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-mid">
+            <figure class="win win-sm win-b"><div class="win-bar"><i></i><i></i><i></i><span>Video İndir</span></div><img src="/assets/shots/download-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-front">
+            <figure class="win win-main"><div class="win-bar"><i></i><i></i><i></i><span>Whisper Transcriber Suite</span></div><img src="/assets/shots/transcribe.webp" srcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" sizes="(max-width: 1080px) 72vw, 480px" alt="" width="1180" height="668" fetchpriority="high"></figure>
+          </div>
+          <div class="float-layer l-pop1">
+            <div class="chip-card wave-card"><span class="rec"></span><span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+          </div>
+          <div class="float-layer l-pop2">
+            <div class="chip-card srt-card">
+              <p class="srt-ts">00:00:04,120 → 00:00:06,880</p>
+              <p class="srt-line"><span data-hero-typer>Sesiniz bilgisayarınızda kalır.</span><span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="float-layer l-pop3">
+            <div class="chip-card fmt-card"><b>.srt</b><b>.vtt</b><b>.docx</b><b>.pdf</b></div>
+          </div>
+          <div class="float-layer l-pop4">
+            <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Çevrimdışı yazıya dökme</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Konuşmacı ayrıştırma</span> <span>Canlı mikrofon</span> <span>Ses klonlama</span> <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Konuşmacı ayrıştırma</span> <span>Canlı mikrofon</span> <span>Ses klonlama</span>
+    </div>
+  </div>
+
+  <!-- ============ SHOWREEL (3D carousel) ============ -->
+  <section class="section showreel" id="showreel" aria-labelledby="reel-title">
+    <div class="reel-glow" aria-hidden="true"></div>
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Ürün turu</p>
+        <h2 id="reel-title">Tek pencere. <span class="h2-soft">Altı araç.</span></h2>
+        <p class="section-lede">Bir dosya bırakın, seçeneklerinizi belirleyin, Yazıya dök'e basın. Geri kalan her şey — kuyruk, indirmeler, canlı yakalama, ses klonlama ve LAN paylaşımı — yalnızca bir sekme uzağınızda. Halkayı sürükleyin veya okları kullanın.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/showreel-still.webp" data-still="/assets/promo/showreel-still.webp" data-anim="/assets/promo/showreel.svg" alt="Animasyon: İki konuşmacısı etiketlenmiş bir röportaj, zaman ayarlı altyazılara dönüştürülmüş bir ders, altyazılı bir videoya dönüştürülmüş bir video bağlantısı, mikrofondan canlı altyazılar ve dosyanın yanına SRT, VTT, DOCX ve PDF olarak kaydedilen transkript." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="reel" data-reel>
+        <div class="reel-viewport" data-reel-viewport>
+          <div class="reel-ring" data-reel-ring>
+            <figure class="reel-card" data-title="Yazıya dök" data-caption="Dosya bırakma alanı, motor, model ve dil seçicileri, konuşmacı etiketleme ve kelime bazında zaman damgası seçenekleri."><div class="win-bar"><i></i><i></i><i></i><span>Yazıya dök</span></div><img src="/assets/shots/transcribe-640.webp" alt="Yazıya dök sekmesi: dosya bırakma alanı, motor, model ve dil seçicileri, konuşmacı etiketleme ve kelime zaman damgası seçenekleri" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Canlı" data-caption="Bir mikrofonu — veya bu bilgisayarda çalan her şeyi — giriş seviyesi göstergesiyle anında yazıya dökün."><div class="win-bar"><i></i><i></i><i></i><span>Canlı</span></div><img src="/assets/shots/live-640.webp" alt="Canlı sekmesi: mikrofon veya sistem sesi kaynağı, dil ve model seçicileri, giriş seviyesi göstergesi ve canlı transkript paneli" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Video İndir" data-caption="Bir format seçin, bir zaman aralığını kırpın, videoda zaten hangi altyazıların olduğunu görün ve isteğe bağlı olarak videoyu yazıya dökün ya da altyazıları yeni bir MP4&#39;e gömün."><div class="win-bar"><i></i><i></i><i></i><span>Video İndir</span></div><img src="/assets/shots/download-640.webp" alt="Video İndir sekmesi: Altyazılar mevcut satırıyla birlikte URL, tarayıcı oturum açma çerezleri, format, zaman aralığı, Bunun yerine altyazıları kullan, İndirdikten sonra yazıya dök ve Altyazılı video oluştur" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Yazıya dökme kuyruğu" data-caption="Canlı ilerleme, hız ve kalan süre bilgileriyle toplu işler — herhangi bir satırı duraklatın, sürdürün, iptal edin, yeniden çalıştırın veya kaldırın."><div class="win-bar"><i></i><i></i><i></i><span>Yazıya dökme kuyruğu</span></div><img src="/assets/shots/queue-640.webp" alt="Yazıya dökme kuyruğu sekmesi: dosya, durum, ilerleme, hız ve kalan süre, dil ve geçen süre sütunları ile duraklat, sürdür, iptal et, yeniden çalıştır ve kaldır seçenekleri" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Sesinizi Klonlayın" data-caption="İsteğe bağlı, tamamen çevrimdışı: Kısa bir örnekten bir sesi klonlayın veya yeni bir ses tasarlayın ve ona yeni metinler okutun."><div class="win-bar"><i></i><i></i><i></i><span>Sesinizi Klonlayın</span></div><img src="/assets/shots/voice-640.webp" alt="Sesinizi Klonlayın / Metinden Sese sekmesi: OmniVoice modeli, ses örneği, seslendirilecek metin, dil ve hız" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Web / LAN erişimi" data-caption="Tek bir düğme, bu bilgisayarı ağınızdaki diğer cihazlar için bir yazıya dökme sayfasına dönüştürür."><div class="win-bar"><i></i><i></i><i></i><span>Web / LAN erişimi</span></div><img src="/assets/shots/web-640.webp" alt="Web / LAN erişimi sekmesi: web erişimini başlat, bağlantı noktası, yerel ağda paylaş, erişim parolası ve HTTPS seçenekleri" width="640" height="362" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+        <div class="reel-controls">
+          <button class="reel-btn" type="button" data-reel-prev aria-label="Önceki ekran"><svg class="i" aria-hidden="true"><use href="#i-left"/></svg></button>
+          <div class="reel-meta" aria-live="off" data-reel-live>
+            <p class="reel-title" data-reel-title>Yazıya dök</p>
+            <p class="reel-caption" data-reel-caption>Dosya bırakma alanı, motor, model ve dil seçicileri, konuşmacı etiketleme ve kelime bazında zaman damgası seçenekleri.</p>
+          </div>
+          <button class="reel-btn" type="button" data-reel-next aria-label="Sonraki ekran"><svg class="i" aria-hidden="true"><use href="#i-right"/></svg></button>
+        </div>
+        <div class="reel-dots" data-reel-dots role="group" aria-label="Bir ekran seçin"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">2.1'deki yenilikler</p>
+        <h2 id="new-title">2.1'deki yenilikler. <span class="h2-soft">Artık kendi dilinizde.</span></h2>
+        <p class="section-lede">42 dilde uygulama, uzun kayıtların sonuna kadar ulaşan konuşmacı etiketleri, elektrik kesintisinden etkilenmeyen dosyalar ve her Mac'te çalışan çevrimiçi özellikler. Aşağıda ise 2.0 ile eklenenler yer alıyor.</p>
+      </header>
+
+      <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Tüm platformlar</p>
+          <h3>Uygulama kendi dilinizde</h3>
+          <p>Menüler, düğmeler ve mesajlar 42 dilde sunuluyor (macOS ve Linux'ta 39 dil). Uygulama sistem dilinize uyum sağlar veya <em>Gelişmiş ayarlar</em> bölümünden bir dil seçebilirsiniz. İngilizce dışındaki her dil makine çevirisidir ve bu şekilde belirtilir; Farsça, Arapça ve İbranice şimdilik Windows'ta sunulmaktadır.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Tüm platformlar</p>
+          <h3>Güvenebileceğiniz konuşmacı etiketleri</h3>
+          <p>Konuşmacı adları artık uzun kayıtların sonuna kadar ulaşıyor, konuşmacı algılama artık yazıya dökme işlemini çökertmiyor ve <em>Konuşmacıları belirle</em> seçeneğinin yanından, ayarı Otomatik'te bırakmak yerine kaç kişinin konuştuğunu (2 ila 10) belirleyebiliyorsunuz.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Tüm platformlar</p>
+          <h3>Çalışmalarınız daha güvende</h3>
+          <p>Transkriptler, dışa aktarılanlar ve altyazılar eski dosyanın yerini almadan önce diske tamamen yazılır; böylece bir elektrik kesintisi geride boş bir dosya bırakamaz. Tüm dosyalarını yazdıktan sonra arka plan işlemi duran bir yazıya dökme görevi tamamlanmış sayılır.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · macOS</p>
+          <h3>Her Mac'te çevrimiçi özellikler</h3>
+          <p>Güncelleme denetimi, sorun bildirimleri ve diğer web sorguları artık <em>certificate verify failed</em> hatasıyla başarısız olmuyor.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Tüm platformlar</p>
+          <h3>Hız ve kalan süre</h3>
+          <p>Yazıya dökme kuyruğu sekmesi, her bir yazıya dökme işleminin ne kadar hızlı ilerlediğini ve yaklaşık ne kadar süre kaldığını gösterir; örneğin <em>yaklaşık 4.8x, 6 dk kaldı</em>. İşlem tamamlandığında ise sonuç kartı hızı, modeli ve kullanılan cihazı bildirir.</p>
+          <figure class="new-shot"><img src="/assets/shots/queue-640.webp" alt="Çalışan iş için yaklaşık 6.8x, 2 dk kaldı gösteren Hız ve kalan süre sütununa sahip Yazıya dökme kuyruğu sekmesi" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Tüm platformlar</p>
+          <h3>Altyazılı video oluştur</h3>
+          <p>Video İndir sekmesinde bu seçeneği işaretleyin; bir bağlantı, altyazıları içine gömülmüş <code>&lt;title&gt;-subbed.mp4</code> hâline gelsin: İlerleme takibi ve çalışan bir İptal seçeneğiyle indirme, yazıya dökme ve gömme tek bir kuyruk işi olarak yürütülür. İndirilen dosya ve transkript saklanır.</p>
+          <figure class="new-shot"><img src="/assets/shots/download-640.webp" alt="Altyazılar mevcut: İngilizce ve Almanca satırını, Bunun yerine altyazıları kullan düğmesini ve Altyazılı video oluştur onay kutusunu gösteren Video İndir sekmesi" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Tüm platformlar</p>
+          <h3>Transkripti tek bir web sayfası olarak paylaşın</h3>
+          <p>Tamamlanan bir transkripti hiçbir kurulum ve internet bağlantısı gerekmeden tüm tarayıcılarda açılabilen tek bir <code>.html</code> dosyası olarak kaydedin: zaman damgaları, konuşmacılar, bölümler ve bir arama kutusu. Bir kelimeye tıklayın, medya oradan oynatılmaya başlasın.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Tüm platformlar</p>
+          <h3>Çevrimdışı çalış, artık görünür</h3>
+          <p>Dosya menüsü altındaki tek bir anahtar uygulamanın ağ bağlantısını keser. Pencerenin altındaki bir satır bir bağlantının açık olup olmadığını belirtir ve <em>Çevrimdışını şimdi doğrula</em> test bağlantılarının reddedildiğini gösterir. Kullanım istatistikleri varsayılan olarak açıktır ve Yardım altından kapatılabilir.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Tüm platformlar</p>
+          <h3>Konuşmayı İngilizceye çevirin</h3>
+          <p><em>Çıktı: İngilizce çeviri</em> seçeneği, Whisper'ın kendi çeviri görevini kullanarak İngilizce dışındaki konuşmaları tek geçişte İngilizce altyazılara dönüştürür. Varsayılan olarak kapalıdır ve her motor veya modelde kullanılamaz.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · macOS</p>
+          <h3>Mac gibi hissettiren bir Mac</h3>
+          <p>Ayarlar (Command-comma), macOS'e uyum sağlayan Açık ve Koyu mod, sistem yazı tipi, Finder'dan açılan veya Dock simgesine bırakılan dosyalar ve uygulama arka plandayken bir işlem tamamlandığında bildirim sunan bir uygulama menüsü.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Windows</p>
+          <h3>Görev çubuğu ilerleme durumu ve koyu başlık çubukları</h3>
+          <p>Görev çubuğu düğmesi ilerleme durumunu, kuyruktaki ve çalışan işlemlerin sayısını gösterir ve bir işlem bittiğinde yanıp söner. Başlık çubukları Koyu temaya uyum sağlar; metinler %125 ve %150 ekran ölçeklendirmesinde keskinliğini korur.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · İlk açılış</p>
+          <h3>Hızlı bir başlangıç ve örnek bir klip</h3>
+          <p>Yeni bir kurulum dilinizi, Hızlı veya En iyi kalite tercihini ve bir klasör seçmenizi ister; herhangi bir indirme yapılmadan önce model boyutunu gösterir. 18 saniyelik kamu malı bir klip, kendi dosyanızı seçmeden önce gerçek bir döküm görmenizi sağlar.</p>
+        </article>
+      </div>
+      <p class="feature-more sr">Ayrıca 2.0 ile gelen yenilikler: Metinden Sese, 100.000 karaktere kadar olan metinleri parça parça okur; <em>Güncelle</em> düğmesi video indiriciyi yönetici yetkisi olmadan yeniler ve güncelleme penceresinin yerini sessiz bir güncelleme çubuğu alır. Video Tiling sekmesi kaldırıldı. Her şey <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">değişiklik günlüğünde</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section features" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Özellikler</p>
+        <h2 id="features-title">Bir deşifre aracından bekleyeceğiniz her şey. <span class="h2-soft">Kendi bilgisayarınızda çalışır.</span></h2>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/prism-still.webp" data-still="/assets/promo/prism-still.webp" data-anim="/assets/promo/prism.svg" alt="Animasyon: Büyük bir W harfi iki konuşmacıyı birbirinden ayırır; çevrimdışı çalışan yerel motorlar faster-whisper, whisper.cpp ve Parakeet&#39;i gösterir ve 14 döküm formatına yelpaze gibi açılır." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="bento" data-spotlight>
+        <article class="cell cell-engines tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
+            <h3>Yerel ve gizli deşifre</h3>
+            <p>Varsayılan olarak Whisper <code>large-v3</code>, ayrıca <code>large-v3-turbo</code> ve <code>distil-large-v3.5</code>. Donanımınıza uygun arka ucu seçin.</p>
+          </div>
+          <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
+          <div class="viz viz-engines" aria-hidden="true">
+            <div class="engine-list">
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">faster-whisper</span><span class="engine-tag">varsayılan</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">whisper.cpp</span><span class="engine-tag">yerel</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">NVIDIA Parakeet</span><span class="engine-tag">yerel</span></div>
+            </div>
+            <div class="offline-badge"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Tek seferlik model indirmesinin ardından çevrimdışı çalışır</div>
+          </div>
+        </article>
+
+        <article class="cell cell-formats tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">14 format</p>
+            <h3>İhtiyacınız olacak tüm döküm formatları</h3>
+            <p>Girdi dosyanızın hemen yanına kaydedilir — ayrıca profesyonel deşifre iş akışları için oTranscribe, ELAN, InqScribe ve Express Scribe desteği.</p>
+          </div>
+          <div class="viz viz-formats" aria-hidden="true">
+            <span>srt</span> <span>vtt</span> <span>ass</span> <span>tsv</span> <span>txt</span> <span>json</span> <span>lrc</span> <span>md</span> <span>docx</span> <span>pdf</span> <span class="wide">oTranscribe</span> <span class="wide">ELAN</span> <span class="wide">InqScribe</span> <span class="wide">Express Scribe</span>
+          </div>
+        </article>
+
+        <article class="cell cell-live tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Mikrofon · sistem sesi</p>
+            <h3>Canlı deşifre</h3>
+            <p>Mikrofonu veya bu bilgisayarda çalan herhangi bir sesi anlık olarak yazıya döker. Kelimelerin asla bölünmemesi için kesmeler doğal duraklamalarda yapılır.</p>
+          </div>
+          <div class="viz viz-live" aria-hidden="true">
+            <div class="live-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="live-text"><span class="live-rec"></span><span data-typer>böylece siz konuştukça kelimeler görünür</span><span class="caret"></span></p>
+          </div>
+        </article>
+
+        <article class="cell cell-speakers tone-sun sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Kelime başına zaman damgaları</p>
+            <h3>Konuşmacı ayrıştırma</h3>
+            <p>İsteğe bağlı "Konuşmacıları belirle" adımı, ayrıca hassas segmentleri düzenlemek için kelime başına zaman damgaları ve zaman aralığı kırpma.</p>
+          </div>
+          <div class="viz viz-speakers" aria-hidden="true">
+            <div class="utt"><span class="ts">00:04.2</span><span class="spk s1">Konuşmacı 1</span><span class="words"><b>Peki</b> <b>biz</b> <b>işe</b> <b>nereden</b> <b>başlıyoruz?</b></span></div>
+            <div class="utt"><span class="ts">00:06.9</span><span class="spk s2">Konuşmacı 2</span><span class="words"><b>En</b> <b>başta</b> <b>kaydın</b> <b>kendisiyle.</b></span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-queue tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Duraklat · devam ettir · yeniden çalıştır</p>
+            <h3>Toplu işlem kuyruğu</h3>
+            <p>Bekleyen ve çalışan her işlem için canlı durum bilgisi; her satır üzerinde tam kontrol her zaman bir tık uzağınızda.</p>
+          </div>
+          <div class="viz viz-queue" aria-hidden="true">
+            <div class="job"><span class="job-name">interview-03.mp4</span><span class="bar"><i style="--p:100%"></i></span><span class="job-state done">tamamlandı</span></div>
+            <div class="job"><span class="job-name">lecture-week-2.m4a</span><span class="bar"><i class="run"></i></span><span class="job-state">çalışıyor</span></div>
+            <div class="job"><span class="job-name">podcast-ep-41.wav</span><span class="bar"><i style="--p:0%"></i></span><span class="job-state">kuyrukta</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-download tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">yt-dlp destekli</p>
+            <h3>Video &amp; ses indirmeleri</h3>
+            <p><code>yt-dlp</code> tarafından desteklenen her şey, üstelik indirme bitince isteğe bağlı yazıya dökme özelliğiyle. İndirmeler baştan başlamak yerine kaldığı yerden devam eder.</p>
+          </div>
+          <div class="viz viz-dl" aria-hidden="true">
+            <div class="url"><span class="url-dot"></span>https://…/watch?v=…</div>
+            <div class="dl-steps"><span class="st st-1">İndir</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-2">Yazıya dök</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-3">.srt</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-denoise tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Filtrelemeden önce ölçer</p>
+            <h3>Uyarlanabilir gürültü azaltma</h3>
+            <p>Önce her kaydı ölçer ve yalnızca faydası olacaksa temizler — kendi çıktısını denetler ve konuşmayı sildiyse işlemi geri alır.</p>
+          </div>
+          <div class="viz viz-denoise" aria-hidden="true">
+            <svg class="wave wave-noisy" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="noisy"/></svg> <svg class="wave wave-clean" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="clean"/></svg> <span class="sweep"></span> <span class="wave-label l-before">önce</span><span class="wave-label l-after">sonra</span>
+          </div>
+        </article>
+      </div>
+
+      <p class="feature-more sr">Ayrıca yapay zekâ araçları (özetler, eylem maddeleri, iki dilli SRT adımı), isteğe bağlı bir çevrimdışı ses klonlama sekmesi ve yerel ağ modu — daha fazlası <a href="https://github.com/Milomilo777/whisper-transcriber-suite#features" rel="noopener">README</a>'de.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="section how" id="how-it-works" aria-labelledby="how-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Nasıl çalışır</p>
+        <h2 id="how-title">Bilgisayarınızda çalışır. <span class="h2-soft">Sesiniz orada kalır.</span></h2>
+        <p class="section-lede">Yazıya dökme işlemi kendi bilgisayarınızda çalışır. Sesiniz yalnızca iki isteğe bağlı bulut motorundan birini açarsanız karşıya yüklenir; transkript metni ise yalnızca uzak bir yapay zekâ modelini kendiniz bağlarsanız dışarı çıkar.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/loom-still.webp" data-still="/assets/promo/loom-still.webp" data-anim="/assets/promo/loom.svg" alt="Animasyon: Bir zaman çizelgesi; kelime başına zaman damgalı altyazılara, faster-whisper, whisper.cpp veya Parakeet ile çevrimdışı oluşturulan İngilizce altyazılara ve hiçbir hesap gerektirmeyen 14 döküm formatına dönüşür." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <ol class="pipeline">
+        <li class="step sr">
+          <span class="step-num">01</span>
+          <h3>Bir dosya bırakın veya bir bağlantı yapıştırın</h3>
+          <p>Diskten ses veya video ya da <code>yt-dlp</code> aracılığıyla alınabilecek herhangi bir şey. Tk arayüzü ana işlemde çalışır ve işlemi anında sıraya alır.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">02</span>
+          <h3>Modeli çalışan bir süreç barındırır</h3>
+          <p>Her işlem, Whisper'ı bellekte tutan ve ilerleme durumunu yeni satırla ayrılmış JSON üzerinden aktaran kendine ait uzun ömürlü bir çalışan alt süreçte yürütülür — böylece pencere asla donmaz.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">03</span>
+          <h3>Transkript, dosyanızın yanına kaydedilir</h3>
+          <p>Çalışan süreç başına bir belirteç ve yaşam sinyali, yönlendirmeyi sağlam tutar ve uygulamanın donmak yerine takılan bir süreci tespit etmesini sağlar.</p>
+        </li>
+      </ol>
+      <p class="built-on sr">OpenAI'ın <a href="https://arxiv.org/abs/2212.04356" rel="noopener">Whisper konuşma tanıma modeli</a> temel alınarak geliştirilmiştir; <a href="https://github.com/SYSTRAN/faster-whisper" rel="noopener">faster-whisper</a>, <a href="https://github.com/ggml-org/whisper.cpp" rel="noopener">whisper.cpp</a> veya <a href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3" rel="noopener">NVIDIA Parakeet</a> aracılığıyla yerel olarak çalıştırılır, medya işlemleri içinse <a href="https://github.com/yt-dlp/yt-dlp" rel="noopener">yt-dlp</a> ve <a href="https://ffmpeg.org/" rel="noopener">FFmpeg</a> kullanılır.</p>
+      <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
+      <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Mimarinin tamamını okuyun<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <p class="muted guide-links">Adım adım kılavuzlar: <a href="/tr/youtube-to-text/">YouTube videosundan metne</a> · <a href="/tr/video-to-srt/">videodan SRT altyazıya</a> · <a href="/tr/speaker-labels/">konuşmacı etiketli dökümler</a></p>
+    </div>
+  </section>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="section download" id="download" aria-labelledby="download-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">İndir · <span data-auto="version">v2.1.0</span> · yayınlanma: <span data-auto="released">2026-10-12</span></p>
+        <h2 id="download-title">İndir. <span class="h2-soft">Bu akşam yazıya dökün.</span></h2>
+        <p class="section-lede">Gereken her şey pakete dahildir — özel bir Python çalışma zamanı, ffmpeg, ffprobe ve yt-dlp. Yalnızca konuşma modelinin kendisi daha sonra indirilir (yaklaşık 1–3 GB, tek seferlik); sonrasında deşifre işlemi internet bağlantısı olmadan çalışır.</p>
+      </header>
+
+      <div class="dl-grid">
+        <article class="dl-card sr" data-os="windows" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows <span class="dl-badge" data-rec-badge hidden>Sizin için önerilen</span></p>
+          <h3>Yükleyici <code>.exe</code></h3>
+          <p class="dl-size" data-auto="size-installer">~238&nbsp;MB</p>
+          <p class="dl-desc">Çoğu kullanıcı için — standart yükleyici, Başlat menüsü kısayolu, yerinde yükseltme. Uygulama kod imzalı değildir; bu nedenle Windows SmartScreen bir kez uyarı verebilir: <b>Ek bilgi → Yine de çalıştır</b>.</p>
+          <a class="btn btn-primary" data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Yükleyiciyi indirin</a>
+        </article>
+        <article class="dl-card sr" data-os="windows-portable" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows taşınabilir</p>
+          <h3>Taşınabilir <code>.zip</code></h3>
+          <p class="dl-size" data-auto="size-portable">~360&nbsp;MB</p>
+          <p class="dl-desc">Zipten çıkarın ve çalıştırın. Kurulum yok, yönetici izni gerekmez, USB bellekte sorunsuz çalışır.</p>
+          <a class="btn btn-ghost" data-auto-href="portable" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Portable-Windows-v2.1.0.zip" rel="noopener">ZIP dosyasını indirin</a>
+        </article>
+        <article class="dl-card sr" data-os="mac" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS <span class="dl-badge" data-rec-badge hidden>Sizin için önerilen</span></p>
+          <h3>Disk görüntüsü <code>.dmg</code></h3>
+          <p class="dl-size"><span data-auto="size-mac-arm64">~275&nbsp;MB</span> · <span data-auto="size-mac-x64">~333&nbsp;MB</span></p>
+          <p class="dl-desc">En kolayı: Terminal'de tek bir satır — doğru sürümü seçer ve güvenlik uyarısını atlar. Ya da Apple Silicon veya Intel için disk görüntüsünü indirin.</p>
+          <a class="btn btn-primary" href="#mac-install"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Tek satırda kurulum</a>
+          <div class="dl-pair"><a class="btn btn-ghost" data-auto-href="mac-arm64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-arm64.dmg" rel="noopener">Apple Silicon</a><a class="btn btn-ghost" data-auto-href="mac-x64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-x64.dmg" rel="noopener">Intel</a></div>
+        </article>
+        <article class="dl-card dl-card-source sr" data-os="linux" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Linux &amp; kaynak kod <span class="dl-badge" data-rec-badge hidden>Sizin için önerilen</span></p>
+          <h3>Kaynaktan derle</h3>
+          <p class="dl-size">Python 3.11+</p>
+          <pre class="dl-code"><code>git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
+pip install -r requirements.txt
+python gui.py</code></pre>
+          <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite#build-from-source" rel="noopener">Kaynak kod kılavuzu</a>
+        </article>
+      </div>
+
+      <figure class="promo sr promo-after"><img src="/assets/promo/vise-still.webp" data-still="/assets/promo/vise-still.webp" data-anim="/assets/promo/vise.svg" alt="Animasyon: &quot;Ses girer&quot; sözcükleri, hesap gerektirmeden ve karşıya yükleme olmadan, SRT, DOCX ve PDF olarak kaydedilen iki konuşmacılı, zaman damgalı bir transkripte dönüşür." width="1280" height="640" loading="lazy" decoding="async"></figure>
+      <div class="mac-install sr" id="mac-install">
+        <div class="mac-install-head">
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — tek satırda kurulum</p>
+          <h3>Terminal'e yapıştırın. Bu kadar.</h3>
+          <p>Mac'iniz için doğru sürümü indirir (macOS 14+ üzerinde Apple Silicon, aksi takdirde Rosetta aracılığıyla Intel), uygulamayı <code>Applications</code> içine kopyalar ve açar. <code>curl</code> ile indirilen dosyalar karantinaya alınmaz; bu sayede tıklayıp geçmeniz gereken bir "tanımlanamayan geliştirici" uyarısı olmaz.</p>
+        </div>
+        <div class="code-box">
+          <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopyala</button>
+          <pre><code id="mac-cmd" data-auto="mac-oneliner">A=x64; [ "$(uname -m)" = arm64 ] &amp;&amp; [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 14 ] &amp;&amp; A=arm64; curl -fL -o /tmp/wts.dmg "https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-$A.dmg" &amp;&amp; hdiutil attach -nobrowse -quiet -mountpoint /tmp/wts-dmg /tmp/wts.dmg &amp;&amp; cp -R "/tmp/wts-dmg/Whisper Transcriber Suite.app" /Applications/ &amp;&amp; hdiutil detach -quiet /tmp/wts-dmg &amp;&amp; rm /tmp/wts.dmg &amp;&amp; open "/Applications/Whisper Transcriber Suite.app"</code></pre>
+        </div>
+        <p class="mac-note">Alışılmış yöntemi mi tercih edersiniz? <code>.dmg</code> dosyasını açın ve uygulamayı Applications klasörüne sürükleyin; ardından ilk açılışta sağ tıklama → <b>Aç</b> (macOS 14 ve öncesi) veya Sistem Ayarları → Gizlilik ve Güvenlik → <b>Yine de Aç</b> (macOS 15+) gerekir.</p>
+      </div>
+      <p class="dl-note sr">Tüm sürümler, notlarıyla birlikte <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a> üzerinde yer alır. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Kurulum kılavuzu</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section class="section compare" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Karşılaştır</p>
+        <h2 id="compare-title">Diğer Whisper uygulamalarına kıyasla nasıl?</h2>
+        <p class="section-lede">Whisper Transcriber Suite, kendi bilgisayarınızda yazıya dökme işlemi yapan ücretsiz ve açık kaynaklı birkaç masaüstü uygulamasından biridir. Başka bir uygulamanın ne zaman daha uygun olacağı da dahil olmak üzere; Subtitle Edit, Vibe ve Buzz ile nasıl karşılaştırıldığını burada görebilirsiniz. Her bilginin kaynağını ve noScribe ile aTrain adlı iki ek uygulamayı içeren <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">karşılaştırmanın tamamını okuyun</a>.</p>
+      </header>
+      <div class="table-wrap sr">
+        <table class="compare-table">
+          <caption>2026-10-05 tarihinde her projenin kendi README, doküman ve sürümleri üzerinden kontrol edilmiştir. Uygulamalar hızla değişir: Kaynaklar için <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">tam karşılaştırmaya</a> bakın.</caption>
+          <thead>
+            <tr><th scope="col"><span class="sr-only">Özellik</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Fiyat, lisans</th><td>Ücretsiz, BSD-3-Clause</td><td>Ücretsiz, MIT</td><td>Ücretsiz, MIT</td><td>Ücretsiz, MIT</td></tr>
+            <tr><th scope="row">İndirmeler</th><td>Windows yükleyici ve taşınabilir ZIP, macOS (Apple silicon, Intel); kaynaktan Linux</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5, Intel Mac'ler için son sürümdür), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
+            <tr><th scope="row">GPU hızlandırma</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">İmzalı Windows yükleyicisi</th><td>Hayır</td><td>Belirtilmemiş</td><td>Evet, dokümantasyonuna göre</td><td>Hayır</td></tr>
+            <tr><th scope="row">Arayüz dilleri</th><td>42 (makine çevirisi)</td><td>35</td><td>22</td><td>16</td></tr>
+            <tr><th scope="row">Şu durumlarda tercih edin</th><td>Ayrıca canlı mikrofon, video indirme, 14 çıktı formatı ve OpenAI uyumlu bir rotaya sahip yerel ağ modu istiyorsanız</td><td>Birçok konuşma motoru (Parakeet, Canary, Qwen3-ASR ve daha fazlası) veya noter onaylı bir Mac uygulaması istiyorsanız</td><td>Belgelerinde imzalı olduğu belirtilen bir Windows yükleyicisi veya AMD ve Intel'i belirten GPU desteği istiyorsanız</td><td>Linux paketleri (Flatpak, Snap, AppImage) veya bir PyPI kurulumu istiyorsanız</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section class="section faq" id="faq" aria-labelledby="faq-title">
+    <div class="wrap faq-grid">
+      <header class="faq-head sr">
+        <p class="eyebrow">SSS</p>
+        <h2 id="faq-title">Sıkça sorulan sorular</h2>
+        <p class="section-lede">Aklınıza takılan başka bir şey mi var? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">GitHub Discussions</a> üzerinden sorun.</p>
+      </header>
+      <div class="faq-list sr">
+        <article class="qa"><h3>Whisper Transcriber Suite ücretsiz mi?</h3><div class="faq-a"><p>Evet. BSD-3-Clause lisanslıdır; abonelik veya dakika başına ücret yoktur. Whisper modelinin kendisi ilk başlatmada bir defaya mahsus indirilir (yaklaşık 1-3 GB); sonrasında yazıya dökme işlemi internet bağlantısı olmadan çalışır.</p></div></article>
+        <article class="qa"><h3>Ses veya videolarımı herhangi bir yere yüklüyor mu?</h3><div class="faq-a"><p>Hayır, varsayılan olarak değil. Varsayılan her arka uç — faster-whisper, whisper.cpp, NVIDIA Parakeet — makinenizde yerel olarak çalışır. İki arka uç yalnızca isteğe bağlıdır (bir bulut Gemini-API arka ucu ve Google Cloud Speech-to-Text) ve her ikisi de siz Gelişmiş → Arka Uç bölümünden kendiniz etkinleştirene kadar kapalı kalır. Kullanım istatistikleri (ses yok, dosya adı yok) varsayılan olarak açıktır ve Yardım → Kullanım istatistikleri altından kapatılabilir; uygulama günde bir kez yeni sürüm için GitHub'ı kontrol eder ve <b>Dosya → Çevrimdışı çalış</b> tüm ağ kullanımını durdurur.</p></div></article>
+        <article class="qa"><h3>Hangi platformlarda çalışır?</h3><div class="faq-a"><p>Windows, macOS ve Linux. Yayınlanan indirmeler bir Windows yükleyicisi, taşınabilir bir Windows ZIP dosyası ve bir macOS DMG dosyasıdır; Linux kaynak koddan çalışır.</p></div></article>
+        <article class="qa"><h3>Hangi transkript formatlarını üretebilir?</h3><div class="faq-a"><p><code>srt</code> <code>vtt</code> <code>ass</code> <code>tsv</code> <code>txt</code> <code>json</code> <code>lrc</code> <code>md</code> <code>docx</code> <code>pdf</code>, ayrıca oTranscribe, ELAN, InqScribe ve Express Scribe.</p></div></article>
+        <article class="qa"><h3>Kimin konuştuğunu etiketleyebilir mi?</h3><div class="faq-a"><p>Evet — kelime düzeyinde zaman damgaları ve zaman aralığı kırpma ile isteğe bağlı konuşmacı ayrımı ("Konuşmacıları belirle").</p></div></article>
+        <article class="qa"><h3>Canlı bir mikrofonu veya sistem sesini yazıya dökebilir mi?</h3><div class="faq-a"><p>Evet, Canlı sekmesinden — bir mikrofon veya sistem sesi, anında yazıya dökülür.</p></div></article>
+        <article class="qa"><h3>Çevrimiçi videoları (örneğin YouTube'dan) indirip yazıya dökebilir mi?</h3><div class="faq-a"><p>Evet, yt-dlp'nin desteklediği herhangi bir siteden; isteğe bağlı tamamlandığında yazıya dökme adımıyla birlikte.</p></div></article>
+        <article class="qa"><h3>Bir transkripti özetleyebilir, eylem maddelerini çıkarabilir veya transkriptle ilgili soruları yanıtlayabilir mi?</h3><div class="faq-a"><p>Evet, transkript görüntüleyicideki isteğe bağlı AI Araçları sekmesi aracılığıyla — özetleme, eylem maddeleri, soru sorma ve iki dilli bir <code>.srt</code> oluşturan segment başına çeviri adımı. Varsayılan olarak kapalıdır.</p></div></article>
+        <article class="qa"><h3>Bir sesi klonlayıp yeni bir metni seslendirmesini sağlayabilir mi?</h3><div class="faq-a"><p>Evet, tamamen makinenizde çalışan OmniVoice (Apache-2.0) kullanan isteğe bağlı Sesinizi Klonlayın sekmesi aracılığıyla. Varsayılan olarak kapalıdır; kurulum sırasında seçilir ve referans sesi klonlama izniniz olduğunu onaylamanız gerekir.</p></div></article>
+        <article class="qa"><h3>Bunun doğrudan Whisper API'sini çağırmaktan farkı nedir?</h3><div class="faq-a"><p>Modeli varsayılan olarak faster-whisper aracılığıyla yerel olarak çalıştırır, bu nedenle dakika başına API maliyeti yoktur ve hiçbir ses makinenizden çıkmaz — iki bulut arka ucundan birini açıkça seçmediğiniz sürece.</p></div></article>
+        <article class="qa"><h3>Aynı ağdaki birden fazla kişi, uygulamayı her makineye yüklemek zorunda kalmadan kullanabilir mi?</h3><div class="faq-a"><p>Evet — Web/LAN erişim modu, bu makineyi ağdaki diğer cihazların kullanabileceği bir yazıya dökme sayfasına dönüştürür.</p></div></article>
+        <article class="qa"><h3>Sürüm 2.1'de neler yeni?</h3><div class="faq-a"><p>Menüler, düğmeler ve iletiler 42 dilde sunulur (makine çevirisi yapılmış ve bu şekilde işaretlenmiştir); konuşmacı etiketleri uzun kayıtların sonuna kadar ulaşır ve kaç kişinin konuştuğunu ayarlayabilirsiniz; transkriptler, dışa aktarmalar ve altyazılar eski dosyanın yerine geçmeden önce diske tam olarak yazılır; çevrim içi özellikler her Mac'te çalışır. Sürüm 2.0; kuyruk hızını ve kalan süreyi, bağlantıdan altyazılı videoyu, transkriptlerin tek bir çevrimdışı web sayfası olarak kaydedilmesini, işaretlenebilir bir Çevrimdışı çalış modunu ve İngilizceye çeviriyi ekledi. <a href="#whats-new">2.1 sürümündeki yenilikler</a> ve <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">değişiklik günlüğüne</a> göz atın.</p></div></article>
+        <article class="qa"><h3>Bir video bağlantısını altyazılı bir videoya dönüştürebilir mi?</h3><div class="faq-a"><p>Evet. Video İndir sekmesinde <b>Altyazılı video oluştur</b> seçeneğini işaretleyin: Uygulama videoyu indirir, Whisper ile yazıya döker ve ffmpeg ile altyazıları videoya gömerek videoyla aynı adı taşıyan <code>-subbed.mp4</code> ekli bir dosya oluşturur. İndirilen dosya ve transkript saklanır, mevcut bir <code>-subbed.mp4</code> ise asla değiştirilmez.</p></div></article>
+        <article class="qa"><h3>Uygulamanın ağ erişimini tamamen kapatabilir miyim?</h3><div class="faq-a"><p>Evet. <b>Dosya → Çevrimdışı çalış</b> güncelleme kontrolünü, kullanım istatistiklerini, model indirmelerini ve uzak AI sağlayıcılarını durdurur. Bu mod açıkken pencerenin altındaki bir satır bir bağlantının açık olup olmadığını gösterir ve <em>Çevrimdışını şimdi doğrula</em> test bağlantılarının reddedildiğini gösterir. Kapalıyken ise uygulama ağa yalnızca başlangıçtaki çevrim içi ayarları, günlük güncelleme denetimi, kullanım istatistikleri (Yardım → Kullanım istatistikleri altından kapatılabilir) ve başlattığınız indirmeler için bağlanır.</p></div></article>
+        <article class="qa"><h3>Projeyle nasıl iletişime geçebilirim?</h3><div class="faq-a"><p>Hata bildirimleri ve özellik istekleri <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a> sayfasına, sorular <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a> bölümüne, diğer her şey ise e-posta ile iletilir (adres, <a href="#contact">İletişim bölümünde</a> istek üzerine gösterilir). Güvenlik bildirimleri GitHub'ın gizli güvenlik açığı bildirimi üzerinden yapılır.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT + SUPPORT ============ -->
+  <section class="section contact" id="contact" aria-labelledby="contact-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">İletişim &amp; destek</p>
+        <h2 id="contact-title">Bize ulaşın. <span class="h2-soft">Büyümesine yardımcı olun.</span></h2>
+      </header>
+      <div class="contact-grid">
+        <div class="contact-card sr" data-tilt-card data-contact>
+          <span class="contact-ic tone-teal"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg></span>
+          <h3>E-posta</h3>
+          <p class="contact-val"><button type="button" class="contact-reveal" data-contact-reveal>E-posta adresini göster</button><span data-contact-out aria-live="polite" hidden></span><noscript> (JavaScript gerektirir)</noscript></p>
+          <p>Basın, ortaklıklar veya hata bildirimi olmayan her şey.</p>
+        </div>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-coral"><svg class="i" aria-hidden="true"><use href="#i-bug"/></svg></span>
+          <h3>Hata bildirin</h3>
+          <p class="contact-val">GitHub Issues</p>
+          <p>Sürümünüzü, işletim sisteminizi ve sorunu yeniden oluşturan en küçük dosyayı ekleyin.</p>
+        </a>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-violet"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span>
+          <h3>Bir soru sorun</h3>
+          <p class="contact-val">GitHub Discussions</p>
+          <p>Kurulum yardımı, fikirler ve diğer kullanıcılardan örnek paylaşımlar.</p>
+        </a>
+      </div>
+
+      <div class="support-card sr">
+        <div class="support-orbit" aria-hidden="true"><img src="/assets/logo.svg" alt="" width="88" height="88"><span></span><span></span><span></span></div>
+        <div class="support-copy">
+          <h3 id="support">Projeyi destekleyin</h3>
+          <p>Whisper Transcriber Suite ücretsizdir, BSD-3-Clause ile lisanslanmıştır ve açık şekilde geliştirilmektedir. Size zaman kazandırdıysa, GitHub'da vereceğiniz bir yıldız başkalarının da bulmasına yardımcı olur — bir kahve ise her zaman memnuniyetle karşılanır.</p>
+          <div class="support-actions">
+            <a class="btn btn-coffee btn-lg" href="https://buymeacoffee.com/mehraz1358" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-cup"/></svg>Bir kahve ısmarla</a> <a class="btn btn-light btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>GitHub'da yıldız ver</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div class="footer-brand">
+      <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — ana sayfa"><img class="brand-logo" src="/assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
+      <p class="muted">Tek bir bağımsız geliştirici olan <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a> tarafından yürütülmektedir. Kaynak kod BSD-3-Clause ile lisanslanmıştır.</p>
+      <p class="muted"><a href="#contact">İletişim</a></p>
+      <p class="site-stats" data-site-stats hidden><span data-stat="visits" hidden><strong></strong> ziyaret</span><span data-stat="downloads" hidden><strong></strong> indirme</span></p>
+      <p class="muted small mt-note">Bu sayfa İngilizceden bir makine tarafından çevrildi ve bir diğeri tarafından kontrol edildi. Yanlış görünen bir şey mi var? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub'da bize bildirin</a>.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Alt bilgi">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Kurulum kılavuzu</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Değişiklik günlüğü</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Tartışmalar</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Güvenlik</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">Lisans</a> <a href="/tr/youtube-to-text/">YouTube'dan metne</a> <a href="/tr/video-to-srt/">Videodan SRT'ye</a> <a href="/tr/speaker-labels/">Konuşmacı etiketleri</a> <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+  <div class="wrap">
+    <p class="muted small">Ayrıca şu dillerde de okunabilir: <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.de.md" rel="noopener" lang="de">Deutsch</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fr.md" rel="noopener" lang="fr">Français</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.es.md" rel="noopener" lang="es">Español</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.it.md" rel="noopener" lang="it">Italiano</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt-BR.md" rel="noopener" lang="pt-BR">Português (Brasil)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt.md" rel="noopener" lang="pt">Português (Portugal)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nl.md" rel="noopener" lang="nl">Nederlands</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pl.md" rel="noopener" lang="pl">Polski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ru.md" rel="noopener" lang="ru">Русский</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.uk.md" rel="noopener" lang="uk">Українська</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.tr.md" rel="noopener" lang="tr">Türkçe</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.cs.md" rel="noopener" lang="cs">Čeština</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sk.md" rel="noopener" lang="sk">Slovenčina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hu.md" rel="noopener" lang="hu">Magyar</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ro.md" rel="noopener" lang="ro">Română</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bg.md" rel="noopener" lang="bg">Български</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.el.md" rel="noopener" lang="el">Ελληνικά</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sv.md" rel="noopener" lang="sv">Svenska</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.da.md" rel="noopener" lang="da">Dansk</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nb.md" rel="noopener" lang="nb">Norsk bokmål</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fi.md" rel="noopener" lang="fi">Suomi</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hr.md" rel="noopener" lang="hr">Hrvatski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sr.md" rel="noopener" lang="sr">Српски</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sl.md" rel="noopener" lang="sl">Slovenščina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lt.md" rel="noopener" lang="lt">Lietuvių</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-CN.md" rel="noopener" lang="zh-CN">简体中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-TW.md" rel="noopener" lang="zh-TW">繁體中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ja.md" rel="noopener" lang="ja">日本語</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ko.md" rel="noopener" lang="ko">한국어</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.vi.md" rel="noopener" lang="vi">Tiếng Việt</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.th.md" rel="noopener" lang="th">ไทย</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.id.md" rel="noopener" lang="id">Bahasa Indonesia</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ms.md" rel="noopener" lang="ms">Bahasa Melayu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hi.md" rel="noopener" lang="hi">हिन्दी</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ar.md" rel="noopener" lang="ar">العربية</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fa.md" rel="noopener" lang="fa">فارسی</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.he.md" rel="noopener" lang="he">עברית</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lv.md" rel="noopener" lang="lv">Latviešu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ca.md" rel="noopener" lang="ca">Català</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bn.md" rel="noopener" lang="bn">বাংলা</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fil.md" rel="noopener" lang="fil">Filipino</a>.</p>
+  </div>
+</footer>
+
+<div class="star-toast" data-star-toast role="status" hidden>
+  <p><b>İndirdiğiniz için teşekkürler!</b> İndirme devam ederken — uygulama size zaman kazandırırsa, GitHub'da vereceğiniz bir ⭐ başkalarının da uygulamayı bulmasını sağlar. Tek tıkla, ücretsiz.</p>
+  <div class="star-toast-actions">
+    <a class="btn btn-primary btn-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" data-star-go><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>GitHub'da yıldız ver</a>
+    <button class="star-toast-close" type="button" data-star-close aria-label="Kapat">×</button>
+  </div>
+</div>
+
+<script type="application/json" id="i18n-strings">
+{
+  "Play animations": "Animasyonları oynat",
+  "Pause animations": "Animasyonları duraklat",
+  "Install on macOS": "macOS için yükle",
+  "Get it for Linux": "Linux için edinin",
+  "Get it for your computer": "Bilgisayarınız için edinin",
+  "Show %s": "%s göster",
+  "Please write to us on GitHub Discussions": "Lütfen GitHub Discussions üzerinden bize yazın",
+  "One moment…": "Bir dakika…",
+  "Could not load it. Try again": "Yüklenemedi. Tekrar deneyin",
+  "so the words appear as you speak": "böylece kelimeler tam siz konuştukça belirir",
+  "cuts land on natural pauses": "kesmeler doğal duraklamalara denk gelir",
+  "and no word is ever split in two": "ve hiçbir kelime asla ikiye bölünmez",
+  "Your audio stays on your computer.": "Sesiniz bilgisayarınızda kalır.",
+  "No account. No per-minute cost.": "Hesap yok. Dakika başı ücret yok.",
+  "Whisper runs on your own computer.": "Whisper kendi bilgisayarınızda çalışır.",
+  "Fourteen formats, one click.": "On dört biçim, tek tık.",
+  "Copy": "Kopyala",
+  "Copied": "Kopyalandı"
+}
+</script>
+<script src="/js/main.js?v=20261018b" defer></script>
+<script src="/js/lang.js?v=20261019a" defer></script>
+</body>
+</html>

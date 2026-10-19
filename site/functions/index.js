@@ -33,7 +33,7 @@ const COOKIE = 'wts_lang';
 const YEAR = 60 * 60 * 24 * 365;
 
 // published:start (tools/site_i18n.py build)
-const PUBLISHED = ['en'];
+const PUBLISHED = ['en', 'de', 'fr', 'es', 'it', 'pt-BR', 'pt', 'nl', 'pl', 'ru', 'uk', 'tr', 'cs', 'sk', 'hu', 'ro', 'bg', 'el', 'sv', 'da', 'nb', 'fi', 'hr', 'sr', 'sl', 'lt', 'zh-CN', 'zh-TW', 'ja', 'ko', 'vi', 'th', 'id', 'ms', 'hi', 'ar', 'fa', 'he', 'lv', 'ca', 'bn', 'fil'];
 // published:end
 
 // country-lang:start (tools/site_country_lang.py)

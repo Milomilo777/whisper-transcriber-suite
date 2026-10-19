@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whisper Transcriber Suite — Besplatno izvanmrežno transkribiranje</title>
+<meta name="description" content="Besplatna aplikacija za radnu površinu koja pokreće OpenAI Whisper na vašem računalu. Transkribirajte zvuk i videozapise u SRT, VTT, DOCX i PDF. Windows, macOS i Linux.">
+<meta name="author" content="translation-robot">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://whisper-transcriber-suite.com/hr/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/">
+<link rel="alternate" hreflang="de" href="https://whisper-transcriber-suite.com/de/">
+<link rel="alternate" hreflang="fr" href="https://whisper-transcriber-suite.com/fr/">
+<link rel="alternate" hreflang="es" href="https://whisper-transcriber-suite.com/es/">
+<link rel="alternate" hreflang="it" href="https://whisper-transcriber-suite.com/it/">
+<link rel="alternate" hreflang="pt-BR" href="https://whisper-transcriber-suite.com/pt-br/">
+<link rel="alternate" hreflang="pt" href="https://whisper-transcriber-suite.com/pt/">
+<link rel="alternate" hreflang="nl" href="https://whisper-transcriber-suite.com/nl/">
+<link rel="alternate" hreflang="pl" href="https://whisper-transcriber-suite.com/pl/">
+<link rel="alternate" hreflang="ru" href="https://whisper-transcriber-suite.com/ru/">
+<link rel="alternate" hreflang="uk" href="https://whisper-transcriber-suite.com/uk/">
+<link rel="alternate" hreflang="tr" href="https://whisper-transcriber-suite.com/tr/">
+<link rel="alternate" hreflang="cs" href="https://whisper-transcriber-suite.com/cs/">
+<link rel="alternate" hreflang="sk" href="https://whisper-transcriber-suite.com/sk/">
+<link rel="alternate" hreflang="hu" href="https://whisper-transcriber-suite.com/hu/">
+<link rel="alternate" hreflang="ro" href="https://whisper-transcriber-suite.com/ro/">
+<link rel="alternate" hreflang="bg" href="https://whisper-transcriber-suite.com/bg/">
+<link rel="alternate" hreflang="el" href="https://whisper-transcriber-suite.com/el/">
+<link rel="alternate" hreflang="sv" href="https://whisper-transcriber-suite.com/sv/">
+<link rel="alternate" hreflang="da" href="https://whisper-transcriber-suite.com/da/">
+<link rel="alternate" hreflang="nb" href="https://whisper-transcriber-suite.com/nb/">
+<link rel="alternate" hreflang="fi" href="https://whisper-transcriber-suite.com/fi/">
+<link rel="alternate" hreflang="hr" href="https://whisper-transcriber-suite.com/hr/">
+<link rel="alternate" hreflang="sr" href="https://whisper-transcriber-suite.com/sr/">
+<link rel="alternate" hreflang="sl" href="https://whisper-transcriber-suite.com/sl/">
+<link rel="alternate" hreflang="lt" href="https://whisper-transcriber-suite.com/lt/">
+<link rel="alternate" hreflang="zh-CN" href="https://whisper-transcriber-suite.com/zh-cn/">
+<link rel="alternate" hreflang="zh-TW" href="https://whisper-transcriber-suite.com/zh-tw/">
+<link rel="alternate" hreflang="ja" href="https://whisper-transcriber-suite.com/ja/">
+<link rel="alternate" hreflang="ko" href="https://whisper-transcriber-suite.com/ko/">
+<link rel="alternate" hreflang="vi" href="https://whisper-transcriber-suite.com/vi/">
+<link rel="alternate" hreflang="th" href="https://whisper-transcriber-suite.com/th/">
+<link rel="alternate" hreflang="id" href="https://whisper-transcriber-suite.com/id/">
+<link rel="alternate" hreflang="ms" href="https://whisper-transcriber-suite.com/ms/">
+<link rel="alternate" hreflang="hi" href="https://whisper-transcriber-suite.com/hi/">
+<link rel="alternate" hreflang="ar" href="https://whisper-transcriber-suite.com/ar/">
+<link rel="alternate" hreflang="fa" href="https://whisper-transcriber-suite.com/fa/">
+<link rel="alternate" hreflang="he" href="https://whisper-transcriber-suite.com/he/">
+<link rel="alternate" hreflang="lv" href="https://whisper-transcriber-suite.com/lv/">
+<link rel="alternate" hreflang="ca" href="https://whisper-transcriber-suite.com/ca/">
+<link rel="alternate" hreflang="bn" href="https://whisper-transcriber-suite.com/bn/">
+<link rel="alternate" hreflang="fil" href="https://whisper-transcriber-suite.com/fil/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/">
+<!-- i18n:hreflang:end -->
+<meta name="google-site-verification" content="_vMQaHCYUqaePsjuk_lmQ9Df32M03uPPZnXEFVr8ttU">
+<meta name="google-site-verification" content="uC9kBtANn2fSf-oX8ubTOv1cgtEQabzbnLz61epFOcc">
+<meta name="msvalidate.01" content="86B7B178FB8DB5F45F03295F6D2A8F4A">
+<meta name="msvalidate.01" content="C5065B95AD10AB4D2845E441E3D9FA37">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Whisper Transcriber Suite — Besplatno, izvanmrežno transkribiranje Zvuka i videozapisa">
+<meta property="og:description" content="Pokreće OpenAI Whisper lokalno. Vaš zvuk ostaje na vašem računalu, nije potreban račun. 14 izlaznih formata, transkribiranje uživo, oznake govornika, preuzimanje s YouTubea. Besplatno, BSD-3-Clause, za Windows, macOS i Linux.">
+<meta property="og:url" content="https://whisper-transcriber-suite.com/hr/">
+<meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — besplatno, izvanmrežno transkribiranje zvuka i videozapisa za Windows, macOS i Linux.">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="hr_HR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Whisper Transcriber Suite — Besplatno, izvanmrežno transkribiranje Zvuka i videozapisa">
+<meta name="twitter:description" content="Pokreće OpenAI Whisper lokalno. Vaš zvuk ostaje na vašem računalu, nije potreban račun. 14 izlaznih formata, transkribiranje uživo, oznake govornika, preuzimanje s YouTubea.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="alternate" type="text/plain" title="Sažetak LLM-a" href="/llms.txt">
+
+<link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
+<script src="/js/motion-init.js?v=20260927b"></script>
+<link rel="stylesheet" href="/styles.css?v=20261019a">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://whisper-transcriber-suite.com/#org",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://github.com/Milomilo777/whisper-transcriber-suite/issues",
+        "availableLanguage": [
+          "English"
+        ]
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite",
+        "https://buymeacoffee.com/mehraz1358"
+      ],
+      "description": "Besplatna aplikacija otvorenog koda za radnu površinu koja lokalno pokreće OpenAI Whisper za transkribiranje zvuka i videozapisa."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://whisper-transcriber-suite.com/#app",
+      "name": "Whisper Transcriber Suite",
+      "alternateName": "WhisperTranscriberSuite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "image": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+      "screenshot": [
+        "https://whisper-transcriber-suite.com/assets/shots/transcribe.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/live.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/download.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/queue.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/voice.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/web.webp"
+      ],
+      "description": "Aplikacija za Radna površina koja lokalno pokreće OpenAI Whisper model putem faster-whisper, whisper.cpp ili NVIDIA Parakeet. Transkribira zvuk i videozapise u SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX i PDF. Vaš zvuk ostaje na vašem računalu i nije potreban račun.",
+      "softwareVersion": "2.1.0",
+      "datePublished": "2026-05-11",
+      "dateModified": "2026-10-12",
+      "operatingSystem": "Windows, macOS, Linux",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "Speech-to-text transcription",
+      "featureList": [
+        "Izvanmrežno pretvaranje govora u tekst pomoću faster-whisper, whisper.cpp ili NVIDIA Parakeet",
+        "14 formata transkripata uključujući SRT, VTT, DOCX i PDF",
+        "Transkribiranje mikrofona i zvuka sustava uživo",
+        "Dijarizacija govornika s vremenskim oznakama za svaku riječ",
+        "Skupni red čekanja s pauzom, nastavkom i ponovnim pokretanjem",
+        "Preuzimanje videozapisa i zvuka s bilo koje stranice podržane od yt-dlp",
+        "Adaptivno uklanjanje šuma",
+        "Neobavezni AI sažeci, stavke za akciju i dvojezični SRT",
+        "Neobavezno izvanmrežno kloniranje glasa",
+        "Web / LAN pristup",
+        "Red čekanja prikazuje brzinu i preostalo vrijeme svakog transkribiranja",
+        "Izradi video s podnaslovima: preuzmi, transkribiraj i ugradi podnaslove u MP4",
+        "Spremi transkript kao jednu izvanmrežnu web stranicu",
+        "Prekidač za Rad izvan mreže s vidljivim statusom mreže",
+        "Prevedi govor izravno na Engleski"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isAccessibleForFree": true,
+      "interactionStatistic": {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/DownloadAction",
+        "userInteractionCount": 2694
+      },
+      "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
+      "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
+      "releaseNotes": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md",
+      "installUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md",
+      "codeRepository": "https://github.com/Milomilo777/whisper-transcriber-suite",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://whisper-transcriber-suite.com/#author"
+      },
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite"
+      ],
+      "softwareRequirements": "Windows 10 or 11 (64-bit); macOS 10.15 or later (Intel build) or macOS 14 or later (Apple Silicon build); Linux from source with Python 3.11+",
+      "memoryRequirements": "At least 8 GB RAM; an NVIDIA GPU with CUDA is optional"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://whisper-transcriber-suite.com/#website",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "inLanguage": "hr",
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://whisper-transcriber-suite.com/#author",
+      "name": "translation-robot",
+      "url": "https://github.com/translation-robot",
+      "sameAs": [
+        "https://github.com/translation-robot"
+      ],
+      "description": "Neovisni programer koji održava Whisper Transcriber Suite kao projekt otvorenog koda."
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://whisper-transcriber-suite.com/hr/#webpage",
+      "url": "https://whisper-transcriber-suite.com/hr/",
+      "name": "Whisper Transcriber Suite — Besplatno izvanmrežno transkribiranje",
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/hr/#website"
+      },
+      "about": {
+        "@id": "https://whisper-transcriber-suite.com/hr/#app"
+      },
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": [
+          ".hero-lede",
+          ".faq-a p"
+        ]
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Je li Whisper Transcriber Suite besplatan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da. Licenciran je pod BSD-3-Clause, bez pretplate i bez troškova po minuti. Sam Whisper model preuzima se jednom (oko 1-3 GB) pri prvom pokretanju; nakon toga transkribiranje radi bez internetske veze."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Učitava li moj zvuk ili video negdje?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ne, ne prema zadanim postavkama. Svaki zadani pozadinski sustav — faster-whisper, whisper.cpp, NVIDIA Parakeet — radi lokalno na vašem računalu. Dva pozadinska sustava su samo po izboru (cloud_stt putem Gemini API-ja i google_cloud_stt), i oba ostaju isključena dok ih sami ne uključite u Napredne postavke → Backend. Statistika korištenja (bez zvuka, bez imena datoteka) prema zadanim je postavkama uključena i može se isključiti pod Pomoć > Statistika korištenja, aplikacija jednom dnevno provjerava GitHub za novu verziju, a Datoteka > Rad izvan mreže zaustavlja svu mrežnu upotrebu."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Na kojim platformama radi?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Windows, macOS i Linux. Objavljena preuzimanja su Windows instalacijski program, Windows prijenosni ZIP i macOS DMG; Linux se pokreće iz izvornog koda."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Koje formate transkripata može stvoriti?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX i PDF, plus oTranscribe, ELAN, InqScribe i Express Scribe."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Može li označiti tko govori?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da, neobavezna dijarizacija govornika (Prepoznaj govornike), s vremenskim oznakama za svaku riječ i izrezivanjem vremenskih raspona."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Može li transkribirati mikrofon uživo ili zvuk sustava?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da, s kartice Live: mikrofon ili zvuk sustava, transkribiran u stvarnom vremenu."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Može li preuzeti i transkribirati online videozapise, npr. s YouTubea?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da, bilo koju stranicu koju yt-dlp podržava, s neobaveznim korakom transkribiranja po završetku."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Može li sažeti transkript, izvući stavke za akciju ili odgovoriti na pitanja o njemu?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da, putem neobavezne kartice AI alati u pregledniku transkripata: sažmi, stavke za akciju, postavi pitanje i prevođenje po segmentima koje stvara dvojezični SRT. Prema zadanim je postavkama isključeno."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Može li klonirati glas i natjerati ga da izgovara novi tekst?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da, putem neobavezne kartice Clone Your Glas, koristeći OmniVoice (Apache-2.0) u potpunosti na vašem računalu. Prema zadanim je postavkama isključeno; uključite ga prilikom instalacije."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Čime se to razlikuje od izravnog pozivanja Whisper API-ja?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Prema zadanim postavkama model radi lokalno putem faster-whisper, tako da nema troškova API-ja po minuti i nijedan zvuk ne napušta vaše računalo, osim ako izričito ne odaberete jedan od dva pozadinska sustava u oblaku."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Može li ga nekoliko ljudi na istoj mreži koristiti bez instaliranja na svako računalo?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da, način Web/LAN pristupa pretvara ovo računalo u stranicu za transkribiranje koju mogu koristiti drugi uređaji na mreži."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Što je novo u verziji 2.1?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Izbornici, gumbi i poruke dolaze na 42 jezika (strojno prevedeno i kao takvo označeno); oznake govornika dopiru do kraja dugih snimki i možete postaviti koliko osoba govori; transkripti, izvozi i podnaslovi u potpunosti se zapisuju na disk prije nego što zamijene staru datoteku; mrežne značajke rade na svakom Macu. Verzija 2.0 dodala je brzinu i preostalo vrijeme reda čekanja, video s podnaslovima iz veze, transkripte kao jednu izvanmrežnu web stranicu, način rada Rad izvan mreže koji se može označiti i prevođenje na Engleski."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Može li pretvoriti vezu videozapisa u video s podnaslovima?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da. Na kartici Preuzimanje videozapisa označite Izradi video s podnaslovima: aplikacija preuzima videozapis, transkribira ga s Whisperom i ugrađuje podnaslove pomoću ffmpeg, stvarajući datoteku imenovanu po videozapisu s -subbed.mp4. Preuzmi datoteke i transkript se čuvaju, a postojeći -subbed.mp4 se nikada ne zamjenjuje."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Mogu li aplikaciju potpuno držati izvan mreže?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Da. Datoteka > Rad izvan mreže zaustavlja provjeru ažuriranja, statistiku korištenja, preuzimanje modela i udaljene AI pružatelje usluga. Kada je uključeno, redak na dnu prozora govori je li veza otvorena, a Provjeri izvanmrežni rad sada prikazuje kako se testne veze odbijaju. Kada je isključeno, aplikacija kontaktira mrežu samo za svoje mrežne postavke pri pokretanju, dnevnu provjeru ažuriranja, statistiku korištenja (koja se može isključiti pod Pomoć > Statistika korištenja) i preuzimanja koja započnete."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kako mogu kontaktirati projekt?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Greške i zahtjevi za značajkama idu na GitHub Issues, pitanja na GitHub Discussions, a sve ostalo e-poštom (adresa se prikazuje na zahtjev u odjeljku Kontakt). Izvješća o sigurnosti idu putem GitHubovog privatnog izvješćivanja o ranjivostima."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m0 0-5-5m5 5-5 5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m12 4-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m8 4 6 6-6 6"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 20 20"><path fill="currentColor" d="M2 3.6 8.4 2.7v6.6H2zm7.3-1 8.7-1.2v7.9H9.3zM2 10.2h6.4v6.7L2 16zm7.3 0H18v8.4l-8.7-1.2z"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 20 20"><path fill="currentColor" d="M13.6 10.6c0-1.9 1.6-2.8 1.6-2.9-.9-1.3-2.3-1.5-2.8-1.5-1.2-.1-2.3.7-2.9.7-.6 0-1.5-.7-2.5-.7-1.3 0-2.5.8-3.2 1.9-1.4 2.4-.4 5.9 1 7.8.6.9 1.4 2 2.4 1.9 1-.1 1.3-.6 2.5-.6s1.5.6 2.5.6c1 0 1.7-.9 2.3-1.9.7-1.1 1-2.1 1-2.2 0 0-1.9-.8-1.9-3.1zM11.7 4.9c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-1 1.5-.8 2.4.9.1 1.8-.4 2.4-1.1z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14v11H3zM6 8.5l2 1.5-2 1.5M10 12h4"/></symbol>
+    <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+    <symbol id="i-cup" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 7h10v4.5A4.5 4.5 0 0 1 9.5 16h-1A4.5 4.5 0 0 1 4 11.5zm10 1.5h1.2a2.3 2.3 0 0 1 0 4.6H14M7 2.5v2m3-2v2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 5h14v10H3zm0 0 7 6 7-6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4h14v9H8l-4 3v-3H3z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7 7a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM3 10h4m6 0h4M4 5l3 2m9-2-3 2M4 15l3-2m9 2-3-2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 20 20"><path fill="currentColor" d="M6 4v12l10-6z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 20 20"><path fill="currentColor" d="M5 4h3.5v12H5zm6.5 0H15v12h-3.5z"/></symbol>
+  </defs>
+</svg> <a class="skip-link" href="#main">Preskoči na sadržaj</a>
+
+<header class="site-header" data-header>
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — početna">
+      <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
+    </a>
+    <nav class="site-nav" aria-label="Primarni">
+      <a href="#showreel">Vodič</a> <a href="#features">Značajke</a> <a href="#how-it-works">Kako radi</a> <a href="#download">Preuzmi</a> <a href="#compare">Usporedi</a> <a href="#faq">FAQ</a> <a href="#contact">Kontakt</a>
+    </nav>
+    <div class="header-cta">
+      <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Jezik" aria-label="Jezik"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->Hrvatski<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/?lang=en" hreflang="en" lang="en" data-lang-pick="en">English</a></li>
+<li><a href="/de/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
+<li><a href="/fr/" hreflang="fr" lang="fr" data-lang-pick="fr">Français</a></li>
+<li><a href="/es/" hreflang="es" lang="es" data-lang-pick="es">Español</a></li>
+<li><a href="/it/" hreflang="it" lang="it" data-lang-pick="it">Italiano</a></li>
+<li><a href="/pt-br/" hreflang="pt-BR" lang="pt-BR" data-lang-pick="pt-BR">Português (Brasil)</a></li>
+<li><a href="/pt/" hreflang="pt" lang="pt" data-lang-pick="pt">Português (Portugal)</a></li>
+<li><a href="/nl/" hreflang="nl" lang="nl" data-lang-pick="nl">Nederlands</a></li>
+<li><a href="/pl/" hreflang="pl" lang="pl" data-lang-pick="pl">Polski</a></li>
+<li><a href="/ru/" hreflang="ru" lang="ru" data-lang-pick="ru">Русский</a></li>
+<li><a href="/uk/" hreflang="uk" lang="uk" data-lang-pick="uk">Українська</a></li>
+<li><a href="/tr/" hreflang="tr" lang="tr" data-lang-pick="tr">Türkçe</a></li>
+<li><a href="/cs/" hreflang="cs" lang="cs" data-lang-pick="cs">Čeština</a></li>
+<li><a href="/sk/" hreflang="sk" lang="sk" data-lang-pick="sk">Slovenčina</a></li>
+<li><a href="/hu/" hreflang="hu" lang="hu" data-lang-pick="hu">Magyar</a></li>
+<li><a href="/ro/" hreflang="ro" lang="ro" data-lang-pick="ro">Română</a></li>
+<li><a href="/bg/" hreflang="bg" lang="bg" data-lang-pick="bg">Български</a></li>
+<li><a href="/el/" hreflang="el" lang="el" data-lang-pick="el">Ελληνικά</a></li>
+<li><a href="/sv/" hreflang="sv" lang="sv" data-lang-pick="sv">Svenska</a></li>
+<li><a href="/da/" hreflang="da" lang="da" data-lang-pick="da">Dansk</a></li>
+<li><a href="/nb/" hreflang="nb" lang="nb" data-lang-pick="nb">Norsk bokmål</a></li>
+<li><a href="/fi/" hreflang="fi" lang="fi" data-lang-pick="fi">Suomi</a></li>
+<li><a href="/hr/" hreflang="hr" lang="hr" data-lang-pick="hr" aria-current="true">Hrvatski</a></li>
+<li><a href="/sr/" hreflang="sr" lang="sr" data-lang-pick="sr">Српски</a></li>
+<li><a href="/sl/" hreflang="sl" lang="sl" data-lang-pick="sl">Slovenščina</a></li>
+<li><a href="/lt/" hreflang="lt" lang="lt" data-lang-pick="lt">Lietuvių</a></li>
+<li><a href="/zh-cn/" hreflang="zh-CN" lang="zh-CN" data-lang-pick="zh-CN">简体中文</a></li>
+<li><a href="/zh-tw/" hreflang="zh-TW" lang="zh-TW" data-lang-pick="zh-TW">繁體中文</a></li>
+<li><a href="/ja/" hreflang="ja" lang="ja" data-lang-pick="ja">日本語</a></li>
+<li><a href="/ko/" hreflang="ko" lang="ko" data-lang-pick="ko">한국어</a></li>
+<li><a href="/vi/" hreflang="vi" lang="vi" data-lang-pick="vi">Tiếng Việt</a></li>
+<li><a href="/th/" hreflang="th" lang="th" data-lang-pick="th">ไทย</a></li>
+<li><a href="/id/" hreflang="id" lang="id" data-lang-pick="id">Bahasa Indonesia</a></li>
+<li><a href="/ms/" hreflang="ms" lang="ms" data-lang-pick="ms">Bahasa Melayu</a></li>
+<li><a href="/hi/" hreflang="hi" lang="hi" data-lang-pick="hi">हिन्दी</a></li>
+<li><a href="/ar/" hreflang="ar" lang="ar" dir="rtl" data-lang-pick="ar">العربية</a></li>
+<li><a href="/fa/" hreflang="fa" lang="fa" dir="rtl" data-lang-pick="fa">فارسی</a></li>
+<li><a href="/he/" hreflang="he" lang="he" dir="rtl" data-lang-pick="he">עברית</a></li>
+<li><a href="/lv/" hreflang="lv" lang="lv" data-lang-pick="lv">Latviešu</a></li>
+<li><a href="/ca/" hreflang="ca" lang="ca" data-lang-pick="ca">Català</a></li>
+<li><a href="/bn/" hreflang="bn" lang="bn" data-lang-pick="bn">বাংলা</a></li>
+<li><a href="/fil/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
+      <button class="btn-icon" type="button" data-motion-toggle aria-pressed="false" title="Pauza ili reproduciraj animacije">
+        <svg class="i i-when-on" aria-hidden="true"><use href="#i-pause"/></svg> <svg class="i i-when-off" aria-hidden="true"><use href="#i-play"/></svg> <span class="sr-only" data-motion-label>Pauza animacije</span>
+      </button>
+      <a class="btn btn-ghost btn-sm hide-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" aria-label="Zvjezdica za Whisper Transcriber Suite na GitHubu"> <svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Zvjezdica </a> <a class="btn btn-primary btn-sm" href="#download">Preuzmi</a>
+    </div>
+  </div>
+</header>
+
+<div class="lang-notice" data-lang-notice hidden>
+  <div class="wrap lang-notice-row">
+    <p>Ova stranica je na vašem jeziku zbog lokacije s koje posjećujete. <a href="/?lang=en" data-lang-pick="en">Prikaži na Engleski</a></p>
+    <button class="btn-icon" type="button" data-lang-notice-close aria-label="Zatvori"><span aria-hidden="true">×</span></button>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <canvas class="hero-waves" data-waves aria-hidden="true"></canvas>
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="kicker reveal" style="--d:0"><span class="kicker-dot" aria-hidden="true"></span>Besplatno i otvorenog koda · BSD-3-Clause · <span data-auto="version">v2.1.0</span></p>
+        <h1 class="hero-title" id="hero-title">
+          <span class="line"><span class="rise" style="--d:1">Zvuk unutra.</span></span> <span class="line"><span class="rise" style="--d:2">Tekst vani.</span></span> <span class="line"><span class="rise grad-text" style="--d:3">Vaš zvuk ostaje na vašem računalu.</span></span>
+        </h1>
+        <p class="hero-lede reveal" style="--d:4">Whisper Transcriber Suite u potpunosti pokreće OpenAI Whisper model na vašem računalu — putem faster-whisper, whisper.cpp ili NVIDIA Parakeet. Uvucite zvuk ili videozapis i dobijte vremenski označen transkript. Bez oblaka, bez računa, bez troškova po minuti.</p>
+        <div class="hero-actions reveal" style="--d:5">
+          <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Preuzmi za Windows</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">Započni obilazak<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </div>
+        <ul class="proof reveal" style="--d:6" aria-label="Ukratko">
+          <li><strong data-count="14">14</strong><span>formata transkripcije</span></li>
+          <li><strong data-auto="downloads">2,600+</strong><span>preuzimanja do sada</span></li>
+          <li><strong>0</strong><span>audio prijenosa prema zadanim postavkama</span></li>
+          <li><strong>$0</strong><span>zauvijek</span></li>
+        </ul>
+      </div>
+
+      <div class="hero-scene" data-scene aria-hidden="true">
+        <div class="scene-rig" data-rig>
+          <div class="float-layer l-back">
+            <figure class="win win-sm win-a"><div class="win-bar"><i></i><i></i><i></i><span>Uživo</span></div><img src="/assets/shots/live-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-mid">
+            <figure class="win win-sm win-b"><div class="win-bar"><i></i><i></i><i></i><span>Preuzimanje videozapisa (Preuzmi)</span></div><img src="/assets/shots/download-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-front">
+            <figure class="win win-main"><div class="win-bar"><i></i><i></i><i></i><span>Whisper Transcriber Suite</span></div><img src="/assets/shots/transcribe.webp" srcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" sizes="(max-width: 1080px) 72vw, 480px" alt="" width="1180" height="668" fetchpriority="high"></figure>
+          </div>
+          <div class="float-layer l-pop1">
+            <div class="chip-card wave-card"><span class="rec"></span><span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+          </div>
+          <div class="float-layer l-pop2">
+            <div class="chip-card srt-card">
+              <p class="srt-ts">00:00:04,120 → 00:00:06,880</p>
+              <p class="srt-line"><span data-hero-typer>Vaš audio ostaje na vašem računalu.</span><span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="float-layer l-pop3">
+            <div class="chip-card fmt-card"><b>.srt</b><b>.vtt</b><b>.docx</b><b>.pdf</b></div>
+          </div>
+          <div class="float-layer l-pop4">
+            <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Izvanmrežna transkripcija</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Prepoznavanje govornika</span> <span>Mikrofon uživo</span> <span>Kloniranje Glasa</span> <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Prepoznavanje govornika</span> <span>Mikrofon uživo</span> <span>Kloniranje Glasa</span>
+    </div>
+  </div>
+
+  <!-- ============ SHOWREEL (3D carousel) ============ -->
+  <section class="section showreel" id="showreel" aria-labelledby="reel-title">
+    <div class="reel-glow" aria-hidden="true"></div>
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Obilazak aplikacije</p>
+        <h2 id="reel-title">Jedan prozor. <span class="h2-soft">Šest alata.</span></h2>
+        <p class="section-lede">Ispustite datoteku, odaberite opcije i pritisnite Transkribiraj. Sve ostalo — red čekanja, preuzimanja, snimanje uživo, kloniranje glasa i dijeljenje putem LAN-a — nalazi se jednu karticu dalje. Povucite prsten ili koristite strelice.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/showreel-still.webp" data-still="/assets/promo/showreel-still.webp" data-anim="/assets/promo/showreel.svg" alt="Animacija: intervju s dva označena govornika, predavanje pretvoreno u podnaslove s vremenom, video veza pretvorena u video s podnaslovima, titlovi uživo s mikrofona te transkripcija spremljena uz datoteku kao SRT, VTT, DOCX i PDF." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="reel" data-reel>
+        <div class="reel-viewport" data-reel-viewport>
+          <div class="reel-ring" data-reel-ring>
+            <figure class="reel-card" data-title="Transkribiraj" data-caption="Cilj za ispuštanje, birači pogona, modela i jezika, opcije za označavanje govornika i vremenske oznake po riječi."><div class="win-bar"><i></i><i></i><i></i><span>Transkribiraj</span></div><img src="/assets/shots/transcribe-640.webp" alt="Kartica Transkribiraj: cilj za ispuštanje, birači pogona, modela i jezika, opcije za označavanje govornika i vremenske oznake riječi" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Uživo" data-caption="Transkribirajte mikrofon — ili ono što ovo računalo reproducira — u stvarnom vremenu, s mjeračem razine ulaza."><div class="win-bar"><i></i><i></i><i></i><span>Uživo</span></div><img src="/assets/shots/live-640.webp" alt="Kartica Uživo: izvor mikrofona ili zvuka sustava, birači jezika i modela, mjerač razine ulaza i okno za transkripciju uživo" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Preuzimanje videozapisa (Preuzmi)" data-caption="Odaberite format, izrežite vremenski raspon, pogledajte koje podnaslove video već ima i po želji ga transkribirajte ili ugradite podnaslove u novi MP4."><div class="win-bar"><i></i><i></i><i></i><span>Preuzimanje videozapisa (Preuzmi)</span></div><img src="/assets/shots/download-640.webp" alt="Kartica Preuzimanje videozapisa: URL s retkom Dostupni podnaslovi, kolačići za prijavu u pregledniku, format, vremenski raspon, Umjesto toga koristi titlove, Transkribiraj nakon preuzimanja i Izradi video s podnaslovima. Preuzmi." width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Red čekanja transkripcije" data-caption="Skupni poslovi s napretkom uživo, brzinom i preostalim vremenom — pauzirajte, nastavite, otkažite, ponovno pokrenite ili uklonite bilo koji redak."><div class="win-bar"><i></i><i></i><i></i><span>Red čekanja transkripcije</span></div><img src="/assets/shots/queue-640.webp" alt="Kartica Red čekanja transkripcije: stupci datoteka, status, napredak, brzina i preostalo vrijeme, jezik i proteklo vrijeme s opcijama pauziranja, nastavljanja, otkazivanja, ponovnog pokretanja i uklanjanja" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Kloniraj svoj Glas" data-caption="Neobavezno, potpuno izvanmrežno: klonirajte glas iz kratkog uzorka ili dizajnirajte vlastiti te mu dajte da pročita novi tekst."><div class="win-bar"><i></i><i></i><i></i><span>Kloniraj svoj Glas</span></div><img src="/assets/shots/voice-640.webp" alt="Kartica Kloniraj svoj Glas / Tekst u Glas: OmniVoice model, uzorak Glasa, tekst za izgovor, jezik i brzina" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Web / LAN pristup" data-caption="Jednim gumbom ovo računalo pretvarate u stranicu za transkripciju za ostale uređaje na vašoj mreži."><div class="win-bar"><i></i><i></i><i></i><span>Web / LAN pristup</span></div><img src="/assets/shots/web-640.webp" alt="Kartica Web / LAN pristup: pokretanje web pristupa, port, dijeljenje na lokalnoj mreži, pristupna lozinka i HTTPS opcije" width="640" height="362" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+        <div class="reel-controls">
+          <button class="reel-btn" type="button" data-reel-prev aria-label="Prethodni zaslon"><svg class="i" aria-hidden="true"><use href="#i-left"/></svg></button>
+          <div class="reel-meta" aria-live="off" data-reel-live>
+            <p class="reel-title" data-reel-title>Transkribiraj</p>
+            <p class="reel-caption" data-reel-caption>Cilj za ispuštanje, birači pogona, modela i jezika, opcije za označavanje govornika i vremenske oznake po riječi.</p>
+          </div>
+          <button class="reel-btn" type="button" data-reel-next aria-label="Sljedeći zaslon"><svg class="i" aria-hidden="true"><use href="#i-right"/></svg></button>
+        </div>
+        <div class="reel-dots" data-reel-dots role="group" aria-label="Odaberi zaslon"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Novo u 2.1</p>
+        <h2 id="new-title">Što je novo u 2.1. <span class="h2-soft">Sada na vašem jeziku.</span></h2>
+        <p class="section-lede">Aplikacija na 42 jezika, oznake govornika koje dosežu kraj dugih snimki, datoteke koje prežive prekid napajanja i mrežne značajke koje rade na svakom Macu. Ispod njih, ono što je dodala verzija 2.0.</p>
+      </header>
+
+      <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Sve platforme</p>
+          <h3>Aplikacija na vašem jeziku</h3>
+          <p>Izbornici, gumbi i poruke dostupni su na 42 jezika (39 na macOS i Linux). Aplikacija prati jezik vašeg sustava ili ga možete odabrati u <em>Napredne postavke</em>. Svaki jezik osim Engleski je strojni prijevod i kao takav je označen; Perzijski, Arapski i Hebrejski za sada su ponuđeni na Windows.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Sve platforme</p>
+          <h3>Oznake govornika kojima možete vjerovati</h3>
+          <p>Imena govornika sada dosežu kraj dugih snimki, prepoznavanje govornika više ne može srušiti transkripciju, a pored <em>Prepoznaj govornike</em> možete postaviti koliko osoba govori (2 do 10) umjesto da ostavite na Auto.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Sve platforme</p>
+          <h3>Vaš je rad sigurniji</h3>
+          <p>Transkripcije, izvozi i podnaslov u potpunosti se zapisuju na disk prije nego što zamijene staru datoteku, tako da prekid napajanja ne može ostaviti praznu datoteku. Transkripcija čiji je proces zaustavljen nakon zapisivanja svih svojih datoteka računa se kao završena.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · macOS</p>
+          <h3>Mrežne značajke na svakom Macu</h3>
+          <p>Provjera ažuriranja, prijave problema i druga web pretraživanja više ne uspijevaju s pogreškom <em>certificate verify failed</em>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Sve platforme</p>
+          <h3>Brzina i preostalo vrijeme</h3>
+          <p>Kartica Red čekanja transkripcije prikazuje koliko brzo teče svaka transkripcija i okvirno koliko je vremena preostalo, na primjer <em>oko 4.8x, preostalo 6 min</em>. Kartica rezultata izvještava o brzini, modelu i uređaju kada je posao završen.</p>
+          <figure class="new-shot"><img src="/assets/shots/queue-640.webp" alt="Kartica Red čekanja transkripcije sa stupcem Brzina i preostalo vrijeme koji prikazuje oko 6.8x, preostalo 2 min za posao u tijeku" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Sve platforme</p>
+          <h3>Izradi video s podnaslovima</h3>
+          <p>Označite to na kartici Preuzimanje videozapisa i veza postaje <code>&lt;title&gt;-subbed.mp4</code> s ugrađenim podnaslovima: Preuzmi, transkribiraj i ugradi kao jedan posao u redu čekanja s napretkom i funkcionalnim gumbom Odustani. Preuzimanje i transkripcija se čuvaju.</p>
+          <figure class="new-shot"><img src="/assets/shots/download-640.webp" alt="Kartica Preuzimanje videozapisa koja prikazuje redak Dostupni podnaslovi: Engleski i Njemački, gumb Umjesto toga koristi titlove i kućicu Izradi video s podnaslovima. Preuzmi." width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Sve platforme</p>
+          <h3>Dijeli transkripciju kao jednu web stranicu</h3>
+          <p>Spremite završenu transkripciju kao jednu <code>.html</code> datoteku koja se otvara u bilo kojem pregledniku bez instalacije i internetske veze: vremenske oznake, govornici, poglavlja i okvir za pretraživanje. Kliknite na riječ i medij se reproducira od tog mjesta.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Sve platforme</p>
+          <h3>Rad izvan mreže, vidljiv</h3>
+          <p>Jedan preklopnik pod Datoteka drži aplikaciju izvan mreže. Redak na dnu prozora govori je li veza otvorena, a <em>Provjeri izvanmrežni rad sada</em> pokazuje kako se testne veze odbijaju. Statistika korištenja prema zadanim je postavkama uključena i može se isključiti pod Pomoć.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Sve platforme</p>
+          <h3>Prevedi govor na Engleski</h3>
+          <p>Opcija <em>Izlaz: prijevod na engleski</em> pretvara govor koji nije na Engleski u engleske podnaslove u jednom prolazu, koristeći Whisperov vlastiti zadatak prevođenja. Prema zadanim je postavkama isključena i nije dostupna za svaki pogon ili model.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · macOS</p>
+          <h3>Mac koji se osjeća kao Mac</h3>
+          <p>Izbornik aplikacije s Postavkama (Command-zarez), svijetlim i tamnim izgledom koji prate macOS, sustavskim fontom, datotekama otvorenim iz Findera ili ispuštenima na ikonu Docka te obavijesti kada posao završi dok je aplikacija u pozadini.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Windows</p>
+          <h3>Napredak u programskoj traci i tamne naslovne trake</h3>
+          <p>Gumb programske trake prikazuje napredak, broj poslova u redu čekanja i onih u tijeku te treperi kada posao završi. Naslovne trake prate tamnu temu, a tekst ostaje oštar pri skaliranju zaslona od 125 % i 150 %.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Prvo pokretanje</p>
+          <h3>Brzi početak i ogledni isječak</h3>
+          <p>Nova instalacija pita za vaš jezik, Brzo ili Najbolja kvaliteta i mapu, te prikazuje veličinu modela prije nego što se išta preuzme. Isječak u javnoj domeni od 18 sekundi omogućuje vam da vidite stvarni transkript prije nego odaberete vlastitu datoteku.</p>
+        </article>
+      </div>
+      <p class="feature-more sr">Također novo u 2.0: Tekst u Glas čita tekstove do 100.000 znakova dio po dio, gumb <em>Ažuriraj ga</em> osvježava preuzimatelj videa bez administratorskih prava, a tiha traka za ažuriranje zamjenjuje dijalog o ažuriranju. Kartica Video Tiling je uklonjena. Sve je u <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">zapisniku promjena</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section features" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Značajke</p>
+        <h2 id="features-title">Sve što biste očekivali od alata za transkripciju. <span class="h2-soft">Radi na vašem računalu.</span></h2>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/prism-still.webp" data-still="/assets/promo/prism-still.webp" data-anim="/assets/promo/prism.svg" alt="Animacija: veliko W razdvaja dva govornika, prikazuje lokalne pogone faster-whisper, whisper.cpp i Parakeet koji rade izvanmrežno i širi se u 14 formata transkripta." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="bento" data-spotlight>
+        <article class="cell cell-engines tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
+            <h3>Lokalna, privatna transkripcija</h3>
+            <p>Whisper <code>large-v3</code> prema zadanim postavkama, plus <code>large-v3-turbo</code> i <code>distil-large-v3.5</code>. Odaberite pozadinski sustav koji odgovara vašem hardveru.</p>
+          </div>
+          <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
+          <div class="viz viz-engines" aria-hidden="true">
+            <div class="engine-list">
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">faster-whisper</span><span class="engine-tag">zadano</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">whisper.cpp</span><span class="engine-tag">lokalno</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">NVIDIA Parakeet</span><span class="engine-tag">lokalno</span></div>
+            </div>
+            <div class="offline-badge"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Radi izvanmrežno nakon jednokratnog preuzimanja modela</div>
+          </div>
+        </article>
+
+        <article class="cell cell-formats tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">14 formata</p>
+            <h3>Svi formati transkripta koji će vam trebati</h3>
+            <p>Zapisano odmah uz vašu ulaznu datoteku — plus oTranscribe, ELAN, InqScribe i Express Scribe za profesionalne tijekove rada transkripcije.</p>
+          </div>
+          <div class="viz viz-formats" aria-hidden="true">
+            <span>srt</span> <span>vtt</span> <span>ass</span> <span>tsv</span> <span>txt</span> <span>json</span> <span>lrc</span> <span>md</span> <span>docx</span> <span>pdf</span> <span class="wide">oTranscribe</span> <span class="wide">ELAN</span> <span class="wide">InqScribe</span> <span class="wide">Express Scribe</span>
+          </div>
+        </article>
+
+        <article class="cell cell-live tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Mikrofon · zvuk sustava</p>
+            <h3>Transkripcija uživo</h3>
+            <p>Transkribiraj mikrofon — ili bilo što što ovo računalo reproducira — u trenutku događanja. Rezovi se rade pri prirodnim pauzama, tako da se riječi nikada ne dijele.</p>
+          </div>
+          <div class="viz viz-live" aria-hidden="true">
+            <div class="live-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="live-text"><span class="live-rec"></span><span data-typer>tako da se riječi pojavljuju dok govorite</span><span class="caret"></span></p>
+          </div>
+        </article>
+
+        <article class="cell cell-speakers tone-sun sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Vremenske oznake po riječi</p>
+            <h3>Dijarizacija govornika</h3>
+            <p>Neobavezna opcija "Prepoznaj govornike", plus vremenske oznake po riječi i izrezivanje vremenskih raspona za uređivanje preciznih segmenata.</p>
+          </div>
+          <div class="viz viz-speakers" aria-hidden="true">
+            <div class="utt"><span class="ts">00:04.2</span><span class="spk s1">Govornik 1</span><span class="words"><b>Pa</b> <b>gdje</b> <b>da</b> <b>počnemo</b> <b>sada?</b></span></div>
+            <div class="utt"><span class="ts">00:06.9</span><span class="spk s2">Govornik 2</span><span class="words"><b>S</b> <b>samom</b> <b>zvučnom</b> <b>snimkom.</b></span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-queue tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Pauza · nastavi · ponovno pokreni</p>
+            <h3>Red čekanja obrade</h3>
+            <p>Status uživo za svaki posao na čekanju i u tijeku, s potpunom kontrolom nad svakim retkom udaljenom samo jedan klik.</p>
+          </div>
+          <div class="viz viz-queue" aria-hidden="true">
+            <div class="job"><span class="job-name">interview-03.mp4</span><span class="bar"><i style="--p:100%"></i></span><span class="job-state done">gotovo</span></div>
+            <div class="job"><span class="job-name">lecture-week-2.m4a</span><span class="bar"><i class="run"></i></span><span class="job-state">u tijeku</span></div>
+            <div class="job"><span class="job-name">podcast-ep-41.wav</span><span class="bar"><i style="--p:0%"></i></span><span class="job-state">na čekanju</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-download tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Pokretano s yt-dlp</p>
+            <h3>Preuzimanja videa i zvuka</h3>
+            <p>Sve s čime <code>yt-dlp</code> može, s neobaveznom transkripcijom po završetku. Preuzimanja (Preuzmi) se nastavljaju umjesto da se ponovno pokreću.</p>
+          </div>
+          <div class="viz viz-dl" aria-hidden="true">
+            <div class="url"><span class="url-dot"></span>https://…/watch?v=…</div>
+            <div class="dl-steps"><span class="st st-1">Preuzmi</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-2">Transkribiraj</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-3">.srt</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-denoise tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Mjeri prije filtriranja</p>
+            <h3>Adaptivno uklanjanje šuma</h3>
+            <p>Prvo mjeri svaku snimku i čisti je samo kada to pomaže — provjerava vlastiti izlaz i vraća na izvorno ako je uklonjen govor.</p>
+          </div>
+          <div class="viz viz-denoise" aria-hidden="true">
+            <svg class="wave wave-noisy" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="noisy"/></svg> <svg class="wave wave-clean" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="clean"/></svg> <span class="sweep"></span> <span class="wave-label l-before">prije</span><span class="wave-label l-after">poslije</span>
+          </div>
+        </article>
+      </div>
+
+      <p class="feature-more sr">Uz to AI alati (sažeci, akcijske stavke, dvojezični SRT prolaz), neobavezna kartica za kloniranje glasa izvanmrežno i lokalni mrežni način rada — više u <a href="https://github.com/Milomilo777/whisper-transcriber-suite#features" rel="noopener">README</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="section how" id="how-it-works" aria-labelledby="how-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Kako radi</p>
+        <h2 id="how-title">Radi na vašem računalu. <span class="h2-soft">Vaš zvuk ostaje tamo.</span></h2>
+        <p class="section-lede">Transkripcija radi na vašem računalu. Vaš zvuk se prenosi samo ako uključite jedan od dva neobavezna pogona u oblaku, a tekst transkripta odlazi samo ako sami povežete udaljeni AI model.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/loom-still.webp" data-still="/assets/promo/loom-still.webp" data-anim="/assets/promo/loom.svg" alt="Animacija: vremenska crta postaju titlovi s vremenskim oznakama po riječi, Engleski titlovi izrađeni izvanmrežno s faster-whisper, whisper.cpp ili Parakeet, te 14 formata transkripta bez računa." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <ol class="pipeline">
+        <li class="step sr">
+          <span class="step-num">01</span>
+          <h3>Ispustite datoteku ili zalijepite poveznicu</h3>
+          <p>Zvuk ili video s diska, ili bilo što što <code>yt-dlp</code> može dohvatiti. Tk sučelje radi u glavnom procesu i odmah stavlja posao u red čekanja.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">02</span>
+          <h3>Radni proces drži model</h3>
+          <p>Svaki posao radi u vlastitom dugovječnom podprocesu radnika koji drži Whisper u memoriji i šalje napredak natrag putem JSON-a razdvojenog novim redcima — tako se prozor nikada ne smrzne.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">03</span>
+          <h3>Transkript završava uz vašu datoteku</h3>
+          <p>Token po radniku i otkucaji srca održavaju usmjeravanje robusnim i omogućuju aplikaciji otkrivanje zaglavljenog radnika umjesto da se s njim i sama objesi.</p>
+        </li>
+      </ol>
+      <p class="built-on sr">Izgrađeno na OpenAI-jevom <a href="https://arxiv.org/abs/2212.04356" rel="noopener">modelu za prepoznavanje govora Whisper</a>, pokretano lokalno putem <a href="https://github.com/SYSTRAN/faster-whisper" rel="noopener">faster-whisper</a>, <a href="https://github.com/ggml-org/whisper.cpp" rel="noopener">whisper.cpp</a> ili <a href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3" rel="noopener">NVIDIA Parakeet</a>, s <a href="https://github.com/yt-dlp/yt-dlp" rel="noopener">yt-dlp</a> i <a href="https://ffmpeg.org/" rel="noopener">FFmpeg</a> za rukovanje medijima.</p>
+      <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
+      <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Pročitajte punu arhitekturu<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <p class="muted guide-links">Vodičnici korak po korak: <a href="/hr/youtube-to-text/">YouTube video u tekst</a> · <a href="/hr/video-to-srt/">video u SRT titlove</a> · <a href="/hr/speaker-labels/">transkripti s oznakama govornika</a></p>
+    </div>
+  </section>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="section download" id="download" aria-labelledby="download-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Preuzmi · <span data-auto="version">v2.1.0</span> · objavljeno <span data-auto="released">2026-10-12</span></p>
+        <h2 id="download-title">Preuzmite. <span class="h2-soft">Transkribirajte večeras.</span></h2>
+        <p class="section-lede">Sve potrebno je uključeno — privatno Python okruženje, ffmpeg, ffprobe i yt-dlp. Samo model govora se preuzima kasnije (oko 1–3 GB, jednom); nakon toga, transkripcija radi bez internetske veze.</p>
+      </header>
+
+      <div class="dl-grid">
+        <article class="dl-card sr" data-os="windows" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows <span class="dl-badge" data-rec-badge hidden>Preporučeno za vas</span></p>
+          <h3>Instalacijski program <code>.exe</code></h3>
+          <p class="dl-size" data-auto="size-installer">~238&nbsp;MB</p>
+          <p class="dl-desc">Većina ljudi — normalni instalacijski program, prečac u izborniku Pokreni, nadogradnje na mjestu. Aplikacija nema potpisan kod, pa Windows SmartScreen može jednom upozoriti: <b>Više informacija → Svejedno pokreni</b>.</p>
+          <a class="btn btn-primary" data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Preuzmite instalacijski program</a>
+        </article>
+        <article class="dl-card sr" data-os="windows-portable" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows prijenosno</p>
+          <h3>Prijenosno <code>.zip</code></h3>
+          <p class="dl-size" data-auto="size-portable">~360&nbsp;MB</p>
+          <p class="dl-desc">Otpakirajte i pokrenite. Bez instalacije, bez administratorskih prava, odlično za USB stick.</p>
+          <a class="btn btn-ghost" data-auto-href="portable" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Portable-Windows-v2.1.0.zip" rel="noopener">Preuzmite ZIP</a>
+        </article>
+        <article class="dl-card sr" data-os="mac" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS <span class="dl-badge" data-rec-badge hidden>Preporučeno za vas</span></p>
+          <h3>Diskovna slika <code>.dmg</code></h3>
+          <p class="dl-size"><span data-auto="size-mac-arm64">~275&nbsp;MB</span> · <span data-auto="size-mac-x64">~333&nbsp;MB</span></p>
+          <p class="dl-desc">Najlakše: jedan redak u Terminalu — bira pravu verziju i preskače upozorenje o sigurnosti. Ili preuzmite diskovnu sliku za Apple Silicon ili Intel.</p>
+          <a class="btn btn-primary" href="#mac-install"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Instalacija jednim retkom</a>
+          <div class="dl-pair"><a class="btn btn-ghost" data-auto-href="mac-arm64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-arm64.dmg" rel="noopener">Apple Silicon</a><a class="btn btn-ghost" data-auto-href="mac-x64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-x64.dmg" rel="noopener">Intel</a></div>
+        </article>
+        <article class="dl-card dl-card-source sr" data-os="linux" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Linux i izvorni kod <span class="dl-badge" data-rec-badge hidden>Preporučeno za vas</span></p>
+          <h3>Izgradi iz izvornog koda</h3>
+          <p class="dl-size">Python 3.11+</p>
+          <pre class="dl-code"><code>git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
+pip install -r requirements.txt
+python gui.py</code></pre>
+          <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite#build-from-source" rel="noopener">Vodič za izvorni kod</a>
+        </article>
+      </div>
+
+      <figure class="promo sr promo-after"><img src="/assets/promo/vise-still.webp" data-still="/assets/promo/vise-still.webp" data-anim="/assets/promo/vise.svg" alt="Animacija: riječi &#39;Sound in&#39; postaju vremenski zapis dvaju govornika, spremljen kao SRT, DOCX i PDF, bez računa i bez prijenosa." width="1280" height="640" loading="lazy" decoding="async"></figure>
+      <div class="mac-install sr" id="mac-install">
+        <div class="mac-install-head">
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — instalacija jednim retkom</p>
+          <h3>Zalijepite u Terminal. To je to.</h3>
+          <p>Preuzimanja (Preuzmi) pravu verziju za vaš Mac (Apple Silicon na macOS 14+, inače Intel putem Rosette), kopira aplikaciju u <code>Applications</code> i otvara je. Datoteke dobivene putem <code>curl</code> nisu u karanteni, pa nema upozorenja o "nepoznatom razvojnom programeru" koje treba preskočiti.</p>
+        </div>
+        <div class="code-box">
+          <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopiraj</button>
+          <pre><code id="mac-cmd" data-auto="mac-oneliner">A=x64; [ "$(uname -m)" = arm64 ] &amp;&amp; [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 14 ] &amp;&amp; A=arm64; curl -fL -o /tmp/wts.dmg "https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-$A.dmg" &amp;&amp; hdiutil attach -nobrowse -quiet -mountpoint /tmp/wts-dmg /tmp/wts.dmg &amp;&amp; cp -R "/tmp/wts-dmg/Whisper Transcriber Suite.app" /Applications/ &amp;&amp; hdiutil detach -quiet /tmp/wts-dmg &amp;&amp; rm /tmp/wts.dmg &amp;&amp; open "/Applications/Whisper Transcriber Suite.app"</code></pre>
+        </div>
+        <p class="mac-note">Preferirate uobičajeni način? Otvorite <code>.dmg</code> i povucite aplikaciju u Applications; prvo pokretanje tada zahtijeva desni klik → <b>Otvori</b> (macOS 14 i stariji) ili System Settings → Privatnost i sigurnost → <b>Otvori svejedno</b> (macOS 15+).</p>
+      </div>
+      <p class="dl-note sr">Svako izdanje, s bilješkama, nalazi se na <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Vodič za instalaciju</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section class="section compare" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Usporedi</p>
+        <h2 id="compare-title">Kako se uspoređuje s drugim Whisper aplikacijama?</h2>
+        <p class="section-lede">Whisper Transcriber Suite jedna je od nekoliko besplatnih aplikacija otvorenog koda za radnu površinu koje transkribiraju na vašem računalu. Evo kako se uspoređuje sa Subtitle Edit, Vibe i Buzz, uključujući i kada druga aplikacija bolje odgovara. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Pročitajte cijelu usporedbu</a>, s izvorom za svaku činjenicu te još dvije aplikacije, noScribe i aTrain.</p>
+      </header>
+      <div class="table-wrap sr">
+        <table class="compare-table">
+          <caption>Provjereno 05.10.2026. prema vlastitom README-u, dokumentaciji i izdanjima svakog projekta. Aplikacije se brzo mijenjaju: pogledajte <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">cijelu usporedbu</a> za izvore.</caption>
+          <thead>
+            <tr><th scope="col"><span class="sr-only">Značajka</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Cijena, licenca</th><td>Besplatno, BSD-3-Clause</td><td>Besplatno, MIT</td><td>Besplatno, MIT</td><td>Besplatno, MIT</td></tr>
+            <tr><th scope="row">Preuzimanja (Preuzmi)</th><td>Windows instalacijski program i prijenosni ZIP, macOS (Apple silicon, Intel); Linux iz izvornog koda</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 je posljednji za Intel Macove), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
+            <tr><th scope="row">GPU ubrzanje</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Potpisani Windows instalacijski program</th><td>Ne</td><td>Nije navedeno</td><td>Da, prema njihovoj dokumentaciji</td><td>Ne</td></tr>
+            <tr><th scope="row">Jezici sučelja</th><td>42 (strojno prevedeno)</td><td>35</td><td>22</td><td>16</td></tr>
+            <tr><th scope="row">Odaberite ga ako</th><td>Također želite mikrofon uživo, preuzimanje videozapisa, 14 izlaznih formata i lokalni mrežni način rada s OpenAI-kompatibilnom rutom</td><td>Želite više mehanizama za prepoznavanje govora (Parakeet, Canary, Qwen3-ASR i više) ili ovjerenu Mac aplikaciju</td><td>Želite Windows instalacijski program za koji njihova dokumentacija kaže da je potpisan, ili GPU podršku koja imenuje AMD i Intel</td><td>Želite Linux pakete (Flatpak, Snap, AppImage) ili PyPI instalaciju</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section class="section faq" id="faq" aria-labelledby="faq-title">
+    <div class="wrap faq-grid">
+      <header class="faq-head sr">
+        <p class="eyebrow">Česta pitanja</p>
+        <h2 id="faq-title">Često postavljana pitanja</h2>
+        <p class="section-lede">Imate još nešto na umu? Pitajte u <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">GitHub Discussions</a>.</p>
+      </header>
+      <div class="faq-list sr">
+        <article class="qa"><h3>Je li Whisper Transcriber Suite besplatan?</h3><div class="faq-a"><p>Da. Licenciran je pod BSD-3-Clause, bez pretplate i bez troškova po minuti. Sam Whisper model preuzima se jednom (oko 1-3 GB) pri prvom pokretanju; nakon toga transkribiranje radi bez internetske veze.</p></div></article>
+        <article class="qa"><h3>Učitava li moj zvuk ili video negdje?</h3><div class="faq-a"><p>Ne, ne prema zadanim postavkama. Svaki zadani pozadinski mehanizam — faster-whisper, whisper.cpp, NVIDIA Parakeet — radi lokalno na vašem računalu. Dva su pozadinska mehanizma samo po izboru (Gemini-API u oblaku i Google Cloud Speech-to-Text), i oba ostaju isključena dok ih sami ne omogućite u Advanced → Backend. Statistika korištenja (bez zvuka, bez naziva datoteka) zadano je uključena i može se isključiti pod Pomoć → Statistika korištenja, aplikacija jednom dnevno provjerava GitHub za novu verziju, a <b>File → Rad izvan mreže</b> zaustavlja svu mrežnu upotrebu.</p></div></article>
+        <article class="qa"><h3>Na kojim platformama radi?</h3><div class="faq-a"><p>Windows, macOS i Linux. Objavljena preuzimanja su Windows instalacijski program, Windows prijenosni ZIP i macOS DMG; Linux se pokreće iz izvornog koda.</p></div></article>
+        <article class="qa"><h3>Koje formate transkripata može stvoriti?</h3><div class="faq-a"><p><code>srt</code> <code>vtt</code> <code>ass</code> <code>tsv</code> <code>txt</code> <code>json</code> <code>lrc</code> <code>md</code> <code>docx</code> <code>pdf</code>, plus oTranscribe, ELAN, InqScribe i Express Scribe.</p></div></article>
+        <article class="qa"><h3>Može li označiti tko govori?</h3><div class="faq-a"><p>Da — neobavezna dijarizacija govornika ("Prepoznaj govornike"), s vremenskim oznakama za svaku riječ i izrezivanjem vremenskih raspona.</p></div></article>
+        <article class="qa"><h3>Može li transkribirati mikrofon uživo ili zvuk sustava?</h3><div class="faq-a"><p>Da, s kartice Live — mikrofon ili zvuk sustava, transkribirano u stvarnom vremenu.</p></div></article>
+        <article class="qa"><h3>Može li preuzeti i transkribirati online videozapise, npr. s YouTubea?</h3><div class="faq-a"><p>Da, bilo koju stranicu koju yt-dlp podržava, s neobaveznim korakom transkribiranja po završetku.</p></div></article>
+        <article class="qa"><h3>Može li sažeti transkript, izvući stavke za akciju ili odgovoriti na pitanja o njemu?</h3><div class="faq-a"><p>Da, putem neobavezne kartice AI alati u pregledniku transkripta — sažimanje, stavke za akciju, postavljanje pitanja i prevođenje po segmentima koje stvara dvojezični <code>.srt</code>. Zadano je isključeno.</p></div></article>
+        <article class="qa"><h3>Može li klonirati glas i natjerati ga da izgovara novi tekst?</h3><div class="faq-a"><p>Da, putem neobavezne kartice Clone Your Glas, koristeći OmniVoice (Apache-2.0) u potpunosti na vašem računalu. Zadano je isključeno; uključite ga prilikom instalacije, a morate potvrditi da imate dopuštenje za kloniranje referentnog Glasa.</p></div></article>
+        <article class="qa"><h3>Čime se to razlikuje od izravnog pozivanja Whisper API-ja?</h3><div class="faq-a"><p>Zadano pokreće model lokalno putem faster-whisper, pa nema troškova API-ja po minuti i nijedan zvuk ne napušta vaše računalo — osim ako izričito ne odaberete jedan od dva pozadinska mehanizma u oblaku.</p></div></article>
+        <article class="qa"><h3>Može li ga nekoliko ljudi na istoj mreži koristiti bez instaliranja na svako računalo?</h3><div class="faq-a"><p>Da — pristupni način rada Web/LAN pretvara ovo računalo u stranicu za transkripciju koju drugi uređaji na mreži mogu koristiti.</p></div></article>
+        <article class="qa"><h3>Što je novo u verziji 2.1?</h3><div class="faq-a"><p>Izbornici, gumbi i poruke dolaze na 42 jezika (strojno prevedeni i kao takvi označeni); oznake govornika dosežu do kraja dugih snimki i možete postaviti koliko osoba govori; transkripti, izvozi i podnaslovi u potpunosti se zapisuju na disk prije nego što zamijene staru datoteku; mrežne značajke rade na svakom Macu. Verzija 2.0 dodala je brzinu reda čekanja i preostalo vrijeme, video s podnaslovima iz veze, transkripte kao jednu izvanmrežnu web stranicu, mogućnost označavanja načina rada Rad izvan mreže i prijevod na Engleski. Pogledajte <a href="#whats-new">Što je novo u 2.1</a> i <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">zapis promjena</a>.</p></div></article>
+        <article class="qa"><h3>Može li pretvoriti vezu videozapisa u video s podnaslovima?</h3><div class="faq-a"><p>Da. Na kartici Preuzimanje videozapisa označite <b>Izradi video s podnaslovima</b>: aplikacija Preuzmi videozapis, transkribira ga s Whisper i ugrađuje podnaslove pomoću ffmpeg, stvarajući datoteku nazvanu po videozapisu s <code>-subbed.mp4</code>. Preuzimanje i transkript se zadržavaju, a postojeći <code>-subbed.mp4</code> se nikada ne zamjenjuje.</p></div></article>
+        <article class="qa"><h3>Mogu li aplikaciju potpuno držati izvan mreže?</h3><div class="faq-a"><p>Da. <b>File → Rad izvan mreže</b> zaustavlja provjeru ažuriranja, statistiku korištenja, preuzimanje modela i udaljene AI pružatelje usluga. Kada je uključeno, redak na dnu prozora pokazuje je li veza otvorena, a <em>Provjeri izvanmrežni rad sada</em> prikazuje kako se testne veze odbijaju. Kada je isključeno, aplikacija kontaktira mrežu samo za svoje mrežne postavke pri pokretanju, dnevnu provjeru ažuriranja, statistiku korištenja (koja se može isključiti pod Pomoć → Statistika korištenja) i preuzimanja koja započnete.</p></div></article>
+        <article class="qa"><h3>Kako mogu kontaktirati projekt?</h3><div class="faq-a"><p>Greške i zahtjevi za značajkama idu na <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, pitanja na <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, a sve ostalo e-poštom (adresa se prikazuje na zahtjev u <a href="#contact">odjeljku Kontakt</a>). Izvještaji o sigurnosti idu putem GitHub-ovog privatnog izvješćivanja o ranjivostima.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT + SUPPORT ============ -->
+  <section class="section contact" id="contact" aria-labelledby="contact-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Kontakt i podrška</p>
+        <h2 id="contact-title">Razgovarajte s nama. <span class="h2-soft">Pomoć da raste.</span></h2>
+      </header>
+      <div class="contact-grid">
+        <div class="contact-card sr" data-tilt-card data-contact>
+          <span class="contact-ic tone-teal"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg></span>
+          <h3>E-pošta</h3>
+          <p class="contact-val"><button type="button" class="contact-reveal" data-contact-reveal>Prikaži adresu e-pošte</button><span data-contact-out aria-live="polite" hidden></span><noscript> (zahtijeva JavaScript)</noscript></p>
+          <p>Tisak, partnerstva ili bilo što drugo što nije prijava greške.</p>
+        </div>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-coral"><svg class="i" aria-hidden="true"><use href="#i-bug"/></svg></span>
+          <h3>Prijavi grešku</h3>
+          <p class="contact-val">GitHub Issues</p>
+          <p>Uključi svoju verziju, operativni sustav i najmanju datoteku koja reproducira problem.</p>
+        </a>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-violet"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span>
+          <h3>Pitaj pitanje</h3>
+          <p class="contact-val">GitHub Discussions</p>
+          <p>Pomoć pri postavljanju, ideje i primjeri od drugih korisnika.</p>
+        </a>
+      </div>
+
+      <div class="support-card sr">
+        <div class="support-orbit" aria-hidden="true"><img src="/assets/logo.svg" alt="" width="88" height="88"><span></span><span></span><span></span></div>
+        <div class="support-copy">
+          <h3 id="support">Podrži projekt</h3>
+          <p>Whisper Transcriber Suite je besplatan i licenciran pod BSD-3-Clause, a održava se javno. Ako ste uštedjeli vrijeme, zvjezdica na GitHubu pomaže drugima da ga pronađu — a kava je uvijek cijenjena.</p>
+          <div class="support-actions">
+            <a class="btn btn-coffee btn-lg" href="https://buymeacoffee.com/mehraz1358" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-cup"/></svg>Kupi mi kavu</a> <a class="btn btn-light btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Zvjezdica na GitHubu</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div class="footer-brand">
+      <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — početna"><img class="brand-logo" src="/assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
+      <p class="muted">Održava ga jedan neovisni programer, <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Izvorni kod licenciran je pod BSD-3-Clause.</p>
+      <p class="muted"><a href="#contact">Kontakt</a></p>
+      <p class="site-stats" data-site-stats hidden><span data-stat="visits" hidden><strong></strong> posjeta</span><span data-stat="downloads" hidden><strong></strong> preuzimanja</span></p>
+      <p class="muted small mt-note">Ova je stranica prevedena s Engleski strojno, a zatim provjerena drugim strojem. Nešto ne zvuči ispravno? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">Javite nam na GitHubu</a>.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Podnožje">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Vodič za instalaciju</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Zapis promjena</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Rasprave</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Sigurnost</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">Licenca</a> <a href="/hr/youtube-to-text/">YouTube u tekst</a> <a href="/hr/video-to-srt/">Video u SRT</a> <a href="/hr/speaker-labels/">Oznake govornika</a> <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+  <div class="wrap">
+    <p class="muted small">Također dostupno na: <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.de.md" rel="noopener" lang="de">Deutsch</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fr.md" rel="noopener" lang="fr">Français</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.es.md" rel="noopener" lang="es">Español</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.it.md" rel="noopener" lang="it">Italiano</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt-BR.md" rel="noopener" lang="pt-BR">Português (Brasil)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt.md" rel="noopener" lang="pt">Português (Portugal)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nl.md" rel="noopener" lang="nl">Nederlands</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pl.md" rel="noopener" lang="pl">Polski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ru.md" rel="noopener" lang="ru">Русский</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.uk.md" rel="noopener" lang="uk">Українська</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.tr.md" rel="noopener" lang="tr">Türkçe</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.cs.md" rel="noopener" lang="cs">Čeština</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sk.md" rel="noopener" lang="sk">Slovenčina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hu.md" rel="noopener" lang="hu">Magyar</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ro.md" rel="noopener" lang="ro">Română</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bg.md" rel="noopener" lang="bg">Български</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.el.md" rel="noopener" lang="el">Ελληνικά</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sv.md" rel="noopener" lang="sv">Svenska</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.da.md" rel="noopener" lang="da">Dansk</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nb.md" rel="noopener" lang="nb">Norsk bokmål</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fi.md" rel="noopener" lang="fi">Suomi</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hr.md" rel="noopener" lang="hr">Hrvatski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sr.md" rel="noopener" lang="sr">Српски</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sl.md" rel="noopener" lang="sl">Slovenščina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lt.md" rel="noopener" lang="lt">Lietuvių</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-CN.md" rel="noopener" lang="zh-CN">简体中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-TW.md" rel="noopener" lang="zh-TW">繁體中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ja.md" rel="noopener" lang="ja">日本語</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ko.md" rel="noopener" lang="ko">한국어</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.vi.md" rel="noopener" lang="vi">Tiếng Việt</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.th.md" rel="noopener" lang="th">ไทย</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.id.md" rel="noopener" lang="id">Bahasa Indonesia</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ms.md" rel="noopener" lang="ms">Bahasa Melayu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hi.md" rel="noopener" lang="hi">हिन्दी</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ar.md" rel="noopener" lang="ar">العربية</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fa.md" rel="noopener" lang="fa">فارسی</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.he.md" rel="noopener" lang="he">עברית</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lv.md" rel="noopener" lang="lv">Latviešu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ca.md" rel="noopener" lang="ca">Català</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bn.md" rel="noopener" lang="bn">বাংলা</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fil.md" rel="noopener" lang="fil">Filipino</a>.</p>
+  </div>
+</footer>
+
+<div class="star-toast" data-star-toast role="status" hidden>
+  <p><b>Hvala na preuzimanju!</b> Dok se preuzima — ako vam aplikacija na kraju uštedi vrijeme, ⭐ na GitHubu pomaže drugima da je pronađu. Jedan klik, besplatno.</p>
+  <div class="star-toast-actions">
+    <a class="btn btn-primary btn-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" data-star-go><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Zvjezdica na GitHubu</a>
+    <button class="star-toast-close" type="button" data-star-close aria-label="Zatvori">×</button>
+  </div>
+</div>
+
+<script type="application/json" id="i18n-strings">
+{
+  "Play animations": "Pokreni animacije",
+  "Pause animations": "Pauza animacija",
+  "Install on macOS": "Instaliraj na macOS",
+  "Get it for Linux": "Preuzmi za Linux",
+  "Get it for your computer": "Preuzmi za svoje računalo",
+  "Show %s": "Prikaži %s",
+  "Please write to us on GitHub Discussions": "Molimo javite nam se na GitHub Discussions",
+  "One moment…": "Trenutak…",
+  "Could not load it. Try again": "Učitavanje nije uspjelo. Pokušaj ponovno",
+  "so the words appear as you speak": "pa se riječi pojavljuju dok govorite",
+  "cuts land on natural pauses": "rezovi padaju na prirodne stanke",
+  "and no word is ever split in two": "i nijedna se riječ nikada ne dijeli na dvoje",
+  "Your audio stays on your computer.": "Vaš zvuk ostaje na vašem računalu.",
+  "No account. No per-minute cost.": "Bez računa. Bez plaćanja po minuti.",
+  "Whisper runs on your own computer.": "Whisper radi na vašem računalu.",
+  "Fourteen formats, one click.": "Četrnaest formata, jedan klik.",
+  "Copy": "Kopiraj",
+  "Copied": "Kopirano"
+}
+</script>
+<script src="/js/main.js?v=20261018b" defer></script>
+<script src="/js/lang.js?v=20261019a" defer></script>
+</body>
+</html>

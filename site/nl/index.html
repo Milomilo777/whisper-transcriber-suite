@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whisper Transcriber Suite — Gratis offline transcriptie</title>
+<meta name="description" content="Gratis desktop-app die OpenAI Whisper op je eigen computer draait. Transcribeer audio en video naar SRT, VTT, DOCX en PDF. Windows, macOS en Linux.">
+<meta name="author" content="translation-robot">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://whisper-transcriber-suite.com/nl/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/">
+<link rel="alternate" hreflang="de" href="https://whisper-transcriber-suite.com/de/">
+<link rel="alternate" hreflang="fr" href="https://whisper-transcriber-suite.com/fr/">
+<link rel="alternate" hreflang="es" href="https://whisper-transcriber-suite.com/es/">
+<link rel="alternate" hreflang="it" href="https://whisper-transcriber-suite.com/it/">
+<link rel="alternate" hreflang="pt-BR" href="https://whisper-transcriber-suite.com/pt-br/">
+<link rel="alternate" hreflang="pt" href="https://whisper-transcriber-suite.com/pt/">
+<link rel="alternate" hreflang="nl" href="https://whisper-transcriber-suite.com/nl/">
+<link rel="alternate" hreflang="pl" href="https://whisper-transcriber-suite.com/pl/">
+<link rel="alternate" hreflang="ru" href="https://whisper-transcriber-suite.com/ru/">
+<link rel="alternate" hreflang="uk" href="https://whisper-transcriber-suite.com/uk/">
+<link rel="alternate" hreflang="tr" href="https://whisper-transcriber-suite.com/tr/">
+<link rel="alternate" hreflang="cs" href="https://whisper-transcriber-suite.com/cs/">
+<link rel="alternate" hreflang="sk" href="https://whisper-transcriber-suite.com/sk/">
+<link rel="alternate" hreflang="hu" href="https://whisper-transcriber-suite.com/hu/">
+<link rel="alternate" hreflang="ro" href="https://whisper-transcriber-suite.com/ro/">
+<link rel="alternate" hreflang="bg" href="https://whisper-transcriber-suite.com/bg/">
+<link rel="alternate" hreflang="el" href="https://whisper-transcriber-suite.com/el/">
+<link rel="alternate" hreflang="sv" href="https://whisper-transcriber-suite.com/sv/">
+<link rel="alternate" hreflang="da" href="https://whisper-transcriber-suite.com/da/">
+<link rel="alternate" hreflang="nb" href="https://whisper-transcriber-suite.com/nb/">
+<link rel="alternate" hreflang="fi" href="https://whisper-transcriber-suite.com/fi/">
+<link rel="alternate" hreflang="hr" href="https://whisper-transcriber-suite.com/hr/">
+<link rel="alternate" hreflang="sr" href="https://whisper-transcriber-suite.com/sr/">
+<link rel="alternate" hreflang="sl" href="https://whisper-transcriber-suite.com/sl/">
+<link rel="alternate" hreflang="lt" href="https://whisper-transcriber-suite.com/lt/">
+<link rel="alternate" hreflang="zh-CN" href="https://whisper-transcriber-suite.com/zh-cn/">
+<link rel="alternate" hreflang="zh-TW" href="https://whisper-transcriber-suite.com/zh-tw/">
+<link rel="alternate" hreflang="ja" href="https://whisper-transcriber-suite.com/ja/">
+<link rel="alternate" hreflang="ko" href="https://whisper-transcriber-suite.com/ko/">
+<link rel="alternate" hreflang="vi" href="https://whisper-transcriber-suite.com/vi/">
+<link rel="alternate" hreflang="th" href="https://whisper-transcriber-suite.com/th/">
+<link rel="alternate" hreflang="id" href="https://whisper-transcriber-suite.com/id/">
+<link rel="alternate" hreflang="ms" href="https://whisper-transcriber-suite.com/ms/">
+<link rel="alternate" hreflang="hi" href="https://whisper-transcriber-suite.com/hi/">
+<link rel="alternate" hreflang="ar" href="https://whisper-transcriber-suite.com/ar/">
+<link rel="alternate" hreflang="fa" href="https://whisper-transcriber-suite.com/fa/">
+<link rel="alternate" hreflang="he" href="https://whisper-transcriber-suite.com/he/">
+<link rel="alternate" hreflang="lv" href="https://whisper-transcriber-suite.com/lv/">
+<link rel="alternate" hreflang="ca" href="https://whisper-transcriber-suite.com/ca/">
+<link rel="alternate" hreflang="bn" href="https://whisper-transcriber-suite.com/bn/">
+<link rel="alternate" hreflang="fil" href="https://whisper-transcriber-suite.com/fil/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/">
+<!-- i18n:hreflang:end -->
+<meta name="google-site-verification" content="_vMQaHCYUqaePsjuk_lmQ9Df32M03uPPZnXEFVr8ttU">
+<meta name="google-site-verification" content="uC9kBtANn2fSf-oX8ubTOv1cgtEQabzbnLz61epFOcc">
+<meta name="msvalidate.01" content="86B7B178FB8DB5F45F03295F6D2A8F4A">
+<meta name="msvalidate.01" content="C5065B95AD10AB4D2845E441E3D9FA37">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Whisper Transcriber Suite — Gratis, offline audio- en videotranscriptie">
+<meta property="og:description" content="Draait OpenAI Whisper lokaal. Je audio blijft op je computer, geen account nodig. 14 uitvoerformaten, live transcriptie, sprekerslabels, YouTube-downloads. Gratis, BSD-3-Clause, voor Windows, macOS en Linux.">
+<meta property="og:url" content="https://whisper-transcriber-suite.com/nl/">
+<meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — gratis, offline audio- en videotranscriptie voor Windows, macOS en Linux.">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="nl_NL">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Whisper Transcriber Suite — Gratis, offline audio- en videotranscriptie">
+<meta name="twitter:description" content="Draait OpenAI Whisper lokaal. Je audio blijft op je computer, geen account nodig. 14 uitvoerformaten, live transcriptie, sprekerslabels, YouTube-downloads.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="alternate" type="text/plain" title="LLM-samenvatting" href="/llms.txt">
+
+<link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
+<script src="/js/motion-init.js?v=20260927b"></script>
+<link rel="stylesheet" href="/styles.css?v=20261019a">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://whisper-transcriber-suite.com/#org",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://github.com/Milomilo777/whisper-transcriber-suite/issues",
+        "availableLanguage": [
+          "English"
+        ]
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite",
+        "https://buymeacoffee.com/mehraz1358"
+      ],
+      "description": "Gratis, open-source desktop-app die OpenAI Whisper lokaal draait voor audio- en videotranscriptie."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://whisper-transcriber-suite.com/#app",
+      "name": "Whisper Transcriber Suite",
+      "alternateName": "WhisperTranscriberSuite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "image": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+      "screenshot": [
+        "https://whisper-transcriber-suite.com/assets/shots/transcribe.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/live.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/download.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/queue.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/voice.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/web.webp"
+      ],
+      "description": "Desktop-app die het Whisper-model van OpenAI lokaal draait via faster-whisper, whisper.cpp of NVIDIA Parakeet. Transcribeert audio en video naar SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX en PDF. Je audio blijft op je computer en er is geen account nodig.",
+      "softwareVersion": "2.1.0",
+      "datePublished": "2026-05-11",
+      "dateModified": "2026-10-12",
+      "operatingSystem": "Windows, macOS, Linux",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "Speech-to-text transcription",
+      "featureList": [
+        "Offline spraak-naar-tekst met faster-whisper, whisper.cpp of NVIDIA Parakeet",
+        "14 transcriptieformaten, waaronder SRT, VTT, DOCX en PDF",
+        "Live transcriptie van microfoon en systeemaudio",
+        "Sprekersdiarisatie met tijdstempels per woord",
+        "Batch-wachtrij met pauzeren, hervatten en opnieuw uitvoeren",
+        "Video- en audiodownloads van elke door yt-dlp ondersteunde site",
+        "Adaptieve ruisonderdrukking",
+        "Optionele AI-samenvattingen, actiepunten en tweetalige SRT",
+        "Optionele offline stemkloning",
+        "Web-/LAN-toegangsmodus",
+        "Wachtrij toont de snelheid en resterende tijd van elke transcriptie",
+        "Ondertitelde video maken: download, transcribeer en brand ondertitels in een MP4",
+        "Sla een transcriptie op als één offline webpagina",
+        "'Offline werken'-schakelaar met een zichtbare netwerkstatus",
+        "Vertaal spraak direct naar het Engels"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isAccessibleForFree": true,
+      "interactionStatistic": {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/DownloadAction",
+        "userInteractionCount": 2694
+      },
+      "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
+      "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
+      "releaseNotes": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md",
+      "installUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md",
+      "codeRepository": "https://github.com/Milomilo777/whisper-transcriber-suite",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://whisper-transcriber-suite.com/#author"
+      },
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite"
+      ],
+      "softwareRequirements": "Windows 10 or 11 (64-bit); macOS 10.15 or later (Intel build) or macOS 14 or later (Apple Silicon build); Linux from source with Python 3.11+",
+      "memoryRequirements": "At least 8 GB RAM; an NVIDIA GPU with CUDA is optional"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://whisper-transcriber-suite.com/#website",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "inLanguage": "nl",
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://whisper-transcriber-suite.com/#author",
+      "name": "translation-robot",
+      "url": "https://github.com/translation-robot",
+      "sameAs": [
+        "https://github.com/translation-robot"
+      ],
+      "description": "Onafhankelijke ontwikkelaar die Whisper Transcriber Suite onderhoudt als open-sourceproject."
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://whisper-transcriber-suite.com/nl/#webpage",
+      "url": "https://whisper-transcriber-suite.com/nl/",
+      "name": "Whisper Transcriber Suite — Gratis offline transcriptie",
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/nl/#website"
+      },
+      "about": {
+        "@id": "https://whisper-transcriber-suite.com/nl/#app"
+      },
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": [
+          ".hero-lede",
+          ".faq-a p"
+        ]
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is Whisper Transcriber Suite gratis?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ja. Het heeft een BSD-3-Clause-licentie, zonder abonnement en zonder kosten per minuut. Het Whisper-model zelf wordt bij de eerste start eenmalig gedownload (ongeveer 1-3 GB); daarna werkt transcriberen zonder internetverbinding."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Wordt mijn audio of video ergens naartoe geüpload?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Nee, standaard niet. Elke standaard-backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — draait lokaal op je computer. Twee backends zijn puur opt-in (cloud_stt via de Gemini API en google_cloud_stt), en beide blijven uitgeschakeld totdat je ze zelf aanzet in Geavanceerde instellingen → Backend. Gebruiksstatistieken (geen audio, geen bestandsnamen) staan standaard aan en kunnen worden uitgeschakeld onder Help > Gebruiksstatistieken; de app controleert eenmaal per dag op GitHub op een nieuwe versie, en Bestand > Offline werken stopt al het netwerkgebruik."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Op welke platforms draait het?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Windows, macOS en Linux. De gepubliceerde downloads zijn een Windows-installatieprogramma, een portable Windows-ZIP en een macOS-DMG; Linux draait vanuit de broncode."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Welke transcriptieformaten kan het produceren?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX en PDF, plus oTranscribe, ELAN, InqScribe en Express Scribe."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kan het aangeven wie er spreekt?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ja, optionele sprekersdiarisatie (Sprekers identificeren), met tijdstempels per woord en bijsnijden op tijdsbereik."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kan het een live microfoon of systeemaudio transcriberen?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ja, via het tabblad Live: een microfoon of de systeemaudio, getranscribeerd terwijl het plaatsvindt."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kan het online video's downloaden en transcriberen, bijvoorbeeld van YouTube?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ja, elke site die yt-dlp ondersteunt, met een optionele stap om na voltooiing te transcriberen."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kan het een transcriptie samenvatten, actiepunten eruit halen of er vragen over beantwoorden?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ja, via het optionele tabblad AI-hulpmiddelen in de transcriptieweergave: samenvatten, actiepunten, een vraag stellen en een vertaalslag per segment die een tweetalige SRT wegschrijft. Dit staat standaard uit."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kan het een stem klonen en nieuwe tekst laten uitspreken?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ja, via het optionele tabblad Kloon je stem, met behulp van OmniVoice (Apache-2.0) volledig op je computer. Staat standaard uit; optioneel in te schakelen tijdens de installatie."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Wat is het verschil met het rechtstreeks aanroepen van de Whisper-API?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Het draait het model standaard lokaal via faster-whisper, dus er zijn geen API-kosten per minuut en er verlaat geen audio je computer, tenzij je expliciet kiest voor een van de twee cloud-backends."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kunnen meerdere mensen op hetzelfde netwerk het gebruiken zonder het op elke computer te installeren?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ja, de Web-/LAN-toegangsmodus verandert deze computer in een transcriptiepagina die andere apparaten op het netwerk kunnen gebruiken."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Wat is er nieuw in versie 2.1?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Menu's, knoppen en berichten zijn beschikbaar in 42 talen (automatisch vertaald en als zodanig gemarkeerd); sprekerslabels lopen door tot het einde van lange opnames en je kunt instellen hoeveel mensen er spreken; transcripties, exports en ondertitels worden eerst volledig naar schijf geschreven voordat ze het oude bestand vervangen; online functies werken op elke Mac. Versie 2.0 voegde de snelheid en resterende tijd van de wachtrij toe, ondertitelde video vanaf een link, transcripties als één offline webpagina, een controleerbare 'Offline werken'-modus en vertaling naar het Engels."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kan het een videolink omzetten in een video met ondertitels?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ja. Vink op het tabblad Video's downloaden de optie Ondertitelde video maken aan: de app downloadt de video, transcribeert deze met Whisper en brandt de ondertitels in met ffmpeg, wat een bestand oplevert dat is vernoemd naar de video met -subbed.mp4. De download en de transcriptie blijven behouden, en een bestaand -subbed.mp4-bestand wordt nooit vervangen."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kan ik de app volledig offline houden?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ja. Bestand > Offline werken stopt de updatecontrole, gebruiksstatistieken, modeldownloads en externe AI-providers. Wanneer dit is ingeschakeld, geeft een regel onderaan het venster aan of er een verbinding openstaat, en toont Offline nu controleren dat testverbindingen worden geweigerd. Wanneer dit uit staat, maakt de app alleen verbinding met het netwerk voor zijn online instellingen bij het opstarten, de dagelijkse updatecontrole, gebruiksstatistieken (die kunnen worden uitgeschakeld onder Help > Gebruiksstatistieken) en downloads die je zelf start."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Hoe neem ik contact op met het project?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Bugs en functieverzoeken kunnen worden gemeld via GitHub Issues, vragen via GitHub Discussions, en al het overige per e-mail (het adres wordt op verzoek getoond in het onderdeel Contact). Beveiligingsmeldingen verlopen via de besloten kwetsbaarheidsrapportage van GitHub."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m0 0-5-5m5 5-5 5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m12 4-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m8 4 6 6-6 6"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 20 20"><path fill="currentColor" d="M2 3.6 8.4 2.7v6.6H2zm7.3-1 8.7-1.2v7.9H9.3zM2 10.2h6.4v6.7L2 16zm7.3 0H18v8.4l-8.7-1.2z"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 20 20"><path fill="currentColor" d="M13.6 10.6c0-1.9 1.6-2.8 1.6-2.9-.9-1.3-2.3-1.5-2.8-1.5-1.2-.1-2.3.7-2.9.7-.6 0-1.5-.7-2.5-.7-1.3 0-2.5.8-3.2 1.9-1.4 2.4-.4 5.9 1 7.8.6.9 1.4 2 2.4 1.9 1-.1 1.3-.6 2.5-.6s1.5.6 2.5.6c1 0 1.7-.9 2.3-1.9.7-1.1 1-2.1 1-2.2 0 0-1.9-.8-1.9-3.1zM11.7 4.9c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-1 1.5-.8 2.4.9.1 1.8-.4 2.4-1.1z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14v11H3zM6 8.5l2 1.5-2 1.5M10 12h4"/></symbol>
+    <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+    <symbol id="i-cup" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 7h10v4.5A4.5 4.5 0 0 1 9.5 16h-1A4.5 4.5 0 0 1 4 11.5zm10 1.5h1.2a2.3 2.3 0 0 1 0 4.6H14M7 2.5v2m3-2v2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 5h14v10H3zm0 0 7 6 7-6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4h14v9H8l-4 3v-3H3z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7 7a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM3 10h4m6 0h4M4 5l3 2m9-2-3 2M4 15l3-2m9 2-3-2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 20 20"><path fill="currentColor" d="M6 4v12l10-6z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 20 20"><path fill="currentColor" d="M5 4h3.5v12H5zm6.5 0H15v12h-3.5z"/></symbol>
+  </defs>
+</svg> <a class="skip-link" href="#main">Direct naar inhoud</a>
+
+<header class="site-header" data-header>
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — startpagina">
+      <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
+    </a>
+    <nav class="site-nav" aria-label="Primair">
+      <a href="#showreel">Rondleiding</a> <a href="#features">Functies</a> <a href="#how-it-works">Hoe het werkt</a> <a href="#download">Downloaden</a> <a href="#compare">Vergelijken</a> <a href="#faq">FAQ</a> <a href="#contact">Contact</a>
+    </nav>
+    <div class="header-cta">
+      <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Taal" aria-label="Taal"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->Nederlands<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/?lang=en" hreflang="en" lang="en" data-lang-pick="en">English</a></li>
+<li><a href="/de/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
+<li><a href="/fr/" hreflang="fr" lang="fr" data-lang-pick="fr">Français</a></li>
+<li><a href="/es/" hreflang="es" lang="es" data-lang-pick="es">Español</a></li>
+<li><a href="/it/" hreflang="it" lang="it" data-lang-pick="it">Italiano</a></li>
+<li><a href="/pt-br/" hreflang="pt-BR" lang="pt-BR" data-lang-pick="pt-BR">Português (Brasil)</a></li>
+<li><a href="/pt/" hreflang="pt" lang="pt" data-lang-pick="pt">Português (Portugal)</a></li>
+<li><a href="/nl/" hreflang="nl" lang="nl" data-lang-pick="nl" aria-current="true">Nederlands</a></li>
+<li><a href="/pl/" hreflang="pl" lang="pl" data-lang-pick="pl">Polski</a></li>
+<li><a href="/ru/" hreflang="ru" lang="ru" data-lang-pick="ru">Русский</a></li>
+<li><a href="/uk/" hreflang="uk" lang="uk" data-lang-pick="uk">Українська</a></li>
+<li><a href="/tr/" hreflang="tr" lang="tr" data-lang-pick="tr">Türkçe</a></li>
+<li><a href="/cs/" hreflang="cs" lang="cs" data-lang-pick="cs">Čeština</a></li>
+<li><a href="/sk/" hreflang="sk" lang="sk" data-lang-pick="sk">Slovenčina</a></li>
+<li><a href="/hu/" hreflang="hu" lang="hu" data-lang-pick="hu">Magyar</a></li>
+<li><a href="/ro/" hreflang="ro" lang="ro" data-lang-pick="ro">Română</a></li>
+<li><a href="/bg/" hreflang="bg" lang="bg" data-lang-pick="bg">Български</a></li>
+<li><a href="/el/" hreflang="el" lang="el" data-lang-pick="el">Ελληνικά</a></li>
+<li><a href="/sv/" hreflang="sv" lang="sv" data-lang-pick="sv">Svenska</a></li>
+<li><a href="/da/" hreflang="da" lang="da" data-lang-pick="da">Dansk</a></li>
+<li><a href="/nb/" hreflang="nb" lang="nb" data-lang-pick="nb">Norsk bokmål</a></li>
+<li><a href="/fi/" hreflang="fi" lang="fi" data-lang-pick="fi">Suomi</a></li>
+<li><a href="/hr/" hreflang="hr" lang="hr" data-lang-pick="hr">Hrvatski</a></li>
+<li><a href="/sr/" hreflang="sr" lang="sr" data-lang-pick="sr">Српски</a></li>
+<li><a href="/sl/" hreflang="sl" lang="sl" data-lang-pick="sl">Slovenščina</a></li>
+<li><a href="/lt/" hreflang="lt" lang="lt" data-lang-pick="lt">Lietuvių</a></li>
+<li><a href="/zh-cn/" hreflang="zh-CN" lang="zh-CN" data-lang-pick="zh-CN">简体中文</a></li>
+<li><a href="/zh-tw/" hreflang="zh-TW" lang="zh-TW" data-lang-pick="zh-TW">繁體中文</a></li>
+<li><a href="/ja/" hreflang="ja" lang="ja" data-lang-pick="ja">日本語</a></li>
+<li><a href="/ko/" hreflang="ko" lang="ko" data-lang-pick="ko">한국어</a></li>
+<li><a href="/vi/" hreflang="vi" lang="vi" data-lang-pick="vi">Tiếng Việt</a></li>
+<li><a href="/th/" hreflang="th" lang="th" data-lang-pick="th">ไทย</a></li>
+<li><a href="/id/" hreflang="id" lang="id" data-lang-pick="id">Bahasa Indonesia</a></li>
+<li><a href="/ms/" hreflang="ms" lang="ms" data-lang-pick="ms">Bahasa Melayu</a></li>
+<li><a href="/hi/" hreflang="hi" lang="hi" data-lang-pick="hi">हिन्दी</a></li>
+<li><a href="/ar/" hreflang="ar" lang="ar" dir="rtl" data-lang-pick="ar">العربية</a></li>
+<li><a href="/fa/" hreflang="fa" lang="fa" dir="rtl" data-lang-pick="fa">فارسی</a></li>
+<li><a href="/he/" hreflang="he" lang="he" dir="rtl" data-lang-pick="he">עברית</a></li>
+<li><a href="/lv/" hreflang="lv" lang="lv" data-lang-pick="lv">Latviešu</a></li>
+<li><a href="/ca/" hreflang="ca" lang="ca" data-lang-pick="ca">Català</a></li>
+<li><a href="/bn/" hreflang="bn" lang="bn" data-lang-pick="bn">বাংলা</a></li>
+<li><a href="/fil/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
+      <button class="btn-icon" type="button" data-motion-toggle aria-pressed="false" title="Animaties pauzeren of afspelen">
+        <svg class="i i-when-on" aria-hidden="true"><use href="#i-pause"/></svg> <svg class="i i-when-off" aria-hidden="true"><use href="#i-play"/></svg> <span class="sr-only" data-motion-label>Animaties pauzeren</span>
+      </button>
+      <a class="btn btn-ghost btn-sm hide-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" aria-label="Geef Whisper Transcriber Suite een ster op GitHub"> <svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Ster </a> <a class="btn btn-primary btn-sm" href="#download">Downloaden</a>
+    </div>
+  </div>
+</header>
+
+<div class="lang-notice" data-lang-notice hidden>
+  <div class="wrap lang-notice-row">
+    <p>Deze pagina wordt in jouw taal weergegeven op basis van waar je vandaan komt. <a href="/?lang=en" data-lang-pick="en">Bekijk in het Engels</a></p>
+    <button class="btn-icon" type="button" data-lang-notice-close aria-label="Sluiten"><span aria-hidden="true">×</span></button>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <canvas class="hero-waves" data-waves aria-hidden="true"></canvas>
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="kicker reveal" style="--d:0"><span class="kicker-dot" aria-hidden="true"></span>Gratis &amp; open-source · BSD-3-Clause · <span data-auto="version">v2.1.0</span></p>
+        <h1 class="hero-title" id="hero-title">
+          <span class="line"><span class="rise" style="--d:1">Geluid erin.</span></span> <span class="line"><span class="rise" style="--d:2">Tekst eruit.</span></span> <span class="line"><span class="rise grad-text" style="--d:3">Je audio blijft op je computer.</span></span>
+        </h1>
+        <p class="hero-lede reveal" style="--d:4">Whisper Transcriber Suite draait het Whisper-model van OpenAI volledig op je eigen computer — via faster-whisper, whisper.cpp of NVIDIA Parakeet. Sleep audio of video naar binnen en krijg een transcriptie met tijdstempels terug. Geen cloud, geen account, geen kosten per minuut.</p>
+        <div class="hero-actions reveal" style="--d:5">
+          <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Downloaden voor Windows</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">Bekijk de rondleiding<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </div>
+        <ul class="proof reveal" style="--d:6" aria-label="In een oogopslag">
+          <li><strong data-count="14">14</strong><span>transcriptieformaten</span></li>
+          <li><strong data-auto="downloads">2,600+</strong><span>downloads tot nu toe</span></li>
+          <li><strong>0</strong><span>audio-uploads standaard</span></li>
+          <li><strong>$0</strong><span>voor altijd</span></li>
+        </ul>
+      </div>
+
+      <div class="hero-scene" data-scene aria-hidden="true">
+        <div class="scene-rig" data-rig>
+          <div class="float-layer l-back">
+            <figure class="win win-sm win-a"><div class="win-bar"><i></i><i></i><i></i><span>Live</span></div><img src="/assets/shots/live-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-mid">
+            <figure class="win win-sm win-b"><div class="win-bar"><i></i><i></i><i></i><span>Video's downloaden</span></div><img src="/assets/shots/download-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-front">
+            <figure class="win win-main"><div class="win-bar"><i></i><i></i><i></i><span>Whisper Transcriber Suite</span></div><img src="/assets/shots/transcribe.webp" srcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" sizes="(max-width: 1080px) 72vw, 480px" alt="" width="1180" height="668" fetchpriority="high"></figure>
+          </div>
+          <div class="float-layer l-pop1">
+            <div class="chip-card wave-card"><span class="rec"></span><span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+          </div>
+          <div class="float-layer l-pop2">
+            <div class="chip-card srt-card">
+              <p class="srt-ts">00:00:04,120 → 00:00:06,880</p>
+              <p class="srt-line"><span data-hero-typer>Je audio blijft op je computer.</span><span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="float-layer l-pop3">
+            <div class="chip-card fmt-card"><b>.srt</b><b>.vtt</b><b>.docx</b><b>.pdf</b></div>
+          </div>
+          <div class="float-layer l-pop4">
+            <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Offline transcriptie</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Sprekersdiarisatie</span> <span>Live-microfoon</span> <span>Stemklonen</span> <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Sprekersdiarisatie</span> <span>Live-microfoon</span> <span>Stemklonen</span>
+    </div>
+  </div>
+
+  <!-- ============ SHOWREEL (3D carousel) ============ -->
+  <section class="section showreel" id="showreel" aria-labelledby="reel-title">
+    <div class="reel-glow" aria-hidden="true"></div>
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Productrondleiding</p>
+        <h2 id="reel-title">Eén venster. <span class="h2-soft">Zes tools.</span></h2>
+        <p class="section-lede">Sleep een bestand, kies je opties en druk op Transcriberen. Al het andere — de wachtrij, downloads, live-opname, stemklonen en delen via LAN — vind je één tabblad verderop. Sleep de ring of gebruik de pijlen.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/showreel-still.webp" data-still="/assets/promo/showreel-still.webp" data-anim="/assets/promo/showreel.svg" alt="Animatie: een interview met twee gelabelde sprekers, een lezing omgezet in getimede ondertitels, een videolink omgezet in een ondertitelde video, live ondertiteling vanaf een microfoon, en het transcript naast het bestand opgeslagen als SRT, VTT, DOCX en PDF." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="reel" data-reel>
+        <div class="reel-viewport" data-reel-viewport>
+          <div class="reel-ring" data-reel-ring>
+            <figure class="reel-card" data-title="Transcriberen" data-caption="Een sleepgebied, kiezers voor engine, model en taal, en opties voor sprekerslabels en tijdstempels per woord."><div class="win-bar"><i></i><i></i><i></i><span>Transcriberen</span></div><img src="/assets/shots/transcribe-640.webp" alt="Tabblad Transcriberen: sleepgebied, kiezers voor engine, model en taal, opties voor sprekerslabels en tijdstempels per woord" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Live" data-caption="Transcribeer een microfoon — of wat deze computer ook afspeelt — terwijl het gebeurt, met een ingangsniveaumeter."><div class="win-bar"><i></i><i></i><i></i><span>Live</span></div><img src="/assets/shots/live-640.webp" alt="Tabblad Live: bron voor microfoon of systeemgeluid, kiezers voor taal en model, ingangsniveaumeter en een paneel voor het live transcript" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Video&#39;s downloaden" data-caption="Kies een formaat, selecteer een tijdsbereik, bekijk welke ondertitels de video al heeft, en transcribeer optioneel of brand de ondertitels in een nieuwe MP4."><div class="win-bar"><i></i><i></i><i></i><span>Video's downloaden</span></div><img src="/assets/shots/download-640.webp" alt="Tabblad Video&#39;s downloaden: URL met de regel Ondertitels beschikbaar, browserinlogcookies, formaat, tijdsbereik, In plaats daarvan ondertiteling gebruiken, Transcriberen na download en Ondertitelde video maken" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Transcriptiewachtrij" data-caption="Batchtaken met live voortgang, snelheid en resterende tijd — pauzeer, hervat, annuleer, voer opnieuw uit of verwijder elke rij."><div class="win-bar"><i></i><i></i><i></i><span>Transcriptiewachtrij</span></div><img src="/assets/shots/queue-640.webp" alt="Tabblad Transcriptiewachtrij: kolommen voor bestand, status, voortgang, snelheid en resterende tijd, taal en verstreken tijd met pauzeren, hervatten, annuleren, opnieuw uitvoeren en verwijderen" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Kloon je stem" data-caption="Optioneel, volledig offline: kloon een stem aan de hand van een kort fragment, of ontwerp er een, en laat deze nieuwe tekst voorlezen."><div class="win-bar"><i></i><i></i><i></i><span>Kloon je stem</span></div><img src="/assets/shots/voice-640.webp" alt="Tabblad Kloon je stem / Tekst naar stem: OmniVoice-model, stemfragment, uit te spreken tekst, taal en snelheid" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Web-/LAN-toegang" data-caption="Met één knop verander je deze computer in een transcriptiepagina voor de andere apparaten op je netwerk."><div class="win-bar"><i></i><i></i><i></i><span>Web-/LAN-toegang</span></div><img src="/assets/shots/web-640.webp" alt="Tabblad Web-/LAN-toegang: webtoegang starten, poort, delen op lokaal netwerk, toegangswachtwoord en HTTPS-opties" width="640" height="362" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+        <div class="reel-controls">
+          <button class="reel-btn" type="button" data-reel-prev aria-label="Vorig scherm"><svg class="i" aria-hidden="true"><use href="#i-left"/></svg></button>
+          <div class="reel-meta" aria-live="off" data-reel-live>
+            <p class="reel-title" data-reel-title>Transcriberen</p>
+            <p class="reel-caption" data-reel-caption>Een sleepgebied, kiezers voor engine, model en taal, en opties voor sprekerslabels en tijdstempels per woord.</p>
+          </div>
+          <button class="reel-btn" type="button" data-reel-next aria-label="Volgend scherm"><svg class="i" aria-hidden="true"><use href="#i-right"/></svg></button>
+        </div>
+        <div class="reel-dots" data-reel-dots role="group" aria-label="Kies een scherm"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Nieuw in 2.1</p>
+        <h2 id="new-title">Wat is er nieuw in 2.1. <span class="h2-soft">Nu in jouw taal.</span></h2>
+        <p class="section-lede">De app in 42 talen, sprekerslabels die het einde van lange opnames halen, bestanden die een stroomuitval overleven en onlinefuncties die op elke Mac werken. Daaronder wat er in 2.0 is toegevoegd.</p>
+      </header>
+
+      <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Alle platforms</p>
+          <h3>De app in jouw taal</h3>
+          <p>Menu's, knoppen en berichten zijn beschikbaar in 42 talen (39 op macOS en Linux). De app volgt je systeemtaal, of je kiest er een in <em>Geavanceerde instellingen</em>. Elke taal behalve het Engels is een machinevertaling en is als zodanig gemarkeerd; Perzisch, Arabisch en Hebreeuws worden voorlopig op Windows aangeboden.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Alle platforms</p>
+          <h3>Sprekerslabels waarop je kunt vertrouwen</h3>
+          <p>Sprekersnamen halen nu het einde van lange opnames, sprekersdetectie kan een transcriptie niet meer laten crashen, en naast <em>Sprekers identificeren</em> kun je instellen hoeveel mensen er praten (2 tot 10) in plaats van dit op Auto te laten staan.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Alle platforms</p>
+          <h3>Je werk is veiliger</h3>
+          <p>Transcripten, exports en ondertitels worden volledig naar schijf geschreven voordat ze het oude bestand vervangen, waardoor een stroomuitval geen leeg bestand kan achterlaten. Een transcriptie waarvan het worker-proces is gestopt na het schrijven van alle bestanden, telt als voltooid.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · macOS</p>
+          <h3>Onlinefuncties op elke Mac</h3>
+          <p>De updatecontrole, probleemrapporten en andere webverzoeken mislukken niet langer met <em>certificate verify failed</em>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Alle platforms</p>
+          <h3>Snelheid en resterende tijd</h3>
+          <p>Het tabblad Transcriptiewachtrij toont hoe snel elke transcriptie verloopt en ongeveer hoeveel tijd er nog resteert, bijvoorbeeld <em>ongeveer 4,8x, nog 6 min</em>. De resultatenkaart vermeldt de snelheid, het model en het apparaat zodra de taak klaar is.</p>
+          <figure class="new-shot"><img src="/assets/shots/queue-640.webp" alt="Tabblad Transcriptiewachtrij met een kolom Snelheid en resterende tijd die ongeveer 6,8x, nog 2 min toont voor de actieve taak" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Alle platforms</p>
+          <h3>Ondertitelde video maken</h3>
+          <p>Vink dit aan op het tabblad Video's downloaden en een link wordt <code>&lt;title&gt;-subbed.mp4</code> met de ondertitels ingebrand: downloaden, transcriberen en inbranden als één taak in de wachtrij met voortgang en een werkende knop Annuleren. De download en het transcript blijven bewaard.</p>
+          <figure class="new-shot"><img src="/assets/shots/download-640.webp" alt="Tabblad Video&#39;s downloaden met de regel Ondertitels beschikbaar: Engels en Duits, de knop In plaats daarvan ondertiteling gebruiken en het selectievakje Ondertitelde video maken" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Alle platforms</p>
+          <h3>Deel een transcript als één webpagina</h3>
+          <p>Sla een voltooid transcript op als één enkel <code>.html</code>-bestand dat in elke browser opent zonder installatie of internetverbinding: tijdstempels, sprekers, hoofdstukken en een zoekvak. Klik op een woord en de media speelt vanaf daar af.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Alle platforms</p>
+          <h3>Offline werken, zichtbaar gemaakt</h3>
+          <p>Eén schakelaar onder Bestand houdt de app van het netwerk. Een regel onderaan het venster geeft aan of er een verbinding openstaat, en <em>Offline nu controleren</em> laat zien dat testverbindingen worden geweigerd. Gebruiksstatistieken staan standaard aan en kunnen worden uitgeschakeld onder Help.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Alle platforms</p>
+          <h3>Spraak vertalen naar het Engels</h3>
+          <p>De optie <em>Uitvoer: Engelse vertaling</em> zet niet-Engelstalige spraak in één doorgang om in Engelse ondertitels, via de eigen vertaaltaak van Whisper. Deze optie staat standaard uit en is niet voor elke engine of elk model beschikbaar.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · macOS</p>
+          <h3>Een Mac die aanvoelt als een Mac</h3>
+          <p>Een appmenu met Instellingen (Command-comma), Licht en Donker die macOS volgen, het systeemlettertype, bestanden geopend vanuit Finder of neergezet op het Dock-symbool, en een melding wanneer een taak op de achtergrond klaar is.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Windows</p>
+          <h3>Taakbalkvoortgang en donkere titelbalken</h3>
+          <p>De taakbalkknop toont de voortgang, het aantal taken in de wachtrij en actieve taken, en knippert zodra een taak klaar is. Titelbalken volgen het donkere thema en tekst blijft scherp bij een schermschaling van 125% en 150%.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Eerste start</p>
+          <h3>Een snelle start en een voorbeeldfragment</h3>
+          <p>Bij een nieuwe installatie kies je je taal, Snel of Beste kwaliteit en een map, en zie je de modelgrootte voordat er iets wordt gedownload. Met een fragment van 18 seconden uit het publieke domein zie je een echt transcript voordat je zelf een bestand kiest.</p>
+        </article>
+      </div>
+      <p class="feature-more sr">Ook nieuw in 2.0: Tekst naar stem leest teksten tot 100.000 tekens stuk voor stuk voor, een knop <em>Bijwerken</em> ververst de videodownloader zonder beheerdersrechten en een subtiele updatebalk vervangt het updatevenster. Het tabblad Video Tiling is verdwenen. Alles staat in de <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">changelog</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section features" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Functies</p>
+        <h2 id="features-title">Alles wat je verwacht van een transcriptietool. <span class="h2-soft">Draaiend op je eigen computer.</span></h2>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/prism-still.webp" data-still="/assets/promo/prism-still.webp" data-anim="/assets/promo/prism.svg" alt="Animatie: een grote W splitst twee sprekers, toont de lokale engines faster-whisper, whisper.cpp en Parakeet die offline draaien, en waaiert uit naar 14 transcriptieformaten." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="bento" data-spotlight>
+        <article class="cell cell-engines tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
+            <h3>Lokale, vertrouwelijke transcriptie</h3>
+            <p>Standaard Whisper <code>large-v3</code>, plus <code>large-v3-turbo</code> en <code>distil-large-v3.5</code>. Kies de backend die bij je hardware past.</p>
+          </div>
+          <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
+          <div class="viz viz-engines" aria-hidden="true">
+            <div class="engine-list">
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">faster-whisper</span><span class="engine-tag">standaard</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">whisper.cpp</span><span class="engine-tag">lokaal</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">NVIDIA Parakeet</span><span class="engine-tag">lokaal</span></div>
+            </div>
+            <div class="offline-badge"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Werkt offline na de eenmalige download van het model</div>
+          </div>
+        </article>
+
+        <article class="cell cell-formats tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">14 formaten</p>
+            <h3>Elk transcriptieformaat dat je nodig hebt</h3>
+            <p>Direct opgeslagen naast je invoerbestand — plus oTranscribe, ELAN, InqScribe en Express Scribe voor professionele transcriptieworkflows.</p>
+          </div>
+          <div class="viz viz-formats" aria-hidden="true">
+            <span>srt</span> <span>vtt</span> <span>ass</span> <span>tsv</span> <span>txt</span> <span>json</span> <span>lrc</span> <span>md</span> <span>docx</span> <span>pdf</span> <span class="wide">oTranscribe</span> <span class="wide">ELAN</span> <span class="wide">InqScribe</span> <span class="wide">Express Scribe</span>
+          </div>
+        </article>
+
+        <article class="cell cell-live tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Microfoon · systeemgeluid</p>
+            <h3>Live transcriptie</h3>
+            <p>Transcribeert een microfoon — of wat deze computer ook afspeelt — terwijl het gebeurt. Er wordt geknipt bij natuurlijke pauzes, zodat woorden nooit worden afgebroken.</p>
+          </div>
+          <div class="viz viz-live" aria-hidden="true">
+            <div class="live-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="live-text"><span class="live-rec"></span><span data-typer>zodat de woorden verschijnen terwijl je spreekt</span><span class="caret"></span></p>
+          </div>
+        </article>
+
+        <article class="cell cell-speakers tone-sun sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Tijdstempels per woord</p>
+            <h3>Sprekersdiarisatie</h3>
+            <p>Optionele stap "Sprekers identificeren", plus tijdstempels per woord en bijsnijden op tijdsbereik om precieze segmenten te bewerken.</p>
+          </div>
+          <div class="viz viz-speakers" aria-hidden="true">
+            <div class="utt"><span class="ts">00:04.2</span><span class="spk s1">Spreker 1</span><span class="words"><b>Dus</b> <b>waar</b> <b>beginnen</b> <b>we</b> <b>mee?</b></span></div>
+            <div class="utt"><span class="ts">00:06.9</span><span class="spk s2">Spreker 2</span><span class="words"><b>Met</b> <b>de</b> <b>opname</b> <b>zelf.</b></span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-queue tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Pauzeren · hervatten · opnieuw uitvoeren</p>
+            <h3>Batchwachtrij</h3>
+            <p>Livestatus voor elke wachtende en actieve taak, met volledige controle over elke rij op slechts één klik afstand.</p>
+          </div>
+          <div class="viz viz-queue" aria-hidden="true">
+            <div class="job"><span class="job-name">interview-03.mp4</span><span class="bar"><i style="--p:100%"></i></span><span class="job-state done">voltooid</span></div>
+            <div class="job"><span class="job-name">lecture-week-2.m4a</span><span class="bar"><i class="run"></i></span><span class="job-state">in uitvoering</span></div>
+            <div class="job"><span class="job-name">podcast-ep-41.wav</span><span class="bar"><i style="--p:0%"></i></span><span class="job-state">in de wachtrij</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-download tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Aangedreven door yt-dlp</p>
+            <h3>Video- en audiodownloads</h3>
+            <p>Alles wat <code>yt-dlp</code> ondersteunt, met optioneel transcriberen na afloop. Downloads worden hervat in plaats van opnieuw gestart.</p>
+          </div>
+          <div class="viz viz-dl" aria-hidden="true">
+            <div class="url"><span class="url-dot"></span>https://…/watch?v=…</div>
+            <div class="dl-steps"><span class="st st-1">Downloaden</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-2">Transcriberen</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-3">.srt</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-denoise tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Meet voordat het filtert</p>
+            <h3>Adaptieve ruisonderdrukking</h3>
+            <p>Meet elke opname eerst door en schoont deze alleen op wanneer dat echt helpt — controleert de eigen uitvoer en draait de bewerking terug als er spraak is verwijderd.</p>
+          </div>
+          <div class="viz viz-denoise" aria-hidden="true">
+            <svg class="wave wave-noisy" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="noisy"/></svg> <svg class="wave wave-clean" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="clean"/></svg> <span class="sweep"></span> <span class="wave-label l-before">voor</span><span class="wave-label l-after">na</span>
+          </div>
+        </article>
+      </div>
+
+      <p class="feature-more sr">Plus AI-tools (samenvattingen, actiepunten, een tweetalige SRT-stap), een optioneel tabblad voor offline stemklonen en een lokale netwerkmodus — meer informatie in de <a href="https://github.com/Milomilo777/whisper-transcriber-suite#features" rel="noopener">README</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="section how" id="how-it-works" aria-labelledby="how-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Hoe het werkt</p>
+        <h2 id="how-title">Draait op je computer. <span class="h2-soft">Je audio blijft daar.</span></h2>
+        <p class="section-lede">Transcriptie draait op je eigen computer. Je audio wordt alleen geüpload als je een van de twee optionele cloud-engines inschakelt, en transcriptietekst verlaat je computer alleen als je zelf een extern AI-model koppelt.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/loom-still.webp" data-still="/assets/promo/loom-still.webp" data-anim="/assets/promo/loom.svg" alt="Animatie: een tijdlijn verandert in ondertitels met tijdstempels per woord, Engelse ondertitels offline gemaakt met faster-whisper, whisper.cpp of Parakeet, en 14 transcriptieformaten zonder account." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <ol class="pipeline">
+        <li class="step sr">
+          <span class="step-num">01</span>
+          <h3>Sleep een bestand of plak een link</h3>
+          <p>Audio of video vanaf je schijf, of alles wat <code>yt-dlp</code> kan ophalen. De Tk-interface draait in het hoofdproces en zet de taak direct in de wachtrij.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">02</span>
+          <h3>Een worker houdt het model in het geheugen</h3>
+          <p>Elke taak draait in een eigen, langlopend worker-subproces dat Whisper in het geheugen houdt en de voortgang doorgeeft via newline-delimited JSON — zodat het venster nooit vastloopt.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">03</span>
+          <h3>Het transcript belandt naast je bestand</h3>
+          <p>Een token per worker en een heartbeat houden de communicatie robuust, waardoor de app een vastgelopen worker detecteert in plaats van zelf te blijven hangen.</p>
+        </li>
+      </ol>
+      <p class="built-on sr">Gebouwd op OpenAI's <a href="https://arxiv.org/abs/2212.04356" rel="noopener">Whisper-spraakherkenningsmodel</a>, lokaal uitgevoerd via <a href="https://github.com/SYSTRAN/faster-whisper" rel="noopener">faster-whisper</a>, <a href="https://github.com/ggml-org/whisper.cpp" rel="noopener">whisper.cpp</a> of <a href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3" rel="noopener">NVIDIA Parakeet</a>, met <a href="https://github.com/yt-dlp/yt-dlp" rel="noopener">yt-dlp</a> en <a href="https://ffmpeg.org/" rel="noopener">FFmpeg</a> voor mediaverwerking.</p>
+      <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
+      <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Lees de volledige architectuur<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <p class="muted guide-links">Stapsgewijze handleidingen: <a href="/nl/youtube-to-text/">YouTube-video naar tekst</a> · <a href="/nl/video-to-srt/">video naar SRT-ondertitels</a> · <a href="/nl/speaker-labels/">transcripten met sprekerslabels</a></p>
+    </div>
+  </section>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="section download" id="download" aria-labelledby="download-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Downloaden · <span data-auto="version">v2.1.0</span> · uitgebracht <span data-auto="released">2026-10-12</span></p>
+        <h2 id="download-title">Downloaden. <span class="h2-soft">Vanavond nog transcriberen.</span></h2>
+        <p class="section-lede">Alles wat je nodig hebt is meegeleverd — een eigen Python-runtime, ffmpeg, ffprobe en yt-dlp. Alleen het spraakmodel zelf wordt later gedownload (ongeveer 1–3 GB, eenmalig); daarna werkt transcriptie zonder internetverbinding.</p>
+      </header>
+
+      <div class="dl-grid">
+        <article class="dl-card sr" data-os="windows" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows <span class="dl-badge" data-rec-badge hidden>Aanbevolen voor jou</span></p>
+          <h3>Installatieprogramma <code>.exe</code></h3>
+          <p class="dl-size" data-auto="size-installer">~238&nbsp;MB</p>
+          <p class="dl-desc">Voor de meeste mensen — gewoon installatieprogramma, snelkoppeling in het Start-menu, upgrades op dezelfde plek. De app is niet digitaal ondertekend, dus Windows SmartScreen waarschuwt mogelijk eenmalig: <b>Meer informatie → Toch uitvoeren</b>.</p>
+          <a class="btn btn-primary" data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Download het installatieprogramma</a>
+        </article>
+        <article class="dl-card sr" data-os="windows-portable" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows portable</p>
+          <h3>Portable <code>.zip</code></h3>
+          <p class="dl-size" data-auto="size-portable">~360&nbsp;MB</p>
+          <p class="dl-desc">Uitpakken en starten. Geen installatie, geen beheerdersrechten, ideaal op een USB-stick.</p>
+          <a class="btn btn-ghost" data-auto-href="portable" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Portable-Windows-v2.1.0.zip" rel="noopener">Download de ZIP</a>
+        </article>
+        <article class="dl-card sr" data-os="mac" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS <span class="dl-badge" data-rec-badge hidden>Aanbevolen voor jou</span></p>
+          <h3>Schijfkopie <code>.dmg</code></h3>
+          <p class="dl-size"><span data-auto="size-mac-arm64">~275&nbsp;MB</span> · <span data-auto="size-mac-x64">~333&nbsp;MB</span></p>
+          <p class="dl-desc">Het eenvoudigst: één regel in Terminal — kiest de juiste build en slaat de beveiligingswaarschuwing over. Of download de schijfkopie voor Apple Silicon of Intel.</p>
+          <a class="btn btn-primary" href="#mac-install"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Installatie via één regel</a>
+          <div class="dl-pair"><a class="btn btn-ghost" data-auto-href="mac-arm64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-arm64.dmg" rel="noopener">Apple Silicon</a><a class="btn btn-ghost" data-auto-href="mac-x64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-x64.dmg" rel="noopener">Intel</a></div>
+        </article>
+        <article class="dl-card dl-card-source sr" data-os="linux" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Linux &amp; broncode <span class="dl-badge" data-rec-badge hidden>Aanbevolen voor jou</span></p>
+          <h3>Bouwen vanuit broncode</h3>
+          <p class="dl-size">Python 3.11+</p>
+          <pre class="dl-code"><code>git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
+pip install -r requirements.txt
+python gui.py</code></pre>
+          <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite#build-from-source" rel="noopener">Broncodehandleiding</a>
+        </article>
+      </div>
+
+      <figure class="promo sr promo-after"><img src="/assets/promo/vise-still.webp" data-still="/assets/promo/vise-still.webp" data-anim="/assets/promo/vise.svg" alt="Animatie: de woorden Sound in worden een getimed transcript van twee sprekers, opgeslagen als SRT, DOCX en PDF, zonder account en zonder upload." width="1280" height="640" loading="lazy" decoding="async"></figure>
+      <div class="mac-install sr" id="mac-install">
+        <div class="mac-install-head">
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — installatie via één regel</p>
+          <h3>Plak in Terminal. Dat is alles.</h3>
+          <p>Downloadt de juiste build voor je Mac (Apple Silicon op macOS 14+, anders Intel via Rosetta), kopieert de app naar <code>Applications</code> en opent deze. Bestanden die via <code>curl</code> zijn opgehaald, worden niet in quarantaine geplaatst, dus er is geen waarschuwing over een "onbekende ontwikkelaar" waar je voorbij moet klikken.</p>
+        </div>
+        <div class="code-box">
+          <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopiëren</button>
+          <pre><code id="mac-cmd" data-auto="mac-oneliner">A=x64; [ "$(uname -m)" = arm64 ] &amp;&amp; [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 14 ] &amp;&amp; A=arm64; curl -fL -o /tmp/wts.dmg "https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-$A.dmg" &amp;&amp; hdiutil attach -nobrowse -quiet -mountpoint /tmp/wts-dmg /tmp/wts.dmg &amp;&amp; cp -R "/tmp/wts-dmg/Whisper Transcriber Suite.app" /Applications/ &amp;&amp; hdiutil detach -quiet /tmp/wts-dmg &amp;&amp; rm /tmp/wts.dmg &amp;&amp; open "/Applications/Whisper Transcriber Suite.app"</code></pre>
+        </div>
+        <p class="mac-note">Liever op de gebruikelijke manier? Open de <code>.dmg</code> en sleep de app naar Programma's; bij de eerste keer openen is dan rechtsklikken → <b>Open</b> (macOS 14 en ouder) of Systeeminstellingen → Privacy en beveiliging → <b>Open toch</b> (macOS 15+) nodig.</p>
+      </div>
+      <p class="dl-note sr">Elke release, met toelichting, staat op <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Installatiehandleiding</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section class="section compare" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Vergelijken</p>
+        <h2 id="compare-title">Hoe verhoudt het zich tot andere Whisper-apps?</h2>
+        <p class="section-lede">Whisper Transcriber Suite is een van meerdere gratis, open-source desktop-apps die op je eigen computer transcriberen. Hier zie je hoe de app zich verhoudt tot Subtitle Edit, Vibe en Buzz, inclusief wanneer een andere app beter past. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Lees de volledige vergelijking</a>, met een bron voor elk feit en nog twee apps, noScribe en aTrain.</p>
+      </header>
+      <div class="table-wrap sr">
+        <table class="compare-table">
+          <caption>Gecontroleerd op 2026-10-05 aan de hand van de eigen README, documentatie en releases van elk project. Apps veranderen snel: zie de <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">volledige vergelijking</a> voor bronnen.</caption>
+          <thead>
+            <tr><th scope="col"><span class="sr-only">Functie</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Prijs, licentie</th><td>Gratis, BSD-3-Clause</td><td>Gratis, MIT</td><td>Gratis, MIT</td><td>Gratis, MIT</td></tr>
+            <tr><th scope="row">Downloads</th><td>Windows-installatieprogramma en draagbare ZIP, macOS (Apple silicon, Intel); Linux vanuit broncode</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 is de laatste voor Intel-Macs), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
+            <tr><th scope="row">GPU-versnelling</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Ondertekend Windows-installatieprogramma</th><td>Nee</td><td>Niet vermeld</td><td>Ja, volgens de documentatie</td><td>Nee</td></tr>
+            <tr><th scope="row">Interfacetalen</th><td>42 (automatisch vertaald)</td><td>35</td><td>22</td><td>16</td></tr>
+            <tr><th scope="row">Kies hiervoor als</th><td>Je ook een live-microfoon, videodownloads, 14 uitvoerformaten en een lokale netwerkmodus met een OpenAI-compatibele route wilt</td><td>Je veel spraak-engines (Parakeet, Canary, Qwen3-ASR en meer) of een genotariseerde Mac-app wilt</td><td>Je een Windows-installatieprogramma wilt dat volgens de documentatie ondertekend is, of GPU-ondersteuning die AMD en Intel noemt</td><td>Je Linux-pakketten (Flatpak, Snap, AppImage) of een installatie via PyPI wilt</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section class="section faq" id="faq" aria-labelledby="faq-title">
+    <div class="wrap faq-grid">
+      <header class="faq-head sr">
+        <p class="eyebrow">FAQ</p>
+        <h2 id="faq-title">Veelgestelde vragen</h2>
+        <p class="section-lede">Heb je een andere vraag? Stel hem in <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">GitHub Discussions</a>.</p>
+      </header>
+      <div class="faq-list sr">
+        <article class="qa"><h3>Is Whisper Transcriber Suite gratis?</h3><div class="faq-a"><p>Ja. Het heeft een BSD-3-Clause-licentie, zonder abonnement en zonder kosten per minuut. Het Whisper-model zelf wordt bij de eerste start eenmalig gedownload (ongeveer 1-3 GB); daarna werkt transcriberen zonder internetverbinding.</p></div></article>
+        <article class="qa"><h3>Wordt mijn audio of video ergens naartoe geüpload?</h3><div class="faq-a"><p>Nee, niet standaard. Elke standaard-backend — faster-whisper, whisper.cpp, NVIDIA Parakeet — draait lokaal op je computer. Twee backends zijn uitsluitend opt-in (een cloudbackend via de Gemini-API en Google Cloud Speech-to-Text), en beide blijven uitgeschakeld totdat je ze zelf inschakelt via Geavanceerde instellingen → Backend. Gebruiksstatistieken (geen audio, geen bestandsnamen) staan standaard ingeschakeld en kunnen worden uitgeschakeld onder Help → Gebruiksstatistieken; de app controleert GitHub eenmaal per dag op een nieuwe versie en <b>Bestand → Offline werken</b> stopt al het netwerkgebruik.</p></div></article>
+        <article class="qa"><h3>Op welke platforms draait het?</h3><div class="faq-a"><p>Windows, macOS en Linux. De gepubliceerde downloads zijn een Windows-installatieprogramma, een portable Windows-ZIP en een macOS-DMG; Linux draait vanuit de broncode.</p></div></article>
+        <article class="qa"><h3>Welke transcriptieformaten kan het produceren?</h3><div class="faq-a"><p><code>srt</code> <code>vtt</code> <code>ass</code> <code>tsv</code> <code>txt</code> <code>json</code> <code>lrc</code> <code>md</code> <code>docx</code> <code>pdf</code>, plus oTranscribe, ELAN, InqScribe en Express Scribe.</p></div></article>
+        <article class="qa"><h3>Kan het aangeven wie er spreekt?</h3><div class="faq-a"><p>Ja — optionele sprekerdiarisatie ("Sprekers identificeren"), met tijdstempels per woord en het knippen van tijdsbereiken.</p></div></article>
+        <article class="qa"><h3>Kan het een live microfoon of systeemaudio transcriberen?</h3><div class="faq-a"><p>Ja, vanaf het tabblad Live — een microfoon of de systeemaudio, direct getranscribeerd terwijl het plaatsvindt.</p></div></article>
+        <article class="qa"><h3>Kan het online video's downloaden en transcriberen, bijvoorbeeld van YouTube?</h3><div class="faq-a"><p>Ja, elke site die yt-dlp ondersteunt, met een optionele stap om na voltooiing te transcriberen.</p></div></article>
+        <article class="qa"><h3>Kan het een transcriptie samenvatten, actiepunten eruit halen of er vragen over beantwoorden?</h3><div class="faq-a"><p>Ja, via het optionele tabblad AI-hulpmiddelen in de transcriptieweergave — samenvatten, actiepunten, een vraag stellen en een vertaalronde per segment die een tweetalig <code>.srt</code> schrijft. Dit staat standaard uit.</p></div></article>
+        <article class="qa"><h3>Kan het een stem klonen en nieuwe tekst laten uitspreken?</h3><div class="faq-a"><p>Ja, via het optionele tabblad Kloon je stem, met gebruik van OmniVoice (Apache-2.0) volledig op je eigen computer. Standaard uitgeschakeld; kies hiervoor tijdens de installatie, en je moet bevestigen dat je toestemming hebt om de referentiestem te klonen.</p></div></article>
+        <article class="qa"><h3>Wat is het verschil met het rechtstreeks aanroepen van de Whisper-API?</h3><div class="faq-a"><p>Het model draait standaard lokaal via faster-whisper, dus er zijn geen API-kosten per minuut en er verlaat geen audio je computer — tenzij je expliciet kiest voor een van de twee cloudbackends.</p></div></article>
+        <article class="qa"><h3>Kunnen meerdere mensen op hetzelfde netwerk het gebruiken zonder het op elke computer te installeren?</h3><div class="faq-a"><p>Ja — de Web-/LAN-toegangsmodus verandert deze computer in een transcriptiepagina die andere apparaten op het netwerk kunnen gebruiken.</p></div></article>
+        <article class="qa"><h3>Wat is er nieuw in versie 2.1?</h3><div class="faq-a"><p>Menu's, knoppen en berichten zijn beschikbaar in 42 talen (automatisch vertaald en als zodanig gemarkeerd); sprekerlabels lopen door tot het einde van lange opnames en je kunt instellen hoeveel mensen er praten; transcripties, exports en ondertitels worden eerst volledig naar schijf geschreven voordat ze het oude bestand vervangen; online functies werken op elke Mac. Versie 2.0 voegde de snelheid en resterende tijd van de wachtrij toe, ondertitelde video vanaf een link, transcripties als één offline webpagina, een controleerbare modus voor Offline werken en vertaling naar het Engels. Bekijk <a href="#whats-new">Wat is er nieuw in 2.1</a> en de <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">changelog</a>.</p></div></article>
+        <article class="qa"><h3>Kan het een videolink omzetten in een video met ondertitels?</h3><div class="faq-a"><p>Ja. Vink op het tabblad Video's downloaden <b>Ondertitelde video maken</b> aan: de app downloadt de video, transcribeert deze met Whisper en brandt de ondertitels in met ffmpeg, wat een bestand oplevert met de naam van de video en <code>-subbed.mp4</code>. De download en het transcript blijven bewaard, en een bestaande <code>-subbed.mp4</code> wordt nooit vervangen.</p></div></article>
+        <article class="qa"><h3>Kan ik de app volledig offline houden?</h3><div class="faq-a"><p>Ja. <b>Bestand → Offline werken</b> stopt de updatecontrole, gebruiksstatistieken, modeldownloads en externe AI-providers. Wanneer dit is ingeschakeld, geeft een regel onderaan het venster aan of er een verbinding openstaat, en toont <em>Offline nu controleren</em> dat testverbindingen worden geweigerd. Wanneer dit is uitgeschakeld, maakt de app alleen verbinding met het netwerk voor de online-instellingen bij het opstarten, de dagelijkse updatecontrole, gebruiksstatistieken (die kunnen worden uitgeschakeld onder Help → Gebruiksstatistieken) en downloads die je zelf start.</p></div></article>
+        <article class="qa"><h3>Hoe neem ik contact op met het project?</h3><div class="faq-a"><p>Bugs en functieverzoeken kunnen worden gemeld via <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, vragen via <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, en al het overige per e-mail (het adres wordt op verzoek getoond in de <a href="#contact">sectie Contact</a>). Beveiligingsmeldingen verlopen via de besloten kwetsbaarheidsrapportage van GitHub.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT + SUPPORT ============ -->
+  <section class="section contact" id="contact" aria-labelledby="contact-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Contact &amp; ondersteuning</p>
+        <h2 id="contact-title">Praat met ons. <span class="h2-soft">Help het groeien.</span></h2>
+      </header>
+      <div class="contact-grid">
+        <div class="contact-card sr" data-tilt-card data-contact>
+          <span class="contact-ic tone-teal"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg></span>
+          <h3>E-mail</h3>
+          <p class="contact-val"><button type="button" class="contact-reveal" data-contact-reveal>E-mailadres tonen</button><span data-contact-out aria-live="polite" hidden></span><noscript> (vereist JavaScript)</noscript></p>
+          <p>Pers, samenwerkingen of alles wat geen bugmelding is.</p>
+        </div>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-coral"><svg class="i" aria-hidden="true"><use href="#i-bug"/></svg></span>
+          <h3>Een bug melden</h3>
+          <p class="contact-val">GitHub Issues</p>
+          <p>Vermeld je versie, besturingssysteem en het kleinste bestand dat het reproduceert.</p>
+        </a>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-violet"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span>
+          <h3>Een vraag stellen</h3>
+          <p class="contact-val">GitHub Discussions</p>
+          <p>Hulp bij installatie, ideeën en voorbeelden van andere gebruikers.</p>
+        </a>
+      </div>
+
+      <div class="support-card sr">
+        <div class="support-orbit" aria-hidden="true"><img src="/assets/logo.svg" alt="" width="88" height="88"><span></span><span></span><span></span></div>
+        <div class="support-copy">
+          <h3 id="support">Steun het project</h3>
+          <p>Whisper Transcriber Suite is gratis en heeft een BSD-3-Clause-licentie, openlijk onderhouden. Als het je tijd heeft bespaard, helpt een ster op GitHub anderen het te vinden — en een kop koffie wordt altijd gewaardeerd.</p>
+          <div class="support-actions">
+            <a class="btn btn-coffee btn-lg" href="https://buymeacoffee.com/mehraz1358" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-cup"/></svg>Trakteer op koffie</a> <a class="btn btn-light btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Geef een ster op GitHub</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div class="footer-brand">
+      <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — startpagina"><img class="brand-logo" src="/assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
+      <p class="muted">Onderhouden door één onafhankelijke ontwikkelaar, <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Broncode gelicentieerd onder BSD-3-Clause.</p>
+      <p class="muted"><a href="#contact">Contact</a></p>
+      <p class="site-stats" data-site-stats hidden><span data-stat="visits" hidden><strong></strong> bezoeken</span><span data-stat="downloads" hidden><strong></strong> downloads</span></p>
+      <p class="muted small mt-note">Deze pagina is machinaal vertaald vanuit het Engels en gecontroleerd door een tweede machine. Leest er iets niet goed? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">Laat het ons weten op GitHub</a>.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Voettekst">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Installatiehandleiding</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Changelog</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussies</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Beveiliging</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">Licentie</a> <a href="/nl/youtube-to-text/">YouTube naar tekst</a> <a href="/nl/video-to-srt/">Video naar SRT</a> <a href="/nl/speaker-labels/">Sprekerslabels</a> <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+  <div class="wrap">
+    <p class="muted small">Ook te lezen in <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.de.md" rel="noopener" lang="de">Deutsch</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fr.md" rel="noopener" lang="fr">Français</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.es.md" rel="noopener" lang="es">Español</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.it.md" rel="noopener" lang="it">Italiano</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt-BR.md" rel="noopener" lang="pt-BR">Português (Brasil)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt.md" rel="noopener" lang="pt">Português (Portugal)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nl.md" rel="noopener" lang="nl">Nederlands</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pl.md" rel="noopener" lang="pl">Polski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ru.md" rel="noopener" lang="ru">Русский</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.uk.md" rel="noopener" lang="uk">Українська</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.tr.md" rel="noopener" lang="tr">Türkçe</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.cs.md" rel="noopener" lang="cs">Čeština</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sk.md" rel="noopener" lang="sk">Slovenčina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hu.md" rel="noopener" lang="hu">Magyar</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ro.md" rel="noopener" lang="ro">Română</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bg.md" rel="noopener" lang="bg">Български</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.el.md" rel="noopener" lang="el">Ελληνικά</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sv.md" rel="noopener" lang="sv">Svenska</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.da.md" rel="noopener" lang="da">Dansk</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nb.md" rel="noopener" lang="nb">Norsk bokmål</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fi.md" rel="noopener" lang="fi">Suomi</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hr.md" rel="noopener" lang="hr">Hrvatski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sr.md" rel="noopener" lang="sr">Српски</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sl.md" rel="noopener" lang="sl">Slovenščina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lt.md" rel="noopener" lang="lt">Lietuvių</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-CN.md" rel="noopener" lang="zh-CN">简体中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-TW.md" rel="noopener" lang="zh-TW">繁體中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ja.md" rel="noopener" lang="ja">日本語</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ko.md" rel="noopener" lang="ko">한국어</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.vi.md" rel="noopener" lang="vi">Tiếng Việt</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.th.md" rel="noopener" lang="th">ไทย</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.id.md" rel="noopener" lang="id">Bahasa Indonesia</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ms.md" rel="noopener" lang="ms">Bahasa Melayu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hi.md" rel="noopener" lang="hi">हिन्दी</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ar.md" rel="noopener" lang="ar">العربية</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fa.md" rel="noopener" lang="fa">فارسی</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.he.md" rel="noopener" lang="he">עברית</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lv.md" rel="noopener" lang="lv">Latviešu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ca.md" rel="noopener" lang="ca">Català</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bn.md" rel="noopener" lang="bn">বাংলা</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fil.md" rel="noopener" lang="fil">Filipino</a>.</p>
+  </div>
+</footer>
+
+<div class="star-toast" data-star-toast role="status" hidden>
+  <p><b>Bedankt voor het downloaden!</b> Terwijl het downloadt — als de app je uiteindelijk tijd bespaart, is een ⭐ op GitHub hoe anderen hem vinden. Eén klik, gratis.</p>
+  <div class="star-toast-actions">
+    <a class="btn btn-primary btn-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" data-star-go><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Geef een ster op GitHub</a>
+    <button class="star-toast-close" type="button" data-star-close aria-label="Sluiten">×</button>
+  </div>
+</div>
+
+<script type="application/json" id="i18n-strings">
+{
+  "Play animations": "Animaties afspelen",
+  "Pause animations": "Animaties pauzeren",
+  "Install on macOS": "Installeren op macOS",
+  "Get it for Linux": "Downloaden voor Linux",
+  "Get it for your computer": "Downloaden voor je computer",
+  "Show %s": "%s tonen",
+  "Please write to us on GitHub Discussions": "Neem contact met ons op via GitHub Discussions",
+  "One moment…": "Een ogenblik…",
+  "Could not load it. Try again": "Kon niet worden geladen. Probeer het opnieuw",
+  "so the words appear as you speak": "zodat de woorden verschijnen terwijl je spreekt",
+  "cuts land on natural pauses": "knipmomenten vallen op natuurlijke pauzes",
+  "and no word is ever split in two": "en er nooit een woord in tweeën wordt gesplitst",
+  "Your audio stays on your computer.": "Je audio blijft op je computer.",
+  "No account. No per-minute cost.": "Geen account. Geen kosten per minuut.",
+  "Whisper runs on your own computer.": "Whisper draait op je eigen computer.",
+  "Fourteen formats, one click.": "Veertien formaten, één klik.",
+  "Copy": "Kopiëren",
+  "Copied": "Gekopieerd"
+}
+</script>
+<script src="/js/main.js?v=20261018b" defer></script>
+<script src="/js/lang.js?v=20261019a" defer></script>
+</body>
+</html>

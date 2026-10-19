@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whisper Transcriber Suite — Transcription hors ligne gratuite</title>
+<meta name="description" content="Application de bureau gratuite qui exécute OpenAI Whisper sur votre propre ordinateur. Transcrivez vos fichiers audio et vidéo en SRT, VTT, DOCX et PDF. Windows, macOS et Linux.">
+<meta name="author" content="translation-robot">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://whisper-transcriber-suite.com/fr/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/">
+<link rel="alternate" hreflang="de" href="https://whisper-transcriber-suite.com/de/">
+<link rel="alternate" hreflang="fr" href="https://whisper-transcriber-suite.com/fr/">
+<link rel="alternate" hreflang="es" href="https://whisper-transcriber-suite.com/es/">
+<link rel="alternate" hreflang="it" href="https://whisper-transcriber-suite.com/it/">
+<link rel="alternate" hreflang="pt-BR" href="https://whisper-transcriber-suite.com/pt-br/">
+<link rel="alternate" hreflang="pt" href="https://whisper-transcriber-suite.com/pt/">
+<link rel="alternate" hreflang="nl" href="https://whisper-transcriber-suite.com/nl/">
+<link rel="alternate" hreflang="pl" href="https://whisper-transcriber-suite.com/pl/">
+<link rel="alternate" hreflang="ru" href="https://whisper-transcriber-suite.com/ru/">
+<link rel="alternate" hreflang="uk" href="https://whisper-transcriber-suite.com/uk/">
+<link rel="alternate" hreflang="tr" href="https://whisper-transcriber-suite.com/tr/">
+<link rel="alternate" hreflang="cs" href="https://whisper-transcriber-suite.com/cs/">
+<link rel="alternate" hreflang="sk" href="https://whisper-transcriber-suite.com/sk/">
+<link rel="alternate" hreflang="hu" href="https://whisper-transcriber-suite.com/hu/">
+<link rel="alternate" hreflang="ro" href="https://whisper-transcriber-suite.com/ro/">
+<link rel="alternate" hreflang="bg" href="https://whisper-transcriber-suite.com/bg/">
+<link rel="alternate" hreflang="el" href="https://whisper-transcriber-suite.com/el/">
+<link rel="alternate" hreflang="sv" href="https://whisper-transcriber-suite.com/sv/">
+<link rel="alternate" hreflang="da" href="https://whisper-transcriber-suite.com/da/">
+<link rel="alternate" hreflang="nb" href="https://whisper-transcriber-suite.com/nb/">
+<link rel="alternate" hreflang="fi" href="https://whisper-transcriber-suite.com/fi/">
+<link rel="alternate" hreflang="hr" href="https://whisper-transcriber-suite.com/hr/">
+<link rel="alternate" hreflang="sr" href="https://whisper-transcriber-suite.com/sr/">
+<link rel="alternate" hreflang="sl" href="https://whisper-transcriber-suite.com/sl/">
+<link rel="alternate" hreflang="lt" href="https://whisper-transcriber-suite.com/lt/">
+<link rel="alternate" hreflang="zh-CN" href="https://whisper-transcriber-suite.com/zh-cn/">
+<link rel="alternate" hreflang="zh-TW" href="https://whisper-transcriber-suite.com/zh-tw/">
+<link rel="alternate" hreflang="ja" href="https://whisper-transcriber-suite.com/ja/">
+<link rel="alternate" hreflang="ko" href="https://whisper-transcriber-suite.com/ko/">
+<link rel="alternate" hreflang="vi" href="https://whisper-transcriber-suite.com/vi/">
+<link rel="alternate" hreflang="th" href="https://whisper-transcriber-suite.com/th/">
+<link rel="alternate" hreflang="id" href="https://whisper-transcriber-suite.com/id/">
+<link rel="alternate" hreflang="ms" href="https://whisper-transcriber-suite.com/ms/">
+<link rel="alternate" hreflang="hi" href="https://whisper-transcriber-suite.com/hi/">
+<link rel="alternate" hreflang="ar" href="https://whisper-transcriber-suite.com/ar/">
+<link rel="alternate" hreflang="fa" href="https://whisper-transcriber-suite.com/fa/">
+<link rel="alternate" hreflang="he" href="https://whisper-transcriber-suite.com/he/">
+<link rel="alternate" hreflang="lv" href="https://whisper-transcriber-suite.com/lv/">
+<link rel="alternate" hreflang="ca" href="https://whisper-transcriber-suite.com/ca/">
+<link rel="alternate" hreflang="bn" href="https://whisper-transcriber-suite.com/bn/">
+<link rel="alternate" hreflang="fil" href="https://whisper-transcriber-suite.com/fil/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/">
+<!-- i18n:hreflang:end -->
+<meta name="google-site-verification" content="_vMQaHCYUqaePsjuk_lmQ9Df32M03uPPZnXEFVr8ttU">
+<meta name="google-site-verification" content="uC9kBtANn2fSf-oX8ubTOv1cgtEQabzbnLz61epFOcc">
+<meta name="msvalidate.01" content="86B7B178FB8DB5F45F03295F6D2A8F4A">
+<meta name="msvalidate.01" content="C5065B95AD10AB4D2845E441E3D9FA37">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Whisper Transcriber Suite — Transcription audio &amp; vidéo gratuite et hors ligne">
+<meta property="og:description" content="Exécute OpenAI Whisper en local. Votre audio reste sur votre ordinateur, aucun compte requis. 14 formats de sortie, transcription en direct, identification des locuteurs, téléchargements YouTube. Gratuit, sous licence BSD-3-Clause, pour Windows, macOS et Linux.">
+<meta property="og:url" content="https://whisper-transcriber-suite.com/fr/">
+<meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — transcription audio et vidéo gratuite et hors ligne pour Windows, macOS et Linux.">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Whisper Transcriber Suite — Transcription audio &amp; vidéo gratuite et hors ligne">
+<meta name="twitter:description" content="Exécute OpenAI Whisper en local. Votre audio reste sur votre ordinateur, aucun compte requis. 14 formats de sortie, transcription en direct, identification des locuteurs, téléchargements YouTube.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="alternate" type="text/plain" title="Résumé par LLM" href="/llms.txt">
+
+<link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
+<script src="/js/motion-init.js?v=20260927b"></script>
+<link rel="stylesheet" href="/styles.css?v=20261019a">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://whisper-transcriber-suite.com/#org",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://github.com/Milomilo777/whisper-transcriber-suite/issues",
+        "availableLanguage": [
+          "English"
+        ]
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite",
+        "https://buymeacoffee.com/mehraz1358"
+      ],
+      "description": "Application de bureau gratuite et open source qui exécute OpenAI Whisper en local pour la transcription audio et vidéo."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://whisper-transcriber-suite.com/#app",
+      "name": "Whisper Transcriber Suite",
+      "alternateName": "WhisperTranscriberSuite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "image": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+      "screenshot": [
+        "https://whisper-transcriber-suite.com/assets/shots/transcribe.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/live.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/download.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/queue.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/voice.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/web.webp"
+      ],
+      "description": "Application de bureau qui exécute le modèle Whisper d'OpenAI en local via faster-whisper, whisper.cpp ou NVIDIA Parakeet. Transcrit les fichiers audio et vidéo en SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX et PDF. Votre audio reste sur votre ordinateur et aucun compte n'est requis.",
+      "softwareVersion": "2.1.0",
+      "datePublished": "2026-05-11",
+      "dateModified": "2026-10-12",
+      "operatingSystem": "Windows, macOS, Linux",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "Speech-to-text transcription",
+      "featureList": [
+        "Transcription vocale hors ligne avec faster-whisper, whisper.cpp ou NVIDIA Parakeet",
+        "14 formats de transcription, dont SRT, VTT, DOCX et PDF",
+        "Transcription en direct du microphone et de l'audio du système",
+        "Diarisation des locuteurs avec horodatage par mot",
+        "File d'attente par lots avec pause, reprise et réexécution",
+        "Téléchargements vidéo et audio depuis n'importe quel site pris en charge par yt-dlp",
+        "Réduction adaptative du bruit",
+        "Résumés par IA, actions à mener et fichiers SRT bilingues en option",
+        "Clonage vocal hors ligne en option",
+        "Mode Accès web / LAN",
+        "La file d'attente affiche la vitesse et le temps restant pour chaque transcription",
+        "Créer une vidéo sous-titrée : télécharger, transcrire et incruster les sous-titres dans un MP4",
+        "Enregistrer une transcription sous forme d'une page web hors ligne unique",
+        "Interrupteur Travailler hors ligne avec état du réseau visible",
+        "Traduire les paroles directement en anglais"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isAccessibleForFree": true,
+      "interactionStatistic": {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/DownloadAction",
+        "userInteractionCount": 2694
+      },
+      "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
+      "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
+      "releaseNotes": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md",
+      "installUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md",
+      "codeRepository": "https://github.com/Milomilo777/whisper-transcriber-suite",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://whisper-transcriber-suite.com/#author"
+      },
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite"
+      ],
+      "softwareRequirements": "Windows 10 or 11 (64-bit); macOS 10.15 or later (Intel build) or macOS 14 or later (Apple Silicon build); Linux from source with Python 3.11+",
+      "memoryRequirements": "At least 8 GB RAM; an NVIDIA GPU with CUDA is optional"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://whisper-transcriber-suite.com/#website",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "inLanguage": "fr",
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://whisper-transcriber-suite.com/#author",
+      "name": "translation-robot",
+      "url": "https://github.com/translation-robot",
+      "sameAs": [
+        "https://github.com/translation-robot"
+      ],
+      "description": "Développeur indépendant qui maintient Whisper Transcriber Suite en tant que projet open source."
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://whisper-transcriber-suite.com/fr/#webpage",
+      "url": "https://whisper-transcriber-suite.com/fr/",
+      "name": "Whisper Transcriber Suite — Transcription hors ligne gratuite",
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/fr/#website"
+      },
+      "about": {
+        "@id": "https://whisper-transcriber-suite.com/fr/#app"
+      },
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": [
+          ".hero-lede",
+          ".faq-a p"
+        ]
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Whisper Transcriber Suite est-il gratuit ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui. Il est publié sous licence BSD-3-Clause, sans abonnement et sans frais à la minute. Le modèle Whisper lui-même est téléchargé une seule fois (environ 1-3 GB) au premier lancement ; après cela, la transcription fonctionne sans connexion Internet."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Mes fichiers audio ou vidéo sont-ils envoyés quelque part ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Non, pas par défaut. Tous les moteurs par défaut — faster-whisper, whisper.cpp, NVIDIA Parakeet — s'exécutent localement sur votre machine. Deux moteurs sont disponibles uniquement sur activation explicite (cloud_stt via l'API Gemini, et google_cloud_stt), et tous deux restent désactivés tant que vous ne les activez pas vous-même dans Paramètres avancés → Backend. Les statistiques d'utilisation (sans données audio ni noms de fichiers) sont activées par défaut et peuvent être désactivées dans Aide > Statistiques d'utilisation ; l'application vérifie la présence d'une nouvelle version sur GitHub une fois par jour, et Fichier > Travailler hors ligne coupe tout accès réseau."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Sur quelles plateformes fonctionne-t-il ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Windows, macOS et Linux. Les téléchargements publiés comprennent un programme d'installation Windows, une archive ZIP portable pour Windows et un fichier DMG pour macOS ; Linux fonctionne à partir du code source."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Quels formats de transcription peut-il générer ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX et PDF, ainsi qu'oTranscribe, ELAN, InqScribe et Express Scribe."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Peut-il identifier qui parle ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui, grâce à la diarisation facultative des locuteurs (Identifier les locuteurs), avec horodatage par mot et découpage par intervalle de temps."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Peut-il transcrire en direct depuis un microphone ou l'audio du système ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui, depuis l'onglet En direct : un microphone ou l'audio du système, transcrit au fur et à mesure."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Peut-il télécharger et transcrire des vidéos en ligne, par exemple depuis YouTube ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui, depuis n'importe quel site pris en charge par yt-dlp, avec une étape facultative de transcription à la fin du téléchargement."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Peut-il résumer une transcription, en extraire les actions à mener ou répondre à des questions à son sujet ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui, via l'onglet facultatif Outils IA dans le visualiseur de transcription : résumé, actions à mener, questions-réponses et une étape de traduction segment par segment qui génère un fichier SRT bilingue. Cette fonctionnalité est désactivée par défaut."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Peut-il cloner une voix et lui faire prononcer un nouveau texte ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui, via l'onglet facultatif Cloner votre voix, grâce à OmniVoice (Apache-2.0) exécuté entièrement sur votre machine. Désactivé par défaut ; à activer lors de l'installation."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "En quoi cela diffère-t-il d'un appel direct à l'API Whisper ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Le modèle s'exécute localement via faster-whisper par défaut, ce qui évite tout coût d'API à la minute et empêche vos données audio de quitter votre machine, sauf si vous choisissez expressément l'un des deux moteurs cloud."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Plusieurs personnes sur le même réseau peuvent-elles l'utiliser sans avoir à l'installer sur chaque poste ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui, le mode Accès web / LAN transforme cette machine en page de transcription que les autres appareils du réseau peuvent utiliser."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Quelles sont les nouveautés de la version 2.1 ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Les menus, boutons et messages sont disponibles en 42 langues (traduites automatiquement et signalées comme telles) ; l'identification des locuteurs se poursuit jusqu'à la fin des enregistrements longs et vous pouvez définir le nombre d'intervenants ; les transcriptions, exportations et sous-titres sont entièrement écrits sur le disque avant de remplacer l'ancien fichier ; les fonctionnalités en ligne fonctionnent sur tous les Mac. La version 2.0 avait apporté l'affichage de la vitesse et du temps restant dans la file d'attente, la création de vidéos sous-titrées à partir d'un lien, l'enregistrement des transcriptions sous forme de page web hors ligne unique, un mode Travailler hors ligne vérifiable et la traduction vers l'anglais."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Peut-il transformer un lien vidéo en vidéo sous-titrée ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui. Dans l'onglet Télécharger des vidéos, cochez Créer une vidéo sous-titrée : l'application télécharge la vidéo, la transcrit avec Whisper et incruste les sous-titres avec ffmpeg, produisant un fichier nommé d'après la vidéo avec -subbed.mp4. Le téléchargement et la transcription sont conservés, et un fichier -subbed.mp4 existant n'est jamais écrasé."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Puis-je couper complètement l'accès réseau de l'application ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui. Fichier > Travailler hors ligne désactive la vérification des mises à jour, les statistiques d'utilisation, le téléchargement des modèles et les fournisseurs d'IA distants. Lorsqu'il est activé, une ligne en bas de la fenêtre indique si une connexion est ouverte, et Vérifier le mode hors ligne montre que les connexions de test sont refusées. Lorsqu'il est désactivé, l'application ne contacte le réseau que pour ses paramètres en ligne au démarrage, la vérification quotidienne des mises à jour, les statistiques d'utilisation (qui peuvent être désactivées dans Aide > Statistiques d'utilisation) et les téléchargements que vous lancez."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Comment contacter l'équipe du projet ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Les signalements de bugs et suggestions de fonctionnalités se font sur GitHub Issues, les questions sur GitHub Discussions, et toute autre demande par e-mail (l'adresse est affichée sur demande dans la section Contact). Les signalements de sécurité passent par le système privé de signalement des vulnérabilités de GitHub."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m0 0-5-5m5 5-5 5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m12 4-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m8 4 6 6-6 6"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 20 20"><path fill="currentColor" d="M2 3.6 8.4 2.7v6.6H2zm7.3-1 8.7-1.2v7.9H9.3zM2 10.2h6.4v6.7L2 16zm7.3 0H18v8.4l-8.7-1.2z"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 20 20"><path fill="currentColor" d="M13.6 10.6c0-1.9 1.6-2.8 1.6-2.9-.9-1.3-2.3-1.5-2.8-1.5-1.2-.1-2.3.7-2.9.7-.6 0-1.5-.7-2.5-.7-1.3 0-2.5.8-3.2 1.9-1.4 2.4-.4 5.9 1 7.8.6.9 1.4 2 2.4 1.9 1-.1 1.3-.6 2.5-.6s1.5.6 2.5.6c1 0 1.7-.9 2.3-1.9.7-1.1 1-2.1 1-2.2 0 0-1.9-.8-1.9-3.1zM11.7 4.9c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-1 1.5-.8 2.4.9.1 1.8-.4 2.4-1.1z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14v11H3zM6 8.5l2 1.5-2 1.5M10 12h4"/></symbol>
+    <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+    <symbol id="i-cup" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 7h10v4.5A4.5 4.5 0 0 1 9.5 16h-1A4.5 4.5 0 0 1 4 11.5zm10 1.5h1.2a2.3 2.3 0 0 1 0 4.6H14M7 2.5v2m3-2v2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 5h14v10H3zm0 0 7 6 7-6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4h14v9H8l-4 3v-3H3z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7 7a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM3 10h4m6 0h4M4 5l3 2m9-2-3 2M4 15l3-2m9 2-3-2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 20 20"><path fill="currentColor" d="M6 4v12l10-6z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 20 20"><path fill="currentColor" d="M5 4h3.5v12H5zm6.5 0H15v12h-3.5z"/></symbol>
+  </defs>
+</svg> <a class="skip-link" href="#main">Passer au contenu</a>
+
+<header class="site-header" data-header>
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — Accueil">
+      <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
+    </a>
+    <nav class="site-nav" aria-label="Principal">
+      <a href="#showreel">Présentation</a> <a href="#features">Fonctionnalités</a> <a href="#how-it-works">Fonctionnement</a> <a href="#download">Télécharger</a> <a href="#compare">Comparatif</a> <a href="#faq">FAQ</a> <a href="#contact">Contact</a>
+    </nav>
+    <div class="header-cta">
+      <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Langue" aria-label="Langue"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->Français<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/?lang=en" hreflang="en" lang="en" data-lang-pick="en">English</a></li>
+<li><a href="/de/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
+<li><a href="/fr/" hreflang="fr" lang="fr" data-lang-pick="fr" aria-current="true">Français</a></li>
+<li><a href="/es/" hreflang="es" lang="es" data-lang-pick="es">Español</a></li>
+<li><a href="/it/" hreflang="it" lang="it" data-lang-pick="it">Italiano</a></li>
+<li><a href="/pt-br/" hreflang="pt-BR" lang="pt-BR" data-lang-pick="pt-BR">Português (Brasil)</a></li>
+<li><a href="/pt/" hreflang="pt" lang="pt" data-lang-pick="pt">Português (Portugal)</a></li>
+<li><a href="/nl/" hreflang="nl" lang="nl" data-lang-pick="nl">Nederlands</a></li>
+<li><a href="/pl/" hreflang="pl" lang="pl" data-lang-pick="pl">Polski</a></li>
+<li><a href="/ru/" hreflang="ru" lang="ru" data-lang-pick="ru">Русский</a></li>
+<li><a href="/uk/" hreflang="uk" lang="uk" data-lang-pick="uk">Українська</a></li>
+<li><a href="/tr/" hreflang="tr" lang="tr" data-lang-pick="tr">Türkçe</a></li>
+<li><a href="/cs/" hreflang="cs" lang="cs" data-lang-pick="cs">Čeština</a></li>
+<li><a href="/sk/" hreflang="sk" lang="sk" data-lang-pick="sk">Slovenčina</a></li>
+<li><a href="/hu/" hreflang="hu" lang="hu" data-lang-pick="hu">Magyar</a></li>
+<li><a href="/ro/" hreflang="ro" lang="ro" data-lang-pick="ro">Română</a></li>
+<li><a href="/bg/" hreflang="bg" lang="bg" data-lang-pick="bg">Български</a></li>
+<li><a href="/el/" hreflang="el" lang="el" data-lang-pick="el">Ελληνικά</a></li>
+<li><a href="/sv/" hreflang="sv" lang="sv" data-lang-pick="sv">Svenska</a></li>
+<li><a href="/da/" hreflang="da" lang="da" data-lang-pick="da">Dansk</a></li>
+<li><a href="/nb/" hreflang="nb" lang="nb" data-lang-pick="nb">Norsk bokmål</a></li>
+<li><a href="/fi/" hreflang="fi" lang="fi" data-lang-pick="fi">Suomi</a></li>
+<li><a href="/hr/" hreflang="hr" lang="hr" data-lang-pick="hr">Hrvatski</a></li>
+<li><a href="/sr/" hreflang="sr" lang="sr" data-lang-pick="sr">Српски</a></li>
+<li><a href="/sl/" hreflang="sl" lang="sl" data-lang-pick="sl">Slovenščina</a></li>
+<li><a href="/lt/" hreflang="lt" lang="lt" data-lang-pick="lt">Lietuvių</a></li>
+<li><a href="/zh-cn/" hreflang="zh-CN" lang="zh-CN" data-lang-pick="zh-CN">简体中文</a></li>
+<li><a href="/zh-tw/" hreflang="zh-TW" lang="zh-TW" data-lang-pick="zh-TW">繁體中文</a></li>
+<li><a href="/ja/" hreflang="ja" lang="ja" data-lang-pick="ja">日本語</a></li>
+<li><a href="/ko/" hreflang="ko" lang="ko" data-lang-pick="ko">한국어</a></li>
+<li><a href="/vi/" hreflang="vi" lang="vi" data-lang-pick="vi">Tiếng Việt</a></li>
+<li><a href="/th/" hreflang="th" lang="th" data-lang-pick="th">ไทย</a></li>
+<li><a href="/id/" hreflang="id" lang="id" data-lang-pick="id">Bahasa Indonesia</a></li>
+<li><a href="/ms/" hreflang="ms" lang="ms" data-lang-pick="ms">Bahasa Melayu</a></li>
+<li><a href="/hi/" hreflang="hi" lang="hi" data-lang-pick="hi">हिन्दी</a></li>
+<li><a href="/ar/" hreflang="ar" lang="ar" dir="rtl" data-lang-pick="ar">العربية</a></li>
+<li><a href="/fa/" hreflang="fa" lang="fa" dir="rtl" data-lang-pick="fa">فارسی</a></li>
+<li><a href="/he/" hreflang="he" lang="he" dir="rtl" data-lang-pick="he">עברית</a></li>
+<li><a href="/lv/" hreflang="lv" lang="lv" data-lang-pick="lv">Latviešu</a></li>
+<li><a href="/ca/" hreflang="ca" lang="ca" data-lang-pick="ca">Català</a></li>
+<li><a href="/bn/" hreflang="bn" lang="bn" data-lang-pick="bn">বাংলা</a></li>
+<li><a href="/fil/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
+      <button class="btn-icon" type="button" data-motion-toggle aria-pressed="false" title="Mettre en pause ou lancer les animations">
+        <svg class="i i-when-on" aria-hidden="true"><use href="#i-pause"/></svg> <svg class="i i-when-off" aria-hidden="true"><use href="#i-play"/></svg> <span class="sr-only" data-motion-label>Mettre en pause les animations</span>
+      </button>
+      <a class="btn btn-ghost btn-sm hide-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" aria-label="Ajouter une étoile à Whisper Transcriber Suite sur GitHub"> <svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Étoile </a> <a class="btn btn-primary btn-sm" href="#download">Télécharger</a>
+    </div>
+  </div>
+</header>
+
+<div class="lang-notice" data-lang-notice hidden>
+  <div class="wrap lang-notice-row">
+    <p>Cette page s'affiche dans votre langue en fonction de votre région. <a href="/?lang=en" data-lang-pick="en">Afficher en anglais</a></p>
+    <button class="btn-icon" type="button" data-lang-notice-close aria-label="Fermer"><span aria-hidden="true">×</span></button>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <canvas class="hero-waves" data-waves aria-hidden="true"></canvas>
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="kicker reveal" style="--d:0"><span class="kicker-dot" aria-hidden="true"></span>Gratuit &amp; open source · BSD-3-Clause · <span data-auto="version">v2.1.0</span></p>
+        <h1 class="hero-title" id="hero-title">
+          <span class="line"><span class="rise" style="--d:1">Entrée son.</span></span> <span class="line"><span class="rise" style="--d:2">Sortie texte.</span></span> <span class="line"><span class="rise grad-text" style="--d:3">Votre audio reste sur votre ordinateur.</span></span>
+        </h1>
+        <p class="hero-lede reveal" style="--d:4">Whisper Transcriber Suite exécute le modèle Whisper d'OpenAI entièrement sur votre propre ordinateur — via faster-whisper, whisper.cpp ou NVIDIA Parakeet. Glissez-déposez un fichier audio ou vidéo et obtenez une transcription synchronisée. Aucun cloud, aucun compte, aucun coût à la minute.</p>
+        <div class="hero-actions reveal" style="--d:5">
+          <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Télécharger pour Windows</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">Découvrir l'application<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </div>
+        <ul class="proof reveal" style="--d:6" aria-label="En un coup d&#39;œil">
+          <li><strong data-count="14">14</strong><span>formats de transcription</span></li>
+          <li><strong data-auto="downloads">2,600+</strong><span>téléchargements à ce jour</span></li>
+          <li><strong>0</strong><span>transfert audio par défaut</span></li>
+          <li><strong>$0</strong><span>pour toujours</span></li>
+        </ul>
+      </div>
+
+      <div class="hero-scene" data-scene aria-hidden="true">
+        <div class="scene-rig" data-rig>
+          <div class="float-layer l-back">
+            <figure class="win win-sm win-a"><div class="win-bar"><i></i><i></i><i></i><span>En direct</span></div><img src="/assets/shots/live-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-mid">
+            <figure class="win win-sm win-b"><div class="win-bar"><i></i><i></i><i></i><span>Télécharger des vidéos</span></div><img src="/assets/shots/download-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-front">
+            <figure class="win win-main"><div class="win-bar"><i></i><i></i><i></i><span>Whisper Transcriber Suite</span></div><img src="/assets/shots/transcribe.webp" srcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" sizes="(max-width: 1080px) 72vw, 480px" alt="" width="1180" height="668" fetchpriority="high"></figure>
+          </div>
+          <div class="float-layer l-pop1">
+            <div class="chip-card wave-card"><span class="rec"></span><span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+          </div>
+          <div class="float-layer l-pop2">
+            <div class="chip-card srt-card">
+              <p class="srt-ts">00:00:04,120 → 00:00:06,880</p>
+              <p class="srt-line"><span data-hero-typer>Votre audio reste sur votre ordinateur.</span><span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="float-layer l-pop3">
+            <div class="chip-card fmt-card"><b>.srt</b><b>.vtt</b><b>.docx</b><b>.pdf</b></div>
+          </div>
+          <div class="float-layer l-pop4">
+            <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Transcription hors ligne</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Diarisation des locuteurs</span> <span>Micro en direct</span> <span>Clonage vocal</span> <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Diarisation des locuteurs</span> <span>Micro en direct</span> <span>Clonage vocal</span>
+    </div>
+  </div>
+
+  <!-- ============ SHOWREEL (3D carousel) ============ -->
+  <section class="section showreel" id="showreel" aria-labelledby="reel-title">
+    <div class="reel-glow" aria-hidden="true"></div>
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Présentation du produit</p>
+        <h2 id="reel-title">Une seule fenêtre. <span class="h2-soft">Six outils.</span></h2>
+        <p class="section-lede">Déposez un fichier, choisissez vos options, cliquez sur Transcrire. Tout le reste — la file d'attente, les téléchargements, la capture en direct, le clonage vocal et le partage LAN — est accessible en un clic dans les autres onglets. Faites glisser l'anneau ou utilisez les flèches.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/showreel-still.webp" data-still="/assets/promo/showreel-still.webp" data-anim="/assets/promo/showreel.svg" alt="Animation : une interview avec deux locuteurs identifiés, un cours magistral converti en sous-titres synchronisés, un lien vidéo transformé en vidéo sous-titrée, des sous-titres en direct depuis un microphone, et la transcription enregistrée à côté du fichier aux formats SRT, VTT, DOCX et PDF." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="reel" data-reel>
+        <div class="reel-viewport" data-reel-viewport>
+          <div class="reel-ring" data-reel-ring>
+            <figure class="reel-card" data-title="Transcrire" data-caption="Une zone de dépôt, des sélecteurs de moteur, de modèle et de langue, ainsi que des options d&#39;identification des locuteurs et d&#39;horodatage par mot."><div class="win-bar"><i></i><i></i><i></i><span>Transcrire</span></div><img src="/assets/shots/transcribe-640.webp" alt="Onglet Transcrire : zone de dépôt, sélecteurs de moteur, de modèle et de langue, options d&#39;identification des locuteurs et d&#39;horodatage par mot" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="En direct" data-caption="Transcrivez un microphone — ou tout ce que cet appareil diffuse — en direct, avec un indicateur de niveau d&#39;entrée."><div class="win-bar"><i></i><i></i><i></i><span>En direct</span></div><img src="/assets/shots/live-640.webp" alt="Onglet En direct : source microphone ou audio système, sélecteurs de langue et de modèle, indicateur de niveau d&#39;entrée et volet de transcription en direct" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Télécharger des vidéos" data-caption="Choisissez un format, découpez un intervalle de temps, visualisez les sous-titres déjà disponibles pour la vidéo, et transcrivez-la ou incrustez les sous-titres dans un nouveau fichier MP4 en option."><div class="win-bar"><i></i><i></i><i></i><span>Télécharger des vidéos</span></div><img src="/assets/shots/download-640.webp" alt="Onglet Télécharger des vidéos : URL avec la ligne Sous-titres disponibles, cookies de connexion du navigateur, format, plage horaire, Utiliser plutôt les sous-titres, Transcrire après le téléchargement et Créer une vidéo sous-titrée" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="File d&#39;attente de transcription" data-caption="Traitements par lots avec progression en direct, vitesse et temps restant — mettez en pause, reprenez, annulez, réexécutez ou supprimez n&#39;importe quelle ligne."><div class="win-bar"><i></i><i></i><i></i><span>File d'attente de transcription</span></div><img src="/assets/shots/queue-640.webp" alt="Onglet File d&#39;attente de transcription : colonnes fichier, statut, progression, vitesse et temps restant, langue et temps écoulé, avec les actions pause, reprise, annulation, réexécution et suppression" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Cloner votre voix" data-caption="En option, entièrement hors ligne : clonez une voix à partir d&#39;un court échantillon, ou concevez-en une, et faites-lui lire un nouveau texte."><div class="win-bar"><i></i><i></i><i></i><span>Cloner votre voix</span></div><img src="/assets/shots/voice-640.webp" alt="Onglet Cloner votre voix / Synthèse vocale : modèle OmniVoice, échantillon de voix, texte à lire, langue et vitesse" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Accès web / LAN" data-caption="Un seul bouton transforme cette machine en page de transcription pour les autres appareils de votre réseau."><div class="win-bar"><i></i><i></i><i></i><span>Accès web / LAN</span></div><img src="/assets/shots/web-640.webp" alt="Onglet Accès web / LAN : démarrer l&#39;accès web, port, partager sur le réseau local, mot de passe d&#39;accès et options HTTPS" width="640" height="362" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+        <div class="reel-controls">
+          <button class="reel-btn" type="button" data-reel-prev aria-label="Écran précédent"><svg class="i" aria-hidden="true"><use href="#i-left"/></svg></button>
+          <div class="reel-meta" aria-live="off" data-reel-live>
+            <p class="reel-title" data-reel-title>Transcrire</p>
+            <p class="reel-caption" data-reel-caption>Une zone de dépôt, des sélecteurs de moteur, de modèle et de langue, ainsi que des options d'identification des locuteurs et d'horodatage par mot.</p>
+          </div>
+          <button class="reel-btn" type="button" data-reel-next aria-label="Écran suivant"><svg class="i" aria-hidden="true"><use href="#i-right"/></svg></button>
+        </div>
+        <div class="reel-dots" data-reel-dots role="group" aria-label="Choisir un écran"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Nouveautés de la 2.1</p>
+        <h2 id="new-title">Nouveautés de la version 2.1. <span class="h2-soft">Désormais dans votre langue.</span></h2>
+        <p class="section-lede">L'application en 42 langues, l'identification des locuteurs jusqu'au bout des enregistrements longs, des fichiers protégés contre les coupures de courant et des fonctionnalités en ligne compatibles avec tous les Mac. Retrouvez ci-dessous les nouveautés de la version 2.0.</p>
+      </header>
+
+      <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Toutes les plateformes</p>
+          <h3>L'application dans votre langue</h3>
+          <p>Les menus, boutons et messages sont disponibles en 42 langues (39 sur macOS et Linux). L'application s'adapte à la langue de votre système, ou vous pouvez en choisir une dans les <em>Paramètres avancés</em>. Toutes les langues en dehors de l'anglais sont issues d'une traduction automatique et sont signalées comme telles ; le persan, l'arabe et l'hébreu sont proposés pour le moment sous Windows.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Toutes les plateformes</p>
+          <h3>Une identification fiable des locuteurs</h3>
+          <p>Le nom des locuteurs est désormais maintenu jusqu'à la fin des enregistrements longs, la détection des locuteurs ne risque plus de faire planter une transcription, et à côté d'<em>Identifier les locuteurs</em>, vous pouvez définir le nombre d'intervenants (de 2 à 10) au lieu de laisser l'option sur Auto.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Toutes les plateformes</p>
+          <h3>Votre travail est mieux protégé</h3>
+          <p>Les transcriptions, exportations et sous-titres sont entièrement écrits sur le disque avant de remplacer l'ancien fichier : une coupure de courant ne risque donc pas de laisser un fichier vide. Une transcription dont le processus d'arrière-plan s'est arrêté après avoir écrit tous ses fichiers est considérée comme terminée.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · macOS</p>
+          <h3>Fonctionnalités en ligne sur tous les Mac</h3>
+          <p>La recherche de mises à jour, l'envoi de rapports de problème et les autres requêtes web n'échouent plus avec l'erreur <em>certificate verify failed</em>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Toutes les plateformes</p>
+          <h3>Vitesse et temps restant</h3>
+          <p>L'onglet File d'attente de transcription indique la vitesse d'exécution de chaque transcription et le temps approximatif restant, par exemple <em>environ 4.8x, 6 min restantes</em>. La fiche de résultat indique la vitesse, le modèle et le périphérique utilisé une fois la tâche terminée.</p>
+          <figure class="new-shot"><img src="/assets/shots/queue-640.webp" alt="Onglet File d&#39;attente de transcription avec une colonne Vitesse et temps restant affichant environ 6.8x, 2 min restantes pour la tâche en cours" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Toutes les plateformes</p>
+          <h3>Créer une vidéo sous-titrée</h3>
+          <p>Cochez cette option dans l'onglet Télécharger des vidéos et un simple lien devient <code>&lt;title&gt;-subbed.mp4</code> avec les sous-titres incrustés : téléchargement, transcription et incrustation réunis en une seule tâche mise en file d'attente, avec suivi de progression et un bouton Annuler fonctionnel. Le téléchargement et la transcription sont conservés.</p>
+          <figure class="new-shot"><img src="/assets/shots/download-640.webp" alt="Onglet Télécharger des vidéos montrant la ligne Sous-titres disponibles : anglais et allemand, le bouton Utiliser plutôt les sous-titres et la case à cocher Créer une vidéo sous-titrée" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Toutes les plateformes</p>
+          <h3>Partager une transcription sous forme d'une page web unique</h3>
+          <p>Enregistrez une transcription terminée sous la forme d'un fichier <code>.html</code> unique qui s'ouvre dans n'importe quel navigateur, sans installation ni connexion Internet : horodatages, intervenants, chapitres et champ de recherche. Cliquez sur un mot pour lancer la lecture à cet endroit précis.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Toutes les plateformes</p>
+          <h3>Le mode Travailler hors ligne, en toute visibilité</h3>
+          <p>Un simple interrupteur dans Fichier coupe la connexion réseau de l'application. Une ligne en bas de la fenêtre indique si une connexion est ouverte, et <em>Vérifier le mode hors ligne</em> montre que les connexions de test sont refusées. Les statistiques d'utilisation sont activées par défaut et peuvent être désactivées dans Aide.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Toutes les plateformes</p>
+          <h3>Traduire les paroles en anglais</h3>
+          <p>L'option <em>Sortie : traduction anglaise</em> convertit en une seule passe les paroles non anglophones en sous-titres en anglais, grâce à la tâche de traduction intégrée de Whisper. Elle est désactivée par défaut et n'est pas disponible pour tous les moteurs ou modèles.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · macOS</p>
+          <h3>Une vraie expérience Mac</h3>
+          <p>Un menu d'application avec Réglages (Command-comma), les modes Clair et Sombre qui suivent macOS, la police du système, les fichiers ouverts depuis le Finder ou déposés sur l'icône du Dock, et une notification lorsqu'une tâche se termine pendant que l'application est en arrière-plan.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Windows</p>
+          <h3>Progression dans la barre des tâches et barres de titre sombres</h3>
+          <p>Le bouton de la barre des tâches affiche la progression ainsi que le nombre de tâches en attente et en cours, et clignote lorsqu'une tâche se termine. Les barres de titre suivent le thème Sombre, et le texte reste net avec une mise à l'échelle de 125% et 150%.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Premier lancement</p>
+          <h3>Un démarrage rapide et un extrait d'exemple</h3>
+          <p>Une nouvelle installation vous demande votre langue, Rapide ou Meilleure qualité, ainsi qu'un dossier, et affiche la taille du modèle avant tout téléchargement. Un extrait du domaine public de 18 secondes vous permet de voir une vraie transcription avant de choisir votre propre fichier.</p>
+        </article>
+      </div>
+      <p class="feature-more sr">Également nouveau dans la 2.0 : Synthèse vocale lit des textes jusqu'à 100 000 caractères morceau par morceau, un bouton <em>Mettre à jour</em> actualise le téléchargeur de vidéos sans droits d'administrateur, et une discrète barre de mise à jour remplace la boîte de dialogue. L'onglet Video Tiling a disparu. Tout est dans le <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">journal des modifications</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section features" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Fonctionnalités</p>
+        <h2 id="features-title">Tout ce que vous attendez d'un outil de transcription. <span class="h2-soft">Directement sur votre machine.</span></h2>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/prism-still.webp" data-still="/assets/promo/prism-still.webp" data-anim="/assets/promo/prism.svg" alt="Animation : un grand W sépare deux locuteurs, montre les moteurs locaux faster-whisper, whisper.cpp et Parakeet fonctionnant hors ligne, et se déploie en 14 formats de transcription." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="bento" data-spotlight>
+        <article class="cell cell-engines tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
+            <h3>Transcription locale et confidentielle</h3>
+            <p>Whisper <code>large-v3</code> par défaut, ainsi que <code>large-v3-turbo</code> et <code>distil-large-v3.5</code>. Choisissez le moteur qui convient à votre matériel.</p>
+          </div>
+          <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
+          <div class="viz viz-engines" aria-hidden="true">
+            <div class="engine-list">
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">faster-whisper</span><span class="engine-tag">par défaut</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">whisper.cpp</span><span class="engine-tag">local</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">NVIDIA Parakeet</span><span class="engine-tag">local</span></div>
+            </div>
+            <div class="offline-badge"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Fonctionne hors ligne après le téléchargement unique du modèle</div>
+          </div>
+        </article>
+
+        <article class="cell cell-formats tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">14 formats</p>
+            <h3>Tous les formats de transcription dont vous aurez besoin</h3>
+            <p>Enregistrés directement à côté de votre fichier source — avec en plus oTranscribe, ELAN, InqScribe et Express Scribe pour les flux de travail professionnels.</p>
+          </div>
+          <div class="viz viz-formats" aria-hidden="true">
+            <span>srt</span> <span>vtt</span> <span>ass</span> <span>tsv</span> <span>txt</span> <span>json</span> <span>lrc</span> <span>md</span> <span>docx</span> <span>pdf</span> <span class="wide">oTranscribe</span> <span class="wide">ELAN</span> <span class="wide">InqScribe</span> <span class="wide">Express Scribe</span>
+          </div>
+        </article>
+
+        <article class="cell cell-live tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Micro · audio système</p>
+            <h3>Transcription en direct</h3>
+            <p>Transcrit un microphone — ou tout son lu par votre machine — en direct. Le découpage se fait lors des pauses naturelles pour ne jamais couper les mots.</p>
+          </div>
+          <div class="viz viz-live" aria-hidden="true">
+            <div class="live-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="live-text"><span class="live-rec"></span><span data-typer>pour que les mots apparaissent à mesure que vous parlez</span><span class="caret"></span></p>
+          </div>
+        </article>
+
+        <article class="cell cell-speakers tone-sun sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Horodatage par mot</p>
+            <h3>Diarisation des locuteurs</h3>
+            <p>Passe facultative « Identifier les locuteurs », avec horodatage par mot et découpage par intervalle de temps pour modifier des segments précis.</p>
+          </div>
+          <div class="viz viz-speakers" aria-hidden="true">
+            <div class="utt"><span class="ts">00:04.2</span><span class="spk s1">Locuteur 1</span><span class="words"><b>Alors,</b> <b>par</b> <b>où</b> <b>on</b> <b>commence ?</b></span></div>
+            <div class="utt"><span class="ts">00:06.9</span><span class="spk s2">Locuteur 2</span><span class="words"><b>Par</b> <b>l'enregistrement</b> <b>en</b> <b>lui-même.</b></span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-queue tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Pause · reprise · relance</p>
+            <h3>File de traitement par lots</h3>
+            <p>Statut en direct pour chaque tâche en attente et en cours, avec un contrôle total sur chaque ligne à portée de clic.</p>
+          </div>
+          <div class="viz viz-queue" aria-hidden="true">
+            <div class="job"><span class="job-name">interview-03.mp4</span><span class="bar"><i style="--p:100%"></i></span><span class="job-state done">terminé</span></div>
+            <div class="job"><span class="job-name">lecture-week-2.m4a</span><span class="bar"><i class="run"></i></span><span class="job-state">en cours</span></div>
+            <div class="job"><span class="job-name">podcast-ep-41.wav</span><span class="bar"><i style="--p:0%"></i></span><span class="job-state">en attente</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-download tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Propulsé par yt-dlp</p>
+            <h3>Téléchargements vidéo et audio</h3>
+            <p>Tout ce que <code>yt-dlp</code> prend en charge, avec transcription facultative une fois terminé. Les téléchargements reprennent au lieu de recommencer à zéro.</p>
+          </div>
+          <div class="viz viz-dl" aria-hidden="true">
+            <div class="url"><span class="url-dot"></span>https://…/watch?v=…</div>
+            <div class="dl-steps"><span class="st st-1">Télécharger</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-2">Transcrire</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-3">.srt</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-denoise tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Mesure avant de filtrer</p>
+            <h3>Réduction adaptative du bruit</h3>
+            <p>Mesure d'abord chaque enregistrement et ne le nettoie que si cela s'avère utile — vérifie sa propre sortie et annule les modifications si de la voix a été supprimée.</p>
+          </div>
+          <div class="viz viz-denoise" aria-hidden="true">
+            <svg class="wave wave-noisy" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="noisy"/></svg> <svg class="wave wave-clean" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="clean"/></svg> <span class="sweep"></span> <span class="wave-label l-before">avant</span><span class="wave-label l-after">après</span>
+          </div>
+        </article>
+      </div>
+
+      <p class="feature-more sr">Plus des outils IA (résumés, actions à mener, passe SRT bilingue), un onglet optionnel de clonage vocal hors ligne et un mode réseau local — plus de détails dans le <a href="https://github.com/Milomilo777/whisper-transcriber-suite#features" rel="noopener">README</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="section how" id="how-it-works" aria-labelledby="how-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Comment ça marche</p>
+        <h2 id="how-title">Fonctionne sur votre ordinateur. <span class="h2-soft">Votre audio y reste.</span></h2>
+        <p class="section-lede">La transcription s'exécute sur votre propre ordinateur. Vos fichiers audio ne sont envoyés que si vous activez l'un des deux moteurs cloud optionnels, et le texte transcrit ne quitte votre machine que si vous connectez vous-même un modèle d'IA distant.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/loom-still.webp" data-still="/assets/promo/loom-still.webp" data-anim="/assets/promo/loom.svg" alt="Animation : une ligne temporelle devient des sous-titres horodatés par mot, des sous-titres en anglais créés hors ligne avec faster-whisper, whisper.cpp ou Parakeet, et 14 formats de transcription sans aucun compte." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <ol class="pipeline">
+        <li class="step sr">
+          <span class="step-num">01</span>
+          <h3>Déposez un fichier ou collez un lien</h3>
+          <p>Fichiers audio ou vidéo depuis votre disque, ou tout ce que <code>yt-dlp</code> peut récupérer. L'interface Tk s'exécute dans le processus principal et met la tâche en file d'attente instantanément.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">02</span>
+          <h3>Un processus dédié conserve le modèle</h3>
+          <p>Chaque tâche s'exécute dans son propre sous-processus persistant qui conserve Whisper en mémoire et transmet la progression sous forme de flux JSON délimité par des sauts de ligne — ainsi, la fenêtre ne se bloque jamais.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">03</span>
+          <h3>La transcription arrive à côté de votre fichier</h3>
+          <p>Un jeton par worker et un signal de pulsation (heartbeat) fiabilisent le routage et permettent à l'application de détecter un processus bloqué au lieu de se figer avec lui.</p>
+        </li>
+      </ol>
+      <p class="built-on sr">Conçu autour du <a href="https://arxiv.org/abs/2212.04356" rel="noopener">modèle de reconnaissance vocale Whisper d'OpenAI</a>, exécuté localement via <a href="https://github.com/SYSTRAN/faster-whisper" rel="noopener">faster-whisper</a>, <a href="https://github.com/ggml-org/whisper.cpp" rel="noopener">whisper.cpp</a> ou <a href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3" rel="noopener">NVIDIA Parakeet</a>, avec <a href="https://github.com/yt-dlp/yt-dlp" rel="noopener">yt-dlp</a> et <a href="https://ffmpeg.org/" rel="noopener">FFmpeg</a> pour la gestion des médias.</p>
+      <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
+      <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Découvrir l'architecture complète<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <p class="muted guide-links">Guides pas à pas : <a href="/fr/youtube-to-text/">De la vidéo YouTube au texte</a> · <a href="/fr/video-to-srt/">De la vidéo aux sous-titres SRT</a> · <a href="/fr/speaker-labels/">Transcriptions avec identification des locuteurs</a></p>
+    </div>
+  </section>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="section download" id="download" aria-labelledby="download-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Télécharger · <span data-auto="version">v2.1.0</span> · publié le <span data-auto="released">2026-10-12</span></p>
+        <h2 id="download-title">Téléchargez. <span class="h2-soft">Transcrivez dès ce soir.</span></h2>
+        <p class="section-lede">Tout le nécessaire est inclus — un environnement d'exécution Python privé, ffmpeg, ffprobe et yt-dlp. Seul le modèle vocal lui-même est téléchargé ultérieurement (environ 1–3 GB, une seule fois) ; ensuite, la transcription fonctionne sans connexion Internet.</p>
+      </header>
+
+      <div class="dl-grid">
+        <article class="dl-card sr" data-os="windows" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows <span class="dl-badge" data-rec-badge hidden>Recommandé pour vous</span></p>
+          <h3>Programme d'installation <code>.exe</code></h3>
+          <p class="dl-size" data-auto="size-installer">~238&nbsp;MB</p>
+          <p class="dl-desc">Pour la plupart des utilisateurs — programme d'installation classique, raccourci dans le menu Démarrer, mises à niveau sur place. L'application n'étant pas signée, Windows SmartScreen peut afficher un avertissement une fois : <b>Informations complémentaires → Exécuter quand même</b>.</p>
+          <a class="btn btn-primary" data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Télécharger le programme d'installation</a>
+        </article>
+        <article class="dl-card sr" data-os="windows-portable" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows portable</p>
+          <h3>Version portable <code>.zip</code></h3>
+          <p class="dl-size" data-auto="size-portable">~360&nbsp;MB</p>
+          <p class="dl-desc">Décompressez et lancez. Aucune installation, aucun droit administrateur requis, idéal sur une clé USB.</p>
+          <a class="btn btn-ghost" data-auto-href="portable" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Portable-Windows-v2.1.0.zip" rel="noopener">Télécharger le ZIP</a>
+        </article>
+        <article class="dl-card sr" data-os="mac" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS <span class="dl-badge" data-rec-badge hidden>Recommandé pour vous</span></p>
+          <h3>Image disque <code>.dmg</code></h3>
+          <p class="dl-size"><span data-auto="size-mac-arm64">~275&nbsp;MB</span> · <span data-auto="size-mac-x64">~333&nbsp;MB</span></p>
+          <p class="dl-desc">Le plus simple : une seule ligne dans Terminal — choisit la bonne version et évite l'avertissement de sécurité. Ou récupérez l'image disque pour Apple Silicon ou Intel.</p>
+          <a class="btn btn-primary" href="#mac-install"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Installation en une ligne</a>
+          <div class="dl-pair"><a class="btn btn-ghost" data-auto-href="mac-arm64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-arm64.dmg" rel="noopener">Apple Silicon</a><a class="btn btn-ghost" data-auto-href="mac-x64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-x64.dmg" rel="noopener">Intel</a></div>
+        </article>
+        <article class="dl-card dl-card-source sr" data-os="linux" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Linux et sources <span class="dl-badge" data-rec-badge hidden>Recommandé pour vous</span></p>
+          <h3>Compiler depuis les sources</h3>
+          <p class="dl-size">Python 3.11+</p>
+          <pre class="dl-code"><code>git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
+pip install -r requirements.txt
+python gui.py</code></pre>
+          <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite#build-from-source" rel="noopener">Guide des sources</a>
+        </article>
+      </div>
+
+      <figure class="promo sr promo-after"><img src="/assets/promo/vise-still.webp" data-still="/assets/promo/vise-still.webp" data-anim="/assets/promo/vise.svg" alt="Animation : les mots Sound in se transforment en une transcription horodatée de deux locuteurs, enregistrée en SRT, DOCX et PDF, sans aucun compte ni téléversement." width="1280" height="640" loading="lazy" decoding="async"></figure>
+      <div class="mac-install sr" id="mac-install">
+        <div class="mac-install-head">
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — installation en une ligne</p>
+          <h3>Collez dans Terminal. C'est tout.</h3>
+          <p>Télécharge la version adaptée à votre Mac (Apple Silicon sur macOS 14+, sinon Intel via Rosetta), copie l'application dans <code>Applications</code> et l'ouvre. Les fichiers récupérés par <code>curl</code> ne sont pas mis en quarantaine, il n'y a donc aucun avertissement « développeur non identifié » à franchir.</p>
+        </div>
+        <div class="code-box">
+          <button class="copy-btn" type="button" data-copy="#mac-cmd">Copier</button>
+          <pre><code id="mac-cmd" data-auto="mac-oneliner">A=x64; [ "$(uname -m)" = arm64 ] &amp;&amp; [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 14 ] &amp;&amp; A=arm64; curl -fL -o /tmp/wts.dmg "https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-$A.dmg" &amp;&amp; hdiutil attach -nobrowse -quiet -mountpoint /tmp/wts-dmg /tmp/wts.dmg &amp;&amp; cp -R "/tmp/wts-dmg/Whisper Transcriber Suite.app" /Applications/ &amp;&amp; hdiutil detach -quiet /tmp/wts-dmg &amp;&amp; rm /tmp/wts.dmg &amp;&amp; open "/Applications/Whisper Transcriber Suite.app"</code></pre>
+        </div>
+        <p class="mac-note">Vous préférez la méthode habituelle ? Ouvrez le <code>.dmg</code> et glissez l'application dans Applications ; au premier lancement, effectuez un clic droit → <b>Ouvrir</b> (macOS 14 et versions antérieures) ou allez dans Réglages Système → Confidentialité et sécurité → <b>Ouvrir quand même</b> (macOS 15+).</p>
+      </div>
+      <p class="dl-note sr">Chaque version, avec ses notes, est disponible sur <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Guide d'installation</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section class="section compare" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Comparatif</p>
+        <h2 id="compare-title">Comment se positionne-t-elle par rapport aux autres applications Whisper ?</h2>
+        <p class="section-lede">Whisper Transcriber Suite fait partie des quelques applications de bureau gratuites et open source qui transcrivent sur votre propre ordinateur. Voici comment elle se compare à Subtitle Edit, Vibe et Buzz, y compris dans les cas où une autre application conviendrait mieux. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Lire le comparatif complet</a>, avec une source pour chaque information et deux autres applications, noScribe et aTrain.</p>
+      </header>
+      <div class="table-wrap sr">
+        <table class="compare-table">
+          <caption>Vérifié le 2026-10-05 d'après le README, la documentation et les versions de chaque projet. Les applications évoluent vite : consultez le <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">comparatif complet</a> pour les sources.</caption>
+          <thead>
+            <tr><th scope="col"><span class="sr-only">Fonctionnalité</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Prix, licence</th><td>Gratuit, BSD-3-Clause</td><td>Gratuit, MIT</td><td>Gratuit, MIT</td><td>Gratuit, MIT</td></tr>
+            <tr><th scope="row">Téléchargements</th><td>Programme d'installation Windows et ZIP portable, macOS (Apple silicon, Intel) ; Linux depuis les sources</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (la 1.4.5 est la dernière pour les Mac Intel), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
+            <tr><th scope="row">Accélération GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Programme d'installation Windows signé</th><td>Non</td><td>Non précisé</td><td>Oui, d'après sa documentation</td><td>Non</td></tr>
+            <tr><th scope="row">Langues de l'interface</th><td>42 (traduction automatique)</td><td>35</td><td>22</td><td>16</td></tr>
+            <tr><th scope="row">À choisir si</th><td>Vous souhaitez également un micro en direct, le téléchargement de vidéos, 14 formats de sortie et un mode réseau local avec une route compatible OpenAI</td><td>Vous souhaitez de nombreux moteurs vocaux (Parakeet, Canary, Qwen3-ASR et d'autres) ou une application Mac notariée</td><td>Vous voulez un installateur Windows indiqué comme signé dans sa documentation, ou une compatibilité GPU mentionnant AMD et Intel</td><td>Vous souhaitez des paquets Linux (Flatpak, Snap, AppImage) ou une installation via PyPI</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section class="section faq" id="faq" aria-labelledby="faq-title">
+    <div class="wrap faq-grid">
+      <header class="faq-head sr">
+        <p class="eyebrow">FAQ</p>
+        <h2 id="faq-title">Questions fréquemment posées</h2>
+        <p class="section-lede">Une autre question ? Posez-la sur <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">GitHub Discussions</a>.</p>
+      </header>
+      <div class="faq-list sr">
+        <article class="qa"><h3>Whisper Transcriber Suite est-il gratuit ?</h3><div class="faq-a"><p>Oui. Il est publié sous licence BSD-3-Clause, sans abonnement et sans frais à la minute. Le modèle Whisper lui-même est téléchargé une seule fois (environ 1-3 GB) au premier lancement ; après cela, la transcription fonctionne sans connexion Internet.</p></div></article>
+        <article class="qa"><h3>Mes fichiers audio ou vidéo sont-ils envoyés quelque part ?</h3><div class="faq-a"><p>Non, pas par défaut. Tous les moteurs par défaut — faster-whisper, whisper.cpp, NVIDIA Parakeet — s'exécutent localement sur votre machine. Deux moteurs sont strictement optionnels (un moteur cloud basé sur l'API Gemini et Google Cloud Speech-to-Text), et restent tous deux désactivés tant que vous ne les activez pas vous-même dans Paramètres avancés → Backend. Les statistiques d'utilisation (sans aucun fichier audio ni nom de fichier) sont activées par défaut et peuvent être désactivées dans Aide → Statistiques d'utilisation ; l'application vérifie une fois par jour sur GitHub si une nouvelle version est disponible, et <b>Fichier → Travailler hors ligne</b> interrompt toute activité réseau.</p></div></article>
+        <article class="qa"><h3>Sur quelles plateformes fonctionne-t-il ?</h3><div class="faq-a"><p>Windows, macOS et Linux. Les téléchargements publiés comprennent un programme d'installation Windows, une archive ZIP portable pour Windows et un fichier DMG pour macOS ; Linux fonctionne à partir du code source.</p></div></article>
+        <article class="qa"><h3>Quels formats de transcription peut-il générer ?</h3><div class="faq-a"><p><code>srt</code> <code>vtt</code> <code>ass</code> <code>tsv</code> <code>txt</code> <code>json</code> <code>lrc</code> <code>md</code> <code>docx</code> <code>pdf</code>, ainsi que oTranscribe, ELAN, InqScribe et Express Scribe.</p></div></article>
+        <article class="qa"><h3>Peut-il identifier qui parle ?</h3><div class="faq-a"><p>Oui — diarisation des locuteurs facultative (« Identifier les locuteurs »), avec horodatage par mot et découpage par intervalle de temps.</p></div></article>
+        <article class="qa"><h3>Peut-il transcrire en direct depuis un microphone ou l'audio du système ?</h3><div class="faq-a"><p>Oui, depuis l'onglet En direct — un microphone ou l'audio du système, transcrit en direct.</p></div></article>
+        <article class="qa"><h3>Peut-il télécharger et transcrire des vidéos en ligne, par exemple depuis YouTube ?</h3><div class="faq-a"><p>Oui, depuis n'importe quel site pris en charge par yt-dlp, avec une étape facultative de transcription à la fin du téléchargement.</p></div></article>
+        <article class="qa"><h3>Peut-il résumer une transcription, en extraire les actions à mener ou répondre à des questions à son sujet ?</h3><div class="faq-a"><p>Oui, via l'onglet optionnel Outils IA dans le visualiseur de transcription — résumé, actions à mener, poser une question et une passe de traduction par segment qui génère un <code>.srt</code> bilingue. Désactivé par défaut.</p></div></article>
+        <article class="qa"><h3>Peut-il cloner une voix et lui faire prononcer un nouveau texte ?</h3><div class="faq-a"><p>Oui, via l'onglet optionnel Cloner votre voix, utilisant OmniVoice (Apache-2.0) entièrement sur votre machine. Désactivé par défaut ; activation au moment de l'installation, avec confirmation obligatoire que vous avez l'autorisation de cloner la voix de référence.</p></div></article>
+        <article class="qa"><h3>En quoi cela diffère-t-il d'un appel direct à l'API Whisper ?</h3><div class="faq-a"><p>Le modèle s'exécute localement via faster-whisper par défaut : il n'y a donc aucun coût d'API à la minute et aucun fichier audio ne quitte votre machine — sauf si vous optez explicitement pour l'un des deux moteurs cloud.</p></div></article>
+        <article class="qa"><h3>Plusieurs personnes sur le même réseau peuvent-elles l'utiliser sans avoir à l'installer sur chaque poste ?</h3><div class="faq-a"><p>Oui — le mode Accès web / LAN transforme cette machine en une page de transcription utilisable par les autres appareils du réseau.</p></div></article>
+        <article class="qa"><h3>Quelles sont les nouveautés de la version 2.1 ?</h3><div class="faq-a"><p>Les menus, boutons et messages sont disponibles en 42 langues (traduites automatiquement et signalées comme telles) ; l'identification des locuteurs s'étend jusqu'à la fin des enregistrements longs et vous pouvez définir le nombre de personnes qui parlent ; les transcriptions, exportations et sous-titres sont entièrement écrits sur le disque avant de remplacer l'ancien fichier ; les fonctionnalités en ligne fonctionnent sur tous les Mac. La version 2.0 a ajouté la vitesse et le temps restant de la file d'attente, la vidéo sous-titrée depuis un lien, les transcriptions sous forme d'une page web hors ligne unique, un mode Travailler hors ligne vérifiable et la traduction vers l'anglais. Consultez les <a href="#whats-new">Nouveautés de la 2.1</a> et le <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">journal des modifications</a>.</p></div></article>
+        <article class="qa"><h3>Peut-il transformer un lien vidéo en vidéo sous-titrée ?</h3><div class="faq-a"><p>Oui. Dans l'onglet Télécharger des vidéos, cochez <b>Créer une vidéo sous-titrée</b> : l'application télécharge la vidéo, la transcrit avec Whisper et incruste les sous-titres avec ffmpeg, produisant un fichier nommé d'après la vidéo avec <code>-subbed.mp4</code>. Le téléchargement et la transcription sont conservés, et un fichier <code>-subbed.mp4</code> existant n'est jamais remplacé.</p></div></article>
+        <article class="qa"><h3>Puis-je couper complètement l'accès réseau de l'application ?</h3><div class="faq-a"><p>Oui. <b>Fichier → Travailler hors ligne</b> interrompt la recherche de mises à jour, les statistiques d'utilisation, les téléchargements de modèles et les fournisseurs d'IA distants. Lorsqu'il est activé, une ligne au bas de la fenêtre indique si une connexion est ouverte, et <em>Vérifier le mode hors ligne</em> montre le refus des connexions de test. Lorsqu'il est désactivé, l'application ne contacte le réseau que pour ses réglages en ligne au démarrage, la vérification quotidienne des mises à jour, les statistiques d'utilisation (désactivables sous Aide → Statistiques d'utilisation) et les téléchargements que vous lancez.</p></div></article>
+        <article class="qa"><h3>Comment contacter l'équipe du projet ?</h3><div class="faq-a"><p>Les bugs et demandes de fonctionnalités sont à signaler sur <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, les questions sur <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, et tout le reste par e-mail (l'adresse est affichée sur demande dans la <a href="#contact">section Contact</a>). Les rapports de sécurité passent par le signalement privé de vulnérabilités de GitHub.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT + SUPPORT ============ -->
+  <section class="section contact" id="contact" aria-labelledby="contact-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Contact et assistance</p>
+        <h2 id="contact-title">Contactez-nous. <span class="h2-soft">Aidez le projet à grandir.</span></h2>
+      </header>
+      <div class="contact-grid">
+        <div class="contact-card sr" data-tilt-card data-contact>
+          <span class="contact-ic tone-teal"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg></span>
+          <h3>E-mail</h3>
+          <p class="contact-val"><button type="button" class="contact-reveal" data-contact-reveal>Afficher l'adresse e-mail</button><span data-contact-out aria-live="polite" hidden></span><noscript> (nécessite JavaScript)</noscript></p>
+          <p>Presse, partenariats ou tout ce qui n'est pas un rapport de bug.</p>
+        </div>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-coral"><svg class="i" aria-hidden="true"><use href="#i-bug"/></svg></span>
+          <h3>Signaler un bug</h3>
+          <p class="contact-val">Issues GitHub</p>
+          <p>Indiquez votre version, votre système d'exploitation et le plus petit fichier permettant de le reproduire.</p>
+        </a>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-violet"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span>
+          <h3>Poser une question</h3>
+          <p class="contact-val">Discussions GitHub</p>
+          <p>Aide à la configuration, idées et retours d'expérience d'autres utilisateurs.</p>
+        </a>
+      </div>
+
+      <div class="support-card sr">
+        <div class="support-orbit" aria-hidden="true"><img src="/assets/logo.svg" alt="" width="88" height="88"><span></span><span></span><span></span></div>
+        <div class="support-copy">
+          <h3 id="support">Soutenir le projet</h3>
+          <p>Whisper Transcriber Suite est gratuit, sous licence BSD-3-Clause et développé publiquement. S'il vous a fait gagner du temps, une étoile sur GitHub aide d'autres personnes à le trouver — et un café est toujours apprécié.</p>
+          <div class="support-actions">
+            <a class="btn btn-coffee btn-lg" href="https://buymeacoffee.com/mehraz1358" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-cup"/></svg>M'offrir un café</a> <a class="btn btn-light btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Étoile sur GitHub</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div class="footer-brand">
+      <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — Accueil"><img class="brand-logo" src="/assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
+      <p class="muted">Maintenu par un développeur indépendant, <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Code source sous licence BSD-3-Clause.</p>
+      <p class="muted"><a href="#contact">Contact</a></p>
+      <p class="site-stats" data-site-stats hidden><span data-stat="visits" hidden><strong></strong> visites</span><span data-stat="downloads" hidden><strong></strong> téléchargements</span></p>
+      <p class="muted small mt-note">Cette page a été traduite de l'anglais par une machine et vérifiée par une seconde. Quelque chose vous semble incorrect ? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">Signalez-le-nous sur GitHub</a>.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Pied de page">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Guide d'installation</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Journal des modifications</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Sécurité</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">Licence</a> <a href="/fr/youtube-to-text/">YouTube vers texte</a> <a href="/fr/video-to-srt/">Vidéo vers SRT</a> <a href="/fr/speaker-labels/">Étiquettes de locuteurs</a> <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+  <div class="wrap">
+    <p class="muted small">Également disponible en <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.de.md" rel="noopener" lang="de">Deutsch</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fr.md" rel="noopener" lang="fr">Français</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.es.md" rel="noopener" lang="es">Español</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.it.md" rel="noopener" lang="it">Italiano</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt-BR.md" rel="noopener" lang="pt-BR">Português (Brasil)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt.md" rel="noopener" lang="pt">Português (Portugal)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nl.md" rel="noopener" lang="nl">Nederlands</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pl.md" rel="noopener" lang="pl">Polski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ru.md" rel="noopener" lang="ru">Русский</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.uk.md" rel="noopener" lang="uk">Українська</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.tr.md" rel="noopener" lang="tr">Türkçe</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.cs.md" rel="noopener" lang="cs">Čeština</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sk.md" rel="noopener" lang="sk">Slovenčina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hu.md" rel="noopener" lang="hu">Magyar</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ro.md" rel="noopener" lang="ro">Română</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bg.md" rel="noopener" lang="bg">Български</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.el.md" rel="noopener" lang="el">Ελληνικά</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sv.md" rel="noopener" lang="sv">Svenska</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.da.md" rel="noopener" lang="da">Dansk</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nb.md" rel="noopener" lang="nb">Norsk bokmål</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fi.md" rel="noopener" lang="fi">Suomi</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hr.md" rel="noopener" lang="hr">Hrvatski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sr.md" rel="noopener" lang="sr">Српски</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sl.md" rel="noopener" lang="sl">Slovenščina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lt.md" rel="noopener" lang="lt">Lietuvių</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-CN.md" rel="noopener" lang="zh-CN">简体中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-TW.md" rel="noopener" lang="zh-TW">繁體中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ja.md" rel="noopener" lang="ja">日本語</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ko.md" rel="noopener" lang="ko">한국어</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.vi.md" rel="noopener" lang="vi">Tiếng Việt</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.th.md" rel="noopener" lang="th">ไทย</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.id.md" rel="noopener" lang="id">Bahasa Indonesia</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ms.md" rel="noopener" lang="ms">Bahasa Melayu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hi.md" rel="noopener" lang="hi">हिन्दी</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ar.md" rel="noopener" lang="ar">العربية</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fa.md" rel="noopener" lang="fa">فارسی</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.he.md" rel="noopener" lang="he">עברית</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lv.md" rel="noopener" lang="lv">Latviešu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ca.md" rel="noopener" lang="ca">Català</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bn.md" rel="noopener" lang="bn">বাংলা</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fil.md" rel="noopener" lang="fil">Filipino</a>.</p>
+  </div>
+</footer>
+
+<div class="star-toast" data-star-toast role="status" hidden>
+  <p><b>Merci pour votre téléchargement !</b> Pendant le téléchargement — si l'application vous fait gagner du temps, une ⭐ sur GitHub aide d'autres personnes à la trouver. En un clic, gratuit.</p>
+  <div class="star-toast-actions">
+    <a class="btn btn-primary btn-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" data-star-go><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Étoile sur GitHub</a>
+    <button class="star-toast-close" type="button" data-star-close aria-label="Ignorer">×</button>
+  </div>
+</div>
+
+<script type="application/json" id="i18n-strings">
+{
+  "Play animations": "Lire les animations",
+  "Pause animations": "Mettre les animations en pause",
+  "Install on macOS": "Installer sur macOS",
+  "Get it for Linux": "Obtenir pour Linux",
+  "Get it for your computer": "Obtenir pour votre ordinateur",
+  "Show %s": "Afficher %s",
+  "Please write to us on GitHub Discussions": "Écrivez-nous sur GitHub Discussions",
+  "One moment…": "Un instant…",
+  "Could not load it. Try again": "Impossible de charger. Réessayez",
+  "so the words appear as you speak": "pour que les mots s'affichent au fil de la parole",
+  "cuts land on natural pauses": "les coupures tombent sur des pauses naturelles",
+  "and no word is ever split in two": "et aucun mot n'est jamais coupé en deux",
+  "Your audio stays on your computer.": "Vos fichiers audio restent sur votre ordinateur.",
+  "No account. No per-minute cost.": "Aucun compte. Aucun coût à la minute.",
+  "Whisper runs on your own computer.": "Whisper s'exécute sur votre propre ordinateur.",
+  "Fourteen formats, one click.": "Quatorze formats, en un clic.",
+  "Copy": "Copier",
+  "Copied": "Copié"
+}
+</script>
+<script src="/js/main.js?v=20261018b" defer></script>
+<script src="/js/lang.js?v=20261019a" defer></script>
+</body>
+</html>

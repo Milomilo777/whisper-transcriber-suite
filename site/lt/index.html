@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whisper Transcriber Suite — nemokama transkripcija neprisijungus</title>
+<meta name="description" content="Nemokama darbalaukio programa, paleidžianti OpenAI Whisper jūsų pačių kompiuteryje. Transkribuokite garso ir vaizdo įrašus į SRT, VTT, DOCX ir PDF. Windows, macOS ir Linux.">
+<meta name="author" content="translation-robot">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://whisper-transcriber-suite.com/lt/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/">
+<link rel="alternate" hreflang="de" href="https://whisper-transcriber-suite.com/de/">
+<link rel="alternate" hreflang="fr" href="https://whisper-transcriber-suite.com/fr/">
+<link rel="alternate" hreflang="es" href="https://whisper-transcriber-suite.com/es/">
+<link rel="alternate" hreflang="it" href="https://whisper-transcriber-suite.com/it/">
+<link rel="alternate" hreflang="pt-BR" href="https://whisper-transcriber-suite.com/pt-br/">
+<link rel="alternate" hreflang="pt" href="https://whisper-transcriber-suite.com/pt/">
+<link rel="alternate" hreflang="nl" href="https://whisper-transcriber-suite.com/nl/">
+<link rel="alternate" hreflang="pl" href="https://whisper-transcriber-suite.com/pl/">
+<link rel="alternate" hreflang="ru" href="https://whisper-transcriber-suite.com/ru/">
+<link rel="alternate" hreflang="uk" href="https://whisper-transcriber-suite.com/uk/">
+<link rel="alternate" hreflang="tr" href="https://whisper-transcriber-suite.com/tr/">
+<link rel="alternate" hreflang="cs" href="https://whisper-transcriber-suite.com/cs/">
+<link rel="alternate" hreflang="sk" href="https://whisper-transcriber-suite.com/sk/">
+<link rel="alternate" hreflang="hu" href="https://whisper-transcriber-suite.com/hu/">
+<link rel="alternate" hreflang="ro" href="https://whisper-transcriber-suite.com/ro/">
+<link rel="alternate" hreflang="bg" href="https://whisper-transcriber-suite.com/bg/">
+<link rel="alternate" hreflang="el" href="https://whisper-transcriber-suite.com/el/">
+<link rel="alternate" hreflang="sv" href="https://whisper-transcriber-suite.com/sv/">
+<link rel="alternate" hreflang="da" href="https://whisper-transcriber-suite.com/da/">
+<link rel="alternate" hreflang="nb" href="https://whisper-transcriber-suite.com/nb/">
+<link rel="alternate" hreflang="fi" href="https://whisper-transcriber-suite.com/fi/">
+<link rel="alternate" hreflang="hr" href="https://whisper-transcriber-suite.com/hr/">
+<link rel="alternate" hreflang="sr" href="https://whisper-transcriber-suite.com/sr/">
+<link rel="alternate" hreflang="sl" href="https://whisper-transcriber-suite.com/sl/">
+<link rel="alternate" hreflang="lt" href="https://whisper-transcriber-suite.com/lt/">
+<link rel="alternate" hreflang="zh-CN" href="https://whisper-transcriber-suite.com/zh-cn/">
+<link rel="alternate" hreflang="zh-TW" href="https://whisper-transcriber-suite.com/zh-tw/">
+<link rel="alternate" hreflang="ja" href="https://whisper-transcriber-suite.com/ja/">
+<link rel="alternate" hreflang="ko" href="https://whisper-transcriber-suite.com/ko/">
+<link rel="alternate" hreflang="vi" href="https://whisper-transcriber-suite.com/vi/">
+<link rel="alternate" hreflang="th" href="https://whisper-transcriber-suite.com/th/">
+<link rel="alternate" hreflang="id" href="https://whisper-transcriber-suite.com/id/">
+<link rel="alternate" hreflang="ms" href="https://whisper-transcriber-suite.com/ms/">
+<link rel="alternate" hreflang="hi" href="https://whisper-transcriber-suite.com/hi/">
+<link rel="alternate" hreflang="ar" href="https://whisper-transcriber-suite.com/ar/">
+<link rel="alternate" hreflang="fa" href="https://whisper-transcriber-suite.com/fa/">
+<link rel="alternate" hreflang="he" href="https://whisper-transcriber-suite.com/he/">
+<link rel="alternate" hreflang="lv" href="https://whisper-transcriber-suite.com/lv/">
+<link rel="alternate" hreflang="ca" href="https://whisper-transcriber-suite.com/ca/">
+<link rel="alternate" hreflang="bn" href="https://whisper-transcriber-suite.com/bn/">
+<link rel="alternate" hreflang="fil" href="https://whisper-transcriber-suite.com/fil/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/">
+<!-- i18n:hreflang:end -->
+<meta name="google-site-verification" content="_vMQaHCYUqaePsjuk_lmQ9Df32M03uPPZnXEFVr8ttU">
+<meta name="google-site-verification" content="uC9kBtANn2fSf-oX8ubTOv1cgtEQabzbnLz61epFOcc">
+<meta name="msvalidate.01" content="86B7B178FB8DB5F45F03295F6D2A8F4A">
+<meta name="msvalidate.01" content="C5065B95AD10AB4D2845E441E3D9FA37">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Whisper Transcriber Suite — nemokama garso ir vaizdo įrašų transkripcija neprisijungus">
+<meta property="og:description" content="Paleidžia OpenAI Whisper vietiškai. Jūsų garso įrašai lieka jūsų kompiuteryje, nereikia jokios paskyros. 14 išvesties formatų, tiesioginė transkripcija, kalbėtojų etiketės, YouTube atsisiuntimai. Nemokama, BSD-3-Clause, skirta Windows, macOS ir Linux.">
+<meta property="og:url" content="https://whisper-transcriber-suite.com/lt/">
+<meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — nemokama garso ir vaizdo transkripcija neprisijungus, skirta Windows, macOS ir Linux.">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="lt_LT">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Whisper Transcriber Suite — nemokama garso ir vaizdo įrašų transkripcija neprisijungus">
+<meta name="twitter:description" content="Paleidžia OpenAI Whisper vietiškai. Jūsų garso įrašai lieka jūsų kompiuteryje, nereikia jokios paskyros. 14 išvesties formatų, tiesioginė transkripcija, kalbėtojų etiketės, YouTube atsisiuntimai.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="alternate" type="text/plain" title="LLM santrauka" href="/llms.txt">
+
+<link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
+<script src="/js/motion-init.js?v=20260927b"></script>
+<link rel="stylesheet" href="/styles.css?v=20261019a">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://whisper-transcriber-suite.com/#org",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://github.com/Milomilo777/whisper-transcriber-suite/issues",
+        "availableLanguage": [
+          "English"
+        ]
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite",
+        "https://buymeacoffee.com/mehraz1358"
+      ],
+      "description": "Nemokama, atvirojo kodo darbalaukio programa, paleidžianti OpenAI Whisper vietiškai garso ir vaizdo transkripcijai."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://whisper-transcriber-suite.com/#app",
+      "name": "Whisper Transcriber Suite",
+      "alternateName": "WhisperTranscriberSuite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "image": "https://whisper-transcriber-suite.com/assets/logo-512.png",
+      "screenshot": [
+        "https://whisper-transcriber-suite.com/assets/shots/transcribe.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/live.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/download.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/queue.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/voice.webp",
+        "https://whisper-transcriber-suite.com/assets/shots/web.webp"
+      ],
+      "description": "Darbalaukio programa, paleidžianti OpenAI Whisper modelį vietoje per faster-whisper, whisper.cpp arba NVIDIA Parakeet. Transkribuoja garso ir vaizdo įrašus į SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX ir PDF. Jūsų garso įrašai lieka jūsų kompiuteryje ir nereikia jokios paskyros.",
+      "softwareVersion": "2.1.0",
+      "datePublished": "2026-05-11",
+      "dateModified": "2026-10-12",
+      "operatingSystem": "Windows, macOS, Linux",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "Speech-to-text transcription",
+      "featureList": [
+        "Kalbos pavertimas tekstu neprisijungus su faster-whisper, whisper.cpp arba NVIDIA Parakeet",
+        "14 transkripcijos formatų, įskaitant SRT, VTT, DOCX ir PDF",
+        "Tiesioginė mikrofono ir sistemos garso transkripcija",
+        "Kalbėtojų atskyrimas su kiekvieno žodžio laiko žymomis",
+        "Paketinė eilė su pristabdymu, tęsimu ir pakartotiniu paleidimu",
+        "Vaizdo ir garso įrašų atsisiuntimas iš bet kurios yt-dlp palaikomos svetainės",
+        "Adaptyvusis triukšmo slopinimas",
+        "Pasirinktinės DI santraukos, veiksmų punktai ir dvikalbis SRT",
+        "Pasirinktinis balso klonavimas neprisijungus",
+        "Žiniatinklio / LAN prieigos režimas",
+        "Eilėje rodomas kiekvienos transkripcijos greitis ir likęs laikas",
+        "Sukurti vaizdo įrašą su subtitrais: atsisiųskite, transkribuokite ir įdeginkite subtitrus į MP4",
+        "Įrašykite transkripciją kaip vieną neprisijungus pasiekiamą tinklalapį",
+        "Jungiklis „Dirbti neprisijungus“ su matoma tinklo būsena",
+        "Versti kalbą tiesiai į anglų kalbą"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isAccessibleForFree": true,
+      "interactionStatistic": {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/DownloadAction",
+        "userInteractionCount": 2694
+      },
+      "license": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE",
+      "downloadUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest",
+      "releaseNotes": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md",
+      "installUrl": "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md",
+      "codeRepository": "https://github.com/Milomilo777/whisper-transcriber-suite",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://whisper-transcriber-suite.com/#author"
+      },
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      },
+      "sameAs": [
+        "https://github.com/Milomilo777/whisper-transcriber-suite"
+      ],
+      "softwareRequirements": "Windows 10 or 11 (64-bit); macOS 10.15 or later (Intel build) or macOS 14 or later (Apple Silicon build); Linux from source with Python 3.11+",
+      "memoryRequirements": "At least 8 GB RAM; an NVIDIA GPU with CUDA is optional"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://whisper-transcriber-suite.com/#website",
+      "name": "Whisper Transcriber Suite",
+      "url": "https://whisper-transcriber-suite.com/",
+      "inLanguage": "lt",
+      "publisher": {
+        "@id": "https://whisper-transcriber-suite.com/#org"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://whisper-transcriber-suite.com/#author",
+      "name": "translation-robot",
+      "url": "https://github.com/translation-robot",
+      "sameAs": [
+        "https://github.com/translation-robot"
+      ],
+      "description": "Nepriklausomas kūrėjas, prižiūrintis Whisper Transcriber Suite kaip atvirojo kodo projektą."
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://whisper-transcriber-suite.com/lt/#webpage",
+      "url": "https://whisper-transcriber-suite.com/lt/",
+      "name": "Whisper Transcriber Suite — nemokama transkripcija neprisijungus",
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/lt/#website"
+      },
+      "about": {
+        "@id": "https://whisper-transcriber-suite.com/lt/#app"
+      },
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": [
+          ".hero-lede",
+          ".faq-a p"
+        ]
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Ar Whisper Transcriber Suite yra nemokama?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Taip. Ji licencijuota pagal BSD-3-Clause licenciją, be jokios prenumeratos ir mokesčio už minutes. Pats Whisper modelis atsisiunčiamas vieną kartą (apie 1-3 GB) pirmojo paleidimo metu; po to transkripcija veikia be interneto ryšio."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Ar ji kur nors įkelia mano garso ar vaizdo įrašus?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ne, pagal numatytuosius nustatymus ne. Kiekviena numatytoji posistemė — faster-whisper, whisper.cpp, NVIDIA Parakeet — veikia lokaliai jūsų kompiuteryje. Dvi posistemės yra tik pasirenkamos (cloud_stt per Gemini API ir google_cloud_stt), ir abi lieka išjungtos, kol patys jų neįjungsite skiltyje Išplėstiniai nustatymai → Backend. Naudojimo statistika (be garso, be failų pavadinimų) pagal numatytuosius nustatymus yra įjungta ir gali būti išjungta skiltyje Žinynas > Naudojimo statistika, programa kartą per dieną tikrina GitHub, ar nėra naujos versijos, o Failas > Dirbti neprisijungus sustabdo bet kokį tinklo naudojimą."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kokiose platformose ji veikia?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Windows, macOS ir Linux. Paskelbti atsisiuntimai yra Windows diegimo programa, Windows nešiojamasis ZIP paketas ir macOS DMG failas; Linux paleidžiama iš išeities kodo."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kokius transkripcijos formatus ji gali sukurti?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX ir PDF, taip pat oTranscribe, ELAN, InqScribe bei Express Scribe."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Ar ji gali nurodyti, kas kalba?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Taip, galima pasirinktinė kalbėtojų diarizacija (Atpažinti kalbėtojus) su žodžių laiko žymomis ir laiko intervalų karpymu."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Ar ji gali transkribuoti tiesioginį mikrofono ar sistemos garsą?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Taip, skirtuke „Live“: mikrofono arba sistemos garsas, transkribuojamas jam skambant."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Ar ji gali atsisiųsti ir transkribuoti internetinius vaizdo įrašus, pvz., iš YouTube?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Taip, iš bet kurios svetainės, kurią palaiko yt-dlp, su pasirinktiniu transkribavimo baigus atsisiuntimą žingsniu."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Ar ji gali apibendrinti transkripciją, išskirti veiksmų punktus arba atsakyti į klausimus apie ją?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Taip, per pasirinktinį skirtuką „DI įrankiai“ transkripcijos peržiūros priemonėje: apibendrinimas, veiksmų punktai, klausimo pateikimas ir segmentų vertimas, sukuriantis dvikalbį SRT. Pagal numatytuosius nustatymus ši funkcija yra išjungta."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Ar ji gali klonuoti balsą ir priversti jį ištarti naują tekstą?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Taip, per pasirinktinį skirtuką „Clone Your Voice“, naudojant OmniVoice (Apache-2.0) tik jūsų kompiuteryje. Pagal numatytuosius nustatymus išjungta; pasirenkama diegimo metu."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kuo tai skiriasi nuo tiesioginio Whisper API iškvietimo?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Pagal numatytuosius nustatymus modelis paleidžiamas vietiškai per faster-whisper, todėl nėra jokio API mokesčio už minutes ir jokie garso įrašai nepalieka jūsų kompiuterio, nebent patys aiškiai pasirinktumėte vieną iš dviejų debesijos posistemių."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Ar keli žmonės tame pačiame tinkle gali ja naudotis neįdiegdami jos kiekviename kompiuteryje?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Taip, Žiniatinklio / LAN prieigos režimas paverčia šį kompiuterį transkripcijos puslapiu, kuriuo gali naudotis kiti tinklo įrenginiai."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kas naujo 2.1 versijoje?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Meniu, mygtukai ir pranešimai pateikiami 42 kalbomis (išversti mašininiu būdu ir atitinkamai pažymėti); kalbėtojų žymos pasiekia ilgų įrašų pabaigą ir galite nustatyti, kiek žmonių kalba; transkripcijos, eksportuoti failai ir subtitrai visiškai įrašomi į diską prieš pakeičiant senąjį failą; internetinės funkcijos veikia visuose Mac kompiuteriuose. 2.0 versijoje pridėtas eilės greičio ir likusio laiko rodymas, vaizdo įrašas su subtitrais iš nuorodos, transkripcijos kaip vienas neprisijungus pasiekiamas tinklalapis, pasirenkamas režimas „Dirbti neprisijungus“ ir vertimas į anglų kalbą."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Ar programa gali paversti vaizdo įrašo nuorodą vaizdo įrašu su subtitrais?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Taip. Skirtuke „Atsisiųsti vaizdo įrašus“ pažymėkite „Sukurti vaizdo įrašą su subtitrais“: programa atsisiunčia vaizdo įrašą, transkribuoja jį su Whisper ir įterpia subtitrus su ffmpeg, sukurdama failą, pavadintą pagal vaizdo įrašą su galūne -subbed.mp4. Atsisiųstas failas ir transkripcija išsaugomi, o esamas -subbed.mp4 failas niekada nėra perrašomas."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Ar galiu visiškai neleisti programai pasiekti tinklo?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Taip. Failas > Dirbti neprisijungus sustabdo atnaujinimų tikrinimą, naudojimo statistiką, modelių atsisiuntimus ir nuotolinius DI teikėjus. Kol ši funkcija įjungta, lango apačioje esanti eilutė rodo, ar yra atviras ryšys, o „Patikrinti neprisijungus dabar“ rodo, kad bandomieji ryšiai yra atmetami. Kai ji išjungta, programa prie tinklo jungiasi tik dėl internetinių nustatymų paleidimo metu, kasdienio atnaujinimų tikrinimo, naudojimo statistikos (kurią galima išjungti skiltyje Žinynas > Naudojimo statistika) ir jūsų pradėtų atsisiuntimų."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Kaip susisiekti su projektu?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Pranešimus apie klaidas ir funkcijų pasiūlymus siųskite į GitHub Issues, klausimus — į GitHub Discussions, o visa kita — el. paštu (adresas pateikiamas paprašius skiltyje „Kontaktai“). Saugumo pranešimai teikiami per GitHub privačių pažeidžiamumų pranešimo funkciją."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m0 0-5-5m5 5-5 5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m12 4-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m8 4 6 6-6 6"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 20 20"><path fill="currentColor" d="M2 3.6 8.4 2.7v6.6H2zm7.3-1 8.7-1.2v7.9H9.3zM2 10.2h6.4v6.7L2 16zm7.3 0H18v8.4l-8.7-1.2z"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 20 20"><path fill="currentColor" d="M13.6 10.6c0-1.9 1.6-2.8 1.6-2.9-.9-1.3-2.3-1.5-2.8-1.5-1.2-.1-2.3.7-2.9.7-.6 0-1.5-.7-2.5-.7-1.3 0-2.5.8-3.2 1.9-1.4 2.4-.4 5.9 1 7.8.6.9 1.4 2 2.4 1.9 1-.1 1.3-.6 2.5-.6s1.5.6 2.5.6c1 0 1.7-.9 2.3-1.9.7-1.1 1-2.1 1-2.2 0 0-1.9-.8-1.9-3.1zM11.7 4.9c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-1 1.5-.8 2.4.9.1 1.8-.4 2.4-1.1z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14v11H3zM6 8.5l2 1.5-2 1.5M10 12h4"/></symbol>
+    <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+    <symbol id="i-cup" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 7h10v4.5A4.5 4.5 0 0 1 9.5 16h-1A4.5 4.5 0 0 1 4 11.5zm10 1.5h1.2a2.3 2.3 0 0 1 0 4.6H14M7 2.5v2m3-2v2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 5h14v10H3zm0 0 7 6 7-6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 4h14v9H8l-4 3v-3H3z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7 7a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM3 10h4m6 0h4M4 5l3 2m9-2-3 2M4 15l3-2m9 2-3-2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 20 20"><path fill="currentColor" d="M6 4v12l10-6z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 20 20"><path fill="currentColor" d="M5 4h3.5v12H5zm6.5 0H15v12h-3.5z"/></symbol>
+  </defs>
+</svg> <a class="skip-link" href="#main">Praleisti ir pereiti prie turinio</a>
+
+<header class="site-header" data-header>
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — pradžia">
+      <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
+    </a>
+    <nav class="site-nav" aria-label="Pagrindinis">
+      <a href="#showreel">Apžvalga</a> <a href="#features">Funkcijos</a> <a href="#how-it-works">Kaip tai veikia</a> <a href="#download">Atsisiųsti</a> <a href="#compare">Palyginti</a> <a href="#faq">DUK</a> <a href="#contact">Kontaktai</a>
+    </nav>
+    <div class="header-cta">
+      <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Kalba" aria-label="Kalba"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->Lietuvių<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/?lang=en" hreflang="en" lang="en" data-lang-pick="en">English</a></li>
+<li><a href="/de/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
+<li><a href="/fr/" hreflang="fr" lang="fr" data-lang-pick="fr">Français</a></li>
+<li><a href="/es/" hreflang="es" lang="es" data-lang-pick="es">Español</a></li>
+<li><a href="/it/" hreflang="it" lang="it" data-lang-pick="it">Italiano</a></li>
+<li><a href="/pt-br/" hreflang="pt-BR" lang="pt-BR" data-lang-pick="pt-BR">Português (Brasil)</a></li>
+<li><a href="/pt/" hreflang="pt" lang="pt" data-lang-pick="pt">Português (Portugal)</a></li>
+<li><a href="/nl/" hreflang="nl" lang="nl" data-lang-pick="nl">Nederlands</a></li>
+<li><a href="/pl/" hreflang="pl" lang="pl" data-lang-pick="pl">Polski</a></li>
+<li><a href="/ru/" hreflang="ru" lang="ru" data-lang-pick="ru">Русский</a></li>
+<li><a href="/uk/" hreflang="uk" lang="uk" data-lang-pick="uk">Українська</a></li>
+<li><a href="/tr/" hreflang="tr" lang="tr" data-lang-pick="tr">Türkçe</a></li>
+<li><a href="/cs/" hreflang="cs" lang="cs" data-lang-pick="cs">Čeština</a></li>
+<li><a href="/sk/" hreflang="sk" lang="sk" data-lang-pick="sk">Slovenčina</a></li>
+<li><a href="/hu/" hreflang="hu" lang="hu" data-lang-pick="hu">Magyar</a></li>
+<li><a href="/ro/" hreflang="ro" lang="ro" data-lang-pick="ro">Română</a></li>
+<li><a href="/bg/" hreflang="bg" lang="bg" data-lang-pick="bg">Български</a></li>
+<li><a href="/el/" hreflang="el" lang="el" data-lang-pick="el">Ελληνικά</a></li>
+<li><a href="/sv/" hreflang="sv" lang="sv" data-lang-pick="sv">Svenska</a></li>
+<li><a href="/da/" hreflang="da" lang="da" data-lang-pick="da">Dansk</a></li>
+<li><a href="/nb/" hreflang="nb" lang="nb" data-lang-pick="nb">Norsk bokmål</a></li>
+<li><a href="/fi/" hreflang="fi" lang="fi" data-lang-pick="fi">Suomi</a></li>
+<li><a href="/hr/" hreflang="hr" lang="hr" data-lang-pick="hr">Hrvatski</a></li>
+<li><a href="/sr/" hreflang="sr" lang="sr" data-lang-pick="sr">Српски</a></li>
+<li><a href="/sl/" hreflang="sl" lang="sl" data-lang-pick="sl">Slovenščina</a></li>
+<li><a href="/lt/" hreflang="lt" lang="lt" data-lang-pick="lt" aria-current="true">Lietuvių</a></li>
+<li><a href="/zh-cn/" hreflang="zh-CN" lang="zh-CN" data-lang-pick="zh-CN">简体中文</a></li>
+<li><a href="/zh-tw/" hreflang="zh-TW" lang="zh-TW" data-lang-pick="zh-TW">繁體中文</a></li>
+<li><a href="/ja/" hreflang="ja" lang="ja" data-lang-pick="ja">日本語</a></li>
+<li><a href="/ko/" hreflang="ko" lang="ko" data-lang-pick="ko">한국어</a></li>
+<li><a href="/vi/" hreflang="vi" lang="vi" data-lang-pick="vi">Tiếng Việt</a></li>
+<li><a href="/th/" hreflang="th" lang="th" data-lang-pick="th">ไทย</a></li>
+<li><a href="/id/" hreflang="id" lang="id" data-lang-pick="id">Bahasa Indonesia</a></li>
+<li><a href="/ms/" hreflang="ms" lang="ms" data-lang-pick="ms">Bahasa Melayu</a></li>
+<li><a href="/hi/" hreflang="hi" lang="hi" data-lang-pick="hi">हिन्दी</a></li>
+<li><a href="/ar/" hreflang="ar" lang="ar" dir="rtl" data-lang-pick="ar">العربية</a></li>
+<li><a href="/fa/" hreflang="fa" lang="fa" dir="rtl" data-lang-pick="fa">فارسی</a></li>
+<li><a href="/he/" hreflang="he" lang="he" dir="rtl" data-lang-pick="he">עברית</a></li>
+<li><a href="/lv/" hreflang="lv" lang="lv" data-lang-pick="lv">Latviešu</a></li>
+<li><a href="/ca/" hreflang="ca" lang="ca" data-lang-pick="ca">Català</a></li>
+<li><a href="/bn/" hreflang="bn" lang="bn" data-lang-pick="bn">বাংলা</a></li>
+<li><a href="/fil/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
+      <button class="btn-icon" type="button" data-motion-toggle aria-pressed="false" title="Pristabdyti arba leisti animacijas">
+        <svg class="i i-when-on" aria-hidden="true"><use href="#i-pause"/></svg> <svg class="i i-when-off" aria-hidden="true"><use href="#i-play"/></svg> <span class="sr-only" data-motion-label>Pristabdyti animacijas</span>
+      </button>
+      <a class="btn btn-ghost btn-sm hide-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" aria-label="Suteikite žvaigždutę Whisper Transcriber Suite sistemoje GitHub"> <svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Skirti žvaigždutę </a> <a class="btn btn-primary btn-sm" href="#download">Atsisiųsti</a>
+    </div>
+  </div>
+</header>
+
+<div class="lang-notice" data-lang-notice hidden>
+  <div class="wrap lang-notice-row">
+    <p>Šis puslapis rodomas jūsų kalba pagal vietą, iš kurios lankotės. <a href="/?lang=en" data-lang-pick="en">Rodyti anglų kalba</a></p>
+    <button class="btn-icon" type="button" data-lang-notice-close aria-label="Uždaryti"><span aria-hidden="true">×</span></button>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <canvas class="hero-waves" data-waves aria-hidden="true"></canvas>
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="kicker reveal" style="--d:0"><span class="kicker-dot" aria-hidden="true"></span>Nemokama ir atvirojo kodo · BSD-3-Clause · <span data-auto="version">v2.1.0</span></p>
+        <h1 class="hero-title" id="hero-title">
+          <span class="line"><span class="rise" style="--d:1">Garsas įeina.</span></span> <span class="line"><span class="rise" style="--d:2">Tekstas išeina.</span></span> <span class="line"><span class="rise grad-text" style="--d:3">Jūsų garso įrašai lieka jūsų kompiuteryje.</span></span>
+        </h1>
+        <p class="hero-lede reveal" style="--d:4">Whisper Transcriber Suite paleidžia OpenAI Whisper modelį tik jūsų pačių kompiuteryje — per faster-whisper, whisper.cpp arba NVIDIA Parakeet. Įvilkite garso ar vaizdo įrašą ir gaukite transkripciją su laiko žymomis. Jokios debesijos, jokios paskyros, jokio mokesčio už minutes.</p>
+        <div class="hero-actions reveal" style="--d:5">
+          <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Atsisiųsti Windows sistemai</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">Peržiūrėti apžvalgą<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </div>
+        <ul class="proof reveal" style="--d:6" aria-label="Trumpai">
+          <li><strong data-count="14">14</strong><span>transkripcijos formatų</span></li>
+          <li><strong data-auto="downloads">2,600+</strong><span>atsisiuntimų iki šiol</span></li>
+          <li><strong>0</strong><span>garso įkėlimų pagal numatytuosius nustatymus</span></li>
+          <li><strong>$0</strong><span>visam laikui</span></li>
+        </ul>
+      </div>
+
+      <div class="hero-scene" data-scene aria-hidden="true">
+        <div class="scene-rig" data-rig>
+          <div class="float-layer l-back">
+            <figure class="win win-sm win-a"><div class="win-bar"><i></i><i></i><i></i><span>Tiesiogiai</span></div><img src="/assets/shots/live-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-mid">
+            <figure class="win win-sm win-b"><div class="win-bar"><i></i><i></i><i></i><span>Atsisiųsti vaizdo įrašus</span></div><img src="/assets/shots/download-640.webp" fetchpriority="low" decoding="async" alt="" width="640" height="362"></figure>
+          </div>
+          <div class="float-layer l-front">
+            <figure class="win win-main"><div class="win-bar"><i></i><i></i><i></i><span>Whisper Transcriber Suite</span></div><img src="/assets/shots/transcribe.webp" srcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" sizes="(max-width: 1080px) 72vw, 480px" alt="" width="1180" height="668" fetchpriority="high"></figure>
+          </div>
+          <div class="float-layer l-pop1">
+            <div class="chip-card wave-card"><span class="rec"></span><span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+          </div>
+          <div class="float-layer l-pop2">
+            <div class="chip-card srt-card">
+              <p class="srt-ts">00:00:04,120 → 00:00:06,880</p>
+              <p class="srt-line"><span data-hero-typer>Jūsų garso įrašai lieka jūsų kompiuteryje.</span><span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="float-layer l-pop3">
+            <div class="chip-card fmt-card"><b>.srt</b><b>.vtt</b><b>.docx</b><b>.pdf</b></div>
+          </div>
+          <div class="float-layer l-pop4">
+            <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Transkribavimas neprisijungus</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Kalbėtojų diarizacija</span> <span>Tiesioginis mikrofonas</span> <span>Balso klonavimas</span> <span>faster-whisper</span> <span>whisper.cpp</span> <span>NVIDIA Parakeet</span> <span>large-v3</span> <span>large-v3-turbo</span> <span>distil-large-v3.5</span> <span>SRT</span> <span>VTT</span> <span>DOCX</span> <span>PDF</span> <span>yt-dlp</span> <span>Kalbėtojų diarizacija</span> <span>Tiesioginis mikrofonas</span> <span>Balso klonavimas</span>
+    </div>
+  </div>
+
+  <!-- ============ SHOWREEL (3D carousel) ============ -->
+  <section class="section showreel" id="showreel" aria-labelledby="reel-title">
+    <div class="reel-glow" aria-hidden="true"></div>
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Produkto apžvalga</p>
+        <h2 id="reel-title">Vienas langas. <span class="h2-soft">Šeši įrankiai.</span></h2>
+        <p class="section-lede">Nutempkite failą, pasirinkite parinktis ir paspauskite „Transkribuoti“. Visa kita — eilė, atsisiuntimai, tiesioginis įrašymas, balso klonavimas ir LAN bendrinimas — pasiekiama vos per vieną skirtuką. Tempkite žiedą arba naudokite rodykles.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/showreel-still.webp" data-still="/assets/promo/showreel-still.webp" data-anim="/assets/promo/showreel.svg" alt="Animacija: interviu su dviem pažymėtais kalbėtojais, paskaita, paversta subtitrais su laiko žymomis, vaizdo įrašo nuoroda, paversta vaizdo įrašu su subtitrais, tiesioginiai subtitrai iš mikrofono ir transkripcija, išsaugota šalia failo SRT, VTT, DOCX bei PDF formatais." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="reel" data-reel>
+        <div class="reel-viewport" data-reel-viewport>
+          <div class="reel-ring" data-reel-ring>
+            <figure class="reel-card" data-title="Transkribuoti" data-caption="Failų nutempimo sritis, variklio, modelio ir kalbos pasirinkimo valdikliai, kalbėtojų žymėjimo ir atskirų žodžių laiko žymų parinktys."><div class="win-bar"><i></i><i></i><i></i><span>Transkribuoti</span></div><img src="/assets/shots/transcribe-640.webp" alt="Kortelė „Transkribuoti“: failų nutempimo sritis, variklio, modelio ir kalbos pasirinkimo valdikliai, kalbėtojų žymėjimo ir žodžių laiko žymų parinktys" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Tiesiogiai" data-caption="Transkribuokite mikrofono garsą — arba viską, kas atkuriama šiame kompiuteryje — realiuoju laiku, naudodamiesi įvesties lygio matuokliu."><div class="win-bar"><i></i><i></i><i></i><span>Tiesiogiai</span></div><img src="/assets/shots/live-640.webp" alt="Kortelė „Tiesiogiai“: mikrofono arba sistemos garso šaltinis, kalbos ir modelio pasirinkimo valdikliai, įvesties lygio matuoklis ir tiesioginės transkripcijos sritis" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Atsisiųsti vaizdo įrašus" data-caption="Pasirinkite formatą, iškirpkite laiko intervalą, peržiūrėkite, kokius subtitrus vaizdo įrašas jau turi, ir pasirinktinai jį transkribuokite arba įterpkite subtitrus į naują MP4 failą."><div class="win-bar"><i></i><i></i><i></i><span>Atsisiųsti vaizdo įrašus</span></div><img src="/assets/shots/download-640.webp" alt="Kortelė „Atsisiųsti vaizdo įrašus“: URL su eilute „Yra subtitrai“, naršyklės prisijungimo slapukai, formatas, laiko intervalas, „Verčiau naudoti subtitrus“, „Transkribuoti po atsisiuntimo“ ir „Sukurti vaizdo įrašą su subtitrais“" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Transkribavimo eilė" data-caption="Paketinės užduotys su tiesiogine eiga, greičiu ir likusiu laiku — pristabdykite, atnaujinkite, atšaukite, paleiskite iš naujo arba pašalinkite bet kurią eilutę."><div class="win-bar"><i></i><i></i><i></i><span>Transkribavimo eilė</span></div><img src="/assets/shots/queue-640.webp" alt="Kortelė „Transkribavimo eilė“: failo, būsenos, eigos, greičio ir likusio laiko, kalbos bei praėjusio laiko stulpeliai su parinktimis pristabdyti, tęsti, atšaukti, paleisti iš naujo ir pašalinti" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Klonuokite savo balsą" data-caption="Pasirinktinai, visiškai neprisijungus: klonuokite balsą iš trumpo pavyzdžio arba susikurkite jį patys ir leiskite jam perskaityti naują tekstą."><div class="win-bar"><i></i><i></i><i></i><span>Klonuokite savo balsą</span></div><img src="/assets/shots/voice-640.webp" alt="Skirtukas „Klonuokite savo balsą / Tekstas į balsą“: OmniVoice modelis, balso pavyzdys, skaitomas tekstas, kalba ir greitis" width="640" height="362" loading="lazy" decoding="async"></figure>
+            <figure class="reel-card" data-title="Žiniatinklio / LAN prieiga" data-caption="Vienu mygtuko paspaudimu šis kompiuteris paverčiamas transkribavimo puslapiu kitiems jūsų tinklo įrenginiams."><div class="win-bar"><i></i><i></i><i></i><span>Žiniatinklio / LAN prieiga</span></div><img src="/assets/shots/web-640.webp" alt="Kortelė „Žiniatinklio / LAN prieiga“: žiniatinklio prieigos paleidimas, prievadas, bendrinimas vietiniame tinkle, prieigos slaptažodis ir HTTPS parinktys" width="640" height="362" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+        <div class="reel-controls">
+          <button class="reel-btn" type="button" data-reel-prev aria-label="Ankstesnis ekranas"><svg class="i" aria-hidden="true"><use href="#i-left"/></svg></button>
+          <div class="reel-meta" aria-live="off" data-reel-live>
+            <p class="reel-title" data-reel-title>Transkribuoti</p>
+            <p class="reel-caption" data-reel-caption>Failų nutempimo sritis, variklio, modelio ir kalbos pasirinkimo valdikliai, kalbėtojų žymėjimo ir atskirų žodžių laiko žymų parinktys.</p>
+          </div>
+          <button class="reel-btn" type="button" data-reel-next aria-label="Kitas ekranas"><svg class="i" aria-hidden="true"><use href="#i-right"/></svg></button>
+        </div>
+        <div class="reel-dots" data-reel-dots role="group" aria-label="Pasirinkite ekraną"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Nauja 2.1 versijoje</p>
+        <h2 id="new-title">Kas naujo 2.1 versijoje. <span class="h2-soft">Dabar jūsų kalba.</span></h2>
+        <p class="section-lede">Programa 42 kalbomis, kalbėtojų žymos, pasiekiančios ilgų įrašų pabaigą, failai, išliekantys dingus elektrai, ir internetinės funkcijos, veikiančios kiekviename „Mac“. Žemiau — kas buvo pridėta 2.0 versijoje.</p>
+      </header>
+
+      <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Visos platformos</p>
+          <h3>Programa jūsų kalba</h3>
+          <p>Meniu, mygtukai ir pranešimai pateikiami 42 kalbomis (39 „macOS“ ir „Linux“ sistemose). Programa naudoja jūsų sistemos kalbą arba galite pasirinkti norimą skiltyje <em>Išplėstiniai nustatymai</em>. Kiekviena kalba, išskyrus anglų, yra mašininis vertimas ir yra taip pažymėta; persų, arabų ir hebrajų kalbos kol kas siūlomos „Windows“ sistemoje.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Visos platformos</p>
+          <h3>Patikimos kalbėtojų žymos</h3>
+          <p>Kalbėtojų vardai dabar pasiekia ilgų įrašų pabaigą, kalbėtojų aptikimas nebegali sutrikdyti transkribavimo, o šalia <em>Atpažinti kalbėtojus</em> galite nustatyti, kiek žmonių kalba (nuo 2 iki 10), užuot palikę „Auto“.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · Visos platformos</p>
+          <h3>Jūsų darbas saugesnis</h3>
+          <p>Transkripcijos, eksportuoti failai ir subtitrai visiškai įrašomi į diską prieš pakeičiant senąjį failą, todėl dingus elektrai neliks tuščio failo. Transkribavimas, kurio vykdytojas sustojo įrašęs visus failus, laikomas baigtu.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.1 · macOS</p>
+          <h3>Internetinės funkcijos kiekviename „Mac“</h3>
+          <p>Atnaujinimų patikra, pranešimai apie problemas ir kitos internetinės užklausos nebebaigiamos klaida <em>certificate verify failed</em>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Visos platformos</p>
+          <h3>Greitis ir likęs laikas</h3>
+          <p>Skirtuke „Transkribavimo eilė“ rodoma, kaip greitai vyksta kiekvienas transkribavimas ir maždaug kiek laiko liko, pavyzdžiui, <em>apie 4.8x, liko 6 min.</em>. Užbaigus užduotį, rezultatų kortelėje nurodomas greitis, modelis ir įrenginys.</p>
+          <figure class="new-shot"><img src="/assets/shots/queue-640.webp" alt="Skirtukas „Transkribavimo eilė“ su stulpeliu „Greitis ir likęs laikas“, kuriame rodoma „apie 6.8x, liko 2 min.“ vykdomai užduočiai" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Visos platformos</p>
+          <h3>Sukurti vaizdo įrašą su subtitrais</h3>
+          <p>Pažymėkite šią parinktį skirtuke „Atsisiųsti vaizdo įrašus“ ir nuoroda taps <code>&lt;title&gt;-subbed.mp4</code> su įdegtais subtitrais: atsisiuntimas, transkribavimas ir subtitrų įdeginimas vykdomi kaip viena eilės užduotis su eigos rodymu ir veikiančiu mygtuku „Atšaukti“. Atsisiųstas failas ir transkripcija yra išsaugomi.</p>
+          <figure class="new-shot"><img src="/assets/shots/download-640.webp" alt="Kortelė „Atsisiųsti vaizdo įrašus“, kurioje rodoma eilutė „Yra subtitrai: Anglų ir Vokiečių“, mygtukas „Verčiau naudoti subtitrus“ ir žymimasis langelis „Sukurti vaizdo įrašą su subtitrais“" width="640" height="362" loading="lazy" decoding="async"></figure>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Visos platformos</p>
+          <h3>Bendrinkite transkripciją kaip vieną žiniatinklio puslapį</h3>
+          <p>Įrašykite baigtą transkripciją kaip vieną <code>.html</code> failą, kuris atveriamas bet kurioje naršyklėje be jokio diegimo ir be interneto ryšio: laiko žymos, kalbėtojai, skyriai ir paieškos laukelis. Spustelėkite žodį, ir įrašas bus atkuriamas nuo tos vietos.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Visos platformos</p>
+          <h3>Dirbti neprisijungus: aiškiai matoma</h3>
+          <p>Vienas jungiklis meniu „Failas“ atjungia programą nuo tinklo. Eilutė lango apačioje nurodo, ar ryšys yra atidarytas, o <em>Patikrinti neprisijungus dabar</em> parodo, kaip atmetami bandomieji prisijungimai. Naudojimo statistika yra įjungta pagal numatytuosius nustatymus ir ją galima išjungti meniu „Žinynas“.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Visos platformos</p>
+          <h3>Išverskite kalbą į anglų kalbą</h3>
+          <p>Parinktis <em>Išvestis: vertimas į anglų kalbą</em> vienu kartu paverčia ne anglų kalbos šneką angliškais subtitrais, naudodama paties Whisper vertimo funkciją. Pagal numatytuosius nustatymus ji yra išjungta ir prieinama ne visiems varikliams ar modeliams.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · macOS</p>
+          <h3>„Mac“, kuris veikia kaip tikras „Mac“</h3>
+          <p>Programos meniu su nustatymais (Command-comma), prie macOS prisitaikančios šviesi ir tamsi temos, sistemos šriftas, failų atvėrimas iš „Finder“ ar užtempimas ant „Dock“ piktogramos ir pranešimas, kai užduotis baigiama programai veikiant fone.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Windows</p>
+          <h3>Užduočių juostos eiga ir tamsios langų antraštės</h3>
+          <p>Užduočių juostos mygtukas rodo eigą, eilėje laukiančių bei vykdomų užduočių skaičių ir sumirksi užbaigus užduotį. Lango antraštės prisitaiko prie tamsios temos, o tekstas išlieka ryškus esant 125% ir 150% ekrano masteliui.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.0 · Pirmasis paleidimas</p>
+          <h3>Greita pradžia ir pavyzdinis įrašas</h3>
+          <p>Ką tik įdiegta programa paprašo pasirinkti kalbą, kokybę („Greitas“ arba „Geriausia kokybė“) bei aplanką ir parodo modelio dydį dar prieš prasidedant atsisiuntimui. 18 sekundžių viešojo domeno įrašas leidžia pamatyti tikrą transkripciją prieš pasirenkant savo failą.</p>
+        </article>
+      </div>
+      <p class="feature-more sr">Taip pat nauja 2.0 versijoje: funkcija „Tekstas į balsą“ skaito tekstus iki 100 000 simbolių dalimis, mygtukas <em>Atnaujinti</em> atnaujina vaizdo atsisiuntimo įrankį be administratoriaus teisių, o neįkyri atnaujinimo juosta pakeičia atnaujinimo langą. Skirtuko „Video Tiling“ nebeliko. Viskas pateikta <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">pakeitimų sąraše</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section features" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Funkcijos</p>
+        <h2 id="features-title">Viskas, ko tikitės iš transkribavimo įrankio. <span class="h2-soft">Veikia jūsų kompiuteryje.</span></h2>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/prism-still.webp" data-still="/assets/promo/prism-still.webp" data-anim="/assets/promo/prism.svg" alt="Animacija: didelė „W“ atskiria du kalbėtojus, parodo vietoje be interneto veikiančius variklius faster-whisper, whisper.cpp bei Parakeet ir išsiskleidžia į 14 transkripcijos formatų." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <div class="bento" data-spotlight>
+        <article class="cell cell-engines tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
+            <h3>Vietinė, privati transkripcija</h3>
+            <p>Whisper <code>large-v3</code> pagal numatytuosius nustatymus, taip pat <code>large-v3-turbo</code> ir <code>distil-large-v3.5</code>. Pasirinkite variklį, tinkantį jūsų aparatinei įrangai.</p>
+          </div>
+          <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
+          <div class="viz viz-engines" aria-hidden="true">
+            <div class="engine-list">
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">faster-whisper</span><span class="engine-tag">numatytasis</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">whisper.cpp</span><span class="engine-tag">vietinis</span></div>
+              <div class="engine"><span class="engine-radio"></span><span class="engine-name">NVIDIA Parakeet</span><span class="engine-tag">vietinis</span></div>
+            </div>
+            <div class="offline-badge"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Veikia be interneto po vienkartinio modelio atsisiuntimo</div>
+          </div>
+        </article>
+
+        <article class="cell cell-formats tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">14 formatų</p>
+            <h3>Visi transkripcijos formatai, kurių jums prireiks</h3>
+            <p>Išsaugoma tiesiai šalia pradinio failo — taip pat oTranscribe, ELAN, InqScribe ir Express Scribe profesionaliems transkribavimo procesams.</p>
+          </div>
+          <div class="viz viz-formats" aria-hidden="true">
+            <span>srt</span> <span>vtt</span> <span>ass</span> <span>tsv</span> <span>txt</span> <span>json</span> <span>lrc</span> <span>md</span> <span>docx</span> <span>pdf</span> <span class="wide">oTranscribe</span> <span class="wide">ELAN</span> <span class="wide">InqScribe</span> <span class="wide">Express Scribe</span>
+          </div>
+        </article>
+
+        <article class="cell cell-live tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Mikrofonas · sistemos garsas</p>
+            <h3>Tiesioginė transkripcija</h3>
+            <p>Transkribuoja mikrofono garsą — arba bet ką, kas leidžiama šiame kompiuteryje — realiuoju laiku. Fragmentai atskiriami ties natūraliomis pauzėmis, todėl žodžiai niekada nėra perkertami.</p>
+          </div>
+          <div class="viz viz-live" aria-hidden="true">
+            <div class="live-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="live-text"><span class="live-rec"></span><span data-typer>kad žodžiai atsirastų jums kalbant</span><span class="caret"></span></p>
+          </div>
+        </article>
+
+        <article class="cell cell-speakers tone-sun sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Žodžių laiko žymos</p>
+            <h3>Kalbėtojų diarizacija</h3>
+            <p>Pasirenkamas „Atpažinti kalbėtojus“ etapas, taip pat žodžių laiko žymos ir laiko intervalų apkarpymas tiksliems segmentams redaguoti.</p>
+          </div>
+          <div class="viz viz-speakers" aria-hidden="true">
+            <div class="utt"><span class="ts">00:04.2</span><span class="spk s1">1 kalbėtojas</span><span class="words"><b>Taigi</b> <b>nuo</b> <b>ko</b> <b>mes</b> <b>pradedame?</b></span></div>
+            <div class="utt"><span class="ts">00:06.9</span><span class="spk s2">Kalbėtojas 2</span><span class="words"><b>Su</b> <b>pačiu</b> <b>garso</b> <b>įrašu.</b></span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-queue tone-teal sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Pristabdyti · tęsti · paleisti iš naujo</p>
+            <h3>Paketinė užduočių eilė</h3>
+            <p>Kiekvienos laukiančios ir vykdomos užduoties būsena realiuoju laiku, o visiškas kiekvienos eilutės valdymas – vos vienu spustelėjimu.</p>
+          </div>
+          <div class="viz viz-queue" aria-hidden="true">
+            <div class="job"><span class="job-name">interview-03.mp4</span><span class="bar"><i style="--p:100%"></i></span><span class="job-state done">atlikta</span></div>
+            <div class="job"><span class="job-name">lecture-week-2.m4a</span><span class="bar"><i class="run"></i></span><span class="job-state">vykdoma</span></div>
+            <div class="job"><span class="job-name">podcast-ep-41.wav</span><span class="bar"><i style="--p:0%"></i></span><span class="job-state">eilėje</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-download tone-violet sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Paremta „yt-dlp“</p>
+            <h3>Vaizdo ir garso atsisiuntimai</h3>
+            <p>Viskas, ką palaiko <code>yt-dlp</code>, su pasirinktine funkcija transkribuoti baigus. Atsisiuntimai pratęsiami, o ne pradedami iš naujo.</p>
+          </div>
+          <div class="viz viz-dl" aria-hidden="true">
+            <div class="url"><span class="url-dot"></span>https://…/watch?v=…</div>
+            <div class="dl-steps"><span class="st st-1">Atsisiųsti</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-2">Transkribuoti</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg><span class="st st-3">.srt</span></div>
+          </div>
+        </article>
+
+        <article class="cell cell-denoise tone-coral sr" data-live data-tilt-card>
+          <div class="cell-copy">
+            <p class="chip-label">Išmatuoja prieš filtruodamas</p>
+            <h3>Adaptyvusis triukšmo slopinimas</h3>
+            <p>Pirmiausia išmatuoja kiekvieną įrašą ir valo tik tada, kai tai padeda – patikrina savo rezultatą ir atšaukia pakeitimus, jei buvo pašalinta kalba.</p>
+          </div>
+          <div class="viz viz-denoise" aria-hidden="true">
+            <svg class="wave wave-noisy" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="noisy"/></svg> <svg class="wave wave-clean" viewBox="0 0 600 120" preserveAspectRatio="none"><path data-wave="clean"/></svg> <span class="sweep"></span> <span class="wave-label l-before">prieš</span><span class="wave-label l-after">po</span>
+          </div>
+        </article>
+      </div>
+
+      <p class="feature-more sr">Taip pat DI įrankiai (santraukos, veiksmų punktai, dvikalbis SRT etapas), pasirenkamas balso klonavimo be interneto ryšio skirtukas ir vietinio tinklo režimas — daugiau informacijos rasite <a href="https://github.com/Milomilo777/whisper-transcriber-suite#features" rel="noopener">README</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="section how" id="how-it-works" aria-labelledby="how-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Kaip tai veikia</p>
+        <h2 id="how-title">Veikia jūsų kompiuteryje. <span class="h2-soft">Jūsų garsas lieka jame.</span></h2>
+        <p class="section-lede">Transkribavimas vyksta jūsų pačių kompiuteryje. Jūsų garsas įkeliamas tik tada, jei įjungiate vieną iš dviejų pasirenkamų debesijos variklių, o transkripcijos tekstas kompiuterį palieka tik tada, jei patys prijungiate nuotolinį DI modelį.</p>
+      </header>
+
+      <figure class="promo sr"><img src="/assets/promo/loom-still.webp" data-still="/assets/promo/loom-still.webp" data-anim="/assets/promo/loom.svg" alt="Animacija: laiko juosta virsta subtitrais su žodžių laiko žymomis, anglų kalbos subtitrais, sukurtais be interneto su „faster-whisper“, „whisper.cpp“ ar „Parakeet“, ir 14 transkripcijos formatų nereikalaujant paskyros." width="1280" height="640" loading="lazy" decoding="async"></figure>
+
+      <ol class="pipeline">
+        <li class="step sr">
+          <span class="step-num">01</span>
+          <h3>Užtempkite failą arba įklijuokite nuorodą</h3>
+          <p>Garso ar vaizdo failai iš disko arba bet kas, ką gali atsiųsti <code>yt-dlp</code>. „Tk“ sąsaja veikia pagrindiniame procese ir akimirksniu įtraukia užduotį į eilę.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">02</span>
+          <h3>Vykdytojas laiko modelį atmintyje</h3>
+          <p>Kiekviena užduotis vykdoma atskirame ilgai veikiančiame pagalbiniame procese, kuris laiko „Whisper“ atmintyje ir perduoda eigą naujomis eilutėmis atskirtu JSON srautu — todėl langas niekada neužstringa.</p>
+        </li>
+        <li class="step sr">
+          <span class="step-num">03</span>
+          <h3>Transkripcija atsiduria šalia jūsų failo</h3>
+          <p>Kiekvienam vykdytojui skirtas atpažinimo raktas ir periodinis patikros signalas užtikrina patikimą nukreipimą bei leidžia programai aptikti užstrigusį vykdytoją, užuot užstrigus kartu su juo.</p>
+        </li>
+      </ol>
+      <p class="built-on sr">Sukurta remiantis OpenAI <a href="https://arxiv.org/abs/2212.04356" rel="noopener">Whisper kalbos atpažinimo modeliu</a>, vietoje paleidžiamu per <a href="https://github.com/SYSTRAN/faster-whisper" rel="noopener">faster-whisper</a>, <a href="https://github.com/ggml-org/whisper.cpp" rel="noopener">whisper.cpp</a> arba <a href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3" rel="noopener">NVIDIA Parakeet</a>, o medijai apdoroti naudojami <a href="https://github.com/yt-dlp/yt-dlp" rel="noopener">yt-dlp</a> bei <a href="https://ffmpeg.org/" rel="noopener">FFmpeg</a>.</p>
+      <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
+      <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Perskaitykite visą architektūros aprašymą<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <p class="muted guide-links">Nuoseklūs vadovai: <a href="/lt/youtube-to-text/">„YouTube“ vaizdo įrašas į tekstą</a> · <a href="/lt/video-to-srt/">vaizdo įrašas į SRT subtitrus</a> · <a href="/lt/speaker-labels/">transkripcijos su kalbėtojų žymomis</a></p>
+    </div>
+  </section>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="section download" id="download" aria-labelledby="download-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Atsisiųsti · <span data-auto="version">v2.1.0</span> · išleista <span data-auto="released">2026-10-12</span></p>
+        <h2 id="download-title">Atsisiųskite. <span class="h2-soft">Transkribuokite šį vakarą.</span></h2>
+        <p class="section-lede">Viskas, ko reikia, jau yra programoje — privati Python vykdymo aplinka, ffmpeg, ffprobe ir yt-dlp. Tik pats kalbos modelis atsisiunčiamas vėliau (apie 1–3 GB, vieną kartą); po to transkribavimas veikia be interneto ryšio.</p>
+      </header>
+
+      <div class="dl-grid">
+        <article class="dl-card sr" data-os="windows" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows <span class="dl-badge" data-rec-badge hidden>Rekomenduojama jums</span></p>
+          <h3>Diegimo programa <code>.exe</code></h3>
+          <p class="dl-size" data-auto="size-installer">~238&nbsp;MB</p>
+          <p class="dl-desc">Daugumai naudotojų — įprasta diegimo programa, nuoroda meniu „Pradėti“, atnaujinimai esamoje vietoje. Programa nėra pasirašyta skaitmeniniu parašu, todėl Windows SmartScreen gali vieną kartą parodyti įspėjimą: <b>Daugiau informacijos → Vis tiek vykdyti</b>.</p>
+          <a class="btn btn-primary" data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Installer-Windows-v2.1.0.exe" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Atsisiųsti diegimo programą</a>
+        </article>
+        <article class="dl-card sr" data-os="windows-portable" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-windows"/></svg>Windows nešiojamoji versija</p>
+          <h3>Nešiojamoji versija <code>.zip</code></h3>
+          <p class="dl-size" data-auto="size-portable">~360&nbsp;MB</p>
+          <p class="dl-desc">Išpakuokite ir paleiskite. Jokio diegimo, jokių administratoriaus teisių, puikiai veikia USB atmintinėje.</p>
+          <a class="btn btn-ghost" data-auto-href="portable" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-Portable-Windows-v2.1.0.zip" rel="noopener">Atsisiųsti ZIP</a>
+        </article>
+        <article class="dl-card sr" data-os="mac" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS <span class="dl-badge" data-rec-badge hidden>Rekomenduojama jums</span></p>
+          <h3>Disko atvaizdis <code>.dmg</code></h3>
+          <p class="dl-size"><span data-auto="size-mac-arm64">~275&nbsp;MB</span> · <span data-auto="size-mac-x64">~333&nbsp;MB</span></p>
+          <p class="dl-desc">Paprasčiausia: viena eilutė Terminal lange — parenka tinkamą versiją ir praleidžia saugos įspėjimą. Arba atsisiųskite disko atvaizdį, skirtą Apple Silicon arba Intel.</p>
+          <a class="btn btn-primary" href="#mac-install"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Diegimas viena eilute</a>
+          <div class="dl-pair"><a class="btn btn-ghost" data-auto-href="mac-arm64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-arm64.dmg" rel="noopener">Apple Silicon</a><a class="btn btn-ghost" data-auto-href="mac-x64" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-x64.dmg" rel="noopener">Intel</a></div>
+        </article>
+        <article class="dl-card dl-card-source sr" data-os="linux" data-tilt-card>
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Linux ir pirminis kodas <span class="dl-badge" data-rec-badge hidden>Rekomenduojama jums</span></p>
+          <h3>Kompiliuoti iš pirminio kodo</h3>
+          <p class="dl-size">Python 3.11+</p>
+          <pre class="dl-code"><code>git clone https://github.com/Milomilo777/whisper-transcriber-suite.git
+cd whisper-transcriber-suite
+pip install -r requirements.txt
+python gui.py</code></pre>
+          <a class="btn btn-ghost" href="https://github.com/Milomilo777/whisper-transcriber-suite#build-from-source" rel="noopener">Pirminio kodo vadovas</a>
+        </article>
+      </div>
+
+      <figure class="promo sr promo-after"><img src="/assets/promo/vise-still.webp" data-still="/assets/promo/vise-still.webp" data-anim="/assets/promo/vise.svg" alt="Animacija: žodžiai „Sound in“ tampa dviejų kalbėtojų transkripcija su laiko žymomis, išsaugoma SRT, DOCX ir PDF formatais, be paskyros ir be įkėlimo." width="1280" height="640" loading="lazy" decoding="async"></figure>
+      <div class="mac-install sr" id="mac-install">
+        <div class="mac-install-head">
+          <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — diegimas viena eilute</p>
+          <h3>Įklijuokite į terminalą. Štai ir viskas.</h3>
+          <p>Atsisiunčia jūsų Mac tinkamą versiją (Apple Silicon sistemai macOS 14+, kitu atveju – Intel per Rosetta), nukopijuoja programą į <code>Applications</code> ir ją atidaro. Failai, gauti naudojant <code>curl</code>, nėra karantinuojami, todėl nėra jokio „neatpažinto kūrėjo“ įspėjimo, kurį reikėtų praleisti.</p>
+        </div>
+        <div class="code-box">
+          <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopijuoti</button>
+          <pre><code id="mac-cmd" data-auto="mac-oneliner">A=x64; [ "$(uname -m)" = arm64 ] &amp;&amp; [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 14 ] &amp;&amp; A=arm64; curl -fL -o /tmp/wts.dmg "https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.1.0/WhisperTranscriberSuite-v2.1.0-macOS-$A.dmg" &amp;&amp; hdiutil attach -nobrowse -quiet -mountpoint /tmp/wts-dmg /tmp/wts.dmg &amp;&amp; cp -R "/tmp/wts-dmg/Whisper Transcriber Suite.app" /Applications/ &amp;&amp; hdiutil detach -quiet /tmp/wts-dmg &amp;&amp; rm /tmp/wts.dmg &amp;&amp; open "/Applications/Whisper Transcriber Suite.app"</code></pre>
+        </div>
+        <p class="mac-note">Pirmenybę teikiate įprastam būdui? Atidarykite <code>.dmg</code> ir nuvilkite programą į „Applications“; paleidžiant pirmą kartą reikės spustelėti dešiniuoju pelės klavišu → <b>Atidaryti</b> (macOS 14 ir senesnėse versijose) arba Sistemos nustatymai → Privatumas ir saugumas → <b>Vis tiek atidaryti</b> (macOS 15+).</p>
+      </div>
+      <p class="dl-note sr">Kiekvieną leidimą su pastabomis rasite <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Diegimo vadovas</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section class="section compare" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Palyginti</p>
+        <h2 id="compare-title">Kaip ji atrodo, palyginti su kitomis Whisper programomis?</h2>
+        <p class="section-lede">„Whisper Transcriber Suite“ yra viena iš kelių nemokamų atvirojo kodo darbalaukio programų, atliekančių transkripciją jūsų pačių kompiuteryje. Štai kaip ji atrodo, palyginti su Subtitle Edit, Vibe ir Buzz, įskaitant atvejus, kada labiau tinka kita programa. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Perskaitykite visą palyginimą</a> su šaltiniais kiekvienam faktui ir dar dviem programomis – noScribe bei aTrain.</p>
+      </header>
+      <div class="table-wrap sr">
+        <table class="compare-table">
+          <caption>Patikrinta 2026-10-05 pagal kiekvieno projekto README, dokumentaciją ir leidimus. Programos greitai keičiasi: šaltinius rasite <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">išsamiame palyginime</a>.</caption>
+          <thead>
+            <tr><th scope="col"><span class="sr-only">Funkcija</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Kaina, licencija</th><td>Nemokama, BSD-3-Clause</td><td>Nemokama, MIT</td><td>Nemokama, MIT</td><td>Nemokama, MIT</td></tr>
+            <tr><th scope="row">Atsisiuntimai</th><td>Windows diegimo programa ir nešiojamasis ZIP, macOS (Apple silicon, Intel); Linux iš pirminio kodo</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 yra paskutinė versija „Intel Mac“ kompiuteriams), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
+            <tr><th scope="row">GPU spartinimas</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Pasirašyta Windows diegimo programa</th><td>Ne</td><td>Nenurodyta</td><td>Taip, pagal jos dokumentaciją</td><td>Ne</td></tr>
+            <tr><th scope="row">Sąsajos kalbos</th><td>42 (išversta mašininiu būdu)</td><td>35</td><td>22</td><td>16</td></tr>
+            <tr><th scope="row">Rinkitės ją, jei</th><td>Taip pat norite tiesioginio mikrofono palaikymo, vaizdo įrašų atsisiuntimo, 14 išvesties formatų ir vietinio tinklo režimo su OpenAI suderinamu maršrutu</td><td>Norite daugelio kalbos variklių (Parakeet, Canary, Qwen3-ASR ir kitų) arba notarizuotos Mac programos</td><td>Norite Windows diegimo programos, kuri, pasak jos dokumentacijos, yra pasirašyta, arba GPU palaikymo, apimančio AMD ir Intel</td><td>Norite Linux paketų (Flatpak, Snap, AppImage) arba diegimo per PyPI</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section class="section faq" id="faq" aria-labelledby="faq-title">
+    <div class="wrap faq-grid">
+      <header class="faq-head sr">
+        <p class="eyebrow">DUK</p>
+        <h2 id="faq-title">Dažniausiai užduodami klausimai</h2>
+        <p class="section-lede">Turite kitų klausimų? Klauskite <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">GitHub Discussions</a>.</p>
+      </header>
+      <div class="faq-list sr">
+        <article class="qa"><h3>Ar Whisper Transcriber Suite yra nemokama?</h3><div class="faq-a"><p>Taip. Ji licencijuota pagal BSD-3-Clause licenciją, be jokios prenumeratos ir mokesčio už minutes. Pats Whisper modelis atsisiunčiamas vieną kartą (apie 1-3 GB) pirmojo paleidimo metu; po to transkripcija veikia be interneto ryšio.</p></div></article>
+        <article class="qa"><h3>Ar ji kur nors įkelia mano garso ar vaizdo įrašus?</h3><div class="faq-a"><p>Ne, pagal numatytuosius nustatymus — ne. Kiekviena numatytoji posistemė — faster-whisper, whisper.cpp, NVIDIA Parakeet — veikia vietiškai jūsų kompiuteryje. Dvi posistemės įjungiamos tik pasirinktinai (debesijos Gemini-API posistemė ir Google Cloud Speech-to-Text), ir abi lieka išjungtos, kol patys jų neįjungsite skiltyje Išplėstiniai nustatymai → Posistemė. Naudojimo statistika (be garso įrašų, be failų pavadinimų) pagal numatytuosius nustatymus yra įjungta ir gali būti išjungta pasirinkus Žinynas → Naudojimo statistika; programa kartą per dieną tikrina GitHub, ar nėra naujos versijos, o <b>Failas → Dirbti neprisijungus</b> sustabdo bet kokį tinklo naudojimą.</p></div></article>
+        <article class="qa"><h3>Kokiose platformose ji veikia?</h3><div class="faq-a"><p>Windows, macOS ir Linux. Paskelbti atsisiuntimai yra Windows diegimo programa, Windows nešiojamasis ZIP paketas ir macOS DMG failas; Linux paleidžiama iš išeities kodo.</p></div></article>
+        <article class="qa"><h3>Kokius transkripcijos formatus ji gali sukurti?</h3><div class="faq-a"><p><code>srt</code> <code>vtt</code> <code>ass</code> <code>tsv</code> <code>txt</code> <code>json</code> <code>lrc</code> <code>md</code> <code>docx</code> <code>pdf</code>, taip pat oTranscribe, ELAN, InqScribe ir Express Scribe.</p></div></article>
+        <article class="qa"><h3>Ar ji gali nurodyti, kas kalba?</h3><div class="faq-a"><p>Taip — pasirenkama kalbėtojų diarizacija („Atpažinti kalbėtojus“), su atskirų žodžių laiko žymomis ir laiko intervalų apkarpymu.</p></div></article>
+        <article class="qa"><h3>Ar ji gali transkribuoti tiesioginį mikrofono ar sistemos garsą?</h3><div class="faq-a"><p>Taip, skirtuke „Live“ — mikrofono arba sistemos garsas, transkribuojamas realiuoju laiku.</p></div></article>
+        <article class="qa"><h3>Ar ji gali atsisiųsti ir transkribuoti internetinius vaizdo įrašus, pvz., iš YouTube?</h3><div class="faq-a"><p>Taip, iš bet kurios svetainės, kurią palaiko yt-dlp, su pasirinktiniu transkribavimo baigus atsisiuntimą žingsniu.</p></div></article>
+        <article class="qa"><h3>Ar ji gali apibendrinti transkripciją, išskirti veiksmų punktus arba atsakyti į klausimus apie ją?</h3><div class="faq-a"><p>Taip, per pasirinktinį skirtuką „DI įrankiai“ transkripcijos peržiūros priemonėje — santrauka, veiksmų punktai, klausimo uždavimas ir segmentinis vertimas, sukuriantis dvikalbį <code>.srt</code>. Pagal numatytuosius nustatymus ši funkcija yra išjungta.</p></div></article>
+        <article class="qa"><h3>Ar ji gali klonuoti balsą ir priversti jį ištarti naują tekstą?</h3><div class="faq-a"><p>Taip, per pasirinktinį skirtuką „Balsas“, naudojant OmniVoice (Apache-2.0) tik jūsų kompiuteryje. Pagal numatytuosius nustatymus ši funkcija išjungta; ją galima pasirinkti diegimo metu, be to, privalote patvirtinti, kad turite leidimą klonuoti pavyzdinį balsą.</p></div></article>
+        <article class="qa"><h3>Kuo tai skiriasi nuo tiesioginio Whisper API iškvietimo?</h3><div class="faq-a"><p>Pagal numatytuosius nustatymus modelis vykdomas vietiškai per faster-whisper, todėl nėra jokio minutinio API mokesčio ir joks garsas nepalieka jūsų kompiuterio — nebent patys aiškiai pasirinktumėte vieną iš dviejų debesijos posistemių.</p></div></article>
+        <article class="qa"><h3>Ar keli žmonės tame pačiame tinkle gali ja naudotis neįdiegdami jos kiekviename kompiuteryje?</h3><div class="faq-a"><p>Taip — Žiniatinklio / LAN prieigos režimas paverčia šį kompiuterį transkripcijos puslapiu, kuriuo gali naudotis kiti tinkle esantys įrenginiai.</p></div></article>
+        <article class="qa"><h3>Kas naujo 2.1 versijoje?</h3><div class="faq-a"><p>Meniu, mygtukai ir pranešimai pateikiami 42 kalbomis (išversta mašininiu būdu ir atitinkamai pažymėta); kalbėtojų etiketės išlieka iki ilgų įrašų pabaigos, be to, galite nustatyti, kiek žmonių kalba; transkripcijos, eksportuoti failai ir subtitrai yra visiškai įrašomi į diską prieš pakeičiant senąjį failą; internetinės funkcijos veikia kiekviename Mac. 2.0 versijoje pridėtas eilės greičio ir likusio laiko rodymas, subtitruotas vaizdo įrašas iš nuorodos, transkripcijos kaip vienas autonominis tinklalapis, pasirenkamas režimas „Dirbti neprisijungus“ ir vertimas į anglų kalbą. Žr. <a href="#whats-new">Kas naujo 2.1 versijoje</a> ir <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">pakeitimų žurnalą</a>.</p></div></article>
+        <article class="qa"><h3>Ar programa gali paversti vaizdo įrašo nuorodą vaizdo įrašu su subtitrais?</h3><div class="faq-a"><p>Taip. Skirtuke „Atsisiųsti vaizdo įrašus“ pažymėkite <b>Sukurti vaizdo įrašą su subtitrais</b>: programa atsisiunčia vaizdo įrašą, transkribuoja jį naudodama Whisper ir įrašo subtitrus į vaizdą su ffmpeg, sukurdama failą, pavadintą pagal vaizdo įrašą su <code>-subbed.mp4</code>. Atsisiųstas failas ir transkripcija yra išsaugomi, o esamas <code>-subbed.mp4</code> niekada neperrašomas.</p></div></article>
+        <article class="qa"><h3>Ar galiu visiškai neleisti programai pasiekti tinklo?</h3><div class="faq-a"><p>Taip. <b>Failas → Dirbti neprisijungus</b> sustabdo atnaujinimų tikrinimą, naudojimo statistiką, modelių atsisiuntimus ir nuotolinius DI teikėjus. Kol režimas įjungtas, lango apačioje esanti eilutė nurodo, ar yra atviras ryšys, o <em>Patikrinti neprisijungus dabar</em> rodo, kad bandomieji ryšiai yra atmetami. Jam esant išjungtam, programa su tinklu susisiekia tik dėl internetinių nustatymų paleidimo metu, kasdienio atnaujinimų tikrinimo, naudojimo statistikos (kurią galima išjungti pasirinkus Žinynas → Naudojimo statistika) ir jūsų pradėtų atsisiuntimų.</p></div></article>
+        <article class="qa"><h3>Kaip susisiekti su projektu?</h3><div class="faq-a"><p>Pranešimai apie klaidas ir pageidavimai naujoms funkcijoms teikiami <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, klausimai — <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, o visa kita — el. paštu (adresas parodomas paprašius <a href="#contact">Kontaktų skiltyje</a>). Saugumo pranešimai teikiami per GitHub privačią pažeidžiamumų pranešimo sistemą.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT + SUPPORT ============ -->
+  <section class="section contact" id="contact" aria-labelledby="contact-title">
+    <div class="wrap">
+      <header class="section-head sr">
+        <p class="eyebrow">Kontaktai ir palaikymas</p>
+        <h2 id="contact-title">Susisiekite su mumis. <span class="h2-soft">Padėkite jai augti.</span></h2>
+      </header>
+      <div class="contact-grid">
+        <div class="contact-card sr" data-tilt-card data-contact>
+          <span class="contact-ic tone-teal"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg></span>
+          <h3>El. paštas</h3>
+          <p class="contact-val"><button type="button" class="contact-reveal" data-contact-reveal>Rodyti el. pašto adresą</button><span data-contact-out aria-live="polite" hidden></span><noscript> (reikalingas JavaScript)</noscript></p>
+          <p>Žiniasklaidai, partnerystėms ar viskam, kas nėra pranešimas apie klaidą.</p>
+        </div>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-coral"><svg class="i" aria-hidden="true"><use href="#i-bug"/></svg></span>
+          <h3>Pranešti apie klaidą</h3>
+          <p class="contact-val">GitHub Issues</p>
+          <p>Nurodykite savo versiją, OS ir mažiausią failą, su kuriuo klaida pasikartoja.</p>
+        </a>
+        <a class="contact-card sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener" data-tilt-card>
+          <span class="contact-ic tone-violet"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span>
+          <h3>Užduoti klausimą</h3>
+          <p class="contact-val">GitHub Discussions</p>
+          <p>Pagalba diegiant, idėjos ir kitų naudotojų pavyzdžiai.</p>
+        </a>
+      </div>
+
+      <div class="support-card sr">
+        <div class="support-orbit" aria-hidden="true"><img src="/assets/logo.svg" alt="" width="88" height="88"><span></span><span></span><span></span></div>
+        <div class="support-copy">
+          <h3 id="support">Paremkite projektą</h3>
+          <p>Whisper Transcriber Suite yra nemokama, licencijuota pagal BSD-3-Clause ir atvirai vystoma. Jei ji sutaupė jums laiko, žvaigždutė GitHub padės ją rasti kitiems — o už puodelį kavos visada būtume dėkingi.</p>
+          <div class="support-actions">
+            <a class="btn btn-coffee btn-lg" href="https://buymeacoffee.com/mehraz1358" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-cup"/></svg>Pavaišinti kava</a> <a class="btn btn-light btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Skirti žvaigždutę GitHub</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div class="footer-brand">
+      <a class="brand" href="#top" aria-label="Whisper Transcriber Suite — pradžia"><img class="brand-logo" src="/assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
+      <p class="muted">Prižiūri vienas nepriklausomas kūrėjas, <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Pirminis kodas licencijuotas pagal BSD-3-Clause.</p>
+      <p class="muted"><a href="#contact">Kontaktai</a></p>
+      <p class="site-stats" data-site-stats hidden><span data-stat="visits" hidden><strong></strong> apsilankymai</span><span data-stat="downloads" hidden><strong></strong> atsisiuntimai</span></p>
+      <p class="muted small mt-note">Šį puslapį iš anglų kalbos išvertė mašina, o patikrino antra. Kažkas skamba netiksliai? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">Praneškite mums GitHub</a>.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Poraštė">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Diegimo vadovas</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Pakeitimų žurnalas</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Diskusijos</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Saugumas</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">Licencija</a> <a href="/lt/youtube-to-text/">YouTube į tekstą</a> <a href="/lt/video-to-srt/">Vaizdo įrašas į SRT</a> <a href="/lt/speaker-labels/">Kalbėtojų etiketės</a> <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+  <div class="wrap">
+    <p class="muted small">Taip pat galima skaityti šiomis kalbomis: <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.de.md" rel="noopener" lang="de">Deutsch</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fr.md" rel="noopener" lang="fr">Français</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.es.md" rel="noopener" lang="es">Español</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.it.md" rel="noopener" lang="it">Italiano</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt-BR.md" rel="noopener" lang="pt-BR">Português (Brasil)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pt.md" rel="noopener" lang="pt">Português (Portugal)</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nl.md" rel="noopener" lang="nl">Nederlands</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.pl.md" rel="noopener" lang="pl">Polski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ru.md" rel="noopener" lang="ru">Русский</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.uk.md" rel="noopener" lang="uk">Українська</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.tr.md" rel="noopener" lang="tr">Türkçe</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.cs.md" rel="noopener" lang="cs">Čeština</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sk.md" rel="noopener" lang="sk">Slovenčina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hu.md" rel="noopener" lang="hu">Magyar</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ro.md" rel="noopener" lang="ro">Română</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bg.md" rel="noopener" lang="bg">Български</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.el.md" rel="noopener" lang="el">Ελληνικά</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sv.md" rel="noopener" lang="sv">Svenska</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.da.md" rel="noopener" lang="da">Dansk</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.nb.md" rel="noopener" lang="nb">Norsk bokmål</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fi.md" rel="noopener" lang="fi">Suomi</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hr.md" rel="noopener" lang="hr">Hrvatski</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sr.md" rel="noopener" lang="sr">Српски</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.sl.md" rel="noopener" lang="sl">Slovenščina</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lt.md" rel="noopener" lang="lt">Lietuvių</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-CN.md" rel="noopener" lang="zh-CN">简体中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.zh-TW.md" rel="noopener" lang="zh-TW">繁體中文</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ja.md" rel="noopener" lang="ja">日本語</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ko.md" rel="noopener" lang="ko">한국어</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.vi.md" rel="noopener" lang="vi">Tiếng Việt</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.th.md" rel="noopener" lang="th">ไทย</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.id.md" rel="noopener" lang="id">Bahasa Indonesia</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ms.md" rel="noopener" lang="ms">Bahasa Melayu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.hi.md" rel="noopener" lang="hi">हिन्दी</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ar.md" rel="noopener" lang="ar">العربية</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fa.md" rel="noopener" lang="fa">فارسی</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.he.md" rel="noopener" lang="he">עברית</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.lv.md" rel="noopener" lang="lv">Latviešu</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.ca.md" rel="noopener" lang="ca">Català</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.bn.md" rel="noopener" lang="bn">বাংলা</a>, <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/i18n/README.fil.md" rel="noopener" lang="fil">Filipino</a>.</p>
+  </div>
+</footer>
+
+<div class="star-toast" data-star-toast role="status" hidden>
+  <p><b>Dėkojame, kad atsisiunčiate!</b> Kol siunčiasi — jei programa sutaupys jums laiko, ⭐ GitHub padės kitiems žmonėms ją rasti. Vienas spustelėjimas, nemokama.</p>
+  <div class="star-toast-actions">
+    <a class="btn btn-primary btn-sm" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" data-star-go><svg class="i" aria-hidden="true"><use href="#i-star"/></svg>Skirti žvaigždutę GitHub</a>
+    <button class="star-toast-close" type="button" data-star-close aria-label="Atmesti">×</button>
+  </div>
+</div>
+
+<script type="application/json" id="i18n-strings">
+{
+  "Play animations": "Paleisti animacijas",
+  "Pause animations": "Pristabdyti animacijas",
+  "Install on macOS": "Įdiegti sistemoje macOS",
+  "Get it for Linux": "Gauti Linux sistemai",
+  "Get it for your computer": "Gauti savo kompiuteriui",
+  "Show %s": "Rodyti %s",
+  "Please write to us on GitHub Discussions": "Parašykite mums GitHub Discussions",
+  "One moment…": "Vieną akimirką…",
+  "Could not load it. Try again": "Nepavyko įkelti. Bandykite dar kartą",
+  "so the words appear as you speak": "kad žodžiai pasirodytų jums kalbant",
+  "cuts land on natural pauses": "skaidymai sutampa su natūraliomis pauzėmis",
+  "and no word is ever split in two": "ir joks žodis niekada nepadalijamas pusiau",
+  "Your audio stays on your computer.": "Jūsų garso įrašai lieka jūsų kompiuteryje.",
+  "No account. No per-minute cost.": "Jokios paskyros. Jokio mokesčio už minutes.",
+  "Whisper runs on your own computer.": "Whisper veikia jūsų pačių kompiuteryje.",
+  "Fourteen formats, one click.": "Keturiolika formatų vienu spustelėjimu.",
+  "Copy": "Kopijuoti",
+  "Copied": "Nukopijuota"
+}
+</script>
+<script src="/js/main.js?v=20261018b" defer></script>
+<script src="/js/lang.js?v=20261019a" defer></script>
+</body>
+</html>
