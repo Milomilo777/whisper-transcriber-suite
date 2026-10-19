@@ -191,7 +191,14 @@ class _WinJob:
     _PROCESS_SET_QUOTA = 0x0100
     _PROCESS_TERMINATE = 0x0001
 
+    # Declared here so type checkers for other platforms know them too.
+    _ctypes: Any
+    _k32: Any
+    _handle: int | None = None
+
     def __init__(self) -> None:
+        if sys.platform != "win32":
+            raise OSError("Job Objects exist only on Windows")
         import ctypes  # noqa: PLC0415
         from ctypes import wintypes  # noqa: PLC0415
 
@@ -234,7 +241,7 @@ class _WinJob:
         handle = k32.CreateJobObjectW(None, None)
         if not handle:
             raise OSError(ctypes.get_last_error(), "CreateJobObjectW failed")
-        self._handle: int | None = handle
+        self._handle = handle
         info = _Extended()
         info.BasicLimitInformation.LimitFlags = self._KILL_ON_JOB_CLOSE
         if not k32.SetInformationJobObject(
