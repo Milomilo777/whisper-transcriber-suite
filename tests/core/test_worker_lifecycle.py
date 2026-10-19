@@ -179,12 +179,20 @@ def test_voice_worker_finishes_when_the_app_is_still_there(monkeypatch, capsys):
 
 def test_parent_check_tells_a_reused_pid_from_the_parent():
     pytest.importorskip("psutil")
-    from core._proc import parent_alive, parent_identity
-
-    me = parent_identity()
-    assert me is not None and parent_alive(me)
-    assert not parent_alive((me[0], me[1] + 1000.0))  # same PID, newer process
-    assert parent_alive(None)  # unknown -> never exit on a guess
+    # Checked in a child whose parent (this test process) surely lives:
+    # pytest's own parent may already be gone, e.g. in a detached run.
+    code = (
+        "from core._proc import parent_alive, parent_identity\n"
+        "me = parent_identity()\n"
+        "assert me is not None and parent_alive(me), me\n"
+        "assert not parent_alive((me[0], me[1] + 1000.0))  # same PID, newer process\n"
+        "assert parent_alive(None)  # unknown -> never exit on a guess\n"
+        "print('ok')\n"
+    )
+    repo = Path(__file__).resolve().parents[2]
+    res = subprocess.run([sys.executable, "-c", code], cwd=repo, capture_output=True, text=True, timeout=60,
+                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    assert res.returncode == 0 and res.stdout.strip() == "ok", res.stderr
 
 
 class _LineStdin:

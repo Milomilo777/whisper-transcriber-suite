@@ -267,13 +267,26 @@ def test_second_server_leaves_the_first_servers_jobs(tmp_path):
         b.stop()
 
 
-def test_purge_leaves_a_folder_owned_by_a_live_other_process(tmp_path):
+@pytest.fixture
+def other_process():
+    """A live process that is not this one (pytest's own parent may already be
+    gone, e.g. when the suite runs detached)."""
     import psutil
 
+    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"],
+                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    try:
+        yield psutil.Process(proc.pid)
+    finally:
+        proc.kill()
+        proc.wait()
+
+
+def test_purge_leaves_a_folder_owned_by_a_live_other_process(tmp_path, other_process):
     root = tmp_path / "server_jobs"
     d = root / ("a" * 32)
     d.mkdir(parents=True)
-    parent = psutil.Process(os.getppid())
+    parent = other_process
     (d / J._JOB_DIR_MARKER).write_text(json.dumps(
         {"v": 1, "pid": parent.pid, "started": parent.create_time(),
          "instance": "other"}))
@@ -286,13 +299,11 @@ def test_purge_leaves_a_folder_owned_by_a_live_other_process(tmp_path):
         m.stop()
 
 
-def test_purge_removes_a_folder_whose_pid_was_reused(tmp_path):
-    import psutil
-
+def test_purge_removes_a_folder_whose_pid_was_reused(tmp_path, other_process):
     root = tmp_path / "server_jobs"
     d = root / ("a" * 32)
     d.mkdir(parents=True)
-    parent = psutil.Process(os.getppid())
+    parent = other_process
     (d / J._JOB_DIR_MARKER).write_text(json.dumps(
         {"v": 1, "pid": parent.pid, "started": parent.create_time() - 1000,
          "instance": "other"}))
