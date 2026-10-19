@@ -48,6 +48,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   stopped the whole process. The window now stays referenced until the app exits, and closing it
   also stops the tray icon, without ever waiting on a tray that cannot stop (Linux with no system
   tray). This was also the intermittent Windows CI crash.
+- **A flaky button-contrast test on Windows CI**: the test now reads sv_ttk's sprite sheet with a
+  small PNG reader instead of `tk.PhotoImage`, whose load failed now and then with an empty `TclError`.
 
 ## [2.1.0] — 2026-10-12
 

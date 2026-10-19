@@ -6,8 +6,11 @@ state after the app's own style fix. The disabled state is exempt (WCAG: inactiv
 """
 from __future__ import annotations
 
+import functools
 import os
 import re
+import struct
+import zlib
 
 import pytest
 
@@ -59,18 +62,55 @@ def _rgb(root: tk.Tk, colour: str) -> tuple[int, int, int]:
     return r // 257, g // 257, b // 257
 
 
-def _sprite_fill(root: tk.Tk, theme: str, name: str) -> tuple[int, int, int]:
+@functools.lru_cache(maxsize=None)
+def _png_rows(path: str) -> tuple[int, list[bytes]]:
+    """(channels, unfiltered rows) of an 8-bit, non-interlaced RGB/RGBA PNG.
+
+    Decoded here instead of through tk.PhotoImage, whose PNG load on the Windows Python 3.11
+    CI runner fails now and then with an empty TclError.
+    """
+    with open(path, "rb") as f:
+        data = f.read()
+    assert data[:8] == b"\x89PNG\r\n\x1a\n", path
+    pos, idat = 8, b""
+    width = height = channels = 0
+    while pos < len(data):
+        (length,) = struct.unpack(">I", data[pos:pos + 4])
+        kind, body = data[pos + 4:pos + 8], data[pos + 8:pos + 8 + length]
+        if kind == b"IHDR":
+            width, height, depth, colour, _c, _f, interlace = struct.unpack(">IIBBBBB", body)
+            assert depth == 8 and colour in (2, 6) and interlace == 0, f"unsupported PNG {path}"
+            channels = 4 if colour == 6 else 3
+        elif kind == b"IDAT":
+            idat += body
+        pos += 12 + length
+    raw = zlib.decompress(idat)
+    stride = width * channels
+    rows: list[bytes] = []
+    for row_index in range(height):
+        start = row_index * (stride + 1)
+        # sv_ttk's sheets store every row unfiltered (filter type 0); refuse anything else
+        # rather than carry filter code no sheet exercises.
+        assert raw[start] == 0, f"{path}: row {row_index} uses PNG filter {raw[start]}"
+        rows.append(raw[start + 1:start + 1 + stride])
+    return channels, rows
+
+
+def _png_pixel(path: str, x: int, y: int) -> tuple[int, int, int]:
+    channels, rows = _png_rows(path)
+    assert 0 <= y < len(rows) and 0 <= x * channels < len(rows[y])
+    r, g, b = rows[y][x * channels:x * channels + 3]
+    return r, g, b
+
+
+def _sprite_fill(theme: str, name: str) -> tuple[int, int, int]:
     folder = os.path.join(os.path.dirname(sv_ttk.__file__), "theme")
     with open(os.path.join(folder, f"sprites_{theme}.tcl"), encoding="utf-8") as f:
         text = f.read()
     m = re.search(rf"\b{re.escape(name)}\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)", text)
     assert m, f"{name} not in sv_ttk's sprite list"
     x, y, w, h = map(int, m.groups())
-    sheet = tk.PhotoImage(master=root, file=os.path.join(folder, f"spritesheet_{theme}.png"))
-    pixel = sheet.get(x + w // 2, y + h // 2)
-    if isinstance(pixel, str):
-        pixel = tuple(int(v) for v in pixel.split())
-    return int(pixel[0]), int(pixel[1]), int(pixel[2])
+    return _png_pixel(os.path.join(folder, f"spritesheet_{theme}.png"), x + w // 2, y + h // 2)
 
 
 def _text_colour(root: tk.Tk, state: list[str]) -> tuple[int, int, int]:
@@ -83,7 +123,7 @@ def _measure(root: tk.Tk, theme: str, fix: bool = True) -> dict[str, float]:
     if fix:
         theme_colours.fix_accent_button(root)
     return {
-        name: ratio(_text_colour(root, state), _sprite_fill(root, theme, sprite))
+        name: ratio(_text_colour(root, state), _sprite_fill(theme, sprite))
         for name, (state, sprite) in STATES.items()
     }
 
@@ -109,7 +149,7 @@ def test_the_resting_text_is_not_white_on_light_cyan(root, theme) -> None:
     sv_ttk.set_theme(theme)
     theme_colours.fix_accent_button(root)
     text = _text_colour(root, [])
-    fill = _sprite_fill(root, theme, "button-accent-rest")
+    fill = _sprite_fill(theme, "button-accent-rest")
     if theme == "dark":
         assert text == (0, 0, 0) and fill == (87, 200, 255)
     else:
