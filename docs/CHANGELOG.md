@@ -25,6 +25,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **A speed hint for Large v3 on the CPU**: once the app knows transcription runs on the CPU, the status
   line beside the Transcribe-tab model picker says "Faster on this CPU: Large v3 Turbo (about 1.6x)" and
   the log explains it once. Not shown when English translation is on, since turbo cannot translate.
+- **Groundwork for asking questions about a transcript offline**: `core/transcript_qa.py` finds the lines
+  that answer a question (BM25 over words and character 3-grams, Persian/Arabic spelling folded), numbers
+  them as evidence for a local model, keeps only the line ids it was shown, and renders the app's own
+  `[mm:ss]` links. Not used by the interface yet.
 
 ### Changed
 

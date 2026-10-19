@@ -298,6 +298,7 @@ a = Analysis(
         'core.js_runtime',
         'core.loop_guard',
         'core.translate_task',
+        'core.transcript_qa',
         'core.task_settings',
         'core.history',
         'core.hub',
