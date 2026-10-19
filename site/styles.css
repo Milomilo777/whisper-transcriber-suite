@@ -623,6 +623,9 @@ html:lang(ru), html:lang(uk), html:lang(bg), html:lang(sr), html:lang(el) { --fo
 html:lang(zh-CN) { --font-display: "Sora", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", sans-serif; --font-body: "Geist", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", sans-serif; --font-mono: "Geist Mono", "PingFang SC", "Microsoft YaHei", monospace; }
 html:lang(zh-TW) { --font-display: "Sora", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "Source Han Sans TC", sans-serif; --font-body: "Geist", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "Source Han Sans TC", sans-serif; --font-mono: "Geist Mono", "PingFang TC", "Microsoft JhengHei", monospace; }
 html:lang(ja) { --font-display: "Sora", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", sans-serif; --font-body: "Geist", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", sans-serif; --font-mono: "Geist Mono", "Hiragino Sans", "Yu Gothic UI", Meiryo, monospace; }
+/* Japanese has no spaces: headings break between phrases, so a lone kana never sits on a line of
+   its own ("出 / 力。"); browsers without auto-phrase keep their normal breaking. */
+html:lang(ja) :is(h1, h2, h3) { word-break: auto-phrase; }
 html:lang(ko) { --font-display: "Sora", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; --font-body: "Geist", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; --font-mono: "Geist Mono", "Apple SD Gothic Neo", "Malgun Gothic", monospace; }
 /* Tight Latin tracking breaks joined scripts (Arabic letters pull apart) and crowds the others;
    their tall marks need more line height than Latin headings. */
