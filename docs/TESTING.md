@@ -89,3 +89,8 @@ Tcl read error; the file is fine and the test passes alone). The same fault can 
 `Can't find a usable tk.tcl` or `invalid command name "tcl_findLibrary"`. `tests/conftest.py` retries exactly
 those errors at most 3 times in total; each retry is printed and the pytest summary shows `tk.Tk() init.tcl retries: N`.
 Any other `TclError` fails the test as usual.
+
+On Linux CI, a Python 3.12 run sometimes hangs in Tk's `destroy` while the pystray icon thread waits on X
+(Xvfb has no system tray). `.github/workflows/tray-hang-diag.yml` (manual trigger) runs the suite with and
+without the tray icon and, when a test stops making progress, records whether the X server still answers and
+native stacks of the stuck process (`gh workflow run tray-hang-diag.yml`).

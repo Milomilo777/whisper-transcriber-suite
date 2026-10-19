@@ -1,0 +1,96 @@
+# Diagnostic for the intermittent Linux hang in Tk destroy (Python 3.12 runs of ci.yml).
+# Runs the same suite as ci.yml under Xvfb, with and without the pystray icon, and when a
+# test stops making progress it records whether the X server still answers (a server grab
+# blocks every other client) and native stacks of the stuck process. Manual trigger only.
+name: tray-hang-diag
+
+on:
+  workflow_dispatch:
+    inputs:
+      reps:
+        description: "Runs per variant (JSON list, e.g. [1,2,3])"
+        default: "[1,2,3,4]"
+
+permissions:
+  contents: read
+
+jobs:
+  suite:
+    name: tray=${{ matrix.tray }} · run ${{ matrix.rep }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        tray: [on, off]
+        rep: ${{ fromJSON(inputs.reps) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-timeout responses hypothesis py-spy
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-tk xvfb x11-utils
+      - name: Plugin that keeps the tray icon off (tray=off only)
+        if: matrix.tray == 'off'
+        run: |
+          mkdir -p diag
+          cat > diag/diag_notray.py <<'EOF'
+          import pytest
+
+          @pytest.fixture(autouse=True)
+          def _diag_no_tray(monkeypatch):
+              import app.widgets.tray as tray
+              monkeypatch.setattr(tray.TrayController, "start", lambda self: None)
+          EOF
+      - name: Suite with a stall watcher
+        env:
+          WHISPER_OFFLINE_TESTS: "1"
+          DISPLAY: ":99"
+          PYTHONPATH: diag
+          TRAY: ${{ matrix.tray }}
+        run: |
+          Xvfb :99 -screen 0 1280x1024x24 >/tmp/xvfb.log 2>&1 &
+          sleep 2
+          extra=""
+          if [ "$TRAY" = off ]; then extra="-p diag_notray"; fi
+          # A long per-test timeout so the watcher, not pytest-timeout, sees the stall.
+          python -m pytest tests/ --ignore=tests/smoke -v -p no:cacheprovider --timeout=900 $extra > /tmp/pytest.log 2>&1 &
+          PID=$!
+          last=0; still=0; stalled=0
+          while kill -0 $PID 2>/dev/null; do
+            sleep 15
+            size=$(stat -c %s /tmp/pytest.log)
+            if [ "$size" = "$last" ]; then still=$((still + 15)); else still=0; last=$size; fi
+            if [ $still -ge 150 ]; then
+              stalled=1
+              echo "== STALL after: $(tail -n 2 /tmp/pytest.log | tr '\n' ' ')"
+              timeout 10 xdpyinfo -display :99 >/dev/null 2>&1; echo "== xdpyinfo exit=$? (124 = X server not answering)"
+              timeout 10 xprop -display :99 -root _NET_SUPPORTING_WM_CHECK 2>&1 | head -3
+              timeout 10 xlsclients -display :99 -l 2>&1 | head -20
+              for p in $(pgrep -f "pytest tests/"); do
+                echo "== py-spy native dump of $p"
+                sudo env "PATH=$PATH" py-spy dump --native --pid "$p" 2>&1 | head -200
+              done
+              kill -9 $PID 2>/dev/null
+              break
+            fi
+          done
+          wait $PID; rc=$?
+          echo "== pytest exit=$rc stalled=$stalled"
+          grep -E "^(FAILED|ERROR)|[0-9]+ (passed|failed)" /tmp/pytest.log | tail -15
+          if [ $stalled = 1 ]; then exit 3; fi
+          exit $rc
+      - name: Keep the full log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pytest-log-tray-${{ matrix.tray }}-${{ matrix.rep }}
+          path: /tmp/pytest.log
+          retention-days: 7
