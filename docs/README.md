@@ -47,3 +47,4 @@ the one-line-per-change history is [CHANGELOG.md](CHANGELOG.md).
 ## Development state
 
 - [ROADMAP.md](ROADMAP.md) — high-level direction
+- [../experiments/](../experiments/) — early phone-app prototypes, not part of the desktop app
