@@ -3863,7 +3863,9 @@ class App(tk.Tk):
         on_cpu = kind in ("cpu", "cpu_downgraded")
         if on_cpu != bool(self.__dict__.get("_runs_on_cpu")):
             self.__dict__["_runs_on_cpu"] = on_cpu
-            self._refresh_model_status()
+            refresh = getattr(self, "_refresh_model_status", None)
+            if callable(refresh):  # stand-in objects (tests, early startup) may lack it
+                refresh()
         for label in self.device_badge_labels:
             try:
                 if colour:
