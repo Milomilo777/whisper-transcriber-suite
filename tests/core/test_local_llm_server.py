@@ -150,6 +150,20 @@ def test_port_is_found_from_the_socket_when_the_log_line_is_missing(model, tmp_p
     assert server.running() and server.port
 
 
+# Starts its arguments as a child and waits, like a venv's python.exe launcher.
+LAUNCHER = "import subprocess, sys; sys.exit(subprocess.call([sys.executable] + sys.argv[1:]))"
+
+
+def test_port_is_found_when_a_launcher_starts_the_server(model, tmp_path, monkeypatch):
+    """The socket belongs to the launcher's child, not to the process the app started."""
+    monkeypatch.setenv("FAKE_LLAMA_NO_PORT_LINE", "1")
+    server = lls.LocalLLMServer(
+        lls.ServerOptions(model=model, peak_ram_mb=0, threads=2, load_timeout_s=20.0),
+        command=[sys.executable, "-c", LAUNCHER, str(FAKE)], log_path=tmp_path / "logs" / "llama-server.log")
+    server.start()
+    assert server.running() and server.port
+
+
 def test_loading_reports_progress_until_health_is_ok(model, tmp_path, monkeypatch):
     monkeypatch.setenv("FAKE_LLAMA_LOAD_S", "1.5")
     calls: list[tuple[float, float]] = []

@@ -623,9 +623,13 @@ class LocalLLMServer:
         try:
             import psutil  # noqa: PLC0415
 
-            for conn in psutil.Process(pid).net_connections(kind="tcp"):
-                if conn.status == psutil.CONN_LISTEN and conn.laddr and conn.laddr.ip == LOOPBACK:
-                    return int(conn.laddr.port)
+            # A launcher (a venv's python.exe, a wrapper script) holds no socket
+            # itself: the server is its child, so look at the whole tree.
+            proc = psutil.Process(pid)
+            for p in [proc, *proc.children(recursive=True)]:
+                for conn in p.net_connections(kind="tcp"):
+                    if conn.status == psutil.CONN_LISTEN and conn.laddr and conn.laddr.ip == LOOPBACK:
+                        return int(conn.laddr.port)
         except Exception:  # noqa: BLE001 - not yet listening, or not readable
             pass
         return None
