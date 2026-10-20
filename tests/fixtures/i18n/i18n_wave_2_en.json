@@ -129,6 +129,22 @@
    "Large v3 Turbo (deepdml) — ~5x faster, multilingual (~1.6 GB)   [needs download]"
   ],
   [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Belle Large v3 Turbo — Chinese only (~1.6 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Kotoba-Whisper v2.0 — Japanese only (~1.5 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Large v3 Turbo German (primeline) — German only (~1.6 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "Thonburian Large v3 — Thai only (~3.1 GB)   [needs download]"
+  ],
+  [
    ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!button",
    "?"
   ],

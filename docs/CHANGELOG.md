@@ -6,6 +6,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Models trained for one language**: picking Persian, Chinese, Japanese, German or Thai on the
+  Transcribe tab now suggests a model built for that language, with its publisher's own accuracy
+  figures, size and licence, and a **Use it** button (and **Switch back** when another language is
+  picked). Persian gets `mehdi-hf/nemotron-asr-streaming-farsi` on the local transformers engine:
+  8.8% word errors on FLEURS by its author's test, with timed lines cut at pauses. See ADR 0015.
+
 - **Mixed-language audio (experimental)**: a tick box under the Transcribe tab's options, with a
   second language picker, for recordings that switch between two languages. Each stretch is written
   in whichever of the two it sounds like, instead of being translated into one of them (which a
@@ -54,6 +60,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   stops a leftover server after checking its pid, start time and program path. Not used by the interface yet.
 
 ### Changed
+
+- The on-demand local transformers engine now installs transformers 5.18 to 5.20.2 (the Persian
+  model needs 5.18); the bundled `tokenizers` and `huggingface-hub` pins move with it. A copy
+  installed by an earlier version is upgraded on the next use (only transformers, not torch).
 
 - **"What's new" in the README now describes 2.1.**
 

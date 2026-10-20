@@ -20,10 +20,21 @@ MULTILINGUAL = [
     "tiny", "base", "small", "medium", "large-v1", "large-v2", "large-v3",
     "large-v3-turbo", "deepdml-large-v3-turbo",
 ]
+# Trained for one other language (core/language_models.py): not English-only.
+ONE_LANGUAGE = {
+    "belle-large-v3-turbo-zh": "zh", "kotoba-whisper-v2.0": "ja",
+    "primeline-large-v3-turbo-de": "de", "thonburian-large-v3-th": "th",
+}
 
 
 def test_every_built_in_model_is_classified():
-    assert sorted(ENGLISH_ONLY + MULTILINGUAL) == sorted(mm.MODEL_REGISTRY)
+    assert sorted(ENGLISH_ONLY + MULTILINGUAL + list(ONE_LANGUAGE)) == sorted(mm.MODEL_REGISTRY)
+
+
+@pytest.mark.parametrize("slug,language", sorted(ONE_LANGUAGE.items()))
+def test_one_language_models(slug, language):
+    assert mm.is_english_only({}, slug) is False
+    assert mm.MODEL_REGISTRY[slug]["language"] == language
 
 
 @pytest.mark.parametrize("slug", ENGLISH_ONLY)

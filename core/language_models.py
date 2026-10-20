@@ -1,0 +1,212 @@
+"""Models trained for one spoken language, suggested on the Transcribe tab (ADR 0015).
+
+Each row is one model per language that, by its publisher's own published comparison, beats
+stock Whisper (or the earlier best open model) for that language, has a permissive (or
+OpenMDW) licence, needs no Hugging Face login, and loads as published: CTranslate2 files at
+the repo root for the ``faster_whisper`` engine, or a transformers model for the local
+``nvidia_asr`` engine. ``claim`` repeats the publisher's figures on the publisher's test sets;
+this project has not re-measured them, and the UI says so.
+
+Choosing a row never happens on its own: the Transcribe tab offers it, and "Use it" calls
+:func:`apply_language_model`, which also remembers the engine and model it replaced so
+:func:`restore_previous` can switch back.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+from .model_manager import DEFAULT_MODEL_SLUG
+
+ENGINE_WHISPER = "faster_whisper"
+ENGINE_TRANSFORMERS = "nvidia_asr"
+
+#: Config key holding the engine/model in use before "Use it" switched to a language model.
+PREVIOUS_KEY = "language_model_previous"
+
+
+@dataclass(frozen=True)
+class LanguageModel:
+    language: str  # Whisper language code
+    name: str      # short display name
+    engine: str    # ENGINE_WHISPER (``model`` = registry slug) or ENGINE_TRANSFORMERS (``model`` = HF repo id)
+    model: str
+    size_gb: float
+    licence: str
+    claim: str     # the publisher's own comparison, one sentence
+    source: str    # where the claim is published
+
+
+LANGUAGE_MODELS: dict[str, LanguageModel] = {
+    "fa": LanguageModel(
+        language="fa",
+        name="Nemotron ASR Persian",
+        engine=ENGINE_TRANSFORMERS,
+        model="mehdi-hf/nemotron-asr-streaming-farsi",
+        size_gb=2.5,
+        licence="OpenMDW-1.1",
+        claim=("8.8% word errors on FLEURS Persian against 24.2% for NVIDIA's earlier Persian model, "
+               "and 26.0% against 54.4% on conversational speech (films, YouTube)"),
+        source="https://huggingface.co/mehdi-hf/nemotron-asr-streaming-farsi",
+    ),
+    "zh": LanguageModel(
+        language="zh",
+        name="Belle Whisper Large v3 Turbo Chinese",
+        engine=ENGINE_WHISPER,
+        model="belle-large-v3-turbo-zh",
+        size_gb=1.62,
+        licence="Apache-2.0",
+        claim="3.1% character errors on AISHELL-1 against 8.1% for Whisper Large v3",
+        source="https://huggingface.co/BELLE-2/Belle-whisper-large-v3-turbo-zh",
+    ),
+    "ja": LanguageModel(
+        language="ja",
+        name="Kotoba-Whisper v2.0",
+        engine=ENGINE_WHISPER,
+        model="kotoba-whisper-v2.0",
+        size_gb=1.52,
+        licence="MIT",
+        claim=("11.6% character errors on ReazonSpeech against 14.9% for Whisper Large v3, "
+               "about 6x faster"),
+        source="https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0",
+    ),
+    "de": LanguageModel(
+        language="de",
+        name="Whisper Large v3 Turbo German (primeline)",
+        engine=ENGINE_WHISPER,
+        model="primeline-large-v3-turbo-de",
+        size_gb=1.62,
+        licence="Apache-2.0",
+        claim="2.6% word errors over its German test sets against 3.3% for Whisper Large v3",
+        source="https://huggingface.co/primeline/whisper-large-v3-turbo-german",
+    ),
+    "th": LanguageModel(
+        language="th",
+        name="Thonburian Whisper Large v3 Thai",
+        engine=ENGINE_WHISPER,
+        model="thonburian-large-v3-th",
+        size_gb=3.09,
+        licence="MIT",
+        claim="13.9% word errors on FLEURS Thai against 24.1% for Whisper Large v3",
+        source="https://huggingface.co/nectec/Pathumma-whisper-th-large-v3",
+    ),
+}
+
+
+_ALIASES = {"iw": "he", "jw": "jv"}  # legacy codes in the app's language list
+
+
+def normalize(code: str | None) -> str:
+    """The language subtag of a picker code: ``"zh-Hans,zh-CN"`` -> ``"zh"``, ``"pt-BR"`` ->
+    ``"pt"``, ``"iw"`` -> ``"he"``; ``""`` for Auto / empty. (The transcriber has a fuller
+    version; this one avoids importing it.)"""
+    first = (code or "").strip().lower().replace("_", "-").split(",", 1)[0]
+    language = first.split("-", 1)[0].strip()
+    return _ALIASES.get(language, language)
+
+
+def for_language(language: str | None) -> LanguageModel | None:
+    """The row for a picker or Whisper language code (``"fa"``, ``"zh-Hans,zh-CN"``), or None
+    (also for Auto / empty)."""
+    return LANGUAGE_MODELS.get(normalize(language))
+
+
+def active(cfg: dict[str, Any]) -> LanguageModel | None:
+    """The row whose model the config runs now, or None when a general model is in use."""
+    engine = str(cfg.get("transcribe_backend") or ENGINE_WHISPER).strip().lower()
+    for row in LANGUAGE_MODELS.values():
+        if row.engine != engine:
+            continue
+        if engine == ENGINE_WHISPER and str(cfg.get("whisper_model") or "") == row.model:
+            return row
+        if engine == ENGINE_TRANSFORMERS and str(cfg.get("nvidia_asr_model_id") or "").strip().lower() == row.model.lower():
+            return row
+    return None
+
+
+def suggestion(cfg: dict[str, Any], language: str | None) -> tuple[str, LanguageModel] | None:
+    """What the Transcribe tab should offer for the picked ``language``.
+
+    ``("offer", row)``: a model for this language exists and is not in use (also when
+    another language's model is active: "Use it" then switches straight to this one).
+    ``("leave", row)``: ``row`` is in use but the picked language has no model of its own
+    (or is Auto), so it would write everything in ``row.language``; offer the way back.
+    None: nothing to say.
+    """
+    current = active(cfg)
+    wanted = for_language(language)
+    if wanted is not None:
+        return None if wanted == current else ("offer", wanted)
+    if current is not None:
+        return "leave", current
+    return None
+
+
+def apply_language_model(cfg: dict[str, Any], row: LanguageModel) -> dict[str, Any]:
+    """Switch ``cfg`` (in place) to ``row``; returns ``cfg``.
+
+    Remembers the engine and models in use before, unless a language model was already
+    active (then the remembered general setup stays the one to go back to).
+    """
+    remembered = cfg.get(PREVIOUS_KEY)
+    if active(cfg) is not None and isinstance(remembered, dict):
+        # From one language model to another: go back to the general setup first, so the
+        # first model's key on the other engine (a Persian nvidia_asr_model_id under a Chinese
+        # Whisper model, or the reverse) does not linger; then keep the same memory.
+        restore_previous(cfg)
+        cfg[PREVIOUS_KEY] = remembered
+    elif active(cfg) is None:
+        cfg[PREVIOUS_KEY] = {
+            "transcribe_backend": str(cfg.get("transcribe_backend") or ENGINE_WHISPER),
+            "whisper_model": str(cfg.get("whisper_model") or DEFAULT_MODEL_SLUG),
+            "model": cfg.get("model"),
+            "model_path": str(cfg.get("model_path") or ""),  # a model folder the user picked
+            "nvidia_asr_model_id": str(cfg.get("nvidia_asr_model_id") or ""),
+        }
+    cfg["transcribe_backend"] = row.engine
+    if row.engine == ENGINE_WHISPER:
+        _set_whisper_model(cfg, row.model)
+    else:
+        cfg["nvidia_asr_model_id"] = row.model
+    return cfg
+
+
+def restore_previous(cfg: dict[str, Any]) -> dict[str, Any]:
+    """Undo :func:`apply_language_model` (in place): back to the remembered engine and models,
+    or to Whisper with the default model when nothing usable was remembered. Returns ``cfg``."""
+    prev = cfg.pop(PREVIOUS_KEY, None)
+    prev = prev if isinstance(prev, dict) else {}
+    engine = str(prev.get("transcribe_backend") or ENGINE_WHISPER)
+    slug = str(prev.get("whisper_model") or DEFAULT_MODEL_SLUG)
+    nvidia_id = str(prev.get("nvidia_asr_model_id") or "")
+    remembered = {"transcribe_backend": engine, "whisper_model": slug, "nvidia_asr_model_id": nvidia_id}
+    if active(remembered) is not None:
+        # The remembered setup is itself a language model (hand-edited or an older build):
+        # never go "back" to one; Whisper with the default model instead.
+        engine, slug, nvidia_id, prev = ENGINE_WHISPER, DEFAULT_MODEL_SLUG, "", {}
+    if any(r.engine == ENGINE_WHISPER and r.model == slug for r in LANGUAGE_MODELS.values()):
+        slug = DEFAULT_MODEL_SLUG  # the remembered Whisper model is a one-language one
+    if any(r.engine == ENGINE_TRANSFORMERS and r.model.lower() == nvidia_id.lower() for r in LANGUAGE_MODELS.values()):
+        nvidia_id = ""
+    cfg["transcribe_backend"] = engine
+    _set_whisper_model(cfg, slug)
+    if prev.get("model") and str(prev.get("whisper_model") or "") == slug:
+        cfg["model"] = prev["model"]  # exactly the entry there was before (an online-catalog one too)
+    if prev.get("model_path"):
+        cfg["model_path"] = str(prev["model_path"])  # a model folder the user picked
+    if nvidia_id:
+        cfg["nvidia_asr_model_id"] = nvidia_id
+    else:
+        cfg.pop("nvidia_asr_model_id", None)  # the config default (Parakeet) applies again
+    return cfg
+
+
+def _set_whisper_model(cfg: dict[str, Any], slug: str) -> None:
+    """The three keys the model picker writes for a registry slug (see ``App._on_model_selected``)."""
+    from .model_manager import catalog_resolve_entry
+
+    cfg["whisper_model"] = slug
+    entry = catalog_resolve_entry(cfg, slug)
+    if entry:
+        cfg["model"] = entry
+    cfg["model_path"] = ""

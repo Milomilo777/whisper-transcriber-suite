@@ -382,6 +382,18 @@ def _no_os_tray_icon(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_outdated_packages(monkeypatch):
+    """The developer's own transformers (any version) must not make a backend test start a
+    real pip upgrade: ``optional_deps.outdated`` reports nothing unless a test says otherwise.
+    Tests of ``outdated`` itself import the function directly (bound before this patch)."""
+    try:
+        import core.optional_deps as _od
+    except Exception:  # noqa: BLE001 - an import failure here is unrelated
+        return
+    monkeypatch.setattr(_od, "outdated", lambda feature: [])
+
+
+@pytest.fixture(autouse=True)
 def _reset_install_stop_flag():
     """``App.on_exit`` asks every package install to stop for good (process-wide).
 

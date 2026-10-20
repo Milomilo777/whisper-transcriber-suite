@@ -292,7 +292,12 @@ v3 — local"). It runs a Hugging Face **transformers**
 `automatic-speech-recognition` model entirely on this machine (no audio
 leaves the device). The default is NVIDIA's transformers-native multilingual
 FastConformer model `nvidia/parakeet-tdt-0.6b-v3`; you can point it at any
-transformers ASR model id or a local directory.
+transformers ASR model id or a local directory. Some models need their own calls
+(`MODEL_RECIPES` in `core/backends/nvidia_asr.py`): the Persian
+`mehdi-hf/nemotron-asr-streaming-farsi` gets the language passed to its
+processor and runs on speech pieces of at most 12 s cut at pauses, each one a
+timed subtitle line. The Transcribe tab suggests it (and the other models in
+`core/language_models.py`) when Persian is picked.
 
 The heavy libraries (`transformers` + `torch` + `librosa`) and the model
 weights are **not bundled** — they install / download on first use (a few GB,
@@ -542,6 +547,7 @@ Not a config key — a **File → Convert transcript…** menu action backed by 
 | `hotwords` | string | `""` | Words the model should prefer. |
 | `output_formats` | array of strings | `["srt", "json"]` | Subset of `srt / vtt / tsv / json / txt / lrc / md / ass / docx / elan / express_scribe / inqscribe / otr / pdf`. |
 | `transcribe_backend` | string | `"faster_whisper"` | The transcription engine (Advanced settings). Cloud engines run only when chosen here, with the user's own credentials. |
+| `language_model_previous` | object | absent | Written by the Transcribe tab's "Use it" for a model trained for one language (ADR 0015): the engine, Whisper model, model entry, model folder and transformers model id it replaced. "Switch back" restores them and removes the key. |
 | `transcribe_language` | string | `"Auto"` | Spoken-language picker on the Transcribe tab (display name). Kept for older files; the picker itself is not saved. |
 | `hallucination_detect_enabled` | bool | `true` | Flags repeated or invented lines in the output. |
 | `auto_chapters_enabled` | bool | `true` | Adds chapters to the output after a transcription. |

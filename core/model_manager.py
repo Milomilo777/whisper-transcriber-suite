@@ -404,6 +404,53 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
             "accuracy."
         ),
     },
+    # Models trained for one language ("language" = the only language they
+    # are for). The Transcribe tab suggests them when that language is picked;
+    # the publishers' figures and sources are in core/language_models.py.
+    "belle-large-v3-turbo-zh": {
+        "label": "Belle Large v3 Turbo — Chinese only (~1.6 GB)",
+        "name": "faster-whisper-belle-large-v3-turbo-zh",
+        "hf_repo": "flateon/Belle-whisper-large-v3-turbo-zh-ct2",
+        "language": "zh",
+        "approx_size_gb": 1.62,
+        "info": (
+            "~1.6 GB, Chinese only. BELLE's Chinese fine-tune of Large v3 "
+            "Turbo (CT2 conversion); Apache-2.0."
+        ),
+    },
+    "kotoba-whisper-v2.0": {
+        "label": "Kotoba-Whisper v2.0 — Japanese only (~1.5 GB)",
+        "name": "faster-whisper-kotoba-v2.0",
+        "hf_repo": "kotoba-tech/kotoba-whisper-v2.0-faster",
+        "language": "ja",
+        "approx_size_gb": 1.52,
+        "info": (
+            "~1.5 GB, Japanese only. Kotoba Technologies' distilled Large v3 "
+            "for Japanese, about 6x faster; MIT."
+        ),
+    },
+    "primeline-large-v3-turbo-de": {
+        "label": "Large v3 Turbo German (primeline) — German only (~1.6 GB)",
+        "name": "faster-whisper-primeline-large-v3-turbo-de",
+        "hf_repo": "jimmymeister/whisper-large-v3-turbo-german-ct2",
+        "language": "de",
+        "approx_size_gb": 1.62,
+        "info": (
+            "~1.6 GB, German only. primeline's German fine-tune of Large v3 "
+            "Turbo (CT2 conversion); Apache-2.0."
+        ),
+    },
+    "thonburian-large-v3-th": {
+        "label": "Thonburian Large v3 — Thai only (~3.1 GB)",
+        "name": "faster-whisper-thonburian-large-v3-th",
+        "hf_repo": "Vinxscribe/biodatlab-whisper-th-large-v3-faster",
+        "language": "th",
+        "approx_size_gb": 3.09,
+        "info": (
+            "~3.1 GB, Thai only. Biodatlab's Thai fine-tune of Large v3 "
+            "(CT2 conversion); MIT."
+        ),
+    },
 }
 
 

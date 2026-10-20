@@ -664,3 +664,57 @@ a faster-whisper upgrade stops calling `detect_language()` where the wrapper sit
   option would replace the wrapper.
 - Accuracy against a human reference, other language pairs and the batched (GPU) path are not yet
   measured; the option is labelled experimental until they are.
+
+## 0015 — Language-specialised models: a curated table, suggested on the Transcribe tab
+
+**Status:** Accepted
+
+**Date:** 2026-10-20
+
+**Context:** For several languages, models trained for that one language report much lower error
+rates than stock Whisper on their own test sets (Persian: a Nemotron ASR fine-tune, 8.8% WER on
+FLEURS against 24.2% for NVIDIA's earlier Persian model; Chinese, Japanese, German and Thai:
+Whisper fine-tunes with ready CTranslate2 builds). Users rarely find these models themselves. The
+app can already run CTranslate2 Whisper models (faster-whisper) and any transformers ASR model
+(the local `nvidia_asr` engine).
+
+**Options considered:**
+1. Keep Whisper for every language (as is). No new risk; leaves the reported gains unused.
+2. Switch the model automatically when a language is picked. Silent multi-gigabyte downloads and
+   surprise engine changes.
+3. A curated table of one model per language, shown as a suggestion with a "Use it" button next
+   to the language picker. Chosen.
+4. Run every candidate through our own benchmark first. Deferred: the table records each model's
+   own published numbers and their source, and our benchmark can drop a row later.
+5. Route by language per file: keep the user's engine for every language and use the specialised
+   model only for files in its language (an outside review proposed it as the nicer experience).
+   Deferred: a worker loads one engine at spawn, so per-file routing needs a worker per engine or
+   an engine switch per job; the chosen switch is explicit and always offers the way back.
+
+**Decision:** `core/language_models.py` holds the table: language, engine (`faster_whisper` with a
+registry slug, or `nvidia_asr` with a Hugging Face repo), size, licence, the model's own claim
+and its source URL. Rows need a published comparison against Whisper (or the earlier best model
+for that language), a permissive or OpenMDW licence, no gate, and files the app can load as they
+are (CTranslate2 files at the repo root, or a transformers model). The Transcribe tab shows a
+suggestion when the picked language has a row and that model is not active, and offers the way
+back to Whisper when a language-only model is active for another language. Nothing switches
+without a click. Transformers models that need model-specific calls get a recipe in
+`core/backends/nvidia_asr.py` (the Persian model: `AutoModelForRNNT`, the language passed to the
+processor, 1.12 s look-ahead, speech pieces cut at pauses by Silero VAD so each piece becomes a
+timed segment). The on-demand `transformers` install moves to 5.20 (the Persian model needs
+5.18 or later) and the bundled `tokenizers` (0.23.1 to 0.24) and `huggingface-hub` (1.31 to 2)
+pins move with it. Because transformers 5.15 refuses the newer bundled `tokenizers`, every load of
+the engine checks the installed versions against the pins: an outdated copy in the app's own
+package folder is reinstalled (only that package, not torch) and its old `.dist-info` is removed;
+an outdated copy in the Python environment itself (a source checkout) is reported with the pip
+command instead of being downloaded again on every load. Offline, the engine says it needs the
+update. The switch remembers the engine, model, model entry and model folder it replaced, and the
+way back never returns to another language-only model.
+
+**Consequences:**
+- Users of the listed languages get a one-click path to a model built for their language.
+- The table depends on third-party repositories that can change or disappear; each row names its
+  source, and a missing repo shows the usual download error.
+- The gains are the publishers' own figures on their own test sets, not our measurements; the
+  suggestion says so.
+- French (CTranslate2 files in a subfolder) and Arabic (gated) wait for download support.

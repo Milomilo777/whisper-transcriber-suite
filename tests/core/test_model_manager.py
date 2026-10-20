@@ -121,6 +121,9 @@ def test_model_registry_has_full_catalog():
         "distil-small.en", "distil-medium.en", "distil-large-v2",
         "distil-large-v3", "distil-large-v3.5", "large-v3-turbo",
         "deepdml-large-v3-turbo",
+        # one-language models (core/language_models.py)
+        "belle-large-v3-turbo-zh", "kotoba-whisper-v2.0",
+        "primeline-large-v3-turbo-de", "thonburian-large-v3-th",
     }
     assert set(mm.MODEL_REGISTRY.keys()) == expected_slugs
     for slug, entry in mm.MODEL_REGISTRY.items():

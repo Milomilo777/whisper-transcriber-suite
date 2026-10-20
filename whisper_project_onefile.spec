@@ -291,6 +291,7 @@ a = Analysis(
         'core.tts_job',
         'core.vad_window',
         'core.language_defaults',
+        'core.language_models',
         # Opt-in backends — explicit submodule names so a user
         # who flips the config gets a working backend rather than
         # a silent ImportError. The collect_all calls above pick

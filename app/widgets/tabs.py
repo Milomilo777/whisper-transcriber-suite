@@ -823,6 +823,22 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     ).pack(side="left", padx=(0, 20))
     lang_combo.bind("<<ComboboxSelected>>", lambda _e: app._save_transcribe_prefs())
 
+    # A model trained for the picked language (core/language_models.py, ADR 0015): one line
+    # with a "Use it" / "Switch back" button, packed right under line 1 only when there is
+    # something to offer (App._refresh_language_model_hint).
+    app.language_model_anchor = opts_line1
+    app.language_model_row = ttk.Frame(quick_opts)
+    app.language_model_hint_var = tk.StringVar(value="")
+    ttk.Label(
+        app.language_model_row, textvariable=app.language_model_hint_var,
+        foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=640, justify="left",
+    ).pack(side="left", padx=(0, 8))
+    app.language_model_button = ttk.Button(
+        app.language_model_row, text=_("Use it"), command=app._on_language_model_button,
+    )
+    app.language_model_button.pack(side="left")
+    app._refresh_language_model_hint()  # a language model may already be active from an earlier session
+
     # Feature toggles — friendly phrasing instead of "diarization" /
     # "Word timestamps". The research's vocabulary mapping: Aiko ships
     # "Produce timestamps" and "Skip silent parts"; speaker-detection

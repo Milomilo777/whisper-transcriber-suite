@@ -15,6 +15,8 @@ def test_registry_contains_expected_models():
         "distil-small.en", "distil-medium.en", "distil-large-v2",
         "distil-large-v3", "distil-large-v3.5", "large-v3-turbo",
         "deepdml-large-v3-turbo",
+        "belle-large-v3-turbo-zh", "kotoba-whisper-v2.0",
+        "primeline-large-v3-turbo-de", "thonburian-large-v3-th",
     }
     # The four originally-bundled models stay in the registry.
     assert {"large-v3", "large-v3-turbo", "distil-large-v3.5", "medium"} \

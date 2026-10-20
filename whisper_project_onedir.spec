@@ -284,6 +284,7 @@ a = Analysis(
         'core.tts_job',
         'core.vad_window',
         'core.language_defaults',
+        'core.language_models',
         # Opt-in backends (see onefile spec comment).
         'pywhispercpp',
         'pywhispercpp.model',

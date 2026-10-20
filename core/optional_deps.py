@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import contextlib
 import importlib
+import importlib.metadata
 import importlib.util
 import logging
 import os
@@ -111,9 +112,12 @@ FEATURES: dict[str, tuple[str, list[str]]] = {
     # the requirements.txt comment above the tokenizers pin for why). An
     # unpinned "latest transformers" here would silently drift past that
     # bundled tokenizers' ceiling and break every fresh install. Verified
-    # working pair as of 2026-08-12: transformers 5.15.0 + tokenizers
-    # 0.22.0-0.23.0. Re-verify and bump both together before raising this.
-    "nvidia_asr": ("transformers", ["transformers>=4.40,<=5.15.0", "torch", "librosa"]),
+    # working pair as of 2026-10-20: transformers 5.20.2 + tokenizers
+    # >=0.23.1,<0.24 + huggingface-hub >=1.31 (the Persian Nemotron model
+    # needs transformers >= 5.18). Re-verify and bump all three together
+    # before raising this. An older on-demand transformers (e.g. 5.15 with
+    # the earlier tokenizers pin) is replaced: see outdated().
+    "nvidia_asr": ("transformers", ["transformers>=5.18,<=5.20.2", "torch", "librosa"]),
     # Clone Your Voice / Text to Voice (zero-shot voice cloning TTS).
     # OmniVoice (k2-fsa) pulls torch + its own weights (~2GB, downloaded
     # separately by the package itself on first model load, not by pip).
@@ -308,6 +312,37 @@ def _is_shared_folder(path: str, *, top_level: bool) -> bool:
             for name in names
         )
     return "extend_path" in text or "declare_namespace" in text
+
+
+_DIST_INFO_RE = re.compile(r"^(?P<name>.+?)-(?P<version>[^-]+)\.dist-info$", re.I)
+
+
+def _project_key(name: str) -> str:
+    return re.sub(r"[-_.]+", "_", name).lower()
+
+
+def _superseded_dist_infos(installed: list[str], folder: str) -> list[str]:
+    """``<project>-<other version>.dist-info`` folders in ``folder`` that the just-merged
+    ``installed`` entries replace. pip ``--target`` never removes them (another name), and
+    ``importlib.metadata`` may then report the old version (``outdated`` would keep asking
+    for an upgrade that already happened)."""
+    new: dict[str, str] = {}
+    for entry in installed:
+        m = _DIST_INFO_RE.match(entry)
+        if m:
+            new[_project_key(m.group("name"))] = entry.lower()
+    if not new:
+        return []
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return []
+    stale = []
+    for entry in names:
+        m = _DIST_INFO_RE.match(entry)
+        if m and new.get(_project_key(m.group("name"))) not in (None, entry.lower()):
+            stale.append(os.path.join(folder, entry))
+    return stale
 
 
 def _merge_units(staging: str, final: str, *, top_level: bool = True) -> list[tuple[str, str]]:
@@ -522,22 +557,119 @@ def is_available(feature: str) -> bool:
         return False
 
 
+def _version_key(version: str) -> tuple[int, ...]:
+    """A comparable key: ``"5.20.2"`` -> ``(5, 20, 2, 0)``, ``"5.18"`` == ``"5.18.0"``.
+
+    The release numbers lose trailing zeros and get a last element: 0 for a final or
+    post release, -1 for a pre-release (``a``, ``b``, ``rc``, ``dev``), so ``5.18.0rc1``
+    sorts below ``5.18``. A local tag (``+cpu``) is ignored.
+    """
+    text = version.strip().lower().split("+", 1)[0]
+    release = re.match(r"\d+(?:\.\d+)*", text)
+    if not release:
+        return (0,)
+    parts = [int(p) for p in release.group(0).split(".")]
+    while len(parts) > 1 and parts[-1] == 0:
+        parts.pop()
+    rest = text[release.end():]
+    return (*parts, -1 if re.match(r"[.\-_]?(a|b|c|rc|alpha|beta|pre|preview|dev)", rest) else 0)
+
+
+_SPEC_RE = re.compile(r"^\s*([A-Za-z0-9_.\-]+)\s*((?:[<>=!]=?\s*[\w.]+\s*,?\s*)*)$")
+_CLAUSE_RE = re.compile(r"(>=|<=|==|!=|>|<)\s*([\w.]+)")
+
+
+def version_satisfies(version: str, clauses: str) -> bool:
+    """True when ``version`` meets every clause of ``clauses`` (``">=5.18,<=5.20.2"``).
+
+    Numeric parts only; enough for the pins in :data:`FEATURES`. An empty clause list is met.
+    """
+    have = _version_key(version)
+    for op, want_text in _CLAUSE_RE.findall(clauses):
+        want = _version_key(want_text)
+        if not {
+            ">=": have >= want, "<=": have <= want, "==": have == want,
+            "!=": have != want, ">": have > want, "<": have < want,
+        }[op]:
+            return False
+    return True
+
+
+def outdated(feature: str) -> list[str]:
+    """Pinned packages of ``feature`` that are installed in a version outside their pin.
+
+    Returns ``["transformers 5.15.0 (needs >=5.18,<=5.20.2)", ...]``; empty when every pinned
+    package is absent or fits. ``is_available`` only checks that the import resolves, so an
+    install from an older app version (another pin) would otherwise never be replaced.
+    Never raises.
+    """
+    activate()
+    found: list[str] = []
+    for spec in packages_for(feature):
+        match = _SPEC_RE.match(spec)
+        if not match or not match.group(2).strip():
+            continue
+        name, clauses = match.group(1), match.group(2)
+        try:
+            have = importlib.metadata.version(name)
+        except Exception:  # noqa: BLE001 — not installed (or unreadable metadata): nothing to compare
+            continue
+        if not version_satisfies(have, clauses):
+            found.append(f"{name} {have} (needs {clauses.strip()})")
+    return found
+
+
+def upgrade_plan(feature: str) -> tuple[list[str], list[str]]:
+    """``(specs to reinstall, stale packages this app cannot replace)`` for ``feature``.
+
+    Only copies inside :func:`extras_dir` (installed on demand by this app) can be replaced;
+    one in the Python environment itself (a source checkout) shadows the extras dir, so
+    installing there would download for nothing on every load. Never raises.
+    """
+    activate()
+    ours = os.path.normcase(os.path.abspath(extras_dir()))
+    replace: list[str] = []
+    foreign: list[str] = []
+    for spec in packages_for(feature):
+        match = _SPEC_RE.match(spec)
+        if not match or not match.group(2).strip():
+            continue
+        name, clauses = match.group(1), match.group(2)
+        try:
+            dist = importlib.metadata.distribution(name)
+            have = dist.version
+            where = os.path.normcase(os.path.abspath(str(dist.locate_file(""))))
+        except Exception:  # noqa: BLE001 — not installed: nothing to replace
+            continue
+        if version_satisfies(have, clauses):
+            continue
+        if where == ours or where.startswith(ours + os.sep):
+            replace.append(spec)
+        else:
+            foreign.append(f"{name} {have} (needs {clauses.strip()})")
+    return replace, foreign
+
+
 def install(
     feature: str,
     log_cb: Callable[[str], None] | None = None,
     cancel_event: "threading.Event | None" = None,
     timeout: float = DEFAULT_INSTALL_TIMEOUT_S,
     force: bool = False,
+    packages: list[str] | None = None,
 ) -> bool:
     """pip-install the feature's packages into the user extras dir (see ``_install_impl``).
 
-    Also tells the app exit (``wait_until_idle``) that an install is running.
+    ``packages`` installs only those specs (e.g. the one outdated package from
+    :func:`upgrade_plan`) instead of the whole feature, so an upgrade of transformers does
+    not download torch again. Also tells the app exit (``wait_until_idle``) that an install
+    is running.
     """
     global _active_installs, _merging_installs
     with _activity:
         _active_installs += 1
     try:
-        return _install_impl(feature, log_cb, cancel_event, timeout, force)
+        return _install_impl(feature, log_cb, cancel_event, timeout, force, packages)
     finally:
         with _activity:
             _active_installs -= 1
@@ -553,8 +685,9 @@ def _install_impl(
     cancel_event: "threading.Event | None" = None,
     timeout: float = DEFAULT_INSTALL_TIMEOUT_S,
     force: bool = False,
+    packages: list[str] | None = None,
 ) -> bool:
-    """pip-install the feature's packages into the user extras dir.
+    """pip-install the feature's packages (or just ``packages``) into the user extras dir.
 
     Streams pip output to ``log_cb``. Returns True only when the install
     completes AND the feature actually imports.
@@ -571,7 +704,7 @@ def _install_impl(
       terminated (and its staging tree removed) instead of blocking the
       waiting modal forever.
     """
-    pkgs = packages_for(feature)
+    pkgs = list(packages) if packages else packages_for(feature)
     if not pkgs:
         return False
     if not can_install():
@@ -809,6 +942,8 @@ def _install_impl(
                 _rm(dst)
             shutil.rmtree(staging, ignore_errors=True)
             return False
+        for old in _superseded_dist_infos([os.path.basename(d) for _s, d in units], final_target):
+            _rm(old)
         shutil.rmtree(staging, ignore_errors=True)
 
         activate()

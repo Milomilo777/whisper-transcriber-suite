@@ -30,7 +30,8 @@ dependencies = [
     "av>=11,<19",
     # tokenizers is bundled so the on-demand nvidia_asr 'transformers' sees a
     # compatible one; keep this range identical to requirements.txt.
-    "tokenizers>=0.22.0,<=0.23.0",
+    "tokenizers>=0.23.1,<0.24",
+    "huggingface-hub>=1.31,<2",
     "requests>=2.31.0",
     "sv-ttk>=2.6.0",
     "platformdirs>=4.0.0",
@@ -101,7 +102,7 @@ nvidia_asr = [
     # Keep the transformers upper bound in sync with core/optional_deps.py's
     # nvidia_asr entry and the tokenizers pin in requirements.txt — see the
     # comment there for why an unpinned "latest transformers" breaks this.
-    "transformers>=4.40,<=5.15.0",
+    "transformers>=5.18,<=5.20.2",
     "torch>=2.2",
     "librosa>=0.10",
 ]

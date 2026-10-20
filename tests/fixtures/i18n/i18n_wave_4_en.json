@@ -121,6 +121,22 @@
    "Large v3 Turbo (deepdml) — ~5x faster, multilingual (~1.6 GB)"
   ],
   [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Belle Large v3 Turbo — Chinese only (~1.6 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Kotoba-Whisper v2.0 — Japanese only (~1.5 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Large v3 Turbo German (primeline) — German only (~1.6 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "Thonburian Large v3 — Thai only (~3.1 GB)"
+  ],
+  [
    ".!frame.!frame2.!frame2.!button",
    "Best for this PC…"
   ],
@@ -637,431 +653,435 @@
    "Output: English translation"
   ],
   [
-   ".!frame.!frame3.!frame3.!checkbutton",
+   ".!frame.!frame3.!frame3.!button",
+   "Use it"
+  ],
+  [
+   ".!frame.!frame3.!frame4.!checkbutton",
    "Mixed-language audio (experimental)"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!label",
+   ".!frame.!frame3.!frame4.!frame.!label",
    "Second language:"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "English"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Afrikaans"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Albanian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Amharic"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Arabic"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Armenian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Azerbaijani"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Basque"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Belarusian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Bengali"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Bosnian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Bulgarian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Catalan"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Cebuano"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Chinese (Simplified)"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Chinese (Traditional)"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Corsican"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Croatian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Czech"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Danish"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Dutch"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Esperanto"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Estonian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Finnish"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "French"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Frisian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Galician"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Georgian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "German"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Greek"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Gujarati"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Haitian Creole"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Hausa"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Hawaiian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Hebrew"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Hindi"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Hmong"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Hungarian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Icelandic"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Igbo"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Indonesian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Irish"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Italian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Japanese"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Javanese"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Kannada"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Kazakh"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Khmer"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Korean"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Kurdish"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Kyrgyz"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Lao"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Latin"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Latvian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Lithuanian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Luxembourgish"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Macedonian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Malagasy"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Malay"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Malayalam"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Maltese"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Maori"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Marathi"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Mongolian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Myanmar (Burmese)"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Nepali"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Norwegian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Nyanja (Chichewa)"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Pashto"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Persian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Polish"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Portuguese (Portugal, Brazil)"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Punjabi"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Romanian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Russian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Samoan"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Scots Gaelic"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Serbian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Sesotho"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Shona"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Sindhi"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Sinhala (Sinhalese)"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Slovak"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Slovenian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Somali"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Spanish"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Sundanese"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Swahili"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Swedish"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Tagalog (Filipino)"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Tajik"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Tamil"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Telugu"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Thai"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Turkish"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Ukrainian"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Urdu"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Uzbek"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Vietnamese"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Welsh"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Xhosa"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Yiddish"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Yoruba"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame.!frame3.!frame4.!frame.!combobox:values",
    "Zulu"
   ],
   [
-   ".!frame.!frame3.!frame3.!label",
+   ".!frame.!frame3.!frame4.!label",
    " ⓘ "
   ],
   [
@@ -1101,7 +1121,7 @@
    "Auto"
   ],
   [
-   ".!frame.!frame3.!frame3.!frame.!combobox:current",
+   ".!frame.!frame3.!frame4.!frame.!combobox:current",
    "English"
   ],
   [
@@ -1281,6 +1301,22 @@
   [
    ".!frame2.!frame2.!frame2.!combobox:values",
    "Large v3 Turbo (deepdml) — ~5x faster, multilingual (~1.6 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Belle Large v3 Turbo — Chinese only (~1.6 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Kotoba-Whisper v2.0 — Japanese only (~1.5 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Large v3 Turbo German (primeline) — German only (~1.6 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "Thonburian Large v3 — Thai only (~3.1 GB)"
   ],
   [
    ".!frame2.!frame2.!frame2.!button",
@@ -1799,431 +1835,435 @@
    "Output: English translation"
   ],
   [
-   ".!frame2.!frame3.!frame3.!checkbutton",
+   ".!frame2.!frame3.!frame3.!button",
+   "Use it"
+  ],
+  [
+   ".!frame2.!frame3.!frame4.!checkbutton",
    "Mixed-language audio (experimental)"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!label",
+   ".!frame2.!frame3.!frame4.!frame.!label",
    "Second language:"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "English"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Afrikaans"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Albanian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Amharic"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Arabic"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Armenian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Azerbaijani"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Basque"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Belarusian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Bengali"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Bosnian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Bulgarian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Catalan"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Cebuano"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Chinese (Simplified)"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Chinese (Traditional)"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Corsican"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Croatian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Czech"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Danish"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Dutch"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Esperanto"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Estonian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Finnish"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "French"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Frisian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Galician"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Georgian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "German"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Greek"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Gujarati"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Haitian Creole"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Hausa"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Hawaiian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Hebrew"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Hindi"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Hmong"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Hungarian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Icelandic"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Igbo"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Indonesian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Irish"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Italian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Japanese"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Javanese"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Kannada"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Kazakh"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Khmer"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Korean"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Kurdish"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Kyrgyz"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Lao"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Latin"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Latvian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Lithuanian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Luxembourgish"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Macedonian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Malagasy"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Malay"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Malayalam"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Maltese"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Maori"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Marathi"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Mongolian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Myanmar (Burmese)"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Nepali"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Norwegian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Nyanja (Chichewa)"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Pashto"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Persian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Polish"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Portuguese (Portugal, Brazil)"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Punjabi"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Romanian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Russian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Samoan"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Scots Gaelic"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Serbian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Sesotho"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Shona"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Sindhi"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Sinhala (Sinhalese)"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Slovak"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Slovenian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Somali"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Spanish"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Sundanese"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Swahili"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Swedish"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Tagalog (Filipino)"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Tajik"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Tamil"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Telugu"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Thai"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Turkish"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Ukrainian"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Urdu"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Uzbek"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Vietnamese"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Welsh"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Xhosa"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Yiddish"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Yoruba"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:values",
    "Zulu"
   ],
   [
-   ".!frame2.!frame3.!frame3.!label",
+   ".!frame2.!frame3.!frame4.!label",
    " ⓘ "
   ],
   [
@@ -2263,7 +2303,7 @@
    "Auto"
   ],
   [
-   ".!frame2.!frame3.!frame3.!frame.!combobox:current",
+   ".!frame2.!frame3.!frame4.!frame.!combobox:current",
    "English"
   ],
   [
@@ -2439,6 +2479,22 @@
   [
    ".!frame3.!frame2.!frame2.!combobox:values",
    "Large v3 Turbo (deepdml) — ~5x faster, multilingual (~1.6 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Belle Large v3 Turbo — Chinese only (~1.6 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Kotoba-Whisper v2.0 — Japanese only (~1.5 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Large v3 Turbo German (primeline) — German only (~1.6 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "Thonburian Large v3 — Thai only (~3.1 GB)"
   ],
   [
    ".!frame3.!frame2.!frame2.!button",
@@ -2957,431 +3013,435 @@
    "Output: English translation"
   ],
   [
-   ".!frame3.!frame3.!frame3.!checkbutton",
+   ".!frame3.!frame3.!frame3.!button",
+   "Use it"
+  ],
+  [
+   ".!frame3.!frame3.!frame4.!checkbutton",
    "Mixed-language audio (experimental)"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!label",
+   ".!frame3.!frame3.!frame4.!frame.!label",
    "Second language:"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "English"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Afrikaans"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Albanian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Amharic"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Arabic"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Armenian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Azerbaijani"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Basque"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Belarusian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Bengali"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Bosnian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Bulgarian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Catalan"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Cebuano"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Chinese (Simplified)"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Chinese (Traditional)"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Corsican"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Croatian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Czech"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Danish"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Dutch"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Esperanto"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Estonian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Finnish"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "French"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Frisian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Galician"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Georgian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "German"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Greek"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Gujarati"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Haitian Creole"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Hausa"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Hawaiian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Hebrew"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Hindi"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Hmong"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Hungarian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Icelandic"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Igbo"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Indonesian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Irish"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Italian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Japanese"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Javanese"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Kannada"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Kazakh"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Khmer"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Korean"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Kurdish"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Kyrgyz"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Lao"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Latin"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Latvian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Lithuanian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Luxembourgish"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Macedonian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Malagasy"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Malay"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Malayalam"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Maltese"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Maori"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Marathi"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Mongolian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Myanmar (Burmese)"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Nepali"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Norwegian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Nyanja (Chichewa)"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Pashto"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Persian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Polish"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Portuguese (Portugal, Brazil)"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Punjabi"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Romanian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Russian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Samoan"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Scots Gaelic"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Serbian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Sesotho"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Shona"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Sindhi"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Sinhala (Sinhalese)"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Slovak"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Slovenian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Somali"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Spanish"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Sundanese"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Swahili"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Swedish"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Tagalog (Filipino)"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Tajik"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Tamil"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Telugu"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Thai"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Turkish"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Ukrainian"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Urdu"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Uzbek"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Vietnamese"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Welsh"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Xhosa"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Yiddish"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Yoruba"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:values",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:values",
    "Zulu"
   ],
   [
-   ".!frame3.!frame3.!frame3.!label",
+   ".!frame3.!frame3.!frame4.!label",
    " ⓘ "
   ],
   [
@@ -3421,7 +3481,7 @@
    "Auto"
   ],
   [
-   ".!frame3.!frame3.!frame3.!frame.!combobox:current",
+   ".!frame3.!frame3.!frame4.!frame.!combobox:current",
    "English"
   ],
   [
@@ -4959,6 +5019,22 @@
    "Large v3 Turbo (deepdml) — ~5x faster, multilingual (~1.6 GB)   (not downloaded)"
   ],
   [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#21",
+   "Belle Large v3 Turbo — Chinese only (~1.6 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#22",
+   "Kotoba-Whisper v2.0 — Japanese only (~1.5 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#23",
+   "Large v3 Turbo German (primeline) — German only (~1.6 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#24",
+   "Thonburian Large v3 — Thai only (~3.1 GB)   (not downloaded)"
+  ],
+  [
    ".!frame7.!labelframe.!frame2.!button",
    "Download"
   ],
@@ -5897,6 +5973,22 @@
   [
    ".!frame7.!labelframe.!frame2.!menubutton.!menu#20",
    "Large v3 Turbo (deepdml) — ~5x faster, multilingual (~1.6 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#21",
+   "Belle Large v3 Turbo — Chinese only (~1.6 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#22",
+   "Kotoba-Whisper v2.0 — Japanese only (~1.5 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#23",
+   "Large v3 Turbo German (primeline) — German only (~1.6 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#24",
+   "Thonburian Large v3 — Thai only (~3.1 GB)   (not downloaded)"
   ],
   [
    ".!frame7.!labelframe.!frame2.!button",

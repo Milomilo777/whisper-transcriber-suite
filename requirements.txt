@@ -31,7 +31,10 @@ av>=11,<19
 # together (pip show transformers; python -c "from
 # transformers.dependency_versions_table import deps; print(deps['tokenizers'])")
 # before each release build and bump in lockstep if it no longer matches.
-tokenizers>=0.22.0,<=0.23.0
+tokenizers>=0.23.1,<0.24
+# transformers 5.20 (see the same comment) also refuses a bundled huggingface-hub older
+# than 1.31; faster-whisper itself accepts it.
+huggingface-hub>=1.31,<2
 
 # HTTP for model + asset downloads
 requests>=2.31.0

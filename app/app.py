@@ -1142,6 +1142,11 @@ class App(tk.Tk):
     _transcribe_model_label_to_slug: "dict[str, str]"
     model_status_var: tk.StringVar
     model_status_label: "ttk.Label"
+    # The "a model trained for <language>" line (ADR 0015), built in tabs.py.
+    language_model_anchor: "ttk.Frame"
+    language_model_row: "ttk.Frame"
+    language_model_hint_var: tk.StringVar
+    language_model_button: "ttk.Button"
     # R3: GPU/CPU device badge. The text var is set in update_model_state();
     # the two Labels (Transcribe-tab header + Queue-tab status line) are built
     # in tabs.py and registered here so apply_device_badge can recolour them.
@@ -2946,6 +2951,7 @@ class App(tk.Tk):
         # transcribe_language is intentionally NOT persisted: the picker
         # resets to "Auto" every launch (user request). The choice still
         # lives in transcribe_lang_var for the rest of the session.
+        self._refresh_language_model_hint()
         if getattr(self, "device_var", None) is not None:
             self.app_config["device"] = self.device_var.get()
         if getattr(self, "compute_type_var", None) is not None:
@@ -3388,6 +3394,7 @@ class App(tk.Tk):
         )
         self._refresh_model_status()
         self._sync_translate_option()
+        self._refresh_language_model_hint()
 
     def _sync_model_picker_for_engine(self) -> None:
         """Grey out the Whisper-model picker when the picked engine can't use it.
@@ -3411,6 +3418,7 @@ class App(tk.Tk):
             logger.debug("Could not sync the model picker state", exc_info=True)
         self._refresh_model_status()
         self._sync_translate_option()
+        self._refresh_language_model_hint()
 
     def open_model_advisor(self) -> None:
         """Transcribe tab "Best for this PC…": suggest models for this hardware."""
@@ -3546,6 +3554,97 @@ class App(tk.Tk):
             check.state(["disabled"] if self._translate_unsupported_reason() else ["!disabled"])
         except Exception:  # noqa: BLE001
             logger.debug("Could not sync the translate option", exc_info=True)
+
+    def _language_label(self, code: str) -> str:
+        """Shown (translated) name of a Whisper language code, e.g. "fa" -> "Persian"."""
+        from app.domain.languages import SUBTITLE_LANGUAGES, subtitle_language_label
+        from core.language_models import normalize
+        name = next((n for n, c in SUBTITLE_LANGUAGES if normalize(c) == code), code)
+        return subtitle_language_label(name)
+
+    def _refresh_language_model_hint(self) -> None:
+        """Show or hide the Transcribe tab's "a model trained for <language>" line (ADR 0015).
+
+        Offers a one-language model when the picked language has one that is not in use,
+        and the way back when such a model is in use for another language or Auto.
+        """
+        row = _inst_attr(self, "language_model_row")
+        var = _inst_attr(self, "language_model_hint_var")
+        button = _inst_attr(self, "language_model_button")
+        if row is None or var is None or button is None:
+            return
+        from core import language_models as lm
+        state = lm.suggestion(self.app_config, self._selected_transcribe_language())
+        if state is None:
+            row.pack_forget()
+            return
+        kind, model = state
+        language = self._language_label(model.language)
+        if kind == "offer":
+            var.set(_("A model trained for {language} is available: {name} (about {size} GB).",
+                      language=language, name=model.name, size=f"{model.size_gb:.1f}"))
+            button.configure(text=_("Use it"))
+        else:
+            var.set(_("{name} writes {language} only, whatever language is picked.",
+                      name=model.name, language=language))
+            button.configure(text=_("Switch back"))
+        if not row.winfo_manager():
+            row.pack(fill="x", pady=(6, 0), after=_inst_attr(self, "language_model_anchor"))
+
+    def _on_language_model_button(self) -> None:
+        """"Use it" / "Switch back" on the language-model line: confirm, rewrite the engine and
+        model keys, restart the worker, and re-sync the pickers."""
+        from core import language_models as lm
+        from core.model_manager import MODEL_REGISTRY
+        # Recompute: the config may have changed since the line was drawn (Advanced settings).
+        state = lm.suggestion(self.app_config, self._selected_transcribe_language())
+        if not state:
+            self._refresh_language_model_hint()
+            return
+        kind, model = state
+        language = self._language_label(model.language)
+        if kind == "offer":
+            repo = (MODEL_REGISTRY.get(model.model, {}).get("hf_repo") if model.engine == lm.ENGINE_WHISPER
+                    else model.model)
+            text = _(
+                "Use {name} for {language}?\n\n"
+                "Reported: {claim}. These are published figures on the publisher's own test "
+                "sets; this app has not measured them.\n\n"
+                "Download: about {size} GB from huggingface.co/{repo}, on the next "
+                "transcription. Licence: {licence}.\nFigures from: {source}",
+                name=model.name, language=language, claim=model.claim,
+                size=f"{model.size_gb:.1f}", repo=repo, licence=model.licence, source=model.source,
+            )
+            text += "\n\n" + _(
+                "It writes {language} only, whatever language is picked: pick Switch back for "
+                "other languages.", language=language)
+            if model.engine == lm.ENGINE_TRANSFORMERS:
+                text += " " + _(
+                    "It runs on the local transformers engine, which installs once the first "
+                    "time (about 1 GB more), gives no word-level timestamps and ignores the "
+                    "Whisper options (hot words, prompt).")
+            if not messagebox.askyesno(_("Model for {language}", language=language), text, parent=self):
+                return
+        if not self._confirm_backend_switch(kind=BACKEND_SWITCH_MODEL):
+            return
+        if kind == "offer":
+            lm.apply_language_model(self.app_config, model)
+            self.log(f"Using {model.name} ({model.model}) for {model.language}; source: {model.source}")
+        else:
+            lm.restore_previous(self.app_config)
+            self.log(f"Switched back from {model.name} to the previous engine and model.")
+        try:
+            save_config(self.app_config)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Failed to save the language model choice")
+            self.log(f"Could not save the model choice: {e}")
+        try:
+            self.transcription_service.stop_all()
+        except Exception as e:  # noqa: BLE001
+            self.log(f"Could not restart the transcription worker: {e}")
+        self._refresh_engine_selector()
+        self._refresh_model_selector()
+        self._refresh_language_model_hint()
 
     def _refresh_model_selector(self) -> None:
         """Re-sync the Transcribe-tab model picker to the saved slug (e.g.

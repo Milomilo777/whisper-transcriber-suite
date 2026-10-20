@@ -83,17 +83,20 @@ Effort labels: **XS** under an hour · **S** half a day · **M** one to three da
 - **SenseVoice backend** (L). Reported to beat Whisper on Chinese, Cantonese, Japanese and Korean; the backend
   interface in `core/backends/` is ready for it.
 
-### Language-specialised models (7.6, idea)
+### Language-specialised models (7.6, first version on `master`)
 
-- **Persian.** `mehdi-hf/nemotron-asr-streaming-farsi` (NVIDIA Nemotron ASR fine-tuned on about 1,200 hours of
-  Persian) reports 8.8% WER on FLEURS and streaming at roughly 10x real time on an M1 laptop. These are the
-  author's own figures; before shipping, check the licence and test it on local Persian samples.
-  [Model](https://huggingface.co/mehdi-hf/nemotron-asr-streaming-farsi),
-  [code](https://github.com/mallahyari/nemotron-asr-streaming-farsi).
-- **Per-language recommender.** Find the best open model per language (accuracy on FLEURS or Common Voice,
-  licence, size, CPU and Apple Silicon speed), keep only models clearly better than Whisper for that language,
-  offer them as engines, and suggest one when the user picks that language. The
-  [multilingual benchmark](evaluations/benchmark-v1/README.md) is the starting point.
+- **Done:** a table of one model per language (`core/language_models.py`, ADR 0015): Persian
+  (`mehdi-hf/nemotron-asr-streaming-farsi`, OpenMDW-1.1, on the local transformers engine), Chinese (Belle
+  Large v3 Turbo), Japanese (Kotoba-Whisper v2.0), German (primeline Large v3 Turbo) and Thai (Thonburian
+  Large v3), suggested on the Transcribe tab when that language is picked. The gains are each publisher's
+  own figures; the suggestion says so.
+- **Keep current:** a scheduled check every four weeks looks for new versions of these repositories and for
+  new work by the Persian model's author, whose other Persian projects (a G2P model, Persian TTS) may be
+  useful too. A newer version replaces the row after a load test.
+- **Next:** French (`bofenghuang/whisper-large-v3-french`, CTranslate2 files in a subfolder) and other
+  models that need subfolder downloads; Arabic (`CohereLabs/cohere-transcribe-arabic-07-2026`, gated);
+  Ukrainian (`ihnatov-yuri/parakeet-tdt-0.6b-v3-uk`, needs a load test); per-file routing by language
+  (ADR 0015, option 5); our own benchmark rows for each model.
 
 ### Operations (Phase 7)
 

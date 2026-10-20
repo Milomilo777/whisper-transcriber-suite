@@ -35,6 +35,7 @@ HARMLESS = {
     ("app/app.py", "'Resume interrupted transcriptions?'"),
     ("app/app.py", "'Whisper model required'"),
     ("app/app.py", "'Check for updates'"),
+    ("app/app.py", "'Model for {language}'"),                  # Yes = use a one-language model; Switch back undoes it
     ("app/dialogs/model_download.py", "title"),
     ("app/dialogs/transcript_viewer.py", "'Unsaved transcript edits'"),   # Yes = save
     ("app/dialogs/transcript_viewer.py", "'Bilingual subtitle'"),

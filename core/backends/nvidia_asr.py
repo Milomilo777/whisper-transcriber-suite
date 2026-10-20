@@ -42,9 +42,11 @@ from __future__ import annotations
 import logging
 import math
 import os
+import re
 import subprocess
 import threading
 import time
+import warnings
 from typing import Any, Callable
 
 from .._liveness_tick import liveness_tick
@@ -75,6 +77,28 @@ DECODE_TIMEOUT_S = 1800.0
 #: A past-EOF window decodes to ~no audio; fewer than this many samples = EOF.
 #: 1024 samples = 64 ms at 16 kHz; a real window is hundreds of thousands+.
 _EMPTY_PCM_SAMPLES = 1024
+
+#: Models the plain ASR pipeline cannot drive correctly, and how to run them instead.
+#: "rnnt": a transformers RNNT model (``AutoModelForRNNT``) whose processor takes the
+#: language; through ``pipeline()`` it falls back to automatic language detection and
+#: returns only the first chunk. ``lookahead_tokens`` 13 = 1.12 s look-ahead, the
+#: setting the model card reports its best accuracy for.
+MODEL_RECIPES: dict[str, dict[str, Any]] = {
+    # Adapted from the model card of mehdi-hf/nemotron-asr-streaming-farsi
+    # (https://huggingface.co/mehdi-hf/nemotron-asr-streaming-farsi): the
+    # transformers "transcribe a file" recipe (processor language + look-ahead + generate).
+    "mehdi-hf/nemotron-asr-streaming-farsi": {
+        "kind": "rnnt",
+        "language": "fa-IR",
+        "writes": "fa",
+        "lookahead_tokens": 13,
+    },
+}
+#: Longest speech piece sent to an RNNT recipe model at once. Each piece becomes one timed
+#: segment, so this is also the longest subtitle cue before the writers split it.
+RNNT_PIECE_SECONDS = 12.0
+#: Pieces shorter than this (0.1 s) are skipped: too short for the mel features, no words.
+_MIN_PIECE_SAMPLES = TARGET_SR // 10
 
 
 # ---------------------------------------------------------------- pure seams
@@ -198,6 +222,91 @@ def text_to_segment(text: Any, start: float, end: float) -> list[dict[str, Any]]
     }]
 
 
+def recipe_for(model_id: str) -> dict[str, Any] | None:
+    """The :data:`MODEL_RECIPES` entry for a Hugging Face repo id (case-insensitive), or None."""
+    key = str(model_id or "").strip().lower()
+    for repo, recipe in MODEL_RECIPES.items():
+        if repo.lower() == key:
+            return recipe
+    return None
+
+
+def group_speech(
+    spans: list[tuple[int, int]], max_samples: int, total: int
+) -> list[tuple[int, int]]:
+    """Merge VAD speech spans (sample offsets, in order) into pieces of at most ``max_samples``.
+
+    Neighbouring spans join while the joined piece (silence between them included) stays
+    within the limit, so the model sees whole phrases with context and each piece becomes
+    one subtitle cue. A single span longer than the limit is cut into equal parts. Spans are
+    clipped to ``[0, total]``; empty ones are dropped. Pure.
+    """
+    pieces: list[tuple[int, int]] = []
+    if max_samples <= 0:
+        return pieces
+    for start, end in spans:
+        start, end = max(0, int(start)), min(int(total), int(end))
+        if end <= start:
+            continue
+        if pieces and start < pieces[-1][1]:  # overlaps the last piece: keep only what is new
+            start = pieces[-1][1]
+            if end <= start:
+                continue
+        if pieces and end - pieces[-1][0] <= max_samples:
+            pieces[-1] = (pieces[-1][0], end)
+            continue
+        parts = max(1, math.ceil((end - start) / max_samples))
+        step = math.ceil((end - start) / parts)
+        for i in range(parts):
+            pieces.append((start + i * step, min(end, start + (i + 1) * step)))
+    return pieces
+
+
+def speech_pieces(audio: Any, max_seconds: float = RNNT_PIECE_SECONDS) -> list[tuple[int, int]] | None:
+    """Speech pieces of a 16 kHz window, cut at pauses by Silero VAD (bundled with
+    faster-whisper). Returns sample offsets, ``[]`` for a window without speech, or None
+    when the VAD cannot run (the caller then sends the whole window)."""
+    try:
+        from faster_whisper.vad import VadOptions, get_speech_timestamps  # type: ignore
+
+        found = get_speech_timestamps(
+            audio,
+            VadOptions(max_speech_duration_s=max_seconds, min_silence_duration_ms=300, speech_pad_ms=200),
+            sampling_rate=TARGET_SR,
+        )
+    except Exception:  # noqa: BLE001 — no VAD: the whole window is one piece
+        logger.warning("Silero VAD unavailable; sending whole windows", exc_info=True)
+        return None
+    spans = [(int(s["start"]), int(s["end"])) for s in found]
+    return group_speech(spans, int(max_seconds * TARGET_SR), int(len(audio)))
+
+
+class _RnntRunner:
+    """Text for one 16 kHz piece from a transformers RNNT model (see :data:`MODEL_RECIPES`)."""
+
+    def __init__(self, processor: Any, model: Any, language: str, device: str) -> None:
+        self.processor = processor
+        self.model = model
+        self.language = language
+        self.device = device
+
+    def __call__(self, audio: Any) -> str:
+        import torch  # type: ignore
+
+        inputs = self.processor(audio, sampling_rate=TARGET_SR, language=self.language)
+        # As on the model card; BatchFeature.to casts only floating-point tensors to dtype.
+        inputs = inputs.to(self.device, dtype=self.model.dtype)
+        with torch.inference_mode(), warnings.catch_warnings():
+            # transformers warns on every piece that it uses the default max_length (seen on
+            # the real model): the card's recipe relies on that default, so keep the log clean.
+            warnings.filterwarnings("ignore", message=".*default `max_length`.*", category=UserWarning)
+            out = self.model.generate(**inputs, return_dict_in_generate=True)
+        text = self.processor.decode(out.sequences, skip_special_tokens=True)
+        if isinstance(text, (list, tuple)):  # one text per batch row; the batch here is one piece
+            text = text[0] if text else ""
+        return str(text or "")
+
+
 def friendly_load_error(exc: Any) -> str:
     """Turn a model-load exception into a clear, user-facing message."""
     msg = str(exc)
@@ -260,6 +369,9 @@ class NvidiaAsrBackend(Backend):
         self._ready = False
         self._lock = threading.Lock()
         self._pipe: Any = None
+        #: Set instead of ``_pipe`` for a :data:`MODEL_RECIPES` "rnnt" model.
+        self._runner: _RnntRunner | None = None
+        self._recipe: dict[str, Any] | None = None
         #: None = not probed yet; True/False = does the model return word
         #: timestamps. Probed once on the first window, then reused.
         self._supports_word_ts: bool | None = None
@@ -294,8 +406,10 @@ class NvidiaAsrBackend(Backend):
         self._ready = False
         self._error = None
         self._pipe = None
+        self._runner = None
         self._supports_word_ts = None
         self._read_config()
+        self._recipe = recipe_for(self._model_id)
 
         # Ensure transformers/torch/librosa are importable; install on demand
         # (mirrors the openai-whisper / google_cloud_stt on-demand pattern).
@@ -350,6 +464,9 @@ class NvidiaAsrBackend(Backend):
                     status_cb(self._error)
                 return False
 
+        if not self._update_outdated(status_cb, cancel_event):
+            return False
+
         try:
             torch, pipeline = _import_torch_and_transformers()
         except Exception as e:  # noqa: BLE001
@@ -376,9 +493,12 @@ class NvidiaAsrBackend(Backend):
                 "(first run downloads the model)…"
             )
         try:
-            self._pipe = _build_pipeline(
-                pipeline, self._model_id, device_arg, torch_dtype
-            )
+            if self._recipe and self._recipe.get("kind") == "rnnt":
+                self._runner = _build_rnnt(self._model_id, self._device, torch_dtype, self._recipe)
+            else:
+                self._pipe = _build_pipeline(
+                    pipeline, self._model_id, device_arg, torch_dtype
+                )
         except Exception as e:  # noqa: BLE001
             self._error = friendly_load_error(e)
             if status_cb:
@@ -387,14 +507,78 @@ class NvidiaAsrBackend(Backend):
 
         self._ready = True
         if status_cb:
-            status_cb(f"NVIDIA Parakeet ready ({self._model_id}, {self._device}).")
+            status_cb(f"Local transformers model ready ({self._model_id}, {self._device}).")
         if progress_cb:
             progress_cb({
                 "phase": "loaded",
-                "status": "NVIDIA Parakeet ready",
+                "status": "Local transformers model ready",
                 "percent": 100,
                 "detail": self._model_id,
             })
+        return True
+
+    def _update_outdated(
+        self,
+        status_cb: Callable[[str], None] | None,
+        cancel_event: threading.Event | None,
+    ) -> bool:
+        """Replace an on-demand install from an older app version whose pins no longer fit
+        (e.g. transformers 5.15, which also refuses the newer bundled tokenizers). False (with
+        ``_error`` set) when that is needed and cannot be done."""
+        from .. import offline, optional_deps
+
+        stale = optional_deps.outdated("nvidia_asr")
+        if not stale:
+            return True
+        what = ", ".join(stale)
+        replace, foreign = optional_deps.upgrade_plan("nvidia_asr")
+        if foreign:
+            # In the Python environment itself (a source checkout): it shadows the app's own
+            # folder, so an install there would be downloaded for nothing on every load.
+            names = {f.split(" ", 1)[0].lower() for f in foreign}
+            specs = " ".join(
+                f'"{s}"' for s in optional_deps.packages_for("nvidia_asr")
+                if re.split(r"[<>=!\s]", s, maxsplit=1)[0].lower() in names
+            )
+            self._error = (
+                f"The local transformers engine needs a newer package ({', '.join(foreign)}). "
+                f"Update it in this Python environment: pip install -U {specs}."
+            )
+            if status_cb:
+                status_cb(self._error)
+            return False
+        if not optional_deps.can_install() or offline.is_offline():
+            self._error = (
+                f"The local transformers engine needs an update ({what}). "
+                + (optional_deps.FROZEN_INSTALL_MESSAGE if not optional_deps.can_install()
+                   else offline.refused("updating the local transformers engine"))
+            )
+            if status_cb:
+                status_cb(self._error)
+            return False
+        if status_cb:
+            status_cb(f"Updating the local transformers engine ({what}), one time…")
+        try:
+            # Only the outdated packages: an upgrade of transformers must not download torch again.
+            done = optional_deps.install("nvidia_asr", status_cb, cancel_event, force=True, packages=replace or None)
+        except Exception as e:  # noqa: BLE001
+            done, why = False, str(e)
+        else:
+            why = "cancelled, or pip failed (see the log above)"
+        if not done:
+            self._error = f"Could not update the local transformers engine ({what}): {why}. Try again."
+            if status_cb:
+                status_cb(self._error)
+            return False
+        still = optional_deps.outdated("nvidia_asr")
+        if still:
+            self._error = (
+                f"The local transformers engine is still out of date after the update "
+                f"({', '.join(still)}). Close and reopen the app, then try again."
+            )
+            if status_cb:
+                status_cb(self._error)
+            return False
         return True
 
     def is_ready(self) -> bool:
@@ -405,6 +589,7 @@ class NvidiaAsrBackend(Backend):
 
     def unload(self) -> None:
         self._pipe = None
+        self._runner = None
         self._ready = False
 
     # -- transcription -------------------------------------------------------
@@ -435,6 +620,36 @@ class NvidiaAsrBackend(Backend):
         # touched — that previously raised "dict needs a 'raw' key".
         return self._pipe({"raw": audio, "sampling_rate": TARGET_SR}), False
 
+    def _run_rnnt_window(
+        self,
+        audio: Any,
+        label: str,
+        log_cb: Callable[[str], None] | None,
+        cancelled: Callable[[], bool] | None,
+        paused: Callable[[], bool] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Segments (window-relative times) for one window through the RNNT runner: one
+        segment per speech piece found by the VAD, or one for the whole window without it."""
+        assert self._runner is not None
+        pieces = speech_pieces(audio)
+        if pieces is None:  # no VAD: fixed-length pieces, still within the limit
+            pieces = group_speech([(0, int(audio.size))], int(RNNT_PIECE_SECONDS * TARGET_SR), int(audio.size))
+        segments: list[dict[str, Any]] = []
+        for start, end in pieces:
+            while paused and paused() and not (cancelled and cancelled()):
+                time.sleep(0.2)
+            if cancelled and cancelled():
+                break
+            if end - start < _MIN_PIECE_SAMPLES:  # a scrap at the end of the file: too short for the features
+                continue
+            try:
+                with liveness_tick(log_cb, f"{self._model_id} {label}"):
+                    text = self._runner(audio[start:end])
+            except Exception as e:  # noqa: BLE001
+                raise RuntimeError(f"Local transcription with {self._model_id} failed: {e}") from e
+            segments.extend(text_to_segment(text, start / TARGET_SR, end / TARGET_SR))
+        return segments
+
     def transcribe_to_segments(
         self,
         audio_path: str,
@@ -454,8 +669,15 @@ class NvidiaAsrBackend(Backend):
         with self._lock:
             if not self.is_ready() and not self.load(log_cb):
                 raise RuntimeError(self._error or "NVIDIA Parakeet backend not ready")
-        if self._pipe is None:
+        if self._pipe is None and self._runner is None:
             raise RuntimeError(self._error or "NVIDIA Parakeet model not loaded")
+        writes = str((self._recipe or {}).get("writes") or "")
+        from ..language_models import normalize
+        if writes and log_cb and normalize(language) != writes:
+            log_cb(
+                f"{self._model_id} transcribes '{writes}' only; the language picked "
+                f"({language or 'Auto'}) does not change that."
+            )
 
         effective_duration = duration
         if effective_duration <= 0 or not math.isfinite(effective_duration):
@@ -504,6 +726,14 @@ class NvidiaAsrBackend(Backend):
                 continue
 
             win_len = float(audio.size) / TARGET_SR
+            if self._runner is not None:
+                seg = self._run_rnnt_window(audio, f"window {idx + 1}/{total}", log_cb, cancelled, paused)
+                all_segments.extend(offset_segments(seg, chunk_start))
+                if cancelled and cancelled():
+                    continue  # the loop's next check logs and stops; no 100% for a cancelled window
+                if progress_cb:
+                    progress_cb(min(100, int(((idx + 1) / max(total, 1)) * 100)))
+                continue
             try:
                 with liveness_tick(
                     log_cb, f"NVIDIA Parakeet window {idx + 1}/{total}"
@@ -536,7 +766,9 @@ class NvidiaAsrBackend(Backend):
 
         # Parakeet returns no language-ID signal; report the forced hint when
         # given, else leave it blank (handled gracefully downstream).
-        detected = language or ""
+        # A one-language recipe model writes its own language whatever was picked: say so,
+        # so the writers handle that script (right-to-left for Persian).
+        detected = writes or language or ""
         return all_segments, LanguageInfo(
             language=detected, probability=1.0 if detected else 0.0
         )
@@ -588,6 +820,26 @@ def _import_torch_and_transformers() -> tuple[Any, Any]:
     from transformers import pipeline  # type: ignore
 
     return torch, pipeline
+
+
+def _import_rnnt() -> tuple[Any, Any]:
+    """``(AutoModelForRNNT, AutoProcessor)``; a seam like :func:`_import_torch_and_transformers`.
+    ``AutoModelForRNNT`` exists from transformers 5.13 (the Persian model needs 5.18)."""
+    from transformers import AutoModelForRNNT, AutoProcessor  # type: ignore
+
+    return AutoModelForRNNT, AutoProcessor
+
+
+def _build_rnnt(model_id: str, device: str, torch_dtype: Any, recipe: dict[str, Any]) -> _RnntRunner:
+    """Load a :data:`MODEL_RECIPES` "rnnt" model and its processor on ``device``."""
+    model_cls, processor_cls = _import_rnnt()
+    processor = processor_cls.from_pretrained(model_id)
+    kwargs: dict[str, Any] = {"dtype": torch_dtype} if torch_dtype is not None else {}
+    model = model_cls.from_pretrained(model_id, **kwargs)
+    model.to(device)
+    model.eval()
+    processor.set_num_lookahead_tokens(int(recipe.get("lookahead_tokens", 13)))
+    return _RnntRunner(processor, model, str(recipe["language"]), device)
 
 
 def _build_pipeline(
