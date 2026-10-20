@@ -1040,6 +1040,10 @@ def _main() -> int:
             forced_lang = command.get("language")
             if forced_lang:
                 task.language = forced_lang
+            # Mixed-language audio: two language codes (older parents omit it).
+            pair = command.get("languages")
+            if isinstance(pair, list) and len(pair) == 2 and all(isinstance(c, str) for c in pair):
+                task.languages = (pair[0], pair[1])
             # Resume-from-cancellation: when the parent flagged the
             # task as a resume, attempt the partial-checkpoint path
             # first. If it returns False (stale checkpoint, changed

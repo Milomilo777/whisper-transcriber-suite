@@ -575,6 +575,9 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # Always start at "Auto" — the language is deliberately NOT restored
     # from config (user request: every launch defaults to auto-detect).
     app.transcribe_lang_var = tk.StringVar(value="Auto")
+    # Mixed-language audio (experimental): off on every launch, like the language.
+    app.mixed_lang_var = tk.BooleanVar(value=False)
+    app.transcribe_lang2_var = tk.StringVar(value="English")
     app.device_var = tk.StringVar(value=str(app.app_config.get("device", "auto")))
     app.compute_type_var = tk.StringVar(
         value=str(app.app_config.get("compute_type", "int8"))
@@ -903,6 +906,41 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Entry(opts_line2, textvariable=app.transcribe_end_time_var, width=9).pack(
         side="left", padx=(2, 0)
     )
+
+    # Mixed-language audio (experimental): a recording that switches between two
+    # languages. The Language picker above is the first, this one the second.
+    opts_line3 = ttk.Frame(quick_opts)
+    opts_line3.pack(fill="x", pady=(6, 0))
+    mixed_check = ttk.Checkbutton(
+        opts_line3, text=_("Mixed-language audio (experimental)"),
+        variable=app.mixed_lang_var,
+    )
+    mixed_check.pack(side="left")
+    app.transcribe_lang2_frame = ttk.Frame(opts_line3)
+    ttk.Label(app.transcribe_lang2_frame, text=_("Second language:")).pack(side="left")
+    lang2_labels = {name: subtitle_language_label(name) for name, _code in _LANGS}
+    ttk.Combobox(
+        app.transcribe_lang2_frame,
+        textvariable=translated_choice_var(app.transcribe_lang2_frame, app.transcribe_lang2_var, lang2_labels),
+        values=list(lang2_labels.values()),
+        state="readonly",
+        width=14,
+    ).pack(side="left", padx=(6, 0))
+
+    def _on_mixed_changed() -> None:
+        if app.mixed_lang_var.get():
+            app.transcribe_lang2_frame.pack(side="left", padx=(12, 0), after=mixed_check)
+        else:
+            app.transcribe_lang2_frame.pack_forget()
+
+    mixed_check.configure(command=_on_mixed_changed)
+    help_icon(
+        opts_line3,
+        _("For a recording that switches between two languages, such as a class or an interview. "
+          "Pick the first language in Language above (not Auto) and the second one here: each "
+          "stretch is then written in whichever of the two it sounds like, instead of translated "
+          "into one of them. Works with the faster-whisper engine, not with English translation."),
+    ).pack(side="left", padx=(6, 0))
     help_icon(
         opts_line2,
         _("Transcribe only this portion of the file (format H:MM:SS). Leave "

@@ -639,7 +639,9 @@ def _loop_guard_restart(
         temp_files.append(sliced)
         kwargs = dict(transcribe_kwargs)
         kwargs["condition_on_previous_text"] = False
-        if language and not kwargs.get("language"):
+        # Mixed-language audio keeps per-stretch detection: pinning one
+        # language would make Whisper translate the other one.
+        if language and not kwargs.get("language") and not kwargs.get("multilingual"):
             kwargs["language"] = language
         with _vad_window.windowed_vad(_vad_window_seconds()):
             segments, _info = runner.transcribe(sliced, **kwargs)
@@ -1910,6 +1912,70 @@ def _task_output_lang(task: "TranscriptionTask", detected_language: str) -> str:
     return detected_language
 
 
+def mixed_language_pair(task: "TranscriptionTask") -> tuple[str, str] | None:
+    """The task's two languages for mixed-language audio, or None.
+
+    None unless both codes are valid and different, and never together with
+    Whisper's translate task (translating while the language changes per
+    stretch is not a tested combination).
+    """
+    pair = getattr(task, "languages", None)
+    if not pair or len(pair) != 2:
+        return None
+    if _translate.normalise_task(getattr(task, "whisper_task", None)) == _translate.TASK_TRANSLATE:
+        return None
+    a, b = (_normalize_language(str(code)) for code in pair)
+    if not a or not b or a == b:
+        return None
+    return a, b
+
+
+class _TwoLanguageDetection:
+    """Job-local view of a CTranslate2 Whisper model: language detection may only
+    answer one of two languages.
+
+    faster-whisper picks the language of every stretch with
+    ``detect_language()`` when ``multilingual=True``; this keeps only the two
+    allowed tokens of each result (in the model's own order, so the likelier
+    of the two wins). Everything else goes to the real model unchanged.
+    """
+
+    def __init__(self, inner: Any, pair: tuple[str, str]) -> None:
+        self._inner = inner
+        self._tokens = {f"<|{code}|>" for code in pair}
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+    def detect_language(self, *args: Any, **kwargs: Any) -> Any:
+        results = self._inner.detect_language(*args, **kwargs)
+        return [[p for p in r if p[0] in self._tokens] or r for r in results]
+
+
+def _two_language_runner(runner: Any, pair: tuple[str, str]) -> Any:
+    """A per-job copy of ``runner`` (a WhisperModel or BatchedInferencePipeline)
+    whose language detection is limited to ``pair``.
+
+    Shallow copies only: the shared model (MODEL / PIPELINE), which other jobs
+    and features use at the same time, is never changed, and the copy lives as
+    long as the job's lazy segment generator that holds it.
+    """
+    import copy
+
+    def restricted(model: Any) -> Any:
+        view = copy.copy(model)
+        view.model = _TwoLanguageDetection(model.model, pair)
+        return view
+
+    inner_model = getattr(runner, "model", None)
+    if inner_model is not None and hasattr(inner_model, "feature_extractor"):
+        # BatchedInferencePipeline: its .model is the WhisperModel
+        pipe = copy.copy(runner)
+        pipe.model = restricted(inner_model)
+        return pipe
+    return restricted(runner)
+
+
 def _build_transcribe_kwargs(task: "TranscriptionTask") -> dict[str, Any]:
     """Assemble the kwargs dict passed to WhisperModel.transcribe.
 
@@ -1931,7 +1997,11 @@ def _build_transcribe_kwargs(task: "TranscriptionTask") -> dict[str, Any]:
     # rejects with a ValueError (silent no-output). Coerce to a single
     # accepted ISO code, or None (auto-detect).
     forced_lang = _normalize_language(getattr(task, "language", None))
-    if forced_lang:
+    if mixed_language_pair(task):
+        # Language detection per stretch, limited to the pair by the runner
+        # (_two_language_runner); no single forced language.
+        kwargs["multilingual"] = True
+    elif forced_lang:
         kwargs["language"] = forced_lang
     # Whisper's own translate task: English text straight from the speech.
     # Whether the engine/model can do it is checked once per file by
@@ -2164,6 +2234,10 @@ def transcribe(
         runner: Any = PIPELINE if use_batched else MODEL
         if use_batched:
             transcribe_kwargs["batch_size"] = int(config.get("batch_size", 16))
+        pair = mixed_language_pair(task)
+        if pair:
+            runner = _two_language_runner(runner, pair)
+            log(f"Mixed-language audio: each stretch is transcribed as {pair[0]} or {pair[1]}", log_cb)
         # NOTE: a time range is NOT passed as clip_timestamps (that makes
         # faster-whisper decode the WHOLE file — it hung on a multi-hour
         # input). It is handled by pre-slicing just below; see _clip_slice_path.
@@ -3166,12 +3240,15 @@ def resume_transcription(
             # (which on a short tail can produce a low-confidence
             # wrong answer).
             transcribe_kwargs = _build_transcribe_kwargs(task)
-            if cp_language:
+            pair = mixed_language_pair(task)
+            if cp_language and not pair:
                 transcribe_kwargs["language"] = cp_language
 
             runner = PIPELINE if PIPELINE is not None else MODEL
             if PIPELINE is not None:
                 transcribe_kwargs["batch_size"] = int(config.get("batch_size", 16))
+            if pair:
+                runner = _two_language_runner(runner, pair)
 
             with _vad_window.windowed_vad(_vad_window_seconds()):
                 new_segments_iter, info = runner.transcribe(

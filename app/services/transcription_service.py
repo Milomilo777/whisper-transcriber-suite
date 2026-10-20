@@ -130,6 +130,8 @@ def transcribe_command(t: Any) -> dict[str, Any]:
         "action": "transcribe",
         "file_path": t.file_path,
         "language": getattr(t, "language", None),
+        # Mixed-language audio: the two languages (None = one language).
+        "languages": list(t.languages) if getattr(t, "languages", None) else None,
         # Resume-from-cancellation flag (App.resume_task / crash-resume).
         "resume": bool(getattr(t, "resume", False)),
         # Time-slice (Transcribe-tab range); the worker has its own task

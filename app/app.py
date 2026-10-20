@@ -1120,6 +1120,9 @@ class App(tk.Tk):
     diarization_help_icon: "ttk.Label"
     # Quick-options row on the Transcribe tab
     transcribe_lang_var: tk.StringVar
+    mixed_lang_var: tk.BooleanVar
+    transcribe_lang2_var: tk.StringVar
+    transcribe_lang2_frame: "ttk.Frame"
     device_var: tk.StringVar
     compute_type_var: tk.StringVar
     # Engine picker row on the Transcribe tab (built in tabs.py).
@@ -4251,6 +4254,32 @@ class App(tk.Tk):
         code = next((c for name, c in SUBTITLE_LANGUAGES if name == choice), "")
         return code or None
 
+    def _selected_language_pair(self) -> tuple[tuple[str, str] | None, str]:
+        """Mixed-language audio: (the two codes, "") when it applies, else (None, why not).
+
+        The reason is "" when the option is simply off; otherwise it says why
+        this file falls back to one language.
+        """
+        var = self.__dict__.get("mixed_lang_var")
+        if var is None or not var.get():
+            return None, ""
+        first = self._selected_transcribe_language()
+        if not first:
+            return None, _("Mixed-language audio needs the first language picked in Language (not Auto).")
+        from app.domain.languages import SUBTITLE_LANGUAGES
+        name = self.transcribe_lang2_var.get().strip()
+        second = next((c for n, c in SUBTITLE_LANGUAGES if n == name), "")
+        # "zh-Hans,zh-CN" and "zh-Hant,zh-TW" are one spoken language to Whisper
+        base = lambda code: code.split(",")[0].split("-")[0].strip().lower()  # noqa: E731
+        if not second or base(second) == base(first):
+            return None, _("Mixed-language audio needs two different languages.")
+        backend = str(self.app_config.get("transcribe_backend") or "faster_whisper").strip().lower()
+        if backend != "faster_whisper":
+            return None, _("Mixed-language audio works with the faster-whisper engine only.")
+        if bool(self.app_config.get("translate_to_english", False)):
+            return None, _("Mixed-language audio does not combine with English translation.")
+        return (first, second), ""
+
     def _confirm_english_only_model(self) -> bool:
         """Before queueing: guide the user off an English-only model when the
         language is not English (auto-detect included).
@@ -4373,8 +4402,16 @@ class App(tk.Tk):
         # default Whisper auto-detect; any other value is a language
         # name that maps to a known code via app.domain.languages.
         code = self._selected_transcribe_language()
-        if code:
-            task.language = code
+        # (only when the Transcribe tab built the tick box; minimal stand-ins in tests have none)
+        pair, why_not = (self._selected_language_pair() if self.__dict__.get("mixed_lang_var") is not None
+                         else (None, ""))
+        if pair:
+            task.languages = pair
+        else:
+            if why_not:
+                self.log(why_not + " " + _("This file uses one language."))
+            if code:
+                task.language = code
         # "English translation" option: Whisper's own translate task, only
         # where the engine and model can do it (the checkbox is disabled
         # otherwise, and the worker refuses an unsupported combination).
@@ -4782,6 +4819,7 @@ class App(tk.Tk):
             nt = TranscriptionTask(t.file_path)
             if getattr(t, "language", None):
                 nt.language = t.language
+            nt.languages = getattr(t, "languages", None)
             # Preserve the time-range slice across re-run (mirrors the Download
             # tab's _rerun_download fix) — without this a clipped row re-runs
             # the WHOLE file instead of the slice the user picked.
@@ -4805,6 +4843,7 @@ class App(tk.Tk):
             nt = TranscriptionTask(t.file_path)
             if getattr(t, "language", None):
                 nt.language = t.language
+            nt.languages = getattr(t, "languages", None)
             nt.clip_start = getattr(t, "clip_start", None)
             nt.clip_end = getattr(t, "clip_end", None)
             nt.whisper_task = getattr(t, "whisper_task", "transcribe")
@@ -4869,6 +4908,7 @@ class App(tk.Tk):
         new_task = TranscriptionTask(task.file_path)
         if getattr(task, "language", None):
             new_task.language = task.language
+        new_task.languages = getattr(task, "languages", None)
         new_task.clip_start = getattr(task, "clip_start", None)
         new_task.clip_end = getattr(task, "clip_end", None)
         new_task.whisper_task = getattr(task, "whisper_task", "transcribe")
@@ -4901,6 +4941,7 @@ class App(tk.Tk):
         new_task = TranscriptionTask(task.file_path)
         if getattr(task, "language", None):
             new_task.language = task.language
+        new_task.languages = getattr(task, "languages", None)
         new_task.clip_start = getattr(task, "clip_start", None)
         new_task.clip_end = getattr(task, "clip_end", None)
         new_task.whisper_task = getattr(task, "whisper_task", "transcribe")

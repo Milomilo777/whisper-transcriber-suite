@@ -23,6 +23,10 @@ class TranscriptionTask:
         self.detected_language: str = ""
         self.language_probability: float = 0.0
         self.language: str | None = None
+        # Mixed-language audio (experimental): two Whisper codes. Each stretch
+        # is then transcribed in whichever of the two it sounds like; None =
+        # one language (``language``, or auto-detect).
+        self.languages: tuple[str, str] | None = None
         # Phase 3a — primary key in core.history.HistoryDB.transcriptions
         self.history_id: int = 0
         # Correlation id for the JSON worker protocol (add-only field).

@@ -625,3 +625,42 @@ older Macs are told so (an own build for them is separate work).
 - Older pinned folders stay in the cache after a bump until removal is built.
 - Starting and stopping the server (a managed child bound to 127.0.0.1 with a per-session key, no
   orphan processes) is a separate step that builds on this module.
+
+## 0014 — Mixed-language audio: per-stretch detection limited to two languages, on a per-job model copy
+
+**Status:** Accepted (experimental option)
+
+**Date:** 2026-10-20
+
+**Context:** Recordings such as classes and interviews switch between two languages. With Auto,
+Whisper detects the language once from the start of the file; with a language picked by hand it
+decodes everything under that language token and can turn the other language into a translation.
+A test on a real Chinese-English class (two 15-minute excerpts, large-v3 on CPU, four modes) showed
+that a hand-picked single language rendered 37 English stretches as Chinese translations, that
+faster-whisper's own per-stretch detection over all languages produced a line in a third script,
+and that per-stretch detection limited to the two languages behaved like Auto where Auto had
+started in the right language. There is no human reference transcript yet, so accuracy gains are
+not measured.
+
+**Options considered:**
+1. Keep one language per file (as is). Simple; the translation problem stays for hand-picked languages.
+2. `multilingual=True` over all languages. Built in; wanders into third languages on music and noise.
+3. Per-stretch detection limited to two chosen languages. Chosen, as an opt-in tick box with a
+   second language picker; Auto stays the default.
+4. An allowed-languages multi-select. Deferred until recordings with three or more languages are tested.
+
+**Decision:** The task carries `languages` (two codes, sent to the worker). The engine then calls
+faster-whisper with `multilingual=True` on a shallow per-job copy of the model (or of the batched
+pipeline) whose CTranslate2 model is wrapped so `detect_language()` keeps only the two languages'
+tokens, in the model's own order. The shared model other jobs use is never changed. A restart after
+a repetition loop keeps per-stretch detection instead of pinning one language. The option is off
+with Auto as the first language, with the same language twice (Simplified and Traditional Chinese
+count as one), with another engine, and with English translation; the log says why. A test fails if
+a faster-whisper upgrade stops calling `detect_language()` where the wrapper sits.
+
+**Consequences:**
+- Users who know their recording mixes two languages get both written as spoken.
+- It relies on faster-whisper internals (guarded by a test); an upstream `allowed_languages`
+  option would replace the wrapper.
+- Accuracy against a human reference, other language pairs and the batched (GPU) path are not yet
+  measured; the option is labelled experimental until they are.
