@@ -583,6 +583,10 @@ html[data-motion="off"] .rail-pulse { transform: translateX(380px); }
 .hdr-no-name .site-header .brand-name { display: none; }
 .hdr-no-nav .site-header .site-nav { display: none; }
 .hdr-no-gh .site-header .gh-btn { display: none; }
+/* /try/ is English only for now: its link shows on the English home page only */
+.hero-try { margin-top: 14px; font-size: 0.95rem; }
+.hero-try a { color: var(--ink-2); text-underline-offset: 3px; }
+html:not([lang="en"]) .hero-try { display: none; }
 .hdr-no-nav .site-header .site-nav + .header-cta { margin-inline-start: auto; }
 .hdr-no-lang .site-header .lang-current { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 1500px) {

@@ -60,6 +60,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   email addresses: admin@whisper-transcriber-suite.com is listed in the README, SECURITY.md and
   CITATION.cff, and the website's contact button shows info@ first, with the earlier address kept.
 
+- **Try it in the browser** ([/try/](https://whisper-transcriber-suite.com/try/), English for now): a website
+  page that transcribes a short file (up to 10 minutes, 5 on a phone) with Whisper Tiny or Base inside the
+  visitor's browser and offers TXT, SRT and VTT. The audio is never uploaded: the page's own scripts make no
+  network request, and its Content-Security-Policy only lets the model (Hugging Face) and the ONNX Runtime
+  engine (transformers.js 4.3.1 and ONNX Runtime from jsDelivr, at exact versions) load.
+
 - **A GitHub button in the website header**: a round GitHub-mark button next to the language and
   animation buttons replaces the old "Star" link that phones never showed. On the narrowest phones in
   languages that also show the "English" button, the header drops it last when space runs out. The

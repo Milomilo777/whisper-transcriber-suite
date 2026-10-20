@@ -184,6 +184,12 @@ that the hosting platform adds to each page:
 The new font files are the Google Fonts subsets of each family. Full OFL text and every family's
 copyright line are in `assets/fonts/OFL.txt`.
 
+The in-browser transcription page (`site/try/`) loads **transformers.js** 4.3.1 by Hugging Face
+(Apache-2.0) at that exact version from cdn.jsdelivr.net. When a visitor starts a transcription there,
+it also loads the ONNX Runtime Web engine (MIT, Microsoft) from cdn.jsdelivr.net and the Whisper model (`onnx-community/whisper-tiny` or `-base`, ONNX conversions of
+OpenAI's `openai/whisper-tiny` / `-base`, whose model cards say Apache-2.0; the conversions' cards name
+no licence) from huggingface.co; the visitor's audio stays in the browser.
+
 ## Adapted source code
 
 | Component | License | Where |

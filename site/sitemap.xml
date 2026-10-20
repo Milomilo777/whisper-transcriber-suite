@@ -214,6 +214,12 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
+  <url>
+    <loc>https://whisper-transcriber-suite.com/try/</loc>
+    <lastmod>2026-10-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
   <!-- i18n:sitemap:start -->
   <url>
     <loc>https://whisper-transcriber-suite.com/de/</loc>

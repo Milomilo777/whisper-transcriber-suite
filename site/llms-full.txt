@@ -12,6 +12,7 @@ Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscri
 - [Support the project — Buy Me a Coffee](https://buymeacoffee.com/mehraz1358): funds continued cross-platform development and testing.
 
 ## Guides
+- [Try it in the browser](https://whisper-transcriber-suite.com/try/): transcribe a short file (up to 10 minutes) with Whisper inside the browser, no install and no upload; download TXT, SRT or VTT. English page.
 - [Transcribe a YouTube video to text](https://whisper-transcriber-suite.com/youtube-to-text/): paste a link, download with yt-dlp, transcribe locally, save TXT, DOCX, PDF or SRT.
 - [Convert a video to SRT subtitles](https://whisper-transcriber-suite.com/video-to-srt/): SRT, VTT or ASS from a file or a link, correcting them, and burning them into the video.
 - [Transcribe with speaker labels](https://whisper-transcriber-suite.com/speaker-labels/): who said what in an interview, renaming speakers, Word and PDF export.
