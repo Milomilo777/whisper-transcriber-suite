@@ -71,6 +71,10 @@ watchdog>=3.0
 pystray>=0.19
 Pillow>=12.3.0
 
+# QR code of the Web / LAN address for phones (core/phone_link.py); pure Python,
+# no dependencies, writes the PNG itself.
+segno>=1.6
+
 # numpy is imported directly (Live tab, audio visualiser, VAD window,
 # diarization, hardware probes) and comes in through faster-whisper /
 # ctranslate2 / onnxruntime, so declare it. Floor 1.26: the macOS build pins

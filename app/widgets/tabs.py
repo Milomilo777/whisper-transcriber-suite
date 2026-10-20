@@ -1633,6 +1633,26 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
         justify="left",
     )
     url_label.pack(anchor="w", pady=(2, 12))
+    app.server_url_label = url_label
+
+    # Phone: a QR code of the network address, packed under the address only
+    # while the server is shared on the network (App._show_phone_link).
+    app.server_qr_frame = ttk.Frame(frame)
+    app.server_qr_label = ttk.Label(app.server_qr_frame)
+    app.server_qr_label.pack(side="left", anchor="n")
+    qr_side = ttk.Frame(app.server_qr_frame)
+    qr_side.pack(side="left", anchor="n", padx=(12, 0))
+    ttk.Label(
+        qr_side, text=_("Use it from your phone"), font=("TkDefaultFont", 10, "bold"),
+    ).pack(anchor="w")
+    app.server_qr_note_var = tk.StringVar(value="")
+    ttk.Label(
+        qr_side, textvariable=app.server_qr_note_var,
+        wraplength=px(380), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
+    ).pack(anchor="w", pady=(2, 0))
+    ttk.Button(
+        qr_side, text=_("Copy phone link"), command=app.copy_phone_link,
+    ).pack(anchor="w", pady=(8, 0))
 
     # --- options -------------------------------------------------------------
     opts = section_labelframe(

@@ -76,6 +76,7 @@ MPL-2.0 are shipped unmodified, as their own packages, with their source linked 
 - **onnxruntime** — MIT (Microsoft; runs the sherpa-onnx and Silero VAD models)
 - **pywhispercpp** (whisper.cpp bindings) — MIT
 - **arabic-reshaper** — MIT (joins Arabic-script letters in PDF output)
+- **segno** — BSD-3-Clause (the QR code of the Web / LAN address for phones)
 - **python-bidi** — LGPL-3.0-or-later, shipped unmodified as its own package and
   imported at runtime (right-to-left line order in PDF output); its compiled
   extension wraps the `unicode-bidi` Rust crate (MIT / Apache-2.0). Source:

@@ -367,6 +367,8 @@ a = Analysis(
         'core.segment_ops',
         'docx',
         'reportlab',
+        'segno',
+        'core.phone_link',
         'arabic_reshaper',
         'bidi.algorithm',
         'sherpa_onnx',

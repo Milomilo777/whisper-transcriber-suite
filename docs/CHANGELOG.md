@@ -6,6 +6,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Use the app from your phone**: with "Share on local network" on, the Web / LAN access tab shows a
+  QR code of the network address. Scanning it opens the transcription page on a phone on the same
+  Wi-Fi; a set access password travels in the code. A **Copy phone link** button copies the same
+  address, and the page's buttons and fields are thumb-sized on a phone. New dependency: `segno`
+  (BSD-3-Clause, pure Python) draws the QR code.
+
 - **Files for Anthropic's OSS Scanner**: `.oss-scanner/Dockerfile` (a Linux image with the dependencies and the
   hermetic test suite), `.oss-scanner/threat_model.md` (trust boundaries and severity guidance) and a workflow
   that builds the image when those files or `requirements*.txt` change.

@@ -58,6 +58,22 @@ Optional settings on that tab (all remembered for next time):
   [HTTPS](#https-self-signed-certificate).
 - **Webhook URL (optional)**: see [Completion webhook](#completion-webhook).
 
+### From a phone
+
+With **Share on local network** on, the tab shows a QR code under the
+network address. Scan it with the phone's camera (the phone must be on the
+same Wi-Fi network) and the page opens in the phone's browser: pick a
+recording or a video from the phone, start it, and read or download the
+transcript there. The transcription runs on this PC. **Copy phone link**
+copies the same address, for example to send it to your own phone.
+
+If an access password is set, the QR code and the copied link include it
+(as `?token=`, which the page moves out of the address bar), so show them only
+to people who may use the page. The QR code works only inside your own
+network; recording straight in the phone's browser is not offered (phones
+allow it only over a trusted HTTPS certificate), so record with the phone's
+own recorder app first.
+
 The rest of this document describes the equivalent command-line server for
 headless / scripted use.
 

@@ -529,6 +529,8 @@ a = Analysis(
         'core.writers.bilingual_srt',
         'docx',
         'reportlab',
+        'segno',
+        'core.phone_link',
         'arabic_reshaper',
         'bidi.algorithm',
         'sherpa_onnx',

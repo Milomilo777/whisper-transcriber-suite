@@ -50,6 +50,7 @@ dependencies = [
     # Pillow 12.3.0 closes the published advisories (see requirements.txt);
     # numpy is imported directly in several modules.
     "Pillow>=12.3.0",
+    "segno>=1.6",
     "numpy>=1.26,<3",
     "psutil>=5.9",
     # Live tab audio capture — small, no heavy transitive deps, so these

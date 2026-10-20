@@ -263,6 +263,8 @@ def _server_app():
         server_status_var=_Var("Starting..."),
         server_url_var=_Var(""),
         logs=[],
+        _show_phone_link=lambda *_a: None,
+        _hide_phone_link=lambda: None,
     )
     app.log = app.logs.append
     return app

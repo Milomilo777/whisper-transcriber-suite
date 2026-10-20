@@ -1079,6 +1079,11 @@ class App(tk.Tk):
     server_url_var: tk.StringVar
     server_toggle_btn: "ttk.Button"
     server_open_btn: "ttk.Button"
+    # Phone QR code under the address (shown while shared on the network).
+    server_qr_frame: "ttk.Frame"
+    server_qr_label: "ttk.Label"
+    server_qr_note_var: tk.StringVar
+    server_url_label: "ttk.Label"
     # Download-tab position sliders (created by tabs.build_download_tab).
     download_start_scale: "ttk.Scale"
     download_end_scale: "ttk.Scale"
@@ -5460,6 +5465,9 @@ class App(tk.Tk):
         port = port if 1 <= port <= 65535 else 8765
         share_lan = bool(self.server_share_lan_var.get())
         token = self.server_token_var.get().strip()
+        # The password the server runs with: the phone link must carry this
+        # one, not whatever is typed into the field later.
+        self._server_token_in_use = token
         https = bool(self.server_https_enabled_var.get())
         webhook_url = self.server_webhook_url_var.get().strip()
         max_upload_mb = int(self.app_config.get("server_max_upload_mb", 512))
@@ -5553,6 +5561,7 @@ class App(tk.Tk):
             self.server_url_var.set(
                 _("This PC:  {local_url}\nNetwork:  {network_url}",
                   local_url=urls[0], network_url=urls[1]))
+            self._show_phone_link(urls[1], self.__dict__.get("_server_token_in_use", ""))
         elif share_lan:
             # LAN sharing was requested but the network address could not be
             # determined (LAN-IP detection failed — no active network
@@ -5564,9 +5573,11 @@ class App(tk.Tk):
                 _("Running. Network sharing on, but your network address "
                   "couldn't be detected."))
             self.server_url_var.set(primary)
+            self._hide_phone_link()
         else:
             self.server_status_var.set(_("Running on this computer."))
             self.server_url_var.set(primary)
+            self._hide_phone_link()
         self.log(f"Web / LAN access started: {primary}")
 
     def _on_server_failed(self, message: str) -> None:
@@ -5576,6 +5587,7 @@ class App(tk.Tk):
         self.server_open_btn.config(state="disabled")
         self.server_status_var.set(pgettext("web access status", "Off"))
         self.server_url_var.set("")
+        self._hide_phone_link()
         messagebox.showerror(
             _("Could not start web access"),
             _("The web / LAN server could not start.\n\n{error}", error=message),
@@ -5588,7 +5600,55 @@ class App(tk.Tk):
         self.server_open_btn.config(state="disabled")
         self.server_status_var.set(pgettext("web access status", "Off"))
         self.server_url_var.set("")
+        self._hide_phone_link()
         self.log("Web / LAN access stopped.")
+
+    def _show_phone_link(self, network_url: str, token: str) -> None:
+        """Show the QR code of the network address (plus password) under it."""
+        from core.phone_link import phone_url, qr_png_base64
+
+        self._phone_link = phone_url(network_url, token)
+        # __dict__, not getattr: on a widget-less App (tests) Tk.__getattr__ recurses
+        frame = self.__dict__.get("server_qr_frame")
+        if frame is None:
+            return
+        data = qr_png_base64(self._phone_link, scale=max(3, px(4)))
+        if data:
+            self._phone_qr_image = tk.PhotoImage(data=data)  # keep a reference
+            self.server_qr_label.config(image=self._phone_qr_image)
+        else:
+            self._phone_qr_image = None
+            self.server_qr_label.config(image="")
+        steps = (_("Scan this code with your phone's camera, or open the network address in its "
+                   "browser. The phone must be on the same Wi-Fi network as this PC.")
+                 if data else
+                 _("Open the network address in your phone's browser. The phone must be on the "
+                   "same Wi-Fi network as this PC."))
+        if network_url.startswith("https:"):
+            steps += " " + _("With HTTPS on, the phone first warns about the certificate: this "
+                             "app made it itself, so continue to the page.")
+        if token:
+            steps += " " + _("The code and the copied link include your access password: show "
+                             "them only to people who may use this page.")
+        self.server_qr_note_var.set(steps)
+        frame.pack(anchor="w", pady=(0, 12), after=self.server_url_label)
+
+    def _hide_phone_link(self) -> None:
+        self._phone_link = ""
+        self._phone_qr_image = None
+        frame = self.__dict__.get("server_qr_frame")
+        if frame is not None:
+            self.server_qr_label.config(image="")
+            frame.pack_forget()
+
+    def copy_phone_link(self) -> None:
+        """Put the phone link (network address, plus the password if set) on the clipboard."""
+        link = self.__dict__.get("_phone_link", "")
+        if not link:
+            return
+        self.clipboard_clear()
+        self.clipboard_append(link)
+        self.log(_("Phone link copied."))
 
     def open_server_in_browser(self) -> None:
         """Open the loopback URL in the default browser."""
