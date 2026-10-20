@@ -918,7 +918,8 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     mixed_check.pack(side="left")
     app.transcribe_lang2_frame = ttk.Frame(opts_line3)
     ttk.Label(app.transcribe_lang2_frame, text=_("Second language:")).pack(side="left")
-    lang2_labels = {name: subtitle_language_label(name) for name, _code in _LANGS}
+    # a real language only: no "Automatic" entry for the second one
+    lang2_labels = {name: subtitle_language_label(name) for name, code in _LANGS if code}
     ttk.Combobox(
         app.transcribe_lang2_frame,
         textvariable=translated_choice_var(app.transcribe_lang2_frame, app.transcribe_lang2_var, lang2_labels),
