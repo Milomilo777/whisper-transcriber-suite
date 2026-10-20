@@ -48,6 +48,16 @@ def whisper_language_code(codes: str) -> str:
     return first.split("-")[0].lower()
 
 
+def language_name_for(code: str) -> str:
+    """The Transcribe tab's (English) language name for a Whisper code, or "" (auto / unknown)."""
+    from app.domain.languages import SUBTITLE_LANGUAGES
+
+    if not code:
+        return ""
+    return next((name for name, codes in SUBTITLE_LANGUAGES
+                 if codes and whisper_language_code(codes) == code), "")
+
+
 def language_options() -> list[tuple[str, str]]:
     """``[(label, whisper code), ...]``; the first entry ("" = auto-detect) is the default.
 

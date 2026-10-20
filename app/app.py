@@ -1577,6 +1577,14 @@ class App(tk.Tk):
         var = getattr(self, "download_folder_var", None)
         if var is not None:
             var.set(self.app_config.get("download_folder", ""))
+        # The language the user just named is this session's Transcribe language (the picker
+        # still opens on Auto next launch); before, the window chose the model with it and the
+        # tab kept showing Auto (found in a click-through test, 2026-10-21).
+        from app.dialogs.quick_start import language_name_for
+        lang_var = getattr(self, "transcribe_lang_var", None)
+        name = language_name_for(choice.language)
+        if lang_var is not None and name:
+            lang_var.set(name)
         self._refresh_model_selector()
         # The engine row was probed at start-up, before the model folder existed;
         # re-probe it (and drop the cached verdicts) so it agrees with the model row.

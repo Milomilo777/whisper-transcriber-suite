@@ -559,3 +559,46 @@ def test_choosing_the_model_folder_after_skip_refreshes_the_status_rows(monkeypa
     assert fake.app_config == {"hub_folder": "chosen"}
     fake._refresh_model_selector.assert_called_once()
     fake._refresh_engine_selector.assert_called_once()
+
+
+class _LangVar:
+    def __init__(self) -> None:
+        self.value = "Auto"
+
+    def get(self) -> str:
+        return self.value
+
+    def set(self, value: str) -> None:
+        self.value = value
+
+
+def test_finish_sets_this_sessions_transcribe_language(monkeypatch, tmp_path):
+    """Picking English in the window chose the model only; the tab still showed Auto
+    (found in a click-through test, 2026-10-21)."""
+    app_mod, fake, _saved = _fake_app(monkeypatch, tmp_path)
+    fake.transcribe_lang_var = _LangVar()
+    app_mod.App._on_quick_start_done(  # type: ignore[arg-type]
+        fake, qs.QuickStartChoice("en", "fast", str(tmp_path)),
+    )
+    assert fake.transcribe_lang_var.get() == "English"
+    # Never persisted: the picker still opens on Auto at the next launch.
+    assert "transcribe_language" not in fake.app_config
+
+
+def test_finish_with_several_languages_keeps_auto(monkeypatch, tmp_path):
+    app_mod, fake, _saved = _fake_app(monkeypatch, tmp_path)
+    fake.transcribe_lang_var = _LangVar()
+    app_mod.App._on_quick_start_done(  # type: ignore[arg-type]
+        fake, qs.QuickStartChoice("", "fast", str(tmp_path)),
+    )
+    assert fake.transcribe_lang_var.get() == "Auto"
+
+
+def test_every_offered_language_maps_back_to_a_transcribe_tab_name():
+    from app.domain.languages import SUBTITLE_LANGUAGES
+
+    names = {name for name, _codes in SUBTITLE_LANGUAGES}
+    for _label, code in qs.language_options()[1:]:
+        assert qs.language_name_for(code) in names, code
+    assert qs.language_name_for("") == ""
+    assert qs.language_name_for("xx") == ""

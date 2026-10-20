@@ -105,6 +105,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   downloaded and was never transcribed. The download now also starts by itself once the link is read,
   so one click on Transcribe is enough.
 
+- **Quick start's language reaches the Transcribe tab**: the language picked in the first-run window
+  chose the model but the tab still said Auto; it is now that session's language (the picker still
+  opens on Auto at the next launch).
+
 - **/try on phones and in Persian**: the page keeps the phone's screen on while it transcribes (Screen
   Wake Lock) and says so after it was in the background, since phones pause hidden pages. Persian now
   uses a Whisper Base model trained for Persian; it runs window by window, because it returns no text
