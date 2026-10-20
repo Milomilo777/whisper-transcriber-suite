@@ -88,6 +88,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **/try on phones and in Persian**: the page keeps the phone's screen on while it transcribes (Screen
+  Wake Lock) and says so after it was in the background, since phones pause hidden pages. Persian now
+  uses a Whisper Base model trained for Persian; it runs window by window, because it returns no text
+  when asked for timestamps. The page warns that the small browser models are weak in Persian, Arabic,
+  Hindi, Korean, Turkish and Vietnamese, and a guard stops one word from repeating in a loop.
+
 - **Linux without a system tray**: on an X11 desktop with no tray (or a virtual display), the app no
   longer starts a tray icon that can never appear. Its background thread could leave the display
   unresponsive and hang closing the window; "minimise to tray" now also stays off there, so the window

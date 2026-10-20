@@ -16,9 +16,19 @@ const resultBox = document.querySelector('[data-result]');
 const textOut = document.querySelector('[data-text]');
 const netWarn = document.querySelector('[data-net-warn]');
 const modelInfo = document.querySelector('[data-model-info]');
+const langNote = document.querySelector('[data-lang-note]');
+const awakeNote = document.querySelector('[data-awake]');
+const baseSize = document.querySelector('[data-base-size]');
 
-const SIZES = { tiny: '41 MB', base: '77 MB' };
-const MODEL_IDS = { tiny: 'onnx-community/whisper-tiny', base: 'onnx-community/whisper-base' };
+const SIZES = { tiny: '41 MB', base: '77 MB', 'base-persian': '105 MB' };
+const MODEL_IDS = {
+  tiny: 'onnx-community/whisper-tiny',
+  base: 'onnx-community/whisper-base',
+  'base-persian': 'armantee/whisper-base-persian-onnx',
+};
+// Languages the small browser models get badly wrong: say so, and point to the desktop app.
+const WEAK = { persian: 'Persian', arabic: 'Arabic', hindi: 'Hindi', korean: 'Korean', turkish: 'Turkish',
+  vietnamese: 'Vietnamese' };
 const PHONE = window.matchMedia('(pointer: coarse)').matches;
 const MAX_SECONDS = (PHONE ? 5 : 10) * 60;
 
@@ -29,10 +39,62 @@ let worker = null;
 let busy = false;
 let started = 0;
 let tick = 0;
+let wakeLock = null;
+let hiddenAt = 0;
 
 function show(el, on) { el.hidden = !on; }
 function setError(text) { errorBox.textContent = text; show(errorBox, Boolean(text)); }
-function model() { return document.querySelector('input[name="model"]:checked').value; }
+function model() {
+  // Persian gets the Persian-trained Base model; Tiny stays the generic one.
+  const m = document.querySelector('input[name="model"]:checked').value;
+  return m === 'base' && langSel.value === 'persian' ? 'base-persian' : m;
+}
+
+// Phones pause a page whose screen turns off, and the transcription with it: keep the screen on while it runs.
+async function keepAwake() {
+  if (!busy || wakeLock || !('wakeLock' in navigator) || document.hidden) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (e) { /* refused (battery saver): the note still asks to keep the page open */ }
+}
+
+function letSleep() {
+  if (wakeLock) wakeLock.release().catch(() => {});
+  wakeLock = null;
+}
+
+function onVisibility() {
+  if (!busy) return;
+  if (document.hidden) {
+    hiddenAt = Date.now();
+    return;
+  }
+  keepAwake();  // the browser drops the lock when the page is hidden
+  if (hiddenAt) {
+    awakeNote.textContent = `This page was in the background for ${minutes((Date.now() - hiddenAt) / 1000)}. `
+      + 'A phone may pause a page in the background; the transcription goes on now. Keep this page open until it finishes.';
+    hiddenAt = 0;
+  }
+}
+
+function languageNote() {
+  const name = WEAK[langSel.value];
+  const persian = model() === 'base-persian';
+  baseSize.textContent = persian ? SIZES['base-persian'] : SIZES.base;
+  let text = '';
+  if (persian) {
+    text = 'Persian uses a Base model trained for Persian (Apache-2.0, by C1Tech). Phone calls and noisy audio are still '
+      + 'hard for a small model in the browser; the free desktop app is far more accurate.';
+  } else if (langSel.value === 'persian') {
+    text = 'Tiny is the general model and gets Persian badly wrong. Pick Base: for Persian it is a model trained for Persian.';
+  } else if (name) {
+    text = `The small models that fit in a browser make many mistakes in ${name}. For real work, use the free desktop `
+      + 'app with a large model.';
+  }
+  langNote.textContent = text;
+  show(langNote, Boolean(text));
+}
 function minutes(sec) { return `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`; }
 
 function mediaDuration(f) {
@@ -95,6 +157,8 @@ function save(kind) {
 
 function finish() {
   busy = false;
+  hiddenAt = 0;
+  letSleep();
   clearInterval(tick);
   runBtn.disabled = !file;
 }
@@ -141,6 +205,10 @@ async function run() {
   setError('');
   show(resultBox, false);
   show(progressBox, true);
+  awakeNote.textContent = 'wakeLock' in navigator
+    ? 'The screen stays on while this runs. Keep this page open until it finishes.'
+    : 'Keep this page open and the screen on until it finishes: a phone pauses pages in the background.';
+  keepAwake();
   bar.removeAttribute('value');
   statusLine.textContent = 'Reading the file…';
   let audio;
@@ -153,7 +221,7 @@ async function run() {
     return;
   }
   if (!worker) {
-    worker = new Worker(new URL('./try-worker.js', import.meta.url), { type: 'module' });
+    worker = new Worker(new URL('./try-worker.js?v=20261020b', import.meta.url), { type: 'module' });
     worker.onmessage = onMessage;
     worker.onerror = (e) => onMessage({ data: { type: 'error', message: e.message || 'the worker stopped' } });
   }
@@ -198,7 +266,13 @@ function init() {
     drop.classList.remove('over');
     if (e.dataTransfer.files[0]) pick(e.dataTransfer.files[0]);
   });
-  document.querySelectorAll('input[name="model"]').forEach((r) => r.addEventListener('change', cacheNote));
+  document.querySelectorAll('input[name="model"]').forEach((r) => r.addEventListener('change', () => {
+    languageNote();
+    cacheNote();
+  }));
+  langSel.addEventListener('change', () => { languageNote(); cacheNote(); });
+  document.addEventListener('visibilitychange', onVisibility);
+  languageNote();
   runBtn.addEventListener('click', run);
   document.querySelectorAll('[data-save]').forEach((b) => b.addEventListener('click', () => save(b.dataset.save)));
   document.querySelector('[data-copy]').addEventListener('click', () => navigator.clipboard && navigator.clipboard.writeText(textOut.value));

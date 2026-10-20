@@ -218,7 +218,7 @@
         <section class="try-step" aria-labelledby="try-model-title">
           <h2 id="try-model-title">2. Choose the speech model and language</h2>
           <div class="try-row">
-            <label><input type="radio" name="model" value="base" checked> Base: better (77 MB)</label>
+            <label><input type="radio" name="model" value="base" checked> Base: better (<span data-base-size>77 MB</span>)</label>
             <label><input type="radio" name="model" value="tiny"> Tiny: faster (41 MB)</label>
           </div>
           <div class="try-row">
@@ -243,6 +243,7 @@
               </select>
             </label>
           </div>
+          <p class="try-warn" data-lang-note hidden></p>
           <p class="try-note" data-model-info>The model is downloaded once from Hugging Face and then kept in this browser.</p>
           <p class="try-warn" data-net-warn hidden>You seem to be on mobile data or in data-saver mode. The model download is large; Wi-Fi is better.</p>
         </section>
@@ -255,6 +256,7 @@
           <div class="try-progress" data-progress hidden>
             <progress max="100" value="0" data-bar></progress>
             <p class="try-note" data-status aria-live="polite"></p>
+            <p class="try-note" data-awake></p>
           </div>
           <p class="try-err" data-error role="alert" hidden></p>
         </section>
@@ -309,6 +311,6 @@
 </footer>
 
 <script src="../js/lang.js?v=20261020a" defer></script>
-<script type="module" src="try.js?v=20261020a"></script>
+<script type="module" src="try.js?v=20261020b"></script>
 </body>
 </html>
