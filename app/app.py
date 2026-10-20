@@ -1101,6 +1101,9 @@ class App(tk.Tk):
     subtitle_lang_combo: "ttk.Combobox"
     subtitle_status_var: tk.StringVar
     auto_transcribe_var: tk.BooleanVar
+    # A link handed over by the Transcribe button: FormatService starts its download once
+    # the link's formats are listed ("" = none waiting).
+    pending_link_start: str = ""
     make_subbed_video_var: tk.BooleanVar
     # "Use captions instead" shortcut (built in tabs.build_download_tab;
     # shown/hidden by update_caption_shortcut_state based on what the most
@@ -4196,10 +4199,19 @@ class App(tk.Tk):
                 self.download_url_var.set(text)
                 if hasattr(self, "auto_transcribe_var"):
                     self.auto_transcribe_var.set(True)
+                    # The download chain reads the saved setting, not the tick box: without
+                    # this the file downloaded and was never transcribed (found in a
+                    # click-through test, 2026-10-21).
+                    self._save_auto_transcribe_pref()
+                # The user clicked Transcribe: start the download by itself as soon as the
+                # link's formats are listed (FormatService), instead of waiting for a
+                # second click on Download.
+                from core.integrations import smtv as smtv_mod
+                self.pending_link_start = smtv_mod.clean_url(text)
                 self.nb.select(self.t3)
                 self.log(
-                    f"URL detected — pasted into the Download tab with "
-                    f"auto-transcribe ON: {text[:60]}"
+                    f"Link: it downloads first, then transcribes; starting as soon as the "
+                    f"link is read: {text[:60]}"
                 )
             except Exception as e:  # noqa: BLE001
                 self.log(f"URL handoff failed: {e}")

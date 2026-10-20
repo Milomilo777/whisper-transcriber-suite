@@ -100,6 +100,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A link pasted on the Transcribe tab is transcribed again**: Transcribe moved the link to the Download
+  Videos tab with "Transcribe after download" ticked, but that setting was not saved, so the file
+  downloaded and was never transcribed. The download now also starts by itself once the link is read,
+  so one click on Transcribe is enough.
+
 - **/try on phones and in Persian**: the page keeps the phone's screen on while it transcribes (Screen
   Wake Lock) and says so after it was in the background, since phones pause hidden pages. Persian now
   uses a Whisper Base model trained for Persian; it runs window by window, because it returns no text

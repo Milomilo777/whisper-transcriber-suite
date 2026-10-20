@@ -337,6 +337,10 @@ class FormatService:
                 hint = missing_js_runtime_hint(app.yt_dlp_path())
             app.format_status_var.set(f"{hint}\n{payload}" if hint else payload)
             app.format_lookup_error = str(payload)
+            if getattr(app, "pending_link_start", "") == url:
+                app.pending_link_start = ""
+                app.log("The link could not be read, so its download did not start; see the "
+                        "message on the Download Videos tab.")
             offer = getattr(app, "offer_yt_dlp_update", None)
             if callable(offer) and yt_dlp_update.should_offer_update(str(payload)):
                 offer(str(payload))
@@ -352,6 +356,7 @@ class FormatService:
 
         if kind == "smtv_formats":
             self._apply_smtv_formats(payload)
+            self._start_pending_download(url)
             return
 
         if not isinstance(payload, dict):
@@ -427,3 +432,12 @@ class FormatService:
         else:
             app.format_status_var.set(_("No formats found"))
         app.update_caption_shortcut_state()
+        self._start_pending_download(url)
+
+    def _start_pending_download(self, url: str) -> None:
+        """Start the download a Transcribe-button link is waiting for, once its formats are in."""
+        app = self.app
+        if not url or getattr(app, "pending_link_start", "") != url:
+            return
+        app.pending_link_start = ""
+        app.after(0, app.add_download)
