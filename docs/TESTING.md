@@ -113,3 +113,8 @@ fails with a message that names it (`tests/core/test_no_real_tray_icons.py`). A 
 ends stays in the Windows notification area as a dead icon until the mouse passes over it, so full GUI runs
 once left dozens there. The sv_ttk retry above covers the same Tcl read fault for any sv_ttk script
 (`sv.tcl`, `theme/dark.tcl`, ...).
+
+A key binding on a modal dialog (for example `<Escape>`) cannot be tested with `event_generate` in a background
+test process on Windows: the dialog never gets the keyboard focus, so the key never arrives and `wait_window`
+waits until the test timeout. Check that the binding exists (`dialog.bind("<Escape>")`) and close the dialog
+the same way instead (`tests/app/test_share_page_dialog.py`).

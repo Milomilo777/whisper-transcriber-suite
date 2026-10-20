@@ -95,6 +95,7 @@
   "Ask…": "Ask…",
   "Atomic save ({shortcut})": "Atomic save ({shortcut})",
   "Audio": "Audio",
+  "Audio and video": "Audio and video",
   "Audio source": "Audio source",
   "Audio-only mode (MP3 / m4a / opus)": "Audio-only mode (MP3 / m4a / opus)",
   "Audio-only quality/codec choice, filled in once the URL is looked up. Higher bitrate means a larger file and better quality.": "Audio-only quality/codec choice, filled in once the URL is looked up. Higher bitrate means a larger file and better quality.",
@@ -156,6 +157,7 @@
   "Cannot create or write the download folder:\n{folder}\n\n{error}": "Cannot create or write the download folder:\n{folder}\n\n{error}",
   "Cannot export": "Cannot export",
   "Cannot listen yet": "Cannot listen yet",
+  "Cannot load this link": "Cannot load this link",
   "Cannot rebuild {names} here (PDF and the team document); it still holds the old text. Export it again if you need it.": "Cannot rebuild {names} here (PDF and the team document); it still holds the old text. Export it again if you need it.",
   "Cannot record": "Cannot record",
   "Captions (creator-provided) are already available in \"the detected language\" -- skip downloading and transcribing?": "Captions (creator-provided) are already available in \"the detected language\" -- skip downloading and transcribing?",
@@ -1211,6 +1213,7 @@
   "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.",
   "Transcribing on {device}": "Transcribing on {device}",
   "Transcribing on {device}. CPU is much slower than a GPU. If you have an NVIDIA card, open Advanced > Re-detect hardware: it says why the GPU is not used and can install the missing NVIDIA library.": "Transcribing on {device}. CPU is much slower than a GPU. If you have an NVIDIA card, open Advanced > Re-detect hardware: it says why the GPU is not used and can install the missing NVIDIA library.",
+  "Transcribing {name}…": "Transcribing {name}…",
   "Transcript JSON": "Transcript JSON",
   "Transcript changed on disk": "Transcript changed on disk",
   "Transcript missing": "Transcript missing",
@@ -1574,8 +1577,10 @@
   "{name} cannot be used yet. {summary}": "{name} cannot be used yet. {summary}",
   "{name} has edits that were not saved.\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.": "{name} has edits that were not saved.\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.",
   "{name} has edits that were not saved.\nFolder: {folder}\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.": "{name} has edits that were not saved.\nFolder: {folder}\n\nYes: save them, then exit.\nNo: exit and discard them.\nCancel: stay in the app.",
+  "{name} is not an audio or video file.": "{name} is not an audio or video file.",
   "{name} was changed or removed by something else after it was opened here.\n\nOverwrite it with the version in this window?": "{name} was changed or removed by something else after it was opened here.\n\nOverwrite it with the version in this window?",
   "{name} writes {language} only, whatever language is picked.": "{name} writes {language} only, whatever language is picked.",
+  "{name}: {percent}% done": "{name}: {percent}% done",
   "{n} job": [
    "{n} job",
    "{n} jobs"
@@ -1604,6 +1609,7 @@
    "{n} transcription is running right now. Switching engines stops it immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nSwitch anyway?",
    "{n} transcriptions are running right now. Switching engines stops them immediately -- more abruptly than a normal Cancel, so more progress may be lost.\n\nSwitch anyway?"
   ],
+  "{percent}% done": "{percent}% done",
   "{process} (pid {pid}) {protocol} incoming {remote}": "{process} (pid {pid}) {protocol} incoming {remote}",
   "{process} (pid {pid}) {protocol} outgoing {remote}": "{process} (pid {pid}) {protocol} outgoing {remote}",
   "{refused} refused, {n} automatic request not sent since {time}": [

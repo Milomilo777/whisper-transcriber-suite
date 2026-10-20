@@ -820,7 +820,12 @@ class DownloadService:
             message = _("Wait for formats to load, then select a video format.")
         else:
             message = _("Wait for formats to load, then select an audio format.")
-        title = _("Missing video format") if video else _("Missing audio format")
+        if reason:
+            # The lookup itself failed (a deleted or private video, a site that needs a login):
+            # nothing is "missing" that the user could pick.
+            title = _("Cannot load this link")
+        else:
+            title = _("Missing video format") if video else _("Missing audio format")
         messagebox.showwarning(title, message, parent=app)
 
     def _caption_choice(self) -> str:

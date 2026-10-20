@@ -215,3 +215,20 @@ def test_the_overwrite_guard_does_not_rely_on_normcase(tk_root, tmp_path, monkey
                                   json_path=str(json_path)) is None
     assert errors and json_path.read_text(encoding="utf-8") == "[]"
     assert media.read_bytes() == b"audio"
+
+
+def test_escape_is_wired_to_cancel(tk_root, tmp_path, monkeypatch):
+    # Click-through test 2026-10-21: Escape left the dialog open. A key event needs the keyboard
+    # focus, which a background test process does not get on Windows, so the binding is checked
+    # and the dialog is then cancelled the same way.
+    found: list[str] = []
+
+    def check() -> None:
+        dialog = next(w for w in tk_root.winfo_children() if w.winfo_class() == "Toplevel")
+        found.append(dialog.bind("<Escape>"))
+        dialog.destroy()
+
+    tk_root.after(50, check)
+    assert sp.save_shareable_page(tk_root, segments=SEGS, media_path=None,
+                                  json_path=str(tmp_path / "t.json")) is None
+    assert found and found[0]

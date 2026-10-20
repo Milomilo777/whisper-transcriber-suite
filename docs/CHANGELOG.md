@@ -118,6 +118,22 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Hebrew on the web page**: the language picker of the web / LAN page listed Hebrew as "he"; it now
   says Hebrew.
 
+- **A file that is not audio or video**: picking one (a README, a subtitle file) showed a green
+  "Ready" line and a blue Transcribe button, then failed in the queue. The line now says in red that
+  it is not an audio or video file, and Browse lists audio and video files first.
+
+- **The window stays on your tab**: when a job finished, the app jumped to the Transcribe tab from
+  whatever tab you were on (Download, Live, ...). It now does that only from the Queue tab.
+
+- **A link that cannot be read**: a deleted or private video opened a dialog titled "Missing audio
+  format". It is now titled "Cannot load this link" (the reason is shown as before).
+
+- **Escape** closes Advanced settings and the Save shareable page dialog, like the other dialogs.
+
+- **Status bar in plain words**: it showed raw engine lines (loop-guard statistics, temporary file
+  paths) cut off at the window edge. It now shows a short line (file, progress and the latest
+  text, or "Transcribing name…"); the log panel still has every line.
+
 - **Speech Whisper dropped is read again**: Whisper sometimes ends a 30-second window after a couple of
   words (on a real Persian phone call: "0:00 -> 0:30", two words, in every setting). After a
   transcription, a long segment with almost no words, or a long gap, where speech is heard, is read

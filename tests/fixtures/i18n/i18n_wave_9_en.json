@@ -384,7 +384,7 @@
  "form_lookup_failed": [
   [
    "showwarning",
-   "Missing video format"
+   "Cannot load this link"
   ],
   [
    "showwarning",
@@ -394,7 +394,7 @@
  "form_lookup_failed_audio": [
   [
    "showwarning",
-   "Missing audio format"
+   "Cannot load this link"
   ],
   [
    "showwarning",

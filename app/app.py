@@ -516,6 +516,20 @@ def _point_on_a_monitor(x: int, y: int) -> bool:
         return True
 
 
+def return_to_transcribe_tab(app: Any) -> None:
+    """After a job finishes, show the Last Result card on the Transcribe tab.
+
+    Mirrors the auto-switch to Queue when a transcription starts, so only from the Queue tab: a
+    user who went on to another tab (Download, Live, settings) stays where they are. Never
+    raises (a window being closed, a test double without tabs).
+    """
+    try:
+        if app.nb.select() == str(app.t2):
+            app.nb.select(app.t1)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _clean_pasted_path(text: str) -> str:
     """The path inside what a user pasted into the file field.
 
@@ -3704,7 +3718,13 @@ class App(tk.Tk):
         populates the file-picker entry without auto-enqueueing —
         keeps the muscle-memory of "Browse → Transcribe" intact.
         """
-        chosen = filedialog.askopenfilenames(parent=self)
+        from core.media_types import MEDIA_EXTENSIONS
+
+        chosen = filedialog.askopenfilenames(
+            parent=self,
+            filetypes=[(_("Audio and video"), " ".join("*" + ext for ext in MEDIA_EXTENSIONS)),
+                       (_("All files"), "*.*")],
+        )
         if not chosen:
             return
         if len(chosen) == 1:
@@ -3928,7 +3948,13 @@ class App(tk.Tk):
         # don't latch model_ready off a log-line substring — any line that
         # merely contained "Model loaded" (an echo, a future diagnostic)
         # could desync the app-global flag from real worker state (P2-30).
-        self.status_var.set(msg)
+        # The log keeps the message as it is; the status bar gets a short plain line, and
+        # engine diagnostics leave it unchanged.
+        from app.domain.status_line import status_line
+
+        line = status_line(msg)
+        if line is not None:
+            self.status_var.set(line)
         self.log(msg)
 
     # R3: device badge --------------------------------------------------------
@@ -6266,15 +6292,7 @@ class App(tk.Tk):
             f"Done: {os.path.basename(task.file_path)} → "
             f"{len(existing)} file(s) in {folder}"
         )
-        # Auto-switch back to the Transcribe tab when a job finishes
-        # so the user lands on the Last Result card (file paths +
-        # Open buttons) instead of having to manually switch from the
-        # Queue tab. Mirrors the auto-switch to Queue when a
-        # transcription starts.
-        try:
-            self.nb.select(self.t1)
-        except Exception:  # noqa: BLE001
-            pass
+        return_to_transcribe_tab(self)
 
     def _open_file(self, path: str) -> None:
         """Open a single file with the OS default handler.

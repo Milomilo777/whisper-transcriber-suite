@@ -91,7 +91,7 @@ def test_missing_audio_format_shows_real_lookup_failure_reason(monkeypatch):
     assert app.download_queue == []
     assert len(warnings) == 1
     title, message = warnings[0]
-    assert title == "Missing audio format"
+    assert title == "Cannot load this link"
     assert reason in message
     # The real reason must also land in the visible download log, not just
     # the popup -- the log is where the user actually looks afterwards.
@@ -125,6 +125,6 @@ def test_missing_video_format_shows_real_lookup_failure_reason(monkeypatch):
     assert app.download_queue == []
     assert len(warnings) == 1
     title, message = warnings[0]
-    assert title == "Missing video format"
+    assert title == "Cannot load this link"
     assert reason in message
     assert any(reason in line for line in app._log_lines)

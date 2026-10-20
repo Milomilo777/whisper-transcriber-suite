@@ -483,13 +483,15 @@ EMPTY_STATE_FORMATS = N_(
 def file_ready_state(text: str) -> tuple[str, str]:
     """What the Selected file box holds, for the line next to the Transcribe button.
 
-    ``("empty" | "link" | "file" | "missing", line)``: a file that exists or a link makes the
-    button the blue primary action; nothing (or a path that is not a file) keeps it plain, so
-    the user can see whether the app has something to transcribe. Only a stat, no Tk.
+    ``("empty" | "link" | "file" | "missing" | "not_media", line)``: an audio or video file
+    that exists or a link makes the button the blue primary action; nothing, a path that is
+    not a file, or a file that is not audio or video (a README picked by mistake) keeps it
+    plain, so the user can see whether the app has something to transcribe. No Tk.
     """
     import os
 
     from app.app import _clean_pasted_path
+    from core.watcher import is_media_file
 
     path = _clean_pasted_path(text or "")
     if not path:
@@ -498,6 +500,8 @@ def file_ready_state(text: str) -> tuple[str, str]:
         return "link", _("Link: it downloads first, then transcribes.")
     if not os.path.isfile(path):
         return "missing", _("File not found: check the path, or click Browse.")
+    if not is_media_file(path):
+        return "not_media", _("{name} is not an audio or video file.", name=os.path.basename(path))
     try:
         size = _fmt_bytes(os.path.getsize(path))
     except OSError:
@@ -1042,7 +1046,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         if app.transcribe_ready_var.get() != line:
             app.transcribe_ready_var.set(line)
         transcribe_btn.configure(style="Accent.TButton" if kind in ("file", "link") else "TButton")
-        if kind == "missing":
+        if kind in ("missing", "not_media"):
             colour = tokens.themed(tokens.DANGER_TEXT)
         elif kind == "file":
             colour = tokens.themed(tokens.SUCCESS_TEXT)

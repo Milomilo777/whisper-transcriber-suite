@@ -113,6 +113,7 @@ def ask_options(master: "tk.Misc", *, media_path: str | None) -> tuple[str, bool
         side="right", padx=(0, 8)
     )
     dialog.protocol("WM_DELETE_WINDOW", lambda: pick(None))
+    dialog.bind("<Escape>", lambda _e: pick(None))
     place_over(dialog, master)
     dialog.update_idletasks()
     try:

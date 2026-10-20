@@ -379,6 +379,8 @@ class AdvancedDialog(tk.Toplevel):
         self.grab_set()
         self.resizable(True, True)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+        # Escape = the window's X (nothing saved), as in the app's other dialogs.
+        self.bind("<Escape>", lambda _e: self._on_close())
 
         cfg = app.app_config
         self._vad_enabled = tk.BooleanVar(value=bool(cfg.get("vad_enabled", True)))

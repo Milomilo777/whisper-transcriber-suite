@@ -427,3 +427,53 @@ def test_transcribe_with_an_empty_box_opens_browse() -> None:
     fake = _fake_app(browse=lambda: opened.append(True))
     App.add(fake)  # type: ignore[arg-type]
     assert opened == [True] and fake.queue == []
+
+
+def test_ready_state_refuses_a_file_that_is_not_audio_or_video(tmp_path) -> None:
+    # Click-through test 2026-10-21: README.md showed a green "Ready" line and a blue button.
+    from app.widgets.tabs import file_ready_state
+
+    readme = tmp_path / "README.md"
+    readme.write_text("# notes", encoding="utf-8")
+    kind, line = file_ready_state(str(readme))
+    assert kind == "not_media" and "README.md" in line and "not an audio or video file" in line
+    clip = tmp_path / "Clip.MP3"
+    clip.write_bytes(b"x")
+    assert file_ready_state(str(clip))[0] == "file"  # extensions in any case
+
+
+def test_browse_offers_audio_and_video_first(monkeypatch) -> None:
+    from core.media_types import MEDIA_EXTENSIONS
+
+    seen: dict = {}
+
+    def fake_ask(**kwargs):
+        seen.update(kwargs)
+        return ()
+
+    monkeypatch.setattr("app.app.filedialog.askopenfilenames", fake_ask)
+    fake = _fake_app()
+    App.browse(fake)  # type: ignore[arg-type]
+    (label, patterns), last = seen["filetypes"][0], seen["filetypes"][-1]
+    assert patterns.split() == ["*" + ext for ext in MEDIA_EXTENSIONS]
+    assert last[1] == "*.*"  # anything else stays one choice away
+
+
+def test_a_finished_job_returns_to_the_transcribe_tab_only_from_the_queue() -> None:
+    from app.app import return_to_transcribe_tab
+
+    # Click-through test 2026-10-21: finishing jobs pulled the user off any tab they were on.
+    class _Nb:
+        def __init__(self, current: str) -> None:
+            self.current = current
+
+        def select(self, tab=None):
+            if tab is None:
+                return self.current
+            self.current = str(tab)
+            return None
+
+    for current, expected in (("queue", "transcribe"), ("download", "download"), ("live", "live")):
+        fake = types.SimpleNamespace(nb=_Nb(current), t1="transcribe", t2="queue")
+        return_to_transcribe_tab(fake)
+        assert fake.nb.current == expected

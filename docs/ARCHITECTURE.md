@@ -58,7 +58,7 @@ app/
 │   ├── format_service.py          format lookup for the URL field
 │   ├── integrations_service.py    oTranscribe import/export
 │   ├── live_service.py, voice_clone_service.py, subbed_video.py
-├── domain/                 task models for the queues (VideoDownloadTask, ...), languages
+├── domain/                 task models for the queues (VideoDownloadTask, ...), languages, status_line (status bar text)
 ├── dialogs/, widgets/      windows and tab pages (widgets/tabs.py builds the main tabs)
 └── theme/                  design tokens, colours, per-OS window chrome
 core/
