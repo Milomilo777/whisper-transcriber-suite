@@ -87,8 +87,8 @@ Effort labels: **XS** under an hour · **S** half a day · **M** one to three da
 
 - **Done:** a table of one model per language (`core/language_models.py`, ADR 0015): Persian
   (`mehdi-hf/nemotron-asr-streaming-farsi`, OpenMDW-1.1, on the local transformers engine), Chinese (Belle
-  Large v3 Turbo), Japanese (Kotoba-Whisper v2.0), German (primeline Large v3 Turbo) and Thai (Thonburian
-  Large v3), suggested on the Transcribe tab when that language is picked. The gains are each publisher's
+  Large v3 Turbo), Japanese (Kotoba-Whisper v2.0), German (primeline Large v3 Turbo), Thai (Thonburian
+  Large v3), Swedish (KB-Whisper Large) and Hebrew (ivrit.ai Large v3 Turbo), suggested on the Transcribe tab when that language is picked. The gains are each publisher's
   own figures; the suggestion says so.
 - **Keep current:** a scheduled check every four weeks looks for new versions of these repositories and for
   new work by the Persian model's author, whose other Persian projects (a G2P model, Persian TTS) may be
@@ -96,7 +96,10 @@ Effort labels: **XS** under an hour · **S** half a day · **M** one to three da
 - **Next:** French (`bofenghuang/whisper-large-v3-french`, CTranslate2 files in a subfolder) and other
   models that need subfolder downloads; Arabic (`CohereLabs/cohere-transcribe-arabic-07-2026`, gated);
   Ukrainian (`ihnatov-yuri/parakeet-tdt-0.6b-v3-uk`, needs a load test); per-file routing by language
-  (ADR 0015, option 5); our own benchmark rows for each model.
+  (ADR 0015, option 5); our own benchmark rows for each model. Whisper fine-tunes published only as
+  transformers checkpoints could run on the local transformers engine once it passes the picked language
+  to Whisper's `generate`: largest reported gains `BuzzASR/bengali` (FLEURS CER 10.2% against 30.5%) and
+  `BuzzASR/mongolian` (9.2% against 34.4%); also Thai `nectec/Pathumma-whisper-th-large-v3`.
 
 ### Operations (Phase 7)
 

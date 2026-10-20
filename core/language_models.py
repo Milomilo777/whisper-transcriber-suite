@@ -90,6 +90,27 @@ LANGUAGE_MODELS: dict[str, LanguageModel] = {
         claim="13.9% word errors on FLEURS Thai against 24.1% for Whisper Large v3",
         source="https://huggingface.co/nectec/Pathumma-whisper-th-large-v3",
     ),
+    "sv": LanguageModel(
+        language="sv",
+        name="KB-Whisper Large (National Library of Sweden)",
+        engine=ENGINE_WHISPER,
+        model="kb-whisper-large-sv",
+        size_gb=3.09,
+        licence="Apache-2.0",
+        claim=("4.1% word errors on Common Voice Swedish against 9.5% for Whisper Large v3 "
+               "(FLEURS: 5.4% against 7.8%)"),
+        source="https://huggingface.co/KBLab/kb-whisper-large",
+    ),
+    "he": LanguageModel(
+        language="he",
+        name="ivrit.ai Whisper Large v3 Turbo Hebrew",
+        engine=ENGINE_WHISPER,
+        model="ivrit-large-v3-turbo-he",
+        size_gb=1.62,
+        licence="Apache-2.0",
+        claim="18.1% word errors on FLEURS Hebrew against 26.2% for Whisper Large v3 (ivrit.ai's leaderboard)",
+        source="https://huggingface.co/spaces/ivrit-ai/hebrew-transcription-leaderboard",
+    ),
 }
 
 

@@ -451,6 +451,28 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
             "(CT2 conversion); MIT."
         ),
     },
+    "kb-whisper-large-sv": {
+        "label": "KB-Whisper Large — Swedish only (~3.1 GB)",
+        "name": "faster-whisper-kb-whisper-large-sv",
+        "hf_repo": "KBLab/kb-whisper-large",
+        "language": "sv",
+        "approx_size_gb": 3.09,
+        "info": (
+            "~3.1 GB, Swedish only. The National Library of Sweden's Large v3 "
+            "trained on 50,000 hours of Swedish; Apache-2.0."
+        ),
+    },
+    "ivrit-large-v3-turbo-he": {
+        "label": "ivrit.ai Large v3 Turbo — Hebrew only (~1.6 GB)",
+        "name": "faster-whisper-ivrit-large-v3-turbo-he",
+        "hf_repo": "ivrit-ai/whisper-large-v3-turbo-ct2",
+        "language": "he",
+        "approx_size_gb": 1.62,
+        "info": (
+            "~1.6 GB, Hebrew only (pick Hebrew: its language detection is "
+            "weak). ivrit.ai's Hebrew fine-tune of Large v3 Turbo; Apache-2.0."
+        ),
+    },
 }
 
 

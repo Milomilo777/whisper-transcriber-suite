@@ -145,6 +145,14 @@
    "Thonburian Large v3 — Thai only (~3.1 GB)   [needs download]"
   ],
   [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "KB-Whisper Large — Swedish only (~3.1 GB)   [needs download]"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!combobox:values",
+   "ivrit.ai Large v3 Turbo — Hebrew only (~1.6 GB)   [needs download]"
+  ],
+  [
    ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!button",
    "?"
   ],

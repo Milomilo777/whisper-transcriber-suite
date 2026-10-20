@@ -6,7 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
-- **Models trained for one language**: picking Persian, Chinese, Japanese, German or Thai on the
+- **Models trained for one language**: picking Persian, Chinese, Japanese, German, Thai, Swedish or Hebrew on the
   Transcribe tab now suggests a model built for that language, with its publisher's own accuracy
   figures, size and licence, and a **Use it** button (and **Switch back** when another language is
   picked). Persian gets `mehdi-hf/nemotron-asr-streaming-farsi` on the local transformers engine:

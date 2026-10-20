@@ -124,6 +124,7 @@ def test_model_registry_has_full_catalog():
         # one-language models (core/language_models.py)
         "belle-large-v3-turbo-zh", "kotoba-whisper-v2.0",
         "primeline-large-v3-turbo-de", "thonburian-large-v3-th",
+        "kb-whisper-large-sv", "ivrit-large-v3-turbo-he",
     }
     assert set(mm.MODEL_REGISTRY.keys()) == expected_slugs
     for slug, entry in mm.MODEL_REGISTRY.items():

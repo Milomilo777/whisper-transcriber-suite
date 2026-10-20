@@ -24,6 +24,7 @@ MULTILINGUAL = [
 ONE_LANGUAGE = {
     "belle-large-v3-turbo-zh": "zh", "kotoba-whisper-v2.0": "ja",
     "primeline-large-v3-turbo-de": "de", "thonburian-large-v3-th": "th",
+    "kb-whisper-large-sv": "sv", "ivrit-large-v3-turbo-he": "he",
 }
 
 

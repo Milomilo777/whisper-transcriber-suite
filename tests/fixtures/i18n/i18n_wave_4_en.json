@@ -137,6 +137,14 @@
    "Thonburian Large v3 — Thai only (~3.1 GB)"
   ],
   [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "KB-Whisper Large — Swedish only (~3.1 GB)"
+  ],
+  [
+   ".!frame.!frame2.!frame2.!combobox:values",
+   "ivrit.ai Large v3 Turbo — Hebrew only (~1.6 GB)"
+  ],
+  [
    ".!frame.!frame2.!frame2.!button",
    "Best for this PC…"
   ],
@@ -1319,6 +1327,14 @@
    "Thonburian Large v3 — Thai only (~3.1 GB)"
   ],
   [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "KB-Whisper Large — Swedish only (~3.1 GB)"
+  ],
+  [
+   ".!frame2.!frame2.!frame2.!combobox:values",
+   "ivrit.ai Large v3 Turbo — Hebrew only (~1.6 GB)"
+  ],
+  [
    ".!frame2.!frame2.!frame2.!button",
    "Best for this PC…"
   ],
@@ -2495,6 +2511,14 @@
   [
    ".!frame3.!frame2.!frame2.!combobox:values",
    "Thonburian Large v3 — Thai only (~3.1 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "KB-Whisper Large — Swedish only (~3.1 GB)"
+  ],
+  [
+   ".!frame3.!frame2.!frame2.!combobox:values",
+   "ivrit.ai Large v3 Turbo — Hebrew only (~1.6 GB)"
   ],
   [
    ".!frame3.!frame2.!frame2.!button",
@@ -5035,6 +5059,14 @@
    "Thonburian Large v3 — Thai only (~3.1 GB)   (not downloaded)"
   ],
   [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#25",
+   "KB-Whisper Large — Swedish only (~3.1 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#26",
+   "ivrit.ai Large v3 Turbo — Hebrew only (~1.6 GB)   (not downloaded)"
+  ],
+  [
    ".!frame7.!labelframe.!frame2.!button",
    "Download"
   ],
@@ -5989,6 +6021,14 @@
   [
    ".!frame7.!labelframe.!frame2.!menubutton.!menu#24",
    "Thonburian Large v3 — Thai only (~3.1 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#25",
+   "KB-Whisper Large — Swedish only (~3.1 GB)   (not downloaded)"
+  ],
+  [
+   ".!frame7.!labelframe.!frame2.!menubutton.!menu#26",
+   "ivrit.ai Large v3 Turbo — Hebrew only (~1.6 GB)   (not downloaded)"
   ],
   [
    ".!frame7.!labelframe.!frame2.!button",
