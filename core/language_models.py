@@ -231,3 +231,49 @@ def _set_whisper_model(cfg: dict[str, Any], slug: str) -> None:
     if entry:
         cfg["model"] = entry
     cfg["model_path"] = ""
+
+
+def installed_here(row: LanguageModel) -> bool:
+    """True when ``row`` can run on this computer without a download (web/LAN jobs, ADR 0016).
+
+    Only transformers-engine rows qualify for now: the engine's libraries are installed in versions
+    that fit their pins (an older copy would be upgraded on load, a download) and the model's files
+    are in the Hugging Face cache (config plus weights). Never downloads, never raises.
+    """
+    if row.engine != ENGINE_TRANSFORMERS:
+        return False
+    try:
+        from pathlib import Path
+
+        from huggingface_hub import try_to_load_from_cache
+
+        from . import optional_deps
+        from .backends.nvidia_asr import _deps_available
+
+        if not _deps_available() or optional_deps.outdated(ENGINE_TRANSFORMERS):
+            return False
+        config_file = try_to_load_from_cache(row.model, "config.json")
+        if not isinstance(config_file, str):
+            return False
+        snapshot = Path(config_file).parent
+        return any(snapshot.glob("*.safetensors")) or any(snapshot.glob("*.bin"))
+    except Exception:  # noqa: BLE001 - a probe must never break a request
+        return False
+
+
+def web_job_model(cfg: dict[str, Any], language: str | None, second_language: str = "") -> LanguageModel | None:
+    """The language model a web/LAN job in ``language`` should run on, or None (ADR 0016).
+
+    None for auto-detect, a mixed-language pair, a language without a transformers-engine row, a
+    model not installed here, or a server not on the Whisper engine: on the transformers engine the
+    server keeps its own model in the engine cache, and a second one would break the one-model rule
+    (and a server already on the language model needs no switch).
+    """
+    row = for_language(language)
+    if row is None or second_language or row.engine != ENGINE_TRANSFORMERS:
+        return None
+    engine = str(cfg.get("transcribe_backend") or ENGINE_WHISPER).strip().lower()
+    if engine != ENGINE_WHISPER:
+        return None
+    return row if installed_here(row) else None
+

@@ -771,6 +771,41 @@ def parse_second_language(raw: Any, language: str) -> tuple[str, str | None]:
     return language2, None
 
 
+def job_language_model(language: str, language2: str = "") -> tuple[str, str]:
+    """``(model id, name)`` of the installed language model a job runs on, or ``("", "")``.
+
+    ADR 0016: decided once, at submission, from the server's current engine; never downloads.
+    """
+    try:
+        from core import language_models as lm
+        from core import transcriber as _trans
+
+        row = lm.web_job_model(_trans.config, language, language2)
+    except Exception:  # noqa: BLE001 - the choice must never block a request
+        logger.debug("server: language model choice failed", exc_info=True)
+        return "", ""
+    return (row.model, row.name) if row is not None else ("", "")
+
+
+def language_model_notes() -> dict[str, dict[str, Any]]:
+    """For ``/api/options``: per language with a transformers-engine model, its name and whether
+    jobs in that language will use it here (``ready``)."""
+    try:
+        from core import language_models as lm
+        from core import transcriber as _trans
+
+        notes: dict[str, dict[str, Any]] = {}
+        for code, row in lm.LANGUAGE_MODELS.items():
+            if row.engine != lm.ENGINE_TRANSFORMERS or code not in WEB_LANGUAGE_CODES:
+                continue
+            ready = lm.active(_trans.config) == row or lm.web_job_model(_trans.config, code) is not None
+            notes[code] = {"name": row.name, "ready": bool(ready)}
+        return notes
+    except Exception:  # noqa: BLE001
+        logger.debug("server: language model notes failed", exc_info=True)
+        return {}
+
+
 # Per-job options the web may set. Each entry is (key, kind) where kind drives
 # the coercion in normalize_options. These mirror the desktop Advanced dialog /
 # Transcribe-tab keys and are written into the per-job .whisperproject.json so
@@ -1633,6 +1668,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             "diarization_available": diar_available,
             # The page offers the "two languages in this file" tick only here.
             "mixed_language_available": _server_engine_is_faster_whisper(),
+            # Languages with a model trained for them (ADR 0016): the page says whether it is used.
+            "language_models": language_model_notes(),
             # Backend is a server-level setting and NOT switchable per job
             # over the web (cloud engines need keys + upload audio; an
             # alt-backend switch is a heavy server-global reload).
@@ -2104,7 +2141,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 job_id, media_path = manager.submit_upload_stream(
                     upload.filename, formats, language, options=options,
                     clip_start=clip_start, clip_end=clip_end,
-                    language2=language2)
+                    language2=language2,
+                    language_model=job_language_model(language, language2))
             except QueueFull as e:
                 self._send_error_json(HTTPStatus.SERVICE_UNAVAILABLE, str(e), retry_after=30)
                 return
@@ -2275,7 +2313,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             job_id = manager.submit_url(
                 url, formats, language, options=options,
                 clip_start=clip_start, clip_end=clip_end,
-                language2=language2)
+                language2=language2,
+                language_model=job_language_model(language, language2))
         except ValueError as e:
             self._send_error_json(HTTPStatus.BAD_REQUEST, str(e))
             return
@@ -2442,7 +2481,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         manager = self._srv.manager
         try:
             job_id, media_path = manager.submit_upload_stream(
-                upload.filename, ["json"], language)
+                upload.filename, ["json"], language,
+                language_model=job_language_model(language))
         except QueueFull as e:
             self._send_openai_error(
                 HTTPStatus.SERVICE_UNAVAILABLE, str(e),

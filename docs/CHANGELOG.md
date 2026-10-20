@@ -20,6 +20,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   The web / LAN page (and a phone that opened it from the QR code) has the same option: a
   **Two languages in this file** tick and a second-language picker (`language2` in the job API).
 
+- **Phone and web jobs use the model trained for their language**: a job sent from the web / LAN page
+  (or a phone) in Persian now runs on the Persian model when it is installed on the PC, instead of
+  the desktop's general model; only one of the two stays in memory. The page says under the language
+  picker whether that model is used here, and how to add it on the PC when it is not. A real Persian
+  phone call through the page had lost its first 30 seconds on the general model. See ADR 0016.
+
 - **Use the app from your phone**: with "Share on local network" on, the Web / LAN access tab shows a
   QR code of the network address. Scanning it opens the transcription page on a phone on the same
   Wi-Fi; a set access password travels in the code. A **Copy phone link** button copies the same

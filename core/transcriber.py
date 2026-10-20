@@ -1389,6 +1389,98 @@ def _ensure_default_backend_loaded(
             raise RuntimeError(MODEL_ERROR) from e
 
 
+# --- language models for web / LAN jobs (ADR 0016) -------------------------
+#
+# The server runs its jobs one at a time in the app's own process, on this module's engine. A job in a
+# language whose language model (core.language_models, transformers engine) is installed runs on that
+# model instead; only one model stays in memory: the general Whisper model is freed before a language
+# model loads, and the language model is freed before a general job (each loads again on next use).
+
+class LanguageModelLoadError(RuntimeError):
+    """The language model could not be loaded (nothing was transcribed yet)."""
+
+
+_LM_SLOT: dict[str, Any] = {"model_id": "", "backend": None}
+_LM_SLOT_LOCK = threading.Lock()
+
+
+def release_default_model() -> bool:
+    """Free the general Whisper model, if loaded; True when something was freed.
+
+    ``MODEL_READY`` stays as it is, so the next general job reloads the model lazily
+    (``_ensure_default_backend_loaded``).
+    """
+    global MODEL, PIPELINE
+    with _DEFAULT_BACKEND_LOCK:
+        if MODEL is None and PIPELINE is None:
+            return False
+        MODEL = None
+        PIPELINE = None
+    gc.collect()
+    return True
+
+
+def release_language_model() -> bool:
+    """Free the web/LAN language model, if one is loaded; True when something was freed."""
+    with _LM_SLOT_LOCK:
+        backend = _LM_SLOT["backend"]
+        if backend is None:
+            return False
+        _LM_SLOT["backend"] = None
+        _LM_SLOT["model_id"] = ""
+    try:
+        backend.unload()
+    except Exception:  # noqa: BLE001 - freeing must never fail a job
+        logger.debug("language model unload failed", exc_info=True)
+    gc.collect()
+    return True
+
+
+def _language_model_backend(model_id: str, status_cb: Callable[[str], None] | None = None) -> Any:
+    """The loaded transformers backend for ``model_id`` (the slot keeps one).
+
+    Built from this module's ``config`` with the model id set, never from the file on disk, so
+    the desktop's own engine choice is not touched. Raises :class:`LanguageModelLoadError`.
+    """
+    with _LM_SLOT_LOCK:
+        if _LM_SLOT["backend"] is not None and _LM_SLOT["model_id"] == model_id:
+            return _LM_SLOT["backend"]
+    release_language_model()
+    from .backends.nvidia_asr import NvidiaAsrBackend
+
+    backend = NvidiaAsrBackend(config={**config, "nvidia_asr_model_id": model_id})
+    try:
+        loaded = backend.load(status_cb)
+    except Exception as e:  # noqa: BLE001
+        raise LanguageModelLoadError(str(e) or type(e).__name__) from e
+    if not loaded:
+        raise LanguageModelLoadError(backend.get_error() or f"could not load {model_id}")
+    with _LM_SLOT_LOCK:
+        _LM_SLOT["backend"] = backend
+        _LM_SLOT["model_id"] = model_id
+    return backend
+
+
+def transcribe_with_language_model(
+    model_id: str,
+    task: "TranscriptionTask",
+    progress_cb: Callable[[int], None] | None = None,
+    log_cb: Callable[[str], None] | None = None,
+    language_cb: Callable[[str, float], None] | None = None,
+) -> None:
+    """Transcribe ``task`` on the language model ``model_id`` (web/LAN jobs, ADR 0016).
+
+    Frees the general model first. The job's per-folder options apply as in ``transcribe``.
+    Raises :class:`LanguageModelLoadError` when the model cannot load (the caller may then use the
+    general model); any later error propagates as it would from ``transcribe``.
+    """
+    release_default_model()
+    backend = _language_model_backend(model_id, log_cb)
+    with _runtime_overrides_scope(task):
+        logger.info("transcribe_backend=nvidia_asr language_model=%s file=%s", model_id, task.file_path)
+        _transcribe_via_alt_backend("nvidia_asr", task, progress_cb, log_cb, language_cb, backend=backend)
+
+
 def _run_post_pipeline(
     task: TranscriptionTask,
     segments_data: list[dict[str, Any]],
@@ -2551,9 +2643,15 @@ def _transcribe_via_alt_backend(
     progress_cb: Callable[[int], None] | None,
     log_cb: Callable[[str], None] | None,
     language_cb: Callable[[str, float], None] | None,
+    backend: Any = None,
 ) -> None:
-    """Drive a non-default backend through the same writers + diarisation."""
-    backend = _get_alt_backend(backend_name, log_cb)
+    """Drive a non-default backend through the same writers + diarisation.
+
+    ``backend``: an already-loaded backend to use instead of the cached one for ``backend_name``
+    (the web/LAN language-model slot).
+    """
+    if backend is None:
+        backend = _get_alt_backend(backend_name, log_cb)
 
     # Demucs vocal separation — mirror the default faster-whisper path
     # (transcribe() lines 1761-1771). Without this, an alt-backend run

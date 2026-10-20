@@ -718,3 +718,52 @@ way back never returns to another language-only model.
 - The gains are the publishers' own figures on their own test sets, not our measurements; the
   suggestion says so.
 - French (CTranslate2 files in a subfolder) and Arabic (gated) wait for download support.
+
+## 0016 — Web / LAN jobs use an installed language model for their language; one model at a time
+
+**Status:** Accepted
+
+**Date:** 2026-10-21
+
+**Context:** A 73-second Persian phone call sent from a phone through the web page was transcribed by
+the server's general model (Whisper large-v3 on a CPU): 383 s, and the first 30-second window came
+back as two words, so most of its speech was lost. The Persian model of ADR 0015, already in the app,
+gave the whole call in 10.6 s on a CPU. The server runs every job on the engine the desktop has
+selected; a phone user cannot change it, and ADR 0015 deliberately switches engines only on a click.
+Per-folder project files may not choose the engine (`transcribe_backend` is not in
+`PROJECT_ALLOWED_KEYS`: a downloaded folder must never send audio to a cloud engine). The server runs
+its jobs one at a time, in the app's own process, on the module-level engine of `core.transcriber`.
+
+**Options considered:**
+1. Keep the server on the desktop's engine and only say on the page that a better model exists.
+   Safe; the phone user still gets the poor result.
+2. Let the web client pick the engine per job. Refused: a remote request must never choose a cloud
+   engine or start a multi-gigabyte download.
+3. The server picks, per job: when the server runs the Whisper engine and the job names a language
+   whose language model (ADR 0015) runs on the local transformers engine and is already installed (engine libraries present in versions that fit their pins,
+   and the model files in the cache),
+   that job runs on it; anything else keeps the desktop's engine. Chosen.
+4. A second worker process per engine. More isolation, but two models in memory on 8-16 GB
+   computers, which is what made the phone call slow in the first place.
+
+**Decision:** Option 3, decided at submission and frozen in the job (`Job.language_model`), so a
+later change on the desktop does not change a queued job; every route that creates jobs (the page and
+JSON API, the OpenAI-compatible route, MCP) applies it. Not when the server itself runs the
+transformers engine (its own model stays cached there; two would break the one-model rule). Not for
+mixed-language jobs (a one-language
+model writes one language) and only for transformers-engine rows for now (the Persian model; the
+CTranslate2 rows would need a second Whisper model path). Before a routed job the server frees the
+general Whisper model, and before a general job it frees the language model, so only one model is in
+memory; the freed one loads again on its next use (`release_default_model`,
+`release_language_model`). The job and the page
+show which model ran. `/api/options` lists, per language with a model, whether it is ready; the page
+says so under the language picker and, when the model is not installed, tells the user how to install
+it on the PC (Transcribe tab: pick the language, Use it). The phone request itself never installs or
+downloads anything.
+
+**Consequences:** A phone user who picks Persian gets the Persian model whenever it is installed. A
+switch between kinds of jobs costs one model load (about 10 s for the Persian model, about a minute
+for large-v3 on a CPU). The desktop's own transcriptions run in their worker process and are not
+affected. If the language model fails to load, the job runs on the general model and says so (the
+job's warning, shown on the page): a phone user still gets a transcript, and never a silent switch.
+

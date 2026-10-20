@@ -247,8 +247,13 @@ def _transcribe_url(args: dict[str, Any], manager: Any) -> dict[str, Any]:
     url, formats, language, clip_start, clip_end = (
         validate_transcribe_args(args))
     try:
+        from core.server.httpd import job_language_model
+
+        # Only when a language model is chosen (ADR 0016), so other managers keep working.
+        chosen = job_language_model(language)
+        extra = {"language_model": chosen} if chosen[0] else {}
         job_id = manager.submit_url(url, formats, language, options={},
-                                    clip_start=clip_start, clip_end=clip_end)
+                                    clip_start=clip_start, clip_end=clip_end, **extra)
     except (ValueError, QueueFull) as exc:
         raise _ToolError(str(exc)) from None
     return _tool_result({"job_id": job_id})

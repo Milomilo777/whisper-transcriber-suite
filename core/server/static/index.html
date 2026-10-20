@@ -159,6 +159,7 @@
       <label>Spoken language (Auto = detect)<br>
         <select id="lang"></select>
       </label>
+      <p class="note hidden" id="lang_note"></p>
       <label id="mixed_row"><input type="checkbox" id="mixed"> Two languages in this file (experimental)
         <span class="help" tabindex="0">?<span class="tip">For a recording where people switch between two languages, for example a class in Chinese with English terms. Pick the main language above and the other one below; each stretch is then written in one of the two. Leave it off for one-language audio.</span></span>
       </label>
@@ -318,10 +319,25 @@
   var langSel = document.getElementById("lang");
   var lang2Sel = document.getElementById("lang2");
   var mixedBox = document.getElementById("mixed");
+  var languageModels = {};
+  function syncLangNote() {
+    var note = document.getElementById("lang_note");
+    var m = languageModels[langSel.value];
+    if (!m || mixedBox.checked) { note.classList.add("hidden"); return; }
+    var name = LANG_NAMES[langSel.value] || langSel.value;
+    note.textContent = m.ready
+      ? "This PC transcribes " + name + " with " + m.name + ", a model trained for " + name + "."
+      : "Tip: " + m.name + " is a model trained for " + name + " and gives much better " + name +
+        " text. To add it, on the PC pick " + name + " on the Transcribe tab and click Use it. " +
+        "Until then this file uses the general model.";
+    note.classList.remove("hidden");
+  }
   function syncMixed() {
     document.getElementById("lang2_row").classList.toggle("hidden", !mixedBox.checked);
+    syncLangNote();
   }
   mixedBox.addEventListener("change", syncMixed);
+  langSel.addEventListener("change", syncLangNote);
   var startBtn = document.getElementById("start");
   var submitStatus = document.getElementById("submitStatus");
   var submitPollTimer = null;
@@ -383,6 +399,8 @@
           if (code) { lang2Sel.appendChild(opt.cloneNode(true)); }
         });
         if (lang2Sel.querySelector('option[value="en"]')) { lang2Sel.value = "en"; }
+        languageModels = d.language_models || {};
+        syncLangNote();
         if (d.mixed_language_available === false) {
           mixedBox.checked = false;
           mixedBox.disabled = true;
@@ -566,6 +584,7 @@
     html += '<div class="bar"><span style="width:' + (Number(j.progress) || 0) + '%"></span></div>';
     // j.error routinely embeds the submitted URL / filename — untrusted.
     if (j.status === "error") { html += '<p class="err">' + escapeHtml(j.error || "failed") + "</p>"; }
+    if (j.language_model) { html += '<p class="note">Model: ' + escapeHtml(j.language_model) + "</p>"; }
     if (j.warning) { html += '<p class="err">' + escapeHtml(j.warning) + "</p>"; }
     if (j.status === "finished" || j.status === "error" || j.status === "cancelled") {
       clearInterval(submitPollTimer);
@@ -798,6 +817,7 @@
     langSel.value = "";
     mixedBox.checked = false;
     syncMixed();
+    syncLangNote();
     document.getElementById("o_vad").checked = true;
     document.getElementById("o_vad_threshold").value = "";
     document.getElementById("o_vad_min_silence_ms").value = "";

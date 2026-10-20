@@ -63,8 +63,24 @@ def _real_transcribe(
 
     Imported lazily so ``core.server`` stays importable (and unit-testable)
     without dragging in faster-whisper.
+
+    A job that names a language model (``task.language_model``, chosen at submission,
+    ADR 0016) runs on it; when that model cannot load, the job runs on the server's
+    engine and says so in ``task.route_warning``. Only one model is kept in memory.
     """
     from core import transcriber as _trans
+    model_id = str(getattr(task, "language_model", "") or "")
+    if model_id:
+        try:
+            _trans.transcribe_with_language_model(model_id, task, progress_cb, log_cb, language_cb)
+            return
+        except _trans.LanguageModelLoadError as e:
+            logger.warning("server: language model %s did not load (%s); using the general model",
+                           model_id, e)
+            task.route_warning = (
+                f"The model trained for this language could not load ({e}); the general model "
+                "transcribed this file instead.")
+    _trans.release_language_model()
     _trans.transcribe(task, progress_cb, log_cb, language_cb)
 
 

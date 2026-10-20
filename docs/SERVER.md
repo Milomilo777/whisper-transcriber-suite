@@ -349,10 +349,10 @@ set, except `GET /` (the page itself).
 | GET  | `/` | the browser page |
 | GET  | `/api/health` | `{status, version, formats, queue}` |
 | GET  | `/api/formats` | `{formats}` |
-| GET  | `/api/options` | `{formats, languages, diarization_available, mixed_language_available, backend_switchable}` |
+| GET  | `/api/options` | `{formats, languages, diarization_available, mixed_language_available, language_models, backend_switchable}` |
 | GET  | `/api/jobs` | `{jobs: [{job_id, status, progress, paused, source, formats, created_at}]}` |
 | POST | `/api/jobs` | create a job: multipart upload OR JSON (below); replies `202 {job_id}` |
-| GET  | `/api/jobs/<id>` | `{job_id, status, progress, error, paused, outputs: [{fmt, name}]}` |
+| GET  | `/api/jobs/<id>` | `{job_id, status, progress, error, paused, outputs: [{fmt, name}]}` (+ `warning`, `language_model` when set) |
 | GET  | `/api/jobs/<id>/outputs` | `{job_id, outputs: [{fmt, name}]}` |
 | GET  | `/api/jobs/<id>/result?fmt=srt` | download one written output |
 | POST | `/api/jobs/<id>/cancel` | flag the job for cancellation |
@@ -420,6 +420,17 @@ Fields (multipart fields or JSON keys):
 and per-job options but **cannot switch the transcription backend** (for
 example to a cloud one): that is a deliberate security boundary so a remote
 request cannot redirect your audio to a cloud service.
+
+One exception, chosen by the server itself (ADR 0016): a job that names a
+language with a model trained for it (Persian today), when that model is
+already installed on this PC, runs on that local model instead of the general
+one. Install it on the PC from the Transcribe tab (pick the language, then
+**Use it**); a web request never installs or downloads anything. Only one of
+the two models is kept in memory, so switching between kinds of jobs costs one
+model load. `GET /api/options` lists these languages under `language_models`
+(`{"fa": {"name": ..., "ready": true}}`), the page shows it under the language
+picker, and a finished job names the model in `language_model`. If the model
+cannot load, the job runs on the general model and says so in `warning`.
 
 Uploads are **streamed to disk** as they arrive (not buffered in RAM), so a
 large file does not balloon the host's memory. A JSON body is capped at 1 MB.
