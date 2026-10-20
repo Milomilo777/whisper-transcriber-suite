@@ -295,6 +295,7 @@ a = Analysis(
         'core.burn_subs',
         'core.config',
         'core.completeness',
+        'core.collapse_rescue',
         'core.convert',
         'core.diarization',
         'core.hallucination',

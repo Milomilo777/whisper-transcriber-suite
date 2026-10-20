@@ -106,6 +106,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Speech Whisper dropped is read again**: Whisper sometimes ends a 30-second window after a couple of
+  words (on a real Persian phone call: "0:00 -> 0:30", two words, in every setting). After a
+  transcription, a long segment with almost no words, or a long gap, where speech is heard, is read
+  again in pieces of at most 15 seconds and replaced when that gives clearly more text (that call:
+  2 -> about 60 words in its first 30 seconds, 80 -> 140 in all); otherwise the log names the time to check. See ADR 0017.
+
 - **A link pasted on the Transcribe tab is transcribed again**: Transcribe moved the link to the Download
   Videos tab with "Transcribe after download" ticked, but that setting was not saved, so the file
   downloaded and was never transcribed. The download now also starts by itself once the link is read,

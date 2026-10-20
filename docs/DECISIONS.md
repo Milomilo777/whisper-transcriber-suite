@@ -767,3 +767,45 @@ for large-v3 on a CPU). The desktop's own transcriptions run in their worker pro
 affected. If the language model fails to load, the job runs on the general model and says so (the
 job's warning, shown on the page): a phone user still gets a transcript, and never a silent switch.
 
+## 0017 — Read collapsed windows and long silent-looking gaps again, in shorter pieces
+
+**Status:** Accepted
+
+**Date:** 2026-10-21
+
+**Context:** On a real 73-second Persian phone call, Whisper large-v3 (faster-whisper, CPU, int8) returned
+"0:00 -> 0:30" with two words: the window's other speech was gone. It happened in every setting tried
+(VAD on and off, previous text as a prompt or not, one temperature, the app's own VAD settings) and
+without timestamps too; Silero VAD heard speech in all 35 seconds. Read again in pieces of at most 15
+seconds, the same stretch gave 47 words; 10-second pieces and very short VAD pieces invited invented
+text ("music" repeated). `core/completeness.py` measures time coverage only, so a stretched segment
+looks complete to it, and it is not wired into any path.
+
+**Options considered:**
+1. Keep the transcript as Whisper wrote it (as is). Loses speech silently.
+2. Warn only. The user still gets the gap and must find it by ear.
+3. Transcribe every file in short pieces. Slower for every file and worse at piece edges.
+4. After a whole-file run, find suspect stretches (a segment of 20 s or more with fewer than one word
+   per 4 seconds; a gap of 15 s or more), keep those where Silero VAD hears 8 s of speech or more, read
+   each again in pieces of at most 15 s cut at pauses (no previous-text prompt, the detected language),
+   and replace the stretch only when the new text has at least 5 and at least twice the words and is
+   not a repetition loop. Chosen.
+
+**Decision:** Option 4 in `core/collapse_rescue.py` (pure detection, piece grouping, acceptance and
+splice; unit and property tests) wired into `core.transcriber` after the segment loop of a whole-file
+faster-whisper run, before the transcript is saved. Bounded per file: at most 20 stretches and
+30 % of the audio (at least 2 minutes). A stretch read again is logged ("Read 0:00-0:30 again in
+shorter pieces: 2 -> 47 words"); one whose second reading is refused keeps the old text and logs a
+WARN line naming the time to check by ear. Any failure keeps the transcript as it was. Words are
+counted per script (`core.text_metrics`: characters for Chinese and Japanese), so dense scripts are
+not flagged.
+
+A stretch longer than 10 minutes is not read again (a long gap is music or silence far more often),
+and lengths are checked before any audio is decoded. A gap is filled only with at least 0.3 words per
+second of heard speech, and its new segments carry the review flag (`suspect`, shown red in the viewer).
+A pause of the job holds the rescue between pieces; the log announces the check.
+
+**Consequences:** Files without suspect stretches cost one pass over the segments. A file with one
+costs the extra reading of that stretch (about the time of transcribing it once). Not covered yet:
+clipped runs, alternative engines, resumed runs (a resume merges a checkpoint written before the
+rescue and does not run it), and the gaps inside a segment that has many words.

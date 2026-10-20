@@ -729,6 +729,68 @@ def _guarded_segment_to_dict(
     return payload
 
 
+def _rescue_collapsed(
+    task: Any,
+    segments_data: list[dict[str, Any]],
+    audio_path: str,
+    transcribe_kwargs: dict[str, Any],
+    want_words: bool,
+    language: str,
+    duration: float,
+    log_cb: Callable[[str], None] | None,
+    before_piece: Callable[[], None] = lambda: None,
+) -> list[dict[str, Any]]:
+    """Read collapsed windows and long gaps of a finished transcript again (ADR 0017).
+
+    Returns the (possibly) updated segments; the input list is never changed in place. Never
+    raises: any failure keeps the transcript as Whisper wrote it and is logged.
+    """
+    from . import collapse_rescue as cr
+
+    suspects = cr.find_suspect_spans(segments_data, duration)
+    if not suspects or MODEL is None:
+        return segments_data
+    log(f"Checking {len(suspects)} stretch(es) where speech may have been skipped...", log_cb)
+    try:
+        from faster_whisper.vad import VadOptions, get_speech_timestamps
+
+        from .backends.nvidia_asr import _decode_window
+
+        pair = mixed_language_pair(task)
+        rescue_runner = _two_language_runner(MODEL, pair) if pair else MODEL
+        kwargs = {k: v for k, v in transcribe_kwargs.items()
+                  if k not in ("batch_size", "clip_timestamps", "vad_parameters")}
+        kwargs.update(vad_filter=False, condition_on_previous_text=False)
+        if not pair and language:
+            kwargs["language"] = language
+        vad = VadOptions(max_speech_duration_s=cr.PIECE_MAX_S, min_silence_duration_ms=300)
+
+        def speech_in(start: float, end: float) -> list[tuple[float, float]]:
+            audio = _decode_window(audio_path, start, end)
+            runs = get_speech_timestamps(audio, vad) if len(audio) else []
+            return [(start + r["start"] / cr.SAMPLE_RATE, start + r["end"] / cr.SAMPLE_RATE) for r in runs]
+
+        def transcribe_piece(start: float, end: float) -> list[dict[str, Any]]:
+            audio = _decode_window(audio_path, start, end)
+            if not len(audio):
+                return []
+            segs, _info = rescue_runner.transcribe(audio, **kwargs)
+            return [_segment_to_dict(s, want_words) for s in _shift_segments(segs, start)]
+
+        result, report = cr.rescue(segments_data, duration, speech_in, transcribe_piece,
+                                   cancelled=lambda: bool(task.cancelled), before_piece=before_piece)
+    except Exception as e:  # noqa: BLE001 - a second reading must never cost the first one
+        logger.exception("collapsed-window rescue failed")
+        log(f"Could not read a suspect stretch again ({e}); the transcript stays as it was.", log_cb)
+        return segments_data
+    for line in report.lines():
+        log(line, log_cb)
+    if report.rescued or report.kept:
+        logger.info("collapse_rescue file=%s found=%d rescued=%d kept=%d", task.file_path,
+                    report.found, len(report.rescued), len(report.kept))
+    return result
+
+
 def _note_no_speech(
     task: Any, segments_data: list[dict[str, Any]], log_cb: Callable[[str], None] | None
 ) -> None:
@@ -2552,6 +2614,14 @@ def transcribe(
                     )
                     last_checkpoint_time = now
                     segments_since_checkpoint = 0
+            # ADR 0017: read collapsed windows and long silent-looking gaps again, whole-file
+            # runs only, while the decoded input (a denoised temp file) still exists.
+            if clip is None and segments_data and not task.cancelled:
+                segments_data = _rescue_collapsed(
+                    task, segments_data, audio_path, transcribe_kwargs, want_words,
+                    detected_lang_so_far, float(getattr(info, "duration", 0.0) or 0.0), log_cb,
+                    before_piece=lambda: _wait_while_paused(task, meter),
+                )
         except Exception:
             # A decoder error mid-file: keep what was decoded since the last
             # periodic checkpoint before the error reaches the worker.
