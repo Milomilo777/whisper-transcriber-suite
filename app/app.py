@@ -4269,9 +4269,16 @@ class App(tk.Tk):
         from app.domain.languages import SUBTITLE_LANGUAGES
         name = self.transcribe_lang2_var.get().strip()
         second = next((c for n, c in SUBTITLE_LANGUAGES if n == name), "")
-        # "zh-Hans,zh-CN" and "zh-Hant,zh-TW" are one spoken language to Whisper
-        base = lambda code: code.split(",")[0].split("-")[0].strip().lower()  # noqa: E731
-        if not second or base(second) == base(first):
+        # Whisper's own codes: "zh-Hans,zh-CN" and "zh-Hant,zh-TW" are one spoken
+        # language to it, and some picker languages (Irish, Zulu, ...) it does not know.
+        from core.transcriber import _normalize_language
+        w_first, w_second = _normalize_language(first), _normalize_language(second)
+        if not w_first or not w_second:
+            return None, _("Mixed-language audio supports only languages Whisper knows; "
+                           "{language} is not one of them.",
+                           language=self.transcribe_lang2_var.get().strip() if not w_second
+                           else self.transcribe_lang_var.get().strip())
+        if w_second == w_first:
             return None, _("Mixed-language audio needs two different languages.")
         backend = str(self.app_config.get("transcribe_backend") or "faster_whisper").strip().lower()
         if backend != "faster_whisper":
@@ -4279,6 +4286,13 @@ class App(tk.Tk):
         if bool(self.app_config.get("translate_to_english", False)):
             return None, _("Mixed-language audio does not combine with English translation.")
         return (first, second), ""
+
+    def _note_mixed_not_applied(self, name: str) -> None:
+        """Downloads and the watched folder keep one language: say so while the tick box is on."""
+        var = self.__dict__.get("mixed_lang_var")
+        if var is not None and var.get():
+            self.log(_("Mixed-language audio applies to files added on the Transcribe tab; "
+                       "{name} uses one language.", name=name))
 
     def _confirm_english_only_model(self) -> bool:
         """Before queueing: guide the user off an English-only model when the
@@ -4537,6 +4551,7 @@ class App(tk.Tk):
                 self.refresh_download_queue()
             self.queue.append(task)
             self._warn_english_only(language or None, base)
+            self._note_mixed_not_applied(base)
             self.refresh()
 
         def _on_timeout() -> None:
@@ -6947,6 +6962,7 @@ class App(tk.Tk):
                 self.refresh()
                 self.log(f"Watched: enqueued {base}")
                 self._warn_english_only(task.language, base)
+                self._note_mixed_not_applied(base)
 
             def _on_timeout() -> None:
                 self._watched_pending.discard(norm)

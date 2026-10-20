@@ -196,6 +196,7 @@ def write_checkpoint(
     checkpoint_time: float,
     whisper_task: str = "transcribe",
     transcription_completed: bool = False,
+    languages: list[str] | None = None,
 ) -> Path:
     """Atomically persist a checkpoint.
 
@@ -230,6 +231,9 @@ def write_checkpoint(
         # Add-only field: "translate" or "transcribe". A resume reuses it, so
         # a resumed job never switches task halfway through a transcript.
         "whisper_task": whisper_task,
+        # Add-only field: the two languages of a mixed-language run (None =
+        # one language), so a resume keeps detecting per stretch.
+        "languages": list(languages) if languages else None,
         "last_end_time": float(last_end_time),
         "segment_count": len(segments),
         "segments": segments,

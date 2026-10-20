@@ -848,6 +848,7 @@ def _write_periodic_checkpoint(
             checkpoint_time=time.time(),
             whisper_task=whisper_task,
             transcription_completed=transcription_completed,
+            languages=list(mixed_language_pair(task) or ()) or None,
         )
         task.checkpoint_failures = 0
     except Exception as e:  # noqa: BLE001
@@ -3119,6 +3120,12 @@ def resume_transcription(
         prior_segments = list(data.get("segments") or [])
         cp_language = str(data.get("language") or "")
         cp_lang_prob = float(data.get("language_probability") or 0.0)
+        # A mixed-language run continues as one, also when the task was rebuilt
+        # from history after a crash (the history row has no field for it).
+        cp_pair = data.get("languages")
+        if (not getattr(task, "languages", None) and isinstance(cp_pair, list) and len(cp_pair) == 2
+                and all(isinstance(c, str) for c in cp_pair)):
+            task.languages = (cp_pair[0], cp_pair[1])
         log(
             f"Resume: continuing from {last_end_time:.2f}s "
             f"({len(prior_segments)} segment(s) already captured).",

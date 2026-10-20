@@ -162,6 +162,7 @@ def test_app_pair_when_ticked(App):
     ({"first": "Auto"}, "not Auto"),
     ({"second": "Chinese (Simplified)"}, "two different"),
     ({"second": "Chinese (Traditional)"}, "two different"),
+    ({"second": "Irish"}, "Whisper knows"),
     ({"transcribe_backend": "whisper_cpp"}, "faster-whisper"),
     ({"translate_to_english": True}, "English translation"),
 ])
