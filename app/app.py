@@ -4551,7 +4551,7 @@ class App(tk.Tk):
                 self.refresh_download_queue()
             self.queue.append(task)
             self._warn_english_only(language or None, base)
-            self._note_mixed_not_applied(base)
+            App._note_mixed_not_applied(self, base)  # a class call: test stand-ins lack it
             self.refresh()
 
         def _on_timeout() -> None:
@@ -6962,7 +6962,7 @@ class App(tk.Tk):
                 self.refresh()
                 self.log(f"Watched: enqueued {base}")
                 self._warn_english_only(task.language, base)
-                self._note_mixed_not_applied(base)
+                App._note_mixed_not_applied(self, base)  # a class call: test stand-ins lack it
 
             def _on_timeout() -> None:
                 self._watched_pending.discard(norm)
