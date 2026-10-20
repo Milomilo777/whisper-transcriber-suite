@@ -24,6 +24,7 @@ suite, which was implicated in a real, hard-to-pin-down native crash).
 from __future__ import annotations
 
 import gc
+import os
 import sys
 from pathlib import Path
 
@@ -379,6 +380,44 @@ def _no_os_tray_icon(monkeypatch):
     except Exception:  # noqa: BLE001 - no pystray, no real icons either
         return
     monkeypatch.setattr(pystray, "Icon", _NoOsTrayIcon)
+
+
+#: Tests that tried to create a REAL pystray icon (see _forbid_real_tray_icons).
+REAL_TRAY_ICON_ATTEMPTS: list[str] = []
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _forbid_real_tray_icons():
+    """Second line of defence behind ``_no_os_tray_icon``: any path that still reaches the real
+    pystray icon class (a module that kept the real ``Icon``, a patch undone too early) is refused
+    before an OS icon exists. A real icon whose process ends stays in the Windows notification
+    area as a dead icon; full GUI runs once left dozens there. ``_no_real_tray_icon_attempt``
+    then fails the test that tried."""
+    try:
+        from pystray import _base  # type: ignore[import-not-found]
+    except Exception:  # noqa: BLE001 - no pystray, no real icons either
+        yield
+        return
+    original = _base.Icon.__init__
+
+    def _refuse(self, *args, **kwargs):
+        REAL_TRAY_ICON_ATTEMPTS.append(os.environ.get("PYTEST_CURRENT_TEST", "?"))
+        raise RuntimeError("a test tried to create a real system-tray icon")
+
+    _base.Icon.__init__ = _refuse
+    yield
+    _base.Icon.__init__ = original
+
+
+@pytest.fixture(autouse=True)
+def _no_real_tray_icon_attempt():
+    before = len(REAL_TRAY_ICON_ATTEMPTS)
+    yield
+    tried = REAL_TRAY_ICON_ATTEMPTS[before:]
+    del REAL_TRAY_ICON_ATTEMPTS[before:]
+    assert not tried, (
+        "this test reached the real pystray Icon (refused before an OS icon was made); "
+        "use the conftest stand-in: " + ", ".join(tried))
 
 
 @pytest.fixture(autouse=True)
