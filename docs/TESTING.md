@@ -106,3 +106,10 @@ the tray icon and, when a test stops making progress, records whether the X serv
 stacks of the stuck process (`gh workflow run tray-hang-diag.yml`). Its first run hung once in 4 runs with the
 tray, never without, and at the hang the X server did not answer; the tray icon now stays off when X has no
 system tray (`TrayController._no_x11_system_tray`).
+
+The suite never adds a real icon to the system tray: `tests/conftest.py` replaces `pystray.Icon` with a
+stand-in, and behind it the real icon class refuses to be built for the whole run; a test that still reaches it
+fails with a message that names it (`tests/core/test_no_real_tray_icons.py`). A real icon whose test process
+ends stays in the Windows notification area as a dead icon until the mouse passes over it, so full GUI runs
+once left dozens there. The sv_ttk retry above covers the same Tcl read fault for any sv_ttk script
+(`sv.tcl`, `theme/dark.tcl`, ...).
