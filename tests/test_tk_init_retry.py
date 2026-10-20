@@ -119,6 +119,27 @@ def test_sv_ttk_empty_error_after_the_read_fault_is_retried(monkeypatch):
     assert calls["n"] == 3
 
 
+@pytest.mark.parametrize("message", [
+    _SV_READ_MSG,
+    'couldn\'t read file "C:/x/site-packages/sv_ttk/theme/dark.tcl": No error',   # CI 2026-10-20
+    'couldn\'t read file "C:\\x\\site-packages\\sv_ttk\\theme\\light.tcl": No error',
+])
+def test_every_sv_ttk_script_read_fault_is_retried(monkeypatch, message):
+    monkeypatch.setattr(r.time, "sleep", lambda _s: None)
+    original, calls = _sv_flaky([message])
+    assert r.wrap_sv_ttk_load(original)(object()) == "loaded"
+    assert calls["n"] == 2
+
+
+@pytest.mark.parametrize("message", [
+    'couldn\'t read file "C:/x/my_theme/dark.tcl": No error',          # not sv_ttk's
+    'couldn\'t read file "C:/x/site-packages/sv_ttk/sv.png": No error',  # not a script
+    "couldn't read file sv_ttk: permission denied",                      # no quoted path
+])
+def test_other_read_errors_are_not_taken_for_the_sv_ttk_fault(message):
+    assert not r.is_sv_ttk_read_error(tkinter.TclError(message))
+
+
 def test_sv_ttk_empty_error_alone_is_not_retried(monkeypatch):
     monkeypatch.setattr(r.time, "sleep", lambda _s: None)
     original, calls = _sv_flaky([""])

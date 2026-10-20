@@ -58,9 +58,15 @@ def wrap_init(original: Callable[..., Any]) -> Callable[..., Any]:
 
 
 def is_sv_ttk_read_error(exc: BaseException) -> bool:
-    """The same transient Tcl read fault, hit while sv_ttk sources its theme script."""
-    return (type(exc).__name__ == "TclError" and "couldn't read file" in str(exc)
-            and "sv.tcl" in str(exc))
+    """The same transient Tcl read fault, hit while sv_ttk sources one of its scripts: ``sv.tcl``
+    or a theme file it sources in turn (``theme/dark.tcl`` failed this way on the Windows 3.11
+    runner, CI runs of 2026-10-20)."""
+    if type(exc).__name__ != "TclError":
+        return False
+    text = str(exc).replace("\\", "/")
+    quoted = text.split('"')
+    return ("couldn't read file" in text and len(quoted) >= 3
+            and "/sv_ttk/" in quoted[1] and quoted[1].endswith(".tcl"))
 
 
 def wrap_sv_ttk_load(original: Callable[..., Any]) -> Callable[..., Any]:
