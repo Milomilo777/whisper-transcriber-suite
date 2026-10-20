@@ -94,18 +94,20 @@ jobs:
           WHISPER_OFFLINE_TESTS: "1"
         run: python -m pytest tests/ --ignore=tests/smoke -v
 
+      # Ubuntu 3.12 runs the suite once, with coverage (the step below):
+      # running it twice there took 28-31 minutes and hit timeout-minutes.
       - name: Pytest (unit suite, no smoke) — Linux via xvfb
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && matrix.python-version != '3.12'
         env:
           WHISPER_OFFLINE_TESTS: "1"
         run: xvfb-run -a python -m pytest tests/ --ignore=tests/smoke -v
 
-      - name: Coverage report
-        if: always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+      - name: Pytest with coverage report — Linux 3.12
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         env:
           WHISPER_OFFLINE_TESTS: "1"
         run: |
-          xvfb-run -a python -m pytest tests/ --ignore=tests/smoke --cov=app --cov=core --cov-report=term --cov-report=xml
+          xvfb-run -a python -m pytest tests/ --ignore=tests/smoke -v --cov=app --cov=core --cov-report=term --cov-report=xml
       - name: Upload coverage artifact
         if: always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
