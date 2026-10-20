@@ -2979,6 +2979,14 @@
    "Off"
   ],
   [
+   ".!frame6.!frame.!frame2.!frame.!label",
+   "Use it from your phone"
+  ],
+  [
+   ".!frame6.!frame.!frame2.!frame.!button",
+   "Copy phone link"
+  ],
+  [
    ".!frame6.!frame.!labelframe.!frame.!label",
    "Options"
   ],
