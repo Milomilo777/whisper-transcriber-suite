@@ -730,6 +730,47 @@ def english_only_problem(language: str) -> str | None:
     )
 
 
+def _server_engine_is_faster_whisper() -> bool:
+    """True when the server transcribes with the Faster-Whisper engine (or the check fails)."""
+    try:
+        from core import transcriber as _trans
+        from core.backends.availability import normalise_engine
+
+        return normalise_engine(_trans.config.get("transcribe_backend")) == "faster_whisper"
+    except Exception:  # noqa: BLE001 - a guard must never block a request
+        logger.debug("server: engine check failed", exc_info=True)
+        return True
+
+
+def parse_second_language(raw: Any, language: str) -> tuple[str, str | None]:
+    """Validate the optional second language of mixed-language audio.
+
+    Returns ``(language2, problem)``: ``("", None)`` when no second language
+    was sent (a one-language job), the code and ``None`` when the pair can be
+    used, else ``("", message)`` with a client-facing reason. A value that is
+    sent but not a known code is refused rather than silently dropped, so the
+    user never gets a one-language transcript they did not ask for.
+    """
+    text = raw.strip() if isinstance(raw, str) else ""
+    if not text:
+        return "", None
+    language2 = normalize_language(text)
+    if not language2:
+        return "", f"Unknown second language '{text[:20]}'."
+    if not language:
+        return "", ("Mixed-language audio needs the first language picked "
+                    "(not Auto-detect).")
+    if language2 == language:
+        return "", "Mixed-language audio needs two different languages."
+    if not _server_engine_is_faster_whisper():
+        return "", ("Mixed-language audio works with the faster-whisper engine "
+                    "only; this server uses another engine.")
+    problem = english_only_problem(language2)
+    if problem:
+        return "", problem
+    return language2, None
+
+
 # Per-job options the web may set. Each entry is (key, kind) where kind drives
 # the coercion in normalize_options. These mirror the desktop Advanced dialog /
 # Transcribe-tab keys and are written into the per-job .whisperproject.json so
@@ -1590,6 +1631,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             "formats": supported_formats(),
             "languages": list(WEB_LANGUAGE_CODES),
             "diarization_available": diar_available,
+            # The page offers the "two languages in this file" tick only here.
+            "mixed_language_available": _server_engine_is_faster_whisper(),
             # Backend is a server-level setting and NOT switchable per job
             # over the web (cloud engines need keys + upload audio; an
             # alt-backend switch is a heavy server-global reload).
@@ -2048,6 +2091,10 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             formats = normalize_formats(upload.fields.get("formats"))
             language = normalize_language(upload.fields.get("language", ""))
             problem = english_only_problem(language)
+            language2 = ""
+            if not problem:
+                language2, problem = parse_second_language(
+                    upload.fields.get("language2", ""), language)
             if problem:
                 self._send_error_json(HTTPStatus.BAD_REQUEST, problem)
                 return
@@ -2056,7 +2103,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             try:
                 job_id, media_path = manager.submit_upload_stream(
                     upload.filename, formats, language, options=options,
-                    clip_start=clip_start, clip_end=clip_end)
+                    clip_start=clip_start, clip_end=clip_end,
+                    language2=language2)
             except QueueFull as e:
                 self._send_error_json(HTTPStatus.SERVICE_UNAVAILABLE, str(e), retry_after=30)
                 return
@@ -2215,6 +2263,10 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         formats = normalize_formats(data.get("formats"))
         language = normalize_language(data.get("language", ""))
         problem = english_only_problem(language)
+        language2 = ""
+        if not problem:
+            language2, problem = parse_second_language(
+                data.get("language2", ""), language)
         if problem:
             self._send_error_json(HTTPStatus.BAD_REQUEST, problem)
             return
@@ -2222,7 +2274,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         try:
             job_id = manager.submit_url(
                 url, formats, language, options=options,
-                clip_start=clip_start, clip_end=clip_end)
+                clip_start=clip_start, clip_end=clip_end,
+                language2=language2)
         except ValueError as e:
             self._send_error_json(HTTPStatus.BAD_REQUEST, str(e))
             return

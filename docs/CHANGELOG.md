@@ -17,6 +17,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   in whichever of the two it sounds like, instead of being translated into one of them (which a
   hand-picked single language can do). Auto stays the default; faster-whisper engine only, not with
   English translation. See ADR 0014 in `docs/DECISIONS.md`.
+  The web / LAN page (and a phone that opened it from the QR code) has the same option: a
+  **Two languages in this file** tick and a second-language picker (`language2` in the job API).
 
 - **Use the app from your phone**: with "Share on local network" on, the Web / LAN access tab shows a
   QR code of the network address. Scanning it opens the transcription page on a phone on the same

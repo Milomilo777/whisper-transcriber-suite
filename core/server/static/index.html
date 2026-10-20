@@ -103,6 +103,7 @@
     input[type=checkbox] { width: 22px; height: 22px; }
     .fmts label, .opt label { min-height: 44px; }
     .opt label:has(input[type=checkbox]) { display: flex; align-items: center; gap: 8px; }
+    #mixed_row { display: flex; align-items: center; gap: 8px; min-height: 44px; }
     button { min-height: 44px; }
     button.mini { min-height: 36px; }
     nav a { padding: 12px 14px; }
@@ -157,6 +158,12 @@
       </legend>
       <label>Spoken language (Auto = detect)<br>
         <select id="lang"></select>
+      </label>
+      <label id="mixed_row"><input type="checkbox" id="mixed"> Two languages in this file (experimental)
+        <span class="help" tabindex="0">?<span class="tip">For a recording where people switch between two languages, for example a class in Chinese with English terms. Pick the main language above and the other one below; each stretch is then written in one of the two. Leave it off for one-language audio.</span></span>
+      </label>
+      <label id="lang2_row" class="hidden">Second language<br>
+        <select id="lang2"></select>
       </label>
     </fieldset>
 
@@ -309,6 +316,12 @@
   // ---- Submit view ----
   var fmtBox = document.getElementById("fmts");
   var langSel = document.getElementById("lang");
+  var lang2Sel = document.getElementById("lang2");
+  var mixedBox = document.getElementById("mixed");
+  function syncMixed() {
+    document.getElementById("lang2_row").classList.toggle("hidden", !mixedBox.checked);
+  }
+  mixedBox.addEventListener("change", syncMixed);
   var startBtn = document.getElementById("start");
   var submitStatus = document.getElementById("submitStatus");
   var submitPollTimer = null;
@@ -361,12 +374,22 @@
         });
         var langs = d.languages || [""];
         langSel.innerHTML = "";
+        lang2Sel.innerHTML = "";
         langs.forEach(function (code) {
           var opt = document.createElement("option");
           opt.value = code;
           opt.textContent = LANG_NAMES[code] || code;
           langSel.appendChild(opt);
+          if (code) { lang2Sel.appendChild(opt.cloneNode(true)); }
         });
+        if (lang2Sel.querySelector('option[value="en"]')) { lang2Sel.value = "en"; }
+        if (d.mixed_language_available === false) {
+          mixedBox.checked = false;
+          mixedBox.disabled = true;
+          document.getElementById("mixed_row").appendChild(
+            document.createTextNode(" (not available with this server's engine)"));
+          syncMixed();
+        }
         if (d.diarization_available === false) {
           var dr = document.getElementById("diar_row");
           document.getElementById("o_diarization_enabled").disabled = true;
@@ -420,6 +443,15 @@
     var lang = langSel.value;
     if (!file && !url) { setSubmitStatus('<p class="err">Pick a file or paste a link.</p>'); return; }
     if (!formats.length) { setSubmitStatus('<p class="err">Choose at least one format.</p>'); return; }
+    var lang2 = mixedBox.checked ? lang2Sel.value : "";
+    if (lang2 && !lang) {
+      setSubmitStatus('<p class="err">For two languages, pick the main spoken language first (not Auto-detect).</p>');
+      return;
+    }
+    if (lang2 && lang2 === lang) {
+      setSubmitStatus('<p class="err">Pick two different languages.</p>');
+      return;
+    }
 
     startBtn.disabled = true;
     setSubmitStatus("<p>Submitting...</p>");
@@ -431,11 +463,13 @@
       fd.append("file", file);
       fd.append("formats", formats.join(","));
       fd.append("language", lang);
+      if (lang2) { fd.append("language2", lang2); }
       Object.keys(opts).forEach(function (k) { fd.append(k, String(opts[k])); });
       req.body = fd;
     } else {
       req.headers = Object.assign({ "Content-Type": "application/json" }, authHeaders());
       var payload = { url: url, formats: formats, language: lang };
+      if (lang2) { payload.language2 = lang2; }
       Object.keys(opts).forEach(function (k) { payload[k] = opts[k]; });
       req.body = JSON.stringify(payload);
     }
@@ -762,6 +796,8 @@
       cb.checked = (cb.value === "srt" || cb.value === "txt");
     });
     langSel.value = "";
+    mixedBox.checked = false;
+    syncMixed();
     document.getElementById("o_vad").checked = true;
     document.getElementById("o_vad_threshold").value = "";
     document.getElementById("o_vad_min_silence_ms").value = "";

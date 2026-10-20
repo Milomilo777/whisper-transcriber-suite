@@ -64,7 +64,8 @@ With **Share on local network** on, the tab shows a QR code under the
 network address. Scan it with the phone's camera (the phone must be on the
 same Wi-Fi network) and the page opens in the phone's browser: pick a
 recording or a video from the phone, start it, and read or download the
-transcript there. The transcription runs on this PC. **Copy phone link**
+transcript there. For a recording in two languages, pick the main language
+and tick **Two languages in this file**. The transcription runs on this PC. **Copy phone link**
 copies the same address, for example to send it to your own phone.
 
 If an access password is set, the QR code and the copied link include it
@@ -348,7 +349,7 @@ set, except `GET /` (the page itself).
 | GET  | `/` | the browser page |
 | GET  | `/api/health` | `{status, version, formats, queue}` |
 | GET  | `/api/formats` | `{formats}` |
-| GET  | `/api/options` | `{formats, languages, diarization_available, backend_switchable}` |
+| GET  | `/api/options` | `{formats, languages, diarization_available, mixed_language_available, backend_switchable}` |
 | GET  | `/api/jobs` | `{jobs: [{job_id, status, progress, paused, source, formats, created_at}]}` |
 | POST | `/api/jobs` | create a job: multipart upload OR JSON (below); replies `202 {job_id}` |
 | GET  | `/api/jobs/<id>` | `{job_id, status, progress, error, paused, outputs: [{fmt, name}]}` |
@@ -402,6 +403,13 @@ Fields (multipart fields or JSON keys):
   (unknown names are dropped; the default is `srt`).
 - `language`: ISO code from `GET /api/options` (`en`, `fa`, ...); empty or
   unknown means auto-detect.
+- `language2` (optional): the second language of a recording that switches
+  between two languages (mixed-language audio, experimental). Each stretch is
+  written in `language` or `language2`. It needs `language` set (not
+  auto-detect), a different code, and the Faster-Whisper engine
+  (`mixed_language_available` in `GET /api/options`); otherwise the request
+  gets `400` with the reason. The page's **Two languages in this file** tick
+  sends it.
 - Per-job advanced options, applied to that job only: `vad_enabled`,
   `vad_threshold` (0 to 1), `vad_min_silence_ms`, `word_timestamps`,
   `diarization_enabled`, `diarization_num_speakers` (below 1 = automatic),

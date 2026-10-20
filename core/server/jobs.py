@@ -184,6 +184,9 @@ class Job:
     kind: str  # "upload" | "url"
     formats: list[str]
     language: str = ""
+    # Second language of mixed-language audio ("" = one language); validated
+    # by the handler, used only together with ``language``.
+    language2: str = ""
     # Source description for history / logging (filename or URL).
     source: str = ""
     status: str = STATUS_QUEUED
@@ -264,6 +267,7 @@ class _ServerTask:
     job dies with no output. Currently read by the engine:
 
       * ``file_path``, ``language``, ``output_formats`` (inputs)
+      * ``languages``: the mixed-language pair, or None (input)
       * ``output_paths``, ``detected_language``, ``language_probability``
         (written back by the engine)
       * ``resume``, ``clip_start``, ``clip_end``, ``history_id`` (inputs)
@@ -283,6 +287,9 @@ class _ServerTask:
     def __init__(self, job: Job) -> None:
         self.file_path: str = job.media_path
         self.language: str | None = job.language or None
+        self.languages: tuple[str, str] | None = (
+            (job.language, job.language2)
+            if job.language and getattr(job, "language2", "") else None)
         self.output_formats: list[str] | None = list(job.formats) or None
         self.output_paths: list[str] | None = None
         self.detected_language: str = ""
@@ -622,7 +629,8 @@ class JobManager:
     def _new_job(self, kind: str, formats: list[str], language: str,
                  source: str, *, options: dict[str, Any] | None = None,
                  clip_start: float | None = None,
-                 clip_end: float | None = None) -> Job:
+                 clip_end: float | None = None,
+                 language2: str = "") -> Job:
         """Create + register a job, enforcing the total-jobs cap.
 
         Caller must hold ``self._lock``.
@@ -645,7 +653,8 @@ class JobManager:
             pass  # without the marker the folder is simply never purged
         job = Job(
             job_id=job_id, kind=kind, formats=list(formats),
-            language=language, source=source, work_dir=work_dir,
+            language=language, language2=language2 if language else "",
+            source=source, work_dir=work_dir,
             options=dict(options or {}),
             clip_start=clip_start, clip_end=clip_end,
         )
@@ -657,13 +666,14 @@ class JobManager:
                       language: str = "", *,
                       options: dict[str, Any] | None = None,
                       clip_start: float | None = None,
-                      clip_end: float | None = None) -> str:
+                      clip_end: float | None = None,
+                      language2: str = "") -> str:
         """Register an upload job from already-read bytes; return job_id."""
         safe = _safe_filename(filename)
         with self._lock:
             job = self._new_job("upload", formats, language, safe,
                                 options=options, clip_start=clip_start,
-                                clip_end=clip_end)
+                                clip_end=clip_end, language2=language2)
             media_path = os.path.join(job.work_dir, safe)
             with open(media_path, "wb") as f:
                 f.write(data)
@@ -676,6 +686,7 @@ class JobManager:
         options: dict[str, Any] | None = None,
         clip_start: float | None = None,
         clip_end: float | None = None,
+        language2: str = "",
     ) -> tuple[str, str]:
         """Register an upload job and return ``(job_id, media_path)``.
 
@@ -688,7 +699,7 @@ class JobManager:
         with self._lock:
             job = self._new_job("upload", formats, language, safe,
                                 options=options, clip_start=clip_start,
-                                clip_end=clip_end)
+                                clip_end=clip_end, language2=language2)
             job.media_path = os.path.join(job.work_dir, safe)
             return job.job_id, job.media_path
 
@@ -718,7 +729,8 @@ class JobManager:
                    language: str = "", *,
                    options: dict[str, Any] | None = None,
                    clip_start: float | None = None,
-                   clip_end: float | None = None) -> str:
+                   clip_end: float | None = None,
+                   language2: str = "") -> str:
         """Register a URL job; return job_id. Scheme is validated here."""
         if offline.is_offline():
             # Before is_safe_url, which looks the host name up.
@@ -734,7 +746,7 @@ class JobManager:
         with self._lock:
             job = self._new_job("url", formats, language, url,
                                 options=options, clip_start=clip_start,
-                                clip_end=clip_end)
+                                clip_end=clip_end, language2=language2)
             job.media_path = ""  # filled in after the download
             self._queue.put(job.job_id)
             return job.job_id
