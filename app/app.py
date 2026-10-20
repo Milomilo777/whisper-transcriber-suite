@@ -1123,6 +1123,8 @@ class App(tk.Tk):
     diarization_help_icon: "ttk.Label"
     # Quick-options row on the Transcribe tab
     transcribe_lang_var: tk.StringVar
+    # The line beside the Transcribe button: the chosen file's name and size, a link, or why not.
+    transcribe_ready_var: tk.StringVar
     mixed_lang_var: tk.BooleanVar
     transcribe_lang2_var: tk.StringVar
     transcribe_lang2_frame: "ttk.Frame"
@@ -4195,7 +4197,9 @@ class App(tk.Tk):
     def add(self) -> None:
         text = _clean_pasted_path(self.fv.get())
         if not text:
-            self.log("Pick a file first — use the Browse button on the Transcribe tab.")
+            # Nothing to transcribe yet: open the file picker instead of a log line the user may
+            # not see (click-through test, 2026-10-21).
+            self.browse()
             return
         # YouTube / yt-dlp URL detection — if the user pastes a URL
         # into the Transcribe file field, route it through the

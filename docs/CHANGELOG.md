@@ -69,6 +69,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **The Transcribe button shows when a file is ready**: it is plain until the Selected file box holds a
+  file that exists or a link, then turns blue, with "Ready: name (size)" (or "Link: it downloads first,
+  then transcribes", or "File not found") beside it. Clicking it with nothing chosen opens Browse
+  instead of writing a log line. Found in a click-through test of the app with real mouse clicks.
+
 - The on-demand local transformers engine now installs transformers 5.18 to 5.20.2 (the Persian
   model needs 5.18); the bundled `tokenizers` and `huggingface-hub` pins move with it. A copy
   installed by an earlier version is upgraded on the next use (only transformers, not torch).

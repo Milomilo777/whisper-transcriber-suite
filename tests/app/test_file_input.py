@@ -401,3 +401,29 @@ def test_the_duplicate_check_skips_finished_rows_without_touching_the_disk(
 
     fake.queue.append(types.SimpleNamespace(file_path=media, status="running"))
     assert App._active_dup_in_queue(fake, media) is True  # type: ignore[arg-type]
+
+
+# --- the ready line beside the Transcribe button (click-through test, 2026-10-21) ------
+
+
+def test_ready_state_names_the_file_and_its_size(media: str) -> None:
+    from app.widgets.tabs import file_ready_state
+
+    kind, line = file_ready_state(f'"{media}"')
+    assert kind == "file" and "my talk.mp4" in line and "1 B" in line
+
+
+def test_ready_state_for_a_link_a_missing_file_and_nothing(tmp_path) -> None:
+    from app.widgets.tabs import file_ready_state
+
+    assert file_ready_state("https://example.com/v")[0] == "link"
+    assert file_ready_state(str(tmp_path / "gone.mp4"))[0] == "missing"
+    assert file_ready_state(str(tmp_path))[0] == "missing"  # a folder is not a file
+    assert file_ready_state("   ") == ("empty", "")
+
+
+def test_transcribe_with_an_empty_box_opens_browse() -> None:
+    opened: list[bool] = []
+    fake = _fake_app(browse=lambda: opened.append(True))
+    App.add(fake)  # type: ignore[arg-type]
+    assert opened == [True] and fake.queue == []

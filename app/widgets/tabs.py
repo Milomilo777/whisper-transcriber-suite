@@ -480,6 +480,31 @@ EMPTY_STATE_FORMATS = N_(
 )
 
 
+def file_ready_state(text: str) -> tuple[str, str]:
+    """What the Selected file box holds, for the line next to the Transcribe button.
+
+    ``("empty" | "link" | "file" | "missing", line)``: a file that exists or a link makes the
+    button the blue primary action; nothing (or a path that is not a file) keeps it plain, so
+    the user can see whether the app has something to transcribe. Only a stat, no Tk.
+    """
+    import os
+
+    from app.app import _clean_pasted_path
+
+    path = _clean_pasted_path(text or "")
+    if not path:
+        return "empty", ""
+    if path.startswith(("http://", "https://")):
+        return "link", _("Link: it downloads first, then transcribes.")
+    if not os.path.isfile(path):
+        return "missing", _("File not found: check the path, or click Browse.")
+    try:
+        size = _fmt_bytes(os.path.getsize(path))
+    except OSError:
+        size = "?"
+    return "file", _("Ready: {name} ({size})", name=os.path.basename(path), size=size)
+
+
 def empty_state_headline(dnd_ready: bool, has_sample: bool) -> str:
     """The empty Transcribe tab's headline; it names only what this install can do.
 
@@ -1002,6 +1027,31 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # matching the hero-CTA pattern across MacWhisper / OpenWhispr /
     # WhisperUI.
     transcribe_btn.pack(side="left", ipadx=24, ipady=8)
+
+    # Ready line + button colour (click-through test, 2026-10-21): the button was blue before
+    # any file was chosen, so nothing showed that a file was accepted. It is plain until the
+    # Selected file box holds an existing file or a link, then blue, with the file's name and
+    # size beside it (or why it cannot start). It stays clickable: with an empty box a click
+    # opens Browse.
+    app.transcribe_ready_var = tk.StringVar(master=parent, value="")
+    ready_label = ttk.Label(cta_row, textvariable=app.transcribe_ready_var)
+    ready_label.pack(side="left", padx=(12, 0))
+
+    def _sync_ready(*_args: object) -> None:
+        kind, line = file_ready_state(app.fv.get())
+        if app.transcribe_ready_var.get() != line:
+            app.transcribe_ready_var.set(line)
+        transcribe_btn.configure(style="Accent.TButton" if kind in ("file", "link") else "TButton")
+        if kind == "missing":
+            colour = tokens.themed(tokens.DANGER_TEXT)
+        elif kind == "file":
+            colour = tokens.themed(tokens.SUCCESS_TEXT)
+        else:
+            colour = tokens.themed(tokens.TEXT_MUTED)
+        ready_label.configure(foreground=colour)
+
+    app.fv.trace_add("write", _sync_ready)
+    _sync_ready()
 
     ttk.Button(
         cta_row, text=_("Advanced settings…"),
