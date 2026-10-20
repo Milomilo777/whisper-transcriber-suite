@@ -45,7 +45,7 @@ def whisper_server(monkeypatch):
 
 
 def _installed(monkeypatch, value: bool) -> None:
-    monkeypatch.setattr(lm, "installed_here", lambda row: value and row.engine == lm.ENGINE_TRANSFORMERS)
+    monkeypatch.setattr(lm, "installed_here", lambda row, cfg=None: value and row.engine == lm.ENGINE_TRANSFORMERS)
 
 
 # --- the choice -------------------------------------------------------------------------
@@ -58,7 +58,7 @@ def test_a_persian_job_uses_the_installed_persian_model(monkeypatch):
 
 @pytest.mark.usefixtures("whisper_server")
 @pytest.mark.parametrize(("language", "second"), [("", ""), ("en", ""), ("fa", "en"), ("zh", "")])
-def test_no_language_model_for_auto_other_languages_pairs_or_whisper_rows(monkeypatch, language, second):
+def test_no_language_model_for_auto_other_languages_pairs_or_models_not_installed(monkeypatch, language, second):
     _installed(monkeypatch, True)
     assert lm.web_job_model(tr.config, language, second) is None
 
@@ -194,7 +194,9 @@ def test_options_tell_the_page_whether_the_model_is_used(tmp_path, monkeypatch):
         _installed(monkeypatch, installed)
         with _RunningServer(tmp_path) as srv:
             _status, raw = _request(srv, "GET", "/api/options")
-        assert json.loads(raw)["language_models"]["fa"] == {"name": FA.name, "ready": installed}
+        note = json.loads(raw)["language_models"]["fa"]
+        assert note["name"] == FA.name and note["ready"] is installed
+        assert note["state"] == ("ready" if installed else "missing")
 
 
 def test_the_page_shows_the_note_and_the_model_used():

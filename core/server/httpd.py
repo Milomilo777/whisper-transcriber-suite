@@ -273,6 +273,11 @@ def parse_route(method: str, raw_path: str) -> Route:
             and parts[3] in ("result", "cancel", "pause", "resume",
                              "outputs")):
         return Route(m, parts[3], parts[2], query)
+    if (len(parts) == 4 and parts[:2] == ["api", "language-models"]
+            and parts[3] == "download"):
+        # POST: fetch the model trained for this language (ADR 0018). The language code
+        # travels in ``job_id``.
+        return Route(m, "language_model_download", parts[2], query)
     if parts == ["mcp"]:
         return Route(m, "mcp", "", query)
     # OpenAI-compatible surface (see the module docstring). The real API
@@ -788,18 +793,40 @@ def job_language_model(language: str, language2: str = "") -> tuple[str, str]:
 
 
 def language_model_notes() -> dict[str, dict[str, Any]]:
-    """For ``/api/options``: per language with a transformers-engine model, its name and whether
-    jobs in that language will use it here (``ready``)."""
+    """For ``/api/options``: per language with a model trained for it (ADR 0016, 0018).
+
+    ``ready``: jobs in that language use it here. ``state``: "ready"; "missing" (the page may
+    ask this computer to download it, ``size_gb``); "downloading" (``percent`` when known);
+    "failed" (``message`` says why; the page may ask again); "other_engine" (this computer runs
+    an engine that does not use language models, so a download would not help).
+    """
     try:
+        from core import language_model_fetch as fetch
         from core import language_models as lm
         from core import transcriber as _trans
 
+        cfg = _trans.config
+        whisper_server = (str(cfg.get("transcribe_backend") or lm.ENGINE_WHISPER).strip().lower()
+                          == lm.ENGINE_WHISPER)
         notes: dict[str, dict[str, Any]] = {}
         for code, row in lm.LANGUAGE_MODELS.items():
-            if row.engine != lm.ENGINE_TRANSFORMERS or code not in WEB_LANGUAGE_CODES:
+            if code not in WEB_LANGUAGE_CODES:
                 continue
-            ready = lm.active(_trans.config) == row or lm.web_job_model(_trans.config, code) is not None
-            notes[code] = {"name": row.name, "ready": bool(ready)}
+            ready = lm.active(cfg) == row or lm.web_job_model(cfg, code) is not None
+            note: dict[str, Any] = {"name": row.name, "ready": bool(ready),
+                                    "size_gb": round(row.size_gb, 1)}
+            progress = fetch.status(code)
+            if ready:
+                note["state"] = "ready"
+            elif progress and progress.get("state") in ("downloading", "failed"):
+                note["state"] = progress["state"]
+                note["percent"] = progress.get("percent")
+                note["message"] = progress.get("message") or ""
+            elif not whisper_server:
+                note["state"] = "other_engine"
+            else:
+                note["state"] = "missing"
+            notes[code] = note
         return notes
     except Exception:  # noqa: BLE001
         logger.debug("server: language model notes failed", exc_info=True)
@@ -1676,6 +1703,21 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             "backend_switchable": False,
         }
 
+    def _start_language_model_download(self, language: str) -> None:
+        """POST /api/language-models/<language>/download (ADR 0018): fetch the model trained
+        for ``language`` to this computer, in the background; ``/api/options`` reports progress."""
+        from core import language_model_fetch as fetch
+        from core import transcriber as _trans
+
+        outcome, message = fetch.start(language, _trans.config)
+        status = {"started": HTTPStatus.ACCEPTED, "installed": HTTPStatus.OK,
+                  "busy": HTTPStatus.CONFLICT, "unknown": HTTPStatus.NOT_FOUND}.get(
+                      outcome, HTTPStatus.CONFLICT)
+        payload: dict[str, Any] = {"outcome": outcome, "message": message}
+        if status >= 400:
+            payload["error"] = message
+        self._send_json(status, payload)
+
     def _serve_index(self) -> None:
         path = os.path.join(_STATIC_DIR, "index.html")
         try:
@@ -1785,6 +1827,9 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             else:
                 self._send_error_json(
                     HTTPStatus.NOT_FOUND, "no such active job")
+        elif route.name == "language_model_download":
+            self._drain_declared_body()
+            self._start_language_model_download(route.job_id)
         else:
             self._reject_post_early(HTTPStatus.NOT_FOUND, "not found")
 

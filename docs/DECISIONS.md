@@ -721,7 +721,7 @@ way back never returns to another language-only model.
 
 ## 0016 — Web / LAN jobs use an installed language model for their language; one model at a time
 
-**Status:** Accepted
+**Status:** Accepted; extended by 0018 (Whisper-engine rows, and the page may ask for a download)
 
 **Date:** 2026-10-21
 
@@ -809,3 +809,49 @@ A pause of the job holds the rescue between pieces; the log announces the check.
 costs the extra reading of that stretch (about the time of transcribing it once). Not covered yet:
 clipped runs, alternative engines, resumed runs (a resume merges a checkpoint written before the
 rescue and does not run it), and the gaps inside a segment that has many words.
+
+## 0018 — The web page may ask the PC to download a language model; web jobs use every installed one
+
+**Status:** Accepted
+
+**Date:** 2026-10-21
+
+**Context:** ADR 0016 routed web / LAN jobs to an installed language model, but only for the Persian
+row (transformers engine), and told a phone user to install a missing model on the PC. A phone user is
+often away from the PC: the note named a step they could not take, and the general model went on
+writing poor text in their language. The six Whisper-engine rows of ADR 0015 (Chinese, Japanese,
+German, Thai, Swedish, Hebrew) were never used for web jobs even when installed. ADR 0016 refused
+letting a remote request "start a multi-gigabyte download" together with choosing the engine; the
+server already downloads media of any size for link jobs from the same page.
+
+**Options considered:**
+1. Keep ADR 0016 as is (only Persian; installs only on the PC). The phone user cannot act.
+2. Let the page switch the PC's engine ("Use it" from the phone). Changes the desktop's own setup
+   from a remote request; refused, as in ADR 0016.
+3. Let the page ask the PC to download the model of a listed language, without switching anything,
+   and run web jobs on any installed row, Whisper-engine ones included. Chosen.
+4. Ask on the PC for each phone request ("A phone asks to download ... Allow?"). Safe, but useless
+   when nobody is at the PC, which is the case this solves.
+
+**Decision:** Option 3. `core/language_model_fetch.py` fetches one row of `LANGUAGE_MODELS` at a time
+in a background thread: a Whisper-engine row through the model manager into its usual folder under
+the model folder; the transformers row installs or updates its engine (`NvidiaAsrBackend.prepare_engine`,
+split out of `load` unchanged) and then downloads the model files into the Hugging Face cache, without
+the NeMo checkpoint that duplicates the weights. It refuses while Work offline is on, without room on
+the disk, and in a build that cannot install the engine. The request names only a language code: no
+URL, folder or engine, and the desktop's engine and model are never changed. `POST
+/api/language-models/<language>/download` starts it, under the same password and browser checks as
+every other request; `/api/options` reports each language's state (ready, missing, downloading with a
+percentage, failed with the reason, other_engine) and the page polls it while a download runs.
+Web jobs now also run on an installed Whisper-engine row: the general model is freed, the row's
+CTranslate2 model is loaded into the same one-model slot as the Persian model, and the general
+faster-whisper path runs on it (VAD windows, the loop guard and the collapse rescue of ADR 0017
+included) through a thread-local override, so the desktop never sees it. A checkpoint written by
+such a job names that model, so it is never resumed on the general one.
+
+**Consequences:** A phone user can get the better model with one tap, and later files in that
+language use it. A device on the same network without the password (when none is set) can make the
+PC download one of seven known models (1.5 to 3.1 GB each, once): bounded, and of the same kind as the
+media downloads that link jobs already allow; a password closes it. The download is not shown in the
+desktop window yet, only in the log. A switch between a general job and a language job costs one
+model load, as in ADR 0016.

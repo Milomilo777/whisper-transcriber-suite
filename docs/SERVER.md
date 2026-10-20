@@ -358,6 +358,7 @@ set, except `GET /` (the page itself).
 | POST | `/api/jobs/<id>/cancel` | flag the job for cancellation |
 | POST | `/api/jobs/<id>/pause` | pause a running or queued job |
 | POST | `/api/jobs/<id>/resume` | resume a paused job |
+| POST | `/api/language-models/<language>/download` | download the model trained for that language to this PC (below) |
 | GET  | `/v1/models` | OpenAI-compatible model list |
 | POST | `/v1/audio/transcriptions` | OpenAI-compatible transcription (above) |
 | POST | `/mcp` | Model Context Protocol endpoint |
@@ -421,16 +422,29 @@ and per-job options but **cannot switch the transcription backend** (for
 example to a cloud one): that is a deliberate security boundary so a remote
 request cannot redirect your audio to a cloud service.
 
-One exception, chosen by the server itself (ADR 0016): a job that names a
-language with a model trained for it (Persian today), when that model is
-already installed on this PC, runs on that local model instead of the general
-one. Install it on the PC from the Transcribe tab (pick the language, then
-**Use it**); a web request never installs or downloads anything. Only one of
-the two models is kept in memory, so switching between kinds of jobs costs one
-model load. `GET /api/options` lists these languages under `language_models`
-(`{"fa": {"name": ..., "ready": true}}`), the page shows it under the language
-picker, and a finished job names the model in `language_model`. If the model
-cannot load, the job runs on the general model and says so in `warning`.
+One exception, chosen by the server itself (ADR 0016, 0018): a job that names a
+language with a model trained for it (Persian, Chinese, Japanese, German, Thai,
+Swedish, Hebrew), when that model is already on this PC and the server runs the
+Whisper engine, runs on that local model instead of the general one. Only one
+of the two models is kept in memory, so switching between kinds of jobs costs
+one model load. `GET /api/options` lists these languages under
+`language_models`, for example
+`{"zh": {"name": ..., "ready": false, "size_gb": 1.6, "state": "missing"}}`.
+`state` is `ready` (jobs use it), `missing`, `downloading` (with `percent` when
+known), `failed` (with `message`), or `other_engine` (this PC runs an engine
+that does not use these models). The page shows it under the language picker,
+and a finished job names the model in `language_model`. If the model cannot
+load, the job runs on the general model and says so in `warning`.
+
+`POST /api/language-models/<language>/download` asks the PC to download that
+language's model in the background (ADR 0018): `202` when it starts, `200`
+when it is already there, `409` while another model downloads or when the PC
+refuses (Work offline, not enough disk space, a build that cannot install the
+engine), `404` for a language without one. Only the models of that fixed list
+can be fetched, from their fixed Hugging Face repositories; the request never
+names a URL, an engine or a folder, and the desktop's own engine and model
+stay as they are. The page offers it as **Download it to the PC**. It takes
+the same password as every other request when one is set.
 
 Uploads are **streamed to disk** as they arrive (not buffered in RAM), so a
 large file does not balloon the host's memory. A JSON body is capped at 1 MB.

@@ -411,6 +411,68 @@ class NvidiaAsrBackend(Backend):
         self._read_config()
         self._recipe = recipe_for(self._model_id)
 
+        if not self.prepare_engine(status_cb, cancel_event):
+            return False
+
+        try:
+            torch, pipeline = _import_torch_and_transformers()
+        except Exception as e:  # noqa: BLE001
+            self._error = friendly_load_error(e)
+            if status_cb:
+                status_cb(self._error)
+            return False
+
+        cuda = False
+        try:
+            cuda = bool(torch.cuda.is_available())
+        except Exception:  # noqa: BLE001
+            cuda = False
+        self._device = resolve_device(self._device_cfg, cuda)
+        dtype_name = resolve_dtype(self._dtype_cfg, self._device)
+        # getattr avoids pyright's "float16 is not exported from torch" and is
+        # robust if a future torch renames a dtype.
+        torch_dtype = getattr(torch, dtype_name, None)
+        device_arg = device_index(self._device)
+
+        if status_cb:
+            status_cb(
+                f"Loading {self._model_id} on {self._device} "
+                "(first run downloads the model)…"
+            )
+        try:
+            if self._recipe and self._recipe.get("kind") == "rnnt":
+                self._runner = _build_rnnt(self._model_id, self._device, torch_dtype, self._recipe)
+            else:
+                self._pipe = _build_pipeline(
+                    pipeline, self._model_id, device_arg, torch_dtype
+                )
+        except Exception as e:  # noqa: BLE001
+            self._error = friendly_load_error(e)
+            if status_cb:
+                status_cb(self._error)
+            return False
+
+        self._ready = True
+        if status_cb:
+            status_cb(f"Local transformers model ready ({self._model_id}, {self._device}).")
+        if progress_cb:
+            progress_cb({
+                "phase": "loaded",
+                "status": "Local transformers model ready",
+                "percent": 100,
+                "detail": self._model_id,
+            })
+        return True
+
+    def prepare_engine(
+        self,
+        status_cb: Callable[[str], None] | None = None,
+        cancel_event: threading.Event | None = None,
+    ) -> bool:
+        """Install the engine's libraries, or update ones older than their pins, without
+        loading a model (also used to fetch a language model ahead of use, ADR 0018). False, with
+        ``get_error()`` set, when that is needed and cannot be done."""
+        self._error = None
         # Ensure transformers/torch/librosa are importable; install on demand
         # (mirrors the openai-whisper / google_cloud_stt on-demand pattern).
         if not _deps_available():
@@ -464,58 +526,7 @@ class NvidiaAsrBackend(Backend):
                     status_cb(self._error)
                 return False
 
-        if not self._update_outdated(status_cb, cancel_event):
-            return False
-
-        try:
-            torch, pipeline = _import_torch_and_transformers()
-        except Exception as e:  # noqa: BLE001
-            self._error = friendly_load_error(e)
-            if status_cb:
-                status_cb(self._error)
-            return False
-
-        cuda = False
-        try:
-            cuda = bool(torch.cuda.is_available())
-        except Exception:  # noqa: BLE001
-            cuda = False
-        self._device = resolve_device(self._device_cfg, cuda)
-        dtype_name = resolve_dtype(self._dtype_cfg, self._device)
-        # getattr avoids pyright's "float16 is not exported from torch" and is
-        # robust if a future torch renames a dtype.
-        torch_dtype = getattr(torch, dtype_name, None)
-        device_arg = device_index(self._device)
-
-        if status_cb:
-            status_cb(
-                f"Loading {self._model_id} on {self._device} "
-                "(first run downloads the model)…"
-            )
-        try:
-            if self._recipe and self._recipe.get("kind") == "rnnt":
-                self._runner = _build_rnnt(self._model_id, self._device, torch_dtype, self._recipe)
-            else:
-                self._pipe = _build_pipeline(
-                    pipeline, self._model_id, device_arg, torch_dtype
-                )
-        except Exception as e:  # noqa: BLE001
-            self._error = friendly_load_error(e)
-            if status_cb:
-                status_cb(self._error)
-            return False
-
-        self._ready = True
-        if status_cb:
-            status_cb(f"Local transformers model ready ({self._model_id}, {self._device}).")
-        if progress_cb:
-            progress_cb({
-                "phase": "loaded",
-                "status": "Local transformers model ready",
-                "percent": 100,
-                "detail": self._model_id,
-            })
-        return True
+        return self._update_outdated(status_cb, cancel_event)
 
     def _update_outdated(
         self,

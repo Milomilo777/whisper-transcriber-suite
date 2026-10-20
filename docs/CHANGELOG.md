@@ -25,6 +25,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the desktop's general model; only one of the two stays in memory. The page says under the language
   picker whether that model is used here, and how to add it on the PC when it is not. A real Persian
   phone call through the page had lost its first 30 seconds on the general model. See ADR 0016.
+  This now covers every language with such a model (Chinese, Japanese, German, Thai, Swedish and
+  Hebrew too), and when the model is not on the PC yet the page offers **Download it to the PC**:
+  the PC fetches it in the background (the page shows the percentage) without changing the
+  desktop's own engine or model. See ADR 0018.
 
 - **Use the app from your phone**: with "Share on local network" on, the Web / LAN access tab shows a
   QR code of the network address. Scanning it opens the transcription page on a phone on the same

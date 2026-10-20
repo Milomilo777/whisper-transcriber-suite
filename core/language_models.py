@@ -233,15 +233,41 @@ def _set_whisper_model(cfg: dict[str, Any], slug: str) -> None:
     cfg["model_path"] = ""
 
 
-def installed_here(row: LanguageModel) -> bool:
-    """True when ``row`` can run on this computer without a download (web/LAN jobs, ADR 0016).
+def whisper_model_folder(cfg: dict[str, Any] | None, row: LanguageModel) -> str:
+    """The folder a Whisper-engine row's CTranslate2 files live in under the configured model
+    folder (ADR 0018), or "" for a transformers row or an unknown slug."""
+    if row.engine != ENGINE_WHISPER:
+        return ""
+    from .hub import default_hub_folder, model_folder_for
+    from .model_manager import catalog_resolve_entry
 
-    Only transformers-engine rows qualify for now: the engine's libraries are installed in versions
-    that fit their pins (an older copy would be upgraded on load, a download) and the model's files
-    are in the Hugging Face cache (config plus weights). Never downloads, never raises.
+    entry = catalog_resolve_entry(cfg, row.model)
+    if not entry:
+        return ""
+    hub_folder = str((cfg or {}).get("hub_folder") or "").strip() or str(default_hub_folder())
+    return str(model_folder_for(hub_folder, entry["name"]))
+
+
+def installed_here(row: LanguageModel, cfg: dict[str, Any] | None = None) -> bool:
+    """True when ``row`` can run on this computer without a download (web/LAN jobs, ADR 0016/0018).
+
+    A Whisper-engine row: its ``model.bin`` is in its folder under the configured model folder.
+    A transformers-engine row: the engine's libraries are installed in versions that fit their pins
+    (an older copy would be upgraded on load, a download) and the model's files are in the Hugging
+    Face cache (config plus weights). Never downloads, never raises.
     """
-    if row.engine != ENGINE_TRANSFORMERS:
-        return False
+    if row.engine == ENGINE_WHISPER:
+        try:
+            from pathlib import Path
+
+            from .hub import model_weights_present
+            from .model_manager import _hf_download_unfinished
+
+            folder = whisper_model_folder(cfg, row)
+            # model.bin can be complete while a tokenizer file of the same download is not.
+            return model_weights_present(folder or None) and not _hf_download_unfinished(Path(folder))
+        except Exception:  # noqa: BLE001 - a probe must never break a request
+            return False
     try:
         from pathlib import Path
 
@@ -256,24 +282,33 @@ def installed_here(row: LanguageModel) -> bool:
         if not isinstance(config_file, str):
             return False
         snapshot = Path(config_file).parent
+        # A download still running (or cut off) parks its files as blobs/<hash>.incomplete.
+        if any((snapshot.parent.parent / "blobs").glob("*.incomplete")):
+            return False
         return any(snapshot.glob("*.safetensors")) or any(snapshot.glob("*.bin"))
     except Exception:  # noqa: BLE001 - a probe must never break a request
         return False
 
 
 def web_job_model(cfg: dict[str, Any], language: str | None, second_language: str = "") -> LanguageModel | None:
-    """The language model a web/LAN job in ``language`` should run on, or None (ADR 0016).
+    """The language model a web/LAN job in ``language`` should run on, or None (ADR 0016, 0018).
 
-    None for auto-detect, a mixed-language pair, a language without a transformers-engine row, a
-    model not installed here, or a server not on the Whisper engine: on the transformers engine the
-    server keeps its own model in the engine cache, and a second one would break the one-model rule
-    (and a server already on the language model needs no switch).
+    None for auto-detect, a mixed-language pair, a language without a row, a model not installed
+    here, a server already running that model as its general one (no switch needed), or a server
+    not on the Whisper engine: on the transformers engine the server keeps its own model in the
+    engine cache, and a second one would break the one-model rule.
     """
     row = for_language(language)
-    if row is None or second_language or row.engine != ENGINE_TRANSFORMERS:
+    if row is None or second_language:
         return None
     engine = str(cfg.get("transcribe_backend") or ENGINE_WHISPER).strip().lower()
-    if engine != ENGINE_WHISPER:
+    if engine != ENGINE_WHISPER or active(cfg) == row:
         return None
-    return row if installed_here(row) else None
+    return row if installed_here(row, cfg) else None
+
+
+def by_model(model_id: str) -> LanguageModel | None:
+    """The row whose ``model`` is ``model_id`` (a registry slug or a Hugging Face repo id)."""
+    wanted = (model_id or "").strip().lower()
+    return next((r for r in LANGUAGE_MODELS.values() if r.model.lower() == wanted), None) if wanted else None
 

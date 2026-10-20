@@ -748,7 +748,9 @@ def _rescue_collapsed(
     from . import collapse_rescue as cr
 
     suspects = cr.find_suspect_spans(segments_data, duration)
-    if not suspects or MODEL is None:
+    lm_slot = getattr(_LM_RUNNER, "slot", None)  # a web job on a Whisper language model (ADR 0018)
+    model = lm_slot.model if lm_slot is not None else MODEL
+    if not suspects or model is None:
         return segments_data
     log(f"Checking {len(suspects)} stretch(es) where speech may have been skipped...", log_cb)
     try:
@@ -757,7 +759,7 @@ def _rescue_collapsed(
         from .backends.nvidia_asr import _decode_window
 
         pair = mixed_language_pair(task)
-        rescue_runner = _two_language_runner(MODEL, pair) if pair else MODEL
+        rescue_runner = _two_language_runner(model, pair) if pair else model
         kwargs = {k: v for k, v in transcribe_kwargs.items()
                   if k not in ("batch_size", "clip_timestamps", "vad_parameters")}
         kwargs.update(vad_filter=False, condition_on_previous_text=False)
@@ -863,6 +865,11 @@ def _current_backend_and_model() -> tuple[str, str]:
     backend = (
         str(config.get("transcribe_backend") or "faster_whisper").strip().lower()
     )
+    lm_slot = getattr(_LM_RUNNER, "slot", None)
+    if lm_slot is not None:
+        # A web job on a Whisper language model (ADR 0018): a checkpoint from it must not
+        # pass as one of the general model.
+        return backend, str(lm_slot.model_id)
     model_info = config.get("model") or {}
     model_name = ""
     if isinstance(model_info, dict):
@@ -1498,8 +1505,48 @@ def release_language_model() -> bool:
     return True
 
 
+class _WhisperLanguageModel:
+    """A Whisper-engine language model (CTranslate2 files, ADR 0018) held in the slot.
+
+    Same surface the slot uses for a transformers backend (``load`` / ``get_error`` /
+    ``unload``); ``transcribe`` runs it through the general Whisper path (``model`` and
+    ``pipeline`` stand in for ``MODEL`` / ``PIPELINE`` while :data:`_LM_RUNNER` names it).
+    """
+
+    def __init__(self, model_id: str, folder: str) -> None:
+        self.model_id = model_id
+        self.folder = folder
+        self.model: Any = None
+        self.pipeline: Any = None
+        self._error = ""
+
+    def load(self, status_cb: Callable[[str], None] | None = None) -> bool:
+        from .hub import model_weights_present
+
+        if not model_weights_present(self.folder or None):
+            self._error = f"model files missing in {self.folder or '(no folder)'}"
+            return False
+        self.model = _load_whisper_model_self_healing(self.folder, device, compute_type, status_cb)
+        self.pipeline = _wrap_for_batched(self.model)
+        return True
+
+    def get_error(self) -> str:
+        return self._error
+
+    def unload(self) -> None:
+        self.model = None
+        self.pipeline = None
+
+
+#: The Whisper language model the current thread's ``transcribe`` call runs on instead of the
+#: general model (``slot`` attribute; unset = the general model). Thread-local: a desktop call on
+#: another thread never sees it.
+_LM_RUNNER = threading.local()
+
+
 def _language_model_backend(model_id: str, status_cb: Callable[[str], None] | None = None) -> Any:
-    """The loaded transformers backend for ``model_id`` (the slot keeps one).
+    """The loaded language model for ``model_id`` (the slot keeps one): a transformers backend,
+    or a :class:`_WhisperLanguageModel` for a Whisper-engine row (ADR 0018).
 
     Built from this module's ``config`` with the model id set, never from the file on disk, so
     the desktop's own engine choice is not touched. Raises :class:`LanguageModelLoadError`.
@@ -1508,9 +1555,15 @@ def _language_model_backend(model_id: str, status_cb: Callable[[str], None] | No
         if _LM_SLOT["backend"] is not None and _LM_SLOT["model_id"] == model_id:
             return _LM_SLOT["backend"]
     release_language_model()
-    from .backends.nvidia_asr import NvidiaAsrBackend
+    from . import language_models as _lm
 
-    backend = NvidiaAsrBackend(config={**config, "nvidia_asr_model_id": model_id})
+    row = _lm.by_model(model_id)
+    if row is not None and row.engine == _lm.ENGINE_WHISPER:
+        backend: Any = _WhisperLanguageModel(model_id, _lm.whisper_model_folder(config, row))
+    else:
+        from .backends.nvidia_asr import NvidiaAsrBackend
+
+        backend = NvidiaAsrBackend(config={**config, "nvidia_asr_model_id": model_id})
     try:
         loaded = backend.load(status_cb)
     except Exception as e:  # noqa: BLE001
@@ -1536,6 +1589,22 @@ def transcribe_with_language_model(
     Raises :class:`LanguageModelLoadError` when the model cannot load (the caller may then use the
     general model); any later error propagates as it would from ``transcribe``.
     """
+    from . import language_models as _lm
+
+    row = _lm.by_model(model_id)
+    if row is not None and row.engine == _lm.ENGINE_WHISPER:
+        engine = str(config.get("transcribe_backend") or "faster_whisper").strip().lower()
+        if engine != "faster_whisper":
+            # The desktop switched engines after this job was queued: the general path would
+            # run another engine and never use the slot.
+            raise LanguageModelLoadError(f"this computer now uses the {engine} engine")
+        release_default_model()
+        _LM_RUNNER.slot = _language_model_backend(model_id, log_cb)
+        try:
+            transcribe(task, progress_cb, log_cb, language_cb)
+        finally:
+            _LM_RUNNER.slot = None
+        return
     release_default_model()
     backend = _language_model_backend(model_id, log_cb)
     with _runtime_overrides_scope(task):
@@ -2342,16 +2411,18 @@ def transcribe(
             return
 
         global MODEL
-        while not MODEL_READY:
-            if MODEL_ERROR:
-                raise RuntimeError(MODEL_ERROR)
-            time.sleep(0.5)
+        lm_slot = getattr(_LM_RUNNER, "slot", None)  # a Whisper language model (ADR 0018)
+        if lm_slot is None:
+            while not MODEL_READY:
+                if MODEL_ERROR:
+                    raise RuntimeError(MODEL_ERROR)
+                time.sleep(0.5)
 
-        # Per-file backend re-resolution above can select the default
-        # backend even when the worker started on an alt backend (in which
-        # case MODEL is still None but MODEL_READY is True). Lazy-load the
-        # default model now instead of crashing on `assert MODEL is not None`.
-        _ensure_default_backend_loaded(log_cb)
+            # Per-file backend re-resolution above can select the default
+            # backend even when the worker started on an alt backend (in which
+            # case MODEL is still None but MODEL_READY is True). Lazy-load the
+            # default model now instead of crashing on `assert MODEL is not None`.
+            _ensure_default_backend_loaded(log_cb)
 
         # Optional Demucs vocal-separation pre-process (v0.8 Phase 2).
         # Returns the input path unchanged when demucs isn't installed or
@@ -2374,7 +2445,9 @@ def transcribe(
         start = time.time()
         log(f"Processing: {audio_path}", log_cb)
 
-        assert MODEL is not None
+        base_model: Any = lm_slot.model if lm_slot is not None else MODEL
+        base_pipeline: Any = lm_slot.pipeline if lm_slot is not None else PIPELINE
+        assert base_model is not None
         want_words = bool(config.get("word_timestamps", False))
 
         transcribe_kwargs = _build_transcribe_kwargs(task)
@@ -2385,8 +2458,8 @@ def transcribe(
         # used for a clipped task, so it falls back to the plain model
         # (still fast for a short slice).
         clip = _clip_timestamps_arg(task)
-        use_batched = PIPELINE is not None and clip is None
-        runner: Any = PIPELINE if use_batched else MODEL
+        use_batched = base_pipeline is not None and clip is None
+        runner: Any = base_pipeline if use_batched else base_model
         if use_batched:
             transcribe_kwargs["batch_size"] = int(config.get("batch_size", 16))
         pair = mixed_language_pair(task)

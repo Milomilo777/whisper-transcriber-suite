@@ -77,6 +77,8 @@ core/
 ├── verified_download.py    resumable download checked against a pinned size + SHA-256
 ├── yt_dlp_update.py        user-writable, self-updating yt-dlp copy
 ├── optional_deps.py        on-demand optional packages
+├── language_models.py      models trained for one language (ADR 0015, 0016, 0018)
+├── language_model_fetch.py background download of one of them, asked for by the web page (ADR 0018)
 ├── server/                 optional HTTP job server
 └── integrations/           oTranscribe, a site-specific video download
 bin/                        ffmpeg, ffprobe, yt-dlp, Deno (gitignored; see BUILD.md)

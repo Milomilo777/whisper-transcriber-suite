@@ -160,6 +160,7 @@
         <select id="lang"></select>
       </label>
       <p class="note hidden" id="lang_note"></p>
+      <button type="button" id="lang_dl" class="mini ghost hidden"></button>
       <label id="mixed_row"><input type="checkbox" id="mixed"> Two languages in this file (experimental)
         <span class="help" tabindex="0">?<span class="tip">For a recording where people switch between two languages, for example a class in Chinese with English terms. Pick the main language above and the other one below; each stretch is then written in one of the two. Leave it off for one-language audio.</span></span>
       </label>
@@ -320,18 +321,73 @@
   var lang2Sel = document.getElementById("lang2");
   var mixedBox = document.getElementById("mixed");
   var languageModels = {};
+  var langDl = document.getElementById("lang_dl");
+  var lmPollTimer = null;
+  // ADR 0016 / 0018: what the PC does with a language that has a model trained for it, and a
+  // button that asks the PC to download that model when it is not there yet.
   function syncLangNote() {
     var note = document.getElementById("lang_note");
     var m = languageModels[langSel.value];
+    langDl.classList.add("hidden");
     if (!m || mixedBox.checked) { note.classList.add("hidden"); return; }
     var name = LANG_NAMES[langSel.value] || langSel.value;
-    note.textContent = m.ready
-      ? "This PC transcribes " + name + " with " + m.name + ", a model trained for " + name + "."
-      : "Tip: " + m.name + " is a model trained for " + name + " and gives much better " + name +
-        " text. To add it, on the PC pick " + name + " on the Transcribe tab and click Use it. " +
-        "Until then this file uses the general model.";
+    var state = m.state || (m.ready ? "ready" : "missing");
+    if (state === "ready") {
+      note.textContent = "This PC transcribes " + name + " with " + m.name + ", a model trained for " + name + ".";
+    } else if (state === "downloading") {
+      note.textContent = "The PC is downloading " + m.name + " (a model trained for " + name + ")" +
+        (typeof m.percent === "number" ? ": " + m.percent + " %" : "") +
+        ". You can send files now; they use the general model until the download is done.";
+    } else if (state === "other_engine") {
+      note.textContent = m.name + " is a model trained for " + name + ", but this PC uses an engine " +
+        "that does not run it. To use it, pick " + name + " on the PC's Transcribe tab and click Use it.";
+    } else {
+      note.textContent = (state === "failed"
+        ? "The download of " + m.name + " stopped: " + (m.message || "unknown error") + ". "
+        : m.name + " is a model trained for " + name + " and gives much better " + name +
+          " text, but it is not on this PC yet. ") +
+        "Until it is, this file uses the general model.";
+      langDl.textContent = (state === "failed" ? "Try again" : "Download it to the PC") +
+        (m.size_gb ? " (about " + m.size_gb + " GB)" : "");
+      langDl.disabled = false;
+      langDl.classList.remove("hidden");
+    }
     note.classList.remove("hidden");
   }
+  function refreshLanguageModels() {
+    fetch("/api/options", { headers: authHeaders() })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        languageModels = d.language_models || {};
+        syncLangNote();
+        pollLanguageModels();
+      })
+      .catch(function () { pollLanguageModels(); });
+  }
+  function pollLanguageModels() {
+    clearTimeout(lmPollTimer);
+    var busy = Object.keys(languageModels).some(function (k) {
+      return languageModels[k].state === "downloading";
+    });
+    if (busy) { lmPollTimer = setTimeout(refreshLanguageModels, 3000); }
+  }
+  langDl.addEventListener("click", function () {
+    var code = langSel.value;
+    langDl.disabled = true;
+    fetch("/api/language-models/" + encodeURIComponent(code) + "/download",
+          { method: "POST", headers: authHeaders() })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          var m = languageModels[code];
+          if (m) { m.state = "failed"; m.message = res.d.error || res.d.message || "refused"; }
+          syncLangNote();
+          return;
+        }
+        refreshLanguageModels();
+      })
+      .catch(function () { langDl.disabled = false; });
+  });
   function syncMixed() {
     document.getElementById("lang2_row").classList.toggle("hidden", !mixedBox.checked);
     syncLangNote();
@@ -401,6 +457,7 @@
         if (lang2Sel.querySelector('option[value="en"]')) { lang2Sel.value = "en"; }
         languageModels = d.language_models || {};
         syncLangNote();
+        pollLanguageModels();
         if (d.mixed_language_available === false) {
           mixedBox.checked = false;
           mixedBox.disabled = true;
