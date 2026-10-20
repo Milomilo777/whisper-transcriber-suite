@@ -111,6 +111,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Hebrew on the web page**: the language picker of the web / LAN page listed Hebrew as "he"; it now
+  says Hebrew.
+
 - **Speech Whisper dropped is read again**: Whisper sometimes ends a 30-second window after a couple of
   words (on a real Persian phone call: "0:00 -> 0:30", two words, in every setting). After a
   transcription, a long segment with almost no words, or a long gap, where speech is heard, is read
