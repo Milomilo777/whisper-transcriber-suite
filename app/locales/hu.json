@@ -1116,8 +1116,6 @@
     "This JSON list holds no transcript segments.": "Ez a JSON-lista nem tartalmaz átiratszakaszokat.",
     "This Mac runs models on {cpu}.": "Ez a Mac ezen futtatja a modelleket: {cpu}.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "Ez a gép:  {local_url}\nHálózat:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Az URL hangformátumai nem tölthetők be, ezért még nem tölthető le:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Az URL videóformátumai nem tölthetők be, ezért még nem tölthető le:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "Az alkalmazás saját részletes formátuma: minden időbélyeg, szó és beszélőcímke. Ezt olvassa a Konvertálás / újraimportálás és az átiratnéző.",
     "This clip may not work well": "Ez a klip nem biztos, hogy jól működik",
     "This computer cannot capture microphone audio yet.": "Ez a számítógép még nem tud mikrofonhangot rögzíteni.",

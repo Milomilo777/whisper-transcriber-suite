@@ -1192,8 +1192,6 @@
     "This JSON list holds no transcript segments.": "قائمة JSON هذه لا تحتوي على مقاطع نص مُفرَّغ.",
     "This Mac runs models on {cpu}.": "يشغِّل جهاز Mac هذا النماذج على {cpu}.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "هذا الحاسوب:  {local_url}\nالشبكة:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "تعذَّر تحميل تنسيقات الصوت لهذا URL، لذا لا يمكن تنزيله بعد:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "تعذَّر تحميل تنسيقات الفيديو لهذا URL، لذا لا يمكن تنزيله بعد:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "التنسيق المفصَّل الخاص بهذا التطبيق: كل طابع زمني وكلمة وتسمية متحدث. هو ما يقرؤه «تحويل» / إعادة الاستيراد وعارض النص المُفرَّغ.",
     "This clip may not work well": "قد لا يعمل هذا المقطع جيدًا",
     "This computer cannot capture microphone audio yet.": "لا يستطيع هذا الحاسوب التقاط صوت الميكروفون بعد.",

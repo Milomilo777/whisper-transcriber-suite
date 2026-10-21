@@ -47,8 +47,10 @@ def test_summary_matches_core(audio, took, model, device, resumed):
 
 
 def test_measuring_says_how_much_audio_is_done():
-    assert st.live_text(None, None, 36.1) == "measuring speed... (36 s of audio done)"
-    assert st.live_text(None, None, 95.0) == "measuring speed... (1 min 35 s of audio done)"
+    # The audio comes first: the Queue column cuts a long cell at its right edge, and the
+    # round-2 real-click test showed "measuring speed... (1 min 25 s of audio dc" (2026-10-21).
+    assert st.live_text(None, None, 36.1) == "36 s of audio done, measuring speed..."
+    assert st.live_text(None, None, 95.0) == "1 min 35 s of audio done, measuring speed..."
     assert st.live_text(None, None, 0.4) == "measuring speed..."
     assert st.live_text(None, None, None) == "measuring speed..."
     # once a rate exists the audio is not repeated
@@ -60,7 +62,7 @@ def test_the_cell_follows_the_task_states():
     assert st.speed_cell_text(task) == sm.speed_cell(task) == "measuring speed..."
     sm.apply_live_speed(task, {"percent": 0, "audio_s": 36.1})
     assert task.live_audio_s == pytest.approx(36.1)
-    assert st.speed_cell_text(task) == "measuring speed... (36 s of audio done)"
+    assert st.speed_cell_text(task) == "36 s of audio done, measuring speed..."
     sm.apply_live_speed(task, {"percent": 40, "speed_x": 4.83, "eta_s": 360.0, "audio_s": 600})
     assert st.speed_cell_text(task) == sm.speed_cell(task) == "about 4.8x, 6 min left"
     task.status = "paused"

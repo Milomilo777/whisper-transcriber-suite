@@ -1135,8 +1135,6 @@
     "This JSON list holds no transcript segments.": "Šiame JSON sąraše nėra transkripcijos segmentų.",
     "This Mac runs models on {cpu}.": "Šis Mac vykdo modelius su {cpu}.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "Šis kompiuteris:  {local_url}\nTinklas:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Nepavyko įkelti šio URL garso formatų, todėl jo kol kas negalima atsisiųsti:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Nepavyko įkelti šio URL vaizdo formatų, todėl jo kol kas negalima atsisiųsti:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "Pačios programos išsamus formatas: kiekviena laiko žyma, žodis ir kalbėtojo etiketė. Jį skaito Konvertuoti / pakartotinis importavimas ir transkripcijos peržiūra.",
     "This clip may not work well": "Šis įrašas gali veikti prastai",
     "This computer cannot capture microphone audio yet.": "Šis kompiuteris kol kas negali įrašyti mikrofono garso.",

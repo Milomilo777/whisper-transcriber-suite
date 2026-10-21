@@ -98,6 +98,20 @@ def test_missing_audio_format_shows_real_lookup_failure_reason(monkeypatch):
     assert any(reason in line for line in app._log_lines)
 
 
+def test_lookup_failure_message_does_not_repeat_the_title(monkeypatch):
+    # Round-2 real-click test: "Cannot load this link" over "This URL's audio formats could not
+    # be loaded, so it cannot be downloaded yet: That is not a video link. ..." said it twice.
+    from app.services.format_service import not_a_link_text
+
+    reason = not_a_link_text()
+    app = _app(format_lookup_error=reason)
+    svc, warnings = _svc_with_warnings(app, monkeypatch)
+
+    DownloadService.enqueue_from_form(svc)
+
+    assert warnings == [("Cannot load this link", reason)]
+
+
 def test_missing_audio_format_without_lookup_error_keeps_generic_message(monkeypatch):
     """No failure recorded (lookup still running / never started) -> the
     original 'wait for it to load' message, unchanged, and nothing logged."""

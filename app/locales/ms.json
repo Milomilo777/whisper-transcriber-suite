@@ -1097,8 +1097,6 @@
     "This JSON list holds no transcript segments.": "Senarai JSON ini tidak mengandungi segmen transkrip.",
     "This Mac runs models on {cpu}.": "Mac ini menjalankan model pada {cpu}.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "PC ini:  {local_url}\nRangkaian:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Format audio URL ini tidak dapat dimuatkan, jadi ia belum boleh dimuat turun:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Format video URL ini tidak dapat dimuatkan, jadi ia belum boleh dimuat turun:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "Format terperinci aplikasi ini sendiri: setiap cap masa, perkataan dan label penutur. Yang dibaca oleh Tukar / import semula dan pemapar transkrip.",
     "This clip may not work well": "Klip ini mungkin tidak berfungsi dengan baik",
     "This computer cannot capture microphone audio yet.": "Komputer ini belum dapat merakam audio mikrofon.",

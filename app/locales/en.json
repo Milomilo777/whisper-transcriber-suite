@@ -1180,8 +1180,6 @@
   "This JSON list holds no transcript segments.": "This JSON list holds no transcript segments.",
   "This Mac runs models on {cpu}.": "This Mac runs models on {cpu}.",
   "This PC:  {local_url}\nNetwork:  {network_url}": "This PC:  {local_url}\nNetwork:  {network_url}",
-  "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}",
-  "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}",
   "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.",
   "This clip may not work well": "This clip may not work well",
   "This computer cannot capture microphone audio yet.": "This computer cannot capture microphone audio yet.",
@@ -1513,7 +1511,6 @@
   "list separator\u0004, ": ", ",
   "log menu\u0004Clear": "Clear",
   "measuring speed...": "measuring speed...",
-  "measuring speed... ({done} of audio done)": "measuring speed... ({done} of audio done)",
   "menu\u0004File": "File",
   "menu\u0004View": "View",
   "menu\u0004Window": "Window",
@@ -1596,6 +1593,7 @@
    "{count} characters"
   ],
   "{description}\n\nApprox. download size: ~{size} GB": "{description}\n\nApprox. download size: ~{size} GB",
+  "{done} of audio done, measuring speed...": "{done} of audio done, measuring speed...",
   "{done} of {n} pieces are kept: press Generate with the same text and voice to continue.": [
    "{done} of {n} pieces are kept: press Generate with the same text and voice to continue.",
    "{done} of {n} pieces are kept: press Generate with the same text and voice to continue."

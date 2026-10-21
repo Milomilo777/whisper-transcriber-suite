@@ -1135,8 +1135,6 @@
     "This JSON list holds no transcript segments.": "רשימת ה-JSON הזו אינה מכילה קטעי תמליל.",
     "This Mac runs models on {cpu}.": "ה-Mac הזה מריץ מודלים על {cpu}.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "מחשב זה:  {local_url}\nרשת:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "לא ניתן היה לטעון את פורמטי השמע של URL זה, ולכן עדיין אי אפשר להוריד אותו:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "לא ניתן היה לטעון את פורמטי הווידאו של URL זה, ולכן עדיין אי אפשר להוריד אותו:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "הפורמט המפורט של היישום הזה: כל חותמת זמן, מילה ותווית דובר. זה מה ש'המר' / ייבוא מחדש ומציג התמלילים קוראים.",
     "This clip may not work well": "ייתכן שהקטע הזה לא יעבוד היטב",
     "This computer cannot capture microphone audio yet.": "המחשב הזה עדיין אינו יכול לקלוט שמע ממיקרופון.",

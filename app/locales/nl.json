@@ -1116,8 +1116,6 @@
     "This JSON list holds no transcript segments.": "Deze JSON-lijst bevat geen transcriptsegmenten.",
     "This Mac runs models on {cpu}.": "Deze Mac draait modellen op {cpu}.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "Deze pc:  {local_url}\nNetwerk:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "De audioformaten van deze URL konden niet worden geladen, dus hij kan nog niet worden gedownload:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "De videoformaten van deze URL konden niet worden geladen, dus hij kan nog niet worden gedownload:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "Het eigen gedetailleerde formaat van deze app: elke tijdstempel, elk woord en elk sprekerlabel. Wat Converteren / opnieuw importeren en de transcriptviewer lezen.",
     "This clip may not work well": "Deze clip werkt mogelijk niet goed",
     "This computer cannot capture microphone audio yet.": "Deze computer kan nog geen microfoonaudio opnemen.",

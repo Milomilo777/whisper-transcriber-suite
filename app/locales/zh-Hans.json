@@ -1097,8 +1097,6 @@
     "This JSON list holds no transcript segments.": "此 JSON 列表中没有转录片段。",
     "This Mac runs models on {cpu}.": "这台 Mac 在 {cpu} 上运行模型。",
     "This PC:  {local_url}\nNetwork:  {network_url}": "本机：  {local_url}\n网络：  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "无法加载此 URL 的音频格式，因此暂时无法下载：\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "无法加载此 URL 的视频格式，因此暂时无法下载：\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "本应用自己的详细格式：包含每个时间戳、词语和说话人标签。“转换”/重新导入和转录查看器读取的就是它。",
     "This clip may not work well": "此片段可能效果不佳",
     "This computer cannot capture microphone audio yet.": "这台电脑暂时无法采集麦克风音频。",

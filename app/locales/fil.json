@@ -1116,8 +1116,6 @@
     "This JSON list holds no transcript segments.": "Walang transcript segment ang listahang JSON na ito.",
     "This Mac runs models on {cpu}.": "Pinapatakbo ng Mac na ito ang mga model sa {cpu}.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "PC na ito:  {local_url}\nNetwork:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Hindi ma-load ang mga audio format ng URL na ito, kaya hindi pa ito mada-download:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Hindi ma-load ang mga video format ng URL na ito, kaya hindi pa ito mada-download:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "Ang sariling detalyadong format ng app na ito: bawat timestamp, salita at label ng speaker. Ito ang binabasa ng Convert / muling pag-import at ng transcript viewer.",
     "This clip may not work well": "Maaaring hindi gumana nang maayos ang clip na ito",
     "This computer cannot capture microphone audio yet.": "Hindi pa kayang kunin ng computer na ito ang audio ng mikropono.",

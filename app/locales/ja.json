@@ -1097,8 +1097,6 @@
     "This JSON list holds no transcript segments.": "この JSON リストには文字起こしのセグメントがありません。",
     "This Mac runs models on {cpu}.": "この Mac はモデルを {cpu} で実行します。",
     "This PC:  {local_url}\nNetwork:  {network_url}": "この PC:  {local_url}\nネットワーク:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "この URL の音声形式を読み込めなかったため、まだダウンロードできません:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "この URL の動画形式を読み込めなかったため、まだダウンロードできません:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "このアプリ独自の詳細な形式です。すべてのタイムスタンプ、単語、話者ラベルを含みます。「変換」/再インポートと文字起こしビューアーはこれを読み込みます。",
     "This clip may not work well": "このクリップはうまく機能しない可能性があります",
     "This computer cannot capture microphone audio yet.": "このコンピューターではまだマイクの音声を取り込めません。",

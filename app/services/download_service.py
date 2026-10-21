@@ -809,12 +809,9 @@ class DownloadService:
         reason = getattr(app, "format_lookup_error", "")
         video = kind == "video"
         if reason:
-            if video:
-                message = _("This URL's video formats could not be loaded, so it "
-                            "cannot be downloaded yet:\n\n{reason}", reason=reason)
-            else:
-                message = _("This URL's audio formats could not be loaded, so it "
-                            "cannot be downloaded yet:\n\n{reason}", reason=reason)
+            # The title already says the link cannot be loaded; a lead sentence above the reason
+            # said it a second time (real-click test, 2026-10-21).
+            message = reason
             app.log(f"Download blocked -- format lookup failed: {reason}")
         elif video:
             message = _("Wait for formats to load, then select a video format.")

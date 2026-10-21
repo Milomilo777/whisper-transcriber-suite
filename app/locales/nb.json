@@ -1116,8 +1116,6 @@
     "This JSON list holds no transcript segments.": "Denne JSON-listen inneholder ingen transkripsjonssegmenter.",
     "This Mac runs models on {cpu}.": "Denne Mac-en kjører modeller på {cpu}.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "Denne PC-en:  {local_url}\nNettverk:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Lydformatene for denne URL-en kunne ikke lastes, så den kan ikke lastes ned ennå:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Videoformatene for denne URL-en kunne ikke lastes, så den kan ikke lastes ned ennå:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "Appens eget detaljerte format: hvert tidsstempel, ord og talermerke. Det som Konverter / reimport og transkripsjonsvisningen leser.",
     "This clip may not work well": "Dette klippet fungerer kanskje ikke godt",
     "This computer cannot capture microphone audio yet.": "Denne datamaskinen kan ikke ta opp lyd fra mikrofonen ennå.",

@@ -1135,8 +1135,6 @@
     "This JSON list holds no transcript segments.": "Tento zoznam JSON neobsahuje žiadne segmenty prepisu.",
     "This Mac runs models on {cpu}.": "Tento Mac spúšťa modely na procesore ({cpu}).",
     "This PC:  {local_url}\nNetwork:  {network_url}": "Tento počítač:  {local_url}\nSieť:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Zvukové formáty tejto URL nemožno načítať, takže ju zatiaľ nemožno stiahnuť:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Formáty videa tejto URL nemožno načítať, takže ju zatiaľ nemožno stiahnuť:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "Vlastný podrobný formát tejto aplikácie: každá časová značka, slovo a označenie hovoriaceho. Číta ho Previesť / opätovný import a prehliadač prepisov.",
     "This clip may not work well": "Tento klip nemusí fungovať dobre",
     "This computer cannot capture microphone audio yet.": "Tento počítač zatiaľ nemôže zachytávať zvuk z mikrofónu.",

@@ -1116,8 +1116,6 @@
     "This JSON list holds no transcript segments.": "Cette liste JSON ne contient aucun segment de transcription.",
     "This Mac runs models on {cpu}.": "Ce Mac exécute les modèles sur {cpu}.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "Ce PC :  {local_url}\nRéseau :  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Les formats audio de cette URL n'ont pas pu être chargés ; elle ne peut donc pas encore être téléchargée :\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Les formats vidéo de cette URL n'ont pas pu être chargés ; elle ne peut donc pas encore être téléchargée :\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "Le format détaillé propre à cette application : chaque horodatage, mot et étiquette de locuteur. C'est ce que lisent Convertir / la réimportation et la visionneuse de transcription.",
     "This clip may not work well": "Cet extrait risque de mal fonctionner",
     "This computer cannot capture microphone audio yet.": "Cet ordinateur ne peut pas encore capter l'audio du microphone.",

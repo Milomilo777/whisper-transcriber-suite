@@ -138,13 +138,14 @@ class FormatService:
         prompt = getattr(self.app, "update_js_runtime_prompt", None)
         if callable(prompt):
             prompt(url)
+        # The previous link's "video length 0:00:19" and sliders stayed after an emptied link,
+        # plain words or a failed lookup (review, 2026-10-21); a read link sets them again.
+        try:
+            self.app.set_download_duration(0.0)
+        except AttributeError:
+            pass
         if not url:
             self.app.format_status_var.set(_("Paste a video link above to load its formats"))
-            # The previous link's "video length 0:00:19" and sliders went stale (review, 2026-10-21).
-            try:
-                self.app.set_download_duration(0.0)
-            except AttributeError:
-                pass
             return
         if not looks_like_link(url):
             # Plain text ("hello world") went to yt-dlp, whose raw "ERROR: [generic] ..." came back

@@ -1116,8 +1116,6 @@
     "This JSON list holds no transcript segments.": "Bu JSON listesi hiç transkript segmenti içermiyor.",
     "This Mac runs models on {cpu}.": "Bu Mac modelleri {cpu} üzerinde çalıştırır.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "Bu bilgisayar:  {local_url}\nAğ:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Bu URL'nin ses biçimleri yüklenemedi, bu yüzden henüz indirilemiyor:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Bu URL'nin video biçimleri yüklenemedi, bu yüzden henüz indirilemiyor:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "Bu uygulamanın kendi ayrıntılı biçimi: her zaman damgası, kelime ve konuşmacı etiketi. Dönüştür / yeniden içe aktar ve transkript görüntüleyicinin okuduğu biçim.",
     "This clip may not work well": "Bu klip iyi çalışmayabilir",
     "This computer cannot capture microphone audio yet.": "Bu bilgisayar henüz mikrofon sesini kaydedemiyor.",

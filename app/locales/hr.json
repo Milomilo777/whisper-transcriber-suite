@@ -1135,8 +1135,6 @@
     "This JSON list holds no transcript segments.": "Ovaj JSON popis ne sadrži segmente transkripcije.",
     "This Mac runs models on {cpu}.": "Ovaj Mac izvodi modele na procesoru ({cpu}).",
     "This PC:  {local_url}\nNetwork:  {network_url}": "Ovo računalo:  {local_url}\nMreža:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Formate zvuka za ovaj URL nije bilo moguće učitati pa se još ne može preuzeti:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Formate videozapisa za ovaj URL nije bilo moguće učitati pa se još ne može preuzeti:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "Vlastiti detaljni format aplikacije: svaka vremenska oznaka, riječ i oznaka govornika. To čitaju Pretvori / ponovni uvoz i preglednik transkripcije.",
     "This clip may not work well": "Ovaj isječak možda neće dobro raditi",
     "This computer cannot capture microphone audio yet.": "Ovo računalo još ne može snimati zvuk s mikrofona.",

@@ -1116,8 +1116,6 @@
     "This JSON list holds no transcript segments.": "Aquesta llista JSON no conté cap segment de transcripció.",
     "This Mac runs models on {cpu}.": "Aquest Mac executa els models amb: {cpu}.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "Aquest ordinador:  {local_url}\nXarxa:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "No s'han pogut carregar els formats d'àudio d'aquest URL, de manera que encara no es pot baixar:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "No s'han pogut carregar els formats de vídeo d'aquest URL, de manera que encara no es pot baixar:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "El format detallat propi d'aquesta aplicació: cada marca de temps, paraula i etiqueta de parlant. És el que llegeixen Converteix / la reimportació i el visualitzador de transcripcions.",
     "This clip may not work well": "És possible que aquest clip no funcioni bé",
     "This computer cannot capture microphone audio yet.": "Aquest ordinador encara no pot capturar l'àudio del micròfon.",

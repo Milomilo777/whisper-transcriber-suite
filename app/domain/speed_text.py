@@ -71,7 +71,8 @@ def live_text(speed_x: float | None, eta_s: float | None, audio_s: float | None 
     is done (core.speed_meter.live_cell, plus the audio)."""
     if speed_x is None or speed_x <= 0:
         if audio_s is not None and audio_s >= 1:
-            return _("measuring speed... ({done} of audio done)", done=duration_text(audio_s))
+            # The audio first: the Queue column cuts a long cell at its right edge.
+            return _("{done} of audio done, measuring speed...", done=duration_text(audio_s))
         return _("measuring speed...")
     if speed_x < 0.1:
         speed = _("very slow")

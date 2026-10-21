@@ -297,6 +297,18 @@ def test_an_emptied_link_clears_the_video_length():
     assert app.durations == [0.0]
 
 
+@pytest.mark.parametrize("text", ["hello world", "https://www.youtube.com/watch?v=jNQXAC9IVRw"])
+def test_every_new_lookup_clears_the_previous_video_length(monkeypatch, text):
+    # Round-2 real-click test: "hello world" typed after a read link kept "video length 0:00:19"
+    # and its sliders; a real link that then fails would keep it as well.
+    import core._threads as threads
+
+    monkeypatch.setattr(threads, "safe_thread", lambda fn, name="": None)  # no yt-dlp run
+    app = _ReadyApp(text)
+    FormatService(app).lookup_formats()  # type: ignore[arg-type]
+    assert app.durations[:1] == [0.0]
+
+
 @pytest.mark.parametrize("payload, expected", [
     ({"title": "Me at the zoo", "duration": 19, "formats": []}, "Found: Me at the zoo (0:19)"),
     ({"title": "Me at the zoo", "formats": []}, "Found: Me at the zoo"),

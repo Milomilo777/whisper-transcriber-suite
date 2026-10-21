@@ -1097,8 +1097,6 @@
     "This JSON list holds no transcript segments.": "Danh sách JSON này không chứa đoạn bản chép lời nào.",
     "This Mac runs models on {cpu}.": "Máy Mac này chạy mô hình trên {cpu}.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "PC này:  {local_url}\nMạng:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Không thể tải định dạng âm thanh của URL này, nên chưa thể tải xuống:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Không thể tải định dạng video của URL này, nên chưa thể tải xuống:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "Định dạng chi tiết riêng của ứng dụng: mọi dấu thời gian, từ và nhãn người nói. Là định dạng mà Chuyển đổi / nhập lại và trình xem bản chép lời đọc.",
     "This clip may not work well": "Đoạn này có thể không hoạt động tốt",
     "This computer cannot capture microphone audio yet.": "Máy tính này chưa thể thu âm thanh từ micrô.",

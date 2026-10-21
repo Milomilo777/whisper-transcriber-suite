@@ -1097,8 +1097,6 @@
     "This JSON list holds no transcript segments.": "이 JSON 목록에는 전사본 구간이 없습니다.",
     "This Mac runs models on {cpu}.": "이 Mac은 {cpu}에서 모델을 실행합니다.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "이 PC:  {local_url}\n네트워크:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "이 URL의 오디오 형식을 불러올 수 없어 아직 다운로드할 수 없습니다:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "이 URL의 동영상 형식을 불러올 수 없어 아직 다운로드할 수 없습니다:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "이 앱 고유의 상세 형식: 모든 타임스탬프, 단어, 화자 레이블. 변환 / 다시 가져오기와 전사본 뷰어가 읽는 형식입니다.",
     "This clip may not work well": "이 클립은 잘 작동하지 않을 수 있습니다",
     "This computer cannot capture microphone audio yet.": "이 컴퓨터는 아직 마이크 오디오를 캡처할 수 없습니다.",

@@ -1116,8 +1116,6 @@
     "This JSON list holds no transcript segments.": "Αυτή η λίστα JSON δεν περιέχει τμήματα μεταγραφής.",
     "This Mac runs models on {cpu}.": "Αυτό το Mac εκτελεί τα μοντέλα σε {cpu}.",
     "This PC:  {local_url}\nNetwork:  {network_url}": "Αυτός ο Η/Υ:  {local_url}\nΔίκτυο:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Δεν ήταν δυνατή η φόρτωση των μορφών ήχου αυτού του URL, οπότε δεν μπορεί να γίνει λήψη ακόμα:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "Δεν ήταν δυνατή η φόρτωση των μορφών βίντεο αυτού του URL, οπότε δεν μπορεί να γίνει λήψη ακόμα:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "Η λεπτομερής μορφή αυτής της εφαρμογής: κάθε χρονική σήμανση, λέξη και ετικέτα ομιλητή. Αυτό που διαβάζουν η Μετατροπή / επανεισαγωγή και το πρόγραμμα προβολής μεταγραφής.",
     "This clip may not work well": "Αυτό το κλιπ ίσως να μη λειτουργεί καλά",
     "This computer cannot capture microphone audio yet.": "Αυτός ο υπολογιστής δεν μπορεί ακόμα να καταγράψει ήχο μικροφώνου.",

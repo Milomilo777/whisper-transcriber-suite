@@ -87,8 +87,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the window title "2 jobs running (41%)" and "Browse files..." named as on the button. The
   renamed texts show in English in the other languages until they are translated again.
   Words that are not a link ("hello world") get "That is not a video link..." at once instead of
-  yt-dlp's raw error; a read link shows its title ("Found: Me at the zoo (0:19)"); emptying the
-  link box clears the old video length.
+  yt-dlp's raw error; a read link shows its title ("Found: Me at the zoo (0:19)"); a new link, an
+  emptied box or plain words clear the old video length. The "Cannot load this link" warning gives
+  the reason once, without a lead sentence that said the same again.
 
 - **Download tab: buttons in sight**: Pause, Cancel, Open and the rest sat under the downloads table,
   below the visible part of the tab even in a large window; they now sit above it, and the table
@@ -127,7 +128,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **Speed cell while it measures**: the Queue said only "measuring speed..." for about a minute on a
   CPU run (the speed needs two 30-second chunks of speech); it now says how much audio is done
-  ("measuring speed... (36 s of audio done)"). The speed cell and the result card's speed line are
+  ("36 s of audio done, measuring speed...", the audio first so a narrow column keeps it). The speed cell and the result card's speed line are
   now translatable.
 
 - **Plain processor note**: "CPU (slower)" instead of "CPU - int8_float32 (slower)" beside the

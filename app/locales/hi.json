@@ -1116,8 +1116,6 @@
     "This JSON list holds no transcript segments.": "इस JSON सूची में कोई ट्रांसक्रिप्ट सेगमेंट नहीं है।",
     "This Mac runs models on {cpu}.": "यह Mac मॉडल {cpu} पर चलाता है।",
     "This PC:  {local_url}\nNetwork:  {network_url}": "यह PC:  {local_url}\nनेटवर्क:  {network_url}",
-    "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "इस URL के ऑडियो फ़ॉर्मेट लोड नहीं हो सके, इसलिए इसे अभी डाउनलोड नहीं किया जा सकता:\n\n{reason}",
-    "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\n{reason}": "इस URL के वीडियो फ़ॉर्मेट लोड नहीं हो सके, इसलिए इसे अभी डाउनलोड नहीं किया जा सकता:\n\n{reason}",
     "This app's own detailed format: every timestamp, word and speaker label. What Convert / re-import and the transcript viewer read.": "इस ऐप का अपना विस्तृत फ़ॉर्मेट: हर टाइमस्टैम्प, शब्द और वक्ता लेबल। बदलें / फिर से इम्पोर्ट और ट्रांसक्रिप्ट व्यूअर यही पढ़ते हैं।",
     "This clip may not work well": "यह क्लिप शायद ठीक से काम न करे",
     "This computer cannot capture microphone audio yet.": "यह कंप्यूटर अभी माइक्रोफ़ोन ऑडियो कैप्चर नहीं कर सकता।",
