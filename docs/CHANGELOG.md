@@ -236,6 +236,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Dropping several files no longer queues one twice**: dragging in, or choosing with
+  **Browse...**, a set of files that includes one already waiting or running added that file to
+  the queue again. It is now skipped with a line in the log, as a single file already was.
+
 - **A job that finishes while the app closes keeps its details**: such a job was saved in History
   without the language it had detected (Auto jobs showed none), its speed or its device. The
   exit path now saves the same details as a normal finish.

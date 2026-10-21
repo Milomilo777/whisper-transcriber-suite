@@ -4745,6 +4745,11 @@ class App(tk.Tk):
         for path in files:
             task = TranscriptionTask(path)
             self._apply_task_options(task)
+            if self._same_job_active(task):
+                # Same rule as add(): a job already waiting, running or paused for this
+                # file (and time range) is not queued a second time.
+                self.log(f"Already in the queue: {os.path.basename(path)}")
+                continue
             self.queue.append(task)
             count += 1
         if count:

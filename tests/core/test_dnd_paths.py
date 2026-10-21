@@ -230,7 +230,9 @@ def test_bulk_enqueue_gates_once_and_refreshes_once(monkeypatch):
         _ensure_transcribe_ready=lambda: (calls.__setitem__("ready", calls["ready"] + 1), True)[1],
         _apply_task_options=lambda _t: calls.__setitem__("opts", calls["opts"] + 1),
         refresh=lambda: calls.__setitem__("refresh", calls["refresh"] + 1),
+        log=lambda _m: None,
     )
+    app._same_job_active = App._same_job_active.__get__(app)
 
     count = App._bulk_enqueue(app, list(files))  # type: ignore[arg-type]
 
@@ -274,7 +276,9 @@ def test_bulk_enqueue_skips_missing_files(monkeypatch):
         _ensure_transcribe_ready=lambda: True,
         _apply_task_options=lambda _t: None,
         refresh=lambda: None,
+        log=lambda _m: None,
     )
+    app._same_job_active = App._same_job_active.__get__(app)
     count = App._bulk_enqueue(app, [r"C:\real.mp4", r"C:\ghost.mp4"])  # type: ignore[arg-type]
     assert count == 1
     assert len(app.queue) == 1

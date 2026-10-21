@@ -155,6 +155,24 @@ def test_bulk_enqueue_skips_files_that_are_not_media(
     assert any("notes.txt" in line for line in fake.logs) and no_probe == []
 
 
+def test_bulk_enqueue_skips_a_file_already_in_the_queue(tmp_path, media: str, no_probe: list[str]) -> None:
+    """Dropping several files while one of them is already queued or running added it a second
+    time; the single-file path (add) already refused that."""
+    from core.task import TranscriptionTask
+
+    other = tmp_path / "other.mp4"
+    other.write_bytes(b"x")
+    fake = _fake_app()
+    running = TranscriptionTask(media)
+    running.status = "running"
+    fake.queue.append(running)
+
+    assert App._bulk_enqueue(fake, [media, str(other)]) == 1  # type: ignore[arg-type]
+
+    assert [t.file_path for t in fake.queue] == [media, str(other)]
+    assert any("Already in the queue" in line and "my talk.mp4" in line for line in fake.logs)
+
+
 def test_bulk_enqueue_says_so_when_nothing_is_media(tmp_path, no_probe: list[str]) -> None:
     notes = tmp_path / "notes.txt"
     notes.write_text("x", encoding="utf-8")
