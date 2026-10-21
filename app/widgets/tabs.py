@@ -1450,7 +1450,7 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     fit_progress_column(app.tree)
     app.tree.column("speed", width=px(190), anchor="w")
     app.tree.column("time", width=px(80), anchor="center")
-    app.tree.column("status", width=px(120))
+    app.tree.column("status", width=px(150))  # "⚠ no speech found" and longer translations
     _vsb = _AutoScrollbar(tree_frame, orient="vertical", command=app.tree.yview)
     app.tree.configure(yscrollcommand=_vsb.set)
     app.tree.grid(row=0, column=0, sticky="nsew")

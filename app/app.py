@@ -7903,13 +7903,16 @@ class App(tk.Tk):
         row = _inst_attr(self, "overall_row")  # absent on bare test doubles
         if row is None:
             return
+        # winfo_manager, not winfo_ismapped: a row on a tab that is not shown is packed but not
+        # mapped, and packing it again every 500 ms kept the window busy (review, 2026-10-21).
         if len(running) < 2:
             # One job: its row bar and the window title already show it.
-            row.pack_forget()
+            if row.winfo_manager():
+                row.pack_forget()
             return
         self.overall_var.set(_("{count} jobs running: {percent}% done in all",
                                count=len(running), percent=int(value)))
-        if not row.winfo_ismapped():
+        if not row.winfo_manager():
             row.pack(fill="x", pady=(6, 4))
 
     def loop(self) -> None:

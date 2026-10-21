@@ -53,7 +53,14 @@ def status_line(message: str) -> str | None:
         # The words in quotes: a bare fragment ("1% done — Mum告诉我的") read as the app switching
         # language (round-2 screenshot critics, 2026-10-21). A template, so a translation picks
         # its own quote marks.
-        return _clip(_("{progress} — “{words}”", progress=head, words=text) if text else head)
+        if not text:
+            return _clip(head)
+        # Clip the words, not the line, so the closing quote stays.
+        room = MAX_CHARS - len(_("{progress} — “{words}”", progress=head, words=""))
+        words = " ".join(text.split())
+        if len(words) > room:
+            words = words[: max(1, room - 1)].rstrip() + "…"
+        return _clip(_("{progress} — “{words}”", progress=head, words=words))
     processing = _PROCESSING.match(message)
     if processing:
         return _clip(_("Transcribing {name}…", name=os.path.basename(processing.group("path").strip())))

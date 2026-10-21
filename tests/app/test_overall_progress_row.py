@@ -12,17 +12,24 @@ from app.app import App
 
 
 class _Row:
+    """Packed or not; never mapped, as inside a notebook tab that is not shown."""
+
     def __init__(self) -> None:
         self.shown = True
+        self.packs = 0
 
     def pack(self, **_kw) -> None:
         self.shown = True
+        self.packs += 1
 
     def pack_forget(self) -> None:
         self.shown = False
 
+    def winfo_manager(self) -> str:
+        return "pack" if self.shown else ""
+
     def winfo_ismapped(self) -> bool:
-        return self.shown
+        return False
 
 
 class _Var:
@@ -57,3 +64,13 @@ def test_a_double_without_the_row_keeps_working():
     fake = types.SimpleNamespace(queue=[], pb={"value": 99})
     App.update_overall_progress(fake)  # type: ignore[arg-type]
     assert fake.pb["value"] == 0
+
+
+def test_a_hidden_queue_tab_is_not_repacked_every_tick():
+    # winfo_ismapped is False on a tab that is not shown: re-packing each 500 ms refresh kept an
+    # idle window busy (review of f12f506f).
+    fake = _fake(("running", 40.0), ("running", 60.0))
+    fake.overall_row.shown = False
+    for _tick in range(5):
+        App.update_overall_progress(fake)  # type: ignore[arg-type]
+    assert fake.overall_row.packs == 1

@@ -45,4 +45,11 @@ def test_long_lines_are_cut_to_fit_the_bar():
     for message in (f"[file=x.mp3] [50%] 00:00:00 --> 00:00:09 | {long_text}", long_text,
                     "سلام " * 60):
         line = status_line(message)
-        assert line is not None and len(line) <= MAX_CHARS and line.endswith("…")
+        # a segment's words are quoted: the ellipsis sits before the closing quote
+        assert line is not None and len(line) <= MAX_CHARS and line.removesuffix("”").endswith("…")
+
+
+def test_long_words_keep_their_closing_quote():
+    line = status_line("[file=audio.flac] [12%] 00:01:37 --> 00:01:38 | " + "word " * 60)
+    assert line is not None and len(line) <= MAX_CHARS
+    assert line.endswith("…”") and "12% done — “word" in line
