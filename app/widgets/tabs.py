@@ -739,6 +739,47 @@ def file_ready_state(text: str, duration: float | None = None) -> tuple[str, str
     return "file", _("Ready: {name} ({size})", name=name, size=size)
 
 
+def running_job_line(box_text: str, queue: "list[Any]") -> "tuple[Any, str]":
+    """The running job the Transcribe tab shows in place of its Ready line, and that line.
+
+    After Transcribe the line kept saying "Ready: talk.mp3" while talk.mp3 was being
+    transcribed, so a user back on the tab saw no sign of the job (deep review, 2026-10-21).
+    A running or paused job counts when the box holds its file, or when the box is empty
+    (several files picked with Browse never enter it); a new file in the box keeps its own
+    Ready line. Jobs a finished download started belong to the Download tab. ``(None, "")``
+    when nothing applies. No Tk.
+    """
+    import math
+    import os
+
+    from app.app import _clean_pasted_path
+    from app.domain.speed_text import time_left_text
+
+    jobs = [t for t in queue
+            if getattr(t, "status", "") in ("running", "paused") and getattr(t, "source_download", None) is None]
+    if not jobs:
+        return None, ""
+    path = _clean_pasted_path(box_text or "")
+    if path:
+        key = os.path.normcase(os.path.abspath(path))
+        jobs = [t for t in jobs if os.path.normcase(os.path.abspath(t.file_path)) == key]
+        if not jobs:
+            return None, ""
+    # A running job before a paused one: it is the one moving.
+    job = next((t for t in jobs if t.status == "running" and not getattr(t, "paused", False)), jobs[0])
+    name = elide_middle(os.path.basename(job.file_path))
+    percent = int(getattr(job, "progress", 0) or 0)
+    if job.status == "paused" or getattr(job, "paused", False):
+        return job, _("Paused: {name} — {percent}%", name=name, percent=percent)
+    eta = getattr(job, "live_eta_s", None)
+    if eta is None or not math.isfinite(eta) or eta <= 0:
+        return job, _("Transcribing {name} — {percent}%", name=name, percent=percent)
+    if eta < 60:
+        return job, _("Transcribing {name} — {percent}%, under 1 min left", name=name, percent=percent)
+    return job, _("Transcribing {name} — {percent}%, about {time_left}", name=name, percent=percent,
+                  time_left=time_left_text(eta))
+
+
 def empty_state_headline(dnd_ready: bool, has_sample: bool) -> str:
     """The empty Transcribe tab's headline; it names only what this install can do.
 
@@ -1328,7 +1369,35 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
 
         threading.Thread(target=_work, name="ready-line-length", daemon=True).start()
 
+    # While a job this tab started runs, the line names it instead (running_job_line) and this
+    # button opens its Queue row; App.refresh() calls _sync_ready every 500 ms to keep the
+    # percentage current.
+    app.transcribe_show_in_queue_btn = ttk.Button(
+        cta_row, text=_("Show in Queue"),
+        command=lambda: app.show_task_in_queue(running_job_line(app.fv.get(), app.queue)[0]),
+    )
+
+    def _set_style(widget: Any, **options: Any) -> None:
+        """Configure only what changed: a write every 500 ms redraws the widget (an idle window
+        kept a core busy on macOS that way, see sync_transcribe_empty_state)."""
+        changed = {k: v for k, v in options.items() if str(widget.cget(k)) != str(v)}
+        if changed:
+            widget.configure(**changed)
+
     def _sync_ready(*_args: object) -> None:
+        job, running_line = running_job_line(app.fv.get(), getattr(app, "queue", []))
+        shown = bool(app.transcribe_show_in_queue_btn.winfo_manager())
+        if job is not None:
+            if app.transcribe_ready_var.get() != running_line:
+                app.transcribe_ready_var.set(running_line)
+            # Plain: the file is already in the queue, a click only shows it there.
+            _set_style(transcribe_btn, style="TButton")
+            _set_style(ready_label, foreground=tokens.themed(tokens.TEXT_MUTED))
+            if not shown:
+                app.transcribe_show_in_queue_btn.pack(side="left", padx=(8, 0), after=ready_label)
+            return
+        if shown:
+            app.transcribe_show_in_queue_btn.pack_forget()
         kind, line = file_ready_state(app.fv.get())
         if kind == "file":
             from app.app import _clean_pasted_path
@@ -1342,16 +1411,17 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
                 line = file_ready_state(app.fv.get(), duration=known)[1]
         if app.transcribe_ready_var.get() != line:
             app.transcribe_ready_var.set(line)
-        transcribe_btn.configure(style="Accent.TButton" if kind in ("file", "link") else "TButton")
+        _set_style(transcribe_btn, style="Accent.TButton" if kind in ("file", "link") else "TButton")
         if kind in ("missing", "not_media"):
             colour = tokens.themed(tokens.DANGER_TEXT)
         elif kind == "file":
             colour = tokens.themed(tokens.SUCCESS_TEXT)
         else:
             colour = tokens.themed(tokens.TEXT_MUTED)
-        ready_label.configure(foreground=colour)
+        _set_style(ready_label, foreground=colour)
 
     app.fv.trace_add("write", _sync_ready)
+    app.sync_transcribe_ready = _sync_ready
     _sync_ready()
 
     ttk.Button(

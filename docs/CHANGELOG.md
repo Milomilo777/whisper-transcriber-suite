@@ -77,6 +77,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **The Transcribe tab shows the job it started**: while that file is transcribed, the line beside
+  the Transcribe button says "Transcribing talk.mp3 — 34%, about 6 min left" (or "Paused: ...")
+  with a **Show in Queue** button, instead of the stale "Ready: talk.mp3". A new file in the box
+  keeps its own Ready line.
+
 - **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**;
   the note under it says "This video already has German subtitles made by the uploader. Use them
   instead of transcribing?" (was "Captions (creator-provided) are already available in "de" --

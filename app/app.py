@@ -1181,6 +1181,9 @@ class App(tk.Tk):
     transcribe_lang_var: tk.StringVar
     # The line beside the Transcribe button: the chosen file's name and size, a link, or why not.
     transcribe_ready_var: tk.StringVar
+    # While a job the tab started runs: the button beside that line, and the redraw App.refresh calls.
+    transcribe_show_in_queue_btn: "ttk.Button"
+    sync_transcribe_ready: "Callable[[], None]"
     mixed_lang_var: tk.BooleanVar
     transcribe_lang2_var: tk.StringVar
     transcribe_lang2_frame: "ttk.Frame"
@@ -4360,6 +4363,17 @@ class App(tk.Tk):
         self.log(f"Queued: {os.path.basename(text)}")
         self.refresh()
 
+    def show_task_in_queue(self, task: "TranscriptionTask | None") -> None:
+        """The Transcribe tab's "Show in Queue": open the Queue with ``task``'s row selected."""
+        self.nb.select(self.t2)
+        if task is None:
+            return
+        iids = _iids_for_tasks(self.row_map, [task])
+        if iids:
+            self.tree.selection_set(iids)
+            self.tree.focus(iids[0])
+            self.tree.see(iids[0])
+
     def _same_job_active(self, task: TranscriptionTask) -> bool:
         """True when a waiting, running or paused job already does ``task``: the same
         file and the same time range (None/None = the whole file)."""
@@ -6236,6 +6250,9 @@ class App(tk.Tk):
             elif not shown:
                 self.queue_empty_label.pack(fill="x", pady=(2, 0))
         sync_transcribe_empty_state(self)
+        sync_ready = _inst_attr(self, "sync_transcribe_ready")  # absent on test doubles
+        if sync_ready is not None:
+            sync_ready()
         # Reflect work-in-progress in the window title so users with
         # the app minimised see "Whisper — 34% transcribing foo.mp4"
         # in their taskbar / Alt-Tab.
