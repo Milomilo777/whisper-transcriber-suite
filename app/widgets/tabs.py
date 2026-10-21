@@ -638,6 +638,54 @@ def elide_middle(name: str, limit: int = READY_NAME_MAX) -> str:
     return name[: limit - tail - 1] + "…" + name[-tail:]
 
 
+def elide_to_width(name: str, fits: Callable[[str], bool]) -> str:
+    """The longest ``elide_middle`` cut of ``name`` that ``fits`` accepts (``name`` itself when
+    it fits; the 12-character cut when nothing does). No Tk."""
+    if fits(name):
+        return name
+    lo, hi = 12, len(name) - 1
+    best = elide_middle(name, lo)
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        cut = elide_middle(name, mid)
+        if fits(cut):
+            best, lo = cut, mid + 1
+        else:
+            hi = mid - 1
+    return best
+
+
+def fit_tree_cell(tree: Any, column: str, text: str, tags: tuple[str, ...] = ()) -> str:
+    """``text`` cut in the middle so it fits ``column`` of a Treeview. ttk cuts a long cell at
+    its right edge with no ellipsis, which hid the end and the extension of a long file name in
+    the Queue (round-2 real-click test, 2026-10-21). A row tag's font wins over the tree's.
+    ``text`` comes back unchanged from a tree without columns (test doubles)."""
+    if not callable(getattr(tree, "column", None)):
+        return text
+    try:
+        width = int(tree.column(column, "width")) - px(14)  # the cell's own padding
+        if width <= 0:
+            return text
+        spec = ""
+        for tag in tags:
+            spec = str(tree.tag_configure(tag, "font")) or spec
+        if not spec:
+            style = str(tree.cget("style")) or "Treeview"
+            spec = str(ttk.Style(tree).lookup(style, "font")) or "TkDefaultFont"
+        # refresh() runs every 500 ms: one Font per description per tree, not one per call.
+        fonts = tree.__dict__.setdefault("_fit_fonts", {})
+        font = fonts.get(spec)
+        if font is None:
+            if spec in tkfont.names(root=tree):
+                font = tkfont.nametofont(spec, root=tree)  # live: follows a later size change
+            else:
+                font = tkfont.Font(root=tree, font=spec)
+            fonts[spec] = font
+        return elide_to_width(text, lambda cut: font.measure(cut) <= width)
+    except tk.TclError:
+        return text
+
+
 def clock_length(seconds: float) -> str:
     """A recording length as a clock: ``0:07``, ``3:05``, ``1:46:12``. No Tk."""
     s = max(0, int(round(seconds)))

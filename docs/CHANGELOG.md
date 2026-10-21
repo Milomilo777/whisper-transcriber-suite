@@ -124,7 +124,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the file picker; the Engine and Model lists are wide enough for their longest entry; a link
   changed within the moment before its lookup no longer downloads with the previous link's formats.
   A long file name is cut in the middle on the ready line ("Interview with the … 1 of 3).mp4"),
-  so it no longer pushes **Advanced settings…** out of the window.
+  so it no longer pushes **Advanced settings…** out of the window. The Queue's File column cuts
+  a long name the same way to the column's width, keeping its end and extension, instead of
+  stopping at the column edge.
 
 - **Speed cell while it measures**: the Queue said only "measuring speed..." for about a minute on a
   CPU run (the speed needs two 30-second chunks of speech); it now says how much audio is done

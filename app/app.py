@@ -6125,7 +6125,7 @@ class App(tk.Tk):
             self._anim_running = False
 
     def refresh(self) -> None:
-        from app.widgets.tabs import queue_language_cell, status_label
+        from app.widgets.tabs import fit_tree_cell, queue_language_cell, status_label
 
         # Snapshot the SELECTED tasks (by identity) before we tear the tree
         # down: refresh() runs every 500ms via loop(), and a plain
@@ -6143,15 +6143,15 @@ class App(tk.Tk):
             lang = getattr(t, "detected_language", "") or ""
             lang_str = queue_language_cell(lang, getattr(t, "language_probability", None))
             name = os.path.basename(t.file_path)
+            tags = script_fonts.tree_row_tags(self.tree, name, language=t.language or lang)
             values = (
-                ltr_base(name),
+                ltr_base(fit_tree_cell(self.tree, "file", name, tuple(tags))),
                 status_label(t.status),
                 self._row_progress_text(t.status, t.progress),
                 speed_cell_text(t),
                 lang_str,
                 self.fmt_time(t),
             )
-            tags = script_fonts.tree_row_tags(self.tree, name, language=t.language or lang)
             rows.append((t, values, tuple(tags)))
         # Rebuild only when a row, its text or its tags changed. delete()+insert() on a
         # visible Treeview repaints it, so doing it every 500 ms kept an idle Queue tab
