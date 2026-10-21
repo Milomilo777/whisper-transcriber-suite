@@ -252,7 +252,9 @@
   function tokenVal() { return document.getElementById("token").value.trim(); }
   function authHeaders() {
     var t = tokenVal();
-    return t ? { "X-Auth-Token": t } : {};
+    // Percent-encoded: fetch() throws on a header value above U+00FF, so a
+    // password in Persian or another non-Latin script must travel encoded.
+    return t ? { "X-Auth-Token": encodeURIComponent(t) } : {};
   }
   function tokenQuery(sep) {
     var t = tokenVal();

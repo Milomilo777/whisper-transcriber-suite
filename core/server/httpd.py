@@ -310,7 +310,12 @@ def token_ok(expected: str, header_token: str | None,
     # Encoding both sides with the same codec preserves the constant-time
     # property for the realistic (matching) case.
     exp_b = expected.encode("utf-8")
-    for candidate in (header_token, query_token):
+    candidates = [header_token, query_token]
+    # Browsers refuse a header value above U+00FF (a Persian password), so the
+    # web page sends the header percent-encoded; the raw form still works too.
+    if header_token and "%" in header_token:
+        candidates.append(urllib.parse.unquote(header_token))
+    for candidate in candidates:
         if candidate is None:
             continue
         cand_b = candidate.encode("utf-8", "ignore")

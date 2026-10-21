@@ -70,6 +70,26 @@ def test_token_ok_non_ascii_configured_token_still_authenticates():
     assert token_ok("päss", None, "pass") is False
 
 
+def test_a_percent_encoded_header_token_authenticates_any_password():
+    """Browsers refuse a header value above U+00FF (a Persian password): the page
+    sends the header percent-encoded, and the server accepts that form too."""
+    from urllib.parse import quote
+
+    for secret in ("رمز عبور", "päss", "50%off", "plain"):
+        assert token_ok(secret, quote(secret, safe=""), None) is True
+    assert token_ok("رمز", quote("رمز2", safe=""), None) is False
+    # The raw header still works for API clients that send it unencoded.
+    assert token_ok("50%off", "50%off", None) is True
+    assert token_ok("secret", "%73ecret", None) is True  # same secret, encoded form
+
+
+def test_page_sends_the_header_token_percent_encoded():
+    page = os.path.join(httpd_mod._STATIC_DIR, "index.html")
+    with open(page, encoding="utf-8") as f:
+        text = f.read()
+    assert '{ "X-Auth-Token": encodeURIComponent(t) }' in text
+
+
 def test_token_ok_plain_cases_unchanged():
     assert token_ok("", "anything", None) is True  # no token configured
     assert token_ok("secret", "secret", None) is True

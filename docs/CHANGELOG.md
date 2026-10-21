@@ -245,6 +245,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   load, the job's warning and the language list sent its full file path (with the Windows user
   name) to every device on the network. They now show the file name only, as errors already did.
 
+- **A web access password in Persian (or another non-Latin script) works on the web page**: the
+  browser refused to send such a password, so the page could not list, upload or poll anything.
+  The page now sends it encoded and the server accepts that form.
+
 - **Dropping several files no longer queues one twice**: dragging in, or choosing with
   **Browse...**, a set of files that includes one already waiting or running added that file to
   the queue again. It is now skipped with a line in the log, as a single file already was.
